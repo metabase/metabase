@@ -70,14 +70,16 @@
 
 (defn- schema-or-update-fn
   [schema]
-  [:or schema [:-> schema schema]])
+  [:multi {:dispatch fn?}
+   [true  [:-> schema schema]]
+   [false schema]])
 
 (def ^:private Row
   [:map-of :string ::lib.schema.literal/literal])
 
 (mr/def ::expectation
   "A `=?` expectation: partial maps, predicates, and regexes matched against a real drill or query."
-  [:schema {::mr/deliberately-open true, :description "a =? expectation pattern"} :any])
+  [:schema {:description "a =? expectation pattern"} :any])
 
 (def ^:private DrillArgs
   [:maybe [:sequential [:or :keyword ::lib.schema.literal/literal ::lib.schema.metadata/column]]])

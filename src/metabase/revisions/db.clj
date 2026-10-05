@@ -206,11 +206,11 @@
 
 (mr/def ::unregistered-model-object
   "The revision `:object` of a model outside [[revisioned-model-row-schema]] (a test double), whose keys that model's own `serialize-instance` owns."
-  [:map {:closed false, ::mr/deliberately-open true}])
+  [:map {:closed false}])
 
 (mr/def ::stored-revision-object
   "A revision `:object` as stored, whose keys the Metabase version that recorded it owns (fields may since have been dropped)."
-  [:map {:closed false, ::mr/deliberately-open true}])
+  [:map {:closed false}])
 
 (doseq [[model schema] revisioned-model-select-schema]
   (mr/register! (revision-schema-key "revision-row" model)

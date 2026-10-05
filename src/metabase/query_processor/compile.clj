@@ -18,14 +18,14 @@
 
 (mr/def ::compiled
   "Compiled query and parameters (SQL or whatever native query language)."
-  [:map {::mr/deliberately-open true
+  [:map {:closed false
          :description "drivers add their own keys to a compiled query, e.g. Mongo's `:collection`, `:projections` and `:mbql?` or BigQuery's `:qp/table-name`, and an already-native query compiles to its whole native stage"}
    [:query ::lib.schema/driver-native-query]
    [:params {:optional true} [:maybe [:sequential :metabase.lib.schema.common/field-value]]]])
 
 (mr/def ::compiled-with-inlined-parameters
   "Query with inlined parameters (:params must be empty)"
-  [:map {::mr/deliberately-open true
+  [:map {:closed false
          :description "drivers add their own keys to a compiled query, e.g. Mongo's `:collection`, `:projections` and `:mbql?` or BigQuery's `:qp/table-name`"}
    [:query ::lib.schema/driver-native-query]
    [:params {:optional true} [:maybe [:sequential {:max 0} :metabase.lib.schema.common/field-value]]]])

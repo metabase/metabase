@@ -363,7 +363,7 @@
 
 (mr/def ::raw-spec
   "A test query spec as callers write it, possibly with string or camelCase keys and without defaults, before parsing."
-  [:map {:closed false, ::mr/deliberately-open true, :description "an unparsed test query spec"}])
+  [:map {:closed false, :description "an unparsed test query spec"}])
 
 (def parse-query-spec
   "Parser for query-spec."

@@ -929,7 +929,7 @@
 (mr/def ::hydratable-item
   "An item to hydrate: usually a Toucan instance, but callers may pass a plain map (or nil, for a sparse position)
   since this helper only assocs a hydration key onto it."
-  [:maybe [:map {:closed false, ::mr/deliberately-open true, :description "a Toucan instance or a plain map"}]])
+  [:maybe [:map {:closed false, :description "a Toucan instance or a plain map"}]])
 
 (mu/defn instances-with-hydrated-data
   ;; TODO: this example is wrong, we don't get a vector of tables

@@ -58,13 +58,12 @@
 
 (mr/def ::bson-value
   "A value inside a Mongo aggregation pipeline, whose shape (BSON literals, arrays, and documents keyed by strings or keywords) the Mongo query language owns."
-  [:schema {::mr/deliberately-open true
-            :description "a Mongo aggregation pipeline value, shaped by the Mongo query language"}
+  [:schema {:description "a Mongo aggregation pipeline value, shaped by the Mongo query language"}
    :any])
 
 (mr/def ::bson-document
   "A document inside a Mongo aggregation pipeline, whose string or keyword keys the Mongo query language owns."
-  [:map {:closed false, ::mr/deliberately-open true
+  [:map {:closed false
          :description "a Mongo aggregation pipeline document, keyed by the Mongo query language"}])
 
 (mr/def ::$project-stage

@@ -16,7 +16,6 @@
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]
    [metabase.util.o11y :refer [with-span]]))
 
 (set! *warn-on-reflection* true)
@@ -68,7 +67,7 @@
 (def SupportedModels
   "An adapter's allow-list of the models it offers in the picker, keyed by model id. A provider that
   publishes no context window for a model (DeepSeek) records only the display name."
-  [:map-of :string [:map {:closed false, ::mr/deliberately-open true
+  [:map-of :string [:map {:closed false
                           :description "an allow-list entry; providers add their own flags"}
                     [:display-name                   :string]
                     [:context-window {:optional true} [:maybe :int]]]])
@@ -99,7 +98,7 @@
 (def CatalogEntry
   "One row of a provider's model catalog, as the provider sends it. Open: every provider adds its own
   fields, and an adapter reads only `:id` and whichever name key its catalog uses."
-  [:map {::mr/deliberately-open true
+  [:map {:closed false
          :description "a provider catalog entry"}
    [:id {:optional true} [:maybe :string]]])
 
@@ -118,12 +117,12 @@
   "How an adapter puts one request on the wire; see [[stream!]]."
   [:map {:closed true}
    [:path                              [:or :string fn?]]
-   [:body                              [:map {::mr/deliberately-open true
+   [:body                              [:map {:closed false
                                               :description "a provider's composed request body"}]]
    [:headers          {:optional true} [:maybe [:map-of :string :string]]]
-   [:request-options  {:optional true} [:maybe [:map {::mr/deliberately-open true
+   [:request-options  {:optional true} [:maybe [:map {:closed false
                                                       :description "extra clj-http request options"}]]]
-   [:span-attrs       {:optional true} [:maybe [:map {::mr/deliberately-open true
+   [:span-attrs       {:optional true} [:maybe [:map {:closed false
                                                       :description "extra span attributes"}]]]
    [:error-msg        {:optional true} [:maybe fn?]]
    [:read-stream      {:optional true} [:maybe fn?]]
@@ -198,7 +197,7 @@
    (request! p req nil))
   ([{:keys [auth] :as p}                                    :- Provider
     {:keys [method path body as headers ai-proxy?] :as req} :- Request
-    extra                                                   :- [:maybe [:map {::mr/deliberately-open true
+    extra                                                   :- [:maybe [:map {:closed false
                                                                               :description "extra clj-http request options"}]]]
    (reject-ai-proxy! p ai-proxy?)
    (core/request (auth p req)

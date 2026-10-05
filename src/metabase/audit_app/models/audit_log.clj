@@ -183,7 +183,7 @@
 
 (def ^:private AuditedInstance
   "An audited object of any model, whose keys that model owns and `model-details` (dispatching on the model) picks from."
-  [:map {:closed false, ::mr/deliberately-open true, :description "an audited entity"}])
+  [:map {:closed false, :description "an audited entity"}])
 
 (mr/def ::event-params [:map {:closed true
                               :doc "Used when inserting a value to the Audit Log."}

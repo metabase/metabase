@@ -28,7 +28,6 @@
    [medley.core :as m]
    [metabase.api.common.internal]
    [metabase.api.docs.regenerate :as docs.regenerate]
-   [metabase.api.macros.defendpoint.closed-schemas :as closed-schemas]
    [metabase.api.macros.defendpoint.open-api]
    [metabase.api.macros.scope]
    [metabase.api.open-api :as open-api]
@@ -518,9 +517,9 @@
   binding, or the raw route/query/body/form/multipart values for the others, before the endpoint's own schema
   decodes and validates them."
   [:maybe [:or
-           ::request.schema/request
            ms/RingRequestParams
-           ms/RingRequestBody]])
+           ms/RingRequestBody
+           ::request.schema/request]])
 
 (mu/defn decode-and-validate-params
   "Impl for [[defendpoint]]."
@@ -627,16 +626,14 @@
   "Impl for [[endpoint-core-fn]]: validate the schemas used for validation at evaluation time, so we can get instant
   feedback if they're bad as opposed to waiting for someone to actually use the endpoint."
   [schema-type schema]
-  (let [schema (try
-                 (mc/schema schema)
-                 (catch Throwable e#
-                   (throw (ex-info (format "Invalid %s schema: %s\n\n%s"
-                                           (name schema-type)
-                                           (ex-message e#)
-                                           (u/pprint-to-str schema))
-                                   {:schema schema}))))]
-    (closed-schemas/check! schema-type schema)
-    schema))
+  (try
+    (mc/schema schema)
+    (catch Throwable e#
+      (throw (ex-info (format "Invalid %s schema: %s\n\n%s"
+                              (name schema-type)
+                              (ex-message e#)
+                              (u/pprint-to-str schema))
+                      {:schema schema})))))
 
 (defmacro endpoint-core-fn-with-optimized-schemas
   "Helper macro for [[endpoint-core-fn]]. This is not strictly necessary, but improves performance somewhat by

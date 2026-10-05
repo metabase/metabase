@@ -628,11 +628,7 @@
 
   ;; The following arity is provided solely for convenience for tests/REPL usage
   ([ks        :- [:vector [:or :int :string :keyword]]
-    new-value :- [:or
-                  ::permissions.schema/data-permission-value
-                  [:map-of ::permissions.schema/data-permission-type ::permissions.schema/data-permission-value]
-                  [:ref ::permissions-rest.schema/schemas]
-                  [:ref ::permissions-rest.schema/db-perms]]]
+    new-value :- some?]
    (-> (api-graph)
        :groups
        (assoc-in ks new-value)
@@ -660,11 +656,7 @@
 
   ;; The following arity is provided solely for convenience for tests/REPL usage
   ([ks        :- [:vector [:or :int :string :keyword]]
-    new-value :- [:or
-                  ::permissions.schema/data-permission-value
-                  [:map-of ::permissions.schema/data-permission-type ::permissions.schema/data-permission-value]
-                  [:ref ::permissions-rest.schema/schemas]
-                  [:ref ::permissions-rest.schema/db-perms]]]
+    new-value :- some?]
    (-> (api-graph)
        (assoc-in (cons :groups ks) new-value)
        update-data-perms-graph!)))

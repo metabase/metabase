@@ -863,9 +863,9 @@
 
 (mu/defn hydrate-notification :- [:or ::FullyHydratedNotification [:sequential ::FullyHydratedNotification]]
   "Fully hydrate notifictitons."
-  [notification-or-notifications :- [:or NotificationWithInlinePayload
+  [notification-or-notifications :- [:or [:ref ::FullyHydratedNotification]
+                                     NotificationWithInlinePayload
                                      NotificationWithRawHandlers
-                                     [:ref ::FullyHydratedNotification]
                                      [:sequential ::notification.schema/notification]]]
   (t2/hydrate notification-or-notifications :creator :payload :subscriptions [:handlers :channel :template [:recipients :recipients-detail]]))
 

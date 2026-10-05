@@ -185,7 +185,7 @@
   [:map {:closed true}
    [:database   ::lib.schema.id/database]
    [:type       [:= :query]]
-   [:query      [:or ::query ::query.filtered]]
+   [:query      [:or ::query.filtered ::query]]
    [:create-row {:optional true} ::row]
    [:update-row {:optional true} ::row]])
 
@@ -204,11 +204,11 @@
 (mr/def ::any-arg-map
   "One arg map an action can be invoked with, in any of the shapes [[action-arg-map-schema]] recognizes."
   [:or
+   ::implicit
    ::model.row.create
    ::model.row.update
    ::model.row.delete
+   ::table.insert
    ::table.common
    ::data-grid.row.input
-   ::implicit
-   ::table.insert
    [:= {} {}]])

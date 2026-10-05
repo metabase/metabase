@@ -106,7 +106,7 @@
 (mr/def ::unregistered-model-row
   "A row of a model not listed in [[model-row-schema]], such as the test-double models `metabase.models.util.spec-update`
   specs are tested with; its keys are that model's."
-  [:map {:closed false, ::mr/deliberately-open true, :description "row of an unregistered model"}])
+  [:map {:closed false, :description "row of an unregistered model"}])
 
 (mr/def ::model-row
   "A `{:model ..., :row ...}` pair naming one of the models the generic entity helpers below are called with, the
@@ -125,7 +125,7 @@
 
 (mr/def ::after-select-row
   "A row not yet run through its model's after-select, e.g. a stored revision snapshot whose keys older Metabase versions own."
-  [:map {:closed false, ::mr/deliberately-open true,
+  [:map {:closed false,
          :description "shape depends on the model, hydration state, and revision history"}])
 
 (def ^:private AfterSelectEntity

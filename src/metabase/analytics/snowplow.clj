@@ -8,6 +8,7 @@
    [metabase.premium-features.core :as premium-features]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [metabase.version.core :as version]
    [toucan2.core :as t2])
@@ -218,28 +219,49 @@
      ["tool_name" {:optional true} [:maybe :string]]
      ["step"      {:optional true} :int]]]])
 
+(def ^:private schema->event-data
+  "The shape of the `data` each `SnowplowSchema` value carries. `:snowplow/instance_stats` is an opaque, deeply-nested
+  telemetry blob assembled from many stats sources and forwarded to Snowplow without being read by key."
+  {:snowplow/account          account-event-data
+   :snowplow/browse_data      no-payload-event-data
+   :snowplow/invite           invite-event-data
+   :snowplow/instance_stats   ms/OpaqueJSONObject
+   :snowplow/csvupload        csvupload-event-data
+   :snowplow/dashboard        dashboard-event-data
+   :snowplow/database         database-event-data
+   :snowplow/instance         no-payload-event-data
+   :snowplow/metabot          no-payload-event-data
+   :snowplow/search           no-payload-event-data
+   :snowplow/model            model-event-data
+   :snowplow/timeline         timeline-event-data
+   :snowplow/task             no-payload-event-data
+   :snowplow/upsell           no-payload-event-data
+   :snowplow/action           action-event-data
+   :snowplow/embed_share      embed-share-event-data
+   :snowplow/llm_usage        no-payload-event-data
+   :snowplow/token_usage      token-usage-event-data
+   :snowplow/serialization    serialization-event-data
+   :snowplow/simple_event     simple-event-data
+   :snowplow/cleanup          cleanup-event-data
+   :snowplow/ai_service_event ai-service-event-data
+   :snowplow/data_complexity  data-complexity-event-data})
+
+(mr/def ::event
+  "A Snowplow event: its schema and the data that schema carries."
+  (into [:multi {:dispatch :schema}]
+        (for [[schema data] schema->event-data]
+          [schema [:map {:closed true}
+                   [:schema [:= schema]]
+                   [:data   data]]])))
+
 (def SnowplowEventData
-  "Closed shape of the `data` payload accepted by [[track-event!]], as a union of the shapes each `SnowplowSchema`
-  value actually carries at its call sites. `:snowplow/instance_stats` is an opaque, deeply-nested telemetry blob
-  assembled from many stats sources and forwarded to Snowplow without being read by key."
-  [:or
-   account-event-data
-   invite-event-data
-   dashboard-event-data
-   database-event-data
-   simple-event-data
-   timeline-event-data
-   action-event-data
-   embed-share-event-data
-   model-event-data
-   csvupload-event-data
-   token-usage-event-data
-   serialization-event-data
-   cleanup-event-data
-   data-complexity-event-data
-   ai-service-event-data
-   ms/OpaqueJSONObject
-   no-payload-event-data])
+  "The `data` payload of [[track-event!]], checked against the shape of its schema by [[event-data]]."
+  [:map {:closed false}])
+
+(mu/defn event-data :- SnowplowEventData
+  "The data of `event`, checked against the shape its schema carries."
+  [event :- ::event]
+  (:data event))
 
 (defn- tracker-config
   []
@@ -333,16 +355,17 @@
    (track-event! schema data api/*current-user-id*))
 
   ([schema :- SnowplowSchema data :- SnowplowEventData user-id :- [:maybe ms/PositiveInt]]
-   (boolean
-    (when (analytics.settings/snowplow-enabled)
-      (try
-        (let [^SelfDescribing$Builder2 builder (-> (. SelfDescribing builder)
-                                                   (.eventData (payload schema (schema->version schema) data))
-                                                   (.customContext [(context)])
-                                                   (cond-> user-id (.subject (subject user-id))))
-              ^SelfDescribing event (.build builder)]
-          (track-event-impl! tracker event)
-          true)
-        (catch Throwable e
-          (log/errorf "Error sending Snowplow analytics event for schema %s: %s" schema (ex-message e))
-          false))))))
+   (let [data (event-data {:schema schema, :data data})]
+     (boolean
+      (when (analytics.settings/snowplow-enabled)
+        (try
+          (let [^SelfDescribing$Builder2 builder (-> (. SelfDescribing builder)
+                                                     (.eventData (payload schema (schema->version schema) data))
+                                                     (.customContext [(context)])
+                                                     (cond-> user-id (.subject (subject user-id))))
+                ^SelfDescribing event (.build builder)]
+            (track-event-impl! tracker event)
+            true)
+          (catch Throwable e
+            (log/errorf "Error sending Snowplow analytics event for schema %s: %s" schema (ex-message e))
+            false)))))))

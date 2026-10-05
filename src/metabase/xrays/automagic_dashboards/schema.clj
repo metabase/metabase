@@ -110,9 +110,9 @@
   "Either a Card row, or the [[::adhoc-question]] wrapper for a raw query. Several helpers in
   [[metabase.xrays.automagic-dashboards.core]] duck-type over both. Either may carry the `:entity_type`
   [[metabase.xrays.automagic-dashboards.core/source]] assoc's on."
-  [:or
-   [:merge :metabase.queries.schema/card [:map [:entity_type {:optional true} :keyword]]]
-   ::adhoc-question])
+  [:multi {:dispatch #(if (contains? % :id) :card :adhoc-question)}
+   [:card           [:merge :metabase.queries.schema/card [:map [:entity_type {:optional true} :keyword]]]]
+   [:adhoc-question ::adhoc-question]])
 
 (mr/def ::external-op
   [:merge

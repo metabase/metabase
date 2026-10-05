@@ -288,7 +288,7 @@
 
 (def ^:private TypeInfo
   "Type info for a `TypedHoneySQLForm` before [[normalize-type-info]], open to the namespaced keys drivers own (e.g. `:metabase.driver.postgres/target-timezone`)."
-  [:map {:closed false, ::mr/deliberately-open true}
+  [:map {:closed false}
    [:database-type  {:optional true} [:maybe ms/KeywordOrString]]
    [:base-type      {:optional true} [:maybe :keyword]]
    [:effective-type {:optional true} [:maybe :keyword]]])
@@ -403,7 +403,7 @@
 
 (mr/def ::honeysql-clause-opts
   "A map inside a Honey SQL 2 clause (a window spec, a subquery, ...), whose keys the Honey SQL library and the clauses drivers register own."
-  [:map {:closed false, ::mr/deliberately-open true}])
+  [:map {:closed false}])
 
 (mr/def ::honeysql-expr
   "A Honey SQL 2 expression: a literal value, a column/identifier keyword, a `TypedHoneySQLForm` wrapping another

@@ -182,19 +182,19 @@
 (mr/def ::init-step
   "One step under `init:` in a plugin manifest, whose keys are the plugin author's."
   [:multi {:dispatch :step}
-   ["load-namespace"       [:map {:closed false, ::mr/deliberately-open true, :description "plugin init step"}
+   ["load-namespace"       [:map {:closed false, :description "plugin init step"}
                             [:step [:= "load-namespace"]] [:namespace :string]]]
-   ["register-jdbc-driver" [:map {:closed false, ::mr/deliberately-open true, :description "plugin init step"}
+   ["register-jdbc-driver" [:map {:closed false, :description "plugin init step"}
                             [:step [:= "register-jdbc-driver"]] [:class :string]]]])
 
 (mr/def ::dependency
   "One entry under `dependencies:` in a plugin manifest, whose keys are the plugin author's."
   [:or
-   [:map {:closed false, ::mr/deliberately-open true, :description "plugin class dependency"}
+   [:map {:closed false, :description "plugin class dependency"}
     [:class :string] [:message {:optional true} :string]]
-   [:map {:closed false, ::mr/deliberately-open true, :description "plugin dependency on another plugin"}
+   [:map {:closed false, :description "plugin dependency on another plugin"}
     [:plugin :string]]
-   [:map {:closed false, ::mr/deliberately-open true, :description "plugin env var dependency"}
+   [:map {:closed false, :description "plugin env var dependency"}
     [:env-var :string]]])
 
 (mr/def ::connection-property
@@ -202,13 +202,13 @@
   name, a full property map, a `merge:` override list, or a `group:` of properties."
   [:or
    :string
-   [:map {:closed false, ::mr/deliberately-open true, :description "plugin connection property group"}
-    [:group [:map {:closed false, ::mr/deliberately-open true, :description "plugin connection property group"}
+   [:map {:closed false, :description "plugin connection property group"}
+    [:group [:map {:closed false, :description "plugin connection property group"}
              [:container-style {:optional true} [:sequential :string]]
              [:fields [:sequential [:ref ::connection-property]]]]]]
-   [:map {:closed false, ::mr/deliberately-open true, :description "plugin connection property merge"}
+   [:map {:closed false, :description "plugin connection property merge"}
     [:merge [:sequential [:ref ::connection-property]]]]
-   [:map {:closed false, ::mr/deliberately-open true, :description "plugin connection property"}
+   [:map {:closed false, :description "plugin connection property"}
     [:name                 {:optional true} :string]
     [:display-name         {:optional true} :string]
     [:helper-text          {:optional true} :string]
@@ -223,7 +223,7 @@
 
 (mr/def ::driver-info
   "The `driver:` section of a plugin manifest, whose keys are the plugin author's."
-  [:map {:closed false, ::mr/deliberately-open true, :description "plugin driver info"}
+  [:map {:closed false, :description "plugin driver info"}
    [:name                                         :string]
    [:display-name                                 {:optional true} :string]
    [:lazy-load                                    {:optional true} :boolean]
@@ -234,22 +234,22 @@
 
 (mr/def ::extra-info
   "The `extra:` section of a plugin manifest, whose keys are the plugin author's."
-  [:map {:closed false, ::mr/deliberately-open true, :description "plugin extra info"}
-   [:db-routing-info {:optional true} [:map {:closed false, ::mr/deliberately-open true, :description "plugin db routing info"}
+  [:map {:closed false, :description "plugin extra info"}
+   [:db-routing-info {:optional true} [:map {:closed false, :description "plugin db routing info"}
                                        [:text :string]]]])
 
 (mr/def ::contact-info
   "The `contact-info:` section of a plugin manifest, whose keys are the plugin author's."
-  [:map {:closed false, ::mr/deliberately-open true, :description "plugin contact info"}
+  [:map {:closed false, :description "plugin contact info"}
    [:name    {:optional true} :string]
    [:address {:optional true} :string]])
 
 (mr/def ::manifest
   "A parsed `metabase-plugin.yaml` manifest as handed to [[register-plugin-with-info!]], whose keys are the plugin
   author's."
-  [:map {:closed false, ::mr/deliberately-open true, :description "plugin manifest"}
+  [:map {:closed false, :description "plugin manifest"}
    [:metabase-plugin-api-version {:optional true} :int]
-   [:info [:map {:closed false, ::mr/deliberately-open true, :description "plugin info"}
+   [:info [:map {:closed false, :description "plugin info"}
            [:name        :string]
            [:version     :string]
            [:description {:optional true} :string]]]

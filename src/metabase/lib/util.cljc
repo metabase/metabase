@@ -298,12 +298,12 @@
 
 (mr/def ::legacy-query
   "A legacy MBQL query: [[pipeline]] only reads its `:type`, and its inner query may not be normalized yet."
-  [:map {:closed false, ::mr/deliberately-open true, :error/message "legacy query"}
+  [:map {:closed false, :error/message "legacy query"}
    [:type [:enum :native :query]]])
 
 (mr/def ::mbql5-query
   "An MBQL 5 query that may still be being built, e.g. by [[metabase.lib.convert]] before its clauses get `:lib/uuid`s."
-  [:map {:closed false, ::mr/deliberately-open true, :error/message "MBQL 5 query"}
+  [:map {:closed false, :error/message "MBQL 5 query"}
    [:lib/type [:= :mbql/query]]])
 
 (mr/def ::legacy-or-mbql5-query
@@ -536,7 +536,7 @@
 (mr/def ::query-like
   "A query, stage, or metadata map in any state of normalization, string keys included, whose type
   [[normalized-query-type]] reads."
-  [:map {:closed false, ::mr/deliberately-open true, :description "query-like map"}])
+  [:map {:closed false, :description "query-like map"}])
 
 (mu/defn normalized-query-type :- [:maybe [:enum #_MBQL5 :mbql/query #_legacy :query :native #_audit :internal]]
   "Get the `:lib/type` or `:type` from `query`, even if it is not-yet normalized."

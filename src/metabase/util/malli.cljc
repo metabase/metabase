@@ -59,10 +59,9 @@
 (def ^:private SchemaProperties
   "The malli schema properties [[with]] is actually asked to attach."
   [:map {:closed true}
-   [:description          {:optional true} [:or :string localized-string-schema]]
-   [:decode/api           {:optional true} ifn?]
-   [:json-schema          {:optional true} ::json-schema-doc]
-   [::mr/deliberately-open {:optional true} :boolean]])
+   [:description {:optional true} [:or :string localized-string-schema]]
+   [:decode/api  {:optional true} ifn?]
+   [:json-schema {:optional true} ::json-schema-doc]])
 
 (metabase.util.malli/defn with
   "Update a malli schema with an arbitrary map of properties"

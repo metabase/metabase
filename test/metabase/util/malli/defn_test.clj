@@ -177,7 +177,6 @@
           (is (= `(~'def ~'f
                          (clojure.core/let
                           [~'&f (clojure.core/fn ~'f_AMPERSAND_ [] "foo")]
-                           (~(symbol "metabase.util.malli.closed-schemas" "check-args!") '~(symbol (str *ns*) "f") [:cat])
                            (clojure.core/fn
                              ~'mufn
                              ([]
@@ -185,6 +184,41 @@
                                (clojure.core/->> (~'&f) (mu.fn/validate-output {:fn-name '~'f} :int))
                                (~'catch java.lang.Exception ~'error (throw (mu.fn/fixup-stacktrace ~'error))))))))
                  (deanon-fn-names expansion))))))))
+
+(mu/defn- strip-args
+  [m :- [:map [:a :int] [:b {:optional true} [:map [:c :int]]]]]
+  m)
+
+(mu/defn- keep-open-args
+  [m :- [:map {:closed false} [:a :int]]]
+  m)
+
+(mu/defn- keep-destructured-args
+  [{:as m}]
+  m)
+
+(mu/defn- reject-closed-args
+  [m :- [:map {:closed true} [:a :int]]]
+  m)
+
+(deftest ^:parallel strip-undeclared-keys-test
+  (is (= {:a 1, :b {:c 2}}
+         (strip-args {:a 1, :x 2, :b {:c 2, :y 3}})))
+  (testing "a {:closed false} map keeps its keys"
+    (is (= {:a 1, :x 2}
+           (keep-open-args {:a 1, :x 2}))))
+  (testing "a destructured argument without a schema keeps its keys"
+    (is (= {:a 1, :x 2}
+           (keep-destructured-args {:a 1, :x 2}))))
+  (testing "a closed map still rejects undeclared keys"
+    (is (thrown-with-msg?
+         clojure.lang.ExceptionInfo
+         #"Invalid input"
+         (reject-closed-args {:a 1, :x 2}))))
+  (testing "nothing is stripped without enforcement"
+    (mu/disable-enforcement
+      (is (= {:a 1, :x 2}
+             (strip-args {:a 1, :x 2}))))))
 
 (mu/defn- ^:extra-metadata private-foo :- :int
   [x :- :int]

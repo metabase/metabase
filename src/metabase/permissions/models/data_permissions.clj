@@ -1010,10 +1010,18 @@
 
 (def ^:private TheIdable
   "An ID, or something with an ID."
-  [:or pos-int?
-   ::permissions.schema/permissions-group
-   :metabase.warehouses.schema/database
-   :metabase.warehouse-schema.schema/table])
+  [:multi {:dispatch map?}
+   [false pos-int?]
+   [true  [:map [:id pos-int?]]]])
+
+(def ^:private TableIdable
+  "A Table ID, or a Table with the keys used to place it."
+  [:multi {:dispatch map?}
+   [false pos-int?]
+   [true  [:map
+           [:id     pos-int?]
+           [:db_id  {:optional true} pos-int?]
+           [:schema {:optional true} [:maybe :string]]]]])
 
 (def ^:private PermsIndex
   "An in-memory index of DataPermissions rows, as built by [[index-database-permissions]]: `{[group-id db-id
@@ -1245,7 +1253,7 @@
   - :to-insert - sequence of DataPermissions maps to insert "
   [group-or-id :- TheIdable
    perm-type   :- ::permissions.schema/data-permission-type
-   table-perms :- [:map-of TheIdable :keyword]]
+   table-perms :- [:map-of TableIdable :keyword]]
   (when (not= :model/Table (model-by-perm-type perm-type))
     (throw (ex-info (tru "Permission type {0} cannot be set on tables." perm-type)
                     {perm-type (permissions.schema/data-permissions perm-type)})))
@@ -1285,7 +1293,7 @@
   "For internal use only - assumes that the cluster lock has already been obtained and sets table permissions."
   [group-or-id :- TheIdable
    perm-type   :- ::permissions.schema/data-permission-type
-   table-perms :- [:map-of TheIdable :keyword]]
+   table-perms :- [:map-of TableIdable :keyword]]
   (let [{:keys [to-delete to-insert]} (build-table-permissions group-or-id perm-type table-perms)]
     (when (seq to-delete)
       (batch-delete-permissions! (map :id to-delete)))
@@ -1304,7 +1312,7 @@
   that results in all of the database's tables having the same permission, it is replaced with a single database-level row."
   [group-or-id :- TheIdable
    perm-type   :- ::permissions.schema/data-permission-type
-   table-perms :- [:map-of TheIdable :keyword]]
+   table-perms :- [:map-of TableIdable :keyword]]
   ;; you can't use `set-table-permissions!` with tables from different databases, so this is safe.
   (let [table-or-id (first (keys table-perms))
         db-id (if (map? table-or-id)
@@ -1317,7 +1325,7 @@
 (mu/defn set-table-permission!
   "Sets permissions for a single table to the specified value for a given group."
   [group-or-id :- TheIdable
-   table-or-id :- TheIdable
+   table-or-id :- TableIdable
    perm-type   :- ::permissions.schema/data-permission-type
    value       :- :keyword]
   (set-table-permissions! group-or-id perm-type {table-or-id value}))

@@ -68,7 +68,7 @@
 
 (mr/def ::query
   "A query at any stage of QP processing, carrying the internal keys that QP middleware, drivers, and sandboxing own."
-  [:map {:closed false, ::mr/deliberately-open true, :description "a query at any stage of QP processing"}])
+  [:map {:closed false, :description "a query at any stage of QP processing"}])
 
 (defn- merge-source-ids
   "Merge function which takes the union of two sets of IDs, if they are both sets"

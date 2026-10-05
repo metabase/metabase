@@ -120,7 +120,7 @@
 
 (mr/def ::clause-tag-candidate
   "Any value a `:multi` schema dispatches on with [[mbql-clause-tag]], which may or may not be an MBQL clause."
-  [:schema {::mr/deliberately-open true, :description "a value that may be an MBQL clause"} :any])
+  [:schema {:description "a value that may be an MBQL clause"} :any])
 
 (mu/defn mbql-clause-tag :- [:maybe :keyword]
   "If `x` is a (possibly not-yet-normalized) MBQL clause, return its `tag`."
@@ -158,23 +158,23 @@
   the keys are whatever the visualization the user picked needs. This is the `.cljc` equivalent
   of [[metabase.util.malli.schema/VisualizationSettings]], which we cannot use here because that namespace is `.clj`
   only."
-  [:map {:closed false, ::mr/deliberately-open true, :description "visualization settings", :decode/normalize normalize-map-no-kebab-case}])
+  [:map {:closed false, :description "visualization settings", :decode/normalize normalize-map-no-kebab-case}])
 
 (mr/def ::clause-options
   "The options map of any MBQL clause, MBQL 5 or legacy, possibly not yet normalized; its keys depend on the clause."
-  [:map {:closed false, ::mr/deliberately-open true, :description "options map of any MBQL clause"}])
+  [:map {:closed false, :description "options map of any MBQL clause"}])
 
 (mr/def ::database-details
   "Connection details for a Database; the `.cljc` equivalent of [[metabase.util.malli.schema/DatabaseDetails]]."
-  [:map {:closed false, ::mr/deliberately-open true, :description "database connection details"}])
+  [:map {:closed false, :description "database connection details"}])
 
 (mr/def ::database-settings
   "A Database's `:settings`; the `.cljc` equivalent of [[metabase.util.malli.schema/DatabaseSettings]]."
-  [:map {:closed false, ::mr/deliberately-open true, :description "database settings"}])
+  [:map {:closed false, :description "database settings"}])
 
 (mr/def ::exception-data
   "The `ex-data` of an exception; the `.cljc` equivalent of [[metabase.util.malli.schema/ExceptionData]]."
-  [:map {:closed false, ::mr/deliberately-open true, :description "exception data"}])
+  [:map {:closed false, :description "exception data"}])
 
 (mr/def ::field-value
   "One value of a Field; the `.cljc` equivalent of [[metabase.util.malli.schema/FieldValue]]."

@@ -54,13 +54,20 @@
            :channel/email ::email-details}
     config/is-test? (assoc :channel/metabase-test ::test-details)))
 
+(defn- details-type
+  "The channel type whose `:details` `details` are, told apart by the key only that type's details have."
+  [details]
+  (cond
+    (contains? details :url)         :channel/http
+    (contains? details :channel)     :channel/slack
+    (contains? details :return-type) :channel/metabase-test
+    :else                            :channel/email))
+
 (mr/def ::channel.details
-  "The `:details` column of a Channel, decoded, when the channel's `:type` is not at hand to pick the schema by. Decoding
-  an `:or` keeps the first branch the value satisfies once decoded, and the request decoder strips undeclared keys, so
-  the branches run from the most to the least demanding: the empty `::email-details` would swallow anything."
-  (into [:or]
-        (keep channel-type->details-schema)
-        [:channel/metabase-test :channel/slack :channel/http :channel/email]))
+  "The `:details` column of a Channel, decoded, when the channel's `:type` is not at hand to pick the schema by."
+  (into [:multi {:dispatch details-type}]
+        (for [[channel-type details-schema] channel-type->details-schema]
+          [channel-type details-schema])))
 
 (defn details-by-type
   "A `:multi` schema on a channel's `:type` whose branches each declare that type's `:details`, for `:merge`ing into a

@@ -81,7 +81,9 @@
 
 (mr/def ::initial-cols
   "The columns a driver reported, as the QP passes them in: legacy result metadata or bare driver columns."
-  [:maybe [:sequential [:or ::mbql.s/legacy-column-metadata ::mbql.s/driver-column ::driver-col]]])
+  [:maybe [:sequential [:multi {:dispatch #(if (some (fn [k] (str/includes? (name k) "_")) (keys %)) :snake :kebab)}
+                        [:snake [:or ::mbql.s/legacy-column-metadata ::mbql.s/driver-column]]
+                        [:kebab ::driver-col]]]])
 
 (mu/defn- merge-col :- ::col
   "Merge a map from `:cols` returned by the driver with the column metadata from Lib. We'll generally prefer the values

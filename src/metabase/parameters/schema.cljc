@@ -176,11 +176,11 @@
   "A parameter whose value is remembered for a user: the keys a client sends, or a Dashboard's stored declaration
   carrying the value the query ran with."
   [:or
-   [:ref ::parameter-with-value]
    [:merge
     [:ref ::parameter]
     [:map {:closed true}
-     [:value {:optional true} [:ref ::lib.schema.parameter/parameter.value]]]]])
+     [:value {:optional true} [:ref ::lib.schema.parameter/parameter.value]]]]
+   [:ref ::parameter-with-value]])
 
 (mr/def ::parameter-mapping
   "Schema for a valid Parameter Mapping"

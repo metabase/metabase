@@ -125,8 +125,7 @@
      ;; It is valid to have a blank query like `{:type :native}` in legacy.
      [:native {:optional true} [:or
                                 :string
-                                [:schema {::mr/deliberately-open true
-                                          :description "a driver's native query when it is not a string, e.g. a MongoDB pipeline or a query with its parameters; its shape is the driver's"}
+                                [:schema {:description "a driver's native query when it is not a string, e.g. a MongoDB pipeline or a query with its parameters; its shape is the driver's"}
                                  :some]]]
      ;; any parameters that should be passed in along with the query to the underlying query engine, e.g. for JDBC these
      ;; are the parameters we pass in for a `PreparedStatement` for `?` placeholders. These can be anything, including
@@ -644,10 +643,9 @@
 (mr/def ::driver-native-query
   "A driver's native query: a native query document, or a form in the driver's own shape such as a keyword-keyed map decoded from a JSON request."
   [:or
-   ::native-query-document-value
-   [:schema {::mr/deliberately-open true
-             :description "a driver's native query in the driver's own shape, e.g. a keyword-keyed map from a JSON request"}
-    :some]])
+   [:schema {:description "a driver's native query in the driver's own shape, e.g. a keyword-keyed map from a JSON request"}
+    :some]
+   ::native-query-document-value])
 
 (mr/def ::compiled-native-query
   "A native query compiled from this query by [[metabase.query-processor.compile]], ready to hand to the driver.
@@ -657,7 +655,7 @@
   Deliberately NOT closed: drivers add their own keys, e.g. Mongo adds `:collection`, `:projections` and `:mbql?`
   (see `:metabase.driver.mongo.query-processor/compiled-pipeline`), and for a query that was already native the
   compiled form is the native stage itself, carrying every key a `::stage.native` has."
-  [:map {::mr/deliberately-open true
+  [:map {:closed false
          :description "drivers add their own keys to a compiled query, and an already-native query compiles to its whole native stage"}
    [:query  ::driver-native-query]
    [:params {:optional true} [:maybe [:sequential [:ref ::literal/param-value]]]]])

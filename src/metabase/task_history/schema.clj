@@ -126,20 +126,38 @@
    [:attempted_retries   {:optional true} :int]
    [:retry_errors        {:optional true} [:sequential ::retry-error]]])
 
+(def ^:private channel-send-keys
+  #{:retry_config :channel_id :channel_type :template_id :notification_id :notification_type :recipient_ids
+    :attempted_retries :retry_errors})
+
+(defn- task-details-type [details]
+  (cond
+    (not (map? details))                       ::invalid
+    (contains? details :status)                ::task-details.failure
+    (contains? details :notification_handlers) ::task-details.notification-send
+    (contains? details :trigger_type)          ::task-details.notification-trigger
+    (contains? details :pulse-id)              ::task-details.send-pulse
+    (contains? details :job-id)                ::task-details.run-transforms
+    (contains? details :task-id)               ::task-details.remote-sync-auto-import
+    (contains? details :success)               ::task-details.persist-refresh
+    (some channel-send-keys (keys details))    ::task-details.channel-send
+    (empty? details)                           ::task-details.empty
+    :else                                      ::task-details.sync-step))
+
 (mr/def ::task-history.task-details
   "The `:task_details` column of a TaskHistory, decoded: the union of the shapes recorded for each task name (see
   the `with-task-history` call sites)."
-  [:or
-   ::task-details.channel-send
-   ::task-details.notification-send
-   ::task-details.notification-trigger
-   ::task-details.send-pulse
-   ::task-details.run-transforms
-   ::task-details.remote-sync-auto-import
-   ::task-details.persist-refresh
-   ::task-details.sync-step
-   ::task-details.failure
-   ::task-details.empty])
+  [:multi {:dispatch task-details-type}
+   [::task-details.channel-send           ::task-details.channel-send]
+   [::task-details.notification-send      ::task-details.notification-send]
+   [::task-details.notification-trigger   ::task-details.notification-trigger]
+   [::task-details.send-pulse             ::task-details.send-pulse]
+   [::task-details.run-transforms         ::task-details.run-transforms]
+   [::task-details.remote-sync-auto-import ::task-details.remote-sync-auto-import]
+   [::task-details.persist-refresh        ::task-details.persist-refresh]
+   [::task-details.sync-step              ::task-details.sync-step]
+   [::task-details.failure                ::task-details.failure]
+   [::task-details.empty                  ::task-details.empty]])
 
 (mr/def ::task-history.log.trunc
   "The `:trunc` entry of a [[task-history.log]]: bookkeeping for messages dropped once the in-memory log queue fills

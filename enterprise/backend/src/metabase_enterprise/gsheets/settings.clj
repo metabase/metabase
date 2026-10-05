@@ -59,14 +59,14 @@
 
 (mr/def :gsheets/setting
   [:or
-   [:map {}]
    [:map
     [:url ms/NonBlankString]
     ;; time in seconds from epoch:
     [:created-at pos-int?]
     [:created-by-id pos-int?]
     [:gdrive/conn-id ms/UUIDString]
-    [:db-id pos-int?]]])
+    [:db-id pos-int?]]
+   [:map {}]])
 
 (defsetting show-google-sheets-integration
   "Whether or not to show the user a button that sets up Google Sheets integration."

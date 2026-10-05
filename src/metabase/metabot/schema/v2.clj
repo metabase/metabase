@@ -94,7 +94,7 @@
 (mr/def ::tool-io
   "A tool call's `:input`/`:rawInput`/`:output`: an arbitrary JSON value whose shape the calling tool (or the LLM
   provider) owns, not us."
-  [:schema {::mr/deliberately-open true, :description "arbitrary tool call arguments or result"} :any])
+  [:schema {:description "arbitrary tool call arguments or result"} :any])
 
 (mr/def ::structured-output
   "The `persisted-structured-output-keys` subset of a tool's `:structured-output`/
@@ -110,7 +110,7 @@
 (mr/def ::migrated-v1-tool-output
   "A v1 row's raw tool result, which `metabase.metabot.schema.migrate-v1-to-v2/migrate-v1-native->v2` carries verbatim
   into a v2 tool part's `:output`, keyed by whatever the tool that returned it set."
-  [:map {::mr/deliberately-open true, :description "a v1 row's raw tool result"}
+  [:map {:closed false, :description "a v1 row's raw tool result"}
    [:output            {:optional true} ::tool-io]
    [:structured-output {:optional true} ::tool-io]
    [:structured_output {:optional true} ::tool-io]])

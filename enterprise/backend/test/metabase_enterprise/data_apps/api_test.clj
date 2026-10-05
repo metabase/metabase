@@ -4,11 +4,9 @@
    [clojure.test :refer :all]
    [metabase-enterprise.data-apps.apps :as data-apps.apps]
    [metabase-enterprise.data-apps.config :as data-app.config]
-   [metabase-enterprise.data-apps.query-definition :as query-definition]
    [metabase-enterprise.data-apps.resources :as data-app.resources]
    [metabase-enterprise.data-apps.user-access :as data-app.user-access]
    [metabase.actions.core :as actions]
-   [metabase.api.macros.defendpoint.closed-schemas :as closed-schemas]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.permissions.core :as perms]
@@ -119,9 +117,6 @@
               "its permission group is removed too")
           (is (not (t2/exists? :model/Collection :id resource_collection_id))
               "and so is its resource collection"))))))
-
-(deftest ^:parallel query-definition-request-schema-is-closed-test
-  (is (empty? (closed-schemas/findings ::query-definition/query-definition))))
 
 (deftest superuser-can-resolve-a-query-definition-test
   (mt/with-premium-features #{:data-apps}

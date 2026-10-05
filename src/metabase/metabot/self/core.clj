@@ -129,7 +129,7 @@
 (def ^:private ToolCallArguments
   "A tool call's arguments as the LLM wrote them against the tool's own schema, keyed by that tool's argument names:
   string keys off the wire, keyword keys when built in Clojure."
-  [:map-of {::mr/deliberately-open true, :description "tool call arguments"}
+  [:map-of {:description "tool call arguments"}
    [:or :string :keyword] ::decoded-json])
 
 (def ^:private AISDKPart
@@ -192,7 +192,18 @@
 (def LLMCredentials
   "A connection's credentials, in whichever provider shape it carries. Public so the adapter layer can say
   `:credentials` once rather than restating an open map at each schema that carries one."
-  [:or ApiKeyCredentials AzureCredentials BedrockCredentials GoogleCredentials])
+  [:multi {:dispatch (fn [credentials]
+                       (let [ks (set (keys credentials))]
+                         (cond
+                           (some #{:access-key-id :secret-access-key :session-token :region :model-id} ks) :bedrock
+                           (some #{:service-account-key :oauth-access-token :project-id :location
+                                   :auth-method :endpoint-id} ks)                                            :google
+                           (some #{:model-family :deployment-name} ks)                                       :azure
+                           :else                                                                             :api-key)))}
+   [:api-key ApiKeyCredentials]
+   [:azure   AzureCredentials]
+   [:bedrock BedrockCredentials]
+   [:google  GoogleCredentials]])
 
 (def ^:private ReasoningConfig
   "A dialect-shaped reasoning/thinking directive, sent verbatim to the provider."
@@ -215,7 +226,7 @@
 (def ^:private JSONSchemaProperties
   "The `:properties` of a JSON Schema node, keyed by the field names the caller's structured-output schema declares:
   string keys off the wire, keyword keys when built in Clojure."
-  [:map-of {::mr/deliberately-open true, :description "JSON Schema properties"}
+  [:map-of {:description "JSON Schema properties"}
    [:or :string :keyword] JSONSchemaLeaf])
 
 (def ^:private JSONSchemaNode

@@ -1797,8 +1797,7 @@
   "The native query itself: a SQL string, or for drivers like MongoDB a query in the driver's own shape."
   [:or
    :string
-   [:schema {::mr/deliberately-open true
-             :description "a driver's native query when it is not a string, e.g. a MongoDB pipeline; its shape is the driver's"}
+   [:schema {:description "a driver's native query when it is not a string, e.g. a MongoDB pipeline; its shape is the driver's"}
     :some]])
 
 (mr/def ::NativeQuery.Common
