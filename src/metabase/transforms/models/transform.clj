@@ -615,4 +615,5 @@
                    [:<= :transform.created_at (:cutoff-date args)]]
                   [:<= :latest_run.last_start (:cutoff-date args)]]
                  (when (seq schedule-fresh-ids)
-                   [:not [:in :transform.id schedule-fresh-ids]])]}))
+                   [:not [:in :transform.id schedule-fresh-ids]])
+                 (staleness/collection-filter :transform.collection_id args)]}))

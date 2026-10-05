@@ -7,8 +7,9 @@
   - Collection: no direct items, the same count `sparse`/`crowded` use. Items are exactly the covered
     kinds: child collections, cards, dashboards, documents, transforms; empty items still count (a
     folder of only-empty dashboards is not `empty` - the dashboards are).
-  - Card: its latest clean run (no parameters, sandbox, cache, or error) returned 0 rows; a card never
-    run cleanly is left alone. `as_of` is that run's start.
+  - Card: its latest clean run (no parameters, sandbox, cache, or error) within
+    `content-diagnostics-empty-card-lookback-days` returned 0 rows; a card with no clean run in that window
+    is left alone. `as_of` is that run's start.
   - Dashboard: no dashcards.
   - Document: no text and no embedded content.
 
@@ -18,22 +19,32 @@
   reads only the app DB."
   (:require
    [clojure.string :as str]
+   [java-time.api :as t]
    [metabase-enterprise.content-diagnostics.checkers.imbalanced.common :as shared]
    [metabase-enterprise.content-diagnostics.common :as common]
    [metabase-enterprise.content-diagnostics.db :as cd.db]
+   [metabase-enterprise.content-diagnostics.settings :as cd.settings]
    [metabase.documents.prose-mirror :as prose-mirror]
    [metabase.util :as u]))
 
 (set! *warn-on-reflection* true)
 
+(defn- lookback-cutoff
+  "The earliest clean run the card arm will draw a verdict from, per
+  `content-diagnostics-empty-card-lookback-days`. A card with no clean run since then is left alone rather
+  than called empty."
+  []
+  (t/minus (t/offset-date-time) (t/days (cd.settings/content-diagnostics-empty-card-lookback-days))))
+
 (defn- empty-card-id->as-of
   "`{card-id -> started_at}` for every non-archived card in an eligible container whose latest clean run
-  returned 0 rows. Clean means unparameterized, unsandboxed, not a cache hit, and error-free - anything
-  else is not instance-wide evidence of emptiness (a sandbox filters rows per user, and an errored run
-  means broken, not empty)."
+  within the [[lookback-cutoff]] window returned 0 rows. Clean means unparameterized, unsandboxed, not a
+  cache hit, and error-free - anything else is not instance-wide evidence of emptiness (a sandbox filters
+  rows per user, and an errored run means broken, not empty)."
   []
   (u/index-by :card_id :started_at
-              (cd.db/cards-with-empty-latest-run (common/eligible-container-clause :c.collection_id))))
+              (cd.db/cards-with-empty-latest-run (lookback-cutoff)
+                                                 (common/eligible-container-clause :c.collection_id))))
 
 (def ^:private structural-node-types
   "Prose-mirror node types that are pure structure or layout - a document built only from these, with no

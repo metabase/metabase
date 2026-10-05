@@ -21,8 +21,18 @@
   :export?    true
   :doc        false)
 
+(defsetting content-diagnostics-empty-card-lookback-days
+  (deferred-tru (str "A card is flagged empty by Content Diagnostics only if it returned no rows on a "
+                     "clean run within this many days."))
+  :encryption :no
+  :visibility :admin
+  :default    90
+  :type       :positive-integer
+  :export?    true
+  :doc        false)
+
 (defsetting content-diagnostics-slow-card-threshold-seconds
-  (deferred-tru "Cards whose average query time exceeds this are flagged slow by Content Diagnostics.")
+  (deferred-tru "Cards whose median query time exceeds this are flagged slow by Content Diagnostics.")
   :encryption :no
   :visibility :admin
   :default    15

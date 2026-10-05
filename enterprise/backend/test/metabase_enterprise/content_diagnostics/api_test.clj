@@ -3,7 +3,10 @@
   `canAccessContentDiagnostics` guard. What an authorized caller then sees is collection-filtered in
   `api.common` and covered by the per-finding-type suites."
   (:require
+   [clojure.edn :as edn]
+   [clojure.java.io :as io]
    [clojure.test :refer :all]
+   [metabase-enterprise.content-diagnostics.api :as cd.api]
    [metabase.permissions.core :as perms]
    [metabase.test :as mt]))
 
@@ -86,3 +89,39 @@
     ;; what tells an operator the feature is unavailable rather than the caller unauthorized.
     (mt/with-premium-features #{}
       (check-reads :rasta 402))))
+
+(defn- remembered-sort-columns
+  "The `sort_column` values the user-key-value schema accepts, read from the edn that declares them."
+  []
+  (->> (slurp (io/resource "user_key_value_types/content_diagnostics.edn"))
+       edn/read-string
+       (tree-seq coll? seq)
+       ;; keyed on the :sort_column entry, not on one of the enum's own members - a second
+       ;; [:enum … "name" …] added earlier in the file would otherwise silently redirect this
+       (filter #(and (vector? %) (= :sort_column (first %))))
+       first
+       last
+       rest
+       set))
+
+(deftest remembered-sort-column-covers-every-endpoint-test
+  (testing "the user-key-value `sort_column` enum accepts exactly what the endpoints accept"
+    ;; All four pages persist their params with `withSetLastUsedParams: true`, so a sort the endpoint
+    ;; honours but the stored schema rejects works for the current visit and is then silently forgotten -
+    ;; the PUT 400s and nothing surfaces it. `collection-name` and `finding-type` were both in that gap.
+    (let [served (into #{} (comp (mapcat keys) (map name))
+                       [@#'cd.api/stale-sort-column->field
+                        @#'cd.api/slow-sort-column->field
+                        @#'cd.api/imbalanced-sort-column->field
+                        @#'cd.api/duplicated-sort-column->field])]
+      (is (= served (remembered-sort-columns)))
+      ;; the PUTs below write :rasta's real content_diagnostics/stale preference row in the shared app DB
+      (mt/with-model-cleanup [:model/UserKeyValue]
+        (testing "and each one really survives the PUT the pages make"
+          (doseq [col (sort served)]
+            (testing col
+              (mt/user-http-request :rasta :put 200 "user-key-value/namespace/content_diagnostics/key/stale"
+                                    {:value {:sort_column col}}))))
+        (testing "a column no endpoint serves is still rejected"
+          (mt/user-http-request :rasta :put 400 "user-key-value/namespace/content_diagnostics/key/stale"
+                                {:value {:sort_column "not-a-sortable-column"}}))))))
