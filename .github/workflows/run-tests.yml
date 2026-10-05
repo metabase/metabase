@@ -61,10 +61,6 @@ jobs:
       frontend_loki_all: ${{ steps.changes.outputs.frontend_loki_all }}
       shared_sources: ${{ steps.changes.outputs.shared_sources }}
       documentation: ${{ steps.changes.outputs.documentation }}
-      embedding_documentation: ${{ steps.changes.outputs.embedding_documentation }}
-      embedding_sdk_components: ${{ steps.changes.outputs.embedding_sdk_components }}
-      embedding_sdk_host_sample_apps: ${{ steps.changes.outputs.embedding_sdk_host_sample_apps }}
-      embedding_sdk_ci: ${{ steps.changes.outputs.embedding_sdk_ci }}
       custom_viz_all: ${{ steps.changes.outputs.custom_viz_all }}
       ci_scripts: ${{ steps.changes.outputs.ci_scripts }}
       project_backend_checks: ${{ steps.changes.outputs.project_backend_checks }}
