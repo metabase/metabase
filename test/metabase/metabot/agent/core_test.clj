@@ -724,6 +724,34 @@
               (is (=? {:type :text :text "The orders table has what you need."}
                       (last (filter #(= :text (:type %)) result)))))))))))
 
+(deftest later-calls-resend-what-the-turn-already-sent-test
+  (testing "a dashboard renamed mid-turn doesn't rewrite the context the turn already sent"
+    (mt/with-temp [:model/Dashboard {dashboard-id :id} {:name "Ops original"}]
+      (mt/as-admin
+        (mt/with-temporary-setting-values [llm-providers        llm.tu/default-connections
+                                           llm-metabot-provider test-provider]
+          (let [inputs (atom [])]
+            (mt/with-dynamic-fn-redefs [openrouter/openrouter
+                                        (fn [{:keys [input]}]
+                                          (if (= 1 (count (swap! inputs conj input)))
+                                            (do (t2/update! :model/Dashboard dashboard-id {:name "Ops updated"})
+                                                (mut/mock-llm-response [{:type      :tool-input
+                                                                         :id        "call-1"
+                                                                         :function  "load_skill"
+                                                                         :arguments {:ids ["read-resource"]}}]))
+                                            (mut/mock-llm-response [{:type :text :text "Done."}])))]
+              (into [] (agent/run-agent-loop
+                        {:messages   [{:role :user :content "Help me with this dashboard."}]
+                         :state      {}
+                         :profile-id :internal
+                         :context    {:current_user_time "2026-10-05T12:00:00Z"
+                                      :user_is_viewing   [{:type "dashboard" :id dashboard-id}]}}))
+              (let [[first-input second-input] @inputs]
+                (is (str/includes? (pr-str first-input) "Ops original"))
+                (is (= first-input (take (count first-input) second-input)))
+                (is (=? [{:type :tool-input} {:type :tool-output}]
+                        (drop (count first-input) second-input)))))))))))
+
 (deftest eval-tracing-nesting-test
   (testing "capture-reducible over the real agent loop builds a turn -> llm -> tool span tree"
     ;; This exercises the cross-module wiring the ai-tracing docstrings promise: the turn/llm spans

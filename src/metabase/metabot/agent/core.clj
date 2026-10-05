@@ -265,16 +265,22 @@
                               (update links-key links/invert-slack-links registry-map)))))
           parts)))
 
+(defn- turn-input-parts
+  "The AISDK parts for this call of the turn: what the previous call sent, exactly as sent, then the parts added since.
+  Rebuilding the history fetches the viewing context again and inverts links against a registry that grows within
+  the turn, and Claude Opus and Sonnet 5.5 reject a replayed thinking block once anything before it has changed."
+  [sent-parts context memory link-registry]
+  (into sent-parts
+        (invert-links (subvec (messages/build-message-history context memory) (count sent-parts))
+                      link-registry)))
+
 (defn- call-llm
   "Call the LLM and stream processed parts.
 
-  Builds AISDK parts from memory and passes them to the adapter which converts
-  them to its native wire format."
-  [memory context profile tools iteration tracking-opts link-registry-atom]
+  Passes the AISDK `input-parts` to the adapter, which converts them to its native wire format."
+  [memory context profile tools iteration tracking-opts link-registry-atom input-parts]
   (let [model        (:model profile)
         system-msg   (messages/build-system-message context profile tools)
-        input-parts  (-> (messages/build-message-history context memory)
-                         (invert-links @link-registry-atom))
         llm-opts     (cond-> {}
                        (:required-tool-call? profile) (assoc :tool-choice "required"))]
     (when *debug-log*
@@ -519,7 +525,8 @@
    :result     init
    :iteration  1
    :status     :continue
-   :usage-atom usage-atom})
+   :usage-atom usage-atom
+   :sent-parts []})
 
 (defn- final-state-part [memory]
   {:type :data, :data-type "state", :version 1, :data (memory/get-state memory)})
@@ -559,7 +566,7 @@
 
   Streams parts to the consumer as they arrive while simultaneously accumulating
   them for memory updates and control flow decisions."
-  [{:keys [agent rf result iteration usage-atom] :as loop-state}]
+  [{:keys [agent rf result iteration usage-atom sent-parts] :as loop-state}]
   (with-span :debug {:name      :metabot.agent/loop-step
                      :iteration iteration}
     (let [{:keys [profile tools context memory-atom tracking-opts]} agent
@@ -569,6 +576,7 @@
           memory             @memory-atom
           parts-atom         (atom [])
           link-registry-atom (atom (get-in memory [:state :link-registry] {}))
+          input-parts        (turn-input-parts sent-parts context memory @link-registry-atom)
           xf                 (comp (accumulate-usage-xf usage-atom (:model profile))
                                    (u/tee-xf parts-atom))
           ;; We use `reduce` instead of `transduce` because rf is the outer reducing
@@ -579,7 +587,7 @@
           result'            (ait/with-llm-call {:ai/iteration iteration
                                                  :ai/model     (:model profile)}
                                (let [llm-call       (call-llm memory context profile tools iteration
-                                                              tracking-opts link-registry-atom)
+                                                              tracking-opts link-registry-atom input-parts)
                                      reduced-result (reduce (xf rf) result llm-call)]
                                  (when (ait/capture-active?)
                                    (ait/record! {:ai/output-text (collect-text-from-parts @parts-atom)
@@ -624,7 +632,7 @@
                              :result (rf result'' (final-state-part @memory-atom))))))
 
               (should-continue? iteration max-iter terminal-tools parts)
-              (assoc loop-state :result result' :iteration (inc iteration))
+              (assoc loop-state :result result' :iteration (inc iteration) :sent-parts input-parts)
 
               :else
               (let [reason (finish-reason iteration max-iter terminal-tools parts)]
