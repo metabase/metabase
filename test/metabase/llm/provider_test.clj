@@ -226,7 +226,7 @@
            clojure.lang.ExceptionInfo #"Access key ID is required for bedrock"
            (llm.provider/validate-config! "bedrock" {})))
       (testing "the pair is a mandatory set, so the form marks each of its fields required"
-        (is (= {:access-key-id true :secret-access-key true :region false :session-token false}
+        (is (= {:access-key-id true :secret-access-key true :region false :model-id false :session-token false}
                (->> (llm.provider/provider-type "bedrock")
                     :fields
                     (into {} (map (juxt :key (comp boolean :required?))))))))
@@ -689,8 +689,8 @@
                 "so a type without a decided logo fails to compile. Nothing links the two, so adding a type here "
                 "without updating them ships a provider that silently falls back to the generic icon. Update "
                 "both, then this list.")
-    (is (= #{"anthropic" "openai" "openrouter" "mistral" "zai" "moonshot" "deepseek" "google" "azure" "bedrock"
-             "vllm" "metabase"}
+    (is (= #{"anthropic" "openai" "openrouter" "mistral" "zai" "moonshot" "deepseek" "xai" "google" "azure"
+             "bedrock" "vllm" "metabase"}
            (into #{} (map :type) (llm.provider/provider-types))))))
 
 (deftest ^:parallel provider-types-test
@@ -719,6 +719,7 @@
             "zai"        "glm-5.2"
             "moonshot"   "kimi-k3"
             "deepseek"   "deepseek-v4-pro"
+            "xai"        "grok-4.7"
             "google"     "google/gemini-3.5-flash"
             ;; azure's models are deployment names the admin chooses, so there is nothing to default to
             "azure"      nil
@@ -738,7 +739,8 @@
             "mistral"    "mistral-medium-3-5"
             "zai"        "glm-5.2"
             "moonshot"   "kimi-k3"
-            "deepseek"   "deepseek-v4-flash"
+            "deepseek"   "deepseek-flash"
+            "xai"        "grok-4.3"
             "google"     nil
             "azure"      nil
             "bedrock"    "anthropic.claude-haiku-4-5"

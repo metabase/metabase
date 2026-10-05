@@ -15,6 +15,7 @@
    "zai"        {:api-key "zai-test-key"}
    "moonshot"   {:api-key "sk-moonshot-test-key"}
    "deepseek"   {:api-key "sk-deepseek-test-key"}
+   "xai"        {:api-key "xai-test-key"}
    "google"     {:oauth-access-token "ya29.test-token"
                  :project-id         "my-project"}
    "azure"      {:api-key         "azure-test-key"
@@ -37,8 +38,8 @@
     :config (merge (get dummy-configs type-name) config-overrides)}))
 
 (def default-connections
-  (mapv connection ["anthropic" "openai" "openrouter" "mistral" "zai" "moonshot" "deepseek" "google" "azure"
-                    "bedrock" "metabase"]))
+  (mapv connection ["anthropic" "openai" "openrouter" "mistral" "zai" "moonshot" "deepseek" "xai" "google"
+                    "azure" "bedrock" "metabase"]))
 
 (defn do-with-connections!
   [connections thunk]
