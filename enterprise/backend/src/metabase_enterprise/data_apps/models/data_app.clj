@@ -190,7 +190,7 @@
   (data-apps.db/data-app-group-ids))
 
 (defenterprise data-app-collection-ids
-  "The resource collections of the data apps, which hold the copies `sync-resources` makes."
+  "The resource collections of the data apps, which hold the copies an app runs."
   :feature :none
   []
   (data-apps.db/resource-collection-ids))
