@@ -294,7 +294,7 @@ describe("AI controls > AI usage limits", () => {
     llmMockServerTeardown();
   });
 
-  describe("AI Limits settings can be saved properly", () => {
+  describe("Instance limit settings and enforcement", () => {
     beforeEach(() => {
       cy.intercept("GET", "/api/ee/ai-controls/usage/instance").as(
         "getInstanceLimit",
@@ -316,7 +316,7 @@ describe("AI controls > AI usage limits", () => {
       );
     });
 
-    it("should save instance limit as null when the field is cleared, then save limit type, reset period, instance limit, and quota-reached message when changed", () => {
+    it("should clear and save instance limit settings, then enforce a zero limit in chat", () => {
       // Pre-set a limit so there's something to clear
       cy.request("PUT", "/api/ee/ai-controls/usage/instance", {
         max_usage: 100,
@@ -361,26 +361,17 @@ describe("AI controls > AI usage limits", () => {
           value: "You have hit the AI usage limit.",
         });
       });
-    });
-  });
-
-  describe("When instance limit is set to 0", () => {
-    beforeEach(() => {
-      // Enable Metabot with a configured LLM key
+      cy.log("Enforce a zero instance limit in a fresh chat");
       H.updateSetting("metabot-enabled?", true);
 
-      // Set messages as the limit type (easier to trigger with 0)
-      // (These settings are added in PR #71699, so we call the API directly)
-      cy.request("PUT", "/api/setting/metabot-limit-unit", {
-        value: "messages",
+      cy.request("PUT", "/api/setting/metabot-limit-reset-rate", {
+        value: "monthly",
       });
 
-      // Set a custom quota-reached message
       cy.request("PUT", "/api/setting/metabot-quota-reached-message", {
         value: DEFAULT_QUOTA_MESSAGE,
       });
 
-      // Set instance limit to 0 — any usage will immediately exceed it
       cy.request("PUT", "/api/ee/ai-controls/usage/instance", {
         max_usage: 0,
       });
@@ -388,16 +379,12 @@ describe("AI controls > AI usage limits", () => {
       cy.intercept("GET", "/api/automagic-dashboards/database/*/candidates").as(
         "xrayCandidates",
       );
-    });
-
-    it("should show the quota-reached message when the user sends a message to Metabot", () => {
       cy.visit("/");
       cy.wait("@xrayCandidates");
 
       H.openMetabotViaSearchButton();
       H.sendMetabotMessage("hello");
 
-      // The backend returns the quota-reached message when limit is exceeded
       H.lastChatMessage().should("have.text", DEFAULT_QUOTA_MESSAGE);
     });
   });
