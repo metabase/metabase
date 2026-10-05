@@ -72,7 +72,7 @@ describe("scenarios > dashboard > filters > ID", () => {
 
         assertDashcardResult(representativeResult);
         if (remappedValue) {
-          H.checkFilterLabelAndValue(name, remappedValue);
+          H.filterWidget({ name }).should("contain", remappedValue);
         }
 
         H.clearFilterWidget(index);
@@ -93,7 +93,10 @@ describe("scenarios > dashboard > filters > ID", () => {
     setDefaultValueAndSave(FOREIGN_KEY.value);
 
     assertDashcardResult(FOREIGN_KEY.representativeResult);
-    H.checkFilterLabelAndValue(FOREIGN_KEY.name, FOREIGN_KEY.remappedValue);
+    H.filterWidget({ name: FOREIGN_KEY.name }).should(
+      "contain",
+      FOREIGN_KEY.remappedValue,
+    );
   });
 
   it("should work on the implicit join when set as the default filter", () => {
