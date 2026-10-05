@@ -48,6 +48,7 @@ describe("dashboard filters auto-wiring", () => {
         cy.findByText("User.Name").should("exist");
       });
 
+      H.getDashboardCard(1).findByText("Select…").should("exist");
       H.getDashboardCard(1).findByText("User.Name").should("not.exist");
 
       H.undoToast()
@@ -183,6 +184,7 @@ describe("dashboard filters auto-wiring", () => {
 
       H.selectDashboardFilter(H.getDashboardCard(0), "Name");
 
+      H.getDashboardCard(0).findByText("User.Name").should("exist");
       H.undoToast().should("not.exist");
     });
 
