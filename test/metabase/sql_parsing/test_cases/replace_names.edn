@@ -1,0 +1,102 @@
+{:cases
+ [{:name         "a table is replaced wherever the query names it"
+   :dialect      "postgres"
+   :sql          "SELECT orders.id FROM orders WHERE orders.total > 0"
+   :replacements {:tables [[{:table "orders"} {:db nil :schema nil :table "tmp_orders"}]]}
+   :expected     "SELECT tmp_orders.id FROM tmp_orders WHERE tmp_orders.total > 0"}
+
+  {:name         "several tables in one call"
+   :dialect      "postgres"
+   :sql          "SELECT * FROM orders o JOIN people p ON o.user_id = p.id"
+   :replacements {:tables [[{:table "orders"} {:db nil :schema nil :table "tmp_orders"}]
+                           [{:table "people"} {:db nil :schema nil :table "tmp_people"}]]}
+   :expected     "SELECT * FROM tmp_orders AS o JOIN tmp_people AS p ON o.user_id = p.id"}
+
+  {:name         "a qualified reference loses its schema when the replacement has none"
+   :dialect      "postgres"
+   :sql          "SELECT * FROM public.orders"
+   :replacements {:tables [[{:schema "public" :table "orders"} {:db nil :schema nil :table "tmp_orders"}]]}
+   :expected     "SELECT * FROM tmp_orders"}
+
+  {:name         "a reference written in another case is still replaced"
+   :dialect      "postgres"
+   :sql          "SELECT * FROM ORDERS"
+   :replacements {:tables [[{:table "orders"} {:db nil :schema nil :table "tmp_orders"}]]}
+   :expected     "SELECT * FROM tmp_orders"}
+
+  {:name         "a CTE named after a replaced table keeps its own name"
+   :dialect      "postgres"
+   :sql          "WITH orders AS (SELECT 1 AS id) SELECT * FROM orders, people"
+   :replacements {:tables [[{:table "orders"} {:db nil :schema nil :table "tmp_orders"}]
+                           [{:table "people"} {:db nil :schema nil :table "tmp_people"}]]}
+   :expected     "WITH orders AS (SELECT 1 AS id) SELECT * FROM orders, tmp_people"}
+
+  {:name         "an alias named after a replaced table keeps its own name"
+   :dialect      "postgres"
+   :sql          "SELECT people.id FROM orders AS people"
+   :replacements {:tables [[{:table "people"} {:db nil :schema nil :table "tmp_people"}]]}
+   :expected     "SELECT people.id FROM orders AS people"}
+
+  {:name         "both arms of a union are replaced"
+   :dialect      "postgres"
+   :sql          "SELECT id FROM orders UNION ALL SELECT id FROM people"
+   :replacements {:tables [[{:table "orders"} {:db nil :schema nil :table "tmp_orders"}]
+                           [{:table "people"} {:db nil :schema nil :table "tmp_people"}]]}
+   :expected     "SELECT id FROM tmp_orders UNION ALL SELECT id FROM tmp_people"}
+
+  {:name         "a table buried in a subquery is replaced"
+   :dialect      "postgres"
+   :sql          "SELECT * FROM (SELECT * FROM (SELECT id FROM orders) a) b"
+   :replacements {:tables [[{:table "orders"} {:db nil :schema nil :table "tmp_orders"}]]}
+   :expected     "SELECT * FROM (SELECT * FROM (SELECT id FROM tmp_orders) AS a) AS b"}
+
+  {:name         "a name in a string literal is left alone"
+   :dialect      "postgres"
+   :sql          "SELECT * FROM orders WHERE note = 'orders'"
+   :replacements {:tables [[{:table "orders"} {:db nil :schema nil :table "tmp_orders"}]]}
+   :expected     "SELECT * FROM tmp_orders WHERE note = 'orders'"}
+
+  {:name         "a table with no replacement is left alone"
+   :dialect      "postgres"
+   :sql          "SELECT * FROM orders JOIN secrets ON TRUE"
+   :replacements {:tables [[{:table "orders"} {:db nil :schema nil :table "tmp_orders"}]]}
+   :expected     "SELECT * FROM tmp_orders JOIN secrets ON TRUE"}
+
+  {:name         "a DML target is replaced when a replacement names it"
+   :dialect      "postgres"
+   :sql          "DELETE FROM people WHERE id IN (SELECT id FROM orders)"
+   :replacements {:tables [[{:table "people"} {:db nil :schema nil :table "tmp_people"}]
+                           [{:table "orders"} {:db nil :schema nil :table "tmp_orders"}]]}
+   :expected     "DELETE FROM tmp_people WHERE id IN (SELECT id FROM tmp_orders)"}
+
+  {:name         "a DML target with no replacement stays the real table"
+   :dialect      "postgres"
+   :sql          "DELETE FROM people WHERE id IN (SELECT id FROM orders)"
+   :replacements {:tables [[{:table "orders"} {:db nil :schema nil :table "tmp_orders"}]]}
+   :expected     "DELETE FROM people WHERE id IN (SELECT id FROM tmp_orders)"}
+
+  {:name         "every statement is rewritten, not only the first"
+   :dialect      "postgres"
+   :sql          "SELECT * FROM orders; DELETE FROM people"
+   :replacements {:tables [[{:table "orders"} {:db nil :schema nil :table "tmp_orders"}]
+                           [{:table "people"} {:db nil :schema nil :table "tmp_people"}]]}
+   :expected     "SELECT * FROM tmp_orders; DELETE FROM tmp_people"}
+
+  {:name         "a MERGE has both its tables replaced"
+   :dialect      "postgres"
+   :sql          "MERGE INTO people tt USING orders ss ON tt.id = ss.id WHEN MATCHED THEN UPDATE SET total = ss.total"
+   :replacements {:tables [[{:table "people"} {:db nil :schema nil :table "tmp_people"}]
+                           [{:table "orders"} {:db nil :schema nil :table "tmp_orders"}]]}
+   :expected     "MERGE INTO tmp_people AS tt USING tmp_orders AS ss ON tt.id = ss.id WHEN MATCHED THEN UPDATE SET total = ss.total"}
+
+  {:name         "a line comment is rewritten into a block comment"
+   :dialect      "postgres"
+   :sql          "SELECT * FROM orders -- keep me"
+   :replacements {:tables [[{:table "orders"} {:db nil :schema nil :table "tmp_orders"}]]}
+   :expected     "SELECT * FROM tmp_orders /* keep me */"}
+
+  {:name         "invalid SQL the parser reads is printed back valid"
+   :dialect      "postgres"
+   :sql          "SELECT id, FROM orders"
+   :replacements {:tables [[{:table "orders"} {:db nil :schema nil :table "tmp_orders"}]]}
+   :expected     "SELECT id FROM tmp_orders"}]}

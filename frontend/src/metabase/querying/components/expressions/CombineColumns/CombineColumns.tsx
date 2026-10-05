@@ -200,8 +200,8 @@ export function CombineColumns({
                 {isUsingDefaultSeparator && (
                   <Box>
                     <Button
-                      p={0}
-                      variant="subtle"
+                      variant="transparent"
+                      size="compact-md"
                       onClick={handleEditSeparators}
                     >
                       {jt`Separated by ${formatSeparator(
@@ -213,8 +213,8 @@ export function CombineColumns({
 
                 <Button
                   leftSection={<Icon name="add" />}
-                  p={0}
-                  variant="subtle"
+                  variant="transparent"
+                  size="compact-md"
                   onClick={handleRowAdd}
                 >
                   {t`Add column`}

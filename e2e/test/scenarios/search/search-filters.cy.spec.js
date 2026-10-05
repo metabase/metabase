@@ -385,7 +385,7 @@ describe("scenarios > search", () => {
         H.popover().within(() => {
           // remove Robert Tableton from the created_by filter
           cy.findByTestId("search-user-select-box")
-            .findByText("Robert Tableton")
+            .findByLabelText("Remove Robert Tableton")
             .click();
           cy.findByText("Apply").click();
         });
@@ -619,7 +619,7 @@ describe("scenarios > search", () => {
         H.popover().within(() => {
           // remove Robert Tableton from the last_edited_by filter
           cy.findByTestId("search-user-select-box")
-            .findByText("Robert Tableton")
+            .findByLabelText("Remove Robert Tableton")
             .click();
           cy.findByText("Apply").click();
         });

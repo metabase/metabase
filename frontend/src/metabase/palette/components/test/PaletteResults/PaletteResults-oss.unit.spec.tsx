@@ -1,6 +1,8 @@
+import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
 import { screen, waitFor, within } from "__support__/ui";
+import * as Analytics from "metabase/analytics";
 import {
   createMockRecentCollectionItem,
   createMockRecentTableItem,
@@ -8,11 +10,18 @@ import {
 
 import { type CommonSetupProps, commonSetup } from "./setup";
 
-const setup = (props: CommonSetupProps = {}) => {
+const setup = (props: CommonSetupProps = {}) =>
   commonSetup({ ...props, isEE: false });
-};
 
 describe("PaletteResults", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
   it("should not show actions when there is no search query", async () => {
     setup();
     expect(await screen.findByText("Recents")).toBeInTheDocument();
@@ -207,6 +216,72 @@ describe("PaletteResults", () => {
 
     // One call is always made to determine if the instance has models inside useCommandPaletteBasicActions
     expect(fetchMock.callHistory.calls("path:/api/search").length).toBe(2);
+  });
+
+  it("should offer the Download diagnostics action", async () => {
+    setup({ query: "issue" });
+    expect(await screen.findByText("Download diagnostics")).toBeInTheDocument();
+  });
+
+  it("should offer the New embed action to admins", async () => {
+    setup({ query: "new embed", isAdmin: true });
+    expect(await screen.findByText("New embed")).toBeInTheDocument();
+  });
+
+  it("should not offer the New embed action to non-admins", async () => {
+    setup({ query: "new embed", isAdmin: false });
+    expect(
+      await screen.findByText(`Search Metabase's docs for "new embed"`),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("New embed")).not.toBeInTheDocument();
+  });
+
+  it("should start a new metric", async () => {
+    const { router } = setup({ query: "new met" });
+
+    await userEvent.click(await screen.findByText("New metric"));
+
+    await waitFor(() => expect(router?.location.pathname).toBe("/metric/new"));
+  });
+
+  it("should start a new document", async () => {
+    const { router } = setup({ query: "new document" });
+
+    await userEvent.click(await screen.findByText("New document"));
+
+    await waitFor(() =>
+      expect(router?.location.pathname).toBe("/document/new"),
+    );
+  });
+
+  it("should not report a keyboard shortcut when an action is clicked", async () => {
+    const trackSimpleEvent = jest.spyOn(Analytics, "trackSimpleEvent");
+    setup({ query: "new met" });
+
+    await userEvent.click(await screen.findByText("New metric"));
+
+    expect(trackSimpleEvent).not.toHaveBeenCalledWith(
+      expect.objectContaining({ event: "keyboard_shortcut_performed" }),
+    );
+  });
+
+  it("should prompt admins to search everything when nothing matched", async () => {
+    setup({
+      query: "zzzz",
+      isAdmin: true,
+      settings: { "active-users-count": 2 },
+    });
+
+    expect(await screen.findByText("Search everything")).toBeInTheDocument();
+  });
+
+  it("should not prompt non-admins to search everything", async () => {
+    setup({ query: "zzzz", settings: { "active-users-count": 2 } });
+
+    expect(
+      await screen.findByText(`Search Metabase's docs for "zzzz"`),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("Search everything")).not.toBeInTheDocument();
   });
 
   it("should not allow you to select or click disabled items", async () => {

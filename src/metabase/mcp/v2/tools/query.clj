@@ -37,13 +37,12 @@
    [metabase.mcp.v2.query :as v2.query]
    [metabase.mcp.v2.registry :as registry]
    [metabase.mcp.v2.resolve :as v2.resolve]
+   [metabase.metabot.query-execution :as query-execution]
    [metabase.metabot.scope :as metabot.scope]
    [metabase.models.interface :as mi]
    [metabase.query-processor.card :as qp.card]
-   [metabase.query-processor.core :as qp]
    [metabase.query-processor.middleware.permissions :as qp.perms]
-   [metabase.util :as u]
-   [metabase.util.json :as json]))
+   [metabase.util :as u]))
 
 (set! *warn-on-reflection* true)
 
@@ -110,56 +109,27 @@
 
 ;;; ------------------------------------------------- Execution ----------------------------------------------------
 
-(def ^:private query-passthrough-keys
-  "The only keys of an incoming query that MCP forwards to the QP. Everything else — `:middleware`,
-   `:info`, `:constraints`, and any unknown key — is MCP's to set, because the query map is
-   caller-controlled and an agent that could name its own `:info` would forge `query_execution`
-   attribution. A fresh `:query` is also rejected upstream by the closed
-   `:metabase.lib.schema/query`, but that covers only the fresh path: a handle's stored query is
-   checked shallowly and the `/drills` callback stores one verbatim, so an unknown key does reach
-   here. This whitelist, not the schema, is what the guarantee rests on. The QP strips some of
-   these itself; that is defense in depth, not this boundary's contract."
-  [:lib/type :database :stages :parameters])
-
 (defn- query-failure-message
-  "The teaching message for a QP `result` that didn't complete, carrying its error text quoted."
-  [result]
-  (if-let [error (:error result)]
+  "The teaching message for a query that didn't complete, carrying the QP's `error` text quoted."
+  [error]
+  (if error
     (message/msg ["Query failed: %s"] error)
     (message/msg ["Query failed: unknown error"])))
 
-(defn- execute!
-  "Run a serialized MBQL query through the QP with the standard agent userland preparation,
-   capping this call's rows at `row-limit` (within the backend's 2000/10000 userland
-   ceilings). Returns the QP result; surfaces a failed run as a teaching error."
-  [serialized-query row-limit]
-  (let [result (qp/process-query
-                (-> (select-keys serialized-query query-passthrough-keys)
-                    (assoc :middleware {:js-int-to-string? true})
-                    qp/userland-query-with-default-constraints
-                    (assoc :constraints {:max-results           row-limit
-                                         :max-results-bare-rows row-limit}
-                           :info        {:executed-by api/*current-user-id*
-                                         :context     :agent})))]
-    (when-not (= (:status result) :completed)
-      (common/throw-teaching-error (query-failure-message result)))
-    result))
-
 (defn- execute-page!
-  "Run `serialized-query` for one page of at most `row-limit` rows. Fetches one row past the
-   limit so truncation is *observed* rather than inferred from a full page: a result that fills
-   the page exactly is complete, and is reported that way. Returns
-   `{:cols :rows :returned :truncated?}` with the probe row already dropped, so `rows` is the
-   page and `(last rows)` is a real page boundary."
+  "Run [[query-execution/execute-page!]] as an `:agent` query, turning a failed run into a teaching error."
   [serialized-query row-limit]
-  (let [result     (execute! serialized-query (inc row-limit))
-        all-rows   (vec (get-in result [:data :rows]))
-        truncated? (> (count all-rows) row-limit)
-        rows       (cond-> all-rows truncated? (subvec 0 row-limit))]
-    {:cols       (get-in result [:data :cols])
-     :rows       rows
-     :returned   (count rows)
-     :truncated? truncated?}))
+  ;; Only the key whitelist in [[query-execution/execute-page!]] keeps unknown keys away from the QP.
+  ;; A fresh `:query` is also rejected upstream by the closed `:metabase.lib.schema/query`, but that covers only the
+  ;; fresh path: a handle's stored query is checked shallowly and the `/drills` callback stores one verbatim, so an
+  ;; unknown key does reach here.
+  (try
+    (query-execution/execute-page! serialized-query row-limit :agent)
+    (catch clojure.lang.ExceptionInfo e
+      (let [{:keys [error query-error]} (ex-data e)]
+        (if (= :query-failed error)
+          (common/throw-teaching-error (query-failure-message query-error))
+          (throw e))))))
 
 (defn- last-stage
   [serialized-query]
@@ -196,15 +166,6 @@
 
 ;;; ------------------------------------------------- Response -----------------------------------------------------
 
-(defn- response-cols
-  [cols]
-  (mapv (fn [{:keys [name base_type effective_type display_name]}]
-          (cond-> {:name         name
-                   :base_type    (u/qualified-name base_type)
-                   :display_name display_name}
-            effective_type (assoc :effective_type (u/qualified-name effective_type))))
-        cols))
-
 (defn- steering-line
   [returned next-cursor]
   (if next-cursor
@@ -239,7 +200,7 @@
                 :truncated    false}]
     (common/success-content
      (message/msg ["%s" "Query validated, not executed — execute or save it later by passing this query_handle."]
-                  (message/raw (json/encode counts))))))
+                  (message/data counts)))))
 
 (defn- execute-response!
   [session-id serialized-query prompt row-limit]
@@ -260,11 +221,11 @@
                              :truncated    truncated?}
                       next-cursor (assoc :next_cursor next-cursor))
         payload     (assoc counts
-                           :cols (response-cols cols)
+                           :cols (query-execution/response-cols cols)
                            :rows rows)]
     (common/success-content
      (if truncated?
-       (message/msg ["%s" "%s"] (message/raw (json/encode payload)) (steering-line returned next-cursor))
+       (message/msg ["%s" "%s"] (message/data payload) (steering-line returned next-cursor))
        payload))))
 
 ;;; -------------------------------------------------- The tool ----------------------------------------------------
@@ -447,7 +408,7 @@ Dialect (JSON): tables and columns go by NUMERIC ID (from browse_data list_table
      (message/msg ["%s" (str "SQL accepted, not executed — template tags and permissions "
                              "were checked; the SQL text itself was not validated. Execute, "
                              "save, or visualize it later by passing this query_handle.")]
-                  (message/raw (json/encode counts))))))
+                  (message/data counts)))))
 
 (defn- execute-sql-response!
   [session-id serialized-query prompt row-limit hint]
@@ -460,11 +421,11 @@ Dialect (JSON): tables and columns go by NUMERIC ID (from browse_data list_table
                             :truncated    truncated?}
                      hint (assoc :hint hint))
         payload    (assoc counts
-                          :cols (response-cols cols)
+                          :cols (query-execution/response-cols cols)
                           :rows rows)]
     (common/success-content
      (if truncated?
-       (message/msg ["%s" "%s"] (message/raw (json/encode payload)) (sql-steering-line returned))
+       (message/msg ["%s" "%s"] (message/data payload) (sql-steering-line returned))
        payload))))
 
 (def ^:private execute-sql-args-schema
@@ -612,7 +573,7 @@ Dialect (JSON): tables and columns go by NUMERIC ID (from browse_data list_table
                                  (fn [query info]
                                    (qp (update query :info merge info) nil)))))]
     (when-not (= (:status result) :completed)
-      (common/throw-teaching-error (query-failure-message result)))
+      (common/throw-teaching-error (query-failure-message (:error result))))
     result))
 
 (defn- saved-question-steering-line
@@ -670,9 +631,9 @@ Dialect (JSON): tables and columns go by NUMERIC ID (from browse_data list_table
         returned    (count rows)
         counts      {:returned returned :truncated truncated?}
         payload     (assoc counts
-                           :cols (response-cols cols)
+                           :cols (query-execution/response-cols cols)
                            :rows rows)]
     (common/success-content
      (if truncated?
-       (message/msg ["%s" "%s"] (message/raw (json/encode payload)) (saved-question-steering-line returned))
+       (message/msg ["%s" "%s"] (message/data payload) (saved-question-steering-line returned))
        payload))))

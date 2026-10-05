@@ -20,6 +20,8 @@ import { DatabasesPermissionsPage } from "metabase/admin/permissions/pages/Datab
 import { getBeforeUnloadUnsavedMessage } from "metabase/common/hooks/use-before-unload";
 import { PLUGIN_ADMIN_PERMISSIONS_TABLE_GROUP_ROUTES } from "metabase/plugins";
 import { Route } from "metabase/router";
+import { defer } from "metabase/utils/promise";
+import type { Database } from "metabase-types/api";
 import { createMockGroup } from "metabase-types/api/mocks/group";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 const TEST_DATABASE = createSampleDatabase();
@@ -36,16 +38,17 @@ const TEST_GROUPS = [
 const setup = async ({
   shouldWaitForLoader = true,
   showUpdatedPermissionModal = false,
-  databaseMetadataDelay = 0,
+  deferDatabaseMetadata = false,
 } = {}) => {
   setupDatabasesEndpoints([TEST_DATABASE]);
   setupPermissionsGraphEndpoints(TEST_GROUPS, [TEST_DATABASE]);
   setupGroupsEndpoint(TEST_GROUPS);
 
+  const databaseMetadata = defer<Database>();
+
   fetchMock.get(
     `path:/api/database/${TEST_DATABASE.id}/metadata`,
-    TEST_DATABASE,
-    { delay: databaseMetadataDelay },
+    deferDatabaseMetadata ? () => databaseMetadata.promise : TEST_DATABASE,
   );
 
   const mockEventListener = jest.spyOn(window, "addEventListener");
@@ -83,7 +86,7 @@ const setup = async ({
     await waitForLoaderToBeRemoved();
   }
 
-  return { mockEventListener };
+  return { mockEventListener, databaseMetadata };
 };
 
 const editDatabasePermission = async () => {
@@ -114,15 +117,17 @@ describe("DatabasesPermissionsPage", () => {
     });
 
     it("should open the split permissions modal only after data has loaded", async () => {
-      await setup({
+      const { databaseMetadata } = await setup({
         shouldWaitForLoader: false,
         showUpdatedPermissionModal: true,
-        databaseMetadataDelay: 100,
+        deferDatabaseMetadata: true,
       });
 
       await delay(0);
       expect(screen.getByTestId("loading-indicator")).toBeInTheDocument();
       expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+
+      databaseMetadata.resolve(TEST_DATABASE);
 
       await waitForLoaderToBeRemoved();
       expect(

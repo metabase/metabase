@@ -65,6 +65,7 @@
    [metabase.util.match :as match]
    [metabase.util.performance :refer [mapv select-keys some empty? not-empty get-in]]))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (mu/defn- ^:dynamic *escape-alias-fn* :- :string
   [driver :- :keyword
    s      :- :string]

@@ -11,6 +11,7 @@
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.permissions.core :as perms]
+   [metabase.premium-features.core :refer [defenterprise]]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.search.core :as search.core]
    [metabase.search.spec :as search.spec]
@@ -39,7 +40,7 @@
   [instance & args]
   (and (transforms.u/check-feature-enabled instance)
        (or api/*is-superuser?*
-           (and (api/is-data-analyst?)
+           (and (api/entitled-data-analyst?)
                 (apply transforms.u/source-tables-readable? instance args)))))
 
 (defn- native-transform-write-allowed?
@@ -92,12 +93,12 @@
   [_model instance]
   ;; Inline can-write? logic since instance is a plain map without model metadata.
   ;; can-write? requires: can-read?, has-db-transforms-permission?, and transforms-editable?
-  ;; can-read? requires: is-superuser? OR (is-data-analyst? AND source-tables-readable?)
+  ;; can-read? requires: is-superuser? OR (entitled-data-analyst? AND source-tables-readable?)
   (and (remote-sync/transforms-editable?)
        (transforms.u/check-feature-enabled instance)
        (or api/*is-superuser?*
            (let [source-db-id (or (:source_database_id instance) (transforms-base.i/source-db-id instance))]
-             (and api/*is-data-analyst?*
+             (and (api/entitled-data-analyst?)
                   (transforms.u/source-tables-readable? instance)
                   (transform-database-permissions? instance)
                   (native-transform-write-allowed? instance source-db-id))))))
@@ -345,9 +346,20 @@
     (events/publish-event! :event/update-transform {:object transform}))
   transform)
 
+(defenterprise delete-transform-tests!
+  "Hook called from the `:model/Transform` before-delete: delete the tests of the transform `transform-id` through
+  Toucan, so that each one's own delete hook runs. The database would take them with the transform either way -- the
+  `transform_test.transform_id` FK is `ON DELETE CASCADE` -- but a cascade runs no hook, and remote sync learns a
+  test is gone only from the event that hook publishes, so it would go on serving a test whose transform no longer
+  exists. OSS is a no-op (no transform-testing module)."
+  metabase-enterprise.transform-testing.models
+  [_transform-id]
+  nil)
+
 (t2/define-before-delete :model/Transform [transform]
   (when-not mi/*deserializing?*
     (events/publish-event! :event/delete-transform {:id (:id transform)}))
+  (delete-transform-tests! (:id transform))
   (search.core/delete! :model/Transform [(str (:id transform))])
   transform)
 

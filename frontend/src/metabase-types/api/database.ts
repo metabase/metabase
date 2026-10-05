@@ -65,9 +65,11 @@ export interface Database extends DatabaseData {
   features?: DatabaseFeature[];
   creator_id?: number;
   timezone?: string;
+  default_schema?: string | null;
   native_permissions: "write" | "none";
   transforms_permissions?: "write" | "none";
   initial_sync_status: InitialSyncStatus;
+  initial_sync_error?: string | null;
   description?: string;
   caveats?: string;
   points_of_interest?: string;
@@ -237,6 +239,21 @@ export interface UpdateDatabaseRequest {
   cache_ttl?: number | null;
   settings?: DatabaseSettings | null;
 }
+
+export interface ValidateDatabaseRequest {
+  details: {
+    engine: string;
+    details: Record<string, unknown>;
+    /** Validate against an existing database, resolving details it left redacted */
+    id?: DatabaseId;
+  };
+}
+
+export type ValidateDatabaseResponse = {
+  valid: boolean;
+  message?: string;
+  errors?: Record<string, string>;
+};
 
 export type DatabaseEditErrorType = {
   data: {

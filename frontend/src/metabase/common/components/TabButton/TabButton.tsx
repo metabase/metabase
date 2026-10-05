@@ -1,7 +1,7 @@
 import type { UniqueIdentifier } from "@dnd-kit/core";
-// eslint-disable-next-line no-restricted-imports
+// eslint-disable-next-line eslint-js/no-restricted-imports
 import { css } from "@emotion/react";
-// eslint-disable-next-line no-restricted-imports
+// eslint-disable-next-line eslint-js/no-restricted-imports
 import styled from "@emotion/styled";
 import cx from "classnames";
 import type {

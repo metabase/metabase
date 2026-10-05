@@ -23,13 +23,14 @@ export const SearchButton = (props: ButtonProps) => {
   const isSmallScreen = useIsSmallScreen();
 
   if (isSmallScreen) {
+    // TODO: replace with ActionIcon (GDGT-2457)
     return (
       <Button
-        h="36px"
-        leftSection={<Icon name="search" />}
         variant="subtle"
+        color="neutral"
+        size="sm"
+        leftSection={<Icon name="search" />}
         onClick={handleClick}
-        color="text-secondary"
         aria-label="Search"
       />
     );
@@ -37,7 +38,6 @@ export const SearchButton = (props: ButtonProps) => {
 
   return (
     <Button
-      h="36px"
       w="240px"
       c={searchText ? "text-primary" : "text-disabled"}
       leftSection={<Icon name="search" c="text-primary" />}

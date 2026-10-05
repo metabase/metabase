@@ -204,6 +204,7 @@ describe("scenarios > browse", () => {
   it("on an open-source instance, the Browse models page has no controls for setting filters", () => {
     cy.visit("/");
     H.navigationSidebar().findByLabelText("Browse models").click();
+    cy.findByRole("heading", { name: "Orders Model" }).should("be.visible");
     verifiedFilterToggleButton().should("not.exist");
   });
 

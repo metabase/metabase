@@ -10,24 +10,9 @@
 }
 
 .AddButton {
-  width: 34px;
+  width: 32px;
   margin-left: 0.5rem;
   color: var(--mb-color-text-primary-inverse);
-}
-
-.RemoveButton {
-  &[data-variant="subtle"] {
-    color: var(--mb-color-text-primary-inverse);
-    background-color: transparent;
-    opacity: 0.6;
-    transition: all 100ms;
-
-    &:hover {
-      color: var(--mb-color-text-primary-inverse);
-      background-color: transparent;
-      opacity: 1;
-    }
-  }
 }
 
 .Content {
@@ -51,6 +36,7 @@
 
   /* to increase specificity */
   .AddButton {
+    height: auto;
     transition: none;
   }
 

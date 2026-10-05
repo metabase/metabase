@@ -40,6 +40,7 @@
      (log/warnf "Allocated: %s" (mb-str (:allocations m#)))
      (:result m#)))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^{:dynamic true
        :private true} *memory-log-level* -1)
 

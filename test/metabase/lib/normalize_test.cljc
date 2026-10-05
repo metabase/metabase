@@ -222,12 +222,12 @@
 #?(:clj
    (deftest ^:synchronized normalize-error-containment-test
      (testing "an AssertionError from the coercer is contained (wrapped), not propagated"
-       (with-redefs-fn {#'lib.normalize/coercer (fn [_schema] (fn [_x] (throw (AssertionError. "boom"))))}
+       (with-redefs-fn {#'lib.normalize/coercer (fn [_schema _legacy-int-field-ids?] (fn [_x] (throw (AssertionError. "boom"))))}
          (fn []
            (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Uncaught normalization error"
                                  (lib/normalize {:lib/type :mbql/query}))))))
      (testing "a fatal Error from the coercer propagates unwrapped"
-       (with-redefs-fn {#'lib.normalize/coercer (fn [_schema] (fn [_x] (throw (Error. "boom"))))}
+       (with-redefs-fn {#'lib.normalize/coercer (fn [_schema _legacy-int-field-ids?] (fn [_x] (throw (Error. "boom"))))}
          (fn []
            (is (thrown? Error
                         (lib/normalize {:lib/type :mbql/query}))))))))

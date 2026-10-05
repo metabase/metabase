@@ -6,6 +6,7 @@ import {
 } from "@reduxjs/toolkit";
 
 import { admin } from "metabase/admin/admin";
+import { embedSetupModalReducer } from "metabase/embedding/store/embed-setup-modal";
 import * as pulse from "metabase/notifications/pulse/reducers";
 import { PLUGIN_REDUCERS } from "metabase/plugins";
 import { queryBuilderReducer } from "metabase/query_builder";
@@ -28,6 +29,7 @@ export function makeMainReducers() {
   return {
     ...commonReducers,
     // main app reducers
+    embedSetupModal: embedSetupModalReducer,
     pulse: combineReducers(pulse),
     qb: queryBuilderReducer,
     reference,
@@ -67,7 +69,7 @@ export type _EveryStateKeyIsRegistered = Assert<
 >;
 
 /**
- * The reverse does not hold. This root registers three slices that `State`
+ * The reverse does not hold. This root registers four slices that `State`
  * never declared, so code reading them types them itself.
  *
  * Declaring them would mean importing their types into `metabase/redux/store`,
@@ -75,11 +77,12 @@ export type _EveryStateKeyIsRegistered = Assert<
  * `State` moves out of the shared tier, not before. Pinned here so the gap
  * cannot grow.
  */
-export type _UndeclaredKeysAreOnlyTheKnownThree = Assert<
+export type _UndeclaredKeysAreOnlyTheKnownFour = Assert<
   Exclude<keyof MainState, keyof State> extends
     | "reference"
     | "revisions"
     | "plugins"
+    | "embedSetupModal"
     ? true
     : false
 >;

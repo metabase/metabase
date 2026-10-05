@@ -50,7 +50,7 @@ export function BooleanPicker({
       </Radio.Group>
       {hasExpandButton && (
         <Button
-          c="text-secondary"
+          color="neutral"
           variant="subtle"
           aria-label={t`More options`}
           rightSection={<Icon name="chevrondown" />}

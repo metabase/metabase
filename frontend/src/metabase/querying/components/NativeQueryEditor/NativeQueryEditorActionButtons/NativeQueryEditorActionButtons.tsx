@@ -5,8 +5,8 @@ import { DataReferenceButton } from "metabase/querying/components/NativeQueryEdi
 import { NativeVariablesButton } from "metabase/querying/components/NativeQueryEditor/NativeVariablesButton";
 import { PreviewQueryButton } from "metabase/querying/components/NativeQueryEditor/PreviewQueryButton";
 import { SnippetSidebarButton } from "metabase/querying/components/NativeQueryEditor/SnippetSidebarButton";
-import type { QueryModalType } from "metabase/querying/constants";
 import type { SidebarFeatures } from "metabase/querying/editor/types";
+import type { QueryModalType } from "metabase/redux/store";
 import { Button, Flex, Icon, Tooltip } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 import type { Collection, NativeQuerySnippet } from "metabase-types/api";
@@ -91,11 +91,12 @@ export const NativeQueryEditorActionButtons = (
       )}
       {showFormatButton && onFormatQuery && (
         <Tooltip label={t`Auto-format`}>
+          {/* TODO: replace with ActionIcon (GDGT-2457) */}
           <Button
-            variant="subtle"
+            variant="transparent"
+            size="compact-md"
             className={S.button}
             aria-label={t`Auto-format`}
-            p={0}
             leftSection={
               <Icon name="format_code" size={NATIVE_EDITOR_ICON_SIZE} />
             }

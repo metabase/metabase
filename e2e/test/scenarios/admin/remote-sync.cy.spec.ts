@@ -508,40 +508,6 @@ describe("Remote Sync", () => {
       H.getGitSyncControls().should("contain.text", "main");
     });
 
-    it("can set up read-only mode", () => {
-      // Set up a Synced Collection to connect to, otherwise read-only mode will be empty
-      // Copy some files
-      H.copySyncedCollectionFixture();
-
-      // Commit those files to the main branch
-      H.commitToRepo();
-
-      cy.visit("/admin/settings/remote-sync");
-      cy.findByLabelText(/repository url/i)
-        .should("be.visible")
-        .click()
-        .clear()
-        .type(LOCAL_GIT_URL);
-
-      cy.findByTestId("admin-layout-content").findByText("Read-only").click();
-      cy.button("Set up remote sync").click();
-      cy.findByTestId("admin-layout-content")
-        .findByText("Success")
-        .should("exist");
-
-      // Read-only setup runs an initial import; close its confirmation modal (GHY-3747).
-      H.closeSyncResultModal();
-      H.modal().should("not.exist");
-      H.goToMainApp();
-
-      // In read-only mode, git sync controls should not be visible in app bar
-      H.getGitSyncControls().should("not.exist");
-
-      H.navigationSidebar().within(() => {
-        cy.findByRole("treeitem", { name: /Synced Collection/ }).click();
-      });
-    });
-
     it("should disable 'Set up remote sync' button if git url is not set (#65653)", () => {
       cy.visit("/admin/settings/remote-sync");
       cy.button("Set up remote sync").should("be.disabled");
@@ -792,75 +758,109 @@ describe("Remote Sync", () => {
       setup();
     });
 
-    it("can change branches", { requestTimeout: 15000 }, () => {
-      const UPDATED_REMOTE_QUESTION_NAME = "New Name";
+    it(
+      "can set up read-only mode from the settings page and change branches",
+      { requestTimeout: 15000 },
+      () => {
+        const UPDATED_REMOTE_QUESTION_NAME = "New Name";
 
-      H.copySyncedCollectionFixture();
-      H.commitToRepo();
-      H.configureGitAndPullChanges("read-only");
+        // Set up a Synced Collection to connect to, otherwise read-only mode will be empty
+        H.copySyncedCollectionFixture();
+        H.commitToRepo();
 
-      cy.intercept("GET", /\/api\/collection\/\d+\/items/).as(
-        "mainBranchItems",
-      );
-      cy.visit("/");
+        cy.log("Set up read-only mode from the admin settings page");
+        cy.visit("/admin/settings/remote-sync");
+        cy.findByLabelText(/repository url/i)
+          .should("be.visible")
+          .click()
+          .clear()
+          .type(LOCAL_GIT_URL);
 
-      H.navigationSidebar()
-        .findByRole("treeitem", { name: /Synced Collection/ })
-        .click();
-      cy.wait(["@mainBranchItems", "@mainBranchItems"]);
-      H.collectionTable().findByText(REMOTE_QUESTION_NAME);
+        cy.findByTestId("admin-layout-content").findByText("Read-only").click();
+        cy.button("Set up remote sync").click();
+        cy.findByTestId("admin-layout-content")
+          .findByText("Success")
+          .should("exist");
 
-      // Make a change, and commit it to the branch
-      H.checkoutSyncedCollectionBranch("test");
-      H.updateRemoteQuestion((doc) => {
-        doc.name = UPDATED_REMOTE_QUESTION_NAME;
-        return doc;
-      });
+        cy.log(
+          "Read-only setup runs an initial import; close its confirmation modal (GHY-3747)",
+        );
+        H.closeSyncResultModal();
+        H.modal().should("not.exist");
+        H.goToMainApp();
 
-      cy.intercept("GET", "/api/session/properties").as("sessionProperties");
-      cy.intercept("GET", "/api/setting").as("settingDetails");
-      cy.intercept("GET", "/api/collection/root/items?*").as("rootItems");
-      cy.intercept("GET", "/api/ee/library").as("libraryCollection");
-      cy.visit("/admin/settings/remote-sync");
-      cy.wait([
-        "@sessionProperties",
-        "@settingDetails",
-        "@rootItems",
-        "@libraryCollection",
-      ]);
+        cy.log(
+          "In read-only mode, git sync controls are not shown in the app bar",
+        );
+        H.navigationSidebar()
+          .findByRole("treeitem", { name: /Synced Collection/ })
+          .click();
+        H.collectionTable().findByText(REMOTE_QUESTION_NAME).should("exist");
+        H.getGitSyncControls().should("not.exist");
 
-      cy.findByLabelText("Sync branch")
-        .scrollIntoView()
-        .clear()
-        .type("test")
-        .should("have.value", "test");
-      cy.findByTestId("remote-sync-submit-button").click();
+        cy.intercept("GET", /\/api\/collection\/\d+\/items/).as(
+          "mainBranchItems",
+        );
+        cy.visit("/");
 
-      cy.findByTestId("admin-layout-content")
-        .findByText("Success")
-        .should("exist");
+        H.navigationSidebar()
+          .findByRole("treeitem", { name: /Synced Collection/ })
+          .click();
+        cy.wait(["@mainBranchItems", "@mainBranchItems"]);
+        H.collectionTable().findByText(REMOTE_QUESTION_NAME);
 
-      cy.findByRole("dialog", { name: "Switch branches?" })
-        .button("Continue")
-        .click();
+        // Make a change, and commit it to the branch
+        H.checkoutSyncedCollectionBranch("test");
+        H.updateRemoteQuestion((doc) => {
+          doc.name = UPDATED_REMOTE_QUESTION_NAME;
+          return doc;
+        });
 
-      H.waitForTask({ taskName: "import" });
+        cy.intercept("GET", "/api/session/properties").as("sessionProperties");
+        cy.intercept("GET", "/api/setting").as("settingDetails");
+        cy.intercept("GET", "/api/collection/root/items?*").as("rootItems");
+        cy.intercept("GET", "/api/ee/library").as("libraryCollection");
+        cy.visit("/admin/settings/remote-sync");
+        cy.wait([
+          "@sessionProperties",
+          "@settingDetails",
+          "@rootItems",
+          "@libraryCollection",
+        ]);
 
-      cy.findByTestId("remote-sync-submit-button").should("be.disabled");
+        cy.findByLabelText("Sync branch")
+          .scrollIntoView()
+          .clear()
+          .type("test")
+          .should("have.value", "test");
+        cy.findByTestId("remote-sync-submit-button").click();
 
-      H.pollForTask({ taskName: "import" });
+        cy.findByTestId("admin-layout-content")
+          .findByText("Success")
+          .should("exist");
 
-      cy.intercept("GET", /\/api\/collection\/\d+\/items/).as(
-        "testBranchItems",
-      );
-      cy.visit("/");
+        cy.findByRole("dialog", { name: "Switch branches?" })
+          .button("Continue")
+          .click();
 
-      H.navigationSidebar()
-        .findByRole("treeitem", { name: /Synced Collection/ })
-        .click();
-      cy.wait(["@testBranchItems", "@testBranchItems"]);
-      H.collectionTable().findByText(UPDATED_REMOTE_QUESTION_NAME);
-    });
+        H.waitForTask({ taskName: "import" });
+
+        cy.findByTestId("remote-sync-submit-button").should("be.disabled");
+
+        H.pollForTask({ taskName: "import" });
+
+        cy.intercept("GET", /\/api\/collection\/\d+\/items/).as(
+          "testBranchItems",
+        );
+        cy.visit("/");
+
+        H.navigationSidebar()
+          .findByRole("treeitem", { name: /Synced Collection/ })
+          .click();
+        cy.wait(["@testBranchItems", "@testBranchItems"]);
+        H.collectionTable().findByText(UPDATED_REMOTE_QUESTION_NAME);
+      },
+    );
 
     it("keeps the Embed sharing option available for a question in a read-only synced collection (metabase#72752)", () => {
       H.copySyncedCollectionFixture();
@@ -896,55 +896,17 @@ describe("Remote Sync", () => {
     });
 
     describe("admin settings", () => {
-      it("should show shared tenant collections section when tenants are enabled and remote sync is configured", () => {
-        // First set up remote sync
-        H.configureGitAndPullChanges("read-write");
-
-        // Create some tenant collections
-        H.createSharedTenantCollection("Tenant A Shared");
-        H.createSharedTenantCollection("Tenant B Shared");
-
+      it("shows the shared tenant collections section, with an empty state, only when remote sync is configured and tenants are enabled", () => {
+        cy.log(
+          "Collections to sync section is hidden when remote sync is not enabled",
+        );
         cy.visit("/admin/settings/remote-sync");
-
         cy.findByTestId("admin-layout-content").within(() => {
-          // Main section should be visible
-          cy.findByText("Collections to sync").should("exist");
-
-          // Shared collections sub-section should be visible
-          cy.findByText("Shared collections").should("exist");
-
-          // Should show the tenant collections
-          cy.findByText("Tenant A Shared").should("exist");
-          cy.findByText("Tenant B Shared").should("exist");
-
-          // Each collection should have a sync toggle
-          cy.findAllByRole("switch").should("have.length.at.least", 2);
+          // Wait for the form to render so the negative assertion is meaningful
+          cy.button("Set up remote sync").should("exist");
+          cy.findByText("Collections to sync").should("not.exist");
         });
-      });
 
-      it("should not show shared tenant collections section when tenants are disabled", () => {
-        // Disable tenants
-        cy.request("PUT", "/api/setting/use-tenants", { value: false });
-
-        H.configureGitAndPullChanges("read-write");
-        cy.visit("/admin/settings/remote-sync");
-
-        // Shared collections sub-section should NOT be visible
-        cy.findByTestId("admin-layout-content")
-          .findByText("Shared collections")
-          .should("not.exist");
-      });
-
-      it("should not show shared tenant collections section when remote sync is not enabled", () => {
-        cy.visit("/admin/settings/remote-sync");
-
-        // Collections to sync section should NOT be visible (remote sync not yet configured)
-        cy.findByTestId("admin-layout-content")
-          .findByText("Collections to sync")
-          .should("not.exist");
-      });
-
-      it("should show empty state when no shared tenant collections exist", () => {
         H.configureGitAndPullChanges("read-write");
         cy.visit("/admin/settings/remote-sync");
 
@@ -952,27 +914,16 @@ describe("Remote Sync", () => {
           cy.findByText("Shared collections").should("exist");
           cy.findByText("No shared tenant collections found").should("exist");
         });
-      });
 
-      it("can toggle sync for a shared tenant collection", () => {
-        H.configureGitAndPullChanges("read-write");
-
-        // Create a tenant collection
-        H.createSharedTenantCollection("Tenant Collection To Sync");
-
-        cy.visit("/admin/settings/remote-sync");
-
+        cy.log(
+          "Shared collections sub-section is hidden when tenants are disabled",
+        );
+        cy.request("PUT", "/api/setting/use-tenants", { value: false });
+        cy.reload();
         cy.findByTestId("admin-layout-content").within(() => {
-          // Find the collection row and toggle sync on
-          cy.findByRole("switch", {
-            name: "Sync Tenant Collection To Sync",
-          }).click({ force: true });
-
-          // Save changes
-          cy.button("Save changes").click();
-
-          // Verify the setting was saved
-          cy.findByText(/success/i).should("exist");
+          // Wait for the section to render so the negative assertion is meaningful
+          cy.findByText("Collections to sync").should("exist");
+          cy.findByText("Shared collections").should("not.exist");
         });
       });
 
@@ -1027,16 +978,32 @@ describe("Remote Sync", () => {
     });
 
     describe("syncing tenant collections", () => {
-      it("can push changes from a synced tenant collection", () => {
+      it("lists shared tenant collections in settings and can push changes from a synced one", () => {
         H.configureGitAndPullChanges("read-write");
+
+        // A second, unsynced tenant collection so the settings list shows more than one row
+        H.createSharedTenantCollection("Second Tenant Collection");
 
         // Create a tenant collection
         H.createSharedTenantCollection("Syncable Tenant Collection").then(
           (response) => {
             const tenantCollectionId = response.body.id;
 
-            // Enable sync for this collection via admin settings
             cy.visit("/admin/settings/remote-sync");
+
+            cy.log(
+              "Shared tenant collections section is shown when tenants are enabled and remote sync is configured",
+            );
+            cy.findByTestId("admin-layout-content").within(() => {
+              cy.findByText("Collections to sync").should("exist");
+              cy.findByText("Shared collections").should("exist");
+              cy.findByText("Syncable Tenant Collection").should("exist");
+              cy.findByText("Second Tenant Collection").should("exist");
+              // Each collection should have a sync toggle
+              cy.findAllByRole("switch").should("have.length.at.least", 2);
+            });
+
+            // Enable sync for this collection via admin settings
             // Mantine Switch has a hidden input (0x0 pixels), so we need force: true
             cy.findByTestId("admin-layout-content")
               .findByRole("switch", { name: "Sync Syncable Tenant Collection" })
@@ -1044,6 +1011,9 @@ describe("Remote Sync", () => {
             cy.findByTestId("admin-layout-content")
               .button("Save changes")
               .click();
+            cy.findByTestId("admin-layout-content")
+              .findByText(/success/i)
+              .should("exist");
 
             // Create a question in the tenant collection
             H.createQuestion({
@@ -1056,8 +1026,11 @@ describe("Remote Sync", () => {
 
             cy.visit("/");
 
-            // Verify sync status indicator appears
-            H.getSyncStatusIndicators().should("have.length.greaterThan", 0);
+            // Verify the sync status badge appears on the tenant collection
+            H.navigationSidebar()
+              .findByRole("treeitem", { name: /Syncable Tenant Collection/ })
+              .findByTestId("remote-sync-status")
+              .should("exist");
 
             // Push changes
             H.clickPushOption();
@@ -1071,42 +1044,6 @@ describe("Remote Sync", () => {
               .findByRole("link", { name: /Syncable Tenant Collection/ })
               .findByTestId("remote-sync-status")
               .should("not.exist");
-          },
-        );
-      });
-
-      it("shows sync status badge on synced tenant collections in sidebar", () => {
-        H.configureGitAndPullChanges("read-write");
-
-        // Create a tenant collection
-        H.createSharedTenantCollection("Badge Test Collection").then(
-          (response) => {
-            const collectionId = response.body.id;
-
-            // Enable sync
-            cy.visit("/admin/settings/remote-sync");
-            // Mantine Switch has a hidden input (0x0 pixels), so we need force: true
-            cy.findByTestId("admin-layout-content")
-              .findByRole("switch", { name: "Sync Badge Test Collection" })
-              .click({ force: true });
-            cy.findByTestId("admin-layout-content")
-              .button("Save changes")
-              .click();
-
-            // Create content to trigger dirty state
-            H.createQuestion({
-              name: "Status Badge Test Question",
-              query: { "source-table": PRODUCTS_ID },
-              collection_id: collectionId,
-            });
-
-            cy.visit("/");
-
-            // Verify the sync status badge appears on the tenant collection
-            H.navigationSidebar()
-              .findByRole("treeitem", { name: /Badge Test Collection/ })
-              .findByTestId("remote-sync-status")
-              .should("exist");
           },
         );
       });

@@ -149,13 +149,13 @@ function toResultColumnStageSpec({
 }
 
 // A card stage exposes the saved question's result columns, so they are looked
-// up by name. Keys that scope a column to a table narrow that lookup and stop
-// it matching, so drop them from generated table fields used as result columns.
+// up by name. `sourceName` and `displayName` describe the table field rather
+// than the result column and stop it matching, so they are dropped. `tableId`
+// and `sourceFieldId` stay: a result column keeps both, and they tell it apart
+// from a same-named column reachable through an FK.
 function toResultColumnSpec<TSpec extends TestColumnSpec>(spec: TSpec) {
   const {
-    tableId: _tableId,
     sourceName: _sourceName,
-    sourceFieldId: _sourceFieldId,
     displayName: _displayName,
     ...resultColumn
   } = spec;

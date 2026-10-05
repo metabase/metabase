@@ -10,7 +10,7 @@
    [metabase.metabot.tools.shared :as shared]
    [metabase.metabot.tools.shared.instructions :as instructions]
    [metabase.metabot.tools.shared.llm-shape :as llm-shape]
-   [metabase.util.log :as log]
+   [metabase.metabot.tools.util :as metabot.tools.u]
    [metabase.util.malli :as mu]))
 
 (set! *warn-on-reflection* true)
@@ -60,10 +60,7 @@
                              :title       title
                              :description description})]})
     (catch Exception e
-      (log/errorf "Error creating chart: %s" (ex-message e))
-      (if (:agent-error? (ex-data e))
-        {:output (ex-message e)}
-        {:output (str "Failed to create chart: " (or (ex-message e) "Unknown error"))}))))
+      (metabot.tools.u/handle-agent-error e))))
 
 (def ^:private edit-chart-schema
   [:map {:closed true}
@@ -109,7 +106,4 @@
                       :title       title
                       :description description})]})
     (catch Exception e
-      (log/errorf "Error editing chart: %s" (ex-message e))
-      (if (:agent-error? (ex-data e))
-        {:output (ex-message e)}
-        {:output (str "Failed to edit chart: " (or (ex-message e) "Unknown error"))}))))
+      (metabot.tools.u/handle-agent-error e))))

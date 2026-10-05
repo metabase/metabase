@@ -25,7 +25,7 @@ export const RescanTableFieldsButton = ({ tableId }: Props) => {
   };
 
   return (
-    <Button variant="default" onClick={handleClick}>
+    <Button onClick={handleClick}>
       {started ? t`Scan triggered!` : t`Re-scan table`}
     </Button>
   );

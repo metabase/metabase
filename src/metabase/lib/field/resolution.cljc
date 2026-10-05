@@ -615,6 +615,7 @@
                                     :source/table-defaults
                                     :source/previous-stage)))))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic *recursive-expression-resolution?* false)
 
 (defn- maybe-resolve-expression-in-current-stage [query stage-number id-or-name]
@@ -632,6 +633,7 @@
 
 (declare resolve-from-previous-stage-or-source)
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic *in-deduplicated-column-resolution?* false)
 
 (defn- resolve-nonexistent-deduplicated-column-name

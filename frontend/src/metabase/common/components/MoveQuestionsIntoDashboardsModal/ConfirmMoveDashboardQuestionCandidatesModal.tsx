@@ -144,13 +144,17 @@ export const ConfirmMoveDashboardQuestionCandidatesModal = ({
           <div />
         )}
         <Flex gap="lg" ml="1.5rem">
-          <Button variant="subtle" onClick={onCancel}>{t`Cancel`}</Button>
+          <Button
+            variant="subtle"
+            color="neutral"
+            onClick={onCancel}
+          >{t`Cancel`}</Button>
           <Button
             loading={isMutating}
             variant="filled"
             onClick={onConfirm}
             disabled={ctaDisabled}
-            color={mutationError ? "feedback-negative" : "core-brand"}
+            color={mutationError ? "negative" : "brand"}
           >
             {t`Move these questions`}
           </Button>

@@ -23,7 +23,9 @@
 
 (defmethod instance-db-id :model/Transform
   [toucan-instance]
-  (some-> toucan-instance :source :query lib/database-id))
+  (or (some-> toucan-instance :source :query lib/database-id)
+      ;; non-query transforms (e.g. Python) have no query to read the database from
+      (:source_database_id toucan-instance)))
 
 (defmethod instance-db-id :model/Segment
   [toucan-instance]

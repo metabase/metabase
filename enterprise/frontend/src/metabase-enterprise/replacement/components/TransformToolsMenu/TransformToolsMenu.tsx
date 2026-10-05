@@ -26,6 +26,7 @@ export function TransformToolsMenu() {
         >
           <Button
             leftSection={<Icon name="gear" />}
+            size="lg"
             disabled={isRemoteSyncReadOnly}
           >
             {t`Tools`}

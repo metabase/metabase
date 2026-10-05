@@ -233,7 +233,7 @@
                                                                    org.apache.commons/commons-lang3
                                                                    org.apache.httpcomponents.client5/httpclient5
                                                                    org.apache.httpcomponents.core5/httpcore5]}
-  org.apache.zookeeper/zookeeper                     {:mvn/version "3.8.6"
+  org.apache.zookeeper/zookeeper                     {:mvn/version "3.8.7"
                                                       :exclusions [ch.qos.logback/logback-classic
                                                                    ch.qos.logback/logback-core
                                                                    org.slf4j/slf4j-log4j12

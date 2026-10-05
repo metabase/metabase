@@ -97,7 +97,6 @@ function SortOptionsPopover({
       <SegmentedControl
         value={sortOptions.direction}
         data={getSortDirectionItems()}
-        size="sm"
         fullWidth
         onChange={handleDirectionChange}
       />

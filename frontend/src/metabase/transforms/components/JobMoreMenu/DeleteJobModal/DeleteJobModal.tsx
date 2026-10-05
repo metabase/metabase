@@ -62,7 +62,7 @@ function DeleteJobForm({ job, onDelete, onClose }: DeleteJobFormProps) {
             <FormSubmitButton
               label={t`Delete job`}
               variant="filled"
-              color="feedback-negative"
+              color="negative"
             />
           </Group>
         </Stack>

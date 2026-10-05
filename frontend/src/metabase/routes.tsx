@@ -20,6 +20,7 @@ import { MoveQuestionsIntoDashboardsModal } from "metabase/common/components/Mov
 import { NotFoundFallbackPage } from "metabase/common/components/NotFoundFallbackPage";
 import { UnsubscribePage } from "metabase/common/components/Unsubscribe";
 import { getDataStudioRoutes } from "metabase/data-studio/routes";
+import { getRoutes as getExplorationsRoutes } from "metabase/explorations/routes";
 import { getMetabotRoutes } from "metabase/metabot/routes";
 import { getMetricRoutes } from "metabase/metrics/routes";
 import NewModelOptions from "metabase/models/containers/NewModelOptions";
@@ -49,6 +50,7 @@ import {
   Navigate,
   type RouteObject,
   redirect,
+  registerBackgroundPagePrefetch,
   registerPagePrefetch,
   toRouteObjects,
   useParams,
@@ -201,6 +203,23 @@ const commentsSidesheet = () =>
     /* webpackChunkName: "comments-sidesheet" */ "metabase/documents/components/CommentsSidesheet"
   ).then(({ CommentsSidesheet }) => CommentsSidesheet);
 
+const dashboardMoveModal = () =>
+  import(
+    /* webpackChunkName: "dashboard-move-modal" */ "metabase/dashboard/components/DashboardMoveModal"
+  ).then(({ DashboardMoveModalConnected }) => DashboardMoveModalConnected);
+
+const dashboardCopyModal = () =>
+  import(
+    /* webpackChunkName: "dashboard-copy-modal" */ "metabase/dashboard/components/DashboardCopyModal"
+  ).then(({ DashboardCopyModalConnected }) => DashboardCopyModalConnected);
+
+const dashboardArchiveModal = () =>
+  import(
+    /* webpackChunkName: "dashboard-archive-modal" */ "metabase/dashboard/containers/ArchiveDashboardModal"
+  ).then(
+    ({ ArchiveDashboardModalConnected }) => ArchiveDashboardModalConnected,
+  );
+
 /**
  * Hovering a link into one of these chunks starts the fetch, so it is usually in
  * hand by the time the click lands. The router still awaits `lazy` and still
@@ -231,6 +250,13 @@ registerPagePrefetch("/", landingPage, { exact: true });
 registerPagePrefetch("/collection/", collectionLanding);
 registerPagePrefetch("/trash", trashCollectionLanding);
 registerPagePrefetch("/browse", browsePage("BrowseModels"));
+
+// No link points at a modal, so hovering never says one is wanted. These are
+// fetched only in the background, where the point is that a tab which outlives a
+// deploy can still open them.
+registerBackgroundPagePrefetch(dashboardMoveModal);
+registerBackgroundPagePrefetch(dashboardCopyModal);
+registerBackgroundPagePrefetch(dashboardArchiveModal);
 
 export const getRoutes = (store: AppStore): RouteObject[] => [
   {
@@ -360,6 +386,7 @@ export const getRoutes = (store: AppStore): RouteObject[] => [
                       {modalRoute(
                         "move-questions-dashboard",
                         MoveQuestionsIntoDashboardsModal,
+                        { noWrap: true },
                       )}
                       {PLUGIN_COLLECTIONS.cleanUpRoute}
                     </>,
@@ -390,39 +417,15 @@ export const getRoutes = (store: AppStore): RouteObject[] => [
                 path: "dashboard/:slug",
                 lazy: dashboardApp,
                 children: [
-                  lazyModalRoute(
-                    "move",
-                    () =>
-                      import(
-                        /* webpackChunkName: "dashboard-move-modal" */ "metabase/dashboard/components/DashboardMoveModal"
-                      ).then(
-                        ({ DashboardMoveModalConnected }) =>
-                          DashboardMoveModalConnected,
-                      ),
-                    { noWrap: true },
-                  ),
-                  lazyModalRoute(
-                    "copy",
-                    () =>
-                      import(
-                        /* webpackChunkName: "dashboard-copy-modal" */ "metabase/dashboard/components/DashboardCopyModal"
-                      ).then(
-                        ({ DashboardCopyModalConnected }) =>
-                          DashboardCopyModalConnected,
-                      ),
-                    { noWrap: true },
-                  ),
-                  lazyModalRoute(
-                    "archive",
-                    () =>
-                      import(
-                        /* webpackChunkName: "dashboard-archive-modal" */ "metabase/dashboard/containers/ArchiveDashboardModal"
-                      ).then(
-                        ({ ArchiveDashboardModalConnected }) =>
-                          ArchiveDashboardModalConnected,
-                      ),
-                    { noWrap: true },
-                  ),
+                  lazyModalRoute("move", dashboardMoveModal, {
+                    noWrap: true,
+                  }),
+                  lazyModalRoute("copy", dashboardCopyModal, {
+                    noWrap: true,
+                  }),
+                  lazyModalRoute("archive", dashboardArchiveModal, {
+                    noWrap: true,
+                  }),
                 ],
               },
 
@@ -444,8 +447,7 @@ export const getRoutes = (store: AppStore): RouteObject[] => [
                   { index: true, lazy: queryBuilder },
                   { path: "notebook", lazy: queryBuilder },
                   { path: "ask", lazy: metabotQueryBuilder },
-                  // Explorations are intentionally disabled on the v64 release branch. do not uncomment this
-                  // ...toRouteObjects(getExplorationsRoutes()),
+                  ...toRouteObjects(getExplorationsRoutes()),
                   { path: ":slug", lazy: queryBuilder },
                   { path: ":slug/notebook", lazy: queryBuilder },
                   { path: ":slug/metabot", lazy: queryBuilder },

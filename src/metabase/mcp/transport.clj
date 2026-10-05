@@ -25,7 +25,6 @@
    [metabase.server.streaming-response :as streaming-response]
    [metabase.system.core :as system]
    [metabase.util :as u]
-   [metabase.util.json :as json]
    [metabase.util.log :as log]
    [throttle.core :as throttle])
   (:import
@@ -168,18 +167,18 @@
   "Format a sequence of JSON-RPC messages as SSE event text."
   [messages]
   (str/join (for [message messages]
-              (str "event: message\ndata: " (json/encode message) "\n\n"))))
+              (str "event: message\ndata: " (message/json-text message) "\n\n"))))
 
 ;;; -------------------------------------------------- Responses ---------------------------------------------------
 
 (defn- json-response
-  "Build a Ring response with a JSON-encoded `body`."
+  "Build a Ring response with `body` as [[message/json-text]]."
   ([status body]
    (json-response status body nil))
   ([status body extra-headers]
    {:status  status
     :headers (merge {"Content-Type" "application/json"} extra-headers)
-    :body    (json/encode body)}))
+    :body    (message/json-text body)}))
 
 (defn- sse-response
   "Return a plain Ring response with SSE-formatted body for POST requests."

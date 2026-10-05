@@ -1,2 +1,9 @@
+version: 1
 name: Synced App
+slug: synced-app
 path: ./dist/index.js
+entity_id: 4vxutiAe703DZgttXwORO
+serdes/meta:
+- model: DataApp
+  id: 4vxutiAe703DZgttXwORO
+  label: synced-app

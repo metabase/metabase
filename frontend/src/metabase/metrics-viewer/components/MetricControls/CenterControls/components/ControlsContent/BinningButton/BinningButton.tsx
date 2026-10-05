@@ -74,13 +74,10 @@ export function BinningButton({
       <Popover.Target>
         <Button
           className={S.controlButton}
-          h="2rem"
-          fw={400}
-          py={0}
           px="lg"
           bdrs="sm"
           variant="subtle"
-          color="text-primary"
+          color="neutral"
           onClick={() => setIsOpen(!isOpen)}
         >
           {displayLabel}

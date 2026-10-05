@@ -1,16 +1,18 @@
 import {
   getUser,
   getUserIsAdmin,
-  getUserIsAnalyst,
+  getUserIsEntitledAnalyst,
 } from "metabase/current-user";
 import type { State } from "metabase/redux/store";
 import { isWithinIframe } from "metabase/utils/iframe";
 
+// Like Data Studio, diagnostics come with the Data Analyst role rather than a
+// permissions graph, so they pause while the plan lacks the feature.
 export function canAccessMonitorDiagnostics(state: State) {
   if (isWithinIframe()) {
     return false;
   }
-  return getUserIsAdmin(state) || getUserIsAnalyst(state);
+  return getUserIsAdmin(state) || getUserIsEntitledAnalyst(state);
 }
 
 export function canAccessMonitoringTools(state: State) {

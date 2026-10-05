@@ -7,6 +7,7 @@
    [metabase.api.common :as api]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.permissions.core :as perms]
+   [metabase.premium-features.core :as premium-features]
    [metabase.users.schema :as users.schema]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
@@ -49,6 +50,14 @@
                                       [:= :p.perm_type "perms/manage-table-metadata"]
                                       [:= :p.perm_value "yes"]]}])
 
+(defn- data-studio-access-clauses
+  "The disjuncts, any one of which grants a user access to Data Studio."
+  []
+  (cond-> [:core_user.is_superuser
+           (table-metadata-perms-exist-clause)]
+    ;; Data Studio entry pauses on downgrade, so membership only counts while the feature is available
+    (premium-features/enable-advanced-permissions?) (conj :core_user.is_data_analyst)))
+
 (defn- tenant-clause
   "Honeysql clause restricting `:tenant_id`: `tenant-filter` is a tenant id to restrict to, `:all` for no
   restriction, `:external` for any non-nil tenant, or nil for no tenant (internal users)."
@@ -82,15 +91,10 @@
     (some? is-data-analyst?)                (sql.helpers/where (if is-data-analyst?
                                                                  :core_user.is_data_analyst
                                                                  [:not :core_user.is_data_analyst]))
-    (some? can-access-data-studio?)         (sql.helpers/where (if can-access-data-studio?
-                                                                 [:or
-                                                                  :core_user.is_data_analyst
-                                                                  :core_user.is_superuser
-                                                                  (table-metadata-perms-exist-clause)]
-                                                                 [:and
-                                                                  [:not :core_user.is_data_analyst]
-                                                                  [:not :core_user.is_superuser]
-                                                                  [:not (table-metadata-perms-exist-clause)]]))
+    (some? can-access-data-studio?)         (sql.helpers/where (let [clauses (data-studio-access-clauses)]
+                                                                 (if can-access-data-studio?
+                                                                   (into [:or] clauses)
+                                                                   (into [:and] (map #(vector :not %)) clauses))))
     (some? group-ids)                       (sql.helpers/right-join
                                              :permissions_group_membership
                                              [:= :core_user.id :permissions_group_membership.user_id])

@@ -5,6 +5,7 @@
    [metabase.activity-feed.core :as activity-feed]
    [metabase.activity-feed.models.recent-views :as recent-views]
    [metabase.mcp.v2.message :as message]
+   [metabase.mcp.v2.test-util :as v2.tu]
    [metabase.mcp.v2.tools.search :as tools.search]
    [metabase.metabot.tools.search :as metabot.search]
    [metabase.permissions.core :as perms]
@@ -131,7 +132,7 @@
   (testing "GHY-4137: filtering tables by a real collection_id requires the Library feature; on an
             instance without it the combination is a teaching error, but \"root\" stays inert"
     (mt/with-premium-features #{}
-      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"requires the Library feature"
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"requires the semantic layer feature"
                             (validate-filters! {:type ["table"] :collection_id "someEntityId01234567_"}))
           "no Library feature + real collection id: error")
       (is (some? (validate-filters! {:type ["table"] :collection_id "root"}))
@@ -241,7 +242,7 @@
       (let [{:keys [types disclosures]} (validate-filters! {:collection_id "someEntityId01234567_"})]
         (is (not (contains? (set types) "table"))
             "table is narrowed out, not left in for the engine to drop quietly")
-        (is (some #(re-find #"Library feature" %) disclosures)
+        (is (some #(re-find #"semantic layer feature" %) disclosures)
             "and the caller is told why")
         (is (not (contains? (set types) "transform"))
             "transform has no collection in the index, so the engine drops it from a
@@ -253,7 +254,7 @@
       (mt/with-premium-features #{:library}
         (let [{:keys [types disclosures]} (validate-filters! {:collection_id "someEntityId01234567_"})]
           (is (contains? (set types) "table"))
-          (is (not (some #(re-find #"Library feature" %) disclosures)))
+          (is (not (some #(re-find #"semantic layer feature" %) disclosures)))
           (is (not (contains? (set types) "transform"))
               "the Library feature says nothing about transforms — they stay narrowed"))))
     (testing "\"root\" is inert — it scopes nothing, so it must not trip the table narrowing"
@@ -544,7 +545,7 @@
             (testing "the tool response marks the total as a floor — \"at least\", not an exact count"
               (let [content (tools.search/search-tool {:recent true :limit 10}
                                                       {:token-scopes #{"agent:content:read"}})
-                    text    (-> content :content first :text)]
+                    text    (-> content :content first :text v2.tu/strip-data-boundary)]
                 (is (re-find (re-pattern (str "\"total\":" cap)) text))
                 (is (re-find (re-pattern (str "Returned 10 of at least " cap)) text)
                     "the steering line must not assert the total is exact — this user viewed 21 cards")))))))))
@@ -574,7 +575,7 @@
               (activity-feed/update-users-recent-views! uid :model/Card id :view))
             ;; No :limit passed — exercises the tool's own default (20), matching the cap exactly.
             (let [content (tools.search/search-tool {:recent true} {:token-scopes #{"agent:content:read"}})
-                  text    (-> content :content first :text)]
+                  text    (-> content :content first :text v2.tu/strip-data-boundary)]
               (is (re-find (re-pattern (str "\"returned\":" cap ",\"total\":" cap)) text)
                   "sanity: the page is arithmetically full at the default limit")
               (is (re-find (re-pattern (str "Returned " cap " of at least " cap)) text)
@@ -604,7 +605,7 @@
           (mt/with-current-user (mt/user->id :rasta)
             (let [content (tools.search/search-tool {:term_queries ["I5"] :created_by "me"}
                                                     {:token-scopes #{"agent:content:read"}})
-                  text    (-> content :content first :text)]
+                  text    (-> content :content first :text v2.tu/strip-data-boundary)]
               (is (not (:isError content)) "the call must not 400")
               (is (= #{"action" "dashboard" "document" "measure" "metric" "model" "question"}
                      (set @captured-entity-types))
@@ -621,7 +622,7 @@
             (mt/with-current-user (mt/user->id :crowberto)
               (let [content (tools.search/search-tool {:term_queries ["I5"] :collection_id coll-id}
                                                       {:token-scopes #{"agent:content:read"}})
-                    text    (-> content :content first :text)]
+                    text    (-> content :content first :text v2.tu/strip-data-boundary)]
                 (is (not (:isError content)) "the call must not 400")
                 (is (not (contains? (set @captured-entity-types) "database")))
                 (is (not (contains? (set @captured-entity-types) "measure")))
@@ -635,7 +636,7 @@
           (mt/with-current-user (mt/user->id :crowberto)
             (let [content (tools.search/search-tool {:term_queries ["x"] :archived true}
                                                     {:token-scopes #{"agent:content:read"}})
-                  text    (-> content :content first :text)]
+                  text    (-> content :content first :text v2.tu/strip-data-boundary)]
               (is (not (:isError content)) "the call must not 400")
               (is (not (contains? (set @captured-entity-types) "table")))
               (is (not (contains? (set @captured-entity-types) "database")))

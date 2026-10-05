@@ -14,7 +14,7 @@
 (def Models
   "Schema enumerating bookmarkable models."
   (into [:enum]
-        ["card" "dashboard" "collection" "document"]))
+        ["card" "dashboard" "collection" "document" "exploration"]))
 
 (def BookmarkOrderings
   "Schema for an ordered of bookmark orderings"

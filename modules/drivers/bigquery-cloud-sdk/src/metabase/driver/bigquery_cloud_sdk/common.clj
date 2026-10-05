@@ -13,6 +13,7 @@
 
 (set! *warn-on-reflection* true)
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic ^String *bigquery-timezone-id*
   "BigQuery stores all of it's timestamps in UTC. That timezone can be changed via a SQL function invocation in a
   native query, but that change in timezone is not conveyed through the BigQuery API. In most situations

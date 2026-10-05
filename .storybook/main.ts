@@ -58,6 +58,11 @@ const config: StorybookConfig = {
     name: "@storybook/react-webpack5",
     options: {},
   },
+  build: {
+    test: {
+      disableTreeShaking: false,
+    },
+  },
   typescript: {
     reactDocgen: "react-docgen-typescript",
     reactDocgenTypescriptOptions: {

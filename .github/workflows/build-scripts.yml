@@ -28,7 +28,7 @@ jobs:
         ports:
           - 5432:5432
     steps:
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@v7
     - name: Prepare back-end environment
       uses: ./.github/actions/prepare-backend
     - name: Build embedder plugin
@@ -67,7 +67,7 @@ jobs:
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 40
     steps:
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@v7
     - name: Prepare back-end environment
       timeout-minutes: 5
       uses: ./.github/actions/prepare-backend

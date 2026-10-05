@@ -200,33 +200,19 @@
        [agg-fn conditional-case])
      (perm-type-to-int-inline perm-type required-level)]))
 
-(mu/defn visible-table-filter-with-cte
-  "Returns a map with :with (CTE definitions) and :clause (WHERE clause fragment) for filtering
-   tables visible to the user. Uses a CTE to compute permitted table IDs once rather than using
-   correlated subqueries, which provides better performance for large numbers of tables.
-
-   The returned map can be merged into a query by adding :with to the query's :with vector
-   and using :clause in the WHERE clause.
-
-   Uses UNION ALL to separate table-level and database-level permission lookups, avoiding
-   inefficient BitmapOr scans that occur with OR joins.
-
-   Options:
-     :active-only? - when true, only include active tables in the CTE. Default false.
-     :include-published-via-collection? - when true and the EE :library feature is on, treat
-       published tables in collections the user can read as a source of `:perms/create-queries
-       :query-builder` grants by adding a third UNION ALL branch to the table_permissions CTE.
-       View-data is intentionally not synthesized; it must still come from real data_permissions."
-  [column-or-exp                                    :- ColumnOrExp
-   {:keys [user-id is-superuser? is-data-analyst?] :as user-info} :- UserInfo
-   permission-mapping                               :- PermissionMapping
-   & [{:keys [active-only? include-published-via-collection?]
-       :or {active-only? false include-published-via-collection? false}}] :- [:* VisibleTableFilterWithCteOptions]]
-  ;; Superusers see all tables. Data analysts see all tables when checking manage-table-metadata.
-  (if (or is-superuser?
-          (and is-data-analyst?
-               (contains? permission-mapping :perms/manage-table-metadata)))
-    {:clause [:= [:inline 1] [:inline 1]]}
+(mu/defn- permitted-tables-query-parts :- [:maybe [:map
+                                                   [:branches [:sequential :map]]
+                                                   [:having :any]]]
+  "The pieces of the permitted-table-ids query shared by [[visible-table-filter-with-cte]] and
+  [[visible-table-filter-subquery-clause]]: the UNION ALL `:branches` collecting every permission grant that applies
+  to a table, and the `:having` condition that keeps the tables whose grants satisfy `permission-mapping`. nil when
+  the user sees every table: a superuser, or a data analyst checking manage-table-metadata."
+  [{:keys [user-id is-superuser? is-data-analyst?] :as user-info} :- UserInfo
+   permission-mapping                                              :- PermissionMapping
+   {:keys [active-only? include-published-via-collection?]}        :- [:maybe VisibleTableFilterWithCteOptions]]
+  (when-not (or is-superuser?
+                (and is-data-analyst?
+                     (contains? permission-mapping :perms/manage-table-metadata)))
     (let [perm-types (keys permission-mapping)
           perm-type-filter (into [:or]
                                  (map (fn [pt] [:= :dp.perm_type (h2x/literal pt)])
@@ -241,39 +227,92 @@
           user-groups-clause (user-in-group-clause user-id)
           published-grant-rows (when include-published-via-collection?
                                  (published-tables/published-table-perm-grant-rows
-                                  user-info perm-types active-only?))
-          active-clause (when active-only? [:= :mt.active true])
-          permission-branches (cond-> [;; Table-level permissions (direct grant to table)
-                                       ^:allow-subquery
-                                       {:select [:mt.id :dp.perm_type :dp.perm_value]
-                                        :from   [[:data_permissions :dp]]
-                                        :join   [(table-source) [:= :mt.id :dp.table_id]]
-                                        :where  (into [:and
-                                                       [:not= :dp.table_id nil]
-                                                       user-groups-clause
-                                                       perm-type-filter]
-                                                      (when active-clause [active-clause]))}
-                                       ;; Database-level permissions (applies to all tables in db)
-                                       ^:allow-subquery
-                                       {:select [:mt.id :dp.perm_type :dp.perm_value]
-                                        :from   [[:data_permissions :dp]]
-                                        :join   [(table-source) [:= :mt.db_id :dp.db_id]]
-                                        :where  (into [:and
-                                                       [:= :dp.table_id nil]
-                                                       user-groups-clause
-                                                       perm-type-filter]
-                                                      (when active-clause [active-clause]))}]
-                                published-grant-rows (conj published-grant-rows))]
-      {:with [;; First CTE: collect all permission grants that apply to each table
-              [:table_permissions ^:allow-subquery {:union-all permission-branches}]
-              ;; Second CTE: aggregate and filter by permission requirements
-              [:permitted_tables
-               ^:allow-subquery
-               {:select   [:dp.id]
-                :from     [[:table_permissions :dp]]
-                :group-by [:dp.id]
-                :having   having-conditions}]]
-       :clause [:in column-or-exp ^:allow-subquery {:select [:id] :from [:permitted_tables]}]})))
+                                  user-info perm-types (boolean active-only?)))
+          active-clause (when active-only? [:= :mt.active true])]
+      {:branches (cond-> [;; Table-level permissions (direct grant to table)
+                          ^:allow-subquery
+                          {:select [:mt.id :dp.perm_type :dp.perm_value]
+                           :from   [[:data_permissions :dp]]
+                           :join   [(table-source) [:= :mt.id :dp.table_id]]
+                           :where  (into [:and
+                                          [:not= :dp.table_id nil]
+                                          user-groups-clause
+                                          perm-type-filter]
+                                         (when active-clause [active-clause]))}
+                          ;; Database-level permissions (applies to all tables in db)
+                          ^:allow-subquery
+                          {:select [:mt.id :dp.perm_type :dp.perm_value]
+                           :from   [[:data_permissions :dp]]
+                           :join   [(table-source) [:= :mt.db_id :dp.db_id]]
+                           :where  (into [:and
+                                          [:= :dp.table_id nil]
+                                          user-groups-clause
+                                          perm-type-filter]
+                                         (when active-clause [active-clause]))}]
+                   published-grant-rows (conj published-grant-rows))
+       :having   having-conditions})))
+
+(def ^:private every-table-clause
+  "The filter for a user who sees every table."
+  [:= [:inline 1] [:inline 1]])
+
+(mu/defn visible-table-filter-with-cte
+  "Returns a map with :with (CTE definitions) and :clause (WHERE clause fragment) for filtering
+   tables visible to the user. Uses a CTE to compute permitted table IDs once rather than using
+   correlated subqueries, which provides better performance for large numbers of tables.
+
+   The returned map can be merged into a query by adding :with to the query's :with vector
+   and using :clause in the WHERE clause. See [[visible-table-filter-subquery-clause]] when the
+   filter has to live inside a derived table or a UNION ALL branch.
+
+   Uses UNION ALL to separate table-level and database-level permission lookups, avoiding
+   inefficient BitmapOr scans that occur with OR joins.
+
+   Options:
+     :active-only? - when true, only include active tables in the CTE. Default false.
+     :include-published-via-collection? - when true and the EE :library feature is on, treat
+       published tables in collections the user can read as a source of `:perms/create-queries
+       :query-builder` grants by adding a third UNION ALL branch to the table_permissions CTE.
+       View-data is intentionally not synthesized; it must still come from real data_permissions."
+  [column-or-exp      :- ColumnOrExp
+   user-info          :- UserInfo
+   permission-mapping :- PermissionMapping
+   & [opts]           :- [:* VisibleTableFilterWithCteOptions]]
+  (if-let [{:keys [branches having]} (permitted-tables-query-parts user-info permission-mapping opts)]
+    {:with [;; First CTE: collect all permission grants that apply to each table
+            [:table_permissions ^:allow-subquery {:union-all branches}]
+            ;; Second CTE: aggregate and filter by permission requirements
+            [:permitted_tables
+             ^:allow-subquery
+             {:select   [:dp.id]
+              :from     [[:table_permissions :dp]]
+              :group-by [:dp.id]
+              :having   having}]]
+     :clause [:in column-or-exp ^:allow-subquery {:select [:id] :from [:permitted_tables]}]}
+    ;; Superusers see all tables. Data analysts see all tables when checking manage-table-metadata.
+    {:clause every-table-clause}))
+
+(mu/defn visible-table-filter-subquery-clause
+  "The filter of [[visible-table-filter-with-cte]] as one WHERE clause, with the permitted-table-ids query inlined
+   as an uncorrelated subquery instead of CTEs. Use this where a CTE is not valid, such as a UNION ALL branch or an
+   EXISTS probe. The subquery is uncorrelated, so the app DB still evaluates it once per statement.
+
+   Hoisting the CTEs to the top level of the statement does not work on H2 2.1.214, the pinned app DB version: a
+   non-recursive CTE that contains bound parameters (here, the perm_value strings in the HAVING) returns no rows
+   when it is referenced from inside a derived table. H2 fixed this in 2.3.230, but that version cannot open a
+   2.1.214 database file, so upgrading is not a quick fix.
+
+   Takes the same options as [[visible-table-filter-with-cte]]."
+  [column-or-exp      :- ColumnOrExp
+   user-info          :- UserInfo
+   permission-mapping :- PermissionMapping
+   & [opts]           :- [:* VisibleTableFilterWithCteOptions]]
+  (if-let [{:keys [branches having]} (permitted-tables-query-parts user-info permission-mapping opts)]
+    [:in column-or-exp ^:allow-subquery {:select   [:dp.id]
+                                         :from     [[^:allow-subquery {:union-all branches} :dp]]
+                                         :group-by [:dp.id]
+                                         :having   having}]
+    every-table-clause))
 
 (mu/defn select-tables-and-groups-granting-perm
   "Selects table.id and the group.id of all permissions groups that give the provided user the provided permission level or a
