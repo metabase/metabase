@@ -218,13 +218,11 @@ describe("issue 20393", () => {
   }
 
   beforeEach(() => {
-    cy.intercept("POST", "/api/dashboard/*/public_link").as("publicLink");
-
     H.restore();
     cy.signInAsAdmin();
   });
 
-  it("should show public dashboards with nested cards mapped to parameters (metabase#20393)", () => {
+  it("should create a public link and show public dashboards with nested cards mapped to parameters (metabase#20393)", () => {
     createDashboardWithNestedCard();
 
     H.editDashboard();
@@ -239,12 +237,20 @@ describe("issue 20393", () => {
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Save").click();
 
-    // open the sharing modal and enable sharing
     H.openNewPublicLinkDropdown("dashboard");
 
-    // navigate to the public dashboard link
-    cy.wait("@publicLink").then(({ response: { body } }) => {
-      const { uuid } = body;
+    cy.get("@uuid").then((uuid) => {
+      expect(uuid).not.to.be.null;
+
+      cy.findByTestId("public-link-input").should("be.visible");
+      cy.findByTestId("public-link-input").should(
+        "not.have.attr",
+        "placeholder",
+        "Loading…",
+      );
+      cy.findByTestId("public-link-input").should(($input) => {
+        expect($input.val()).to.match(new RegExp(`/public/dashboard/${uuid}$`));
+      });
 
       cy.signOut();
       cy.visit(`/public/dashboard/${uuid}`);

@@ -53,9 +53,6 @@ const dashboardDetails = {
   tabs: [tab1, tab2],
 };
 
-const PUBLIC_DASHBOARD_REGEX =
-  /\/public\/dashboard\/[0-9a-fA-F]{8}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{12}$/;
-
 const COUNT_ALL = "200";
 const COUNT_DOOHICKEY = "42";
 
@@ -65,8 +62,6 @@ const USERS = {
 };
 
 const prepareDashboard = () => {
-  cy.intercept("/api/dashboard/*/public_link").as("publicLink");
-
   H.createNativeQuestionAndDashboard({
     questionDetails,
     dashboardDetails,
@@ -108,26 +103,6 @@ describe("scenarios > public > dashboard", () => {
     cy.signInAsAdmin();
 
     prepareDashboard();
-  });
-
-  it("should allow users to create public dashboards", () => {
-    H.visitDashboard("@dashboardId");
-
-    H.openNewPublicLinkDropdown("dashboard");
-
-    cy.wait("@publicLink").then(({ response }) => {
-      expect(response.body.uuid).not.to.be.null;
-
-      cy.findByTestId("public-link-input").should("be.visible");
-      cy.findByTestId("public-link-input").should(
-        "not.have.attr",
-        "placeholder",
-        "Loading…",
-      );
-      cy.findByTestId("public-link-input").should(($input) => {
-        expect($input.val()).to.match(PUBLIC_DASHBOARD_REGEX);
-      });
-    });
   });
 
   Object.entries(USERS).map(([userType, setUser]) =>
