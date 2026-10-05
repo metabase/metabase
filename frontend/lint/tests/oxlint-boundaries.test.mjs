@@ -1,7 +1,9 @@
 import assert from "node:assert/strict";
-import path from "node:path";
 import { createRequire } from "node:module";
+import path from "node:path";
 import test from "node:test";
+
+import { ESLint } from "eslint";
 
 import {
   elements,
@@ -13,6 +15,7 @@ import {
   createBoundaryChecker,
   createBoundaryPlugin,
 } from "../oxlint-boundaries.mjs";
+import { ruleAliases } from "../oxlint/rule-aliases.mjs";
 
 const root = path.resolve(import.meta.dirname, "../../..");
 
@@ -21,6 +24,27 @@ const checker = createBoundaryChecker({
   elements,
   rules: enforcedRules,
   rootPath: root,
+});
+
+test("should accept aliased suppressions in the standalone boundary command", async () => {
+  const eslint = new ESLint({
+    cwd: root,
+    overrideConfigFile: path.join(root, "eslint.config.module-boundaries.mjs"),
+  });
+  const suppression = `/* eslint-disable ${Object.values(ruleAliases).join(", ")} */`;
+  const [valid] = await eslint.lintText(`${suppression}\nconst unused = 1;`, {
+    filePath: "frontend/src/metabase/dayjs/index.ts",
+  });
+  assert.deepEqual(valid.messages, []);
+
+  const [invalid] = await eslint.lintText(
+    `${suppression}\nimport "metabase/ui";`,
+    { filePath: "frontend/src/metabase/dayjs/index.ts" },
+  );
+  assert.deepEqual(
+    invalid.messages.map((message) => message.ruleId),
+    ["boundaries/element-types"],
+  );
 });
 
 test("should classify full paths before folders, including dot directories", () => {
