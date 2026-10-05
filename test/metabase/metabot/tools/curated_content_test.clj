@@ -253,6 +253,43 @@
             (testing "and queryable as a source card"
               (is (not (rejected?))))))))))
 
+(deftest curated-question-read-as-metric-stays-within-its-results-test
+  (testing "a verified question named where a metric is expected exposes its results, as it does through its own
+            URI, not the raw tables its definition joins: metric/{id}/dimensions must not offer REVIEWS' columns as
+            join-required dimensions when construct_notebook_query rejects that join"
+    (mt/with-current-user (mt/user->id :crowberto)
+      (mt/with-temp [:model/Card {question-id :id} {:type          :question
+                                                    :name          "verified orders with reviews count"
+                                                    :dataset_query (count-metric-query
+                                                                    (orders-joined-query :reviews :product_id :product_id))}
+                     :model/Metabot {metabot-id :entity_id} {:name "curated metabot" :use_verified_content true}]
+        (verify-card! question-id)
+        (let [dimensions (fn [metabot-id profile-id]
+                           (get-in (first (read-uris metabot-id profile-id
+                                                     (str "metabase://metric/" question-id "/dimensions")))
+                                   [:content :structured-output]))]
+          (testing "the curated-only Metabot doesn't"
+            (let [so (dimensions metabot-id :internal)]
+              (is (map? so))
+              (is (nil? (:join-required-dimensions so))))))))))
+
+(deftest inactive-table-reads-as-missing-test
+  (testing "a deactivated table reads as missing, as it does for the unrestricted Metabot, not as uncurated"
+    (mt/with-current-user (mt/user->id :crowberto)
+      (mt/with-temp [:model/Table {inactive :id} {:db_id (mt/id) :name "dropped_raw_table" :active false}
+                     :model/Metabot {metabot-id :entity_id} {:name "curated metabot" :use_verified_content true}]
+        (let [uri (str "metabase://table/" inactive)]
+          (testing "read_resource"
+            (let [[resource] (read-uris metabot-id :internal uri)]
+              (is (some? (:error resource)))
+              (is (not (denied? resource)))
+              (is (= (:error (first (read-uris nil nil uri))) (:error resource)))))
+          (testing "list_available_fields"
+            (is (not-any? #(str/includes? % "only uses curated content")
+                          (as-metabot metabot-id :internal
+                                      #(:errors (:structured-output
+                                                 (metadata-tools/get-metadata {:table-ids [inactive]}))))))))))))
+
 (deftest read-resource-curated-only-recents-test
   (testing "recent items (which carry keyword models) are filtered like any other list"
     (mt/with-current-user (mt/user->id :crowberto)

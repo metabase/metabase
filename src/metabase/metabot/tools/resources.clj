@@ -499,9 +499,10 @@
 (defn check-table-resource-database
   "Require that `table-id`'s backing database is addressable as a Metabot resource (see
   [[check-resource-database]]). Exported for [[metabase.metabot.tools.metadata]], which needs the
-  same guard for the `get_field_values` tool."
+  same guard for the `get_field_values` tool. An inactive table is missing, as every handler behind
+  this check treats it, so it reads as missing rather than as uncurated."
   [table-id]
-  (when-let [table (api/read-check :model/Table table-id)]
+  (when-let [table (metabot.tools.u/get-table table-id :db_id)]
     (check-resource-database (:db_id table))))
 
 (defn check-card-resource-database
