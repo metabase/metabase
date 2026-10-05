@@ -306,7 +306,7 @@ describe("scenarios > question > download", () => {
           .should("have.attr", "data-active", "true");
       });
       cy.realPress("Escape");
-      H.popover().should("not.exist");
+      H.popover({ skipVisibilityCheck: true }).should("not.exist");
 
       H.editDashboard();
 
