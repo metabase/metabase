@@ -144,7 +144,11 @@
     (when (and (seq todo) (pos? levels))
       (let [unloaded (remove #(contains? @definitions %) todo)
             loaded   (into {}
-                           (map (fn [id] [id (some->> (lib.metadata/card mp id) :dataset-query (lib/query mp))]))
+                           (map (fn [id]
+                                  ;; only a metric Card is judged by its definition; a reference to a Card of
+                                  ;; another type counts as missing, the way [[curated-metric?]] treats it
+                                  (let [{:keys [type dataset-query]} (lib.metadata/card mp id)]
+                                    [id (when (= type :metric) (lib/query mp dataset-query))])))
                            unloaded)
             _        (swap! definitions merge loaded)
             nested   (into #{}
@@ -241,12 +245,12 @@
               ["card" id])]))))
 
 (defn curated-metric?
-  "Whether a curated-only Metabot may read the metric Card with `metric-id`: the same judgement
-  [[uncurated-query-sources]] makes for a metric a query uses (see [[metric-ok?]]). False for a missing Card, and
-  for a Card of another type: a question or model is judged by its own curation, never by its definition."
+  "Whether a curated-only Metabot may read the Card with `metric-id` where a metric is expected: the same judgement
+  [[uncurated-query-sources]] makes for a metric a query uses (see [[metric-ok?]]). A curated Card of any type
+  passes on its own curation; only a metric Card is judged by its definition, so an uncurated question or model
+  named here is denied like anywhere else, and a missing Card is."
   [metric-id]
-  (boolean
-   (when-let [{:keys [database_id dataset_query]} (metabot.db/card-of-type metric-id :metric)]
-     (let [mp       (lib-be/application-database-metadata-provider database_id)
-           curated? (fn [model id] (seq (curated-ids [[model id]])))]
-       (metric-ok? curated? metric-id (lib/query mp dataset_query) (metric-context))))))
+  (let [curated?   (fn [model id] (seq (curated-ids [[model id]])))
+        definition (when-let [{:keys [database_id dataset_query]} (metabot.db/card-of-type metric-id :metric)]
+                     (lib/query (lib-be/application-database-metadata-provider database_id) dataset_query))]
+    (boolean (metric-ok? curated? metric-id definition (metric-context)))))

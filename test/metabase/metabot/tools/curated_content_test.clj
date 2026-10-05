@@ -167,6 +167,32 @@
             (testing "a curated metric with a native definition is readable, being curated itself"
               (is (not (denied? (read verified-native-metric)))))))))))
 
+(deftest curated-non-metric-card-through-metric-paths-test
+  (testing "a curated Card named where a metric is expected passes on its own curation, as the unrestricted Metabot
+            reads it through the same paths, and an uncurated question referenced as a metric fails closed"
+    (mt/with-current-user (mt/user->id :crowberto)
+      (mt/with-temp [:model/Card {model-id :id} {:type :model :name "verified model" :dataset_query (orders-query)}
+                     :model/Card {question-id :id} {:type :question :name "plain question"
+                                                    :dataset_query (orders-query)}
+                     :model/Metabot {metabot-id :entity_id} {:name "curated metabot" :use_verified_content true}]
+        (verify-card! model-id)
+        (testing "read_resource metric URI"
+          (is (not (denied? (first (read-uris metabot-id :internal (str "metabase://metric/" model-id)))))))
+        (testing "list_available_fields metric_ids"
+          (is (not-any? #(str/includes? % "only uses curated content")
+                        (as-metabot metabot-id :internal
+                                    #(:errors (:structured-output
+                                               (metadata-tools/get-metadata {:metric-ids [model-id]})))))))
+        (testing "a question referenced as a metric in a query is judged as missing, not by its definition"
+          (mt/with-temp-vals-in-db :model/Table (mt/id :orders) {:is_published true :data_layer :final}
+            (is (= [["card" question-id]]
+                   (curation/uncurated-query-sources
+                    (lib/query (mt/metadata-provider)
+                               {:database (mt/id)
+                                :type     :query
+                                :query    {:source-table (mt/id :orders)
+                                           :aggregation  [["metric" question-id]]}}))))))))))
+
 (deftest read-resource-curated-only-recents-test
   (testing "recent items (which carry keyword models) are filtered like any other list"
     (mt/with-current-user (mt/user->id :crowberto)
