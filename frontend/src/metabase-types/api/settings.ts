@@ -5,7 +5,7 @@ import type { DashboardId } from "./dashboard";
 import type { DatabaseId } from "./database";
 import type { SdkIframeEmbedSetupTheme } from "./embedding-theme";
 import type { CurrencyStyle } from "./formatting";
-import type { GroupId } from "./group";
+import type { GroupMappings } from "./group";
 import type { MetabotLimitPeriod, MetabotLimitType } from "./metabot";
 import type { NotificationRecipient } from "./notification";
 import type { UserId } from "./user";
@@ -250,7 +250,6 @@ export type GdrivePayload = {
   error?: string;
 };
 
-/* eslint-disable-next-line @typescript-eslint/no-unused-vars -- used for types */
 const tokenStatusFeatures = [
   "advanced-config",
   "advanced-permissions",
@@ -631,7 +630,7 @@ interface PublicSettings {
   "ldap-attribute-lastname": string | null;
   "ldap-group-sync": boolean;
   "ldap-group-base": string | null;
-  "ldap-group-mappings": Record<string /*ldap group name */, GroupId[]> | null;
+  "ldap-group-mappings": GroupMappings | null;
   "ldap-group-membership-filter"?: string | null;
   "ldap-user-provisioning-enabled?": boolean;
   "oidc-user-provisioning-enabled?": boolean;
@@ -813,6 +812,8 @@ export interface EnterpriseSettings extends Settings {
   "jwt-group-sync": boolean | null;
   "oidc-enabled": boolean;
   "oidc-configured": boolean;
+  // sensitive, so only the admin settings list carries it; pages use /api/ee/sso/oidc
+  "oidc-providers"?: string | null;
   "saml-enabled": boolean;
   "saml-configured": boolean;
   "saml-user-provisioning-enabled?": boolean;
@@ -829,9 +830,8 @@ export interface EnterpriseSettings extends Settings {
   "saml-attribute-tenant": string | null;
   "saml-attribute-group": string | null;
   "saml-group-sync": boolean | null;
-  "saml-group-mappings": Record<string, GroupId[]> | null;
-  "jwt-group-mappings": Record<string, GroupId[]> | null;
-  "oidc-group-mappings": Record<string, GroupId[]> | null;
+  "saml-group-mappings": GroupMappings | null;
+  "jwt-group-mappings": GroupMappings | null;
   "database-replication-enabled": boolean | null;
   "database-replication-connections"?: DatabaseReplicationConnections | null;
   "embedding-hub-test-embed-snippet-created": boolean;

@@ -75,9 +75,9 @@ import {
   getIsEditing,
 } from "metabase/dashboard/selectors";
 import type { RefreshPeriod } from "metabase/dashboard/types";
+import type { ParameterValues } from "metabase/embedding-sdk/types/dashboard";
 import { EmbeddingEntityContextProvider } from "metabase/embedding/context";
 import EmbedFrameS from "metabase/embedding/theme.module.css";
-import type { ParameterValues } from "metabase/embedding-sdk/types/dashboard";
 import { useSelector } from "metabase/redux";
 import { resetErrorPage, setErrorPage } from "metabase/redux/app";
 import { dismissAllUndo } from "metabase/redux/undo";

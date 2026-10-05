@@ -161,7 +161,12 @@
    {:type          "deepseek"
     :label         (deferred-tru "DeepSeek")
     :default-model "deepseek-v4-pro"
-    :mini-model    "deepseek-v4-flash"
+    :mini-model    "deepseek-flash"
+    ;; Ids of retired models, each mapped to the model that now serves it
+    ;; (https://api-docs.deepseek.com/quick_start/pricing). Saved selections may still name them, and they read as
+    ;; the successor. Treat an entry as permanent: nothing rewrites a value pinned by an environment variable, and a
+    ;; stored value converges only when the setting is next written.
+    :retired-models {"deepseek-v4-flash" "deepseek-flash"}
     :fields        [{:key         :api-key
                      :label       (deferred-tru "API key")
                      :type        :password
@@ -312,6 +317,8 @@
     :label         (deferred-tru "Amazon Bedrock")
     :default-model "anthropic.claude-opus-4-8"
     :mini-model    "anthropic.claude-haiku-4-5"
+    ;; A connection with a model ID serves that model instead of the catalog.
+    :model-fields  [:model-id]
     ;; Both keys together select explicit credentials, neither selects the AWS default credentials chain, and one
     ;; without the other authenticates nothing. A session token only extends the pair.
     :requires      {:access-key-id     [:secret-access-key]
@@ -336,6 +343,11 @@
                      :type    :select
                      :options aws-region-options
                      :default "us-east-1"}
+                    {:key         :model-id
+                     :label       (deferred-tru "Model ID")
+                     :type        :text
+                     :placeholder "global.anthropic.claude-sonnet-4-6"
+                     :help        (deferred-tru "Optional. Use an inference profile, or a model that isn''t listed for this region, by its ID or ARN.")}
                     {:key       :session-token
                      :label     (deferred-tru "Session token")
                      :type      :password

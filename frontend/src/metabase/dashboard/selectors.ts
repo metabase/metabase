@@ -6,10 +6,10 @@ import {
   DASHBOARD_SLOW_TIMEOUT,
   SIDEBAR_NAME,
 } from "metabase/dashboard/constants";
-import { getEmbedOptions } from "metabase/embedding/interactive-embedding";
-import { getIsWebApp } from "metabase/embedding/selectors";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import type { SdkSharedStoreState } from "metabase/embedding-sdk/types/store";
+import { getEmbedOptions } from "metabase/embedding/interactive-embedding";
+import { getIsWebApp } from "metabase/embedding/selectors";
 import {
   getShallowDatabases,
   selectQuestionFromCardBuilder,
