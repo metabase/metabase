@@ -12,17 +12,68 @@ type AdminRequest = {
   body?: unknown;
 };
 
-async function send(url: string, init: RequestInit) {
+export type BackendRequest = AdminRequest & {
+  /** Sent as `X-Metabase-Session`; omit to make the request unauthenticated */
+  sessionId?: string;
+  /** Like `cy.request`: when false, a non-2xx status is returned rather than thrown */
+  failOnStatusCode?: boolean;
+};
+
+export type BackendResponse<TBody = unknown> = {
+  status: number;
+  body: TBody;
+  /** The `Set-Cookie` cookies of the response, by name */
+  cookies: Record<string, string>;
+};
+
+function parseBody(text: string) {
+  try {
+    return text ? JSON.parse(text) : null;
+  } catch {
+    return text;
+  }
+}
+
+function parseCookies(headers: Headers) {
+  return Object.fromEntries(
+    headers.getSetCookie().map((cookie) => {
+      const [pair] = cookie.split(";");
+      const separator = pair.indexOf("=");
+      return [pair.slice(0, separator), pair.slice(separator + 1)];
+    }),
+  );
+}
+
+/**
+  Makes a request from Node rather than the browser, so it neither reads nor
+  changes the browser's cookies. Redirects are not followed.
+ */
+export async function backendRequest<TBody = unknown>({
+  method = "GET",
+  url,
+  body,
+  sessionId,
+  failOnStatusCode = true,
+}: BackendRequest): Promise<BackendResponse<TBody>> {
   const response = await fetch(`${BASE_URL}${url}`, {
-    ...init,
-    headers: { "Content-Type": "application/json", ...init.headers },
+    method,
+    redirect: "manual",
+    headers: {
+      "Content-Type": "application/json",
+      ...(sessionId ? { "X-Metabase-Session": sessionId } : {}),
+    },
+    body: body === undefined ? undefined : JSON.stringify(body),
   });
   const text = await response.text();
 
-  if (!response.ok) {
-    throw new Error(`${init.method} ${url} → ${response.status}: ${text}`);
+  if (failOnStatusCode && !response.ok) {
+    throw new Error(`${method} ${url} → ${response.status}: ${text}`);
   }
-  return text ? JSON.parse(text) : null;
+  return {
+    status: response.status,
+    body: parseBody(text),
+    cookies: parseCookies(response.headers),
+  };
 }
 
 function cachedAdminSession(): string | undefined {
@@ -37,30 +88,24 @@ function cachedAdminSession(): string | undefined {
 
 async function freshAdminSession(): Promise<string | undefined> {
   const { email: username, password } = USERS.admin;
-  const { id } = await send("/api/session", {
+  const { body } = await backendRequest<{ id?: string } | null>({
     method: "POST",
-    body: JSON.stringify({ username, password }),
+    url: "/api/session",
+    body: { username, password },
   });
-  return id;
+  return body?.id;
 }
 
 /**
   Acts as the admin without touching the browser's cookies
  */
-export async function requestAsAdmin({
-  method = "GET",
-  url,
-  body,
-}: AdminRequest) {
+export async function requestAsAdmin(request: AdminRequest) {
   const sessionId = cachedAdminSession() ?? (await freshAdminSession());
 
   if (!sessionId) {
     throw new Error("Could not resolve an admin session");
   }
 
-  return send(url, {
-    method,
-    headers: { "X-Metabase-Session": sessionId },
-    body: body === undefined ? undefined : JSON.stringify(body),
-  });
+  const { body } = await backendRequest({ ...request, sessionId });
+  return body;
 }
