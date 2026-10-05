@@ -13,23 +13,21 @@ concurrency:
 env:
   CI_CONDUCTOR_BASE_URL: ${{ vars.CI_CONDUCTOR_BASE_URL }}
   CI_CONDUCTOR_WEBHOOK_SECRET: ${{ secrets.CI_CONDUCTOR_WEBHOOK_SECRET }}
+  # Read by the test-driver action. This suite is only ever dispatched by test.profile-backend.yml,
+  # so a dispatch is a profiling run.
+  PROFILE_TESTS: ${{ github.event_name == 'workflow_dispatch' }}
 
 jobs:
   # A CI run is a smoke run -- Postgres Latest alone, to keep PRs cheap -- unless the whole suite is
-  # forced to run (master, release branches, `ci:run-all`) or profiled. Each job repeats that rule
-  # because a job `if` cannot read a shared value.
+  # forced to run (master, release branches, `ci:run-all`).
   gate:
     uses: ./.github/workflows/test-gate.yml
     with:
-      # A profiling dispatch (test.profile-backend.yml) always runs the suite, so it asks for no
-      # filters: the gate then only checks for a force-cancel.
-      filters: ${{ github.event.inputs.suite == '' && 'backend_all' || '' }}
+      filters: backend_all
 
   semantic-search-tests-h2:
     needs: gate
-    if: >-
-      ${{ needs.gate.outputs.run == 'true'
-      && (needs.gate.outputs.force-run == 'true' || github.event.inputs.suite != '') }}
+    if: ${{ needs.gate.outputs.force-run == 'true' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 40
     strategy:
@@ -74,9 +72,7 @@ jobs:
 
   semantic-search-tests-mariadb:
     needs: gate
-    if: >-
-      ${{ needs.gate.outputs.run == 'true'
-      && (needs.gate.outputs.force-run == 'true' || github.event.inputs.suite != '') }}
+    if: ${{ needs.gate.outputs.force-run == 'true' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 40
     strategy:
@@ -142,9 +138,7 @@ jobs:
 
   semantic-search-tests-mysql:
     needs: gate
-    if: >-
-      ${{ needs.gate.outputs.run == 'true'
-      && (needs.gate.outputs.force-run == 'true' || github.event.inputs.suite != '') }}
+    if: ${{ needs.gate.outputs.force-run == 'true' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 40
     strategy:
@@ -233,7 +227,7 @@ jobs:
             postgres-image: postgres:latest
             pgvector-image: pgvector/pgvector:pg17
         exclude: >-
-          ${{ (needs.gate.outputs.force-run != 'true' && github.event.inputs.suite == '')
+          ${{ needs.gate.outputs.force-run != 'true'
           && fromJSON('[{"version":{"name":"Postgres 14.x with pgvector pg17"}}]')
           || fromJSON('[]') }}
         job:
@@ -289,9 +283,7 @@ jobs:
   # appdb-pgvector-mode round trip (and the URL-independent unit tests) run for real.
   semantic-search-tests-appdb-mode:
     needs: gate
-    if: >-
-      ${{ needs.gate.outputs.run == 'true'
-      && (needs.gate.outputs.force-run == 'true' || github.event.inputs.suite != '') }}
+    if: ${{ needs.gate.outputs.force-run == 'true' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 40
     strategy:

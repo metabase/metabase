@@ -13,14 +13,15 @@ concurrency:
 env:
   CI_CONDUCTOR_BASE_URL: ${{ vars.CI_CONDUCTOR_BASE_URL }}
   CI_CONDUCTOR_WEBHOOK_SECRET: ${{ secrets.CI_CONDUCTOR_WEBHOOK_SECRET }}
+  # Read by the test-driver action. This suite is only ever dispatched by test.profile-backend.yml,
+  # so a dispatch is a profiling run.
+  PROFILE_TESTS: ${{ github.event_name == 'workflow_dispatch' }}
 
 jobs:
   gate:
     uses: ./.github/workflows/test-gate.yml
     with:
-      # A profiling dispatch (test.profile-backend.yml) always runs the suite, so it asks for no
-      # filters: the gate then only checks for a force-cancel.
-      filters: ${{ github.event.inputs.suite == '' && 'backend_all' || '' }}
+      filters: backend_all
 
   app-db-matrix:
     needs: gate

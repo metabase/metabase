@@ -18,12 +18,7 @@ jobs:
   gate:
     uses: ./.github/workflows/test-gate.yml
     with:
-      # A profiling dispatch (test.profile-backend.yml) always runs the suite, so it asks for no
-      # filters: the gate then only checks for a force-cancel.
-      filters: >-
-        ${{ github.event.inputs.suite == ''
-        && 'backend_all project_backend_checks project_migration_checks project_ratchet_checks'
-        || '' }}
+      filters: backend_all project_backend_checks project_migration_checks project_ratchet_checks
 
   # Generated static-viz output can shift without any backend source changing, so the suite follows
   # it too. Only worth probing when nothing else has already decided the suite.
@@ -31,7 +26,7 @@ jobs:
     name: Check whether static-viz files changed
     needs: gate
     if: >-
-      ${{ needs.gate.outputs.verdict == 'defer' && github.event.inputs.suite == ''
+      ${{ needs.gate.outputs.verdict == 'defer'
       && !contains(fromJSON(needs.gate.outputs.matched), 'backend_all') }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 10
@@ -152,8 +147,7 @@ jobs:
     if: &backend-gate >-
       ${{ !cancelled() && needs.gate.result == 'success'
       && needs.static-viz-files-changed.result != 'failure'
-      && (github.event.inputs.suite != ''
-      || contains(fromJSON(needs.gate.outputs.matched), 'backend_all')
+      && (contains(fromJSON(needs.gate.outputs.matched), 'backend_all')
       || needs.static-viz-files-changed.outputs.static_viz == 'true') }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 10
@@ -393,14 +387,14 @@ jobs:
             $BASE :exclude-tags '[:mb/driver-tests ${{ env.__ADDITIONAL_EXCLUDED_TAG__ }}]' ${{ matrix.job.test-args }}
           fi
         env:
-          # Both derived from test.profile-backend.yml, the sole dispatcher; its runs always profile. On a
-          # normal CI run there are no dispatch inputs, so these render `false` and empty and the
+          # Both come from test.profile-backend.yml, the only workflow that dispatches this suite, so a
+          # dispatch is a profiling run. On a normal CI run these render `false` and empty and the
           # leg's own selection stands.
           #
           # ONLY_TESTS replaces the leg's own test selection, so every matrix leg runs the whole
           # list: the partition args no longer apply, and legs that hold none of the named tests run
           # nothing.
-          PROFILE_TESTS: ${{ github.event.inputs.suite != '' }}
+          PROFILE_TESTS: ${{ github.event_name == 'workflow_dispatch' }}
           ONLY_TESTS: ${{ github.event.inputs.tests }}
         # Keep this step continue-on-error because the quarantine logic controls whether it ultimately fails.
         continue-on-error: true

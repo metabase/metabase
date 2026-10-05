@@ -6,14 +6,17 @@ name: Profile Backend
 #
 # The suite workflows below are called unchanged: services, matrix legs, test args and quarantine
 # gating are whatever the normal CI run uses, because they are the same jobs. They declare nothing
-# for this feature -- they read `suite` and `tests` off `github.event.inputs`, which inside a
-# called workflow is this dispatch's payload. Every leg of the suite runs; the drivers suite runs
-# whichever drivers mage would pick for the ref.
+# for this feature beyond treating a `workflow_dispatch` as a profiling run, and reading `tests` off
+# `github.event.inputs`, which inside a called workflow is this dispatch's payload.
 #
-# Renaming an input here means updating every reader -- `grep -rn github.event.inputs .github/`.
-# Nothing enforces that, deliberately: a stale name reads as empty, which runs every leg of the
-# suite unprofiled, on the run you are watching. It cannot affect a normal CI run, where those
-# references are empty either way.
+# The suite is gated like any other run: dispatched on master or a release branch it runs in full;
+# anywhere else it runs only if the ref's diff from master touches the backend, and semantic-search
+# runs its Postgres-latest smoke leg alone.
+#
+# Renaming `tests` means updating its readers -- `grep -rn github.event.inputs.tests .github/`.
+# Nothing enforces that, deliberately: a stale name reads as empty, which profiles each leg's usual
+# set instead of the tests you named, on the run you are watching. It cannot affect a normal CI
+# run, where the reference is empty either way.
 on:
   workflow_dispatch:
     inputs:
