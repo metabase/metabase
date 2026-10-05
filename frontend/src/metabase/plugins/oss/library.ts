@@ -113,6 +113,13 @@ type LibraryPlugin = {
   useGetLibraryCollectionQuery: UseQuery<
     QueryDefinition<void, BaseQueryFn, TagType, GetLibraryCollectionResponse>
   >;
+  /**
+   * The library collections as a tree. Bounded to the library, so the nav sidebar can render its Library section
+   * without reading the whole collection tree.
+   */
+  useGetLibraryTreeQuery: UseQuery<
+    QueryDefinition<void, BaseQueryFn, TagType, Collection[]>
+  >;
   getLibraryCollectionEmptyStateMessages: (type: LibrarySubCollectionType) => {
     title: string;
     description: string;
@@ -155,6 +162,12 @@ const getDefaultPluginLibrary = (): LibraryPlugin => ({
   useGetLibraryCollectionQuery:
     // Unjustified type cast. FIXME
     (() => []) as unknown as LibraryPlugin["useGetLibraryCollectionQuery"],
+  useGetLibraryTreeQuery:
+    // Unjustified type cast. FIXME
+    (() => ({
+      data: undefined,
+      isLoading: false,
+    })) as unknown as LibraryPlugin["useGetLibraryTreeQuery"],
   getLibraryCollectionEmptyStateMessages: () => ({
     title: "",
     description: "",

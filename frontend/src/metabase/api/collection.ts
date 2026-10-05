@@ -11,6 +11,7 @@ import type {
   ListCollectionItemsRequest,
   ListCollectionItemsResponse,
   ListCollectionsRequest,
+  ListCollectionsTreeLazyResponse,
   ListCollectionsTreeRequest,
   MoveCollectionDashboardCandidatesRequest,
   MoveCollectionDashboardCandidatesResult,
@@ -64,6 +65,24 @@ export const collectionApi = Api.injectEndpoints({
       }),
       providesTags: (collections = []) => [
         ...provideCollectionListTags(collections),
+        "collection-tree",
+      ],
+    }),
+    /**
+     * The nav sidebar's view of the tree. Every level is paged, so this comes back wrapped rather than as a bare
+     * array, which is why it is a separate endpoint from `listCollectionsTree`.
+     */
+    listCollectionsTreeLazy: builder.query<
+      ListCollectionsTreeLazyResponse,
+      ListCollectionsTreeRequest
+    >({
+      query: (params) => ({
+        method: "GET",
+        url: "/api/collection/tree",
+        params: { ...params, lazy: true },
+      }),
+      providesTags: (response) => [
+        ...provideCollectionListTags(response?.data ?? []),
         "collection-tree",
       ],
     }),
@@ -227,6 +246,7 @@ export const collectionApi = Api.injectEndpoints({
 export const {
   useListCollectionsQuery,
   useListCollectionsTreeQuery,
+  useListCollectionsTreeLazyQuery,
   useListCollectionItemsQuery,
   useGetCollectionItemsMetadataQuery,
   useGetCollectionQuery,

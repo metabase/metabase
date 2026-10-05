@@ -45,3 +45,9 @@
                                   [:= :collection_id collection-id]
                                   [:= :dashboard_id nil]]
                           :order-by [[:id :desc]]}))
+
+(mu/defn collection-location
+  "The `:id` and `:location` of the Collection with `collection-id`, or `nil`. Just enough of the row to build the
+  ancestor location paths the lazy tree reveals."
+  [collection-id :- [:maybe ::lib.schema.id/collection]]
+  (t2/select-one [:model/Collection :id :location] :id collection-id))
