@@ -21,6 +21,7 @@
    [metabase.metabot.self.openai :as openai]
    [metabase.metabot.self.openrouter :as openrouter]
    [metabase.metabot.self.registry :as registry]
+   [metabase.metabot.self.xai :as xai]
    [metabase.metabot.self.zai :as zai]
    [metabase.metabot.settings :as metabot.settings]
    [metabase.metabot.test-util :as test-util]
@@ -48,6 +49,7 @@
    "moonshot"   #'moonshot/supported-models
    "openai"     #'openai/supported-models
    "openrouter" #'openrouter/supported-models
+   "xai"        #'xai/supported-models
    "zai"        #'zai/supported-models})
 
 (deftest ^:parallel registry-models-are-listable-test
@@ -58,7 +60,10 @@
     (doseq [[provider-type supported] supported-models-by-provider-type]
       (testing provider-type
         (is (contains? @supported (llm.provider/default-model provider-type)))
-        (is (contains? @supported (llm.provider/mini-model provider-type)))))))
+        (is (contains? @supported (llm.provider/mini-model provider-type)))
+        (testing "and a retired model reads as one the picker offers"
+          (doseq [successor (vals (:retired-models (llm.provider/provider-type provider-type)))]
+            (is (contains? @supported successor))))))))
 
 (deftest parse-provider-model-test
   (llm.tu/with-default-connections
@@ -79,6 +84,8 @@
               (#'self/parse-provider-model "moonshot/kimi-k3")))
       (is (=? {:provider "deepseek" :model "deepseek-v4-flash" :ai-proxy? false}
               (#'self/parse-provider-model "deepseek/deepseek-v4-flash")))
+      (is (=? {:provider "xai" :model "grok-4.7" :ai-proxy? false}
+              (#'self/parse-provider-model "xai/grok-4.7")))
       (is (=? {:provider "google" :model "google/gemini-3.5-flash" :ai-proxy? false}
               (#'self/parse-provider-model "google/google/gemini-3.5-flash"))))
     (testing "resolves the provider type, not the admin's name for the connection"
@@ -212,7 +219,7 @@
       (doseq [[model-ref url-part] [["azure/openai/gpt-4.1-mini"                 "/v1/responses"]
                                     ["azure/anthropic/claude-deployment"         "/v1/messages"]
                                     ["google/google/gemini-3.5-flash"            "projects/my-project/locations/global"]
-                                    ["google/anthropic/claude-haiku-4-5@20251001" "/publishers/anthropic/models/claude-haiku-4-5@20251001"]]]
+                                    ["google/anthropic/claude-haiku-4-5@20251001" "/publishers/anthropic/models/claude-haiku-4-5:"]]]
         (testing model-ref
           (let [captured (atom nil)]
             (mt/with-dynamic-fn-redefs [self.core/sse-reducible identity
@@ -1394,6 +1401,58 @@
                 "the provider error message is surfaced, not hidden behind 'no tool call'")
             (is (= "llm-stream-error" (:error-code (ex-data e))))))))))
 
+(deftest call-llm-structured-text-reply-test
+  (llm.tu/with-default-connections
+    (let [schema {:type                 "object"
+                  :properties           {"title" {:type "string"}
+                                         "tags"  {:type "array" :items {:type "string"}}
+                                         "score" {:type "number" :minimum 0 :maximum 1}}
+                  :required             ["title"]
+                  :additionalProperties false}
+          answer {:title "Q2 revenue" :tags ["revenue"] :score 0.5}
+          reply  (fn [text] {:type :text :id "t1" :text text})
+          fenced (fn [json-text] (str "Here you go:\n```json\n" json-text "\n```"))
+          call!  (fn [& parts]
+                   (mt/with-dynamic-fn-redefs [openrouter/openrouter
+                                               (constantly (test-util/mock-llm-response
+                                                            (cons {:type :start :id "m1"} parts)))]
+                     (self/call-llm-structured "openrouter/test-model" [{:role "user" :content "test"}]
+                                               schema 0.3 1024 {:tag "metabot_agent"})))]
+      (testing "a model that answers in text instead of calling the tool has its JSON used"
+        (are [text] (= answer (call! (reply text)))
+          (json/encode answer)
+          (fenced (json/encode answer))))
+      (testing "the last fenced code block that matches the schema is used"
+        (are [text] (= answer (call! (reply text)))
+          (str (fenced (json/encode {:title "Draft"})) "\n" (fenced (json/encode answer)))
+          (str (fenced (json/encode answer)) "\n" (fenced (json/encode {:title 42})))))
+      (testing "a line break the model left unescaped inside a string doesn't stop the JSON from being used"
+        (are [text] (= {:title "Q2 revenue\nby region"} (call! (reply text)))
+          "{\"title\": \"Q2 revenue\nby region\"}"
+          (fenced "{\"title\": \"Q2 revenue\nby region\"}")))
+      (testing "a text reply without JSON matching the schema still fails"
+        (are [text] (thrown-with-msg? clojure.lang.ExceptionInfo #"no tool call" (call! (reply text)))
+          "Q2 revenue"
+          "{\"title\": \"Q2 revenue\""
+          (json/encode {:tags ["revenue"]})
+          (json/encode {:title "Q2 revenue" :note "x"})
+          (json/encode {:title 42})
+          (json/encode {:title "Q2 revenue" :tags [1]})
+          (json/encode {:title "Q2 revenue" :score 2})))
+      (testing "JSON followed by anything but whitespace is not used, in the whole reply or in a fence"
+        (are [text] (thrown-with-msg? clojure.lang.ExceptionInfo #"no tool call" (call! (reply text)))
+          (str (json/encode answer) " Hope that helps!")
+          (str (json/encode answer) (json/encode {:title "Other"}))
+          (fenced (str (json/encode answer) " Hope that helps!"))
+          (fenced (str (json/encode answer) (json/encode {:title "Other"})))))
+      (testing "a tool call is used as is, whatever text comes with it"
+        (is (= {:title "From the tool"}
+               (call! (reply (json/encode answer))
+                      {:type      :tool-input
+                       :id        "c1"
+                       :function  "structured_output"
+                       :arguments {:title "From the tool"}})))))))
+
 (deftest call-llm-does-not-replay-after-partial-emission-test
   (llm.tu/with-default-connections
     (testing "a retryable failure AFTER parts were emitted does not replay the stream (no duplicate output / re-run tools)"
@@ -2286,7 +2345,7 @@
                           #"Unrecognized supported-models entry"
                           (#'self/normalize-known-model "anthropic" "some-model" {:context-window 200000}))))
   (testing "every provider that publishes an allow-list names every model in it"
-    (doseq [provider ["anthropic" "bedrock" "deepseek" "mistral" "moonshot" "openai" "openrouter" "zai"]]
+    (doseq [provider ["anthropic" "bedrock" "deepseek" "mistral" "moonshot" "openai" "openrouter" "xai" "zai"]]
       (let [models (self/known-models provider)]
         (is (seq models) provider)
         (is (every? (comp string? :display-name val) models) provider)))))

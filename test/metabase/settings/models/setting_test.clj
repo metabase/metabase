@@ -99,7 +99,6 @@
   :init       (comp str random-uuid)
   :encryption :when-encryption-key-set)
 
-#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic *enabled?* false)
 
 (defsetting test-enabled-setting-no-default

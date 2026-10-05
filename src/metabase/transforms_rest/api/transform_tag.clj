@@ -63,7 +63,7 @@
   [_route-params
    _query-params]
   (log/info "Getting all transform tags")
-  (api/check-data-analyst)
+  (api/check-data-studio-access)
   (t2/hydrate (transforms-rest.db/tags) :can_run))
 
 (def ^{:arglists '([request respond raise])} routes

@@ -1,9 +1,3 @@
-/* eslint-disable import/order */
-
-import { TEST_SCHEMA } from "./fixtures";
-
-import type { RowValue } from "../../data-schema";
-
 import type { MetabaseCard } from "metabase/embedding-sdk/types/question";
 
 import type { UseMetabaseQueryObjectResult } from "..";
@@ -16,8 +10,11 @@ import {
   useMetabaseQuery,
   useMetabaseQueryObject,
 } from "..";
-import { useAction, useDataAppAction } from "../../use-action";
 import { defineAction, defineQuery } from "../../../../data-app";
+import type { RowValue } from "../../data-schema";
+import { useAction, useDataAppAction } from "../../use-action";
+
+import { TEST_SCHEMA } from "./fixtures";
 
 type OrdersTable = (typeof TEST_SCHEMA)["tables"]["orders"];
 
@@ -138,6 +135,24 @@ function ValidTypeFixtures() {
     scalarAggregationResult.data?.rows[0]?.sum;
 
   void scalarAggregationValue;
+
+  const namedAggregationResult = useMetabaseQuery(
+    defineQuery({
+      source: TEST_SCHEMA.tables.orders,
+      aggregations: [
+        count({ name: "orders" }),
+        sum(TEST_SCHEMA.tables.orders.fields.amount, { name: "total amount" }),
+      ],
+    }),
+  );
+
+  const namedCountValue: number | null | undefined =
+    namedAggregationResult.data?.rows[0]?.orders;
+  const namedSumValue: RowValue | undefined =
+    namedAggregationResult.data?.rows[0]?.["total amount"];
+
+  void namedCountValue;
+  void namedSumValue;
 
   const groupedMetricResult = useMetabaseQuery(
     defineQuery<OrdersTable>({

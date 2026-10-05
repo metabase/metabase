@@ -11,6 +11,7 @@ import {
 } from "__support__/server-mocks";
 import { seedApiQueryCache } from "__support__/state";
 import { Api } from "metabase/api";
+import { actionApi } from "metabase/api/action";
 import { cardApi } from "metabase/api/card";
 import { collectionApi } from "metabase/api/collection";
 import { dashboardApi } from "metabase/api/dashboard";
@@ -767,6 +768,76 @@ describe("remote-sync-listener-middleware", () => {
           name: "Renamed",
         }),
       );
+
+      await waitForCondition(() => dirtyCallCount() > 1);
+      expect(dirtyCallCount()).toBeGreaterThan(1);
+    });
+  });
+
+  describe("action listeners", () => {
+    afterEach(() => {
+      fetchMock.clearHistory();
+    });
+
+    const subscribeAndSettle = async (
+      store: ReturnType<typeof createTestStore>,
+    ) => {
+      store.dispatch(
+        remoteSyncApi.endpoints.getRemoteSyncChanges.initiate(undefined),
+      );
+      await waitForCondition(() =>
+        fetchMock.callHistory.done("remote-sync-dirty"),
+      );
+    };
+
+    const dirtyCallCount = () =>
+      fetchMock.callHistory.calls("remote-sync-dirty").length;
+
+    // Model actions are tracked by remote sync, so creating one must refresh
+    // the dirty state that enables the push button (GHY-4722).
+    it("invalidates when a model action is created", async () => {
+      fetchMock.post("path:/api/action", { id: 1, model_id: 10 });
+      setupRemoteSyncDirtyEndpoint();
+
+      const store = createTestStore();
+      await subscribeAndSettle(store);
+
+      store.dispatch(
+        actionApi.endpoints.createAction.initiate({
+          name: "Create",
+          type: "implicit",
+          kind: "row/create",
+          model_id: 10,
+        }),
+      );
+
+      await waitForCondition(() => dirtyCallCount() > 1);
+      expect(dirtyCallCount()).toBeGreaterThan(1);
+    });
+
+    it("invalidates when a model action is updated", async () => {
+      fetchMock.put("path:/api/action/1", { id: 1, model_id: 10 });
+      setupRemoteSyncDirtyEndpoint();
+
+      const store = createTestStore();
+      await subscribeAndSettle(store);
+
+      store.dispatch(
+        actionApi.endpoints.updateAction.initiate({ id: 1, name: "Renamed" }),
+      );
+
+      await waitForCondition(() => dirtyCallCount() > 1);
+      expect(dirtyCallCount()).toBeGreaterThan(1);
+    });
+
+    it("invalidates when a model action is deleted", async () => {
+      fetchMock.delete("path:/api/action/1", { id: 1, model_id: 10 });
+      setupRemoteSyncDirtyEndpoint();
+
+      const store = createTestStore();
+      await subscribeAndSettle(store);
+
+      store.dispatch(actionApi.endpoints.deleteAction.initiate(1));
 
       await waitForCondition(() => dirtyCallCount() > 1);
       expect(dirtyCallCount()).toBeGreaterThan(1);

@@ -11,7 +11,6 @@
 
 (set! *warn-on-reflection* true)
 
-#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic ^InMemoryDirectoryServer *ldap-server*
   "An in-memory LDAP testing server."
   nil)

@@ -18,7 +18,7 @@ import type { Card, DataApp } from "metabase-types/api";
 const { H } = cy;
 const { ORDERS_ID } = SAMPLE_DATABASE;
 
-/** `syncResources` takes the app's slug from its directory name. */
+/** The `slug` the app's `data_app.yaml` declares. */
 const APP_SLUG = "vite-6-data-app-host-app";
 
 /** The fields these specs read off a card the app collection holds. */
@@ -29,10 +29,17 @@ const LOCKFILE = () => `${APP_ROOT()}/resources_metadata.json`;
 const QUERIES_FILE = () => `${APP_ROOT()}/queries/orders.query.ts`;
 const MANIFEST_FILE = () => `${APP_ROOT()}/data_app.yaml`;
 
-const AUTHORED_MANIFEST = `name: Vite 6 Data App
+const AUTHORED_MANIFEST = `version: 1
+name: Vite 6 Data App
+slug: vite-6-data-app-host-app
 path: ./dist/index.js
 allowed_hosts:
   - https://allowed.data-app.test
+entity_id: qxpaPkU_WRE2ZQu0cmpqD
+serdes/meta:
+- model: DataApp
+  id: qxpaPkU_WRE2ZQu0cmpqD
+  label: vite-6-data-app-host-app
 `;
 
 /**

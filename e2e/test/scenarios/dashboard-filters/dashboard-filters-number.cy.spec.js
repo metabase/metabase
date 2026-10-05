@@ -1,7 +1,7 @@
 const { H } = cy;
 import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
 
-import { addWidgetNumberFilter } from "../native-filters/helpers/e2e-field-filter-helpers";
+import { addWidgetNumberFilter } from "../native/helpers/e2e-field-filter-helpers";
 
 import { DASHBOARD_NUMBER_FILTERS } from "./shared/dashboard-filters-number";
 

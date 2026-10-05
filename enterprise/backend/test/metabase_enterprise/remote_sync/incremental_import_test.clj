@@ -224,8 +224,9 @@
            (let [b-id (t2/select-one-pk :model/Card :entity_id b-eid)]
              (mt/with-dynamic-fn-redefs [search/delete! (fn [model ids] (swap! deleted conj [model (vec ids)]))]
                (import-at! src "v1"))                      ; incremental delete of card_b
-             (is (some (fn [[model ids]] (and (= :model/Card model) (some #{b-id} ids))) @deleted)
-                 "the removed card is deleted from the search index by id"))))))))
+             (is (some (fn [[model ids]] (and (= :model/Card model) (some #{(str b-id)} ids))) @deleted)
+                 "the removed card is deleted from the search index by id, as the string the index stores
+                  (an integer id fails on Postgres with `text = integer`)"))))))))
 
 (deftest rename-card-equivalence-test
   (testing "GHY-3779: renaming a card (same entity_id at a new path) imports equivalently — the old

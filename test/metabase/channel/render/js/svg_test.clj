@@ -102,7 +102,9 @@
     (let [secret (doto ^File (File/createTempFile "metabase-svg-test" ".png") (.deleteOnExit))]
       (io/copy (solid-png-bytes Color/RED) secret)
       (is (= ::blocked (render-center-pixel (image-svg (str "file://" (.getAbsolutePath secret)))))
-          "a file: reference must not be read off the server's disk and rasterized into the output")))
+          "a file: reference must not be read off the server's disk and rasterized into the output"))
+    (is (= ::blocked (render-center-pixel (image-svg "https://example.com/x.png")))
+        "nor may an absolute http(s) reference be fetched server-side"))
   (testing "images embedded in the document itself still render"
     (let [data-uri (str "data:image/png;base64,"
                         (.encodeToString (Base64/getEncoder) (solid-png-bytes Color/GREEN)))]

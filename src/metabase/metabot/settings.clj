@@ -178,26 +178,6 @@
       "metabase" (validate-managed-model! model)
       nil)))
 
-(def ^:private renamed-google-models
-  "Google model IDs Metabase has offered that Google has since renamed, mapped to the current ID, so a stored selection
-  still matches a model the picker lists, e.g. `anthropic/claude-haiku-4-5@20251001` → `anthropic/claude-haiku-4-5`.
-  A rename usually needs a matching entry in [[metabase.metabot.self.google.raw-predict/undated-aliases]], which keys
-  the current ID to the Claude adapter's model limits.
-
-  https://docs.cloud.google.com/gemini-enterprise-agent-platform/models/partner-models/claude/haiku-4-5"
-  {"anthropic/claude-haiku-4-5@20251001" "anthropic/claude-haiku-4-5"})
-
-(defn- current-model-ref
-  "`model-ref` with a renamed Google model replaced by its current ID ([[renamed-google-models]]); a ref on any other
-  connection type, or any other value, unchanged."
-  [model-ref]
-  (let [conn-key (some-> model-ref llm.provider/model-ref->connection-key)
-        model    (some-> model-ref llm.provider/model-ref->model renamed-google-models)]
-    ;; `model` first: the connection lookup runs only for a stored ref that names a renamed model
-    (if (and model (= "google" (:type (llm.provider/connection conn-key))))
-      (str conn-key "/" model)
-      model-ref)))
-
 (defsetting llm-metabot-provider
   (deferred-tru "The AI provider connection and model for Metabot. Format: connection-key/model-name, e.g. `anthropic/claude-haiku-4-5`, `openai/gpt-5.4`, `openrouter/anthropic/claude-haiku-4.5`. The connection key names an entry in the `llm-providers` setting and defaults to the provider type.")
   :type             :string
@@ -206,32 +186,37 @@
   :visibility       :settings-manager
   :export?          false
   :deprecated-name  :ee-ai-metabot-provider
-  :getter           #(current-model-ref (setting/get-value-of-type :string :llm-metabot-provider))
+  :getter           #(llm.provider/canonical-model-ref (setting/get-value-of-type :string :llm-metabot-provider))
   :setter           (fn [new-value]
                       (when new-value
                         (validate-model-ref! new-value))
-                      (setting/set-value-of-type! :string :llm-metabot-provider new-value)))
+                      (setting/set-value-of-type! :string :llm-metabot-provider
+                                                  (llm.provider/canonical-model-ref new-value))))
 
 (defn- mini-model-ref
   "The model reference for the fastest model of the connection `model-ref` names, or nil when that connection's
-  provider type has no such model."
+  provider type has no such model or the connection names the one model it serves."
   [model-ref]
-  (let [conn-key (llm.provider/model-ref->connection-key model-ref)]
-    (when-let [model (llm.provider/mini-model (:type (llm.provider/connection conn-key)))]
+  (let [conn-key              (llm.provider/model-ref->connection-key model-ref)
+        {:keys [type config]} (llm.provider/connection conn-key)]
+    (when-let [model (and (not (llm.provider/connection-model type config))
+                          (llm.provider/mini-model type))]
       (str conn-key "/" model))))
 
 (defn explicit-mini-model
-  "The model reference [[llm-mini-model]] was explicitly set to, or nil while it is being derived
-  from [[llm-metabot-provider]]. Callers that act on the admin's choice rather than on the model quick tasks happen
-  to run on want this: [[llm-mini-model]] itself resolves, so it names a connection even when none was ever picked."
+  "The model reference [[llm-mini-model]] was explicitly set to, or nil when derived from [[llm-metabot-provider]].
+
+  Callers that act on the admin's choice rather than on the model quick tasks happen to run on want this:
+  [[llm-mini-model]] itself resolves, so it names a connection even when none was ever picked.
+  A retired model id reads as the model that now serves it (see [[llm.provider/canonical-model-ref]])."
   []
-  (current-model-ref (setting/get-value-of-type :string :llm-mini-model)))
+  (llm.provider/canonical-model-ref (setting/get-value-of-type :string :llm-mini-model)))
 
 (defn- -llm-mini-model
   "Quick background tasks — naming a conversation, and whatever short, high-volume calls come next — do not need the
   model Metabot chats on, so with nothing stored this resolves to the fastest model of the
-  connection [[llm-metabot-provider]] names. Connections whose provider type has no such model — the ones that name
-  the single model they serve, and the managed provider — fall through to the Metabot model itself, so this always
+  connection [[llm-metabot-provider]] names. Connections that name the single model they serve, and those whose
+  provider type has no such model like the managed provider, fall through to the Metabot model itself, so this always
   names a model as long as Metabot does."
   []
   (or (explicit-mini-model)
@@ -248,7 +233,7 @@
   :setter     (fn [new-value]
                 (when new-value
                   (validate-model-ref! new-value))
-                (setting/set-value-of-type! :string :llm-mini-model new-value)))
+                (setting/set-value-of-type! :string :llm-mini-model (llm.provider/canonical-model-ref new-value))))
 
 (defsetting llm-metabot-configured?
   "Whether the connection selected for Metabot has the credentials it needs."

@@ -11,7 +11,6 @@
    [metabase.llm.settings :as llm]
    [metabase.metabot.schema.v2 :as schema.v2]
    [metabase.premium-features.core :as premium-features]
-   [metabase.request.schema :as request.schema]
    [metabase.settings.core :as setting]
    [metabase.util :as u]
    [metabase.util.http :as u.http]
@@ -115,11 +114,23 @@
                                                   [:message {:optional true} [:maybe :string]]
                                                   [:type    {:optional true} [:maybe :string]]]]]]])
 
+(mr/def ::decoded-json
+  "A value decoded from JSON.
+  Object keys are strings from `json/decode` (replayed history) or keywords from `json/decode+kw` (the stream)."
+  [:or
+   :string
+   :keyword
+   number?
+   :boolean
+   :nil
+   [:sequential [:ref ::decoded-json]]
+   [:map-of [:or :string :keyword] [:ref ::decoded-json]]])
+
 (def ^:private ToolCallArguments
   "A tool call's arguments as the LLM wrote them against the tool's own schema, keyed by that tool's argument names:
   string keys off the wire, keyword keys when built in Clojure."
   [:map-of {::mr/deliberately-open true, :description "tool call arguments"}
-   [:or :string :keyword] ::request.schema/json-value])
+   [:or :string :keyword] ::decoded-json])
 
 (def ^:private AISDKPart
   "One element of the `:input` sequence passed to a provider adapter: an AISDK part keyed by
@@ -163,7 +174,8 @@
    [:access-key-id     {:optional true} [:maybe :string]]
    [:secret-access-key {:optional true} [:maybe :string]]
    [:session-token     {:optional true} [:maybe :string]]
-   [:region            {:optional true} [:maybe :string]]])
+   [:region            {:optional true} [:maybe :string]]
+   [:model-id          {:optional true} [:maybe :string]]])
 
 (def ^:private GoogleCredentials
   [:map {:closed true}
@@ -173,6 +185,7 @@
    [:location            {:optional true} [:maybe :string]]
    [:auth-method         {:optional true} [:maybe :string]]
    [:base-url            {:optional true} [:maybe :string]]
+   [:endpoint-id         {:optional true} [:maybe :string]]
    ;; recorded by the connect-time probe, not entered by the admin
    [:probed-model        {:optional true} [:maybe :string]]])
 
