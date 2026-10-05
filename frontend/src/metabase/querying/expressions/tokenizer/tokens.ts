@@ -51,7 +51,7 @@ export const field = new ExternalTokenizer((input) => {
 
   // A quote starts a string literal so a `]` after it is part of the string, not
   // the closing bracket of a field (#82328).
-  if (current === SINGLE_QUOTE || current === DOUBLE_QUOTE) {
+  if (STRING_QUOTES.has(current)) {
     return;
   }
 
