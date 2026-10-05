@@ -1230,8 +1230,7 @@
             diverged? ;; and not merge? option
             {:status    :conflict
              :version   remote-version
-             ;; The task row keeps only `:conflicts`, so the label is how a caller learns why it stopped. It states the
-             ;; cause, not a remedy: stash lands here too, and a merge cannot help when the base is gone.
+             ;; The task row keeps only `:conflicts`, so the label is how a caller learns why it stopped.
              :conflicts ["Remote branch changed since the last sync."]
              :message   "The remote branch has changed since your last sync. Choose how to proceed."}
 

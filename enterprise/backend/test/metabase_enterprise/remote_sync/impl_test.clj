@@ -2002,7 +2002,9 @@ serdes/meta:
                                  :source (export-test-source)
                                  :base-snapshot (export-test-snapshot "base-B"))]
         (impl/handle-task-result! result task-id)
-        (is (= "remote-R" (:version (t2/select-one :model/RemoteSyncTask :id task-id))))
+        (is (= {:version "remote-R" :conflicts ["Remote branch changed since the last sync."]}
+               (t2/select-one [:model/RemoteSyncTask :version :conflicts] :id task-id))
+            "the task row records the remote version it conflicted against and the cause")
         (is (= "base-B" (remote-sync.task/last-version)))))))
 
 (deftest export!-force-overwrites-without-merging-test
