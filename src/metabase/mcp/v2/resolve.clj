@@ -96,7 +96,7 @@
    transforms."
   [model row]
   (and (= model :model/Collection)
-       (= "transforms" (some-> (:namespace row) name))))
+       (= (name collection/transforms-ns) (some-> (:namespace row) name))))
 
 (defn resolve-and-read
   "Resolve `id-or-eid` for `model` and return the row from behind its `api/read-check` — what
