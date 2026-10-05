@@ -31,7 +31,7 @@ export function getColumns(): TreeTableColumnDef<ContentDiagnosticsStaleFinding>
     },
   };
 
-  return [name, entityType, collectionName, createdBy, createdAt, lastActiveAt];
+  return [entityType, name, collectionName, createdBy, createdAt, lastActiveAt];
 }
 
-export const SKELETON_COLUMN_WIDTHS = [0.28, 0.12, 0.24, 0.13, 0.12, 0.11];
+export const SKELETON_COLUMN_WIDTHS = [0.06, 0.34, 0.24, 0.13, 0.12, 0.11];

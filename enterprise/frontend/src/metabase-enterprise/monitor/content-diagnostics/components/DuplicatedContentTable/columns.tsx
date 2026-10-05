@@ -26,8 +26,8 @@ export function getColumns(): TreeTableColumnDef<ContentDiagnosticsDuplicatedFin
     };
 
   return [
-    name,
     entityType,
+    name,
     collectionName,
     duplicateCountColumn,
     createdBy,
@@ -35,4 +35,4 @@ export function getColumns(): TreeTableColumnDef<ContentDiagnosticsDuplicatedFin
   ];
 }
 
-export const SKELETON_COLUMN_WIDTHS = [0.28, 0.12, 0.24, 0.11, 0.13, 0.12];
+export const SKELETON_COLUMN_WIDTHS = [0.06, 0.34, 0.24, 0.11, 0.13, 0.12];

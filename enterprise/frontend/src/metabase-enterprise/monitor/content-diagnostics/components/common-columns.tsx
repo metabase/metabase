@@ -37,17 +37,11 @@ export function getCommonColumns<
       minWidth: "auto",
       maxAutoWidth: 520,
       accessorFn: getEntityName,
-      cell: ({ row }) => {
-        const finding = row.original;
-        return (
-          <Group align="center" gap="sm" miw={0} wrap="nowrap">
-            <FixedSizeIcon name={getEntityIcon(finding)} />
-            <Ellipsified tooltipProps={{ openDelay: TOOLTIP_OPEN_DELAY_MS }}>
-              {getEntityName(finding)}
-            </Ellipsified>
-          </Group>
-        );
-      },
+      cell: ({ row }) => (
+        <Ellipsified tooltipProps={{ openDelay: TOOLTIP_OPEN_DELAY_MS }}>
+          {getEntityName(row.original)}
+        </Ellipsified>
+      ),
     },
     entityType: {
       id: "entity-type",
@@ -55,8 +49,16 @@ export function getCommonColumns<
       enableSorting: true,
       sortDescFirst: false,
       width: "auto",
-      minWidth: 100,
       accessorFn: (finding) => getEntityTypeLabel(finding),
+      // Icon-only: the backend sorts by entity type regardless of locale, so
+      // the column must not display a translated label (GDGT-3309).
+      cell: ({ row }) => (
+        <FixedSizeIcon
+          name={getEntityIcon(row.original)}
+          aria-label={getEntityTypeLabel(row.original)}
+          mx="auto"
+        />
+      ),
     },
     collectionName: {
       id: "collection-name",
