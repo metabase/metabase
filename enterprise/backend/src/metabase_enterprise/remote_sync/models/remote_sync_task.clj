@@ -179,14 +179,15 @@
   "Gets the version that any changes are built off of.
 
   Returns the version string from the most recent successful task (either export or import), or nil if no successful
-  tasks exist. A task that ended in conflict records the version it conflicted against but synced nothing, so it is
-  not a base: counting it would make a retry, merge included, blind to the remote's changes."
+  tasks exist. A task that ended in conflict synced nothing, so it is not one."
   []
   (:version (t2/select-one :model/RemoteSyncTask
                            {:where [:and
                                     [:<> nil :ended_at]
                                     [:= false :cancelled]
                                     [:= nil :error_message]
+                                    ;; a conflict task records the version it conflicted against; counting it as the base
+                                    ;; would hide the remote's changes from a retry, merge included
                                     [:= nil :conflicts]
                                     [:<> nil :version]]
                             :limit 1
