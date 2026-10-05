@@ -127,17 +127,13 @@ describe("Embed JS modal display", () => {
         H.visitDashboard("@dashboardId");
         H.openSharingMenu("Embed");
 
-        it("should open Embed JS modal with the `enable guest embedding` card", () => {
-          H.activateToken("pro-self-hosted");
-          H.updateSetting("enable-embedding-static", false);
-          H.visitDashboard("@dashboardId");
-
-          H.openSharingMenu("Embed");
-
-          H.embedModalEnableEmbeddingCard().within(() => {
-            cy.findByText(/guest embeds/).should("be.visible");
+        H.embedModalContent().should("be.visible");
+        H.embedModalContent()
+          .findByTestId("upsell-card")
+          .within(() => {
+            cy.findByText("Get more powerful embedding").should("be.visible");
+            cy.findByText("Upgrade to Metabase Pro").should("be.visible");
           });
-        });
       },
     );
   });
