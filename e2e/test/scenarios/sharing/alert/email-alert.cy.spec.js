@@ -50,6 +50,7 @@ describe("scenarios > alert > email_alert", { tags: "@external" }, () => {
   it("should respect email alerts toggled off and save the Slack channel_id (metabase#12349)", () => {
     //For this test, we need to pretend that slack is set up
     H.mockSlackConfigured();
+    H.setupNotificationChannel({ name: "Webhook" });
 
     openAlertForQuestion(ORDERS_QUESTION_ID);
 
