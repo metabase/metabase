@@ -24,7 +24,7 @@ import { useAction } from "@metabase/embedding-sdk-react/data-app";
 import type { FormEvent } from "react";
 import { CreateOrder } from "../../actions/orders.action";
 
-export function CreateOrderForm({ onCreated }: { onCreated: () => void }) {
+export function CreateOrderForm({ onCreated }: { onCreated: () => Promise<void> }) {
   const { execute, isExecuting, error } = useAction(CreateOrder);
 
   const onSubmit = async (event: FormEvent<HTMLFormElement>) => {
@@ -32,7 +32,7 @@ export function CreateOrderForm({ onCreated }: { onCreated: () => void }) {
     try {
       // keys and value types come from the action's parameters
       await execute({ status: "paid" });
-      onCreated();
+      await onCreated(); // refresh what the write changed
     } catch {
       // the failure is also in `error`, rendered below
     }
@@ -43,7 +43,7 @@ export function CreateOrderForm({ onCreated }: { onCreated: () => void }) {
       <button type="submit" disabled={isExecuting}>
         Create order
       </button>
-      {error && <p>{error.data.message}</p>}
+      {error && <pre style={{ whiteSpace: "pre-wrap" }}>{error.data.message}</pre>}
     </form>
   );
 }
@@ -57,7 +57,7 @@ Rules:
   authored action is refused for the app's viewers in production.
 - Actions exist only when the generated schema includes actions
   (`include-actions=true`). Synchronization copies actions; it never creates
-  them.
+  them, and a missing one is created as a query action without a model.
 - Pass the export itself to `useAction`. Never pass
   `schema.actions.<action>` or its `.id`.
 - `copiedActionId` is written by synchronization. Never add, edit, or remove it

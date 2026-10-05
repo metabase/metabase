@@ -5,7 +5,7 @@
    [metabase.actions.core :as actions]
    [metabase.lib.core :as lib]
    [metabase.lib.schema.common :as lib.schema.common]
-   [metabase.models.interface :as mi]
+   [metabase.permissions.core :as perms]
    [metabase.typed-schemas.common :as common]
    [metabase.typed-schemas.db :as typed-schemas.db]
    [metabase.typed-schemas.schema.common :as schema.common]
@@ -56,27 +56,35 @@
       :jsType      resolved-type}
      :required (when required true))))
 
+(defn- hidden-parameter-ids
+  "The ids of the parameters the action's form hides; execute refuses a value for them."
+  [{:keys [visualization_settings]}]
+  (into #{} (keep #(when (:hidden %) (:id %))) (vals (:fields visualization_settings))))
+
 (defn action-schema
-  "Returns the typed schema entry for a query action."
+  "Returns the typed schema entry for a query action, leaving out the parameters its form hides."
   [{:keys [id name description parameters entity_id] :as action}]
-  (let [tag-types (template-tag-types action)]
+  (let [tag-types (template-tag-types action)
+        hidden?   (hidden-parameter-ids action)]
     (m/assoc-some
      {:kind       "action"
       :key        (common/generated-key name id)
       :id         id
       :name       name
       :type       "query"
-      :parameters (mapv #(parameter-schema tag-types %) parameters)}
+      :parameters (into [] (comp (remove (comp hidden? :id))
+                                 (map #(parameter-schema tag-types %)))
+                        parameters)}
      :description description
      :entityId entity_id)))
 
 (defn action-schemas
-  "Returns schema entries for the readable query actions without a model among `database-ids` (nil for unscoped)."
+  "Returns schema entries for the readable query actions without a model among `database-ids` (nil for unscoped),
+  leaving out the copies data apps own."
   [database-ids]
-  (let [rows            (filter mi/can-read? (typed-schemas.db/model-less-query-actions database-ids))
-        details-by-id   (when (seq rows)
-                          (into {} (map (juxt :id identity)) (actions/select-actions-for-ids nil (mapv :id rows))))
-        details         (keep #(get details-by-id (:id %)) rows)
+  (let [ids             (typed-schemas.db/model-less-query-action-ids database-ids (set (perms/data-app-collection-ids)))
+        details-by-id   (when (seq ids) (u/index-by :id (actions/select-actions-for-ids nil ids)))
+        details         (keep details-by-id ids)
         destination-ids (schema.common/destination-db-ids (into #{} (keep :database_id) details))]
     (into []
           (comp (remove #(contains? destination-ids (:database_id %)))

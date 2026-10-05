@@ -44,9 +44,13 @@
   [_route-params
    query-params :- TypedSchemaQueryParams
    _body-params
-   {{question-collections "question-collections"} :query-params}]
+   {{question-collections "question-collections"
+     include-models       "include-models"} :query-params}]
   (when (some? question-collections)
     (throw (ex-info "The question-collections query parameter is not supported."
+                    {:status-code 400})))
+  (when (some? include-models)
+    (throw (ex-info "The include-models query parameter is not supported; use include-actions."
                     {:status-code 400})))
   {:status  200
    :headers typescript-response-headers

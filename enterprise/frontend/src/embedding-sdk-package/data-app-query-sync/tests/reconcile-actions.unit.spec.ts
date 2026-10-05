@@ -204,4 +204,64 @@ describe("action reconciliation", () => {
     expect(client.deleteAction).toHaveBeenCalledWith(91);
     expect(lockfile.actions).toEqual([]);
   });
+  it("refuses a declared action that is one of the app's own copies", async () => {
+    const appRoot = makeApp();
+    writeAction(
+      appRoot,
+      `export const Ship = defineAction({ action: { id: 91, parameters: [] } });`,
+    );
+    const client = createMockClient();
+    client.getAction.mockResolvedValueOnce({
+      ...SOURCE,
+      id: 91,
+      collection_id: COLLECTION_ID,
+    });
+
+    await expect(run(appRoot, emptyLockfile(), client)).rejects.toThrow(
+      "which is a copy synchronized into this data app",
+    );
+    expect(client.createAction).not.toHaveBeenCalled();
+    expect(client.deleteAction).not.toHaveBeenCalled();
+  });
+
+  it("adopts the copy a declaration names when its lockfile entry was lost", async () => {
+    const appRoot = makeApp();
+    writeAction(
+      appRoot,
+      `export const Ship = defineAction({ copiedActionId: 91, action: { id: 51, parameters: [] } });`,
+    );
+    const client = createMockClient();
+    client.getAction.mockResolvedValueOnce(SOURCE).mockResolvedValueOnce({
+      ...SOURCE,
+      id: 91,
+      collection_id: COLLECTION_ID,
+    });
+    const lockfile = emptyLockfile();
+
+    await run(appRoot, lockfile, client);
+
+    expect(client.createAction).not.toHaveBeenCalled();
+    expect(lockfile.actions).toEqual([
+      { sourceActionId: 51, copiedActionId: 91, hash: expect.any(String) },
+    ]);
+  });
+
+  it("leaves a copy that moved out of the app collection when its declaration is removed", async () => {
+    const appRoot = makeApp();
+    const client = createMockClient();
+    client.getAction.mockResolvedValueOnce({
+      ...SOURCE,
+      id: 91,
+      collection_id: 8,
+    });
+    const lockfile: ResourceLockfile = {
+      ...emptyLockfile(),
+      actions: [{ sourceActionId: 51, copiedActionId: 91, hash: FAKE_HASH }],
+    };
+
+    await expect(run(appRoot, lockfile, client)).rejects.toThrow(
+      "is no longer in data app collection 35",
+    );
+    expect(client.deleteAction).not.toHaveBeenCalled();
+  });
 });

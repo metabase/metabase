@@ -70,9 +70,8 @@ injects sequentially and an earlier injection into the same file shifts every of
 ```
 
 It is not a cache. It is the only evidence that a card or action in Metabase belongs to this app,
-and every mutating path checks it first. The `hash` fields fingerprint the **source** payload — the
-only way to notice that someone edited the upstream question or action, since nothing in the app's own
-source changes when they do.
+and every mutating path checks it first. The `hash` fields fingerprint the payload last copied; sync
+compares it against the live copy, which catches both an edited source and a copy edited in Metabase.
 
 ## Invariants
 

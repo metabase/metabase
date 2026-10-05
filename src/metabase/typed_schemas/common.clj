@@ -88,18 +88,32 @@
   (cond-> key
     (duplicate-key? key->count key) (str (or key-disambiguator table-id id))))
 
+(defn- unique-keys
+  "Returns `ks` with every key that is still shared by several `entities` suffixed with its entity id until all are
+  unique, so no entity overwrites another."
+  [entities ks]
+  (let [key->count (frequencies ks)]
+    (if (every? #(= 1 %) (vals key->count))
+      ks
+      (recur entities (mapv (fn [entity k]
+                              (cond-> k (duplicate-key? key->count k) (str "_" (:id entity))))
+                            entities ks)))))
+
 (defn keyed-map
   "Returns a sorted map keyed by each entity key, disambiguating duplicate keys."
   [entities]
   (let [entities         (vec entities)
         base-key->count  (frequencies (map :key entities))
         candidate-keys   (mapv (partial keyed-map-candidate-key base-key->count) entities)
-        candidate->count (frequencies candidate-keys)]
+        candidate->count (frequencies candidate-keys)
+        ks               (unique-keys entities
+                                      (mapv (fn [entity candidate-key]
+                                              (cond-> candidate-key
+                                                (duplicate-key? candidate->count candidate-key) (str (:id entity))))
+                                            entities candidate-keys))]
     (into (sorted-map)
-          (map (fn [[entity candidate-key]]
-                 (let [key (cond-> candidate-key
-                             (duplicate-key? candidate->count candidate-key) (str (:id entity)))]
-                   [key (-> entity
-                            (dissoc :keyDisambiguator)
-                            (assoc :key key))])))
-          (map vector entities candidate-keys))))
+          (map (fn [entity key]
+                 [key (-> entity
+                          (dissoc :keyDisambiguator)
+                          (assoc :key key))])
+               entities ks))))

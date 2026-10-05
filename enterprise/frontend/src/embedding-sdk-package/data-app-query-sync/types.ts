@@ -73,10 +73,6 @@ export interface MetabaseAction {
   parameters?: unknown[] | null;
   parameter_mappings?: Record<string, unknown> | null;
   visualization_settings?: Record<string, unknown> | null;
-  /** Present on implicit actions. */
-  kind?: string | null;
-  /** Present on query actions. */
   dataset_query?: Record<string, unknown> | null;
-  /** Present on query actions. */
   database_id?: number | null;
 }

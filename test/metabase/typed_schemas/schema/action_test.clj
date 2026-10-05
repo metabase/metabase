@@ -46,3 +46,19 @@
     (is (=? {:parameters [{:slug "name", :displayName "Name", :jsType "string"}]}
             (schema.action/action-schema {:id 7, :name "Update bird", :dataset_query {}
                                           :parameters [{:id "name", :name "Name", :type :text}]})))))
+
+(deftest action-schema-leaves-out-hidden-parameters-test
+  (testing "a parameter the action's form hides is left out, since execute refuses a value for it"
+    (is (=? {:parameters [{:slug "name"}]}
+            (schema.action/action-schema
+             {:id                     7
+              :name                   "Update bird"
+              :dataset_query          {}
+              :parameters             [{:id "name", :name "Name", :type :text}
+                                       {:id "updated_by", :name "Updated by", :type :text, :required true}]
+              :visualization_settings {:fields {"updated_by" {:id "updated_by", :hidden true}}}})))
+    (is (= ["name"]
+           (map :slug (:parameters (schema.action/action-schema
+                                    {:id 7, :name "Update bird", :dataset_query {}
+                                     :parameters [{:id "name", :type :text} {:id "updated_by", :type :text}]
+                                     :visualization_settings {:fields {"updated_by" {:id "updated_by", :hidden true}}}})))))))

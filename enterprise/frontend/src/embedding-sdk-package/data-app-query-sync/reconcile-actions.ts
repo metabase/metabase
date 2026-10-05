@@ -47,11 +47,17 @@ function actionCopyFields(source: MetabaseAction) {
   });
 }
 
-async function resolveActions(
-  appRoot: string,
-  actions: DiscoveredAction[],
-  client: MetabaseClient,
-): Promise<ResolvedAction[]> {
+async function resolveActions({
+  appRoot,
+  collectionId,
+  actions,
+  lockfile,
+  client,
+}: ReconcileActionsOptions): Promise<ResolvedAction[]> {
+  const copiedIds = new Set(
+    lockfile.actions.map(({ copiedActionId }) => copiedActionId),
+  );
+
   return Promise.all(
     actions.map(async (action) => {
       const location = getRelativeDefinitionLocation(appRoot, action);
@@ -72,8 +78,22 @@ async function resolveActions(
         );
       }
 
+      // A copy is synchronized state: declaring it as a source would make the
+      // next run delete it once its own source is dropped.
+      if (copiedIds.has(source.id) || source.collection_id === collectionId) {
+        throw new Error(
+          `${location} references action ${action.sourceActionId}, which is a copy synchronized into this data app. Declare the action it was copied from instead.`,
+        );
+      }
+
       return { action, source };
     }),
+  );
+}
+
+function isOwnedActionCopy(copy: MetabaseAction, collectionId: number) {
+  return (
+    !isPositiveInteger(copy.model_id) && copy.collection_id === collectionId
   );
 }
 
@@ -82,7 +102,7 @@ function assertOwnedActionCopy(
   sourceActionId: number,
   collectionId: number,
 ) {
-  if (isPositiveInteger(copy.model_id) || copy.collection_id !== collectionId) {
+  if (!isOwnedActionCopy(copy, collectionId)) {
     throw new Error(
       `Action ${copy.id} is the copy of action ${sourceActionId} but is no longer in data app collection ${collectionId}, so it was left untouched. Move it back or delete it manually, then run sync-resources again.`,
     );
@@ -98,12 +118,29 @@ async function reconcileAction(
   let mapping: ActionLockEntry | undefined = lockfile.actions.find(
     ({ sourceActionId }) => sourceActionId === source.id,
   );
-  const copy = mapping
+  let copy = mapping
     ? await orNullOn404(client.getAction(mapping.copiedActionId))
     : null;
 
   if (mapping && copy) {
     assertOwnedActionCopy(copy, source.id, collectionId);
+  }
+
+  // A lost lockfile entry: adopt the copy the declaration still names rather
+  // than leaving it behind in the app collection beside a new one.
+  if (!mapping && isPositiveInteger(action.copiedActionId)) {
+    const named = await orNullOn404(client.getAction(action.copiedActionId));
+    const claimed = lockfile.actions.some(
+      ({ copiedActionId }) => copiedActionId === action.copiedActionId,
+    );
+
+    if (named && !claimed && isOwnedActionCopy(named, collectionId)) {
+      mapping = { sourceActionId: source.id, copiedActionId: named.id, hash };
+      lockfile.actions.push(mapping);
+      writeResourceLockfile(appRoot, lockfile);
+      log(`adopted action: action ${source.id} -> action ${named.id}`);
+      copy = named;
+    }
   }
 
   if (mapping && !copy) {
@@ -179,8 +216,8 @@ async function removeUnusedActions(
  * copy when the declaration goes away. Returns the tables those actions read.
  */
 export async function reconcileActions(options: ReconcileActionsOptions) {
-  const { appRoot, slug, actions, client } = options;
-  const resolved = await resolveActions(appRoot, actions, client);
+  const { slug, client } = options;
+  const resolved = await resolveActions(options);
 
   for (const entry of resolved) {
     await reconcileAction(options, entry);

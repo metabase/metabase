@@ -4,6 +4,7 @@
    [clojure.test :refer :all]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.permissions.core :as perms]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.typed-schemas.core :as typed-schemas]
@@ -81,6 +82,11 @@
                    :model/Action standalone {:name "Discount order", :type :query}
                    :model/QueryAction _ {:action_id     (:id standalone)
                                          :dataset_query (lib/native-query (mt/metadata-provider)
+                                                                          "UPDATE orders SET discount = 0")}
+                   :model/Collection copies {:name "Data App: orders"}
+                   :model/Action copy {:name "Copied order", :type :query, :collection_id (:id copies)}
+                   :model/QueryAction _ {:action_id     (:id copy)
+                                         :dataset_query (lib/native-query (mt/metadata-provider)
                                                                           "UPDATE orders SET discount = 0")}]
       (let [schema (fn [& query-params]
                      (:body (apply mt/user-http-request-full-response
@@ -90,12 +96,17 @@
         (testing "include-actions adds the scoped database's actions without a model, and never a model"
           (let [body (schema :database (mt/id) :include-actions true)]
             (is (str/includes? body "discountOrder"))
-            (is (not (str/includes? body "orderModel")))
             (is (not (str/includes? body "updateOrder")))))
         (testing "include-actions keeps actions of other databases out"
           (is (not (str/includes? (schema :database (:id other-db) :include-actions true) "discountOrder"))))
-        (testing "include-models is ignored"
-          (is (not (str/includes? (schema :database (mt/id) :include-models true) "orderModel"))))))))
+        (testing "include-models is refused"
+          (is (str/includes? (str (mt/user-http-request :crowberto :get 400 "typed-schemas/v1/typescript"
+                                                        :include-models true))
+                             "use include-actions")))
+        (testing "a copy a data app owns stays out"
+          (is (str/includes? (schema :database (mt/id) :include-actions true) "copiedOrder"))
+          (mt/with-dynamic-fn-redefs [perms/data-app-collection-ids (constantly #{(:id copies)})]
+            (is (not (str/includes? (schema :database (mt/id) :include-actions true) "copiedOrder")))))))))
 
 (deftest collection-and-database-query-params-are-mutually-exclusive-test
   (mt/user-http-request-full-response
