@@ -120,9 +120,15 @@ describe("scenarios > dashboard > filters > boolean", () => {
       H.filterWidget().findByText("True").should("be.visible");
       H.getDashboardCard().findByText("1 row").should("be.visible");
 
-      cy.log("parameter source passes the unmapped parameter's default");
+      cy.log("parameter source passes the value set in the filter widget");
       cy.go("back");
       H.dashboardHeader().findByText(DASHBOARD_2_NAME).should("be.visible");
+      H.filterWidget().findByText("True").click();
+      H.popover().within(() => {
+        cy.findByText("False").click();
+        cy.button("Update filter").click();
+      });
+      H.filterWidget().findByText("False").should("be.visible");
       H.getDashboardCard().findAllByText("1").first().click();
       H.dashboardHeader().findByText(DASHBOARD_NAME).should("be.visible");
       H.filterWidget().findByText("False").should("be.visible");
@@ -389,7 +395,7 @@ function setupDashboardClickBehavior() {
         slug: "boolean_parameter",
         type: "boolean/=",
         sectionId: "boolean",
-        default: [false],
+        default: [true],
       },
     ],
   }).then(({ dashboardId }) => {
