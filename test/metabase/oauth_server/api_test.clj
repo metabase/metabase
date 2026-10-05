@@ -2506,6 +2506,16 @@
                                 (refresh 200 {:refresh_token (mcp-refresh) :resource new-mcp})))))
             (testing "naming no resource keeps the stored binding"
               (is (= [old-mcp] (access-token-resource (refresh 200 {:refresh_token (mcp-refresh)})))))
+            (testing "a refresh token rebound by `BindLegacyMcpOAuthTokens`, refreshed without a resource, stays
+                      MCP-bound"
+              (let [legacy ["http://localhost/api/metabase-mcp"]
+                    token  (str (random-uuid))]
+                (oidc.store/save-refresh-token (:token-store (oauth-server/get-provider)) token
+                                               (str (mt/user->id :crowberto)) (:client_id client)
+                                               ["agent:content:read" "agent:resource:read"] nil legacy)
+                (let [refreshed (access-token-resource (refresh 200 {:refresh_token token}))]
+                  (is (= legacy refreshed))
+                  (is (oauth-server/mcp-resource? refreshed)))))
             (testing "naming a resource that is not the MCP endpoint is refused"
               (is (= "invalid_grant"
                      (:error (refresh 400 {:refresh_token (mcp-refresh)

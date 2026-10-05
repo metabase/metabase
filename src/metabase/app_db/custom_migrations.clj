@@ -2306,6 +2306,45 @@
                              :from   [:oauth_client]
                              :where  [:= :registration_type "dynamic"]})))
 
+;;; MCP audience binding: an access token's stored RFC 8707 `resource` decides where it works, and a token bound to
+;;; no resource is a REST token, refused at the MCP endpoint. MCP clients that sent no `resource` before binding hold
+;;; such tokens, scoped with the MCP v2 scopes of that time. Bind them to the MCP endpoint, so they keep working there
+;;; and stop working anywhere else.
+;;;
+;;; The resource is always `http://localhost/api/metabase-mcp`. Binding is decided by the resource's path, not its
+;;; host, and reading `site-url` here would mean handling an encrypted setting row and an environment override.
+
+(def ^:private ^:no-doc legacy-mcp-token-resource
+  ["http://localhost/api/metabase-mcp"])
+
+(defn- legacy-mcp-token?
+  "Whether the `scope` column value holds a non-empty array of scopes that are all MCP v2 scopes as they were before
+  audience binding."
+  [scope]
+  (let [scopes (json-array-out scope)]
+    (boolean (and (seq scopes) (every? (set mcp-v2-scopes) scopes)))))
+
+(defn- bind-legacy-mcp-oauth-tokens!
+  "Bind every OAuth access and refresh token that has no resource and holds only pre-binding MCP v2 scopes to the
+  MCP endpoint. Idempotent: a bound token is never selected again."
+  []
+  (doseq [table [:oauth_access_token :oauth_refresh_token]]
+    ;; Collect the ids first: updating rows while a reducible query over the same table is open is not safe on every
+    ;; app DB.
+    (let [ids (into []
+                    (comp (filter (comp legacy-mcp-token? :scope))
+                          (map :id))
+                    (t2/reducible-query {:select [:id :scope]
+                                         :from   [table]
+                                         :where  [:= :resource nil]}))]
+      (doseq [batch (partition-all 1000 ids)]
+        (t2/query {:update table
+                   :set    {:resource (json/encode legacy-mcp-token-resource)}
+                   :where  [:and [:in :id batch] [:= :resource nil]]})))))
+
+(define-migration BindLegacyMcpOAuthTokens
+  (bind-legacy-mcp-oauth-tokens!))
+
 (define-migration RevokeLegacyMcpOAuthTokens
   ;; Kept as a no-op. Legacy-scoped clients re-authorize on their own through the 403 step-up, and
   ;; revoking their tokens would instead force them through the refresh-failure path. The changeset

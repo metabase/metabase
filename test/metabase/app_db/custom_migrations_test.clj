@@ -3088,3 +3088,74 @@
         (testing "tokens already carrying a v2 tool scope keep working"
           (is (not (revoked? :oauth_access_token v2-access)))
           (is (not (revoked? :oauth_refresh_token v2-refresh))))))))
+
+(deftest bind-legacy-mcp-oauth-tokens-test
+  (testing (str "v65.2026-10-05T00:00:00: tokens issued before audience binding by MCP clients that sent no RFC 8707 "
+                "`resource` have none stored, so the bearer bridge treats them as REST tokens: refused at the MCP "
+                "endpoint, yet served by the agent API's read-resource endpoint, whose scope the old MCP baseline "
+                "granted. Refresh rotates the refresh token, so such a grant lives forever. The migration binds every "
+                "unbound token whose scopes are all pre-binding MCP scopes to the MCP endpoint, and leaves every other "
+                "token alone.")
+    (impl/test-migrations ["v65.2026-10-05T00:00:00"] [migrate!]
+      (let [user-id       (t2/insert-returning-pk!
+                           :core_user {:first_name  "MCP"
+                                       :last_name   "Binding"
+                                       :email       (str (random-uuid) "@metabase.com")
+                                       :password    "irrelevant"
+                                       :entity_id   (subs (str/replace (str (random-uuid)) "-" "") 0 21)
+                                       :date_joined :%now})
+            _             (t2/insert! :oauth_client {:client_id         "mcp-binding"
+                                                     :client_name       "MCP Client"
+                                                     :redirect_uris     (json/encode ["http://localhost/callback"])
+                                                     :grant_types       (json/encode ["authorization_code"])
+                                                     :response_types    (json/encode ["code"])
+                                                     :scopes            (json/encode ["openid"])
+                                                     :registration_type "dynamic"
+                                                     :client_type       "public"
+                                                     :created_at        :%now
+                                                     :updated_at        :%now})
+            mcp-resource  ["http://localhost/api/metabase-mcp"]
+            other         ["https://elsewhere.example.com/api"]
+            insert-token! (fn [table scope resource]
+                            (t2/insert-returning-pk!
+                             table (cond-> {:token      (str (random-uuid))
+                                            :user_id    user-id
+                                            :client_id  "mcp-binding"
+                                            :scope      scope
+                                            :expiry     (+ (System/currentTimeMillis) 3600000)
+                                            :created_at :%now}
+                                     resource (assoc :resource (json/encode resource)))))
+            ;; label -> [scope column value, stored resource, expected resource after the migration]
+            cases         {"(a) MCP scopes with agent:resource:read"
+                           [(json/encode ["agent:content:read" "agent:query:run" "agent:resource:read"]) nil
+                            mcp-resource]
+                           "(b) MCP scopes without agent:resource:read"
+                           [(json/encode ["agent:content:read" "agent:sql:run"]) nil mcp-resource]
+                           "(c) MCP scopes plus an agent API scope"
+                           [(json/encode ["agent:content:read" "agent:search"]) nil nil]
+                           "(d) mb:full"
+                           [(json/encode ["mb:full"]) nil nil]
+                           "(e) already MCP-bound"
+                           [(json/encode ["agent:content:read"]) ["https://mb.example.com/api/mcp"]
+                            ["https://mb.example.com/api/mcp"]]
+                           "(f) bound to another resource"
+                           [(json/encode ["agent:content:read"]) other other]
+                           "(g) empty scope"
+                           [(json/encode []) nil nil]
+                           "(g) malformed scope"
+                           ["not json" nil nil]}
+            rows          (into {} (for [table           [:oauth_access_token :oauth_refresh_token]
+                                         [label [scope resource]] cases]
+                                     [[table label] (insert-token! table scope resource)]))
+            resource-of   (fn [table id]
+                            (some-> (:resource (t2/query-one {:select [:resource] :from [table] :where [:= :id id]}))
+                                    json/decode))
+            check!        (fn []
+                            (doseq [[[table label] id] rows]
+                              (testing (str (name table) " " label)
+                                (is (= (last (cases label)) (resource-of table id))))))]
+        (migrate!)
+        (check!)
+        (testing "running it again changes nothing more"
+          (#'custom-migrations/bind-legacy-mcp-oauth-tokens!)
+          (check!))))))

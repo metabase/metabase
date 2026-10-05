@@ -1,0 +1,14 @@
+## MCP audience binding. An OAuth token's stored RFC 8707 `resource` decides where it works, and a token with no
+## resource is a REST token, refused at the MCP endpoint. MCP clients that sent no `resource` before binding hold such
+## tokens, scoped with that era's MCP v2 scopes. This binds each unbound access and refresh token whose scopes are all
+## pre-binding MCP v2 scopes to the MCP endpoint, and leaves every other token alone.
+
+databaseChangeLog:
+  - changeSet:
+      id: v65.2026-10-05T00:00:00
+      author: ericnormand
+      comment: Bind OAuth tokens that hold only MCP scopes and no resource to the MCP endpoint
+      changes:
+        - customChange:
+            class: metabase.app_db.custom_migrations.BindLegacyMcpOAuthTokens
+      rollback: []
