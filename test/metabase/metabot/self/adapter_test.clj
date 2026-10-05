@@ -19,6 +19,7 @@
    [metabase.metabot.self.openrouter :as openrouter]
    [metabase.metabot.self.registry :as registry]
    [metabase.metabot.self.vllm :as vllm]
+   [metabase.metabot.self.xai :as xai]
    [metabase.metabot.self.zai :as zai]
    [metabase.premium-features.core :as premium-features]
    [metabase.test :as mt]
@@ -46,6 +47,7 @@
    #'openai/provider     :metabot.openai/request
    #'openrouter/provider :metabot.openrouter/request
    #'vllm/provider       :metabot.vllm/request
+   #'xai/provider        :metabot.xai/request
    #'zai/provider        :metabot.zai/request})
 
 (deftest ^:parallel span-name-test
@@ -71,6 +73,7 @@
    #'openai/provider     "OpenAI API error (HTTP 418)"
    #'openrouter/provider "OpenRouter API error (HTTP 418)"
    #'vllm/provider       "vLLM API error (HTTP 418)"
+   #'xai/provider        "xAI API error (HTTP 418)"
    #'zai/provider        "Z.AI API error (HTTP 418)"})
 
 (deftest ^:parallel error-message-test

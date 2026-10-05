@@ -13,11 +13,8 @@
 
 (set! *warn-on-reflection* true)
 
-(defn- file ^File [ctx root-dir entity]
-  (let [resolved (storage.util/resolve-storage-path ctx entity)
-        dirnames (drop-last resolved)
-        basename (str (last resolved) ".yaml")]
-    (apply io/file root-dir (concat dirnames [basename]))))
+(defn- yaml-file ^File [root-dir resolved]
+  (apply io/file root-dir (concat (drop-last resolved) [(str (last resolved) ".yaml")])))
 
 (defn file-writer
   "Create a filesystem storage backend rooted at `root-dir`."
@@ -25,11 +22,16 @@
   (let [ctx (serdes/storage-base-context)]
     (reify protocols/ExportWriter
       (store-entity! [_ entity]
-        (let [f (file ctx root-dir entity)]
+        (let [resolved (storage.util/resolve-storage-path ctx entity)
+              f        (yaml-file root-dir resolved)]
           (log/info "Storing" {:path (serdes/log-path-str (:serdes/meta entity))
                                :file (str (.relativize (Path/of (str root-dir) (make-array String 0))
                                                        (.toPath f)))})
-          (spit-yaml! f entity)
+          (spit-yaml! f (storage.util/without-resources entity))
+          (doseq [[segments content] (storage.util/resource-files resolved entity)
+                  :let [resource (apply io/file root-dir segments)]]
+            (io/make-parents resource)
+            (spit resource content))
           (:serdes/meta entity)))
 
       (store-settings! [_ settings]

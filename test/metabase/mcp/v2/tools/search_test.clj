@@ -133,7 +133,7 @@
   (testing "GHY-4137: filtering tables by a real collection_id requires the Library feature; on an
             instance without it the combination is a teaching error, but \"root\" stays inert"
     (mt/with-premium-features #{}
-      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"requires the Library feature"
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"requires the semantic layer feature"
                             (validate-filters! {:type ["table"] :collection_id "someEntityId01234567_"}))
           "no Library feature + real collection id: error")
       (is (some? (validate-filters! {:type ["table"] :collection_id "root"}))
@@ -230,7 +230,7 @@
       (let [{:keys [types disclosures]} (validate-filters! {:collection_id "someEntityId01234567_"})]
         (is (not (contains? (set types) "table"))
             "table is narrowed out, not left in for the engine to drop quietly")
-        (is (some #(re-find #"Library feature" %) disclosures)
+        (is (some #(re-find #"semantic layer feature" %) disclosures)
             "and the caller is told why")
         (is (contains? (set types) "question")
             "sanity: collection-dwelling types are untouched, so this isn't an empty-set pass")))
@@ -238,7 +238,7 @@
       (mt/with-premium-features #{:library}
         (let [{:keys [types disclosures]} (validate-filters! {:collection_id "someEntityId01234567_"})]
           (is (contains? (set types) "table"))
-          (is (not (some #(re-find #"Library feature" %) disclosures))))))
+          (is (not (some #(re-find #"semantic layer feature" %) disclosures))))))
     (testing "\"root\" is inert — it scopes nothing, so it must not trip the table narrowing"
       (mt/with-premium-features #{}
         (is (= {:types nil :disclosures []}

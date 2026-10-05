@@ -313,7 +313,7 @@
       (when (and (contains? types "table")
                  (not (premium-features/has-feature? :library)))
         (common/throw-teaching-error
-         (message/msg [(str "Filtering tables by collection_id requires the Library feature, which "
+         (message/msg [(str "Filtering tables by collection_id requires the semantic layer feature, which "
                             "this instance doesn't have — remove table from type or drop collection_id.")])))
       ;; Without the Library feature a collection-scoped search never covers tables: the engine's
       ;; ::collection-hierarchy where-clause drops them, not the spec's collection attr. Named
@@ -325,7 +325,7 @@
         (swap! narrowed conj
                {:excluded #{"table"}
                 :label    "collection_id"
-                :because  (message/raw "isn't filtered by collection without the Library feature")})))
+                :because  (message/raw "isn't filtered by collection without the semantic layer feature")})))
     (when (true? archived)
       (when-let [bad (seq (sort (filter non-archivable-types effective-types)))]
         (if type-omitted?

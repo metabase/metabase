@@ -44,12 +44,10 @@ describe("Metabot UI", () => {
           cy.findByTestId("metabot-chat-inner-messages")
             .children()
             .then(($children) => {
-              const contentHeight = Array.from($children).reduce(
-                (sum, child) => {
-                  return sum + child.clientHeight;
-                },
-                0,
-              );
+              // span from the first child to the last so inter-message margins count
+              const contentHeight =
+                $children[$children.length - 1].getBoundingClientRect().bottom -
+                $children[0].getBoundingClientRect().top;
               expect(containerHeight).not.to.equal(undefined);
               // we can get some subpixel differences, this isn't a big deal
               expect(contentHeight).to.be.closeTo(containerHeight ?? 0, 1);

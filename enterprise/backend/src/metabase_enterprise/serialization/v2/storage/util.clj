@@ -25,15 +25,17 @@
         (u.str/limit-chars max-label-length))))
 
 (defn- resolve-path
-  "Given a storage path (vector of `{:label ... :key ...}` maps), resolves to a vector of strings
+  "Given a storage path (vector of `{:label ... :key ... :style ...}` maps), resolves to a vector of strings
   with deduplication per folder."
   [unique-name-fns path]
   (loop [remaining    path
          resolved     []]
     (if (empty? remaining)
       resolved
-      (let [{:keys [label key]} (first remaining)
-            slug (slugify-name label)
+      (let [{:keys [label key style] :or {style :name}} (first remaining)
+            slug (case style
+                   :name (slugify-name label)
+                   :slug label)
             gen  (or (get @unique-name-fns resolved)
                      (let [g (lib/non-truncating-unique-name-generator)]
                        (swap! unique-name-fns assoc resolved g)
@@ -47,3 +49,14 @@
   The last element is the filename (without extension)."
   [ctx entity]
   (resolve-path (:unique-name-fns ctx) (serdes/storage-path entity ctx)))
+
+(defn without-resources
+  "The `entity` as written to its YAML file, without its `:serdes/resources`."
+  [entity]
+  (dissoc entity :serdes/resources))
+
+(defn resource-files
+  "Each of `entity`'s `:serdes/resources` as `[path-segments content]`, next to its YAML file at `resolved`."
+  [resolved entity]
+  (for [[path content] (sort-by key (:serdes/resources entity))]
+    [(into (vec (drop-last resolved)) (str/split path #"/")) content]))
