@@ -296,8 +296,30 @@ describe("scenarios > dashboard > subscriptions", () => {
       });
     });
 
-    it("should persist attachments for dashboard subscriptions (metabase#14117)", () => {
-      assignRecipient();
+    it("should clean the new subscription form on cancel and persist attachments for dashboard subscriptions (metabase#30314, metabase#14117)", () => {
+      openDashboardSubscriptions();
+      H.sidebar().within(() => {
+        cy.findByText("Email it").click();
+
+        cy.findByLabelText("Attach results")
+          .should("not.be.checked")
+          .click({ force: true }); // Input is placed behind the lable due to tooltip in label
+        cy.findByLabelText("Questions to attach")
+          .should("not.be.checked")
+          .click();
+
+        cy.button("Cancel").click();
+        cy.findByText("Email it").click();
+
+        cy.findByLabelText("Attach results").should("not.be.checked");
+        cy.findByText("Questions to attach").should("not.exist");
+        cy.findByText(".xlsx").should("not.exist");
+        cy.findByText(".csv").should("not.exist");
+      });
+
+      cy.findByPlaceholderText("Enter user names or email addresses").click();
+      H.popover().contains(admin.first_name).click();
+      cy.realPress("Escape");
 
       H.sidebar().within(() => {
         cy.findByLabelText("Attach results")

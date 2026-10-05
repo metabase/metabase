@@ -672,38 +672,6 @@ describe("issue 26988", () => {
   });
 });
 
-describe("issue 30314", () => {
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-    H.setupSMTP();
-  });
-
-  it("should clean the new subscription form on cancel (metabase#30314)", () => {
-    H.visitDashboard(ORDERS_DASHBOARD_ID);
-
-    H.toggleDashboardSubscriptionsSidebar();
-    H.sidebar().within(() => {
-      cy.findByText("Email it").click();
-
-      cy.findByLabelText("Attach results")
-        .should("not.be.checked")
-        .click({ force: true }); // Input is placed behind the lable due to tooltip in label
-      cy.findByLabelText("Questions to attach")
-        .should("not.be.checked")
-        .click();
-
-      cy.button("Cancel").click();
-      cy.findByText("Email it").click();
-
-      cy.findByLabelText("Attach results").should("not.be.checked");
-      cy.findByText("Questions to attach").should("not.exist");
-      cy.findByText(".xlsx").should("not.exist");
-      cy.findByText(".csv").should("not.exist");
-    });
-  });
-});
-
 describe("issue 17657", () => {
   const { first_name, last_name } = admin;
 
