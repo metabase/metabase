@@ -146,8 +146,13 @@ function isScalar(value: unknown): value is McpScalar {
   );
 }
 
+/**
+ * The named cells as scalars. A cell that is not a scalar is dropped when
+ * `skipNonScalar` is set, and otherwise makes the result null.
+ */
 function toCells(
   cells: ReadonlyArray<{ name?: string; value: unknown }> | undefined,
+  { skipNonScalar = false }: { skipNonScalar?: boolean } = {},
 ): McpCell[] | null {
   const result: McpCell[] = [];
 
@@ -156,6 +161,9 @@ function toCells(
       continue;
     }
     if (!isScalar(value)) {
+      if (skipNonScalar) {
+        continue;
+      }
       return null;
     }
     result.push({ column: name, value });
@@ -166,11 +174,13 @@ function toCells(
 
 /**
  * What was clicked, with each column named by its result-column name, or null
- * when a clicked value cannot be sent as a scalar.
+ * when the clicked value or a dimension cannot be sent as a scalar.
  */
 export function getClickContext(clicked: ClickObject): McpClickContext | null {
+  // Row cells are context only, so one that cannot be sent is left out.
   const row = toCells(
     clicked.data?.map(({ col, value }) => ({ name: col?.name, value })),
+    { skipNonScalar: true },
   );
   const dimensions = toCells(
     clicked.dimensions?.map(({ column, value }) => ({

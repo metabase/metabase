@@ -51,6 +51,30 @@ describe("getClickContext", () => {
       }),
     ).toBeNull();
   });
+
+  it("drops a row cell that is not a scalar but keeps the click", () => {
+    const TAGS = createMockColumn({ name: "TAGS" });
+    const context = getClickContext({
+      column: COUNT,
+      value: 26000,
+      data: [
+        { col: COUNT, value: 26000 },
+        { col: TAGS, value: ["a", "b"] },
+      ],
+    });
+
+    expect(context?.row).toEqual([{ column: "count", value: 26000 }]);
+  });
+
+  it("refuses a dimension that is not a scalar", () => {
+    expect(
+      getClickContext({
+        column: COUNT,
+        value: 26000,
+        dimensions: [{ column: DATE, value: ["2024-01-01"] }],
+      }),
+    ).toBeNull();
+  });
 });
 
 describe("getDrillOperation", () => {
