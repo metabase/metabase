@@ -279,14 +279,13 @@ describe("scenarios > question > download", () => {
     it("should allow downloading card data and remember the downloaded format", () => {
       cy.intercept("PUT", formatUrl).as("saveFormat");
       cy.intercept("GET", formatUrl).as("fetchFormat");
-      cy.intercept("GET", "/api/dashboard/**").as("dashboard");
       H.visitDashboard(ORDERS_DASHBOARD_ID);
       cy.findByTestId("dashcard").within(() => {
         cy.findByTestId("legend-caption").realHover();
       });
 
       // In CI agents after downloads Cypress gets stuck for a while so the downloads status gets closed by timeout
-      assertOrdersExport(18760);
+      assertOrdersExport();
       cy.wait("@saveFormat");
 
       cy.reload();
@@ -316,17 +315,20 @@ describe("scenarios > question > download", () => {
 
       H.popover().within(() => H.fieldValuesCombobox().type("1"));
 
+      cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query").as(
+        "dashcardQuery",
+      );
       // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Add filter").click();
 
-      cy.wait("@dashboard");
+      cy.wait("@dashcardQuery");
 
       cy.findByTestId("dashcard").within(() => {
         cy.findByTestId("legend-caption").realHover();
       });
 
       // In CI agents after downloads Cypress gets stuck for a while so the downloads status gets closed by timeout
-      assertOrdersExport(1);
+      assertOrdersExport({ assertParameters: [{ type: "id" }] });
     });
 
     it("should allow downloading parameterized cards opened from dashboards as a user with no self-service permission (metabase#20868)", () => {
@@ -399,6 +401,10 @@ describe("scenarios > question > download", () => {
   });
 
   describe("png images", () => {
+    beforeEach(() => {
+      cy.deleteDownloadsFolder();
+    });
+
     it("from query builder", () => {
       H.createQuestion(canSavePngQuestion, { visitQuestion: true });
 
@@ -478,6 +484,7 @@ describe("[snowplow] scenarios > dashboard", () => {
 
     H.popover().within(() => {
       cy.findByText("Download results").click();
+      cy.findByText(".csv").should("be.visible");
       cy.findByText(".png").should("not.exist");
     });
 
@@ -485,12 +492,13 @@ describe("[snowplow] scenarios > dashboard", () => {
   });
 });
 
-function assertOrdersExport(length) {
+function assertOrdersExport({ assertParameters } = {}) {
   H.downloadAndAssert({
     fileType: "xlsx",
     questionId: ORDERS_QUESTION_ID,
     dashcardId: ORDERS_DASHBOARD_DASHCARD_ID,
     dashboardId: ORDERS_DASHBOARD_ID,
     isDashboard: true,
+    assertParameters,
   });
 }
