@@ -97,68 +97,52 @@
                                :query  {:stages [{:source {:type "table" :id (mt/id :venues)}
                                                   :fields [(venues-column "NOT_A_COLUMN")]}]}}]}))))
 
-(deftest exports-actions-with-their-model-test
+(deftest exports-a-query-action-test
   (data-apps.tu/do-with-sources!
-   (fn [{:keys [model-id implicit-id query-action-id]}]
-     (let [model-eid (t2/select-one-fn :entity_id :model/Card :id model-id)
-           response  (export! :crowberto 200 {:actions [implicit-id query-action-id]})]
-       (testing "each action references its model by entity ID"
-         (is (=? {:actions [{:id implicit-id
-                             :entity {:entity_id (t2/select-one-fn :entity_id :model/Action :id implicit-id)
-                                      :type      "implicit"
-                                      :model_id  model-eid
-                                      :implicit  [{:kind "row/create"}]}}
-                            {:id query-action-id
-                             :entity {:type     "query"
-                                      :model_id model-eid
-                                      :query    [{:database_id   (db-name)
-                                                  :dataset_query {:database (db-name)}}]}}]}
-                 response)))
-       (testing "the model both actions belong to is exported once"
-         (is (=? {:models [{:id model-id
-                            :entity {:entity_id     model-eid
-                                     :type          "model"
-                                     :dataset_query {:stages [{:source-table (table-path "VENUES")}]}}}]}
-                 response))
-         (is (= 1 (count (:models response)))))))))
+   (fn [{:keys [action-id]}]
+     (let [response (export! :crowberto 200 {:actions [action-id]})]
+       (is (=? {:actions [{:id action-id
+                           :entity {:entity_id (t2/select-one-fn :entity_id :model/Action :id action-id)
+                                    :type      "query"
+                                    :query     [{:database_id   (db-name)
+                                                 :dataset_query {:database (db-name)}}]}}]}
+               response))
+       (is (not (contains? (-> response :actions first :entity) :model_id))
+           "it names no model")
+       (is (not (contains? response :models))
+           "no model is exported with it")))))
+
+(deftest refuses-an-action-that-belongs-to-a-model-test
+  (testing "a data app runs only actions that belong to no model, as the typed schema lists only those"
+    (data-apps.tu/do-with-sources!
+     (fn [{:keys [model-action-id]}]
+       (is (=? {:actions [{:id model-action-id :error #"Action \d+ belongs to a model\..*"}]}
+               (export! :crowberto 200 {:actions [model-action-id]})))))))
 
 (deftest refuses-what-a-copy-cannot-hold-test
   (data-apps.tu/do-with-sources!
    (fn [{:keys [metric-id model-id]}]
-     (let [mp            (mt/metadata-provider)
-           metric-source (lib/query mp (lib.metadata/card mp metric-id))
-           model-count   (lib/aggregate (lib/query mp (lib.metadata/card mp model-id)) (lib/count))]
-       (mt/with-temp [:model/Card {reading-model-id :id} {:name          "Model reading a metric"
-                                                          :type          :model
-                                                          :database_id   (mt/id)
-                                                          :dataset_query metric-source}
-                      :model/Card {reading-metric-id :id} {:name          "Metric reading a model"
+     (let [mp          (mt/metadata-provider)
+           model-count (lib/aggregate (lib/query mp (lib.metadata/card mp model-id)) (lib/count))]
+       (mt/with-temp [:model/Card {reading-metric-id :id} {:name          "Metric reading a model"
                                                            :type          :metric
                                                            :database_id   (mt/id)
                                                            :dataset_query model-count}]
-         (let [card-sql-id       (actions/insert! {:name          "Read a card"
-                                                   :type          :query
-                                                   :model_id      model-id
-                                                   :database_id   (mt/id)
-                                                   :dataset_query (lib/native-query
-                                                                   mp (str "SELECT * FROM {{#" metric-id "}}"))})
-               on-reading-model  (actions/insert! {:name "Create" :type :implicit :kind :row/create
-                                                   :model_id reading-model-id})
-               reads-metric      {:stages [{:source       {:type "table" :id (mt/id :venues)}
-                                            :aggregations [{:type "metric" :id reading-metric-id}]}]}
-               response          (export! :crowberto 200
-                                          {:queries [{:export "ReadsMetric" :query reads-metric}]
-                                           :actions [card-sql-id on-reading-model Integer/MAX_VALUE]})]
+         (let [card-sql-id  (actions/insert! {:name          "Read a card"
+                                              :type          :query
+                                              :database_id   (mt/id)
+                                              :dataset_query (lib/native-query
+                                                              mp (str "SELECT * FROM {{#" metric-id "}}"))})
+               reads-metric {:stages [{:source       {:type "table" :id (mt/id :venues)}
+                                       :aggregations [{:type "metric" :id reading-metric-id}]}]}
+               response     (export! :crowberto 200
+                                     {:queries [{:export "ReadsMetric" :query reads-metric}]
+                                      :actions [card-sql-id Integer/MAX_VALUE]})]
            (testing "a query action whose SQL reads a card"
              (is (=? {:id card-sql-id :error (re-pattern (str ".*reads card " metric-id ".*"))}
                      (nth (:actions response) 0))))
-           (testing "an action whose model reads a card, with the model's reason"
-             (is (=? {:id on-reading-model :error #".*because its model can't: Model \d+ reads card.*"}
-                     (nth (:actions response) 1)))
-             (is (=? {:id reading-model-id :error (re-pattern (str ".*reads card " metric-id ".*"))}
-                     (some #(when (= reading-model-id (:id %)) %) (:models response)))))
            (testing "an action that does not exist"
-             (is (=? {:error #".*does not exist.*"} (nth (:actions response) 2))))
+             (is (=? {:error #".*does not exist.*"} (nth (:actions response) 1))))
            (testing "a metric that reads a card; the query that aggregates it is still built"
              (is (=? {:queries [{:export "ReadsMetric" :entity map?}]
                       :metrics [{:id reading-metric-id :error (re-pattern (str ".*reads card " model-id ".*"))}]}
@@ -166,13 +150,13 @@
 
 (deftest exports-only-what-the-caller-can-read-test
   (data-apps.tu/do-with-sources!
-   (fn [{:keys [implicit-id model-id]}]
+   (fn [{:keys [action-id]}]
      (mt/with-temp [:model/Collection {collection-id :id} {:name "Private"}]
-       (t2/update! :model/Card model-id {:collection_id collection-id})
+       (t2/update! :model/Action action-id {:collection_id collection-id})
        (mt/with-non-admin-groups-no-collection-perms collection-id
-         (testing "an action on a model in a collection the caller can't read"
-           (is (=? {:actions [{:id implicit-id :error #".*does not exist, or you can't read it.*"}]}
-                   (export! :rasta 200 {:actions [implicit-id]})))))))))
+         (testing "an action in a collection the caller can't read"
+           (is (=? {:actions [{:id action-id :error #".*does not exist, or you can't read it.*"}]}
+                   (export! :rasta 200 {:actions [action-id]})))))))))
 
 (deftest rejects-unsupported-definitions-test
   (testing "the request accepts only what data app definitions support"
@@ -187,16 +171,15 @@
 (deftest a-reader-of-the-sources-exports-them-test
   (testing "the export needs what the typed schema needs: a caller who can read the sources, not an admin"
     (data-apps.tu/do-with-sources!
-     (fn [{:keys [metric-id implicit-id model-id]}]
+     (fn [{:keys [metric-id action-id]}]
        (is (=? {:queries [{:export "VenueCount" :entity map? :metrics [string?]}]
-                :actions [{:id implicit-id :entity map?}]
-                :models  [{:id model-id :entity map?}]
+                :actions [{:id action-id :entity map?}]
                 :metrics [{:id metric-id :entity map?}]}
                (export! :rasta 200
                         {:queries [{:export "VenueCount"
                                     :query  {:stages [{:source       {:type "table" :id (mt/id :venues)}
                                                        :aggregations [{:type "metric" :id metric-id}]}]}}]
-                         :actions [implicit-id]})))))))
+                         :actions [action-id]})))))))
 
 (deftest a-table-the-caller-cannot-read-reveals-nothing-test
   (testing "a definition on a table the caller can't read gets the same answer whether or not its columns exist"
@@ -213,24 +196,17 @@
 (deftest refuses-archived-sources-test
   (testing "the pull refuses an archived resource, so the export refuses an archived source"
     (data-apps.tu/do-with-sources!
-     (fn [{:keys [model-id implicit-id]}]
-       (t2/update! :model/Action :id implicit-id {:archived true})
-       (is (=? {:actions [{:id implicit-id :error #".*is archived.*"}]}
-               (export! :crowberto 200 {:actions [implicit-id]})))
-       (t2/update! :model/Action :id implicit-id {:archived false})
-       (t2/update! :model/Card :id model-id {:archived true})
-       ;; archiving a model archives its actions with it
-       (is (=? {:actions [{:id implicit-id :error #".*is archived.*"}]
-                :models  [{:id model-id :error #".*is archived.*"}]}
-               (export! :crowberto 200 {:actions [implicit-id]})))))))
+     (fn [{:keys [action-id]}]
+       (t2/update! :model/Action :id action-id {:archived true})
+       (is (=? {:actions [{:id action-id :error #".*is archived.*"}]}
+               (export! :crowberto 200 {:actions [action-id]})))))))
 
 (deftest refuses-an-action-whose-parameter-values-come-from-a-card-test
   (data-apps.tu/do-with-sources!
-   (fn [{:keys [model-id metric-id]}]
+   (fn [{:keys [metric-id]}]
      (let [mp        (mt/metadata-provider)
            action-id (actions/insert! {:name          "Pick"
                                        :type          :query
-                                       :model_id      model-id
                                        :database_id   (mt/id)
                                        :dataset_query (lib/native-query mp "UPDATE venues SET name = {{name}}")
                                        :parameters    [{:id "name" :slug "name" :type :string/=
@@ -272,46 +248,45 @@
             and so does the export"
     (mt/with-temp [:model/Database {router-id :id} {}
                    :model/DatabaseRouter _ {:database_id router-id :user_attribute "region"}
-                   ;; A destination has no tables of its own: a card on it reads its router's.
-                   :model/Database {destination-id :id} {:router_database_id router-id}
-                   :model/Card {model-id :id} {:name          "Routed model"
-                                               :type          :model
-                                               :database_id   destination-id
-                                               :dataset_query {:database destination-id
-                                                               :type     :query
-                                                               :query    {:source-table (mt/id :venues)}}}]
-      (let [action-id (actions/insert! {:name "Create" :type :implicit :kind :row/create :model_id model-id})]
-        ;; An implicit action runs on its model's database, so it is refused on its own, not only through its model.
-        (is (=? {:actions [{:id action-id :error #".*is backed by a routing destination.*"}]
-                 :models  [{:id model-id :error #".*is backed by a routing destination.*"}]}
+                   :model/Database {destination-id :id} {:router_database_id router-id}]
+      (let [action-id (actions/insert! {:name          "Rename venue"
+                                        :type          :query
+                                        :database_id   destination-id
+                                        :dataset_query {:lib/type :mbql/query
+                                                        :database destination-id
+                                                        :stages   [{:lib/type :mbql.stage/native
+                                                                    :native   "UPDATE venues SET name = 'x'"}]}})]
+        (is (=? {:actions [{:id action-id :error #".*is backed by a routing destination.*"}]}
                 (export! :crowberto 200 {:actions [action-id]})))))))
 
 (deftest refuses-a-source-whose-settings-read-a-card-test
   (testing "a copy keeps every card its export references, so a click behaviour linking a saved question is refused
             like a query reading one"
     (data-apps.tu/do-with-sources!
-     (fn [{:keys [model-id implicit-id metric-id]}]
-       (t2/update! :model/Card :id model-id
-                   {:visualization_settings {:click_behavior {:type "link" :linkType "question" :targetId metric-id}}})
-       (is (=? {:models  [{:id model-id :error (re-pattern (str ".*reads card " metric-id ".*"))}]
-                :actions [{:id implicit-id :error #".*because its model can't.*"}]}
-               (export! :crowberto 200 {:actions [implicit-id]})))))))
+     (fn [{:keys [metric-id model-id]}]
+       (t2/update! :model/Card :id metric-id
+                   {:visualization_settings {:click_behavior {:type "link" :linkType "question" :targetId model-id}}})
+       (is (=? {:metrics [{:id metric-id :error (re-pattern (str ".*reads card " model-id ".*"))}]}
+               (export! :crowberto 200
+                        {:queries [{:export "VenueCount"
+                                    :query  {:stages [{:source       {:type "table" :id (mt/id :venues)}
+                                                       :aggregations [{:type "metric" :id metric-id}]}]}}]})))))))
 
-(deftest exports-each-model-in-one-extraction-test
+(deftest extracts-the-cards-and-the-actions-once-test
   (testing "the cards and the actions are each extracted in one serialization query, however many the app uses"
     (data-apps.tu/do-with-sources!
-     (fn [{:keys [metric-id implicit-id query-action-id]}]
+     (fn [{:keys [metric-id action-id model-action-id]}]
        (let [calls   (atom [])
              extract @#'resource-export/extract-by-entity-id]
          (mt/with-dynamic-fn-redefs [resource-export/extract-by-entity-id (fn [model-name ids]
                                                                             (swap! calls conj model-name)
                                                                             (extract model-name ids))]
-           (is (=? {:actions [{:entity map?} {:entity map?}] :models [{:entity map?}] :metrics [{:entity map?}]}
+           (is (=? {:actions [{:entity map?} {:error string?}] :metrics [{:entity map?}]}
                    (export! :crowberto 200
                             {:queries [{:export "VenueCount"
                                         :query  {:stages [{:source       {:type "table" :id (mt/id :venues)}
                                                            :aggregations [{:type "metric" :id metric-id}]}]}}]
-                             :actions [implicit-id query-action-id]}))))
+                             :actions [action-id model-action-id]}))))
          (is (= {"Card" 1 "Action" 1} (frequencies @calls))))))))
 
 (deftest exports-the-saved-question-an-author-writes-test
@@ -363,10 +338,10 @@
 (deftest omits-the-settings-an-action-leaves-unset-test
   (testing "nulls inside an action's form settings, which the format omits, are left out of its export"
     (data-apps.tu/do-with-sources!
-     (fn [{:keys [implicit-id]}]
-       (t2/update! :model/Action implicit-id
+     (fn [{:keys [action-id]}]
+       (t2/update! :model/Action action-id
                    {:visualization_settings {:fields          {:name {:id "name" :hidden true :description nil}}
                                              :column_settings nil}})
-       (let [{:keys [entity]} (-> (export! :crowberto 200 {:actions [implicit-id]}) :actions first)]
+       (let [{:keys [entity]} (-> (export! :crowberto 200 {:actions [action-id]}) :actions first)]
          (is (= {:fields {:name {:id "name" :hidden true}}} (:visualization_settings entity)))
          (is (not (contains? entity :description))))))))

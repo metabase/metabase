@@ -8,8 +8,8 @@
 (set! *warn-on-reflection* true)
 
 (defn do-with-sources!
-  "Call `f` with a venues metric, a venues model, and an implicit and a query action on the model, as
-  `{:metric-id :model-id :implicit-id :query-action-id}`: the sources a data app copies."
+  "Call `f` with the sources a data app copies, a venues metric and a query action that belongs to no model, and with
+  what it can't copy, a venues model and an action on it, as `{:metric-id :action-id :model-id :model-action-id}`."
   [f]
   (let [mp    (mt/metadata-provider)
         query (lib/query mp (lib.metadata/table mp (mt/id :venues)))]
@@ -22,12 +22,11 @@
                                                :database_id   (mt/id)
                                                :dataset_query query}]
       (f {:metric-id       metric-id
-          :model-id        model-id
-          :implicit-id     (actions/insert! {:name "Create venue" :type :implicit :kind :row/create
-                                             :model_id model-id})
-          :query-action-id (actions/insert! {:name          "Rename venue"
+          :action-id       (actions/insert! {:name          "Rename venue"
                                              :type          :query
-                                             :model_id      model-id
                                              :database_id   (mt/id)
                                              :dataset_query (lib/native-query mp "UPDATE venues SET name = {{name}}")
-                                             :parameters    [{:id "name" :slug "name" :type :string/=}]})}))))
+                                             :parameters    [{:id "name" :slug "name" :type :string/=}]})
+          :model-id        model-id
+          :model-action-id (actions/insert! {:name "Create venue" :type :implicit :kind :row/create
+                                             :model_id model-id})}))))
