@@ -170,11 +170,9 @@
             (is (partial=
                  {:message     "Unable to setup drive folder sync.\nPlease check that the folder is shared with the proper service account email and sharing permissions."
                   :error_message "Status Reason"
-                  :errors      true
-                  :hm/response {:status 400
-                                :body   {:error-detail "Error detail"
-                                         :status-reason "Status Reason"}}}
-                 result)))
+                  :errors      true}
+                 result))
+            (is (not (contains? result :hm/response))))
           (let [saved (gsheets)]
             (is (= {} saved))))))))
 

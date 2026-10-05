@@ -772,8 +772,7 @@
                         (mt/user-http-request :rasta :post "/dataset"
                                               (lib.convert/->legacy-MBQL card-based-query)))))
               (testing "PUT /card/:id: returns 403 for mismatched result_metadata"
-                (is (=? {:message (partial re-find #"You do not have permission to view data of table \d+ in result_metadata")
-                         :required-permissions {(mt/id) {:perms/view-data {(mt/id :products) "unrestricted"}}}}
+                (is (=? {:message (partial re-find #"You do not have permission to view data of table \d+ in result_metadata")}
                         (mt/user-http-request :rasta :put (str "/card/" (:id card))
                                               {:result_metadata results-metadata-mismatched}))))
               (testing "Result_metadata of a card can be updated freely using toucan"
