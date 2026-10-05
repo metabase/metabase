@@ -15,10 +15,6 @@ import type {
   MetabaseFetchRequestTokenFn,
 } from "metabase/embedding-sdk/types/refresh-token";
 import type { StrictUnion } from "metabase/embedding-sdk/types/utils";
-import type {
-  SdkIframeDashboardEmbedSettings,
-  SdkIframeQuestionEmbedSettings,
-} from "metabase/embedding/embedding-iframe-sdk-setup/types";
 import type { EmbeddingEntityType } from "metabase/redux/store/embedding-data-picker";
 import type { EmbeddedAnalyticsJsEventSchema } from "metabase-types/analytics/embedded-analytics-js";
 import type { CollectionId } from "metabase-types/api";
@@ -154,6 +150,17 @@ export type QuestionEmbedOptions = StrictUnion<
   // incompatible options
   template?: never;
   dashboardId?: never;
+};
+
+// The embed setup wizard extends the runtime options with locked parameters;
+// the runtime accepts the key, so the types live here with the options they
+// extend.
+export type SdkIframeDashboardEmbedSettings = DashboardEmbedOptions & {
+  lockedParameters?: string[];
+};
+
+export type SdkIframeQuestionEmbedSettings = QuestionEmbedOptions & {
+  lockedParameters?: string[];
 };
 
 export interface ExplorationEmbedOptions {

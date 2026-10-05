@@ -18,6 +18,7 @@ jest.mock("embedding-sdk-bundle/lib/get-is-localhost", () => ({
 }));
 
 jest.mock("embedding-sdk-bundle/lib/host-react-version", () => ({
+  ...jest.requireActual("embedding-sdk-bundle/lib/host-react-version"),
   getHostReactMajorVersion: jest.fn(),
 }));
 

@@ -21,15 +21,17 @@
    [metabase.initialization-status.core :as init-status]
    [metabase.llm.startup :as llm.startup]
    [metabase.logger.core :as logger]
+   [metabase.mcp.http-handler :as mcp.http-handler]
    [metabase.metrics.core :as metrics]
    [metabase.notification.core :as notification]
-   [metabase.permissions.core :as perms]
+   [metabase.oauth-server.api :as oauth-server.api]
    [metabase.plugins.core :as plugins]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.sample-data.core :as sample-data]
    [metabase.server.core :as server]
    [metabase.settings.core :as setting]
    [metabase.setup.core :as setup]
+   [metabase.sso.auth-wrapper :as auth-wrapper]
    [metabase.startup.core :as startup]
    [metabase.system.core :as system]
    [metabase.task.core :as task]
@@ -203,8 +205,6 @@
   ;; negatives, but for now there's not much we can do
   (mdb/setup-db! :create-sample-content? (not config/is-test?))
   (mdb/encrypt-plaintext-columns!)
-  ;; In OSS, convert any Data Analysts group with members to a normal visible group
-  (perms/sync-data-analyst-group-for-oss!)
   ;; Disable read-only mode if its on during startup.
   ;; This can happen if a cloud migration process dies during h2 dump.
   (when (cloud-migration/read-only-mode)
@@ -277,8 +277,11 @@
   (log/info "Starting Metabase in STANDALONE mode")
   (try
     ;; launch embedded webserver
-    (let [server-routes (server/make-routes #'api-routes/routes)
-          handler       (server/make-handler server-routes)]
+    (let [server-routes (server/make-routes {:api        #'api-routes/routes
+                                             :auth       #'auth-wrapper/routes
+                                             :oauth      #'oauth-server.api/oauth-routes
+                                             :well-known #'oauth-server.api/well-known-routes})
+          handler       (server/make-handler server-routes #'mcp.http-handler/options)]
       (server/start-web-server! handler))
     ;; run our initialization process
     (init!)

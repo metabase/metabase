@@ -136,6 +136,24 @@ function ValidTypeFixtures() {
 
   void scalarAggregationValue;
 
+  const namedAggregationResult = useMetabaseQuery(
+    defineQuery({
+      source: TEST_SCHEMA.tables.orders,
+      aggregations: [
+        count({ name: "orders" }),
+        sum(TEST_SCHEMA.tables.orders.fields.amount, { name: "total amount" }),
+      ],
+    }),
+  );
+
+  const namedCountValue: number | null | undefined =
+    namedAggregationResult.data?.rows[0]?.orders;
+  const namedSumValue: RowValue | undefined =
+    namedAggregationResult.data?.rows[0]?.["total amount"];
+
+  void namedCountValue;
+  void namedSumValue;
+
   const groupedMetricResult = useMetabaseQuery(
     defineQuery<OrdersTable>({
       source: TEST_SCHEMA.tables.orders,

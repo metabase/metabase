@@ -189,7 +189,7 @@
               (let [request (-> (ring.mock/request :get "/anyurl")
                                 (ring.mock/header session-header header-session-key)
                                 (assoc :cookies {session-cookie {:value cookie-session-key}}))
-                    request' (#'mw.session/merge-current-user-info (wrapped-handler request))]
+                    request' (#'mw.session/merge-current-user-info nil (wrapped-handler request))]
                 (is (= (mt/user->id :lucky)
                        (:metabase-user-id request')))
                 (testing "\nthe request carries the header's session, not the cookie's"
@@ -207,7 +207,7 @@
           (let [request (-> (ring.mock/request :get "/anyurl")
                             (ring.mock/header session-header header-session-key)
                             (assoc :cookies {session-cookie {:value stale-cookie-key}}))
-                request' (#'mw.session/merge-current-user-info (wrapped-handler request))]
+                request' (#'mw.session/merge-current-user-info nil (wrapped-handler request))]
             (is (= (mt/user->id :lucky)
                    (:metabase-user-id request')))
             (is (= header-session-key (:metabase-session-key request')))))))))
@@ -223,7 +223,7 @@
           (let [request (-> (ring.mock/request :get "/anyurl")
                             (ring.mock/header session-header stale-header-key)
                             (assoc :cookies {session-cookie {:value cookie-session-key}}))
-                request' (#'mw.session/merge-current-user-info (wrapped-handler request))]
+                request' (#'mw.session/merge-current-user-info nil (wrapped-handler request))]
             (is (nil? (:metabase-user-id request')))))))))
 
 (deftest cookie-used-when-no-session-header-test
@@ -235,7 +235,7 @@
         (fn []
           (let [request (assoc (ring.mock/request :get "/anyurl")
                                :cookies {session-cookie {:value cookie-session-key}})
-                request' (#'mw.session/merge-current-user-info (wrapped-handler request))]
+                request' (#'mw.session/merge-current-user-info nil (wrapped-handler request))]
             (is (= (mt/user->id :crowberto)
                    (:metabase-user-id request')))
             (is (= :normal (:metabase-session-type request')))))))))
@@ -246,7 +246,7 @@
     (let [request (-> (ring.mock/request :get "/anyurl")
                       (ring.mock/header session-header (str (random-uuid)))
                       (assoc :cookies {session-cookie {:value (str (random-uuid))}}))
-          request' (#'mw.session/merge-current-user-info (wrapped-handler request))]
+          request' (#'mw.session/merge-current-user-info nil (wrapped-handler request))]
       (is (nil? (:metabase-user-id request'))))))
 
 (deftest current-user-info-for-api-key-test
@@ -264,7 +264,7 @@
                                :is-data-analyst?        false
                                :user-locale             nil
                                :embedding/auth-method   "api-key"})
-                   (#'mw.session/merge-current-user-info req)))))
+                   (#'mw.session/merge-current-user-info nil req)))))
         (testing "Include :is-group-manager? if we have EE + :advanced-permissions "
           (when config/ee-available?
             (mt/with-premium-features #{:advanced-permissions}
@@ -274,7 +274,7 @@
                                  :is-group-manager?       false
                                  :user-locale             nil
                                  :embedding/auth-method   "api-key"})
-                     (#'mw.session/merge-current-user-info req))))))))))
+                     (#'mw.session/merge-current-user-info nil req))))))))))
 
 (deftest api-key-hash-encrypted-at-rest-test
   ;; isolated app DB: runs with an encryption key active, so nothing here may touch the shared test DB
@@ -295,12 +295,12 @@
                 "it should decrypt to the (plaintext) bcrypt hash")))
         (testing "a valid key still authenticates (middleware decrypts the raw hash before the bcrypt compare)"
           (is (= (mt/user->id :lucky)
-                 (:metabase-user-id (#'mw.session/merge-current-user-info {:headers {"x-api-key" "mb_encrypted123"}})))))
+                 (:metabase-user-id (#'mw.session/merge-current-user-info nil {:headers {"x-api-key" "mb_encrypted123"}})))))
         (testing "a plaintext bcrypt hash injected via direct SQL is rejected, even though it is a correct hash of the key"
           (t2/query {:update :api_key
                      :set    {:key (u.password/hash-bcrypt "mb_encrypted123")}
                      :where  [:= :id api-key-id]})
-          (is (nil? (:metabase-user-id (#'mw.session/merge-current-user-info {:headers {"x-api-key" "mb_encrypted123"}})))
+          (is (nil? (:metabase-user-id (#'mw.session/merge-current-user-info nil {:headers {"x-api-key" "mb_encrypted123"}})))
               "strict decrypt rejects the unencrypted hash")
           ;; restore a properly-encrypted hash so `with-temp` cleanup (whose before-delete reads the row) doesn't hit the
           ;; strict decrypt on the corrupted plaintext value
@@ -310,7 +310,7 @@
 
 (deftest ^:parallel current-user-info-for-api-key-test-1b
   (testing "Various invalid API keys do not modify the request"
-    (are [req] (= req (#'mw.session/merge-current-user-info req))
+    (are [req] (= req (#'mw.session/merge-current-user-info nil req))
       ;; a matching prefix, invalid key
       {:headers {"x-api-key" "mb_fooby"}}
 
@@ -323,7 +323,7 @@
 (deftest ^:parallel current-user-info-for-api-key-log-errors-test
   (testing "Log an error about invalid API keys"
     (mt/with-log-messages-for-level [messages [metabase.server.middleware.session :error]]
-      (#'mw.session/merge-current-user-info {:headers {"x-api-key" "mb_fooby"}})
+      (#'mw.session/merge-current-user-info nil {:headers {"x-api-key" "mb_fooby"}})
       (is (= [{:namespace 'metabase.server.middleware.session
                :level     :error
                :e         nil
@@ -333,7 +333,7 @@
 (deftest ^:parallel current-user-info-for-api-key-log-errors-test-2
   (testing "Do not include the key itself in the error message -- fall back to a generic error message"
     (mt/with-log-messages-for-level [messages [metabase.server.middleware.session :error]]
-      (#'mw.session/merge-current-user-info {:headers {"x-api-key" "characters"}})
+      (#'mw.session/merge-current-user-info nil {:headers {"x-api-key" "characters"}})
       (is (= [{:namespace 'metabase.server.middleware.session
                :level     :error
                :e         nil
@@ -351,7 +351,7 @@
                                     ::api-key/unhashed-key (u.secret/secret "mb_foobar123")}]
       (let [authed? (fn [] (mt/with-premium-features #{}
                              (boolean (:metabase-user-id
-                                       (#'mw.session/merge-current-user-info {:headers {"x-api-key" "mb_foobar123"}})))))]
+                                       (#'mw.session/merge-current-user-info nil {:headers {"x-api-key" "mb_foobar123"}})))))]
         (testing "authenticates while its synthetic user is active"
           (is (authed?)))
         (testing "deactivating the creator does NOT revoke the key — creator_id is attribution only"
@@ -369,7 +369,7 @@
                                   ::api-key/unhashed-key (u.secret/secret "mb_foobar123")}]
     (testing "An API key without an internal user (e.g. a SCIM key) should not modify the request"
       (let [req {:headers {"x-api-key" "mb_foobar123"}}]
-        (is (= req (#'mw.session/merge-current-user-info req)))))))
+        (is (= req (#'mw.session/merge-current-user-info nil req)))))))
 
 (defn- simple-auth-handler
   "A handler that just does authentication and returns a map from the dynamic variables that are bound as a result."

@@ -71,7 +71,7 @@ export type MetabotDebugToolCallMessage = {
 };
 
 export type MetabotAgentTurnDisplayError = {
-  type: "alert" | "locked" | "message";
+  type: "alert" | "locked" | "message" | "aborted";
   message: string;
 };
 
@@ -109,6 +109,25 @@ export type MetabotMessageStatus =
       serverStarted?: boolean;
     };
 
+export type MetabotIncompleteMessageStatus = Extract<
+  MetabotMessageStatus,
+  { type: "incomplete" }
+>;
+
+export type MetabotIncompleteReason =
+  | "step-limit"
+  | "max-length"
+  | "context-window-full"
+  | "content-filter"
+  | "other";
+
+export type MetabotIncompleteTurn = {
+  reason: MetabotIncompleteReason;
+  message: string;
+  /** Prompt that resumes the turn; absent when the turn cannot be continued. */
+  resumePrompt?: string;
+};
+
 export type MetabotMessagePart =
   | MetabotUserTextChatMessage
   | MetabotAgentTextChatMessage
@@ -145,7 +164,7 @@ export type MetabotChainStep =
       name: string;
       title?: string;
       searchResults?: MetabotSearchResults;
-      status: "started" | "ended";
+      status: "started" | "ended" | "errored";
       startedAtMs?: number;
     };
 

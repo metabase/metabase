@@ -200,6 +200,42 @@
       (unarchive-collection! (t2/select-one :model/Collection :id (u/the-id collection)))
       (is (false? (t2/select-one-fn :archived :model/Card :id (u/the-id card)))))))
 
+(deftest archive-actions-test
+  (testing "archiving a Collection archives its Actions and keeps their dashboard buttons, and unarchiving restores
+            only the Actions archived along with it"
+    (mt/with-temp [:model/Collection    collection {}
+                   :model/Card          model      {:type :model :collection_id (u/the-id collection)}
+                   :model/Action        action     {:type :query :name "Rename" :model_id (u/the-id model)}
+                   :model/Action        old-action {:type :query :name "Old" :model_id (u/the-id model)
+                                                    :archived true :archived_directly true}
+                   :model/Dashboard     dashboard  {:collection_id (u/the-id collection)}
+                   :model/DashboardCard dashcard   {:dashboard_id (u/the-id dashboard) :action_id (u/the-id action)}]
+      (archive-collection! collection)
+      (is (true? (t2/select-one-fn :archived :model/Action :id (u/the-id action))))
+      (is (t2/exists? :model/DashboardCard :id (u/the-id dashcard)))
+      (unarchive-collection! (t2/select-one :model/Collection :id (u/the-id collection)))
+      (is (false? (t2/select-one-fn :archived :model/Action :id (u/the-id action))))
+      (is (true? (t2/select-one-fn :archived :model/Action :id (u/the-id old-action)))))))
+
+(deftest unarchive-collection-keeps-actions-of-archived-models-test
+  (testing "restoring a Collection does not restore the Actions of a model that is still in the trash"
+    (mt/with-temp [:model/Collection collection {}
+                   :model/Card       model      {:type :model :collection_id (u/the-id collection)}
+                   :model/Action     action     {:type :query :name "Rename" :model_id (u/the-id model)}]
+      (t2/update! :model/Card (u/the-id model) {:archived true :archived_directly true})
+      (archive-collection! collection)
+      (unarchive-collection! (t2/select-one :model/Collection :id (u/the-id collection)))
+      (is (true? (t2/select-one-fn :archived :model/Card :id (u/the-id model))))
+      (is (true? (t2/select-one-fn :archived :model/Action :id (u/the-id action)))))))
+
+(deftest delete-collection-deletes-actions-test
+  (testing "deleting a Collection deletes the Actions in it, including the ones without a model"
+    (mt/with-temp [:model/Collection collection {}
+                   :model/Action     action     {:type :query :name "No model" :model_id nil
+                                                 :collection_id (u/the-id collection)}]
+      (t2/delete! :model/Collection :id (u/the-id collection))
+      (is (not (t2/exists? :model/Action :id (u/the-id action)))))))
+
 (deftest validate-name-test
   (testing "check that collections' names cannot be blank"
     (is (thrown?
@@ -1330,6 +1366,15 @@
             (testing "root collection shouldn't be hydrated"
               (is (= nil (t2/hydrate nil :is_personal)))
               (is (= [nil true] (map :is_personal (t2/hydrate [nil (t2/select-one :model/Collection personal-coll)] :is_personal)))))))))))
+
+(deftest hydrate-is-personal-without-any-personal-collections-test
+  (testing "batched hydration works on a fresh instance where no Personal Collection has been created yet"
+    (mt/with-empty-h2-app-db!
+      (let [ids (t2/insert-returning-pks! :model/Collection [{:name "A" :location "/"}
+                                                             {:name "B" :location "/"}])]
+        (is (= [false false]
+               (map :is_personal (t2/hydrate (t2/select :model/Collection :id [:in ids] {:order-by [:id]})
+                                             :is_personal))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                    Moving Collections "Across the Boundary"                                    |
@@ -3279,7 +3324,7 @@
               (is (true? (mi/can-read? sub)))
               (is (false? (mi/can-write? sub))))))))
     (testing "Creating a Layer when one already exists throws an exception"
-      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Library already exists" (collection/create-library-collection!))))
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Semantic layer already exists" (collection/create-library-collection!))))
     ;;cleanup created libraries
     (t2/delete! :model/Collection :type [:in [collection/library-collection-type
                                               collection/library-data-collection-type

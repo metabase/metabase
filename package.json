@@ -19,6 +19,7 @@
     "@codemirror/lang-html": "^6.4.9",
     "@codemirror/lang-javascript": "^6.2.2",
     "@codemirror/lang-json": "^6.0.1",
+    "@codemirror/lang-markdown": "^6.5.2",
     "@codemirror/lang-python": "^6.1.7",
     "@codemirror/lang-sql": "^6.8.0",
     "@codemirror/language": "^6.12.1",
@@ -303,6 +304,7 @@
     "inquirer-file-selector": "^0.2.1",
     "jest": "^30.0.0",
     "jest-canvas-mock": "2.5.2",
+    "jest-circus": "30.2.0",
     "jest-environment-jsdom": "^30.0.0",
     "jest-junit": "^16.0.0",
     "jest-watch-typeahead": "^3.0.0",
@@ -428,6 +430,7 @@
     "build-static-viz:watch-wait": "bun run wait:cljs; bun run build-static-viz:watch",
     "build-stats": "bun install && rspack --json > stats.json",
     "build-storybook": "NODE_OPTIONS=--max-old-space-size=8192 storybook build",
+    "build-storybook:test": "bun run build-storybook --test",
     "build-watch": "bun run concurrently -n 'cljs,js' 'bun run build-watch:cljs' 'bun run build-watch:js'",
     "build-watch:cljs": "bun install && shadow-cljs watch app",
     "build-watch:js": "bun install && NODE_OPTIONS=--max-old-space-size=8192 rspack serve --watch",
@@ -499,12 +502,12 @@
     "test-timezones": "bun install && ./frontend/test/__runner__/run_timezone_tests",
     "test-memory": "node --expose-gc ./node_modules/.bin/jest --runInBand --config jest.memory.conf.js",
     "test-timezones-unit": "jest --silent --maxWorkers=4 --config jest.tz.unit.conf.js",
-    "test-unit": "bun run build:cljs && jest --ignoreProjects ci-scripts --maxWorkers=4",
-    "test-unit-keep-cljs": "jest --ignoreProjects ci-scripts --maxWorkers=4",
+    "test-unit": "bun run build:cljs && jest --ignoreProjects ci-scripts",
+    "test-unit-keep-cljs": "jest --ignoreProjects ci-scripts",
     "test-unit-watch": "bun run test-unit --watch",
     "test-unit-watch:cljs": "bun run concurrently -n 'cljs,tests' 'bun run build-watch:cljs' 'bun run test-unit-keep-cljs --watch'",
     "test-visual:loki": "NODE_ENV=development loki test --chromeFlags='--headless --disable-gpu' ",
-    "test-visual:loki:ci": "bun run build-storybook && bun run test-visual:loki --reactUri file:./storybook-static --verboseRenderer",
+    "test-visual:loki:ci": "bun run build-storybook:test && bun run test-visual:loki --reactUri file:./storybook-static --verboseRenderer",
     "test-visual:loki-approve-diff": "ls .loki/difference | xargs -I _ find .loki/current -name _ | xargs -I _ cp _ .loki/reference/",
     "test-visual:loki-prune": "ls .loki/reference | grep -v \"$(ls .loki/current)\" | xargs -I {} rm .loki/reference/{}",
     "test-visual:loki-report": "node frontend/test/generate-loki-report-json.js && reg-cli --from .loki/report.json --report .loki/report.html",
@@ -521,7 +524,11 @@
     "lint-oxlint-fix": "bun run lint-oxlint --fix"
   },
   "browserslist": [
-    "defaults"
+    "chrome >= 120",
+    "edge >= 120",
+    "firefox >= 121",
+    "safari >= 18.2",
+    "ios_saf >= 18.2"
   ],
   "packageManager": "bun@1.3.14"
 }

@@ -2,6 +2,7 @@ import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import { mockSettings } from "__support__/settings";
 import { createMockState } from "__support__/state";
 import { renderWithProviders } from "__support__/ui";
+import type { FormLocation } from "metabase/databases/types";
 import type {
   DatabaseData,
   Engine,
@@ -103,6 +104,7 @@ export interface SetupOpts {
   engines?: Record<string, Engine>;
   initialValues?: Partial<DatabaseData> & { engine?: EngineKey };
   isAdvanced?: boolean;
+  location?: FormLocation;
 }
 
 export const setup = ({
@@ -111,6 +113,7 @@ export const setup = ({
   engines = TEST_ENGINES,
   initialValues = {},
   isAdvanced = true,
+  location = "admin",
 }: SetupOpts = {}) => {
   const state = createMockState({
     settings: mockSettings({ ...settings, engines }),
@@ -132,7 +135,7 @@ export const setup = ({
       }}
       config={{ isAdvanced }}
       onSubmit={onSubmit}
-      location="admin"
+      location={location}
     />,
     {
       storeInitialState: state,

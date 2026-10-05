@@ -67,7 +67,7 @@ jobs:
       package_template: enterprise/frontend/src/embedding-sdk-package/package.template.json
     steps:
       - name: Check out the code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
 

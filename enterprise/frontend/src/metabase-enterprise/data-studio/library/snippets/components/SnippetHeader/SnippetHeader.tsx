@@ -64,6 +64,7 @@ export function SnippetHeader({
       {...rest}
       breadcrumbs={
         <DataStudioBreadcrumbs loading={isLoadingPath}>
+          <Link to={Urls.dataStudioLibrary()}>{t`Semantic layer`}</Link>
           <Link key="snippet-root-collection" to={Urls.dataStudioLibrary()}>
             {t`SQL snippets`}
           </Link>
