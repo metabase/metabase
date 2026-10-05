@@ -62,7 +62,7 @@ describe("scenarios > metrics > dimensions", () => {
     H.expectNoBadSnowplowEvents();
   });
 
-  it("curates the dimension list: seeded columns, add, rename, set default, and remove", () => {
+  it("curates the dimension list: seeded columns, search, drag-and-drop reorder, add, rename, describe, set and remove the default, and bulk remove", () => {
     H.visitMetric(metricId);
     H.MetricPage.dimensionsTab().click();
     H.MetricPage.dimensionsPage().should("be.visible");
@@ -82,6 +82,54 @@ describe("scenarios > metrics > dimensions", () => {
       .and("contain", "Total")
       .and("contain", "Quantity")
       .and("not.contain", "Vendor");
+
+    cy.log("seeding leaves the metric without a default dimension");
+    dimensionList().findByText("Default").should("not.exist");
+
+    cy.log("search filters the added dimensions");
+    dimensionList().findByPlaceholderText("Search…").type("Disc");
+    allDimensionRows().should("have.length", 1);
+    dimensionRow("Discount").should("be.visible");
+    dimensionList().findByPlaceholderText("Search…").clear();
+    allDimensionRows().should("have.length", SEEDED_DIMENSIONS_COUNT);
+
+    cy.log("drag Quantity to the top of the list");
+    allDimensionRows().first().should("not.contain", "Quantity");
+    // Scoped through the list: during a drag the DragOverlay portal renders a
+    // clone of the row with the same test ids, and re-running an unscoped
+    // query would match both.
+    dimensionList()
+      .findByTestId("dimension-row-Quantity")
+      .findByTestId("dimension-drag-handle")
+      .as("dragHandle");
+    allDimensionRows()
+      .first()
+      .then(($firstRow) => {
+        dimensionRow("Quantity").then(($sourceRow) => {
+          // Overshoot past the first row's top so the dragged row's center
+          // clearly crosses above it.
+          const vertical =
+            $firstRow[0].getBoundingClientRect().top -
+            $sourceRow[0].getBoundingClientRect().top -
+            30;
+          H.moveDnDKitElementByAlias("@dragHandle", { vertical });
+        });
+      });
+    cy.wait("@reorderDimensions");
+    H.expectUnstructuredSnowplowEvent({
+      event: "metric_dimensions_reordered",
+      target_id: metricId,
+      result: "success",
+    });
+    allDimensionRows().first().should("contain", "Quantity");
+
+    cy.log("the new order is persisted");
+    cy.request<ListMetricDimensionsResponse>(
+      "GET",
+      `/api/metric/${metricId}/dimension`,
+    )
+      .its("body.added.0.display_name")
+      .should("equal", "Quantity");
 
     cy.log("add a dimension from a connected table");
     dimensionList()
@@ -132,9 +180,6 @@ describe("scenarios > metrics > dimensions", () => {
       2,
     );
 
-    cy.log("seeding leaves the metric without a default dimension");
-    dimensionList().findByText("Default").should("not.exist");
-
     cy.log("make it the default dimension");
     settingsPanel().findByRole("button", { name: "Set as default" }).click();
     cy.wait("@setDefaultDimension");
@@ -147,7 +192,6 @@ describe("scenarios > metrics > dimensions", () => {
       .scrollIntoView()
       .findByText("Default")
       .should("be.visible");
-    dimensionRow("Created At").findByText("Default").should("not.exist");
     settingsPanel().findByText("Default dimension").should("be.visible");
     dimensionList().findAllByText("Default").should("have.length", 1);
 
@@ -202,57 +246,6 @@ describe("scenarios > metrics > dimensions", () => {
     dimensionList()
       .should("not.contain", "Product type")
       .and("not.contain", "Tax");
-  });
-
-  it("filters with search and persists a drag-and-drop reorder", () => {
-    cy.visit(`/metric/${metricId}/dimensions`);
-    cy.wait("@listDimensions");
-    allDimensionRows().should("have.length", SEEDED_DIMENSIONS_COUNT);
-
-    cy.log("search filters the added dimensions");
-    dimensionList().findByPlaceholderText("Search…").type("Disc");
-    allDimensionRows().should("have.length", 1);
-    dimensionRow("Discount").should("be.visible");
-    dimensionList().findByPlaceholderText("Search…").clear();
-    allDimensionRows().should("have.length", SEEDED_DIMENSIONS_COUNT);
-
-    cy.log("drag Quantity to the top of the list");
-    allDimensionRows().first().should("not.contain", "Quantity");
-    // Scoped through the list: during a drag the DragOverlay portal renders a
-    // clone of the row with the same test ids, and re-running an unscoped
-    // query would match both.
-    dimensionList()
-      .findByTestId("dimension-row-Quantity")
-      .findByTestId("dimension-drag-handle")
-      .as("dragHandle");
-    allDimensionRows()
-      .first()
-      .then(($firstRow) => {
-        dimensionRow("Quantity").then(($sourceRow) => {
-          // Overshoot past the first row's top so the dragged row's center
-          // clearly crosses above it.
-          const vertical =
-            $firstRow[0].getBoundingClientRect().top -
-            $sourceRow[0].getBoundingClientRect().top -
-            30;
-          H.moveDnDKitElementByAlias("@dragHandle", { vertical });
-        });
-      });
-    cy.wait("@reorderDimensions");
-    H.expectUnstructuredSnowplowEvent({
-      event: "metric_dimensions_reordered",
-      target_id: metricId,
-      result: "success",
-    });
-    allDimensionRows().first().should("contain", "Quantity");
-
-    cy.log("the new order is persisted");
-    cy.request<ListMetricDimensionsResponse>(
-      "GET",
-      `/api/metric/${metricId}/dimension`,
-    )
-      .its("body.added.0.display_name")
-      .should("equal", "Quantity");
   });
 
   it("uses a time dimension's configured bucket on the About page", () => {

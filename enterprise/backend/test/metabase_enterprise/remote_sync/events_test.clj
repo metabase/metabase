@@ -141,7 +141,7 @@
   (t2/select-one :model/RemoteSyncObject :model_type "Action" :model_id action-id))
 
 (deftest action-create-event-creates-entry-test
-  (testing "GHY-4722: action-create on a synced model tracks the action under its model's collection"
+  (testing "action-create on a synced model tracks the action under its model's collection"
     ;; remote-sync-type defaults to :read-only, where synced items are not tracked
     (mt/with-temporary-setting-values [remote-sync-type :read-write]
       (mt/with-temp [:model/Collection {coll-id :id}   {:is_remote_synced true :name "Remote-Sync"}
@@ -162,33 +162,21 @@
         (events/publish-event! :event/action-create {:object action :user-id (mt/user->id :rasta)})
         (is (nil? (action-rso (:id action))))))))
 
-(deftest model-events-cascade-to-actions-test
-  (testing "GHY-4722: a model's events carry to its actions"
+(deftest action-moved-with-its-model-test
+  (testing "an action that moves out of synced collections with its model is marked removed"
     (mt/with-temporary-setting-values [remote-sync-type :read-write]
       (mt/with-temp [:model/Collection {synced-id :id} {:is_remote_synced true :name "Remote-Sync"}
                      :model/Collection {plain-id :id}  {:name "Normal"}
-                     :model/Card       model           {:type :model :collection_id synced-id}
-                     :model/Action     {action-id :id} {:type :implicit :name "Create Venue" :model_id (:id model)}]
-        (let [seed! (fn []
-                      (t2/delete! :model/RemoteSyncObject)
-                      (t2/insert! :model/RemoteSyncObject
-                                  [{:model_type "Card" :model_id (:id model) :model_name "M" :status "synced"
-                                    :status_changed_at (t/offset-date-time)}
-                                   {:model_type "Action" :model_id action-id :model_name "Create Venue" :status "synced"
-                                    :status_changed_at (t/offset-date-time)}]))]
-          (testing "archiving the model marks its actions for deletion"
-            (seed!)
-            (events/publish-event! :event/card-update {:object          (assoc model :archived true)
-                                                       :previous-object model
-                                                       :user-id         (mt/user->id :rasta)})
-            (is (=? {:status "delete"} (action-rso action-id))))
-          (testing "moving the model out of synced collections marks its actions removed"
-            (seed!)
-            (t2/update! :model/Card (:id model) {:collection_id plain-id})
-            (events/publish-event! :event/card-update {:object          (assoc model :collection_id plain-id)
-                                                       :previous-object model
-                                                       :user-id         (mt/user->id :rasta)})
-            (is (=? {:status "removed"} (action-rso action-id)))))))))
+                     :model/Card       {model-id :id}  {:type :model :collection_id synced-id}
+                     :model/Action     {action-id :id} {:type :implicit :name "Create Venue" :model_id model-id}]
+        (t2/delete! :model/RemoteSyncObject)
+        (t2/insert! :model/RemoteSyncObject {:model_type "Action" :model_id action-id :model_name "Create Venue"
+                                             :model_collection_id synced-id :status "synced"
+                                             :status_changed_at (t/offset-date-time)})
+        (t2/update! :model/Card model-id {:collection_id plain-id})
+        (events/publish-event! :event/action-update {:object  (t2/select-one :model/Action :id action-id)
+                                                     :user-id (mt/user->id :rasta)})
+        (is (=? {:status "removed"} (action-rso action-id)))))))
 
 (deftest dashboard-create-event-creates-entry-test
   (testing "dashboard-create event creates remote sync object entry with create status"

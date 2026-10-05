@@ -7,6 +7,8 @@ redirect_from:
 
 # Replace data sources
 
+_Data Studio > Dependency graph_
+
 {% include plans-blockquote.html feature="Replacing data sources" %}
 
 Admins can swap out a table, model, or question and replace it with a different one across your entire Metabase.
@@ -81,6 +83,9 @@ To find and replace all entities that depend on a data source:
 2. In Data Studio, click **Dependency graph** in the sidebar and search for the table, model, or question you want to replace.
 3. Click the card for the data source and in the info panel on the right, click the **Find and replace** icon.
    ![Find and replace](../images/find-and-replace.png)
+
+   To replace a table, you can also go to **Data Studio > Connected data**, select the table, click the **three-dot** menu on the table's **Details** tab, and select **Find and replace**.
+
 4. In the left sidebar, select replacement data source.
 5. If Metabase can't go ahead with replacement, you'll see error messages next to data sources, and [compatibility requirements](#compatibility-requirements) errors in the "Column comparison table".
 

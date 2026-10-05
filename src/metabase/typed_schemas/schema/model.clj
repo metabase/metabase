@@ -169,7 +169,7 @@
   "Returns action details from the actions module, preserving lookup error context."
   [model]
   (try
-    (actions/select-actions-non-http-for-models [model] #{(:id model)})
+    (actions/select-actions-for-models [model] [(:id model)])
     (catch Exception exception
       (throw (ex-info (model-action-error-message model (ex-message exception))
                       (error-data-with-cause-message
@@ -182,7 +182,7 @@
   [models]
   (let [model-ids (set (map :id models))]
     (try
-      (actions/select-actions-non-http-for-models models model-ids)
+      (actions/select-actions-for-models models (vec model-ids))
       (catch Exception exception
         (throw (ex-info (format "Failed to build action schemas for selected models: %s" (ex-message exception))
                         (error-data-with-cause-message
