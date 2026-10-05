@@ -2,10 +2,13 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase.api-scope.core :as api-scope]
    [metabase.lib.core :as lib]
    [metabase.metabot.agent.memory :as memory]
    [metabase.metabot.agent.messages :as messages]
+   [metabase.metabot.agent.profiles :as profiles]
    [metabase.metabot.agent.user-context :as user-context]
+   [metabase.metabot.scope :as scope]
    [metabase.test :as mt]))
 
 ;;; ──────────────────────────────────────────────────────────────────
@@ -340,3 +343,52 @@
          context
          (memory/initialize [{:role :user :content "Hello"}] {}))
         (is (= 1 @calls))))))
+
+(deftest ^:parallel build-message-history-dialect-preload-gates-on-sql-tools-test
+  (let [context  {:user_is_viewing [{:type       "adhoc"
+                                     :sql_engine "postgres"
+                                     :query      {:type "native" :database 1 :native {:query "SELECT 1"}}}]}
+        memory   (memory/initialize [{:role :user :content "Hello"}] {})
+        preload? (fn [parts]
+                   (boolean (some #(and (= :tool-input (:type %)) (= "load_skill" (:function %))) parts)))]
+    (testing "a profile with a SQL-writing tool gets the dialect skill preloaded"
+      (is (preload? (messages/build-message-history context memory {"create_sql_query" nil}))))
+    (testing "a profile without SQL tools does not, even with the native editor open"
+      (is (not (preload? (messages/build-message-history context memory {"construct_notebook_query" nil})))))
+    (testing "the 2-arity has no tools and never preloads"
+      (is (not (preload? (messages/build-message-history context memory)))))))
+
+(deftest ^:parallel host-app-native-viewing-context-does-not-claim-sql-editor-test
+  (testing "the host-app system prompt says there is no SQL editor; the injected user context must not say the user is in one"
+    (let [context {:in_host_app     true
+                   :user_is_viewing [{:type       "adhoc"
+                                      :sql_engine "postgres"
+                                      :query      {:type "native" :database 1 :native {:query "SELECT 1"}}}]}
+          profile (profiles/get-profile :embedding_next)
+          system  (binding [scope/*current-user-scope* api-scope/unrestricted]
+                    (:content (messages/build-system-message context profile
+                                                             (profiles/profile->tools profile []))))
+          user    (->> (messages/build-message-history context
+                                                       (memory/initialize [{:role :user :content "Hi"}] {})
+                                                       {"construct_notebook_query" nil})
+                       (filter #(= :user (:role %))) last :content)]
+      (is (str/includes? system "there is no SQL editor") "premise")
+      (is (not (str/includes? user "The user is currently in the SQL editor"))))))
+
+(deftest ^:parallel sql-profile-dialect-claim-matches-preload-test
+  (testing "sql-querying-only.selmer claims the dialect skill 'has already been loaded'; that claim and the preload must agree now that the preload gates on SQL tools"
+    (binding [scope/*current-user-scope* api-scope/unrestricted]
+      (let [profile (profiles/get-profile :sql)
+            context {:user_is_viewing [{:type       "adhoc"
+                                        :sql_engine "postgres"
+                                        :query      {:type "native" :database 1 :native {:query "SELECT 1"}}}]}
+            memory  (memory/initialize [{:role :user :content "Hi"}] {})]
+        (doseq [[label caps] {"with write_sql_queries" ["permission:write_sql_queries"]
+                              "without it"             []}]
+          (testing label
+            (let [tools      (profiles/profile->tools profile caps)
+                  system     (:content (messages/build-system-message (assoc context :capabilities caps) profile tools))
+                  parts      (messages/build-message-history context memory tools)
+                  claims?    (str/includes? system "have already been loaded into this conversation")
+                  preloaded? (boolean (some #(= "load_skill" (:function %)) parts))]
+              (is (= claims? preloaded?) (pr-str {:claims? claims? :preloaded? preloaded?})))))))))

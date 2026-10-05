@@ -6,6 +6,7 @@
    [metabase.agent-api.api]
    [metabase.api-scope.core :as api-scope]
    [metabase.api.macros :as api.macros]
+   [metabase.metabot.agent.messages :as messages]
    [metabase.metabot.agent.profiles :as profiles]
    [metabase.metabot.agent.prompts :as prompts]
    [metabase.metabot.scope :as scope]
@@ -207,6 +208,54 @@
                           :construct-notebook-query-operators]]
           (is (str/includes? content (:description (skills/get-skill skill-id)))))))))
 
+;;; Embedded profile (BOT-1891)
+;;;
+;;; The embedded profile has no SQL tools, so everything it says about SQL is prose in the prompt.
+;;; These tests render through [[messages/build-system-message]] so the profile's
+;;; `:system-prompt-context` hook, which maps the request's `:in_host_app` onto the template, is
+;;; exercised too.
+
+(defn- embedded-prompt
+  [context]
+  (binding [scope/*current-user-scope* api-scope/unrestricted]
+    (let [profile (profiles/get-profile :embedding_next)]
+      (:content (messages/build-system-message context profile (profiles/profile->tools profile []))))))
+
+(deftest ^:parallel embedding-profile-has-no-sql-tools-test
+  (testing "premise of the prompt rules below: no surface gives this profile a SQL-writing tool"
+    (binding [scope/*current-user-scope* api-scope/unrestricted]
+      (let [tools (profiles/profile->tools (profiles/get-profile :embedding_next) [])]
+        (is (empty? (filter prompts/sql-generation-tool-names (keys tools))))))))
+
+(deftest ^:parallel embedding-prompt-in-host-app-test
+  (testing "SDK, modular embedding, data app: no Metabase pages exist, so no hand-off and no SQL"
+    (let [content (embedded-prompt {:in_host_app true})]
+      (is (str/includes? content "Never write SQL"))
+      (is (not (str/includes? content "direct the user to the SQL editor")))
+      (is (not (str/includes? content "direct the user to the dashboard builder")))
+      (is (not (str/includes? content "When writing raw SQL"))
+          "the shared data-sources snippet must not presuppose SQL writing here"))))
+
+(deftest ^:parallel embedding-prompt-in-full-app-embed-test
+  (testing "full-app iframe embed: the SQL editor, dashboard builder and search exist, so the hand-off stays"
+    (doseq [context [{} {:in_host_app false}]]
+      (let [content (embedded-prompt context)]
+        (is (str/includes? content "direct the user to the SQL editor") (pr-str context))
+        (is (str/includes? content "direct the user to the dashboard builder") (pr-str context))
+        (is (not (str/includes? content "Never write SQL")) (pr-str context))
+        (is (not (str/includes? content "When writing raw SQL"))
+            (str "no SQL tools in this surface either: " (pr-str context)))))))
+
+(deftest ^:parallel data-sources-raw-sql-sentence-gates-on-sql-tools-test
+  (testing "the raw-SQL aside (now in the templates, not the directive-free shared snippet) renders only when SQL tools are active"
+    (binding [scope/*current-user-metabot-permissions* {:permission/metabot-sql-generation :yes
+                                                        :permission/metabot-nlq            :yes
+                                                        :permission/metabot-other-tools    :yes}]
+      (let [render (fn [tools]
+                     (prompts/build-system-message-content {:prompt-template "internal.selmer"} {} tools []))]
+        (is (str/includes? (render {"create_sql_query" nil}) "When writing raw SQL"))
+        (is (not (str/includes? (render {"construct_notebook_query" nil}) "When writing raw SQL")))))))
+
 (deftest ^:parallel build-system-message-content-test-9
   (testing "renders sql querying template with literal model syntax"
     (let [profile {:prompt-template "sql-querying-only.selmer"}
@@ -224,3 +273,39 @@
       (is (not (str/includes? content "{%raw%}")))
       (is (not (str/includes? content "{% safe %}")))
       (is (not (str/includes? content "verbatim"))))))
+
+(deftest ^:parallel embedding-loadable-skills-do-not-presuppose-sql-test
+  (testing "every skill the embedded profile can load is free of SQL-writing guidance, since it has no SQL tools"
+    (binding [scope/*current-user-scope* api-scope/unrestricted]
+      (let [profile (profiles/get-profile :embedding_next)
+            tools   (profiles/profile->tools profile [])
+            {:keys [catalog always-on]} (skills/build-skill-manifest profile (keys tools) [])
+            ids     (concat (map (comp keyword :id) catalog) (map :id always-on))]
+        (is (some #{:read-resource} ids) "premise: read-resource is loadable here")
+        (doseq [id ids]
+          (testing id
+            (is (not (re-find #"(?i)before writing SQL|recommending raw-table SQL"
+                              (:body (skills/get-skill id)))))))))))
+
+(deftest ^:parallel embedding-prompt-full-app-scope-text-unchanged-test
+  (testing "full-app embed: the Scope section is byte-identical to the pre-BOT-1891 text (no blank lines left by the Selmer tags)"
+    (let [content (embedded-prompt {})]
+      (is (str/includes? content
+                         (str "# Scope\n\n"
+                              "Your job is to answer analytical questions by producing visualizations. For other needs:\n\n"
+                              "- Dashboards: direct the user to the dashboard builder.\n"
+                              "- SQL queries: direct the user to the SQL editor.\n"
+                              "- Finding existing saved content: direct the user to search/browse.\n\n")))
+      (is (not (str/includes? content "search/browse.\n\n\n\n"))
+          "the {% endif %} must not add a blank line after the hand-off"))))
+
+(deftest ^:parallel raw-sql-aside-reaches-every-sql-writing-template-test
+  (testing "the raw-SQL aside lives outside the directive-free shared snippets, so each SQL-writing template must carry it itself"
+    (binding [scope/*current-user-metabot-permissions* {:permission/metabot-sql-generation :yes
+                                                        :permission/metabot-nlq            :yes
+                                                        :permission/metabot-other-tools    :yes}]
+      (doseq [template ["internal.selmer" "sql-querying-only.selmer"]]
+        (testing template
+          (is (str/includes? (prompts/build-system-message-content {:prompt-template template} {}
+                                                                   {"create_sql_query" nil} [])
+                             "When writing raw SQL")))))))
