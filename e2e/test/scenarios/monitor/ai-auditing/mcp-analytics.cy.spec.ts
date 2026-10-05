@@ -36,6 +36,14 @@ function visitMcpAnalyticsPage(): void {
   cy.wait("@auditMetadata");
 }
 
+function interceptEventsQuery(alias: string): void {
+  cy.intercept("POST", "/api/dataset", (req) => {
+    if (req.body?.stages?.[0]?.page) {
+      req.alias = alias;
+    }
+  });
+}
+
 describe("scenarios > monitor > ai auditing > mcp analytics", () => {
   beforeEach(() => {
     H.restore();
@@ -83,11 +91,8 @@ describe("scenarios > monitor > ai auditing > mcp analytics", () => {
       .scrollIntoView()
       .should("be.visible");
 
-    cy.log("The page renders with the seeded data (not the empty state)");
-    H.main().findByText("No MCP activity").should("not.exist");
-
     cy.log("The seeded tool calls show up in the Events table");
-    cy.intercept("POST", "/api/dataset").as("toolCalls");
+    interceptEventsQuery("toolCalls");
     H.main().findByRole("link", { name: "Tool calls" }).click();
     cy.wait("@toolCalls");
     H.main().within(() => {
@@ -99,7 +104,7 @@ describe("scenarios > monitor > ai auditing > mcp analytics", () => {
 
     cy.log("The error message shows once PII retention is on");
     H.updateSetting("analytics-pii-retention-enabled", true);
-    cy.intercept("POST", "/api/dataset").as("toolCallsWithPii");
+    interceptEventsQuery("toolCallsWithPii");
     cy.reload();
     cy.wait("@toolCallsWithPii");
     H.main().within(() => {

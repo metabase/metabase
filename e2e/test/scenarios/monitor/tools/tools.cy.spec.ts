@@ -713,7 +713,9 @@ describe("scenarios > monitor > tools > task runs", () => {
   it("should switch tabs, open task run details and follow their links", () => {
     cy.visit("/monitor/tasks/list");
 
-    cy.findByTestId("tasks-table").should("be.visible");
+    cy.findByTestId("tasks-table")
+      .findAllByTestId("task")
+      .should("have.length.at.least", 1);
 
     cy.findByRole("link", { name: "Runs" }).click();
     cy.location("pathname").should("eq", "/monitor/tasks/runs");
@@ -758,6 +760,16 @@ describe("scenarios > monitor > tools > task runs", () => {
     cy.go("back");
     cy.location("pathname").should("eq", `/monitor/tasks/runs/${taskRun.id}`);
 
+    cy.log("cold load of the run details page fetches the run");
+    cy.reload();
+    cy.wait("@getTaskRun");
+    cy.findByTestId("monitor-main")
+      .findByText("Sample Database")
+      .should("be.visible");
+    cy.findByTestId("task-run-tasks-table")
+      .findAllByTestId("task-run-task")
+      .should("have.length", 3);
+
     cy.log("Back to Runs opens the runs list");
     cy.findByRole("link", { name: /Back to Runs/i }).click();
     cy.location("pathname").should("eq", "/monitor/tasks/runs");
@@ -765,7 +777,9 @@ describe("scenarios > monitor > tools > task runs", () => {
     cy.log("Tasks tab opens the tasks list");
     cy.findByRole("link", { name: "Tasks" }).click();
     cy.location("pathname").should("eq", "/monitor/tasks/list");
-    cy.findByTestId("tasks-table").should("be.visible");
+    cy.findByTestId("tasks-table")
+      .findAllByTestId("task")
+      .should("have.length.at.least", 1);
   });
 });
 
@@ -908,10 +922,6 @@ describe("scenarios > monitor > tools > task runs filtering", () => {
 
     cy.log("Filter by started at");
     selectStartedAt("Previous 30 days");
-    cy.location("search").should("contain", "started-at=past30days");
-    cy.wait("@getTaskRuns")
-      .its("request.url")
-      .should("contain", "started-at=past30days");
 
     cy.log("Should show loader while loading entities");
     getFilterByEntity()
@@ -920,6 +930,10 @@ describe("scenarios > monitor > tools > task runs filtering", () => {
       .find(".mb-mantine-Loader-root")
       .should("exist");
 
+    cy.location("search").should("contain", "started-at=past30days");
+    cy.wait("@getTaskRuns")
+      .its("request.url")
+      .should("contain", "started-at=past30days");
     cy.wait("@getEntitiesDelayed");
 
     cy.log("Filter by entity, enabled after entities are loaded");
