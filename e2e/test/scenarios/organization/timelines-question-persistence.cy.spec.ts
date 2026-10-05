@@ -354,7 +354,7 @@ describe("scenarios > organization > timelines > question persistence", () => {
     expectEvents(["Swallows return"], ["Swifts return", "Rare visitor"]);
   });
 
-  it("should not save collection-default events when saving an unrelated chart change", () => {
+  it("shows no events and does not record collection-default events when saving an unrelated chart change", () => {
     H.createTimelineWithEvents({
       timeline: { name: "Migration seasons" },
       events: EVENTS,
@@ -362,7 +362,7 @@ describe("scenarios > organization > timelines > question persistence", () => {
     createTimeSeries();
 
     H.visitQuestion("@questionId");
-    expectEvents(EVENT_NAMES);
+    expectEvents([], EVENT_NAMES);
     H.openVizSettingsSidebar();
     H.vizSettingsSidebar().within(() => {
       cy.findByText("Display").click();
@@ -385,7 +385,7 @@ describe("scenarios > organization > timelines > question persistence", () => {
         });
     });
     cy.reload();
-    expectEvents(EVENT_NAMES);
+    expectEvents([], EVENT_NAMES);
 
     cy.log("the dashboard only shows events saved on the question");
     H.visitDashboard("@dashboardId");

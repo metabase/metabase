@@ -50,6 +50,7 @@ import type {
   DatasetQuery,
   Field,
   Series,
+  TimelineEventsVisibility,
 } from "metabase-types/api";
 
 import { cleanIndexFlags } from "../model-indexes/actions";
@@ -824,16 +825,24 @@ const getFilteredTimelines = createSelector(
     filterTimelinesByXAxes(timelines, xAxis ? [xAxis] : null),
 );
 
+const NO_TIMELINE_EVENTS_VISIBILITY: TimelineEventsVisibility = {};
+
 export const getTimelineEventsVisibility = createSelector(
   [
     (state: QueryBuilderStoreState) =>
       getRecordedTimelineEventsVisibility(getQuestion(state)?.settings()),
+    (state: QueryBuilderStoreState) =>
+      Boolean(
+        getQuestion(state)?.isSaved() || getOriginalQuestion(state)?.isSaved(),
+      ),
     (state: QueryBuilderStoreState) => getQuestion(state)?.collectionId(),
     getTransformedTimelines,
   ],
-  (savedVisibility, collectionId, timelines) =>
+  (savedVisibility, isSaved, collectionId, timelines) =>
     savedVisibility ??
-    getCollectionTimelinesVisibility(timelines, collectionId),
+    (isSaved
+      ? NO_TIMELINE_EVENTS_VISIBILITY
+      : getCollectionTimelinesVisibility(timelines, collectionId)),
 );
 
 export const getVisibleTimelineEvents = createSelector(

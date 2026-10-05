@@ -160,10 +160,32 @@ describe("QueryBuilder > timeline events", () => {
     trackSimpleEvent.mockClear();
   });
 
-  it("shows the collection's events for a question that never recorded any", async () => {
+  it("shows no events for a saved question that never recorded any", async () => {
     const store = await setupWithTimelines();
 
-    expect(getVisibleEventIds(store)).toEqual([RC1.id, RC2.id]);
+    expect(getVisibleEventIds(store)).toEqual([]);
+  });
+
+  it("shows no events after editing the query of a saved question that never recorded any", async () => {
+    const store = await setupWithTimelines();
+
+    await triggerVisualizationQueryChange();
+
+    await waitFor(() => {
+      expect(getIsDirty(store.getState())).toBe(true);
+    });
+    expect(getVisibleEventIds(store)).toEqual([]);
+  });
+
+  it("saving a copy of a saved question without recorded events keeps them off", async () => {
+    const store = await setupWithTimelines();
+    const question = checkNotNull(getQuestion(store.getState()));
+
+    await act(async () => {
+      await store.dispatch(apiCreateQuestion(question));
+    });
+
+    expect(getCreatedCard().visualization_settings).toMatchObject(EVENTS_OFF);
   });
 
   it("shows root-collection events for an ad-hoc question", async () => {
@@ -265,7 +287,9 @@ describe("QueryBuilder > timeline events", () => {
   });
 
   it("hiding an event records the selection on the question", async () => {
-    const store = await setupWithTimelines();
+    const store = await setupWithTimelines({
+      "timeline.selected_timeline_ids": [TIMELINE.id],
+    });
     expect(getVisibleEventIds(store)).toEqual([RC1.id, RC2.id]);
 
     // The footer's Events button only renders for time series results.
@@ -297,7 +321,9 @@ describe("QueryBuilder > timeline events", () => {
   });
 
   it("saving after turning events off records the absence", async () => {
-    const store = await setupWithTimelines();
+    const store = await setupWithTimelines({
+      "timeline.selected_timeline_ids": [TIMELINE.id],
+    });
 
     await updateVisibility(store, (visibility, timelines) =>
       hideTimelines(visibility, [TIMELINE.id], timelines),
@@ -345,7 +371,9 @@ describe("QueryBuilder > timeline events", () => {
   });
 
   it("saving a question with a recorded selection tracks it", async () => {
-    const store = await setupWithTimelines();
+    const store = await setupWithTimelines({
+      "timeline.selected_timeline_ids": [TIMELINE.id],
+    });
 
     await updateVisibility(store, (visibility, timelines) =>
       hideTimelines(visibility, [TIMELINE.id], timelines),
@@ -408,7 +436,9 @@ describe("QueryBuilder > timeline events", () => {
   });
 
   it("creating an event on a timeline that is already shown records nothing", async () => {
-    const store = await setupWithTimelines();
+    const store = await setupWithTimelines({
+      "timeline.selected_timeline_ids": [TIMELINE.id],
+    });
 
     await updateVisibility(store, (visibility, timelines) =>
       showTimelineEvents(visibility, [RC1], timelines),
@@ -417,12 +447,14 @@ describe("QueryBuilder > timeline events", () => {
     expect(getVisibleEventIds(store)).toEqual([RC1.id, RC2.id]);
     expect(
       checkNotNull(getQuestion(store.getState())).settings(),
-    ).not.toHaveProperty(["timeline.selected_timeline_ids"]);
+    ).toMatchObject({ "timeline.selected_timeline_ids": [TIMELINE.id] });
     expect(getIsDirty(store.getState())).toBe(false);
   });
 
   it("shows an event created on a timeline that has not been fetched yet", async () => {
-    const store = await setupWithTimelines();
+    const store = await setupWithTimelines({
+      "timeline.selected_timeline_ids": [TIMELINE.id],
+    });
     const firstEvent = createMockTimelineEvent({
       id: 97,
       timeline_id: 2,

@@ -252,30 +252,36 @@ export const apiCreateQuestion = (
 ) => {
   return async (dispatch: Dispatch, getState: GetState) => {
     let submittableQuestion = getSubmittableQuestion(getState(), question);
-    // A new time series shows its collection's timelines before it is saved, so record that selection — otherwise
-    // the saved question shows no events on a dashboard. The defaults come from the collection it is being saved
-    // into, which the Save modal may have changed. Questions that recorded a selection, and charts that draw no
-    // events, keep their settings untouched.
+    // Record the displayed selection so the saved question shows the same events on a dashboard.
     if (
       getRecordedTimelineEventsVisibility(submittableQuestion.settings()) ==
         null &&
       canDisplayTimelineEvents(submittableQuestion.display())
     ) {
-      await dispatch(
-        timelineApi.endpoints.listTimelines.initiate(LIST_TIMELINES_REQUEST, {
-          forceRefetch: false,
-          subscribe: false,
-        }),
-      );
-      // An empty collection must still be recorded, or the query builder would later pick up timelines the
-      // dashboard never shows; only a failed request leaves the selection unrecorded.
-      if (selectListTimelines(getState()).isSuccess) {
-        submittableQuestion = submittableQuestion.updateSettings(
-          getCollectionTimelinesVisibility(
-            getTransformedTimelines(getState()),
-            submittableQuestion.collectionId(),
-          ),
+      if (
+        submittableQuestion.isSaved() ||
+        getOriginalQuestion(getState())?.isSaved()
+      ) {
+        submittableQuestion = submittableQuestion.updateSettings({
+          "timeline.selected_timeline_ids": [],
+          "timeline.excluded_timeline_event_ids": [],
+        });
+      } else {
+        await dispatch(
+          timelineApi.endpoints.listTimelines.initiate(LIST_TIMELINES_REQUEST, {
+            forceRefetch: false,
+            subscribe: false,
+          }),
         );
+        // Record an empty collection too; only a failed request leaves the selection unrecorded.
+        if (selectListTimelines(getState()).isSuccess) {
+          submittableQuestion = submittableQuestion.updateSettings(
+            getCollectionTimelinesVisibility(
+              getTransformedTimelines(getState()),
+              submittableQuestion.collectionId(),
+            ),
+          );
+        }
       }
     }
     // Saving models with list view setting as a question in not allowed for now,
