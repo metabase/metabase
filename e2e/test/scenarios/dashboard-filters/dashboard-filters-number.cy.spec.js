@@ -138,9 +138,12 @@ describe("scenarios > dashboard > filters > number", () => {
     cy.wait("@dashboardData");
     H.ensureDashboardCardHasText("95.77");
 
-    // Resets the value back by clicking widget icon
+    // Resets the value back by clicking widget icon while the popover is open
+    H.filterWidget().click();
+    cy.findByRole("dialog").should("be.visible");
     H.resetFilterWidgetToDefault();
     H.filterWidget().findByText("2.07");
+    cy.findByRole("dialog").should("not.exist");
     cy.wait("@dashboardData");
     assertDefaultTaxApplied();
 

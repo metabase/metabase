@@ -702,57 +702,6 @@ describe("scenarios > dashboard > filters > reset all filters", () => {
     });
   });
 
-  describe("issue 46177", () => {
-    beforeEach(() => {
-      H.restore();
-      cy.signInAsAdmin();
-    });
-
-    it("should update value inside popover when resetting value to default (metabase#46177)", () => {
-      const ORDERS_QUESTION = {
-        name: "Orders question",
-        query: {
-          "source-table": ORDERS_ID,
-          limit: 5,
-        },
-      };
-
-      const targetField: LocalFieldReference = ["field", ORDERS.TAX, null];
-      const numberFilter = {
-        name: "Number filter",
-        slug: "number_filter",
-        id: "10c0d4bc",
-        type: "number/=",
-        sectionId: "number",
-        default: 2.9,
-      };
-
-      createDashboardWithParameters(ORDERS_QUESTION, targetField, [
-        numberFilter,
-      ]);
-
-      cy.log("update filter value");
-
-      filter(numberFilter.name).click();
-      cy.findByTestId("token-field").findByLabelText("Remove").click();
-      cy.findByTestId("token-field").findByRole("combobox").type("3");
-      cy.realPress("Tab");
-      H.popover().findByText("Update filter").click();
-
-      filter(numberFilter.name).findByText("3").should("exist");
-
-      cy.log("reset value to default with filter widget open");
-      filter(numberFilter.name).click();
-      cy.findByRole("dialog").should("be.visible");
-      filter(numberFilter.name).icon("revert").click();
-
-      filter(numberFilter.name)
-        .findByText(numberFilter.default)
-        .should("exist");
-      cy.findByRole("dialog").should("not.exist");
-    });
-  });
-
   describe("issue 57388", () => {
     it("should be possible to reset a required text filter to it's default value (metabase#57388)", () => {
       const textFilter = {
