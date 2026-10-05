@@ -181,7 +181,7 @@ describe(
     });
 
     describe("modifying dashboard and dashboard cards", () => {
-      it("should not preserve draft parameter values when editing the dashboard", () => {
+      it("should preserve draft parameter values when editing is cancelled but not when the dashboard is saved", () => {
         createDashboard({ dashboardDetails: { auto_apply_filters: false } });
         openDashboard();
 
@@ -192,6 +192,13 @@ describe(
         });
         H.applyFilterButton().should("be.visible");
 
+        cy.log("cancel editing");
+        H.editDashboard();
+        cy.findByTestId("edit-bar").button("Cancel").click();
+        H.filterWidget().findByText("Gadget").should("be.visible");
+        H.applyFilterButton().should("be.visible");
+
+        cy.log("edit and save the dashboard");
         H.editDashboard();
 
         H.setFilter("Text or Category", "Is");
@@ -209,25 +216,6 @@ describe(
         H.applyFilterToast().should("not.exist");
 
         cy.get("@updateDashboardSpy").should("have.callCount", 1);
-      });
-    });
-
-    describe("modify nothing", () => {
-      it("should preserve draft parameter values when editing of the dashboard was cancelled", () => {
-        createDashboard({ dashboardDetails: { auto_apply_filters: false } });
-        openDashboard();
-
-        H.filterWidget().findByText(FILTER.name).click();
-        H.popover().within(() => {
-          cy.findByText("Gadget").click();
-          cy.button("Add filter").click();
-        });
-        H.applyFilterButton().should("be.visible");
-
-        H.editDashboard();
-        cy.findByTestId("edit-bar").button("Cancel").click();
-        H.filterWidget().findByText("Gadget").should("be.visible");
-        H.applyFilterButton().should("be.visible");
       });
     });
 
