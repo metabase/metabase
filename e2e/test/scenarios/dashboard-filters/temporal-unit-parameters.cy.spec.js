@@ -783,9 +783,6 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
           multiBreakoutQuestionDetails,
         ],
       }).then(({ dashboard }) => H.visitDashboard(dashboard.id));
-      H.getDashboardCard(1).within(() => {
-        cy.findByText("199").should("not.exist");
-      });
       H.editDashboard();
 
       cy.log("add a regular parameter");
@@ -812,12 +809,20 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
         cy.findByText("199").should("exist"); // sample filtered data
         cy.findByText("Created At: Year").should("be.visible");
       });
+      H.getDashboardCard(2).within(() => {
+        cy.findByText("118").should("exist"); // sample filtered data
+        cy.findByText("Created At: Year").should("be.visible");
+      });
 
       cy.log("verify data without the first parameter");
       H.filterWidget().eq(0).icon("close").click();
       H.getDashboardCard(1).within(() => {
         cy.findByText("199").should("not.exist"); // sample filtered data
         cy.findByText("Created At: Year").should("be.visible");
+      });
+      H.getDashboardCard(2).within(() => {
+        cy.findByText("458").should("exist"); // sample unfiltered data
+        cy.findByText("118").should("not.exist");
       });
     });
   });
