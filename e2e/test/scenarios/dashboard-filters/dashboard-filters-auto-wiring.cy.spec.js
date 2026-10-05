@@ -439,8 +439,6 @@ describe("dashboard filters auto-wiring", () => {
 
       addCardToDashboard(["Orders Question", "Reviews Question"]);
 
-      cy.wait("@cardQuery");
-
       goToFilterMapping("ID");
 
       // The two auto-wire suggestion toasts stack and briefly overlap while the
@@ -468,23 +466,27 @@ describe("dashboard filters auto-wiring", () => {
 
       H.dashboardParametersContainer().findByText("ID").click();
 
+      cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query").as(
+        "filteredCardQuery",
+      );
+
       H.dashboardParametersPopover().within(() => {
-        H.fieldValuesCombobox().type("1,");
+        H.fieldValuesCombobox().type("3,");
         cy.button("Add filter").click();
       });
 
-      cy.wait("@cardQuery");
+      cy.wait("@filteredCardQuery");
 
       H.getDashboardCard(0).within(() => {
-        getTableCell("ID", 0).should("contain", "1");
+        getTableCell("ID", 0).should("have.text", "3");
       });
 
       H.getDashboardCard(1).within(() => {
-        getTableCell("Product ID", 0).should("contain", "1");
+        getTableCell("Product ID", 0).should("have.text", "3");
       });
 
       H.getDashboardCard(2).within(() => {
-        getTableCell("Product ID", 0).should("contain", "1");
+        getTableCell("Product ID", 0).should("have.text", "3");
       });
     });
 
@@ -506,8 +508,6 @@ describe("dashboard filters auto-wiring", () => {
         });
       });
 
-      cy.wait("@cardQuery");
-
       goToFilterMapping("ID");
 
       H.getDashboardCard(0).findByText("Products.ID").should("exist");
@@ -518,23 +518,27 @@ describe("dashboard filters auto-wiring", () => {
 
       H.dashboardParametersContainer().findByText("ID").click();
 
+      cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query").as(
+        "filteredCardQuery",
+      );
+
       H.dashboardParametersPopover().within(() => {
-        H.fieldValuesCombobox().type("1,");
+        H.fieldValuesCombobox().type("3,");
         cy.button("Add filter").click();
       });
 
-      cy.wait("@cardQuery");
+      cy.wait("@filteredCardQuery");
 
       H.getDashboardCard(0).within(() => {
-        getTableCell("ID", 0).should("contain", "1");
+        getTableCell("ID", 0).should("have.text", "3");
       });
 
       H.getDashboardCard(1).within(() => {
-        getTableCell("Product ID", 0).should("contain", "1");
+        getTableCell("Product ID", 0).should("have.text", "3");
       });
 
       H.getDashboardCard(2).within(() => {
-        getTableCell("Product ID", 0).should("contain", "1");
+        getTableCell("Product ID", 0).should("have.text", "3");
       });
     });
   });
