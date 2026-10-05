@@ -277,7 +277,7 @@
         (insert-run! missed-schedule-id :succeeded old-months)
         (let [stale-ids (set (map :id (t2/query (staleness/find-stale-query
                                                  :model/Transform
-                                                 {:collection-ids #{}
+                                                 {:collection-ids :all
                                                   :cutoff-date    (stale-test/date-months-ago cutoff-months)}))))]
           (testing "a never-run transform is stale only once its created_at passes the cutoff"
             (is (contains? stale-ids never-old-id))
@@ -296,6 +296,37 @@
             (is (contains? stale-ids missed-schedule-id)))
           (testing "the schedule exception does not shield never-run transforms"
             (is (contains? stale-ids never-scheduled-id))))))))
+
+(deftest find-stale-query-collection-scoping-test
+  (testing "find-stale-query scopes transforms to :collection-ids, like the card and dashboard arms"
+    (let [cutoff-months 6
+          ;; never run and created before the cutoff, so each one is stale on the created_at arm alone
+          long-ago      (stale-test/datetime-months-ago (+ cutoff-months 2))]
+      (mt/with-temp [:model/Collection {coll-a :id}  {:namespace "transforms"}
+                     :model/Collection {coll-b :id}  {:namespace "transforms"}
+                     :model/Transform  {in-a :id}    {:name "in-a"    :collection_id coll-a :created_at long-ago}
+                     :model/Transform  {in-b :id}    {:name "in-b"    :collection_id coll-b :created_at long-ago}
+                     :model/Transform  {at-root :id} {:name "at-root" :created_at long-ago}]
+        (let [mine      #{in-a in-b at-root}
+              ;; the table carries transforms from elsewhere in the suite, so narrow to this test's rows
+              stale-ids (fn [collection-ids]
+                          (into #{}
+                                (comp (map :id) (filter mine))
+                                (t2/query (staleness/find-stale-query
+                                           :model/Transform
+                                           {:collection-ids collection-ids
+                                            :cutoff-date    (stale-test/date-months-ago cutoff-months)}))))]
+          (testing "a named collection returns its own stale transforms and no others"
+            (is (= #{in-a} (stale-ids #{coll-a})))
+            (is (= #{in-b} (stale-ids #{coll-b}))))
+          (testing "several collections return the union"
+            (is (= #{in-a in-b} (stale-ids #{coll-a coll-b}))))
+          (testing "a nil member selects root-level transforms alongside the named collection"
+            (is (= #{in-a at-root} (stale-ids #{coll-a nil}))))
+          (testing "an empty set means no collections, not every collection"
+            (is (= #{} (stale-ids #{}))))
+          (testing ":all searches instance-wide"
+            (is (= mine (stale-ids :all)))))))))
 
 (deftest last-run-hydration-omits-heartbeat-test
   (testing "the `:last_run` hydrated onto a transform leaves out the run's internal `last_heartbeat`"

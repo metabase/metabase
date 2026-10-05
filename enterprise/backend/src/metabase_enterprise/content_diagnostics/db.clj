@@ -184,11 +184,6 @@
   (t2/select [:model/Collection :id :description :location :personal_owner_id :namespace]
              :id [:in collection-ids]))
 
-(mu/defn personal-collection-root-ids
-  "The ids of every personal collection - the roots the descendant `location` match starts from."
-  []
-  (t2/select-pks-vec :model/Collection :personal_owner_id [:not= nil]))
-
 (mu/defn collection-names-by-id
   "`{id → name}` for the Collections with `collection-ids`."
   [collection-ids :- [:set ::lib.schema.id/collection]]
@@ -301,10 +296,14 @@
 
 (mu/defn cards-with-empty-latest-run
   "The `(card_id, started_at)` rows of the non-archived Cards in the containers `eligible-clause` allows
-  whose latest *clean* run returned zero rows. Clean means unparameterized, unsandboxed, not a cache hit
-  and error-free; `parameterized` is matched strictly against `false`, so legacy rows predating these
-  columns (NULL) fall out, and a NULL `is_sandboxed` is treated as not sandboxed."
-  [eligible-clause :- vector?]
+  whose latest *clean* run since `cutoff` returned zero rows. Clean means unparameterized, unsandboxed, not
+  a cache hit and error-free; `parameterized` is matched strictly against `false`, so legacy rows predating
+  these columns (NULL) fall out, and a NULL `is_sandboxed` is treated as not sandboxed.
+
+  `cutoff` bounds the window the way `card-run-medians` does; without it the ranking covered every
+  `query_execution` row ever recorded, which on Postgres means every monthly partition."
+  [cutoff          :- ms/TemporalInstant
+   eligible-clause :- vector?]
   (t2/query {:select [:card_id :started_at]
              :from   [[^:allow-subquery
                        {:select [:qe.card_id :qe.started_at :qe.result_rows
@@ -317,6 +316,7 @@
                         :join   [[:report_card :c] [:= :c.id :qe.card_id]]
                         :where  [:and
                                  [:= :c.archived false]
+                                 [:>= :qe.started_at cutoff]
                                  [:= :qe.parameterized false]
                                  [:= [:coalesce :qe.is_sandboxed false] false]
                                  [:not= :qe.cache_hit true]
