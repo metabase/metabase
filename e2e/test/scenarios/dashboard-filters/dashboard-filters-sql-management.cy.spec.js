@@ -54,7 +54,10 @@ describe("scenarios > dashboard > filters > SQL > management", () => {
       H.sidebar().findByText("Filter operator").next().click();
       H.popover().findByText("Between").click();
 
-      H.getDashboardCard().should("not.contain", "Column to filter on");
+      H.getDashboardCard()
+        .should("contain", "Variable to map to")
+        .and("contain", "No valid fields")
+        .and("not.contain", "Column to filter on");
 
       H.sidebar().findByText("Filter operator").next().click();
       H.popover().findByText("Equal to").click();

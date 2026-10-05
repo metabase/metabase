@@ -82,14 +82,12 @@ describe("scenarios > dashboard > filters", { tags: "@slow" }, () => {
     H.filterWidget().eq(0).click();
     H.popover().within(() => {
       cy.findByTestId("5-filter-value").should("be.visible");
-      cy.findByPlaceholderText("Search the list").type("225");
+      cy.findByPlaceholderText("Search the list").type("20");
       cy.findByTestId("5-filter-value").should("not.exist");
-      cy.findByText("225").click();
+      cy.findByText("20").click();
       cy.button("Update filter").click();
     });
-    H.getDashboardCard()
-      .findByText("Showing first 2,000 rows")
-      .should("be.visible");
+    H.getDashboardCard().within(() => H.assertTableRowsCount(52));
     H.clearFilterWidget(0);
 
     cy.log("multiple values: pick a value without searching");
@@ -150,11 +148,5 @@ const filterDashboard = ({ index, isLabeled = false, isDropdown = false }) => {
     // eslint-disable-next-line metabase/no-unsafe-element-filtering
     H.popover().last().findByText("Twenty").click();
     H.popover().first().button("Add filter").click();
-    return;
   }
-
-  H.popover().within(() => {
-    cy.findByPlaceholderText("Enter a number").type("20");
-    cy.button("Add filter").click();
-  });
 };
