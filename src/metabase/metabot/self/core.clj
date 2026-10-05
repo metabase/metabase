@@ -285,7 +285,13 @@
   A constant rather than a setting: the output distribution is the same on every instance, telemetry records no
   finish reason so a lowered value would truncate tool calls invisibly, and some surfaces deliberately send no cap
   (see the OpenAI builder) or send it only when it fits the context window (see the vLLM builder), so one global
-  knob would mislead."
+  knob would mislead.
+
+  Where a provider counts the cap against the context window, the cap also takes room from the prompt. Mistral
+  (https://docs.mistral.ai/api/endpoint/chat) and Moonshot (https://platform.kimi.ai/docs/api/chat) reject a
+  request whose prompt plus cap exceeds the window, and both send this cap on every request: on a 262,144-token
+  window a prompt over 230,144 tokens fails while the context meter shows about 88%. The agent loop resends the
+  full history and does not compact it, so a long enough conversation reaches this limit."
   32000)
 
 (defn mkid
