@@ -89,6 +89,12 @@ export function useMcpApp(): McpAppState {
   /** The handle whose resolution is still wanted; older ones are discarded. */
   const pendingQueryHandleRef = useRef<string | null>(null);
 
+  /**
+   * The tool result already resolved. Once resolved, the iframe may have
+   * derived other handles from it, so resolving it again would undo them.
+   */
+  const resolvedToolResultRef = useRef<VisualizeQueryToolPayload | null>(null);
+
   // `app` is stable across re-renders
   const { app } = useApp({
     appInfo: { name: "metabase-visualize-query", version: "1.0.0" },
@@ -115,14 +121,15 @@ export function useMcpApp(): McpAppState {
 
   /**
    * Runs once the UI credential exists, because resolving a handle needs it.
-   * The credential is refreshed on a timer, so this can fire more than once for
-   * the same payload; resolution is keyed on the handle so a repeat is harmless.
+   * The credential is refreshed on a timer, so this fires again for the same
+   * payload. A payload is resolved only once: a repeat would make the original
+   * handle current again over any handle the iframe has since derived.
    */
   const handleAuthenticated = useCallback(
     (auth: { uiCredential: string; mcpSessionId: string }) => {
       const toolResult = pendingToolResultRef.current;
 
-      if (!toolResult) {
+      if (!toolResult || toolResult === resolvedToolResultRef.current) {
         return;
       }
 
@@ -157,6 +164,7 @@ export function useMcpApp(): McpAppState {
 
           // Before the query: the question built from it runs through this handle.
           setCurrentMcpQueryHandle(queryHandle);
+          resolvedToolResultRef.current = toolResult;
           setQuery(resolved.query);
           setPrompt(resolved.prompt ?? prompt ?? null);
         } catch (error) {
