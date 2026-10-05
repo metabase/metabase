@@ -946,6 +946,7 @@
      :month
      :now
      :rand
+     :random
      :regexp_replace
      :replace
      :row_number
