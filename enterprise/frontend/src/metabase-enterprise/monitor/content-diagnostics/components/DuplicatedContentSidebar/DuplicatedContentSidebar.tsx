@@ -105,9 +105,7 @@ function DuplicateEntityRow({ entity }: DuplicateEntityRowProps) {
       entityId: entity.id,
       entityType: entity.entity_type,
     });
-  const linkLabel = c(
-    "Accessible link label. {0} is the entity name, {1} is its type, e.g. Question or Dashboard",
-  ).t`${name}, ${typeLabel}`;
+  const linkLabel = `${name}, ${typeLabel}`;
 
   return (
     <Group
