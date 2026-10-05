@@ -62,9 +62,11 @@
 
 (defn- drill-op [drill & args]
   (into [:map {:closed true}
-         [:type    [:= "drill-thru"]]
-         [:drill   [:= drill]]
-         [:context ::click-context]]
+         [:type      [:= "drill-thru"]]
+         [:drill     [:= drill]]
+         [:context   ::click-context]
+         ;; Which dimension's drill to apply, by result-column name, when the click offers one per dimension.
+         [:dimension {:optional true} [:string {:min 1}]]]
         args))
 
 (defn- operation-dispatch [{:keys [type drill]}]
@@ -189,11 +191,29 @@
     :drill-thru/summarize-column [(keyword aggregation)]
     []))
 
-(defn- apply-drill [query {drill-name :drill :keys [context] :as operation}]
+(defn- select-drill
+  "The one drill among `drills` of the operation's type, narrowed to the operation's `dimension` when it names one.
+   Throws a 400 when there is none, or more than one and no `dimension` to choose between them."
+  [drills {drill-name :drill :keys [dimension]}]
   (let [drill-type (keyword "drill-thru" drill-name)
-        drill      (or (some #(when (= drill-type (:type %)) %)
-                             (lib/available-drill-thrus query -1 (click-context query context)))
-                       (throw (bad-request (tru "This click offers no {0} drill." drill-name))))]
+        of-type    (filter #(= drill-type (:type %)) drills)
+        matching   (cond->> of-type
+                     dimension (filter #(= dimension (get-in % [:column :lib/deduplicated-name]))))]
+    (cond
+      (empty? matching)
+      (throw (bad-request (if dimension
+                            (tru "This click offers no {0} drill on {1}." drill-name (pr-str dimension))
+                            (tru "This click offers no {0} drill." drill-name))))
+
+      (next matching)
+      (throw (bad-request (tru "This click offers a {0} drill on more than one dimension; name the dimension."
+                               drill-name)))
+
+      :else
+      (first matching))))
+
+(defn- apply-drill [query {:keys [context] :as operation}]
+  (let [drill (select-drill (lib/available-drill-thrus query -1 (click-context query context)) operation)]
     (apply lib/drill-thru query -1 nil drill (drill-args drill operation))))
 
 (defn- apply-operation [query {:keys [type] :as operation}]

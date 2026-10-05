@@ -57,7 +57,12 @@ const PLAIN_DRILLS = [
 
 type McpPlainDrill = (typeof PLAIN_DRILLS)[number];
 
-type McpDrillBase = { type: "drill-thru"; context: McpClickContext };
+type McpDrillBase = {
+  type: "drill-thru";
+  context: McpClickContext;
+  /** The result-column name of the dimension, for a drill offered per dimension. */
+  dimension?: string;
+};
 
 export type McpDrillOperation =
   | (McpDrillBase & { drill: McpPlainDrill })
@@ -221,6 +226,7 @@ function isPlainDrill(name: string): name is McpPlainDrill {
 export function getDrillOperation(
   actionName: string,
   clicked: ClickObject,
+  dimension?: string,
 ): McpDrillOperation | null {
   const context = getClickContext(clicked);
 
@@ -228,7 +234,11 @@ export function getDrillOperation(
     return null;
   }
 
-  const base: McpDrillBase = { type: "drill-thru", context };
+  const base: McpDrillBase = {
+    type: "drill-thru",
+    context,
+    ...(dimension !== undefined && { dimension }),
+  };
 
   if (actionName === "sort.ascending") {
     return { ...base, drill: "sort", direction: "asc" };
