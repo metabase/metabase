@@ -87,7 +87,7 @@ const QUERY_RESULT = createMockDataset({
  */
 const BOOTSTRAP = createMockMcpAppsBootstrapResponse({
   settings: createMockMcpAppsBootstrapSettings({
-    "enable-embedding-sdk": true,
+    "enable-embedding-modular": true,
     "token-features": createMockTokenFeatures({ embedding_sdk: true }),
   }),
 });

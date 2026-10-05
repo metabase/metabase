@@ -41,9 +41,25 @@ function Home() {
   );
 }
 
+function RelativeLinkPage() {
+  const { pathname } = useLocation();
+  return (
+    <div>
+      <span data-testid="relative-link-location">{pathname}</span>
+      {/* An explicit `..` asks for route-relative resolution on purpose. */}
+      <Link to="..">up</Link>
+    </div>
+  );
+}
+
 const tree = (
   <Route path="/" element={<Home />}>
     <Route path="other" element={<span data-testid="other">other</span>} />
+    {/* Nested two levels deep on purpose: at depth 1 the parent is the root,
+        so "/.." and ".." both land on "/" and the test would pass either way. */}
+    <Route path="section" element={<Outlet />}>
+      <Route path="child" element={<RelativeLinkPage />} />
+    </Route>
   </Route>
 );
 
@@ -162,5 +178,20 @@ describe("Link", () => {
 
     expect(screen.getByTestId("other")).toBeInTheDocument();
     expect(screen.getByTestId("location")).toHaveTextContent("/other");
+  });
+
+  it("resolves an explicit `..` against the current route, not the root", async () => {
+    renderWithProviders(tree, {
+      withRouter: true,
+      initialRoute: "/section/child",
+    });
+
+    await screen.findByTestId("relative-link-location");
+
+    // Anchoring would turn ".." into "/..", which resolves to "/" — a silent
+    // navigation to the app root instead of one level up.
+    await userEvent.click(screen.getByRole("link", { name: "up" }));
+
+    expect(screen.getByTestId("location")).toHaveTextContent("/section");
   });
 });
