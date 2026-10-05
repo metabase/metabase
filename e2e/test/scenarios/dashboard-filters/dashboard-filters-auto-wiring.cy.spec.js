@@ -187,7 +187,7 @@ describe("dashboard filters auto-wiring", () => {
       H.undoToast().should("not.exist");
     });
 
-    it("should dismiss auto-wire toasts on timeout, restarting the 12s timeout for a second suggestion toast", () => {
+    it("should dismiss suggestion toasts after 12s, restarting for a second suggestion, and the undo toast after 8s", () => {
       // A second auto-wiring suggestion toast must not be dismissed by the timeout set for the first one.
       const cardTemplate = {
         card_id: ORDERS_BY_YEAR_QUESTION_ID,
