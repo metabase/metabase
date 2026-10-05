@@ -1,8 +1,7 @@
-import type * as Urls from "metabase/urls";
 import { useListStaleFindingsQuery } from "metabase-enterprise/api";
 import { PAGE_SIZE } from "metabase-enterprise/monitor/constants";
 
-import { staleContentConfig } from "../config";
+import { type StaleContentParams, staleContentConfig } from "../config";
 
 import { ContentDiagnosticsContent } from "./ContentDiagnosticsContent";
 import { StaleContentFilterBar } from "./StaleContentFilterBar";
@@ -11,10 +10,10 @@ import { StaleContentTable } from "./StaleContentTable";
 import type { ContentDiagnosticsParamsOptions } from "./types";
 
 type StaleContentProps = {
-  params: Urls.StaleContentParams;
+  params: StaleContentParams;
   isLoadingParams: boolean;
   onParamsChange: (
-    params: Urls.StaleContentParams,
+    params: StaleContentParams,
     options?: ContentDiagnosticsParamsOptions,
   ) => void;
 };

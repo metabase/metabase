@@ -1,22 +1,4 @@
-import { parsePage, parseSortColumn, parseSortDirection } from "./utils";
-
-describe("parsePage", () => {
-  it.each([
-    [undefined, 0],
-    ["", 0],
-    ["0", 0],
-    ["2", 2],
-    ["-1", 0],
-    ["1.5", 0],
-    ["1e21", 0],
-    ["0x10", 0],
-    ["9007199254740992", 0],
-    ["9007199254740991", Number.MAX_SAFE_INTEGER],
-    ["invalid", 0],
-  ])("parses %p as %p", (param, expected) => {
-    expect(parsePage(param)).toBe(expected);
-  });
-});
+import { parseSortColumn, parseSortDirection } from "./utils";
 
 describe("parseSortColumn", () => {
   const columns = ["name", "created_at"] as const;

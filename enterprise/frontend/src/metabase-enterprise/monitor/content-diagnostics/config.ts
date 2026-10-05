@@ -8,7 +8,6 @@ import {
   parseSortDirection,
 } from "metabase/common/hooks/use-url-state";
 import * as Urls from "metabase/urls";
-import type { Sorting } from "metabase/utils/sorting";
 import {
   CONTENT_DIAGNOSTICS_DUPLICATED_SORT_COLUMNS,
   CONTENT_DIAGNOSTICS_FILTER_TYPES,
@@ -199,12 +198,7 @@ export function createContentDiagnosticsConfig<
     return query;
   };
 
-  const urlState: UrlStateConfig<Params> = {
-    parse,
-    serialize,
-    replace: true,
-    syncFromLocation: true,
-  };
+  const urlState: UrlStateConfig<Params> = { parse, serialize };
 
   const getDefaultFilterOptions = (): FilterOptions =>
     withThreshold(
@@ -251,14 +245,6 @@ export function createContentDiagnosticsConfig<
 
   const getEntityTypesParam = (values: TEntityType[]) =>
     areEntityTypesEqual(values, [...entityTypes]) ? undefined : values;
-
-  const getSortOptions = ({
-    sortColumn,
-    sortDirection,
-  }: Params): Sorting<TSortColumn> | undefined =>
-    sortColumn != null && sortDirection != null
-      ? { column: sortColumn, direction: sortDirection }
-      : undefined;
 
   const getUserParams = (params: Params): UserParams => {
     const userParams = {
@@ -337,7 +323,6 @@ export function createContentDiagnosticsConfig<
     areFilterOptionsEqual,
     getFilterParams,
     getEntityTypesParam,
-    getSortOptions,
     getUserParams,
     parseUserParams,
     hasUrlParams,
@@ -422,3 +407,16 @@ export function getImbalancedContentConfig(
 ) {
   return imbalancedContentConfigs[mode];
 }
+
+export type StaleContentParams = ReturnType<
+  typeof staleContentConfig.urlState.parse
+>;
+export type SlowContentParams = ReturnType<
+  typeof slowContentConfig.urlState.parse
+>;
+export type DuplicatedContentParams = ReturnType<
+  typeof duplicatedContentConfig.urlState.parse
+>;
+export type ImbalancedContentParams = ReturnType<
+  (typeof imbalancedContentConfigs)[ContentDiagnosticsImbalancedFindingType]["urlState"]["parse"]
+>;

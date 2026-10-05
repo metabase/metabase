@@ -1,8 +1,7 @@
-import type * as Urls from "metabase/urls";
 import { useListSlowFindingsQuery } from "metabase-enterprise/api";
 import { PAGE_SIZE } from "metabase-enterprise/monitor/constants";
 
-import { slowContentConfig } from "../config";
+import { type SlowContentParams, slowContentConfig } from "../config";
 
 import { ContentDiagnosticsContent } from "./ContentDiagnosticsContent";
 import { SlowContentFilterBar } from "./SlowContentFilterBar";
@@ -11,10 +10,10 @@ import { SlowContentTable } from "./SlowContentTable";
 import type { ContentDiagnosticsParamsOptions } from "./types";
 
 type SlowContentProps = {
-  params: Urls.SlowContentParams;
+  params: SlowContentParams;
   isLoadingParams: boolean;
   onParamsChange: (
-    params: Urls.SlowContentParams,
+    params: SlowContentParams,
     options?: ContentDiagnosticsParamsOptions,
   ) => void;
 };

@@ -2,7 +2,7 @@ import type { OnChangeFn, Row, RowSelectionState } from "@tanstack/react-table";
 import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
-import { useScrollToTop, useSortingStateChange } from "metabase/common/hooks";
+import { useScrollToTop } from "metabase/common/hooks";
 import { MonitorEmptyState } from "metabase/monitor/components/MonitorEmptyState";
 import {
   Card,
@@ -11,26 +11,25 @@ import {
   TreeTableSkeleton,
   useTreeTableInstance,
 } from "metabase/ui";
-import type * as Urls from "metabase/urls";
-import {
-  type Sorting,
-  toSorting,
-  toSortingOptions,
-} from "metabase/utils/sorting";
+import type { Sorting } from "metabase/utils/sorting";
 import type {
   ContentDiagnosticsImbalancedFinding,
   ContentDiagnosticsImbalancedFindingType,
   ContentDiagnosticsImbalancedSortColumn,
 } from "metabase-types/api";
 
-import { getImbalancedContentConfig } from "../../config";
+import {
+  type ImbalancedContentParams,
+  getImbalancedContentConfig,
+} from "../../config";
+import { useOptionalSortingState } from "../../hooks/use-optional-sorting-state";
 
 import { SKELETON_COLUMN_WIDTHS, getColumns } from "./columns";
 
 type ImbalancedContentTableProps = {
   mode: ContentDiagnosticsImbalancedFindingType;
   findings: ContentDiagnosticsImbalancedFinding[];
-  params: Urls.ImbalancedContentParams;
+  params: ImbalancedContentParams;
   sortOptions: Sorting<ContentDiagnosticsImbalancedSortColumn> | undefined;
   emptyStateLabel: string;
   isFetching?: boolean;
@@ -59,12 +58,10 @@ export function ImbalancedContentTable({
   onRowSelectionChange,
 }: ImbalancedContentTableProps) {
   const columns = useMemo(() => getColumns(mode), [mode]);
-  const { sortingState, onSortingChange } = useSortingStateChange({
-    sortingOptions:
-      sortOptions == null ? undefined : toSortingOptions(sortOptions),
+  const { sortingState, onSortingChange } = useOptionalSortingState({
+    sortOptions,
     columns: getImbalancedContentConfig(mode).sortColumns,
-    onSortingOptionsChange: (options) =>
-      onSortOptionsChange(options == null ? undefined : toSorting(options)),
+    onSortOptionsChange,
   });
 
   const handleRowActivate = useCallback(

@@ -33,11 +33,11 @@ function getArchivableModel(
     return null;
   }
   if (finding.entity_type === "card") {
-    return finding.card_type === "model"
-      ? "dataset"
-      : finding.card_type === "metric"
-        ? "metric"
-        : "card";
+    return match(finding.card_type)
+      .returnType<DiagnosticsArchiveModel>()
+      .with("model", () => "dataset")
+      .with("metric", () => "metric")
+      .otherwise(() => "card");
   }
   return finding.entity_type;
 }

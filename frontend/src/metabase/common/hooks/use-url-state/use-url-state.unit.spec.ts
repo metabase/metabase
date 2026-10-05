@@ -1,6 +1,6 @@
 import { createMockLocation } from "__support__/state";
 import { act, renderHookWithProviders, waitFor } from "__support__/ui";
-import { type Location, useLocation } from "metabase/router";
+import type { Location } from "metabase/router";
 
 import type { QueryParam } from "./types";
 import { type UrlStateConfig, useUrlState } from "./use-url-state";
@@ -13,15 +13,9 @@ type UrlState = {
 
 interface SetupOpts {
   location?: Location;
-  replace?: boolean;
-  syncFromLocation?: boolean;
 }
 
-const setup = ({
-  location = createMockLocation(),
-  replace = false,
-  syncFromLocation = false,
-}: SetupOpts = {}) => {
+const setup = ({ location = createMockLocation() }: SetupOpts = {}) => {
   const parseName = (param: QueryParam): UrlState["name"] => {
     const value = getFirstParamValue(param);
     return value ?? null;
@@ -37,8 +31,6 @@ const setup = ({
   };
 
   const config: UrlStateConfig<UrlState> = {
-    replace,
-    syncFromLocation,
     parse: (query) => ({
       name: parseName(query.name),
       score: parseScore(query.score),
@@ -49,7 +41,7 @@ const setup = ({
     }),
   };
 
-  return renderHookWithProviders(() => useUrlState(useLocation(), config), {
+  return renderHookWithProviders(() => useUrlState(location, config), {
     initialRoute: `${location.pathname}${location.search}`,
     withRouter: true,
   });
@@ -153,47 +145,6 @@ describe("useUrlState", () => {
     expect(router?.location.search).toEqual("?name=abc&score=456");
     await waitFor(() => {
       expect(router?.location.search).toEqual("?name=xyz&score=456");
-    });
-  });
-
-  it("follows external changes to the query when requested", async () => {
-    const { result, router } = setup({
-      location: createLocation("?name=abc"),
-      syncFromLocation: true,
-    });
-
-    act(() => {
-      router?.navigate("/?name=xyz&score=5");
-    });
-
-    await waitFor(() => {
-      expect(result.current[0]).toEqual({ name: "xyz", score: 5 });
-      expect(router?.location.search).toBe("?name=xyz&score=5");
-    });
-  });
-
-  it("replaces rather than pushes programmatic patches when requested", async () => {
-    const { result, router } = setup({
-      location: createLocation("?name=abc"),
-      replace: true,
-      syncFromLocation: true,
-    });
-
-    act(() => {
-      router?.navigate("/?name=first");
-    });
-    await waitFor(() => expect(result.current[0].name).toBe("first"));
-
-    act(() => {
-      result.current[1].patchUrlState({ name: "second" }, { immediate: true });
-    });
-    expect(router?.location.search).toBe("?name=second");
-    act(() => {
-      router?.back();
-    });
-    await waitFor(() => {
-      expect(router?.location.search).toBe("?name=abc");
-      expect(result.current[0].name).toBe("abc");
     });
   });
 

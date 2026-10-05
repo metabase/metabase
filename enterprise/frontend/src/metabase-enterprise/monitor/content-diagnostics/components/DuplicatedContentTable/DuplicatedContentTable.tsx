@@ -2,7 +2,7 @@ import type { OnChangeFn, Row, RowSelectionState } from "@tanstack/react-table";
 import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
-import { useScrollToTop, useSortingStateChange } from "metabase/common/hooks";
+import { useScrollToTop } from "metabase/common/hooks";
 import { MonitorEmptyState } from "metabase/monitor/components/MonitorEmptyState";
 import {
   Card,
@@ -11,24 +11,23 @@ import {
   TreeTableSkeleton,
   useTreeTableInstance,
 } from "metabase/ui";
-import type * as Urls from "metabase/urls";
-import {
-  type Sorting,
-  toSorting,
-  toSortingOptions,
-} from "metabase/utils/sorting";
+import type { Sorting } from "metabase/utils/sorting";
 import type {
   ContentDiagnosticsDuplicatedFinding,
   ContentDiagnosticsDuplicatedSortColumn,
 } from "metabase-types/api";
 
-import { duplicatedContentConfig } from "../../config";
+import {
+  type DuplicatedContentParams,
+  duplicatedContentConfig,
+} from "../../config";
+import { useOptionalSortingState } from "../../hooks/use-optional-sorting-state";
 
 import { SKELETON_COLUMN_WIDTHS, getColumns } from "./columns";
 
 type DuplicatedContentTableProps = {
   findings: ContentDiagnosticsDuplicatedFinding[];
-  params: Urls.DuplicatedContentParams;
+  params: DuplicatedContentParams;
   sortOptions: Sorting<ContentDiagnosticsDuplicatedSortColumn> | undefined;
   isFetching?: boolean;
   isLoading?: boolean;
@@ -52,12 +51,10 @@ export function DuplicatedContentTable({
   onRowSelectionChange,
 }: DuplicatedContentTableProps) {
   const columns = useMemo(() => getColumns(), []);
-  const { sortingState, onSortingChange } = useSortingStateChange({
-    sortingOptions:
-      sortOptions == null ? undefined : toSortingOptions(sortOptions),
+  const { sortingState, onSortingChange } = useOptionalSortingState({
+    sortOptions,
     columns: duplicatedContentConfig.sortColumns,
-    onSortingOptionsChange: (options) =>
-      onSortOptionsChange(options == null ? undefined : toSorting(options)),
+    onSortOptionsChange,
   });
 
   const handleRowActivate = useCallback(

@@ -5,6 +5,7 @@ import {
   type ReactNode,
   useEffect,
   useLayoutEffect,
+  useMemo,
   useState,
 } from "react";
 
@@ -53,7 +54,7 @@ type ContentConfig<
   getDefaultFilterOptions: () => TFilterOptions;
   getFilterOptions: (params: TParams) => TFilterOptions;
   getFilterParams: (options: TFilterOptions) => Partial<TParams>;
-  getSortOptions: (params: TParams) => Sorting<TSortColumn> | undefined;
+  sortColumns: readonly TSortColumn[];
 };
 
 type FilterBarProps<TFilterOptions> = {
@@ -134,8 +135,14 @@ export function ContentDiagnosticsContent<
   const [selectedFindingId, setSelectedFindingId] = useState<number>();
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
 
-  const { page = 0, query } = params;
-  const sortOptions = config.getSortOptions(params);
+  const { page = 0, query, sortColumn, sortDirection } = params;
+  const sortOptions = useMemo(
+    (): Sorting<TSortColumn> | undefined =>
+      sortColumn != null && sortDirection != null
+        ? { column: sortColumn, direction: sortDirection }
+        : undefined,
+    [sortColumn, sortDirection],
+  );
   const isFetching = isFetchingFindings || isLoadingParams;
   const isLoading = isLoadingFindings || isLoadingParams;
   const findings = data?.data ?? [];

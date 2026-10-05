@@ -1,6 +1,5 @@
-import type * as Urls from "metabase/urls";
-
 import {
+  type DuplicatedContentParams,
   duplicatedContentConfig,
   getImbalancedContentConfig,
   slowContentConfig,
@@ -121,7 +120,7 @@ describe("content diagnostics config", () => {
   });
 
   it("maps persisted user params without page or search query", () => {
-    const params: Urls.DuplicatedContentParams = {
+    const params: DuplicatedContentParams = {
       page: 3,
       query: "ignored",
       entityTypes: ["dashboard"],

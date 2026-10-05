@@ -101,7 +101,7 @@ export function ContentDiagnosticsPage<
     ) => {
       const normalizedParams = config.getParamsWithoutDefaults(params);
       if (withSetLastUsedParams) {
-        void setLastUsedParams(config.getUserParams(normalizedParams));
+        setLastUsedParams(config.getUserParams(normalizedParams));
       }
       // Search input changes are already debounced at the control boundary; all
       // other diagnostics controls are discrete actions. Sync immediately so we

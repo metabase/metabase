@@ -14,8 +14,9 @@ import {
   waitFor,
   within,
 } from "__support__/ui";
+import type { UrlStateQuery } from "metabase/common/hooks/use-url-state";
 import { MonitorContent } from "metabase/monitor/components/MonitorLayout/MonitorContent";
-import { Route } from "metabase/router";
+import { Route, queryToSearch } from "metabase/router";
 import * as Urls from "metabase/urls";
 import { parseSearchQuery } from "metabase/utils/browser";
 import type {
@@ -68,7 +69,7 @@ type SetupOpts = {
   mode?: ContentDiagnosticsImbalancedFindingType;
   findings?: ContentDiagnosticsImbalancedFinding[];
   total?: number;
-  urlParams?: Urls.ImbalancedContentParams;
+  urlParams?: UrlStateQuery;
   lastUsedParams?: ContentDiagnosticsImbalancedUserParams;
   error?: boolean;
   getResponse?: (url: string) => ListImbalancedFindingsResponse;
@@ -121,7 +122,7 @@ function setup({
     />,
     {
       withRouter: true,
-      initialRoute: Urls.imbalancedContent(mode, urlParams),
+      initialRoute: `${Urls.imbalancedContent(mode)}${queryToSearch(urlParams)}`,
       storeInitialState: {
         currentUser: createMockUser(),
       },
@@ -249,7 +250,7 @@ describe("ImbalancedContentPage", () => {
   it("offers collections as an entity type and sends the selection to the server", async () => {
     const { router } = setup({
       findings: FINDINGS,
-      urlParams: { entityTypes: ["dashboard"] },
+      urlParams: { "entity-types": ["dashboard"] },
     });
     await waitForListToLoad();
 
@@ -348,7 +349,7 @@ describe("ImbalancedContentPage", () => {
     setup({
       findings: FINDINGS,
       total: 50,
-      urlParams: { entityTypes: ["dashboard"] },
+      urlParams: { "entity-types": ["dashboard"] },
     });
     await waitForListToLoad();
 
@@ -365,7 +366,7 @@ describe("ImbalancedContentPage", () => {
   it("resets to all entity types when the last selected type is deselected", async () => {
     const { router } = setup({
       findings: FINDINGS,
-      urlParams: { entityTypes: ["dashboard"] },
+      urlParams: { "entity-types": ["dashboard"] },
     });
     await waitForListToLoad();
 
@@ -391,7 +392,7 @@ describe("ImbalancedContentPage", () => {
     it("does not offer sorting by mixed-unit crowded content counts", async () => {
       const { router } = setup({
         findings: FINDINGS,
-        urlParams: { sortColumn: "content-count" },
+        urlParams: { "sort-column": "content-count" },
       });
       await waitForListToLoad();
 

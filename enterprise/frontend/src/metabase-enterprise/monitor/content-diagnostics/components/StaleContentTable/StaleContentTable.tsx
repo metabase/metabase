@@ -2,7 +2,7 @@ import type { OnChangeFn, Row, RowSelectionState } from "@tanstack/react-table";
 import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
-import { useScrollToTop, useSortingStateChange } from "metabase/common/hooks";
+import { useScrollToTop } from "metabase/common/hooks";
 import { MonitorEmptyState } from "metabase/monitor/components/MonitorEmptyState";
 import {
   Card,
@@ -11,24 +11,20 @@ import {
   TreeTableSkeleton,
   useTreeTableInstance,
 } from "metabase/ui";
-import type * as Urls from "metabase/urls";
-import {
-  type Sorting,
-  toSorting,
-  toSortingOptions,
-} from "metabase/utils/sorting";
+import type { Sorting } from "metabase/utils/sorting";
 import type {
   ContentDiagnosticsStaleFinding,
   ContentDiagnosticsStaleSortColumn,
 } from "metabase-types/api";
 
-import { staleContentConfig } from "../../config";
+import { type StaleContentParams, staleContentConfig } from "../../config";
+import { useOptionalSortingState } from "../../hooks/use-optional-sorting-state";
 
 import { SKELETON_COLUMN_WIDTHS, getColumns } from "./columns";
 
 type StaleContentTableProps = {
   findings: ContentDiagnosticsStaleFinding[];
-  params: Urls.StaleContentParams;
+  params: StaleContentParams;
   sortOptions: Sorting<ContentDiagnosticsStaleSortColumn> | undefined;
   isFetching?: boolean;
   isLoading?: boolean;
@@ -52,12 +48,10 @@ export function StaleContentTable({
   onRowSelectionChange,
 }: StaleContentTableProps) {
   const columns = useMemo(() => getColumns(), []);
-  const { sortingState, onSortingChange } = useSortingStateChange({
-    sortingOptions:
-      sortOptions == null ? undefined : toSortingOptions(sortOptions),
+  const { sortingState, onSortingChange } = useOptionalSortingState({
+    sortOptions,
     columns: staleContentConfig.sortColumns,
-    onSortingOptionsChange: (options) =>
-      onSortOptionsChange(options == null ? undefined : toSorting(options)),
+    onSortOptionsChange,
   });
 
   const handleRowActivate = useCallback(

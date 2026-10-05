@@ -1,9 +1,11 @@
-import type * as Urls from "metabase/urls";
 import { useListImbalancedFindingsQuery } from "metabase-enterprise/api";
 import { PAGE_SIZE } from "metabase-enterprise/monitor/constants";
 import type { ContentDiagnosticsImbalancedFindingType } from "metabase-types/api";
 
-import { getImbalancedContentConfig } from "../config";
+import {
+  type ImbalancedContentParams,
+  getImbalancedContentConfig,
+} from "../config";
 
 import { ContentDiagnosticsContent } from "./ContentDiagnosticsContent";
 import { ImbalancedContentFilterBar } from "./ImbalancedContentFilterBar";
@@ -14,10 +16,10 @@ import type { ContentDiagnosticsParamsOptions } from "./types";
 
 type ImbalancedContentProps = {
   mode: ContentDiagnosticsImbalancedFindingType;
-  params: Urls.ImbalancedContentParams;
+  params: ImbalancedContentParams;
   isLoadingParams: boolean;
   onParamsChange: (
-    params: Urls.ImbalancedContentParams,
+    params: ImbalancedContentParams,
     options?: ContentDiagnosticsParamsOptions,
   ) => void;
 };

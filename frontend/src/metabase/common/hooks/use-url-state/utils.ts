@@ -16,11 +16,8 @@ export const getAllParamValues = (param: QueryParam): string[] => {
 
 export function parsePage(param: QueryParam): number {
   const value = getFirstParamValue(param);
-  if (!value || !/^\d+$/.test(value)) {
-    return 0;
-  }
-  const parsed = Number(value);
-  return Number.isSafeInteger(parsed) ? parsed : 0;
+  const parsed = parseInt(value || "0", 10);
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : 0;
 }
 
 export function parseSortColumn<TColumn extends string>(

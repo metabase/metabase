@@ -2,7 +2,7 @@ import type { OnChangeFn, Row, RowSelectionState } from "@tanstack/react-table";
 import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
-import { useScrollToTop, useSortingStateChange } from "metabase/common/hooks";
+import { useScrollToTop } from "metabase/common/hooks";
 import { MonitorEmptyState } from "metabase/monitor/components/MonitorEmptyState";
 import {
   Card,
@@ -11,24 +11,20 @@ import {
   TreeTableSkeleton,
   useTreeTableInstance,
 } from "metabase/ui";
-import type * as Urls from "metabase/urls";
-import {
-  type Sorting,
-  toSorting,
-  toSortingOptions,
-} from "metabase/utils/sorting";
+import type { Sorting } from "metabase/utils/sorting";
 import type {
   ContentDiagnosticsSlowFinding,
   ContentDiagnosticsSlowSortColumn,
 } from "metabase-types/api";
 
-import { slowContentConfig } from "../../config";
+import { type SlowContentParams, slowContentConfig } from "../../config";
+import { useOptionalSortingState } from "../../hooks/use-optional-sorting-state";
 
 import { SKELETON_COLUMN_WIDTHS, getColumns } from "./columns";
 
 type SlowContentTableProps = {
   findings: ContentDiagnosticsSlowFinding[];
-  params: Urls.SlowContentParams;
+  params: SlowContentParams;
   sortOptions: Sorting<ContentDiagnosticsSlowSortColumn> | undefined;
   isFetching?: boolean;
   isLoading?: boolean;
@@ -52,12 +48,10 @@ export function SlowContentTable({
   onRowSelectionChange,
 }: SlowContentTableProps) {
   const columns = useMemo(() => getColumns(), []);
-  const { sortingState, onSortingChange } = useSortingStateChange({
-    sortingOptions:
-      sortOptions == null ? undefined : toSortingOptions(sortOptions),
+  const { sortingState, onSortingChange } = useOptionalSortingState({
+    sortOptions,
     columns: slowContentConfig.sortColumns,
-    onSortingOptionsChange: (options) =>
-      onSortOptionsChange(options == null ? undefined : toSorting(options)),
+    onSortOptionsChange,
   });
 
   const handleRowActivate = useCallback(

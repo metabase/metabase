@@ -1,8 +1,10 @@
-import type * as Urls from "metabase/urls";
 import { useListDuplicatedFindingsQuery } from "metabase-enterprise/api";
 import { PAGE_SIZE } from "metabase-enterprise/monitor/constants";
 
-import { duplicatedContentConfig } from "../config";
+import {
+  type DuplicatedContentParams,
+  duplicatedContentConfig,
+} from "../config";
 
 import { ContentDiagnosticsContent } from "./ContentDiagnosticsContent";
 import { DuplicatedContentFilterBar } from "./DuplicatedContentFilterBar";
@@ -11,10 +13,10 @@ import { DuplicatedContentTable } from "./DuplicatedContentTable";
 import type { ContentDiagnosticsParamsOptions } from "./types";
 
 type DuplicatedContentProps = {
-  params: Urls.DuplicatedContentParams;
+  params: DuplicatedContentParams;
   isLoadingParams: boolean;
   onParamsChange: (
-    params: Urls.DuplicatedContentParams,
+    params: DuplicatedContentParams,
     options?: ContentDiagnosticsParamsOptions,
   ) => void;
 };
