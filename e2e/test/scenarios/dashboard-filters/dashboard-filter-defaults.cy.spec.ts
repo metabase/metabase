@@ -41,7 +41,7 @@ describe("scenarios > dashboard > filters > reset", () => {
     cy.signInAsAdmin();
   });
 
-  it("should reset a filters value when editing the default", () => {
+  it("should reset a filters value when editing the default, and leave other filters alone", () => {
     H.createQuestionAndDashboard({
       questionDetails: QUESTION,
       dashboardDetails: DASHBOARD,
@@ -104,47 +104,9 @@ describe("scenarios > dashboard > filters > reset", () => {
 
     H.filterWidget().contains("Filter One").should("be.visible");
     H.filterWidget().contains("Foo").should("be.visible");
-  });
-
-  it("should reset a filters value when editing the default, and leave other filters alone", () => {
-    H.createQuestionAndDashboard({
-      questionDetails: QUESTION,
-      dashboardDetails: DASHBOARD,
-    }).then(({ body: dashboardCard }) => {
-      const { card_id, dashboard_id } = dashboardCard;
-
-      H.editDashboardCard(dashboardCard, {
-        parameter_mappings: [
-          {
-            parameter_id: FILTER_ONE.id,
-            card_id,
-            target: ["dimension", ["field", PRODUCTS.CATEGORY, null]],
-          },
-          {
-            parameter_id: FILTER_TWO.id,
-            card_id,
-            target: ["dimension", ["field", PRODUCTS.TITLE, null]],
-          },
-        ],
-      }).then(() => {
-        H.visitDashboard(dashboard_id, {
-          params: {
-            filter_one: "",
-            filter_two: "Bar",
-          },
-        });
-      });
-    });
-
-    cy.log("Default dashboard filter");
-
-    H.filterWidget().contains("Filter One").should("be.visible");
-    H.filterWidget().contains("Bar").should("be.visible");
-
-    cy.location("search").should("eq", "?filter_one=&filter_two=Bar");
 
     cy.log(
-      "Finally, when we remove dashboard filter's default value, the url should reflect that by removing the placeholder",
+      "Setting Filter One's default value leaves Filter Two's value alone",
     );
     H.editDashboard();
 
@@ -154,15 +116,15 @@ describe("scenarios > dashboard > filters > reset", () => {
       cy.findByLabelText("Input box").click();
     });
 
-    setDefaultFilterValue("Foo");
+    setDefaultFilterValue("Baz");
 
-    cy.location("search").should("eq", "?filter_one=Foo&filter_two=Bar");
+    cy.location("search").should("eq", "?filter_one=Baz&filter_two=Foo");
 
     H.saveDashboard();
 
-    cy.location("search").should("eq", "?filter_one=Foo&filter_two=Bar");
+    cy.location("search").should("eq", "?filter_one=Baz&filter_two=Foo");
 
-    H.filterWidget().contains("Filter One").should("be.visible");
+    H.filterWidget().contains("Baz").should("be.visible");
     H.filterWidget().contains("Foo").should("be.visible");
   });
 });
