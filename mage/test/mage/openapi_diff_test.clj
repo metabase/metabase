@@ -257,24 +257,48 @@
       (is (= 5 (count (:operations (first groups)))) "the 5-endpoint change leads")
       (is (= 1 (count (:operations (second groups))))))))
 
-(deftest breaking-markers-survive-rendering-test
-  ;; Guards the failure mode in mozilla-ai/otari#1315, where a generator dropped breaking-change
-  ;; markers at render time and a breaking commit read like any other entry.
+(def ^:private breaking-request-changes
+  [["removed field" (obj {"a" {"type" "string"}}) (obj {})]
+   ["now required" (obj {"a" {"type" "string"}}) (obj {"a" {"type" "string"}} ["a"])]
+   ["narrowed type"
+    (obj {"a" {"oneOf" [{"type" "object"} {"type" "boolean"}]}})
+    (obj {"a" {"type" "boolean"}})]
+   ["closed schema"
+    (obj {"a" {"type" "string"}})
+    (assoc (obj {"a" {"type" "string"}}) "additionalProperties" false)]])
+
+(deftest breaking-changes-are-classified-breaking-test
   (testing "every breaking request change is classified breaking, never additive"
-    (doseq [[label old-body new-body]
-            [["removed field" (obj {"a" {"type" "string"}}) (obj {})]
-             ["now required" (obj {"a" {"type" "string"}}) (obj {"a" {"type" "string"}} ["a"])]
-             ["narrowed type"
-              (obj {"a" {"oneOf" [{"type" "object"} {"type" "boolean"}]}})
-              (obj {"a" {"type" "boolean"}})]
-             ["closed schema"
-              (obj {"a" {"type" "string"}})
-              (assoc (obj {"a" {"type" "string"}}) "additionalProperties" false)]]]
+    (doseq [[label old-body new-body] breaking-request-changes]
       (let [d (openapi-diff/diff (spec {"/api/x" {"post" (op :body old-body)}})
                                  (spec {"/api/x" {"post" (op :body new-body)}}))]
         (is (pos? (get-in d [:counts :breaking])) (str label " must be breaking"))
         (is (empty? (filter #(= :additive (:severity %)) (:changed d)))
             (str label " must not leak into additive"))))))
+
+(deftest breaking-markers-survive-rendering-test
+  ;; Guards the failure mode in mozilla-ai/otari#1315, where a generator dropped breaking-change
+  ;; markers at render time and a breaking commit read like any other entry.
+  (doseq [[label old-body new-body] breaking-request-changes]
+    (let [d (openapi-diff/diff (spec {"/api/x" {"post" (op :body old-body)}})
+                               (spec {"/api/x" {"post" (op :body new-body)}}))]
+      (testing (str label " prints under the breaking heading of the flat report")
+        (is (re-find #"## BREAKING: CHANGED ENDPOINTS \(1\)\n  ~ POST /api/x"
+                     (with-out-str (openapi-diff/print-diff d :breaking)))))
+      (testing (str label " prints in a breaking group of the grouped report")
+        (is (re-find #"## BREAKING - 1 endpoint\n.*\n    POST /api/x"
+                     (with-out-str (openapi-diff/print-grouped d :breaking))))))))
+
+(deftest severity-filter-hides-less-severe-findings-test
+  (let [d (openapi-diff/diff (spec {"/api/x" {"post" (op :body (obj {"a" {"type" "string"}}))}})
+                             (spec {"/api/x" {"post" (op :body (obj {"a" {"type" "string"}
+                                                                     "b" {"type" "string"}}))}}))]
+    (testing "an additive change is hidden at --severity breaking"
+      (is (not (re-find #"POST /api/x" (with-out-str (openapi-diff/print-diff d :breaking)))))
+      (is (not (re-find #"POST /api/x" (with-out-str (openapi-diff/print-grouped d :breaking))))))
+    (testing "and shown at --severity additive"
+      (is (re-find #"POST /api/x" (with-out-str (openapi-diff/print-diff d :additive))))
+      (is (re-find #"POST /api/x" (with-out-str (openapi-diff/print-grouped d :additive)))))))
 
 ;; ---- review findings 1-5: tests supplied by the reviewer, verbatim ----
 
@@ -314,3 +338,18 @@
           body    {"$ref" "#/components/schemas/S0"}]
       (is (breaking? (spec {"/api/x" {"post" (op :body body)}} {"schemas" (schemas {"enum" ["a" "b"]})})
                      (spec {"/api/x" {"post" (op :body body)}} {"schemas" (schemas {"enum" ["a"]})}))))))
+
+;; ---- third review: tests supplied by the reviewer, verbatim ----
+
+(deftest removed-union-variant-is-breaking-test
+  (testing "a request body that stops accepting one variant of a oneOf requires more"
+    (let [a (obj {"kind" {"const" "a"} "x" {"type" "string"}} ["kind"])
+          b (obj {"kind" {"const" "b"} "y" {"type" "integer"}} ["kind"])]
+      (is (body-change-breaking? {"oneOf" [a b]} {"oneOf" [a]})))))
+
+(deftest nullable-response-array-items-are-compared-test
+  (testing "a field removed from the objects in a nullable response array provides less"
+    (let [resp (fn [props] (op :response (obj {"a" {"oneOf" [{"type" "array" "items" (obj props)}
+                                                             {"type" "null"}]}})))]
+      (is (breaking? (spec {"/api/x" {"get" (resp {"x" {"type" "string"} "y" {"type" "string"}})}})
+                     (spec {"/api/x" {"get" (resp {"x" {"type" "string"}})}}))))))

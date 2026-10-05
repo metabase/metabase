@@ -55,14 +55,33 @@
      (sequential? node) (mapv #(resolve-refs % spec seen) node)
      :else node)))
 
+(defn- object-variants
+  "The object variants of a `oneOf`/`anyOf` union, in order."
+  [node]
+  (when (map? node)
+    (filterv #(and (map? %) (get % "properties"))
+             (concat (get node "oneOf") (get node "anyOf")))))
+
+(defn- non-null
+  "The single real variant of a nullable union such as `oneOf [<array> {type: null}]`, else `node`."
+  [node]
+  (let [variants (when (map? node) (concat (get node "oneOf") (get node "anyOf")))
+        others   (remove #(= {"type" "null"} %) variants)]
+    (if (and (= 1 (count others)) (< 1 (count variants))) (first others) node)))
+
 (defn- schema-props
   "`[properties required-set]` for an object-ish schema, else `[nil #{}]`. Unwraps the common
-  `oneOf [<object> {type: null}]` nullable pattern."
+  `oneOf [<object> {type: null}]` nullable pattern.
+
+  A union of two or more object variants has no single property set, so it is `[nil #{}]` and
+  callers compare it whole. Taking the first variant's properties would hide any change to the
+  others, including removing one."
   [node]
   (if (map? node)
     (if-let [props (get node "properties")]
       [props (set (get node "required"))]
-      (or (some (fn [variant]
+      (or (when (next (object-variants node)) [nil #{}])
+          (some (fn [variant]
                   (when-let [props (and (map? variant) (get variant "properties"))]
                     [props (set (get variant "required"))]))
                 (concat (get node "oneOf") (get node "anyOf")))
@@ -118,11 +137,20 @@
         (and old-enum new-enum (not (set/subset? old-enum new-enum))) false
         (and (nil? old-enum) new-enum) false
 
+        ;; Object unions compare by whole variant: widening only when every old variant survives
+        ;; unchanged. This does not look inside a variant, so an edited variant reads as narrowing -
+        ;; conservative, but no union change stays invisible. A plain object counts as one variant.
+        (or (next (object-variants old-schema)) (next (object-variants new-schema)))
+        (let [variants #(set (or (not-empty (object-variants %)) [%]))]
+          (set/subset? (variants old-schema) (variants new-schema)))
+
         ;; An array narrows when its element schema narrows. Without this an `items` change is
         ;; invisible: the enclosing arrays compare as equal-typed and the leaf never gets checked.
-        (and (= "array" (get old-schema "type")) (= "array" (get new-schema "type"))
-             (not= (get old-schema "items") (get new-schema "items")))
-        (widening? (get old-schema "items" {}) (get new-schema "items" {}))
+        ;; Nullable arrays unwrap first; the type check above already governed the null itself.
+        (let [o (non-null old-schema), n (non-null new-schema)]
+          (and (= "array" (get o "type")) (= "array" (get n "type"))
+               (not= (get o "items") (get n "items"))))
+        (widening? (get (non-null old-schema) "items" {}) (get (non-null new-schema) "items" {}))
 
         :else
         (let [[old-props old-req] (schema-props old-schema)
@@ -272,11 +300,14 @@
 
        ;; An array's element schema carries the output contract, so it recurses in the output
        ;; direction. Falling through to the leaf branch would compare items as INPUT and invert
-       ;; every finding inside a response array.
-       (and (= "array" (get old-schema "type")) (= "array" (get new-schema "type"))
-            (not= (get old-schema "items") (get new-schema "items")))
-       (response-lines (str code "[]") (get old-schema "items" {}) (get new-schema "items" {})
-                       (inc depth))
+       ;; every finding inside a response array. Nullable arrays unwrap, but only when nullability is
+       ;; unchanged: otherwise the leaf branch must see, and report, the null.
+       (let [o (non-null old-schema), n (non-null new-schema)]
+         (and (= "array" (get o "type")) (= "array" (get n "type"))
+              (= (type-set old-schema) (type-set new-schema))
+              (not= (get o "items") (get n "items"))))
+       (response-lines (str code "[]") (get (non-null old-schema) "items" {})
+                       (get (non-null new-schema) "items" {}) (inc depth))
 
        (or (nil? old-props) (nil? new-props))
        ;; Leaf/non-object: providing a narrower set of values is safe, a wider one (a new null, a
