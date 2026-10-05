@@ -126,7 +126,7 @@ describe("Links in documents", () => {
         .should("not.exist");
 
       cy.log("Add a smart link from the suggestion menu");
-      H.documentContent().click();
+      moveCursorToDocumentEnd();
       H.addToDocument("", true);
       cy.log("Trigger suggestion menu with /");
       H.addToDocument("/", false);
@@ -213,7 +213,7 @@ describe("Links in documents", () => {
 });
 
 function openLinkSuggestionBrowseAllPicker() {
-  H.documentContent().click();
+  moveCursorToDocumentEnd();
 
   cy.log("Trigger suggestion menu with /");
   H.addToDocument("/", false);
@@ -225,10 +225,18 @@ function openLinkSuggestionBrowseAllPicker() {
 }
 
 function openLinkMentionMenuBrowseAllPicker() {
-  H.documentContent().click();
+  moveCursorToDocumentEnd();
 
   cy.log("Trigger mention menu with @");
   H.addToDocument("@", false);
 
   H.documentMentionItem(/Browse all/).click();
+}
+
+function moveCursorToDocumentEnd() {
+  H.documentContent().click();
+  cy.realPress([
+    H.metaKey,
+    Cypress.platform === "darwin" ? "ArrowDown" : "End",
+  ]);
 }

@@ -1688,6 +1688,7 @@ describe("documents", () => {
         win.navigator.clipboard.readText().then((text) => {
           expect(text).to.include("/document/");
           expect(text).to.include("#heading-block-1");
+          expect(text).not.to.include("#heading-block-2");
         });
       });
     });

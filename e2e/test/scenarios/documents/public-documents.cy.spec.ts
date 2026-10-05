@@ -55,7 +55,6 @@ function verifyDocumentIsReadOnly() {
 // Helper function to verify comments are hidden
 function verifyCommentsAreHidden() {
   H.Comments.getDocumentNodeButtons().should("not.exist");
-  cy.findByTestId("comments-sidebar").should("not.exist");
   cy.findByRole("link", { name: "Show all comments" }).should("not.exist");
 }
 

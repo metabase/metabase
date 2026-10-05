@@ -235,8 +235,6 @@ export function documentDoDrag(
       ...point(rect.x, rect.y),
       force: true,
     });
-    // mouseup goes through actionability checks (no `force`), which wait for
-    // the resized node view to re-render before callers read its dimensions.
     cy.get("body")
       .trigger("mousemove", { button: 0, ...end, force: true })
       .trigger("mouseup", { button: 0, ...end });

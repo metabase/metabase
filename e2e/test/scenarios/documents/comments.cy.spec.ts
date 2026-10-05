@@ -639,12 +639,18 @@ describe("document comments", () => {
       cy.findByRole("button", { name: "Save" }).should("be.visible");
       H.getParagraph("Lorem ipsum dolor sit amet.test").should("be.visible");
 
+      cy.findByRole("button", { name: "Save" }).click();
+      cy.findByRole("button", { name: "Save" }).should("not.exist");
+
       cy.log("allows opening comments when document has changes");
-      Comments.closeSidebar();
+      H.visitDocument(documentId);
       Comments.getSidebar().should("not.exist");
+
+      H.documentContent().click();
+      cy.realType("xyz");
       cy.findByRole("button", { name: "Save" }).should("be.visible");
 
-      H.getParagraph("Lorem ipsum dolor sit amet.test").realHover();
+      H.getParagraph("Lorem ipsum dolor sit amet.testxyz").realHover();
       Comments.getDocumentNodeButton({
         targetId: documentId,
         childTargetId: PARAGRAPH_ID,
@@ -1314,7 +1320,8 @@ describe("document comments", () => {
       );
 
       cy.log("ordered list");
-      Comments.getNewThreadInput().type("1. ol");
+      Comments.getNewThreadInput().click();
+      cy.realType("1. ol");
       cy.realPress("Enter");
       cy.realType("two");
       H.getOrderedList("ol", Comments.getNewThreadInput()).should("be.visible");
@@ -1331,7 +1338,8 @@ describe("document comments", () => {
       );
 
       cy.log("bullet list");
-      Comments.getNewThreadInput().type("- ul");
+      Comments.getNewThreadInput().click();
+      cy.realType("- ul");
       cy.realPress("Enter");
       cy.realType("b");
       H.getBulletList("ul", Comments.getNewThreadInput()).should("be.visible");
@@ -1346,7 +1354,8 @@ describe("document comments", () => {
       );
 
       cy.log("code block");
-      Comments.getNewThreadInput().type("```");
+      Comments.getNewThreadInput().click();
+      cy.realType("```");
       cy.realPress("Enter");
       cy.realType("code");
       H.getCodeBlock("code", Comments.getNewThreadInput()).should("be.visible");
