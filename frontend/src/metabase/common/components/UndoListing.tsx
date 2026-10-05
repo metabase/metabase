@@ -116,12 +116,14 @@ function UndoToast({
 
   const dark = undo.dark ?? true;
   const noBorder = undo.showProgress;
+  const pausedProgressColor = dark
+    ? "tooltip-text-secondary"
+    : "background_page-tertiary-inverse";
 
   return (
     <Card
       ref={undo.ref}
       data-testid="toast-undo"
-      color={undo.toastColor}
       role="status"
       className={S.toast}
       data-paused={undo.pausedAt != null || undefined}
@@ -145,9 +147,7 @@ function UndoToast({
       {undo.showProgress && (
         <Progress
           size="sm"
-          color={
-            undo.pausedAt ? "background_page-tertiary-inverse" : "core-brand"
-          }
+          color={undo.pausedAt ? pausedProgressColor : "core-brand"}
           /* we intentionally break a11y - css animation is smoother */
           value={100}
           pos="absolute"
