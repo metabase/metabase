@@ -32,7 +32,8 @@ type EmbeddingMethod = {
  * Guest embeds is the only free method, so OSS keeps a guest-only row.
  *
  * Side-car embedding is a link to Metabase from the customer's app, not an
- * embed, so its switch only reports usage and is listed with the paid methods.
+ * embed, so its switch only reports usage. It is listed only when a paid method
+ * is, so OSS, Starter and unlicensed instances keep the guest-only row.
  */
 export function EmbeddingMethodsCard() {
   const hasSimpleEmbedding = useHasTokenFeature("embedding_simple");
