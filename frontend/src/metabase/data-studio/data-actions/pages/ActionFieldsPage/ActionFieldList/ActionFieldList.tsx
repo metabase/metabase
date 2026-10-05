@@ -42,32 +42,28 @@ export function ActionFieldList({
       <Stack gap="xs">
         <Title order={4}>{t`Fields`}</Title>
         <Text c="text-secondary">
-          {t`One field per {{variable}} in the SQL. Drag to reorder the form.`}
+          {fields.length > 0
+            ? t`One field per {{variable}} in the SQL. Drag to reorder the form.`
+            : t`This action has no variables in its SQL.`}
         </Text>
       </Stack>
-      {fields.length === 0 ? (
-        <Text c="text-secondary">
-          {t`This action has no variables in its SQL.`}
-        </Text>
-      ) : (
-        <Stack gap="md" role="list">
-          <SortableList<ActionField>
-            items={fields}
-            getId={(field) => field.parameter.id}
-            sensors={[pointerSensor]}
-            renderItem={({ item: field }) => (
-              <ActionFieldItem
-                key={field.parameter.id}
-                field={field}
-                href={Urls.dataActionFields(actionId, field.parameter.id)}
-                isActive={field.parameter.id === activeFieldId}
-                isDraggable={isDraggable}
-              />
-            )}
-            onSortEnd={handleSortEnd}
-          />
-        </Stack>
-      )}
+      <Stack gap="md" role="list">
+        <SortableList<ActionField>
+          items={fields}
+          getId={(field) => field.parameter.id}
+          sensors={[pointerSensor]}
+          renderItem={({ item: field }) => (
+            <ActionFieldItem
+              key={field.parameter.id}
+              field={field}
+              href={Urls.dataActionFields(actionId, field.parameter.id)}
+              isActive={field.parameter.id === activeFieldId}
+              isDraggable={isDraggable}
+            />
+          )}
+          onSortEnd={handleSortEnd}
+        />
+      </Stack>
     </Stack>
   );
 }
