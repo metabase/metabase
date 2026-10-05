@@ -30,6 +30,7 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
+   [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -90,7 +91,7 @@
                   [:can_create_queries        :boolean]
                   [:can_create_native_queries :boolean]]]])
 
-(defn- bootstrap-user
+(mu/defn- bootstrap-user :- ::bootstrap-user
   "The [[::bootstrap-user]] projection of the current user."
   []
   (let [user (api/check-404 @api/*current-user*)

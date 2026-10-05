@@ -5,8 +5,10 @@
    [metabase.api.open-api :as open-api]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.mcp.callback-api :as mcp.callback-api]
    [metabase.mcp.session :as mcp.session]
    [metabase.mcp.ui-test-util :as ui.tu]
+   [metabase.permissions.core :as perms]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.test.http-client :as client]
@@ -190,6 +192,16 @@
     (testing "the projection still reports who the user is"
       (is (true? (:is_superuser (:user (bootstrap-for! :crowberto)))))
       (is (false? (:is_superuser (:user (bootstrap-for! :rasta))))))))
+
+(deftest bootstrap-user-schema-is-enforced-test
+  (testing "GHY-4400: the closed ::bootstrap-user schema guards the projection, so a field that does not fit it fails
+            rather than reaching the iframe"
+    (mt/with-current-user (mt/user->id :rasta)
+      (is (map? (#'mcp.callback-api/bootstrap-user)) "control: the projection fits the schema")
+      (mt/with-dynamic-fn-redefs [perms/query-creation-capabilities
+                                  (constantly {:can-create-queries "yes" :can-create-native-queries false})]
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"(?i)invalid output"
+                              (#'mcp.callback-api/bootstrap-user)))))))
 
 (deftest bootstrap-omits-admin-only-settings-test
   (testing "GHY-4400: an admin's credential reads only the settings a non-admin would, so a narrow MCP scope cannot
