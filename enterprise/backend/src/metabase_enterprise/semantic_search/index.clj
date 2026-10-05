@@ -7,6 +7,7 @@
    [com.climate.claypoole :as cp]
    [honey.sql :as sql]
    [honey.sql.helpers :as sql.helpers]
+   [honey.sql.pg-ops :as sql.pg-ops]
    [java-time.api :as t]
    [metabase-enterprise.semantic-search.appdb-scoring :as appdb-scoring]
    [metabase-enterprise.semantic-search.db :as semantic-search.db]
@@ -708,7 +709,10 @@
      ;; Using a join allows us to share the query expression between our SELECT and WHERE clauses.
      :join [[[:to_tsquery ^:allow-raw-sql [:inline tsv-lang] [:lift ts-search-expr]]
              :query] [:= 1 1]]
-     :where (let [ts-query-filter [:metabase.funnysql.core/postgres-full-text-search-match vector-column :query]]
+     ;; this query runs against the pgvector database and is compiled with Honey SQL rather than Funny SQL, so use
+     ;; Honey SQL's `@@` operator here rather than Funny SQL's `::postgres-full-text-search-match`, which Honey SQL
+     ;; would otherwise compile as a function call named `POSTGRES FULL TEXT SEARCH MATCH`.
+     :where (let [ts-query-filter [sql.pg-ops/atat vector-column :query]]
               (if (seq filters)
                 (into [:and ts-query-filter] [filters])
                 ts-query-filter))
