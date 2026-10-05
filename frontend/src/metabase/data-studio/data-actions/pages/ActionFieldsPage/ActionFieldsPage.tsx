@@ -10,7 +10,6 @@ import type { WritebackQueryAction } from "metabase-types/api";
 
 import { ActionHeader } from "../../components/ActionHeader";
 import { useActionFields } from "../../hooks/use-action-fields";
-import { useActionPermissions } from "../../hooks/use-action-permissions";
 import { useRouteAction } from "../../hooks/use-route-action";
 
 import { ActionFieldDetails } from "./ActionFieldDetails";
@@ -23,21 +22,15 @@ export function ActionFieldsPage() {
     isLoading: isLoadingAction,
     error: actionError,
   } = useRouteAction();
-  const {
-    readOnly,
-    isLoading: isLoadingDatabases,
-    error: databasesError,
-  } = useActionPermissions(action);
-  const isLoading = isLoadingAction || isLoadingDatabases;
-  const error = actionError ?? databasesError;
-
-  if (isLoading || error != null || action == null) {
+  if (isLoadingAction || actionError != null || action == null) {
     return (
       <Center h="100%">
-        <LoadingAndErrorWrapper loading={isLoading} error={error} />
+        <LoadingAndErrorWrapper loading={isLoadingAction} error={actionError} />
       </Center>
     );
   }
+
+  const readOnly = !action.can_write;
 
   return <ActionFieldsPageBody action={action} readOnly={readOnly} />;
 }

@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { t } from "ttag";
 
 import { useUpdateActionMutation } from "metabase/api";
@@ -18,9 +18,10 @@ import type { Database, WritebackQueryAction } from "metabase-types/api";
 import { ActionEditor } from "../../components/ActionEditor";
 import { ActionEditorPane } from "../../components/ActionEditorPane";
 import { ActionHeader } from "../../components/ActionHeader";
+import { useActionDatabases } from "../../hooks/use-action-databases";
 import { useActionDraft } from "../../hooks/use-action-draft";
-import { useActionPermissions } from "../../hooks/use-action-permissions";
 import { useRouteAction } from "../../hooks/use-route-action";
+import { isEditableActionDatabase } from "../../utils";
 
 export function ActionQueryPage() {
   const { pathname } = useLocation();
@@ -32,10 +33,13 @@ export function ActionQueryPage() {
   } = useRouteAction();
   const {
     databases,
-    readOnly,
     isLoading: isLoadingDatabases,
     error: databasesError,
-  } = useActionPermissions(action);
+  } = useActionDatabases();
+  const editableDatabases = useMemo(
+    () => databases.filter(isEditableActionDatabase),
+    [databases],
+  );
   const isLoading = isLoadingAction || isLoadingDatabases;
   const error = actionError ?? databasesError;
 
@@ -47,12 +51,18 @@ export function ActionQueryPage() {
     );
   }
 
+  const readOnly = !action.can_write;
+
   return isEditRoute && !readOnly ? (
-    <ActionEditPage key={action.id} action={action} databases={databases} />
+    <ActionEditPage
+      key={action.id}
+      action={action}
+      databases={editableDatabases}
+    />
   ) : (
     <ActionDefinitionPage
       action={action}
-      databases={databases}
+      databases={editableDatabases}
       readOnly={readOnly}
     />
   );
