@@ -167,13 +167,31 @@
     (qp.store/with-metadata-provider (lib.tu/merged-mock-metadata-provider
                                       (mt/metadata-provider)
                                       {:fields [{:id       (mt/id :venues :price)
-                                                 :settings {:is_priceless false}}]})
+                                                 :settings {:decimals 2}}]})
       (let [results (mt/run-mbql-query venues
                       {:aggregation [[:sum $price]]})]
         (is (=? (assoc (qp.test-util/aggregate-col :sum :venues :price)
-                       :settings {:is_priceless false})
+                       :settings {:decimals 2})
                 (or (-> results mt/cols first)
                     results)))))))
+
+(deftest ^:parallel click-behavior-settings-dont-flow-into-count-aggregations-test
+  (testing (str "Click/link behavior configured on a Field should not flow into count-like aggregations whose "
+                "result is a count, not a value drawn from the field (#83416).")
+    (qp.store/with-metadata-provider (lib.tu/merged-mock-metadata-provider
+                                      (mt/metadata-provider)
+                                      {:fields [{:id       (mt/id :venues :price)
+                                                 :settings {:view_as   "link"
+                                                            :link_text "{{name}}"
+                                                            :link_url  "https://example.com/{{id}}"}}]})
+      (let [price [:field (mt/id :venues :price) nil]]
+        (doseq [aggregation [[:count price]
+                             [:cum-count price]
+                             [:distinct price]
+                             [:count-where [:> price 1]]]]
+          (testing (str (first aggregation))
+            (let [col (-> (mt/run-mbql-query venues {:aggregation [aggregation]}) mt/cols first)]
+              (is (nil? (get-in col [:settings :view_as]))))))))))
 
 (deftest ^:parallel semantic-type-for-aggregate-fields-test
   (testing "Does `:semantic-type` show up for aggregate Fields? (#38022)"
