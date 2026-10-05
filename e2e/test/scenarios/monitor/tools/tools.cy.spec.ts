@@ -113,7 +113,7 @@ describe("issue 14636", () => {
     stubPageResponses({ page: 1, alias: "second" });
   });
 
-  it("pagination should work (metabase#14636)", () => {
+  it("pagination and filtering should work (metabase#14636)", () => {
     cy.visit("/monitor/tasks/list");
     cy.wait("@first");
 
@@ -155,20 +155,12 @@ describe("issue 14636", () => {
     cy.location("pathname").should("eq", "/monitor/tasks/list");
     cy.location("search").should("eq", "");
 
-    cy.log("it should respect page query param on page load");
-    cy.visit("/monitor/tasks/list?page=1");
-    cy.wait("@second");
-
-    cy.findByLabelText("pagination")
-      .findByText(`51 - ${total}`)
-      .should("be.visible");
-  });
-
-  it("filtering should work", () => {
-    const total = 57;
+    cy.log("filtering");
     const task = "field values scanning";
     const filteredTask = createMockTask({ task });
 
+    stubPageResponses({ page: 0, alias: "unfilteredFirst" });
+    stubPageResponses({ page: 1, alias: "unfilteredSecond" });
     // Keep this test independent of background tasks created asynchronously by H.restore().
     // The task picker only shows a value that is in the unique task list.
     cy.intercept("GET", "/api/task/unique-tasks", [task]);
@@ -232,10 +224,12 @@ describe("issue 14636", () => {
       .findByLabelText("Clear")
       .click();
     cy.location("search").should("eq", "");
-    cy.wait("@first");
+    cy.wait("@unfilteredFirst");
     cy.findByLabelText("pagination").findByText("1 - 50").should("be.visible");
+
+    cy.log("it should respect page query param on page load");
     cy.visit("/monitor/tasks/list?page=1");
-    cy.wait("@second");
+    cy.wait("@unfilteredSecond");
     cy.findByLabelText("pagination")
       .findByText(`51 - ${total}`)
       .should("be.visible");
@@ -248,7 +242,7 @@ describe("issue 14636", () => {
 
     cy.log("should remove invalid query params");
     cy.visit("/monitor/tasks/list?status=foobar");
-    cy.wait("@first");
+    cy.wait("@unfilteredFirst");
     cy.location("search").should("eq", "");
     getFilterByStatus().should("have.value", "");
   });
@@ -403,7 +397,7 @@ describe("scenarios > monitor > tools > logs", () => {
     cy.wait("@getLogs");
   });
 
-  it("should allow to download logs", () => {
+  it("should allow to download all logs and filtered logs", () => {
     cy.button(/Download/).click();
     cy.readFile("cypress/downloads/logs.txt").should(
       "equal",
@@ -412,9 +406,8 @@ describe("scenarios > monitor > tools > logs", () => {
         `[9da436dc-d79c-42f9-89e3-322c22cd0cd3] ${formatTimestamp(log2.timestamp)} ERROR metabase.server.middleware.log message`,
       ].join("\n"),
     );
-  });
 
-  it("should allow to download filtered logs", () => {
+    cy.deleteDownloadsFolder();
     cy.findByPlaceholderText("Filter logs").type("error");
     cy.button(/Download/).click();
     cy.readFile("cypress/downloads/logs.txt").should(
@@ -745,35 +738,33 @@ describe("scenarios > monitor > tools > task runs", () => {
     cy.findAllByTestId("task-run-task").should("have.length", 3);
   });
 
-  it("should navigate back to runs list from run details", () => {
+  it("should follow the links on the task run details page", () => {
     cy.visit(`/monitor/tasks/runs/${taskRun.id}`);
     cy.wait("@getTaskRun");
 
-    cy.findByRole("link", { name: /Back to Runs/i }).click();
-    cy.location("pathname").should("eq", "/monitor/tasks/runs");
-  });
-
-  it("should have clickable entity link in task run details", () => {
-    cy.visit(`/monitor/tasks/runs/${taskRun.id}`);
-    cy.wait("@getTaskRun");
-
-    cy.findByRole("link", { name: /Sample Database/i }).click();
-    cy.location("pathname").should("eq", "/admin/databases/1");
-  });
-
-  it("should navigate to task details from task run details", () => {
-    cy.visit(`/monitor/tasks/runs/${taskRun.id}`);
-    cy.wait("@getTaskRun");
-
+    cy.log("associated task row opens the task details");
     cy.findByTestId("task-run-tasks-table")
       .findAllByTestId("task-run-task")
       .first()
       .click();
-
     cy.location("pathname").should(
       "eq",
       `/monitor/tasks/list/${taskRunExtended.tasks[0].id}`,
     );
+
+    cy.go("back");
+    cy.location("pathname").should("eq", `/monitor/tasks/runs/${taskRun.id}`);
+
+    cy.log("entity link opens the database");
+    cy.findByRole("link", { name: /Sample Database/i }).click();
+    cy.location("pathname").should("eq", "/admin/databases/1");
+
+    cy.go("back");
+    cy.location("pathname").should("eq", `/monitor/tasks/runs/${taskRun.id}`);
+
+    cy.log("Back to Runs opens the runs list");
+    cy.findByRole("link", { name: /Back to Runs/i }).click();
+    cy.location("pathname").should("eq", "/monitor/tasks/runs");
   });
 });
 
