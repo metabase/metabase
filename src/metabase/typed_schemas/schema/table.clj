@@ -4,8 +4,6 @@
    [medley.core :as m]
    [metabase.lib-be.core :as lib-be]
    [metabase.metabot.core :as metabot]
-   [metabase.models.interface :as mi]
-   [metabase.permissions.core :as perms]
    [metabase.typed-schemas.common :as common]
    [metabase.typed-schemas.db :as typed-schemas.db]
    [metabase.typed-schemas.schema.common :as schema.common]))
@@ -37,32 +35,28 @@
       :tableId (when (integer? table-id) table-id)
       :defaultTemporalBucket (:unit field)))))
 
-(defn- filter-readable-tables
-  "Filters tables down to the ones the current user can read, excluding any backed by a destination
-  (routed) database -- see [[schema.common/destination-db-ids]]."
+(defn- without-destination-tables
+  "`tables` without any backed by a destination (routed) database -- see [[schema.common/destination-db-ids]]."
   [tables]
-  (perms/prime-table-perms-cache {:db-ids    (into #{} (keep :db_id) tables)
-                                  :table-ids (into #{} (map :id) tables)})
-  (let [destination-ids (schema.common/destination-db-ids (into #{} (keep :db_id) tables))
-        tables          (if (seq destination-ids)
-                          (remove #(contains? destination-ids (:db_id %)) tables)
-                          tables)]
-    (filter mi/can-read? tables)))
+  (let [destination-ids (schema.common/destination-db-ids (into #{} (keep :db_id) tables))]
+    (if (seq destination-ids)
+      (remove #(contains? destination-ids (:db_id %)) tables)
+      tables)))
 
 (defn select-tables
-  "Returns readable tables, with optional database and table-id scopes.
+  "Returns the active tables, with optional database and table-id scopes.
 
-  Library and database endpoint paths both need the same active/readable table
-  rules; only their id filters differ."
+  Library and database endpoint paths both need the same active-table rules;
+  only their id filters differ."
   [database-ids table-ids]
   (->> (typed-schemas.db/active-tables-in-scope database-ids table-ids)
-       (filter-readable-tables)))
+       (without-destination-tables)))
 
 (defn select-library-tables
   "Returns published tables from the library based on the given scope."
   [{:keys [data-collection-ids]}]
   (->> (typed-schemas.db/published-library-tables-in-collections data-collection-ids)
-       (filter-readable-tables)))
+       (without-destination-tables)))
 
 (defn segment-schema
   "Returns the schema for a segment."
