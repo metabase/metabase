@@ -46,14 +46,6 @@ describe("search > recently viewed", () => {
     assertRecentlyViewedItem(1, "Orders", "Question");
     assertRecentlyViewedItem(2, "People", "Table");
 
-    cy.findByPlaceholderText("Search…").click();
-    cy.wait("@recent");
-    cy.findByTestId("loading-indicator").should("not.exist");
-
-    assertRecentlyViewedItem(0, "Orders in a dashboard", "Dashboard");
-    assertRecentlyViewedItem(1, "Orders", "Question");
-    assertRecentlyViewedItem(2, "People", "Table");
-
     cy.intercept("POST", "/api/card/*/query").as("cardQuery");
     advanceServerClockBy(100);
     cy.get("body").trigger("keydown", { key: "ArrowDown" });

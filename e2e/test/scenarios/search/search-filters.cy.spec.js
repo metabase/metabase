@@ -172,8 +172,8 @@ describe("scenarios > search", () => {
         });
       });
 
-      typeFilters.forEach(({ label, type }) => {
-        it(`should filter results by ${label}, hydrate the filter from the URL, and remove it with \`X\``, () => {
+      it("should filter results by each type, hydrate the filter from the URL, and remove it with `X`", () => {
+        typeFilters.forEach(({ label, type }) => {
           const regex = new RegExp(`${type}$`);
           const expectResultsOfType = () => {
             cy.findAllByTestId("search-result-item").each((result) => {
@@ -183,10 +183,11 @@ describe("scenarios > search", () => {
             });
           };
 
+          cy.intercept("GET", "/api/search?q=*").as(`search-${type}`);
           cy.visit("/");
 
           H.commandPaletteSearch("e");
-          cy.wait("@search");
+          cy.wait(`@search-${type}`);
 
           cy.findByTestId("type-search-filter").click();
           H.popover().within(() => {
@@ -196,9 +197,9 @@ describe("scenarios > search", () => {
           cy.url().should("contain", `type=${type}`);
           expectResultsOfType();
 
-          cy.intercept("GET", "/api/search?q=*").as("hydratedSearch");
+          cy.intercept("GET", "/api/search?q=*").as(`hydratedSearch-${type}`);
           cy.visit(`/search?q=e&type=${type}`);
-          cy.wait("@hydratedSearch");
+          cy.wait(`@hydratedSearch-${type}`);
 
           cy.findByTestId("search-app").within(() => {
             cy.findByText('Results for "e"').should("exist");
@@ -239,7 +240,10 @@ describe("scenarios > search", () => {
         H.createQuestion(ADMIN_TEST_QUESTION);
       });
 
-      it("should filter results by one or more users, and remove the filter when `X` is clicked", () => {
+      it("should filter results by one or more creators and Today, hydrate the date, and remove the filters with `X`", () => {
+        cy.then(() => {
+          cy.clock(Date.now(), ["Date"]);
+        });
         cy.visit("/");
 
         H.commandPaletteSearch("reviews");
@@ -336,6 +340,68 @@ describe("scenarios > search", () => {
             REVIEWS_TABLE_NAME,
           ],
         });
+
+        cy.visit("/search?q=Reviews");
+
+        expectSearchResultItemNameContent(
+          {
+            itemNames: [REVIEWS_TABLE_NAME, NORMAL_USER_TEST_QUESTION.name],
+          },
+          { strict: false },
+        );
+
+        cy.findByTestId("created_at-search-filter").click();
+        H.popover().within(() => {
+          cy.findByText("Today").click();
+        });
+        cy.url().should("contain", "created_at=thisday");
+        cy.findByTestId("created_at-search-filter")
+          .findByText("Today")
+          .should("exist");
+
+        H.expectSearchResultContent({
+          expectedSearchResults: [
+            {
+              name: NORMAL_USER_TEST_QUESTION.name,
+              collection: "Our analytics",
+              timestamp: "Created a few seconds ago by Robert Tableton",
+            },
+          ],
+          strict: false,
+        });
+
+        cy.intercept("GET", "/api/search?q=*").as("createdAtHydratedSearch");
+        cy.visit("/search?q=Reviews&created_at=thisday");
+        cy.wait("@createdAtHydratedSearch");
+
+        H.expectSearchResultContent({
+          expectedSearchResults: [
+            {
+              name: NORMAL_USER_TEST_QUESTION.name,
+              collection: "Our analytics",
+              timestamp: "Created a few seconds ago by Robert Tableton",
+            },
+          ],
+          strict: false,
+        });
+
+        cy.findByTestId("created_at-search-filter").within(() => {
+          cy.findByText("Today").should("exist");
+
+          cy.findByLabelText("close icon").click();
+
+          cy.findByText("Today").should("not.exist");
+          cy.findByText("Creation date").should("exist");
+        });
+
+        cy.url().should("not.contain", "created_at");
+
+        expectSearchResultItemNameContent(
+          {
+            itemNames: [REVIEWS_TABLE_NAME, NORMAL_USER_TEST_QUESTION.name],
+          },
+          { strict: false },
+        );
       });
 
       it("should hydrate created_by filter and remove a user from it", () => {
@@ -661,112 +727,25 @@ describe("scenarios > search", () => {
       });
     });
 
-    describe("created_at filter", () => {
-      beforeEach(() => {
-        cy.signInAsNormalUser();
-        H.createQuestion(NORMAL_USER_TEST_QUESTION);
-        cy.signOut();
-        cy.signInAsAdmin();
-      });
-
-      it("should hydrate created_at from the URL", () => {
+    it("should hydrate created_at and last_edited_at from the URL", () => {
+      [
+        { name: "created_at", query: "orders" },
+        { name: "last_edited_at", query: "reviews" },
+      ].forEach(({ name, query }) => {
         TEST_CREATED_AT_FILTERS.filter(
           ([, filter]) => filter !== "thisday",
         ).forEach(([label, filter]) => {
-          cy.visit(`/search?q=orders&created_at=${filter}`);
-
+          cy.visit(`/search?q=${query}&${name}=${filter}`);
           cy.wait("@search");
-
-          cy.findByTestId("created_at-search-filter").within(() => {
+          cy.findByTestId(`${name}-search-filter`).within(() => {
             cy.findByText(label).should("exist");
             cy.findByLabelText("close icon").should("exist");
           });
         });
-      });
-
-      // we can only test the 'today' filter since we currently
-      // can't edit the created_at column of a question in our database
-      it("should filter results by Today (created_at=thisday), and remove the filter when `X` is clicked", () => {
-        cy.visit("/search?q=Reviews");
-
-        expectSearchResultItemNameContent(
-          {
-            itemNames: [REVIEWS_TABLE_NAME, NORMAL_USER_TEST_QUESTION.name],
-          },
-          { strict: false },
-        );
-
-        cy.findByTestId("created_at-search-filter").click();
-        H.popover().within(() => {
-          cy.findByText("Today").click();
-        });
-        cy.url().should("contain", "created_at=thisday");
-        cy.findByTestId("created_at-search-filter")
-          .findByText("Today")
-          .should("exist");
-
-        H.expectSearchResultContent({
-          expectedSearchResults: [
-            {
-              name: NORMAL_USER_TEST_QUESTION.name,
-              collection: "Our analytics",
-              timestamp: "Created a few seconds ago by Robert Tableton",
-            },
-          ],
-          strict: false,
-        });
-
-        cy.intercept("GET", "/api/search?q=*").as("hydratedSearch");
-        cy.visit("/search?q=Reviews&created_at=thisday");
-        cy.wait("@hydratedSearch");
-
-        H.expectSearchResultContent({
-          expectedSearchResults: [
-            {
-              name: NORMAL_USER_TEST_QUESTION.name,
-              collection: "Our analytics",
-              timestamp: "Created a few seconds ago by Robert Tableton",
-            },
-          ],
-          strict: false,
-        });
-
-        cy.findByTestId("created_at-search-filter").within(() => {
-          cy.findByText("Today").should("exist");
-
-          cy.findByLabelText("close icon").click();
-
-          cy.findByText("Today").should("not.exist");
-          cy.findByText("Creation date").should("exist");
-        });
-
-        cy.url().should("not.contain", "created_at");
-
-        expectSearchResultItemNameContent(
-          {
-            itemNames: [REVIEWS_TABLE_NAME, NORMAL_USER_TEST_QUESTION.name],
-          },
-          { strict: false },
-        );
       });
     });
 
     describe("last_edited_at filter", () => {
-      it("should hydrate last_edited_at from the URL", () => {
-        TEST_CREATED_AT_FILTERS.filter(
-          ([, filter]) => filter !== "thisday",
-        ).forEach(([label, filter]) => {
-          cy.visit(`/search?q=reviews&last_edited_at=${filter}`);
-
-          cy.wait("@search");
-
-          cy.findByTestId("last_edited_at-search-filter").within(() => {
-            cy.findByText(label).should("exist");
-            cy.findByLabelText("close icon").should("exist");
-          });
-        });
-      });
-
       describe("with an edited question", () => {
         beforeEach(() => {
           // We'll create a question as an admin user, then edit it as a normal user
