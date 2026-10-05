@@ -618,6 +618,10 @@
                                                                    :api-key "sk-cloud-key"})]]
       (mt/with-temp-env-var-value! [mb-llm-ollama-hosting "cloud"]
         (is (= "sk-cloud-key" (:api-key (llm.provider/credentials "ollama")))))))
+  (testing "an address the environment restates with a trailing slash is not a move either"
+    (mt/with-temporary-setting-values [llm-providers [(connection "ollama" "ollama" self-hosted-ollama)]]
+      (mt/with-temp-env-var-value! [mb-llm-ollama-api-base-url "http://ollama.internal:11434/v1/"]
+        (is (= "sk-entered-for-our-own-server" (:api-key (llm.provider/credentials "ollama")))))))
   (testing (str "one destination field moving is enough, where a type has several: the address moves while the "
                 "deployment beside it is untouched")
     (mt/with-temporary-setting-values [llm-providers [(connection "ollama" "ollama" self-hosted-ollama)]]
