@@ -6,7 +6,6 @@
   first, and while rows are being re-encrypted a setting row can be plaintext under a key, or ciphertext under a key
   not yet in effect, which that model's strict read rejects."
   (:require
-   [honey.sql :as sql]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -29,16 +28,6 @@
                      (:postgres :h2) "databasechangelog"
                      :mysql          "DATABASECHANGELOG")]
     (t2/query-one [(format "select * from %s where id = ?" table-name) changelog-id])))
-
-(mu/defn changelog-ids
-  "The ids among `changelog-ids` still present in the Liquibase changelog table `changelog-table-name`, read on
-  `conn`."
-  [conn                 :- (ms/InstanceOfClass java.sql.Connection)
-   changelog-table-name :- :string
-   changelog-ids        :- [:set :string]]
-  (map :id (t2/query conn (sql/format {:select [:id]
-                                       :from   [(keyword changelog-table-name)]
-                                       :where  [:in :id changelog-ids]}))))
 
 ;;; ------------------------------------------------ Settings ------------------------------------------------
 
