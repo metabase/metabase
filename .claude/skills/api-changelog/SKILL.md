@@ -158,7 +158,7 @@ gaps with `grep -rn "defendpoint" src/.../api.clj`.
    one `-` bullet per change, endpoint as `` `POST /api/foo/:id` `` with
    **`:id` colon-style params, not OpenAPI `{id}` braces**. Say what changed, what
    clients must do, and whether there was a deprecation period. Apply the
-   `de-slop` skill. Show the diff before writing to the file.
+   `docs-write` skill. Show the diff before writing to the file.
 
 ## Attribution
 
@@ -167,7 +167,9 @@ PRs carrying the `openapi-self-healing` label, which is usually a later, unrelat
 PR, so its history names the wrong author.
 
 ```bash
-git log <old-ref>..<new-ref> --oneline -- 'src/metabase/**/api.clj' 'src/metabase/**/api/*.clj' 'enterprise/backend/src/**/api.clj'
+git log <old-ref>..<new-ref> --oneline -- \
+  'src/metabase/**/api.clj' 'src/metabase/**/api/*.clj' 'src/metabase/**/routes.clj' \
+  'enterprise/backend/src/**/api.clj' 'enterprise/backend/src/**/api/*.clj' 'enterprise/backend/src/**/routes.clj'
 ```
 
 Attribution by route search is unreliable in both directions - `git log -S` reports
