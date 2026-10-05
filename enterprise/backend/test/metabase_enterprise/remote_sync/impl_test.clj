@@ -1987,9 +1987,23 @@ serdes/meta:
                                      :source (export-test-source)
                                      :base-snapshot (export-test-snapshot "base-B"))]
             (is (= :conflict (:status result)))
+            (is (= ["Remote branch changed since the last sync."]
+                   (:conflicts result))
+                "the conflict names its cause, since the task row stores only the conflicts")
             (is (false? @merged?) "no merge without the merge flag")
             ;; :conflict short-circuits before any write — the version is never advanced
             (is (nil? (:version (t2/select-one :model/RemoteSyncTask :id task-id))))))))))
+
+(deftest diverged-export-conflict-keeps-sync-base-test
+  (testing "a diverged export that ends in conflict leaves the sync base alone, so a retry with merge? still merges"
+    (mt/with-temp [:model/RemoteSyncTask _ {:sync_task_type "import" :version "base-B" :ended_at (t/offset-date-time)}
+                   :model/RemoteSyncTask {task-id :id} {:sync_task_type "export"}]
+      (let [result (impl/export! (export-test-snapshot "remote-R") task-id "msg"
+                                 :source (export-test-source)
+                                 :base-snapshot (export-test-snapshot "base-B"))]
+        (impl/handle-task-result! result task-id)
+        (is (= "remote-R" (:version (t2/select-one :model/RemoteSyncTask :id task-id))))
+        (is (= "base-B" (remote-sync.task/last-version)))))))
 
 (deftest export!-force-overwrites-without-merging-test
   (testing "force? overwrites the remote wholesale (full export) even when it advanced — no merge"
