@@ -245,16 +245,23 @@
   operation. Schemas are ref-resolved and stripped of [[doc-keys]]; `:docs` keeps the whole
   resolved operation, so a documentation-only change can still be reported."
   [spec]
-  (into {}
+  (let [entries
         (for [[path methods] (get spec "paths")
               [method raw-op] methods
               :when (map? raw-op)
-              :let [op (resolve-refs raw-op spec)]]
-          [(str (str/upper-case method) " " path)
-           {:params (into {}
+              :let [op   (resolve-refs raw-op spec)
+                    ;; A caller never sends a path variable's NAME, so renaming `{id}` to
+                    ;; `{card-id}` is not a change. Key operations and path params by position.
+                    slot (zipmap (map second (re-seq #"\{([^}]+)\}" path)) (range))]]
+          [(str (str/upper-case method) " " (str/replace path #"\{[^}]+\}" "{}"))
+           {:display (str (str/upper-case method) " " path)
+            :params (into {}
                           (for [p (get op "parameters")]
-                            [(str (get p "in") ":" (get p "name"))
-                             {:required (boolean (get p "required"))
+                            [(if (= "path" (get p "in"))
+                               (str "path:" (slot (get p "name")))
+                               (str (get p "in") ":" (get p "name")))
+                             {:label    (str (get p "in") ":" (get p "name"))
+                              :required (boolean (get p "required"))
                               :schema   (strip-docs (get p "schema" {}))}]))
             ;; nil when there is no body at all. An empty MAP means "any value" (Malli `:any`) and
             ;; must still be compared: narrowing it to a type requires more of the caller.
@@ -271,7 +278,11 @@
                                    :when schema]
                                [code (strip-docs schema)]))
             :description (str/trim (or (get op "description") ""))
-            :docs op}])))
+            :docs op}])
+        ;; `/api/database/{id}/schemas` and `/api/database/{virtual-db}/schemas` are distinct routes,
+        ;; told apart by parameter patterns. Where position-keying would merge two, keep the names.
+        collides? (set (for [[k n] (frequencies (map first entries)) :when (> n 1)] k))]
+    (into {} (for [[k v] entries] [(if (collides? k) (:display v) k) v]))))
 
 (defn- brief
   "One-line schema summary: type/enum/const rather than a wall of JSON."
@@ -468,24 +479,25 @@
   "All findings for one surviving operation, as `[severity text]` pairs."
   [old-op new-op]
   (let [old-params (:params old-op), new-params (:params new-op)
-        old-keys (set (keys old-params)), new-keys (set (keys new-params))]
+        old-keys (set (keys old-params)), new-keys (set (keys new-params))
+        lbl #(:label (or (get new-params %) (get old-params %)))]
     (concat
      (for [p (sort (set/difference new-keys old-keys))]
        (if (:required (get new-params p))
-         [breaking (str "    + param " p " (REQUIRED - breaking): " (brief (:schema (get new-params p))))]
-         [additive (str "    + param " p ": " (brief (:schema (get new-params p))))]))
+         [breaking (str "    + param " (lbl p) " (REQUIRED - breaking): " (brief (:schema (get new-params p))))]
+         [additive (str "    + param " (lbl p) ": " (brief (:schema (get new-params p))))]))
      (for [p (sort (set/difference old-keys new-keys))]
-       [breaking (str "    - param " p " removed")])
+       [breaking (str "    - param " (lbl p) " removed")])
      (mapcat (fn [p]
                (let [po (get old-params p), pn (get new-params p)]
                  (concat
                   (when (not= (:required po) (:required pn))
                     ;; Becoming optional requires LESS of the caller: additive.
                     [[(if (:required pn) breaking additive)
-                      (str "    ! param " p " required: " (:required po) " -> " (:required pn))]])
+                      (str "    ! param " (lbl p) " required: " (:required po) " -> " (:required pn))]])
                   (when (not= (:schema po) (:schema pn))
                     [[(if (compatible? :request (:schema po) (:schema pn)) additive breaking)
-                      (str "    ~ param " p " schema: " (brief-change (:schema po) (:schema pn)))]]))))
+                      (str "    ~ param " (lbl p) " schema: " (brief-change (:schema po) (:schema pn)))]]))))
              (sort (set/intersection old-keys new-keys)))
      (when (and (:body-required new-op) (not (:body-required old-op)))
        [[breaking "    ! body is now REQUIRED (breaking)"]])
@@ -511,13 +523,15 @@
   "Structured diff of two parsed specs.
 
   Returns `{:removed :added :changed :old :new :counts}`, with `:changed` sorted breaking-first.
-  `:old` and `:new` are the parsed operation maps, which the renderers read for descriptions."
+  Operations are named by their spec path (`GET /api/card/{id}`). `:old` and `:new` map those
+  names to the parsed operations, which the renderers read for descriptions."
   [old-spec new-spec]
   (let [old (operations old-spec)
         new (operations new-spec)
         old-keys (set (keys old)), new-keys (set (keys new))
-        removed (sort (set/difference old-keys new-keys))
-        added (sort (set/difference new-keys old-keys))
+        display (fn [ops ks] (sort (map #(:display (get ops %)) ks)))
+        schemas (fn [op] (-> (dissoc op :description :docs :display)
+                             (update :params update-vals #(dissoc % :label))))
         changed (->> (sort (set/intersection old-keys new-keys))
                      (keep (fn [k]
                              (let [o (get old k)
@@ -532,7 +546,7 @@
                                               ;; The walk found nothing, yet the stripped schemas
                                               ;; differ: rank the whole schema rather than let a
                                               ;; real change fall through to doc-only below.
-                                              (not= (dissoc o :description :docs) (dissoc n :description :docs))
+                                              (not= (schemas o) (schemas n))
                                               [[(if (and (compatible? :request (:body o) (:body n))
                                                          (every? #(compatible? :response (get-in o [:responses %]) (get-in n [:responses %]))
                                                                  (keys (:responses o))))
@@ -540,25 +554,28 @@
                                                 "    ~ schema changed in a shape the field-by-field comparison does not cover"]]
                                               (not= (:description o) (:description n))
                                               [[doc-only "    ~ description changed"]]
+                                              (not= (:display o) (:display n))
+                                              [[doc-only (str "    ~ path variable renamed (callers send the same URL): "
+                                                              (:display o) " -> " (:display n))]]
                                               ;; Schemas are compared without their doc keys, so a
                                               ;; reworded field description or a new default lands here.
                                               (not= (:docs o) (:docs n))
                                               [[doc-only "    ~ field documentation or defaults changed"]])]
                                (when (seq findings)
-                                 {:operation k
+                                 {:operation (:display n)
                                   :findings findings
                                   :severity (worst (map first findings))
                                   :old-description (:description o)
                                   :new-description (:description n)}))))
                      (sort-by (juxt (comp severity-order :severity) :operation)))]
-    {:removed removed
-     :added added
+    {:removed (display old (set/difference old-keys new-keys))
+     :added (display new (set/difference new-keys old-keys))
      :changed changed
-     :old old
-     :new new
+     :old (update-keys old #(:display (get old %)))
+     :new (update-keys new #(:display (get new %)))
      :counts {:operations-before (count old)
               :operations-after (count new)
-              :breaking (+ (count removed)
+              :breaking (+ (count (set/difference old-keys new-keys))
                            (count (filter #(= breaking (:severity %)) changed)))}}))
 
 (defn- print-operation [{:keys [operation findings old-description new-description]} show-docs?]
@@ -595,9 +612,12 @@
         groups (filter (comp visible? :severity) (grouped-findings changed))
         ;; Count only what is printed. `groups` is severity-filtered, so counting `changed` or
         ;; every endpoint inflates the header above the body beneath it.
-        shown-ops (into (set (mapcat :operations groups)) (concat removed added))]
+        ;; The new-endpoint list prints at every severity (see below) but is additive, so it only
+        ;; counts when additive changes are shown.
+        added-counted (when (visible? additive) added)
+        shown-ops (into (set (mapcat :operations groups)) (concat removed added-counted))]
     (println (format "# %d distinct changes across %d endpoints (%d -> %d operations)"
-                     (+ (count groups) (if (seq removed) 1 0) (if (seq added) 1 0))
+                     (+ (count groups) (if (seq removed) 1 0) (if (seq added-counted) 1 0))
                      (count shown-ops)
                      (:operations-before counts) (:operations-after counts)))
     (println)

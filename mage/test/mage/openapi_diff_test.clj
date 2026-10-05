@@ -545,3 +545,25 @@
     (testing "dropping a content type fails callers that send it"
       (is (breaking? (spec {"/api/x" {"post" (with-body json false)}})
                      (spec {"/api/x" {"post" (with-body {"multipart/form-data" (get json "application/json")} false)}}))))))
+
+(deftest path-variable-rename-is-not-a-removal-test
+  (testing "renaming {id} to {card-id} leaves the URL that a caller sends unchanged"
+    (let [get-by (fn [n] (op :params [{"in" "path" "name" n "required" true "schema" {"type" "integer"}}]))
+          d      (openapi-diff/diff (spec {"/api/card/{id}" {"get" (get-by "id")}})
+                                    (spec {"/api/card/{card-id}" {"get" (get-by "card-id")}}))]
+      (is (empty? (:removed d)))
+      (is (zero? (get-in d [:counts :breaking])))
+      (testing "and the report names the real paths"
+        (is (= ["GET /api/card/{card-id}"] (map :operation (:changed d))))
+        (is (= [:doc-only] (map :severity (:changed d))))))))
+
+(deftest grouped-header-counts-only-visible-severities-test
+  (testing "at --severity breaking, a new endpoint is not counted in the header"
+    (let [d (openapi-diff/diff (spec {}) (spec {"/api/x" {"get" (op)}}))]
+      (is (re-find #"^# 0 distinct changes across 0 endpoints"
+                   (with-out-str (openapi-diff/print-grouped d :breaking)))))))
+
+(deftest routes-that-differ-only-by-variable-name-stay-distinct-test
+  (testing "two routes that normalize to the same path are both kept"
+    (let [s (spec {"/api/db/{id}/schemas" {"get" (op)} "/api/db/{virtual-db}/schemas" {"get" (op)}})]
+      (is (= 2 (get-in (openapi-diff/diff s s) [:counts :operations-before]))))))

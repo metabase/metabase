@@ -152,14 +152,7 @@ gaps with `grep -rn "defendpoint" src/.../api.clj`.
 
 ## Attribution
 
-Find who to ask about an unclear change:
-
-```bash
-git log --oneline <old-ref>..<new-ref> -- resources/openapi/openapi.json
-git log -1 --format='%an %s' <sha>
-```
-
-Search the endpoint SOURCE, not `openapi.json`: the committed spec only changes on
+Find who to ask about an unclear change. Search the endpoint SOURCE, not `openapi.json`: the committed spec only changes on
 PRs carrying the `openapi-self-healing` label, which is usually a later, unrelated
 PR, so its history names the wrong author.
 
