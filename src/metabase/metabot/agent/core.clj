@@ -21,6 +21,7 @@
    [metabase.metabot.schema :as metabot.schema]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.self :as self]
+   [metabase.metabot.self.schema :as self.schema]
    [metabase.metabot.tools :as tools]
    [metabase.util :as u]
    [metabase.util.json :as json]
@@ -278,9 +279,8 @@
   "Call the LLM and stream processed parts.
 
   Passes the AISDK `input-parts` to the adapter, which converts them to its native wire format."
-  [memory context profile tools iteration tracking-opts link-registry-atom input-parts]
+  [memory profile tools system-msg iteration tracking-opts link-registry-atom input-parts]
   (let [model        (:model profile)
-        system-msg   (messages/build-system-message context profile tools)
         llm-opts     (cond-> {}
                        (:required-tool-call? profile) (assoc :tool-choice "required"))]
     (when *debug-log*
@@ -482,7 +482,11 @@
                      :type        :metabot/permission-denied}))))
 
 (defn- init-agent
-  "Initialize agent state."
+  "Initialize agent state.
+
+  The system message and the tool declarations are rendered once for the whole turn. Both read settings or status
+  that can change mid-turn, and a change would invalidate replayed thinking the same way an edited earlier message
+  does (see [[turn-input-parts]])."
   [{:keys [messages state metabot-id profile-id context tracking-opts conversation-id]
     external-memory-atom :memory-atom}]
   (let [context      (assign-context-ids context)
@@ -500,13 +504,15 @@
                          (assoc :conversation-id conversation-id)
                          (memory/add-client-ids (client-content-ids context)))
         memory-atom  (doto (or external-memory-atom (atom nil)) (reset! memory))
-        tools        (tools/wrap-tools-with-state base-tools memory-atom metabot-id profile-id)]
+        tools        (update-vals (tools/wrap-tools-with-state base-tools memory-atom metabot-id profile-id)
+                                  #(assoc % :declaration (delay (self.schema/tool-function %))))]
     (log/info "Starting agent" {:profile  profile-id
                                 :tools    (count tools)
                                 :max-iter (:max-iterations profile)
                                 :msgs     (count messages)})
     {:profile       profile
      :tools         tools
+     :system-msg    (messages/build-system-message context profile tools)
      :context       context
      :memory-atom   memory-atom
      :tracking-opts (merge {:profile-id          profile-id
@@ -569,7 +575,7 @@
   [{:keys [agent rf result iteration usage-atom sent-parts] :as loop-state}]
   (with-span :debug {:name      :metabot.agent/loop-step
                      :iteration iteration}
-    (let [{:keys [profile tools context memory-atom tracking-opts]} agent
+    (let [{:keys [profile tools system-msg context memory-atom tracking-opts]} agent
           max-iter           (:max-iterations profile 15)
           terminal-tools     (set (:terminal-tools profile))
           tracking-opts      (assoc tracking-opts :iteration iteration)
@@ -586,7 +592,7 @@
           ;; `call-llm` runs inside the eval span so the request attrs it records attach here.
           result'            (ait/with-llm-call {:ai/iteration iteration
                                                  :ai/model     (:model profile)}
-                               (let [llm-call       (call-llm memory context profile tools iteration
+                               (let [llm-call       (call-llm memory profile tools system-msg iteration
                                                               tracking-opts link-registry-atom input-parts)
                                      reduced-result (reduce (xf rf) result llm-call)]
                                  (when (ait/capture-active?)
