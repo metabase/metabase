@@ -257,9 +257,10 @@ describe("scenarios > embedding > embedding hub > security", () => {
       // The snapshot turns embedding on, but this test is about turning it on
       // from the hub, so start from off the way a fresh instance would be.
       H.updateSetting("enable-embedding-modular", false);
+      H.updateSetting("enable-embedding-sdk", false);
     });
 
-    it("turns embedding on with one switch", () => {
+    it("accepts the terms once for modular embedding and the React SDK", () => {
       cy.intercept("GET", "/api/setting").as("getSettings");
       cy.intercept("GET", "/api/session/properties").as("getSessionProperties");
 
@@ -267,7 +268,7 @@ describe("scenarios > embedding > embedding hub > security", () => {
 
       cy.log("The first enable goes through the terms modal");
       cy.findByTestId("embedding-hub-main")
-        .findByText("Modular embedding and SDK for React")
+        .findByText("Modular embedding")
         .should("be.visible");
 
       // The switch renders before either request lands, reading undefined as
@@ -277,7 +278,7 @@ describe("scenarios > embedding > embedding hub > security", () => {
       cy.findAllByRole("switch").first().should("not.be.checked").click();
       cy.findByRole("button", { name: "Agree" }).click();
 
-      cy.log("The merged setting is written");
+      cy.log("enable-embedding-modular is written");
 
       // A fresh visit rather than cy.reload(): reloading the app inside the
       // Cypress runner leaves the hub, landing on /unauthorized and then home.
@@ -288,6 +289,18 @@ describe("scenarios > embedding > embedding hub > security", () => {
 
       cy.request("GET", "/api/session/properties").then(({ body }) => {
         expect(body["enable-embedding-modular"]).to.be.true;
+      });
+
+      cy.log("The React SDK switch does not ask for the accepted terms again");
+      cy.intercept("PUT", "/api/setting").as("updateSettings");
+      cy.findAllByRole("switch").eq(1).should("not.be.checked").click();
+      cy.wait("@updateSettings");
+
+      H.modal().should("not.exist");
+      cy.findAllByRole("switch").eq(1).should("be.checked");
+
+      cy.request("GET", "/api/session/properties").then(({ body }) => {
+        expect(body["enable-embedding-sdk"]).to.be.true;
       });
     });
 

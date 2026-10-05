@@ -63,16 +63,16 @@
             (is (:enabled-embedding-interactive (sut/embedding-settings 0 0)))))))))
 
 (deftest enabled-embedding-sdk
-  (testing "with modular embedding on and jwt enabled"
-    (mt/with-temporary-setting-values [enable-embedding-modular true
-                                       jwt-shared-secret        "asdfasdf"
-                                       jwt-enabled              true]
+  (testing "with sdk enabled and jwt enabled"
+    (mt/with-temporary-setting-values [enable-embedding-sdk true
+                                       jwt-shared-secret    "asdfasdf"
+                                       jwt-enabled          true]
       (is (:enabled-embedding-sdk (sut/embedding-settings 0 0)))))
-  (testing "with modular embedding off and jwt enabled"
-    (mt/with-temporary-setting-values [enable-embedding-modular false
-                                       jwt-enabled              true]
+  (testing "with sdk disabled and jwt enabled"
+    (mt/with-temporary-setting-values [enable-embedding-sdk false
+                                       jwt-enabled          true]
       (is (not (:enabled-embedding-sdk (sut/embedding-settings 0 0))))))
-  (testing "with modular embedding on and jwt disabled"
-    (mt/with-temporary-setting-values [enable-embedding-modular true
-                                       jwt-enabled              false]
+  (testing "with sdk enabled and jwt disabled"
+    (mt/with-temporary-setting-values [enable-embedding-sdk true
+                                       jwt-enabled          false]
       (is (not (:enabled-embedding-sdk (sut/embedding-settings 0 0)))))))

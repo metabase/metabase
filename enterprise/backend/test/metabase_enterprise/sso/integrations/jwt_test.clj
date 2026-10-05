@@ -1070,7 +1070,7 @@
 (deftest jwt-token-sdk-idp-url-test
   (testing "should return IdP URL when embedding SDK header is present but no JWT token is provided"
     (with-jwt-default-setup!
-      (mt/with-temporary-setting-values [enable-embedding-modular true]
+      (mt/with-temporary-setting-values [enable-embedding-sdk true]
         (let [result (client/client-real-response
                       :get 200 "/auth/sso"
                       {:request-options {:headers {"x-metabase-client" "embedding-sdk-react"}}})]
@@ -1081,7 +1081,7 @@
 (deftest jwt-token-sdk-session-token-test
   (testing "should return a session token when a JWT token and sdk headers are passed"
     (with-jwt-default-setup!
-      (mt/with-temporary-setting-values [enable-embedding-modular true]
+      (mt/with-temporary-setting-values [enable-embedding-sdk true]
         (let [jwt-iat-time (buddy-util/now)
               jwt-exp-time (+ (buddy-util/now) 3600)
               jwt-payload  (jwt/sign
@@ -1122,7 +1122,7 @@
        jwt-identity-provider-uri nil
        jwt-shared-secret        nil
        slack-connect-enabled    false]
-      (mt/with-temporary-setting-values [enable-embedding-modular true]
+      (mt/with-temporary-setting-values [enable-embedding-sdk true]
         (let [jwt-iat-time (buddy-util/now)
               jwt-exp-time (+ (buddy-util/now) 3600)
               jwt-payload  (jwt/sign
@@ -1142,7 +1142,7 @@
 (deftest jwt-token-embedding-disabled-test
   (testing "should not return a session token when embedding is disabled"
     (with-jwt-default-setup!
-      (mt/with-temporary-setting-values [enable-embedding-modular false]
+      (mt/with-temporary-setting-values [enable-embedding-sdk false]
         (let [jwt-iat-time (buddy-util/now)
               jwt-exp-time (+ (buddy-util/now) 3600)
               jwt-payload  (jwt/sign
@@ -1162,7 +1162,7 @@
 (deftest jwt-token-no-hash-test
   (testing "should not return a session token when token=false"
     (with-jwt-default-setup!
-      (mt/with-temporary-setting-values [enable-embedding-modular true]
+      (mt/with-temporary-setting-values [enable-embedding-sdk true]
         (let [jwt-iat-time (buddy-util/now)
               jwt-exp-time (+ (buddy-util/now) 3600)
               jwt-payload  (jwt/sign

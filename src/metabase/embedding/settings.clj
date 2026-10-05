@@ -132,14 +132,13 @@
   :audit      :getter
   :encryption :no)
 
-(defsetting ^:deprecated enable-embedding-sdk
+(defsetting enable-embedding-sdk
   (deferred-tru "Allow admins to embed Metabase via the SDK?")
   :type       :boolean
   :default    false
   :visibility :authenticated
   :export?    false
   :audit      :getter
-  :deprecated "0.65.0"
   :setter     (make-embedding-toggle-setter :enable-embedding-sdk "sdk-embedding"))
 
 (defsetting ^:deprecated enable-embedding-simple
@@ -158,12 +157,12 @@
   []
   (boolean
    (some #(setting/get-value-of-type :boolean %)
-         [:enable-embedding-simple :enable-embedding-sdk :enable-embedding-static])))
+         [:enable-embedding-simple :enable-embedding-static])))
 
 (defn- modular-embedding-enabled?
   "The effective value of [[enable-embedding-modular]].
 
-  Until an admin sets it, it stands for whatever the three settings it replaces already say: any of them on means
+  Until an admin sets it, it stands for whatever the two settings it replaces already say: either of them on means
   embedding is on, so an upgrade cannot switch a live embed off. Reading the *source* rather than the value is what
   separates \"nobody set this\" from \"an admin turned it off\" -- without that, turning it off would bounce back on
   from a legacy value."
@@ -173,7 +172,7 @@
     (setting/get-value-of-type :boolean :enable-embedding-modular)))
 
 (defsetting enable-embedding-modular
-  (deferred-tru "Allow admins to embed Metabase via modular embedding, the SDK for React, and guest embeds?")
+  (deferred-tru "Allow admins to embed Metabase via modular embedding and guest embeds?")
   :type       :boolean
   :default    false
   :visibility :authenticated
@@ -296,11 +295,11 @@
   it would otherwise silently override."
   [env]
   (let [modular-enable-env-var-set?  (some? (:mb-enable-embedding-modular env))
-        replaced-enable-env-vars-set (select-keys env [:mb-enable-embedding :mb-enable-embedding-sdk
-                                                       :mb-enable-embedding-simple :mb-enable-embedding-static])]
+        replaced-enable-env-vars-set (select-keys env [:mb-enable-embedding :mb-enable-embedding-simple
+                                                       :mb-enable-embedding-static])]
     (when (and modular-enable-env-var-set? (seq replaced-enable-env-vars-set))
       (throw (ex-info (str "Both deprecated and new enable-embedding env vars are set, please remove MB_ENABLE_EMBEDDING, "
-                           "MB_ENABLE_EMBEDDING_SDK, MB_ENABLE_EMBEDDING_SIMPLE and MB_ENABLE_EMBEDDING_STATIC.")
+                           "MB_ENABLE_EMBEDDING_SIMPLE and MB_ENABLE_EMBEDDING_STATIC.")
                       {:deprecated-enable-env-vars-set replaced-enable-env-vars-set
                        :current-enable-env-vars-set    (select-keys env [:mb-enable-embedding-modular])})))))
 
@@ -375,6 +374,7 @@
    ;; the deprecated umbrella setting must still count as embedding-enabled while instances have it set
    #_{:clj-kondo/ignore [:deprecated-var]} (enable-embedding)
    (enable-embedding-modular)
+   (enable-embedding-sdk)
    (enable-embedding-interactive)))
 
 ;; settings for the embedding homepage

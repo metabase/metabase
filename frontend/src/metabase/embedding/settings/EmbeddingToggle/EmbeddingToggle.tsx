@@ -2,7 +2,6 @@ import { useDisclosure } from "@mantine/hooks";
 import type { ChangeEvent } from "react";
 import { t } from "ttag";
 
-import { useHasTokenFeature } from "metabase/common/hooks";
 import {
   useAdminSetting,
   useAdminSettings,
@@ -14,16 +13,19 @@ import { EmbeddingLegaleseModal } from "../EmbeddingLegaleseModal";
 
 export type EmbeddingSettingKey =
   | "enable-embedding-interactive"
-  | "enable-embedding-modular";
+  | "enable-embedding-modular"
+  | "enable-embedding-sdk";
 
 export type EmbeddingToggleProps = {
   settingKey: EmbeddingSettingKey;
   dependentSettingKeys?: EmbeddingSettingKey[];
+  requiresTerms?: boolean;
 } & Omit<SwitchProps, "onChange">;
 
 export function EmbeddingToggle({
   settingKey,
   dependentSettingKeys = [],
+  requiresTerms = false,
   labelPosition = "left",
   ...switchProps
 }: EmbeddingToggleProps) {
@@ -32,7 +34,6 @@ export function EmbeddingToggle({
     useAdminSettings(dependentSettingKeys);
 
   const showModularEmbedTerms = useSetting("show-modular-embed-terms");
-  const hasSimpleEmbedding = useHasTokenFeature("embedding_simple");
 
   const [
     isLegaleseModalOpen,
@@ -46,11 +47,8 @@ export function EmbeddingToggle({
   const isEnabled =
     Boolean(value) && Object.values(dependentSettingsValues).every(Boolean);
 
-  // Previously this covered modular embedding and the modular embedding SDK, not
-  // guest embeds. The merged toggle also covers guest embeds, so gate on the token
-  // feature to exclude them and match the previous behaviour.
   const shouldShowModularEmbedTerms =
-    settingKey === "enable-embedding-modular" && hasSimpleEmbedding;
+    requiresTerms && isModularEmbeddingSettingKey(settingKey);
 
   const handleChange = (checked: boolean) => {
     if (showModularEmbedTerms && shouldShowModularEmbedTerms && checked) {
@@ -84,8 +82,18 @@ export function EmbeddingToggle({
         <EmbeddingLegaleseModal
           opened={isLegaleseModalOpen}
           onClose={closeLegaleseModal}
+          settingKey={settingKey}
         />
       )}
     </>
+  );
+}
+
+function isModularEmbeddingSettingKey(
+  settingKey: EmbeddingSettingKey,
+): settingKey is "enable-embedding-modular" | "enable-embedding-sdk" {
+  return (
+    settingKey === "enable-embedding-modular" ||
+    settingKey === "enable-embedding-sdk"
   );
 }
