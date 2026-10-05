@@ -487,6 +487,12 @@ describe("monitor > tools > erroring questions", () => {
   it("should rerun, search and clear a broken question", () => {
     cy.wait("@dataset");
 
+    cy.findByRole("heading", { name: "Erroring questions" }).should(
+      "be.visible",
+    );
+    cy.findByTestId("erroring-questions-table")
+      .findByText(brokenQuestionDetails.name)
+      .should("be.visible");
     // nothing selected -> the bulk action bar (and its button) is hidden
     cy.button("Rerun selected").should("not.exist");
     selectQuestion(brokenQuestionDetails.name);

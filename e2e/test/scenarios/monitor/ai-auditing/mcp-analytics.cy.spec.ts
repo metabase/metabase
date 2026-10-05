@@ -88,7 +88,9 @@ describe("scenarios > monitor > ai auditing > mcp analytics", () => {
 
     cy.log("The error message shows once PII retention is on");
     H.updateSetting("analytics-pii-retention-enabled", true);
+    cy.intercept("POST", "/api/dataset").as("toolCallsWithPii");
     cy.reload();
+    cy.wait("@toolCallsWithPii");
     H.main().within(() => {
       cy.findByText(SEED_ERROR_TOOL).scrollIntoView().should("be.visible");
       cy.findByText(SEED_ERROR_MESSAGE).scrollIntoView().should("be.visible");
