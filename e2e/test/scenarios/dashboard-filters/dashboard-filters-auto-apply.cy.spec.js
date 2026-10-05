@@ -164,7 +164,8 @@ describe(
 
       H.filterWidget().findByText(FILTER.name).click();
       H.popover().within(() => {
-        cy.findByText("Gadget").click();
+        cy.findByLabelText("Gadget").click();
+        cy.findByLabelText("Gadget").should("be.checked");
         cy.button("Add filter").click();
       });
 
@@ -176,7 +177,7 @@ describe(
 
       H.filterWidget().findByText(FILTER.name).click();
       H.popover().within(() => {
-        cy.findByText("Gadget").should("not.be.checked");
+        cy.findByLabelText("Gadget").should("not.be.checked");
       });
     });
 
