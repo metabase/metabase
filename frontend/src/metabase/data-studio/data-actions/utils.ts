@@ -1,4 +1,5 @@
 import { getDefaultFieldSettings } from "metabase/actions/utils";
+import { getTagTypeFromFieldSettings } from "metabase/querying/action-creator";
 import * as Lib from "metabase-lib";
 import { getTemplateTagParameters } from "metabase-lib/v1/parameters/utils/template-tags";
 import type {
@@ -8,7 +9,6 @@ import type {
   FieldSettings,
   FieldType,
   TemplateTag,
-  TemplateTagType,
   WritebackParameter,
 } from "metabase-types/api";
 
@@ -67,17 +67,6 @@ export function getFieldSettingsFromQuery(
   return { ...formSettings, fields };
 }
 
-export function getTemplateTagType(fieldType: FieldType): TemplateTagType {
-  switch (fieldType) {
-    case "number":
-      return "number";
-    case "date":
-      return "date";
-    default:
-      return "text";
-  }
-}
-
 export function setTemplateTagFieldType(
   query: Lib.Query,
   parameterId: string,
@@ -87,7 +76,7 @@ export function setTemplateTagFieldType(
     Object.entries(Lib.templateTags(query)).map(([name, tag]) => [
       name,
       tag.id === parameterId
-        ? { ...tag, type: getTemplateTagType(fieldType) }
+        ? { ...tag, type: getTagTypeFromFieldSettings(fieldType) }
         : tag,
     ]),
   );

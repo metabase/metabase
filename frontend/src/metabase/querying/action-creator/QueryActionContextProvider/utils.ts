@@ -35,7 +35,9 @@ const fieldTypeToTagTypeMap: TagTypeMap = {
   date: "date",
 };
 
-const getTagTypeFromFieldSettings = (fieldType: FieldType): TemplateTagType => {
+export const getTagTypeFromFieldSettings = (
+  fieldType: FieldType,
+): TemplateTagType => {
   return fieldTypeToTagTypeMap[fieldType] ?? "text";
 };
 
