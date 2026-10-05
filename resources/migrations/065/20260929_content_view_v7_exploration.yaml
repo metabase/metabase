@@ -1,5 +1,6 @@
 ## Adds explorations to v_content as the `exploration` entity type, so usage analytics can report on
-## them like any other content.
+## them like any other content. Documents attached to an exploration (its Summary) are left out: they
+## are reachable only through their exploration, which the view already counts.
 databaseChangeLog:
   - changeSet:
       id: v65.2026-09-29T15:49:41

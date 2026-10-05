@@ -136,6 +136,7 @@ select
     null as question_is_native,
     null as event_timestamp
     from document
+    where exploration_id is null
 union
 select
     exploration.id as entity_id,

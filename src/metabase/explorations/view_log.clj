@@ -21,12 +21,11 @@
   (cache.wrapped/ttl-cache-factory {} :ttl recent-read-window-ms))
 
 (defn- first-read-in-window?
+  "True for the one caller that adds `[user-id exploration-id]` to [[recent-reads]]. `lookup-or-miss` runs the
+  value function at most once per key, so concurrent readers of the same exploration cannot both claim the first read."
   [user-id exploration-id]
-  (let [k [user-id exploration-id]]
-    (if (cache.wrapped/has? recent-reads k)
-      false
-      (do (cache.wrapped/miss recent-reads k true)
-          true))))
+  (let [claim (Object.)]
+    (identical? claim (cache.wrapped/lookup-or-miss recent-reads [user-id exploration-id] (constantly claim)))))
 
 (m/defmethod events/publish-event! ::exploration-read
   "Log an exploration view, collapsing the page's polling reads into one view per user."

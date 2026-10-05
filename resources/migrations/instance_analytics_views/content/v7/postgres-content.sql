@@ -134,6 +134,7 @@ select
     cast(null as boolean) as question_is_native,
     cast(null as timestamp) as event_timestamp
     from document
+    where exploration_id is null
 union
 select
     exploration.id as entity_id,

@@ -1,7 +1,9 @@
 (ns ^:synchronized metabase.explorations.view-log-test
   (:require
    [clojure.test :refer :all]
+   [metabase.collections.models.collection :as collection]
    [metabase.events.core :as events]
+   [metabase.explorations.view-log :as explorations.view-log]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -51,3 +53,28 @@
         (mt/user-http-request :crowberto :get 200 (format "exploration/%d" (:id exploration)))
         (is (=? [{:model "exploration" :model_id (:id exploration)}]
                 (views (mt/user->id :crowberto) (:id exploration))))))))
+
+(deftest get-exploration-without-access-records-failed-view-test
+  (mt/with-premium-features #{:audit-app}
+    (mt/with-temp [:model/User owner {}
+                   :model/User other {}
+                   :model/Exploration exploration {:name          "Private"
+                                                   :creator_id    (:id owner)
+                                                   :collection_id (:id (collection/user->personal-collection (:id owner)))}]
+      (testing "A 403 on GET /api/exploration/:id records a view without access for the current user"
+        (mt/user-http-request other :get 403 (format "exploration/%d" (:id exploration)))
+        (is (=? [{:user_id    (:id other)
+                  :model      "exploration"
+                  :model_id   (:id exploration)
+                  :has_access false}]
+                (views (:id other) (:id exploration))))))))
+
+(deftest first-read-in-window-concurrent-test
+  (testing "Concurrent reads of one exploration by one user claim the first read exactly once"
+    (let [first-read? #'explorations.view-log/first-read-in-window?
+          user-id     (- (rand-int 1000000))
+          start       (java.util.concurrent.CountDownLatch. 1)
+          results     (doall (for [_ (range 16)]
+                               (future (.await start) (first-read? user-id -1))))]
+      (.countDown start)
+      (is (= 1 (count (filter true? (map deref results))))))))
