@@ -71,6 +71,8 @@ describe("scenarios > public > question", () => {
 
       cy.wait("@publicQuery");
 
+      cy.findAllByTestId("cell-data").should("contain.text", "Affiliate");
+
       // Make sure we can download the public question (metabase#21993)
       cy.get("@uuid").then((publicUuid) => {
         H.main().realHover();

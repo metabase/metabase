@@ -47,6 +47,13 @@ describe("Public dashboards/questions downloads (results and pdf)", () => {
       cy.visit(`${publicLink}#downloads=false`);
       waitLoading();
 
+      cy.findByRole("heading", { name: "Orders in a dashboard" }).should(
+        "be.visible",
+      );
+      H.getDashboardCard()
+        .findAllByTestId("cell-data")
+        .should("have.length.above", 0);
+
       cy.findByRole("button", { name: "Download as PDF" }).should("not.exist");
 
       // we should not have any dashcard action in a public/embed scenario, so the menu should not be there
@@ -60,6 +67,9 @@ describe("Public dashboards/questions downloads (results and pdf)", () => {
       cy.get("header")
         .findByRole("button", { name: "Download as PDF" })
         .should("exist");
+      H.getDashboardCard()
+        .findAllByTestId("cell-data")
+        .should("have.length.above", 0);
       H.getEmbeddedDashboardCardMenu().should("not.exist");
     });
 
@@ -158,6 +168,7 @@ describe("Public dashboards/questions downloads (results and pdf)", () => {
       cy.visit(`${publicLink}#downloads=false`);
       waitLoading();
 
+      H.echartsContainer().should("be.visible");
       H.main().realHover();
       cy.findByRole("button", { name: "Download results" }).should("not.exist");
     });

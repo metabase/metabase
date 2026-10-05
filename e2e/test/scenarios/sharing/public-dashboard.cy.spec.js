@@ -175,6 +175,7 @@ describe("scenarios > public > dashboard", () => {
       cy.button("Add filter").click();
     });
 
+    H.applyFilterButton().should("be.visible");
     cy.findByTestId("scalar-value").should("have.text", COUNT_ALL);
 
     H.applyFilterButton().click();
