@@ -45,6 +45,22 @@ describe("DashboardHeaderSkeleton", () => {
     ).toBe(6);
   });
 
+  it("reserves the last-edit label's row on a fresh page load", () => {
+    setup({ isCached: false });
+
+    expect(
+      screen.getByTestId("dashboard-header-skeleton-badges").childElementCount,
+    ).toBe(1);
+  });
+
+  it("reserves the last-edit label's row for a cached dashboard with an edit history", () => {
+    setup();
+
+    expect(
+      screen.getByTestId("dashboard-header-skeleton-badges").childElementCount,
+    ).toBe(1);
+  });
+
   it("leaves out the title where the dashboard isn't titled", () => {
     setup({ titled: false });
 

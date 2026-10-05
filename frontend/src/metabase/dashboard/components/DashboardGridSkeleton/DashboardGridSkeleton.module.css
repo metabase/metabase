@@ -5,10 +5,10 @@
 
 /*
  * Mirrors react-grid-layout's geometry (see DashboardGrid). The column count,
- * aspect ratio, minimum row height and margins come in as custom properties
- * from metabase/utils/dashboard_grid. Lengths are in container-query width
- * units, so the skeleton cards land at the size and position the real cards
- * will, at any width.
+ * aspect ratio, minimum row height and margins come in as custom properties,
+ * set from the same constants the real grid uses. Lengths are in
+ * container-query width units, so the skeleton cards land at the size and
+ * position the real cards will, at any width.
  */
 .grid {
   --skeleton-row-height: max(
@@ -69,7 +69,7 @@
   font-size: 1.25rem;
 }
 
-/* GRID_BREAKPOINTS.mobile; a container query can't read a custom property. */
+/* The grid's mobile breakpoint, MOBILE_BREAKPOINT. A container query can't read a custom property. */
 @container (max-width: 752px) {
   .grid {
     display: flex;
