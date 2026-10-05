@@ -243,10 +243,10 @@ describe("scenarios > dashboard > filters > management", () => {
 
       changeOperator("Contains");
 
-      H.getDashboardCard().should("contain", "People.Name");
-
       // verifies default value does not exist
       H.sidebar().findByText("No default").should("exist");
+
+      H.getDashboardCard().should("contain", "People.Name");
 
       H.saveDashboard();
 
@@ -295,6 +295,8 @@ function createDashboardWithFilterAndQuestionMapped() {
 
     H.visitDashboard(dashboard.id);
   });
+
+  H.filterWidget().should("contain", "Text");
 
   H.editDashboard();
 }
