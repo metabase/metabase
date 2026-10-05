@@ -430,10 +430,9 @@
                                                                                      :id (mt/id :venues))
                                                            :name   "t1_out"}}]
           (mt/with-test-user :crowberto
-            (let [result (call-content nil {:items [{:type "transform" :id id}]})]
-              (is (:isError result))
-              (is (not (re-find #"t1" (-> result :content first :text)))
-                  "and nothing of the transform leaks into the refusal"))))))
+            (let [error (content-error {:items [{:type "transform" :id id}]})]
+              (is (str/starts-with? error "Invalid arguments: "))
+              (is (re-find #"\"type\": \"should be either" error)))))))
     (testing "a transform folder reads as not found, the same answer a missing id gets"
       (mt/with-temp [:model/Collection {folder-id :id} {:name "Rollups" :namespace "transforms"}]
         (mt/with-test-user :crowberto

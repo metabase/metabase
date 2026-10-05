@@ -252,7 +252,9 @@
   (testing "GHY-4746: MCP v2 has no transforms, so browse_collection has no transforms namespace, and a transform
             folder reads as not found, the same answer a missing id gets"
     (testing "namespace \"transforms\" fails the argument schema"
-      (is (some? (:error (browse {:id "root" :namespace "transforms"})))))
+      (let [error (:error (browse {:id "root" :namespace "transforms"}))]
+        (is (str/starts-with? error "Invalid arguments: "))
+        (is (str/includes? error "\"namespace\""))))
     (mt/with-temp [:model/Collection folder {:name "browse-transform-folder" :namespace "transforms"}]
       (doseq [mode ["items" "tree"]]
         (testing mode

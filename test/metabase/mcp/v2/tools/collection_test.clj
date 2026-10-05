@@ -122,7 +122,12 @@
         (testing "GHY-4218: a namespaced collection still defaults to the root of its own hierarchy —
                   personal collections exist only in the default namespace, so there is none to
                   default into"
-          (is (= "/" (t2/select-one-fn :location :model/Collection :id (:id payload)))))))))
+          (is (= "/" (t2/select-one-fn :location :model/Collection :id (:id payload)))))
+        (testing "GHY-4746: a child created under it without `namespace` nests there and takes the parent's namespace"
+          (let [child (create! :crowberto {:name "Agent Snippet Subfolder" :parent_id (:id payload)})]
+            (is (= (str "/" (:id payload) "/")
+                   (t2/select-one-fn :location :model/Collection :id (:id child))))
+            (is (= "snippets" (:namespace child)))))))))
 
 (deftest no-transform-folders-test
   (testing "GHY-4746: MCP v2 has no transforms, so collection_write can neither make a transform folder nor touch
@@ -130,8 +135,9 @@
             unchanged."
     (mt/with-model-cleanup [:model/Collection]
       (testing "namespace \"transforms\" fails the argument schema"
-        (is (re-find #"namespace"
-                     (tool-error (call-tool! :crowberto {:method "create" :name "Rollups" :namespace "transforms"}))))
+        (let [error (tool-error (call-tool! :crowberto {:method "create" :name "Rollups" :namespace "transforms"}))]
+          (is (str/starts-with? error "Invalid arguments: "))
+          (is (str/includes? error "\"namespace\"")))
         (is (not (t2/exists? :model/Collection :name "Rollups"))))
       (mt/with-temp [:model/Collection parent {:name "Rollups folder" :namespace "transforms"}
                      :model/Collection coll   {:name "Before" :namespace "transforms"}]
@@ -298,6 +304,22 @@
 (deftest update-requires-id-test
   (is (re-find #"\"id\" is required when method is \"update\""
                (tool-error (call-tool! :crowberto {:method "update" :name "nope"})))))
+
+(deftest update-namespaced-collection-test
+  (testing "GHY-4746: a snippet folder renames and moves inside its own namespace; `namespace` is create-only, so
+            the row's namespace decides which hierarchy the move happens in"
+    (mt/with-temp [:model/Collection parent {:name "Snippet parent" :namespace "snippets"}
+                   :model/Collection coll   {:name "Before" :namespace "snippets"}]
+      (let [payload (tool-result (call-tool! :crowberto {:method "update" :id (:id coll)
+                                                         :name "After" :parent_id (:id parent)}))]
+        (is (= "After" (:name payload)))
+        (is (= "snippets" (:namespace payload)))
+        (is (= (str "/" (:id parent) "/")
+               (t2/select-one-fn :location :model/Collection :id (:id coll)))))
+      (testing "parent_id \"root\" moves it to the root of the snippets namespace, not the content root"
+        (tool-result (call-tool! :crowberto {:method "update" :id (:id coll) :parent_id "root"}))
+        (is (= "/" (t2/select-one-fn :location :model/Collection :id (:id coll))))
+        (is (= :snippets (t2/select-one-fn :namespace :model/Collection :id (:id coll))))))))
 
 (deftest update-rejects-cross-namespace-move-test
   (testing "GHY-4516: a snippet folder cannot be moved into the content tree — namespaces are

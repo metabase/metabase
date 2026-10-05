@@ -452,7 +452,8 @@
       (let [{:keys [error]} (mt/with-current-user (mt/user->id :crowberto)
                               (registry/call-tool #{"agent:content:read"} "test-session" "search"
                                                   {:term_queries ["x"] :type ["transform"]}))]
-        (is (some? error))))
+        (is (= -32602 (:code error)))
+        (is (str/starts-with? (message/render (:message error)) "Invalid arguments: \"type\""))))
     (testing "an omitted type reaches the engine without transform"
       (let [captured-entity-types (atom nil)]
         (mt/with-dynamic-fn-redefs [metabot.search/search (fn [{:keys [entity-types]}]
