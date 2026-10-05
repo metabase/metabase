@@ -2277,7 +2277,7 @@ serdes/meta:
                                                  :base-snapshot (export-test-snapshot "base-B")))))
           (assert-extracted-once probe))))))
 
-;;; --------------------------------- Table/Field user-settings inline round trip ---------------------------------
+;;; ------------------------------------ Table/Field user-settings round trip -------------------------------------
 
 (deftest table-and-field-user-settings-round-trip-test
   (testing "a full export writes one file per published Table with user edits -- the TableUserSettings entity beside
