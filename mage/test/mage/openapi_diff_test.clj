@@ -567,3 +567,15 @@
   (testing "two routes that normalize to the same path are both kept"
     (let [s (spec {"/api/db/{id}/schemas" {"get" (op)} "/api/db/{virtual-db}/schemas" {"get" (op)}})]
       (is (= 2 (get-in (openapi-diff/diff s s) [:counts :operations-before]))))))
+
+(deftest request-default-change-is-breaking-test
+  (let [p (fn [schema] (spec {"/api/x" {"get" (op :params [{"in" "query" "name" "q" "required" false "schema" schema}])}}))]
+    (testing "a query param whose default flips changes behavior for callers who omit it"
+      (is (breaking? (p {"type" "boolean" "default" false}) (p {"type" "boolean" "default" true}))))
+    (testing "a dropped request default is breaking"
+      (is (body-change-breaking? (obj {"a" {"type" "string" "default" "x"}}) (obj {"a" {"type" "string"}}))))
+    (testing "a default added where none existed is not"
+      (is (not (breaking? (p {"type" "boolean"}) (p {"type" "boolean" "default" false})))))
+    (testing "a response default is not part of the contract"
+      (is (not (breaking? (spec {"/api/x" {"get" (op :response (obj {"a" {"type" "string" "default" "x"}}))}})
+                          (spec {"/api/x" {"get" (op :response (obj {"a" {"type" "string" "default" "y"}}))}})))))))

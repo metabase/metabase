@@ -106,7 +106,8 @@ gaps with `grep -rn "defendpoint" src/.../api.clj`.
 
    A change to a schema keyword the tool does not model is ranked breaking, so
    it is never hidden; read it before drafting. A reworded description, title,
-   example, or default is DOC_ONLY.
+   or example is DOC_ONLY. A request default that changes or disappears is
+   breaking: callers who omit the field now get different behavior.
 
    Adding an optional parameter is not breaking. Returning extra data is not
    breaking. Existing callers keep working in both cases.

@@ -16,7 +16,8 @@
               additive: new field returned, values narrowed
 
   A change to a schema keyword the comparison does not model ranks breaking, so it is never hidden.
-  Descriptions, titles, examples, and defaults are compared separately and rank doc-only.
+  Descriptions, titles, and examples are compared separately and rank doc-only. A request default
+  that changes or disappears is breaking: callers who omit the field now get different behavior.
 
   Response coverage is partial: only endpoints that declare a response schema can be compared. Most
   emit description-only 2XX/4XX/5XX stubs."
@@ -98,18 +99,18 @@
 
 (def ^:private doc-keys
   "Schema keys that document a value without constraining it."
-  ["description" "title" "example" "examples" "deprecated" "default"])
+  ["description" "title" "example" "examples" "deprecated"])
 
 (defn- strip-docs
   "`node` without [[doc-keys]] at any depth, so a reworded description is not a schema change.
   Property NAMES are data, so a field literally called `description` survives, and literal values
-  under `enum`/`const` are not walked."
+  under `enum`/`const`/`default` are not walked."
   [node]
   (cond
     (map? node) (into {} (for [[k v] (apply dissoc node doc-keys)]
                            [k (cond
                                 (and (= "properties" k) (map? v)) (update-vals v strip-docs)
-                                (#{"enum" "const"} k) v
+                                (#{"enum" "const" "default"} k) v
                                 :else (strip-docs v))]))
     (sequential? node) (mapv strip-docs node)
     :else node))
@@ -119,7 +120,7 @@
 
 (def ^:private modeled-keys
   "Keywords [[compatible?]] compares. A change to any other keyword is ranked incompatible."
-  (into #{"type" "enum" "const" "oneOf" "anyOf" "allOf" "prefixItems" "items" "properties"
+  (into #{"type" "enum" "const" "default" "oneOf" "anyOf" "allOf" "prefixItems" "items" "properties"
           "required" "additionalProperties" "pattern" "format" "uniqueItems"}
         (concat lower-bounds upper-bounds ["minimum" "exclusiveMinimum" "maximum" "exclusiveMaximum"])))
 
@@ -228,6 +229,10 @@
             old-req (set (get old "required")), new-req (set (get new "required"))]
         (boolean
          (and (accepts-all-values? wide narrow)
+              ;; A caller who omits a request field gets its default, so changing or dropping one
+              ;; changes behavior without changing what validates. Adding one where there was none
+              ;; does not: that field was already optional. Response defaults describe nothing.
+              (or (not req?) (not (contains? old "default")) (= (get old "default") (get new "default")))
               (positional? "allOf")
               (positional? "prefixItems")
               (same? (get old "items" {}) (get new "items" {}))
@@ -560,7 +565,7 @@
                                               ;; Schemas are compared without their doc keys, so a
                                               ;; reworded field description or a new default lands here.
                                               (not= (:docs o) (:docs n))
-                                              [[doc-only "    ~ field documentation or defaults changed"]])]
+                                              [[doc-only "    ~ field documentation changed"]])]
                                (when (seq findings)
                                  {:operation (:display n)
                                   :findings findings
