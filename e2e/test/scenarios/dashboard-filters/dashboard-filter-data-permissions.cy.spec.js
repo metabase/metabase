@@ -1,32 +1,22 @@
 const { H } = cy;
 import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
 
-function filterDashboard(suggests = true) {
+function filterDashboard() {
   H.visitDashboard(ORDERS_DASHBOARD_ID);
-  cy.contains("Orders");
-  cy.contains("Text").click();
+  H.filterWidget().click();
 
-  // We should get a suggested response and be able to click it if we're an admin
-  if (suggests) {
-    cy.findByPlaceholderText("Search the list").type("Main Street");
-    cy.contains("100 Main Street").click();
-  } else {
-    cy.findByPlaceholderText("Search the list").type("100 Main Street").blur();
-    cy.wait("@search").should(({ response }) => {
-      expect(response.statusCode).to.equal(403);
-    });
-  }
-  cy.contains("Add filter").click({ force: true });
-  cy.contains("100 Main Street");
+  cy.findByPlaceholderText("Search the list").type("Main Street");
+  cy.contains("100 Main Street").click();
+
+  H.dashboardParametersPopover().button("Add filter").click();
+  H.filterWidget().should("contain", "100 Main Street");
+  cy.location("search").should((search) =>
+    expect(new URLSearchParams(search).get("text")).to.eq("100 Main Street"),
+  );
 }
 
 describe("support > permissions (metabase#8472)", () => {
   beforeEach(() => {
-    cy.intercept(
-      "GET",
-      `/api/dashboard/${ORDERS_DASHBOARD_ID}/params/*/search/*").as("search`,
-    );
-
     H.restore();
     cy.signInAsAdmin();
 
@@ -52,8 +42,6 @@ describe("support > permissions (metabase#8472)", () => {
     cy.contains("Done").click();
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.contains("Save").click();
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.contains("Orders in a dashboard").click();
   });
 
   it("should allow a nodata user to select the filter", () => {

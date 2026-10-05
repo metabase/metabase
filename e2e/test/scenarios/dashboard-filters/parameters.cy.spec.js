@@ -671,7 +671,11 @@ describe("scenarios > dashboard > parameters", () => {
       H.addHeadingWhileEditing("Heading");
       H.setDashCardFilter(1, "Text or Category", null, "Category");
       H.selectDashboardFilter(H.getDashboardCard(0), "Category");
-      H.getDashboardCard(0).within(() => {
+      H.dashboardParameterSidebar().button("Done").click();
+      H.getDashboardCard(1).within(() => {
+        H.filterWidget({ isEditing: true })
+          .contains("Category")
+          .should("be.visible");
         // Ensure filters are not draggable
         cy.icon("grabber").should("not.exist");
       });
@@ -1254,7 +1258,7 @@ describe("scenarios > dashboard > parameters", () => {
       });
 
       H.filterWidget({ isEditing: false }).contains("Category").should("exist");
-      H.filterWidget({ isEditing: false }).contains("Category").should("exist");
+      H.filterWidget({ isEditing: false }).contains("Count").should("exist");
 
       H.editDashboard();
 
@@ -1317,7 +1321,7 @@ describe("scenarios > dashboard > parameters", () => {
                 },
                 {
                   parameter_id: countParameter.id,
-                  card_id: ORDERS_BY_YEAR_QUESTION_ID,
+                  card_id: dashcard.card_id,
                   target: [
                     "dimension",
                     ["field", "count", { "base-type": "type/Integer" }],
@@ -1337,6 +1341,7 @@ describe("scenarios > dashboard > parameters", () => {
         cy.findByText("Gizmo").should("be.visible");
         cy.findByText("Gadget").should("be.visible");
         cy.findByText("Widget").should("be.visible");
+        H.filterWidget().contains("Count").should("be.visible");
       });
 
       H.getDashboardCard(0).within(() => {
@@ -1797,11 +1802,15 @@ describe("scenarios > dashboard > parameters", () => {
       });
 
       // Update header filter, verify no changes
+      cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query").as(
+        "dashcardQuery",
+      );
       H.dashboardParametersContainer().within(() => H.filterWidget().click());
       H.popover().within(() => {
         cy.findByLabelText("Gadget").click();
         cy.button("Update filter").click();
       });
+      cy.wait("@dashcardQuery");
       H.dashboardParametersContainer()
         .findByText("3 selections")
         .should("exist");
