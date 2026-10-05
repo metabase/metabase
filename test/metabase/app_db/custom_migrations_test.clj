@@ -3090,13 +3090,13 @@
           (is (not (revoked? :oauth_refresh_token v2-refresh))))))))
 
 (deftest bind-legacy-mcp-oauth-tokens-test
-  (testing (str "v65.2026-10-05T00:00:00: tokens issued before audience binding by MCP clients that sent no RFC 8707 "
+  (testing (str "v64.2026-10-05T00:00:00: tokens issued before audience binding by MCP clients that sent no RFC 8707 "
                 "`resource` have none stored, so the bearer bridge treats them as REST tokens: refused at the MCP "
                 "endpoint, yet served by the agent API's read-resource endpoint, whose scope the old MCP baseline "
                 "granted. Refresh rotates the refresh token, so such a grant lives forever. The migration binds every "
                 "unbound token whose scopes are all pre-binding MCP scopes to the MCP endpoint, and leaves every other "
                 "token alone.")
-    (impl/test-migrations ["v65.2026-10-05T00:00:00"] [migrate!]
+    (impl/test-migrations ["v64.2026-10-05T00:00:00"] [migrate!]
       (let [user-id       (t2/insert-returning-pk!
                            :core_user {:first_name  "MCP"
                                        :last_name   "Binding"

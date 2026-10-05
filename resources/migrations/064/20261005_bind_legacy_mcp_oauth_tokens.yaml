@@ -5,7 +5,7 @@
 
 databaseChangeLog:
   - changeSet:
-      id: v65.2026-10-05T00:00:00
+      id: v64.2026-10-05T00:00:00
       author: ericnormand
       comment: Bind OAuth tokens that hold only MCP scopes and no resource to the MCP endpoint
       changes:
