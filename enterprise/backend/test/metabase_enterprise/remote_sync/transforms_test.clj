@@ -30,7 +30,8 @@
   (testing "Creating a transform creates a RemoteSyncObject entry when remote-sync-transforms is enabled"
     (mt/with-premium-features #{:transforms-basic}
       (mt/with-temporary-setting-values [remote-sync-transforms true
-                                         remote-sync-enabled true]
+                                         remote-sync-enabled true
+                                         remote-sync-type :read-write]
         (mt/with-temp [:model/Collection {coll-id :id} {:name "Transforms Collection" :namespace collection/transforms-ns}
                        :model/Transform transform {:name "Test Transform" :collection_id coll-id}]
           (events/publish-event! :event/transform-create {:object transform})
@@ -56,7 +57,8 @@
   (testing "Updating a transform updates the RemoteSyncObject entry when setting is enabled"
     (mt/with-premium-features #{:transforms-basic}
       (mt/with-temporary-setting-values [remote-sync-transforms true
-                                         remote-sync-enabled true]
+                                         remote-sync-enabled true
+                                         remote-sync-type :read-write]
         (mt/with-temp [:model/Collection {coll-id :id} {:name "Transforms Collection" :namespace collection/transforms-ns}
                        :model/Transform transform {:name "Test Transform" :collection_id coll-id}
                        :model/RemoteSyncObject _rso {:model_type "Transform"
@@ -108,7 +110,8 @@
   (testing "Creating a transform tag creates a RemoteSyncObject entry when transform sync is enabled"
     (mt/with-premium-features #{:transforms-basic}
       (mt/with-temporary-setting-values [remote-sync-transforms true
-                                         remote-sync-enabled true]
+                                         remote-sync-enabled true
+                                         remote-sync-type :read-write]
         (mt/with-temp [:model/TransformTag tag {:name "Test Tag"}]
           (events/publish-event! :event/transform-tag-create {:object tag})
           (is (t2/exists? :model/RemoteSyncObject
@@ -610,7 +613,8 @@ serdes/meta:
   (testing "Creating a PythonLibrary creates a RemoteSyncObject entry when remote-sync-transforms is enabled"
     (mt/with-premium-features #{:transforms-basic}
       (mt/with-temporary-setting-values [remote-sync-transforms true
-                                         remote-sync-enabled true]
+                                         remote-sync-enabled true
+                                         remote-sync-type :read-write]
         (let [library (t2/insert-returning-instance! :model/PythonLibrary {:path "common.py" :source "# test"})]
           (is (t2/exists? :model/RemoteSyncObject
                           :model_type "PythonLibrary"
@@ -632,7 +636,8 @@ serdes/meta:
   (testing "Updating a PythonLibrary updates the RemoteSyncObject entry when setting is enabled"
     (mt/with-premium-features #{:transforms-basic}
       (mt/with-temporary-setting-values [remote-sync-transforms true
-                                         remote-sync-enabled true]
+                                         remote-sync-enabled true
+                                         remote-sync-type :read-write]
         (let [library (t2/insert-returning-instance! :model/PythonLibrary {:path "common.py" :source "# test"})]
           (t2/update! :model/RemoteSyncObject {:model_type "PythonLibrary" :model_id (:id library)}
                       {:status "synced"})
@@ -732,7 +737,8 @@ serdes/meta:
   (testing "Import updates local PythonLibrary when remote has same entity_id"
     (mt/with-premium-features #{:transforms-basic}
       (mt/with-temporary-setting-values [remote-sync-transforms true
-                                         remote-sync-enabled true]
+                                         remote-sync-enabled true
+                                         remote-sync-type :read-write]
         (mt/with-model-cleanup [:model/RemoteSyncTask]
           (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "import" :initiated_by (mt/user->id :rasta)})
                 local-library (t2/insert-returning-instance! :model/PythonLibrary {:path "common.py" :source "# local version"})
@@ -1058,3 +1064,85 @@ serdes/meta:
                     "Local transform tag should be deleted after import since it wasn't on remote")
                 (is (t2/exists? :model/TransformTag :entity_id remote-tag-entity-id)
                     "Remote transform tag should be imported")))))))))
+
+(defn- transform-test-rso [test-id]
+  (t2/select-one :model/RemoteSyncObject :model_type "TransformTest" :model_id test-id))
+
+(deftest transform-test-events-track-sync-object-test
+  (testing "Creating, updating and deleting a transform test tracks it when remote-sync-transforms is enabled"
+    (mt/with-premium-features #{:transforms-basic}
+      (mt/with-temporary-setting-values [remote-sync-transforms true
+                                         remote-sync-enabled true
+                                         remote-sync-type :read-write]
+        (mt/with-temp [:model/Transform     {transform-id :id} {:name "Orders Summary"}
+                       :model/TransformTest {test-id :id}      {:transform_id transform-id :name "My test"}]
+          (is (= "create" (:status (transform-test-rso test-id))))
+          (t2/update! :model/RemoteSyncObject (:id (transform-test-rso test-id))
+                      {:status "synced" :status_changed_at (t/offset-date-time)})
+          (t2/update! :model/TransformTest test-id {:name "Renamed test"})
+          (is (=? {:status "update" :model_name "Renamed test"} (transform-test-rso test-id)))
+          (t2/update! :model/RemoteSyncObject (:id (transform-test-rso test-id))
+                      {:status "synced" :status_changed_at (t/offset-date-time)})
+          (t2/delete! :model/TransformTest test-id)
+          (is (= "delete" (:status (transform-test-rso test-id)))))))))
+
+(deftest transform-delete-marks-its-tests-deleted-test
+  (testing "Deleting a transform marks its tests for deletion, so their files leave the branch with its own"
+    (mt/with-premium-features #{:transforms-basic}
+      (mt/with-temporary-setting-values [remote-sync-transforms true
+                                         remote-sync-enabled true
+                                         remote-sync-type :read-write]
+        (mt/with-temp [:model/Transform     {transform-id :id} {:name "Orders Summary"}
+                       :model/TransformTest {test-id :id}      {:transform_id transform-id :name "My test"}]
+          (t2/update! :model/RemoteSyncObject (:id (transform-test-rso test-id))
+                      {:status "synced" :status_changed_at (t/offset-date-time)})
+          (t2/delete! :model/Transform transform-id)
+          (is (false? (t2/exists? :model/TransformTest :id test-id)))
+          (is (= "delete" (:status (transform-test-rso test-id)))))))))
+
+(deftest transform-test-events-ignored-when-setting-disabled-test
+  (testing "Transform tests aren't tracked when remote-sync-transforms is disabled"
+    (mt/with-premium-features #{:transforms-basic}
+      (mt/with-temporary-setting-values [remote-sync-transforms false
+                                         remote-sync-enabled true]
+        (mt/with-temp [:model/Transform     {transform-id :id} {:name "Orders Summary"}
+                       :model/TransformTest {test-id :id}      {:transform_id transform-id :name "My test"}]
+          (is (nil? (transform-test-rso test-id))))))))
+
+(defn- new-export-task! []
+  (t2/delete! :model/RemoteSyncTask)
+  (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "export" :initiated_by (mt/user->id :rasta)}))
+
+(deftest transform-test-file-moves-with-its-transform-test
+  (testing "A transform test is stored under its transform's path, so renaming the transform moves the test's file"
+    (mt/with-premium-features #{:transforms-basic}
+      (mt/with-temporary-setting-values [remote-sync-type :read-write
+                                         remote-sync-transforms true
+                                         remote-sync-enabled true]
+        (mt/with-model-cleanup [:model/RemoteSyncTask]
+          (mt/with-temp [:model/Collection {coll-id :id} {:name "ETL" :namespace collection/transforms-ns :location "/"}
+                         :model/Transform {transform-id :id} {:name "Orders Summary" :collection_id coll-id}
+                         :model/TransformTest {test-id :id test-eid :entity_id} {:transform_id transform-id :name "No nulls"}]
+            (testing "creating a transform test tracks it"
+              (is (= "create" (:status (t2/select-one :model/RemoteSyncObject :model_type "TransformTest" :model_id test-id)))))
+            (t2/delete! :model/RemoteSyncObject)
+            (doseq [[model-type model-id] [["Collection" coll-id] ["Transform" transform-id] ["TransformTest" test-id]]]
+              (t2/insert! :model/RemoteSyncObject {:model_type        model-type
+                                                   :model_id          model-id
+                                                   :model_name        model-type
+                                                   :status            "create"
+                                                   :status_changed_at (t/offset-date-time)}))
+            (let [mock      (test-helpers/create-mock-source :initial-files {"main" {}})
+                  test-path (fn []
+                              (some (fn [[path content]] (when (str/includes? content test-eid) path))
+                                    (get @(:files-atom mock) "main")))]
+              (is (= :success (:status (impl/export! (source.p/snapshot mock) (new-export-task!) "init"))))
+              (let [old-path (test-path)]
+                (is (str/ends-with? old-path "/etl/orders_summary/no_nulls.yaml"))
+                (t2/update! :model/Transform transform-id {:name "Orders Report"})
+                (events/publish-event! :event/transform-update {:object (t2/select-one :model/Transform transform-id)})
+                (testing "renaming the transform marks its test for update"
+                  (is (= "update" (:status (t2/select-one :model/RemoteSyncObject :model_type "TransformTest" :model_id test-id)))))
+                (is (= :success (:status (impl/export! (source.p/snapshot mock) (new-export-task!) "rename"))))
+                (is (str/ends-with? (test-path) "/etl/orders_report/no_nulls.yaml"))
+                (is (not (contains? (get @(:files-atom mock) "main") old-path)))))))))))

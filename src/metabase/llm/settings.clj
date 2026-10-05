@@ -58,8 +58,8 @@
                         {:status-code 400
                          :llm-url     url}))))))
 
-;; TODO (Chris 2026-08-17) -- BOT-2005: generate-sql and semantic search read these settings directly, so
-;; deleting the connection they key off turns those features off. They should name a connection instead.
+;; TODO (Chris 2026-08-17) -- BOT-2005: semantic search reads these settings directly, so deleting the
+;; connection it keys off turns it off. It should name a connection instead.
 (defn- connection-field-getter
   "Getter for a per-provider credential setting whose value lives on the `llm-providers` connection list."
   [setting-kw]
@@ -85,22 +85,6 @@
   :setter           (connection-field-setter :llm-anthropic-api-key)
   :doc              "Backed by the anthropic connection in the admin AI settings provider list: reads and writes go through the llm-providers connection list, and a value set by this environment variable shadows this one field of that connection.")
 
-(defsetting llm-anthropic-api-key-configured?
-  "Whether an Anthropic API key has been configured."
-  :type       :boolean
-  :visibility :public
-  :setter     :none
-  :export?    false
-  :getter     #(some? (llm-anthropic-api-key))
-  :doc        false)
-
-(defsetting llm-anthropic-model
-  (deferred-tru "The Anthropic model to use.")
-  :encryption :no
-  :visibility :settings-manager
-  :default "claude-opus-4-5-20251101"
-  :export? false)
-
 (defsetting llm-anthropic-api-base-url
   (deferred-tru "The Anthropic API base URL.")
   :encryption       :when-encryption-key-set
@@ -111,14 +95,6 @@
   :setter           (connection-field-setter :llm-anthropic-api-base-url)
   :deprecated-name  :ee-anthropic-api-base-url
   :doc              "Backed by the anthropic connection in the admin AI settings provider list: reads and writes go through the llm-providers connection list, and a value set by this environment variable shadows this one field of that connection.")
-
-(defsetting llm-anthropic-api-version
-  (deferred-tru "The Anthropic API version.")
-  :encryption :no
-  :visibility :internal
-  :default "2023-06-01"
-  :export? false
-  :doc false)
 
 ;;; -------------------------------------------------- OpenAI ---------------------------------------------------
 
@@ -260,6 +236,27 @@
   :setter     (connection-field-setter :llm-deepseek-api-key)
   :doc        "Backed by the deepseek connection in the admin AI settings provider list: reads and writes go through the llm-providers connection list, and a value set by this environment variable shadows this one field of that connection.")
 
+;;; ---------------------------------------------------- xAI ----------------------------------------------------
+
+(defsetting llm-xai-api-base-url
+  (deferred-tru "The xAI API base URL used for Chat Completions.")
+  :encryption :when-encryption-key-set
+  :visibility :settings-manager
+  :default    "https://api.x.ai/v1"
+  :export?    false
+  :getter     (connection-field-getter :llm-xai-api-base-url)
+  :setter     (connection-field-setter :llm-xai-api-base-url)
+  :doc        "Backed by the xai connection in the admin AI settings provider list: reads and writes go through the llm-providers connection list, and a value set by this environment variable shadows this one field of that connection.")
+
+(defsetting llm-xai-api-key
+  (deferred-tru "The xAI API Key.")
+  :sensitive? true
+  :visibility :settings-manager
+  :export?    false
+  :getter     (connection-field-getter :llm-xai-api-key)
+  :setter     (connection-field-setter :llm-xai-api-key)
+  :doc        "Backed by the xai connection in the admin AI settings provider list: reads and writes go through the llm-providers connection list, and a value set by this environment variable shadows this one field of that connection.")
+
 ;;; ------------------------------------ Google Gemini Enterprise Agent Platform --------------------------------
 ;;; The Gemini Enterprise Agent Platform (formerly Vertex AI). Every request applies to one Google Cloud project. The
 ;;; project ID is necessary. The location is optional and defaults to `global`.
@@ -347,7 +344,7 @@
   :export?     false
   :getter      (connection-field-getter :llm-bedrock-region)
   :setter      (connection-field-setter :llm-bedrock-region)
-  :doc         "Backed by the bedrock connection in the admin AI settings provider list: reads and writes go through the llm-providers connection list, and a value set by this environment variable shadows this one field of that connection. On a self-hosted Metabase, setting only the region enables Bedrock with the AWS default credentials chain, with no access keys configured.")
+  :doc         "Backed by the bedrock connection in the admin AI settings provider list: reads and writes go through the llm-providers connection list, and a value set by this environment variable shadows this one field of that connection. On a self-hosted Metabase, setting only the region enables Bedrock with the AWS default credentials chain, with no access keys configured. [The Bedrock models you can pick depend on the region](../ai/providers.md#the-bedrock-models-you-can-pick-depend-on-the-region).")
 
 ;;; ----------------------------------------------- Microsoft Azure ---------------------------------------------
 
@@ -478,19 +475,5 @@
         "thread forever."))
   :type :integer
   :default 10000
-  :visibility :settings-manager
-  :export? false)
-
-(defsetting llm-rate-limit-per-user
-  (deferred-tru "Maximum SQL generation requests per user per minute.")
-  :type :integer
-  :default 20
-  :visibility :settings-manager
-  :export? false)
-
-(defsetting llm-rate-limit-per-ip
-  (deferred-tru "Maximum SQL generation requests per IP address per minute.")
-  :type :integer
-  :default 100
   :visibility :settings-manager
   :export? false)

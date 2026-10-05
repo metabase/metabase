@@ -187,8 +187,8 @@
               ...]}
 
   The underlying Card is hydrated with the columns the variant builders need
-  (`:id :name :description :database_id :dataset_query :card_schema :dimensions
-  :dimension_mappings`), once per Card even when it appears in several blocks."
+  (`:id :name :description :database_id :dataset_query :dimensions :dimension_mappings`),
+  once per Card even when it appears in several blocks."
   [blocks]
   (let [card-ids (distinct (mapcat #(map :card_id (:metrics %)) blocks))
         cards    (when (seq card-ids)

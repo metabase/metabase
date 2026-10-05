@@ -250,7 +250,6 @@ export type GdrivePayload = {
   error?: string;
 };
 
-/* eslint-disable-next-line @typescript-eslint/no-unused-vars -- used for types */
 const tokenStatusFeatures = [
   "advanced-config",
   "advanced-permissions",
@@ -294,6 +293,7 @@ const tokenStatusFeatures = [
   "sso",
   "transforms-basic",
   "transforms-python",
+  "transforms-testing",
   "upload-management",
   "whitelabel",
 ] as const;
@@ -377,6 +377,7 @@ export const tokenFeatures = [
   "semantic_search",
   "transforms-python",
   "transforms-basic",
+  "transforms-testing",
   "library",
   "library_retrieval",
   "support-users",
@@ -472,7 +473,6 @@ interface InstanceSettings {
   "example-dashboard-id": number | null;
   "has-sample-database?"?: boolean; // Careful! This can be undefined during setup!
   "instance-creation": string;
-  "llm-anthropic-api-key-configured?": boolean;
   "read-only-mode": boolean;
   "search-typeahead-enabled": boolean;
   "show-homepage-data": boolean;
@@ -543,6 +543,7 @@ interface SettingsManagerSettings {
   "llm-mistral-api-key"?: string | null;
   "llm-moonshot-api-key"?: string | null;
   "llm-deepseek-api-key"?: string | null;
+  "llm-xai-api-key"?: string | null;
   "llm-azure-api-key"?: string | null;
   "llm-azure-api-base-url"?: string | null;
   "llm-google-service-account-key"?: string | null;
@@ -791,6 +792,7 @@ export interface EnterpriseSettings extends Settings {
   "llm-mistral-api-key"?: string | null;
   "llm-moonshot-api-key"?: string | null;
   "llm-deepseek-api-key"?: string | null;
+  "llm-xai-api-key"?: string | null;
   "session-timeout": TimeoutValue | null;
   "search-engine": SearchEngineSettingValue | null;
   "scim-enabled"?: boolean | null;
@@ -851,7 +853,6 @@ export interface EnterpriseSettings extends Settings {
   "llm-mini-model"?: string | null;
   "llm-fast-mode"?: boolean | null;
   "llm-anthropic-api-key"?: string | null;
-  "llm-anthropic-model": string;
   "llm-proxy-configured?"?: boolean | null;
   "metabot-slack-signing-secret"?: string | null;
   "slack-connect-enabled"?: boolean | null;

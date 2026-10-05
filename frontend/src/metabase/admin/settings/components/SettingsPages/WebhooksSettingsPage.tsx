@@ -42,7 +42,6 @@ export const WebhooksSettingsPage = () => {
             {hasChannels && (
               <Button
                 variant="filled"
-                size="md"
                 leftSection={<Icon name="add" />}
                 onClick={() => setWebhookModal("create")}
               >{c("Short for 'Add another webhook'").t`Add another`}</Button>

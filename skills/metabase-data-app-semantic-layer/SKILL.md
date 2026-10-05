@@ -292,7 +292,24 @@ export const AmountByCategory = defineQuery({
 });
 ```
 
-When using the same helper more than once, Metabase may return numbered runtime keys such as `sum`, `sum_2`, and `sum_3`. TypeScript only models the base helper key today. For custom KPI code that intentionally uses repeated same-kind aggregations, read through `data.columns` or cast the row to `Record<string, unknown>` before accessing numbered keys. Prefer curated measures or separate queries when that is clearer.
+When a query uses the same helper more than once, give each one a `name`. The name becomes the result column's name and the row key, it is typed, and it is how `orderBy(...)` and runtime clauses refer to that aggregation. Without names, the columns come back as `sum`, `sum_2`, and so on, and sorting or filtering by one of them fails:
+
+```ts
+const totalAmount = aggregations.sum(recordsTable.fields.amount, {
+  name: "total_amount",
+});
+const totalTax = aggregations.sum(recordsTable.fields.tax, {
+  name: "total_tax",
+});
+
+export const TaxByCategory = defineQuery({
+  source: recordsTable,
+  aggregations: [totalAmount, totalTax],
+  breakouts: [breakout(recordsTable.fields.category)],
+  orderBys: [orderBy(totalTax, "desc")],
+});
+// Rows are keyed `total_amount` and `total_tax`.
+```
 
 Table fields, segments, measures, filters, breakouts, and orderBys must come from the queried table. Use `defineQuery<RecordsTable>({ ... })` when you want TypeScript to validate that ownership at the definition.
 
@@ -630,7 +647,7 @@ const orderFilters = useMemo(
 - Treat row values as nullable. Guard before calling number/string methods such as `toFixed`, `toLocaleString`, or string transforms.
 - Use `rawRows` only for known positional shapes.
 - Aggregation columns may be named `count`, `sum`, or `avg`; match metadata when needed.
-- If a custom visualization needs several helper aggregations with the same output name, such as multiple `aggregations.sum(...)` calls, prefer separate single-aggregation queries so each typed row has the known `sum` key. If one multi-aggregation query is necessary, read `rawRows` by column position after checking `data.columns`; do not depend on generated names like `sum_2` unless they are explicitly typed or narrowed in the app code.
+- If a query has several helper aggregations of the same kind, such as multiple `aggregations.sum(...)` calls, name each one (`{ name: "..." }`) and read the rows by those names. Never depend on generated names like `sum_2`.
 - Grouped queries can include a `null` breakout bucket. Render it as `"Unknown"` or filter it out deliberately.
 - Time-series charts need multiple ordered buckets. Do not fake sparklines for scalar or one-point results.
 - Multi-series charts with different units or magnitudes need separate axes or normalization.

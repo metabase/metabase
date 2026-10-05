@@ -22,7 +22,7 @@ export const useDisableRemoteSync = () => {
       confirmButtonText: t`Disable`,
       confirmButtonProps: {
         variant: "filled",
-        color: "feedback-negative",
+        color: "negative",
       },
       onConfirm: async () => {
         try {

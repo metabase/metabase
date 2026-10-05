@@ -14,7 +14,6 @@
    [metabase.mcp.v2.message :as message]
    [metabase.mcp.v2.projections :as projections]
    [metabase.util :as u]
-   [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms])
@@ -51,12 +50,14 @@
    `text` self-sufficient: everything the model needs to reason or make its next call. Pass
    `structured` only when a concrete programmatic consumer reads it (e.g. an MCP Apps iframe),
    and make it a faithful mirror of the text — never a subset, never the sole home of anything
-   the model needs. A message or string `text` is [[message/render]]ed; anything else is JSON-encoded."
+   the model needs. Keep untrusted instance content (names, descriptions, rows) out of `structured`: it reaches
+   the model with no data boundary and, once decoded, with invisible characters raw. A message or string `text`
+   is [[message/render]]ed; anything else renders as [[message/data]]."
   ([text] (success-content text nil))
   ([text structured]
-   (cond-> {:content [{:type "text" :text (if (or (message/message? text) (string? text))
-                                            (message/render text)
-                                            (json/encode text))}]}
+   (cond-> {:content [{:type "text" :text (message/render (if (or (message/message? text) (string? text))
+                                                            text
+                                                            (message/data text)))}]}
      (some? structured) (assoc :structuredContent structured))))
 
 (def mcp-apps-meta-key
@@ -505,7 +506,7 @@
                        (when (and (= 0 total) (not (pos? (or offset 0)))) empty-hint))
                    (truncation-line opts))]
     (success-content (if line
-                       (message/msg ["%s" "%s"] (message/raw (json/encode envelope)) line)
+                       (message/msg ["%s" "%s"] (message/data envelope) line)
                        envelope))))
 
 ;;; ------------------------------------------------- Frontend URLs ------------------------------------------------

@@ -141,6 +141,7 @@
                             info)]
     (task-history.db/update-task-history! th-id updated-info)))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic ^Clock *log-capture-clock*
   "The java.time.Clock used for captured log message `:timestamp` values. Can be overridden for tests."
   (Clock/systemUTC))

@@ -4,8 +4,10 @@
    [clj-http.client :as http]
    [clojure.test :refer :all]
    [medley.core :as m]
+   [metabase.appearance.core :as appearance]
    [metabase.auth-identity.core :as auth-identity]
    [metabase.driver.h2 :as h2]
+   [metabase.login-history.db :as login-history.db]
    [metabase.request.core :as request]
    [metabase.request.settings :as request.settings]
    [metabase.session.api :as api.session]
@@ -19,8 +21,10 @@
    [metabase.test.data.users :as test.users]
    [metabase.test.fixtures :as fixtures]
    [metabase.test.http-client :as client]
+   [metabase.test.util :as tu]
    [metabase.util :as u]
    [metabase.util.json :as json]
+   [metabase.util.jvm :as u.jvm]
    [metabase.util.malli.schema :as ms]
    [metabase.util.string :as string]
    [toucan2.core :as t2]))
@@ -251,6 +255,41 @@
                        [:ip_address         ms/NonBlankString]
                        [:active             [:= false]]]
                       (t2/select-one :model/LoginHistory :id login-history-id))))))))
+
+(deftest login-survives-concurrent-session-delete-test
+  (testing (str "POST /api/session - SEC-1208: deleting the user's sessions (as a password change does) between the"
+                " session insert and the login_history insert must not fail the login with an"
+                " fk_login_history_session_id violation. Each such failure was a 401 that the throttle counted, so"
+                " enough of them locked out a user with correct credentials.")
+    ;; not `mt/with-temp`: it binds a transaction that the test client conveys into the request, so the login's
+    ;; uncommitted rows would stay invisible to the delete below whether or not the login uses its own transaction
+    (mt/with-model-cleanup [:model/User]
+      (let [email                 (mt/random-email)
+            user-id               (t2/insert-returning-pk! :model/User {:email      email
+                                                                        :first_name "Login"
+                                                                        :last_name  "Race"})
+            _                     (auth-identity/set-password! user-id "Correct-Horse-12!")
+            creds                 {:username email, :password "Correct-Horse-12!"}
+            insert-login-history! (mt/original-fn #'login-history.db/insert-login-history!)
+            ;; more logins than the username throttler allows failures, so a counted failure would lock the user out
+            attempts              11]
+        (mt/with-dynamic-fn-redefs [login-history.db/insert-login-history!
+                                    (fn [row]
+                                      ;; a plain Thread, not a future: a future conveys the login transaction's
+                                      ;; connection binding, and the delete must run on its own connection, as a
+                                      ;; concurrent request would. The join has a timeout because the delete may
+                                      ;; block on the login transaction's uncommitted session row.
+                                      (doto (Thread. ^Runnable (fn [] (t2/delete! :model/Session :user_id user-id)))
+                                        (.start)
+                                        (.join 1000))
+                                      (insert-login-history! row))]
+          (dotimes [_ attempts]
+            (is (malli= SessionResponse
+                        (mt/client :post 200 "session" creds)))))
+        (testing "the user can still log in, and every login is in their login history"
+          (let [session-key (:id (mt/client :post 200 "session" creds))]
+            (is (= (inc attempts)
+                   (count (mt/client session-key :get 200 "login-history/current"))))))))))
 
 (deftest forgot-password-initiate-reset-test
   (testing "POST /api/session/forgot_password - initiate password reset"
@@ -588,6 +627,92 @@
         (is (= "FOO"
                (-> (mt/user-http-request :crowberto :get 200 "session/properties")
                    :test-session-api-setting)))))))
+
+(defn- image-data-uri [content-type content]
+  (str "data:" content-type ";base64," (u.jvm/encode-base64 content)))
+
+(defn- do-with-raw-value! [setting-key value thunk]
+  (tu/do-with-temporary-setting-value! setting-key value thunk :raw-setting? true))
+
+(defn- illustration-request
+  "Call the API as rasta for the landing page illustration, which needs a logged in user, else anonymously."
+  [setting-key & args]
+  (if (= setting-key :landing-page-illustration-custom)
+    (apply mt/user-http-request-full-response :rasta args)
+    (apply mt/client-full-response args)))
+
+(defn- fetch-illustration [setting-key expected-status & args]
+  (apply illustration-request setting-key :get expected-status (str "session/illustration/" (name setting-key)) args))
+
+(defn- do-with-each-uploaded-illustration!
+  "Upload an image to each custom illustration setting and call `(f setting-key image-hash)`."
+  [f]
+  (mt/with-premium-features #{:whitelabel}
+    (doseq [setting-key appearance/custom-illustration-settings]
+      (testing setting-key
+        (do-with-raw-value! setting-key (image-data-uri "image/png" "png bytes")
+                            #(f setting-key (second (re-find #"v=(.+)$" (setting/get setting-key)))))))))
+
+(deftest illustration-test
+  (do-with-each-uploaded-illustration!
+   (fn [setting-key _image-hash]
+     (let [{:keys [body headers]} (fetch-illustration setting-key 200)]
+       (is (= "png bytes" body))
+       (is (= "image/png" (get headers "Content-Type")))
+       (testing "no Cross-Origin-Resource-Policy, the React SDK loads it from the host app origin"
+         (is (nil? (get headers "Cross-Origin-Resource-Policy"))))))))
+
+(deftest illustration-session-properties-test
+  (testing "session properties contain the URL, not the image"
+    (do-with-each-uploaded-illustration!
+     (fn [setting-key image-hash]
+       (is (= (str "api/session/illustration/" (name setting-key) "?v=" image-hash)
+              (get-in (illustration-request setting-key :get 200 "session/properties") [:body setting-key])))))))
+
+(deftest illustration-cache-test
+  (do-with-each-uploaded-illustration!
+   (fn [setting-key image-hash]
+     (let [cached "private, max-age=31536000, immutable"]
+       (testing "the URL without a hash is not cached"
+         (is (= "private, no-cache" (get-in (fetch-illustration setting-key 200) [:headers "Cache-Control"]))))
+       (testing "the URL with the current hash is cached"
+         (is (= cached (get-in (fetch-illustration setting-key 200 :v image-hash) [:headers "Cache-Control"]))))
+       (testing "a URL with another hash is not cached"
+         (is (= "private, no-cache"
+                (get-in (fetch-illustration setting-key 200 :v "0000000000000000") [:headers "Cache-Control"]))))))))
+
+(deftest illustration-authentication-test
+  (testing "the landing page illustration needs a logged in user"
+    (mt/with-premium-features #{:whitelabel}
+      (mt/with-temporary-raw-setting-values [landing-page-illustration-custom (image-data-uri "image/png" "png bytes")]
+        (mt/client-full-response :get 401 "session/illustration/landing-page-illustration-custom")))))
+
+(deftest illustration-svg-test
+  (testing "SVG images get a sandbox CSP"
+    (mt/with-premium-features #{:whitelabel}
+      (doseq [content-type ["image/svg+xml" "image/svg+xml;charset=iso-8859-1"]]
+        (testing (str "Content-Type = " content-type)
+          (mt/with-temporary-raw-setting-values [login-page-illustration-custom (image-data-uri content-type "<svg/>")]
+            (let [{:keys [headers]} (fetch-illustration :login-page-illustration-custom 200)]
+              (is (= content-type (get headers "Content-Type")))
+              (is (= "default-src 'none'; style-src 'unsafe-inline'; sandbox"
+                     (get headers "Content-Security-Policy"))))))))))
+
+(deftest illustration-not-found-test
+  (mt/with-premium-features #{:whitelabel}
+    (testing "404 when there is no uploaded image"
+      (doseq [setting-key appearance/custom-illustration-settings
+              value       [nil "https://example.com/login.png"]]
+        (testing [setting-key value]
+          (do-with-raw-value! setting-key value #(fetch-illustration setting-key 404)))))
+    (testing "404 for other settings"
+      (mt/with-temporary-raw-setting-values [application-logo-url (image-data-uri "image/png" "png bytes")]
+        (fetch-illustration :application-logo-url 404)
+        (fetch-illustration :not-a-setting 404))))
+  (testing "404 without the whitelabel feature"
+    (mt/with-premium-features #{}
+      (mt/with-temporary-raw-setting-values [login-page-illustration-custom (image-data-uri "image/png" "png bytes")]
+        (fetch-illustration :login-page-illustration-custom 404)))))
 
 (deftest properties-i18n-test
   (testing "GET /session/properties"

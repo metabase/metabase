@@ -44,6 +44,15 @@
       (assoc-in (into [:state] path) v)
       (assoc-in (into [:turn-state] path) v)))
 
+(defn- record-client-id
+  "Persist `id` as client-supplied when [[add-client-ids]] marked it and it isn't recorded yet."
+  [memory id]
+  (let [recorded (set (get-in memory [:state :client-ids]))]
+    (if (and (contains? (:client-ids memory) id)
+             (not (contains? recorded id)))
+      (record memory [:client-ids] (conj recorded id))
+      memory)))
+
 (defn get-state
   "The agent's current full working state."
   [memory]
@@ -77,7 +86,9 @@
   "Store a query in state by its query-id.
   Query should be an MBQL 4 (legacy) or MBQL 5 query map."
   [memory query-id query]
-  (record memory [:queries query-id] query))
+  (-> memory
+      (record [:queries query-id] query)
+      (record-client-id query-id)))
 
 (defn find-query
   "Retrieve a query by its query-id. Throws if not found."
@@ -97,7 +108,9 @@
 (defn set-chart
   "Store a chart configuration in state by its chart-id."
   [memory chart-id chart]
-  (record memory [:charts chart-id] chart))
+  (-> memory
+      (record [:charts chart-id] chart)
+      (record-client-id chart-id)))
 
 (defn find-chart
   "Retrieve a chart by its chart-id. Throws if not found."
@@ -117,12 +130,10 @@
   (record memory [:todos] (vec todos)))
 
 (defn add-client-ids
-  "Add `ids` to the queries and charts this conversation knows the client supplied.
-  Earlier turns' ids are kept. A tool can persist a client-supplied query and a later turn read
-  it back long after it left the viewing context, so the provenance has to live as long as the
-  query does."
+  "Mark `ids` as the queries and charts the client supplied this turn.
+  Each is persisted, with the ids earlier turns recorded, once a query or chart is stored under it."
   [memory ids]
-  (record memory [:client-ids] (into (set (get-in memory [:state :client-ids])) ids)))
+  (update memory :client-ids (fnil into #{}) ids))
 
 (defn set-link-registry
   "Set the link registry (url → stable id mappings)."

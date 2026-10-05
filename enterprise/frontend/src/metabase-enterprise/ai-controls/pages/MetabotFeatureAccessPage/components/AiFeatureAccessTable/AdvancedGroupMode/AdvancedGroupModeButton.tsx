@@ -12,13 +12,7 @@ export function AdvancedGroupModeButton() {
 
   return (
     <>
-      <Button
-        className={S.button}
-        onClick={toggleShowEnableModal}
-        variant="default"
-        size="compact-sm"
-        fz="sm"
-      >
+      <Button className={S.button} onClick={toggleShowEnableModal} size="sm">
         {t`Switch to group-level permissions`}
       </Button>
       {showEnableModal && (

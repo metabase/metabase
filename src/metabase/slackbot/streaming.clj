@@ -71,7 +71,7 @@
   A message with no other text names its attachments instead, or contributes nothing."
   [{:keys [text files]} bot-user-id]
   ;; The model rejects an empty user message, and a file shared on its own arrives with empty text.
-  (let [content (slackbot.events/strip-bot-mention text bot-user-id)]
+  (let [content (slackbot.events/strip-bot-mention (or text "") bot-user-id)]
     (if-not (str/blank? content)
       content
       (when-let [names (seq (keep :name files))]
@@ -95,7 +95,6 @@
         msg-history (slackbot.persistence/message-history conversation-id bot-msg-ids)
         deleted-ids (slackbot.persistence/deleted-message-ids conversation-id bot-msg-ids)]
     (->> (:messages thread)
-         (filter :text)
          (remove ignore-msg?)
          (remove (fn [{:keys [ts] :as msg}]
                    (and (slackbot.events/bot-message? msg)

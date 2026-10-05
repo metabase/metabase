@@ -42,6 +42,7 @@
     name generation. For a joined column, this might look like \"Venues → Price\"."
   [:enum :default :long])
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *display-name-style*
   "Display name style to use when not explicitly passed in to [[display-name]]."
   :default)
@@ -191,6 +192,7 @@
     ;; anything else: use `pr-str` representation.
     (pr-str x)))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *propagate-binning-and-bucketing*
   "Enable propagation of ref's `:temporal-unit` into `:inherited-temporal-unit` of a column or setting of
   the `:lib/original-binning` option.

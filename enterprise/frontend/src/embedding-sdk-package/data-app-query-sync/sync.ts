@@ -1,5 +1,7 @@
 import path from "node:path";
 
+import { readManifest } from "../data-app-dev/config/read-manifest";
+
 import { discoverActions, discoverQueries } from "./discover";
 import { isPositiveInteger } from "./guards";
 import {
@@ -161,7 +163,12 @@ export async function syncResources({
   ]);
   const lockfile = readResourceLockfile(appRoot);
   const client = new MetabaseClient(metabaseUrl, apiKey);
-  const slug = path.basename(appRoot);
+  const slug = readManifest(appRoot)?.manifest.slug;
+  if (!slug) {
+    throw new Error(
+      `${path.join(appRoot, "data_app.yaml")} must declare the app's "slug".`,
+    );
+  }
   const app = await client.ensureDraft(slug);
   if (!isPositiveInteger(app.resource_collection_id)) {
     throw new Error(`Data app ${slug} does not have a resource collection.`);

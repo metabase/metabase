@@ -453,4 +453,4 @@
                                       :create (create! a session-id token-scopes)
                                       :update (update! a b session-id token-scopes))
                                     nil)]
-    (common/success-content payload payload)))
+    (common/success-content payload)))

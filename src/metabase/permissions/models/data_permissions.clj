@@ -32,6 +32,7 @@
 
 (methodical/defmethod t2/table-name :model/DataPermissions [_model] :data_permissions)
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic ^:private *skip-cluster-locks*
   "When true, skip per-(db-id, perm-type) cluster locks. Should only be bound to true
    when a coarser lock is already held by the calling code."
@@ -232,6 +233,7 @@
   caller passing a very large set is split across several queries rather than failing outright."
   5000)
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *use-perms-cache?*
   "Bind to `false` to intentionally bypass the permissions caches and fetch data straight from the DB."
   true)
@@ -248,6 +250,7 @@
   (and *use-perms-cache?*
        (= user-id api/*current-user-id*)))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *perms-cache-misses-are-errors?*
   "Whether a permission check that has to load turns into an exception rather than a query. Bound to true by
   [[with-relevant-permissions-for-user]] in dev and test, so an unprimed batch of checks fails loudly there and
@@ -310,6 +313,7 @@
 
 ;;; --------------------------------------------- Database level cache ---------------------------------------------
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *db-permission-cache*
   "Request cache for every whole-database question:
   `{user-id {perm-type {db-id {:database v :every-table v :any-table v}}}}`.
@@ -339,6 +343,7 @@
   Checks that walk a list of databases should [[prime-database-perms-cache]] first, exactly as table checks do."
   (atom {:db-ids #{} :perms {}}))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *all-db-permission-cache*
   "Request cache for the questions that scan *every* database rather than asking about one --
   [[user-has-any-perms-of-type?]]. Shaped like [[*db-permission-cache*]]'s `:perms`, but loaded in full, so it needs
@@ -415,6 +420,7 @@
 
 ;;; ---------------------------------------------- Schema level cache ----------------------------------------------
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *schema-permission-cache*
   "Request cache for [[schema-permission-for-user]]: `{:db-ids #{} :perms {user-id {perm-type {db-id entry}}}}`
   where each entry is `{:default v, :schemas {schema v}}` — per schema, the coalesced value of the schema's table
@@ -463,6 +469,7 @@
 
 ;;; ---------------------------------------------- Table level cache -----------------------------------------------
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *table-permission-cache*
   "Request cache for [[table-permission-for-user]]:
 
@@ -560,6 +567,7 @@
 
 ;;; ---------------------------------------------- Table level checks ----------------------------------------------
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *additional-table-permissions*
   "See the `with-additional-table-permission` macro below."
   {})
@@ -846,6 +854,7 @@
   [_user-id]
   #{})
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *sandboxes-for-user*
   "Filled by `enforced-sandboxes-for-user`. Empty on OSS instances, or EE instances without the `sandboxes` feature."
   (delay nil))

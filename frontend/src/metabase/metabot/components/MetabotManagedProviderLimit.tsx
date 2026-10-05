@@ -69,11 +69,8 @@ export const MetabotManagedProviderLimitActions = ({
     return (
       <Flex align="center" gap="sm" wrap="wrap" {...rest}>
         <Button
-          h="1rem"
-          variant="subtle"
-          size="xs"
-          fz="sm"
-          p={0}
+          variant="transparent"
+          size="compact-md"
           onClick={handleConfigure}
         >
           {t`Use a different AI provider`}
@@ -82,14 +79,11 @@ export const MetabotManagedProviderLimitActions = ({
           •
         </Text>
         <Button
-          h="1rem"
           component={ExternalLink}
           href={storeUrl}
           target="_blank"
-          variant="subtle"
-          size="xs"
-          fz="sm"
-          p={0}
+          variant="transparent"
+          size="compact-md"
         >
           {t`Start paid subscription`}
         </Button>
@@ -99,20 +93,18 @@ export const MetabotManagedProviderLimitActions = ({
   }
 
   return (
-    <Flex direction="column" align="start" gap="xxs" {...rest}>
+    <Flex direction="column" align="start" gap="lg" {...rest}>
       <Button
-        variant="subtle"
-        size="xs"
-        p={0}
+        variant="transparent"
+        size="compact-md"
         onClick={handleConfigure}
       >{t`Use a different AI provider`}</Button>
       <Button
         component={ExternalLink}
         href={storeUrl}
         target="_blank"
-        variant="subtle"
-        size="xs"
-        p={0}
+        variant="transparent"
+        size="compact-md"
       >
         {t`Start paid subscription`}
       </Button>

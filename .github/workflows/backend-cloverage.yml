@@ -22,7 +22,7 @@ jobs:
     outputs:
       modules: ${{ steps.get-modules.outputs.modules }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - id: get-modules
         run: |
           modules=$(for d in src/metabase/*/; do basename "$d"; done | tr '_' '-' | jq -R -s -c 'split("\n") | map(select(length > 0))')
@@ -39,7 +39,7 @@ jobs:
       matrix:
         modules: ${{ fromJson(needs.setup-oss.outputs.modules) }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: Prepare front-end environment
         uses: ./.github/actions/prepare-frontend
       - name: Prepare back-end environment
@@ -70,7 +70,7 @@ jobs:
     outputs:
       modules: ${{ steps.get-modules.outputs.modules }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - id: get-modules
         run: |
           modules=$(for d in enterprise/backend/src/metabase_enterprise/*/; do basename "$d"; done | tr '_' '-' | jq -R -s -c 'split("\n") | map(select(length > 0))')
@@ -87,7 +87,7 @@ jobs:
       matrix:
         modules: ${{ fromJson(needs.setup-ee.outputs.modules) }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: Prepare front-end environment
         uses: ./.github/actions/prepare-frontend
       - name: Prepare back-end environment

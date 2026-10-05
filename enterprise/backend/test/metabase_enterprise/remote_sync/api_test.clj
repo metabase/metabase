@@ -1,10 +1,12 @@
 (ns metabase-enterprise.remote-sync.api-test
   {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase-enterprise.remote-sync.api-test]}}}}}}
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [diehard.core :as dh]
    [java-time.api :as t]
    [metabase-enterprise.remote-sync.core :as remote-sync.core]
+   [metabase-enterprise.remote-sync.events :as remote-sync.events]
    [metabase-enterprise.remote-sync.impl :as impl]
    [metabase-enterprise.remote-sync.models.remote-sync-object :as remote-sync.object]
    [metabase-enterprise.remote-sync.models.remote-sync-task :as remote-sync.task]
@@ -12,11 +14,14 @@
    [metabase-enterprise.remote-sync.source :as source]
    [metabase-enterprise.remote-sync.source.git :as source.git]
    [metabase-enterprise.remote-sync.source.protocol :as source.p]
+   [metabase-enterprise.remote-sync.spec :as spec]
    [metabase-enterprise.remote-sync.test-helpers :as test-helpers]
+   [metabase.driver.settings :as driver.settings]
    [metabase.settings.core :as setting]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
+   [metabase.util.quick-task :as quick-task]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -206,6 +211,79 @@
             (is (=? {:status "success" :task_id int?} resp))
             (is (remote-sync.task/successful? completed-task))))))))
 
+(defn- gui-model-yaml
+  "YAML for a GUI model over `db-name`'s PUBLIC.VENUES, in the shape an export writes: the result metadata
+  carries only the model overrides, with no `base_type` and no field `id`."
+  [entity-id collection-id db-name]
+  (-> (test-helpers/generate-card-yaml entity-id "Venues Model" collection-id "model")
+      (str/replace "database_id: test-data (h2)" (str "database_id: " db-name))
+      (str/replace "dataset_query: {}"
+                   (format (str "dataset_query:\n"
+                                "  database: %s\n"
+                                "  type: query\n"
+                                "  query:\n"
+                                "    source-table:\n"
+                                "    - %s\n"
+                                "    - PUBLIC\n"
+                                "    - VENUES")
+                           db-name db-name))
+      (str/replace "result_metadata: null"
+                   (str "result_metadata:\n"
+                        (str/join (for [[col-name display-name] [["ID" "ID"]
+                                                                 ["NAME" "Venue Name"]
+                                                                 ["CATEGORY_ID" "Category ID"]
+                                                                 ["LATITUDE" "Latitude"]
+                                                                 ["LONGITUDE" "Longitude"]
+                                                                 ["PRICE" "Price"]]]
+                                    (format "- display_name: %s\n  name: %s\n  visibility_type: normal\n"
+                                            display-name col-name)))))))
+
+(deftest import-gui-model-before-schema-sync-test
+  (testing (str "GHY-4213: a GUI model imported before the target has synced its table stores untyped columns. "
+                "Once the schema sync runs, the model's columns must get their types and field ids, so that "
+                "the query builder offers typed filters on them.")
+    (let [details       (:details (mt/db))
+          db-name       (mt/random-name)
+          collection-id "ghy4213collectionxxxx"
+          card-eid      "ghy4213modelxxxxxxxxx"]
+      ;; Keep the new database from being synced when it is created, so its tables do not exist yet at import.
+      (mt/with-temporary-setting-values [disable-auto-sync  true
+                                         remote-sync-url    "https://github.com/test/repo.git"
+                                         remote-sync-token  "test-token"
+                                         remote-sync-branch "main"]
+        (test-helpers/commit-with-temp
+         (fn []
+           (mt/with-temp [:model/Database {db-id :id} {:engine "h2" :details details :name db-name}]
+             (let [source (test-helpers/create-mock-source
+                           :initial-files {"main" {(format "collections/%s_ghy/%s_ghy.yaml" collection-id collection-id)
+                                                   (test-helpers/generate-collection-yaml collection-id "GHY 4213" :is-remote-synced true)
+                                                   (format "collections/%s_ghy/cards/%s_venues_model.yaml" collection-id card-eid)
+                                                   (gui-model-yaml card-eid collection-id db-name)}})]
+               (try
+                 (mt/with-dynamic-fn-redefs [source/source-from-settings (constantly source)]
+                   (let [{:keys [task_id]} (mt/user-http-request :crowberto :post 200 "ee/remote-sync/import"
+                                                                 {:force true :expected_branch "main"})]
+                     (is (remote-sync.task/successful? (wait-for-task-completion task_id)))))
+                 (mt/with-dynamic-fn-redefs [quick-task/submit-task! (fn [f]
+                                                                       (binding [driver.settings/*allow-testing-h2-connections* true]
+                                                                         (f)))]
+                   (mt/user-http-request :crowberto :post 200 (format "database/%d/sync_schema" db-id)))
+                 (let [card-id  (t2/select-one-pk :model/Card :entity_id card-eid)
+                       table-id (t2/select-one-pk :model/Table :db_id db-id :name "VENUES")
+                       field-id (fn [field-name]
+                                  (t2/select-one-pk :model/Field :table_id table-id :name field-name))]
+                   (is (=? [{:name "ID"          :base_type "type/BigInteger" :id (field-id "ID")}
+                            {:name "NAME"        :base_type "type/Text"       :id (field-id "NAME")
+                             :display_name "Venue Name"}
+                            {:name "CATEGORY_ID" :base_type "type/Integer"    :id (field-id "CATEGORY_ID")}
+                            {:name "LATITUDE"    :base_type "type/Float"      :id (field-id "LATITUDE")}
+                            {:name "LONGITUDE"   :base_type "type/Float"      :id (field-id "LONGITUDE")}
+                            {:name "PRICE"       :base_type "type/Integer"    :id (field-id "PRICE")}]
+                           (:result_metadata (mt/user-http-request :crowberto :get 200 (str "card/" card-id))))))
+                 (finally
+                   (t2/delete! :model/Card :entity_id card-eid)
+                   (t2/delete! :model/Collection :entity_id collection-id)))))))))))
+
 (deftest import-with-specific-branch-test
   (testing "POST /api/ee/remote-sync/import succeeds with specific branch"
     (let [mock-develop (test-helpers/create-mock-source :branch "develop")]
@@ -238,6 +316,19 @@
               (is (true? (:conflicts resp)))
               (is (some (comp #{"Local Metric"} :name) (:dirty_objects resp))
                   "the response lists the un-pushed local metric"))))))))
+
+(deftest import-without-expected-branch-succeeds-test
+  (testing "GHY-4636: `mb git-sync import` sends only `branch`; the import must run without `expected_branch`"
+    (let [mock-main (test-helpers/create-mock-source)]
+      (mt/with-temporary-setting-values [remote-sync-url    "https://github.com/test/repo.git"
+                                         remote-sync-token  "test-token"
+                                         remote-sync-branch "main"]
+        (mt/with-dynamic-fn-redefs [source/source-from-settings (constantly mock-main)]
+          (let [{:keys [task_id] :as resp} (mt/user-http-request :crowberto :post 200 "ee/remote-sync/import"
+                                                                 {:branch "main"})
+                completed-task (wait-for-task-completion task_id)]
+            (is (=? {:status "success" :task_id int?} resp))
+            (is (remote-sync.task/successful? completed-task))))))))
 
 (deftest import-rejects-expected-branch-mismatch-test
   (testing "POST /api/ee/remote-sync/import rejects when expected_branch disagrees with the configured setting"
@@ -693,6 +784,333 @@
               (testing "Can export with force"
                 (mt/user-http-request :crowberto :post 200 "ee/remote-sync/export" {:force true :branch "main"})))))))))
 
+(deftest export-after-collection-rename-moves-contents-test
+  (testing "GHY-4642: pushing after a synced collection is renamed moves its contents' files under the new collection path"
+    (mt/with-temporary-setting-values [remote-sync-type :read-write]
+      (mt/with-temp [:model/Collection {coll-id :id} {:name "Collection 2" :location "/"}
+                     :model/Card _ {:name "Question 2" :collection_id coll-id}]
+        (let [source     (test-helpers/versioned-source :current "v-remote" :trees {"v-remote" {}})
+              repo-files #(set (source.p/list-files (source.p/snapshot source)))
+              push!      #(wait-for-task-completion
+                           (:task_id (mt/user-http-request :crowberto :post 200 "ee/remote-sync/export" {:branch "main"})))]
+          (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git"
+                                             remote-sync-token "test-token"
+                                             remote-sync-branch "main"]
+            (mt/with-dynamic-fn-redefs [source/source-from-settings (constantly source)
+                                        settings/check-and-update-remote-settings! (constantly nil)
+                                        impl/finish-remote-config! (constantly nil)]
+              (mt/user-http-request :crowberto :put 200 "ee/remote-sync/settings" {:collections {coll-id true}})
+              (is (remote-sync.task/successful? (push!)))
+              (is (= #{"collections/main/collection_2.yaml"
+                       "collections/main/collection_2/question_2.yaml"}
+                     (repo-files)))
+              (mt/user-http-request :crowberto :put 200 (str "collection/" coll-id) {:name "Marketing Reports"})
+              (is (remote-sync.task/successful? (push!)))
+              (is (= #{"collections/main/marketing_reports.yaml"
+                       "collections/main/marketing_reports/question_2.yaml"}
+                     (repo-files))))))))))
+
+(deftest export-includes-model-actions-test
+  (testing "GHY-4722: pushing a synced model writes its actions into the model's collection"
+    (mt/with-temporary-setting-values [remote-sync-type :read-write]
+      (mt/with-actions-enabled
+        (mt/with-model-cleanup [:model/Action :model/Card]
+          (mt/with-temp [:model/Collection {coll-id :id} {:name "Synced" :location "/"}]
+            (let [source     (test-helpers/versioned-source :current "v-remote" :trees {"v-remote" {}})
+                  repo-files #(set (source.p/list-files (source.p/snapshot source)))
+                  push!      #(wait-for-task-completion
+                               (:task_id (mt/user-http-request :crowberto :post 200 "ee/remote-sync/export" {:branch "main"})))]
+              (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git"
+                                                 remote-sync-token "test-token"
+                                                 remote-sync-branch "main"]
+                (mt/with-dynamic-fn-redefs [source/source-from-settings (constantly source)
+                                            settings/check-and-update-remote-settings! (constantly nil)
+                                            impl/finish-remote-config! (constantly nil)]
+                  (mt/user-http-request :crowberto :put 200 "ee/remote-sync/settings" {:collections {coll-id true}})
+                  (is (remote-sync.task/successful? (push!)))
+                  (let [model (mt/user-http-request :crowberto :post 200 "card"
+                                                    {:name                   "Venues Model"
+                                                     :type                   "model"
+                                                     :collection_id          coll-id
+                                                     :display                "table"
+                                                     :visualization_settings {}
+                                                     :dataset_query          (mt/mbql-query venues)})]
+                    (mt/user-http-request :crowberto :post 200 "action"
+                                          {:name     "Create Venue"
+                                           :type     "implicit"
+                                           :kind     "row/create"
+                                           :model_id (:id model)})
+                    (mt/user-http-request :crowberto :post 200 "action"
+                                          {:name          "Rename Venue"
+                                           :type          "query"
+                                           :model_id      (:id model)
+                                           :database_id   (mt/id)
+                                           :dataset_query {:type     "native"
+                                                           :database (mt/id)
+                                                           :native   {:query "UPDATE venues SET name = 'x' WHERE id = 1"}}
+                                           :parameters    []})
+                    (is (remote-sync.task/successful? (push!)))
+                    (is (every? (repo-files) ["collections/main/synced/create_venue.yaml"
+                                              "collections/main/synced/rename_venue.yaml"]))))))))))))
+
+(deftest push-tracks-action-changes-on-pushed-model-test
+  (testing "GHY-4722: creating, editing, and deleting an action on an already-pushed model each reach the repo on the next push"
+    (mt/with-temporary-setting-values [remote-sync-type :read-write]
+      (mt/with-actions-enabled
+        (mt/with-model-cleanup [:model/Action :model/Card]
+          (mt/with-temp [:model/Collection {coll-id :id} {:name "Synced" :location "/"}]
+            (let [source     (test-helpers/versioned-source :current "v-remote" :trees {"v-remote" {}})
+                  repo-file  #(source.p/read-file (source.p/snapshot source) %)
+                  push!      #(wait-for-task-completion
+                               (:task_id (mt/user-http-request :crowberto :post 200 "ee/remote-sync/export" {:branch "main"})))]
+              (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git"
+                                                 remote-sync-token "test-token"
+                                                 remote-sync-branch "main"]
+                (mt/with-dynamic-fn-redefs [source/source-from-settings (constantly source)
+                                            settings/check-and-update-remote-settings! (constantly nil)
+                                            impl/finish-remote-config! (constantly nil)]
+                  (mt/user-http-request :crowberto :put 200 "ee/remote-sync/settings" {:collections {coll-id true}})
+                  (let [model (mt/user-http-request :crowberto :post 200 "card"
+                                                    {:name                   "Venues Model"
+                                                     :type                   "model"
+                                                     :collection_id          coll-id
+                                                     :display                "table"
+                                                     :visualization_settings {}
+                                                     :dataset_query          (mt/mbql-query venues)})]
+                    (is (remote-sync.task/successful? (push!)))
+                    (is (nil? (repo-file "collections/main/synced/create_venue.yaml")))
+                    (let [action (mt/user-http-request :crowberto :post 200 "action"
+                                                       {:name     "Create Venue"
+                                                        :type     "implicit"
+                                                        :kind     "row/create"
+                                                        :model_id (:id model)})]
+                      (testing "a new action"
+                        (is (remote-sync.task/successful? (push!)))
+                        (is (some? (repo-file "collections/main/synced/create_venue.yaml"))))
+                      (testing "an edited action"
+                        (mt/user-http-request :crowberto :put 200 (str "action/" (:id action))
+                                              {:description "Adds a venue"})
+                        (is (remote-sync.task/successful? (push!)))
+                        (is (str/includes? (str (repo-file "collections/main/synced/create_venue.yaml")) "Adds a venue")))
+                      (testing "a deleted action"
+                        (mt/user-http-request :crowberto :delete 204 (str "action/" (:id action)))
+                        (is (remote-sync.task/successful? (push!)))
+                        (is (nil? (repo-file "collections/main/synced/create_venue.yaml")))))))))))))))
+
+(defn- do-with-pushed-model!
+  "Pushes a model \"Venues Model\" in a synced collection through the API, then calls `f` with a map of:
+  `:coll-id`, `:model`, `:model-path` (its YAML path in the repo), `:push!` and `:pull!` (each returns the finished
+  task), `:repo-file` (path -> content or nil), `:repo-files` (the set of paths), and `:commit-remote!`, which takes
+  `{:upsert {path content} :delete [path]}` and commits it straight to the repo, as another instance's push would."
+  [f]
+  (mt/with-temporary-setting-values [remote-sync-type :read-write]
+    (mt/with-actions-enabled
+      (mt/with-model-cleanup [:model/Action :model/Card]
+        (mt/with-temp [:model/Collection {coll-id :id} {:name "Synced" :location "/"}]
+          (let [source         (test-helpers/versioned-source :current "v-remote" :trees {"v-remote" {}})
+                repo-file      #(source.p/read-file (source.p/snapshot source) %)
+                repo-files     #(set (source.p/list-files (source.p/snapshot source)))
+                push!          #(wait-for-task-completion
+                                 (:task_id (mt/user-http-request :crowberto :post 200 "ee/remote-sync/export" {:branch "main"})))
+                pull!          #(wait-for-task-completion
+                                 (:task_id (mt/user-http-request :crowberto :post 200 "ee/remote-sync/import" {:expected_branch "main"})))
+                commit-remote! (fn [{:keys [upsert delete]}]
+                                 (let [commit (source.p/open-commit (source.p/snapshot source))]
+                                   (doseq [[path content] upsert]
+                                     (source.p/stage-upsert! commit {:path path :content content}))
+                                   (doseq [path delete]
+                                     (source.p/stage-delete! commit path))
+                                   (source.p/finish-commit! commit "Another instance's change")))]
+            (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git"
+                                               remote-sync-token "test-token"
+                                               remote-sync-branch "main"]
+              (mt/with-dynamic-fn-redefs [source/source-from-settings (constantly source)
+                                          settings/check-and-update-remote-settings! (constantly nil)
+                                          impl/finish-remote-config! (constantly nil)]
+                (mt/user-http-request :crowberto :put 200 "ee/remote-sync/settings" {:collections {coll-id true}})
+                (let [model (mt/user-http-request :crowberto :post 200 "card"
+                                                  {:name                   "Venues Model"
+                                                   :type                   "model"
+                                                   :collection_id          coll-id
+                                                   :display                "table"
+                                                   :visualization_settings {}
+                                                   :dataset_query          (mt/mbql-query venues)})]
+                  (is (remote-sync.task/successful? (push!)))
+                  (f {:coll-id        coll-id
+                      :model          model
+                      :model-path     (some #(when (str/includes? % "venues_model") %) (repo-files))
+                      :push!          push!
+                      :pull!          pull!
+                      :repo-file      repo-file
+                      :repo-files     repo-files
+                      :commit-remote! commit-remote!}))))))))))
+
+(defn- do-with-pushed-model-actions!
+  "Pushes a synced model with an implicit action (`collections/main/synced/create_venue.yaml`) and a query action
+  (`collections/main/synced/rename_venue.yaml`) through the API, then calls `f` with the map from [[do-with-pushed-model!]]."
+  [f]
+  (do-with-pushed-model!
+   (fn [{:keys [model push! repo-file] :as ctx}]
+     (mt/user-http-request :crowberto :post 200 "action"
+                           {:name "Create Venue" :type "implicit" :kind "row/create" :model_id (:id model)})
+     (mt/user-http-request :crowberto :post 200 "action"
+                           {:name          "Rename Venue"
+                            :type          "query"
+                            :model_id      (:id model)
+                            :database_id   (mt/id)
+                            :dataset_query {:type     "native"
+                                            :database (mt/id)
+                                            :native   {:query "UPDATE venues SET name = 'x' WHERE id = 1"}}
+                            :parameters    []})
+     (is (remote-sync.task/successful? (push!)))
+     (is (some? (repo-file "collections/main/synced/create_venue.yaml")))
+     (is (some? (repo-file "collections/main/synced/rename_venue.yaml")))
+     (f ctx))))
+
+(deftest push-after-model-becomes-question-removes-actions-test
+  (testing "turning a pushed model into a question removes its actions from the repo on the next push"
+    (do-with-pushed-model-actions!
+     (fn [{:keys [model push! repo-file]}]
+       (mt/user-http-request :crowberto :put 200 (str "card/" (:id model)) {:type "question"})
+       (is (remote-sync.task/successful? (push!)))
+       (is (nil? (repo-file "collections/main/synced/create_venue.yaml")))
+       (is (nil? (repo-file "collections/main/synced/rename_venue.yaml")))))))
+
+(deftest push-after-model-query-drops-implicit-actions-test
+  (testing "GHY-4722: a model query that no longer supports implicit actions removes them from the repo on the next push"
+    (do-with-pushed-model-actions!
+     (fn [{:keys [model push! repo-file]}]
+       (mt/user-http-request :crowberto :put 200 (str "card/" (:id model))
+                             {:dataset_query (mt/mbql-query venues {:filter [:> $price 1]})})
+       (is (remote-sync.task/successful? (push!)))
+       (is (nil? (repo-file "collections/main/synced/create_venue.yaml")))
+       (is (some? (repo-file "collections/main/synced/rename_venue.yaml")) "the query action stays")))))
+
+(deftest push-after-model-deleted-removes-actions-test
+  (testing "GHY-4722: deleting a pushed model removes its actions from the repo on the next push"
+    (do-with-pushed-model-actions!
+     (fn [{:keys [model push! repo-file]}]
+       (mt/user-http-request :crowberto :delete 204 (str "card/" (:id model)))
+       (is (remote-sync.task/successful? (push!)))
+       (is (nil? (repo-file "collections/main/synced/create_venue.yaml")))
+       (is (nil? (repo-file "collections/main/synced/rename_venue.yaml")))))))
+
+(defn- insert-untracked-action!
+  "Inserts an implicit action \"Local Action\" (`collections/main/synced/local_action.yaml`) on the model with `model-id` straight
+  into the app DB, so no event records it in the remote sync ledger. Returns its id."
+  [model-id]
+  (let [action-id (t2/insert-returning-pk! :model/Action {:name       "Local Action"
+                                                          :type       :implicit
+                                                          :model_id   model-id
+                                                          :created_at :%now
+                                                          :updated_at :%now})]
+    (t2/insert! :model/ImplicitAction {:action_id action-id :kind "row/create"})
+    action-id))
+
+(defn- action-rso-status
+  "The status of the ledger row of the Action with `action-id`, or nil if it has none."
+  [action-id]
+  (t2/select-one-fn :status :model/RemoteSyncObject :model_type "Action" :model_id action-id))
+
+(deftest pull-that-deletes-a-model-keeps-the-ledger-clean-test
+  (testing "GHY-4722: a pull that deletes a model with a local, untracked action leaves the instance clean"
+    (do-with-pushed-model!
+     (fn [{:keys [model model-path pull! commit-remote!]}]
+       (insert-untracked-action! (:id model))
+       (commit-remote! {:delete [model-path]})
+       (let [task (pull!)]
+         (is (remote-sync.task/successful? task))
+         (is (= "pulled" (get-in task [:outcome :kind]))))
+       (is (not (t2/exists? :model/Card (:id model))))
+       (is (false? (remote-sync.object/dirty?)))
+       (is (not (t2/exists? :model/RemoteSyncObject :model_type "Action")))))))
+
+(deftest pull-that-turns-a-model-into-a-question-keeps-the-ledger-clean-test
+  (testing "GHY-4722: a pull that turns a model with a local, untracked action into a question leaves the instance clean"
+    (do-with-pushed-model!
+     (fn [{:keys [model model-path pull! repo-file commit-remote!]}]
+       (insert-untracked-action! (:id model))
+       (commit-remote! {:upsert {model-path (str/replace (repo-file model-path) "type: model" "type: question")}})
+       (let [task (pull!)]
+         (is (remote-sync.task/successful? task))
+         (is (= "pulled" (get-in task [:outcome :kind]))))
+       (is (= :question (t2/select-one-fn :type :model/Card (:id model))))
+       (is (false? (remote-sync.object/dirty?)))
+       (is (not (t2/exists? :model/RemoteSyncObject :model_type "Action")))))))
+
+(deftest push-tracks-archiving-an-action-test
+  (testing "GHY-4722: archiving an action removes its file on the next push, and unarchiving it writes the file back"
+    (do-with-pushed-model-actions!
+     (fn [{:keys [model push! repo-file]}]
+       (let [action-id (t2/select-one-pk :model/Action :model_id (:id model) :name "Rename Venue")]
+         (mt/user-http-request :crowberto :put 200 (str "action/" action-id) {:archived true})
+         (is (remote-sync.task/successful? (push!)))
+         (is (nil? (repo-file "collections/main/synced/rename_venue.yaml")))
+         (mt/user-http-request :crowberto :put 200 (str "action/" action-id) {:archived false})
+         (is (remote-sync.task/successful? (push!)))
+         (is (some? (repo-file "collections/main/synced/rename_venue.yaml"))))))))
+
+(deftest push-tracks-moving-an-action-between-models-test
+  (testing "GHY-4722: moving an action to a model outside the synced collections removes its file on the next push, and moving it back writes the file again"
+    (do-with-pushed-model-actions!
+     (fn [{:keys [model push! repo-file]}]
+       (mt/with-temp [:model/Collection {unsynced-id :id} {:name "Unsynced" :location "/"}]
+         (let [action-id (t2/select-one-pk :model/Action :model_id (:id model) :name "Rename Venue")
+               other     (mt/user-http-request :crowberto :post 200 "card"
+                                               {:name                   "Other Model"
+                                                :type                   "model"
+                                                :collection_id          unsynced-id
+                                                :display                "table"
+                                                :visualization_settings {}
+                                                :dataset_query          (mt/mbql-query venues)})]
+           (mt/user-http-request :crowberto :put 200 (str "action/" action-id) {:model_id (:id other)})
+           (is (remote-sync.task/successful? (push!)))
+           (is (nil? (repo-file "collections/main/synced/rename_venue.yaml")))
+           (mt/user-http-request :crowberto :put 200 (str "action/" action-id) {:model_id (:id model)})
+           (is (remote-sync.task/successful? (push!)))
+           (is (some? (repo-file "collections/main/synced/rename_venue.yaml")))))))))
+
+(deftest turning-sync-on-again-tracks-untracked-actions-test
+  (testing "GHY-4722: turning sync on again for a collection tracks an action created while sync was off, and the next push writes it"
+    (do-with-pushed-model!
+     (fn [{:keys [coll-id model push! repo-file]}]
+       (mt/user-http-request :crowberto :put 200 "ee/remote-sync/settings" {:collections {coll-id false}})
+       (let [action-id (insert-untracked-action! (:id model))]
+         (mt/user-http-request :crowberto :put 200 "ee/remote-sync/settings" {:collections {coll-id true}})
+         (is (= "create" (action-rso-status action-id)))
+         (is (remote-sync.task/successful? (push!)))
+         (is (some? (repo-file "collections/main/synced/local_action.yaml"))))))))
+
+(deftest archiving-a-collection-marks-its-actions-for-deletion-test
+  (testing "GHY-4722: archiving the synced collection that holds a model marks its actions for deletion, and the next push removes their files"
+    (do-with-pushed-model-actions!
+     (fn [{:keys [coll-id model push! repo-file]}]
+       (let [action-id (t2/select-one-pk :model/Action :model_id (:id model) :name "Rename Venue")]
+         (mt/user-http-request :crowberto :put 200 (str "collection/" coll-id) {:archived true})
+         (is (= "delete" (action-rso-status action-id)))
+         (is (remote-sync.task/successful? (push!)))
+         (is (nil? (repo-file "collections/main/synced/rename_venue.yaml")))
+         (is (nil? (repo-file "collections/main/synced/create_venue.yaml"))))))))
+
+(deftest upgrade-backfill-requires-a-push-before-a-pull-test
+  (testing "GHY-4722: after the upgrade backfill tracks an existing action, a pull is refused until a push writes the action to the repo"
+    (do-with-pushed-model!
+     (fn [{:keys [model model-path push! pull! repo-file commit-remote!]}]
+       (let [action-id (insert-untracked-action! (:id model))]
+         (remote-sync.events/backfill-action-tracking!)
+         (is (= "create" (action-rso-status action-id)))
+         (testing "a normal pull is refused"
+           (is (= "There are unsaved changes in the Remote Sync collection which will be overwritten by the import. Force the import to discard these changes."
+                  (:message (mt/user-http-request :crowberto :post 400 "ee/remote-sync/import" {:expected_branch "main"})))))
+         (testing "a push writes the action to the repo"
+           (is (remote-sync.task/successful? (push!)))
+           (is (some? (repo-file "collections/main/synced/local_action.yaml"))))
+         (testing "a normal pull after another instance's change keeps the action"
+           (commit-remote! {:upsert {model-path (str/replace (repo-file model-path) "name: Venues Model" "name: Renamed Model")}})
+           (is (remote-sync.task/successful? (pull!)))
+           (is (= "Renamed Model" (t2/select-one-fn :name :model/Card (:id model))))
+           (is (t2/exists? :model/Action action-id))))))))
+
 ;;; ------------------------------------------------- Current Task Endpoint -------------------------------------------------
 
 (deftest current-task-requires-superuser-test
@@ -755,7 +1173,66 @@
                :error_message "Task cancelled"}
               (mt/user-http-request :crowberto :get 200 "ee/remote-sync/current-task"))))))
 
+(deftest current-task-closes-a-stale-open-task-test
+  (testing "GET /api/ee/remote-sync/current-task closes an open task whose owner is gone and returns it cancelled"
+    (let [old-time (t/minus (t/offset-date-time) (t/hours 1))]
+      (mt/with-temp [:model/RemoteSyncTask {id :id} {:sync_task_type "import"
+                                                     :started_at old-time
+                                                     :last_progress_report_at old-time}]
+        (let [first-response (mt/user-http-request :crowberto :get 200 "ee/remote-sync/current-task")]
+          (is (=? {:id id
+                   :status "cancelled"
+                   :cancelled true
+                   :ended_at some?
+                   :error_message #"^Sync was interrupted.*"}
+                  first-response))
+          (testing "a second GET returns the same closed row"
+            (is (=? (select-keys first-response [:id :status :cancelled :ended_at :error_message])
+                    (mt/user-http-request :crowberto :get 200 "ee/remote-sync/current-task")))))))))
+
+(deftest current-task-leaves-a-live-task-running-test
+  (testing "GET /api/ee/remote-sync/current-task returns a task with a fresh heartbeat as running even when its progress is stale"
+    (mt/with-temp [:model/RemoteSyncTask {id :id} {:sync_task_type "import"
+                                                   :started_at (t/minus (t/offset-date-time) (t/hours 1))
+                                                   :last_progress_report_at (t/minus (t/offset-date-time) (t/hours 1))
+                                                   :last_heartbeat_at :%now}]
+      (is (=? {:id id :status "running" :ended_at nil}
+              (mt/user-http-request :crowberto :get 200 "ee/remote-sync/current-task"))))))
+
+(deftest current-task-carries-the-trimmed-initiating-user-test
+  (testing "GET /api/ee/remote-sync/current-task carries the initiating user as id, first_name, last_name, email only"
+    (mt/with-temp [:model/RemoteSyncTask _ {:sync_task_type "import"
+                                            :initiated_by (mt/user->id :rasta)
+                                            :started_at :%now
+                                            :last_progress_report_at :%now}]
+      (let [user (:initiated_by_user (mt/user-http-request :crowberto :get 200 "ee/remote-sync/current-task"))]
+        (is (= {:id         (mt/user->id :rasta)
+                :first_name "Rasta"
+                :last_name  "Toucan"
+                :email      "rasta@metabase.com"}
+               user))))))
+
+(deftest current-task-initiating-user-is-nil-for-system-tasks-test
+  (testing "GET /api/ee/remote-sync/current-task carries a nil initiating user for a task with no initiator (auto-import)"
+    (mt/with-temp [:model/RemoteSyncTask _ {:sync_task_type "import"
+                                            :initiated_by nil
+                                            :started_at :%now
+                                            :last_progress_report_at :%now}]
+      (let [response (mt/user-http-request :crowberto :get 200 "ee/remote-sync/current-task")]
+        (is (contains? response :initiated_by_user))
+        (is (nil? (:initiated_by_user response)))))))
+
 ;;; ------------------------------------------------- Cancel Task Endpoint -------------------------------------------------
+
+(deftest cancel-task-carries-the-trimmed-initiating-user-test
+  (testing "POST /api/ee/remote-sync/current-task/cancel returns the cancelled task with its trimmed initiating user"
+    (mt/with-temp [:model/RemoteSyncTask _ {:sync_task_type "export"
+                                            :initiated_by (mt/user->id :rasta)
+                                            :started_at :%now
+                                            :last_progress_report_at :%now}]
+      (is (=? {:status            "cancelled"
+               :initiated_by_user {:id (mt/user->id :rasta) :email "rasta@metabase.com"}}
+              (mt/user-http-request :crowberto :post 200 "ee/remote-sync/current-task/cancel"))))))
 
 (deftest cancel-task-requires-superuser-test
   (testing "POST /api/ee/remote-sync/current-task/cancel requires superuser permissions (GHY-3804)"
@@ -933,6 +1410,119 @@
               dirty-items (:dirty response)]
           (is (= 1 (count dirty-items)))
           (is (= "Test Card" (:name (first dirty-items)))))))))
+
+(defn- mark-pushed!
+  "Records `model-id` as synced with the file path and content hash of its current serialized form, the state
+  a push leaves it in."
+  [model-type model-id collection-id]
+  (let [{:keys [path content-hash]} (source/row->file-info {:model_type model-type :model_id model-id})]
+    (t2/delete! :model/RemoteSyncObject :model_type model-type :model_id model-id)
+    (t2/insert! :model/RemoteSyncObject {:model_type          model-type
+                                         :model_id            model-id
+                                         :model_name          "pushed"
+                                         :model_collection_id collection-id
+                                         :status              "synced"
+                                         :status_changed_at   (t/offset-date-time)
+                                         :file_path           path
+                                         :content_hash        content-hash})))
+
+(defn- dirty-ids [model]
+  (->> (mt/user-http-request :crowberto :get 200 "ee/remote-sync/dirty")
+       :dirty
+       (filter #(= model (:model %)))
+       (map :id)
+       set))
+
+(deftest public-link-marks-dashboard-dirty-test
+  (testing "GHY-4650: creating or revoking a dashboard's public link lists the dashboard in GET /dirty"
+    (test-helpers/with-clean-object
+      (mt/with-temporary-setting-values [enable-public-sharing true
+                                         remote-sync-type      :read-write]
+        (mt/with-temp [:model/Collection coll {:name "Remote Collection" :is_remote_synced true :location "/"}
+                       :model/Dashboard dash {:name "Shared Dashboard" :collection_id (:id coll)}]
+          (mark-pushed! "Dashboard" (:id dash) (:id coll))
+          (is (not (contains? (dirty-ids "dashboard") (:id dash))))
+          (testing "create"
+            (mt/user-http-request :crowberto :post 200 (format "dashboard/%d/public_link" (:id dash)))
+            (is (contains? (dirty-ids "dashboard") (:id dash))))
+          (mark-pushed! "Dashboard" (:id dash) (:id coll))
+          (testing "revoke"
+            (mt/user-http-request :crowberto :delete 204 (format "dashboard/%d/public_link" (:id dash)))
+            (is (contains? (dirty-ids "dashboard") (:id dash)))))))))
+
+(deftest public-link-marks-card-dirty-test
+  (testing "GHY-4650: creating or revoking a card's public link lists the card in GET /dirty"
+    (test-helpers/with-clean-object
+      (mt/with-temporary-setting-values [enable-public-sharing true
+                                         remote-sync-type      :read-write]
+        (mt/with-temp [:model/Collection coll {:name "Remote Collection" :is_remote_synced true :location "/"}
+                       :model/Card card {:name "Shared Card" :collection_id (:id coll)}]
+          (mark-pushed! "Card" (:id card) (:id coll))
+          (is (not (contains? (dirty-ids "card") (:id card))))
+          (testing "create"
+            (mt/user-http-request :crowberto :post 200 (format "card/%d/public_link" (:id card)))
+            (is (contains? (dirty-ids "card") (:id card))))
+          (mark-pushed! "Card" (:id card) (:id coll))
+          (testing "revoke"
+            (mt/user-http-request :crowberto :delete 204 (format "card/%d/public_link" (:id card)))
+            (is (contains? (dirty-ids "card") (:id card)))))))))
+
+(defn- fail-first-tracking-write!
+  "Calls `thunk` with the remote sync event handler rigged to throw on its first call only."
+  [thunk]
+  (let [original (mt/original-fn #'spec/determine-status)
+        failed?  (atom false)]
+    (mt/with-dynamic-fn-redefs [spec/determine-status (fn [& args]
+                                                        (if (compare-and-set! failed? false true)
+                                                          (throw (ex-info "simulated tracking failure" {}))
+                                                          (apply original args)))]
+      (thunk))))
+
+(deftest public-link-change-survives-handler-failure-test
+  (testing "GHY-4650: when tracking fails, the link change rolls back, so a retry changes the link and marks the item dirty"
+    (test-helpers/with-clean-object
+      (mt/with-temporary-setting-values [enable-public-sharing true
+                                         remote-sync-type      :read-write]
+        (doseq [[model endpoint] [["dashboard" "dashboard/%d/public_link"]
+                                  ["card"      "card/%d/public_link"]]]
+          (testing model
+            (mt/with-temp [:model/Collection coll {:name "Remote Collection" :is_remote_synced true :location "/"}
+                           (if (= model "dashboard") :model/Dashboard :model/Card) entity {:name "Shared" :collection_id (:id coll)}]
+              (let [model-type (if (= model "dashboard") "Dashboard" "Card")
+                    url        (format endpoint (:id entity))]
+                (testing "create"
+                  (mark-pushed! model-type (:id entity) (:id coll))
+                  (fail-first-tracking-write!
+                   (fn []
+                     (mt/user-http-request :crowberto :post 500 url)
+                     (mt/user-http-request :crowberto :post 200 url)))
+                  (is (contains? (dirty-ids model) (:id entity))))
+                (testing "revoke"
+                  (mark-pushed! model-type (:id entity) (:id coll))
+                  (fail-first-tracking-write!
+                   (fn []
+                     (mt/user-http-request :crowberto :delete 500 url)
+                     (mt/user-http-request :crowberto :delete 204 url)))
+                  (is (contains? (dirty-ids model) (:id entity))))))))))))
+
+(deftest public-link-on-read-only-instance-is-not-dirty-test
+  (testing "GHY-4650: a public link change on a read-only instance does not mark the synced item dirty, since it cannot be pushed"
+    (test-helpers/with-clean-object
+      (mt/with-temporary-setting-values [enable-public-sharing true
+                                         remote-sync-type      :read-only]
+        (mt/with-temp [:model/Collection coll {:name "Remote Collection" :is_remote_synced true :location "/"}
+                       :model/Dashboard dash {:name "Shared Dashboard" :collection_id (:id coll)}
+                       :model/Card card {:name "Shared Card" :collection_id (:id coll)}]
+          (mark-pushed! "Dashboard" (:id dash) (:id coll))
+          (mark-pushed! "Card" (:id card) (:id coll))
+          (mt/user-http-request :crowberto :post 200 (format "dashboard/%d/public_link" (:id dash)))
+          (mt/user-http-request :crowberto :post 200 (format "card/%d/public_link" (:id card)))
+          (is (not (contains? (dirty-ids "dashboard") (:id dash))))
+          (is (not (contains? (dirty-ids "card") (:id card))))
+          (mt/user-http-request :crowberto :delete 204 (format "dashboard/%d/public_link" (:id dash)))
+          (mt/user-http-request :crowberto :delete 204 (format "card/%d/public_link" (:id card)))
+          (is (not (contains? (dirty-ids "dashboard") (:id dash))))
+          (is (not (contains? (dirty-ids "card") (:id card)))))))))
 
 (deftest dirty-requires-superuser-test
   (testing "GET /api/ee/remote-sync/dirty requires superuser permissions"
@@ -1846,3 +2436,30 @@
                 "no new branch should be pushed to the source when the guard fires")
             (is (= tasks-before (t2/count :model/RemoteSyncTask))
                 "no NEW RemoteSyncTask row should be created when the guard fires")))))))
+
+(deftest moving-an-action-out-from-under-a-synced-dashboard-test
+  (testing "an action a synced dashboard uses cannot move out of the synced collections"
+    (mt/with-temporary-setting-values [remote-sync-type :read-write]
+      (mt/with-actions-test-data-and-actions-enabled
+        (mt/with-temp [:model/Collection    {synced-id :id}   {:name "Synced" :is_remote_synced true :location "/"}
+                       :model/Collection    {plain-id :id}    {:name "Plain" :location "/"}
+                       :model/Action        {action-id :id}   {:type :query :name "No model" :model_id nil
+                                                               :collection_id synced-id}
+                       :model/QueryAction   _                 {:action_id     action-id
+                                                               :dataset_query (mt/native-query {:query "select 1"})}
+                       :model/Dashboard     {dashboard-id :id} {:collection_id synced-id}
+                       :model/DashboardCard _                 {:dashboard_id dashboard-id :action_id action-id}]
+          (is (= "Used by remote synced content."
+                 (:message (mt/user-http-request :crowberto :put 400 (str "action/" action-id)
+                                                 {:collection_id plain-id}))))
+          (is (= synced-id (t2/select-one-fn :collection_id :model/Action :id action-id))))))))
+
+(deftest archiving-a-synced-model-with-actions-test
+  (testing "a model in a synced collection can be archived although it has actions, which are archived with it"
+    (mt/with-temporary-setting-values [remote-sync-type :read-write]
+      (mt/with-temp [:model/Collection {synced-id :id} {:name "Synced" :is_remote_synced true :location "/"}
+                     :model/Card       {model-id :id}  {:type :model :collection_id synced-id
+                                                        :dataset_query (mt/mbql-query venues)}
+                     :model/Action     {action-id :id} {:type :query :name "Rename" :model_id model-id}]
+        (mt/user-http-request :crowberto :put 200 (str "card/" model-id) {:archived true})
+        (is (true? (t2/select-one-fn :archived :model/Action :id action-id)))))))

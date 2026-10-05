@@ -25,6 +25,48 @@ title: API changelog
 
   The GET variants have been removed without a deprecation period.
 
+- `PUT /api/notification/:id` now identifies the notification by the URL only. An `id` in the request body (and a
+  `payload.id`) is ignored instead of being used to target a different notification. Previously, a body `id` that
+  didn't match the URL deleted and recreated the notification.
+
+- `POST /api/notification/:id/send` requires write access to the notification instead of read access. Only the
+  notification's creator or an admin can send it, and with advanced permissions enabled the creator also needs the
+  Subscriptions and Alerts application permission.
+
+- `POST /api/notification`, `PUT /api/notification/:id`, and `POST /api/notification/send` apply channel permissions
+  to inline handler definitions. A handler that carries an inline `channel` (instead of a `channel_id`) requires
+  permission to create channels. A handler that attaches, replaces, or removes a `template` requires permission to
+  write channel templates.
+
+- `POST /api/notification/send` validates the request body with the same schema as `POST /api/notification`. `id`,
+  `payload_id`, and other ids of saved rows are no longer part of the accepted body, since the notification being
+  sent is never saved.
+
+- `POST /api/action` and `PUT /api/action/:id` return a 403 when the action's `dataset_query` is a native query and
+  the caller doesn't have native query permission on the target database. This matches what the Metabase UI already
+  required.
+
+- `POST /api/pulse/test` requires the Subscriptions and Alerts application permission.
+
+- `GET /api/transform/run/:run-id` requires read access to the run's transform. Runs whose transform has been deleted
+  are only visible to admins. Previously, the endpoint only checked that the run existed.
+
+- Creating or updating a transform checks query permissions on every table and saved question referenced by the
+  transform's source query, not only the source database. Requests that used to succeed can now return a 403.
+
+- `GET /api/ee/tenant` and `GET /api/ee/tenant/:id` only include `member_count` and `attributes` for admins. Other
+  people get `id`, `name`, `slug`, `is_active`, and `tenant_collection_id`.
+
+- Pulse and subscription recipient lists are scoped by tenancy for everyone who isn't an admin: people in a tenant see
+  only recipients in their own tenant, and internal people see only other internal people. `GET /api/pulse/form_input`
+  no longer includes the Slack channel list for people in a tenant.
+
+- `PUT /api/dashboard/:id` returns a 400 when a link card's entity id or a click behavior's target id isn't an
+  integer. Previously, these values were stored as-is.
+
+- Unauthenticated requests to `PUT /api/email`, `DELETE /api/email`, and `POST /api/email/test` return a 401 instead
+  of a 403. The endpoints are now mounted behind the same authentication middleware as the other admin routes.
+
 ## Metabase 0.63.15
 
 - `POST /api/slack/bug-report`: `diagnosticInfo.reporter` is now a boolean and bug reporting must be enabled. See the

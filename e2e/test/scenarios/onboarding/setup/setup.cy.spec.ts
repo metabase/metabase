@@ -265,37 +265,6 @@ describe("scenarios > setup", () => {
     cy.findByTestId("step-number").should("have.text", "4");
   });
 
-  it("should allow a quick setup for the 'embedding' use case", () => {
-    cy.visit(
-      "/setup?first_name=John&last_name=Doe&email=john@doe.test&site_name=Doe%20Unlimited&use_case=embedding",
-    );
-
-    cy.findByTestId("step-number").should("have.text", "1");
-
-    cy.findByTestId("setup-forms").within(() => {
-      const password = "12341234";
-      cy.findByDisplayValue("John").should("exist");
-      cy.findByLabelText("Create a password").type(password);
-      cy.findByLabelText("Confirm your password").type(password);
-      cy.button("Next").click();
-    });
-
-    cy.findByTestId("setup-forms").within(() => {
-      cy.findByLabelText("Hi, John. Nice to meet you!").should("be.visible");
-
-      skipLicenseStepOnEE();
-
-      cy.findByText("Finish").click();
-      cy.findByText("You're all set up!").should("be.visible");
-      cy.findByText("Take me to Metabase").click();
-    });
-
-    cy.location("pathname").should("eq", "/");
-    H.main()
-      .findByText("Get started with Embedding Metabase in your app")
-      .should("be.visible");
-  });
-
   // There are only one step in the setup flow, so there is no need to show step numbers.
   it("should not show step numbers in cloud embedding use case", () => {
     H.mockSessionProperty("is-hosted?", true);
@@ -309,49 +278,14 @@ describe("scenarios > setup", () => {
     cy.findByTestId("step-number").should("not.exist");
   });
 
-  it("should allow localization in the 'embedding' setup flow", () => {
-    cy.visit(
-      "/setup?first_name=John&last_name=Doe&email=john@doe.test&site_name=Doe%20Unlimited&use_case=embedding",
-    );
-
-    cy.log("Change language to English (ZZ)");
-    selectLanguage("English (ZZ)");
-
-    cy.log("Changing a language should be applied immediately");
-    cy.findByTestId("setup-forms").within(() => {
-      const password = "12341234";
-      cy.findByDisplayValue("John").should("exist");
-      cy.findByLabelText("[zz] Create a password").type(password);
-      cy.findByLabelText("[zz] Confirm your password").type(password);
-      cy.button("[zz] Next").click();
-    });
-
-    cy.findByTestId("setup-forms").within(() => {
-      cy.findByLabelText("[zz] Hi, John. Nice to meet you!").should(
-        "be.visible",
-      );
-
-      if (IS_ENTERPRISE) {
-        cy.button("[zz] I'll activate later").click();
-      }
-
-      cy.findByText("[zz] Finish").click();
-      cy.findByText("[zz] Take me to Metabase").click();
-    });
-
-    cy.log("Locale is preserved upon successful setup");
-    cy.location("pathname").should("eq", "/");
-    H.main()
-      .findByText("[zz] Get started with Embedding Metabase in your app")
-      .should("be.visible");
-  });
-
   it("should update the site locale setting when changing language in setup", () => {
     cy.intercept("PUT", "/api/setting/site-locale").as("updateSiteLocale");
 
     cy.visit(
       "/setup?first_name=John&last_name=Doe&email=john@doe.test&site_name=Doe%20Unlimited&use_case=embedding",
     );
+
+    cy.findByTestId("step-number").should("have.text", "1");
 
     cy.log("Switching language before user creation should not update setting");
     selectLanguage("Dutch");
@@ -386,9 +320,13 @@ describe("scenarios > setup", () => {
 
     cy.findByTestId("setup-forms").within(() => {
       if (IS_ENTERPRISE) {
+        cy.findByText("[zz] Activate your commercial license").should(
+          "be.visible",
+        );
         cy.findByText("[zz] I'll activate later").click();
       }
       cy.findByText("[zz] Finish").click();
+      cy.findByText("[zz] You're all set up!").should("be.visible");
       cy.findByText("[zz] Take me to Metabase").click();
     });
 
@@ -564,10 +502,13 @@ describe("scenarios > setup > AI config step", () => {
     navigateToAiConfigStep();
 
     cy.findByLabelText("Connect to an AI provider").within(() => {
-      cy.findByRole("button", { name: /OpenAI/ }).should("be.visible");
-      cy.findByRole("button", { name: /OpenRouter/ }).should("be.visible");
-      cy.findByRole("button", { name: /Microsoft Azure/ }).should("be.visible");
-      cy.findByRole("button", { name: /Amazon Bedrock/ }).should("be.visible");
+      [/OpenAI/, /OpenRouter/, /Microsoft Azure/, /Amazon Bedrock/].forEach(
+        (name) => {
+          cy.findByRole("button", { name })
+            .scrollIntoView()
+            .should("be.visible");
+        },
+      );
       // the managed provider is offered but not connectable without the LLM proxy,
       // which e2e does not configure
       cy.findByRole("button", { name: /Metabase/ }).should("be.disabled");
@@ -953,6 +894,8 @@ describe("scenarios > setup", () => {
     H.blockSnowplow();
     cy.visit("/setup");
     skipWelcomePage();
+    cy.findByLabelText("First name").should("be.visible");
+    cy.findByLabelText("Email").should("be.visible");
     H.assertNoUnstructuredSnowplowEvent({
       event: "step_seen",
     });

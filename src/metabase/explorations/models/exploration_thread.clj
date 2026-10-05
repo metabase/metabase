@@ -1,10 +1,9 @@
 (ns metabase.explorations.models.exploration-thread
   (:require
-   [clojure.edn :as edn]
    [metabase.explorations.db :as explorations.db]
+   [metabase.explorations.query-plan.transcript :as transcript]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
-   [metabase.util.log :as log]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -15,30 +14,9 @@
   (derive :hook/timestamped?)
   (derive :hook/entity-id))
 
-(defn- transcript-in
-  "EDN-encode the `query_plan_transcript`. EDN over JSON for the same
-  reason as chart_stats: the transcript contains keyword keys, prose-mirror
-  doc trees with string-keyed maps, and nested Clojure data — JSON would
-  mangle the shape."
-  [v]
-  (cond
-    (nil? v)    nil
-    (string? v) v
-    :else       (pr-str v)))
-
-(defn- transcript-out
-  "Decode the EDN blob, recovering nil (with a warning) on parse failure so a
-  malformed transcript can't break a read of the thread."
-  [s]
-  (when (string? s)
-    (try
-      (edn/read-string {:readers {} :default (fn [tag v] [::unknown-tag tag v])} s)
-      (catch Throwable e
-        (log/warn e "Failed to parse exploration_thread transcript column; returning nil")
-        nil))))
-
 (t2/deftransforms :model/ExplorationThread
-  {:query_plan_transcript {:in transcript-in :out transcript-out}
+  {:query_plan_transcript (mi/transform-json-with-schema "exploration_thread.query_plan_transcript"
+                                                         ::transcript/transcript)
    :data_access_token     perms/data-access-token-transform})
 
 (defmethod mi/can-read? :model/ExplorationThread

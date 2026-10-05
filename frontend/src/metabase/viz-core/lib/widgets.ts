@@ -66,12 +66,16 @@ function getSettingWidget<T, TValue, TProps extends Record<string, unknown>>(
     getWrapperStyle,
     getSection,
     getHidden,
+    getTitle,
     ...settingDefProps
   } = settingDef;
 
   return {
     ...settingDefProps,
     id: settingId,
+    title:
+      getTitle?.(resolvedObject, computedSettings, extra) ??
+      settingDefProps.title,
     value,
     section: getSection?.(resolvedObject, computedSettings, extra),
     hidden: getHidden?.(resolvedObject, computedSettings, extra) ?? false,

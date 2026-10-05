@@ -39,6 +39,8 @@ frontend_configs: &frontend_configs
   - "package.json"
   - "babel.config.json"
   - "eslint.config.mjs"
+  - "oxlint.config.mts"
+  - ".oxfmtrc.json"
   - "postcss.config.js"
   - "rspack.config.js"
   - "rspack.main.config.js"
@@ -75,6 +77,7 @@ frontend_all: &frontend_all
   - *frontend_ci
   - *frontend_sources
   - *frontend_specs
+  - "frontend/lint/**/!(*.md)"
 
 frontend_loki_ci: &frontend_loki_ci
   - ".github/workflows/loki.yml"
@@ -121,8 +124,11 @@ ci_scripts:
   - ".github/file-paths.yaml"
   - ".github/scripts/**"
   - ".github/actions/**"
+  - ".github/workflows/e2e-{test,tests,matrix-builder}.yml"
   - ".github/workflows/loki.yml"
   - ".storybook/story-files.cjs"
+  - "e2e/runner/read-spec-paths.js"
+  - "e2e/support/cypress.config.js"
   - "frontend/lint/module-boundaries.mjs"
   - "frontend/lint/shared-tiers.mjs"
   - "frontend/test/jest-test-paths-filter.ts"
@@ -132,12 +138,6 @@ ci_scripts:
   - "jest.esm-packages.js"
   - "package.json"
   - "bun.lock"
-
-# e2e harness/support code (commands, support file, runner). Not in the
-# instrumented bundle, so it maps to no covered module — a change here forces a
-# full e2e run (see create-test-plan / e2eInfraTouched).
-e2e_infra: &e2e_infra
-  - *shared_e2e
 
 backend_ci: &backend_ci
   - *shared_ci
@@ -155,7 +155,7 @@ backend_sources: &backend_sources
   # Ratchet files drive project_ratchet_checks alone, so automation PRs that lower budgets
   # run the Project tests job by themselves. Patterns are OR-ed, so a separate "!..." entry would match
   # every other path instead of excluding this one.
-  - ".clj-kondo/**/!(ratchets.edn)"
+  - ".clj-kondo/**/!(ratchets.edn|ratchets-test.edn)"
 
 backend_specs: &backend_specs
   - *shared_specs
@@ -200,12 +200,14 @@ project_backend_checks:
   - "{resources,test_resources,test_config}/**/*.{clj,cljc,cljs}"
   - ".clj-kondo/config.edn"
   - ".clj-kondo/config/modules/config.edn"
+  - ".clj-kondo/config/modules/cycle-clusters.edn"
   - ".github/team.json"
   - "dev/resources/dev/modules_config_test/**"
 
 # Only the ratchet check reads the budgets, so a diff that touches nothing else runs that suite alone.
 project_ratchet_checks:
   - ".clj-kondo/ratchets.edn"
+  - ".clj-kondo/ratchets-test.edn"
   - ".clj-kondo/config/modules/ratchets.edn"
 
 project_migration_checks:
@@ -266,6 +268,21 @@ snowplow: &snowplow
   - "bin/lint-snowplow-schemas.bb"
   - "bin/lint-snowplow-schemas-test.bb"
 
+# e2e harness/support code (commands, support file, runner). Not in the
+# instrumented bundle, so it maps to no covered module — a change here forces a
+# full e2e run (see create-test-plan / e2eInfraTouched).
+e2e_infra: &e2e_infra
+  - *default
+  - *e2e_ci
+  - *frontend_configs
+  - *shared_e2e
+  - *snowplow
+  - "e2e/**/!(*.cy.spec.@(js|jsx|ts|tsx))"
+  - "frontend/build/**"
+  - "patches/**"
+  - ".github/scripts/build-e2e-matrix.js"
+  - ".github/file-paths.yaml"
+
 e2e_all:
   - *default
   - *e2e_ci
@@ -273,6 +290,7 @@ e2e_all:
   - *e2e_specs
   - "e2e/**"
   - *snowplow
+  - *e2e_infra
 
 documentation:
   - "docs/**"
@@ -345,8 +363,10 @@ openapi:
   - "src/metabase/api/**"
   - "src/metabase/api_routes/**"
   - "src/metabase/*_rest/api.clj"
-  - "src/metabase/*/api.clj"
-  - "src/metabase/*/api/*.clj"
+  - "src/metabase/**/rest/api.clj"
+  - "src/metabase/**/rest/api/*.clj"
+  - "src/metabase/**/api.clj"
+  - "src/metabase/**/api/*.clj"
   - "enterprise/backend/src/metabase_enterprise/**/api.clj"
   - "enterprise/backend/src/metabase_enterprise/**/api/*.clj"
   - "resources/openapi/**"

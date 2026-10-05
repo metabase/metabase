@@ -8,6 +8,7 @@
    [metabase.mcp.v2.message :as message]
    [metabase.mcp.v2.projections :as projections]
    [metabase.mcp.v2.registry :as registry]
+   [metabase.mcp.v2.test-util :as v2.tu]
    [metabase.mcp.v2.tools.content :as tools.content]
    [metabase.metrics.core :as metrics]
    [metabase.notification.test-util :as notification.tu]
@@ -44,7 +45,7 @@
        (throw (ex-info (str "get_content returned a tool-level error: "
                             (-> result :content first :text))
                        {:result result})))
-     (:results (json/decode+kw (-> result :content first :text))))))
+     (:results (json/decode+kw (-> result :content first :text v2.tu/strip-data-boundary))))))
 
 (defn- content-one
   ([args] (content-one nil args))

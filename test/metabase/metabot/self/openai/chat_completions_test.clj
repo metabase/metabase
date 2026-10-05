@@ -2,8 +2,10 @@
   (:require
    [clojure.test :refer :all]
    [metabase.metabot.self.core :as self.core]
+   [metabase.metabot.self.mistral :as mistral]
    [metabase.metabot.self.openai.chat-completions :as chat-completions]
-   [metabase.metabot.test-util :as metabot.tu]))
+   [metabase.metabot.test-util :as metabot.tu]
+   [metabase.util.json :as json]))
 
 (set! *warn-on-reflection* true)
 
@@ -232,6 +234,42 @@
                                             :temperature 0.2
                                             :max-tokens  128})))))
 
+(deftest ^:parallel request-body-replays-nested-tool-arguments-test
+  (testing "a streamed tool call whose arguments nest objects replays into the next request"
+    (let [query {:lib/type "mbql/query"
+                 :stages   [{:lib/type "mbql.stage/mbql", :source-table ["Sample Database" nil "ORDERS"]}]}
+          call  {:type      :tool-input
+                 :id        "call-1"
+                 :function  "construct_notebook_query"
+                 :arguments {:query query}}
+          ;; the stream parser decodes the arguments with keyword keys at every depth
+          parts (into [] (self.core/aisdk-xf) (metabot.tu/parts->aisdk-chunks [call]))]
+      (is (=? {:messages [{:role       "assistant"
+                           :tool_calls [{:function {:name      "construct_notebook_query"
+                                                    :arguments #(= {:query query} (json/decode+kw %))}}]}]}
+              (chat-completions/request-body {:model "some/model" :input parts}))))))
+
+(deftest ^:parallel request-body-tool-arguments-schema-test
+  (let [replay (fn [arguments]
+                 (chat-completions/request-body
+                  {:model "some/model"
+                   :input [{:type      :tool-input
+                            :id        "call-1"
+                            :function  "f"
+                            :arguments arguments}]}))]
+    (testing "decoded JSON replays at any depth, keyed by strings, keywords or both"
+      (are [arguments] (=? {:messages [{:tool_calls [{:function {:arguments string?}}]}]}
+                           (replay arguments))
+        ;; keyword keys, as the stream decodes them
+        {:a {:b {:c [{:d [1 nil true "x" :kw]}]}}}
+        ;; string keys, as replayed history decodes them
+        {"a" {"b" {"c" [{"d" [1.5 [[]] {}]}]}}}
+        ;; both
+        {:a {"b" [{:c {"d" [{:e 1}]}}]}}))
+    (testing "a value JSON cannot hold is rejected, however deep"
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Invalid input"
+                            (replay {:a {"b" [{:c (java.time.Instant/now)}]}}))))))
+
 ;;; ──────────────────────────────────────────────────────────────────
 ;;; Streaming chunk conversion tests
 ;;;
@@ -394,6 +432,58 @@
              {:choices [{:index 0 :delta {} :finish_reason "tool_calls"}]}
              {:choices [] :usage {:prompt_tokens 127 :completion_tokens 288}}])))))
 
+(deftest ^:parallel chunks-xf-streamed-error-becomes-an-error-chunk-test
+  (testing "an error sent partway through a stream becomes an error chunk"
+    (doseq [[shape xf error-chunk message]
+            [["vLLM's error envelope"
+              (chat-completions/chat-completions->aisdk-chunks-xf)
+              {:error {:message "Internal server error" :type "InternalServerError" :param nil :code 500}}
+              "Internal server error"]
+             ["OpenRouter's error on a chunk that finishes the choice"
+              (chat-completions/chat-completions->aisdk-chunks-xf)
+              {:id       "cmpl-abc123"
+               :object   "chat.completion.chunk"
+               :created  1234567890
+               :model    "openai/gpt-4o"
+               :provider "openai"
+               :error    {:code "server_error" :message "Provider disconnected unexpectedly"}
+               :choices  [{:index 0 :delta {:content ""} :finish_reason "error"}]}
+              "Provider disconnected unexpectedly"]
+             ["Mistral's error finish reason, which carries no message"
+              (mistral/mistral->aisdk-chunks-xf)
+              {:id      "cmpl-e5cc70bb28c444948073e77776eb30ef"
+               :object  "chat.completion.chunk"
+               :created 1702256327
+               :model   "mistral-medium-3-5"
+               :choices [{:index 0 :delta {:content ""} :finish_reason "error"}]}
+              "The model provider failed to complete the response"]]]
+      (testing shape
+        (testing "after closing the open text block"
+          (is (=? [{:type :start :messageId "chatcmpl-5"}
+                   {:type :text-start}
+                   {:type :text-delta :delta "Hel"}
+                   {:type :text-end}
+                   {:type :error :errorText message}]
+                  (into [] xf
+                        [{:id      "chatcmpl-5"
+                          :model   "kimi-k2.6"
+                          :choices [{:index 0 :delta {:role "assistant" :content "Hel"} :finish_reason nil}]}
+                         error-chunk]))))
+        (testing "without making a half-streamed tool call available to run"
+          (is (= [{:type :start :messageId "chatcmpl-5"}
+                  {:type :tool-input-start :toolCallId "call-1" :toolName "search"}
+                  {:type :tool-input-delta :toolCallId "call-1" :inputTextDelta "{\"query\": \"rev"}
+                  {:type :error :errorText message}]
+                 (into [] xf
+                       [{:id      "chatcmpl-5"
+                         :model   "kimi-k2.6"
+                         :choices [{:index 0
+                                    :delta {:tool_calls [{:index    0
+                                                          :id       "call-1"
+                                                          :type     "function"
+                                                          :function {:name "search" :arguments "{\"query\": \"rev"}}]}}]}
+                        error-chunk]))))))))
+
 ;;; ──────────────────────────────────────────────────────────────────
 ;;; models-catalog tests
 ;;; ──────────────────────────────────────────────────────────────────
@@ -428,12 +518,12 @@
          #"Mistral returned an unexpected model list response$"
          (chat-completions/models-catalog "Mistral" {:status 200 :body {:object "list"}} nil)))))
 
-(deftest ^:parallel models-catalog-error-is-tagged-api-error-without-status-test
-  (testing "the thrown error is tagged :api-error so rethrow-api-error! passes it through, and carries no status"
-    ;; `metabase.metabot.api/provider-client-error?` renders any 4xx :api-error under the admin API-key
-    ;; field. A malformed catalog is not a credentials problem, so it must not claim a 4xx status.
+(deftest ^:parallel models-catalog-error-is-tagged-api-error-with-client-status-test
+  (testing "the thrown error is tagged :api-error so rethrow-api-error! passes it through, and 400 so the admin sees it"
+    ;; `metabase.llm.api.provider/provider-client-error?` only surfaces an :api-error carrying a 4xx; anything
+    ;; else escapes the Connect path as an unhandled 500, which `MB_HIDE_STACKTRACES=true` collapses to
+    ;; "Something went wrong". A malformed catalog is the admin's to fix, so it has to claim the 4xx.
     (let [data (try
                  (chat-completions/models-catalog "Mistral" {:status 200 :body {:object "list"}})
                  (catch clojure.lang.ExceptionInfo e (ex-data e)))]
-      (is (= {:api-error true :error-code :malformed-model-catalog} data))
-      (is (not (contains? data :status))))))
+      (is (= {:api-error true :status-code 400 :error-code :malformed-model-catalog} data)))))

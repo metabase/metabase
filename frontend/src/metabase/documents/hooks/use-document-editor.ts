@@ -116,22 +116,39 @@ export function useDocumentEditor({
 
   const [createDocument, { isLoading: isCreating }] =
     useCreateDocumentMutation();
-  const [updateDocument, { isLoading: isUpdating }] =
-    useUpdateDocumentMutation();
+  const [updateDocument, { isLoading: isUpdating }] = useUpdateDocumentMutation(
+    {
+      fixedCacheKey: documentId ? `document:${documentId}` : undefined,
+    },
+  );
 
   const isNewDocument = documentId === "new";
   const isSaving = isCreating || isUpdating;
 
+  const hasLoadedDocumentRef = useRef(false);
+
+  // if the document is updating on mount (due to a previous update with the same fixedCacheKey),
+  // then skip getDocument so we don't show the stale document
+  // this is a little unusual - the standard pattern here would to be use an optimistic update on save
+  // but a document with draft card IDs can't be rendered if Redux state has been cleared, so we need a different approach
+  const isUpdatingOnMount = isUpdating && !hasLoadedDocumentRef.current;
+
   let {
     data: documentData,
-    isLoading: isDocumentLoading,
+    isLoading,
     error,
   } = useGetDocumentQuery(
-    documentId && !isNewDocument ? { id: documentId } : skipToken,
+    documentId && !isNewDocument && !isUpdatingOnMount
+      ? { id: documentId }
+      : skipToken,
   );
   if (documentId !== documentData?.id) {
     documentData = undefined;
   }
+  if (documentData) {
+    hasLoadedDocumentRef.current = true;
+  }
+  const isDocumentLoading = isLoading || isUpdatingOnMount;
 
   const canWrite = Boolean(
     !documentData?.archived && (isNewDocument || documentData?.can_write),

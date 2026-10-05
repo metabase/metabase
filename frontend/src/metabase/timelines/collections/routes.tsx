@@ -113,7 +113,10 @@ export function getCollectionTimelineRoutes(): RouteObject[] {
           children: [
             {
               index: true,
-              lazy: lazyComponent(timelineDetailsModal, options),
+              lazy: lazyComponent(timelineDetailsModal, {
+                ...options,
+                closeTo: "../..",
+              }),
             },
             {
               path: "edit",

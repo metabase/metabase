@@ -12,6 +12,7 @@
    [metabase.mcp.v2.message :as message]
    [metabase.mcp.v2.redaction :as redaction]
    [metabase.mcp.v2.registry :as registry]
+   [metabase.mcp.v2.test-util :as v2.tu]
    [metabase.mcp.v2.tools.content :as tools.content]
    [metabase.metabot.metadata-perms :as metadata-perms]
    [metabase.test :as mt]
@@ -57,7 +58,7 @@
                                                     :include ["fields"]})]
     (when error
       (throw (ex-info (str "get_content rejected: " (message/render (:message error))) {:error error})))
-    (first (:results (json/decode+kw (-> result :content first :text))))))
+    (first (:results (json/decode+kw (v2.tu/strip-data-boundary (-> result :content first :text)))))))
 
 (deftest sandboxed-caller-does-not-receive-fingerprints-test
   (testing "a fingerprint is computed over every row of its table — `:min`/`:max` are individual cell

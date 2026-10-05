@@ -2,6 +2,7 @@
   (:require
    [clojure.java.io :as io]
    [clojure.test :refer :all]
+   [metabase.mcp.http-handler :as mcp.http-handler]
    [metabase.request.core :as request]
    [metabase.server.handler :as handler]
    [metabase.tiles.settings]
@@ -19,7 +20,7 @@
                                                 :offset (request/offset)
                                                 :paged? (request/paged?)
                                                 :params (:params request)})))
-        handler* (#'handler/apply-middleware handler)
+        handler* (#'handler/apply-middleware handler mcp.http-handler/options)
         respond  identity
         raise    (fn [e] (throw e))]
     (handler* request respond raise)))
