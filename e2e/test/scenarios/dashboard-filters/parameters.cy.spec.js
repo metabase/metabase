@@ -1349,9 +1349,7 @@ describe("scenarios > dashboard > parameters", () => {
         cy.findByText("Widget").should("not.exist");
       });
 
-      cy.location().should(({ search }) => {
-        expect(search).to.eq("?category=Gadget&count=");
-      });
+      expectSearchParams({ category: "Gadget", count: "" });
 
       // Verify filter doesn't show up in the dashboard header
       H.dashboardParametersContainer().should("not.exist");
@@ -2323,19 +2321,19 @@ describe("scenarios > dashboard > parameters", () => {
           .findByText("This filter can only connect to its own card.")
           .should("be.visible");
 
+        // Ensure the filter can't be connected to the card on the other tab
+        H.goToTab("Tab 2");
+        H.getDashboardCard(0)
+          .findByText("The selected filter is on another tab.")
+          .should("be.visible");
+        H.goToTab("Tab 1");
+
         // Disconnect the filter from the first card
         H.sidebar().findByText("Disconnect from card").click();
 
         // Ensure it still can't be connected to the second card
         H.getDashboardCard(1)
           .findByText("This filter can only connect to its own card.")
-          .should("be.visible");
-
-        H.goToTab("Tab 2");
-
-        // Ensure the filter can't be connected to the card on the other tab
-        H.getDashboardCard(0)
-          .findByText("The selected filter is on another tab.")
           .should("be.visible");
       });
     });
