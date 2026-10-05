@@ -67,11 +67,19 @@
    Contrast [[group-id]], which is deliberately NOT scoped: a column group is the same group wherever it appears,
    and its id is already persisted unscoped on curated entities.
 
+   `column-name` is in the seed because the target alone does not identify a column. [[field-id-ref]] rewrites a
+   source-card column's ref to use the column's integer *field* id, and a model that joins one table twice — a
+   self-join, or two joins to the same table — surfaces each of that table's fields twice with the same field id.
+   The join alias that tells the two copies apart lives inside the *model's* query, not in the outer query's refs,
+   so both targets reduce to the same [[metabase.lib-metric.dimension/field-ref->key]]. Without the name they
+   would share an id, and since dimensions resolve by id, editing one would rewrite its twin. The deduplicated
+   column name (`PRICE` vs `PRICE_2`) is what survives to tell them apart.
+
    This is a stable local seed, not a portable identity — `owner-key` and the target's field ids are both
    instance-local, so two instances derive different ids for the same logical dimension. Nothing depends on them
    agreeing: `dimensions` and `dimension_mappings` are serialized and imported as a unit."
-  ^String [owner-key target]
-  (-> [owner-key (lib-metric.dimension/field-ref->key target)]
+  ^String [owner-key column-name target]
+  (-> [owner-key column-name (lib-metric.dimension/field-ref->key target)]
       pr-str
       (.getBytes "UTF-8")
       UUID/nameUUIDFromBytes
@@ -87,7 +95,7 @@
   ([owner-key column group]
    (let [target (field-id-ref column)
          has-field-values (lib/infer-has-field-values column)]
-     {:dimension (cond-> {:id             (dimension-id owner-key target)
+     {:dimension (cond-> {:id             (dimension-id owner-key (:name column) target)
                           :name           (:name column)
                           :effective-type (or (:effective-type column)
                                               (:base-type column))}

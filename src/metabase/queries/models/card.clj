@@ -676,16 +676,17 @@
 ;; Curated metric dimensions. New metrics seed their own-table columns only, with joined/FK
 ;; columns available to add on demand. But metrics created before curated dimensions shipped implicitly
 ;; exposed EVERY breakoutable column (own-table + implicitly-joined), and existing dashboard filters may
-;; be mapped to those joined columns. Modernize such a metric on read by backfilling the full
-;; implicitly-joined dimension set, so every existing mapping still corresponds to a live dimension.
+;; be mapped to those joined columns. This schema upgrade modernizes a pre-curation metric in one of two ways.
 ;;
-;; Only un-curated metrics (`:dimensions` still nil) are touched; once a metric is curated (any write),
-;; its `card_schema` is bumped to current and this upgrade no longer runs, so removals stay sticky. It also gets
-;; the default dimension (which for a pre-curation metric was expressed as a breakout on the metric's query) and sets
-;; the `:default` flag on the appropriate `:dimensions` entry.
+;; `:dimensions` which were set before schema 24 do not have the correct `:default` set, and the representation differs
+;; slightly from the current form. The `:default` is inferred from the single breakout on the metric's query, or left
+;; unset if there's no breakout.
+;;
+;; When the metric's `:dimensions` have never been set, we backfill the complete implicitly-joined dimension set,
+;; preserving the pre-curation behavior for those metrics.
 ;;
 ;; This runs on every read of an un-curated metric and persists nothing, so the dimension ids it hands out have to
-;; be the same every time — hence the `:entity_id` seed, and hence `:entity_id`'s place in
+;; be the same every time — hence the `:entity_id` seed and `:entity_id`'s place in
 ;; [[card-schema/schema-upgrade-triggers]]. See `metabase.lib-metric.dimension.jvm/dimension-id`.
 (defmethod upgrade-card-schema-to 24
   [{:keys [dataset_query dimensions entity_id] :as card} _schema-version]
