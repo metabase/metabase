@@ -43,19 +43,17 @@ const setupModal = () => {
   return { onClose, onChange };
 };
 
-const dismissActions = [
-  {
-    name: "Escape",
-    dismiss: () => userEvent.keyboard("{Escape}"),
-  },
-  {
-    name: "a backdrop click",
-    dismiss: () => userEvent.click(screen.getByTestId("modal-overlay")),
-  },
-];
-
 describe("ChartSettingSelect", () => {
-  describe.each(dismissActions)("modal dismissal with $name", ({ dismiss }) => {
+  describe.each([
+    {
+      name: "Escape",
+      dismiss: () => userEvent.keyboard("{Escape}"),
+    },
+    {
+      name: "a backdrop click",
+      dismiss: () => userEvent.click(screen.getByTestId("modal-overlay")),
+    },
+  ])("modal dismissal with $name", ({ dismiss }) => {
     it("should close the modal when the dropdown has not been opened (#83368)", async () => {
       const { onClose } = setupModal();
 
