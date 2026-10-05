@@ -38,7 +38,7 @@
           table  (lib.metadata/table (mt/metadata-provider) (mt/id :venues))
           query  (-> (lib/query (mt/metadata-provider) table)
                      (lib/aggregate (lib/count)))
-          pairs  (dimension.jvm/compute-dimension-pairs mp query)]
+          pairs  (dimension.jvm/compute-dimension-pairs mp "owner" query)]
       (is (seq pairs) "should produce at least one dimension pair")
       (testing "each pair has :dimension and :mapping"
         (doseq [pair pairs]
@@ -80,7 +80,7 @@
             card-meta (lib.metadata/card db-mp (:id model))
             query     (-> (lib/query db-mp card-meta)
                           (lib/aggregate (lib/count)))
-            pairs     (dimension.jvm/compute-dimension-pairs mp query)]
+            pairs     (dimension.jvm/compute-dimension-pairs mp "owner" query)]
         (is (seq pairs)
             "should resolve dimensions from the card's result_metadata")
         (is (= #{"ID" "NAME" "CATEGORY_ID"}
@@ -93,8 +93,48 @@
           table  (lib.metadata/table (mt/metadata-provider) (mt/id :venues))
           query  (-> (lib/query (mt/metadata-provider) table)
                      (lib/aggregate (lib/count)))
-          pairs  (dimension.jvm/compute-dimension-pairs mp query)
+          pairs  (dimension.jvm/compute-dimension-pairs mp "owner" query)
           cat-dim (first (filter #(= "CATEGORY_ID" (get-in % [:dimension :name])) pairs))]
       (is (some? cat-dim) "CATEGORY_ID dimension should exist")
       (is (some? (get-in cat-dim [:dimension :has-field-values]))
           "CATEGORY_ID should have :has-field-values"))))
+
+(defn- self-joined-venues-query
+  "An MBQL 5 query joining Venues to itself, so every Venues field is visible twice."
+  []
+  (let [mp        (mt/metadata-provider)
+        venues    (lib.metadata/table mp (mt/id :venues))
+        venues-id (lib.metadata/field mp (mt/id :venues :id))]
+    (-> (lib/query mp venues)
+        (lib/join (lib/join-clause venues
+                                   [(lib/= venues-id
+                                           (lib/with-join-alias venues-id "V2"))])))))
+
+(deftest compute-dimension-pairs-self-joined-source-card-distinct-ids-test
+  (testing "a model that joins the same table twice gets a distinct dimension id per column"
+    ;; `dimension-id` derives the id from `[owner-key (field-ref->key target)]`, and `field-id-ref`
+    ;; rewrites a source-card column's name-based ref to use the column's integer field id. A model
+    ;; that self-joins a table surfaces each underlying field twice, and both copies carry the *same*
+    ;; field id — the join alias that told them apart lives inside the model, not in the outer query's
+    ;; refs. So both targets reduce to the same key and both dimensions get the same id.
+    ;;
+    ;; The visible symptom is that editing one dimension edits its twin: resolution is by id
+    ;; (`dimensions-for-table`, `lib-metric.dimension/dimension`), so renaming PRICE also rewrites the
+    ;; other columns to their second-copy values.
+    (mt/with-temp [:model/Card model {:type          :model
+                                      :dataset_query (self-joined-venues-query)}]
+      (let [mp        (lib-metric.metadata.jvm/metadata-provider)
+            db-mp     (mt/metadata-provider)
+            card-meta (lib.metadata/card db-mp (:id model))
+            query     (-> (lib/query db-mp card-meta)
+                          (lib/aggregate (lib/count)))
+            pairs     (dimension.jvm/compute-dimension-pairs mp "owner" query)
+            field-ids (keep #(get-in % [:dimension :sources 0 :field-id]) pairs)]
+        (testing "precondition: the self-join surfaces at least one field id twice"
+          (is (seq (for [[field-id n] (frequencies field-ids)
+                         :when       (> n 1)]
+                     field-id))
+              "the model's self-join should put two columns with the same field id in the dimension set"))
+        (is (= (count pairs)
+               (count (into #{} (map #(get-in % [:dimension :id])) pairs)))
+            "every dimension should have its own id")))))
