@@ -17,7 +17,11 @@ import {
   within,
 } from "__support__/ui";
 import { Route } from "metabase/router";
-import type { McpGroupPermission, McpTool } from "metabase-types/api";
+import type {
+  McpGroupPermission,
+  McpTool,
+  McpToolPermissionsResponse,
+} from "metabase-types/api";
 import { createMockGroup } from "metabase-types/api/mocks";
 import {
   createMockMcpGroupPermission,
@@ -508,6 +512,30 @@ describe("McpToolsAccessPage", () => {
     ).toHaveLength(1);
   });
 
+  it("disables the checkboxes while a save is in flight", async () => {
+    const { response } = setup();
+    await findGrid();
+    const { promise: savedResponse, resolve: finishSave } =
+      Promise.withResolvers<McpToolPermissionsResponse>();
+    fetchMock.modifyRoute("update-mcp-tool-permissions", {
+      response: savedResponse,
+    });
+
+    await userEvent.click(getToolCheckbox("All Users", "search"));
+    await userEvent.click(screen.getByRole("button", { name: "Save changes" }));
+
+    await waitFor(() =>
+      expect(getToolCheckbox("All Users", "run_query")).toBeDisabled(),
+    );
+    expect(getBucketCheckbox("All Users", "Raw SQL")).toBeDisabled();
+
+    finishSave(response);
+
+    await waitFor(() => expect(querySaveButton()).not.toBeInTheDocument());
+    expect(getToolCheckbox("All Users", "run_query")).toBeEnabled();
+    expect(getBucketCheckbox("All Users", "Raw SQL")).toBeEnabled();
+  });
+
   it("reports a failed save and keeps the draft", async () => {
     setup();
     await findGrid();
@@ -601,6 +629,27 @@ describe("McpToolsAccessPage", () => {
     expect(queryColumnHeader("Administrators")).toBeInTheDocument();
     expect(queryColumnHeader("Marketing")).toBeInTheDocument();
     expect(queryColumnHeader("Engineering")).toBeInTheDocument();
+  });
+
+  it("stops filtering by the group search once group-level access is removed", async () => {
+    const { response } = setup({ advanced: true });
+    await findGrid();
+    await userEvent.type(
+      screen.getByRole("textbox", { name: "Search for a group" }),
+      "marketing",
+    );
+    expect(queryColumnHeader("Administrators")).not.toBeInTheDocument();
+
+    setupMcpToolPermissionsEndpoint({ ...response, advanced: false });
+    await removeGroupLevelAccess();
+
+    expect(
+      await screen.findByRole("columnheader", { name: "All Users" }),
+    ).toBeInTheDocument();
+    expect(queryColumnHeader("Administrators")).toBeInTheDocument();
+    expect(
+      screen.queryByText("No groups match your search"),
+    ).not.toBeInTheDocument();
   });
 
   it("says when no group matches the search", async () => {

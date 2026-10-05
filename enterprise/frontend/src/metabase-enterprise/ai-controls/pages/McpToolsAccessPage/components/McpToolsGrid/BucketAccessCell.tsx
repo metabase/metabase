@@ -13,6 +13,7 @@ type BucketAccessCellProps = {
   label: string;
   tools: McpTool[];
   allTools: McpTool[];
+  disabled: boolean;
   onPermissionChange: (permission: McpGroupPermission) => void;
 };
 
@@ -21,6 +22,7 @@ export function BucketAccessCell({
   label,
   tools,
   allTools,
+  disabled,
   onPermissionChange,
 }: BucketAccessCellProps) {
   const { group, permission, isAdminGroup } = column;
@@ -36,7 +38,7 @@ export function BucketAccessCell({
             .t`Allow ${getGroupNameLocalized(group)} user group to use all ${label} MCP tools.`}
           checked={state === "all"}
           indeterminate={state === "some"}
-          disabled={isAdminGroup}
+          disabled={disabled || isAdminGroup}
           // A partly allowed bucket allows the rest on click, like a select-all checkbox.
           onChange={() =>
             onPermissionChange(

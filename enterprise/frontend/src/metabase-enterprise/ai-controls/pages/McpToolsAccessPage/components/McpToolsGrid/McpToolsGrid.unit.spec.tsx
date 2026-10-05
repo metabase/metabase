@@ -85,6 +85,7 @@ function setup({
       columns={columns}
       allTools={tools}
       headerTrailing={headerTrailing}
+      disabled={false}
       onPermissionChange={onPermissionChange}
     />,
   );

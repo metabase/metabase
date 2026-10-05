@@ -21,6 +21,7 @@ type McpToolsGridProps = {
   columns: McpToolsGridColumn[];
   allTools: McpTool[];
   headerTrailing?: ReactNode;
+  disabled: boolean;
   onPermissionChange: (permission: McpGroupPermission) => void;
 };
 
@@ -29,6 +30,7 @@ export function McpToolsGrid({
   columns,
   allTools,
   headerTrailing,
+  disabled,
   onPermissionChange,
 }: McpToolsGridProps) {
   const {
@@ -100,6 +102,7 @@ export function McpToolsGrid({
               columns={columns}
               virtualColumns={virtualColumns}
               allTools={allTools}
+              disabled={disabled}
               onPermissionChange={onPermissionChange}
             />
           ))}

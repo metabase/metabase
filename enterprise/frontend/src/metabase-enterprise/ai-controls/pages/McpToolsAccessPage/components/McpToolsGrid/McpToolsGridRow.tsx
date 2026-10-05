@@ -15,6 +15,7 @@ type McpToolsGridRowProps = {
   columns: McpToolsGridColumn[];
   virtualColumns: VirtualItem[];
   allTools: McpTool[];
+  disabled: boolean;
   onPermissionChange: (permission: McpGroupPermission) => void;
 };
 
@@ -23,6 +24,7 @@ export function McpToolsGridRow({
   columns,
   virtualColumns,
   allTools,
+  disabled,
   onPermissionChange,
 }: McpToolsGridRowProps) {
   if (row.kind === "bucket") {
@@ -43,6 +45,7 @@ export function McpToolsGridRow({
               label={row.label}
               tools={row.tools}
               allTools={allTools}
+              disabled={disabled}
               onPermissionChange={onPermissionChange}
             />
           );
@@ -65,6 +68,7 @@ export function McpToolsGridRow({
             column={column}
             tool={row.tool}
             allTools={allTools}
+            disabled={disabled}
             onPermissionChange={onPermissionChange}
           />
         );

@@ -12,6 +12,7 @@ type ToolAccessCellProps = {
   column: McpToolsGridColumn;
   tool: McpTool;
   allTools: McpTool[];
+  disabled: boolean;
   onPermissionChange: (permission: McpGroupPermission) => void;
 };
 
@@ -19,6 +20,7 @@ export function ToolAccessCell({
   column,
   tool,
   allTools,
+  disabled,
   onPermissionChange,
 }: ToolAccessCellProps) {
   const { group, permission, isAdminGroup } = column;
@@ -30,7 +32,7 @@ export function ToolAccessCell({
           aria-label={c("{0} is the user group name, {1} is an MCP tool name")
             .t`Allow ${getGroupNameLocalized(group)} user group to use the ${tool.name} MCP tool.`}
           checked={isAdminGroup || isToolAllowed(permission, tool)}
-          disabled={isAdminGroup}
+          disabled={disabled || isAdminGroup}
           onChange={(event) =>
             onPermissionChange(
               setToolsAllowed(

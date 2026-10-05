@@ -50,10 +50,11 @@ export function McpToolsAccessPage() {
       ),
     [groups.groups, groups.activeTab, mcp.advanced, mcp.permissionsByGroup],
   );
-  const visibleColumns = filterGridColumns(columns, query);
+  const groupQuery = mcp.advanced ? query : "";
+  const visibleColumns = filterGridColumns(columns, groupQuery);
 
   const showSwitchButton = !mcp.advanced && groups.activeTab === "user-groups";
-  const noMatches = visibleColumns.length === 0 && query.trim() !== "";
+  const noMatches = visibleColumns.length === 0 && groupQuery.trim() !== "";
 
   return (
     <SettingsPageWrapper h="100%" mih={0} w="100%" p="xxl" gap="lg">
@@ -109,6 +110,7 @@ export function McpToolsAccessPage() {
               rows={rows}
               columns={visibleColumns}
               allTools={mcp.tools}
+              disabled={mcp.isSaving}
               headerTrailing={
                 showSwitchButton ? (
                   <AdvancedGroupModeButton
