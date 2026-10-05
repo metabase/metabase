@@ -15,6 +15,8 @@
         table/table {:mvn/version "0.5.0"} ;; table printing
         }
  ;; No :pods key on purpose: tasks lazily load only what they need.
+ ;; Every public task needs a :group naming its section in the `./bin/mage` listing. Use one of the
+ ;; names in `mage.util/task-groups`, or add a new name there; that vector sets the section order.
  :tasks
  {:requires [[mage.cli :as cli]
              [mage.color :as c]]

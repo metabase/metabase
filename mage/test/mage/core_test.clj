@@ -65,7 +65,12 @@
   (doseq [[task {:keys [group]}] (:tasks (edn/read-string (slurp (str u/project-root-directory "/bb.edn"))))
           :when (and (symbol? task) (not (str/starts-with? (name task) "-")))]
     (testing (str task " has a :group listed in mage.util/task-groups, so `./bin/mage` shows it in a section")
-      (is (some #{group} u/task-groups)))))
+      (is (some #{group} u/task-groups)
+          (str "Task `" task "` in bb.edn has "
+               (if group (str ":group " (pr-str group) ", which is not in mage.util/task-groups.") "no :group.")
+               "\n\nTo fix, set :group to one of " (str/join ", " (map pr-str u/task-groups)) ":\n\n"
+               "  " task "\n  {:group " (pr-str (first u/task-groups)) "\n   :doc ...}\n\n"
+               "If none fits, add a new name to mage.util/task-groups. Its position there sets the section order.")))))
 
 (deftest bb-task-has-example-test
   (doseq [task-name (u/public-bb-tasks-list)
