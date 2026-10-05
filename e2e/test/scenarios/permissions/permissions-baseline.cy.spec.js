@@ -43,9 +43,10 @@ describe("scenarios > permissions", () => {
       { autorun: false },
     );
 
-    cy.findAllByLabelText("Refresh")
-      .should("have.length.at.least", 1)
-      .each(($button) => cy.wrap($button).should("be.disabled"));
+    cy.findByTestId("native-query-editor-container")
+      .findByTestId("run-button")
+      .should("be.visible")
+      .and("be.disabled");
   });
 });
 

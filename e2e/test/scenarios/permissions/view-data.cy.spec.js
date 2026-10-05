@@ -509,7 +509,7 @@ describe("scenarios > admin > permissions > view data > legacy no self-service",
 
     H.selectPermissionRow("Sample Database", DATA_ACCESS_PERM_IDX);
     H.popover()
-      .should("contain", "Can view")
+      .should("contain", "Blocked")
       .and("not.contain", "No self-service (Deprecated)");
 
     H.selectPermissionRow("Sample Database", CREATE_QUERIES_PERM_IDX);
