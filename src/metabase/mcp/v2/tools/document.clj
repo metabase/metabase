@@ -105,7 +105,8 @@
   see, one query per referenced model. A target the caller can't read is left out, so it is
   indistinguishable from one that doesn't exist and its name never crosses the permission
   boundary — the caller's write check on the *document* does not extend to whatever the
-  document happens to point at."
+  document happens to point at. A target MCP v2 treats as absent ([[v2.resolve/hidden?]]) is left out
+  the same way."
   [links]
   (into {}
         (mapcat (fn [[model model-links]]
@@ -113,7 +114,8 @@
                         ids      (distinct (map #(get-in % [:attrs "entityId"]) model-links))
                         rows     (when db-model
                                    (try
-                                     (filterv #(smart-link-readable? model %)
+                                     (filterv #(and (not (v2.resolve/hidden? db-model %))
+                                                    (smart-link-readable? model %))
                                               (if (= "user" model)
                                                 (visible-user-rows ids)
                                                 (mcp.db/select-by-ids db-model ids)))

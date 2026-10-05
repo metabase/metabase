@@ -91,7 +91,7 @@
           (common/throw-not-found model id-or-eid)
           (throw e))))))
 
-(defn- hidden?
+(defn hidden?
   "True for a row MCP v2 treats as absent: a collection in the transforms namespace, because MCP v2 has no
    transforms."
   [model row]
