@@ -16,6 +16,7 @@
    [metabase.metabot.self.bedrock :as bedrock]
    [metabase.metabot.self.claude :as self.claude]
    [metabase.metabot.self.core :as self.core]
+   [metabase.metabot.self.deepseek :as deepseek]
    [metabase.metabot.self.mistral :as mistral]
    [metabase.metabot.self.moonshot :as moonshot]
    [metabase.metabot.self.openai :as openai]
@@ -45,6 +46,7 @@
 (def ^:private supported-models-by-provider-type
   {"anthropic"  #'self.claude/supported-models
    "bedrock"    #'bedrock/supported-models
+   "deepseek"   #'deepseek/supported-models
    "mistral"    #'mistral/supported-models
    "moonshot"   #'moonshot/supported-models
    "openai"     #'openai/supported-models
@@ -82,8 +84,8 @@
               (#'self/parse-provider-model "mistral/mistral-medium-3-5")))
       (is (=? {:provider "moonshot" :model "kimi-k3" :ai-proxy? false}
               (#'self/parse-provider-model "moonshot/kimi-k3")))
-      (is (=? {:provider "deepseek" :model "deepseek-v4-flash" :ai-proxy? false}
-              (#'self/parse-provider-model "deepseek/deepseek-v4-flash")))
+      (is (=? {:provider "deepseek" :model "deepseek-flash" :ai-proxy? false}
+              (#'self/parse-provider-model "deepseek/deepseek-flash")))
       (is (=? {:provider "xai" :model "grok-4.7" :ai-proxy? false}
               (#'self/parse-provider-model "xai/grok-4.7")))
       (is (=? {:provider "google" :model "google/gemini-3.5-flash" :ai-proxy? false}
@@ -639,6 +641,19 @@
                      :error      {:message (str "Tool `analyze_chart` does not exist. "
                                                 "Available tools: convert-currency, get-time, mock-llm, no-arg.")}})
               result)))))
+
+(deftest ^:parallel tool-executor-xf-stream-error-test
+  (testing "once an :error chunk comes through, a call still streaming never runs and a running one keeps its result"
+    (let [running  (test-util/parts->aisdk-chunks
+                    [{:type :tool-input :id "call-1" :function "get-time" :arguments {:tz "Europe/Kyiv"}}])
+          cut-off  (test-util/parts->aisdk-chunks
+                    [{:type :tool-input :id "call-2" :function "get-time" :arguments {:tz "Europe/Paris"}}])
+          streamed (concat running (butlast cut-off) [{:type :error :errorText "Overloaded"}])]
+      (log.capture/with-log-messages-for-level [messages [metabase.metabot.self.core :warn]]
+        (is (=? (conj (vec streamed) {:type :tool-output-available :toolCallId "call-1"})
+                (into [] (self.core/tool-executor-xf test-util/TOOLS) (concat streamed [(last cut-off)]))))
+        (testing "and a warning names the call that never ran"
+          (is (=? [{:level :warn :message #".*call-2.*"}] (messages))))))))
 
 ;;; tool argument validation tests
 
