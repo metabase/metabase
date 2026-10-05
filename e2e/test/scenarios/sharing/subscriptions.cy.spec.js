@@ -584,7 +584,6 @@ describe("scenarios > dashboard > subscriptions", () => {
   describe("OSS email subscriptions", { tags: ["@OSS", "external"] }, () => {
     beforeEach(() => {
       H.setupSMTP();
-      cy.visit(`/dashboard/${ORDERS_DASHBOARD_ID}`);
     });
 
     it("should include branding", () => {
@@ -605,6 +604,7 @@ describe("scenarios > dashboard > subscriptions", () => {
 
     describe("with parameters", () => {
       beforeEach(() => {
+        cy.visit(`/dashboard/${ORDERS_DASHBOARD_ID}`);
         addParametersToDashboard();
       });
 
@@ -670,7 +670,6 @@ describe("scenarios > dashboard > subscriptions", () => {
     beforeEach(() => {
       H.activateToken("pro-self-hosted");
       H.setupSMTP();
-      cy.visit(`/dashboard/${ORDERS_DASHBOARD_ID}`);
     });
 
     it("should not include branding", () => {
@@ -724,6 +723,7 @@ describe("scenarios > dashboard > subscriptions", () => {
 
     describe("with parameters", () => {
       beforeEach(() => {
+        cy.visit(`/dashboard/${ORDERS_DASHBOARD_ID}`);
         addParametersToDashboard();
       });
 
