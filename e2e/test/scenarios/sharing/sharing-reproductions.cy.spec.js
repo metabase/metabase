@@ -94,10 +94,9 @@ describe("issues 18344 and 18352", { tags: "@external" }, () => {
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("OrdersFoo");
 
-    H.createQuestionAndAddToDashboard(
-      questionDetails,
-      ORDERS_DASHBOARD_ID,
-    ).then(({ body: { card_id } }) => {
+    H.createQuestionAndAddToDashboard(questionDetails, ORDERS_DASHBOARD_ID, {
+      row: 8,
+    }).then(({ body: { card_id } }) => {
       H.visitQuestion(card_id);
 
       H.visitDashboard(ORDERS_DASHBOARD_ID);
