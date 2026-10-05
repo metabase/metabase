@@ -60,6 +60,31 @@
             (is (mt/user-http-request :crowberto :post 400 "ee/sso/oidc"
                                       (assoc test-provider :key "INVALID SLUG!")))))))))
 
+(def ^:private failed-check-result
+  {:ok          false
+   :discovery   {:step :discovery :success true :token-endpoint "https://test.okta.com/oauth2/token"}
+   :credentials {:step :credentials :success false :verified true :error "Invalid client credentials"}})
+
+(deftest create-provider-failed-check-test
+  (testing "Creating an OIDC provider fails with a 400 and saves nothing when the connection check fails"
+    (mt/with-additional-premium-features #{:sso-oidc}
+      (mt/with-dynamic-fn-redefs [oidc.check/check-oidc-configuration (constantly failed-check-result)]
+        (mt/with-temporary-setting-values [oidc-providers []]
+          (is (= "Invalid client credentials"
+                 (mt/user-http-request :crowberto :post 400 "ee/sso/oidc" test-provider)))
+          (is (= [] (sso-settings/oidc-providers))))))))
+
+(deftest update-provider-failed-check-test
+  (testing "Updating an OIDC provider fails with a 400 and leaves the stored provider unchanged when the connection check fails"
+    (mt/with-additional-premium-features #{:sso-oidc}
+      (mt/with-dynamic-fn-redefs [oidc.check/check-oidc-configuration (constantly failed-check-result)]
+        (mt/with-temporary-setting-values [oidc-providers [test-provider]]
+          (is (= "Invalid client credentials"
+                 (mt/user-http-request :crowberto :put 400 "ee/sso/oidc/test-okta"
+                                       {:client-id     "new-client-id"
+                                        :client-secret "new-client-secret"})))
+          (is (= [test-provider] (sso-settings/oidc-providers))))))))
+
 (deftest read-providers-test
   (testing "Reading OIDC providers"
     (mt/with-additional-premium-features #{:sso-oidc}
