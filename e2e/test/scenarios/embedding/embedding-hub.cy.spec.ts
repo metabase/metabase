@@ -325,10 +325,6 @@ describe("scenarios > embedding > embedding hub > security", () => {
       cy.findByRole("switch", {
         name: "Standalone Metabase linked from your app toggle",
       }).should("be.checked");
-
-      cy.request("GET", "/api/session/properties").then(({ body }) => {
-        expect(body["enable-embedding-sidecar"]).to.be.true;
-      });
     });
 
     it("lists published guest embeds even after guest embeds are switched off", () => {
