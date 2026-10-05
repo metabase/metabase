@@ -1,6 +1,3 @@
-import { Octokit } from "@octokit/rest";
-import { paginateGraphQL } from "@octokit/plugin-paginate-graphql";
-
 import type { GithubCheck, GithubProps, Issue, ReleaseProps } from "./types";
 import {
   getLastReleaseTag,
@@ -10,65 +7,6 @@ import {
 } from "./version-helpers";
 
 type MilestoneState = "open" | "closed" | "all";
-
-const PaginatingOctokit = Octokit.plugin(paginateGraphQL);
-
-type MilestoneItemNode = {
-  number: number;
-  id: string;
-  title: string;
-  body: string | null;
-  url: string;
-  createdAt: string;
-  labels: { nodes: { name: string }[] };
-  assignees: { nodes: { login: string }[] };
-};
-
-const getMilestoneItems = async ({
-  owner,
-  repo,
-  milestoneNumber,
-  connection,
-  states,
-}: {
-  owner: string;
-  repo: string;
-  milestoneNumber: number;
-  connection: "issues" | "pullRequests";
-  states: string[];
-}): Promise<MilestoneItemNode[]> => {
-  // The octokit injected by actions/github-script lacks the paginate-graphql
-  // plugin, so build our own plugin-enabled client from the token in env
-  const client = new PaginatingOctokit({ auth: process.env.GITHUB_TOKEN });
-  const stateType = connection === "pullRequests" ? "PullRequestState" : "IssueState";
-
-  const { repository } = await client.graphql.paginate<{
-    repository: { milestone: Record<string, { nodes: MilestoneItemNode[] }> };
-  }>(
-    `query paginate($cursor: String, $owner: String!, $repo: String!, $num: Int!, $states: [${stateType}!]) {
-      repository(owner: $owner, name: $repo) {
-        milestone(number: $num) {
-          ${connection}(first: 100, after: $cursor, states: $states) {
-            pageInfo { hasNextPage endCursor }
-            nodes {
-              number
-              id
-              title
-              body
-              url
-              createdAt
-              labels(first: 50) { nodes { name } }
-              assignees(first: 1) { nodes { login } }
-            }
-          }
-        }
-      }
-    }`,
-    { owner, repo, num: milestoneNumber, states },
-  );
-
-  return repository.milestone[connection].nodes;
-};
 
 export const getMilestones = async ({
   github,
@@ -143,69 +81,6 @@ export const openNextMilestones = async ({
         .catch(console.error),
     ),
   );
-};
-
-export const getMilestoneIssues = async ({
-  version,
-  github,
-  owner,
-  repo,
-  state = "closed",
-  milestoneStatus,
-}: ReleaseProps & {
-  state?: "closed" | "open";
-  milestoneStatus?: MilestoneState;
-}): Promise<Issue[]> => {
-  const milestone = await findMilestone({
-    version,
-    github,
-    owner,
-    repo,
-    state: milestoneStatus,
-  });
-
-  if (!milestone) {
-    return [];
-  }
-
-  const issueStates = state === "closed" ? ["CLOSED"] : ["OPEN"];
-  const prStates = state === "closed" ? ["MERGED", "CLOSED"] : ["OPEN"];
-
-  const [issueNodes, prNodes] = await Promise.all([
-    getMilestoneItems({
-      owner,
-      repo,
-      milestoneNumber: milestone.number,
-      connection: "issues",
-      states: issueStates,
-    }),
-    getMilestoneItems({
-      owner,
-      repo,
-      milestoneNumber: milestone.number,
-      connection: "pullRequests",
-      states: prStates,
-    }),
-  ]);
-
-  // map results of getMilestoneItems to Issue type
-  const toIssue = (n: MilestoneItemNode, isPR: boolean): Issue => ({
-    number: n.number,
-    node_id: n.id,
-    title: n.title,
-    html_url: n.url,
-    body: n.body ?? "",
-    pull_request: isPR ? { html_url: n.url } : undefined,
-    milestone,
-    labels: n.labels.nodes.map((l) => ({ name: l.name })),
-    assignee: n.assignees.nodes[0] ? { login: n.assignees.nodes[0].login } : null,
-    created_at: n.createdAt,
-  });
-
-  return [
-    ...issueNodes.map((n) => toIssue(n, false)),
-    ...prNodes.map((n) => toIssue(n, true)),
-  ];
 };
 
 export const hasBeenReleased = async ({

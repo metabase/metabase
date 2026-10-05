@@ -477,57 +477,23 @@ jobs:
         uses: ./.github/actions/prepare-release-scripts
       - name: Publish draft release notes to github
         uses: actions/github-script@v9
-        env:
-          # required by getMilestoneIssues to configure GraphQL client
-          GITHUB_TOKEN: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
         with:
           github-token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
           result-encoding: string
           script: | # js
-            const {
-              publishRelease,
-              getCanonicalVersion,
-              getGenericVersion,
-              getMilestoneIssues,
-              getWebsiteChangelog,
-              getMajorVersion
-            } = require('${{ github.workspace }}/release/dist/index.cjs');
+            const { publishRelease } = require('${{ github.workspace }}/release/dist/index.cjs');
 
-            const version = '${{ inputs.version }}';
-
-            const issues = await getMilestoneIssues({
-              version,
-              github,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-            });
-
-            // github releases page
             await publishRelease({
               github,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              version,
+              version: '${{ inputs.version }}',
             }).then(() => {
               console.log('Successfully published release notes', '${{ inputs.version }}');
             }).catch((err) => {
               console.error('Failed to publish release notes', '${{ inputs.version }}', err);
               process.exit(1);
             });
-
-            // website changelog
-            const changelogText = getWebsiteChangelog({ version, issues });
-
-            await github.rest.repos.createDispatchEvent({
-              owner: context.repo.owner,
-              repo: '${{ vars.WEBSITE_REPO }}',
-              event_type: 'update-changelog',
-              client_payload: {
-                version: getGenericVersion(version),
-                majorVersion: getMajorVersion(version),
-                text: changelogText,
-              }
-            }).catch(console.warn);
 
   publish-version-info:
     if: ${{ needs.check-version.outputs.kind == 'minor' || needs.check-version.outputs.kind == 'major' }}

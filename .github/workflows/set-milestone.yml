@@ -117,17 +117,3 @@ jobs:
               commitMessages: commitMessages,
               ignoreExistingMilestones: true,
             });
-
-      # Fresh-cut only: now that the milestone is populated, dispatch
-      # release-notes-preview to post the markdown to #writing.
-      # Manual workflow_dispatch backfills skip this — they're for catching
-      # missed commits, not for pinging writers again.
-      - name: Trigger release notes preview for the writing team
-        if: ${{ github.event_name == 'push' && github.event.created == true }}
-        env:
-          GH_TOKEN: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
-        run: |
-          gh workflow run release-notes-preview.yml \
-            -f version=v0.${{ steps.version.outputs.major }}.0 \
-            -f slackChannel=writing \
-            --repo "${{ github.repository }}"
