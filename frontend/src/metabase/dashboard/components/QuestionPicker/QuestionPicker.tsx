@@ -160,6 +160,7 @@ export function QuestionPicker({ onSelect }: QuestionPickerProps) {
                   <SelectList.Item
                     key={collection.id}
                     id={collection.id}
+                    classNames={{ label: S.collectionLabel }}
                     name={collection.name}
                     icon={{
                       ...icon,
