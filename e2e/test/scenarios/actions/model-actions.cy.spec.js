@@ -310,19 +310,20 @@ describe(
         const IMPLICIT_ACTION_NAME = "Update";
 
         cy.get("@writableModelId").then((modelId) => {
-          H.createAction({
-            ...SAMPLE_WRITABLE_QUERY_ACTION,
-            model_id: modelId,
-          });
           cy.visit(`/model/${modelId}/detail/actions`);
           cy.wait("@getModel");
         });
 
-        cy.findByTestId("model-actions-header")
-          .findByLabelText("Actions")
-          .click();
-        H.popover().findByText("Create basic actions").click();
-        cy.wait(["@createAction", "@createAction", "@createAction"]);
+        createBasicActions();
+
+        cy.get("@writableModelId").then((modelId) => {
+          H.createAction({
+            ...SAMPLE_WRITABLE_QUERY_ACTION,
+            model_id: modelId,
+          });
+        });
+        cy.reload();
+        cy.wait("@getModel");
 
         enableSharingFor(SAMPLE_WRITABLE_QUERY_ACTION.name, {
           publicUrlAlias: "queryActionPublicUrl",
