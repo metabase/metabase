@@ -518,6 +518,21 @@
                         :model/Segment (metabot.db/segment-table-id id))]
     (check-table-resource-database table-id)))
 
+(defn- usable-metrics
+  "The `metrics` embedded in a table's or card's details that a `metric/{id}` read would serve: curated ones, and
+   uncurated ones whose definition passes the curation rule (see [[curation/curated-metric?]])."
+  [metrics]
+  (let [curated (curation/curated-ids (map (fn [{:keys [id]}] ["card" id]) metrics))]
+    (filterv (fn [{:keys [id]}] (or (contains? curated ["card" id]) (curation/curated-metric? id))) metrics)))
+
+(defn- keep-usable-metrics
+  "Under [[shared/curated-only?]], drop from a details `result` the embedded metrics `metric/{id}` would deny, so a
+   curated table or model doesn't name metrics this Metabot may not use."
+  [result]
+  (cond-> result
+    (and (shared/curated-only?) (seq (get-in result [:structured-output :metrics])))
+    (update-in [:structured-output :metrics] usable-metrics)))
+
 (defn- table-details
   "Shared `entity-details/get-table-details` call for both /table/{id} and /table/{id}/fields.
    `entity-type` is :table, :model, or :question."
@@ -525,13 +540,14 @@
   (case entity-type
     :table (check-table-resource-database id)
     (:model :question) (check-card-resource-database id))
-  (entity-details/get-table-details {:entity-type          entity-type
-                                     :entity-id            id
-                                     :with-fields?         with-fields?
-                                     :with-field-values?   false
-                                     :with-related-tables? (= entity-type :table)
-                                     :with-measures?       true
-                                     :with-segments?       true}))
+  (keep-usable-metrics
+   (entity-details/get-table-details {:entity-type          entity-type
+                                      :entity-id            id
+                                      :with-fields?         with-fields?
+                                      :with-field-values?   false
+                                      :with-related-tables? (= entity-type :table)
+                                      :with-measures?       true
+                                      :with-segments?       true})))
 
 (defn- fetch-table [id-str]
   (table-details :table (parse-long id-str) false))

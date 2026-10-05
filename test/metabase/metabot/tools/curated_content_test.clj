@@ -290,6 +290,49 @@
                                       #(:errors (:structured-output
                                                  (metadata-tools/get-metadata {:table-ids [inactive]}))))))))))))
 
+(deftest curated-entity-details-list-only-usable-metrics-test
+  (testing "a curated table's or model's details list only the metrics this Metabot may use: a metric on curated
+            ORDERS (or on a verified model over it) that joins raw REVIEWS fails the rule, so metric/{id} denies it and
+            table/{ORDERS} and model/{id} must not list it; a metric that passes the rule stays listed"
+    (mt/with-current-user (mt/user->id :crowberto)
+      (mt/with-temp [:model/Card {good-metric :id} {:type          :metric
+                                                    :name          "orders count"
+                                                    :dataset_query (count-metric-query (orders-query))}
+                     :model/Card {bad-metric :id} {:type          :metric
+                                                   :name          "orders joined to raw reviews"
+                                                   :dataset_query (count-metric-query
+                                                                   (orders-joined-query :reviews :product_id :product_id))}
+                     :model/Card {model-id :id} {:type :model :name "verified orders model"
+                                                 :dataset_query (orders-query)}
+                     :model/Metabot {metabot-id :entity_id} {:name "curated metabot" :use_verified_content true}]
+        (verify-card! model-id)
+        (let [mp         (mt/metadata-provider)
+              on-model   (lib/query mp (lib.metadata/card mp model-id))
+              product-id (some #(when (= "PRODUCT_ID" (:name %)) %) (lib/returned-columns on-model))]
+          (mt/with-temp [:model/Card {bad-model-metric :id}
+                         {:type          :metric
+                          :name          "model joined to raw reviews"
+                          :dataset_query (count-metric-query
+                                          (lib/join on-model
+                                                    (lib/join-clause (lib.metadata/table mp (mt/id :reviews))
+                                                                     [(lib/= product-id
+                                                                             (lib.metadata/field mp (mt/id :reviews :product_id)))])))}]
+            (mt/with-temp-vals-in-db :model/Table (mt/id :orders) {:is_published true :data_layer :final}
+              (let [listed (fn [uri]
+                             (let [so (get-in (first (read-uris metabot-id :internal uri))
+                                              [:content :structured-output])]
+                               (is (map? so) uri)
+                               (into #{} (map :id) (:metrics so))))]
+                (testing "the failing metrics themselves are denied"
+                  (is (denied? (first (read-uris metabot-id :internal (str "metabase://metric/" bad-metric)))))
+                  (is (denied? (first (read-uris metabot-id :internal (str "metabase://metric/" bad-model-metric))))))
+                (testing "table/{ORDERS} lists the passing metric and not the failing one"
+                  (let [ids (listed (str "metabase://table/" (mt/id :orders)))]
+                    (is (contains? ids good-metric))
+                    (is (not (contains? ids bad-metric)))))
+                (testing "model/{id} doesn't list the failing metric defined on it"
+                  (is (not (contains? (listed (str "metabase://model/" model-id)) bad-model-metric))))))))))))
+
 (deftest read-resource-curated-only-recents-test
   (testing "recent items (which carry keyword models) are filtered like any other list"
     (mt/with-current-user (mt/user->id :crowberto)
