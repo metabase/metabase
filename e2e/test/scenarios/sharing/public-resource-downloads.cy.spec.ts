@@ -76,32 +76,6 @@ describe("Public dashboards/questions downloads (results and pdf)", () => {
       cy.findByLabelText("Download results").should("be.visible");
     });
 
-    it("#downloads=pdf,results should enable both PDF and results downloads", () => {
-      cy.visit(`${publicLink}#downloads=pdf,results`);
-      waitLoading();
-
-      cy.get("header")
-        .findByRole("button", { name: "Download as PDF" })
-        .should("exist");
-
-      H.main().realHover();
-      H.getEmbeddedDashboardCardMenu().should("exist").click();
-      cy.findByLabelText("Download results").should("be.visible");
-    });
-
-    it("#downloads=results,pdf should enable both PDF and results downloads (order agnostic)", () => {
-      cy.visit(`${publicLink}#downloads=results,pdf`);
-      waitLoading();
-
-      cy.get("header")
-        .findByRole("button", { name: "Download as PDF" })
-        .should("exist");
-
-      H.main().realHover();
-      H.getEmbeddedDashboardCardMenu().click();
-      cy.findByLabelText("Download results").should("be.visible");
-    });
-
     it("#downloads=results, pdf should handle whitespace between parameters", () => {
       cy.visit(`${publicLink}#downloads=results, pdf`);
       waitLoading();

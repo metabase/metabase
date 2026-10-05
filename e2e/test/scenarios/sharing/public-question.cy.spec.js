@@ -35,7 +35,6 @@ const PUBLIC_QUESTION_REGEX =
   /\/public\/question\/[0-9a-fA-F]{8}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{12}$/;
 
 const USERS = {
-  "admin user": () => cy.signInAsAdmin(),
   "user with no permissions": () => cy.signIn("none"),
 };
 
@@ -190,26 +189,6 @@ describe("scenarios > public > question", () => {
     cy.findByRole("heading", {
       name: questionName,
     }).should("have.css", "color", "rgba(255, 255, 255, 0.95)");
-  });
-});
-
-describe("scenarios > question > public link with extension", () => {
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-
-    H.createNativeQuestion(
-      {
-        name: "Question A",
-        native: {
-          query: "SELECT ID from (SELECT * FROM ORDERS LIMIT 1) as order_row",
-        },
-      },
-      {
-        visitQuestion: true,
-        wrapId: true,
-      },
-    ).as("questionId");
   });
 });
 

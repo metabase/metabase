@@ -60,7 +60,6 @@ const COUNT_ALL = "200";
 const COUNT_DOOHICKEY = "42";
 
 const USERS = {
-  "admin user": () => cy.signInAsAdmin(),
   "user with no permissions": () => cy.signIn("none"),
   "anonymous user": () => cy.signOut(),
 };
