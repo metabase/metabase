@@ -16,6 +16,7 @@
    [metabase.metabot.agent.profiles :as profiles]
    [metabase.metabot.persistence :as metabot.persistence]
    [metabase.metabot.self :as self]
+   [metabase.metabot.self.claude :as claude]
    [metabase.metabot.self.core :as self.core]
    [metabase.metabot.self.openrouter :as openrouter]
    [metabase.metabot.test-util :as mut]
@@ -898,6 +899,38 @@
                 "Should get the response from the successful retry")
             (is (= 2 @call-count)
                 "Should have called LLM twice (1 failure + 1 success")))))))
+
+(deftest provider-failure-error-part-test
+  (let [credit-error (ex-info "Anthropic API error (HTTP 400)"
+                              {:status     400
+                               :body       {:type  "error"
+                                            :error {:type    "invalid_request_error"
+                                                    :message "Your credit balance is too low to access the Anthropic API."}}
+                               :api-error  true
+                               :provider   "anthropic"
+                               :error-code :provider-api-error})
+        error-parts  (fn [model-ref]
+                       (mt/with-temporary-setting-values [llm-providers        llm.tu/default-connections
+                                                          llm-metabot-provider model-ref]
+                         (mt/with-dynamic-fn-redefs [claude/claude (fn [_] (throw credit-error))]
+                           (mt/with-log-level [metabase.metabot.agent.core :fatal]
+                             (filterv #(= :error (:type %))
+                                      (agent/run-agent-loop {:messages   [{:role :user :content "Hi"}]
+                                                             :state      {}
+                                                             :profile-id :embedding_next
+                                                             :context    {}}))))))]
+    (testing "on the customer's own key, the error part says what to fix instead of passing the provider's text on"
+      (is (=? [{:error {:error-code "ai_provider_billing" :message #"Anthropic rejected the request .*"}}]
+              (mt/as-admin (error-parts "anthropic/claude-sonnet-4-6"))))
+      (is (=? [{:error {:error-code "ai_provider_billing" :message #"The AI provider rejected the request .*"}}]
+              (mt/with-current-user (mt/user->id :rasta)
+                (error-parts "anthropic/claude-sonnet-4-6")))))
+    (testing "on the managed provider, the error part keeps today's generic shape"
+      (is (= [{:type  :error
+               :error {:message (ex-message credit-error)
+                       :type    (str (type credit-error))
+                       :data    (ex-data credit-error)}}]
+             (mt/as-admin (error-parts "metabase/anthropic/claude-sonnet-4-6")))))))
 
 ;;; ===================== Prometheus Metrics Tests =====================
 
