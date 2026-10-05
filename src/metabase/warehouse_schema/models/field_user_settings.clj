@@ -121,6 +121,15 @@
       ;; It's too short, so no schema. Shift them over and add a nil schema.
       [db nil schema table])))
 
+(def ^:private dimensions-transform
+  "The nested Dimensions of a FieldUserSettings, left alone on import when the entry has no `dimensions` key."
+  (update (serdes/nested :model/Dimension :field_id {:sort-by (juxt :name :created_at)})
+          :import-with-context
+          (fn [import-dimensions]
+            (fn [current k dimensions]
+              (when (some? dimensions)
+                (import-dimensions current k dimensions))))))
+
 (defmethod serdes/make-spec "FieldUserSettings" [_model-name _opts]
   {:copy      [:semantic_type :description :display_name :visibility_type
                :has_field_values :effective_type :coercion_strategy :caveats
@@ -130,7 +139,7 @@
                :semantic_type_set      false
                :fk_target_field_id_set false}
    :transform {:created_at   (serdes/date)
-               :dimensions   (serdes/nested :model/Dimension :field_id {:sort-by (juxt :name :created_at)})
+               :dimensions   dimensions-transform
                :fk_target_field_id (serdes/fk :model/Field)
                :field_id     {::serdes/fk true
                               :export     (constantly ::serdes/skip)

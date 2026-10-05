@@ -457,6 +457,16 @@
         table               (serdes/load-find-local table-path)]
     (warehouse-schema.db/field-in-path (:id table) (map :id (reverse fields)))))
 
+(def ^:private legacy-dimensions
+  "The Dimensions a Field file carried before they moved to its FieldUserSettings."
+  (serdes/nested :model/Dimension :field_id {}))
+
+(defmethod serdes/load-one! "Field" [ingested maybe-local]
+  (let [field (serdes/default-load-one! ingested maybe-local)]
+    (when-let [dimensions (not-empty (:dimensions ingested))]
+      ((:import-with-context legacy-dimensions) field :dimensions dimensions))
+    field))
+
 (defmethod serdes/deserialization-dependencies "Field" [field]
   (let [db-path (first (serdes/path field))]
     #{[db-path]}))

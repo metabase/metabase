@@ -166,11 +166,24 @@
     (cond-> [[db-path]]
       (:collection_id tus) (conj [{:model "Collection" :id (:collection_id tus)}]))))
 
+(defn- listed-field-ids
+  "The ids of the local Fields the FieldUserSettings entries in `fields` belong to."
+  [fields]
+  (into [] (keep #(:id (serdes/load-find-local (pop (serdes/path %))))) fields))
+
 (defmethod serdes/load-one! "TableUserSettings" [ingested maybe-local]
-  (let [settings (serdes/default-load-one! ingested maybe-local)]
+  (let [settings (serdes/default-load-one! ingested maybe-local)
+        fields   (:fields ingested)]
     (when (:field_order ingested)
       (table/update-field-positions! (warehouse-schema.db/table (:table_id settings))))
+    (when (and (seq fields) (every? #(contains? % :dimensions) fields))
+      (when-let [field-ids (not-empty (listed-field-ids fields))]
+        (warehouse-schema.db/delete-dimensions-for-table-except-fields! (:table_id settings) field-ids)))
     settings))
+
+(defmethod serdes/load-update! "TableUserSettings" [model-name ingested local]
+  (or ((get-method serdes/load-update! :default) model-name ingested local)
+      (t2/instance :model/TableUserSettings {:table_id (:table_id local)})))
 
 (defmethod serdes/load-find-local "TableUserSettings" [path]
   (let [found-table (serdes/load-find-local (pop path))]
@@ -204,7 +217,7 @@
                                                       (serdes/*import-table-fk* (table-path->table-ref (serdes/path current))))}
                :fields        (serdes/nested :model/FieldUserSettings :table_id
                                              {:sort-by          :field_name
-                                              :delete-children! warehouse-schema.db/delete-field-user-settings-and-dimensions-for-table!})}})
+                                              :delete-children! warehouse-schema.db/delete-field-user-settings-for-table!})}})
 
 (def ^:private table-user-settings-slug "___tableusersettings")
 

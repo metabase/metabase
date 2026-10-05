@@ -252,6 +252,32 @@
             (testing "a Dimension the export no longer has is deleted"
               (is (not (t2/exists? :model/Dimension :field_id (:id stale)))))))))))
 
+(deftest dimension-import-compatibility-test
+  (mt/with-empty-h2-app-db!
+    (let [db        (ts/create! :model/Database :name "my-db")
+          table     (ts/create! :model/Table :name "customers" :db_id (:id db))
+          email     (ts/create! :model/Field :name "email" :table_id (:id table))
+          dimension (ts/create! :model/Dimension :field_id (:id email) :name "Email" :type :internal)
+          tus       (first (serdes/extract-all "TableUserSettings" {:filter-column :table_id
+                                                                    :filter-ids    [(:id table)]}))
+          load!     (fn [entities] (serdes.load/load-metabase! (ingestion-in-memory entities)))]
+      (testing "re-importing a Dimension keeps its id"
+        (load! [tus])
+        (is (= (:id dimension) (t2/select-one-pk :model/Dimension :field_id (:id email)))))
+      (testing "a settings file written before Dimensions moved under FieldUserSettings leaves them alone"
+        (load! [(update tus :fields (partial mapv #(dissoc % :dimensions)))])
+        (is (= (:id dimension) (t2/select-one-pk :model/Dimension :field_id (:id email)))))
+      (testing "a Field file written before Dimensions moved still imports its Dimensions"
+        (t2/delete! :model/Dimension :field_id (:id email))
+        (load! [(assoc (ts/extract-one "Field" (:id email)) :dimensions (:dimensions (first (:fields tus))))])
+        (is (= "Email" (t2/select-one-fn :name :model/Dimension :field_id (:id email)))))
+      (testing "a local settings row holding only a flag is cleared without stopping the import"
+        (t2/insert! :model/TableUserSettings {:table_id (:id table) :description nil :description_set true})
+        (t2/delete! :model/Dimension :field_id (:id email))
+        (load! [tus])
+        (is (not (t2/exists? :model/TableUserSettings :table_id (:id table))))
+        (is (= "Email" (t2/select-one-fn :name :model/Dimension :field_id (:id email))))))))
+
 (deftest escape-continue-on-error-roundtrip-test
   (testing "archive exported past escape analysis imports under continue-on-error without crashing (#74622)"
     (let [serialized  (atom nil)

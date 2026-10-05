@@ -326,16 +326,28 @@
                      :from   [(warehouse-schema-overlay/field-query {:alias :f, :user-settings? false})]
                      :where  [:and [:= :f.table_id :t.id] (field-has-user-settings :f)]}]]]})))
 
-(mu/defn delete-field-user-settings-and-dimensions-for-table!
-  "Delete the FieldUserSettings and Dimensions of the Fields of the ::warehouse-schema.schema/table with `table-id`,
-  returning the number of FieldUserSettings deleted."
+(mu/defn delete-field-user-settings-for-table!
+  "Delete the FieldUserSettings of the Fields of the ::warehouse-schema.schema/table with `table-id`, returning the
+  number deleted."
   [table-id :- ::lib.schema.id/table]
-  (let [of-table [:exists ^:allow-subquery
-                  {:select 1
-                   :from   [[(t2/table-name :model/Field) :f]]
-                   :where  [:and [:= :f.id :field_id] [:= :f.table_id table-id]]}]]
-    (t2/delete! :model/Dimension {:where of-table})
-    (t2/delete! :model/FieldUserSettings {:where of-table})))
+  (t2/delete! :model/FieldUserSettings
+              {:where [:exists ^:allow-subquery
+                       {:select 1
+                        :from   [[(t2/table-name :model/Field) :f]]
+                        :where  [:and [:= :f.id :field_id] [:= :f.table_id table-id]]}]}))
+
+(mu/defn delete-dimensions-for-table-except-fields!
+  "Delete the Dimensions of the Fields of the ::warehouse-schema.schema/table with `table-id` other than `field-ids`,
+  returning the number deleted."
+  [table-id  :- ::lib.schema.id/table
+   field-ids :- [:sequential {:min 1} ::lib.schema.id/field]]
+  (t2/delete! :model/Dimension
+              {:where [:and
+                       [:not-in :field_id field-ids]
+                       [:exists ^:allow-subquery
+                        {:select 1
+                         :from   [[(t2/table-name :model/Field) :f]]
+                         :where  [:and [:= :f.id :field_id] [:= :f.table_id table-id]]}]]}))
 
 ;;; ---------------------------------------------- FieldValues ----------------------------------------------
 
