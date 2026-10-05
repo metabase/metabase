@@ -120,7 +120,7 @@
  {:name            :embedding_next
   :prompt-template "embedding-next.selmer"
   :max-iterations  15
-  :system-prompt-context embedding-system-prompt-context
+  :system-prompt-context #'embedding-system-prompt-context
   :tools           [#'tools/nlq-search-tool
                     #'tools/read-resource-tool
                     #'tools/construct-notebook-query-tool

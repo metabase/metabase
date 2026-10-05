@@ -161,8 +161,9 @@
 
   `tools` is the active tool registry (name -> tool). The SQL dialect skill is preloaded only when it
   contains a SQL-writing tool: the dialect body is SQL-writing guidance, and a profile without those
-  tools (e.g. `:embedding_next` with the native editor open in a full-app embed) is told never to write
-  SQL, so preloading would contradict its prompt. The 2-arity has no tools and never preloads.
+  tools (e.g. `:embedding_next` with the native editor open in a full-app embed) has no tool that could
+  act on it, and its prompt makes no SQL promise the preload would have to back. The 2-arity has no
+  tools and never preloads.
 
   Each LLM adapter converts this to its own wire format."
   ([context memory]

@@ -1413,3 +1413,36 @@
                              :context         {}
                              :conversation_id (str (random-uuid))
                              :state           {}}))))
+
+(defn- embedded-system-prompt-for
+  "The system prompt the LLM receives for an `embedding_next` turn sent with `headers` and `context`."
+  [headers context]
+  (let [requests (atom [])]
+    (with-captured-llm-requests!
+      requests "ok"
+      (fn []
+        (mt/user-http-request :rasta :post 202 "metabot/agent-streaming"
+                              {:request-options {:headers headers}}
+                              {:message         "show me orders as SQL"
+                               :context         context
+                               :conversation_id (str (random-uuid))
+                               :profile_id      "embedding_next"
+                               :state           {}})))
+    (:system (last @requests))))
+
+(deftest embedding-host-app-header-reaches-prompt-test
+  (testing "SDK header: host-app Scope text, no hand-off"
+    (let [s (embedded-system-prompt-for {"x-metabase-client" "embedding-sdk-react"} {})]
+      (is (str/includes? s "Never write SQL"))
+      (is (not (str/includes? s "direct the user to the SQL editor")))))
+  (testing "modular embedding header: host-app Scope text"
+    (is (str/includes? (embedded-system-prompt-for {"x-metabase-client" "embedding-simple"} {})
+                       "Never write SQL")))
+  (testing "full-app iframe header: the hand-off stays"
+    (is (str/includes? (embedded-system-prompt-for {"x-metabase-client" "embedding-iframe-full-app"} {})
+                       "direct the user to the SQL editor")))
+  (testing "a client-sent in_host_app is overridden by the server in both directions"
+    (is (str/includes? (embedded-system-prompt-for {} {:in_host_app true})
+                       "direct the user to the SQL editor"))
+    (is (str/includes? (embedded-system-prompt-for {"x-metabase-client" "embedding-sdk-react"} {:in_host_app false})
+                       "Never write SQL"))))

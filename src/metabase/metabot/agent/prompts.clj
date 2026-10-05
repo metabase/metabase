@@ -171,7 +171,11 @@
             has-nlq?             (= :yes (:permission/metabot-nlq perms))
             template-context     {:metabot_name              (metabot.settings/metabot-name)
                                   :sql_dialect              sql-dialect
-                                  :sql_dialect_loaded       (some? (skills/dialect-skill sql-dialect))
+                                  ;; Must agree with the preload gate in `messages/build-message-history`: the
+                                  ;; template says the dialect skill "has already been loaded", which is only
+                                  ;; true when a SQL-writing tool is active.
+                                  :sql_dialect_loaded       (and (sql-generation-tools? tools)
+                                                                 (some? (skills/dialect-skill sql-dialect)))
                                   ;; `not-empty` so an empty catalog is nil (falsy) — Selmer treats
                                   ;; an empty vector as truthy, which would render the "# Available
                                   ;; skills … load the skill(s) you need" header with nothing to

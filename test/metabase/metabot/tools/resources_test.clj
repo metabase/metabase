@@ -1511,3 +1511,11 @@
           (is (str/includes? output "VISIBLE-DOC"))
           (is (not (str/includes? output "SUMMARY-DOC"))
               "a Summary document is reachable only through its exploration, so it must not be listed"))))))
+
+(deftest read-resource-table-output-does-not-presuppose-sql-test
+  (testing "read_resource on ORDERS (FKs to PEOPLE and PRODUCTS) as the embedded profile would call it"
+    (mt/with-test-user :crowberto
+      (let [output (:output (read-resource/read-resource-tool
+                             {:uris [(str "metabase://table/" (mt/id :orders))]}))]
+        (is (str/includes? output "### Related Tables") "premise: ORDERS renders related tables")
+        (is (not (re-find #"(?i)for SQL queries" output)))))))

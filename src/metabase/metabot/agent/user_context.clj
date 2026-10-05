@@ -202,11 +202,15 @@
    :query-str   (metabot.u/extract-sql-content query)})
 
 (defn- format-native-query
-  "Format viewing `item`"
+  "Format viewing `item`. In a host app (`:in_host_app`, stamped on the item by
+  [[format-viewing-context]]) there is no SQL editor, so the item is described as a query the user is
+  looking at rather than an editor they are in."
   [item]
   (let [{:keys [database-id query-str]} (native-query-details (:query item))]
     (te/lines
-     "The user is currently in the SQL editor."
+     (if (:in_host_app item)
+       "The user is currently looking at a SQL query."
+       "The user is currently in the SQL editor.")
      (when (:id item)
        (te/field "Query ID" (:id item)))
      (te/field "Current SQL query" (te/code query-str "sql"))
@@ -292,8 +296,8 @@
   "Format user's current viewing context.
 
   Handles different context types:
-  - adhoc: Notebook query editor
-  - native: SQL editor with schema context
+  - adhoc: Notebook query editor, or the SQL editor when the query is native (described as a query the
+    user is looking at when the context carries the server-set `:in_host_app`)
   - code_editor: Code editor buffers with cursor position
   - table/model/question/metric/dashboard: Entity details
 
@@ -302,7 +306,9 @@
   (str/join "\n\n"
             (for [item (:user_is_viewing context)]
               (try
-                (format-entity item)
+                ;; The server-decided host-app flag travels with each item so native items can be
+                ;; described without naming an editor that does not exist there.
+                (format-entity (cond-> item (:in_host_app context) (assoc :in_host_app true)))
                 (catch Exception e
                   (log/error "Error formatting viewing context item:" (:type item) (ex-message e))
                   "")))))
