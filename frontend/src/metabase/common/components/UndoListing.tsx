@@ -1,6 +1,6 @@
 import {
-  type ComponentProps,
   type CSSProperties,
+  type ComponentProps,
   type FocusEvent,
   Fragment,
   type ReactNode,
