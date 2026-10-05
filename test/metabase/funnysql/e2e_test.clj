@@ -31,9 +31,5 @@
     (appdb.scoring/scorers search-ctx (zipmap search.spec/search-models (repeat 0.5)))
     (appdb.query/base-filtered-query :search_index search-ctx (:search-string search-ctx) [:legacy_input])))
 
-(comment
-  (binding [*print-meta* true]
-    (clojure.pprint/pprint (search-hsql))))
-
 (deftest ^:parallel compile-hairball-search-query-test
   (is (some? (funnysql/format (search-hsql) (app-db/db-type)))))
