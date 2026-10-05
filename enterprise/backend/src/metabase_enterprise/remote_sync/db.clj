@@ -673,14 +673,15 @@
 
 (mu/defn last-successful-task
   "The newest finished RemoteSyncTask that was neither cancelled, failed, nor ended in conflict and recorded a
-  version, or nil. A conflict task records the version it conflicted against but synced nothing; counting it would
-  make a retry, merge included, blind to the remote's changes."
+  version, or nil."
   []
   (t2/select-one :model/RemoteSyncTask
                  {:where    [:and
                              [:<> nil :ended_at]
                              [:= false :cancelled]
                              [:= nil :error_message]
+                             ;; a conflict task records the version it conflicted against; counting it as the base
+                             ;; would hide the remote's changes from a retry, merge included
                              [:= nil :conflicts]
                              [:<> nil :version]]
                   :limit    1
