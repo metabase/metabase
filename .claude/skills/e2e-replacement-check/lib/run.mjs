@@ -2,6 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 
 import { prepareBreaks } from "./breaks.mjs";
+import { testFileFor } from "./clj-existing.mjs";
 import { gitDir, porcelain, unifiedDiff } from "./git.mjs";
 import { createGuard, installInterruptHandlers, refuseUncommitted } from "./guard.mjs";
 import { deftestObservation, jestObservation, judge, observed } from "./judge.mjs";
@@ -111,27 +112,6 @@ function multisetDiff(after, before) {
     }
     return n === 0;
   });
-}
-
-function testSourceFor(root, file) {
-  const candidates = [];
-  if (file.startsWith("src/")) {
-    candidates.push(file.replace(/^src\//, "test/"));
-  }
-  if (file.startsWith("enterprise/backend/src/")) {
-    candidates.push(file.replace(/^enterprise\/backend\/src\//, "enterprise/backend/test/"));
-  }
-  const driver = file.match(/^(modules\/drivers\/[^/]+)\/src\/(.*)$/);
-  if (driver) {
-    candidates.push(`${driver[1]}/test/${driver[2]}`);
-  }
-  for (const c of candidates) {
-    const test = c.replace(/\.(clj|cljc)$/, "_test.$1");
-    if (fs.existsSync(path.join(root, test))) {
-      return test;
-    }
-  }
-  return null;
 }
 
 export async function runCheck({ root, scope, raw, outDir, options, log }) {
@@ -361,7 +341,7 @@ export async function runCheck({ root, scope, raw, outDir, options, log }) {
     }
     const prIds = prDeftests.map((d) => d.id);
     const driverOf = (f) => f.match(/^modules\/drivers\/([^/]+)\/test\//)?.[1] ?? null;
-    const relatedTests = (b) => b.changes.map((c) => testSourceFor(root, c.file)).filter(Boolean);
+    const relatedTests = (b) => b.changes.map((c) => testFileFor(root, c.file)).filter(Boolean);
     const relatedFor = (b) =>
       uniq(
         relatedTests(b)

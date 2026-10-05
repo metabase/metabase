@@ -3,7 +3,7 @@ export const USAGE = `Usage:
   node .claude/skills/e2e-replacement-check/check.mjs run     [--base <ref>] [--out <dir>] [--breaks <file>]
                                                               [--auto] [--auto-limit 25] [--backend-limit 2]
                                                               [--no-related] [--related-limit 10] [--no-type-check]
-  node .claude/skills/e2e-replacement-check/check.mjs existing [<source or spec path>] [--base <ref>]
+  node .claude/skills/e2e-replacement-check/check.mjs existing [<component, namespace or test path>] [--base <ref>]
   node .claude/skills/e2e-replacement-check/check.mjs restore
 
 See .claude/skills/e2e-replacement-check/README.md.`;

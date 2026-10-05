@@ -3,13 +3,14 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 
-import { branchName, gitDir, headSha, isIgnored, repoRoot, resolveBase } from "./lib/git.mjs";
+import { branchName, changedFiles, gitDir, headSha, isIgnored, repoRoot, resolveBase } from "./lib/git.mjs";
 import { createGuard } from "./lib/guard.mjs";
 import { USAGE, parseArgs } from "./lib/options.mjs";
 import { detailsReport, prReport } from "./lib/report.mjs";
 import { runCheck } from "./lib/run.mjs";
+import { cljExistingForPath, cljExistingForPr } from "./lib/clj-existing.mjs";
 import { existingForPath, existingForPr } from "./lib/existing.mjs";
-import { computeScope, loadTypescript, perSpecHint } from "./lib/scope.mjs";
+import { computeScope, deftestScope, loadTypescript, perSpecHint } from "./lib/scope.mjs";
 
 function outDirFor(root, opts) {
   const dir = opts.out
@@ -101,16 +102,23 @@ async function main() {
         if (!fs.existsSync(path.join(root, rel))) {
           throw new Error(`${target} doesn't exist`);
         }
-        results.push(await existingForPath({ ts, root, target: rel }));
+        results.push(/\.cljc?$/.test(rel) ? cljExistingForPath({ root, target: rel }) : await existingForPath({ ts, root, target: rel }));
       }
     } else {
       const { mergeBase } = resolveBase(root, opts.base);
-      results.push(await existingForPr({ ts, root, mergeBase }));
+      const jest = await existingForPr({ ts, root, mergeBase });
+      const deftests = deftestScope(root, mergeBase, changedFiles(root, mergeBase));
+      const sides = [...(jest.none ? [] : [["Jest specs", jest]]), ...(deftests.length ? [["Deftests", cljExistingForPr({ root, deftests })]] : [])];
+      if (!sides.length) {
+        results.push({ text: "This branch adds or changes no jest specs or deftests.", ms: jest.ms });
+      }
+      for (const [heading, r] of sides) {
+        results.push(sides.length > 1 ? { ...r, text: `${heading}\n\n${r.text}` } : r);
+      }
     }
-    for (const r of results) {
-      console.log(r.text);
-    }
-    console.log(`\nTook ${(results.reduce((n, r) => n + r.ms, 0) / 1000).toFixed(1)} s.`);
+    console.log(results.map((r) => r.text).join("\n\n"));
+    const ms = results.reduce((n, r) => n + r.ms, 0);
+    console.log(`\nTook ${ms < 1000 ? `${ms} ms` : `${(ms / 1000).toFixed(1)} s`}.`);
     return;
   }
   if (opts.command !== "scope" && opts.command !== "run") {

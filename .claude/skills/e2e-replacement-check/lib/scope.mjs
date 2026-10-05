@@ -235,7 +235,7 @@ export function parseDeftests(text) {
   return { ns, tests };
 }
 
-function deftestScope(root, mergeBase, changed) {
+export function deftestScope(root, mergeBase, changed) {
   const out = [];
   for (const c of changed.filter((x) => x.status !== "D" && DEFTEST_FILE_RE.test(x.path))) {
     const { ns, tests } = parseDeftests(readWorking(root, c.path));

@@ -27,34 +27,40 @@ It needs what running jest locally needs: frontend dependencies installed and Cl
 
 ## Is there already a spec for this?
 
-`node .claude/skills/e2e-replacement-check/check.mjs existing <component or spec path>` lists the jest specs that import a component, directly or through a test `setup` file, with their test titles. It also lists up to 3 specs that reach the component through other modules and name it in a test title, and counts the rest. Given a spec, it flags tests in that spec that copy, or are the opening steps of, a test in one of those specs. It takes 2 to 10 seconds.
+`node .claude/skills/e2e-replacement-check/check.mjs existing <path>` lists the tests that already cover a frontend component or a Clojure namespace. A `.clj` or `.cljc` path goes to the backend lookup and any other path to the frontend one. With no path, on a PR branch, it does both for every jest spec and deftest the PR adds or changes, and flags duplicates involving the PR's new tests.
 
-Run it before writing a replacement unit test, and add to the spec it lists instead of starting a parallel one. With no path, on a PR branch, it does the same for every jest spec the PR adds or changes, and flags duplicates involving the PR's new tests.
+Run it before writing a replacement unit test, and add to the spec or test namespace it lists instead of starting a parallel one.
 
-On master, given the Login enterprise spec, it prints:
+For a frontend component it lists the jest specs that import it, directly or through a test `setup` file, with their test titles. It also lists up to 3 specs that reach the component through other modules and name it in a test title, and counts the rest. Given a spec, it flags tests in that spec that copy, or are the opening steps of, a test in one of those specs. It takes 2 to 10 seconds.
+
+For a Clojure source file it lists the conventional test file (`src/.../impl.clj` and `test/.../impl_test.clj`, and the same in `enterprise/backend` and `modules/drivers/*`), then the test files whose `ns` form requires the namespace, nearest first. Each file shows up to 12 deftest names, those sharing words with the deftests you're looking at first. After 10 requiring files it counts the rest: `src/metabase/driver.clj` has 165 more. Given a test file, it finds the source by the same convention, or else through the test namespaces it requires, and flags exact copies against the other test files for that source and the test files in the same directory. It takes under a second for a path and about 2 seconds on a PR branch.
+
+On master, given a test file of the Mongo driver, it prints:
 
 ```
-frontend/src/metabase/auth/components/Login/tests/enterprise.unit.spec.tsx tests:
-  frontend/src/metabase/auth/components/Login/Login.tsx
-    frontend/src/metabase/auth/components/Login/tests/common.unit.spec.tsx (4 tests)
-      Login should render a list of auth providers
-      Login should render the panel of the selected provider
-      Login should implicitly select the only provider with a panel
-      Login should not disable password login for OSS
-    frontend/src/metabase/auth/components/Login/tests/premium.unit.spec.tsx (1 tests)
-      Login should disable password login with the 'disable_password_login' token feature
-    1 more spec(s) load it indirectly.
+modules/drivers/mongo/test/metabase/driver/mongo/database_test.clj (metabase.driver.mongo.database-test) has 4 deftests.
+  It tests modules/drivers/mongo/src/metabase/driver/mongo/database.clj (metabase.driver.mongo.database), by naming convention. Other test files for it:
+    modules/drivers/mongo/test/metabase/driver/mongo/connection_test.clj, by require (8 deftests)
+      warehouse-inet-address-resolver-test
+      fqdn?-test
+      srv-conn-str-test
+      srv-connection-properties-test
+      additional-connection-options-test
+      test-ssh-connection
+      hard-password-test
+      application-name-test
 
-Duplicates involving frontend/src/metabase/auth/components/Login/tests/enterprise.unit.spec.tsx:
-  Exact copy: this spec's "Login should not disable password login without the 'disable_password_login' token feature" (frontend/src/metabase/auth/components/Login/tests/enterprise.unit.spec.tsx:7) and existing "Login should not disable password login for OSS" (frontend/src/metabase/auth/components/Login/tests/common.unit.spec.tsx:32)
+Exact copies involving modules/drivers/mongo/test/metabase/driver/mongo/database_test.clj:
+  Exact copy: this file's metabase.driver.mongo.database-test/fqdn?-test (modules/drivers/mongo/test/metabase/driver/mongo/database_test.clj:7) and existing metabase.driver.mongo.connection-test/fqdn?-test (modules/drivers/mongo/test/metabase/driver/mongo/connection_test.clj:50)
 ```
 
-It flags two kinds of duplicate, the two that a scan of every unit test on master found reliable when read by hand:
+It flags the kinds of duplicate that a scan of every unit test on master found reliable when read by hand:
 
-- **Exact copies:** the same body once local names are renumbered, every other name pointing at the same import, and the same `beforeEach` hooks. Bodies under 25 tokens are left out, since one-line checks repeat on purpose.
-- **Prefix pairs:** the same hooks, and one test's statements are the opening statements of another's. The scan checked these within a file. Across files, the command also requires the shorter test's names to point at the same imports.
+- **Exact copies of jest tests:** the same body once local names are renumbered, every other name pointing at the same import, and the same `beforeEach` hooks. Bodies under 25 tokens are left out, since one-line checks repeat on purpose.
+- **Prefix pairs of jest tests:** the same hooks, and one test's statements are the opening statements of another's. The scan checked these within a file. Across files, the command also requires the shorter test's names to point at the same imports.
+- **Exact copies of deftests:** the same body once namespace aliases are expanded, the file's own definitions are qualified with its namespace and `::` keywords are made full. There's no separate rule for drivers or editions: none of the 16 groups of identical deftests on master mixes OSS and enterprise tests, and a test's driver list is part of its body.
 
-It doesn't flag the same body with different imports: in the scan, all 16 of those were forked components. It doesn't flag the same assertion written in two specs either. In #82973 "Replace upload-permission e2e tests with unit coverage" the same "no Upload data button" assertion sits in a `CollectionHeader` test that passes `canUpload` as a prop and a `CollectionContent` test that gets it from the API, and review asked for both. It covers jest specs only, not deftests.
+It doesn't flag the same body with different imports: in the scan, all 16 of those were forked components. It doesn't flag the same assertion written in two specs either. In #82973 "Replace upload-permission e2e tests with unit coverage" the same "no Upload data button" assertion sits in a `CollectionHeader` test that passes `canUpload` as a prop and a `CollectionContent` test that gets it from the API, and review asked for both. On the backend it misses copies between test files that cover different namespaces in different directories.
 
 ## What does a row say?
 

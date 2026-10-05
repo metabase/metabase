@@ -156,7 +156,7 @@ export async function existingForPr({ ts, root, mergeBase }) {
   const cache = new Map();
   const prSpecs = changedFiles(root, mergeBase).filter((c) => c.status !== "D" && SPEC_RE.test(c.path));
   if (!prSpecs.length) {
-    return { text: "This branch adds or changes no jest specs.", ms: Date.now() - started, duplicates: [] };
+    return { none: true, text: "This branch adds or changes no jest specs.", ms: Date.now() - started, duplicates: [] };
   }
   const exclude = new Set(prSpecs.map((c) => c.path));
   const newLines = new Set();

@@ -4,13 +4,13 @@ Paste this into any coding agent running in a Metabase checkout, on the branch o
 
 ## Before writing replacement unit tests
 
-If you're the one replacing the e2e tests, run this for each component you're about to test, before writing anything:
+If you're the one replacing the e2e tests, run this for each component or namespace you're about to test, before writing anything:
 
 ```
-node .claude/skills/e2e-replacement-check/check.mjs existing <component or spec path>
+node .claude/skills/e2e-replacement-check/check.mjs existing <component, namespace or test path>
 ```
 
-It lists the existing jest specs that import the component, with their test titles, and specs that reach it indirectly and name it in a test title. When a spec already tests the component, add your tests to that spec instead of starting a new one, and read its titles first so you don't repeat one.
+For a frontend component it lists the jest specs that import it, with their test titles, and specs that reach it indirectly and name it in a test title. For a Clojure namespace it lists the test files that cover it, by naming convention or by requiring it, with their deftest names. When a spec or test namespace already tests the code, add your tests there instead of starting a new one, and read its test names first so you don't repeat one.
 
 ## 1. Find what the PR deleted
 
@@ -75,7 +75,7 @@ It applies each break, runs the PR's unit tests, and reverts. When nothing fails
 
 Show the user the table from `report.md` as it is. Don't reword the results. A row reading "unmeasured" says why the check couldn't run it.
 
-Then run `node .claude/skills/e2e-replacement-check/check.mjs existing` on the PR branch. Report each exact copy or prefix pair it finds, and each new spec it says should extend an existing one. Its listing of related specs doesn't need repeating.
+Then run `node .claude/skills/e2e-replacement-check/check.mjs existing` on the PR branch. Report each exact copy or prefix pair it finds, on either side, and each new spec it says should extend an existing one. Its listing of related specs doesn't need repeating.
 
 A row reading "nothing failed" is a lead: a test the PR could add. It doesn't show that the deleted e2e test would have caught that break. Before calling it a gap, check that its changed line runs on the deleted test's path, from its patch in `details.md`, and that no kept e2e test at the head asserts the behaviour. A row that also says "no spec ran the line" needs the first check most. If a kept test covers it, name the test beside the row instead of calling it a gap.
 
