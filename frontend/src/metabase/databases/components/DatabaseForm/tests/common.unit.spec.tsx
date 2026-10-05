@@ -217,6 +217,40 @@ describe("DatabaseForm with provider name", () => {
     });
   });
 
+  it("explains that saved credentials must be re-entered when the API requires it", async () => {
+    const { onSubmit } = setup();
+    onSubmit.mockRejectedValue({
+      data: {
+        "error-code": "secrets-reentry-required",
+        message:
+          "Re-enter the saved password and other secrets to change these connection settings.",
+        errors: { details: { db: "re-enter this value" } },
+      },
+    });
+    await userEvent.type(screen.getByLabelText("Display name"), "My H2");
+    await userEvent.type(
+      screen.getByLabelText("Connection String"),
+      "file:/somewhere",
+    );
+
+    const saveButton = screen.getByRole("button", { name: "Save" });
+    await waitFor(() => expect(saveButton).toBeEnabled());
+    await userEvent.click(saveButton);
+
+    const alert = await screen.findByRole("alert", {
+      name: "Re-enter your saved credentials",
+    });
+    expect(
+      within(alert).getByText(
+        "Re-enter the saved password and other secrets to change these connection settings.",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByText("re-enter this value")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /More troubleshooting tips/ }),
+    ).not.toBeInTheDocument();
+  });
+
   describe("Connection error handling", () => {
     const errorHandlingSetup = ({ isAdvanced }: { isAdvanced?: boolean }) => {
       setup({

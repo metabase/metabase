@@ -14,16 +14,19 @@ import { useDatabaseErrorDetails } from "./utils";
 
 export const DatabaseFormError = () => {
   const [showAllTips, { toggle: toggleShowAllTips }] = useDisclosure(false);
-  const { isHostAndPortError, errorMessage } = useDatabaseErrorDetails();
+  const { isHostAndPortError, isSecretsReentryError, errorMessage } =
+    useDatabaseErrorDetails();
   const troubleshootingTips = useTroubleshootingTips(
     isHostAndPortError,
     showAllTips,
   );
   const ref = useRef<HTMLDivElement>(null);
-  const title = isHostAndPortError
-    ? t`Hmm, we couldn't connect to the database`
-    : // eslint-disable-next-line metabase/no-literal-metabase-strings -- Only visible to admins
-      t`Metabase tried, but couldn't connect`;
+  const title = isSecretsReentryError
+    ? t`Re-enter your saved credentials`
+    : isHostAndPortError
+      ? t`Hmm, we couldn't connect to the database`
+      : // eslint-disable-next-line metabase/no-literal-metabase-strings -- Only visible to admins
+        t`Metabase tried, but couldn't connect`;
 
   useMount(() => {
     if (ref.current) {
@@ -31,17 +34,29 @@ export const DatabaseFormError = () => {
     }
   });
 
+  const alert = (
+    <Alert
+      size="compact"
+      color="warning"
+      icon={<Icon name="warning" />}
+      title={title}
+    >
+      {errorMessage}
+    </Alert>
+  );
+
+  if (isSecretsReentryError) {
+    return (
+      <Paper className={S.paper} ref={ref}>
+        <Box p="lg">{alert}</Box>
+      </Paper>
+    );
+  }
+
   return (
     <Paper className={S.paper} ref={ref}>
       <Box p="lg" pb={0}>
-        <Alert
-          size="compact"
-          color="warning"
-          icon={<Icon name="warning" />}
-          title={title}
-        >
-          {errorMessage}
-        </Alert>
+        {alert}
         {troubleshootingTips.map((tipProps, index) => (
           <Fragment key={tipProps.key}>
             {!!index && <Divider variant="dashed" />}

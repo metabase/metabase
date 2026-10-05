@@ -9,6 +9,7 @@
    [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.permissions.test-util :as perms.test-util]
+   [metabase.secrets.core :as secret]
    [metabase.test :as mt]
    [metabase.test.data.sql :as sql.tx]
    [metabase.test.fixtures :as fixtures]
@@ -18,6 +19,7 @@
    [metabase.warehouse-schema.models.field-values :as field-values]
    [metabase.warehouses-rest.api :as api.database]
    [metabase.warehouses.models.database :as database]
+   [metabase.warehouses.util :as warehouses.util]
    [toucan2.core :as t2]))
 
 (use-fixtures :once (fixtures/initialize :db :test-users :row-lock))
@@ -867,6 +869,159 @@
         (mt/with-all-users-data-perms-graph! {db-id {:details :yes}}
           (is (=? {:id db-id}
                   (mt/user-http-request :rasta :put 200 (format "database/%d" db-id) {:name "Database Test"}))))))))
+
+(def ^:private stored-secret-db-details
+  {:host "db.example.com", :port 5432, :dbname "x", :user "u", :password "hunter2", :ssl true})
+
+(defn- put-database-as-manager!
+  "PUT `body` to the Database as a non-admin with manage-database permissions. Returns the response and the details
+  the connection test was run with (or nil if no connection test was attempted)."
+  [db-id expected-status body]
+  (let [tested-details (atom nil)]
+    (mt/with-premium-features #{:advanced-permissions :writable-connection}
+      (mt/with-all-users-data-perms-graph! {db-id {:details :yes}}
+        (mt/with-dynamic-fn-redefs [warehouses.util/test-database-connection (fn [_engine details & _]
+                                                                               (reset! tested-details details)
+                                                                               nil)]
+          {:response       (mt/user-http-request :rasta :put expected-status (format "database/%d" db-id) body)
+           :tested-details @tested-details})))))
+
+(deftest non-admin-cannot-redirect-stored-secrets-test
+  (testing "PUT /api/database/:id"
+    (testing "A non-admin cannot send stored secrets to a new connection target without re-entering them"
+      (doseq [[desc details] {"redacted password"     (assoc stored-secret-db-details
+                                                             :host "attacker.example.com"
+                                                             :password secret/protected-password)
+                              "omitted password"      (-> stored-secret-db-details
+                                                          (assoc :host "attacker.example.com")
+                                                          (dissoc :password))
+                              "ssl disabled"          (assoc stored-secret-db-details
+                                                             :ssl false
+                                                             :password secret/protected-password)
+                              "additional options"    (assoc stored-secret-db-details
+                                                             :additional-options "sslmode=disable"
+                                                             :password secret/protected-password)}]
+        (testing desc
+          (mt/with-temp [:model/Database {db-id :id} {:engine :postgres, :details stored-secret-db-details}]
+            (let [{:keys [response tested-details]} (put-database-as-manager! db-id 400 {:details details})]
+              (is (=? {:error-code "secrets-reentry-required", :errors {:password string?}} response))
+              (testing "no connection is attempted"
+                (is (nil? tested-details)))
+              (testing "nothing is persisted"
+                (is (= stored-secret-db-details (t2/select-one-fn :details :model/Database :id db-id)))))))))
+    (testing "A non-admin can change the connection target when they re-enter the secret"
+      (mt/with-temp [:model/Database {db-id :id} {:engine :postgres, :details stored-secret-db-details}]
+        (let [{:keys [tested-details]} (put-database-as-manager! db-id 200 {:details (assoc stored-secret-db-details
+                                                                                            :host "new.example.com"
+                                                                                            :password "new-pass")})]
+          (is (=? {:host "new.example.com", :password "new-pass"} tested-details)))))
+    (testing "A non-admin can change settings that don't affect the connection target without re-entering secrets"
+      (mt/with-temp [:model/Database {db-id :id} {:engine :postgres, :details stored-secret-db-details}]
+        (put-database-as-manager! db-id 200 {:details (assoc stored-secret-db-details
+                                                             :schema-filters-type     "inclusion"
+                                                             :schema-filters-patterns "public"
+                                                             :password                secret/protected-password)})
+        (is (=? {:password "hunter2", :schema-filters-type "inclusion"}
+                (t2/select-one-fn :details :model/Database :id db-id)))))
+    (testing "A non-admin can save the edit form unchanged, even when it fills in blank defaults for unset fields"
+      (mt/with-temp [:model/Database {db-id :id} {:engine :postgres, :details stored-secret-db-details}]
+        (put-database-as-manager! db-id 200 {:name    "Renamed"
+                                             :details (assoc stored-secret-db-details
+                                                             :tunnel-enabled     false
+                                                             :additional-options ""
+                                                             :password           secret/protected-password)})
+        (is (=? {:password "hunter2"} (t2/select-one-fn :details :model/Database :id db-id)))))
+    (testing "Admins can still change the connection target while keeping the stored secret"
+      (mt/with-temp [:model/Database {db-id :id} {:engine :postgres, :details stored-secret-db-details}]
+        (mt/with-dynamic-fn-redefs [warehouses.util/test-database-connection (constantly nil)]
+          (mt/user-http-request :crowberto :put 200 (format "database/%d" db-id)
+                                {:details (assoc stored-secret-db-details
+                                                 :host "new.example.com"
+                                                 :password secret/protected-password)}))
+        (is (=? {:host "new.example.com", :password "hunter2"}
+                (t2/select-one-fn :details :model/Database :id db-id)))))))
+
+(deftest non-admin-cannot-redirect-stored-secret-properties-test
+  (testing "PUT /api/database/:id"
+    (testing "Secrets stored as Secret instances can't be sent to a new connection target either"
+      (mt/with-temp [:model/Database {db-id :id} {:engine  :postgres
+                                                  :details (assoc stored-secret-db-details
+                                                                  :ssl-use-client-auth  true
+                                                                  :ssl-key-options      "uploaded"
+                                                                  :ssl-key-value        "secret-key")}]
+        (let [{:keys [response tested-details]}
+              (put-database-as-manager! db-id 400 {:details (assoc stored-secret-db-details
+                                                                   :host                "attacker.example.com"
+                                                                   :password            "new-pass"
+                                                                   :ssl-use-client-auth true
+                                                                   :ssl-key-options     "uploaded"
+                                                                   :ssl-key-value       secret/protected-password)})]
+          (is (=? {:errors {:ssl-key-value string?}} response))
+          (is (nil? tested-details)))))))
+
+(deftest non-admin-redirect-drops-hidden-stored-secrets-test
+  (testing "PUT /api/database/:id"
+    (testing "Stored secrets for disabled options can't be re-entered in the form, so they're dropped instead"
+      (mt/with-temp [:model/Database {db-id :id} {:engine  :postgres
+                                                  :details (assoc stored-secret-db-details
+                                                                  :tunnel-enabled false
+                                                                  :tunnel-pass    "tunnel-secret")}]
+        (let [{:keys [tested-details]} (put-database-as-manager! db-id 200 {:details (assoc stored-secret-db-details
+                                                                                            :host           "new.example.com"
+                                                                                            :password       "new-pass"
+                                                                                            :tunnel-enabled false)})]
+          (is (not (contains? tested-details :tunnel-pass)))
+          (is (not (contains? (t2/select-one-fn :details :model/Database :id db-id) :tunnel-pass))))))
+    (testing "Hidden secrets stored as Secret instances are deleted"
+      (mt/with-temp [:model/Database {db-id :id} {:engine  :postgres
+                                                  :details (assoc stored-secret-db-details
+                                                                  :ssl-use-client-auth false
+                                                                  :ssl-key-options     "uploaded"
+                                                                  :ssl-key-value       "secret-key")}]
+        (let [secret-id (t2/select-one-fn (comp :ssl-key-id :details) :model/Database :id db-id)]
+          (is (some? secret-id))
+          (put-database-as-manager! db-id 200 {:details (assoc stored-secret-db-details
+                                                               :host                "new.example.com"
+                                                               :password            "new-pass"
+                                                               :ssl-use-client-auth false)})
+          (is (not (contains? (t2/select-one-fn :details :model/Database :id db-id) :ssl-key-id)))
+          (is (not (t2/exists? :model/Secret :id secret-id))))))
+    (testing "Hidden secrets are kept when the connection target doesn't change"
+      (mt/with-temp [:model/Database {db-id :id} {:engine  :postgres
+                                                  :details (assoc stored-secret-db-details
+                                                                  :tunnel-enabled false
+                                                                  :tunnel-pass    "tunnel-secret")}]
+        (put-database-as-manager! db-id 200 {:details (assoc stored-secret-db-details
+                                                             :password       secret/protected-password
+                                                             :tunnel-enabled false)})
+        (is (=? {:tunnel-pass "tunnel-secret"} (t2/select-one-fn :details :model/Database :id db-id)))))))
+
+(deftest non-admin-cannot-redirect-stored-write-data-secrets-test
+  (testing "PUT /api/database/:id"
+    (let [write-data-details {:user "writer", :password "write-pass", :write-data-connection true}]
+      (testing "A non-admin cannot move the write connection's stored password to a new target"
+        (mt/with-temp [:model/Database {db-id :id} {:engine             :postgres
+                                                    :details            stored-secret-db-details
+                                                    :write_data_details write-data-details}]
+          (let [{:keys [response tested-details]}
+                (put-database-as-manager! db-id 400 {:write_data_details (assoc write-data-details
+                                                                                :host     "attacker.example.com"
+                                                                                :password secret/protected-password)})]
+            (is (=? {:errors {:password string?}} response))
+            (is (nil? tested-details)))))
+      (testing "Re-entering the main password doesn't let the write connection's stored password follow a new host"
+        (mt/with-temp [:model/Database {db-id :id} {:engine             :postgres
+                                                    :details            stored-secret-db-details
+                                                    :write_data_details write-data-details}]
+          (let [{:keys [response tested-details]}
+                (put-database-as-manager! db-id 400 {:details (assoc stored-secret-db-details
+                                                                     :host     "attacker.example.com"
+                                                                     :password "anything")})]
+            (is (=? {:error-code "secrets-reentry-required"} response))
+            (is (re-find #"writable connection" (:message response)))
+            (is (not (contains? response :errors)))
+            (is (nil? tested-details))
+            (is (= stored-secret-db-details (t2/select-one-fn :details :model/Database :id db-id)))))))))
 
 (deftest non-admin-delete-database-test
   (mt/with-temp [:model/Database {db-id :id}]
