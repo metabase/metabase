@@ -90,9 +90,9 @@ const EVENT_COLUMN_META: Record<
       value == null ? EMPTY_CELL_PLACEHOLDER : formatNumber(Number(value)),
   }),
   api_key_name: () => ({ title: t`API key`, sort: "api_key_name" }),
-  user_display_name: () => ({
+  creator_display_name: () => ({
     title: t`Created by`,
-    sort: "user_display_name",
+    sort: "creator_display_name",
   }),
   client_display_name: () => ({
     title: t`Client`,

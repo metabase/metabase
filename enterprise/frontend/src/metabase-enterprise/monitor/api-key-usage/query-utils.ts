@@ -69,8 +69,13 @@ function applyScopeFilters(
   groupMembersTable: TableMetadata | CardMetadata,
 ): Query {
   query = applyIdFilter(query, "api_key_id", apiKeyId);
-  query = applyIdFilter(query, "user_id", userId);
-  query = groupId != null ? joinGroupMembers(query, groupMembersTable) : query;
+  // `userId` here means the key's creator (the "Created by" filter) — the view's `creator_id`,
+  // not its `actor_user_id` (the key's own synthetic service-account user).
+  query = applyIdFilter(query, "creator_id", userId);
+  query =
+    groupId != null
+      ? joinGroupMembers(query, groupMembersTable, "creator_id")
+      : query;
   query = groupId != null ? applyIdFilter(query, "group_id", groupId) : query;
   return query;
 }
@@ -260,7 +265,7 @@ export const API_KEY_USAGE_EVENT_SORT_COLUMNS = [
   "status",
   "duration_ms",
   "api_key_name",
-  "user_display_name",
+  "creator_display_name", // the key's creator, shown in the UI as "Created by"
   "client_display_name",
   "embedding_client",
   "embedding_hostname",
