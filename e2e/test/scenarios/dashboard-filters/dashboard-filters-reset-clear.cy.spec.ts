@@ -499,7 +499,7 @@ describe("scenarios > dashboard > filters > reset & clear", () => {
     });
   });
 
-  it("number parameters - multiple values", () => {
+  it("number parameters - range", () => {
     createDashboardWithParameters(PEOPLE_QUESTION, PEOPLE_ID_FIELD, [
       {
         name: NO_DEFAULT_NON_REQUIRED,
@@ -650,7 +650,6 @@ describe("scenarios > dashboard > filters > reset & clear", () => {
               cy.findAllByRole("listitem").contains(value).click();
             });
         });
-        // H.popover().findByRole("textbox").type(value);
         H.popover().button("Add filter").click();
       },
       updateValue: (label, value) => {
