@@ -159,7 +159,7 @@
   [card-ids :- [:set ::lib.schema.id/card]
    new-collection-id-or-nil :- [:maybe ms/PositiveInt]]
   (t2/select [:model/Card :id :collection_id :collection_position :dataset_query :card_schema :type
-              :result_metadata :dimensions :dimension_mappings]
+              :entity_id :result_metadata :dimensions :dimension_mappings]
              {:where [:and [:in :id card-ids]
                       [:or [:not= :collection_id new-collection-id-or-nil]
                        (when new-collection-id-or-nil
