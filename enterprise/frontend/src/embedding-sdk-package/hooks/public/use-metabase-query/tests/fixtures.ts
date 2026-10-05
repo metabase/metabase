@@ -160,39 +160,33 @@ export const TEST_SCHEMA = {
       sourceCardId: 41,
     },
   },
-  models: {
-    orders: {
-      actions: {
-        create: {
-          kind: "action" as const,
-          id: 51,
-          name: "Create Order",
-          type: "implicit" as const,
-          implicitKind: "row/create" as const,
-          parameters: [
-            {
-              slug: "status",
-              displayName: "Status",
-              jsType: "string" as const,
-            },
-          ],
+  actions: {
+    createOrder: {
+      kind: "action" as const,
+      id: 51,
+      name: "Create Order",
+      type: "query" as const,
+      parameters: [
+        {
+          slug: "status",
+          displayName: "Status",
+          jsType: "string" as const,
         },
-        update: {
-          kind: "action" as const,
-          id: 52,
-          name: "Update Order",
-          type: "implicit" as const,
-          implicitKind: "row/update" as const,
-          parameters: [
-            {
-              slug: "id",
-              displayName: "ID",
-              jsType: "number" as const,
-              required: true,
-            },
-          ],
+      ],
+    },
+    updateOrder: {
+      kind: "action" as const,
+      id: 52,
+      name: "Update Order",
+      type: "query" as const,
+      parameters: [
+        {
+          slug: "id",
+          displayName: "ID",
+          jsType: "number" as const,
+          required: true,
         },
-      },
+      ],
     },
   },
   questions: {
