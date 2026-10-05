@@ -65,6 +65,7 @@ describe("deriveMcpQuery", () => {
   it("carries the server's explanation on the error", async () => {
     fetchMock.post(DERIVE_URL, {
       status: 400,
+      headers: { "Content-Type": "text/plain; charset=utf-8" },
       body: "This click offers no sort drill.",
     });
 
@@ -79,6 +80,26 @@ describe("deriveMcpQuery", () => {
       serverMessage: "This click offers no sort drill.",
     });
   });
+
+  it.each([400, 500])(
+    "leaves a JSON %s body out of the explanation",
+    async (status) => {
+      fetchMock.post(DERIVE_URL, {
+        status,
+        headers: { "Content-Type": "application/json; charset=utf-8" },
+        body: { errors: { operations: ["invalid dispatch value"] } },
+      });
+
+      const error = await deriveMcpQuery({
+        ...OPTIONS,
+        queryHandle: "handle-1",
+        operations: [{ type: "date-filter/clear" }],
+      }).catch((caught: unknown) => caught);
+
+      expect(error).toMatchObject({ status });
+      expect(error).not.toHaveProperty("serverMessage", expect.anything());
+    },
+  );
 
   it("carries the status on the error", async () => {
     fetchMock.post(DERIVE_URL, 400);

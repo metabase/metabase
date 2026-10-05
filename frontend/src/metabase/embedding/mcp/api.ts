@@ -141,8 +141,14 @@ export async function deriveMcpQuery({
   );
 
   if (!response.ok) {
-    // The server explains a refused change in a plain-text body.
-    const serverMessage = await response.text().catch(() => "");
+    // The server explains a refused change in a plain-text body. Any other body,
+    // such as a JSON validation report, is not for the user.
+    const isPlainText = (response.headers.get("Content-Type") ?? "")
+      .toLowerCase()
+      .startsWith("text/plain");
+    const serverMessage = isPlainText
+      ? await response.text().catch(() => "")
+      : "";
 
     throw Object.assign(
       new Error(
