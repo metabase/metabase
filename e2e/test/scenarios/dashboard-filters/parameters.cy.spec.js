@@ -2111,7 +2111,6 @@ describe("scenarios > dashboard > parameters", () => {
         H.visitDashboard(dashcard.dashboard_id);
         H.editDashboard();
       });
-      cy.intercept("PUT", "/api/dashboard/*").as("updateDashboard");
 
       cy.log("Wait for the dashcard to finish rendering before editing");
       H.getDashboardCard(0)
