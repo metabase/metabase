@@ -461,33 +461,6 @@ describe("scenarios > dashboard > parameters", () => {
     H.tableInteractiveBody().findAllByRole("row").should("have.length", 1);
   });
 
-  describe("when the user does not have self-service data permissions", () => {
-    beforeEach(() => {
-      H.visitDashboard(ORDERS_DASHBOARD_ID);
-      H.tableInteractiveHeader("Created At");
-
-      H.editDashboard();
-      H.setFilter("ID");
-
-      H.selectDashboardFilter(H.getDashboardCard(), "User ID");
-
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Save").click();
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("You're editing this dashboard.").should("not.exist");
-
-      cy.signIn("nodata");
-      H.visitDashboard(ORDERS_DASHBOARD_ID);
-    });
-
-    it("should not see mapping options", () => {
-      cy.icon("pencil").click();
-      H.filterWidget({ isEditing: true }).click();
-
-      cy.icon("key");
-    });
-  });
-
   describe("when parameters are (dis)connected to dashcards", () => {
     beforeEach(() => {
       createDashboardWithCards({ cards }).then((dashboardId) =>
@@ -2530,26 +2503,6 @@ describe("scenarios > dashboard > parameters", () => {
             "be.visible",
           );
         });
-      });
-    });
-
-    it("should not show add filter button for users with no data editing permissions", () => {
-      H.createQuestionAndDashboard({
-        questionDetails: ordersCountByCategory,
-      }).then(({ body: { dashboard_id } }) => {
-        cy.signIn("nodata");
-        H.visitDashboard(dashboard_id);
-        H.editDashboard();
-
-        H.getDashboardCard(0)
-          .realHover()
-          .findByTestId("dashboardcard-actions-panel")
-          .should("be.visible");
-
-        // Ensure the "Add a filter" button is not present
-        H.getDashboardCard(0)
-          .findByLabelText("Add a filter")
-          .should("not.exist");
       });
     });
   });

@@ -35,6 +35,11 @@ describe("support > permissions (metabase#8472)", () => {
 
     H.editDashboard();
 
+    H.getDashboardCard(0)
+      .realHover()
+      .findByLabelText("Add a filter")
+      .should("be.visible");
+
     H.setFilter("Text or Category", "Is");
 
     // Filter the first card by User Address
@@ -51,12 +56,21 @@ describe("support > permissions (metabase#8472)", () => {
     cy.contains("Orders in a dashboard").click();
   });
 
-  it("should allow an admin user to select the filter", () => {
-    filterDashboard();
-  });
-
   it("should allow a nodata user to select the filter", () => {
+    filterDashboard();
+
     cy.signIn("nodata");
     filterDashboard();
+
+    H.editDashboard();
+
+    H.getDashboardCard(0)
+      .realHover()
+      .findByTestId("dashboardcard-actions-panel")
+      .should("be.visible");
+    H.getDashboardCard(0).findByLabelText("Add a filter").should("not.exist");
+
+    H.filterWidget({ isEditing: true }).click();
+    H.getDashboardCard(0).icon("key").should("be.visible");
   });
 });
