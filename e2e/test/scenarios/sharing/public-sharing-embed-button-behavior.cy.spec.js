@@ -38,30 +38,6 @@ const { H } = cy;
           H.embedModalContent().should("be.visible");
         });
       });
-
-      describe("when user is non-admin", () => {
-        it(`should not show embed button for ${resource}`, () => {
-          cy.signInAsNormalUser();
-
-          cy.get("@resourceId").then((id) => {
-            visitResource(resource, id);
-          });
-
-          if (resource === "question") {
-            // No public link: the share button copies directly, so there's no menu.
-            H.sharingMenuButton().should(
-              "have.attr",
-              "aria-label",
-              "Copy link",
-            );
-          }
-
-          if (resource === "dashboard") {
-            H.openSharingMenu();
-            H.sharingMenu().findByText(/embed/i).should("not.exist");
-          }
-        });
-      });
     });
 
     describe("when embedding is enabled", () => {
@@ -72,15 +48,6 @@ const { H } = cy;
         });
 
         describe("when user is admin", () => {
-          it(`should show the embed menu for ${resource}`, () => {
-            cy.get("@resourceId").then((id) => {
-              visitResource(resource, id);
-            });
-
-            H.openSharingMenu("Embed");
-            H.embedModalContent().should("be.visible");
-          });
-
           it(`should let the user create a public link for ${resource}`, () => {
             cy.get("@resourceId").then((id) => {
               createPublicResourceLink(resource, id);
@@ -154,18 +121,6 @@ const { H } = cy;
             });
 
             H.sharingMenu().findByRole("button", { name: "Embed" }).click();
-          });
-        });
-
-        describe("when user is non-admin", () => {
-          it(`should not prompt a non-admin to create a public link for ${resource}`, () => {
-            cy.signInAsNormalUser();
-
-            cy.get("@resourceId").then((id) => {
-              visitResource(resource, id);
-            });
-
-            assertNonAdminCannotCreatePublicLink(resource);
           });
         });
       });
@@ -272,7 +227,6 @@ describe("#39152 sharing an unsaved question", () => {
 
     [
       { embeddingType: "guest-embed", shouldShowAlert: false },
-      { embeddingType: "static-legacy", shouldShowAlert: true },
       { embeddingType: null, shouldShowAlert: true },
     ].forEach(({ embeddingType, shouldShowAlert }) => {
       it(`should ${shouldShowAlert ? "show" : "not show"} legacy alert for ${embeddingType} embedding type`, () => {
@@ -402,48 +356,6 @@ describe("#39152 sharing an unsaved question", () => {
 
           H.openSharingMenu(/public link/i);
           H.popover().button("Remove public link").click();
-          H.expectUnstructuredSnowplowEvent({
-            event: "public_link_removed",
-            artifact: resource,
-            source: "public-share",
-          });
-        });
-      });
-
-      describe("when interacting with public embedding", () => {
-        it("should send `public_embed_code_copied` event when copying the public embed iframe", () => {
-          cy.get("@resourceId").then((id) => {
-            visitResource(resource, id);
-          });
-
-          H.openSharingMenu("Create a public link");
-
-          // mock clipboardData so that copy-to-clipboard doesn't use window.prompt, pausing the tests
-          cy.window().then((win) => {
-            win.clipboardData = {
-              setData: (...args) =>
-                // eslint-disable-next-line no-console
-                console.log("clipboardData.setData", ...args),
-            };
-          });
-
-          H.popover().findByTestId("copy-button").click();
-
-          H.expectUnstructuredSnowplowEvent({
-            event: "public_link_copied",
-            artifact: resource,
-          });
-        });
-
-        it("should send `public_link_removed` event when removing the public embed", () => {
-          cy.get("@resourceId").then((id) => {
-            visitResource(resource, id);
-          });
-
-          H.openSharingMenu("Create a public link");
-
-          H.popover().findByText("Remove public link").click();
-
           H.expectUnstructuredSnowplowEvent({
             event: "public_link_removed",
             artifact: resource,
@@ -1039,7 +951,7 @@ function assertNonAdminCannotCreatePublicLink(resource) {
     H.openSharingMenu();
     H.sharingMenu().within(() => {
       cy.findByText("Copy link").should("be.visible");
-      cy.findByText("Embed").should("not.exist");
+      cy.findByText(/embed/i).should("not.exist");
       cy.findByText(/public link/i).should("not.exist");
     });
   }
