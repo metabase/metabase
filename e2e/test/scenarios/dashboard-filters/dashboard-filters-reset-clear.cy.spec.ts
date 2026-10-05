@@ -873,6 +873,7 @@ function checkDashboardParameters<T = string>({
   checkResetAllFiltersHidden();
 
   cy.log("has default value, required, value same as default");
+  filter(DEFAULT_REQUIRED).should("contain.text", defaultValueFormatted);
   checkStatusIcon(DEFAULT_REQUIRED, "none");
   checkResetAllFiltersHidden();
 
@@ -1125,6 +1126,7 @@ function checkResetAllFiltersShown() {
 
 function checkResetAllFiltersHidden() {
   cy.findByLabelText("Move, trash, and more…").click();
+  H.popover().findByText("Enter fullscreen").should("be.visible");
   H.popover().findByText("Reset all filters").should("not.exist");
   cy.findByLabelText("Move, trash, and more…").click();
 }
