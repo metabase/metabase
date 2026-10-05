@@ -371,7 +371,9 @@
       ;; Initialize: create session and return response with session header
       (and (not batch?) (valid-message? body) (= "initialize" (:method body)))
       (let [params           (:params body)
-            supports-mcp-ui? (mcp-app-ui-capability? params)
+            ;; A client the admin switched off would only get a broken card: its iframe is blocked by CORS.
+            supports-mcp-ui? (and (mcp-app-ui-capability? params)
+                                  (mcp/inline-ui-enabled-for-client? (get-in params [:clientInfo :name])))
             session-id       (mcp.session/create! user-id {:supports-mcp-ui?
                                                            supports-mcp-ui?})
             init-response (handle-initialize (:id body) params capabilities instructions)]
