@@ -123,7 +123,6 @@ describe("Embed JS modal display", () => {
       "should display a link to the product page for embedded analytics",
       { tags: "@OSS" },
       () => {
-        cy.signInAsAdmin();
         H.visitDashboard("@dashboardId");
         H.openSharingMenu("Embed");
 
@@ -179,7 +178,6 @@ describe("#39152 sharing an unsaved question", () => {
     beforeEach(() => {
       H.restore();
       cy.signInAsAdmin();
-      H.enableTracking();
 
       createResource(resource).then(({ body }) => {
         cy.wrap(body.id).as("resourceId");
@@ -230,7 +228,6 @@ describe("#39152 sharing an unsaved question", () => {
       H.enableTracking();
 
       createResource(resource).then(({ body }) => {
-        cy.wrap(body).as("resource");
         cy.wrap(body.id).as("resourceId");
       });
     });
