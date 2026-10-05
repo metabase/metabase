@@ -19,6 +19,14 @@
    (mt/with-premium-features features
      (mt/user-http-request user :post status "apps/export-resources" body))))
 
+(defn- export-as
+  "What the export itself answers `user`, past the endpoint only a superuser reaches: it still holds each source to
+  what its caller can read. `queries` are decoded, as the endpoint hands them over."
+  [user queries action-ids & {:keys [features] :or {features #{:data-apps}}}]
+  (mt/with-premium-features features
+    (mt/with-current-user (mt/user->id user)
+      (resource-export/export-resources queries action-ids))))
+
 (defn- db-name []
   (t2/select-one-fn :name :model/Database (mt/id)))
 
@@ -70,6 +78,12 @@
         (is (= (get-in stage [:aggregation 0 1 :lib/uuid])
                (get-in stage [:order-by 0 2 2])))
         (is (nil? (get-in stage [:filters 0 1 :lib/uuid])))))))
+
+(deftest only-a-superuser-exports-test
+  (testing "an app's resources are written into its repository, which only an admin works with"
+    (let [body {:queries [{:export "Venues" :query {:stages [{:source {:type "table" :id (mt/id :venues)}}]}}]}]
+      (is (= "You don't have permissions to do that." (export! :rasta 403 body)))
+      (is (=? {:queries [{:export "Venues" :entity map?}]} (export! :crowberto 200 body))))))
 
 (deftest lists-the-metrics-a-query-aggregates-test
   (data-apps.tu/do-with-sources!
@@ -156,7 +170,7 @@
        (mt/with-non-admin-groups-no-collection-perms collection-id
          (testing "an action in a collection the caller can't read"
            (is (=? {:actions [{:id action-id :error #".*does not exist, or you can't read it.*"}]}
-                   (export! :rasta 200 {:actions [action-id]})))))))))
+                   (export-as :rasta [] [action-id])))))))))
 
 (deftest rejects-unsupported-definitions-test
   (testing "the request accepts only what data app definitions support"
@@ -169,29 +183,31 @@
                            path []))))))
 
 (deftest a-reader-of-the-sources-exports-them-test
-  (testing "the export needs what the typed schema needs: a caller who can read the sources, not an admin"
+  (testing "the export itself needs what the typed schema needs: a caller who can read the sources"
     (data-apps.tu/do-with-sources!
      (fn [{:keys [metric-id action-id]}]
-       (is (=? {:queries [{:export "VenueCount" :entity map? :metrics [string?]}]
+       (is (=? {:queries [{:export "VenueCount" :entity map?}]
                 :actions [{:id action-id :entity map?}]
                 :metrics [{:id metric-id :entity map?}]}
-               (export! :rasta 200
-                        {:queries [{:export "VenueCount"
-                                    :query  {:stages [{:source       {:type "table" :id (mt/id :venues)}
-                                                       :aggregations [{:type "metric" :id metric-id}]}]}}]
-                         :actions [action-id]})))))))
+               (export-as :rasta
+                          [{:export "VenueCount"
+                            :query  {:stages [{:source       {:type :table :id (mt/id :venues)}
+                                               :aggregations [{:type :metric :id metric-id}]}]}}]
+                          [action-id])))))))
 
 (deftest a-table-the-caller-cannot-read-reveals-nothing-test
   (testing "a definition on a table the caller can't read gets the same answer whether or not its columns exist"
     (mt/with-no-data-perms-for-all-users!
       (is (=? {:queries [{:export "Venues" :error #"Table \d+ does not exist, or you can't read it."}
                          {:export "NoSuchColumn" :error #"Table \d+ does not exist, or you can't read it."}]}
-              (export! :rasta 200
-                       {:queries [{:export "Venues"
-                                   :query  {:stages [{:source {:type "table" :id (mt/id :venues)}}]}}
-                                  {:export "NoSuchColumn"
-                                   :query  {:stages [{:source {:type "table" :id (mt/id :venues)}
-                                                      :fields [(venues-column "NOT_A_COLUMN")]}]}}]}))))))
+              (export-as :rasta
+                         [{:export "Venues"
+                           :query  {:stages [{:source {:type :table :id (mt/id :venues)}}]}}
+                          {:export "NoSuchColumn"
+                           :query  {:stages [{:source {:type :table :id (mt/id :venues)}
+                                              :fields [{:type :column :name "NOT_A_COLUMN"
+                                                        :table-id (mt/id :venues) :source-name "VENUES"}]}]}}]
+                         []))))))
 
 (deftest refuses-archived-sources-test
   (testing "the pull refuses an archived resource, so the export refuses an archived source"
@@ -238,10 +254,10 @@
                                                :collection_id collection-id}]
       (mt/with-all-users-data-perms-graph! {(mt/id) {:view-data :unrestricted :create-queries :no}}
         (is (=? {:queries [{:export "Venues" :entity {:dataset_query {:stages [{:source-table (table-path "VENUES")}]}}}]}
-                (export! :rasta 200
-                         {:queries [{:export "Venues"
-                                     :query  {:stages [{:source {:type "table" :id (mt/id :venues)}}]}}]}
-                         #{:data-apps :library})))))))
+                (export-as :rasta
+                           [{:export "Venues" :query {:stages [{:source {:type :table :id (mt/id :venues)}}]}}]
+                           []
+                           :features #{:data-apps :library})))))))
 
 (deftest refuses-sources-on-a-routing-destination-test
   (testing "a routing destination is reachable only through its router, so the typed schema leaves out what it backs,
@@ -328,7 +344,8 @@
     (mt/with-premium-features #{:data-apps}
       (mt/with-current-user (mt/user->id :crowberto)
         (let [{:keys [entity]} (-> (resource-export/export-resources
-                                    [{:export "Venues" :query {:stages [{:source {:type "table" :id (mt/id :venues)}}]}}]
+                                    ;; decoded, as the endpoint hands a definition over
+                                    [{:export "Venues" :query {:stages [{:source {:type :table :id (mt/id :venues)}}]}}]
                                     [])
                                    :queries first)]
           (is (= [:database :stages :lib/type] (keys (:dataset_query entity))))

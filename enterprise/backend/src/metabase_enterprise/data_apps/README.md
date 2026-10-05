@@ -70,8 +70,7 @@ assets (`metabase.server.routes/static-files-handler`).
 - `GET /api/apps/repo-status` — whether a repo is connected (superuser).
 - `POST /api/apps/export-resources` — what an app's `resources/` are written from: the query Metabase builds
   from each `defineQuery` definition, and the actions and metrics it copies, all as serialization exports
-  them (`resource_export.clj`). An action must belong to no model. Permissions are the typed schema's: the caller must be able to read
-  each source.
+  them (`resource_export.clj`). An action must belong to no model (superuser).
 
 Responses are field-filtered by role: superusers get full metadata, everyone else gets `name` and
 `display_name` only. The bundle blob is never serialized into JSON, and metadata reads go through
