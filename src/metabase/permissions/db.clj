@@ -312,11 +312,6 @@
   [magic-group-type :- :string]
   (t2/select-one [:model/PermissionsGroup :id :name :magic_group_type] :magic_group_type magic-group-type))
 
-(mu/defn group-by-magic-type
-  "The PermissionsGroup of `magic-group-type`, or nil."
-  [magic-group-type :- :string]
-  (t2/select-one :model/PermissionsGroup :magic_group_type magic-group-type))
-
 (mu/defn group-id-by-magic-type
   "The ID of the PermissionsGroup of `magic-group-type`, or nil."
   [magic-group-type :- :string]
@@ -352,11 +347,6 @@
   [group-ids :- [:set ms/PositiveInt]]
   (t2/select-pk->fn :is_tenant_group [:model/PermissionsGroup :id :is_tenant_group] :id [:in group-ids]))
 
-(mu/defn group-names-like
-  "The set of PermissionsGroup names matching the SQL `pattern`."
-  [pattern :- :string]
-  (t2/select-fn-set :name :model/PermissionsGroup :name [:like pattern]))
-
 (mu/defn group-members
   "The active Users in the PermissionsGroups with `group-ids`. When `include-group-manager?` is true each row also
   carries the membership's `:is_group_manager` flag."
@@ -380,17 +370,6 @@
                                       [:in :pgm.group_id group-ids]]
                           :order-by  [[[:lower :u.first_name] :asc]
                                       [[:lower :u.last_name] :asc]]}))
-
-(mu/defn insert-group!
-  "Insert `group` and return the new instance."
-  [group :- (mut/select-keys ::permissions.schema/permissions-group.update [:name :magic_group_type :is_tenant_group])]
-  (t2/insert-returning-instance! :model/PermissionsGroup group))
-
-(mu/defn update-group!
-  "Apply `changes` to the PermissionsGroup with `group-id`."
-  [group-id :- ms/PositiveInt
-   changes  :- (mut/select-keys ::permissions.schema/permissions-group.update [:name :magic_group_type :is_tenant_group])]
-  (t2/update! :model/PermissionsGroup group-id changes))
 
 (mu/defn group-member-counts
   "A map of PermissionsGroup ID to number of active members in the group. Groups with no active members have no
@@ -435,11 +414,6 @@
   [user-id-group-id->is-group-manager? :- [:map-of [:tuple ms/PositiveInt ms/PositiveInt] :boolean]]
   (t2/query-one (insert-group-memberships-from-mapping-query user-id-group-id->is-group-manager?)))
 
-(mu/defn group-membership-count
-  "The number of memberships of the PermissionsGroup with `group-id`."
-  [group-id :- ms/PositiveInt]
-  (t2/count :model/PermissionsGroupMembership :group_id group-id))
-
 (mu/defn other-active-member-count
   "The number of active Users other than `user-id` in the PermissionsGroup with `group-id`."
   [group-id :- ms/PositiveInt
@@ -466,6 +440,19 @@
   "The PermissionsGroupMemberships of the PermissionsGroup with `group-id`."
   [group-id :- ms/PositiveInt]
   (t2/select :model/PermissionsGroupMembership :group_id group-id))
+
+(mu/defn existing-membership-pairs :- [:set [:tuple ms/PositiveInt ms/PositiveInt]]
+  "The `[user-id group-id]` pairs among `pairs` that already have a PermissionsGroupMembership."
+  [pairs :- [:sequential [:tuple ms/PositiveInt ms/PositiveInt]]]
+  (if (empty? pairs)
+    #{}
+    (let [wanted (set pairs)]
+      (into #{}
+            (comp (map (juxt :user_id :group_id))
+                  (filter wanted))
+            (t2/select [:model/PermissionsGroupMembership :user_id :group_id]
+                       :user_id  [:in (map first pairs)]
+                       :group_id [:in (map second pairs)])))))
 
 (mu/defn delete-memberships-for-user!
   "Delete the PermissionsGroupMemberships of the User with `user-id`."
@@ -717,11 +704,6 @@
   [user-ids :- [:sequential ::lib.schema.id/user]
    changes  :- (mut/select-keys ::users.schema/user.update [:is_superuser :is_data_analyst])]
   (t2/update! :model/User :id [:in user-ids] changes))
-
-(mu/defn clear-data-analyst-flags!
-  "Unset `is_data_analyst` on every User that has it set."
-  []
-  (t2/update! :model/User {:is_data_analyst true} {:is_data_analyst false}))
 
 (mu/defn deactivate-active-tenant-users!
   "Deactivate every active tenant User, marking them as deactivated with their tenant."

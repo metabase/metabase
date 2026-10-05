@@ -1,7 +1,11 @@
 import noResultsSource from "assets/img/no_results.svg";
 import type { IllustrationValue } from "metabase/plugins";
 import type { State } from "metabase/redux/store";
-import { getSetting, getSettings } from "metabase/settings";
+import {
+  getCustomIllustrationUrl,
+  getSetting,
+  getSettings,
+} from "metabase/settings";
 import type {
   EnterpriseSettings,
   IllustrationSettingValue,
@@ -62,12 +66,13 @@ export function getLoginPageIllustration(state: State): IllustrationValue {
     case "none":
       return null;
 
-    case "custom":
-      return {
-        // Unjustified type cast. FIXME
-        src: getSetting(state, "login-page-illustration-custom") as string,
-        isDefault: false,
-      };
+    case "custom": {
+      const src = getCustomIllustrationUrl(
+        state,
+        "login-page-illustration-custom",
+      );
+      return src ? { src, isDefault: false } : null;
+    }
   }
 }
 
@@ -88,12 +93,13 @@ export function getLandingPageIllustration(state: State): IllustrationValue {
     case "none":
       return null;
 
-    case "custom":
-      return {
-        // Unjustified type cast. FIXME
-        src: getSetting(state, "landing-page-illustration-custom") as string,
-        isDefault: false,
-      };
+    case "custom": {
+      const src = getCustomIllustrationUrl(
+        state,
+        "landing-page-illustration-custom",
+      );
+      return src ? { src, isDefault: false } : null;
+    }
   }
 }
 
@@ -112,8 +118,9 @@ export function getNoDataIllustration(state: State): string | null {
       return null;
 
     case "custom":
-      // Unjustified type cast. FIXME
-      return getSetting(state, "no-data-illustration-custom") as string;
+      return (
+        getCustomIllustrationUrl(state, "no-data-illustration-custom") ?? null
+      );
   }
 }
 
@@ -132,7 +139,8 @@ export function getNoObjectIllustration(state: State): string | null {
       return null;
 
     case "custom":
-      // Unjustified type cast. FIXME
-      return getSetting(state, "no-object-illustration-custom") as string;
+      return (
+        getCustomIllustrationUrl(state, "no-object-illustration-custom") ?? null
+      );
   }
 }

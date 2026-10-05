@@ -75,7 +75,7 @@
             :can_access_monitoring   (perms/set-has-application-permission-of-type? permissions-set :monitoring)
             :can_access_data_model   can-access-data-model
             :can_access_db_details   (perms/user-has-any-perms-of-type? user-id :perms/manage-database)
-            :can_access_transforms   (or api/*is-superuser?* (and api/*is-data-analyst?*
+            :can_access_transforms   (or api/*is-superuser?* (and (api/entitled-data-analyst?)
                                                                   (perms/user-has-any-perms-of-type? api/*current-user-id* :perms/transforms
                                                                                                      :exclude-db-ids [audit/audit-db-id])))
             :is_data_analyst         api/*is-data-analyst?*
@@ -87,6 +87,12 @@
   [perm-type]
   (or api/*is-superuser?*
       (perms/set-has-application-permission-of-type? @api/*current-user-permissions-set* perm-type)))
+
+(defenterprise has-advanced-setting-access?
+  "Check if `*current-user*` has permissions to edit settings."
+  :feature :advanced-permissions
+  []
+  (current-user-has-application-permissions? :setting))
 
 (defn current-user-is-manager-of-group?
   "Return true if current-user is a manager of `group-or-id`."

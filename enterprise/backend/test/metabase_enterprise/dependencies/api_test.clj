@@ -2776,7 +2776,7 @@
                       response)))))))))
 
 (deftest data-analyst-can-access-dependency-graph-test
-  (mt/with-premium-features #{:data-studio :dependencies :transforms-basic :hosting}
+  (mt/with-premium-features #{:advanced-permissions :data-studio :dependencies :transforms-basic :hosting}
     (testing "Data analysts can access dependency diagnostics endpoints"
       (let [data-analyst-group-id (:id (perms-group/data-analyst))]
         (mt/with-temp [:model/User {analyst-id :id} {:first_name "Data"
@@ -2785,16 +2785,23 @@
                                                      :is_data_analyst true}
                        :model/PermissionsGroupMembership _ {:user_id analyst-id
                                                             :group_id data-analyst-group-id}
-                       :model/Database {db-id :id} {}
-                       :model/Table {_table-id :id} {:db_id db-id}
-                       :model/Transform {transform-id :id} {:source_database_id db-id
-                                                            :name "Test Transform"}]
-          (testing "graph/unreferenced"
-            (is (map? (mt/user-http-request analyst-id :get 200
-                                            "ee/dependencies/graph/unreferenced"))))
-          (testing "graph/breaking"
-            (is (map? (mt/user-http-request analyst-id :get 200
-                                            "ee/dependencies/graph/breaking"))))
-          (testing "graph with transform"
-            (is (map? (mt/user-http-request analyst-id :get 200
-                                            (str "ee/dependencies/graph?type=transform&id=" transform-id))))))))))
+                       ;; the sample database: All Users may query it, so analyst-wide transform visibility applies
+                       :model/Transform {transform-id :id} {:source_database_id (mt/id)
+                                                            :name "Analyst Grace Transform - gracetest"}]
+          (letfn [(unreferenced-transform-ids []
+                    (->> (mt/user-http-request analyst-id :get 200
+                                               "ee/dependencies/graph/unreferenced?types=transform&query=gracetest")
+                         :data
+                         (map :id)
+                         set))]
+            (testing "graph/unreferenced"
+              (is (contains? (unreferenced-transform-ids) transform-id)))
+            (testing "graph/breaking"
+              (is (map? (mt/user-http-request analyst-id :get 200
+                                              "ee/dependencies/graph/breaking"))))
+            (testing "graph with transform"
+              (is (map? (mt/user-http-request analyst-id :get 200
+                                              (str "ee/dependencies/graph?type=transform&id=" transform-id)))))
+            (testing "analyst-wide visibility pauses while advanced-permissions is unavailable"
+              (mt/with-premium-features #{:data-studio :dependencies :transforms-basic :hosting}
+                (is (not (contains? (unreferenced-transform-ids) transform-id)))))))))))

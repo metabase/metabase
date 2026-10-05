@@ -1,3 +1,25 @@
+.page {
+  position: relative;
+  background-color: var(--mb-color-background-primary);
+  background-image: url("../../../metabot/components/MetabotAsk/metabot-ask-background.svg");
+  background-position: right bottom;
+  background-repeat: no-repeat;
+  background-size: auto 17.875rem;
+
+  &::before {
+    position: absolute;
+    right: 90rem;
+    bottom: 0;
+    width: 90rem;
+    height: 17.875rem;
+    background: url("../../../metabot/components/MetabotAsk/metabot-ask-background.svg")
+      right bottom / auto 17.875rem no-repeat;
+    content: "";
+    pointer-events: none;
+    transform: scaleX(-1);
+  }
+}
+
 .inputContainer {
   :global(.ProseMirror) {
     min-height: 7rem;

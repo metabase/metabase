@@ -1,10 +1,10 @@
 (ns metabase.server.handler
   "Top-level Metabase Ring handler."
   (:require
-   [metabase.agent-api.usage :as agent-api.usage]
    [metabase.analytics.core :as analytics]
    [metabase.api.macros :as api.macros]
    [metabase.config.core :as config]
+   [metabase.metabot.agent-api.usage :as agent-api.usage]
    [metabase.server.middleware.auth :as mw.auth]
    [metabase.server.middleware.body-limit :as mw.body-limit]
    [metabase.server.middleware.browser-cookie :as mw.browser-cookie]
