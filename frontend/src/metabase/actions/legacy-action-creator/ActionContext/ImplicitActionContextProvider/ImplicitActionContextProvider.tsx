@@ -8,7 +8,7 @@ import type {
   WritebackImplicitQueryAction,
 } from "metabase-types/api";
 
-import { getDefaultFormSettings } from "../../../../utils";
+import { getDefaultFormSettings } from "../../../utils";
 import type { ActionContextType } from "../ActionContext";
 import { ActionContext } from "../ActionContext";
 import type { ActionContextProviderProps } from "../types";

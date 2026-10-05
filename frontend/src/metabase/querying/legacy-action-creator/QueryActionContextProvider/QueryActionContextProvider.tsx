@@ -5,8 +5,8 @@ import type {
   ActionContextProviderProps,
   ActionContextType,
   EditorBodyProps,
-} from "metabase/actions/containers/ActionCreator/ActionContext";
-import { ActionContext } from "metabase/actions/containers/ActionCreator/ActionContext";
+} from "metabase/actions/legacy-action-creator/ActionContext";
+import { ActionContext } from "metabase/actions/legacy-action-creator/ActionContext";
 import type { CreateQueryActionParams } from "metabase/actions/types";
 import { getDefaultFormSettings } from "metabase/actions/utils";
 import { useSelector } from "metabase/redux";

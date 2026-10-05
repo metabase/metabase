@@ -13,7 +13,7 @@ import {
   waitFor,
   within,
 } from "__support__/ui";
-import { loadActionCreator } from "metabase/querying/action-creator";
+import { loadLegacyActionCreator } from "metabase/querying/legacy-action-creator";
 import { setOpenModal } from "metabase/redux/ui";
 import { Route } from "metabase/router";
 import { createMockDatabase } from "metabase-types/api/mocks";
@@ -23,7 +23,7 @@ import { NewModals } from "./NewModals";
 async function setup() {
   // The editor is a chunk of its own, so keep its import out of the window the
   // assertions below wait in.
-  await loadActionCreator();
+  await loadLegacyActionCreator();
 
   setupDatabasesEndpoints([createMockDatabase()]);
   setupCardsEndpoints([]);

@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { t } from "ttag";
 import * as Yup from "yup";
 
-import { FormModelPicker } from "metabase/actions/containers/ActionCreator/FormModelPicker";
+import { FormModelPicker } from "metabase/actions/legacy-action-creator/FormModelPicker";
 import type { CreateQueryActionParams } from "metabase/actions/types";
 import { FormFooter } from "metabase/common/components/FormFooter";
 import {

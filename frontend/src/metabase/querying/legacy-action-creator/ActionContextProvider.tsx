@@ -1,5 +1,5 @@
-import type { ImplicitActionContextProviderProps } from "metabase/actions/containers/ActionCreator/ActionContext/ImplicitActionContextProvider";
-import ImplicitActionContextProvider from "metabase/actions/containers/ActionCreator/ActionContext/ImplicitActionContextProvider";
+import type { ImplicitActionContextProviderProps } from "metabase/actions/legacy-action-creator/ActionContext/ImplicitActionContextProvider";
+import ImplicitActionContextProvider from "metabase/actions/legacy-action-creator/ActionContext/ImplicitActionContextProvider";
 import type { WritebackAction } from "metabase-types/api";
 
 import type { QueryActionContextProviderProps } from "./QueryActionContextProvider";

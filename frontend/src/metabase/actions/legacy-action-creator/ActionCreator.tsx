@@ -9,7 +9,7 @@ import { useToast } from "metabase/common/hooks/use-toast";
 import { Modal } from "metabase/ui";
 import type { CardId, WritebackAction } from "metabase-types/api";
 
-import { isSavedAction } from "../../utils";
+import { isSavedAction } from "../utils";
 
 import { useActionContext } from "./ActionContext";
 import ActionCreatorView from "./ActionCreatorView";

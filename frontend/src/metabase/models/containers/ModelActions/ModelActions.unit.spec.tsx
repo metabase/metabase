@@ -54,8 +54,8 @@ import ActionCreatorModal from "../ActionCreatorModal";
 
 import ModelActions from "./ModelActions";
 
-jest.mock("metabase/querying/action-creator", () => ({
-  ActionCreator: () => <div data-testid="mock-action-editor" />,
+jest.mock("metabase/querying/legacy-action-creator", () => ({
+  LegacyActionCreator: () => <div data-testid="mock-action-editor" />,
 }));
 
 const TEST_DATABASE_ID = 1;

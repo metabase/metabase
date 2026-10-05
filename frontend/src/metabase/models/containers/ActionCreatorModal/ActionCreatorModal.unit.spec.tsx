@@ -13,7 +13,7 @@ import {
   waitFor,
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
-import { loadActionCreator } from "metabase/querying/action-creator";
+import { loadLegacyActionCreator } from "metabase/querying/legacy-action-creator";
 import { Route, useLocation, useParams } from "metabase/router";
 import { checkNotNull } from "metabase/utils/types";
 import type { Card, WritebackAction } from "metabase-types/api";
@@ -56,7 +56,7 @@ async function setup({
   // `modalRoute` awaits the editor's chunk before it mounts the modal. Without
   // the same wait here the import lands inside the assertions, where the
   // editor's `Suspense` boundary renders nothing.
-  await loadActionCreator();
+  await loadLegacyActionCreator();
 
   setupDatabasesEndpoints([DATABASE]);
   setupCardsEndpoints([model]);

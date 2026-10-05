@@ -22,7 +22,7 @@ import {
   getDefaultFormSettings,
   getForm,
   getFormValidationSchema,
-} from "../../../utils";
+} from "../../utils";
 import { syncFieldsWithParameters } from "../utils";
 
 import { Description } from "./Description";

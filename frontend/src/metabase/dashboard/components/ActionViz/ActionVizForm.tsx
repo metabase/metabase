@@ -9,9 +9,9 @@ import { getFormTitle, isImplicitUpdateAction } from "metabase/actions/utils";
 import { actionApi, publicApi } from "metabase/api";
 import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
 import {
-  ActionCreator,
-  loadActionCreator,
-} from "metabase/querying/action-creator";
+  LegacyActionCreator,
+  loadLegacyActionCreator,
+} from "metabase/querying/legacy-action-creator";
 import { useDispatch } from "metabase/redux";
 import { Modal, PREVENT_AUTOCOMPLETE_CLIPPING_MODAL_PROPS } from "metabase/ui";
 import { getDashboardType } from "metabase/utils/dashboard";
@@ -70,7 +70,7 @@ function ActionVizForm({
   // a transition, keeps this card on screen until the editor is ready so the
   // modal opens complete rather than empty.
   useEffect(() => {
-    loadActionCreator();
+    loadLegacyActionCreator();
   }, []);
   const title = getFormTitle(action);
 
@@ -175,7 +175,7 @@ function ActionVizForm({
           withCloseButton={false}
           padding={0}
         >
-          <ActionCreator
+          <LegacyActionCreator
             action={action}
             modelId={action.model_id ?? undefined}
             databaseId={action.database_id}
