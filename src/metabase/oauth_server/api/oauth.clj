@@ -191,6 +191,12 @@
   (str "None of the requested scopes are supported. Request only scopes listed in scopes_supported at "
        (authorization-server-metadata-url)))
 
+(defn- mcp-scopes-without-resource-description
+  "The `error_description` for an authorization request for MCP scopes only that names no resource."
+  []
+  (str "This request asks for MCP scopes but names no resource. Authorize again with resource="
+       (system/site-url) (mcp/mcp-canonical-path)))
+
 (defn- missing-scope-description
   "The `error_description` for an authorization request with no scope."
   []
@@ -476,8 +482,8 @@
 (defn- scope-to-grant
   "The scope a parsed authorization request may be granted: its requested scopes filtered to the registered ones,
    then narrowed to the `resource` indicator it names. Throws `ex-info` carrying `:oauth-error` and
-   `:error-description` when the request names no scope, when none of its scopes are registered, or when none of
-   them survive narrowing.
+   `:error-description` when the request names no scope, when none of its scopes are registered, when every
+   registered scope is an MCP scope but the request names no resource, or when none of them survive narrowing.
 
    Applied by both the consent page and the decision endpoint. The consent form's signature proves only that the
    form was not tampered with by a third party: it is keyed by the CSRF token the page shows the user, so the user
@@ -503,6 +509,13 @@
                      (throw (ex-info "no requested scope is a registered scope"
                                      {:oauth-error       "invalid_scope"
                                       :error-description (no-supported-scopes-description)})))
+        ;; A token holding only MCP scopes and bound to no resource works nowhere: the REST API refuses narrow MCP
+        ;; scopes, and the MCP endpoint refuses a token bound to no resource. Refuse it before it is minted.
+        _          (when (and (empty? (:resource parsed))
+                              (every? (set (mcp/v2-scopes)) (str/split registered #"\s+")))
+                     (throw (ex-info "MCP scopes were requested without a resource"
+                                     {:oauth-error       "invalid_target"
+                                      :error-description (mcp-scopes-without-resource-description)})))
         narrowed   (oauth-server/narrow-scope-to-resource (:resource parsed) registered)]
     ;; Nothing surviving means the client asked exclusively for scopes this resource does not
     ;; accept: dropping the parameter there renders a consent screen listing nothing and mints a
