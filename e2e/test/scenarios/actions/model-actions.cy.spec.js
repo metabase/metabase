@@ -310,7 +310,7 @@ describe(
         const IMPLICIT_ACTION_NAME = "Update";
 
         cy.get("@writableModelId").then((modelId) => {
-          cy.visit(`/model/${modelId}/detail/actions`);
+          cy.visit(`/model/${modelId}/detail`);
           cy.wait("@getModel");
         });
 
