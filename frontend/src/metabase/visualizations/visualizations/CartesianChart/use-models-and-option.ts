@@ -39,7 +39,6 @@ export function useModelsAndOption(
     gridSize,
   }: VisualizationProps,
   containerRef: React.RefObject<HTMLDivElement | null>,
-  hoveredTimelineEventIds?: TimelineEventId[],
 ) {
   const tc = useTranslateContent();
 
