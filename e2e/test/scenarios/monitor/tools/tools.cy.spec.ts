@@ -710,7 +710,7 @@ describe("scenarios > monitor > tools > task runs", () => {
     }).as("getTaskRun");
   });
 
-  it("should switch between Tasks and Runs tabs", () => {
+  it("should switch tabs, open task run details and follow their links", () => {
     cy.visit("/monitor/tasks/list");
 
     cy.findByTestId("tasks-table").should("be.visible");
@@ -718,21 +718,10 @@ describe("scenarios > monitor > tools > task runs", () => {
     cy.findByRole("link", { name: "Runs" }).click();
     cy.location("pathname").should("eq", "/monitor/tasks/runs");
     cy.wait("@getTaskRuns");
-    cy.findByTestId("task-runs-table")
-      .findAllByTestId("task-run")
-      .should("have.length.at.least", 1);
-
-    cy.findByRole("link", { name: "Tasks" }).click();
-    cy.location("pathname").should("eq", "/monitor/tasks/list");
-    cy.findByTestId("tasks-table").should("be.visible");
-  });
-
-  it("should navigate to task run details and show associated tasks", () => {
-    cy.visit("/monitor/tasks/runs");
-    cy.wait("@getTaskRuns");
 
     cy.findByTestId("task-runs-table")
       .findAllByTestId("task-run")
+      .should("have.length.at.least", 1)
       .first()
       .click();
     cy.wait("@getTaskRun");
@@ -748,11 +737,6 @@ describe("scenarios > monitor > tools > task runs", () => {
 
     cy.findByTestId("task-run-tasks-table").should("be.visible");
     cy.findAllByTestId("task-run-task").should("have.length", 3);
-  });
-
-  it("should follow the links on the task run details page", () => {
-    cy.visit(`/monitor/tasks/runs/${taskRun.id}`);
-    cy.wait("@getTaskRun");
 
     cy.log("associated task row opens the task details");
     cy.findByTestId("task-run-tasks-table")
@@ -777,6 +761,11 @@ describe("scenarios > monitor > tools > task runs", () => {
     cy.log("Back to Runs opens the runs list");
     cy.findByRole("link", { name: /Back to Runs/i }).click();
     cy.location("pathname").should("eq", "/monitor/tasks/runs");
+
+    cy.log("Tasks tab opens the tasks list");
+    cy.findByRole("link", { name: "Tasks" }).click();
+    cy.location("pathname").should("eq", "/monitor/tasks/list");
+    cy.findByTestId("tasks-table").should("be.visible");
   });
 });
 
