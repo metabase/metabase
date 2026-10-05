@@ -845,6 +845,24 @@
                                         :engine     (u/qualified-name ::host-details-driver)
                                         :details    {:host "127.0.0.1"}}))))))
 
+(deftest stub-db-is-not-subject-to-the-network-policy-test
+  (mt/with-temp-env-var-value! [mb-warehouse-allowed-networks "external-only"]
+    (testing "a stub with no details can be created, although its empty details read as `localhost`"
+      (mt/with-temp [:model/Database db {:engine :postgres, :details {}, :is_stub true}]
+        (testing "but connecting it to an internal address is refused"
+          (is (thrown-with-msg?
+               clojure.lang.ExceptionInfo
+               #"private or internal network address"
+               (t2/update! :model/Database (:id db) {:details {:host "127.0.0.1"}, :is_stub false}))))))
+    (testing "`is_stub` is not itself a way past the policy"
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"private or internal network address"
+           (t2/insert! :model/Database {:name    "stub-flavored smuggling"
+                                        :is_stub true
+                                        :engine  (u/qualified-name ::host-details-driver)
+                                        :details {:host "127.0.0.1"}}))))))
+
 (deftest attached-dwh-relaxes-the-network-policy-test
   (mt/with-temp-env-var-value! [mb-warehouse-allowed-networks "external-only"]
     (mt/with-premium-features #{:attached-dwh}

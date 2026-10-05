@@ -1317,6 +1317,7 @@ describe("Remote Sync", () => {
         .should("be.visible");
 
       cy.log("connect the stub database");
+      cy.intercept("PUT", "/api/database/*").as("updateDatabase");
       cy.button("Edit connection details").click();
       cy.findByTestId("database-form").within(() => {
         cy.findByLabelText(/Host/).type("localhost");
@@ -1326,6 +1327,7 @@ describe("Remote Sync", () => {
         cy.findByLabelText(/Password/).type("metasample123");
       });
       cy.button("Save changes").click();
+      cy.wait("@updateDatabase");
 
       cy.request<{ data: Database[] }>("GET", "/api/database").then(
         ({ body }) => {

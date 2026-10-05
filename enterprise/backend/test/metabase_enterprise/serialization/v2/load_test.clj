@@ -2387,6 +2387,21 @@
                          :is_published true}
                         (t2/select-one :model/Table :name "published_table")))))))))))
 
+(deftest database-is-stub-is-not-serialized-test
+  (testing "`is_stub` is neither exported nor imported, so an import never turns a real database into a stub"
+    (let [serialized (atom nil)]
+      (ts/with-dbs [source-db dest-db]
+        (ts/with-db source-db
+          (let [stub (ts/create! :model/Database :name "Prod" :engine :postgres :details {} :is_stub true)]
+            (reset! serialized (serdes/extract-one "Database" {} stub))
+            (is (not (contains? @serialized :is_stub)))))
+        (ts/with-db dest-db
+          (let [real (ts/create! :model/Database :name "Prod" :engine :postgres :details {:host "prod"})]
+            (serdes.load/load-metabase! (ingestion-in-memory [(assoc @serialized :is_stub true)]))
+            (is (=? {:details {:host "prod"}
+                     :is_stub false}
+                    (t2/select-one :model/Database :id (:id real))))))))))
+
 (deftest segment-minimal-required-properties-test
   (testing "Segment deserialized with only: entity_id, name, definition, creator_id"
     (let [serialized (atom nil)]

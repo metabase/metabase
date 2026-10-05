@@ -493,6 +493,12 @@
   (and (:is_audit database)
        (every? #(empty? (get database %)) details-keys)))
 
+(defn- exempt-stub-db?
+  "Whether `database` is a stub with no details at all, as serialization import synthesizes for a missing database."
+  [database]
+  (and (:is_stub database)
+       (every? #(empty? (get database %)) details-keys)))
+
 (defn- validate-connection-hosts!
   "Refuse to store details pointing at a private/internal network address. Enforcing this on the model, and not just on
   the endpoints that test a connection, covers the routes that write a Database without ever testing it: serialization
@@ -502,9 +508,10 @@
   [[metabase.driver.connection/effective-details]] resolves it -- merged onto `:details` -- since that, and not the
   overlay by itself, is what a connection is opened with: one holding nothing but credentials repoints nothing.
 
-  The Audit DB is exempt -- see [[exempt-audit-db?]]."
+  The Audit DB and detail-less stubs are exempt -- see [[exempt-audit-db?]] and [[exempt-stub-db?]]."
   [engine database keys-to-check]
-  (when-not (exempt-audit-db? database)
+  (when-not (or (exempt-audit-db? database)
+                (exempt-stub-db? database))
     (when-let [engine (some-> engine keyword)]
       (driver.u/with-database-network-policy database
         (doseq [k     keys-to-check
@@ -695,13 +702,14 @@
   (let [details-transform {:export-with-context (fn [_current _ _details] ::serdes/skip)
                            :import              identity}]
     {:copy      [:auto_run_queries :cache_field_values_schedule :caveats :dbms_version
-                 :description :engine :is_audit :is_attached_dwh :is_full_sync :is_on_demand :is_sample :is_stub
+                 :description :engine :is_audit :is_attached_dwh :is_full_sync :is_on_demand :is_sample
                  :default_schema :metadata_sync_schedule :name :points_of_interest :provider_name :refingerprint :settings :timezone :uploads_enabled
                  :uploads_schema_name :uploads_table_prefix]
      :skip      [;; deprecated field
                  :cache_ttl
                  ;; describes a sync on the source instance, and may name its connection details
-                 :initial_sync_error]
+                 :initial_sync_error
+                 :is_stub]
      :transform {:created_at          (serdes/date)
                  :details             details-transform
                  :write_data_details  details-transform
@@ -715,7 +723,6 @@
                  :is_full_sync     true
                  :is_on_demand     false
                  :is_sample        false
-                 :is_stub          false
                  :uploads_enabled  false}}))
 
 #_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
