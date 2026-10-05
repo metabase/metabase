@@ -206,6 +206,9 @@ describe("44047", () => {
       cy.findByText("Remapped").click();
       cy.button("Add filter").click();
     });
+    H.filterWidget().should("contain", "Remapped");
+    H.getDashboardCard(0).within(() => H.assertTableRowsCount(46));
+    H.getDashboardCard(1).within(() => H.assertTableRowsCount(46));
   }
 
   beforeEach(() => {
@@ -525,6 +528,7 @@ describe("issue 35852", () => {
     cy.findAllByTestId("cell-data")
       .filter(":contains(Gizmo)")
       .should("have.length", 2);
+    H.assertQueryBuilderRowCount(2);
 
     H.visitDashboard("@dashboardId");
 
@@ -536,6 +540,7 @@ describe("issue 35852", () => {
     });
 
     H.getDashboardCard().findAllByText("Gizmo").should("have.length", 2);
+    H.getDashboardCard().within(() => H.assertTableRowsCount(2));
   });
 
   function createDashboardWithFilterAndQuestionMapped(modelId) {
@@ -1549,10 +1554,11 @@ describe("issue 44090", () => {
         cy.button("Add filter").click();
       });
 
-    H.filterWidget().then(($el) => {
-      const { width } = $el[0].getBoundingClientRect();
-      cy.wrap(width).should("be.lt", 300);
-    });
+    cy.location("search").should("contain", "string=Minima");
+    H.filterWidget()
+      .should("contain", "Minima")
+      .invoke("outerWidth")
+      .should("be.lt", 300);
   });
 
   it("should not overflow the dashboard header when a filter contains a long value that does not contain spaces (metabase#44090)", () => {
@@ -1567,10 +1573,11 @@ describe("issue 44090", () => {
         cy.button("Add filter").click();
       });
 
-    H.filterWidget().then(($el) => {
-      const { width } = $el[0].getBoundingClientRect();
-      cy.wrap(width).should("be.lt", 300);
-    });
+    cy.location("search").should("contain", "string=Minimanonhic");
+    H.filterWidget()
+      .should("contain", "Minima")
+      .invoke("outerWidth")
+      .should("be.lt", 300);
   });
 });
 
@@ -1755,11 +1762,17 @@ describe("issue 46541", () => {
 
         cy.log("Set parameter value on Dashboard B");
         H.visitDashboard("@dashboardB");
+        cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query").as(
+          "dashcardQueryB",
+        );
         H.filterWidget(OTHER_FILTER).click();
         H.popover().within(() => {
           cy.findByPlaceholderText("Enter a number").type("10");
           cy.button("Add filter").click();
         });
+        H.filterWidget(OTHER_FILTER).should("contain", "10");
+        // The last used value is stored while running the dashcard query.
+        cy.wait("@dashcardQueryB");
 
         cy.log("Set up click behaviour on Dashboard A");
         H.visitDashboard("@dashboardA");
@@ -1959,6 +1972,7 @@ describe("issue #66670", () => {
               "Step 8: Revert dashboard to earlier version where filter used Question B",
             );
             H.visitDashboard(dashboardId);
+            cy.intercept("POST", "/api/revision/revert").as("revertDashboard");
             H.openDashboardInfoSidebar();
             H.sidesheet().within(() => {
               cy.findByRole("tab", { name: "History" }).click();
@@ -1969,6 +1983,12 @@ describe("issue #66670", () => {
                 .first()
                 .click();
             });
+            cy.wait("@revertDashboard")
+              .its("response.statusCode")
+              .should("eq", 200);
+            cy.findByTestId("dashboard-header")
+              .findByDisplayValue("Test Dashboard UXW-2494")
+              .should("be.visible");
             // Close sidesheet
             H.sidesheet().findByLabelText("Close").click();
 

@@ -108,7 +108,10 @@ describe("pivot tables", () => {
     cy.findByTestId("qb-header")
       .button(/Filter/)
       .click();
-    H.popover().findByText("Summaries").should("not.exist");
+    H.popover().within(() => {
+      cy.findByText("Base Orders Question").should("be.visible");
+      cy.findByText("Summaries").should("not.exist");
+    });
 
     function verifyDateMappingOptions() {
       QSHelpers.verifyDashcardMappingOptions(QUESTION_PIVOT_INDEX, [

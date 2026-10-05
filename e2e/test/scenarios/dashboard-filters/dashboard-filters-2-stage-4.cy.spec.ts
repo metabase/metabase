@@ -369,7 +369,7 @@ describe("scenarios > dashboard > filters > query stages", () => {
           QSHelpers.setup1stStageAggregationFilter();
 
           QSHelpers.verifyDashcardRowsCount({
-            dashcardIndex: 1,
+            dashcardIndex: 0,
             dashboardCount: 3,
             queryBuilderCount: "Showing 3 rows",
           });

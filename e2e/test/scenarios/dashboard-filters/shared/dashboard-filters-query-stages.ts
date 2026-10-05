@@ -497,12 +497,13 @@ export function setup1stStageBreakoutFilter() {
 
   H.getDashboardCard(0).findByText("Select…").click();
   H.popover().within(() => {
-    getPopoverItem("Category", 1).scrollIntoView().click();
+    getPopoverItem("Product → Category", 0).scrollIntoView().click();
   });
+  closeToasts();
 
   H.getDashboardCard(1).findByText("Select…").click();
   H.popover().within(() => {
-    getPopoverItem("Category", 1).scrollIntoView().click();
+    getPopoverItem("Product → Category", 0).scrollIntoView().click();
   });
 
   H.saveDashboard();

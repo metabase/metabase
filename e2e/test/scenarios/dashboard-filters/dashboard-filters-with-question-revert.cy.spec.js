@@ -234,6 +234,7 @@ describe("issue 35954", () => {
           H.filterWidget().click();
           cy.findByPlaceholderText("Enter a number").type("3{enter}");
           cy.button("Add filter").click();
+          H.filterWidget().should("contain", "3");
 
           assertFilterIsDisconnected();
         });
@@ -260,6 +261,7 @@ describe("issue 35954", () => {
         H.filterWidget().click();
         cy.findByPlaceholderText("Enter a number").type("3{enter}");
         cy.button("Add filter").click();
+        H.filterWidget().should("contain", "3");
 
         assertFilterIsDisconnected();
       });

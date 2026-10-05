@@ -120,8 +120,13 @@ describe("issue 12720, issue 47172", () => {
     H.visitDashboard(ORDERS_DASHBOARD_ID);
     cy.findAllByTestId("dashcard-container").contains(title).click();
 
+    cy.location("pathname").should("match", /^\/question/);
     cy.location("search").should("contain", dashboardFilter.default);
     H.filterWidget().contains("After January 1, 2029");
+    cy.findByTestId("question-row-count").should(
+      "have.text",
+      "Showing 1,980 rows",
+    );
   }
   // After January 1st, 2029
   const dashboardFilter = {
@@ -209,6 +214,7 @@ describe("issue 12720, issue 47172", () => {
     H.visitDashboard(ORDERS_DASHBOARD_ID);
 
     H.getDashboardCard(1).within(() => {
+      cy.findByTestId("table-root").should("be.visible");
       cy.findByText("There was a problem displaying this chart.").should(
         "not.exist",
       );
@@ -384,10 +390,10 @@ describe("issues 15119 and 16112", () => {
         cy.findByText("Rating Filter").click();
         cy.findByText("Linked filters").click();
 
-        // turn on the toggle
-        H.sidebar().findByRole("switch").parent().get("label").click();
+        H.sidebar().findByRole("switch").click({ force: true });
+        H.sidebar().findByRole("switch").should("be.checked");
 
-        cy.findByText("Save").click();
+        H.saveDashboard();
 
         cy.signIn("nodata");
         H.visitDashboard(dashboard_id);
@@ -547,12 +553,12 @@ describe("issue 17211", () => {
   it("should not falsely alert that no matching dashboard filter has been found (metabase#17211)", () => {
     H.filterWidget().click();
 
-    cy.findByPlaceholderText("Search the list").type("abb");
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Abbeville").click();
-
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.contains("No matching City found").should("not.exist");
+    H.popover().within(() => {
+      cy.findByPlaceholderText("Search the list").type("abb");
+      cy.findByTestId("Abbeville-filter-value").click();
+      cy.findByTestId("Abbeville-filter-value").should("be.checked");
+      cy.findByText("Didn't find anything").should("not.exist");
+    });
   });
 });
 
@@ -615,15 +621,18 @@ describe("issue 17551", () => {
   });
 
   it("should include today in the 'All time' date filter when chosen 'Next' (metabase#17551)", () => {
+    H.getDashboardCard().findByText("yesterday").should("be.visible");
+
     H.filterWidget().click();
     setAdHocFilter({ condition: "Next", includeCurrent: true });
 
     cy.url().should("include", "?date_filter=next30days~");
 
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("tomorrow");
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("today");
+    H.getDashboardCard().within(() => {
+      cy.findByText("yesterday").should("not.exist");
+      cy.findByText("today").should("be.visible");
+      cy.findByText("tomorrow").should("be.visible");
+    });
   });
 });
 
@@ -913,15 +922,23 @@ describe("issue 22788", () => {
     parameters: [filter],
   };
 
+  function assertFilteredByGizmo() {
+    H.getDashboardCard().within(() => {
+      cy.findByText("Mediocre Wooden Table").should("be.visible");
+      cy.findByText("Doohickey").should("not.exist");
+    });
+  }
+
   function addFilterAndAssert() {
+    H.getDashboardCard().findAllByText("Doohickey").should("not.be.empty");
+
     H.filterWidget().click();
     H.dashboardParametersPopover().within(() => {
       H.fieldValuesCombobox().type("Gizmo");
       cy.button("Add filter").click();
     });
 
-    cy.findAllByText("Gizmo");
-    cy.findAllByText("Doohickey").should("not.exist");
+    assertFilteredByGizmo();
   }
 
   function openFilterSettings() {
@@ -981,8 +998,9 @@ describe("issue 22788", () => {
 
     H.saveDashboard();
 
-    cy.findAllByText("Gizmo");
-    cy.findAllByText("Doohickey").should("not.exist");
+    cy.location("search").should("eq", "?my_filter_text=Gizmo");
+    cy.reload();
+    assertFilteredByGizmo();
   });
 });
 
@@ -1458,7 +1476,7 @@ describe("issue 25374", () => {
     H.getDashboardCard(0).findByText(questionDetails.name).click();
     cy.wait("@cardQuery");
 
-    H.tableInteractiveHeader("COUNT(*)");
+    H.tableInteractiveHeader().should("contain", "COUNT(*)");
     H.tableInteractiveBody().findByText("3");
 
     cy.location("search").should("eq", "?num=1%2C2%2C3");
@@ -1655,6 +1673,7 @@ describe("issue 26230, issue 27356", () => {
   };
 
   const PARAM_DASHBOARD = "dashboard with a tall card";
+  const PARAM_DASHBOARD_2 = "another dashboard with a tall card";
   const REGULAR_DASHBOARD = "dashboard without params";
 
   function prepareAndVisitDashboards() {
@@ -1662,6 +1681,16 @@ describe("issue 26230, issue 27356", () => {
     // target that preserves the parameterized -> non-parameterized check
     // (metabase#27356).
     H.createDashboard({ name: REGULAR_DASHBOARD }).then(({ body: { id } }) => {
+      bookmarkDashboard(id);
+    });
+
+    // A second parameterized dashboard to switch to while the first one's
+    // param widget is sticky (metabase#26230).
+    H.createDashboard({
+      name: PARAM_DASHBOARD_2,
+      parameters: [FILTER],
+    }).then(({ body: { id } }) => {
+      createDashCard(id, FILTER);
       bookmarkDashboard(id);
     });
 
@@ -1725,16 +1754,30 @@ describe("issue 26230, issue 27356", () => {
       .findByDisplayValue(PARAM_DASHBOARD)
       .should("not.be.visible");
 
+    // A transparent bottom border means the param widget is not sticky.
+    cy.findByTestId("dashboard-parameters-widget-container").should(
+      "not.have.css",
+      "border-bottom-color",
+      "rgba(0, 0, 0, 0)",
+    );
+
+    cy.intercept("GET", "/api/dashboard/*").as("loadDashboard");
+    cy.findByRole("listitem", { name: PARAM_DASHBOARD_2 }).click();
+    cy.wait("@loadDashboard");
+
+    cy.findByRole("main")
+      .findByDisplayValue(PARAM_DASHBOARD_2)
+      .should("be.visible");
     cy.findByTestId("dashboard-parameters-widget-container").should(
       "have.css",
-      "position",
-      "sticky",
+      "border-bottom-color",
+      "rgba(0, 0, 0, 0)",
     );
 
     // Switching from the parameterized dashboard to the non-parameterized one
     // via the navigation sidebar should load cleanly, without erroring
     // (metabase#27356).
-    cy.intercept("GET", "/api/dashboard/*").as("loadDashboard");
+    cy.button("Toggle sidebar").click();
     cy.findByRole("listitem", { name: REGULAR_DASHBOARD }).click();
     cy.wait("@loadDashboard");
 
@@ -1789,13 +1832,18 @@ describe("issue 27768", () => {
     H.popover().contains("CCategory").click();
     H.saveDashboard();
 
+    H.getDashboardCard().findAllByText("Doohickey").should("not.be.empty");
+
     H.filterWidget().click();
     H.dashboardParametersPopover().within(() => {
       H.fieldValuesCombobox().type("Gizmo");
       cy.button("Add filter").click();
     });
 
-    cy.findAllByText("Doohickey").should("not.exist");
+    H.getDashboardCard().within(() => {
+      cy.findByText("Mediocre Wooden Table").should("be.visible");
+      cy.findByText("Doohickey").should("not.exist");
+    });
 
     // Make sure the filter is still connected to the custom column
     H.editDashboard();
@@ -2204,7 +2252,7 @@ describe("issue 43154", () => {
     },
   });
 
-  function verifyNestedFilter(questionDetails) {
+  function verifyNestedFilter(questionDetails, assertUnfiltered = () => {}) {
     H.createQuestion(modelDetails).then(({ body: model }) => {
       H.createDashboardWithQuestions({
         questions: [questionDetails(model.id)],
@@ -2219,11 +2267,13 @@ describe("issue 43154", () => {
     H.popover().findByText("People - User → Source").click();
     H.saveDashboard();
 
+    assertUnfiltered();
     H.filterWidget().click();
     H.popover().within(() => {
       cy.findByText("Twitter").click();
       cy.button("Add filter").click();
     });
+    H.filterWidget().should("contain", "Twitter");
   }
 
   beforeEach(() => {
@@ -2236,7 +2286,10 @@ describe("issue 43154", () => {
   });
 
   it("should be able to see field values with a model-based question with aggregation (metabase#43154)", () => {
-    verifyNestedFilter(questionWithAggregationDetails);
+    verifyNestedFilter(questionWithAggregationDetails, () =>
+      H.getDashboardCard().findByText("18,760").should("be.visible"),
+    );
+    H.getDashboardCard().findByText("3,772").should("be.visible");
   });
 });
 
