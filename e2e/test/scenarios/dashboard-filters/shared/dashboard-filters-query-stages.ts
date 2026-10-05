@@ -152,16 +152,8 @@ export function createQ1Query(source: Card): StructuredQuery {
   };
 }
 
-// Q2 - join, custom column, 2 aggregations, no breakouts
-export function createQ2Query(source: Card): StructuredQuery {
-  return {
-    ...createQ1Query(source),
-    aggregation: [["count"], ["sum", TOTAL_FIELD]],
-  };
-}
-
 // Q3 - join, custom column, no aggregations, 3 breakouts
-export function createQ3Query(source: Card): StructuredQuery {
+function createQ3Query(source: Card): StructuredQuery {
   return {
     ...createQ1Query(source),
     breakout: [
@@ -195,7 +187,7 @@ export function createQ3Query(source: Card): StructuredQuery {
 }
 
 // Q4 - join, custom column, 2 aggregations, 2 breakouts
-export function createQ4Query(source: Card): StructuredQuery {
+function createQ4Query(source: Card): StructuredQuery {
   return {
     ...createQ3Query(source),
     aggregation: [["count"], ["sum", TOTAL_FIELD]],
@@ -203,7 +195,7 @@ export function createQ4Query(source: Card): StructuredQuery {
 }
 
 // Q5 - Q4 + 2nd stage with join, custom column, no aggregations, no breakouts
-export function createQ5Query(source: Card): StructuredQuery {
+function createQ5Query(source: Card): StructuredQuery {
   return {
     "source-query": createQ4Query(source),
     expressions: {
@@ -249,29 +241,8 @@ export function createQ5Query(source: Card): StructuredQuery {
   };
 }
 
-// Q6 - Q4 + 2nd stage with join, custom column, 2 aggregations, no breakouts
-export function createQ6Query(source: Card): StructuredQuery {
-  return {
-    ...createQ5Query(source),
-    aggregation: [
-      ["count"],
-      [
-        "sum",
-        [
-          "field",
-          REVIEWS.RATING,
-          {
-            "base-type": "type/Integer",
-            "join-alias": "Reviews - Created At: Month",
-          },
-        ],
-      ],
-    ],
-  };
-}
-
 // Q7 - Q4 + 2nd stage with join, custom column, no aggregations, 2 breakouts
-export function createQ7Query(source: Card): StructuredQuery {
+function createQ7Query(source: Card): StructuredQuery {
   return {
     ...createQ5Query(source),
     breakout: [
@@ -312,14 +283,6 @@ export function createQ8Query(source: Card): StructuredQuery {
         ],
       ],
     ],
-  };
-}
-
-// Q9 - Q8 + 3rd stage with 1 aggregation
-export function createQ9Query(source: Card): StructuredQuery {
-  return {
-    "source-query": createQ8Query(source),
-    aggregation: [["count"]],
   };
 }
 
@@ -696,18 +659,14 @@ export function getFilter(name: string) {
   return cy.findByTestId("fixed-width-filters").findByText(name);
 }
 
-export function getPopoverList() {
-  return cy.findAllByRole("grid").eq(0);
-}
-
-export function getPopoverItems() {
+function getPopoverItems() {
   return cy.get("[data-element-id=list-section]");
 }
 
 /**
  * @param index if more than 1 item with the same name is visible, specify which one should be used
  */
-export function getPopoverItem(name: string, index = 0) {
+function getPopoverItem(name: string, index = 0) {
   /**
    * Without scrollIntoView() the popover may scroll automatically to a different
    * place when clicking the item (unclear why).
@@ -765,7 +724,7 @@ type SectionName = string;
 type ColumnName = string;
 type MappingSection = [SectionName | null, ColumnName[]];
 
-export function verifyPopoverMappingOptions(sections: MappingSection[]) {
+function verifyPopoverMappingOptions(sections: MappingSection[]) {
   const expectedItemsCount = sections.reduce(
     (sum, [sectionName, columnNames]) =>
       sum + (sectionName ? 1 : 0) + columnNames.length,
@@ -823,40 +782,4 @@ export function verifyDashcardRowsCount({
     .click();
   cy.wait("@dataset");
   cy.findByTestId("question-row-count").should("have.text", queryBuilderCount);
-}
-
-export function verifyDashcardCellValues({
-  dashcardIndex,
-  values,
-}: {
-  dashcardIndex: number;
-  values: string[];
-}) {
-  for (let valueIndex = 0; valueIndex < values.length; ++valueIndex) {
-    const value = values[valueIndex];
-
-    // eslint-disable-next-line metabase/no-unsafe-element-filtering
-    H.getDashboardCard(dashcardIndex)
-      .findByTestId("table-body")
-      .findAllByRole("row")
-      .first()
-      .findAllByTestId("cell-data")
-      .eq(valueIndex)
-      .should("have.text", value);
-  }
-
-  H.getDashboardCard(dashcardIndex)
-    .findByTestId("legend-caption-title")
-    .click();
-  cy.wait("@dataset");
-
-  for (let valueIndex = 0; valueIndex < values.length; ++valueIndex) {
-    const value = values[valueIndex];
-
-    // eslint-disable-next-line metabase/no-unsafe-element-filtering
-    H.tableInteractiveBody()
-      .findAllByTestId("cell-data")
-      .eq(valueIndex)
-      .should("have.text", value);
-  }
 }
