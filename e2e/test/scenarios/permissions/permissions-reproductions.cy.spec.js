@@ -251,6 +251,11 @@ describe("UI elements that make no sense for users without data permissions (met
 
     H.newButton().click();
     H.popover().should("contain", "Dashboard").and("not.contain", "Question");
+
+    H.visitDashboard(ORDERS_DASHBOARD_ID);
+    H.getDashboardCard()
+      .findByText("Sorry, you don't have permission to see this card.")
+      .should("be.visible");
   });
 });
 

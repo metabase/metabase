@@ -281,22 +281,10 @@ describe("admin > permissions > sandboxes (tested via the API)", () => {
       const USER_ATTRIBUTE = "User ID";
       const ATTRIBUTE_VALUE = "3";
       const TTAG_NAME = "cid";
-      const QUESTION_NAME = "Joined test";
 
       // Add user attribute to existing ("normal" / id:2) user
       cy.request("PUT", `/api/user/${NORMAL_USER_ID}`, {
         login_attributes: { [USER_ATTRIBUTE]: ATTRIBUTE_VALUE },
-      });
-
-      // Orders join Products
-      createJoinedQuestion(QUESTION_NAME);
-
-      cy.sandboxTable({
-        table_id: ORDERS_ID,
-        group_id: DATA_GROUP,
-        attribute_remappings: {
-          [USER_ATTRIBUTE]: ["dimension", ["field", ORDERS.USER_ID, null]],
-        },
       });
 
       H.createNativeQuestion({
@@ -829,12 +817,6 @@ describe("admin > permissions > sandboxes (tested via the API)", () => {
         // Title of the first order for User ID = 1
         // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
         cy.findByText("Awesome Concrete Shoes");
-
-        cy.signOut();
-        cy.signInAsAdmin();
-        cy.visit(
-          "/admin/permissions/data/group/3/database/1/schema/PUBLIC/5/segmented",
-        );
       });
     });
 

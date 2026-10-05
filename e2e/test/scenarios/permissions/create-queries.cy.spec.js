@@ -215,7 +215,7 @@ describe("scenarios > admin > permissions > create queries > query builder and n
     );
   });
 
-  it("should allow setting create queries to 'query builder and native' in database view", () => {
+  it("should allow setting create queries to 'query builder only' and then 'query builder and native' in database view", () => {
     cy.visit("/admin/permissions/");
     cy.findByRole("tab", { name: "Databases" }).click();
 
@@ -233,43 +233,50 @@ describe("scenarios > admin > permissions > create queries > query builder and n
       ["readonly", "No"],
     ]);
 
-    H.modifyPermission(
-      "readonly",
-      NATIVE_QUERIES_PERMISSION_INDEX,
-      "Query builder and native",
-    );
+    [
+      {
+        value: "Query builder only",
+        message:
+          "readonly will only be able to use the query builder for Sample Database.",
+      },
+      {
+        value: "Query builder and native",
+        message:
+          "readonly will be able to use the query builder and write native queries for Sample Database.",
+      },
+    ].forEach(({ value, message }) => {
+      cy.log(value);
+      H.modifyPermission("readonly", NATIVE_QUERIES_PERMISSION_INDEX, value);
 
-    const finalPermissions = [
-      ["Administrators", "Query builder and native"],
-      ["All Users", "No"],
-      ["collection", "No"],
-      ["data", "Query builder and native"],
-      ["nosql", "Query builder only"],
-      ["readonly", "Query builder and native"],
-    ];
-    H.assertPermissionTable(finalPermissions);
+      const finalPermissions = [
+        ["Administrators", "Query builder and native"],
+        ["All Users", "No"],
+        ["collection", "No"],
+        ["data", "Query builder and native"],
+        ["nosql", "Query builder only"],
+        ["readonly", value],
+      ];
+      H.assertPermissionTable(finalPermissions);
 
-    H.selectSidebarItem("Orders");
+      H.selectSidebarItem("Orders");
 
-    H.assertPermissionTable(finalPermissions);
+      H.assertPermissionTable(finalPermissions);
 
-    // Navigate back
-    cy.get("a").contains("Sample Database").click();
+      // Navigate back
+      cy.get("a").contains("Sample Database").click();
 
-    cy.button("Save changes").click();
+      cy.button("Save changes").click();
 
-    H.modal().within(() => {
-      cy.findByText("Save permissions?");
-      cy.contains(
-        "readonly will be able to use the query builder and write native queries for Sample Database.",
-      );
-      cy.button("Yes").click();
+      H.modal().within(() => {
+        cy.findByText("Save permissions?");
+        cy.contains(message);
+        cy.button("Yes").click();
+      });
+
+      cy.button("Save changes").should("not.exist");
+
+      H.assertPermissionTable(finalPermissions);
     });
-
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Save changes").should("not.exist");
-
-    H.assertPermissionTable(finalPermissions);
   });
 });
 
@@ -340,29 +347,6 @@ describe("scenarios > admin > permissions > create queries > query builder only"
     cy.findByText("Save changes").should("not.exist");
 
     H.assertPermissionTable(finalTablePermissions);
-
-    // After saving permissions, user should be able to make further edits without refreshing the page
-    // metabase#37811
-    cy.intercept("GET", `/api/permissions/graph/group/${DATA_GROUP}`).as(
-      "dataGroupGraph",
-    );
-    H.selectSidebarItem("data");
-
-    H.modifyPermission(
-      "Sample Database",
-      NATIVE_QUERIES_PERMISSION_INDEX,
-      "No",
-    );
-
-    cy.wait("@dataGroupGraph");
-    cy.button("Refresh the page").should("not.exist");
-
-    // User should have the option to change permissions back to query builder only at the database level
-    H.modifyPermission(
-      "Sample Database",
-      NATIVE_QUERIES_PERMISSION_INDEX,
-      "Query builder only",
-    );
   });
 
   it("should set entire database to 'query builder only' if a table is changed to it while db is 'query builder only'", () => {
@@ -436,62 +420,5 @@ describe("scenarios > admin > permissions > create queries > query builder only"
     cy.findByTextEnsureVisible("Sample Database").click();
 
     H.assertPermissionTable(finalTablePermissions);
-  });
-
-  it("should allow setting create queries to 'query builder only' in database view", () => {
-    cy.visit("/admin/permissions/");
-    cy.findByRole("tab", { name: "Databases" }).click();
-
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Select a database to see group permissions");
-
-    H.selectSidebarItem("Sample Database");
-
-    H.assertPermissionTable([
-      ["Administrators", "Query builder and native"],
-      ["All Users", "No"],
-      ["collection", "No"],
-      ["data", "Query builder and native"],
-      ["nosql", "Query builder only"],
-      ["readonly", "No"],
-    ]);
-
-    H.modifyPermission(
-      "readonly",
-      NATIVE_QUERIES_PERMISSION_INDEX,
-      "Query builder only",
-    );
-
-    const finalPermissions = [
-      ["Administrators", "Query builder and native"],
-      ["All Users", "No"],
-      ["collection", "No"],
-      ["data", "Query builder and native"],
-      ["nosql", "Query builder only"],
-      ["readonly", "Query builder only"],
-    ];
-    H.assertPermissionTable(finalPermissions);
-
-    H.selectSidebarItem("Orders");
-
-    H.assertPermissionTable(finalPermissions);
-
-    // Navigate back
-    cy.get("a").contains("Sample Database").click();
-
-    cy.button("Save changes").click();
-
-    H.modal().within(() => {
-      cy.findByText("Save permissions?");
-      cy.contains(
-        "readonly will only be able to use the query builder for Sample Database.",
-      );
-      cy.button("Yes").click();
-    });
-
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Save changes").should("not.exist");
-
-    H.assertPermissionTable(finalPermissions);
   });
 });

@@ -32,11 +32,8 @@ describe(
     });
 
     describe("permission editor UI", () => {
-      it("shows Transforms column only at database level, not schema level", () => {
-        cy.visit(`/admin/permissions/data/database/${WRITABLE_DB_ID}`);
-        cy.findByTestId("permission-table")
-          .find("thead")
-          .should("contain.text", "Transforms");
+      it("shows Transforms column only at database level, and allows changing and saving transforms permission", () => {
+        cy.intercept("PUT", "/api/permissions/graph").as("savePermissions");
 
         cy.visit(
           `/admin/permissions/data/database/${WRITABLE_DB_ID}/schema/Schema%20A`,
@@ -45,12 +42,11 @@ describe(
           .find("thead")
           .should("contain.text", "Create queries")
           .and("not.contain.text", "Transforms");
-      });
-
-      it("allows changing and saving transforms permission", () => {
-        cy.intercept("PUT", "/api/permissions/graph").as("savePermissions");
 
         cy.visit(`/admin/permissions/data/database/${WRITABLE_DB_ID}`);
+        cy.findByTestId("permission-table")
+          .find("thead")
+          .should("contain.text", "Transforms");
 
         H.assertPermissionForItem(
           "All Users",
@@ -204,6 +200,7 @@ describe(
         cy.log(
           "Writable Postgres should not be present in mini-picker when user lacks transform permission for it",
         );
+        H.miniPicker().findByText("Sample Database").should("be.visible");
         H.miniPicker()
           .findByText(/Writable Postgres/)
           .should("not.exist");
@@ -247,23 +244,7 @@ describe(
         H.setUserAsAnalyst(NORMAL_USER_ID, false);
       });
 
-      it("denies user access to a specific transform page", () => {
-        cy.signInAsAdmin();
-        H.createAndRunMbqlTransform({
-          sourceTable: SOURCE_TABLE,
-          targetTable: TARGET_TABLE,
-          targetSchema: TARGET_SCHEMA,
-          name: "Admin Only Transform",
-        }).then(({ transformId }) => {
-          cy.signInAsNormalUser();
-          H.visitTransform(transformId);
-
-          cy.url().should("include", "/unauthorized");
-          cy.findByRole("img", { name: /key/ }).should("exist");
-        });
-      });
-
-      it("denies user from creating and running transforms via API", () => {
+      it("denies user access to a transform page, and from creating and running transforms via API", () => {
         cy.signInAsNormalUser();
 
         H.getTableId({ databaseId: WRITABLE_DB_ID, name: SOURCE_TABLE }).then(
@@ -300,9 +281,13 @@ describe(
           sourceTable: SOURCE_TABLE,
           targetTable: TARGET_TABLE,
           targetSchema: TARGET_SCHEMA,
-          name: "Transform to Run",
+          name: "Admin Only Transform",
         }).then(({ body: transform }) => {
           cy.signInAsNormalUser();
+          H.visitTransform(transform.id);
+
+          cy.url().should("include", "/unauthorized");
+          cy.findByRole("img", { name: /key/ }).should("exist");
 
           cy.request({
             method: "POST",

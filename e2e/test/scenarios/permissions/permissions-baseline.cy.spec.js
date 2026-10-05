@@ -16,7 +16,7 @@ describe("scenarios > permissions", () => {
     "/admin",
   ];
 
-  it("should display the permissions screen on pages the user can't access", () => {
+  it("should display the permissions screen on pages the user can't access, and not allow running adhoc native questions", () => {
     cy.signIn("none");
 
     PATHS.forEach((path) => {
@@ -24,11 +24,8 @@ describe("scenarios > permissions", () => {
       cy.visit(path);
       checkUnauthorized();
     });
-  });
 
-  it("should not allow to run adhoc native questions without permissions", () => {
-    cy.signIn("none");
-
+    cy.log("adhoc native question");
     H.visitQuestionAdhoc(
       {
         display: "scalar",

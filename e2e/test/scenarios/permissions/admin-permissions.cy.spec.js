@@ -1,12 +1,8 @@
 const { H } = cy;
 import { SAMPLE_DB_ID, USER_GROUPS } from "e2e/support/cypress_data";
-import {
-  ORDERS_DASHBOARD_ID,
-  SECOND_COLLECTION_ID,
-} from "e2e/support/cypress_sample_instance_data";
+import { SECOND_COLLECTION_ID } from "e2e/support/cypress_sample_instance_data";
 
-const { ALL_USERS_GROUP, ADMIN_GROUP, COLLECTION_GROUP, DATA_GROUP } =
-  USER_GROUPS;
+const { ALL_USERS_GROUP, ADMIN_GROUP, DATA_GROUP } = USER_GROUPS;
 
 const COLLECTION_ACCESS_PERMISSION_INDEX = 0;
 
@@ -127,6 +123,17 @@ describe("scenarios > admin > permissions", { tags: "@OSS" }, () => {
         ["readonly", "View"],
       ]);
 
+      cy.log("Show selected option for the collection with children");
+      H.selectPermissionRow("All Users", COLLECTION_ACCESS_PERMISSION_INDEX);
+      H.assertPermissionOptions(["Curate", "View", "No access"]);
+
+      H.selectSidebarItem("Third collection");
+      H.selectPermissionRow("All Users", COLLECTION_ACCESS_PERMISSION_INDEX);
+      H.assertPermissionOptions(["Curate", "View"]);
+
+      visitSecondCollectionPermissions();
+
+      cy.log("Doesn't propagate permissions after turning off the toggle");
       H.modifyPermission(
         "All Users",
         COLLECTION_ACCESS_PERMISSION_INDEX,
@@ -154,36 +161,12 @@ describe("scenarios > admin > permissions", { tags: "@OSS" }, () => {
       ]);
 
       cy.log("View and edit permissions");
-      cy.visit("/admin/permissions/collections");
-
-      H.assertSidebarItems(collections);
-
-      H.selectSidebarItem("First collection");
-      H.assertSidebarItems([...collections, "Second collection"]);
-
-      H.selectSidebarItem("Second collection");
-
-      H.assertPermissionTable([
-        ["Administrators", "Curate"],
-        ["All Users", "No access"],
-        ["collection", "Curate"],
-        ["data", "No access"],
-        ["nosql", "No access"],
-        ["readonly", "View"],
-      ]);
-
-      cy.log("Show selected option for the collection with children");
-      H.selectPermissionRow("All Users", COLLECTION_ACCESS_PERMISSION_INDEX);
-      H.assertPermissionOptions(["Curate", "View", "No access"]);
-
-      H.selectSidebarItem("Third collection");
-      H.selectPermissionRow("All Users", COLLECTION_ACCESS_PERMISSION_INDEX);
-      H.assertPermissionOptions(["Curate", "View"]);
-
-      cy.visit(`/admin/permissions/collections/${SECOND_COLLECTION_ID}`);
-      cy.get("main")
-        .findByText("Permissions for Second collection")
-        .should("be.visible");
+      visitSecondCollectionPermissions();
+      H.assertPermissionForItem(
+        "All Users",
+        COLLECTION_ACCESS_PERMISSION_INDEX,
+        "No access",
+      );
 
       H.modifyPermission(
         "All Users",
@@ -382,35 +365,6 @@ describe("scenarios > admin > permissions", { tags: "@OSS" }, () => {
         });
       });
     });
-  });
-});
-
-describe("scenarios > admin > permissions", () => {
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-    H.activateToken("pro-self-hosted");
-  });
-
-  it("shows permission error for cards that use blocked data sources", () => {
-    cy.updatePermissionsGraph({
-      [ALL_USERS_GROUP]: {
-        [SAMPLE_DB_ID]: {
-          "view-data": "blocked",
-        },
-      },
-      [COLLECTION_GROUP]: {
-        [SAMPLE_DB_ID]: {
-          "view-data": "blocked",
-        },
-      },
-    });
-
-    cy.signIn("nodata");
-    H.visitDashboard(ORDERS_DASHBOARD_ID);
-
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Sorry, you don't have permission to see this card.");
   });
 });
 
@@ -714,3 +668,10 @@ describe("scenarios > admin > permissions", () => {
     });
   });
 });
+
+function visitSecondCollectionPermissions() {
+  cy.visit(`/admin/permissions/collections/${SECOND_COLLECTION_ID}`);
+  cy.get("main")
+    .findByText("Permissions for Second collection")
+    .should("be.visible");
+}
