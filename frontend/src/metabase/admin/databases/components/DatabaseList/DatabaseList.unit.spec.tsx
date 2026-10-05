@@ -51,16 +51,18 @@ describe("DatabaseListApp", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("marks stub databases as not connected", async () => {
+  it("shows stub databases as stubbed", async () => {
     await setup({ isStub: true, isAdmin: true });
 
-    expect(screen.getByText("Not connected")).toBeInTheDocument();
+    expect(screen.getByText("Stubbed")).toBeInTheDocument();
+    expect(screen.queryByText("Active")).not.toBeInTheDocument();
   });
 
-  it("does not mark regular databases as not connected", async () => {
+  it("shows regular databases as active", async () => {
     await setup({ isAdmin: true });
 
-    expect(screen.queryByText("Not connected")).not.toBeInTheDocument();
+    expect(screen.getByText("Active")).toBeInTheDocument();
+    expect(screen.queryByText("Stubbed")).not.toBeInTheDocument();
   });
 
   it("does not show restore sample database button to non-admins", async () => {

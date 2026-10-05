@@ -1429,7 +1429,7 @@
     (api/check-400 connection-details (tru "No {0} connection configured for this database" (name connection-type)))
     (if (:is_stub database)
       {:status  "error"
-       :message (tru "No connection details have been set for this database.")}
+       :message (tru "This database has placeholder connection details. Replace that with actual connection details to make this connection Active.")}
       ;; we only want to prevent creating new H2 databases. Testing the existing database is fine.
       (binding [driver.settings/*allow-testing-h2-connections* true
                 driver.settings/*allow-testing-sqlite-connections* true]

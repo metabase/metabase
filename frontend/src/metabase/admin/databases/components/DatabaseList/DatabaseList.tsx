@@ -7,7 +7,7 @@ import AdminS from "metabase/css/admin.module.css";
 import CS from "metabase/css/core/index.css";
 import { FormMessage } from "metabase/forms";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
-import { Badge, Button, Flex, Loader, UnstyledButton } from "metabase/ui";
+import { Button, Flex, Loader, UnstyledButton } from "metabase/ui";
 import { isSyncCompleted } from "metabase/utils/syncing";
 import type { Database, Engine } from "metabase-types/api";
 
@@ -70,6 +70,7 @@ export const DatabaseList = ({
               <tr>
                 <th>{t`Name`}</th>
                 <th>{t`Engine`}</th>
+                <th>{t`Status`}</th>
               </tr>
             </thead>
             <tbody>
@@ -92,22 +93,13 @@ export const DatabaseList = ({
                         >
                           {database.name}
                         </Link>
-                        {database.is_stub && (
-                          <Badge
-                            ml="sm"
-                            size="sm"
-                            variant="light"
-                            color="warning"
-                          >
-                            {t`Not connected`}
-                          </Badge>
-                        )}
                       </Flex>
                     </td>
                     <td>
                       {engines?.[database.engine ?? ""]?.["driver-name"] ??
                         database.engine}
                     </td>
+                    <td>{database.is_stub ? t`Stubbed` : t`Active`}</td>
                   </tr>
                 ))
               ) : (

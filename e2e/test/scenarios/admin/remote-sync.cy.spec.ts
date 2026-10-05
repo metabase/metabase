@@ -1306,12 +1306,14 @@ describe("Remote Sync", () => {
       cy.log("the missing database is created as a stub");
       cy.visit("/admin/databases");
       cy.findByRole("link", { name: STUB_DATABASE_NAME })
-        .parent()
-        .findByText("Not connected")
+        .closest("tr")
+        .findByText("Stubbed")
         .should("be.visible");
       cy.findByRole("link", { name: STUB_DATABASE_NAME }).click();
       cy.findByTestId("database-connection-info-section")
-        .findByText("No connection details have been set for this database.")
+        .findByText(
+          "This database has placeholder connection details. Replace that with actual connection details to make this connection Active.",
+        )
         .should("be.visible");
 
       cy.log("connect the stub database");

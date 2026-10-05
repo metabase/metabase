@@ -3003,7 +3003,7 @@
         (with-redefs [driver/available?   (constantly true)
                       driver/can-connect? (constantly true)]
           (is (= {:status  "error"
-                  :message "No connection details have been set for this database."}
+                  :message "This database has placeholder connection details. Replace that with actual connection details to make this connection Active."}
                  (mt/user-http-request :crowberto :get 200 (str "database/" id "/healthcheck")))))))
     (when config/ee-available?
       (testing "connection-type passed and configured"
