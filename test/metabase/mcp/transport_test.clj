@@ -104,6 +104,33 @@
         (is (= 3 (count (re-seq #": keepalive" output))))
         (is (= 1 (count (re-seq #"notifications/tools/list_changed" output))))))))
 
+(defn- hash-fn-throwing-on!
+  "A tools hash fn whose `n`th read throws and whose other reads return `\"hash-1\"`, offering a cancellation on
+  `canceled` from the third read so the loop ends after a known number of ticks."
+  [n canceled]
+  (let [calls (atom 0)]
+    (fn []
+      (let [call (swap! calls inc)]
+        (when (>= call 3)
+          (a/offer! canceled ::request-canceled))
+        (if (= call n)
+          (throw (ex-info "app database unavailable" {}))
+          "hash-1")))))
+
+(deftest keepalive-loop-survives-a-failing-tools-hash-test
+  (testing "a tick whose tools hash throws keeps the previous hash, so the stream stays open and nothing is announced"
+    (let [canceled (a/promise-chan)
+          sink     (StringWriter.)]
+      (is (= :returned (run-keepalive-loop! sink (hash-fn-throwing-on! 2 canceled) canceled 1)))
+      (is (= 3 (count (re-seq #": keepalive" (str sink)))))
+      (is (not (str/includes? (str sink) "notifications/tools/list_changed")))))
+  (testing "a failing first read doesn't end the stream either; the first hash read after it announces a change"
+    (let [canceled (a/promise-chan)
+          sink     (StringWriter.)]
+      (is (= :returned (run-keepalive-loop! sink (hash-fn-throwing-on! 1 canceled) canceled 1)))
+      (is (= 3 (count (re-seq #": keepalive" (str sink)))))
+      (is (= 1 (count (re-seq #"notifications/tools/list_changed" (str sink))))))))
+
 (defn- keepalive-counts []
   @@#'mcp.transport/keepalive-stream-counts)
 

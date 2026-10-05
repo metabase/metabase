@@ -475,19 +475,30 @@
   ;; threads have no such ceiling and cost nothing while parked.
   (Executors/newThreadPerTaskExecutor (.. (Thread/ofVirtual) (name "mcp-keepalive-" 0) factory)))
 
+(defn- tools-hash-or
+  "`(tools-hash-fn)`, or `fallback` when it throws. The hash reads the user's group policy from the app database, and
+  a failed read must not end a stream that is otherwise healthy."
+  [tools-hash-fn fallback]
+  (try
+    (tools-hash-fn)
+    (catch Exception e
+      (log/warn e "Could not hash the MCP tool list for the keepalive stream; keeping the previous hash")
+      fallback)))
+
 (defn- keepalive-loop!
   "Emit SSE keepalive comments on `writer` every `interval-ms` until `canceled-chan` reports the client is gone.
   Re-reads the tool manifest hash on each tick and emits `notifications/tools/list_changed` when it differs from the
-  previous tick, so the client knows to refetch `tools/list`. Returns nil once canceled."
+  previous tick, so the client knows to refetch `tools/list`; a tick whose hash fails keeps the previous one. Returns
+  nil once canceled."
   [^Writer writer tools-hash-fn canceled-chan interval-ms]
-  (loop [last-hash (tools-hash-fn)]
+  (loop [last-hash (tools-hash-or tools-hash-fn nil)]
     (.write writer ": keepalive\n\n")
     (.flush writer)
     ;; Park on the cancellation channel instead of sleeping through the interval: the cancel loop notices a
     ;; disconnected client within a second, and waiting on it releases this thread then rather than at the next tick.
     (let [[_ port] (a/alts!! [canceled-chan (a/timeout interval-ms)])]
       (when-not (= port canceled-chan)
-        (let [current-hash (tools-hash-fn)]
+        (let [current-hash (tools-hash-or tools-hash-fn last-hash)]
           (when (not= current-hash last-hash)
             (.write writer ^String (sse-body [tools-list-changed-notification]))
             (.flush writer))
