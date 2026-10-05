@@ -44,6 +44,7 @@ export const ChartSettingMultiSelect = ({
       data={uniqByValue(options) /* dedupe to avoid making Mantine crash */}
       searchable
       comboboxProps={{
+        keepMounted: false,
         // For the SDK the ChartSettingMultiSelect is rendered inside a parent popover,
         // so as a nested popover it should not be rendered within a portal
         withinPortal: !isEmbeddingSdk(),
