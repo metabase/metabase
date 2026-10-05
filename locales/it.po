@@ -7,7 +7,7 @@ msgstr ""
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 "Project-Id-Version: metabase-i18n\n"
 "Report-Msgid-Bugs-To: docs@metabase.com\n"
-"POT-Creation-Date: 2026-09-15 05:47+0000\n"
+"POT-Creation-Date: 2026-09-22 05:47+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -18,7 +18,7 @@ msgstr ""
 "X-Crowdin-File-ID: 2\n"
 "Language-Team: Italian\n"
 "Language: it_IT\n"
-"PO-Revision-Date: 2026-09-22 05:40\n"
+"PO-Revision-Date: 2026-09-29 05:42\n"
 
 #: /home/runner/work/metabase/metabase/src/metabase/analyze/fingerprint/fingerprinters.clj
 msgid "Error generating fingerprint for {0}"
@@ -162,11 +162,6 @@ msgid "Nothing here"
 msgstr "Qui non c'è niente"
 
 #: enterprise/frontend/src/embedding/data-picker/TriggerComponents.tsx
-#: frontend/src/metabase/querying/common/components/DataSelector/TriggerComponents.tsx
-msgid "Select..."
-msgstr "Seleziona..."
-
-#: enterprise/frontend/src/embedding/data-picker/TriggerComponents.tsx
 #: frontend/src/metabase/admin/settings/components/UploadSettings/UploadSettingsForm.tsx
 #: frontend/src/metabase/databases/components/DatabaseEngineField/DatabaseEngineSelect.tsx
 #: frontend/src/metabase/querying/common/components/DataSelector/TriggerComponents.tsx
@@ -295,7 +290,6 @@ msgstr "Attributo utente"
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/GitSyncControls/GitSyncControls.tsx
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/PushChangesModal/PushChangesModal.tsx
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/RemoteSyncAdminSettings/BranchSwitcher.tsx
-#: enterprise/frontend/src/metabase-enterprise/remote_sync/components/RemoteSyncAdminSettings/RemoteSyncDependencyModal.tsx
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/RemoteSyncAdminSettings/RemoteSyncSettingsForm.tsx
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/SyncConflictModal/SyncConflictModal.tsx
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/SyncProgressModal.tsx
@@ -318,6 +312,8 @@ msgstr "Attributo utente"
 #: frontend/src/metabase/admin/databases/components/DeleteDatabaseModel/DeleteDatabaseModal.tsx
 #: frontend/src/metabase/admin/datamodel/components/SegmentForm/SegmentForm.tsx
 #: frontend/src/metabase/admin/datamodel/components/SegmentRetireModal.tsx
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/EditorPanel.tsx
+#: frontend/src/metabase/admin/embedding/components/ThemeListing/DeleteThemeModal.tsx
 #: frontend/src/metabase/admin/people/components/AddRow.tsx
 #: frontend/src/metabase/admin/people/components/GroupsListing.tsx
 #: frontend/src/metabase/admin/people/containers/UserPasswordResetModal.tsx
@@ -325,6 +321,7 @@ msgstr "Attributo utente"
 #: frontend/src/metabase/admin/permissions/components/CollectionPermissionsModal/CollectionPermissionsModal.tsx
 #: frontend/src/metabase/admin/permissions/components/PermissionsPageLayout/PermissionsEditBar.tsx
 #: frontend/src/metabase/admin/permissions/selectors/confirmations.tsx
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/MappingEditorRow.tsx
 #: frontend/src/metabase/admin/settings/components/ApiKeys/CreateApiKeyModal.tsx
 #: frontend/src/metabase/admin/settings/components/ApiKeys/EditApiKeyModal.tsx
 #: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.tsx
@@ -338,6 +335,7 @@ msgstr "Attributo utente"
 #: frontend/src/metabase/common/collections/components/QuestionMoveConfirmModal.tsx
 #: frontend/src/metabase/common/components/ArchiveModal/ArchiveModal.tsx
 #: frontend/src/metabase/common/components/ConfirmModal/ConfirmModal.tsx
+#: frontend/src/metabase/common/components/CopyCardForm/CopyCardForm.tsx
 #: frontend/src/metabase/common/components/CopyDashboardForm/CopyDashboardForm.tsx
 #: frontend/src/metabase/common/components/DocumentCopyForm/DocumentCopyForm.tsx
 #: frontend/src/metabase/common/components/Glossary/GlossaryRowEditor.tsx
@@ -366,9 +364,6 @@ msgstr "Attributo utente"
 #: frontend/src/metabase/documents/components/editor-extensions/CardEmbed/modals/NativeQueryModal.tsx
 #: frontend/src/metabase/embedding/components/SharingMenu/InviteToViewModal.tsx
 #: frontend/src/metabase/embedding/mcp/McpFeedbackArea.tsx
-#: frontend/src/metabase/embedding/settings/EmbeddingLegaleseModal/EmbeddingLegaleseModal.tsx
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/EditorPanel.tsx
-#: frontend/src/metabase/embedding/themes/components/ThemeListing/DeleteThemeModal.tsx
 #: frontend/src/metabase/forms/components/FormSecretKey/SetupKeyModal.tsx
 #: frontend/src/metabase/home/components/CustomHomePageModal/CustomHomePageModal.tsx
 #: frontend/src/metabase/home/components/EmbedHomepage/FeedbackModal.tsx
@@ -387,7 +382,6 @@ msgstr "Attributo utente"
 #: frontend/src/metabase/querying/components/QueryVisualization/RunButton.tsx
 #: frontend/src/metabase/querying/components/expressions/ExpressionWidget/ExpressionWidget.tsx
 #: frontend/src/metabase/querying/metrics/components/MetricEditor/MetricEditorHeader/MetricEditorHeader.tsx
-#: frontend/src/metabase/questions/components/CopyCardForm/CopyCardForm.tsx
 #: frontend/src/metabase/reference/components/EditHeader.tsx
 #: frontend/src/metabase/reference/components/RevisionMessageModal.tsx
 #: frontend/src/metabase/timelines/common/components/DeleteEventModal/DeleteEventModal.tsx
@@ -424,6 +418,7 @@ msgstr "Annulla"
 #: frontend/src/metabase/actions/utils.ts
 #: frontend/src/metabase/admin/performance/components/StrategyForm.tsx
 #: frontend/src/metabase/admin/permissions/components/CollectionPermissionsModal/CollectionPermissionsModal.tsx
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/GroupMappingList.tsx
 #: frontend/src/metabase/admin/settings/components/ApiKeys/EditApiKeyModal.tsx
 #: frontend/src/metabase/common/collections/components/CollectionRowMenu/EditCollectionModal/EditCollectionModal.tsx
 #: frontend/src/metabase/common/components/ActionButton/ActionButton.tsx
@@ -700,6 +695,8 @@ msgstr "Rimuovi l'accesso da tutti i gruppi"
 #: enterprise/frontend/src/metabase-enterprise/ai-controls/pages/MetabotFeatureAccessPage/components/GearIconMenu/GearIconMenu.tsx
 #: frontend/src/metabase/admin/ai/MetabotNavPane.tsx
 #: frontend/src/metabase/admin/app/reducers.ts
+#: frontend/src/metabase/admin/embedding/components/EmbeddingNav.tsx
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSettings/EmbeddingSettings.tsx
 #: frontend/src/metabase/data-studio/app/pages/DataStudioLayout/DataStudioLayout.tsx
 #: frontend/src/metabase/data-studio/settings/pages/SettingsPage/SettingsPage.tsx
 #: frontend/src/metabase/nav/components/AppSwitcher/AppSwitcher.tsx
@@ -727,7 +724,6 @@ msgstr "Gruppi di utenti"
 #: enterprise/frontend/src/metabase-enterprise/tenants/index.tsx
 #: frontend/src/metabase/admin/people/components/PeopleNav.tsx
 #: frontend/src/metabase/admin/people/containers/GroupsListingApp.tsx
-#: frontend/src/metabase/embedding-hub/pages/EmbeddingHubTenancyPage.tsx
 msgid "Tenant groups"
 msgstr "Gruppi tenant"
 
@@ -761,8 +757,8 @@ msgstr "Istruzioni del prompt per la chat IA"
 
 #: enterprise/frontend/src/metabase-enterprise/ai-controls/pages/MetabotSystemPromptsPage/MetabotSystemPromptsPage.tsx
 #, javascript-format
-msgid "Add instructions here for the sidebar AI chat experience in {0}. You might want to give instructions about tone, types of entities to prefer, and things like that."
-msgstr "Aggiungi qui le istruzioni per l'esperienza di chat IA nella sidebar in {0}. Potresti voler dare istruzioni su tono, tipi di entità da preferire e cose del genere."
+msgid "Add instructions here for the sidebar AI chat experience in {0} and for Metabot in Slack. You might want to give instructions about tone, types of entities to prefer, and things like that."
+msgstr "Aggiungi qui le istruzioni per l’esperienza di chat IA nella barra laterale in {0} e per Metabot in Slack. Potresti voler dare indicazioni su tono, tipi di entità da preferire e cose del genere."
 
 #: enterprise/frontend/src/metabase-enterprise/ai-controls/pages/MetabotSystemPromptsPage/MetabotSystemPromptsPage.tsx
 msgid "Natural language query prompt instructions"
@@ -1167,7 +1163,6 @@ msgstr "Cerca un gruppo"
 #: frontend/src/metabase/admin/people/components/GroupsListing.tsx
 #: frontend/src/metabase/admin/permissions/selectors/collection-permissions.tsx
 #: frontend/src/metabase/admin/permissions/selectors/data-permissions/permission-editor.tsx
-#: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
 msgid "Group name"
 msgstr "Nome gruppo"
 
@@ -1287,11 +1282,9 @@ msgstr "Annulla l’iscrizione da tutte le iscrizioni / avvisi"
 #: enterprise/frontend/src/metabase-enterprise/auth/components/AuthSettingsPage.tsx
 #: enterprise/frontend/src/metabase-enterprise/tenants/components/TenantsSummaryOnboardingStep/TenantsSummaryOnboardingStep.tsx
 #: frontend/src/metabase/account/app/components/AccountHeader/AccountHeader.tsx
+#: frontend/src/metabase/admin/components/RelatedSettingsSection/constants.ts
 #: frontend/src/metabase/admin/settings/components/SettingsNav/SettingsNav.tsx
 #: frontend/src/metabase/admin/settings/components/SettingsPages/AuthenticationSettingsPage.tsx
-#: frontend/src/metabase/embedding-hub/components/EmbeddingHubLayout/EmbeddingHubLayout.tsx
-#: frontend/src/metabase/embedding-hub/pages/EmbeddingHubAuthenticationPage.tsx
-#: frontend/src/metabase/embedding-hub/upsells/AuthenticationUpsellPage.tsx
 #: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/AuthenticationCard/AuthenticationCard.tsx
 #: frontend/src/metabase/palette/constants.ts
 msgid "Authentication"
@@ -1348,11 +1341,13 @@ msgid "Unit"
 msgstr "Unità"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/JWTGroupMappingSection.tsx
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/use-mapping-editor.ts
 #: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/GroupMappingsWidgetView.tsx
 msgid "Mapping added"
 msgstr "Mappatura aggiunta"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/JWTGroupMappingSection.tsx
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/use-mapping-editor.ts
 #: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/GroupMappingsWidgetView.tsx
 msgid "Mapping updated"
 msgstr "Mappatura aggiornata"
@@ -1395,6 +1390,7 @@ msgstr "Nuova mappatura"
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/RemoteSyncAdminSettings/SyncModeSection.tsx
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/utils.ts
 #: frontend/src/metabase/admin/settings/auth/components/GoogleAuthForm/GoogleAuthForm.tsx
+#: frontend/src/metabase/admin/settings/components/LdapGroupMappingSection/LdapGroupMappingSection.tsx
 #: frontend/src/metabase/admin/settings/utils.ts
 #, javascript-format
 msgid "Using {0}"
@@ -1410,6 +1406,7 @@ msgid "Add at least one mapping to use manual group mapping"
 msgstr "Aggiungi almeno una mappatura per usare la mappatura manuale dei gruppi"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/JWTGroupMappingSection.tsx
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/GroupMappingList.tsx
 msgid "Add mapping"
 msgstr "Aggiungi mappatura"
 
@@ -1439,30 +1436,36 @@ msgid "Enter JWT group..."
 msgstr "Inserisci gruppo JWT..."
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/MappingEditorRow.tsx
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/use-mapping-editor.ts
 msgid "A mapping for this group already exists"
 msgstr "Esiste già una mappatura per questo gruppo"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/MappingEditorRow.tsx
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/MappingEditorRow.tsx
 #, javascript-format
 msgid "{0} groups"
 msgstr "{0} gruppi"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/MappingEditorRow.tsx
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/MappingEditorRow.tsx
 #, javascript-format
 msgid "Pick {0} group..."
 msgstr "Scegli {0} gruppo..."
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/MappingRow.tsx
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/MappingRow.tsx
 #: frontend/src/metabase/metadata/components/FieldSection/BehaviorSection/RemappingPicker/RemappingPicker.tsx
 msgid "Edit mapping"
 msgstr "Modifica mappatura"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/MappingRow.tsx
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/MappingRow.tsx
 msgid "Delete mapping"
 msgstr "Elimina mappatura"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/MappingRow.tsx
 #: frontend/src/metabase/admin/people/components/MembershipSelect/MembershipSelect.tsx
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/MappingRow.tsx
 #: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/GroupSelect/GroupSelect.tsx
 msgid "No groups"
 msgstr "Nessun gruppo"
@@ -1475,10 +1478,12 @@ msgid "Changes saved"
 msgstr "Modifiche salvate"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/use-group-mapping-settings.ts
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/use-group-mappings.ts
 msgid "Error saving group mapping"
 msgstr "Errore durante il salvataggio della mappatura dei gruppi"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/use-mapping-deletion.ts
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/use-mapping-deletion.ts
 msgid "Mapping deleted, but not all of its groups could be updated"
 msgstr "Mappatura eliminata, ma non è stato possibile aggiornare tutti i suoi gruppi"
 
@@ -1487,14 +1492,10 @@ msgid "Mapping deleted and group mapping turned off"
 msgstr "Mappatura eliminata e mappatura dei gruppi disattivata"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/use-mapping-deletion.ts
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/use-mapping-deletion.ts
 #: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/GroupMappingsWidgetView.tsx
 msgid "Mapping deleted"
 msgstr "Mappatura eliminata"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/SettingsJWTForm.tsx
-#: enterprise/frontend/src/metabase-enterprise/auth/containers/JwtAuthCard/JwtAuthCard.tsx
-msgid "JWT"
-msgstr "JWT"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/SettingsJWTForm.tsx
 msgid "Error saving JWT Settings"
@@ -1503,6 +1504,11 @@ msgstr "Errore durante il salvataggio delle Impostazioni JWT"
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/SettingsJWTForm.tsx
 msgid "Error loading JWT configuration"
 msgstr "Errore durante il caricamento della configurazione JWT"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/SettingsJWTForm.tsx
+#: enterprise/frontend/src/metabase-enterprise/auth/containers/JwtAuthCard/JwtAuthCard.tsx
+msgid "JWT"
+msgstr "JWT"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/SettingsJWTForm.tsx
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
@@ -1529,14 +1535,17 @@ msgid "You can send additional user attributes to {0} by adding the attributes a
 msgstr "Puoi inviare attributi utente aggiuntivi a {0} aggiungendo gli attributi come coppie chiave/valore al tuo JWT"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/SettingsJWTForm.tsx
+#: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
 msgid "Email attribute key"
 msgstr "Chiave attributo email"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/SettingsJWTForm.tsx
+#: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
 msgid "First name attribute key"
 msgstr "Chiave attributo nome"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/SettingsJWTForm.tsx
+#: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
 msgid "Last name attribute key"
 msgstr "Chiave attributo cognome"
 
@@ -1551,7 +1560,7 @@ msgstr "Chiave attributo assegnazione Tenant"
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/SettingsJWTForm.tsx
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
-#: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
+#: frontend/src/metabase/admin/settings/components/LdapGroupMappingSection/LdapGroupMappingSection.tsx
 msgid "Group mapping"
 msgstr "Mappatura gruppi"
 
@@ -1571,6 +1580,7 @@ msgstr "Salva e abilita"
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/SettingsJWTForm.tsx
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
+#: enterprise/frontend/src/metabase-enterprise/remote_sync/components/RemoteSyncAdminSettings/RemoteSyncDependencyModal.tsx
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/RemoteSyncAdminSettings/RemoteSyncSettingsForm.tsx
 #: enterprise/frontend/src/metabase-enterprise/table-editing/table-edit/modals/UpdateRowActionFormModal.tsx
 #: frontend/src/embedding-sdk-bundle/components/public/dashboard/SdkDashboard.tsx
@@ -1753,17 +1763,14 @@ msgid "Map OIDC claims to user attributes. Use standard OIDC claim names or your
 msgstr "Mappa le claim OIDC agli attributi utente. Usa i nomi standard delle claim OIDC o le claim personalizzate del tuo provider."
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
-#: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
 msgid "Email attribute"
 msgstr "Attributo email"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
-#: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
 msgid "First name attribute"
 msgstr "Attributo nome"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
-#: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
 msgid "Last name attribute"
 msgstr "Attributo cognome"
 
@@ -1906,6 +1913,7 @@ msgid "SAML keystore password"
 msgstr "Password del keystore SAML"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
+#: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
 msgid "Shh..."
 msgstr "Silenzio..."
 
@@ -2089,21 +2097,21 @@ msgstr "Elemento successivo"
 #: frontend/src/metabase/admin/people/components/GroupMembersTable/GroupMembersTable.tsx
 #: frontend/src/metabase/admin/people/components/PeopleList.tsx
 #: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.tsx
+#: frontend/src/metabase/admin/settings/components/widgets/PublicLinksListing/PublicLinksListing.tsx
 #: frontend/src/metabase/browse/metrics/MetricsTable.tsx
 #: frontend/src/metabase/browse/models/ModelsTable.tsx
 #: frontend/src/metabase/common/CreateDashboard/CreateDashboardForm.tsx
 #: frontend/src/metabase/common/collections/components/CollectionRowMenu/EditCollectionModal/EditCollectionModal.tsx
 #: frontend/src/metabase/common/collections/components/CreateCollectionForm/CreateCollectionForm.tsx
+#: frontend/src/metabase/common/components/CopyCardForm/CopyCardForm.tsx
 #: frontend/src/metabase/common/components/CopyDashboardForm/CopyDashboardForm.tsx
 #: frontend/src/metabase/common/components/DocumentCopyForm/DocumentCopyForm.tsx
 #: frontend/src/metabase/common/components/ItemsTable/Columns.tsx
-#: frontend/src/metabase/common/components/PublicLinksListing/PublicLinksListing.tsx
 #: frontend/src/metabase/common/components/SaveQuestionForm/SaveQuestionForm.tsx
 #: frontend/src/metabase/common/data-studio/components/PaneHeader/PaneHeader.tsx
 #: frontend/src/metabase/data-studio/components/RevisionHistory/RevisionDiff.tsx
 #: frontend/src/metabase/data-studio/data-model/components/TablePicker/components/TablePickerTreeTable.tsx
 #: frontend/src/metabase/metrics/pages/NewMetricPage/CreateMetricModal/CreateMetricModal.tsx
-#: frontend/src/metabase/questions/components/CopyCardForm/CopyCardForm.tsx
 #: frontend/src/metabase/timelines/common/components/TimelineForm/TimelineForm.tsx
 #: frontend/src/metabase/transforms/components/CreateTransformCollectionModal/CreateTransformCollectionModal.tsx
 #: frontend/src/metabase/transforms/components/TagMultiSelect/UpdateTagModal/UpdateTagModal.tsx
@@ -2155,8 +2163,8 @@ msgstr "Impostazioni cache"
 
 #: enterprise/frontend/src/metabase-enterprise/caching/components/SidebarCacheSection.tsx
 #: enterprise/frontend/src/metabase-enterprise/caching/components/StrategyEditorForQuestionsAndDashboards/CachingPoliciesFilters.tsx
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/EditorPanel.tsx
 #: frontend/src/metabase/admin/people/components/GroupSummary.tsx
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/EditorPanel.tsx
 #: frontend/src/metabase/metrics-viewer/components/MetricControls/LeftControls/LeftControls.tsx
 #: frontend/src/metabase/metrics/components/MetricDimensions/DimensionRow.tsx
 #: frontend/src/metabase/plugins/oss/caching.ts
@@ -2614,11 +2622,11 @@ msgstr "Imposta un URL del server dev per caricare il codice del plugin da un se
 #: enterprise/frontend/src/metabase-enterprise/custom_viz/components/CustomVizListItem.tsx
 #: enterprise/frontend/src/metabase-enterprise/data_apps/admin/components/DataAppStatusBadge/DataAppStatusBadge.tsx
 #: frontend/src/metabase/admin/performance/components/ModelPersistenceConfiguration.tsx
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingToggle/EmbeddingToggle.tsx
 #: frontend/src/metabase/admin/settings/components/SettingsPages/DomainsSettingsPage.tsx
 #: frontend/src/metabase/admin/settings/components/SettingsPages/GeneralSettingsPage.tsx
 #: frontend/src/metabase/admin/settings/components/widgets/FormattingWidget.tsx
 #: frontend/src/metabase/embedding/components/EmbedModal/StaticEmbedSetupPane/ParametersSettings.tsx
-#: frontend/src/metabase/embedding/settings/EmbeddingToggle/EmbeddingToggle.tsx
 #: frontend/src/metabase/settings-components/AdminSettingInput.tsx
 #: frontend/src/metabase/transforms/components/JobHeader/JobHeader.tsx
 #: frontend/src/metabase/transforms/pages/JobListPage/JobListPage.tsx
@@ -2746,9 +2754,9 @@ msgstr "Vedi il registro delle modifiche dell'SDK"
 
 #: enterprise/frontend/src/metabase-enterprise/custom_viz/components/EditDevCustomVizForm.tsx
 #: frontend/src/metabase/admin/performance/components/ModelPersistenceConfiguration.tsx
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingToggle/EmbeddingToggle.tsx
 #: frontend/src/metabase/admin/settings/components/SettingsPages/DomainsSettingsPage.tsx
 #: frontend/src/metabase/admin/settings/components/widgets/FormattingWidget.tsx
-#: frontend/src/metabase/embedding/settings/EmbeddingToggle/EmbeddingToggle.tsx
 #: frontend/src/metabase/settings-components/AdminSettingInput.tsx
 msgid "Enabled"
 msgstr "Abilitato"
@@ -2892,6 +2900,7 @@ msgstr "Potrebbero essere state create per una versione diversa e potrebbero dov
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/metrics/pages/NewMetricPage/NewMetricPage.tsx
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/LibrarySyncRow/LibrarySyncRow.tsx
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/SyncConflictModal/SetupConflictInfo.tsx
+#: enterprise/frontend/src/metabase-enterprise/remote_sync/utils.ts
 #: frontend/src/metabase/common/components/Pickers/EntityPicker/components/ItemLists/SearchResults.tsx
 #: frontend/src/metabase/data-studio/app/pages/DataStudioLayout/DataStudioLayout.tsx
 #: frontend/src/metabase/data-studio/upsells/pages/LibraryUpsellPage.tsx
@@ -2954,6 +2963,7 @@ msgid "Snippet"
 msgstr "Snippet"
 
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/LibraryPage/components/CreateMenu.tsx
+#: frontend/src/metabase/admin/settings/components/LdapGroupMappingSection/LdapGroupMappingSection.tsx
 #: frontend/src/metabase/collections/components/CollectionEmptyState/CollectionEmptyState.tsx
 #: frontend/src/metabase/collections/components/CollectionHeader/CollectionUploadInfoModal.tsx
 #: frontend/src/metabase/metabot/components/MetabotChat/MetabotAgentSuggestionMessage.tsx
@@ -3770,7 +3780,6 @@ msgid "Actions for {0}"
 msgstr "Azioni per {0}"
 
 #: enterprise/frontend/src/metabase-enterprise/data_apps/admin/components/DataAppActionsMenu/DataAppActionsMenu.tsx
-#: metabase/metabot/scope.clj
 msgid "View resources"
 msgstr "Visualizza risorse"
 
@@ -3830,6 +3839,10 @@ msgstr "Installa le skill Metabase Data App nel tuo progetto, poi chiedi al tuo 
 #: enterprise/frontend/src/metabase-enterprise/data_apps/admin/components/DataAppSkillsSection/DataAppSkillsSection.tsx
 msgid "Install command"
 msgstr "Comando di installazione"
+
+#: enterprise/frontend/src/metabase-enterprise/data_apps/admin/components/DataAppStatusBadge/DataAppStatusBadge.tsx
+msgid "Outdated"
+msgstr "Non aggiornato"
 
 #: enterprise/frontend/src/metabase-enterprise/data_apps/admin/components/DataAppSummary/DataAppSummary.tsx
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/SyncProgressModal.tsx
@@ -3903,6 +3916,10 @@ msgid "This data app doesn’t exist or has been disabled."
 msgstr "Questa data app non esiste o è stata disabilitata."
 
 #: enterprise/frontend/src/metabase-enterprise/data_apps/components/DataAppView/DataAppView.tsx
+msgid "This data app is outdated"
+msgstr "Questa app dati non è aggiornata"
+
+#: enterprise/frontend/src/metabase-enterprise/data_apps/components/DataAppView/DataAppView.tsx
 msgid "This data app isn’t published yet"
 msgstr "Questa data app non è ancora pubblicata"
 
@@ -3945,6 +3962,12 @@ msgstr "Si è verificato un problema durante il caricamento di questa app. Prova
 #: enterprise/frontend/src/metabase-enterprise/data_apps/components/DataAppView/DataAppView.tsx
 msgid "This data app didn’t load. It may have been blocked or is unreachable. Try refreshing the page, or go back."
 msgstr "Questa data app non è stata caricata. Potrebbe essere stata bloccata o non essere raggiungibile. Prova ad aggiornare la pagina o torna indietro."
+
+#: enterprise/frontend/src/metabase-enterprise/data_apps/constants.ts
+#: metabase_enterprise/data_apps/api.clj
+#, javascript-format
+msgid "This app was built for version {0} of data apps. Migrate it to the current version, then rebuild and sync it again."
+msgstr "Questa app è stata creata per la versione {0} delle app dati. Esegui la migrazione alla versione attuale, quindi ricompilala e sincronizzala di nuovo."
 
 #: enterprise/frontend/src/metabase-enterprise/data_apps/runtime/components/DataAppIframeApp/DataAppIframeApp.tsx
 msgid "This data app can’t be opened directly."
@@ -4141,7 +4164,7 @@ msgstr "Il processo viene eseguito in background. In base alla dimensione del da
 #: frontend/src/metabase/embedding/components/SharingMenu/InviteToViewModal.tsx
 #: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/SdkIframeEmbedSetupModal.tsx
 #: frontend/src/metabase/embedding/setup-guide/components/StepperWithCards/StepperWithCards.tsx
-#: frontend/src/metabase/forms/components/FormSecretKey/FormSecretKey.tsx
+#: frontend/src/metabase/forms/components/FormSecretKey/SetupKeyModal.tsx
 #: frontend/src/metabase/home/components/CustomHomePageModal/CustomHomePageModal.tsx
 #: frontend/src/metabase/metabot/components/AIProviderConfigurationForm/AIProviderSetup.tsx
 #: frontend/src/metabase/metadata/components/TableSection/TableSection.tsx
@@ -4285,6 +4308,7 @@ msgstr "Puoi anche aggiungere database in modo programmatico tramite l'API."
 #: frontend/src/metabase/admin/permissions/components/DataPermissionsHelp/DataPermissionsHelp.tsx
 #: frontend/src/metabase/admin/permissions/components/LegacyPermissionsModal/LegacyPermissionsModal.tsx
 #: frontend/src/metabase/admin/permissions/components/PermissionsEditor/PermissionsEditorSplitPermsMessage.tsx
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSecuritySettings/EmbeddingAppSameSiteCookieDescription.tsx
 #: frontend/src/metabase/admin/settings/components/SettingsPages/DomainsSettingsPage.tsx
 #: frontend/src/metabase/admin/settings/components/SettingsPages/MapsSettingsPage.tsx
 #: frontend/src/metabase/admin/upsells/UpsellCloud.tsx
@@ -4314,12 +4338,12 @@ msgstr "Visualizza tutti e {0}"
 
 #: enterprise/frontend/src/metabase-enterprise/database_routing/DestinationDatabasesList/DestinationDatabasesList.tsx
 #: enterprise/frontend/src/metabase-enterprise/table-editing/common/TableBreadcrumbs.tsx
+#: frontend/src/metabase/admin/embedding/components/ThemeListing/EmbeddingThemeCard.tsx
 #: frontend/src/metabase/admin/settings/auth/components/AuthCard/AuthCard.tsx
 #: frontend/src/metabase/admin/settings/components/ApiKeys/ManageApiKeys.tsx
 #: frontend/src/metabase/comments/components/Discussion/DiscussionActionPanel.tsx
 #: frontend/src/metabase/common/components/ErrorPages/BugReportModal.tsx
 #: frontend/src/metabase/dashboard/components/DashCard/DashCardActionsPanel/DashCardActionsPanel.tsx
-#: frontend/src/metabase/embedding/themes/components/ThemeListing/EmbeddingThemeCard.tsx
 #: frontend/src/metabase/metabot/components/AIProviderConfigurationForm/AIProviderList.tsx
 #: frontend/src/metabase/metrics-viewer/components/MetricSearch/MetricExpressionPill/MetricExpressionPill.tsx
 #: frontend/src/metabase/models/components/ModelActions/ModelActionDetails/ModelActionListItem.tsx
@@ -4444,12 +4468,12 @@ msgstr "Scegli un elemento per vedere le sue dipendenze"
 #: enterprise/frontend/src/metabase-enterprise/dependencies/components/FilterOptionsPicker/FilterOptionsPicker.tsx
 #: enterprise/frontend/src/metabase-enterprise/table-editing/table-edit/EditTableDataFilterButton.tsx
 #: frontend/src/embedding-sdk-bundle/components/private/SdkQuestion/components/Filter/FilterDropdown/FilterDropdown.tsx
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/constants.ts
 #: frontend/src/metabase/collections/components/CollectionContent/CollectionTypeFilter.tsx
 #: frontend/src/metabase/common/components/ListFilterPopover/ListFilterPopover.tsx
 #: frontend/src/metabase/data-studio/data-model/components/TablePicker/components/TablePicker.tsx
 #: frontend/src/metabase/data-studio/segments/components/SegmentRevisionHistory/SegmentRevisionHistory.tsx
 #: frontend/src/metabase/embedding/LocaleProvider.unit.spec.tsx
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/constants.ts
 #: frontend/src/metabase/explorations/components/ExplorationSidebar/ExplorationSidebar.tsx
 #: frontend/src/metabase/metrics-viewer/components/MetricSearchPanel/MetricSearchPanel.tsx
 #: frontend/src/metabase/query_builder/components/view/ViewHeader/components/FilterHeaderButton.tsx
@@ -4968,8 +4992,22 @@ msgid "exact specifications"
 msgstr "specifiche esatte"
 
 #: enterprise/frontend/src/metabase-enterprise/embedding/components/InteractiveEmbeddingAuthorizedOriginsWidget/InteractiveEmbeddingAuthorizedOriginsWidget.tsx
-msgid "Authorized origins for full-app embedding"
-msgstr "Origini autorizzate per l'incorporamento full-app"
+msgid "Authorized origins"
+msgstr "Origini autorizzate"
+
+#: enterprise/frontend/src/metabase-enterprise/embedding/components/InteractiveEmbeddingSettingsCard.tsx
+msgid "Enable full app embedding"
+msgstr "Abilita incorporamento dell’app completa"
+
+#: enterprise/frontend/src/metabase-enterprise/embedding/components/InteractiveEmbeddingSettingsCard.tsx
+msgid "Embed the full Metabase application or individual pages into your app. Best for complex, BI-focused scenarios where you want to embed all of Metabase's capabilities into your app. If you are looking for stability of UX, flexibility or control, or don't have a complex use case that requires a full-blown BI solution, we recommend using Modular embedding instead."
+msgstr "Incorpora l’applicazione Metabase completa o singole pagine nella tua app. Ideale per scenari complessi, orientati alla BI, in cui vuoi incorporare nella tua app tutte le funzionalità di Metabase. Se cerchi stabilità della UX, flessibilità o controllo, o non hai un caso d’uso complesso che richiede una soluzione BI completa, consigliamo invece di usare l’Embedding modulare."
+
+#: enterprise/frontend/src/metabase-enterprise/embedding/components/InteractiveEmbeddingSettingsCard.tsx
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSdkSettings/EmbeddingSdkSettings.tsx
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSettings/EmbeddingSettings.tsx
+msgid "Documentation"
+msgstr "Documentazione"
 
 #: enterprise/frontend/src/metabase-enterprise/feature_level_permissions/permission-management/data-model-permission.ts
 #: enterprise/frontend/src/metabase-enterprise/feature_level_permissions/permission-management/download-permission.ts
@@ -5181,6 +5219,7 @@ msgstr "Google Sheets"
 #: enterprise/frontend/src/metabase-enterprise/google_drive/GdriveDbMenu.tsx
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/CollectionSyncRow/CollectionSyncRow.tsx
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/LibrarySyncRow/LibrarySyncRow.tsx
+#: enterprise/frontend/src/metabase-enterprise/remote_sync/components/RemoteSyncAdminSettings/RemoteSyncDependencyModal.tsx
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/TransformsSyncRow/TransformsSyncRow.tsx
 #: frontend/src/metabase/databases/components/DatabaseSyncScheduleField/DatabaseSyncScheduleField.tsx
 #: frontend/src/metabase/monitor/tools/components/RunTypePicker/TaskRunTypePicker.tsx
@@ -5271,7 +5310,6 @@ msgstr "OK"
 #: enterprise/frontend/src/metabase-enterprise/group_managers/components/UserTypeCell/UserTypeCell.tsx
 #: enterprise/frontend/src/metabase-enterprise/monitor/ai-auditing/metabot-analytics/components/ConversationDetailPage/ConversationHeader.tsx
 #: frontend/src/metabase/admin/people/components/GroupSummary.tsx
-#: frontend/src/metabase/embedding-hub/pages/EmbeddingHubAppearancePage.tsx
 #: frontend/src/metabase/nav/components/AppSwitcher/AppSwitcher.tsx
 #: frontend/src/metabase/palette/constants.ts
 #: frontend/src/metabase/palette/utils.ts
@@ -5876,12 +5914,12 @@ msgid "Queries generated"
 msgstr "Query generate"
 
 #: enterprise/frontend/src/metabase-enterprise/monitor/ai-auditing/metabot-analytics/components/ConversationDetailPage/ConversationDetailPage.tsx
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/constants.ts
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/constants.ts
 msgid "Negative"
 msgstr "Negativo"
 
 #: enterprise/frontend/src/metabase-enterprise/monitor/ai-auditing/metabot-analytics/components/ConversationDetailPage/ConversationDetailPage.tsx
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/constants.ts
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/constants.ts
 msgid "Positive"
 msgstr "Positivo"
 
@@ -6320,8 +6358,9 @@ msgid "Unavailable"
 msgstr "Non disponibile"
 
 #: enterprise/frontend/src/metabase-enterprise/monitor/ai-auditing/metabot-analytics/components/ConversationStatsPage/DataComplexityCards.tsx
-msgid "Complexity score"
-msgstr "Punteggio di complessità"
+#, javascript-format
+msgid "Complexity score {0}"
+msgstr "Punteggio di complessità {0}"
 
 #: enterprise/frontend/src/metabase-enterprise/monitor/ai-auditing/metabot-analytics/components/ConversationStatsPage/query-utils.ts
 msgid "Input tokens"
@@ -6414,6 +6453,7 @@ msgstr "Diagnostica delle dipendenze"
 #: enterprise/frontend/src/metabase-enterprise/monitor/dependency-diagnostics/components/DiagnosticsSidebar/ErrorsSection/ErrorsSection.tsx
 #: enterprise/frontend/src/metabase-enterprise/multi_factor_auth/components/common/CopyableCodeBlock/CopyableCodeBlock.tsx
 #: frontend/src/metabase/admin/ai/MetabotAdminSuggestedPrompts.tsx
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/EditorPanel.tsx
 #: frontend/src/metabase/admin/settings/components/ApiKeys/SecretKeyModal.tsx
 #: frontend/src/metabase/common/components/CopyButton/CopyButton.tsx
 #: frontend/src/metabase/common/components/CopyTextField/copy-text-field-props.tsx
@@ -6421,7 +6461,6 @@ msgstr "Diagnostica delle dipendenze"
 #: frontend/src/metabase/detail-view/components/DetailViewSidesheet/DetailViewSidesheet.tsx
 #: frontend/src/metabase/documents/components/Editor/AnchorLinkMenu/AnchorLinkButton.tsx
 #: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/GetCode/CopyCodeSnippetButton.tsx
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/EditorPanel.tsx
 #: frontend/src/metabase/metabot/components/AIMarkdown/AIMarkdown.tsx
 #: frontend/src/metabase/metabot/components/MetabotChat/MetabotAgentToolCallPart.tsx
 #: frontend/src/metabase/metabot/components/MetabotChat/MetabotChatMessage.tsx
@@ -6461,6 +6500,7 @@ msgstr "Info"
 #: frontend/src/metabase/common/CreateDashboard/CreateDashboardForm.tsx
 #: frontend/src/metabase/common/collections/components/CollectionRowMenu/EditCollectionModal/EditCollectionModal.tsx
 #: frontend/src/metabase/common/collections/components/CreateCollectionForm/CreateCollectionForm.tsx
+#: frontend/src/metabase/common/components/CopyCardForm/CopyCardForm.tsx
 #: frontend/src/metabase/common/components/CopyDashboardForm/CopyDashboardForm.tsx
 #: frontend/src/metabase/common/components/ItemsTable/Columns.tsx
 #: frontend/src/metabase/common/components/SaveQuestionForm/SaveQuestionForm.tsx
@@ -6475,7 +6515,6 @@ msgstr "Info"
 #: frontend/src/metabase/monitor/tools/components/JobInfoApp/JobsTable.tsx
 #: frontend/src/metabase/query_builder/components/DatasetEditor/DatasetFieldMetadataSidebar/DatasetFieldMetadataSidebar.tsx
 #: frontend/src/metabase/query_builder/components/view/sidebars/QuestionInfoSidebar/QuestionInfoSidebar.tsx
-#: frontend/src/metabase/questions/components/CopyCardForm/CopyCardForm.tsx
 #: frontend/src/metabase/reference/databases/DatabaseDetail.tsx
 #: frontend/src/metabase/reference/databases/FieldDetail.tsx
 #: frontend/src/metabase/reference/databases/TableDetail.tsx
@@ -6899,6 +6938,7 @@ msgid "No changes to push"
 msgstr "Nessuna modifica da fare push"
 
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/CollectionSyncRow/CollectionSyncRow.tsx
+#: enterprise/frontend/src/metabase-enterprise/remote_sync/components/RemoteSyncAdminSettings/RemoteSyncDependencyModal.tsx
 #, javascript-format
 msgctxt "{0} is the name of a metabase collection"
 msgid "Sync {0}"
@@ -7137,24 +7177,24 @@ msgid "Keep your dashboards, questions, and collections safely backed up in Git.
 msgstr "Mantieni Dashboard, domande e Raccolte al sicuro con backup in Git."
 
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/RemoteSyncAdminSettings/RemoteSyncDependencyModal.tsx
-msgid "Sync collections with dependencies?"
-msgstr "Sincronizzare le Raccolte con dipendenze?"
-
-#: enterprise/frontend/src/metabase-enterprise/remote_sync/components/RemoteSyncAdminSettings/RemoteSyncDependencyModal.tsx
 msgid "Couldn’t sync selected collection"
 msgstr "Impossibile sincronizzare la Raccolta selezionata"
-
-#: enterprise/frontend/src/metabase-enterprise/remote_sync/components/RemoteSyncAdminSettings/RemoteSyncDependencyModal.tsx
-msgid "Sync to continue"
-msgstr "Sincronizza per continuare"
 
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/RemoteSyncAdminSettings/RemoteSyncDependencyModal.tsx
 msgid "Can't be synced"
 msgstr "Non può essere sincronizzato"
 
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/RemoteSyncAdminSettings/RemoteSyncDependencyModal.tsx
-msgid "Sync required collections"
-msgstr "Sincronizza le Raccolte richieste"
+msgid "Item"
+msgstr "Elemento"
+
+#: enterprise/frontend/src/metabase-enterprise/remote_sync/components/RemoteSyncAdminSettings/RemoteSyncDependencyModal.tsx
+msgid "Used By"
+msgstr "Usato da"
+
+#: enterprise/frontend/src/metabase-enterprise/remote_sync/components/RemoteSyncAdminSettings/RemoteSyncDependencyModal.tsx
+msgid "Go to collection"
+msgstr "Vai alla raccolta"
 
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/RemoteSyncAdminSettings/RemoteSyncSettingsForm.tsx
 msgid "Content to sync"
@@ -7320,13 +7360,12 @@ msgid "What will be overwritten: "
 msgstr "Cosa verr e0 sovrascritto: "
 
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/SyncConflictModal/SetupConflictInfo.tsx
-#: frontend/src/metabase/querying/components/SnippetSidebar/SnippetSidebar.tsx
-msgid "Snippets"
-msgstr "Snippet"
+msgid "Snippets and glossary"
+msgstr "Snippet e glossario"
 
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/SyncConflictModal/SetupConflictInfo.tsx
-msgid "Library, Transforms and Snippets."
-msgstr "Libreria, Trasformazioni e Snippet."
+msgid "Library, Transforms, Snippets and Glossary."
+msgstr "Libreria, Trasformazioni, Snippet e Glossario."
 
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/SyncConflictModal/SyncConflictModal.tsx
 msgid "Failed to mark library and transforms as synced"
@@ -7421,6 +7460,14 @@ msgid "An error occurred during sync."
 msgstr "Si è verificato un errore durante la sync."
 
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/SyncProgressModal.tsx
+msgid "Sync stopped"
+msgstr "Sync interrotto"
+
+#: enterprise/frontend/src/metabase-enterprise/remote_sync/components/SyncProgressModal.tsx
+msgid "The sync was cancelled."
+msgstr "La sincronizzazione è stata annullata."
+
+#: enterprise/frontend/src/metabase-enterprise/remote_sync/components/SyncProgressModal.tsx
 msgid "Please wait until this finishes before editing content."
 msgstr "Attendi il completamento prima di modificare i contenuti."
 
@@ -7429,15 +7476,33 @@ msgid "Cancelling…"
 msgstr "Annullamento…"
 
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/SyncProgressModal.tsx
-msgid "Still working…"
-msgstr "Ancora in corso…"
+#, javascript-format
+msgctxt "{0} is a person's name, {1} is a time of day"
+msgid "Started by {0} at {1}"
+msgstr "Avviato da {0} alle {1}"
 
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/SyncProgressModal.tsx
 #, javascript-format
-msgid "Still working. No update for {0} minute."
-msgid_plural "Still working. No update for {0} minutes."
-msgstr[0] "Ancora in corso. Nessun aggiornamento da {0} minuto."
-msgstr[1] "Ancora in corso. Nessun aggiornamento da {0} minuti."
+msgctxt "{0} is a time of day"
+msgid "Started at {0}"
+msgstr "Avviato alle {0}"
+
+#: enterprise/frontend/src/metabase-enterprise/remote_sync/components/SyncProgressModal.tsx
+#, javascript-format
+msgctxt "{0} is a percentage, {1} is a sync phase such as 'importing content'"
+msgid "Stopped at {0}% while {1}"
+msgstr "Interrotto al {0}% durante {1}"
+
+#: enterprise/frontend/src/metabase-enterprise/remote_sync/components/SyncProgressModal.tsx
+msgid "No progress reported recently. The sync is still running."
+msgstr "Nessun avanzamento segnalato di recente. La sincronizzazione è ancora in corso."
+
+#: enterprise/frontend/src/metabase-enterprise/remote_sync/components/SyncProgressModal.tsx
+#, javascript-format
+msgid "No progress for {0} minute. The sync is still running."
+msgid_plural "No progress for {0} minutes. The sync is still running."
+msgstr[0] "Nessun avanzamento da {0} minuto. La sincronizzazione è ancora in corso."
+msgstr[1] "Nessun avanzamento da {0} minuti. La sincronizzazione è ancora in corso."
 
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/SyncProgressModal.tsx
 msgid "Pulling from Git"
@@ -7568,6 +7633,30 @@ msgid "The synced collection will update to match the new branch. Questions that
 msgstr "La Raccolta sincronizzata si aggiornerà per corrispondere al nuovo branch. Le domande che esistono nel branch corrente ma non in quello nuovo verranno rimosse in modo permanente da qualsiasi Dashboard o contenuto che le referenzia, anche se torni indietro."
 
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/utils.ts
+msgid "preparing"
+msgstr "preparazione"
+
+#: enterprise/frontend/src/metabase-enterprise/remote_sync/utils.ts
+msgid "exporting content"
+msgstr "esportazione contenuti"
+
+#: enterprise/frontend/src/metabase-enterprise/remote_sync/utils.ts
+msgid "pushing"
+msgstr "push in corso"
+
+#: enterprise/frontend/src/metabase-enterprise/remote_sync/utils.ts
+msgid "importing content"
+msgstr "importazione contenuti"
+
+#: enterprise/frontend/src/metabase-enterprise/remote_sync/utils.ts
+msgid "recording sync state"
+msgstr "registrazione dello stato di sync"
+
+#: enterprise/frontend/src/metabase-enterprise/remote_sync/utils.ts
+msgid "finishing"
+msgstr "completamento"
+
+#: enterprise/frontend/src/metabase-enterprise/remote_sync/utils.ts
 msgid "The sync branch changed in another session. Refresh the page and try again."
 msgstr "Il branch di sincronizzazione è stato modificato in un'altra sessione. Aggiorna la pagina e riprova."
 
@@ -7599,16 +7688,24 @@ msgid "Our analytics"
 msgstr "Le nostre analisi"
 
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/utils.ts
+msgid "Unknown collection"
+msgstr "Raccolta sconosciuta"
+
+#: enterprise/frontend/src/metabase-enterprise/remote_sync/utils.ts
 msgid "Dashboards or questions in this collection rely on content saved in a personal collection, which can’t be synced. Move that content to a shared collection to continue."
 msgstr "Dashboard o domande in questa Raccolta dipendono da contenuti salvati in una Raccolta personale, che non può essere sincronizzata. Sposta quei contenuti in una Raccolta condivisa per continuare."
+
+#: enterprise/frontend/src/metabase-enterprise/remote_sync/utils.ts
+msgid "Dashboards or questions in this collection rely on content in usage analytics, which can’t be synced. Update them to use content you can sync to continue."
+msgstr "I dashboard o le domande in questa raccolta dipendono da contenuti in Analisi di utilizzo, che non possono essere sincronizzati. Aggiornali per usare contenuti che puoi sincronizzare per continuare."
 
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/utils.ts
 msgid "Dashboards or questions in this collection rely on content that can’t be synced where it currently lives. Move that content into a collection you’re syncing to continue."
 msgstr "Dashboard o domande in questa Raccolta dipendono da contenuti che non possono essere sincronizzati nella posizione attuale. Sposta quei contenuti in una Raccolta che stai sincronizzando per continuare."
 
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/utils.ts
-msgid "Dashboards or questions in this collection rely on snippets, which sync with the Library. Sync the Library as well to continue."
-msgstr "Dashboard o domande in questa Raccolta dipendono da snippet, che si sincronizzano con la Libreria. Sincronizza anche la Libreria per continuare."
+msgid "Dashboards or questions in this collection rely on snippets, which sync with the Library. Create the Library in Data Studio, then sync it to continue."
+msgstr "I dashboard o le domande in questa raccolta dipendono da snippet, che si sincronizzano con la Libreria. Crea la Libreria in Studio dati, quindi sincronizzala per continuare."
 
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/utils.ts
 msgid "Dashboards or questions in this collection rely on data saved elsewhere. To continue, sync those linked collections as well."
@@ -8293,8 +8390,9 @@ msgstr "Configura i canali di notifica nel {0} così riceverai notifiche sulle v
 
 #: enterprise/frontend/src/metabase-enterprise/security_center/components/SecurityCenterNavItem/SecurityCenterMobileNavItem.tsx
 #: enterprise/frontend/src/metabase-enterprise/security_center/components/SecurityCenterNavItem/SecurityCenterNavItem.tsx
-#: frontend/src/metabase/embedding-hub/components/EmbeddingHubLayout/EmbeddingHubLayout.tsx
-#: frontend/src/metabase/embedding-hub/pages/EmbeddingHubSecurityPage.tsx
+#: frontend/src/metabase/admin/components/RelatedSettingsSection/constants.ts
+#: frontend/src/metabase/admin/embedding/components/EmbeddingNav.tsx
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSecuritySettings/EmbeddingSecuritySettings.tsx
 msgid "Security"
 msgstr "Sicurezza"
 
@@ -8718,13 +8816,13 @@ msgstr[1] "{0} righe selezionate"
 #: frontend/src/metabase/account/notifications/components/NotificationCard/DashboardNotificationCard.tsx
 #: frontend/src/metabase/account/notifications/components/NotificationCard/NotificationCard.tsx
 #: frontend/src/metabase/actions/utils.ts
+#: frontend/src/metabase/admin/embedding/components/ThemeListing/DeleteThemeModal.tsx
+#: frontend/src/metabase/admin/embedding/components/ThemeListing/EmbeddingThemeCard.tsx
 #: frontend/src/metabase/admin/settings/components/ApiKeys/ManageApiKeys.tsx
 #: frontend/src/metabase/comments/components/Discussion/DiscussionActionPanel.tsx
 #: frontend/src/metabase/common/components/Glossary/GlossaryTable.tsx
 #: frontend/src/metabase/dashboard/components/DashboardSubscriptionsSidebar/AddEditSidebar/DeleteSubscriptionAction.tsx
 #: frontend/src/metabase/dashboard/components/DashboardTabs/DashboardTabs.tsx
-#: frontend/src/metabase/embedding/themes/components/ThemeListing/DeleteThemeModal.tsx
-#: frontend/src/metabase/embedding/themes/components/ThemeListing/EmbeddingThemeCard.tsx
 #: frontend/src/metabase/models/components/ModelActions/ModelActionDetails/useEnableImplicitActionsForModel.ts
 #: frontend/src/metabase/monitor/tools/notifications/NotificationsAdminPage/NotificationsAdminPage.tsx
 #: frontend/src/metabase/timelines/common/components/DeleteEventModal/DeleteEventModal.tsx
@@ -8772,7 +8870,6 @@ msgstr "Crea un nuovo record"
 #: frontend/src/metabase/common/collections/components/CreateCollectionForm/CreateCollectionForm.tsx
 #: frontend/src/metabase/common/components/Pickers/EntityPicker/components/NewCollectionDialog/NewCollectionDialog.tsx
 #: frontend/src/metabase/common/components/Pickers/EntityPicker/components/NewDashboardDialog/NewDashboardDialog.tsx
-#: frontend/src/metabase/forms/components/FormSecretKey/FormSecretKey.tsx
 #: frontend/src/metabase/metabot/components/MetabotChat/MetabotAgentSuggestionMessage.tsx
 #: frontend/src/metabase/models/components/ModelActions/ModelActionDetails/useEnableImplicitActionsForModel.ts
 #: frontend/src/metabase/timelines/common/components/EventForm/EventForm.tsx
@@ -9180,14 +9277,15 @@ msgstr "Se devi modificare queste impostazioni, puoi tornare ai passaggi precede
 
 #: enterprise/frontend/src/metabase-enterprise/tenants/components/TenantsSummaryOnboardingStep/TenantsSummaryOnboardingStep.tsx
 #: enterprise/frontend/src/metabase-enterprise/tenants/containers/TenantsListingApp.tsx
+#: frontend/src/metabase/admin/components/RelatedSettingsSection/constants.ts
 #: frontend/src/metabase/admin/people/components/PeopleNav.tsx
-#: frontend/src/metabase/embedding-hub/pages/EmbeddingHubTenancyPage.tsx
 #: metabase/permissions_rest/api.clj metabase_enterprise/api_routes/routes.clj
 msgid "Tenants"
 msgstr "Tenant"
 
 #: enterprise/frontend/src/metabase-enterprise/tenants/components/TenantsSummaryOnboardingStep/TenantsSummaryOnboardingStep.tsx
 #: frontend/src/metabase/admin/app/reducers.ts
+#: frontend/src/metabase/admin/components/RelatedSettingsSection/constants.ts
 #: frontend/src/metabase/admin/people/components/PeopleNav.tsx
 #: frontend/src/metabase/admin/people/containers/PeopleListingApp/PeopleListingApp.tsx
 msgid "People"
@@ -9195,8 +9293,7 @@ msgstr "Persone"
 
 #: enterprise/frontend/src/metabase-enterprise/tenants/components/TenantsSummaryOnboardingStep/TenantsSummaryOnboardingStep.tsx
 #: frontend/src/metabase/admin/app/reducers.ts
-#: frontend/src/metabase/embedding-hub/components/EmbeddingHubLayout/EmbeddingHubLayout.tsx
-#: frontend/src/metabase/embedding-hub/pages/EmbeddingHubPermissionsPage.tsx
+#: frontend/src/metabase/admin/components/RelatedSettingsSection/constants.ts
 msgid "Permissions"
 msgstr "Autorizzazioni"
 
@@ -9225,7 +9322,9 @@ msgstr "e"
 #: frontend/src/metabase/common/hooks/use-set-collection.ts
 #: frontend/src/metabase/querying/components/DataReference/DatabasePane.tsx
 msgid "table"
-msgstr "tabella"
+msgid_plural "tables"
+msgstr[0] "tabella"
+msgstr[1] "tabelle"
 
 #: enterprise/frontend/src/metabase-enterprise/tenants/components/TenantsSummaryOnboardingStep/TenantsSummaryOnboardingStep.tsx
 #, javascript-format
@@ -10107,6 +10206,7 @@ msgid "You'll be charged {0} per transform run."
 msgstr "Ti verranno addebitati {0} per esecuzione di trasformazione."
 
 #: enterprise/frontend/src/metabase-enterprise/transforms-python/upsells/PythonTransformsUpsellModal/PurchaseAdvancedTransforms.tsx
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/SharedCombinedEmbeddingSettings/SharedCombinedEmbeddingSettings.tsx
 msgid "Upgrade"
 msgstr "Upgrade"
 
@@ -10230,6 +10330,7 @@ msgid "We'll notify you when you've hit {0}% of your allotment."
 msgstr "Ti avviseremo quando raggiungerai il {0}% della tua quota."
 
 #: enterprise/frontend/src/metabase-enterprise/transforms/upsells/pages/TransformsUpsellPage/TransformsUpsellPage.tsx
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingLegaleseModal/EmbeddingLegaleseModal.tsx
 #: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/AuthenticationCard/EnableGuestEmbedsSection.tsx
 #: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/AuthenticationCard/EnableModularEmbeddingSection.tsx
 #: frontend/src/metabase/public/components/widgets/LegaleseStep/LegaleseStep.tsx
@@ -10448,7 +10549,7 @@ msgid "Note: deleting each of the values will revert them back to default."
 msgstr "Nota: eliminando ciascuno dei valori verranno ripristinati i valori predefiniti."
 
 #: enterprise/frontend/src/metabase-enterprise/whitelabel/components/ColorSettings/ColorSettings.tsx
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/EditorPanel.tsx
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/EditorPanel.tsx
 msgid "Chart colors"
 msgstr "Colori del grafico"
 
@@ -10474,22 +10575,6 @@ msgstr "Colori"
 msgid "Preview"
 msgstr "Anteprima"
 
-#: enterprise/frontend/src/metabase-enterprise/whitelabel/components/EmbeddedAppearanceSettings.tsx
-#: enterprise/frontend/src/metabase-enterprise/whitelabel/components/WhiteLabelBrandingSettingsPage.tsx
-msgctxt "Label for a setting that selects the message shown to users while Metabase is loading"
-msgid "Loading message"
-msgstr "Messaggio di caricamento"
-
-#: enterprise/frontend/src/metabase-enterprise/whitelabel/components/EmbeddedAppearanceSettings.tsx
-#: enterprise/frontend/src/metabase-enterprise/whitelabel/components/WhiteLabelConcealSettingsPage.tsx
-msgid "When calculations return no results"
-msgstr "Quando i calcoli non restituiscono risultati"
-
-#: enterprise/frontend/src/metabase-enterprise/whitelabel/components/EmbeddedAppearanceSettings.tsx
-#: enterprise/frontend/src/metabase-enterprise/whitelabel/components/WhiteLabelConcealSettingsPage.tsx
-msgid "When no objects can be found"
-msgstr "Quando non è possibile trovare alcun oggetto"
-
 #: enterprise/frontend/src/metabase-enterprise/whitelabel/components/FontWidget/FontFilesWidget.tsx
 msgid "Font weight"
 msgstr "Peso del font"
@@ -10505,8 +10590,8 @@ msgid "URL"
 msgstr "URL"
 
 #: enterprise/frontend/src/metabase-enterprise/whitelabel/components/FontWidget/FontWidget.tsx
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/EditorPanel.tsx
 #: frontend/src/metabase/embedding/components/EmbedModal/StaticEmbedSetupPane/LookAndFeelSettings.tsx
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/EditorPanel.tsx
 msgid "Font"
 msgstr "Carattere"
 
@@ -10693,6 +10778,11 @@ msgstr "Favicon"
 msgid "Fonts"
 msgstr "Font"
 
+#: enterprise/frontend/src/metabase-enterprise/whitelabel/components/WhiteLabelBrandingSettingsPage.tsx
+msgctxt "Label for a setting that selects the message shown to users while Metabase is loading"
+msgid "Loading message"
+msgstr "Messaggio di caricamento"
+
 #: enterprise/frontend/src/metabase-enterprise/whitelabel/components/WhiteLabelConcealSettingsPage.tsx
 #: frontend/src/metabase/admin/settings/components/SettingsNav/SettingsNav.tsx
 msgid "Conceal Metabase"
@@ -10737,6 +10827,14 @@ msgstr "Pagine di accesso e annullamento iscrizione"
 #: enterprise/frontend/src/metabase-enterprise/whitelabel/components/WhiteLabelConcealSettingsPage.tsx
 msgid "Landing page"
 msgstr "Landing page"
+
+#: enterprise/frontend/src/metabase-enterprise/whitelabel/components/WhiteLabelConcealSettingsPage.tsx
+msgid "When calculations return no results"
+msgstr "Quando i calcoli non restituiscono risultati"
+
+#: enterprise/frontend/src/metabase-enterprise/whitelabel/components/WhiteLabelConcealSettingsPage.tsx
+msgid "When no objects can be found"
+msgstr "Quando non è possibile trovare alcun oggetto"
 
 #: enterprise/frontend/src/metabase-enterprise/whitelabel/index.ts
 msgid "Custom URL"
@@ -10865,7 +10963,7 @@ msgid "Add another summary"
 msgstr "Aggiungi un altro riepilogo"
 
 #: frontend/src/embedding-sdk-bundle/components/private/SdkQuestion/components/Summarize/SummarizeDropdown/SummarizeDropdown.tsx
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/constants.ts
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/constants.ts
 #: frontend/src/metabase/query_builder/components/view/ViewHeader/components/QuestionSummarizeWidget.tsx
 #: frontend/src/metabase/querying/notebook/components/NotebookStep/utils.ts
 #: frontend/src/metabase/visualizations/components/ClickActions/utils.ts
@@ -12558,10 +12656,10 @@ msgstr "La mia nuova azione fantastica"
 #: frontend/src/metabase/actions/containers/ActionCreator/CreateActionForm/CreateActionForm.tsx
 #: frontend/src/metabase/common/CreateDashboard/CreateDashboardForm.tsx
 #: frontend/src/metabase/common/collections/components/CreateCollectionForm/CreateCollectionForm.tsx
+#: frontend/src/metabase/common/components/CopyCardForm/CopyCardForm.tsx
 #: frontend/src/metabase/common/components/CopyDashboardForm/CopyDashboardForm.tsx
 #: frontend/src/metabase/common/components/SaveQuestionForm/SaveQuestionForm.tsx
 #: frontend/src/metabase/querying/components/NativeQueryEditor/SnippetForm/SnippetForm.tsx
-#: frontend/src/metabase/questions/components/CopyCardForm/CopyCardForm.tsx
 msgid "It's optional but oh, so helpful"
 msgstr "È facoltativo ma molto utile"
 
@@ -12646,10 +12744,8 @@ msgid "Field type"
 msgstr "Tipo di campo"
 
 #: frontend/src/metabase/actions/containers/ActionCreator/FormCreator/FormFieldEditor/FormFieldEditor.tsx
+#: frontend/src/metabase/admin/components/RelatedSettingsSection/constants.ts
 #: frontend/src/metabase/admin/settings/components/SettingsNav/SettingsNav.tsx
-#: frontend/src/metabase/embedding-hub/components/EmbeddingHubLayout/EmbeddingHubLayout.tsx
-#: frontend/src/metabase/embedding-hub/pages/EmbeddingHubAppearancePage.tsx
-#: frontend/src/metabase/embedding-hub/upsells/AppearanceUpsellPage.tsx
 #: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/Appearance/BaseAppearanceSection.tsx
 msgid "Appearance"
 msgstr "Aspetto"
@@ -13207,6 +13303,7 @@ msgid "upgrade"
 msgstr "aggiornare"
 
 #: frontend/src/metabase/admin/app/reducers.ts
+#: frontend/src/metabase/admin/components/RelatedSettingsSection/constants.ts
 #: frontend/src/metabase/admin/databases/components/DatabaseList/DatabaseList.tsx
 #: frontend/src/metabase/admin/databases/containers/DatabaseEditApp.tsx
 #: frontend/src/metabase/admin/permissions/components/EntityViewSwitch/EntityViewSwitch.tsx
@@ -13221,6 +13318,12 @@ msgstr "aggiornare"
 #: frontend/src/metabase/reference/databases/TableSidebar.tsx
 msgid "Databases"
 msgstr "Database"
+
+#: frontend/src/metabase/admin/app/reducers.ts
+#: frontend/src/metabase/metabot/constants.ts
+#: metabase_enterprise/api_routes/routes.clj
+msgid "Embedding"
+msgstr "Incorporamento"
 
 #: frontend/src/metabase/admin/app/reducers.ts
 msgid "AI"
@@ -13241,6 +13344,10 @@ msgstr "Prestazioni"
 #: frontend/src/metabase/parameters/components/TagEditor/TagEditorSidebar.tsx
 msgid "Help"
 msgstr "Aiuto"
+
+#: frontend/src/metabase/admin/components/RelatedSettingsSection/RelatedSettingsSection.tsx
+msgid "Related settings"
+msgstr "Impostazioni correlate"
 
 #: frontend/src/metabase/admin/databases/components/ContentRemovalConfirmation/ContentRemovalConfirmation.tsx
 #, javascript-format
@@ -13681,6 +13788,236 @@ msgstr "Crea segmenti per aggiungerli al menu a discesa Filtro nel generatore di
 msgid "Filter by table"
 msgstr "Filtra per tabella"
 
+#: frontend/src/metabase/admin/embedding/components/EmbeddingNav.tsx
+msgid "Setup guide"
+msgstr "Guida alla configurazione"
+
+#: frontend/src/metabase/admin/embedding/components/EmbeddingNav.tsx
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/GuestEmbedsSettings/GuestEmbedsSettings.tsx
+msgid "Guest embeds"
+msgstr "Incorporamenti guest"
+
+#: frontend/src/metabase/admin/embedding/components/EmbeddingNav.tsx
+#: frontend/src/metabase/admin/embedding/components/ThemeListing/EmbeddingThemeListingApp.tsx
+msgid "Themes"
+msgstr "Temi"
+
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/EditorPanel.tsx
+msgid "Edit theme"
+msgstr "Modifica tema"
+
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/EditorPanel.tsx
+#: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/GetCode/CopyCodeSnippetButton.tsx
+#: frontend/src/metabase/metabot/components/AIMarkdown/AIMarkdown.tsx
+msgid "Copy code"
+msgstr "Copia codice"
+
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/EditorPanel.tsx
+msgid "Theme name"
+msgstr "Nome tema"
+
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/EditorPanel.tsx
+msgid "Main colors"
+msgstr "Colori principali"
+
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/EditorPanel.tsx
+msgid "Reset main colors to defaults"
+msgstr "Ripristina i colori principali ai valori predefiniti"
+
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/EditorPanel.tsx
+msgid "Show fewer colors"
+msgstr "Mostra meno colori"
+
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/EditorPanel.tsx
+msgid "Show more colors"
+msgstr "Mostra più colori"
+
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/EditorPanel.tsx
+msgid "Regenerate filter, summarize, positive, negative, and chart colors from the brand color"
+msgstr "Rigenera i colori di filtro, riepiloga, positivo, negativo e grafico dal colore del brand"
+
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/EditorPanel.tsx
+msgid "Regenerate from brand color"
+msgstr "Rigenera dal colore del brand"
+
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/EditorPanel.tsx
+msgid "Base font size"
+msgstr "Dimensione font di base"
+
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/EditorPanel.tsx
+#: frontend/src/metabase/admin/embedding/components/ThemeListing/DeleteThemeModal.tsx
+msgid "Delete theme"
+msgstr "Elimina tema"
+
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/EditorPanel.tsx
+msgid "Save theme"
+msgstr "Salva tema"
+
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/EnableEmbeddingPrompt.tsx
+#: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/AuthenticationCard/EnableGuestEmbedsSection.tsx
+msgid "usage conditions"
+msgstr "condizioni d’uso"
+
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/EnableEmbeddingPrompt.tsx
+msgctxt "Prompt to enable modular embedding to see a live preview of an embedding theme."
+msgid "Enable modular embedding to see a live preview of your theme."
+msgstr "Abilita l'Embedding modulare per vedere un'anteprima live del tuo tema."
+
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/EnableEmbeddingPrompt.tsx
+#, javascript-format
+msgctxt "{0} is a link to the embedding conditions, for users to accept them and see a live preview of their theme."
+msgid "Accept the {0} to see a live preview of your theme."
+msgstr "Accetta le {0} per vedere un'anteprima live del tuo tema."
+
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/EnableEmbeddingPrompt.tsx
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSettings/EmbeddingSettings.tsx
+msgid "Enable modular embedding"
+msgstr "Abilita l’embedding modulare"
+
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/EnableEmbeddingPrompt.tsx
+msgid "Accept and continue"
+msgstr "Accetta e continua"
+
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/PreviewPanel.tsx
+msgid "Theme preview"
+msgstr "Anteprima tema"
+
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/PreviewPanel.tsx
+msgid "Create a dashboard or question to preview this theme."
+msgstr "Crea una dashboard o una domanda per visualizzare in anteprima questo tema."
+
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/PreviewResourcePicker.tsx
+msgid "Change preview resource"
+msgstr "Cambia risorsa di anteprima"
+
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/PreviewResourcePicker.tsx
+msgid "Select data to preview"
+msgstr "Seleziona i dati per l'anteprima"
+
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/constants.ts
+msgid "Brand"
+msgstr "Marchio"
+
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/constants.ts
+msgid "Background"
+msgstr "Sfondo"
+
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/constants.ts
+msgid "Primary text"
+msgstr "Testo principale"
+
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/constants.ts
+msgid "Secondary text"
+msgstr "Testo secondario"
+
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/constants.ts
+msgid "Tertiary text"
+msgstr "Testo terziario"
+
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/constants.ts
+msgid "Border"
+msgstr "Bordo"
+
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/constants.ts
+msgid "Shadow"
+msgstr "Ombra"
+
+#: frontend/src/metabase/admin/embedding/components/ThemeListing/DeleteThemeModal.tsx
+msgid "Are you sure you want to delete this theme? This action cannot be undone."
+msgstr "Vuoi davvero eliminare questo tema? Questa azione non può essere annullata."
+
+#: frontend/src/metabase/admin/embedding/components/ThemeListing/EmbeddingThemeCard.tsx
+msgid "Duplicate and delete"
+msgstr "Duplica ed elimina"
+
+#: frontend/src/metabase/admin/embedding/components/ThemeListing/EmbeddingThemeCard.tsx
+#: frontend/src/metabase/collections/components/CollectionBulkActions/use-bulk-duplicate.ts
+#: frontend/src/metabase/common/components/CopyCardForm/CopyCardForm.tsx
+#: frontend/src/metabase/common/components/CopyDashboardForm/CopyDashboardForm.tsx
+#: frontend/src/metabase/common/components/CopyModal/CopyModal.tsx
+#: frontend/src/metabase/common/components/DocumentCopyForm/DocumentCopyForm.tsx
+#: frontend/src/metabase/dashboard/components/DashCard/DashCardActionsPanel/DashCardActionsPanel.tsx
+#: frontend/src/metabase/dashboard/components/DashboardTabs/DashboardTabs.tsx
+#: metabase/dashboards/write.clj metabase/dashboards_rest/api.clj
+msgid "Duplicate"
+msgstr "Duplica"
+
+#: frontend/src/metabase/admin/embedding/components/ThemeListing/EmbeddingThemeListingApp.tsx
+msgid "Theme duplicated successfully"
+msgstr "Tema duplicato correttamente"
+
+#: frontend/src/metabase/admin/embedding/components/ThemeListing/EmbeddingThemeListingApp.tsx
+msgid "Failed to duplicate theme"
+msgstr "Impossibile duplicare il tema"
+
+#: frontend/src/metabase/admin/embedding/components/ThemeListing/EmbeddingThemeListingApp.tsx
+msgid "Create and edit themes to reuse across multiple embeds."
+msgstr "Crea e modifica temi da riutilizzare in più incorporamenti."
+
+#: frontend/src/metabase/admin/embedding/components/ThemeListing/NewThemeCard.tsx
+msgid "New theme"
+msgstr "Nuovo tema"
+
+#: frontend/src/metabase/admin/embedding/hooks/use-default-embedding-themes.ts
+#: frontend/src/metabase/common/components/ColorScheme/ColorSchemeSelect.tsx
+#: frontend/src/metabase/embedding/components/EmbedModal/StaticEmbedSetupPane/LookAndFeelSettings.tsx
+#: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/Appearance/SimpleThemeSwitcherSection.tsx
+msgid "Light"
+msgstr "Chiaro"
+
+#: frontend/src/metabase/admin/embedding/hooks/use-default-embedding-themes.ts
+#: frontend/src/metabase/common/components/ColorScheme/ColorSchemeSelect.tsx
+#: frontend/src/metabase/embedding/components/EmbedModal/StaticEmbedSetupPane/LookAndFeelSettings.tsx
+#: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/Appearance/SimpleThemeSwitcherSection.tsx
+msgid "Dark"
+msgstr "Scuro"
+
+#: frontend/src/metabase/admin/embedding/hooks/use-delete-theme-flow.tsx
+msgid "Theme deleted successfully"
+msgstr "Tema eliminato correttamente"
+
+#: frontend/src/metabase/admin/embedding/hooks/use-delete-theme-flow.tsx
+msgid "Failed to delete theme"
+msgstr "Impossibile eliminare il tema"
+
+#: frontend/src/metabase/admin/embedding/hooks/use-embedding-theme-editor.ts
+msgid "Untitled theme"
+msgstr "Tema senza titolo"
+
+#: frontend/src/metabase/admin/embedding/hooks/use-embedding-theme-editor.ts
+msgid "Filter, summarize, positive, negative, and chart colors regenerated from the brand color."
+msgstr "Colori di filtro, riepiloga, positivo, negativo e grafico rigenerati dal colore del brand."
+
+#: frontend/src/metabase/admin/embedding/hooks/use-embedding-theme-editor.ts
+#: frontend/src/metabase/common/components/UndoListing.tsx
+#: frontend/src/metabase/common/components/Unsubscribe.tsx
+#: frontend/src/metabase/dashboard/actions/auto-wire-parameters/toasts.ts
+#: frontend/src/metabase/explorations/components/ExplorationSidebar/ExplorationTreeNode.tsx
+#: frontend/src/metabase/explorations/components/ExplorationVisualization/ActionToolbar.tsx
+#: frontend/src/metabase/visualizer/components/Header/Header.tsx
+msgid "Undo"
+msgstr "Annulla"
+
+#: frontend/src/metabase/admin/embedding/hooks/use-embedding-theme-editor.ts
+msgid "Main colors reset to defaults."
+msgstr "Colori principali ripristinati ai valori predefiniti."
+
+#: frontend/src/metabase/admin/embedding/hooks/use-embedding-theme-editor.ts
+msgid "Theme saved"
+msgstr "Tema salvato"
+
+#: frontend/src/metabase/admin/embedding/hooks/use-embedding-theme-editor.ts
+msgid "Failed to save theme"
+msgstr "Impossibile salvare il tema"
+
+#: frontend/src/metabase/admin/embedding/setup-guide/SetupGuideAdminSettingsPage.tsx
+msgid "Embedding setup guide"
+msgstr "Guida alla configurazione dell’incorporamento"
+
+#: frontend/src/metabase/admin/embedding/setup-guide/SetupGuideAdminSettingsPage.tsx
+msgid "Follow the guide to get started with modular embedding"
+msgstr "Segui la guida per iniziare con l’Embedding modulare"
+
 #: frontend/src/metabase/admin/help/Help.tsx
 #: frontend/src/metabase/nav/components/AppSwitcher/AppSwitcher.tsx
 msgid "Get help"
@@ -13922,7 +14259,6 @@ msgstr "Gruppi interni"
 
 #: frontend/src/metabase/admin/people/components/PeopleNav.tsx
 #: frontend/src/metabase/admin/people/containers/PeopleListingApp/PeopleListingApp.tsx
-#: frontend/src/metabase/embedding-hub/pages/EmbeddingHubTenancyPage.tsx
 msgid "Tenant users"
 msgstr "Utenti tenant"
 
@@ -14997,7 +15333,6 @@ msgid "You won't be able to recover a deleted API key. You'll have to create a n
 msgstr "Non potrai recuperare una chiave API eliminata. Dovrai creare una nuova chiave."
 
 #: frontend/src/metabase/admin/settings/components/ApiKeys/DeleteApiKeyModal.tsx
-#: frontend/src/metabase/forms/components/FormSecretKey/RegenerateKeyConfirmModal.tsx
 msgid "No, don't delete"
 msgstr "No, non eliminare"
 
@@ -15047,7 +15382,6 @@ msgid "Copy and save this API key"
 msgstr "Copia e salva questa chiave API"
 
 #: frontend/src/metabase/admin/settings/components/ApiKeys/SecretKeyModal.tsx
-#: frontend/src/metabase/forms/components/FormSecretKey/SetupKeyModal.tsx
 msgid "Store this key somewhere safe. For security reasons, we can't show it to you again."
 msgstr "Conserva questa chiave in un posto sicuro. Per motivi di sicurezza, non possiamo mostrartela di nuovo."
 
@@ -15207,6 +15541,208 @@ msgstr "Configura"
 msgid "Edit configuration"
 msgstr "Modifica configurazione"
 
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingLegaleseModal/EmbeddingLegaleseModal.tsx
+#: frontend/src/metabase/public/components/widgets/LegaleseStep/LegaleseStep.tsx
+msgid "First, some legalese"
+msgstr "Per prima cosa, un po’ di legalese"
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingLegaleseModal/EmbeddingLegaleseModal.tsx
+#: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/AuthenticationCard/EnableModularEmbeddingSection.tsx
+msgid "Sharing Metabase accounts is a security risk. Even if you filter data on the client side, each user could use their token to view any data visible to that shared user account."
+msgstr "Condividere account Metabase è un rischio per la sicurezza. Anche se filtri i dati lato client, ogni utente potrebbe usare il proprio token per visualizzare qualsiasi dato visibile a quell'account utente condiviso."
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingLegaleseModal/EmbeddingLegaleseModal.tsx
+#: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/AuthenticationCard/EnableModularEmbeddingSection.tsx
+msgid "That, and we consider shared accounts to be unfair usage. Fair usage involves giving each end-user of the embedded analytics their own Metabase account."
+msgstr "Inoltre, consideriamo gli account condivisi un utilizzo non corretto. L'utilizzo corretto prevede che ogni utente finale dell'analisi integrata abbia il proprio account Metabase."
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingLegaleseModal/EmbeddingLegaleseModal.tsx
+msgid "Decline and go back"
+msgstr "Rifiuta e torna indietro"
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingLegaleseModal/EmbeddingLegaleseModal.tsx
+msgid "When using the Embedded analytics SDK for React, each end user should have their own Metabase account."
+msgstr "Quando usi l’SDK di Analisi integrate per React, ogni utente finale deve avere il proprio account Metabase."
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingLegaleseModal/EmbeddingLegaleseModal.tsx
+#: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/AuthenticationCard/EnableModularEmbeddingSection.tsx
+msgid "When using modular embedding, each end user must have their own Metabase account."
+msgstr "Quando usi l'embedding modulare, ogni utente finale deve avere il proprio account Metabase."
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSdkSettings/EmbeddingSdkSettings.tsx
+msgid "implement JWT or SAML SSO"
+msgstr "implementa JWT o SAML SSO"
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSdkSettings/EmbeddingSdkSettings.tsx
+#, javascript-format
+msgctxt "{0} is the link to upsell the SDK. {1} is the link to implement JWT or SAML authentication."
+msgid "You can test Embedded analytics SDK on localhost quickly by using API keys. To use the SDK on other sites, {0} and {1}."
+msgstr "Puoi testare rapidamente l’SDK di Analisi integrate su localhost usando le API key. Per usare l’SDK su altri siti, {0} e {1}."
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSdkSettings/EmbeddingSdkSettings.tsx
+#, javascript-format
+msgctxt "{0} is the link to implement JWT or SAML authentication."
+msgid "You can test Embedded analytics SDK on localhost quickly by using API keys. To use the SDK on other sites, {0}."
+msgstr "Puoi testare rapidamente l’SDK di Analisi integrate su localhost usando le API key. Per usare l’SDK su altri siti, {0}."
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSdkSettings/EmbeddingSdkSettings.tsx
+msgid "Enable modular embedding SDK"
+msgstr "Abilita l’SDK di embedding modulare"
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSdkSettings/EmbeddingSdkSettings.tsx
+msgid "Embed the full power of Metabase into your application to build a custom analytics experience and programmatically manage dashboards and data."
+msgstr "Incorpora tutta la potenza di Metabase nella tua applicazione per creare un’esperienza di analisi personalizzata e gestire dashboard e dati in modo programmatico."
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSdkSettings/EmbeddingSdkSettings.tsx
+msgid "Quick start"
+msgstr "Avvio rapido"
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSecretKeyWidget.tsx
+msgid "Embedding secret key"
+msgstr "Chiave segreta per l’incorporamento"
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSecretKeyWidget.tsx
+msgid "Standalone Embed Secret Key used to sign JSON Web Tokens for requests to /api/embed endpoints. This lets you create a secure environment limited to specific users or organizations."
+msgstr "Chiave Segreta Autonoma per l'Incorporamento utilizzata per firmare JSON Web Tokens per richieste agli endpoint /api/embed. Questo ti permette di creare un ambiente sicuro limitato a utenti o organizzazioni specifiche."
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSecretKeyWidget.tsx
+#: frontend/src/metabase/forms/components/FormSecretKey/FormSecretKey.tsx
+#: frontend/src/metabase/forms/components/FormSecretKey/SetupKeyModal.tsx
+msgid "Regenerate key"
+msgstr "Rigenera chiave"
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSecretKeyWidget.tsx
+msgid "Regenerate embedding key?"
+msgstr "Rigenerare la chiave di incorporamento?"
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSecretKeyWidget.tsx
+msgid "This will cause existing embeds to stop working until they are updated with the new key."
+msgstr "Questo farà sì che gli incorporamenti esistenti smettano di funzionare finché non verranno aggiornati con la nuova chiave."
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSecretKeyWidget.tsx
+msgid "Generate key"
+msgstr "Genera chiave"
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSecuritySettings/CorsInputWidget.tsx
+msgid "Separate values with a space. Localhost is not allowed. Changes will take effect within one minute."
+msgstr "Separa i valori con uno spazio. Localhost non è consentito. Le modifiche avranno effetto entro un minuto."
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSecuritySettings/CorsInputWidget.tsx
+msgid "Separate values with a space. Localhost is automatically included. Changes will take effect within one minute."
+msgstr "Separa i valori con uno spazio. Localhost è incluso automaticamente. Le modifiche avranno effetto entro un minuto."
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSecuritySettings/CorsInputWidget.tsx
+msgid "Cross-Origin Resource Sharing (CORS)"
+msgstr "Cross-Origin Resource Sharing (CORS)"
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSecuritySettings/CorsInputWidget.tsx
+#, javascript-format
+msgid "Add the website domains where you want to allow embedding. {0}"
+msgstr "Aggiungi i domini dei siti web in cui vuoi consentire l'incorporamento. {0}"
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSecuritySettings/EmbeddingAppSameSiteCookieDescription.tsx
+#, javascript-format
+msgid "Determines whether to allow cookies for cross-site requests. {0}"
+msgstr "Determina se consentire i cookie per le richieste cross-site. {0}"
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSecuritySettings/EmbeddingAppSameSiteCookieDescription.tsx
+#, javascript-format
+msgid "You should probably change this setting to {0}."
+msgstr "Probabilmente dovresti cambiare questa impostazione in {0}."
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSecuritySettings/EmbeddingAppSameSiteCookieDescription.tsx
+#: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
+#: frontend/src/metabase/admin/settings/components/widgets/Notifications/WebhookForm.tsx
+#: frontend/src/metabase/dashboard/components/ClickMappings/ClickMappingsTargetWithoutSource.tsx
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParamParts/FilterWidgetTypeSelect.tsx
+#: frontend/src/metabase/parameters/components/TemporalUnitSettings/TemporalUnitSettings.tsx
+#: frontend/src/metabase/parameters/components/ValuesSourceModal/ValuesSourceTypeModal.tsx
+#: frontend/src/metabase/query_builder/components/DatasetEditor/DatasetFieldMetadataSidebar/MappedFieldPicker/MappedFieldPicker.tsx
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
+msgid "None"
+msgstr "Nessuno"
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSecuritySettings/SameSiteSelectWidget.tsx
+msgid "Lax (default)"
+msgstr "Lax (predefinito)"
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSecuritySettings/SameSiteSelectWidget.tsx
+msgid "Allows Metabase session cookies to be shared on the same domain. Used for production instances on the same domain."
+msgstr "Consente la condivisione dei cookie di sessione di Metabase sullo stesso dominio. Usato per istanze di produzione sullo stesso dominio."
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSecuritySettings/SameSiteSelectWidget.tsx
+msgid "Strict (not recommended)"
+msgstr "Strict (non consigliato)"
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSecuritySettings/SameSiteSelectWidget.tsx
+msgid "Does not allow Metabase session cookies to be shared with embedded instances. Use this if you do not want to enable session sharing with embedding."
+msgstr "Non consente la condivisione dei cookie di sessione di Metabase con istanze incorporate. Usalo se non vuoi abilitare la condivisione della sessione con l'incorporamento."
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSecuritySettings/SameSiteSelectWidget.tsx
+msgid "None (requires HTTPS)"
+msgstr "Nessuno (richiede HTTPS)"
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSecuritySettings/SameSiteSelectWidget.tsx
+msgid "Use \"None\" when your app and Metabase are hosted on different domains. Incompatible with Safari and iOS-based browsers."
+msgstr "Usa \"None\" quando la tua app e Metabase sono ospitati su domini diversi. Incompatibile con Safari e i browser basati su iOS."
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSecuritySettings/SameSiteSelectWidget.tsx
+msgid "SameSite cookie setting"
+msgstr "Impostazione cookie SameSite"
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSettings/EmbeddingSettings.tsx
+msgid "Embedding settings"
+msgstr "Impostazioni di incorporamento"
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSettings/EmbeddingSettings.tsx
+msgid "Embedding methods"
+msgstr "Metodi di embedding"
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSettings/EmbeddingSettings.tsx
+msgid "The simplest way to embed Metabase. Embed dashboards, questions, the query builder, natural language querying with AI, and more in your app with components. Built on the SDK with per-component controls and theming."
+msgstr "Il modo più semplice per incorporare Metabase. Incorpora dashboard, domande, il generatore di query, query in linguaggio naturale con IA e altro nella tua app con componenti. Basato sull’SDK con controlli per componente e temi."
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSettings/EmbeddingSettings.tsx
+msgid "Version pinning"
+msgstr "Version pinning"
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSettings/EmbeddingSettings.tsx
+msgid "Metabase Cloud instances are automatically upgraded to new releases. SDK packages are strictly compatible with specific version of Metabase. You can request to pin your Metabase to a major version and upgrade your Metabase and SDK dependency in a coordinated fashion."
+msgstr "Le istanze di Metabase Cloud vengono aggiornate automaticamente alle nuove release. I pacchetti SDK sono strettamente compatibili con versioni specifiche di Metabase. Puoi richiedere di fissare il tuo Metabase a una versione principale e aggiornare Metabase e la dipendenza dell'SDK in modo coordinato."
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSettings/EmbeddingSettings.tsx
+msgid "Request version pinning"
+msgstr "Richiedi il version pinning"
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingToggle/EmbeddingToggle.tsx
+msgid "Set via environment variable"
+msgstr "Impostato tramite variabile d’ambiente"
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/NewEmbedButton/NewEmbedButton.tsx
+#: frontend/src/metabase/palette/shortcuts/global.ts
+msgid "New embed"
+msgstr "Nuovo embed"
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/SharedCombinedEmbeddingSettings/SharedCombinedEmbeddingSettings.tsx
+msgid "Enable guest embeds"
+msgstr "Abilita incorporamenti guest"
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/SharedCombinedEmbeddingSettings/SharedCombinedEmbeddingSettings.tsx
+msgid "A secure way to embed charts and dashboards, without single sign-on, when you don’t want to offer ad-hoc querying or chart drill-through."
+msgstr "Un modo sicuro per incorporare grafici e dashboard, senza single sign-on, quando non vuoi offrire query ad hoc o approfondimento nei grafici."
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/SharedCombinedEmbeddingSettings/SharedCombinedEmbeddingSettings.tsx
+msgid "Upgrade to Metabase Pro for more powerful embedding methods"
+msgstr "Passa a Metabase Pro per metodi di incorporamento più potenti"
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/SharedCombinedEmbeddingSettings/SharedCombinedEmbeddingSettings.tsx
+msgid "Embed charts, dashboards with drill-throughs, or even the query builder into your own application using customizable components. Secure your embeds with single sign-on."
+msgstr "Incorpora grafici, dashboard con approfondimenti o anche il generatore di query nella tua applicazione usando componenti personalizzabili. Proteggi i tuoi embed con single sign-on."
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/SharedCombinedEmbeddingSettings/SharedCombinedEmbeddingSettings.tsx
+msgid "Published embeds"
+msgstr "Incorporamenti pubblicati"
+
 #: frontend/src/metabase/admin/settings/components/GeneralSettings/DevInstanceBanner.tsx
 msgid "This instance is in development mode and can be used for development or testing purposes only."
 msgstr "Questa istanza è in modalità sviluppo e può essere usata solo per scopi di sviluppo o test."
@@ -15223,10 +15759,32 @@ msgstr "Questa istanza è in modalità sviluppo e può essere usata solo per sco
 msgid "Get your token"
 msgstr "Ottieni il tuo token"
 
+#: frontend/src/metabase/admin/settings/components/LdapGroupMappingSection/LdapGroupMappingSection.tsx
+#, javascript-format
+msgid "Automatically assign people to {0} groups based on their LDAP group membership"
+msgstr "Assegna automaticamente le persone ai gruppi {0} in base alla loro appartenenza ai gruppi LDAP"
+
+#: frontend/src/metabase/admin/settings/components/LdapGroupMappingSection/LdapGroupMappingSection.tsx
+msgid "Manual group mappings"
+msgstr "Mappature di gruppo manuali"
+
+#: frontend/src/metabase/admin/settings/components/LdapGroupMappingSection/LdapGroupMappingSection.tsx
+msgid "LDAP group name"
+msgstr "Nome del gruppo LDAP"
+
+#: frontend/src/metabase/admin/settings/components/LdapGroupMappingSection/LdapGroupMappingSection.tsx
+#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/GroupMappingsWidgetView.tsx
+msgid "No mappings yet"
+msgstr "Nessuna mappatura ancora"
+
 #: frontend/src/metabase/admin/settings/components/LicenseInput/LicenseInput.tsx
 #: frontend/src/metabase/setup/components/LicenseTokenStep/LicenseTokenForm.tsx
 msgid "Activate"
 msgstr "Attiva"
+
+#: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
+msgid "Error loading LDAP configuration"
+msgstr "Errore nel caricamento della configurazione LDAP"
 
 #: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
 msgid "LDAP host"
@@ -15239,18 +15797,6 @@ msgstr "Porta LDAP"
 #: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
 msgid "LDAP security"
 msgstr "Sicurezza LDAP"
-
-#: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
-#: frontend/src/metabase/admin/settings/components/widgets/Notifications/WebhookForm.tsx
-#: frontend/src/metabase/dashboard/components/ClickMappings/ClickMappingsTargetWithoutSource.tsx
-#: frontend/src/metabase/embedding/settings/EmbeddingSecuritySettings/EmbeddingAppSameSiteCookieDescription.tsx
-#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParamParts/FilterWidgetTypeSelect.tsx
-#: frontend/src/metabase/parameters/components/TemporalUnitSettings/TemporalUnitSettings.tsx
-#: frontend/src/metabase/parameters/components/ValuesSourceModal/ValuesSourceTypeModal.tsx
-#: frontend/src/metabase/query_builder/components/DatasetEditor/DatasetFieldMetadataSidebar/MappedFieldPicker/MappedFieldPicker.tsx
-#: frontend/src/metabase/viz-core/lib/settings/graph.ts
-msgid "None"
-msgstr "Nessuno"
 
 #: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
 msgctxt "short for 'Secure Sockets Layer'"
@@ -15281,12 +15827,26 @@ msgid "User search base"
 msgstr "Base di ricerca utenti"
 
 #: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
+#, javascript-format
+msgid "The distinguished name (DN) of the entry in your LDAP server that {0} should use as the starting point when searching for users"
+msgstr "Il distinguished name (DN) della voce nel tuo server LDAP che {0} deve usare come punto di partenza quando cerca gli utenti"
+
+#: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
 msgid "User filter"
 msgstr "Filtro utenti"
 
 #: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
+#, javascript-format
+msgid "Map LDAP attributes to the email, first name, and last name fields in {0}"
+msgstr "Mappa gli attributi LDAP ai campi email, nome e cognome in {0}"
+
+#: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
 msgid "Group search base"
 msgstr "Base di ricerca gruppi"
+
+#: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
+msgid "Not required for LDAP directories that provide a 'memberOf' overlay, such as Active Directory. It will be searched recursively."
+msgstr "Non richiesto per directory LDAP che forniscono un overlay \"memberOf\", come Active Directory. La ricerca verrà eseguita in modo ricorsivo."
 
 #: frontend/src/metabase/admin/settings/components/SettingsLicense/SettingsLicense.tsx
 msgid "Metabase is open source and will be free forever – but by upgrading you can have priority support, more tools to help you share your insights with your teams and powerful options to help you create seamless, interactive data experiences for your customers."
@@ -15327,9 +15887,6 @@ msgstr "Webhook"
 
 #: frontend/src/metabase/admin/settings/components/SettingsNav/SettingsNav.tsx
 #: frontend/src/metabase/admin/settings/components/SettingsPages/LocalizationSettingsPage.tsx
-#: frontend/src/metabase/embedding-hub/components/EmbeddingHubLayout/EmbeddingHubLayout.tsx
-#: frontend/src/metabase/embedding-hub/pages/EmbeddingHubLocalizationPage.tsx
-#: frontend/src/metabase/embedding-hub/upsells/LocalizationUpsellPage.tsx
 #: frontend/src/metabase/palette/constants.ts
 msgid "Localization"
 msgstr "Localizzazione"
@@ -15551,18 +16108,6 @@ msgstr "Abilita le funzionalità X-Ray"
 #: frontend/src/metabase/admin/settings/components/SettingsPages/GeneralSettingsPage.tsx
 msgid "Usage tracking"
 msgstr "Tracciamento utilizzo"
-
-#: frontend/src/metabase/admin/settings/components/SettingsPages/GeneralSettingsPage.tsx
-msgid "Version pinning"
-msgstr "Version pinning"
-
-#: frontend/src/metabase/admin/settings/components/SettingsPages/GeneralSettingsPage.tsx
-msgid "Metabase Cloud instances are automatically upgraded to new releases. SDK packages are strictly compatible with specific version of Metabase. You can request to pin your Metabase to a major version and upgrade your Metabase and SDK dependency in a coordinated fashion."
-msgstr "Le istanze di Metabase Cloud vengono aggiornate automaticamente alle nuove release. I pacchetti SDK sono strettamente compatibili con versioni specifiche di Metabase. Puoi richiedere di fissare il tuo Metabase a una versione principale e aggiornare Metabase e la dipendenza dell'SDK in modo coordinato."
-
-#: frontend/src/metabase/admin/settings/components/SettingsPages/GeneralSettingsPage.tsx
-msgid "Request version pinning"
-msgstr "Richiedi il version pinning"
 
 #: frontend/src/metabase/admin/settings/components/SettingsPages/LocalizationSettingsPage.tsx
 msgid "Instance settings"
@@ -16028,10 +16573,6 @@ msgid "No mappings yet, group sync is not on"
 msgstr "Nessuna mappatura ancora, la sincronizzazione dei gruppi non è attiva"
 
 #: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/GroupMappingsWidgetView.tsx
-msgid "No mappings yet"
-msgstr "Nessuna mappatura ancora"
-
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/GroupMappingsWidgetView.tsx
 msgid "Synchronize Group Memberships"
 msgstr "Sincronizza le appartenenze ai gruppi"
 
@@ -16206,9 +16747,45 @@ msgstr "Bearer"
 msgid "Delete this destination"
 msgstr "Elimina questa destinazione"
 
+#: frontend/src/metabase/admin/settings/components/widgets/PublicLinksListing/EmbeddedResources.tsx
+msgid "Embedded dashboards"
+msgstr "Dashboard incorporate"
+
+#: frontend/src/metabase/admin/settings/components/widgets/PublicLinksListing/EmbeddedResources.tsx
+msgid "No dashboards have been embedded yet."
+msgstr "Non è stata ancora incorporata alcuna Dashboard."
+
+#: frontend/src/metabase/admin/settings/components/widgets/PublicLinksListing/EmbeddedResources.tsx
+msgid "Embedded questions"
+msgstr "Domande incorporate"
+
+#: frontend/src/metabase/admin/settings/components/widgets/PublicLinksListing/EmbeddedResources.tsx
+msgid "No questions have been embedded yet."
+msgstr "Non è stata ancora incorporata alcuna domanda."
+
 #: frontend/src/metabase/admin/settings/components/widgets/PublicLinksListing/PublicDocumentResources.tsx
 msgid "No documents have been publicly shared yet."
 msgstr "Nessun documento è stato condiviso pubblicamente ancora."
+
+#: frontend/src/metabase/admin/settings/components/widgets/PublicLinksListing/PublicLinksListing.tsx
+msgid "Public Link"
+msgstr "Link pubblico"
+
+#: frontend/src/metabase/admin/settings/components/widgets/PublicLinksListing/PublicLinksListing.tsx
+msgid "Revoke Link"
+msgstr "Revoca link"
+
+#: frontend/src/metabase/admin/settings/components/widgets/PublicLinksListing/PublicLinksListing.tsx
+msgid "Revoke link"
+msgstr "Revoca link"
+
+#: frontend/src/metabase/admin/settings/components/widgets/PublicLinksListing/PublicLinksListing.tsx
+msgid "Disable this link?"
+msgstr "Disattivare questo link?"
+
+#: frontend/src/metabase/admin/settings/components/widgets/PublicLinksListing/PublicLinksListing.tsx
+msgid "They won't work anymore, and can't be restored, but you can create new links."
+msgstr "Non funzioneranno più e non possono essere ripristinati, ma puoi creare nuovi link."
 
 #: frontend/src/metabase/admin/settings/components/widgets/PublicLinksListing/PublicResources.tsx
 msgid "No dashboards have been publicly shared yet."
@@ -16400,7 +16977,6 @@ msgstr "Controlla la tua cache"
 #: frontend/src/metabase/admin/upsells/UpsellCacheConfig.tsx
 #: frontend/src/metabase/admin/upsells/UpsellSSO.tsx
 #: frontend/src/metabase/common/components/upsells/UpsellEmbedHomepage.tsx
-#: frontend/src/metabase/embedding-hub/components/EmbeddingHubUpsellBanner.tsx
 msgid "Try Metabase Pro"
 msgstr "Prova Metabase Pro"
 
@@ -16459,6 +17035,14 @@ msgstr "Testa il codice in staging in un'istanza Metabase separata prima di dist
 msgid "Whitelabel email notifications"
 msgstr "Notifiche email whitelabel"
 
+#: frontend/src/metabase/admin/upsells/UpsellEmbeddingTheme.tsx
+msgid "Create custom themes"
+msgstr "Crea temi personalizzati"
+
+#: frontend/src/metabase/admin/upsells/UpsellEmbeddingTheme.tsx
+msgid "Fine-tune the appearance of your embedded content with colors and fonts."
+msgstr "Perfeziona l'aspetto dei tuoi contenuti di incorporamento con colori e font."
+
 #: frontend/src/metabase/admin/upsells/UpsellHosting.tsx
 msgid "Minimize maintenance"
 msgstr "Riduci al minimo la manutenzione"
@@ -16507,19 +17091,21 @@ msgstr "Sincronizzazione gruppi Metabase con SAML, JWT e LDAP"
 msgid "User provisioning with SCIM"
 msgstr "Provisioning utenti con SCIM"
 
+#: frontend/src/metabase/admin/upsells/UpsellSdkLink.tsx
+msgid "upgrade to Metabase Pro"
+msgstr "passa a Metabase Pro"
+
 #: frontend/src/metabase/admin/upsells/UpsellSemanticSearch.tsx
 msgid "Get this with Pro. Try for free."
 msgstr "Ottienilo con Pro. Prova gratis."
 
 #: frontend/src/metabase/admin/upsells/UpsellTenants.tsx
-#: frontend/src/metabase/embedding-hub/upsells/TenancyUpsellPage.tsx
-msgid "Use a multi-tenant user strategy"
-msgstr "Usa una strategia utenti multi-tenant"
+msgid "Manage customer-facing analytics at scale"
+msgstr "Gestisci analisi rivolte ai clienti su larga scala"
 
 #: frontend/src/metabase/admin/upsells/UpsellTenants.tsx
-#: frontend/src/metabase/embedding-hub/upsells/TenancyUpsellPage.tsx
-msgid "Securely share data with external users and allow them to create content. Reuse the same dashboards and permissions across all tenants, instead of recreating them for each customer."
-msgstr "Condividi i dati in modo sicuro con utenti esterni e consenti loro di creare contenuti. Riutilizza le stesse dashboard e autorizzazioni per tutti i tenant, invece di ricrearle per ogni cliente."
+msgid "Group your customers into tenants, reuse the same dashboards and permissions, and keep each tenant's data isolated."
+msgstr "Raggruppa i tuoi clienti in tenant, riutilizza gli stessi dashboard e permessi e mantieni isolati i dati di ogni tenant."
 
 #: frontend/src/metabase/admin/upsells/UpsellUploads.tsx
 msgctxt "in the sentence 'Upgrade to Metabase Pro to manage your uploaded files and available storage space.'"
@@ -16969,18 +17555,6 @@ msgid "There was an error bookmarking these items."
 msgstr "Si è verificato un errore nell’aggiunta ai preferiti di questi elementi."
 
 #: frontend/src/metabase/collections/components/CollectionBulkActions/use-bulk-duplicate.ts
-#: frontend/src/metabase/common/components/CopyDashboardForm/CopyDashboardForm.tsx
-#: frontend/src/metabase/common/components/CopyModal/CopyModal.tsx
-#: frontend/src/metabase/common/components/DocumentCopyForm/DocumentCopyForm.tsx
-#: frontend/src/metabase/dashboard/components/DashCard/DashCardActionsPanel/DashCardActionsPanel.tsx
-#: frontend/src/metabase/dashboard/components/DashboardTabs/DashboardTabs.tsx
-#: frontend/src/metabase/embedding/themes/components/ThemeListing/EmbeddingThemeCard.tsx
-#: frontend/src/metabase/questions/components/CopyCardForm/CopyCardForm.tsx
-#: metabase/dashboards/write.clj metabase/dashboards_rest/api.clj
-msgid "Duplicate"
-msgstr "Duplica"
-
-#: frontend/src/metabase/collections/components/CollectionBulkActions/use-bulk-duplicate.ts
 #, javascript-format
 msgid "{0} item has been duplicated."
 msgid_plural "{0} items have been duplicated."
@@ -17308,8 +17882,8 @@ msgid "This comment was deleted."
 msgstr "Questo commento è stato eliminato."
 
 #: frontend/src/metabase/common/CreateDashboard/CreateDashboardForm.tsx
+#: frontend/src/metabase/common/components/CopyCardForm/CopyCardForm.tsx
 #: frontend/src/metabase/common/components/CopyDashboardForm/CopyDashboardForm.tsx
-#: frontend/src/metabase/questions/components/CopyCardForm/CopyCardForm.tsx
 msgid "What is the name of your dashboard?"
 msgstr "Come si chiama la tua dashboard?"
 
@@ -17596,20 +18170,6 @@ msgstr "Percentuale alfa"
 msgid "Use system default"
 msgstr "Usa predefinito di sistema"
 
-#: frontend/src/metabase/common/components/ColorScheme/ColorSchemeSelect.tsx
-#: frontend/src/metabase/embedding/components/EmbedModal/StaticEmbedSetupPane/LookAndFeelSettings.tsx
-#: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/Appearance/SimpleThemeSwitcherSection.tsx
-#: frontend/src/metabase/embedding/themes/hooks/use-default-embedding-themes.ts
-msgid "Dark"
-msgstr "Scuro"
-
-#: frontend/src/metabase/common/components/ColorScheme/ColorSchemeSelect.tsx
-#: frontend/src/metabase/embedding/components/EmbedModal/StaticEmbedSetupPane/LookAndFeelSettings.tsx
-#: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/Appearance/SimpleThemeSwitcherSection.tsx
-#: frontend/src/metabase/embedding/themes/hooks/use-default-embedding-themes.ts
-msgid "Light"
-msgstr "Chiaro"
-
 #: frontend/src/metabase/common/components/CommunityLocalizationNotice/CommunityLocalizationNotice.tsx
 msgid "Some translations are created by the Metabase community, and might not be perfect."
 msgstr "Alcune traduzioni sono create dalla community di Metabase e potrebbero non essere perfette."
@@ -17626,6 +18186,14 @@ msgstr "contribuire alle traduzioni qui"
 #, javascript-format
 msgid "You can {0}"
 msgstr "Puoi {0}"
+
+#: frontend/src/metabase/common/components/CopyCardForm/CopyCardForm.tsx
+#: frontend/src/metabase/common/components/DocumentCopyForm/DocumentCopyForm.tsx
+#: frontend/src/metabase/common/components/SaveQuestionForm/SaveQuestionForm.tsx
+#: frontend/src/metabase/metrics/pages/NewMetricPage/CreateMetricModal/CreateMetricModal.tsx
+#: frontend/src/metabase/questions/components/MoveCardModal/MoveCardModal.tsx
+msgid "Where do you want to save this?"
+msgstr "Dove vuoi salvare questo?"
 
 #: frontend/src/metabase/common/components/CopyDashboardForm/CopyDashboardForm.tsx
 msgid "Only duplicate the dashboard"
@@ -17728,14 +18296,6 @@ msgstr "Seleziona una dimensione"
 #: frontend/src/metabase/common/components/DocumentCopyForm/DocumentCopyForm.tsx
 msgid "What is the name of your document?"
 msgstr "Qual 8 il nome del tuo documento?"
-
-#: frontend/src/metabase/common/components/DocumentCopyForm/DocumentCopyForm.tsx
-#: frontend/src/metabase/common/components/SaveQuestionForm/SaveQuestionForm.tsx
-#: frontend/src/metabase/metrics/pages/NewMetricPage/CreateMetricModal/CreateMetricModal.tsx
-#: frontend/src/metabase/questions/components/CopyCardForm/CopyCardForm.tsx
-#: frontend/src/metabase/questions/components/MoveCardModal/MoveCardModal.tsx
-msgid "Where do you want to save this?"
-msgstr "Dove vuoi salvare questo?"
 
 #: frontend/src/metabase/common/components/EmojiPicker/EmojiPicker.tsx
 #: frontend/src/metabase/common/components/InfoText/InfoTextAssetLink.tsx
@@ -18240,7 +18800,6 @@ msgid "Databases will appear here once your admins have added some"
 msgstr "I database appariranno qui quando i tuoi amministratori ne avranno aggiunti alcuni"
 
 #: frontend/src/metabase/common/components/NoDatabasesEmptyState/NoDatabasesEmptyState.tsx
-#: frontend/src/metabase/embedding-hub/pages/GetStarted/EmbeddingHubGetStartedPage.tsx
 #: frontend/src/metabase/embedding/setup-guide/hooks/use-get-setup-guide-steps.ts
 #: frontend/src/metabase/metadata/components/NoDatabasesEmptyState/NoDatabasesEmptyState.tsx
 msgid "Connect a database"
@@ -18350,26 +18909,6 @@ msgstr "Spostare {0} elementi?"
 #: frontend/src/metabase/common/components/Pickers/QuestionPicker/QuestionPickerModal.tsx
 msgid "Choose a question or model"
 msgstr "Scegli una domanda o un modello"
-
-#: frontend/src/metabase/common/components/PublicLinksListing/PublicLinksListing.tsx
-msgid "Public Link"
-msgstr "Link pubblico"
-
-#: frontend/src/metabase/common/components/PublicLinksListing/PublicLinksListing.tsx
-msgid "Revoke Link"
-msgstr "Revoca link"
-
-#: frontend/src/metabase/common/components/PublicLinksListing/PublicLinksListing.tsx
-msgid "Revoke link"
-msgstr "Revoca link"
-
-#: frontend/src/metabase/common/components/PublicLinksListing/PublicLinksListing.tsx
-msgid "Disable this link?"
-msgstr "Disattivare questo link?"
-
-#: frontend/src/metabase/common/components/PublicLinksListing/PublicLinksListing.tsx
-msgid "They won't work anymore, and can't be restored, but you can create new links."
-msgstr "Non funzioneranno più e non possono essere ripristinati, ma puoi creare nuovi link."
 
 #: frontend/src/metabase/common/components/QuestionDownloadWidget/QuestionDownloadWidget.tsx
 msgid "The maximum download size is 1 million rows."
@@ -18787,7 +19326,7 @@ msgstr "AM/PM"
 #: frontend/src/metabase/notifications/utils.ts
 #: metabase/lib/temporal_bucket.cljc
 msgid "Minute"
-msgid_plural "{0} Minutes"
+msgid_plural "Minutes"
 msgstr[0] "Minuto"
 msgstr[1] "{0} minuti"
 
@@ -18838,16 +19377,6 @@ msgstr "modificato"
 #: frontend/src/metabase/common/components/UndoListing.tsx
 msgid "item"
 msgstr "elemento"
-
-#: frontend/src/metabase/common/components/UndoListing.tsx
-#: frontend/src/metabase/common/components/Unsubscribe.tsx
-#: frontend/src/metabase/dashboard/actions/auto-wire-parameters/toasts.ts
-#: frontend/src/metabase/embedding/themes/hooks/use-embedding-theme-editor.ts
-#: frontend/src/metabase/explorations/components/ExplorationSidebar/ExplorationTreeNode.tsx
-#: frontend/src/metabase/explorations/components/ExplorationVisualization/ActionToolbar.tsx
-#: frontend/src/metabase/visualizer/components/Header/Header.tsx
-msgid "Undo"
-msgstr "Annulla"
 
 #: frontend/src/metabase/common/components/Unsubscribe.tsx
 #, javascript-format
@@ -19053,8 +19582,8 @@ msgid "Please ask a Metabase Store Admin to upgrade your plan."
 msgstr "Chiedi a un Amministratore di Metabase Store di fare l'upgrade del tuo piano."
 
 #: frontend/src/metabase/common/components/upsells/components/UpsellCardContent.tsx
-msgid "Get a 14 day trial of this and other Pro features."
-msgstr "Ottieni una prova di 14 giorni di questa e altre funzionalità Pro."
+msgid "Get a 14-day free trial of this and other pro features"
+msgstr "Ottieni una prova gratuita di 14 giorni di questa e di altre funzionalità Pro"
 
 #: frontend/src/metabase/common/hooks/use-before-unload/use-before-unload.ts
 msgid "You have unsaved changes."
@@ -19469,6 +19998,7 @@ msgid "Indexed record"
 msgstr "Record indicizzato"
 
 #: frontend/src/metabase/common/utils/model-names.ts
+#: frontend/src/metabase/metabot/components/MetabotAsk/MetabotGreeting.tsx
 #: frontend/src/metabase/metabot/constants.ts
 msgid "Research"
 msgstr "Ricerca"
@@ -22556,227 +23086,6 @@ msgstr "Documento salvato"
 msgid "Error saving document"
 msgstr "Errore nel salvataggio del documento"
 
-#: frontend/src/metabase/embedding-hub/components/EmbeddingHubLayout/EmbeddingHubLayout.tsx
-msgid "Get started"
-msgstr "Inizia"
-
-#: frontend/src/metabase/embedding-hub/components/EmbeddingHubLayout/EmbeddingHubLayout.tsx
-#: frontend/src/metabase/embedding-hub/pages/EmbeddingHubTenancyPage.tsx
-#: frontend/src/metabase/embedding-hub/upsells/TenancyUpsellPage.tsx
-msgid "Tenancy"
-msgstr "Multi-tenancy"
-
-#: frontend/src/metabase/embedding-hub/components/EmbeddingHubLayout/EmbeddingHubLayout.tsx
-#: frontend/src/metabase/nav/components/AppSwitcher/AppSwitcher.tsx
-msgid "Embedding hub"
-msgstr "Hub di incorporamento"
-
-#: frontend/src/metabase/embedding-hub/components/EmbeddingHubLayout/EmbeddingHubLayout.tsx
-#: frontend/src/metabase/palette/shortcuts/global.ts
-msgid "New embed"
-msgstr "Nuovo embed"
-
-#: frontend/src/metabase/embedding-hub/pages/EmbeddingHubAppearancePage.tsx
-msgid "Themes"
-msgstr "Temi"
-
-#: frontend/src/metabase/embedding-hub/pages/EmbeddingHubAppearancePage.tsx
-msgid "Branding elements"
-msgstr "Elementi di branding"
-
-#: frontend/src/metabase/embedding-hub/pages/EmbeddingHubAppearancePage.tsx
-msgid "Colors and branding for full-app embedding are based on the appearance settings defined in the"
-msgstr "I colori e il branding per l'incorporamento full-app si basano sulle impostazioni di aspetto definite in"
-
-#: frontend/src/metabase/embedding-hub/pages/EmbeddingHubAuthenticationPage.tsx
-msgid "SAML is configured"
-msgstr "SAML è configurato"
-
-#: frontend/src/metabase/embedding-hub/pages/EmbeddingHubAuthenticationPage.tsx
-msgid "You can review all authentication settings in the Admin."
-msgstr "Puoi rivedere tutte le impostazioni di autenticazione in Amministrazione."
-
-#: frontend/src/metabase/embedding-hub/pages/EmbeddingHubAuthenticationPage.tsx
-msgid "Go to Admin"
-msgstr "Vai ad Amministrazione"
-
-#: frontend/src/metabase/embedding-hub/pages/EmbeddingHubAuthenticationPage.tsx
-msgid "View more authentication options, such as SAML, in the"
-msgstr "Visualizza altre opzioni di autenticazione, come SAML, nelle"
-
-#: frontend/src/metabase/embedding-hub/pages/EmbeddingHubAuthenticationPage.tsx
-msgid "Admin settings"
-msgstr "Impostazioni di Amministrazione"
-
-#: frontend/src/metabase/embedding-hub/pages/EmbeddingHubSecurityPage.tsx
-msgid "Upgrade to Metabase Pro to access the SDK for React and more advanced options."
-msgstr "Passa a Metabase Pro per accedere all'SDK per React e ad altre opzioni avanzate."
-
-#: frontend/src/metabase/embedding-hub/pages/EmbeddingHubSecurityPage.tsx
-msgid "Published guest embeds"
-msgstr "Incorpora guest pubblicati"
-
-#: frontend/src/metabase/embedding-hub/pages/EmbeddingHubTenancyPage.tsx
-#: frontend/src/metabase/embedding-hub/pages/GetStarted/EmbeddingHubGetStartedPage.tsx
-msgid "Documentation"
-msgstr "Documentazione"
-
-#: frontend/src/metabase/embedding-hub/pages/EmbeddingHubTenancyPage.tsx
-#: frontend/src/metabase/embedding/setup-guide/components/SetupPermissionsAndTenantsPage/SetupPermissionsAndTenantsPage.tsx
-msgid "Enable multi-tenant user strategy"
-msgstr "Abilita la strategia utente multi-tenant"
-
-#: frontend/src/metabase/embedding-hub/pages/EmbeddingHubTenancyPage.tsx
-msgid "A tenant is a set of attributes assigned to a user to isolate them from other tenants. For example, in a SaaS app with embedded Metabase dashboards, you can assign each customer to a tenant. Tenants let you reuse the same dashboards and permissions across all tenants, instead of recreating them for each customer."
-msgstr "Un tenant è un insieme di attributi assegnati a un utente per isolarlo dagli altri tenant. Ad esempio, in un'app SaaS con dashboard Metabase incorporate, puoi assegnare ogni cliente a un tenant. I tenant ti permettono di riutilizzare le stesse dashboard e autorizzazioni per tutti i tenant, invece di ricrearle per ogni cliente."
-
-#: frontend/src/metabase/embedding-hub/pages/EmbeddingHubTenancyPage.tsx
-msgid "Enable multi-tenancy"
-msgstr "Abilita il multi-tenancy"
-
-#: frontend/src/metabase/embedding-hub/pages/EmbeddingHubTenancyPage.tsx
-msgid "View docs"
-msgstr "Visualizza la documentazione"
-
-#: frontend/src/metabase/embedding-hub/pages/GetStarted/ChecklistCard.tsx
-#, javascript-format
-msgid "Step {0} complete"
-msgstr "Passaggio {0} completato"
-
-#: frontend/src/metabase/embedding-hub/pages/GetStarted/EmbeddingHubGetStartedPage.tsx
-msgid "Set up SSO to unlock"
-msgstr "Configura SSO per sbloccare"
-
-#: frontend/src/metabase/embedding-hub/pages/GetStarted/EmbeddingHubGetStartedPage.tsx
-msgid "Get started with Metabase Embedding"
-msgstr "Inizia con l'incorporamento di Metabase"
-
-#: frontend/src/metabase/embedding-hub/pages/GetStarted/EmbeddingHubGetStartedPage.tsx
-msgid "Create your first embed"
-msgstr "Crea la tua prima Incorpora"
-
-#: frontend/src/metabase/embedding-hub/pages/GetStarted/EmbeddingHubGetStartedPage.tsx
-msgid "If all you want is a simple embedded dashboard, these steps are all you need."
-msgstr "Se tutto ciò che vuoi è una semplice dashboard incorporata, questi passaggi sono tutto ciò di cui hai bisogno."
-
-#: frontend/src/metabase/embedding-hub/pages/GetStarted/EmbeddingHubGetStartedPage.tsx
-msgid "Start with the basics of Metabase embedding."
-msgstr "Inizia dalle basi dell'incorporamento di Metabase."
-
-#: frontend/src/metabase/embedding-hub/pages/GetStarted/EmbeddingHubGetStartedPage.tsx
-msgid "Fine-tune your embed"
-msgstr "Ottimizza la tua Incorpora"
-
-#: frontend/src/metabase/embedding-hub/pages/GetStarted/EmbeddingHubGetStartedPage.tsx
-msgid "If you have a more sophisticated setup in mind, with many users and tenants, then keep going."
-msgstr "Se hai in mente una configurazione più sofisticata, con molti utenti e tenant, continua."
-
-#: frontend/src/metabase/embedding-hub/pages/GetStarted/EmbeddingHubGetStartedPage.tsx
-msgid "Upgrade to Metabase Pro to configure advanced options."
-msgstr "Passa a Metabase Pro per configurare opzioni avanzate."
-
-#: frontend/src/metabase/embedding-hub/pages/GetStarted/EmbeddingHubGetStartedPage.tsx
-#: frontend/src/metabase/embedding/setup-guide/hooks/use-get-setup-guide-steps.ts
-msgid "Connect your own database or upload a CSV and start working with your real data."
-msgstr "Connetti il tuo database o carica un CSV e inizia a lavorare con i tuoi dati reali."
-
-#: frontend/src/metabase/embedding-hub/pages/GetStarted/EmbeddingHubGetStartedPage.tsx
-#: frontend/src/metabase/embedding/setup-guide/hooks/use-get-setup-guide-steps.ts
-#: frontend/src/metabase/home/components/Onboarding/items/DashboardItem.tsx
-#: frontend/src/metabase/palette/shortcuts/global.ts
-msgid "Create a dashboard"
-msgstr "Crea un dashboard"
-
-#: frontend/src/metabase/embedding-hub/pages/GetStarted/EmbeddingHubGetStartedPage.tsx
-#: frontend/src/metabase/embedding/setup-guide/hooks/use-get-setup-guide-steps.ts
-msgid "Automatically generate a dashboard from your data using x-rays."
-msgstr "Genera automaticamente una dashboard dai tuoi dati usando gli X-ray."
-
-#: frontend/src/metabase/embedding-hub/pages/GetStarted/EmbeddingHubGetStartedPage.tsx
-#: frontend/src/metabase/embedding/setup-guide/hooks/use-get-setup-guide-steps.ts
-msgid "Get embed snippet"
-msgstr "Ottieni snippet di embed"
-
-#: frontend/src/metabase/embedding-hub/pages/GetStarted/EmbeddingHubGetStartedPage.tsx
-#: frontend/src/metabase/embedding/setup-guide/hooks/use-get-setup-guide-steps.ts
-msgid "Embed a dashboard, question, the query builder or the collection browser. Configure the experience and customize the appearance."
-msgstr "Incorpora una dashboard, una domanda, il generatore di query o il browser delle raccolte. Configura l'esperienza e personalizza l'aspetto."
-
-#: frontend/src/metabase/embedding-hub/pages/GetStarted/EmbeddingHubGetStartedPage.tsx
-msgid "Embed a dashboard or question. Configure the experience and customize the appearance."
-msgstr "Incorpora una dashboard o una domanda. Configura l'esperienza e personalizza l'aspetto."
-
-#: frontend/src/metabase/embedding-hub/pages/GetStarted/EmbeddingHubGetStartedPage.tsx
-msgid "Configure data permissions and tenants"
-msgstr "Configura autorizzazioni dati e tenant"
-
-#: frontend/src/metabase/embedding-hub/pages/GetStarted/EmbeddingHubGetStartedPage.tsx
-msgid "Share data with external users and allow them to create content."
-msgstr "Condividi i dati con utenti esterni e consenti loro di creare contenuti."
-
-#: frontend/src/metabase/embedding-hub/pages/GetStarted/EmbeddingHubGetStartedPage.tsx
-msgid "Set up SSO"
-msgstr "Configura SSO"
-
-#: frontend/src/metabase/embedding-hub/pages/GetStarted/EmbeddingHubGetStartedPage.tsx
-#: frontend/src/metabase/embedding/setup-guide/hooks/use-get-setup-guide-steps.ts
-msgid "Configure JWT authentication to ensure only authorized users can access your embeds."
-msgstr "Configura l’autenticazione JWT per garantire che solo gli utenti autorizzati possano accedere ai tuoi embed."
-
-#: frontend/src/metabase/embedding-hub/pages/GetStarted/EmbeddingHubGetStartedPage.tsx
-#: frontend/src/metabase/embedding/setup-guide/hooks/use-get-setup-guide-steps.ts
-msgid "Embed in production with SSO"
-msgstr "Incorpora in produzione con SSO"
-
-#: frontend/src/metabase/embedding-hub/pages/GetStarted/EmbeddingHubGetStartedPage.tsx
-msgid "Create a custom theme"
-msgstr "Crea un tema personalizzato"
-
-#: frontend/src/metabase/embedding-hub/pages/GetStarted/EmbeddingHubGetStartedPage.tsx
-#: frontend/src/metabase/embedding-hub/upsells/AppearanceUpsellPage.tsx
-msgid "Fine-tune the appearance of your embedded content with colors and fonts."
-msgstr "Perfeziona l'aspetto dei tuoi contenuti di incorporamento con colori e font."
-
-#: frontend/src/metabase/embedding-hub/pages/GetStarted/EmbeddingHubGetStartedPage.tsx
-msgid "Configure AI"
-msgstr "Configura IA"
-
-#: frontend/src/metabase/embedding-hub/pages/GetStarted/EmbeddingHubGetStartedPage.tsx
-msgid "Connect to an LLM provider to embed AI chat interfaces and let your users ask natural language queries."
-msgstr "Connettiti a un provider LLM per incorporare interfacce di chat IA e permettere ai tuoi utenti di fare query in linguaggio naturale."
-
-#: frontend/src/metabase/embedding-hub/pages/GetStarted/EmbeddingHubGetStartedPage.tsx
-msgid "Useful links"
-msgstr "Link utili"
-
-#: frontend/src/metabase/embedding-hub/pages/GetStarted/EmbeddingHubGetStartedPage.tsx
-msgid "Embedding methods"
-msgstr "Metodi di embedding"
-
-#: frontend/src/metabase/embedding-hub/pages/GetStarted/EmbeddingHubGetStartedPage.tsx
-msgid "Demo"
-msgstr "Demo"
-
-#: frontend/src/metabase/embedding-hub/upsells/AppearanceUpsellPage.tsx
-msgid "Create custom themes"
-msgstr "Crea temi personalizzati"
-
-#: frontend/src/metabase/embedding-hub/upsells/AuthenticationUpsellPage.tsx
-msgid "Secure your embeds with single sign-on"
-msgstr "Proteggi le tue Incorpora con single sign-on"
-
-#: frontend/src/metabase/embedding-hub/upsells/AuthenticationUpsellPage.tsx
-msgid "Connect Metabase to your identity provider using JSON Web Tokens (JWT) to authenticate people to ensure only authorized users can access your embeds."
-msgstr "Collega Metabase al tuo identity provider usando JSON Web Tokens (JWT) per autenticare le persone e assicurarti che solo gli utenti autorizzati possano accedere alle tue Incorpora."
-
-#: frontend/src/metabase/embedding-hub/upsells/LocalizationUpsellPage.tsx
-msgid "Translate your embedded content"
-msgstr "Traduci i tuoi contenuti incorporati"
-
-#: frontend/src/metabase/embedding-hub/upsells/LocalizationUpsellPage.tsx
-msgid "Upload a translation dictionary to translate content such as item titles, headings, filter labels, and data in your embedded components."
-msgstr "Carica un dizionario di traduzione per tradurre contenuti come titoli degli elementi, intestazioni, etichette dei filtri e dati nei tuoi componenti incorporati."
-
 #: frontend/src/metabase/embedding/components/ArchiveButton.tsx
 msgctxt "button that opens an actions dropdown e.g. Move this item to trash"
 msgid "Actions"
@@ -23091,23 +23400,13 @@ msgid "Guest"
 msgstr "Guest"
 
 #: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/AuthenticationCard/EnableGuestEmbedsSection.tsx
-#: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/AuthenticationCard/EnableModularEmbeddingSection.tsx
-msgid "Failed to enable modular embedding"
-msgstr "Impossibile abilitare l'embedding modulare"
-
-#: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/AuthenticationCard/EnableGuestEmbedsSection.tsx
-msgid "Failed to enable embedding"
-msgstr "Impossibile abilitare l'incorporamento"
-
-#: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/AuthenticationCard/EnableGuestEmbedsSection.tsx
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/EnableEmbeddingPrompt.tsx
-msgid "usage conditions"
-msgstr "condizioni d’uso"
+msgid "Failed to enable guest embeds"
+msgstr "Impossibile abilitare gli incorporamenti guest"
 
 #: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/AuthenticationCard/EnableGuestEmbedsSection.tsx
 #, javascript-format
-msgid "To continue, enable embedding and agree to the {0}."
-msgstr "Per continuare, abilita l'incorporamento e accetta le {0}."
+msgid "To continue, enable guest embeds and agree to the {0}."
+msgstr "Per continuare, abilita incorporamenti guest e accetta le {0}."
 
 #: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/AuthenticationCard/EnableGuestEmbedsSection.tsx
 #: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/AuthenticationCard/EnableModularEmbeddingSection.tsx
@@ -23120,13 +23419,8 @@ msgid "Agree to the {0} to continue."
 msgstr "Accetta le {0} per continuare."
 
 #: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/AuthenticationCard/EnableGuestEmbedsSection.tsx
-#: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/AuthenticationCard/EnableModularEmbeddingSection.tsx
-msgid "Enable modular embedding to get started."
-msgstr "Abilita l'embedding modulare per iniziare."
-
-#: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/AuthenticationCard/EnableGuestEmbedsSection.tsx
-msgid "Enable embedding to get started."
-msgstr "Abilita l'incorporamento per iniziare."
+msgid "Enable guest embeds to get started."
+msgstr "Abilita incorporamenti guest per iniziare."
 
 #: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/AuthenticationCard/EnableGuestEmbedsSection.tsx
 #: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/AuthenticationCard/EnableModularEmbeddingSection.tsx
@@ -23151,6 +23445,10 @@ msgid "You should, however, read the license text linked above as that is the ac
 msgstr "Dovresti comunque leggere il testo della licenza linkato sopra, poiché è la licenza effettiva che accetterai abilitando questa funzionalità."
 
 #: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/AuthenticationCard/EnableModularEmbeddingSection.tsx
+msgid "Failed to enable modular embedding"
+msgstr "Impossibile abilitare l'embedding modulare"
+
+#: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/AuthenticationCard/EnableModularEmbeddingSection.tsx
 msgid "To continue, enable modular embedding and agree to the usage conditions."
 msgstr "Per continuare, abilita l'embedding modulare e accetta le condizioni di utilizzo."
 
@@ -23159,16 +23457,8 @@ msgid "Agree to the usage conditions to continue."
 msgstr "Accetta le condizioni d’uso per continuare."
 
 #: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/AuthenticationCard/EnableModularEmbeddingSection.tsx
-msgid "When using modular embedding, each end user must have their own Metabase account."
-msgstr "Quando usi l'embedding modulare, ogni utente finale deve avere il proprio account Metabase."
-
-#: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/AuthenticationCard/EnableModularEmbeddingSection.tsx
-msgid "Sharing Metabase accounts is a security risk. Even if you filter data on the client side, each user could use their token to view any data visible to that shared user account."
-msgstr "Condividere account Metabase è un rischio per la sicurezza. Anche se filtri i dati lato client, ogni utente potrebbe usare il proprio token per visualizzare qualsiasi dato visibile a quell'account utente condiviso."
-
-#: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/AuthenticationCard/EnableModularEmbeddingSection.tsx
-msgid "That, and we consider shared accounts to be unfair usage. Fair usage involves giving each end-user of the embedded analytics their own Metabase account."
-msgstr "Inoltre, consideriamo gli account condivisi un utilizzo non corretto. L'utilizzo corretto prevede che ogni utente finale dell'analisi integrata abbia il proprio account Metabase."
+msgid "Enable modular embedding to get started."
+msgstr "Abilita l'embedding modulare per iniziare."
 
 #: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/Common/EmbeddingUpsell.tsx
 msgid "Get more powerful embedding"
@@ -23203,12 +23493,6 @@ msgstr "Una o pi f9 domande in questa Dashboard stanno interrogando un database 
 #: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/DatabaseRoutingWarning.tsx
 msgid "This question is querying a database with database routing enabled. The database queries will be executed against the router database."
 msgstr "Questa domanda sta interrogando un database con l'instradamento del database abilitato. Le query al database verranno eseguite sul database di routing."
-
-#: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/GetCode/CopyCodeSnippetButton.tsx
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/EditorPanel.tsx
-#: frontend/src/metabase/metabot/components/AIMarkdown/AIMarkdown.tsx
-msgid "Copy code"
-msgstr "Copia codice"
 
 #: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/GetCode/PublishQuestionEmptyState.tsx
 #, javascript-format
@@ -23583,156 +23867,6 @@ msgstr "Questa visualizzazione è scaduta. Chiedi al tuo client MCP di eseguire 
 msgid "Could not load this visualization. Make sure Metabase is reachable, then ask your MCP client to show this again."
 msgstr "Impossibile caricare questa visualizzazione. Assicurati che Metabase sia raggiungibile, poi chiedi al tuo client MCP di mostrarla di nuovo."
 
-#: frontend/src/metabase/embedding/settings/EmbeddedResources.tsx
-msgid "Embedded dashboards"
-msgstr "Dashboard incorporate"
-
-#: frontend/src/metabase/embedding/settings/EmbeddedResources.tsx
-msgid "No dashboards have been embedded yet."
-msgstr "Non è stata ancora incorporata alcuna Dashboard."
-
-#: frontend/src/metabase/embedding/settings/EmbeddedResources.tsx
-msgid "Embedded questions"
-msgstr "Domande incorporate"
-
-#: frontend/src/metabase/embedding/settings/EmbeddedResources.tsx
-msgid "No questions have been embedded yet."
-msgstr "Non è stata ancora incorporata alcuna domanda."
-
-#: frontend/src/metabase/embedding/settings/EmbeddingLegaleseModal/EmbeddingLegaleseModal.tsx
-msgid "Each end user needs their own Metabase account"
-msgstr "Ogni utente finale ha bisogno del proprio account Metabase"
-
-#: frontend/src/metabase/embedding/settings/EmbeddingLegaleseModal/EmbeddingLegaleseModal.tsx
-msgid "When you embed Metabase, each person who uses your app needs their own Metabase account. That's because sharing a single account between users is a security risk. Filtering data on the client side doesn't solve it, since anyone with that account's token can reach anything the account can see. Additionally, we consider shared accounts to be unfair usage."
-msgstr "Quando incorpori Metabase, ogni persona che usa la tua app ha bisogno del proprio account Metabase. Questo perché condividere un singolo account tra più utenti è un rischio per la sicurezza. Filtrare i dati lato client non risolve, perché chiunque abbia il token di quell'account può raggiungere qualsiasi cosa l'account possa vedere. Inoltre, consideriamo gli account condivisi un utilizzo scorretto."
-
-#: frontend/src/metabase/embedding/settings/EmbeddingLegaleseModal/EmbeddingLegaleseModal.tsx
-msgid "Agree"
-msgstr "Accetto"
-
-#: frontend/src/metabase/embedding/settings/EmbeddingMethodsCard/EmbeddingMethodsCard.tsx
-msgid "Modular embedding and SDK for React"
-msgstr "Embedding modulare e SDK per React"
-
-#: frontend/src/metabase/embedding/settings/EmbeddingMethodsCard/EmbeddingMethodsCard.tsx
-msgid "Embed the full power of Metabase into your application with modular embedding and the React SDK to build custom analytics experiences and programmatically manage dashboards and data."
-msgstr "Incorpora tutta la potenza di Metabase nella tua applicazione con l'embedding modulare e l'SDK per React per creare esperienze di analytics personalizzate e gestire dashboard e dati in modo programmatico."
-
-#: frontend/src/metabase/embedding/settings/EmbeddingMethodsCard/EmbeddingMethodsCard.tsx
-msgid "Enable embedding"
-msgstr "Abilita incorporamento"
-
-#: frontend/src/metabase/embedding/settings/EmbeddingMethodsCard/EmbeddingMethodsCard.tsx
-msgid "Embed Metabase dashboards and questions into your application with modular embedding."
-msgstr "Incorpora dashboard e domande di Metabase nella tua applicazione con l'embedding modulare."
-
-#: frontend/src/metabase/embedding/settings/EmbeddingMethodsCard/EmbeddingMethodsCard.tsx
-msgid "Full-app embedding"
-msgstr "Incorporamento full-app"
-
-#: frontend/src/metabase/embedding/settings/EmbeddingMethodsCard/EmbeddingMethodsCard.tsx
-msgid "A way to embed the entire Metabase app in an iframe. This involves hard trade-off and is generally not recommended unless you know exactly what you are doing."
-msgstr "Un modo per incorporare l'intera app Metabase in un iframe. Questo comporta compromessi importanti e in genere non è consigliato, a meno che tu non sappia esattamente cosa stai facendo."
-
-#: frontend/src/metabase/embedding/settings/EmbeddingMethodsCard/EmbeddingMethodsCard.tsx
-msgid "Availability of embedding methods"
-msgstr "Disponibilità dei metodi di incorporamento"
-
-#: frontend/src/metabase/embedding/settings/EmbeddingSecretKeyWidget.tsx
-msgid "Secret key for guest embeds"
-msgstr "Chiave segreta per Incorpora guest"
-
-#: frontend/src/metabase/embedding/settings/EmbeddingSecretKeyWidget.tsx
-msgid "Standalone Embed Secret Key used to sign JSON Web Tokens for requests to /api/embed endpoints. This lets you create a secure environment limited to specific users or organizations."
-msgstr "Chiave Segreta Autonoma per l'Incorporamento utilizzata per firmare JSON Web Tokens per richieste agli endpoint /api/embed. Questo ti permette di creare un ambiente sicuro limitato a utenti o organizzazioni specifiche."
-
-#: frontend/src/metabase/embedding/settings/EmbeddingSecretKeyWidget.tsx
-#: frontend/src/metabase/forms/components/FormSecretKey/FormSecretKey.tsx
-msgid "Regenerate key"
-msgstr "Rigenera chiave"
-
-#: frontend/src/metabase/embedding/settings/EmbeddingSecretKeyWidget.tsx
-msgid "Regenerate embedding key?"
-msgstr "Rigenerare la chiave di incorporamento?"
-
-#: frontend/src/metabase/embedding/settings/EmbeddingSecretKeyWidget.tsx
-msgid "This will cause existing embeds to stop working until they are updated with the new key."
-msgstr "Questo farà sì che gli incorporamenti esistenti smettano di funzionare finché non verranno aggiornati con la nuova chiave."
-
-#: frontend/src/metabase/embedding/settings/EmbeddingSecretKeyWidget.tsx
-msgid "Generate key"
-msgstr "Genera chiave"
-
-#: frontend/src/metabase/embedding/settings/EmbeddingSecuritySettings/CorsInputWidget.tsx
-msgid "Separate values with a space. Localhost is not allowed. Changes will take effect within one minute."
-msgstr "Separa i valori con uno spazio. Localhost non è consentito. Le modifiche avranno effetto entro un minuto."
-
-#: frontend/src/metabase/embedding/settings/EmbeddingSecuritySettings/CorsInputWidget.tsx
-msgid "Separate values with a space. Localhost is automatically included. Changes will take effect within one minute."
-msgstr "Separa i valori con uno spazio. Localhost è incluso automaticamente. Le modifiche avranno effetto entro un minuto."
-
-#: frontend/src/metabase/embedding/settings/EmbeddingSecuritySettings/CorsInputWidget.tsx
-#, javascript-format
-msgid "Add the website domains where you want to allow Modular embedding and SDK. SDK using API keys can only run on localhost. {0}"
-msgstr "Aggiungi i domini dei siti web in cui vuoi consentire l'embedding modulare e l'SDK. L'SDK che usa chiavi API può essere eseguito solo su localhost. {0}"
-
-#: frontend/src/metabase/embedding/settings/EmbeddingSecuritySettings/CorsInputWidget.tsx
-#, javascript-format
-msgid "Add the website domains where you want to allow embedding. {0}"
-msgstr "Aggiungi i domini dei siti web in cui vuoi consentire l'incorporamento. {0}"
-
-#: frontend/src/metabase/embedding/settings/EmbeddingSecuritySettings/CorsInputWidget.tsx
-msgid "Cross-Origin Resource Sharing (CORS)"
-msgstr "Cross-Origin Resource Sharing (CORS)"
-
-#: frontend/src/metabase/embedding/settings/EmbeddingSecuritySettings/EmbeddingAppSameSiteCookieDescription.tsx
-msgid "Determines whether or not cookies are allowed to be sent on cross-site requests. You'll likely need to change this to None if your embedding application is hosted under a different domain than Metabase. Otherwise, leave it set to Lax, as it's more secure."
-msgstr "Determina se i cookie possono essere inviati o meno nelle richieste cross-site. Probabilmente dovrai cambiarlo in None se la tua applicazione di incorporamento è ospitata su un dominio diverso da Metabase. Altrimenti, lascialo su Lax, perché è più sicuro."
-
-#: frontend/src/metabase/embedding/settings/EmbeddingSecuritySettings/EmbeddingAppSameSiteCookieDescription.tsx
-#, javascript-format
-msgctxt "{0} is a 'Learn more' link to the embedding documentation"
-msgid "If you set this to None, you'll have to use HTTPS, or browsers will reject the request. {0}"
-msgstr "Se lo imposti su None, dovrai usare HTTPS, altrimenti i browser rifiuteranno la richiesta. {0}"
-
-#: frontend/src/metabase/embedding/settings/EmbeddingSecuritySettings/EmbeddingAppSameSiteCookieDescription.tsx
-#, javascript-format
-msgid "You should probably change this setting to {0}."
-msgstr "Probabilmente dovresti cambiare questa impostazione in {0}."
-
-#: frontend/src/metabase/embedding/settings/EmbeddingSecuritySettings/SameSiteSelectWidget.tsx
-msgid "Lax (default)"
-msgstr "Lax (predefinito)"
-
-#: frontend/src/metabase/embedding/settings/EmbeddingSecuritySettings/SameSiteSelectWidget.tsx
-msgid "Allows Metabase session cookies to be shared on the same domain. Used for production instances on the same domain."
-msgstr "Consente la condivisione dei cookie di sessione di Metabase sullo stesso dominio. Usato per istanze di produzione sullo stesso dominio."
-
-#: frontend/src/metabase/embedding/settings/EmbeddingSecuritySettings/SameSiteSelectWidget.tsx
-msgid "Strict (not recommended)"
-msgstr "Strict (non consigliato)"
-
-#: frontend/src/metabase/embedding/settings/EmbeddingSecuritySettings/SameSiteSelectWidget.tsx
-msgid "Does not allow Metabase session cookies to be shared with embedded instances. Use this if you do not want to enable session sharing with embedding."
-msgstr "Non consente la condivisione dei cookie di sessione di Metabase con istanze incorporate. Usalo se non vuoi abilitare la condivisione della sessione con l'incorporamento."
-
-#: frontend/src/metabase/embedding/settings/EmbeddingSecuritySettings/SameSiteSelectWidget.tsx
-msgid "None (requires HTTPS)"
-msgstr "Nessuno (richiede HTTPS)"
-
-#: frontend/src/metabase/embedding/settings/EmbeddingSecuritySettings/SameSiteSelectWidget.tsx
-msgid "Use \"None\" when your app and Metabase are hosted on different domains. Incompatible with Safari and iOS-based browsers."
-msgstr "Usa \"None\" quando la tua app e Metabase sono ospitati su domini diversi. Incompatibile con Safari e i browser basati su iOS."
-
-#: frontend/src/metabase/embedding/settings/EmbeddingSecuritySettings/SameSiteSelectWidget.tsx
-msgid "SameSite cookie setting"
-msgstr "Impostazione cookie SameSite"
-
-#: frontend/src/metabase/embedding/settings/EmbeddingToggle/EmbeddingToggle.tsx
-msgid "Set via environment variable"
-msgstr "Impostato tramite variabile d’ambiente"
-
 #: frontend/src/metabase/embedding/setup-guide/components/SetupGuide.tsx
 msgid "If all you want is a simple embedded dashboard, you're done! \n"
 "If you have a more sophisticated setup in mind, with many users and tenants, then keep going."
@@ -23905,6 +24039,10 @@ msgid "Configure data permissions and enable tenants"
 msgstr "Configura i permessi sui dati e abilita i tenant"
 
 #: frontend/src/metabase/embedding/setup-guide/components/SetupPermissionsAndTenantsPage/SetupPermissionsAndTenantsPage.tsx
+msgid "Enable multi-tenant user strategy"
+msgstr "Abilita la strategia utente multi-tenant"
+
+#: frontend/src/metabase/embedding/setup-guide/components/SetupPermissionsAndTenantsPage/SetupPermissionsAndTenantsPage.tsx
 msgid "Move a dashboard to the shared collection"
 msgstr "Sposta una dashboard nella raccolta condivisa"
 
@@ -24034,8 +24172,8 @@ msgid "404 error after SSO sign-in"
 msgstr "Errore 404 dopo l’accesso SSO"
 
 #: frontend/src/metabase/embedding/setup-guide/components/SetupSsoPage/TestJwtStep.tsx
-msgid "If after clicking on \"Sign in with SSO\", the browser returns a 404 error, make sure the value of the JWT SSO URI in the embedding hub's Authentication tab is pointing to your endpoint and your endpoint is up and running and available."
-msgstr "Se dopo aver fatto clic su \"Sign in with SSO\", il browser restituisce un errore 404, assicurati che il valore del JWT SSO URI nella scheda Autenticazione dell'hub di incorporamento punti al tuo endpoint e che il tuo endpoint sia attivo e disponibile."
+msgid "If after clicking on \"Sign in with SSO\", the browser returns a 404 error, make sure the value of the JWT SSO URI in admin settings / auth / JWT is pointing to your endpoint and your endpoint is up and running and available."
+msgstr "Se, dopo aver fatto clic su \"Sign in with SSO\", il browser restituisce un errore 404, assicurati che il valore dello URI JWT SSO in impostazioni Amministratori / auth / JWT punti al tuo endpoint e che il tuo endpoint sia attivo e disponibile."
 
 #: frontend/src/metabase/embedding/setup-guide/components/SetupSsoPage/TestJwtStep.tsx
 msgid "JWT decryption error: \"Message seems corrupt\""
@@ -24058,8 +24196,8 @@ msgid "User provisioning disabled for JWT SSO"
 msgstr "Provisioning utenti disabilitato per JWT SSO"
 
 #: frontend/src/metabase/embedding/setup-guide/components/SetupSsoPage/TestJwtStep.tsx
-msgid "If after being redirected from your app to Metabase, you see an error message \"Sorry, but you'll need a $SITENAME account to view this page, contact your administrator. User provisioning is turned off for JWT SSO in the embedding hub's Authentication tab. Either turn this feature on to have users be provisioned if they don't exist yet, or ensure users exist before signing them in via JWT SSO."
-msgstr "Se dopo essere stato reindirizzato dalla tua app a Metabase, vedi un messaggio di errore \"Sorry, but you'll need a $SITENAME account to view this page, contact your administrator. Il provisioning utenti è disattivato per JWT SSO nella scheda Autenticazione dell'hub di incorporamento. Abilita questa funzionalità per fare provisioning degli utenti se non esistono ancora, oppure assicurati che gli utenti esistano prima di farli accedere tramite JWT SSO."
+msgid "If after being redirected from your app to Metabase, you see an error message \"Sorry, but you'll need a $SITENAME account to view this page, contact your administrator. User provisioning is turned off for JWT SSO in admin settings/authentication. Either turn this feature on to have users be provisioned if they don't exist yet, or ensure users exist before signing them in via JWT SSO."
+msgstr "Se dopo il reindirizzamento dalla tua app a Metabase vedi un messaggio di errore \"Sorry, but you'll need a $SITENAME account to view this page, contact your administrator. Il provisioning utenti è disattivato per JWT SSO in impostazioni Amministratori/autenticazione. Attiva questa funzionalità per effettuare il provisioning degli utenti se non esistono ancora, oppure assicurati che gli utenti esistano prima di farli accedere tramite JWT SSO."
 
 #: frontend/src/metabase/embedding/setup-guide/components/SetupSsoPage/TestJwtStep.tsx
 msgid "Contact customer support"
@@ -24074,14 +24212,36 @@ msgid "Create embed"
 msgstr "Crea incorporamento"
 
 #: frontend/src/metabase/embedding/setup-guide/hooks/use-get-setup-guide-steps.ts
+msgid "Get embed snippet"
+msgstr "Ottieni snippet di embed"
+
+#: frontend/src/metabase/embedding/setup-guide/hooks/use-get-setup-guide-steps.ts
+msgid "Embed a dashboard, question, the query builder or the collection browser. Configure the experience and customize the appearance."
+msgstr "Incorpora una dashboard, una domanda, il generatore di query o il browser delle raccolte. Configura l'esperienza e personalizza l'aspetto."
+
+#: frontend/src/metabase/embedding/setup-guide/hooks/use-get-setup-guide-steps.ts
 #: frontend/src/metabase/nav/containers/MainNavbar/MainNavbarContainer/GettingStartedSection.tsx
 #: frontend/src/metabase/setup/components/DatabaseStep/DatabaseStep.tsx
 msgid "Add your data"
 msgstr "Aggiungi i tuoi dati"
 
 #: frontend/src/metabase/embedding/setup-guide/hooks/use-get-setup-guide-steps.ts
+msgid "Connect your own database or upload a CSV and start working with your real data."
+msgstr "Connetti il tuo database o carica un CSV e inizia a lavorare con i tuoi dati reali."
+
+#: frontend/src/metabase/embedding/setup-guide/hooks/use-get-setup-guide-steps.ts
 msgid "Prepare data"
 msgstr "Prepara i dati"
+
+#: frontend/src/metabase/embedding/setup-guide/hooks/use-get-setup-guide-steps.ts
+#: frontend/src/metabase/home/components/Onboarding/items/DashboardItem.tsx
+#: frontend/src/metabase/palette/shortcuts/global.ts
+msgid "Create a dashboard"
+msgstr "Crea un dashboard"
+
+#: frontend/src/metabase/embedding/setup-guide/hooks/use-get-setup-guide-steps.ts
+msgid "Automatically generate a dashboard from your data using x-rays."
+msgstr "Genera automaticamente una dashboard dai tuoi dati usando gli X-ray."
 
 #: frontend/src/metabase/embedding/setup-guide/hooks/use-get-setup-guide-steps.ts
 msgid "Pick a strategy for users and permissions"
@@ -24092,168 +24252,20 @@ msgid "Set granular permissions for multi-tenancy to control data access. Share 
 msgstr "Imposta permessi granulari per il multi-tenancy per controllare l’accesso ai dati. Condividi dashboard, domande e modelli con utenti esterni e consenti loro di creare contenuti, limitando al contempo l’accesso ai dati interni o di altri tenant."
 
 #: frontend/src/metabase/embedding/setup-guide/hooks/use-get-setup-guide-steps.ts
+msgid "Configure JWT authentication to ensure only authorized users can access your embeds."
+msgstr "Configura l’autenticazione JWT per garantire che solo gli utenti autorizzati possano accedere ai tuoi embed."
+
+#: frontend/src/metabase/embedding/setup-guide/hooks/use-get-setup-guide-steps.ts
 msgid "Deployment"
 msgstr "Deployment"
 
 #: frontend/src/metabase/embedding/setup-guide/hooks/use-get-setup-guide-steps.ts
+msgid "Embed in production with SSO"
+msgstr "Incorpora in produzione con SSO"
+
+#: frontend/src/metabase/embedding/setup-guide/hooks/use-get-setup-guide-steps.ts
 msgid "Deploy your embedded dashboard to a production environment and share with your users."
 msgstr "Distribuisci la tua dashboard incorporata in un ambiente di produzione e condividila con i tuoi utenti."
-
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/EditorPanel.tsx
-msgid "Edit theme"
-msgstr "Modifica tema"
-
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/EditorPanel.tsx
-msgid "Theme name"
-msgstr "Nome tema"
-
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/EditorPanel.tsx
-msgid "Main colors"
-msgstr "Colori principali"
-
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/EditorPanel.tsx
-msgid "Reset main colors to defaults"
-msgstr "Ripristina i colori principali ai valori predefiniti"
-
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/EditorPanel.tsx
-msgid "Show fewer colors"
-msgstr "Mostra meno colori"
-
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/EditorPanel.tsx
-msgid "Show more colors"
-msgstr "Mostra più colori"
-
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/EditorPanel.tsx
-msgid "Regenerate filter, summarize, positive, negative, and chart colors from the brand color"
-msgstr "Rigenera i colori di filtro, riepiloga, positivo, negativo e grafico dal colore del brand"
-
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/EditorPanel.tsx
-msgid "Regenerate from brand color"
-msgstr "Rigenera dal colore del brand"
-
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/EditorPanel.tsx
-msgid "Base font size"
-msgstr "Dimensione font di base"
-
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/EditorPanel.tsx
-#: frontend/src/metabase/embedding/themes/components/ThemeListing/DeleteThemeModal.tsx
-msgid "Delete theme"
-msgstr "Elimina tema"
-
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/EditorPanel.tsx
-msgid "Save theme"
-msgstr "Salva tema"
-
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/EnableEmbeddingPrompt.tsx
-msgctxt "Prompt to enable modular embedding to see a live preview of an embedding theme."
-msgid "Enable modular embedding to see a live preview of your theme."
-msgstr "Abilita l'Embedding modulare per vedere un'anteprima live del tuo tema."
-
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/EnableEmbeddingPrompt.tsx
-#, javascript-format
-msgctxt "{0} is a link to the embedding conditions, for users to accept them and see a live preview of their theme."
-msgid "Accept the {0} to see a live preview of your theme."
-msgstr "Accetta le {0} per vedere un'anteprima live del tuo tema."
-
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/EnableEmbeddingPrompt.tsx
-msgid "Enable modular embedding"
-msgstr "Abilita l’embedding modulare"
-
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/EnableEmbeddingPrompt.tsx
-msgid "Accept and continue"
-msgstr "Accetta e continua"
-
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/PreviewPanel.tsx
-msgid "Theme preview"
-msgstr "Anteprima tema"
-
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/PreviewPanel.tsx
-msgid "Create a dashboard or question to preview this theme."
-msgstr "Crea una dashboard o una domanda per visualizzare in anteprima questo tema."
-
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/PreviewResourcePicker.tsx
-msgid "Change preview resource"
-msgstr "Cambia risorsa di anteprima"
-
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/PreviewResourcePicker.tsx
-msgid "Select data to preview"
-msgstr "Seleziona i dati per l'anteprima"
-
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/constants.ts
-msgid "Brand"
-msgstr "Marchio"
-
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/constants.ts
-msgid "Background"
-msgstr "Sfondo"
-
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/constants.ts
-msgid "Primary text"
-msgstr "Testo principale"
-
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/constants.ts
-msgid "Secondary text"
-msgstr "Testo secondario"
-
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/constants.ts
-msgid "Tertiary text"
-msgstr "Testo terziario"
-
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/constants.ts
-msgid "Border"
-msgstr "Bordo"
-
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/constants.ts
-msgid "Shadow"
-msgstr "Ombra"
-
-#: frontend/src/metabase/embedding/themes/components/ThemeListing/DeleteThemeModal.tsx
-msgid "Are you sure you want to delete this theme? This action cannot be undone."
-msgstr "Vuoi davvero eliminare questo tema? Questa azione non può essere annullata."
-
-#: frontend/src/metabase/embedding/themes/components/ThemeListing/EmbeddingThemeCard.tsx
-msgid "Duplicate and delete"
-msgstr "Duplica ed elimina"
-
-#: frontend/src/metabase/embedding/themes/components/ThemeListing/EmbeddingThemeListingApp.tsx
-msgid "Theme duplicated successfully"
-msgstr "Tema duplicato correttamente"
-
-#: frontend/src/metabase/embedding/themes/components/ThemeListing/EmbeddingThemeListingApp.tsx
-msgid "Failed to duplicate theme"
-msgstr "Impossibile duplicare il tema"
-
-#: frontend/src/metabase/embedding/themes/components/ThemeListing/NewThemeCard.tsx
-msgid "New theme"
-msgstr "Nuovo tema"
-
-#: frontend/src/metabase/embedding/themes/hooks/use-delete-theme-flow.tsx
-msgid "Theme deleted successfully"
-msgstr "Tema eliminato correttamente"
-
-#: frontend/src/metabase/embedding/themes/hooks/use-delete-theme-flow.tsx
-msgid "Failed to delete theme"
-msgstr "Impossibile eliminare il tema"
-
-#: frontend/src/metabase/embedding/themes/hooks/use-embedding-theme-editor.ts
-msgid "Untitled theme"
-msgstr "Tema senza titolo"
-
-#: frontend/src/metabase/embedding/themes/hooks/use-embedding-theme-editor.ts
-msgid "Filter, summarize, positive, negative, and chart colors regenerated from the brand color."
-msgstr "Colori di filtro, riepiloga, positivo, negativo e grafico rigenerati dal colore del brand."
-
-#: frontend/src/metabase/embedding/themes/hooks/use-embedding-theme-editor.ts
-msgid "Main colors reset to defaults."
-msgstr "Colori principali ripristinati ai valori predefiniti."
-
-#: frontend/src/metabase/embedding/themes/hooks/use-embedding-theme-editor.ts
-msgid "Theme saved"
-msgstr "Tema salvato"
-
-#: frontend/src/metabase/embedding/themes/hooks/use-embedding-theme-editor.ts
-msgid "Failed to save theme"
-msgstr "Impossibile salvare il tema"
 
 #: frontend/src/metabase/explorations/components/ExplorationSidebar/ExplorationErrorMarker.tsx
 msgid "Failed to generate"
@@ -24404,6 +24416,7 @@ msgid "Initial investigation"
 msgstr "Indagine iniziale"
 
 #: frontend/src/metabase/explorations/components/ExplorationSidebar/utils.ts
+#: frontend/src/metabase/palette/hooks/useCommandPaletteBasicActions.tsx
 msgid "New research"
 msgstr "Nuova ricerca"
 
@@ -24715,33 +24728,41 @@ msgstr "Seleziona un gruppo"
 msgid "Set up key"
 msgstr "Configura la chiave"
 
-#: frontend/src/metabase/forms/components/FormSecretKey/FormSecretKey.tsx
-msgid "Create a secret key"
-msgstr "Crea una chiave segreta"
-
-#: frontend/src/metabase/forms/components/FormSecretKey/FormSecretKey.tsx
-msgid "Store your new key"
-msgstr "Salva la tua nuova chiave"
-
-#: frontend/src/metabase/forms/components/FormSecretKey/RegenerateKeyConfirmModal.tsx
-msgid "Delete key and generate a new one?"
-msgstr "Eliminare la chiave e generarne una nuova?"
-
-#: frontend/src/metabase/forms/components/FormSecretKey/RegenerateKeyConfirmModal.tsx
-msgid "This will cause existing tokens to stop working until the identity provider is updated with a new key."
-msgstr "Questo farà sì che i token esistenti smettano di funzionare finché l'identity provider non verrà aggiornato con una nuova chiave."
-
-#: frontend/src/metabase/forms/components/FormSecretKey/RegenerateKeyConfirmModal.tsx
-msgid "Delete key"
-msgstr "Elimina chiave"
-
 #: frontend/src/metabase/forms/components/FormSecretKey/SetupKeyModal.tsx
 msgid "Error generating secret key."
 msgstr "Errore durante la generazione della chiave segreta."
 
 #: frontend/src/metabase/forms/components/FormSecretKey/SetupKeyModal.tsx
+msgid "Set up secret key"
+msgstr "Configura chiave segreta"
+
+#: frontend/src/metabase/forms/components/FormSecretKey/SetupKeyModal.tsx
+msgid "Copy to clipboard"
+msgstr "Copia negli appunti"
+
+#: frontend/src/metabase/forms/components/FormSecretKey/SetupKeyModal.tsx
+msgid "Secret key copied to clipboard"
+msgstr "Chiave segreta copiata negli appunti"
+
+#: frontend/src/metabase/forms/components/FormSecretKey/SetupKeyModal.tsx
+msgid "Error copying secret key to clipboard."
+msgstr "Errore durante la copia della chiave segreta negli appunti."
+
+#: frontend/src/metabase/forms/components/FormSecretKey/SetupKeyModal.tsx
 msgid "New secret key"
 msgstr "Nuova chiave segreta"
+
+#: frontend/src/metabase/forms/components/FormSecretKey/SetupKeyModal.tsx
+msgid "Make sure you copy this key now and save it in a safe place."
+msgstr "Assicurati di copiare questa chiave ora e salvarla in un luogo sicuro."
+
+#: frontend/src/metabase/forms/components/FormSecretKey/SetupKeyModal.tsx
+msgid "You won't be able to see it again."
+msgstr "Non potrai più vederla."
+
+#: frontend/src/metabase/forms/components/FormSecretKey/SetupKeyModal.tsx
+msgid "This will cause existing tokens to stop working until the identity provider is updated with the new key."
+msgstr "Ciò farà sì che i token esistenti smettano di funzionare finché l’identity provider non viene aggiornato con la nuova chiave."
 
 #: frontend/src/metabase/home/components/CustomHomePageModal/CustomHomePageModal.tsx
 msgid "This dashboard has been set as your homepage."
@@ -24906,6 +24927,11 @@ msgstr "Non dirlo a nessuno, ma sei il mio preferito."
 #, javascript-format
 msgid "{0} tips"
 msgstr "Consigli di {0}"
+
+#: frontend/src/metabase/home/components/HomeLayout/HomeLayout.tsx
+#: frontend/src/metabase/nav/containers/MainNavbar/MainNavbarContainer/MainNavbarView.tsx
+msgid "Home"
+msgstr "Home"
 
 #: frontend/src/metabase/home/components/HomeLayout/HomeLayout.tsx
 msgid "Pick a dashboard to serve as the homepage"
@@ -25303,7 +25329,6 @@ msgid "New conversation"
 msgstr "Nuova conversazione"
 
 #: frontend/src/metabase/metabot/components/MetabotAppBarButton.tsx
-#: frontend/src/metabase/metabot/components/MetabotDataStudioButton.tsx
 #, javascript-format
 msgid "Chat with {0} ({1}+E)"
 msgstr "Chatta con {0} ({1}+E)"
@@ -25380,14 +25405,6 @@ msgid "Data sources used"
 msgstr "Sorgenti dati utilizzate"
 
 #: frontend/src/metabase/metabot/components/MetabotChat/MetabotAgentSuggestionMessage.tsx
-msgid "Applying..."
-msgstr "Applicazione in corso..."
-
-#: frontend/src/metabase/metabot/components/MetabotChat/MetabotAgentSuggestionMessage.tsx
-msgid "Applied"
-msgstr "Applicato"
-
-#: frontend/src/metabase/metabot/components/MetabotChat/MetabotAgentSuggestionMessage.tsx
 msgid "Revision"
 msgstr "Revisione"
 
@@ -25398,10 +25415,6 @@ msgstr "Impossibile caricare l'anteprima"
 #: frontend/src/metabase/metabot/components/MetabotChat/MetabotAgentSuggestionMessage.tsx
 msgid "Loading preview"
 msgstr "Caricamento anteprima"
-
-#: frontend/src/metabase/metabot/components/MetabotChat/MetabotAgentSuggestionMessage.tsx
-msgid "Read only"
-msgstr "Sola lettura"
 
 #: frontend/src/metabase/metabot/components/MetabotChat/MetabotAgentTodoMessage.tsx
 msgid "Todo List"
@@ -25735,15 +25748,6 @@ msgstr "Impossibile caricare questa conversazione"
 msgid "Try refreshing the page."
 msgstr "Prova ad aggiornare la pagina."
 
-#: frontend/src/metabase/metabot/components/MetabotDataStudioButton.tsx
-#, javascript-format
-msgid "{0} can't be viewed on this page"
-msgstr "{0} non può essere visualizzato in questa pagina"
-
-#: frontend/src/metabase/metabot/components/MetabotDataStudioSidebar.tsx
-msgid "Let's transform your data together!"
-msgstr "Trasformiamo insieme i tuoi dati!"
-
 #: frontend/src/metabase/metabot/components/MetabotInlineSQLPrompt/MetabotInlineSQLPrompt.tsx
 msgid "Describe what SQL you want, type @ to mention an item."
 msgstr "Descrivi l'SQL che vuoi, digita @ per menzionare un elemento."
@@ -25822,11 +25826,6 @@ msgstr "Finestra di dialogo {0}"
 #: frontend/src/metabase/metabot/components/editor-extensions/MetabotMention/MetabotSuggestionNew.tsx
 msgid "Mention an item"
 msgstr "Menziona un elemento"
-
-#: frontend/src/metabase/metabot/constants.ts
-#: metabase_enterprise/api_routes/routes.clj
-msgid "Embedding"
-msgstr "Incorporamento"
 
 #: frontend/src/metabase/metabot/constants.ts
 msgid "NLQ"
@@ -27984,10 +27983,6 @@ msgid "Internal Collections"
 msgstr "Raccolte interne"
 
 #: frontend/src/metabase/nav/containers/MainNavbar/MainNavbarContainer/MainNavbarView.tsx
-msgid "Home"
-msgstr "Home"
-
-#: frontend/src/metabase/nav/containers/MainNavbar/MainNavbarContainer/MainNavbarView.tsx
 msgid "Other users' personal collections"
 msgstr "Collezioni personali di altri utenti"
 
@@ -28405,6 +28400,14 @@ msgstr "Crea una query native"
 #: frontend/src/metabase/palette/shortcuts/global.ts
 msgid "add native query, add SQL, create SQL"
 msgstr "aggiungi query native, aggiungi SQL, crea SQL"
+
+#: frontend/src/metabase/palette/shortcuts/global.ts
+msgid "Create a research"
+msgstr "Crea una ricerca"
+
+#: frontend/src/metabase/palette/shortcuts/global.ts
+msgid "add research, add exploration, research mode"
+msgstr "aggiungi ricerca, aggiungi esplorazione, modalità ricerca"
 
 #: frontend/src/metabase/palette/shortcuts/global.ts
 msgid "add dashboard"
@@ -28954,10 +28957,6 @@ msgstr "Non mettere in cache i risultati"
 #: frontend/src/metabase/plugins/oss/caching.ts
 msgid "No caching"
 msgstr "Nessuna cache"
-
-#: frontend/src/metabase/public/components/widgets/LegaleseStep/LegaleseStep.tsx
-msgid "First, some legalese"
-msgstr "Per prima cosa, un po’ di legalese"
 
 #: frontend/src/metabase/public/components/widgets/LegaleseStep/LegaleseStep.tsx
 #, javascript-format
@@ -29706,6 +29705,10 @@ msgstr "Espressioni personalizzate"
 msgid "Custom Expression"
 msgstr "Espressione personalizzata"
 
+#: frontend/src/metabase/querying/common/components/DataSelector/TriggerComponents.tsx
+msgid "Select..."
+msgstr "Seleziona..."
+
 #: frontend/src/metabase/querying/common/components/DataSelector/constants.ts
 msgid "Trustworthy definitions to start from."
 msgstr "Definizioni affidabili da cui partire."
@@ -30087,6 +30090,10 @@ msgstr "Potrebbe essere la risposta che stai cercando. Se non lo è, prova a rim
 #: frontend/src/metabase/querying/components/QueryVisualization/VisualizationResult.tsx
 msgid "Back to previous results"
 msgstr "Torna ai risultati precedenti"
+
+#: frontend/src/metabase/querying/components/SnippetSidebar/SnippetSidebar.tsx
+msgid "Snippets"
+msgstr "Snippet"
 
 #: frontend/src/metabase/querying/components/SnippetSidebar/SnippetSidebarEmptyState.tsx
 msgid "Code snippet bot illustration"
@@ -32957,10 +32964,6 @@ msgstr[1] "Questo archivierà anche {0} trasformazioni al suo interno."
 #: frontend/src/metabase/transforms/pages/TransformListPage/CollectionRowMenu.tsx
 msgid "Are you sure you want to archive this folder?"
 msgstr "Sei sicuro di voler archiviare questa cartella?"
-
-#: frontend/src/metabase/transforms/pages/TransformListPage/CreateTransformMenu/CreateTransformMenu.tsx
-msgid "Create a transform that "
-msgstr "Crea una trasformazione che "
 
 #: frontend/src/metabase/transforms/pages/TransformListPage/CreateTransformMenu/CreateTransformMenu.tsx
 msgid "Transforms can't be created when Remote Sync is in read-only mode"
@@ -35850,6 +35853,10 @@ msgstr "impossibile generare una chiave con prefisso univoco"
 msgid "API endpoint does not exist."
 msgstr "L’endpoint API non esiste."
 
+#: metabase/api_scope/data_app.clj
+msgid "Read and query access for a sandboxed data app."
+msgstr "Accesso in lettura e query per un’app dati in sandbox."
+
 #: metabase/app_db/encryption.clj
 msgid "Can''t decrypt app db with MB_ENCRYPTION_SECRET_KEY"
 msgstr "Impossibile decifrare il DB dell'app con MB_ENCRYPTION_SECRET_KEY"
@@ -36501,10 +36508,6 @@ msgstr "Controlla quali tipi di host sono consentiti come destinazioni dei canal
 "- allow-all (nessuna restrizione, incluso localhost).\n"
 
 #: metabase/channel/settings.clj
-msgid "Invalid http-channel-allowed-networks! Only values of external-only, allow-private, and allow-all are allowed."
-msgstr "Invalid http-channel-allowed-networks! Only values of external-only, allow-private, and allow-all are allowed."
-
-#: metabase/channel/settings.clj
 msgid "The maximum number of retries for an event."
 msgstr "Il numero massimo di tentativi per un evento."
 
@@ -36773,6 +36776,10 @@ msgstr "Il contenuto del commento deve essere JSON valido."
 #: metabase/comments/api.clj
 msgid "Comment context must be a valid JSON object."
 msgstr "Il contesto del commento deve essere un oggetto JSON valido."
+
+#: metabase/comments/schema.clj
+msgid "Emoji must be 1 to 10 Unicode code points."
+msgstr "L’emoji deve essere composta da 1 a 10 code point Unicode."
 
 #: metabase/content_translation/models.clj
 #: metabase_enterprise/api_routes/routes.clj
@@ -37402,10 +37409,6 @@ msgstr "Controlla a quali reti Metabase può connettersi per le connessioni al w
 "Include anche l'host del tunnel SSH e gli URL dell'auth-provider del database."
 
 #: metabase/driver/settings.clj
-msgid "Invalid warehouse-allowed-networks! Only values of `external-only`, `allow-private`,` and `allow-all` are allowed."
-msgstr "warehouse-allowed-networks non valido! Sono consentiti solo i valori `external-only`, `allow-private` e `allow-all`."
-
-#: metabase/driver/settings.clj
 msgid "Controls how often the heartbeats are sent when an SSH tunnel is established (in seconds)."
 msgstr "Controlla con quale frequenza vengono inviati i segnali di heartbeats quando viene stabilito un tunnel SSH (in secondi)."
 
@@ -37794,10 +37797,6 @@ msgid "Check if admin should see the simple embedding terms popup"
 msgstr "Verifica se l'amministratore deve vedere il popup dei termini per l'incorporamento semplice"
 
 #: metabase/embedding/settings.clj
-msgid "Check if admin should see the modular embedding and SDK licensing terms popup"
-msgstr "Verifica se l'amministratore deve vedere il popup dei termini di licenza per l'embedding modulare e l'SDK"
-
-#: metabase/embedding/settings.clj
 msgid "Allow admins to securely embed questions and dashboards within other applications?"
 msgstr "Consentire agli amministratori di incorporare in modo sicuro domande e dashboard all'interno di altre applicazioni?"
 
@@ -37812,10 +37811,6 @@ msgstr "Consentire agli amministratori di incorporare Metabase tramite l'SDK?"
 #: metabase/embedding/settings.clj
 msgid "Allow admins to embed Metabase via modular embedding?"
 msgstr "Consentire agli amministratori di incorporare Metabase tramite embedding modulare?"
-
-#: metabase/embedding/settings.clj
-msgid "Allow admins to embed Metabase via modular embedding, the SDK for React, and guest embeds?"
-msgstr "Consentire agli Amministratori di incorporare Metabase tramite embedding modulare, l'SDK per React e Incorpora guest?"
 
 #: metabase/embedding/settings.clj
 msgid "Allow admins to embed Metabase via interactive embedding?"
@@ -39943,10 +39938,6 @@ msgid "Whether the MCP server is enabled."
 msgstr "Se il server MCP è abilitato."
 
 #: metabase/mcp/settings.clj
-msgid "v2 MCP tool names to disable, stored as CSV. Disabled tools are hidden from tools/list and rejected by tools/call."
-msgstr "v2 MCP tool names to disable, stored as CSV. Disabled tools are hidden from tools/list and rejected by tools/call."
-
-#: metabase/mcp/settings.clj
 msgid "Hours a stored MCP query handle is kept before the scheduled GC task deletes it."
 msgstr "Ore per cui viene mantenuto un query handle MCP archiviato prima che l''attività GC pianificata lo elimini."
 
@@ -39957,62 +39948,6 @@ msgstr "Client MCP popolari abilitati per CORS, memorizzati come chiavi client C
 #: metabase/mcp/settings.clj
 msgid "Custom CORS origins for self-hosted MCP clients, space-separated."
 msgstr "Origini CORS personalizzate per client MCP self-hosted, separate da spazi."
-
-#: metabase/mcp/v2/recovery_hints.clj
-msgid "Metrics are aggregations, not sources. To use metric {0}, put its base table''s numeric id into `source-table:` (find it via `search` or `browse_data`) and reference the metric by its numeric id:"
-msgstr "Le metriche sono aggregazioni, non sorgenti. Per usare la metrica {0}, inserisci l''id numerico della sua tabella di base in `source-table:` (trovalo con `search` o `browse_data`) e fai riferimento alla metrica tramite il suo id numerico:"
-
-#: metabase/mcp/v2/recovery_hints.clj
-msgid "To reference a saved question or model as a query source, put its bare numeric id into `source-card:` — not a URI: `\"source-card\": {0}`."
-msgstr "Per fare riferimento a una domanda o a un modello salvato come sorgente della query, inserisci il suo id numerico puro in `source-card:` — non un URI: `\\\"source-card\\\": {0}`."
-
-#: metabase/mcp/v2/recovery_hints.clj
-msgid "Use the bare numeric table id in `source-table:` — not a URI: `\"source-table\": {0}`."
-msgstr "Usa l''id numerico puro della tabella in `source-table:` — non un URI: `\"source-table\": {0}`."
-
-#: metabase/mcp/v2/recovery_hints.clj
-msgid "`source-table:` accepts a numeric table id; `source-card:` accepts a saved-card numeric id."
-msgstr "`source-table:` accetta un id numerico della tabella; `source-card:` accetta un id numerico di una scheda salvata."
-
-#: metabase/mcp/v2/recovery_hints.clj
-msgid "Call `browse_data` with action \"list_tables\" to list available tables with their numeric ids, then use one as `source-table`."
-msgstr "Chiama `browse_data` con azione \"list_tables\" per elencare le tabelle disponibili con i loro id numerici, quindi usane uno come `source-table`."
-
-#: metabase/mcp/v2/recovery_hints.clj
-msgid "Call `browse_data` with action \"list_tables\" for the database, then retry with the numeric table id — it is never ambiguous."
-msgstr "Chiama `browse_data` con azione \"list_tables\" per il database, poi riprova con l'id numerico della tabella — non è mai ambiguo."
-
-#: metabase/mcp/v2/recovery_hints.clj
-msgid "Call `browse_data` with action \"get_fields\" for the table to list its columns with their numeric ids."
-msgstr "Chiama `browse_data` con azione \"get_fields\" per la tabella per elencare le sue colonne con i loro id numerici."
-
-#: metabase/mcp/v2/recovery_hints.clj
-msgid "Call `browse_data` with action \"get_fields\" for the source table to list the available foreign-key columns."
-msgstr "Chiama `browse_data` con azione \"get_fields\" per la tabella sorgente per elencare le colonne foreign-key disponibili."
-
-#: metabase/mcp/v2/recovery_hints.clj
-msgid "If a metric relates to that table, call `browse_data` with action \"get_fields\" for the table that owns the metric to read its dimensions, which give the exact `joins:` clause."
-msgstr "Se una metrica è correlata a quella tabella, chiama `browse_data` con azione \"get_fields\" per la tabella che possiede la metrica per leggere le sue dimensioni, che forniscono la clausola `joins:` esatta."
-
-#: metabase/mcp/v2/recovery_hints.clj
-msgid "Find the question or model with `search` and put its bare numeric id into `source-card:`."
-msgstr "Trova la domanda o il modello con `search` e inserisci il suo id numerico puro in `source-card:`."
-
-#: metabase/mcp/v2/recovery_hints.clj
-msgid "Call `browse_data` with action \"get_fields\" for the table that owns the measure and use the numeric id from its measures list."
-msgstr "Chiama `browse_data` con azione \"get_fields\" per la tabella che possiede la misura e usa l'id numerico dall'elenco delle sue misure."
-
-#: metabase/mcp/v2/recovery_hints.clj
-msgid "Call `browse_data` with action \"get_fields\" for the table that owns the segment and use the numeric id from its segments list."
-msgstr "Chiama `browse_data` con azione \"get_fields\" per la tabella che possiede il segmento e usa l'id numerico dall'elenco dei suoi segmenti."
-
-#: metabase/mcp/v2/recovery_hints.clj
-msgid "Use a numeric table id in `source-table:` (from `browse_data` action \"list_tables\"), which needs no database name at all."
-msgstr "Usa un id numerico della tabella in `source-table:` (da `browse_data` azione \"list_tables\"), che non richiede alcun nome del database."
-
-#: metabase/mcp/v2/recovery_hints.clj
-msgid "`source-table:` takes a numeric table id; `source-card:` takes a saved-card numeric id."
-msgstr "`source-table:` accetta un id numerico della tabella; `source-card:` accetta un id numerico di una scheda salvata."
 
 #: metabase/mcp/validation.clj
 msgid "MCP server is not enabled."
@@ -40137,10 +40072,6 @@ msgid "View transforms"
 msgstr "Visualizza trasformazioni"
 
 #: metabase/metabot/scope.clj
-msgid "Create and edit transforms"
-msgstr "Crea e modifica trasformazioni"
-
-#: metabase/metabot/scope.clj
 msgid "View SQL snippets"
 msgstr "Visualizza snippet SQL"
 
@@ -40219,6 +40150,10 @@ msgstr "Cerca contenuti"
 #: metabase/metabot/scope.clj
 msgid "View database metadata"
 msgstr "Visualizza metadati del database"
+
+#: metabase/metabot/scope.clj
+msgid "Read MCP resources"
+msgstr "Leggi risorse MCP"
 
 #: metabase/metabot/scope.clj
 msgid "View todos"
@@ -40789,8 +40724,8 @@ msgid "Whether to show Metabot illustrations in the UI."
 msgstr "Se mostrare le illustrazioni di Metabot nell'UI."
 
 #: metabase/metabot/settings.clj
-msgid "Custom instructions appended to Metabot''s system prompt for the chat experience (the AI sidebar and embedded Metabot)."
-msgstr "Istruzioni personalizzate aggiunte al system prompt di Metabot per l’esperienza di chat (la barra laterale IA e Metabot incorporato)."
+msgid "Custom instructions appended to Metabot''s system prompt for the chat experience (the AI sidebar, embedded Metabot, and Metabot in Slack)."
+msgstr "Istruzioni personalizzate aggiunte al system prompt di Metabot per l’esperienza di chat (la barra laterale IA, Metabot incorporato e Metabot in Slack)."
 
 #: metabase/metabot/settings.clj
 msgid "Custom instructions appended to Metabot''s system prompt for the natural language query (AI exploration) experience."
@@ -42517,6 +42452,10 @@ msgstr "il valore deve essere una query MBQL valida con una tabella di origine e
 msgid "a segment definition must be a single-stage query with a source table and filters, and without joins, expressions, breakouts, aggregations, fields, order by, or limit"
 msgstr "la definizione di un segmento deve essere una query a singolo stage con una tabella di origine e filtri, e senza join, espressioni, raggruppamenti, aggregazioni, campi, order by o limit"
 
+#: metabase/server/middleware/body_limit.clj
+msgid "Request body exceeds the maximum size of {0} bytes."
+msgstr "Il corpo della richiesta supera la dimensione massima di {0} byte."
+
 #: metabase/server/routes/index.clj
 msgid "Failed to load template ''{0}''. Did you remember to build the Metabase frontend?"
 msgstr "Caricamento del template ''{0}'' non riuscito. Ti sei ricordato di buildare il frontend di Metabase?"
@@ -42556,6 +42495,10 @@ msgstr "Impedisce al server di inviare intestazioni CORS per richieste provenien
 #: metabase/server/settings.clj
 msgid "Prevent the exception middleware from including stacktraces in responses."
 msgstr "Impedisci al middleware delle eccezioni di includere stack trace nelle risposte."
+
+#: metabase/server/settings.clj
+msgid "Maximum size in bytes of an HTTP request body from a caller who is not authenticated. Larger requests are rejected with HTTP 413 before the body is read."
+msgstr "Dimensione massima in byte del corpo di una richiesta HTTP da parte di un chiamante non autenticato. Le richieste più grandi vengono rifiutate con HTTP 413 prima che il corpo venga letto."
 
 #: metabase/server/settings.clj
 msgid "Signing secret for verifying requests from the Metabot Slack app"
@@ -42908,8 +42851,8 @@ msgid "JSON containing LDAP to Metabase group mappings."
 msgstr "JSON contenente le mappature dei gruppi da LDAP a Metabase."
 
 #: metabase/sso/settings.clj
-msgid "{0} is not a valid DN."
-msgstr "{0} non è un DN valido."
+msgid "{0} is not a valid DN. Example: {1}"
+msgstr "{0} non è un DN valido. Esempio: {1}"
 
 #: metabase/sso/settings.clj
 msgid "Have the mandatory LDAP settings (host and user search base) been validated and saved?"
@@ -43046,10 +42989,6 @@ msgstr "I campi a cui si fa riferimento tramite join implicite non sono supporta
 #: metabase/tiles/api.clj
 msgid "Query failed"
 msgstr "Query non riuscita"
-
-#: metabase/tiles/settings.clj
-msgid "Invalid map-tile-server-allowed-networks! Only values of external-only, allow-private, and allow-all are allowed."
-msgstr "Invalid map-tile-server-allowed-networks! Only values of external-only, allow-private, and allow-all are allowed."
 
 #: metabase/tiles/settings.clj
 msgid "The map tile server URL template used in map visualizations, for example from OpenStreetMaps or MapBox. This URL is visible to clients, so do not include private keys."
@@ -44211,6 +44150,10 @@ msgstr "Utenti di supporto"
 msgid "Transforms Python"
 msgstr "Trasformazioni Python"
 
+#: metabase_enterprise/api_routes/routes.clj
+msgid "Transforms Testing"
+msgstr "Test delle Trasformazioni"
+
 #: metabase_enterprise/audit_app/analytics_dev.clj
 msgid "Analytics dev mode is not enabled."
 msgstr "La modalità analytics dev non è abilitata."
@@ -44354,6 +44297,10 @@ msgstr "Gli utenti tenant non possono essere aggiunti alle app dati."
 #: metabase_enterprise/data_apps/api.clj
 msgid "Data app queries cannot use metrics that reference other saved questions or metrics: {0}"
 msgstr "Le query delle app dati non possono usare metriche che fanno riferimento ad altre domande o metriche salvate: {0}"
+
+#: metabase_enterprise/data_apps/config.clj
+msgid "{0}/{1}: \"version\" must be a positive whole number, such as 1."
+msgstr "{0}/{1}: \"version\" deve essere un numero intero positivo, ad esempio 1."
 
 #: metabase_enterprise/data_apps/config.clj
 msgid "{0}/{1}: \"description\" must be a one-line string."
@@ -44670,8 +44617,8 @@ msgid "If remote-sync-type is :read-only and remote-sync-auto-import is true, th
 msgstr "Se remote-sync-type è :read-only e remote-sync-auto-import è true, la frequenza (in minuti) con cui verificare la presenza di aggiornamenti da importare. Il valore predefinito è 5."
 
 #: metabase_enterprise/remote_sync/settings.clj
-msgid "The maximum amount of time a remote sync task will be given to complete"
-msgstr "Il tempo massimo concesso a un'attività di sync remoto per completarsi"
+msgid "How long a remote sync task may go without proving its process is alive (via heartbeat, or progress on rows without one) before it is treated as dead and superseded. A slow but live task is never affected. The task itself is aborted after ten times this limit."
+msgstr "Quanto tempo un task di sync remoto può rimanere senza dimostrare che il suo processo è attivo (tramite heartbeat o avanzamento sulle righe senza heartbeat) prima di essere considerato morto e sostituito. Un task lento ma attivo non viene mai influenzato. Il task stesso viene interrotto forzatamente dopo dieci volte questo limite."
 
 #: metabase_enterprise/remote_sync/settings.clj
 msgid "Network timeout (in seconds) for remote git operations such as fetch, push, clone, and ls-remote. A stalled connection would otherwise hang a sync indefinitely."
@@ -45209,6 +45156,70 @@ msgstr "le chiavi degli attributi devono essere una keyword o una stringa e non 
 #: metabase_enterprise/tenants/models.clj
 msgid "Tenant collection: {0}"
 msgstr "Raccolta tenant: {0}"
+
+#: metabase_enterprise/transform_testing/expectations/equals.clj
+msgid "Expectation {0} names column {1}, which matches more than one output column: {2}. Write it exactly as the output spells it."
+msgstr "L’aspettativa {0} nomina la colonna {1}, che corrisponde a più di una colonna di output: {2}. Scrivila esattamente come è riportata nell’output."
+
+#: metabase_enterprise/transform_testing/expectations/equals.clj
+msgid "Expectation {0} compares column {1}, which the transform output does not have. It has: {2}"
+msgstr "L’aspettativa {0} confronta la colonna {1}, che l’output della trasformazione non contiene. Contiene: {2}"
+
+#: metabase_enterprise/transform_testing/expectations/equals.clj
+msgid "Expectation {0} compares against a SQL query, which is not implemented yet. Give ''columns'' and ''rows'' instead."
+msgstr "L’aspettativa {0} confronta con una query SQL, che non è ancora implementata. Fornisci invece ''columns'' e ''rows''."
+
+#: metabase_enterprise/transform_testing/expectations/protocol.clj
+msgid "Expectation {0} is of type {1}, which is not implemented yet."
+msgstr "L’aspettativa {0} è di tipo {1}, che non è ancora implementato."
+
+#: metabase_enterprise/transform_testing/runner.clj
+msgid "The expectation could not be run, and the database gave no reason."
+msgstr "Non è stato possibile eseguire l’aspettativa e il database non ha fornito alcuna motivazione."
+
+#: metabase_enterprise/transform_testing/runner.clj
+msgid "Only query transforms can be tested."
+msgstr "Solo le trasformazioni di query possono essere testate."
+
+#: metabase_enterprise/transform_testing/runner.clj
+msgid "The {0} database of this transform does not support transform testing."
+msgstr "Il database {0} di questa trasformazione non supporta i test delle trasformazioni."
+
+#: metabase_enterprise/transform_testing/runner.clj
+msgid "The transform source SQL could not be parsed for test input validation: {0}"
+msgstr "Non è stato possibile analizzare l’SQL sorgente della trasformazione per la validazione dell’input del test: {0}"
+
+#: metabase_enterprise/transform_testing/runner.clj
+msgid "Could not create the test input for {0}:"
+msgstr "Impossibile creare l’input di test per {0}:"
+
+#: metabase_enterprise/transform_testing/runner.clj
+msgid "The transform under test failed to run:"
+msgstr "La trasformazione in test non è riuscita a essere eseguita:"
+
+#: metabase_enterprise/transform_testing/validator.clj
+msgid "Expectation {0} reads table(s) this test does not stand in for: {1}. An expectation may only read the transform''s output and its declared inputs."
+msgstr "L’aspettativa {0} legge tabella/e che questo test non sostituisce: {1}. Un’aspettativa può leggere solo l’output della trasformazione e i suoi input dichiarati."
+
+#: metabase_enterprise/transform_testing/validator.clj
+msgid "The transform test could not fully remap the source to test tables; these reference(s) remain: {0}. Alias each source table and qualify its columns by the alias (e.g. `FROM my_table t ... t.col`), not by the table name."
+msgstr "Il test di trasformazione non è riuscito a rimappare completamente la sorgente sulle tabelle di test; rimangono questi riferimenti: {0}. Crea un alias per ogni tabella sorgente e qualifica le colonne con l’alias (es. `FROM my_table t ... t.col`), non con il nome della tabella."
+
+#: metabase_enterprise/transform_testing/validator.clj
+msgid "Expectation {0} has SQL that could not be parsed: {1}"
+msgstr "L’aspettativa {0} ha un SQL che non è stato possibile analizzare: {1}"
+
+#: metabase_enterprise/transform_testing/validator.clj
+msgid "The transform reads table(s) with no declared test input: {0}. Add an input for each."
+msgstr "La trasformazione legge tabella/e senza input di test dichiarato: {0}. Aggiungine uno per ciascuna."
+
+#: metabase_enterprise/transform_testing/validator.clj
+msgid "Test input(s) declared for table(s) the transform does not read: {0}. Remove them."
+msgstr "Input di test dichiarato/i per tabella/e che la trasformazione non legge: {0}. Rimuovili."
+
+#: metabase_enterprise/transform_testing/validator.clj
+msgid "Duplicate test inputs; each input table may be declared only once: {0}"
+msgstr "Input di test duplicati; ogni tabella di input può essere dichiarata solo una volta: {0}"
 
 #: metabase_enterprise/transforms_inspector/core.clj
 msgid "Transform Inspector: {0}"
