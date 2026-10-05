@@ -140,7 +140,7 @@ describe(
       });
     });
 
-    it("should not save filter state for dashboard parameter w/o auto-apply enabled", () => {
+    it("should not save unapplied filter state and allow resetting it", () => {
       createDashboard({ dashboardDetails: { auto_apply_filters: false } });
       openDashboard();
 
@@ -156,12 +156,11 @@ describe(
       cy.log("verify filter value is not saved");
 
       H.visitDashboard("@dashboardId");
-      H.filterWidget().should("not.contain", "Gadget");
-    });
+      H.filterWidget()
+        .should("contain", FILTER.name)
+        .and("not.contain", "Gadget");
 
-    it("should allow resetting unapplied filter state", () => {
-      createDashboard({ dashboardDetails: { auto_apply_filters: false } });
-      openDashboard();
+      cy.log("verify unapplied filter value can be reset");
 
       H.filterWidget().findByText(FILTER.name).click();
       H.popover().within(() => {
