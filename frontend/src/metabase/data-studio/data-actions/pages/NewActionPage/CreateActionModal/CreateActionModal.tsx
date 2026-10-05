@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { t } from "ttag";
 import * as Yup from "yup";
 
@@ -18,15 +19,16 @@ import type { WritebackAction } from "metabase-types/api";
 import { ACTION_NAME_MAX_LENGTH } from "../../../constants";
 import type { ActionDefinition } from "../../../utils";
 
-const VALIDATION_SCHEMA = Yup.object({
-  name: Yup.string()
-    .required(Errors.required)
-    .max(ACTION_NAME_MAX_LENGTH, Errors.maxLength),
-  description: Yup.string().nullable().defined(),
-  collection_id: Yup.number().nullable().defined(),
-});
+const getValidationSchema = () =>
+  Yup.object({
+    name: Yup.string()
+      .required(Errors.required)
+      .max(ACTION_NAME_MAX_LENGTH, Errors.maxLength),
+    description: Yup.string().nullable().defined(),
+    collection_id: Yup.number().nullable().defined(),
+  });
 
-type NewActionValues = Yup.InferType<typeof VALIDATION_SCHEMA>;
+type NewActionValues = Yup.InferType<ReturnType<typeof getValidationSchema>>;
 
 type CreateActionModalProps = {
   definition: ActionDefinition;
@@ -42,6 +44,7 @@ export function CreateActionModal({
   onClose,
 }: CreateActionModalProps) {
   const [createAction] = useCreateActionMutation();
+  const validationSchema = useMemo(getValidationSchema, []);
   const initialValues: NewActionValues = {
     name: defaultName,
     description: null,
@@ -67,7 +70,7 @@ export function CreateActionModal({
     <Modal title={t`Save your action`} opened padding="xxl" onClose={onClose}>
       <FormProvider
         initialValues={initialValues}
-        validationSchema={VALIDATION_SCHEMA}
+        validationSchema={validationSchema}
         onSubmit={handleSubmit}
       >
         <Form>
