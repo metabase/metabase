@@ -164,34 +164,46 @@
    [:segment   [:ref ::segment-entity]]
    [:measure   [:ref ::measure-entity]]])
 
-(def ^:private Entity
-  "Any dependency-tracked entity `entity-value` accepts, hydrated the way `hydrate-entities` hydrates it."
-  [:or
-   ::queries.schema/card
-   :metabase.dashboards.schema/dashboard
-   ::documents.schema/document
-   :metabase.warehouse-schema.schema/table
-   ::transforms.schema/transform
-   :metabase.native-query-snippets.schema/native-query-snippet
-   :metabase-enterprise.sandbox.schema/sandbox
-   :metabase.segments.schema/segment
-   :metabase.measures.schema/measure])
+(def ^:private dependency-type->entity
+  "The schema of the entity of each dependency type, hydrated the way `hydrate-entities` hydrates it."
+  {:card      ::queries.schema/card
+   :dashboard :metabase.dashboards.schema/dashboard
+   :document  ::documents.schema/document
+   :table     :metabase.warehouse-schema.schema/table
+   :transform ::transforms.schema/transform
+   :snippet   :metabase.native-query-snippets.schema/native-query-snippet
+   :sandbox   :metabase-enterprise.sandbox.schema/sandbox
+   :segment   :metabase.segments.schema/segment
+   :measure   :metabase.measures.schema/measure})
+
+(def ^:private TypedEntity
+  "A dependency-tracked entity together with its dependency type."
+  (into [:multi {:dispatch :entity-type}]
+        (for [[entity-type entity] dependency-type->entity]
+          [entity-type [:map {:closed true}
+                        [:entity-type [:= entity-type]]
+                        [:entity      entity]]])))
+
+(mu/defn- typed-entity :- [:map {:closed false}]
+  [typed-entity :- TypedEntity]
+  (:entity typed-entity))
 
 (mu/defn- entity-value :- ::entity
   [entity-type :- ::deps.dependency-types/dependency-types
-   {:keys [id] :as entity} :- Entity
+   entity      :- [:map {:closed false}]
    usages :- [:maybe [:map-of
                       [:tuple ::deps.dependency-types/dependency-types ::deps.dependency-types/entity-id]
                       ::usages]]
    errors :- [:maybe [:map-of
                       [:tuple ::deps.dependency-types/dependency-types ::deps.dependency-types/entity-id]
                       [:set ::dependent-error]]]]
-  (cond-> {:id id
-           :type entity-type
-           :data (-> (select-keys entity (entity-keys entity-type))
-                     (update-vals format-subentity))
-           :dependents_count (usages [entity-type id])}
-    errors (assoc :dependents_errors (get errors [entity-type id]))))
+  (let [{:keys [id] :as entity} (typed-entity {:entity-type entity-type, :entity entity})]
+    (cond-> {:id id
+             :type entity-type
+             :data (-> (select-keys entity (entity-keys entity-type))
+                       (update-vals format-subentity))
+             :dependents_count (usages [entity-type id])}
+      errors (assoc :dependents_errors (get errors [entity-type id])))))
 
 ;; IMPORTANT: This map defines which fields to select when fetching entities for the dependency graph.
 ;; These field lists MUST be kept in sync with the frontend type definitions in:

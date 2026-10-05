@@ -15,7 +15,7 @@
    [:map {:closed true}
     [:id            ::lib.schema.id/native-query-snippet]
     [:creator       {:optional true} [:maybe :metabase.users.schema/user]]
-    [:collection    {:optional true} [:maybe :metabase.collections.schema/collection]]]])
+    [:collection    {:optional true} [:maybe :metabase.collections.schema/collection-or-root]]]])
 
 (mr/def ::native-query-snippet.update
   "What an update (or insert) of a NativeQuerySnippet accepts: every column of `:native_query_snippet` except `id`, all optional."
