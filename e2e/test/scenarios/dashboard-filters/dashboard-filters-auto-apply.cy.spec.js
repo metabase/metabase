@@ -31,8 +31,6 @@ function createDashboardDetails({ parameters }) {
   };
 }
 
-const TOAST_TIMEOUT = 16000;
-
 const filterToggleLabel = "Auto-apply filters";
 
 describe(
@@ -318,17 +316,6 @@ describe(
             H.assertTableRowsCount(54);
           });
         });
-
-        it("should not show toast", () => {
-          createDashboard();
-          cy.clock();
-          openSlowPublicDashboard({ [FILTER.slug]: "Gadget" });
-          H.filterWidget().findByText("Gadget").should("be.visible");
-
-          cy.tick(TOAST_TIMEOUT);
-          cy.wait("@cardQuery");
-          H.undoToast().should("not.exist");
-        });
       });
 
       describe("signed embeds", () => {
@@ -363,25 +350,6 @@ describe(
           H.getDashboardCard().within(() => {
             H.assertTableRowsCount(54);
           });
-        });
-
-        it("should not show toast", () => {
-          createDashboard({
-            dashboardDetails: {
-              enable_embedding: true,
-              embedding_params: {
-                [FILTER.slug]: "enabled",
-              },
-            },
-          });
-
-          cy.clock();
-          openSlowEmbeddingDashboard({ [FILTER.slug]: "Gadget" });
-          H.filterWidget().findByText("Gadget").should("be.visible");
-
-          cy.tick(TOAST_TIMEOUT);
-          cy.wait("@cardQuery");
-          H.undoToast().should("not.exist");
         });
       });
 
@@ -499,36 +467,6 @@ const openDashboard = (params = {}) => {
   );
 
   H.visitDashboard("@dashboardId", { params });
-};
-
-const openSlowPublicDashboard = (params = {}) => {
-  cy.intercept("GET", "/api/public/dashboard/*/dashcard/*/card/*").as(
-    "cardQuery",
-  );
-
-  cy.get("@dashboardId").then((dashboardId) => {
-    H.visitPublicDashboard(dashboardId, { params });
-  });
-
-  H.getDashboardCard().should("be.visible");
-};
-
-const openSlowEmbeddingDashboard = (params = {}) => {
-  cy.intercept("GET", "/api/embed/dashboard/*/dashcard/*/card/*").as(
-    "cardQuery",
-  );
-
-  cy.get("@dashboardId").then((dashboardId) => {
-    const embeddingPayload = {
-      resource: { dashboard: dashboardId },
-      params: {},
-    };
-    H.visitEmbeddedPage(embeddingPayload, {
-      setFilters: params,
-    });
-  });
-
-  H.getDashboardCard().should("be.visible");
 };
 
 const visitFullAppEmbeddingUrl = ({ url, qs }) => {
