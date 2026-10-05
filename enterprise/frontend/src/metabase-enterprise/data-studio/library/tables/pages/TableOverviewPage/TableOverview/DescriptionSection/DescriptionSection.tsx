@@ -241,6 +241,7 @@ export function DescriptionSection({ table }: DescriptionSectionProps) {
               }}
               showUnknown={!table.data_source}
               onChange={handleDataSourceChange}
+              variant="unstyled"
             />
           </Group>
           <Text size="sm" c="text-secondary" lh="1rem" ml="1.5rem">
@@ -268,6 +269,7 @@ export function DescriptionSection({ table }: DescriptionSectionProps) {
                 ),
                 section: S.textStyleSection,
               }}
+              variant="unstyled"
             />
           </Group>
           <Text size="sm" c="text-secondary" lh="1rem" ml="1.5rem">
