@@ -72,7 +72,11 @@ export const ChartSettingSelect = ({
         withinPortal: true,
         portalProps: { target: popoverPortal.dropdownTarget },
       }
-    : { withinPortal: false, floatingStrategy: "absolute" };
+    : {
+        keepMounted: false,
+        withinPortal: false,
+        floatingStrategy: "absolute",
+      };
 
   const [dropdownOpened, setDropdownOpened] = useState(
     Boolean(defaultDropdownOpened),
