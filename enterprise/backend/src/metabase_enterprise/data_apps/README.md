@@ -33,8 +33,8 @@ data_apps/
     dist/index.js          # the bundle
     resources/
       collection.yaml      # the app's resource collection
-      cards/*.yaml         # a saved question per query, and copies of the models and metrics those use
-      actions/*.yaml       # copies of the actions the app runs, on the model copies
+      cards/*.yaml         # a saved question per query, and copies of the metrics those use
+      actions/*.yaml       # copies of the actions the app runs
 ```
 
 The YAML keeps the keys a hand-written manifest uses: `slug` is the `name` column, `name` the
@@ -72,8 +72,8 @@ Three things make those files an app's rather than any collection's:
   and resolves references to any local entity, and creates a placeholder for a table a query names
   that the instance lacks. `resource_validation.clj` runs on the whole snapshot before any import
   (`check-data-app-files!` in `remote-sync.source.ingestable`): a resource file may define only the
-  collection its manifest names (a plain root one), and cards and actions in it, the actions on its model copies,
-  none public, embedded, or archived; may reference nothing else of Metabase's but existing
+  collection its manifest names (a plain root one) and, in it, questions, metrics, and query actions
+  that belong to no model, none public, embedded, or archived; may reference nothing else of Metabase's but existing
   databases, tables, fields, snippets, segments, and measures; and may not name an entity ID that
   belongs to a collection, card, or action elsewhere. A problem fails the pull naming the file, as
   any other bad entity file does.

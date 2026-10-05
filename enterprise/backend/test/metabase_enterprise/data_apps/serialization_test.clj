@@ -203,16 +203,18 @@
                 collection-id (:resource_collection_id app)
                 mp            (mt/metadata-provider)
                 query         (lib/query mp (lib.metadata/table mp (mt/id :venues)))]
-            (mt/with-temp [:model/Card {model-id :id, model-eid :entity_id} {:name "Venues model" :type :model
-                                                                             :collection_id collection-id :dataset_query query}
-                           :model/Card {question-eid :entity_id} {:name "Venues list" :type :question
+            (mt/with-temp [:model/Card {question-eid :entity_id} {:name "Venues list" :type :question
                                                                   :collection_id collection-id :dataset_query query}]
-              (let [action-id  (actions/insert! {:name "Create venue" :type :implicit :kind :row/create :model_id model-id})
+              (let [action-id  (actions/insert! {:name          "Rename venue"
+                                                 :type          :query
+                                                 :collection_id collection-id
+                                                 :database_id   (mt/id)
+                                                 :dataset_query (lib/native-query mp "UPDATE venues SET name = 'x'")})
                     action-eid (t2/select-one-fn :entity_id :model/Action :id action-id)]
                 (export! dump-dir)
                 (testing "the files sit beside the app"
-                  (doseq [path ["resources/collection.yaml" "resources/cards/venues_model.yaml"
-                                "resources/cards/venues_list.yaml" "resources/actions/create_venue.yaml"]]
+                  (doseq [path ["resources/collection.yaml" "resources/cards/venues_list.yaml"
+                                "resources/actions/rename_venue.yaml"]]
                     (is (.exists (io/file dump-dir "data_apps" "sales-ops" path)) path)))
                 (t2/delete! :model/DataApp (:id app))
                 (is (not (t2/exists? :model/Card :entity_id question-eid)) "deleting the app deletes its collection's cards")
@@ -221,5 +223,4 @@
                       collection-id (:resource_collection_id imported)]
                   (is (pos-int? collection-id))
                   (is (= collection-id (t2/select-one-fn :collection_id :model/Card :entity_id question-eid)))
-                  (is (= (t2/select-one-pk :model/Card :entity_id model-eid)
-                         (t2/select-one-fn :model_id :model/Action :entity_id action-eid))))))))))))
+                  (is (= collection-id (t2/select-one-fn :collection_id :model/Action :entity_id action-eid))))))))))))

@@ -183,14 +183,14 @@
   (testing "a pull loads an app's resource files as the entities they are, into the collection the manifest names"
     (with-data-apps-sync
       (data-apps.tu/do-with-sources!
-       (fn [{:keys [metric-id model-id implicit-id query-action-id]}]
+       (fn [{:keys [metric-id action-id]}]
          (let [resources (data-apps.tu/build-resources
                           shop-collection-eid
                           [{:entity_id question-eid :name "VenuesList" :query (venues-query)}
                            {:entity_id "shopQuestionMetricVen" :name "VenueCount"
                             :query {:stages [{:source       {:type "table" :id (mt/id :venues)}
                                               :aggregations [{:type "metric" :id metric-id}]}]}}]
-                          [implicit-id query-action-id])
+                          [action-id])
                src       (test-helpers/versioned-source :trees {"v0" (shop-tree resources)} :current "v0")
                copy-eid  (fn [kind source-model source-id]
                            (data-apps.tu/copy-entity-id kind shop-collection-eid (t2/select-one-fn :entity_id source-model :id source-id)))]
@@ -205,13 +205,11 @@
              (testing "the metric a query uses is copied"
                (is (=? {:type :metric :collection_id collection-id}
                        (t2/select-one :model/Card :entity_id (copy-eid "metric" :model/Card metric-id)))))
-             (testing "the model behind the actions is copied, with a copy of each action on it"
-               (let [model-copy (t2/select-one :model/Card :entity_id (copy-eid "model" :model/Card model-id))]
-                 (is (=? {:type :model :collection_id collection-id} model-copy))
-                 (is (= #{(copy-eid "action" :model/Action implicit-id) (copy-eid "action" :model/Action query-action-id)}
-                        (t2/select-fn-set :entity_id :model/Action :model_id (:id model-copy))))))
-             (testing "the sources are untouched"
-               (is (= 2 (t2/count :model/Action :model_id model-id))))
+             (testing "the action is copied into the collection, on no model"
+               (is (=? {:type :query :collection_id collection-id :model_id nil}
+                       (t2/select-one :model/Action :entity_id (copy-eid "action" :model/Action action-id)))))
+             (testing "the source is untouched"
+               (is (nil? (t2/select-one-fn :collection_id :model/Action :id action-id))))
              (testing "the app records the tables its resources read"
                (is (= [(mt/id :venues)] (t2/select-one-fn :table_ids :model/DataApp :name "shop")))))))))))
 
@@ -277,22 +275,21 @@
                                                            :bundle       "BUNDLE"})
         (let [collection-id (t2/select-one-fn :resource_collection_id :model/DataApp :name "sales")
               mp            (mt/metadata-provider)]
-          (mt/with-temp [:model/Card {model-id :id} {:name          "Venues model"
-                                                     :type          :model
-                                                     :collection_id collection-id
-                                                     :dataset_query (lib/query mp (lib.metadata/table mp (mt/id :venues)))}
-                         :model/Card _ {:name          "Venues list"
+          (mt/with-temp [:model/Card _ {:name          "Venues list"
                                         :type          :question
                                         :collection_id collection-id
                                         :dataset_query (lib/query mp (lib.metadata/table mp (mt/id :venues)))}]
-            (actions/insert! {:name "Create venue" :type :implicit :kind :row/create :model_id model-id})
+            (actions/insert! {:name          "Rename venue"
+                              :type          :query
+                              :collection_id collection-id
+                              :database_id   (mt/id)
+                              :dataset_query (lib/native-query mp "UPDATE venues SET name = 'x'")})
             (is (= :success (:status (export! mock))))
             (is (= #{"data_apps/sales/data_app.yaml"
                      "data_apps/sales/dist/index.js"
                      "data_apps/sales/resources/collection.yaml"
-                     "data_apps/sales/resources/cards/venues_model.yaml"
                      "data_apps/sales/resources/cards/venues_list.yaml"
-                     "data_apps/sales/resources/actions/create_venue.yaml"}
+                     "data_apps/sales/resources/actions/rename_venue.yaml"}
                    (into #{} (filter #(re-find #"^data_apps/" %)) (keys (repo)))))
             (is (empty? (filter #(re-find #"^(collections|actions)/" %) (keys (repo))))
                 "nothing of the app's lands in the shared directories")))))))

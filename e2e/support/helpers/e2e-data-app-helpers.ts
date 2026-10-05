@@ -330,7 +330,7 @@ export const resourceCollection = (
 
 /**
  * A card in `resources/cards/`, as an author writes it: a saved question from a
- * query definition, or a copy of a model or metric from the repository. `stage`
+ * query definition, or a copy of a metric from the repository. `stage`
  * holds the clauses besides the source table.
  */
 export const resourceCard = ({
@@ -343,7 +343,7 @@ export const resourceCard = ({
 }: {
   entityId: string;
   name: string;
-  type: "question" | "model" | "metric";
+  type: "question" | "metric";
   collection: string;
   table: PortableTable;
   stage?: ResourceEntity;
@@ -365,32 +365,37 @@ export const resourceCard = ({
   "serdes/meta": serdesMeta("Card", entityId, name),
 });
 
-/** A copy of an implicit action in `resources/actions/`, on the model copy `model`. */
-export const resourceImplicitAction = ({
-  entityId,
-  name,
-  kind,
-  collection,
-  model,
-}: {
-  entityId: string;
-  name: string;
-  kind: "row/create" | "row/update" | "row/delete";
-  collection: string;
-  model: string;
-}): ResourceEntity => ({
-  name,
-  type: "implicit",
-  entity_id: entityId,
-  collection_id: collection,
-  creator_id: USERS.admin.email,
-  model_id: model,
-  implicit: [{ kind }],
-  query: [],
-  parameters: [],
-  parameter_mappings: [],
-  "serdes/meta": serdesMeta("Action", entityId, name),
-});
+/**
+ * The copies of the actions `copies` name, as an author writes them into
+ * `resources/actions/`: what Metabase exports for each source action, with the
+ * copy's entity ID and in the app's `collection`.
+ */
+export function exportDataAppActionCopies(
+  copies: Array<{ sourceActionId: number; entityId: string }>,
+  collection: string,
+) {
+  return cy
+    .request<{ actions: Array<{ entity: ResourceEntity }> }>(
+      "POST",
+      "/api/apps/export-resources",
+      { actions: copies.map(({ sourceActionId }) => sourceActionId) },
+    )
+    .then(({ body }) =>
+      cy.wrap(
+        copies.map(({ entityId }, index): ResourceEntity => {
+          const { entity } = body.actions[index];
+
+          return {
+            ...entity,
+            entity_id: entityId,
+            collection_id: collection,
+            "serdes/meta": serdesMeta("Action", entityId, String(entity.name)),
+          };
+        }),
+        { log: false },
+      ),
+    );
+}
 
 const fileName = (entity: ResourceEntity) =>
   `${slugOf(String(entity.name))}_${String(entity.entity_id)}.yaml`;

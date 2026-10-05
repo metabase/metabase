@@ -1,11 +1,9 @@
 import { USERS, WRITABLE_DB_ID } from "e2e/support/cypress_data";
-import type { PortableTable } from "e2e/support/helpers";
-import type { Card, WritebackAction } from "metabase-types/api";
+import type { WritebackAction } from "metabase-types/api";
 
 const { H } = cy;
 
 const TEST_TABLE = "scoreboard_actions";
-const MODEL_NAME = "Scoreboard model";
 
 /** The app is published under its directory's name. */
 const APP_SLUG = "vite-6-data-app-host-app";
@@ -15,26 +13,14 @@ const MANIFEST_FILE = () => `${APP_ROOT()}/data_app.yaml`;
 
 const COLLECTION = "hostAppCollection0002";
 
-const SCOREBOARD_TABLE: PortableTable = [
-  "Writable Postgres12",
-  "public",
-  TEST_TABLE,
-];
-
 const SCORE = { team_name: "Data App FC", score: 7 };
 
-type Copies = {
-  modelId: number;
-  sources: { create: WritebackAction; update: WritebackAction };
-  modelCopy: string;
-  createCopy: string;
-  updateCopy: string;
-};
+type Copy = { source: WritebackAction; entityId: string; exportName: string };
 
 /**
- * Loads a model and its actions into an app the way an author does: the source
- * model and actions exist in Metabase, and the author copies them into the app's
- * `resources/` with new entity IDs, the action copies on the model copy. A
+ * Loads actions into an app the way an author does: the source actions exist
+ * in Metabase, belonging to no model, and the author copies what Metabase
+ * exports for them into the app's `resources/` with new entity IDs. A
  * repository pull is what creates the copies.
  */
 describe(
@@ -49,10 +35,6 @@ describe(
       H.resetTestTable({ type: "postgres", table: TEST_TABLE });
       H.resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: TEST_TABLE });
       H.setActionsEnabledForDB(WRITABLE_DB_ID);
-      H.createModelFromTableName({
-        tableName: TEST_TABLE,
-        modelName: MODEL_NAME,
-      });
 
       // The specs share a checked-in host app, so start from a clean tree.
       H.resetDataAppHostAppSources();
@@ -68,88 +50,72 @@ describe(
       cy.writeFile(MANIFEST_FILE(), H.DATA_APP_HOST_APP_MANIFEST);
     });
 
-    const writeResources = (
-      { modelCopy }: Pick<Copies, "modelCopy">,
-      actions: Array<[string, string, "row/create" | "row/update"]>,
-      { modelIdOfActions = modelCopy }: { modelIdOfActions?: string } = {},
-    ) =>
-      H.writeDataAppResources(APP_ROOT(), {
-        collection: H.resourceCollection(
-          COLLECTION,
-          "Data App: Vite 6 Data App",
-        ),
-        cards: [
-          H.resourceCard({
-            entityId: modelCopy,
-            name: MODEL_NAME,
-            type: "model",
-            collection: COLLECTION,
-            table: SCOREBOARD_TABLE,
-          }),
-        ],
-        actions: actions.map(([entityId, name, kind]) =>
-          H.resourceImplicitAction({
-            entityId,
-            name,
-            kind,
-            collection: COLLECTION,
-            model: modelIdOfActions,
-          }),
-        ),
-      });
-
-    /** Declares a create and an update action on the source model, and writes their copies. */
-    const copyTwoActions = () =>
-      cy.get<number>("@modelId").then((modelId) =>
-        H.createImplicitAction({ model_id: modelId, kind: "create" }).then(
-          ({ body: create }) =>
-            H.createImplicitAction({ model_id: modelId, kind: "update" }).then(
-              ({ body: update }) => {
-                const copies: Copies = {
-                  modelId,
-                  sources: { create, update },
-                  modelCopy: H.newEntityId(),
-                  createCopy: H.newEntityId(),
-                  updateCopy: H.newEntityId(),
-                };
-
-                H.declareDataAppActions(APP_ROOT(), [
-                  {
-                    exportName: "CreateScore",
-                    sourceActionId: create.id,
-                    copiedActionEntityId: copies.createCopy,
-                  },
-                  {
-                    exportName: "UpdateScore",
-                    sourceActionId: update.id,
-                    copiedActionEntityId: copies.updateCopy,
-                  },
-                ]);
-                writeResources(copies, [
-                  [copies.createCopy, "Create", "row/create"],
-                  [copies.updateCopy, "Update", "row/update"],
-                ]);
-
-                return cy.wrap(copies, { log: false });
-              },
-            ),
-        ),
+    /** Declares `copies` and writes them, changed by `edit`, into `resources/`. */
+    const writeCopies = (
+      copies: Copy[],
+      edit: (copy: Record<string, unknown>) => Record<string, unknown> = (
+        copy,
+      ) => copy,
+    ) => {
+      H.declareDataAppActions(
+        APP_ROOT(),
+        copies.map(({ source, entityId, exportName }) => ({
+          exportName,
+          sourceActionId: source.id,
+          copiedActionEntityId: entityId,
+        })),
       );
 
-    /** The entity IDs of the actions Metabase holds on the model copy. */
-    const actionsOnModelCopy = (modelCopy: string) =>
+      return H.exportDataAppActionCopies(
+        copies.map(({ source, entityId }) => ({
+          sourceActionId: source.id,
+          entityId,
+        })),
+        COLLECTION,
+      ).then((actions) =>
+        H.writeDataAppResources(APP_ROOT(), {
+          collection: H.resourceCollection(
+            COLLECTION,
+            "Data App: Vite 6 Data App",
+          ),
+          actions: actions.map(edit),
+        }),
+      );
+    };
+
+    /** Two source actions that belong to no model, with a copy of each written. */
+    const copyTwoActions = () =>
+      H.createDataAppScoreboardAction({ name: "Add team" }).then((add) =>
+        H.createDataAppScoreboardAction({ name: "Add rival" }).then((rival) => {
+          const copies: [Copy, Copy] = [
+            { source: add, entityId: H.newEntityId(), exportName: "AddTeam" },
+            {
+              source: rival,
+              entityId: H.newEntityId(),
+              exportName: "AddRival",
+            },
+          ];
+
+          writeCopies(copies);
+
+          return cy.wrap(copies, { log: false });
+        }),
+      );
+
+    /** Which of the copies with `entityIds` Metabase holds. */
+    const copiesLoaded = (entityIds: string[]) =>
       cy
-        .request<Card>(`/api/card/${modelCopy}`)
-        .then(({ body: model }) =>
-          cy
-            .request<WritebackAction[]>(`/api/action?model-id=${model.id}`)
-            .then(({ body }) => body.map((action) => action.entity_id)),
+        .request<WritebackAction[]>("/api/action")
+        .then(({ body }) =>
+          body
+            .map((action) => action.entity_id)
+            .filter((entityId) => entityIds.includes(entityId)),
         );
 
     it("lets the app's group execute a published copy but not the action it was copied from", () => {
-      copyTwoActions().then(({ sources, createCopy }) => {
+      copyTwoActions().then(([{ source, entityId }]) => {
         // A user whose groups read no collection: the copy is reachable through
-        // the app's group alone, and the source model, in the root collection,
+        // the app's group alone, and the source action, in the root collection,
         // through none of them.
         H.publishDataApp(APP_ROOT(), APP_SLUG).then((app) => {
           H.addUserToGroup(app.permission_group_id, USERS.nocollection.email);
@@ -158,7 +124,7 @@ describe(
         cy.signIn("nocollection");
         cy.request({
           method: "POST",
-          url: `/api/action/${createCopy}/execute`,
+          url: `/api/action/${entityId}/execute`,
           body: { parameters: SCORE },
         })
           .its("status")
@@ -166,7 +132,7 @@ describe(
 
         cy.request({
           method: "POST",
-          url: `/api/action/${sources.create.id}/execute`,
+          url: `/api/action/${source.id}/execute`,
           body: { parameters: SCORE },
           failOnStatusCode: false,
         })
@@ -176,53 +142,35 @@ describe(
     });
 
     it("deletes a copied action on the next pull once its file is gone", () => {
-      copyTwoActions().then(
-        ({ sources, modelCopy, createCopy, updateCopy }) => {
-          H.publishDataApp(APP_ROOT(), APP_SLUG);
-          actionsOnModelCopy(modelCopy).should("have.members", [
-            createCopy,
-            updateCopy,
-          ]);
+      copyTwoActions().then(([kept, removed]) => {
+        const entityIds = [kept.entityId, removed.entityId];
 
-          H.declareDataAppActions(APP_ROOT(), [
-            {
-              exportName: "CreateScore",
-              sourceActionId: sources.create.id,
-              copiedActionEntityId: createCopy,
-            },
-          ]);
-          writeResources({ modelCopy }, [[createCopy, "Create", "row/create"]]);
-          H.publishDataApp(APP_ROOT(), APP_SLUG, { initializeRepo: false });
+        H.publishDataApp(APP_ROOT(), APP_SLUG);
+        copiesLoaded(entityIds).should("have.members", entityIds);
 
-          actionsOnModelCopy(modelCopy).should("deep.equal", [createCopy]);
-        },
-      );
+        writeCopies([kept]);
+        H.publishDataApp(APP_ROOT(), APP_SLUG, { initializeRepo: false });
+
+        copiesLoaded(entityIds).should("deep.equal", [kept.entityId]);
+      });
     });
 
-    it("refuses an action copy that isn't on a model in the app's resources, and loads none of them", () => {
-      copyTwoActions().then(({ modelId, createCopy, modelCopy }) => {
-        cy.request<Card>(`/api/card/${modelId}`).then(({ body: source }) => {
-          // The copy points at the source model instead of the model copy.
-          writeResources(
-            { modelCopy },
-            [[createCopy, "Create", "row/create"]],
-            {
-              modelIdOfActions: source.entity_id,
-            },
-          );
+    it("refuses a copy of an action that belongs to a model, and loads none of them", () => {
+      copyTwoActions().then((copies) => {
+        const [first] = copies;
 
-          H.publishDataAppExpectingRefusal(APP_ROOT(), APP_SLUG).then(
-            (error) => {
-              expect(error).to.contain(
-                "must belong to a model in the app's resources",
-              );
-              cy.request({
-                url: `/api/card/${modelCopy}`,
-                failOnStatusCode: false,
-              })
-                .its("status")
-                .should("eq", 404);
-            },
+        // A data app runs only actions that belong to no model.
+        writeCopies(copies, (copy) =>
+          copy.entity_id === first.entityId
+            ? { ...copy, model_id: H.newEntityId() }
+            : copy,
+        );
+
+        H.publishDataAppExpectingRefusal(APP_ROOT(), APP_SLUG).then((error) => {
+          expect(error).to.contain("must belong to no model");
+          copiesLoaded(copies.map(({ entityId }) => entityId)).should(
+            "deep.equal",
+            [],
           );
         });
       });
