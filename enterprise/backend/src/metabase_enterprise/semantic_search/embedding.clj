@@ -181,7 +181,9 @@
   - `:record-tokens?` — write a token-tracking row for the call
   - `:type`           — what the embedding is for (`:query`/`:index`), recorded with the tokens
   - `:snowplow?`      — ai-service only, default true; synthetic callers (e.g. the health probe) pass
-                        false so the call emits no token_usage event"
+                        false so the call emits no token_usage event
+  - `:connection-key` — openai only; the AI provider connection to embed through, for callers that are not
+                        semantic search and so do not follow `ee-embedding-provider`"
   [embedding-model text & {:as opts}]
   (let [token-model (in-process-token-model embedding-model)]
     (u/prog1 (embeddings.provider/embed-text (or token-model embedding-model) text opts)
@@ -639,27 +641,26 @@
   (or (named-connection-key) "openai"))
 
 (defn- openai-connection-config
-  []
-  (let [{:keys [type config]} (llm.provider/connection (openai-connection-key))]
+  [conn-key]
+  (let [{:keys [type config]} (llm.provider/connection conn-key)]
     (when (= "openai" type)
       (llm.provider/with-field-defaults type config))))
 
 (defn- openai-resolve-config!
   "Returns [endpoint api-key] or throws if not configured."
-  []
-  (let [conn-key                   (openai-connection-key)
-        {:keys [api-key base-url]} (openai-connection-config)]
+  [conn-key]
+  (let [{:keys [api-key base-url]} (openai-connection-config conn-key)]
     (when-not (not-empty api-key)
       (throw (ex-info (str "The " (pr-str conn-key) " connection is not an OpenAI connection with an API key")
-                      {:setting "ee-embedding-provider" :connection conn-key})))
+                      {:connection conn-key})))
     [(str base-url "/v1/embeddings") api-key]))
 
 (defmethod embedder-circuit-endpoint "openai" [_]
-  (first (openai-resolve-config!)))
+  (first (openai-resolve-config! (openai-connection-key))))
 
 (defn- openai-get-embeddings-batch
-  [embedding-model texts {:keys [record-tokens? type]}]
-  (let [[endpoint api-key] (openai-resolve-config!)]
+  [embedding-model texts {:keys [record-tokens? type connection-key]}]
+  (let [[endpoint api-key] (openai-resolve-config! (or connection-key (openai-connection-key)))]
     (openai-compatible-get-embeddings-batch
      {:provider       "openai"
       :endpoint       endpoint
@@ -697,7 +698,8 @@
      "openai"
      {:embedding-spi-version spi-version
       :readiness             (fn [_]
-                               {:ready? (boolean (not-empty (:api-key (openai-connection-config))))})
+                               {:ready? (boolean (not-empty (:api-key (openai-connection-config
+                                                                       (openai-connection-key)))))})
       :resolve-model         legacy
       :embed-texts           openai-get-embeddings-batch})))
 
@@ -738,10 +740,10 @@
 
 (defn get-configured-model
   "Get the environments default embedding model according to the ee-embedding-provider / ee-embedding-model settings.
-  A registered embedder's name always means that embedder. Any other value that names an AI provider connection
-  embeds through it, and the connection's type is the provider."
+  A registered embedder's name always means that embedder. Any other value that names an OpenAI connection embeds
+  through it as the `openai` provider."
   []
-  {:provider (or (some-> (named-connection-key) llm.provider/connection :type)
+  {:provider (or (some-> (named-connection-key) llm.provider/connection :type #{"openai"})
                  (semantic-settings/ee-embedding-provider))
    :model-name (semantic-settings/ee-embedding-model)
    :vector-dimensions (semantic-settings/ee-embedding-model-dimensions)})

@@ -48,6 +48,12 @@
                       [[metabase.embeddings.provider]] (`ai-service`, `openai`, `ollama`).
   `texts`           — sequential collection of input strings.
   `opts`            — optional keyword opts (e.g. `:type :doc`). Accepts alternating kwargs or a single trailing map;
-                      forwarded as kwargs to the provider."
+                      forwarded as kwargs to the provider.
+
+  A provider that needs an AI provider connection embeds through the one keyed after it, whatever connection
+  semantic search's `ee-embedding-provider` names."
   [embedding-model texts & {:as opts}]
-  (apply semantic-search/get-embeddings-batch (normalize-model-descriptor embedding-model) texts (mapcat identity opts)))
+  (apply semantic-search/get-embeddings-batch
+         (normalize-model-descriptor embedding-model)
+         texts
+         (mapcat identity (assoc opts :connection-key (:provider embedding-model)))))

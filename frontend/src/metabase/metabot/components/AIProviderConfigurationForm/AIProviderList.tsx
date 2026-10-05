@@ -194,7 +194,7 @@ function getDeleteWarning(
     ? // eslint-disable-next-line metabase/no-literal-metabase-strings -- Metabase AI service
       t`This cancels your Metabase AI service subscription, and its models will no longer be available.`
     : t`This provider's models will no longer be available, and its saved credentials will be deleted.`;
-  return deleting?.key === embeddingProvider
+  return deleting != null && deleting.key === embeddingProvider
     ? `${base} ${t`Semantic search also runs on this connection, and will stop working without it.`}`
     : base;
 }

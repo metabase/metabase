@@ -79,6 +79,11 @@
           (llm.tu/with-connections [{:key "ai-service" :type "openai" :name "Shadow" :config {:api-key "sk-shadow"}}]
             (mt/with-temporary-setting-values [ee-embedding-provider "ai-service"]
               (is (= "ai-service" (:provider (embedding/get-configured-model)))))))
+        (testing "only an OpenAI connection selects an embedder, so another type's built-in embedder is not picked"
+          (llm.tu/with-connections [{:key "claude" :type "anthropic" :name "Claude" :config {:api-key "sk-ant-test"}}]
+            (mt/with-temporary-setting-values [ee-embedding-provider "claude"]
+              (is (= "claude" (:provider (embedding/get-configured-model))))
+              (is (false? (embedding/embedding-supported? (embedding/get-configured-model)))))))
         (testing "a connection that no longer exists embeds through nothing, rather than falling back"
           (mt/with-temporary-setting-values [ee-embedding-provider "missing"]
             (is (false? (embedding/embedding-supported? (embedding/get-configured-model))))))))))
@@ -709,6 +714,32 @@
                         (t2/select-one :model/SemanticSearchTokenTracking)]
                     (is (= :query request_type))
                     (is (= 13 total_tokens))))))))))))
+
+(deftest openai-embeds-through-the-requested-connection-test
+  (let [captured (atom nil)
+        model    {:provider "openai" :model-name "test-model" :vector-dimensions 4}
+        response {:data  [{:object    "embedding"
+                           :embedding (encode-floats-to-base64 [1.0 2.0 3.0 4.0])
+                           :index     0}]
+                  :model "test-model"
+                  :usage {:prompt_tokens 1 :total_tokens 1}}]
+    (llm.tu/with-connections [(llm.tu/connection "openai" {:api-key "sk-default"})
+                              {:key "embeddings" :type "openai" :name "Embeddings" :config {:api-key "sk-embed"}}]
+      (mt/with-dynamic-fn-redefs [http/post (fn [_url opts]
+                                              (reset! captured (:headers opts))
+                                              {:status  200
+                                               :headers {"Content-Type" "application/json"}
+                                               :body    (json/encode response)})]
+        (doseq [provider ["embeddings" "in-process"]]
+          (mt/with-temporary-setting-values [ee-embedding-provider provider]
+            (testing (str "with ee-embedding-provider " provider)
+              (testing "a caller that names its own connection is not redirected to semantic search's"
+                (embedding/get-embedding model "text" {:record-tokens? false :connection-key "openai"})
+                (is (= "Bearer sk-default" (get @captured "Authorization")))))))
+        (testing "without one, the connection ee-embedding-provider names is used"
+          (mt/with-temporary-setting-values [ee-embedding-provider "embeddings"]
+            (embedding/get-embedding model "text" {:record-tokens? false})
+            (is (= "Bearer sk-embed" (get @captured "Authorization")))))))))
 
 (deftest embedding-supported?-test
   (testing "ai-service: supported iff an embedding-service base URL or the ai-service base URL is set"

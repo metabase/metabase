@@ -53,6 +53,11 @@ const setup = ({
       type: "openai",
       name: "OpenAI",
     }),
+    createMockLlmProviderConnection({
+      key: "embeddings",
+      type: "openai",
+      name: "Embeddings",
+    }),
   ]);
   setupLlmModelsEndpoint(models);
 
@@ -135,9 +140,9 @@ describe("AIProviderList", () => {
   });
 
   it("warns that semantic search runs on the connection ee-embedding-provider names", async () => {
-    setup({ embeddingProvider: "openai" });
+    setup({ embeddingProvider: "embeddings" });
 
-    const modal = await openRemoveDialog("openai");
+    const modal = await openRemoveDialog("embeddings");
 
     expect(
       within(modal).getByText(/Semantic search also runs on this connection/),
@@ -147,8 +152,8 @@ describe("AIProviderList", () => {
     ).toBeInTheDocument();
   });
 
-  it("does not warn about semantic search when it embeds through something else", async () => {
-    setup({ embeddingProvider: "ai-service" });
+  it("does not warn about semantic search when it embeds through another connection", async () => {
+    setup({ embeddingProvider: "embeddings" });
 
     const modal = await openRemoveDialog("openai");
 
