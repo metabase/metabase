@@ -123,13 +123,13 @@ describe("scenarios > dashboard > filters > boolean", () => {
       cy.log("parameter source passes the value set in the filter widget");
       cy.go("back");
       H.dashboardHeader().findByText(DASHBOARD_2_NAME).should("be.visible");
-      H.filterWidget().findByText("True").click();
+      H.filterWidget().click();
       H.popover().within(() => {
         cy.findByText("False").click();
-        cy.button("Update filter").click();
+        cy.button("Add filter").click();
       });
-      H.filterWidget().findByText("False").should("be.visible");
-      H.getDashboardCard().findAllByText("1").first().click();
+      H.getDashboardCard().findByText("199 rows").should("be.visible");
+      H.getDashboardCard().findByText("2").click();
       H.dashboardHeader().findByText(DASHBOARD_NAME).should("be.visible");
       H.filterWidget().findByText("False").should("be.visible");
       H.getDashboardCard().findByText("199 rows").should("be.visible");
@@ -258,11 +258,9 @@ describe("scenarios > dashboard > filters > boolean", () => {
 function createQuestionAndDashboard({
   questionName = QUESTION_NAME,
   dashboardName = DASHBOARD_NAME,
-  dashboardParameters = [],
 }: {
   questionName?: string;
   dashboardName?: string;
-  dashboardParameters?: DashboardDetails["parameters"];
 } = {}) {
   const questionDetails: StructuredQuestionDetails = {
     name: questionName,
@@ -279,7 +277,6 @@ function createQuestionAndDashboard({
   };
   const dashboardDetails: DashboardDetails = {
     name: dashboardName,
-    parameters: dashboardParameters,
   };
   return H.createQuestionAndDashboard({
     questionDetails,
@@ -388,19 +385,10 @@ function setupDashboardClickBehavior() {
   createQuestionAndDashboard({
     dashboardName: DASHBOARD_2_NAME,
     questionName: QUESTION_2_NAME,
-    dashboardParameters: [
-      {
-        id: "boolean-parameter-id",
-        name: PARAMETER_NAME,
-        slug: "boolean_parameter",
-        type: "boolean/=",
-        sectionId: "boolean",
-        default: [true],
-      },
-    ],
   }).then(({ dashboardId }) => {
     H.visitDashboard(dashboardId);
     H.editDashboard();
+    createAndMapParameter();
     H.showDashboardCardActions();
     cy.findByLabelText("Click behavior").click();
     addDashboardDestination({
