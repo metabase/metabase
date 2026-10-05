@@ -264,13 +264,11 @@
   (if (= "refresh_token" grant_type)
     (let [stored   (some->> refresh_token (oidc.store/get-refresh-token (:token-store provider)))
           granted  (:resource stored)
-          rebind?  (and resource stored
-                        (not (oauth-server/resources-within? resource granted))
-                        (oauth-server/mcp-resource? granted)
-                        (oauth-server/mcp-resource? resource))]
+          outside? (and resource stored (not (oauth-server/resources-within? resource granted)))
+          rebind?  (and outside? (oauth-server/mcp-resource? granted) (oauth-server/mcp-resource? resource))]
       ;; `invalid_grant` (RFC 6749 section 5.2: the refresh token "does not match"), not RFC 8707 `invalid_target`:
       ;; the refresh token can never serve this resource, so the client has to authorize again rather than retry.
-      (when (and resource stored (not rebind?) (not (oauth-server/resources-within? resource granted)))
+      (when (and outside? (not rebind?))
         (throw (ex-info "resource is outside the refresh token's binding"
                         {:error             "invalid_grant"
                          :error-description refresh-binding-mismatch-description})))
