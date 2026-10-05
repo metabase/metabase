@@ -33,7 +33,6 @@ describe("scenarios > dashboard > filters", { tags: "@slow" }, () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
-    cy.intercept("POST", "/api/dataset").as("dataset");
   });
 
   describe("question source", () => {
