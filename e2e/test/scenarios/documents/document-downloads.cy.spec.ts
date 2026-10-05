@@ -10,7 +10,7 @@ describe("scenarios > documents > downloads", () => {
     cy.signInAsAdmin();
   });
 
-  it("shows the full card menu for write access, only Download results for read-only access, and no document without collection access", () => {
+  it("shows the full card menu for write access, only Download results for read-only access, no document without collection access, and no Download results without download permission", () => {
     H.createDocument({
       name: "Download Test Document",
       document: DOCUMENT_WITH_TWO_CARDS,
@@ -110,17 +110,19 @@ describe("scenarios > documents > downloads", () => {
     // Document content should not render and no card menu should be visible
     H.documentContent().should("not.exist");
     cy.findByRole("button", { name: /ellipsis/ }).should("not.exist");
-  });
 
-  it("hides Download results when the person lacks download permission but can view the collection", () => {
+    cy.log(
+      "No download permission hides Download results while the collection stays viewable",
+    );
+    cy.signInAsAdmin();
     H.activateToken("pro-self-hosted");
+    H.visitDocument("@documentId");
 
-    H.createDocument({
-      name: "No Download Permission Document",
-      document: DOCUMENT_WITH_TWO_CARDS,
-      collection_id: null,
-      idAlias: "documentId",
-    });
+    // Wait for card to load
+    H.getDocumentCard("Orders")
+      .should("be.visible")
+      .findByTestId("table-root")
+      .should("exist");
 
     // Remove download permission but keep view-data unrestricted
     const { READONLY_GROUP, ALL_USERS_GROUP } = USER_GROUPS;

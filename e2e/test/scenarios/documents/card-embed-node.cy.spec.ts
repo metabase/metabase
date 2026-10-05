@@ -576,8 +576,8 @@ describe("documents card embed node custom logic", () => {
     });
   });
 
-  describe("text wrapping in table cards", () => {
-    it("should support text wrapping with proper row heights", () => {
+  describe("cardEmbed on a new document", () => {
+    it("should remove a card that is the first item in a document (UXW-2169) and support text wrapping with proper row heights", () => {
       H.createQuestion({
         name: "reviews",
         type: "model",
@@ -596,6 +596,18 @@ describe("documents card embed node custom logic", () => {
 
       cy.visit("/document/new");
 
+      cy.log("a card that is the first item in a document can be removed");
+      H.documentContent().click();
+      H.addToDocument("/ord", false);
+      H.commandSuggestionItem(/Orders, Count$/).click();
+
+      H.openDocumentCardMenu("Orders, Count");
+      H.popover().findByText("Remove Chart").click();
+
+      cy.findAllByTestId("document-card-embed").should("have.length", 0);
+      cy.get(H.POPOVER_ELEMENT).should("not.exist");
+
+      cy.log("text wrapping in table cards");
       H.documentContent().click();
       H.addToDocument("/reviews", false);
       H.commandSuggestionItem(/reviews/).click();
@@ -615,8 +627,8 @@ describe("documents card embed node custom logic", () => {
     });
   });
 
-  describe("navigating from cardEmbed", () => {
-    it("should open a question and a drill-through action in a new tab when clicking with ctrl/meta key", () => {
+  describe("navigating from and deleting a cardEmbed", () => {
+    it("should open a question and a drill-through action in a new tab when clicking with ctrl/meta key, and delete a selected card with Backspace", () => {
       H.createDocument({
         name: "Test Document",
         document: DOCUMENT_WITH_TWO_CARDS,
@@ -692,34 +704,11 @@ describe("documents card embed node custom logic", () => {
 
       cy.get("@drillAnchorClick").should("have.been.calledOnce");
       cy.location("pathname").should("match", /^\/document\//);
-    });
-  });
 
-  describe("deleting a cardEmbed", () => {
-    it("should allow you to remove a card if it is the first item in a document (UXW-2169)", () => {
-      cy.visit("/document/new");
+      cy.log("Backspace deletes a selected cardEmbed");
+      cy.realPress("Escape");
+      cy.get(H.POPOVER_ELEMENT).should("not.exist");
 
-      H.documentContent().click();
-      H.addToDocument("/ord", false);
-      H.commandSuggestionItem(/Orders, Count$/).click();
-
-      H.openDocumentCardMenu("Orders, Count");
-      H.popover().findByText("Remove Chart").click();
-
-      cy.findAllByTestId("document-card-embed").should("have.length", 0);
-    });
-
-    it("should delete a cardEmbed when selected and Backspace is pressed", () => {
-      H.createDocument({
-        name: "DnD Test Document",
-        document: DOCUMENT_WITH_TWO_CARDS,
-        collection_id: null,
-        idAlias: "documentId",
-      });
-
-      H.visitDocument("@documentId");
-
-      // Wait for cards to load
       H.getDocumentCard("Orders")
         .should("be.visible")
         .findByTestId("table-root")
@@ -729,7 +718,7 @@ describe("documents card embed node custom logic", () => {
         .findByTestId("table-root")
         .should("exist");
 
-      // Verify initial state - we have 2 standalone cards
+      // The ctrl/meta-clicks leave the document with its 2 standalone cards
       H.documentContent()
         .findAllByTestId("document-card-embed")
         .should("have.length", 2);

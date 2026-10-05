@@ -903,7 +903,7 @@ describe("document comments", () => {
   });
 
   describe("resolve / unresolve", () => {
-    it("should resolve and unresolve a discussion, show the resolved tab only when needed, and block replies to resolved threads", () => {
+    it("should resolve and unresolve a discussion, show the resolved tab only when needed, block replies to resolved threads, and let another user resolve a thread", () => {
       startNewCommentIn1ParagraphDocument();
 
       const commentText = "Test resolving";
@@ -929,26 +929,29 @@ describe("document comments", () => {
       Comments.reopenCommentByText(commentText);
 
       cy.findByTestId("comments-resolved-tab").should("not.exist");
-    });
 
-    it("resolved threads show all comments in them", () => {
-      startNewCommentIn1ParagraphDocument();
-
+      cy.log("should be possible to resolve a thread created by another user");
+      Comments.getSidebar().within(() => {
+        Comments.getNewThreadInput().click();
+      });
       cy.realType("Main comment");
       cy.realPress([META_KEY, "Enter"]);
-
-      Comments.getCommentInputs().should("have.length", 2).last().click();
-      cy.realType("Reply 1");
-      cy.realPress([META_KEY, "Enter"]);
-
-      Comments.resolveCommentByText("Main comment");
-      cy.findByTestId("comments-resolved-tab").should("be.visible").click();
-
       Comments.getCommentByText("Main comment").should("be.visible");
-      Comments.getCommentByText("Reply 1").should("be.visible");
+
+      cy.signInAsNormalUser();
+      H.visitDocument("@documentId");
+      cy.findByLabelText("Show all comments").click();
+      Comments.getCommentByText("Main comment").should("be.visible");
+      Comments.resolveCommentByText("Main comment");
+
+      cy.findByTestId("comments-resolved-tab").should("be.visible");
+      Comments.getSidebar().findByText("Main comment").should("not.exist");
+      Comments.getAllComments()
+        .should("have.length", 1)
+        .and("contain.text", commentText);
     });
 
-    it("allows resolving only via the first comment, and resolving and unresolving a thread whose first comment is deleted", () => {
+    it("allows resolving only via the first comment, shows all comments of a resolved thread, and resolves and unresolves a thread whose first comment is deleted", () => {
       startNewCommentIn1ParagraphDocument();
 
       cy.realType("Main comment");
@@ -972,6 +975,18 @@ describe("document comments", () => {
           cy.findByTestId("comment-action-panel").should("be.visible");
           cy.findByTestId("comment-action-panel-resolve").should("be.visible");
         });
+
+      cy.log("resolved threads show all comments in them");
+      Comments.resolveCommentByText("Main comment");
+      cy.findByTestId("comments-resolved-tab").should("be.visible").click();
+
+      Comments.getCommentByText("Main comment").should("be.visible");
+      Comments.getCommentByText("Reply 1").should("be.visible");
+
+      Comments.reopenCommentByText("Main comment");
+      cy.findByTestId("comments-resolved-tab").should("not.exist");
+      Comments.getCommentByText("Main comment").should("be.visible");
+      Comments.getCommentByText("Reply 1").should("be.visible");
 
       cy.log("resolving a thread when the first comment is deleted");
 
@@ -1009,23 +1024,6 @@ describe("document comments", () => {
       cy.findAllByRole("tab").should("have.length", 0);
       Comments.getNewThreadInput().should("be.visible");
     });
-
-    it("should be possible to resolve a thread created by another user", () => {
-      startNewCommentIn1ParagraphDocument();
-
-      cy.realType("Main comment");
-      cy.realPress([META_KEY, "Enter"]);
-      Comments.getCommentByText("Main comment").should("be.visible");
-
-      cy.signInAsNormalUser();
-      H.visitDocument("@documentId");
-      cy.findByLabelText("Show all comments").click();
-      Comments.getCommentByText("Main comment").should("be.visible");
-      Comments.resolveCommentByText("Main comment");
-
-      cy.findByTestId("comments-resolved-tab").should("be.visible");
-      cy.findByTestId("discussion-comment").should("not.exist");
-    });
   });
 
   describe("links", () => {
@@ -1046,7 +1044,7 @@ describe("document comments", () => {
       });
     });
 
-    it("copies and opens a comment link, switching between open and resolved tabs as its thread is resolved and unresolved", () => {
+    it("copies and opens a comment link, switching between open and resolved tabs as its thread is resolved and unresolved, and opens a link to a resolved comment", () => {
       H.visitDocument("@documentId");
 
       cy.get<number>("@documentId").then((documentId) => {
@@ -1115,15 +1113,22 @@ describe("document comments", () => {
       Comments.getSidebar()
         .findByTestId("comments-resolved-tab")
         .should("not.exist");
-    });
 
-    it("opens a link to a resolved comment correctly", () => {
+      cy.log("opens a link to a resolved comment correctly");
       cy.get<number>("@headingCommentId").then((commentId) => {
         cy.request("PUT", `/api/comment/${commentId}`, {
           is_resolved: true,
         });
-        H.visitDocumentComment("@documentId", HEADING_1_ID, commentId);
+        cy.location("hash").should("eq", `#comment-${commentId}`);
       });
+      cy.get<DocumentId>("@documentId").then((documentId) => {
+        cy.intercept("GET", `/api/document/${documentId}`).as(
+          "resolvedLinkDocument",
+        );
+      });
+      // The page is still on the copied link, so a reload opens it cold
+      cy.reload();
+      cy.wait("@resolvedLinkDocument");
 
       Comments.getSidebar().within(() => {
         cy.findByTestId("comments-resolved-tab").should("be.visible");
@@ -1201,7 +1206,7 @@ describe("document comments", () => {
   });
 
   describe("comment reactions", () => {
-    it("should allow adding multiple reactions to a comment and removing own reactions", () => {
+    it("should allow adding multiple reactions to a comment, removing own reactions, and reacting on resolved but not on deleted comments", () => {
       create1ParagraphDocument();
       cy.get<DocumentId>("@documentId").then((documentId) => {
         createParagraphComment(documentId, "Test 1");
@@ -1223,6 +1228,60 @@ describe("document comments", () => {
           cy.findByText(`${FIRST_REACTION_EMOJI}`).click();
           cy.findByText(`${FIRST_REACTION_EMOJI}`).should("not.exist");
         });
+      });
+
+      cy.log("should allow to react on resolved comments");
+      cy.get<DocumentId>("@documentId").then((documentId) => {
+        createParagraphComment(documentId, "Resolved comment").then(
+          (comment) => {
+            H.updateComment({ id: comment.body.id, is_resolved: true });
+          },
+        );
+      });
+
+      H.visitDocumentComment("@documentId", PARAGRAPH_ID);
+
+      cy.findByRole("tab", { name: "Resolved (1)" }).click();
+
+      Comments.reactToComment("Resolved comment", FIRST_REACTION_EMOJI);
+      Comments.reactToComment("Resolved comment", SECOND_REACTION_EMOJI);
+
+      Comments.getSidebar().within(() => {
+        Comments.getCommentByText("Resolved comment")
+          .findByTestId("discussion-reactions")
+          .within((el) => {
+            cy.wrap(el).should("contain", `${FIRST_REACTION_EMOJI}1`);
+            cy.wrap(el).should("contain", `${SECOND_REACTION_EMOJI}1`);
+          });
+      });
+
+      cy.log("should not allow to react on deleted comments");
+      cy.get<DocumentId>("@documentId").then((documentId) => {
+        createParagraphComment(documentId, "Deleted comment").then(
+          (comment) => {
+            createParagraphComment(documentId, "Test II", comment.body.id);
+            deleteComment(comment.body.id);
+          },
+        );
+      });
+
+      H.visitDocumentComment("@documentId", PARAGRAPH_ID);
+
+      Comments.getSidebar().within(() => {
+        Comments.getCommentByText("Test II").scrollIntoView().realHover();
+        Comments.getCommentByText("Test II")
+          .findByRole("button", { name: "Add reaction" })
+          .should("be.visible");
+
+        cy.findByTestId("discussion-comment-deleted")
+          .scrollIntoView()
+          .realHover()
+          .within(() => {
+            cy.findByTestId("comment-action-panel").should("be.visible");
+            cy.findByRole("button", { name: "Add reaction" }).should(
+              "not.exist",
+            );
+          });
       });
     });
 
@@ -1249,57 +1308,6 @@ describe("document comments", () => {
           cy.findByText(`${FIRST_REACTION_EMOJI}`).click();
           cy.wrap(el).should("contain", `${FIRST_REACTION_EMOJI}1`);
         });
-      });
-    });
-
-    it("should allow to react on resolved comments", () => {
-      create1ParagraphDocument();
-      cy.get<DocumentId>("@documentId").then((documentId) => {
-        createParagraphComment(documentId, "Test 1").then((comment) => {
-          H.updateComment({ id: comment.body.id, is_resolved: true });
-        });
-      });
-
-      H.visitDocumentComment("@documentId", PARAGRAPH_ID);
-
-      cy.findByRole("tab", { name: "Resolved (1)" }).click();
-
-      Comments.reactToComment("Test 1", FIRST_REACTION_EMOJI);
-      Comments.reactToComment("Test 1", SECOND_REACTION_EMOJI);
-
-      Comments.getSidebar().within(() => {
-        cy.findByTestId("discussion-reactions").within((el) => {
-          cy.wrap(el).should("contain", `${FIRST_REACTION_EMOJI}1`);
-          cy.wrap(el).should("contain", `${SECOND_REACTION_EMOJI}1`);
-        });
-      });
-    });
-
-    it("should not allow to react on deleted comments", () => {
-      create1ParagraphDocument();
-      cy.get<DocumentId>("@documentId").then((documentId) => {
-        createParagraphComment(documentId, "Test 1").then((comment) => {
-          createParagraphComment(documentId, "Test II", comment.body.id);
-          deleteComment(comment.body.id);
-        });
-      });
-
-      H.visitDocumentComment("@documentId", PARAGRAPH_ID);
-
-      Comments.getSidebar().within(() => {
-        Comments.getCommentByText("Test II").realHover();
-        Comments.getCommentByText("Test II")
-          .findByRole("button", { name: "Add reaction" })
-          .should("be.visible");
-
-        cy.findByTestId("discussion-comment-deleted")
-          .realHover()
-          .within(() => {
-            cy.findByTestId("comment-action-panel").should("be.visible");
-            cy.findByRole("button", { name: "Add reaction" }).should(
-              "not.exist",
-            );
-          });
       });
     });
   });

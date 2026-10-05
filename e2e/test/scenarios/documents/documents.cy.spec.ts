@@ -342,28 +342,8 @@ describe("documents", () => {
     );
   });
 
-  it("should focus the start of the document body when pressing Enter on the title input", () => {
-    cy.visit("/document/new");
-
-    cy.log("Type a title");
-    cy.findByRole("textbox", { name: "Document Title" })
-      .should("be.focused")
-      .type("Doc Title{enter}");
-
-    cy.log("Add some content to the document body");
-    H.addToDocument("One{enter}Two");
-
-    cy.log("Click back on the title to focus it and hit Enter");
-    cy.findByRole("textbox", { name: "Document Title" })
-      .click()
-      .type("{enter}");
-
-    cy.log("Focus should be placed at the beginning of the document body");
-    cy.realType("NEW: ");
-    H.documentContent().should("have.text", "NEW: OneTwo");
-  });
-
-  it("should handle navigating from /new to /new gracefully", () => {
+  it("should handle navigating from /new to /new gracefully, focus the start of the body when pressing Enter on the title, and show an error toast when creating a document fails", () => {
+    cy.log("navigating from /new to /new");
     cy.visit("/");
     H.newButton("Document").click();
     cy.title().should("eq", "New document · Metabase");
@@ -398,6 +378,49 @@ describe("documents", () => {
       .click();
     H.documentContent().should("have.text", "");
     H.documentSaveButton().should("not.exist");
+
+    cy.log("Enter on the title focuses the start of the body");
+    // A fresh page load, so the title input gets the initial focus
+    cy.visit("/document/new");
+
+    cy.log("Type a title");
+    cy.findByRole("textbox", { name: "Document Title" })
+      .should("be.focused")
+      .type("Doc Title{enter}");
+
+    cy.log("Add some content to the document body");
+    H.addToDocument("One{enter}Two");
+
+    cy.log("Click back on the title to focus it and hit Enter");
+    cy.findByRole("textbox", { name: "Document Title" })
+      .click()
+      .type("{enter}");
+
+    cy.log("Focus should be placed at the beginning of the document body");
+    cy.realType("NEW: ");
+    H.documentContent().should("have.text", "NEW: OneTwo");
+
+    cy.log("error toast when creating a new document fails");
+    cy.intercept("POST", "/api/document", { statusCode: 500 }).as(
+      "createDocumentError",
+    );
+    cy.intercept("GET", "/api/collection/*").as("getCollection");
+    // A fresh page load discards the unsaved document above
+    cy.visit("/document/new");
+
+    // make changes and attempt to save
+    cy.findByRole("textbox", { name: "Document Title" }).type("Title");
+    H.documentSaveButton().click();
+    cy.wait("@getCollection");
+    H.entityPickerModalItem(0, "Our analytics").click();
+    H.entityPickerModal().findByRole("button", { name: "Select" }).click();
+    cy.wait("@createDocumentError");
+
+    // assert error toast is visible and user can reattempt save
+    cy.findByTestId("toast-undo")
+      .should("be.visible")
+      .and("contain.text", "Error saving document");
+    H.documentSaveButton().should("be.visible");
   });
 
   describe("document editing", () => {
@@ -446,35 +469,11 @@ describe("documents", () => {
             type: "doc",
           },
           collection_id: null,
-          alias: "document",
           idAlias: "documentId",
         });
       });
 
-      it("renders 'not found' messages for a permanently deleted card and a nonexistent document", () => {
-        cy.get<Document>("@document").then(({ id, document: { content } }) => {
-          const resizeNode = content?.find((n) => n.type === "resizeNode");
-          const cardEmbed = resizeNode?.content?.[0];
-          const clonedCardId = cardEmbed?.attrs?.id;
-          cy.request("DELETE", `/api/card/${clonedCardId}`);
-          H.visitDocument(id);
-        });
-        cy.findByTestId("document-card-embed").should(
-          "have.text",
-          "Couldn't find this chart.",
-        );
-
-        cy.log("nonexistent document");
-        H.visitDocument(9999);
-        H.main().within(() => {
-          cy.findByText("We're a little lost...").should("be.visible");
-          cy.findByText("The page you asked for couldn't be found.").should(
-            "be.visible",
-          );
-        });
-      });
-
-      it("should print and handle undo/redo, resetting the history when a different document is viewed and keeping it on save", () => {
+      it("should print and handle undo/redo, resetting the history when a different document is viewed and keeping it on save, and render 'not found' messages for a permanently deleted card and a nonexistent document", () => {
         const originalText = "Lorem Ipsum and some more words";
         const originalExact = new RegExp(`^${originalText}$`);
         const modification = " etc.";
@@ -535,6 +534,34 @@ describe("documents", () => {
         cy.realPress([H.metaKey, "z"]);
         cy.realPress([H.metaKey, "z"]);
         H.documentContent().contains(originalExact);
+
+        cy.log("permanently deleted card");
+        cy.get<number>("@documentId").then((id) => {
+          cy.request<Document>("GET", `/api/document/${id}`).then(
+            ({ body: { document } }) => {
+              const resizeNode = document.content?.find(
+                (n) => n.type === "resizeNode",
+              );
+              const cardEmbed = resizeNode?.content?.[0];
+              const clonedCardId = cardEmbed?.attrs?.id;
+              cy.request("DELETE", `/api/card/${clonedCardId}`);
+              H.visitDocument(id);
+            },
+          );
+        });
+        cy.findByTestId("document-card-embed").should(
+          "have.text",
+          "Couldn't find this chart.",
+        );
+
+        cy.log("nonexistent document");
+        H.visitDocument(9999);
+        H.main().within(() => {
+          cy.findByText("We're a little lost...").should("be.visible");
+          cy.findByText("The page you asked for couldn't be found.").should(
+            "be.visible",
+          );
+        });
       });
     });
   });
@@ -552,7 +579,7 @@ describe("documents", () => {
       });
     });
 
-    it("should support formatting via floating menu and typing with a markdown syntax", () => {
+    it("should support formatting via floating menu and typing with a markdown syntax, and show an error toast when saving fails", () => {
       H.visitDocument("@documentId");
 
       cy.log("floating menu formatting");
@@ -700,6 +727,20 @@ describe("documents", () => {
           .contains("Or add whole code blocks")
           .should("exist");
       });
+
+      cy.log("error toast when updating the document fails");
+      cy.intercept("PUT", "/api/document/*", { statusCode: 500 }).as(
+        "updateDocumentError",
+      );
+      H.addToDocument("aaa");
+      H.documentSaveButton().scrollIntoView().click();
+      cy.wait("@updateDocumentError");
+
+      // assert error toast is visible and user can reattempt save
+      cy.findByTestId("toast-undo")
+        .should("be.visible")
+        .and("contain.text", "Error saving document");
+      H.documentSaveButton().scrollIntoView().should("be.visible");
     });
 
     describe("Card Embeds", () => {
@@ -1266,7 +1307,8 @@ describe("documents", () => {
       cy.intercept("POST", "/api/dataset").as("dataset");
     });
 
-    it("should create notebook questions, including a time series line chart, and embed them in the document", () => {
+    it("should create notebook questions, including a time series line chart, and a native SQL question, embed them in the document and save it", () => {
+      cy.intercept("GET", "/api/database").as("database");
       H.visitDocument("@documentId");
       H.documentContent().click();
 
@@ -1336,20 +1378,15 @@ describe("documents", () => {
           H.cartesianChartCircle().should("have.length.at.least", 1);
         });
 
-      cy.log("Verify document can be saved with a new question");
-      cy.findByRole("button", { name: "Save" })
-        .scrollIntoView()
-        .should("be.visible")
+      cy.log("native SQL question");
+      // The `document_add_card` assertion below counts only the native card
+      H.resetSnowplow();
+      cy.intercept("POST", "/api/dataset").as("nativeDataset");
+      H.documentContent()
+        .find(".node-paragraph")
+        .should("have.length.at.least", 1)
+        .last()
         .click();
-      cy.findByRole("button", { name: "Save" }).should("not.exist");
-
-      H.undoToast().findByText("Document saved").should("exist");
-    });
-
-    it("should allow creating a new native SQL question and embedding it in the document", () => {
-      cy.intercept("GET", "/api/database").as("database");
-      H.visitDocument("@documentId");
-      H.documentContent().click();
 
       cy.log("Trigger command menu and select Chart");
       H.addToDocument("/", false);
@@ -1371,11 +1408,18 @@ describe("documents", () => {
         .findByRole("button", { name: "Save and use" })
         .click();
 
-      cy.wait("@dataset");
+      cy.wait("@nativeDataset");
 
       cy.log("Verify the SQL query is embedded in the document");
       H.getDocumentCard("New question").should("exist");
-      cy.findByRole("button", { name: "Save" }).should("be.visible").click();
+
+      cy.log("Verify document can be saved with new questions");
+      cy.findByRole("button", { name: "Save" })
+        .scrollIntoView()
+        .should("be.visible")
+        .click();
+      cy.findByRole("button", { name: "Save" }).should("not.exist");
+      H.undoToast().findByText("Document saved").should("exist");
 
       cy.get("@documentId").then((id) => {
         H.expectUnstructuredSnowplowEvent({
@@ -1385,18 +1429,20 @@ describe("documents", () => {
       });
 
       cy.log("Change native question title");
-      H.documentContent().within(() => {
+      H.getDocumentCard("New question").within(() => {
         cy.findByText("New question").realHover();
         cy.icon("pencil").click();
-
-        cy.realType("New native question");
       });
+      cy.realType("New native question");
       cy.get(".node-paragraph").first().click(); // unfocus cardEmbed
 
       H.getDocumentCard("New native question").should("be.visible");
 
-      cy.log("Verify document can be saved with a new question");
-      cy.findByRole("button", { name: "Save" }).should("be.visible").click();
+      cy.log("Verify document can be saved with a renamed question");
+      cy.findByRole("button", { name: "Save" })
+        .scrollIntoView()
+        .should("be.visible")
+        .click();
       cy.findByRole("button", { name: "Save" }).should("not.exist");
 
       H.undoToast().findByText("Document saved").should("exist");
@@ -1691,50 +1737,6 @@ describe("documents", () => {
           expect(text).not.to.include("#heading-block-2");
         });
       });
-    });
-  });
-
-  describe("error handling", () => {
-    it("should display an error toast when creating a new document fails", () => {
-      // setup
-      cy.intercept("POST", "/api/document", { statusCode: 500 });
-      cy.intercept("GET", "/api/collection/*").as("getCollection");
-      cy.visit("/document/new");
-
-      // make changes and attempt to save
-      cy.findByRole("textbox", { name: "Document Title" }).type("Title");
-      H.documentSaveButton().click();
-      cy.wait("@getCollection");
-      H.entityPickerModalItem(0, "Our analytics").click();
-      H.entityPickerModal().findByRole("button", { name: "Select" }).click();
-
-      // assert error toast is visible and user can reattempt save
-      cy.findByTestId("toast-undo")
-        .should("be.visible")
-        .and("contain.text", "Error saving document");
-      H.documentSaveButton().should("be.visible");
-    });
-
-    it("should display an error toast when updating a document fails", () => {
-      // setup
-      cy.intercept("PUT", "/api/document/*", { statusCode: 500 });
-      H.createDocument({
-        name: "Test Document",
-        document: { type: "doc", content: [] },
-        idAlias: "documentId",
-      });
-      H.visitDocument("@documentId");
-
-      // make changes and attempt to save
-      H.documentContent().click();
-      H.addToDocument("aaa");
-      H.documentSaveButton().click();
-
-      // assert error toast is visible and user can reattempt save
-      cy.findByTestId("toast-undo")
-        .should("be.visible")
-        .and("contain.text", "Error saving document");
-      H.documentSaveButton().should("be.visible");
     });
   });
 

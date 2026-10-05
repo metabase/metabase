@@ -15,7 +15,7 @@ describe("Links in documents", () => {
       H.createQuestion(PRODUCTS_AVERAGE_BY_CATEGORY, { wrapId: true });
     });
 
-    it("should display the most up-to-date title for the entity it references, or 'No access' without permission", () => {
+    it("should display the most up-to-date title or 'No access' for smart links, convert markdown links, add, edit and remove links via the floating menu, and add smart links via the suggestion and mention menus", () => {
       cy.get("@questionId").then((questionId) => {
         H.createDocument({
           name: "Document with SmartLinks",
@@ -74,9 +74,14 @@ describe("Links in documents", () => {
         .should("exist")
         .icon("eye_crossed_out")
         .should("exist");
-    });
 
-    it("should convert markdown links, add, edit and remove links via the floating menu, and add smart links via the suggestion and mention menus", () => {
+      cy.log(
+        "Convert markdown links, edit links via the floating menu, and add smart links via the suggestion and mention menus",
+      );
+      // Takes precedence over the 403 stub so smart links to the question load again
+      cy.get("@questionId").then((questionId) => {
+        cy.intercept("GET", `/api/card/${questionId}`, (req) => req.continue());
+      });
       cy.visit("/document/new");
       H.documentContent().click();
 

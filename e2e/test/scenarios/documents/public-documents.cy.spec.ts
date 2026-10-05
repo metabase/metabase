@@ -72,7 +72,7 @@ describe("scenarios > documents > public", () => {
     H.updateSetting("enable-public-sharing", true);
   });
 
-  it("should restrict comments, header menu, editing, and metabot blocks in public view", () => {
+  it("should restrict comments, header menu, editing, metabot blocks and the card menu in public view, and show an error after the document is trashed", () => {
     const metabotPrompt = "Some metabot prompt";
     H.createDocument({
       name: "Test Public Document",
@@ -169,10 +169,11 @@ describe("scenarios > documents > public", () => {
 
     cy.log("Verify that run/close buttons don't exist");
     H.documentContent().find("button").should("not.exist");
-  });
 
-  it("should only offer downloads in the public card menu and show an error after the document is trashed", () => {
-    // Create a document with an embedded card
+    cy.log(
+      "Public card menu only offers downloads; trashing the document breaks its public link",
+    );
+    // Re-points @documentId and @publicUuid at the document with a card
     createTestDocumentWithCard("Test Document with Card");
 
     cy.log("Create public link and visit public document");
