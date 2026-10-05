@@ -105,10 +105,22 @@
                       {:profile (:name profile) :unknown-terminal-tools unknown}))))
   (swap! *profiles assoc (:name profile) profile))
 
+(defn- embedding-system-prompt-context
+  "Template vars for `embedding-next.selmer`. `in_host_app` is set by the API from the request's client
+  header (see [[metabase.metabot.context/host-app-request?]]): true for the SDK, modular embedding and
+  data apps, where no Metabase pages exist to hand off to; false for a full-app iframe embed, which
+  keeps the hand-off to the SQL editor, dashboard builder and search."
+  [context]
+  {:in_host_app (boolean (:in_host_app context))})
+
+;; Serves every embedded surface — the SDK `MetabotQuestion`, modular embedding, data apps, and full-app
+;; iframe embeds — and has no SQL tools in any of them. The prompt decides per request whether there is
+;; a Metabase UI around it to hand off to (see [[embedding-system-prompt-context]]).
 (register-profile!
  {:name            :embedding_next
   :prompt-template "embedding-next.selmer"
   :max-iterations  15
+  :system-prompt-context embedding-system-prompt-context
   :tools           [#'tools/nlq-search-tool
                     #'tools/read-resource-tool
                     #'tools/construct-notebook-query-tool

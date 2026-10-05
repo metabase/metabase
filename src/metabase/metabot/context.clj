@@ -5,6 +5,7 @@
    [metabase.activity-feed.core :as activity-feed]
    [metabase.api.common :as api]
    [metabase.config.core :as config]
+   [metabase.embedding.util :as embedding.util]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib-be.schema :as lib-be.schema]
    [metabase.lib.core :as lib]
@@ -264,7 +265,19 @@
    [:default_database_id        {:optional true} [:maybe :int]]
    [:code_editor                {:optional true} [:maybe CodeEditorContextSchema]]
    [:research_plan              {:optional true} [:maybe ::research-plan]]
-   [:references                 {:optional true} [:maybe ms/OpaqueJSONObject]]])
+   [:references                 {:optional true} [:maybe ms/OpaqueJSONObject]]
+   ;; Set by the server from the request (see [[host-app-request?]]), never trusted from the client.
+   [:in_host_app                {:optional true} [:maybe :boolean]]])
+
+(defn host-app-request?
+  "True when `request` comes from a surface that renders Metabot inside the customer's own application —
+  the React SDK, modular embedding, or a data app — so none of Metabase's own pages (SQL editor,
+  dashboard builder, search) surround it. A full-app iframe embed is *not* a host app: it carries the
+  `embedding-iframe-full-app` client header and shows the whole Metabase UI."
+  [request]
+  (boolean (and request
+                (or (embedding.util/is-modular-embedding-request? request)
+                    (embedding.util/has-data-app-header? request)))))
 
 (defn- query-for-sql-parsing
   "Return the native query in a viewing-context item, or nil."

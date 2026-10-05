@@ -20,12 +20,19 @@
 
 ;; Kept local rather than required from metabase.metabot.tools to avoid a prompts->tools cycle;
 ;; mirrors the SQL entries in metabase.metabot.tools/query-generation-tool-names.
-(def ^:private sql-generation-tool-names
+(def sql-generation-tool-names
   "SQL-writing tools.
   Their presence in the capability-filtered tool set — not the `:permission/metabot-sql-generation`
   permission alone — is what lets the model write SQL, since they're gated by the
   `permission:write_sql_queries` capability."
   #{"create_sql_query" "edit_sql_query" "replace_sql_query"})
+
+(defn sql-generation-tools?
+  "True when the active tool registry `tools` (name -> tool) contains a SQL-writing tool. The prompt's
+  SQL guidance and the message stream's SQL dialect preload both gate on this, so a profile that cannot
+  write SQL is never told how to."
+  [tools]
+  (boolean (some sql-generation-tool-names (keys tools))))
 
 ;;; Template Loading
 
@@ -160,7 +167,7 @@
             ;; on those tools actually being active — the permission can be `:yes` while the request
             ;; lacks the `permission:write_sql_queries` capability that registers them.
             has-sql?             (and (= :yes (:permission/metabot-sql-generation perms))
-                                      (boolean (some sql-generation-tool-names (keys tools))))
+                                      (sql-generation-tools? tools))
             has-nlq?             (= :yes (:permission/metabot-nlq perms))
             template-context     {:metabot_name              (metabot.settings/metabot-name)
                                   :sql_dialect              sql-dialect
