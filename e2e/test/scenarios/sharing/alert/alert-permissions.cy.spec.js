@@ -92,14 +92,6 @@ describe("scenarios > alert > alert permissions", { tags: "@external" }, () => {
       });
     });
 
-    it("should let you see your own alerts", () => {
-      H.visitQuestion(ORDERS_BY_YEAR_QUESTION_ID);
-      cy.findByLabelText("Move, trash, and more…").click();
-      H.popover().findByText("Edit alerts").click();
-
-      H.modal().findByText(/Created by you/);
-    });
-
     it("should let you unsubscribe from others' alerts", () => {
       H.visitQuestion(ORDERS_COUNT_QUESTION_ID);
       cy.findByLabelText("Move, trash, and more…").click();

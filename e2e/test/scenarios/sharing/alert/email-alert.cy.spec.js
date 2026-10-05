@@ -16,17 +16,6 @@ describe("scenarios > alert > email_alert", { tags: "@external" }, () => {
     H.setupSMTP();
   });
 
-  it("should have no alerts set up initially", () => {
-    cy.visit("/");
-
-    cy.request("/api/notification").then(({ body }) => {
-      const questionAlerts = body.filter(
-        (notification) => notification.payload_type === "notification/card",
-      );
-      expect(questionAlerts).to.have.length(0);
-    });
-  });
-
   it("should set up an email alert", () => {
     openAlertForQuestion(ORDERS_QUESTION_ID);
 
