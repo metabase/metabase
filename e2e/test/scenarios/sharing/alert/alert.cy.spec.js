@@ -116,6 +116,13 @@ describe("scenarios > alert", () => {
     });
 
     H.sharingMenuButton().should("not.exist");
+
+    cy.findByLabelText("Move, trash, and more…").click();
+    H.popover().within(() => {
+      cy.findByText("Turn back to saved question").should("be.visible");
+      cy.findByText("Create an alert").should("not.exist");
+      cy.findByText("Edit alerts").should("not.exist");
+    });
   });
 
   it("can set up an alert for a question saved in a dashboard", () => {

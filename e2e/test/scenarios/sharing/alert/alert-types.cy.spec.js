@@ -2,18 +2,17 @@ const { H } = cy;
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_BY_YEAR_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 
-const { PEOPLE, PEOPLE_ID } = SAMPLE_DATABASE;
+const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
 const multiSeriesQuestionWithGoal = {
   name: "multi",
   query: {
-    "source-table": PEOPLE_ID,
-    aggregation: [["count"]],
+    "source-table": ORDERS_ID,
+    aggregation: [["count"], ["sum", ["field", ORDERS.TOTAL, null]]],
     breakout: [
-      ["field", PEOPLE.SOURCE, null],
       [
         "field",
-        PEOPLE.CREATED_AT,
+        ORDERS.CREATED_AT,
         {
           "temporal-unit": "month",
         },
@@ -21,6 +20,12 @@ const multiSeriesQuestionWithGoal = {
     ],
   },
   display: "line",
+  visualization_settings: {
+    "graph.show_goal": true,
+    "graph.goal_value": 7000,
+    "graph.dimensions": ["CREATED_AT"],
+    "graph.metrics": ["count", "sum"],
+  },
 };
 
 const timeSeriesQuestionId = ORDERS_BY_YEAR_QUESTION_ID;
@@ -104,6 +109,7 @@ describe("scenarios > alert > types", { tags: "@external" }, () => {
 
     it("should not be possible to create goal based alert for a multi-series question", () => {
       H.createQuestion(multiSeriesQuestionWithGoal, { visitQuestion: true });
+      cy.findByTestId("chart-container").should("contain", "Goal");
 
       cy.findByLabelText("Move, trash, and more…").click();
       H.popover().findByText("Create an alert").click();

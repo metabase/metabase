@@ -81,6 +81,18 @@ describe("scenarios > sharing > invite someone to view", () => {
           id: ORDERS_QUESTION_ID,
         });
       });
+
+      H.modal().within(() => {
+        cy.findByText(/We couldn't send an email invitation/).should(
+          "be.visible",
+        );
+        cy.findByLabelText("Temporary password")
+          .invoke("val")
+          .should("not.be.empty");
+        cy.findByLabelText("Link to share")
+          .invoke("val")
+          .should("contain", `/question/${ORDERS_QUESTION_ID}`);
+      });
     });
   });
 

@@ -51,8 +51,8 @@ describe("scenarios > alert > alert permissions", { tags: "@external" }, () => {
       H.visitQuestion(ORDERS_QUESTION_ID);
       cy.findByLabelText("Move, trash, and more…").click();
 
-      H.popover().findByText("Edit alerts").should("not.exist");
       H.popover().findByText("Create an alert").should("be.visible");
+      H.popover().findByText("Edit alerts").should("not.exist");
     });
 
     it("should let you see and unsubscribe from others' alerts where you are a recipient", () => {

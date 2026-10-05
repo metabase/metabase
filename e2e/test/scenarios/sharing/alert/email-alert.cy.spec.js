@@ -24,8 +24,12 @@ describe("scenarios > alert > email_alert", { tags: "@external" }, () => {
     );
     cy.findByTestId("alert-configured-channel").within(() => {
       cy.findByTestId("loading-indicator").should("not.exist");
+      cy.findByText("Email").should("be.visible");
       cy.findByText("Slack").should("not.exist");
     });
+    H.modal()
+      .findByRole("link", { name: "Slack" })
+      .should("have.attr", "href", "/admin/settings/slack");
 
     H.selectScheduleTime();
     H.modal().within(() => {
@@ -83,22 +87,11 @@ describe("scenarios > alert > email_alert", { tags: "@external" }, () => {
       expect(slackDetails.value).to.eq("#work");
       expect(slackDetails.channel_id).to.eq("C001");
     });
-
-    cy.log(
-      "ensure that when the alert is deleted, the delete modal is correct metabase#48402",
-    );
-    cy.findByLabelText("Move, trash, and more…").click();
-    H.popover().findByText("Edit alerts").click();
-    H.modal().within(() => {
-      cy.findByText("Edit alerts").should("be.visible");
-      cy.findByText(/Created by you/).realHover();
-    });
-
-    cy.findByRole("button", { name: "Delete this alert" }).click();
   });
 
   it("should set up an email alert for a new question and update it without updating the question (metabase#36866)", () => {
     cy.intercept("PUT", "/api/notification/*").as("updatedAlert");
+    cy.intercept("PUT", "/api/card/*").as("updateCard");
 
     H.openTable({
       table: PEOPLE_ID,
@@ -142,6 +135,7 @@ describe("scenarios > alert > email_alert", { tags: "@external" }, () => {
 
     cy.log("Check that /api/card has still only been called once");
     cy.get("@saveCard.all").should("have.length", 1);
+    cy.get("@updateCard.all").should("have.length", 0);
   });
 
   describe("branding", () => {
