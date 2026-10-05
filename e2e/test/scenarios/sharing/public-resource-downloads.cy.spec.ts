@@ -154,16 +154,6 @@ describe("Public dashboards/questions downloads (results and pdf)", () => {
       cy.signOut();
     });
 
-    it("#downloads=results should enable result downloads", () => {
-      cy.visit(`${publicLink}#downloads=results`);
-      waitLoading();
-
-      H.main().realHover();
-      cy.findByRole("button", { name: "Download results" }).should(
-        "be.visible",
-      );
-    });
-
     it("#downloads=false should disable result downloads", () => {
       cy.visit(`${publicLink}#downloads=false`);
       waitLoading();
@@ -192,8 +182,8 @@ describe("Public dashboards/questions downloads (results and pdf)", () => {
       });
     });
 
-    it("should be able to download a public card as CSV", () => {
-      cy.visit(`${publicLink}`);
+    it("#downloads=results should enable result downloads and allow downloading a public card as CSV", () => {
+      cy.visit(`${publicLink}#downloads=results`);
       waitLoading();
 
       H.main().realHover();

@@ -187,6 +187,9 @@ describe("scenarios > public > dashboard", () => {
       H.visitPublicDashboard(id);
     });
 
+    // new dashboards should default to 'fixed' width
+    H.assertDashboardFixedWidth();
+
     H.dashboardParametersContainer().within(() => {
       cy.findByText(textFilter.name).should("be.visible");
       cy.findByText(unusedFilter.name).should("not.exist");
@@ -201,17 +204,8 @@ describe("scenarios > public > dashboard", () => {
     });
   });
 
-  it("should respect dashboard width setting in a public dashboard", () => {
+  it("should respect full dashboard width setting in a public dashboard", () => {
     cy.get("@dashboardId").then((id) => {
-      H.visitPublicDashboard(id);
-    });
-
-    // new dashboards should default to 'fixed' width
-    H.assertDashboardFixedWidth();
-
-    // toggle full-width
-    cy.get("@dashboardId").then((id) => {
-      cy.signInAsAdmin();
       cy.request("PUT", `/api/dashboard/${id}`, {
         width: "full",
       });
@@ -221,16 +215,24 @@ describe("scenarios > public > dashboard", () => {
     H.assertDashboardFullWidth();
   });
 
-  it("should render when a filter passed with value starting from '0' (metabase#41483)", () => {
+  it("should render when a filter passed with value starting from '0' and support #theme=dark (metabase#41483, metabase#65731)", () => {
     cy.get("@dashboardId").then((id) => {
       H.visitPublicDashboard(id, {
         params: { text: "002" },
+        hash: {
+          theme: "dark",
+        },
       });
     });
 
     cy.url().should("include", "text=002");
 
     H.filterWidget().findByText("002").should("be.visible");
+
+    cy.log("dark theme should have white text");
+    cy.findByRole("heading", {
+      name: "Test Dashboard",
+    }).should("have.css", "color", "rgba(255, 255, 255, 0.95)");
   });
 
   it("should respect click behavior", () => {
@@ -280,25 +282,6 @@ describe("scenarios > public > dashboard", () => {
       expect(element.href).to.eq("https://metabase.com/");
     });
   });
-
-  it("should support #theme=dark (metabase#65731)", () => {
-    const dashboardName = "Dashboard Theme Test";
-    H.createDashboardWithQuestions({
-      dashboardName,
-      questions: [],
-    }).then(({ dashboard }) => {
-      H.visitPublicDashboard(dashboard.id, {
-        hash: {
-          theme: "dark",
-        },
-      });
-    });
-
-    cy.log("dark theme should have white text");
-    cy.findByRole("heading", {
-      name: dashboardName,
-    }).should("have.css", "color", "rgba(255, 255, 255, 0.95)");
-  });
 });
 
 describe("scenarios [EE] > public > dashboard", () => {
@@ -311,14 +294,24 @@ describe("scenarios [EE] > public > dashboard", () => {
     H.activateToken("pro-self-hosted");
   });
 
-  it("should set the window title to `{dashboard name} · {application name}`", () => {
+  it("should set the window title to `{dashboard name} · {application name}` and keep the background via `#background=false` without an iframe", () => {
     H.updateSetting("application-name", "Custom Application Name");
 
     cy.get("@dashboardId").then((id) => {
-      H.visitPublicDashboard(id);
+      H.visitPublicDashboard(id, {
+        hash: { background: "false" },
+      });
 
       cy.title().should("eq", "Test Dashboard · Custom Application Name");
     });
+
+    cy.findByTestId("embed-frame").should("exist");
+
+    cy.get("body.mb-wrapper").should(
+      "not.have.css",
+      "background-color",
+      "rgba(0, 0, 0, 0)",
+    );
   });
 
   it("should allow to set locale from the `#locale` hash parameter (metabase#50182)", () => {
@@ -361,22 +354,6 @@ describe("scenarios [EE] > public > dashboard", () => {
     cy.window().then((win) => {
       delete win.overrideIsWithinIframe;
     });
-  });
-
-  it("should not disable background via `#background=false` hash parameter when rendered without an iframe", () => {
-    cy.get("@dashboardId").then((id) => {
-      H.visitPublicDashboard(id, {
-        hash: { background: "false" },
-      });
-    });
-
-    cy.findByTestId("embed-frame").should("exist");
-
-    cy.get("body.mb-wrapper").should(
-      "not.have.css",
-      "background-color",
-      "rgba(0, 0, 0, 0)",
-    );
   });
 
   it("should handle /api/session/properties incorrect response (metabase#62501)", () => {

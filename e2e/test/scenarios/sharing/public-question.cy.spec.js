@@ -103,52 +103,29 @@ describe("scenarios > public > question", () => {
     }),
   );
 
-  it("should be able to view public questions with snippets", () => {
-    H.startNewNativeQuestion({ display: "table" });
-
-    // Create a snippet
-    cy.icon("snippet").click();
-    cy.findByTestId("sidebar-content").findByText("Create snippet").click();
-
-    H.modal().within(() => {
-      cy.findByLabelText("Enter some SQL here so you can reuse it later").type(
-        "'test'",
-      );
-      cy.findByLabelText("Give your snippet a name").type("string 'test'");
-      cy.findByText("Save").click();
-    });
-
-    H.NativeEditor.type("{moveToStart}select ");
-
-    H.saveQuestion(
-      "test question",
-      { wrapId: true },
-      {
-        path: ["Our analytics"],
-      },
-    );
-
-    cy.get("@questionId").then((id) => {
-      H.createPublicQuestionLink(id).then(({ body: { uuid } }) => {
-        cy.signOut();
-        cy.signInAsNormalUser().then(() => {
-          cy.visit(`/public/question/${uuid}`);
-          cy.get("[data-testid=cell-data]").contains("test");
-        });
-      });
-    });
-  });
-
-  it("should be able to view public questions with card template tags", () => {
+  it("should be able to view public questions with snippets and card template tags", () => {
     H.createNativeQuestion({
       name: "Nested Question",
       native: {
         query: "SELECT * FROM PEOPLE LIMIT 5",
       },
-    }).then(({ body: { id } }) => {
+    }).then(({ body: { id: nestedQuestionId } }) => {
       H.startNewNativeQuestion({ display: "table" });
 
-      H.NativeEditor.type(`select * from {{#${id}`);
+      // Create a snippet
+      cy.icon("snippet").click();
+      cy.findByTestId("sidebar-content").findByText("Create snippet").click();
+
+      H.modal().within(() => {
+        cy.findByLabelText(
+          "Enter some SQL here so you can reuse it later",
+        ).type("'test'");
+        cy.findByLabelText("Give your snippet a name").type("string 'test'");
+        cy.findByText("Save").click();
+      });
+
+      H.NativeEditor.type("{moveToStart}select ");
+      H.NativeEditor.type(`{moveToEnd}, * from {{#${nestedQuestionId}`);
 
       H.saveQuestion(
         "test question",
@@ -157,14 +134,16 @@ describe("scenarios > public > question", () => {
           path: ["Our analytics"],
         },
       );
-      cy.get("@questionId").then((id) => {
-        H.createPublicQuestionLink(id).then(({ body: { uuid } }) => {
-          cy.signOut();
-          cy.signInAsNormalUser().then(() => {
-            cy.visit(`/public/question/${uuid}`);
-            // Check the name of the first person in the PEOPLE table
-            cy.get("[data-testid=cell-data]").contains("Hudson Borer");
-          });
+    });
+
+    cy.get("@questionId").then((id) => {
+      H.createPublicQuestionLink(id).then(({ body: { uuid } }) => {
+        cy.signOut();
+        cy.signInAsNormalUser().then(() => {
+          cy.visit(`/public/question/${uuid}`);
+          cy.get("[data-testid=cell-data]").contains("test");
+          // Check the name of the first person in the PEOPLE table
+          cy.get("[data-testid=cell-data]").contains("Hudson Borer");
         });
       });
     });
