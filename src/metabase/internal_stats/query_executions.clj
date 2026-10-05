@@ -6,9 +6,9 @@
 (defn query-executions-all-time-and-last-24h
   "Calculate query executions for the entire available history and over the last 24 hours from now."
   []
-  (let [qe          (internal-stats.db/query-execution-statistics-all-time)
+  (let [qe          (dissoc (internal-stats.db/query-execution-statistics-all-time) :row_count)
         one-day-ago (t/minus (t/offset-date-time) (t/days 1))
-        qe-24h      (internal-stats.db/query-execution-statistics-since one-day-ago)]
+        qe-24h      (dissoc (internal-stats.db/query-execution-statistics-since one-day-ago) :row_count)]
     {:query-executions     qe
      :query-executions-24h qe-24h}))
 

@@ -1,11 +1,12 @@
 (ns metabase.llm.api.provider-test
   (:require
    [clj-http.client :as http]
-   [clojure.test :refer [deftest is testing use-fixtures]]
+   [clojure.test :refer [are deftest is testing use-fixtures]]
    [medley.core :as m]
    [metabase.llm.api.provider :as llm.api.provider]
    [metabase.llm.provider :as llm.provider]
    [metabase.metabot.self :as metabot.self]
+   [metabase.metabot.self.bedrock-test :as bedrock-test]
    [metabase.metabot.settings :as metabot.settings]
    [metabase.permissions.core :as perms]
    [metabase.settings.core :as setting]
@@ -58,11 +59,11 @@
 (deftest provider-types-test
   (testing "every provider type is listed with the credential fields a connection needs"
     (let [types (mt/user-http-request :crowberto :get 200 "llm/provider-types")]
-      (is (= #{"anthropic" "openai" "openrouter" "mistral" "zai" "moonshot" "deepseek" "google" "azure" "bedrock"
-               "vllm" "metabase"}
+      (is (= #{"anthropic" "openai" "openrouter" "mistral" "zai" "moonshot" "deepseek" "xai" "google" "azure"
+               "bedrock" "vllm" "metabase"}
              (set (map :type types))))
-      (is (= ["anthropic" "openai" "openrouter" "mistral" "zai" "moonshot" "deepseek" "google" "azure" "bedrock"
-              "vllm"]
+      (is (= ["anthropic" "openai" "openrouter" "mistral" "zai" "moonshot" "deepseek" "xai" "google" "azure"
+              "bedrock" "vllm"]
              (remove #{"metabase"} (map :type types)))
           "the bring-your-own-key providers keep their registry order")
       (is (=? {:type          "anthropic"
@@ -95,7 +96,8 @@
       (testing "the API-key prefixes reach the client, which uses them to recognize a pasted key"
         (is (= {"anthropic"  "sk-ant-"
                 "openai"     "sk-"
-                "openrouter" "sk-or-v1-"}
+                "openrouter" "sk-or-v1-"
+                "xai"        "xai-"}
                (into {}
                      (keep (fn [{:keys [type fields]}]
                              (when-let [prefix (some :prefix fields)]
@@ -107,6 +109,7 @@
         (is (= {"access-key-id"     false
                 "secret-access-key" false
                 "region"            false
+                "model-id"          false
                 "session-token"     true}
                (->> types
                     (filter #(= "bedrock" (:type %)))
@@ -125,7 +128,8 @@
                       (filter #(= "google" (:type %)))
                       first)
           fields (into {} (map (juxt :key identity)) (:fields google))]
-      (is (= ["project-id" "location" "auth-method" "service-account-key" "oauth-access-token" "base-url"]
+      (is (= ["project-id" "location" "auth-method" "service-account-key" "oauth-access-token" "endpoint-id"
+              "base-url"]
              (map :key (:fields google))))
       (is (=? {:type    "segmented"
                :default "service-account-key"
@@ -151,7 +155,9 @@
                   {:id "anthropic/claude-sonnet-5" :display_name "Claude Sonnet 5"}
                   {:id "anthropic/claude-sonnet-4-6" :display_name "Claude Sonnet 4.6"}
                   {:id "anthropic/claude-haiku-4-5@20251001" :display_name "Claude Haiku 4.5"}]
-                 (:models google)))))
+                 (:models google))))
+        (testing "and the endpoint ID is the field that names a model in place of the catalog"
+          (is (= ["endpoint-id"] (:model_fields google)))))
       (testing "the alternative credential groups ride along so the form knows when the config is complete"
         (is (= [["service-account-key"] ["oauth-access-token" "project-id"]]
                (:required_any google)))))))
@@ -161,7 +167,7 @@
     (mt/with-premium-features #{:hosting}
       (let [bedrock (m/find-first #(= "bedrock" (:type %))
                                   (mt/user-http-request :crowberto :get 200 "llm/provider-types"))]
-        (is (= {"access-key-id" true "secret-access-key" true "region" false "session-token" false}
+        (is (= {"access-key-id" true "secret-access-key" true "region" false "model-id" false "session-token" false}
                (->> bedrock :fields (into {} (map (juxt :key :required))))))
         (is (= "On Metabase Cloud, Bedrock always authenticates with your own AWS keys."
                (:help (m/find-first #(= "access-key-id" (:key %)) (:fields bedrock)))))))))
@@ -449,6 +455,60 @@
                                           :base-url        "https://r.services.ai.azure.com/openai"
                                           :deployment-name "gpt-4.1-mini"}})
           (is (= "azure/openai/gpt-4.1-mini" (metabot.settings/llm-metabot-provider))))))))
+
+(deftest create-google-connection-with-an-endpoint-verifies-and-selects-the-endpoint-test
+  (doseq [[sent model] [["no model" nil]
+                        ["a catalog model beside it" "google/gemini-3.5-flash"]]]
+    (testing (str "with " sent)
+      (let [opts (atom nil)]
+        (mt/with-dynamic-fn-redefs [metabot.self/list-models (fn [_provider {:keys [model] :as o}]
+                                                               (reset! opts o)
+                                                               {:models [] :connection-info {:probed-model model}})]
+          (mt/with-temporary-setting-values [llm-providers []]
+            (mt/with-temporary-raw-setting-values [llm-metabot-provider nil]
+              (mt/user-http-request :crowberto :post 200 "llm/providers"
+                                    (cond-> {:type   "google"
+                                             :config {:oauth-access-token "ya29.token"
+                                                      :project-id         "my-project"
+                                                      :endpoint-id        "1234567890123456789"}}
+                                      model (assoc :model model)))
+              (is (=? {:model "endpoints/1234567890123456789" :probe? true} @opts))
+              (is (= "google/endpoints/1234567890123456789" (metabot.settings/llm-metabot-provider))))))))))
+
+(def ^:private bedrock-inference-profile-connection
+  {:type   "bedrock"
+   :config {:access-key-id     "AKIAIOSFODNN7EXAMPLE"
+            :secret-access-key "wJalrXUtnFEMI/K7MDENG+bPxRfiCYEXAMPLEKEY"
+            :region            "eu-central-1"
+            :model-id          "eu.anthropic.claude-sonnet-4-6"}})
+
+(deftest create-bedrock-connection-with-an-inference-profile-test
+  (testing "a Bedrock connection that names an inference profile is checked on bedrock-runtime and Metabot runs on it"
+    (let [requested (atom [])]
+      (mt/with-dynamic-fn-redefs [http/request (fn [req]
+                                                 (swap! requested conj (:url req))
+                                                 (bedrock-test/runtime-response-for bedrock-test/one-token-completion))]
+        (mt/with-temporary-setting-values [llm-providers []]
+          (mt/with-temporary-raw-setting-values [llm-metabot-provider nil]
+            (mt/user-http-request :crowberto :post 200 "llm/providers" bedrock-inference-profile-connection)
+            (is (= [(str "https://bedrock-runtime.eu-central-1.amazonaws.com/model/eu.anthropic.claude-sonnet-4-6"
+                         "/invoke-with-response-stream")]
+                   @requested))
+            (is (= "bedrock/eu.anthropic.claude-sonnet-4-6" (metabot.settings/llm-metabot-provider)))))))))
+
+(deftest create-bedrock-connection-is-rejected-when-the-model-does-not-finish-test
+  (testing "the connection is not saved when the model errors partway through or never finishes its response"
+    (mt/with-temporary-setting-values [llm-providers []]
+      (let [connect!   (fn [messages]
+                         (mt/with-dynamic-fn-redefs [http/request (fn [_] (bedrock-test/runtime-response-for messages))]
+                           (:message (mt/user-http-request :crowberto :post 400 "llm/providers"
+                                                           bedrock-inference-profile-connection))))
+            incomplete "AWS Bedrock returned an incomplete response from \"eu.anthropic.claude-sonnet-4-6\""]
+        (are [messages error] (= error (connect! messages))
+          [bedrock-test/message-start bedrock-test/stream-error] "Model stream error"
+          []                                                     incomplete
+          [bedrock-test/message-start]                           incomplete))
+      (is (= [] (llm.provider/connections))))))
 
 (deftest writes-keep-a-stored-connection-the-environment-shadows-test
   (testing (str "The environment wins on read, but it must not take the stored credentials with it: they are what "
@@ -832,16 +892,21 @@
   (testing (str "Azure's model reference bakes in the deployment name, so renaming the deployment of the connection "
                 "Metabot is pointed at has to move the selection with it — otherwise the next request resolves a "
                 "deployment that no longer exists.")
-    (mt/with-dynamic-fn-redefs [metabot.self/list-models (fn [& _] {:models []})]
-      (mt/with-temporary-setting-values [llm-providers [(connection "azure" "azure"
-                                                                    {:api-key         "azure-key"
-                                                                     :base-url        "https://r.services.ai.azure.com/openai"
-                                                                     :model-family    "openai"
-                                                                     :deployment-name "gpt-4.1-mini"})]]
-        (mt/with-temporary-raw-setting-values [llm-metabot-provider "azure/openai/gpt-4.1-mini"]
-          (mt/user-http-request :crowberto :put 200 "llm/providers/azure"
-                                {:config {:deployment-name "gpt-4.1"}})
-          (is (= "azure/openai/gpt-4.1" (metabot.settings/llm-metabot-provider))))))))
+    (let [checked (atom nil)]
+      (mt/with-dynamic-fn-redefs [metabot.self/list-models (fn [_provider {:keys [model]}]
+                                                             (reset! checked model)
+                                                             {:models []})]
+        (mt/with-temporary-setting-values [llm-providers [(connection "azure" "azure"
+                                                                      {:api-key         "azure-key"
+                                                                       :base-url        "https://r.services.ai.azure.com/openai"
+                                                                       :model-family    "openai"
+                                                                       :deployment-name "gpt-4.1-mini"})]]
+          (mt/with-temporary-raw-setting-values [llm-metabot-provider "azure/openai/gpt-4.1-mini"]
+            (mt/user-http-request :crowberto :put 200 "llm/providers/azure"
+                                  {:config {:deployment-name "gpt-4.1"}})
+            (is (= "azure/openai/gpt-4.1" (metabot.settings/llm-metabot-provider)))
+            (testing "and the edit checks the deployment the connection now names, not the one Metabot was on"
+              (is (= "openai/gpt-4.1" @checked)))))))))
 
 (deftest update-follows-the-model-picked-for-a-fixed-catalog-connection-test
   (testing (str "Google's edit form carries a model pick rather than a probe input, so saving with a different "
@@ -861,6 +926,27 @@
                                   {:config {}
                                    :model  "google/gemini-3.6-flash"})
             (is (= "anthropic/claude-sonnet-4-6" (metabot.settings/llm-metabot-provider)))))))))
+
+(deftest update-verifies-and-follows-the-endpoint-a-google-connection-names-test
+  (testing "adding an endpoint to the Google connection Metabot runs on checks the endpoint and moves Metabot onto it"
+    (let [opts (atom nil)]
+      (mt/with-dynamic-fn-redefs [metabot.self/list-models (fn [_provider {:keys [model] :as o}]
+                                                             (reset! opts o)
+                                                             {:models [] :connection-info {:probed-model model}})]
+        (mt/with-temporary-setting-values [llm-providers [(connection "google" "google"
+                                                                      {:oauth-access-token "ya29.token"
+                                                                       :project-id         "my-project"
+                                                                       :probed-model       "google/gemini-3.5-flash"})]]
+          (mt/with-temporary-raw-setting-values [llm-metabot-provider "google/google/gemini-3.5-flash"]
+            (mt/user-http-request :crowberto :put 200 "llm/providers/google"
+                                  {:config {:endpoint-id "1234567890123456789"}})
+            (is (=? {:model "endpoints/1234567890123456789" :probe? true} @opts))
+            (is (= "endpoints/1234567890123456789" (:probed-model (stored-config "google"))))
+            (is (= "google/endpoints/1234567890123456789" (metabot.settings/llm-metabot-provider)))
+            (testing "and saving it again leaves Metabot there"
+              (mt/user-http-request :crowberto :put 200 "llm/providers/google"
+                                    {:config {:oauth-access-token "ya29.rotated"}})
+              (is (= "google/endpoints/1234567890123456789" (metabot.settings/llm-metabot-provider))))))))))
 
 (deftest ref-writes-leave-an-env-pinned-selection-alone-test
   (testing (str "MB_LLM_METABOT_PROVIDER pins the selection, so the automatic follow-ups — pointing Metabot at a "
@@ -1312,6 +1398,23 @@
                  (mt/user-http-request :crowberto :get 200 "llm/models")))
           (testing "and the call still happens, because it is what verifies the credentials"
             (is (= "openai/gpt-4.1-mini" (:model @listed-with)))))))))
+
+(deftest models-for-a-google-connection-that-names-an-endpoint-test
+  (testing "a Google connection with a Model Garden endpoint offers that endpoint in place of the catalog"
+    (mt/with-temporary-setting-values [llm-providers [(connection "glm" "google"
+                                                                  {:oauth-access-token "ya29.token"
+                                                                   :project-id         "my-project"
+                                                                   :endpoint-id        "1234567890123456789"})]]
+      (let [listed-with (atom nil)]
+        (mt/with-dynamic-fn-redefs [metabot.self/list-models (fn [_provider opts]
+                                                               (reset! listed-with opts)
+                                                               {:models []})]
+          (is (= [{:key    "glm"
+                   :name   "glm"
+                   :type   "google"
+                   :models [{:id "endpoints/1234567890123456789" :display_name "1234567890123456789"}]}]
+                 (mt/user-http-request :crowberto :get 200 "llm/models")))
+          (is (= "endpoints/1234567890123456789" (:model @listed-with))))))))
 
 (deftest models-isolate-per-connection-failures-test
   (mt/with-temporary-setting-values [llm-providers [(connection "failing-anthropic" "anthropic" {:api-key "sk-ant-bad"})

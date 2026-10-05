@@ -69,13 +69,17 @@
                 (+ x-prev (* t (- x-curr x-prev)))))
             (recur (inc i))))))))
 
+(def ^:private estimated-percentiles
+  "The percentiles [[compute-estimated-percentiles]] estimates, and the field each lands under."
+  [[:p25 25] [:p50 50] [:p75 75] [:p90 90] [:p95 95] [:p99 99]])
+
 (defn- compute-estimated-percentiles
   "Compute estimated percentiles from binned data using cumulative interpolation."
   [sorted-xs cum-counts total]
-  (let [pcts [25 50 75 90 95 99]]
-    (zipmap pcts
-            (mapv #(cumulative-percentile sorted-xs cum-counts total (/ (double %) 100.0))
-                  pcts))))
+  (into {}
+        (map (fn [[field pct]]
+               [field (cumulative-percentile sorted-xs cum-counts total (/ (double pct) 100.0))]))
+        estimated-percentiles))
 
 ;;; -------------------------------------------- Structural Metrics ---------------------------------------------------
 
@@ -126,7 +130,7 @@
         :total-count       0
         :data-points       n
         :bin-data          []
-        :distribution      {:estimated-percentiles {}
+        :distribution      {:estimated-percentiles nil
                             :estimated-quartiles   {:q1 0 :median 0 :q3 0 :iqr 0}}
         :structure         {:mode-bin           nil
                             :peak-count         0
@@ -147,9 +151,9 @@
              max-x        (last sorted-xs)
              ;; Distribution estimates
              percentiles  (compute-estimated-percentiles sorted-xs cum-counts total)
-             q1           (get percentiles 25)
-             med          (get percentiles 50)
-             q3           (get percentiles 75)
+             q1           (:p25 percentiles)
+             med          (:p50 percentiles)
+             q3           (:p75 percentiles)
              ;; Shape metrics (weighted)
              wskew        (when (>= n min-shape-metrics-points)
                             (stats.u/nan->nil (or (weighted-skewness sorted-xs sorted-ys total wmean wstd) ##NaN)))

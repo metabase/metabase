@@ -22,9 +22,15 @@ const POPOVER_CLOSE_DELAY = POPOVER_FAST_OPEN_DELAY + 30;
 
 import { Dropdown, WidthBound } from "./Popover.styled";
 
+const DEFAULT_MIDDLEWARES: HoverCardProps["middlewares"] = {
+  size: true,
+  shift: true,
+  flip: false,
+};
+
 export type PopoverProps = Pick<
   HoverCardProps,
-  "children" | "position" | "disabled"
+  "children" | "position" | "disabled" | "radius" | "middlewares" | "offset"
 > & {
   width?: number;
   content: ReactNode;
@@ -34,6 +40,9 @@ export type PopoverProps = Pick<
 export function Popover({
   position = "bottom-start",
   disabled,
+  radius,
+  offset,
+  middlewares = DEFAULT_MIDDLEWARES,
   content,
   openDelay = POPOVER_SLOW_OPEN_DELAY,
   width,
@@ -57,15 +66,13 @@ export function Popover({
     <HoverCard
       position={position}
       disabled={disabled}
+      radius={radius}
+      offset={offset}
       openDelay={group.shouldDelay ? openDelay : POPOVER_FAST_OPEN_DELAY}
       closeDelay={POPOVER_CLOSE_DELAY}
       onOpen={handleOpen}
       onClose={handleClose}
-      middlewares={{
-        size: true,
-        shift: true,
-        flip: false,
-      }}
+      middlewares={middlewares}
     >
       <HoverCard.Target>{children}</HoverCard.Target>
       <Dropdown

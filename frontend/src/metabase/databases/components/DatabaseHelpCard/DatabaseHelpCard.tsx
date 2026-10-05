@@ -30,7 +30,10 @@ export const DatabaseHelpCard = ({
       {isHosted && (
         <p>
           {jt`Docs weren't enough? ${(
-            <ExternalLink key="link" href="https://www.metabase.com/help/cloud">
+            <ExternalLink
+              key="link"
+              href="https://www.metabase.com/help-premium"
+            >
               {t`Write us.`}
             </ExternalLink>
           )}`}

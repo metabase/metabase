@@ -155,7 +155,7 @@ function ModalBody({
     >
       <Form>
         <Stack gap="sm">
-          <Text>{t`Publishing a table saves it to the Library.`}</Text>
+          <Text>{t`Publishing a table saves it to the semantic layer.`}</Text>
           {unpublished_upstream_tables.length > 0 && (
             <>
               <Text>{getForeignKeyMessage(selected_table)}</Text>

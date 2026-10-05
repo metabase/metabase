@@ -131,6 +131,7 @@ const GOOGLE_TYPE = createMockLlmProviderType({
       display_name: "Claude Sonnet 4.6",
     },
   ],
+  model_fields: ["endpoint-id"],
   required_any: [["service-account-key"], ["oauth-access-token", "project-id"]],
   fields: [
     createMockLlmProviderField({
@@ -164,6 +165,12 @@ const GOOGLE_TYPE = createMockLlmProviderType({
       type: "password",
       required: false,
       show_when: { field: "auth-method", value: "oauth-token" },
+    }),
+    createMockLlmProviderField({
+      key: "endpoint-id",
+      label: "Model Garden endpoint ID",
+      type: "text",
+      required: false,
     }),
   ],
 });
@@ -338,6 +345,43 @@ describe("ProviderConnectionForm with fields behind a choice", () => {
       model: "google/gemini-3.6-flash",
     });
   });
+
+  it("connects to a Model Garden endpoint in place of a catalog model", async () => {
+    const { onSaved } = setupGoogle();
+    const key = '{"type":"service_account"}';
+
+    await pickGoogle();
+    await userEvent.upload(
+      screen.getByLabelText("Service account key file file input"),
+      new File([key], "key.json", { type: "application/json" }),
+    );
+    expect(screen.getByLabelText("Model")).toBeInTheDocument();
+
+    await userEvent.type(
+      screen.getByLabelText("Model Garden endpoint ID"),
+      "1234567890123456789",
+    );
+
+    expect(screen.queryByLabelText("Model")).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: "Connect" }));
+
+    await waitFor(() => {
+      expect(onSaved).toHaveBeenCalled();
+    });
+    expect(
+      await fetchMock.callHistory
+        .lastCall("path:/api/llm/providers", { method: "POST" })
+        ?.request?.json(),
+    ).toEqual({
+      type: "google",
+      name: "Google Gemini Enterprise",
+      config: {
+        "service-account-key": key,
+        "endpoint-id": "1234567890123456789",
+      },
+    });
+  });
 });
 
 describe("ProviderConnectionForm editing a fixed-catalog connection", () => {
@@ -419,6 +463,39 @@ describe("ProviderConnectionForm editing a fixed-catalog connection", () => {
     expect(await screen.findByLabelText("Model")).toHaveValue(
       "Gemini 3.5 Flash",
     );
+  });
+
+  it("saves a connection that names an endpoint without picking a catalog model", async () => {
+    const { onSaved } = setupGoogle(
+      createMockLlmProviderConnection({
+        key: "google",
+        type: "google",
+        name: "Google Gemini Enterprise",
+        config: {
+          "auth-method": "oauth-token",
+          "oauth-access-token": "**********en",
+          "project-id": "my-project",
+          "endpoint-id": "1234567890123456789",
+        },
+      }),
+      { modelRef: "google/endpoints/1234567890123456789" },
+    );
+
+    expect(
+      await screen.findByLabelText("Model Garden endpoint ID"),
+    ).toHaveValue("1234567890123456789");
+    expect(screen.queryByLabelText("Model")).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    await waitFor(() => {
+      expect(onSaved).toHaveBeenCalled();
+    });
+    expect(
+      await fetchMock.callHistory
+        .lastCall("express:/api/llm/providers/:key", { method: "PUT" })
+        ?.request?.json(),
+    ).not.toHaveProperty("model");
   });
 
   it("disables the fields the environment owns and leaves the rest editable", async () => {

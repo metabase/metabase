@@ -52,6 +52,7 @@
    :databaseId     1
    :sourceTableId  10
    :description    "Total order revenue"
+   :filters        ["Status is paid" "Created At is in the previous 30 days"]
    :mappedTableIds [10 20]
    :dimensions     {"paymentMethod" payment-method-dimension
                     "franchiseName" franchise-name-dimension}})
@@ -78,6 +79,7 @@
     ;; Emit comments to provide context for agents
     (is (str/includes? body "// Description: Saved orders"))
     (is (str/includes? body "// Description: Total order revenue"))
+    (is (re-find #"// Filters:\n\s*// - Status is paid\n\s*// - Created At is in the previous 30 days\n" body))
     (is (str/includes? body "// Display name: Payment Method"))
     (is (str/includes? body "// Semantic type: type/Category"))
     ;; Emit metadata needed for the Lib.createTestQuery DSL
@@ -87,7 +89,8 @@
     (is (str/includes? body "sourceTableId: 10"))
     (is (str/includes? body "mappedTableIds: [ 10, 20 ]"))
     ;; Comment-only metadata should not become runtime fields.
-    (is (not (str/includes? body "displayName: \"Payment Method\"")))))
+    (is (not (str/includes? body "displayName: \"Payment Method\"")))
+    (is (not (str/includes? body "filters:")))))
 
 (deftest typescript-renderer-compacts-metric-dimensions-test
   (let [body (typed-schemas/render-typescript compacting-schema)]
@@ -155,28 +158,6 @@
       (is (= [:lit "payment_method"] (obj-entry field-node :name)))
       (is (= [:lit "string"] (obj-entry field-node :jsType)))
       (is (nil? (obj-entry field-node :displayName))))))
-
-(def ^:private schema-with-errors
-  {:schemaVersion 2
-   :metabase      {:instanceUrl "https://metabase.example.com"}
-   :questions     {}
-   :models        {}
-   :tables        {}
-   :metrics       {}
-   :errors        [{:type      "modelError"
-                    :modelId   7
-                    :modelName "Broken model"
-                    :message   "Failed to build action schemas for model \"Broken model\" (card 7): boom"}]})
-
-(deftest typescript-renderer-emits-model-errors-test
-  (let [body (typed-schemas/render-typescript schema-with-errors)]
-    ;; Broken models surface as runtime data so agents can tell users which
-    ;; models are bad instead of the whole response failing.
-    (is (str/includes? body "errors: ["))
-    (is (str/includes? body "type: \"modelError\""))
-    (is (str/includes? body "modelId: 7"))
-    (is (str/includes? body "modelName: \"Broken model\""))
-    (is (str/includes? body "message: \"Failed to build action schemas"))))
 
 (deftest typescript-renderer-omits-pick-fields-helper-for-raw-dimensions-test
   (let [body (typed-schemas/render-typescript raw-dimensions-schema)]

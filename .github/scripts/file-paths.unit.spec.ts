@@ -49,6 +49,7 @@ describe("file-paths.yaml", () => {
     "%s skips a ratchets-only change and still follows the rest of .clj-kondo",
     (name) => {
       expect(matches(name, ".clj-kondo/ratchets.edn")).toBe(false);
+      expect(matches(name, ".clj-kondo/ratchets-test.edn")).toBe(false);
       expect(matches(name, ".clj-kondo/config/modules/ratchets.edn")).toBe(
         false,
       );
@@ -59,6 +60,32 @@ describe("file-paths.yaml", () => {
 
   it("runs CI script tests when the Node version changes", () => {
     expect(matches("ci_scripts", ".nvmrc")).toBe(true);
+  });
+
+  it.each([
+    "frontend/lint/config.mjs",
+    "frontend/lint/oxlint/rule-map.json",
+    "frontend/lint/eslint-plugin-metabase/rules/no-module-side-effects.js",
+    "frontend/lint/tests/oxlint-config.test.mjs",
+  ])(
+    "runs frontend checks without forcing full suites when %s changes",
+    (file) => {
+      expect(matches("frontend_all", file)).toBe(true);
+      expect(matches("frontend_unit_infra", file)).toBe(false);
+      expect(matches("frontend_loki_infra", file)).toBe(false);
+    },
+  );
+
+  it("treats frontend/lint/OXLINT.md as a documentation-only change", () => {
+    expect(matches("frontend_all", "frontend/lint/OXLINT.md")).toBe(false);
+    expect(matches("documentation", "frontend/lint/OXLINT.md")).toBe(true);
+  });
+
+  it.each([
+    "frontend/lint/module-boundaries.mjs",
+    "frontend/lint/shared-tiers.mjs",
+  ])("keeps CI script coverage for %s", (file) => {
+    expect(matches("ci_scripts", file)).toBe(true);
   });
 
   it.each([
@@ -94,6 +121,9 @@ describe("file-paths.yaml", () => {
     expect(matches("project_ratchet_checks", ".clj-kondo/ratchets.edn")).toBe(
       true,
     );
+    expect(
+      matches("project_ratchet_checks", ".clj-kondo/ratchets-test.edn"),
+    ).toBe(true);
     expect(
       matches(
         "project_ratchet_checks",
@@ -177,5 +207,14 @@ describe("file-paths.yaml", () => {
     "e2e/support/cypress.config.js",
   ])("runs CI-script tests when %s changes", (file) => {
     expect(matches("ci_scripts", file)).toBe(true);
+  });
+
+  it("runs the module cycles test when a cluster is named", () => {
+    expect(
+      matches(
+        "project_backend_checks",
+        ".clj-kondo/config/modules/cycle-clusters.edn",
+      ),
+    ).toBe(true);
   });
 });

@@ -112,7 +112,6 @@
                                        [(:exploration_thread_id b) cid])))
                           blocks)
           cards     (when (seq card-id)
-                      ;; `:card_schema` is mandatory in any explicit Card column list
                       (u/index-by :id (explorations.db/card-queries (distinct (vals card-id)))))]
       (map (fn [{thread-id :id :as thread}]
              (let [card (get cards (get card-id thread-id))]

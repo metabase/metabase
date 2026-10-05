@@ -1,8 +1,10 @@
 import { type KeyboardEvent, useState } from "react";
 import { t } from "ttag";
 
+import { useHasTokenFeature } from "metabase/common/hooks";
 import {
   canEditMembership,
+  getAddMembersDisabledReason,
   getGroupNameLocalized,
   getGroupSortOrder,
   isAdminGroup,
@@ -18,6 +20,7 @@ import {
   Flex,
   Pill,
   PillsInput,
+  Tooltip,
   useCombobox,
 } from "metabase/ui";
 import { isNotNull } from "metabase/utils/types";
@@ -57,6 +60,13 @@ export const GroupsMultiSelect = ({
 }: GroupsMultiSelectProps) => {
   const combobox = useCombobox();
   const [search, setSearch] = useState("");
+  const hasAdvancedPermissions = useHasTokenFeature("advanced_permissions");
+
+  // Only additions are gated; an already-selected group stays deselectable.
+  const getAddDisabledReason = (group: GroupInfo) =>
+    value.includes(group.id)
+      ? null
+      : getAddMembersDisabledReason(group, hasAdvancedPermissions);
 
   const groupsById = new Map(groups.map((group) => [group.id, group]));
 
@@ -116,7 +126,7 @@ export const GroupsMultiSelect = ({
 
   const handleOptionSubmit = (groupIdString: string) => {
     const group = groupsById.get(Number(groupIdString));
-    if (group && !isGroupLocked(group)) {
+    if (group && !isGroupLocked(group) && getAddDisabledReason(group) == null) {
       toggleGroup(group.id);
       setSearch("");
     }
@@ -145,6 +155,7 @@ export const GroupsMultiSelect = ({
       group={group}
       isSelected={value.includes(group.id)}
       isLocked={isGroupLocked(group)}
+      addDisabledReason={getAddDisabledReason(group)}
       showManagerToggle={canEditManager(group)}
       isManager={isManager(group.id)}
       onToggleManager={() => onToggleManager?.(group.id)}
@@ -290,6 +301,7 @@ interface GroupOptionProps {
   group: GroupInfo;
   isSelected: boolean;
   isLocked: boolean;
+  addDisabledReason: string | null;
   showManagerToggle: boolean;
   isManager: boolean;
   onToggleManager: () => void;
@@ -299,35 +311,42 @@ const GroupOption = ({
   group,
   isSelected,
   isLocked,
+  addDisabledReason,
   showManagerToggle,
   isManager,
   onToggleManager,
 }: GroupOptionProps) => (
-  <Combobox.Option
-    value={String(group.id)}
-    aria-label={getGroupNameLocalized(group)}
-    active={isSelected}
-    disabled={isLocked}
+  <Tooltip
+    label={addDisabledReason}
+    disabled={addDisabledReason == null}
+    position="right"
   >
-    <Flex align="center" justify="space-between" gap="sm">
-      <Flex align="center" gap="sm">
-        <Checkbox
-          className={S.checkbox}
-          checked={isSelected}
-          readOnly
-          aria-hidden
-          tabIndex={-1}
-        />
-        <span>{getGroupNameLocalized(group)}</span>
-      </Flex>
-      {showManagerToggle && (
-        <Box onMouseDown={(event) => event.preventDefault()}>
-          <PLUGIN_GROUP_MANAGERS.UserTypeToggle
-            isManager={isManager}
-            onChange={onToggleManager}
+    <Combobox.Option
+      value={String(group.id)}
+      aria-label={getGroupNameLocalized(group)}
+      active={isSelected}
+      disabled={isLocked || addDisabledReason != null}
+    >
+      <Flex align="center" justify="space-between" gap="sm">
+        <Flex align="center" gap="sm">
+          <Checkbox
+            className={S.checkbox}
+            checked={isSelected}
+            readOnly
+            aria-hidden
+            tabIndex={-1}
           />
-        </Box>
-      )}
-    </Flex>
-  </Combobox.Option>
+          <span>{getGroupNameLocalized(group)}</span>
+        </Flex>
+        {showManagerToggle && (
+          <Box onMouseDown={(event) => event.preventDefault()}>
+            <PLUGIN_GROUP_MANAGERS.UserTypeToggle
+              isManager={isManager}
+              onChange={onToggleManager}
+            />
+          </Box>
+        )}
+      </Flex>
+    </Combobox.Option>
+  </Tooltip>
 );

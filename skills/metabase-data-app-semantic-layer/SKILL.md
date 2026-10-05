@@ -58,14 +58,14 @@ Scope parameters:
 - `include-data-library=true` for the whole `Library / Data` tree.
 - `include-metric-library=true` for the whole `Library / metrics` tree.
 - `library-collections=<id-or-entity-id>[,<id-or-entity-id>]` for specific Data or metrics library subcollections.
-- `include-models=true` for readable models that have actions. When combined with `database=<name-or-id>`, it includes models with actions for that database only.
+- `include-actions=true` for the actions the app can run, under `schema.actions`. When combined with `database=<name-or-id>`, it includes that database's actions only.
 - `database=<name-or-id>` when the app should use tables from one database. Use it separately from library scopes; the API rejects that combination.
 
 Combine library scopes when the app needs both tables and curated metrics.
 
-Use `include-models=true` when the app needs any saved action under `schema.models.<model>.actions`; it includes all readable models with executable actions, unless `database` scopes them to one database. Models without executable actions are omitted to keep generated schemas compact. It can be combined with `library-collections`, `include-data-library`, or `include-metric-library` so one schema can include selected tables/metrics plus all readable actions.
+Use `include-actions=true` when the app needs any saved action under `schema.actions`; it includes all readable actions, unless `database` scopes them to one database. It can be combined with `library-collections`, `include-data-library`, or `include-metric-library` so one schema can include selected tables/metrics plus all readable actions.
 
-If the user asks for any mutation-like flow, such as creating, updating, deleting, submitting, approving, executing an action, or running a write operation, include `include-models=true` in the typed-schema URL. Do this even when the user names one specific model/action, because actions are only discoverable through generated model entries.
+If the user asks for any mutation-like flow, such as creating, updating, deleting, submitting, approving, executing an action, or running a write operation, include `include-actions=true` in the typed-schema URL. Do this even when the user names one specific action, because actions are only discoverable through the generated schema.
 
 The Metabase URL and API key live in the **repo-root** `.env.local` as
 `DATA_APP_MB_URL` and `DATA_APP_MB_API_KEY` (one file per repo, usually two levels up
@@ -109,7 +109,7 @@ fi
 
 After a successful export, verify that the schema contains every entity needed for the requested app. If any are missing, revise the scope using available context or ask for the missing context before building the UI.
 
-If schema generation fails while building a selected model or model action, do not hide, paraphrase away, or retry past the error. Surface the typed-schema error to the user, including the failing `card-id` / `card-name` / `card-type`, `model-id` / `model-name`, dropped action ids, and message when present.
+If schema generation fails, do not hide, paraphrase away, or retry past the error. Surface the typed-schema error to the user, including the failing ids, names, and message when present.
 
 ## Synchronize every query and action
 
@@ -124,11 +124,11 @@ export const RevenueQuery = defineQuery({ source: schema.tables.orders });
 
 // actions/orders.action.ts
 export const CreateOrder = defineAction({
-  action: schema.models.orders.actions.create,
+  action: schema.actions.createOrder,
 });
 ```
 
-One `sync-resources` run reconciles both. For a query it materializes the authored table query as a saved question and injects `savedQuestionSourceId`. For an action it copies the action's parent model into the app collection, copies the action onto that copy, and injects `copiedActionId`; a model is copied once no matter how many of its actions the app declares, siblings reuse that copy, and it disappears with the last declaration. Never copy a model into the app collection by hand.
+One `sync-resources` run reconciles both. For a query it materializes the authored table query as a saved question and injects `savedQuestionSourceId`. For an action it copies the action into the app collection and injects `copiedActionId`; the copy disappears with its declaration. Never copy an action into the app collection by hand.
 
 Pass the definition itself to the hook and let the SDK resolve what runs — a production build runs the copy, while the dev preview runs the authored table or action, so an app works before its first synchronization:
 
@@ -140,13 +140,13 @@ const { data } = useMetabaseQuery(RevenueQuery, {
 const { execute, isExecuting, error } = useAction(CreateOrder);
 ```
 
-Never pass an inline table-source query (not even a read-only, filter-option, or helper query), a raw action id, `savedQuestionSourceId`, `copiedActionId`, or a hand-built `{ source: { type: "card", id } }`, and never spread a definition into a new object. Each defeats the swap; the authored ids also bypass the permission boundary. TypeScript rejects most of these: the hooks accept only what `defineQuery`/`defineAction` returned, so an inline object, a `satisfies`-typed object, a spread copy, and `schema.models.<model>.actions.<action>` all fail to compile. When `tsc` reports `Property 'definedWithDefineQuery' is missing` or `Property 'definedWithDefineAction' is missing`, the argument is not a definition: move it into `queries/` or `actions/` and import the export. Do not silence it with a cast or by wrapping the inline object in `defineQuery(...)` at the call site, which compiles but leaves the query unsynchronized. Keep fixed permission-boundary filters, aggregations, and breakouts inside `defineQuery` — synchronization bakes them into the saved question, so don't apply them again outside it, and put runtime clauses in the hook's second argument (see *Static and dynamic query parts*). `useAction` needs no generics: the definition types `execute`'s parameters and `result`.
+Never pass an inline table-source query (not even a read-only, filter-option, or helper query), a raw action id, `savedQuestionSourceId`, `copiedActionId`, or a hand-built `{ source: { type: "card", id } }`, and never spread a definition into a new object. Each defeats the swap; the authored ids also bypass the permission boundary. TypeScript rejects most of these: the hooks accept only what `defineQuery`/`defineAction` returned, so an inline object, a `satisfies`-typed object, a spread copy, and `schema.actions.<action>` all fail to compile. When `tsc` reports `Property 'definedWithDefineQuery' is missing` or `Property 'definedWithDefineAction' is missing`, the argument is not a definition: move it into `queries/` or `actions/` and import the export. Do not silence it with a cast or by wrapping the inline object in `defineQuery(...)` at the call site, which compiles but leaves the query unsynchronized. Keep fixed permission-boundary filters, aggregations, and breakouts inside `defineQuery` — synchronization bakes them into the saved question, so don't apply them again outside it, and put runtime clauses in the hook's second argument (see *Static and dynamic query parts*). `useAction` needs no generics: the definition types `execute`'s parameters and `result`.
 
 Wire `package.json` with `"sync-resources": "embedding-sdk-react data-apps sync-resources"` and `"build": "npm run sync-resources && vite build"`, then run `npm run build` after adding, changing, renaming, or removing any definition; run `sync-resources` directly only to inspect generated state before a build. It reads `DATA_APP_MB_URL` and `DATA_APP_MB_API_KEY` from the repo-root `.env.local`.
 
-Inline generated IDs and `resources_metadata.json` are generated state: never delete or hand-edit either. A missing ID is restored automatically when the definition still identifies its resource — a query by its table and authored hash matching one unclaimed lockfile entry, an action by naming the same action — while a duplicated ID fails the run. Do not test or hand off the app until `npm run build` succeeds, every live definition carries a positive generated ID, and `resources_metadata.json` holds its matching entry. Commit every generated change. The build stops before bundling when synchronization fails.
+Inline generated IDs and `resources_metadata.json` are generated state: never delete or hand-edit either. A missing ID is restored automatically when the definition still identifies its resource — a query by its table and authored hash matching one unclaimed lockfile entry, an action by declaring the same source action — while a duplicated ID fails the run. Do not test or hand off the app until `npm run build` succeeds, every live definition carries a positive generated ID, and `resources_metadata.json` holds its matching entry. Commit every generated change. The build stops before bundling when synchronization fails.
 
-If synchronization fails, surface the exact error and stop. Fix local shape, serialization, duplicate-ID, or lockfile errors before retrying. A confirmed `404` is recovered automatically; authentication, permission, network, server, collection-ownership, and Card-type failures must not trigger manual Card creation, deletion, ID replacement, or lockfile editing. Treat a successful run that discovers nothing as a failure when the app has queries or actions. Synchronization copies actions but never creates them, so an action the app needs must already exist in Metabase and be picked up by a regenerated schema; if the run reports that actions are not enabled for the database, stop and tell the user to enable them rather than working around it.
+If synchronization fails, surface the exact error and stop. Fix local shape, serialization, duplicate-ID, or lockfile errors before retrying. A confirmed `404` is recovered automatically; authentication, permission, network, server, collection-ownership, and Card-type failures must not trigger manual Card or action creation, deletion, ID replacement, or lockfile editing. Treat a successful run that discovers nothing as a failure when the app has queries or actions. Synchronization copies actions but never creates them, so an action the app needs must already exist in Metabase, without a model, and be picked up by a regenerated schema; if the run reports that actions are not enabled for the database, stop and tell the user to enable them rather than working around it.
 
 ## Standard pattern
 
@@ -292,7 +292,24 @@ export const AmountByCategory = defineQuery({
 });
 ```
 
-When using the same helper more than once, Metabase may return numbered runtime keys such as `sum`, `sum_2`, and `sum_3`. TypeScript only models the base helper key today. For custom KPI code that intentionally uses repeated same-kind aggregations, read through `data.columns` or cast the row to `Record<string, unknown>` before accessing numbered keys. Prefer curated measures or separate queries when that is clearer.
+When a query uses the same helper more than once, give each one a `name`. The name becomes the result column's name and the row key, it is typed, and it is how `orderBy(...)` and runtime clauses refer to that aggregation. Without names, the columns come back as `sum`, `sum_2`, and so on, and sorting or filtering by one of them fails:
+
+```ts
+const totalAmount = aggregations.sum(recordsTable.fields.amount, {
+  name: "total_amount",
+});
+const totalTax = aggregations.sum(recordsTable.fields.tax, {
+  name: "total_tax",
+});
+
+export const TaxByCategory = defineQuery({
+  source: recordsTable,
+  aggregations: [totalAmount, totalTax],
+  breakouts: [breakout(recordsTable.fields.category)],
+  orderBys: [orderBy(totalTax, "desc")],
+});
+// Rows are keyed `total_amount` and `total_tax`.
+```
 
 Table fields, segments, measures, filters, breakouts, and orderBys must come from the queried table. Use `defineQuery<RecordsTable>({ ... })` when you want TypeScript to validate that ownership at the definition.
 
@@ -630,7 +647,7 @@ const orderFilters = useMemo(
 - Treat row values as nullable. Guard before calling number/string methods such as `toFixed`, `toLocaleString`, or string transforms.
 - Use `rawRows` only for known positional shapes.
 - Aggregation columns may be named `count`, `sum`, or `avg`; match metadata when needed.
-- If a custom visualization needs several helper aggregations with the same output name, such as multiple `aggregations.sum(...)` calls, prefer separate single-aggregation queries so each typed row has the known `sum` key. If one multi-aggregation query is necessary, read `rawRows` by column position after checking `data.columns`; do not depend on generated names like `sum_2` unless they are explicitly typed or narrowed in the app code.
+- If a query has several helper aggregations of the same kind, such as multiple `aggregations.sum(...)` calls, name each one (`{ name: "..." }`) and read the rows by those names. Never depend on generated names like `sum_2`.
 - Grouped queries can include a `null` breakout bucket. Render it as `"Unknown"` or filter it out deliberately.
 - Time-series charts need multiple ordered buckets. Do not fake sparklines for scalar or one-point results.
 - Multi-series charts with different units or magnitudes need separate axes or normalization.

@@ -53,7 +53,7 @@
 (defn- collectable-models
   []
   (set/union (archived-directly-models)
-             #{:model/Pulse :model/NativeQuerySnippet :model/Timeline}))
+             #{:model/Action :model/Pulse :model/NativeQuerySnippet :model/Timeline}))
 
 (def ^:private ^:const collection-slug-max-length
   "Maximum number of characters allowed in a Collection `slug`."
@@ -167,6 +167,7 @@
   []
   (collections.db/root-remote-synced-collection))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (defonce ^:dynamic ^:private *clearing-remote-sync* false)
 
 (defn clear-remote-synced-collection!
@@ -246,7 +247,7 @@
   "Create the Library collection. Returns Created collection. Throws if it already exists."
   []
   (when-not (nil? (library-collection))
-    (throw (ex-info "Library already exists" {})))
+    (throw (ex-info "Semantic layer already exists" {})))
   (let [library       (collections.db/insert-collection! {:name      "Library"
                                                           :type      library-collection-type
                                                           :location  "/"
@@ -1650,6 +1651,7 @@
      (cons (perms/collection-readwrite-path (u/the-id collection))
            (map perms/collection-readwrite-path descendant-ids)))))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *allow-modifying-tenant-root-collections?*
   "We archive tenant root collections only when the tenant is archived."
   false)
@@ -1691,6 +1693,7 @@
       (collections.db/set-pulse-archived-in-collections! affected-collection-ids true)
       (collections.db/set-native-query-snippet-archived-in-collections! affected-collection-ids true)
       (collections.db/set-timeline-archived-in-collections! affected-collection-ids true)
+      (collections.db/set-action-archived-in-collections! affected-collection-ids true)
       (collections.db/set-card-archived-in-collections-not-directly! affected-collection-ids true)
       (collections.db/set-dashboard-archived-in-collections-not-directly! affected-collection-ids true)
       (collections.db/set-document-archived-in-collections-not-directly! affected-collection-ids true)
@@ -1758,6 +1761,7 @@
       (collections.db/set-dashboard-archived-in-collections-not-directly! affected-collection-ids false)
       (collections.db/set-document-archived-in-collections-not-directly! affected-collection-ids false)
       (collections.db/set-exploration-archived-in-collections-not-directly! affected-collection-ids false)
+      (collections.db/set-action-archived-in-collections! affected-collection-ids false)
       (when (:is_remote_synced collection)
         (check-non-remote-synced-dependencies collection)))))
 
@@ -2046,6 +2050,7 @@
 
 ;;; ----------------------------------------------------- DELETE -----------------------------------------------------
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (defonce ^:dynamic ^{:doc "Whether to allow deleting Personal Collections. Normally we should *never* allow this, but
   in the single case of deleting a User themselves, we need to allow this. (Note that in normal usage, Users never get
   deleted, but rather archived; thus this code is used solely by our test suite, by things such as the `with-temp`
@@ -2068,7 +2073,8 @@
     (collections.db/delete-dashboards-in-collections! affected-collection-ids)
     (collections.db/delete-native-query-snippets-in-collections! affected-collection-ids)
     (collections.db/delete-pulses-in-collections! affected-collection-ids)
-    (collections.db/delete-timelines-in-collections! affected-collection-ids))
+    (collections.db/delete-timelines-in-collections! affected-collection-ids)
+    (collections.db/delete-actions-in-collections! affected-collection-ids))
   ;; You can't delete a Personal Collection! Unless we enable it because we are simultaneously deleting the User
   (when-not *allow-deleting-personal-collections*
     (when (:personal_owner_id collection)
@@ -2155,13 +2161,15 @@
                                {["Document" doc-id] {"Collection" id}})))
         timelines   (into {} (for [timeline-id (collections.db/timeline-ids-in-collection id skip-archived)]
                                {["Timeline" timeline-id] {"Collection" id}}))
+        actions     (into {} (for [action-id (collections.db/action-ids-in-collection id skip-archived)]
+                               {["Action" action-id] {"Collection" id}}))
         tables      (into {} (for [table-id (collections.db/published-table-ids-in-collection id skip-archived)]
                                {["Table" table-id] {"Collection" id}}))
         ;; Transforms don't have an archived column, so we don't filter by skip-archived
         transforms  (when config/ee-available?
                       (into {} (for [transform-id (collections.db/transform-ids-in-collection id)]
                                  {["Transform" transform-id] {"Collection" id}})))]
-    (merge child-colls dashboards cards documents timelines tables transforms)))
+    (merge child-colls dashboards cards documents timelines actions tables transforms)))
 
 (defmethod serdes/storage-path "Collection" [coll {:keys [collections]}]
   (let [path      (get collections (:entity_id coll))

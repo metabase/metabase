@@ -104,9 +104,32 @@ interactive explorer with a dependency graph.
 After changing Clojure suppressions or module-boundary escape hatches, run `./bin/mage kondo-ratchets`.
 Fix the underlying issue when possible; suppressions are a last resort and need a nearby explanation.
 
+Inline-ignore budgets (`:ignore-counts`) are split by prod/test so one side's suppressions can never mask
+or look equivalent to the other's: `.clj-kondo/ratchets.edn` covers production code, and
+`.clj-kondo/ratchets-test.edn` covers anything under a `test` directory. `:config-counts`
+(`.clj-kondo/config.edn` suppressions) stays combined in `.clj-kondo/ratchets.edn` regardless -- see that
+file's own header for why. `.clj-kondo/config/modules/ratchets.edn` (module-boundary escape hatches) is a
+separate, unsplit concern.
+
 Explain budget increases in the PR. Do not record reductions in feature PRs: post-merge automation opens
 a `Tighten ratchets` PR for them. Use `./bin/mage kondo-ratchets-shrink --seed :linter` only when adding an
-inline-ignore budget. If either ratchet file conflicts, run `./bin/merge-kondo-ratchets`.
+inline-ignore budget. If any ratchet file conflicts, run `./bin/merge-kondo-ratchets`.
+
+`.clj-kondo/config/modules/cycle-clusters.edn` names each cyclic cluster (strongly connected component) of the module
+require graph by an anchor module: the cluster holding the anchor carries the name, and its members are computed,
+so a named cluster can grow and shrink without an edit. The big one is `galactic-center`. Names follow a space
+theme; the `name-module-cycle` skill helps pick one.
+
+The test `metabase.core.module-cycles-test` fails until every cluster holds exactly one anchor. When you split a
+cluster, name the new half: the failure proposes a name and anchor to add. When two named clusters merge, find
+another way; the failure shows the requires joining them. When an anchor leaves every cycle, anchor its name on
+another member if the cluster survives, or remove the line.
+
+Ignores for `:discouraged-var` and `:discouraged-namespace` are budgeted per symbol, not per linter, in both
+files. Use `--seed :discouraged-var/clojure.core/println` to seed one symbol's budget, or a bare
+`--seed :discouraged-var` (or `:discouraged-namespace`) to seed every symbol configured under that linter.
+To learn which symbol an ignore covers, `./bin/mage kondo-ratchets` runs `clojure -M:kondo` over the files
+carrying one, so it needs the Clojure CLI as well as Babashka.
 
 ## Tool Preferences
 

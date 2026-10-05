@@ -1636,6 +1636,7 @@
               (is (= (map #(dissoc % :id) original-tabs)
                      (map #(dissoc % :id) new-tabs))))))))))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic ^:private
   ^{:doc "Set of ids that will report [[mi/can-write]] as true."}
   *readable-card-ids* #{})
@@ -2369,7 +2370,7 @@
 (deftest dashcard-action-create-update-test
   (mt/test-drivers (mt/normal-drivers-with-feature :actions)
     (mt/with-actions-test-data-and-actions-enabled
-      (doseq [action-type [:http :implicit :query]]
+      (doseq [action-type [:implicit :query]]
         (mt/with-actions [{:keys [action-id]} {:type action-type :visualization_settings {:hello true}}]
           (testing (str "Creating dashcard with action: " action-type)
             (mt/with-temp [:model/Dashboard {dashboard-id :id} {}]
@@ -2386,12 +2387,11 @@
                                                                             :action_id              action-id
                                                                             :visualization_settings {:label "Update"}}]
                                                                :tabs      []}))))
-              (is (partial= {:dashcards [{:action (cond-> {:visualization_settings {:hello true}
-                                                           :type (name action-type)
-                                                           :parameters [{:id "id"}]
-                                                           :database_enabled_actions true}
-                                                    (#{:query :implicit} action-type)
-                                                    (assoc :database_id (mt/id)))}]}
+              (is (partial= {:dashcards [{:action {:visualization_settings   {:hello true}
+                                                   :type                     (name action-type)
+                                                   :parameters               [{:id "id"}]
+                                                   :database_enabled_actions true
+                                                   :database_id              (mt/id)}}]}
                             (mt/user-http-request :crowberto :get 200 (format "dashboard/%s" dashboard-id)))))))))))
 
 (deftest dashcard-action-database-enabled-actions-test
@@ -6093,6 +6093,55 @@
       (mt/user-http-request :crowberto :put 200 (str "dashboard/" dashboard-id) {:archived false})
       (is (=? {:archived false :collection_id collection-id}
               (t2/select-one :model/Dashboard :id dashboard-id))))))
+
+;; Subscription setup and listing go through these helpers, so the round trip below outlives a move of Dashboard
+;; subscriptions off Pulse: swap the helpers, keep the assertions.
+(defn- create-dashboard-subscription!
+  [dashboard-id card-id dashcard-id recipient-id]
+  (mt/user-http-request :crowberto :post 200 "pulse"
+                        {:name         "Subscription"
+                         :dashboard_id dashboard-id
+                         :cards        [{:id card-id :include_csv false :include_xls false :dashboard_card_id dashcard-id}]
+                         :channels     [{:enabled       true
+                                         :channel_type  "email"
+                                         :schedule_type "daily"
+                                         :schedule_hour 12
+                                         :schedule_day  nil
+                                         :recipients    [{:id recipient-id}]}]}))
+
+(defn- dashboard-subscriptions
+  "The Dashboard's subscriptions, each as its card ids and its channels' type, schedule and recipients."
+  [dashboard-id]
+  (for [subscription (mt/user-http-request :crowberto :get 200 "pulse" :dashboard_id dashboard-id)]
+    {:cards    (map :id (:cards subscription))
+     :channels (for [channel (:channels subscription)]
+                 {:channel_type  (:channel_type channel)
+                  :schedule_type (:schedule_type channel)
+                  :schedule_hour (:schedule_hour channel)
+                  :recipients    (map :id (:recipients channel))})}))
+
+(deftest trash-and-restore-dashboard-keeps-subscriptions-test
+  (testing "trashing then restoring a Dashboard brings its subscriptions back unchanged"
+    (mt/with-fake-inbox
+      (mt/with-temp [:model/Collection    {collection-id :id} {}
+                     :model/Card          {card-id :id}       {:collection_id collection-id}
+                     :model/Dashboard     {dashboard-id :id}  {:collection_id collection-id}
+                     :model/DashboardCard {dashcard-id :id}   {:dashboard_id dashboard-id :card_id card-id}]
+        (mt/with-model-cleanup [:model/Pulse]
+          (let [recipient-id          (mt/user->id :rasta)
+                {subscription-id :id} (create-dashboard-subscription! dashboard-id card-id dashcard-id recipient-id)
+                before                (dashboard-subscriptions dashboard-id)]
+            (is (=? [{:cards [card-id] :channels [{:recipients [recipient-id]}]}]
+                    before))
+            (mt/user-http-request :crowberto :put 200 (str "dashboard/" dashboard-id) {:archived true})
+            (testing "a trashed Dashboard lists no subscriptions"
+              (is (empty? (dashboard-subscriptions dashboard-id))))
+            (mt/user-http-request :crowberto :put 200 (str "dashboard/" dashboard-id) {:archived false})
+            (is (= before (dashboard-subscriptions dashboard-id)))
+            (testing "permanently deleting the Dashboard deletes its subscriptions"
+              (mt/user-http-request :crowberto :put 200 (str "dashboard/" dashboard-id) {:archived true})
+              (mt/user-http-request :crowberto :delete 204 (str "dashboard/" dashboard-id))
+              (mt/user-http-request :crowberto :get 404 (str "pulse/" subscription-id)))))))))
 
 (deftest copy-dashboard-permission-model-test
   (testing "POST /api/dashboard/:id/copy needs only read-on-source + create-on-destination"

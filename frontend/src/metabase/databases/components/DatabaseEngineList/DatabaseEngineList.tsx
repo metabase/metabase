@@ -51,6 +51,7 @@ export const DatabaseEngineList = ({
   const options = getEngineOptions(engines);
 
   const elevatedEngines = options.slice(0, MAX_INITIAL_ENGINES_SHOWN);
+  const hasMoreEngines = options.length > MAX_INITIAL_ENGINES_SHOWN;
   const searchResults = options.filter(({ name }) =>
     name.toLowerCase().includes(search.toLowerCase().trim()),
   );
@@ -125,17 +126,19 @@ export const DatabaseEngineList = ({
               })}
             </Combobox.Options>
 
-            <ListToggle
-              aria-expanded={isExpanded}
-              isExpanded={isExpanded}
-              onClick={() => {
-                if (isExpanded) {
-                  setSearch("");
-                }
+            {hasMoreEngines && (
+              <ListToggle
+                aria-expanded={isExpanded}
+                isExpanded={isExpanded}
+                onClick={() => {
+                  if (isExpanded) {
+                    setSearch("");
+                  }
 
-                setIsExpanded(!isExpanded);
-              }}
-            />
+                  setIsExpanded(!isExpanded);
+                }}
+              />
+            )}
           </ScrollArea>
         ) : (
           <NoDatabaseFound isSetupStep={isSetupStep} />

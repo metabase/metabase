@@ -22,6 +22,15 @@ export function openCollectionMenu() {
   getCollectionActions().icon("ellipsis").click();
 }
 
+export function displaySidebarChildOf(collectionName: string) {
+  navigationSidebar()
+    .findByText(collectionName)
+    .parentsUntil("[data-testid=sidebar-collection-link-root]")
+    .find(".Icon-chevronright")
+    .eq(0) // there may be more nested icons, but we need the top level one
+    .click();
+}
+
 export function getSidebarSectionTitle(name: string | RegExp) {
   return cy.findAllByRole("heading", { name });
 }

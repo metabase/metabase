@@ -18,7 +18,7 @@
    [metabase.bookmarks.api]
    [metabase.bug-reporting.api]
    [metabase.cache.api]
-   [metabase.channel.api]
+   [metabase.channel.rest.api]
    [metabase.cloud-migration.api]
    [metabase.collections-rest.api]
    [metabase.comments.api]
@@ -49,7 +49,7 @@
    [metabase.oauth-server.api.admin]
    [metabase.osi.ai-context.api]
    [metabase.permissions-rest.api]
-   [metabase.premium-features.api]
+   [metabase.premium-features.rest.api]
    [metabase.product-feedback.api]
    [metabase.public-sharing-rest.api]
    [metabase.pulse.api]
@@ -57,7 +57,7 @@
    [metabase.query-processor.api]
    [metabase.revisions.api]
    [metabase.search.api]
-   [metabase.segments.api]
+   [metabase.segments.rest.api]
    [metabase.session.api]
    [metabase.settings-rest.api]
    [metabase.setup-rest.api]
@@ -119,7 +119,7 @@
          metabase.public-sharing-rest.api/keep-me
          metabase.query-processor.api/keep-me
          metabase.revisions.api/keep-me
-         metabase.segments.api/keep-me
+         metabase.segments.rest.api/keep-me
          metabase.settings-rest.api/keep-me
          metabase.setup-rest.api/keep-me
          metabase.task-history.api/keep-me
@@ -183,7 +183,7 @@
    "/cache"                (+auth 'metabase.cache.api)
    "/card"                 (+auth metabase.queries-rest.api/card-routes)
    "/cards"                (+auth metabase.queries-rest.api/cards-routes)
-   "/channel"              (+auth metabase.channel.api/channel-routes)
+   "/channel"              (+auth metabase.channel.rest.api/channel-routes)
    "/cloud-migration"      (+auth 'metabase.cloud-migration.api)
    "/collection"           (+auth 'metabase.collections-rest.api)
    "/comment"              (+auth metabase.comments.api/routes)
@@ -203,7 +203,7 @@
    "/docs"                 (metabase.api.docs/make-routes #'routes)
    "/document"             (+auth metabase.documents.api/routes)
    "/eid-translation"      (+auth 'metabase.eid-translation.api)
-   "/email"                (+auth metabase.channel.api/email-routes)
+   "/email"                (+auth metabase.channel.rest.api/email-routes)
    "/embed"                (+message-only-exceptions metabase.embedding-rest.api/embedding-routes)
    "/embed-mcp"            (+auth metabase.mcp.callback-api/routes)
    "/embed-theme"          (+auth metabase.embedding-rest.api/theme-routes)
@@ -235,18 +235,18 @@
    "/osi"                  {"/ai-context" (+auth 'metabase.osi.ai-context.api)}
    "/permissions"          (+auth 'metabase.permissions-rest.api)
    "/persist"              (+auth 'metabase.model-persistence.api)
-   "/premium-features"     (+auth metabase.premium-features.api/routes)
+   "/premium-features"     (+auth metabase.premium-features.rest.api/routes)
    "/preview_embed"        (+auth metabase.embedding-rest.api/preview-embedding-routes)
    "/product-feedback"     'metabase.product-feedback.api
    "/public"               (+public-exceptions metabase.public-sharing-rest.api/routes)
    "/pulse"                metabase.pulse.api/pulse-routes
    "/revision"             (+auth 'metabase.revisions.api)
    "/search"               (+auth metabase.search.api/routes)
-   "/segment"              (+auth 'metabase.segments.api)
+   "/segment"              (+auth 'metabase.segments.rest.api)
    "/session"              metabase.session.api/routes
    "/setting"              (+auth 'metabase.settings-rest.api)
    "/setup"                'metabase.setup-rest.api
-   "/slack"                (+auth metabase.channel.api/slack-routes)
+   "/slack"                (+auth metabase.channel.rest.api/slack-routes)
    "/table"                (+auth metabase.warehouse-schema-rest.api/table-routes)
    "/task"                 (+auth 'metabase.task-history.api)
    "/testing"              (if metabase.testing-api.core/enable-testing-routes? 'metabase.testing-api.api pass-thru-handler)

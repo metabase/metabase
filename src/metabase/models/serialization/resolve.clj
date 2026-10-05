@@ -39,10 +39,12 @@
 ;;; Dynamic vars — bound to resolver instances
 ;;; ============================================================
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *export-resolver*
   "The current `SerdesExportResolver` instance. Bound during export."
   nil)
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *import-resolver*
   "The current `SerdesImportResolver` instance. Bound during import."
   nil)
@@ -51,6 +53,7 @@
 ;;; Agent surface
 ;;; ============================================================
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *numeric-ids-allowed?*
   "Whether bare numeric table/field/card ids are accepted alongside portable references inside
   a query body being resolved.

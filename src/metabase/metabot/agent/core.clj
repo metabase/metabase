@@ -47,6 +47,7 @@
 ;; Or via the API with `"debug": true` in the request body, which emits the
 ;; debug log as a "debug_log" data part in the SSE stream.
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *debug-log*
   "When bound to an atom, collects full LLM request/response data per iteration.
   Each entry is a map with :iteration, :request, and :response keys.
@@ -206,6 +207,12 @@
               (= (:finish-reason %) "length"))
         parts))
 
+(defn- errored?
+  "Whether this iteration's LLM call failed. A response that fails partway may contain a tool
+  call that never ran, so it must not continue the loop."
+  [parts]
+  (some #(= (:type %) :error) parts))
+
 (defn- terminal-error-message
   "Message from a tool failure no retry can fix (a permission denial), or nil if there was none."
   [parts]
@@ -221,13 +228,15 @@
   (and (< iteration max-iterations)
        (has-tool-calls? parts)
        (not (terminal-tool-call? terminal-tools parts))
-       (not (truncated? parts))))
+       (not (truncated? parts))
+       (not (errored? parts))))
 
 (defn- finish-reason
   "Determine why the agent loop stopped."
   [iteration max-iterations terminal-tools parts]
   (cond
     (truncated? parts)                         :length
+    (errored? parts)                           :error
     (terminal-tool-call? terminal-tools parts) :terminal-tool
     (and (>= iteration max-iterations)
          (has-tool-calls? parts))              :max-iterations

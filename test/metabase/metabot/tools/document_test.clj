@@ -189,5 +189,5 @@
                             (document-tools/document-construct-model-chart-tool
                              {:name         "Test Name"
                               :description  "Test Desc"
-                              :query        ""
+                              :query        {:lib/type "mbql/query" :stages []}
                               :viz_settings {:chart_type "bar"}}))))))
