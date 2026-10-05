@@ -1,6 +1,6 @@
+import { createRequire } from "node:module";
 import path from "node:path";
 import { isDeepStrictEqual } from "node:util";
-import { createRequire } from "node:module";
 
 import micromatch from "micromatch";
 
@@ -26,7 +26,11 @@ function merge(left, right) {
 function options(name, value) {
   const [severity, ...supplied] = Array.isArray(value) ? value : [value];
   if (severity === "off" || severity === 0) return "off";
-  const result = [...(defaults[name] ?? [])];
+  // Without an options object, native no-unused-vars ignores names matching /^_/.
+  // ESLint's no-unused-vars with no options reports those names.
+  const result = [
+    ...(defaults[name] ?? (name === "no-unused-vars" ? [{}] : [])),
+  ];
   supplied.forEach((value, index) => {
     result[index] =
       value && typeof value === "object" && !Array.isArray(value)
@@ -124,15 +128,18 @@ function hasCssModulesPlugin() {
 
 function glob(pattern) {
   // globset's brace alternatives are equivalent to these simple extglobs.
-  return pattern.replace(
+  const translated = pattern.replace(
     /@\(([^)]+)\)/g,
     (_, alternatives) => `{${alternatives.replaceAll("|", ",")}}`,
   );
+  // Unlike ESLint flat config, oxlint matches a glob without a slash at any depth.
+  return translated.includes("/") ? translated : `./${translated}`;
 }
 
 export function createConfig() {
   const overrides = [];
   const ignorePatterns = [];
+  const configuredExtensions = new Set();
   for (const entry of policy) {
     for (const [name, value] of Object.entries(entry.settings ?? {})) {
       if (
@@ -170,12 +177,19 @@ export function createConfig() {
       }
       // A TypeScript extension can share its native rule with the disabled ESLint base rule.
       const extension = `@typescript-eslint/${name}`;
-      if (
-        normalized === "off" &&
-        ruleMap[extension] === mapped &&
-        Object.hasOwn(entry.rules, extension)
-      )
-        continue;
+      if (normalized === "off" && ruleMap[extension] === mapped) {
+        if (Object.hasOwn(entry.rules, extension)) continue;
+        // An earlier policy entry enabled the TypeScript extension.
+        // Turning the shared native rule off here disables it in every file both entries match.
+        if (configuredExtensions.has(extension)) {
+          throw new Error(
+            `Disabling ${name} after ${extension} requires an explicit ${extension} setting in the same policy entry`,
+          );
+        }
+      }
+      if (name.startsWith("@typescript-eslint/") && normalized !== "off") {
+        configuredExtensions.add(name);
+      }
       rules[mapped] = normalized;
     }
     const globals = Object.fromEntries(

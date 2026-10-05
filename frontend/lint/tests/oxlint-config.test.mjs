@@ -1,10 +1,13 @@
 import assert from "node:assert/strict";
+import { spawnSync } from "node:child_process";
+import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import test from "node:test";
 
 import { ESLint } from "eslint";
-import policy from "../config.mjs";
 
+import policy from "../config.mjs";
 import {
   createConfig,
   jsRules,
@@ -162,5 +165,102 @@ test("should reject unsupported boundary configuration overrides", () => {
     } finally {
       policy.pop();
     }
+  }
+});
+
+test("should reject a later base-rule disable without an explicit TypeScript setting", () => {
+  for (const severity of ["off", 0]) {
+    policy.push({ files: ["**/*.ts"], rules: { "no-unused-vars": severity } });
+    try {
+      assert.throws(
+        () => createConfig(),
+        /Disabling no-unused-vars after @typescript-eslint\/no-unused-vars requires an explicit/,
+      );
+    } finally {
+      policy.pop();
+    }
+  }
+  for (const severity of ["off", "error"]) {
+    policy.push({
+      files: ["**/*.ts"],
+      rules: {
+        "no-unused-vars": "off",
+        "@typescript-eslint/no-unused-vars": severity,
+      },
+    });
+    try {
+      const actual = createConfig().overrides.findLast((entry) =>
+        entry.files.includes("**/*.ts"),
+      ).rules["no-unused-vars"];
+      assert.equal(Array.isArray(actual) ? actual[0] : actual, severity);
+    } finally {
+      policy.pop();
+    }
+  }
+});
+
+test("should keep config-file globs rooted like ESLint", async (t) => {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), "oxlint-glob-test-"));
+  t.after(() => fs.rmSync(directory, { recursive: true, force: true }));
+  const files = [
+    "example.config.js",
+    "nested/example.config.js",
+    "rspack.example.js",
+    "nested/rspack.example.js",
+    ".storybook/example.cjs",
+    "nested/.storybook/example.cjs",
+    "bin/example.js",
+    "nested/bin/example.js",
+  ];
+  for (const file of files) {
+    const filename = path.join(directory, file);
+    fs.mkdirSync(path.dirname(filename), { recursive: true });
+    fs.writeFileSync(filename, "debugger;");
+  }
+  const rules = { "no-debugger": "error" };
+  const original = policy.find((entry) => entry.files?.includes("*.config.js"));
+  const translated = config.overrides.find((entry) =>
+    entry.files.includes(".storybook/*.cjs"),
+  );
+  fs.writeFileSync(
+    path.join(directory, "config.json"),
+    JSON.stringify({
+      categories: { correctness: "off" },
+      overrides: [{ ...translated, rules }],
+    }),
+  );
+  const result = spawnSync(
+    process.execPath,
+    [
+      path.join(root, "node_modules/oxlint/bin/oxlint"),
+      "--disable-nested-config",
+      "--config",
+      "config.json",
+      "--format",
+      "json",
+      ...files,
+    ],
+    { cwd: directory, encoding: "utf8", timeout: 30_000 },
+  );
+  assert.ifError(result.error);
+  assert.equal(result.status, 1, result.stderr);
+  const actual = JSON.parse(result.stdout);
+  assert.equal(actual.number_of_files, files.length);
+  const eslint = new ESLint({
+    cwd: directory,
+    overrideConfigFile: true,
+    overrideConfig: [{ ...original, rules }],
+  });
+  const expected = await eslint.lintFiles(files);
+  for (const file of files) {
+    const legacy = expected.find(
+      (entry) => entry.filePath === path.join(directory, file),
+    );
+    const native = actual.diagnostics.filter(
+      (entry) => entry.filename === file,
+    );
+    const count = file.startsWith("nested/") ? 0 : 1;
+    assert.equal(legacy.messages.length, count, `ESLint ${file}`);
+    assert.equal(native.length, count, `Oxlint ${file}`);
   }
 });

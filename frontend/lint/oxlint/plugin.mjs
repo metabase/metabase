@@ -20,7 +20,8 @@ export function wrap(
         }
         // Oxlint runs createOnce instead of create whenever the property is present.
         // The getters below read context.filename, which throws inside createOnce.
-        const { createOnce: _createOnce, ...legacyRule } = rule;
+        const legacyRule = { ...rule };
+        delete legacyRule.createOnce;
         return [
           name,
           {

@@ -55,6 +55,38 @@ test("should decode JSX text like the TypeScript parser", () => {
 });
 
 const compatibilityCases = [
+  ...["mjs", "cjs"].map((extension) => ({
+    filename: `unused-underscores.${extension}`,
+    code: "const _unused=1; function _fn(_arg) {} try {} catch (_error) {}",
+    rule: "no-unused-vars",
+    oxlint: 4,
+  })),
+  ...["js", "jsx", "ts", "tsx"].flatMap((extension) => [
+    {
+      filename: `ignored-underscore.${extension}`,
+      code: "const _unused=1;",
+      rule: "no-unused-vars",
+      eslintRule: extension.startsWith("ts")
+        ? "@typescript-eslint/no-unused-vars"
+        : "no-unused-vars",
+      oxlint: 0,
+    },
+    {
+      filename: `bare-underscore.${extension}`,
+      code: "const _=1;",
+      rule: "no-unused-vars",
+      eslintRule: extension.startsWith("ts")
+        ? "@typescript-eslint/no-unused-vars"
+        : "no-unused-vars",
+      oxlint: 1,
+    },
+  ]),
+  ...["js", "jsx"].map((extension) => ({
+    filename: `es2021-globals.${extension}`,
+    code: "export const values=[WeakRef,AggregateError,FinalizationRegistry];",
+    rule: "no-undef",
+    oxlint: 0,
+  })),
   {
     filename: "jsx-unused.tsx",
     code: 'import {Used,Unused} from "components"; import * as UI from "components"; export const Example=()=> <><Used/><UI.Button/></>;',
