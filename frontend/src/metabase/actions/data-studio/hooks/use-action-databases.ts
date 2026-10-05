@@ -18,8 +18,3 @@ export function useActionDatabases(): ActionDatabasesResult {
   );
   return { databases, isLoading, error };
 }
-
-export function useHasActionDatabases(): boolean {
-  const { databases } = useActionDatabases();
-  return databases.length > 0;
-}

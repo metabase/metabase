@@ -2,8 +2,9 @@ import { useState } from "react";
 import { t } from "ttag";
 
 import DataStudioLogo from "assets/img/data-studio-logo.svg";
-import { useHasActionDatabases } from "metabase/actions/data-studio";
+import { useListDatabasesQuery } from "metabase/api";
 import { useHasTokenFeature } from "metabase/common/hooks";
+import { hasActionsEnabled } from "metabase/common/utils/database";
 import {
   canAccessDataModel as canAccessDataModelSelector,
   useUserKeyValue,
@@ -56,7 +57,10 @@ export function DataStudioLayout() {
   // if transform setup isn't complete, we still show transforms - that's where the upsell/enable pages are
   const shouldShowTransforms = canUseTransforms || !isTransformsSetupComplete;
 
-  const hasActionDatabases = useHasActionDatabases();
+  const { data: databasesResponse, isLoading: isLoadingDatabases } =
+    useListDatabasesQuery();
+  const hasActionDatabases =
+    databasesResponse?.data.some(hasActionsEnabled) ?? false;
 
   const settings = useDataStudioSettings();
   const currentTab = getCurrentTab(pathname);
@@ -204,7 +208,7 @@ export function DataStudioLayout() {
         />
       }
       testId="data-studio-nav"
-      isLoading={isLoadingNavbarKey}
+      isLoading={isLoadingNavbarKey || isLoadingDatabases}
       isNavbarOpened={isNavbarOpened}
       onNavbarToggle={setIsNavbarOpened}
       headerControls={<PLUGIN_REMOTE_SYNC.GitSyncAppBarControls />}

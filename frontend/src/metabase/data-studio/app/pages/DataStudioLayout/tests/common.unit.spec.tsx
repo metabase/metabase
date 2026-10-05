@@ -2,6 +2,7 @@ import fetchMock from "fetch-mock";
 
 import { screen, waitFor } from "__support__/ui";
 import * as Urls from "metabase/urls";
+import { createMockDatabase } from "metabase-types/api/mocks";
 
 import { setup } from "./setup";
 
@@ -125,6 +126,30 @@ describe("DataStudioLayout", () => {
 
       expect(await screen.findByTestId("data-studio-nav")).toBeInTheDocument();
       expect(screen.queryByLabelText("Settings")).not.toBeInTheDocument();
+    });
+  });
+
+  describe("data actions nav tab", () => {
+    it("shows Data actions when a database has actions enabled", async () => {
+      setup({
+        databases: [
+          createMockDatabase({ id: 1 }),
+          createMockDatabase({
+            id: 2,
+            settings: { "database-enable-actions": true },
+          }),
+        ],
+      });
+
+      expect(await screen.findByTestId("data-studio-nav")).toBeInTheDocument();
+      expect(screen.getByLabelText("Data actions")).toBeInTheDocument();
+    });
+
+    it("hides Data actions when no database has actions enabled", async () => {
+      setup({ databases: [createMockDatabase({ id: 1 })] });
+
+      expect(await screen.findByTestId("data-studio-nav")).toBeInTheDocument();
+      expect(screen.queryByLabelText("Data actions")).not.toBeInTheDocument();
     });
   });
 });
