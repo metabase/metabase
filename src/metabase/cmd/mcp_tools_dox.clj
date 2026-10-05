@@ -3,8 +3,8 @@
 
     clojure -M:ee:doc mcp-tools-documentation
 
-  The page is written from the registry's manifest — the same tool entries a client receives from `tools/list`, plus
-  the `:scope` that answer strips. Each tool is first read into a plain map by [[tool->entry]]; everything after that
+  The page is written from the same tool entries a client receives from `tools/list`, with full extension support so
+  no tool is hidden. Each tool is first read into a plain map by [[tool->entry]]; everything after that
   renders those maps. A tool's own description is written for the model and stays off the page; the argument notes
   are the prose readers get."
   (:require
@@ -122,11 +122,17 @@
     destructiveHint :destructive
     :else           :writes))
 
+(defn- tool-scope
+  "The OAuth scope `tool` requires, read from the `securitySchemes` it publishes."
+  [tool]
+  (-> tool :securitySchemes first :scopes first))
+
 (defn- tool->entry
   "Everything the page says about `tool`, as data. `:scope` carries the consent screen's English wording under
   `:description`, the same label the manifest uses, or nil when no `defscope` registered the scope."
-  [{tool-name :name :keys [scope inputSchema annotations] :as tool}]
-  (let [{:keys [readOnlyHint idempotentHint]} annotations]
+  [{tool-name :name :keys [inputSchema annotations] :as tool}]
+  (let [{:keys [readOnlyHint idempotentHint]} annotations
+        scope                                 (tool-scope tool)]
     {:name        tool-name
      :title       (tool-title tool)
      :scope       {:id scope :description (page-prose (v2.registry/english-scope-label scope))}
@@ -223,7 +229,7 @@
    (generate-dox! output-path))
   ([path]
    (printf "Generating MCP tool documentation in %s\n" path)
-   (let [entries (into [] (comp (remove app-only?) (map tool->entry)) (v2.registry/all-tool-entries))]
+   (let [entries (into [] (comp (remove app-only?) (map tool->entry)) (v2.registry/list-tools))]
      (when (empty? entries)
        (throw (ex-info "No MCP tools found; metabase.mcp.v2.api no longer loads the tool namespaces" {})))
      (cmd.common/write-doc-file! path (document-markdown (cmd.common/load-resource! intro-resource) entries))

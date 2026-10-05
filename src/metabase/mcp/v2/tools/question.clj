@@ -197,8 +197,7 @@
       (do
         (check-native-source-gates! token-scopes)
         (let [{:keys [database_id sql template_tags]} native
-              ;; the schema takes the id as a string too, for clients that serialize every id that way
-              mp (lib-be/application-database-metadata-provider (v2.resolve/normalize-id database_id))]
+              mp (lib-be/application-database-metadata-provider database_id)]
           (-> (lib/native-query mp sql)
               (apply-template-tags template_tags)))))))
 
@@ -508,10 +507,8 @@
     [:maybe [:map {:description (str "A native SQL query to save: {database_id, sql, template_tags?}. Requires "
                                      "the agent:sql:run scope and the mcp-execute-sql-enabled setting. Call "
                                      "learn(\"native-parameters\") before first passing template_tags.")}
-             [:database_id [:or
-                            [:int {:description "Numeric id of the database the SQL runs against."}]
-                            [:string {:description "The same numeric id as a string. Databases have no entity_id."}]]]
-             [:sql [:string {:min 1 :description "The SQL text. Write template tags as {{tag}}."}]]
+             [:database_id [:or :int :string]]
+             [:sql [:string {:min 1}]]
              [:template_tags {:optional true}
               [:maybe [:map-of
                        {:description (str "One entry per {{tag}} in the SQL, keyed by tag name; a name "
@@ -555,7 +552,9 @@
              [:string {:description "21-character entity_id of the dashboard to save the question inside."}]]]]
    [:collection_position {:optional true}
     [:maybe [:int {:description "Pin position within the collection; omit to leave it unpinned."}]]]
-   [:display {:optional true} [:maybe common/card-display-enum]]
+   [:display {:optional true}
+    [:maybe {:description "Visualization type. learn(\"visualization-settings\") covers the choice."}
+     common/card-display-enum]]
    [:visualization_settings {:optional true}
     [:maybe [:map {:description (str "Display settings for the chosen `display`; learn(\"visualization-settings\") "
                                      "lists the keys.")}]]]
@@ -571,9 +570,9 @@
     [:maybe [:sequential {:description (str "Per-column result metadata to set, matched to the query's result "
                                             "columns by name. Typically used with card_type \"model\".")}
              [:map
-              [:name [:string {:min 1 :description "The result column's name, as the query returns it."}]]
-              [:display_name {:optional true} [:maybe [:string {:description "Label shown for the column."}]]]
-              [:description {:optional true} [:maybe [:string {:description "What the column holds."}]]]
+              [:name [:string {:min 1}]]
+              [:display_name {:optional true} [:maybe :string]]
+              [:description {:optional true} [:maybe :string]]
               [:semantic_type {:optional true}
                [:maybe [:string {:description (str "A type in the \"type/…\" namespace, e.g. \"type/Currency\", "
                                                    "\"type/PK\", \"type/Email\".")}]]]

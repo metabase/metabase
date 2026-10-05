@@ -213,14 +213,6 @@
   (or @manifest-cache
       (reset! manifest-cache (generate-manifest))))
 
-(defn all-tool-entries
-  "Every registered tool's manifest entry, name-sorted and unfiltered: nothing is dropped for scope or
-   client extensions, and each entry still carries its `:scope` and `:required-extensions`. For internal
-   consumers that need the whole surface, such as the docs generator — a `tools/list` answer goes through
-   [[list-tools]]."
-  []
-  (manifest))
-
 (defn list-tools
   "Return the tool definitions for the v2 MCP `tools/list` response, filtered by the client
    extensions `options` advertises (`:supports-mcp-ui?` — MCP Apps tools are hidden from clients

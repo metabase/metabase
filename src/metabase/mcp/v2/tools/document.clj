@@ -500,12 +500,9 @@
                                             "list changes only name, collection_id, collection_position, or "
                                             "archived without touching the body.")}
              [:map
-              [:old_str [:string {:description (str "Text to replace. Must match the current Markdown exactly "
-                                                    "once: zero matches is always an error, and more than one "
-                                                    "is an error unless replace_all is set.")}]]
-              [:new_str [:string {:description "Replacement text, parsed as Markdown."}]]
-              [:replace_all {:optional true}
-               [:maybe [:boolean {:description "When true, every match of old_str is replaced."}]]]]]]]
+              [:old_str :string]
+              [:new_str :string]
+              [:replace_all {:optional true} [:maybe :boolean]]]]]]
    ;; Numeric ids and positions are positive here, matching what the model layer enforces. Declared
    ;; loosely they pass validation and then fail a `mu/defn` schema deeper in, which the caller only
    ;; ever sees as the sanitized "Internal error" — a rejection that names the constraint is the

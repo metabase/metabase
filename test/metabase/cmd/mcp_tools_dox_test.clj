@@ -11,16 +11,22 @@
 (defn- documented-tools
   "The registry entries the page documents."
   []
-  (remove #'mcp-tools-dox/app-only? (v2.registry/all-tool-entries)))
+  (remove #'mcp-tools-dox/app-only? (v2.registry/list-tools)))
 
 (defn- argument
   "`property` read as the page reads an argument."
   [property]
   (#'mcp-tools-dox/property->argument [:arg property]))
 
+(defn- with-scope
+  "`tool` requiring the OAuth `scope`, published the way the registry publishes it."
+  [tool scope]
+  (assoc tool :securitySchemes [{:type "oauth2" :scopes [scope]}]))
+
 (def ^:private search-tool
   "A minimal documentable registry entry."
-  {:name "search" :description "Search." :scope "agent:content:read" :annotations {:readOnlyHint true} :inputSchema {}})
+  (with-scope {:name "search" :description "Search." :annotations {:readOnlyHint true} :inputSchema {}}
+    "agent:content:read"))
 
 ;;;; Titles
 
@@ -51,7 +57,7 @@
     (is (not (contains? (#'mcp-tools-dox/tool->entry search-tool) :description))))
   (testing "a scope no `defscope` registered has no wording"
     (is (= {:id "agent:nope" :description nil}
-           (:scope (#'mcp-tools-dox/tool->entry (assoc search-tool :scope "agent:nope"))))))
+           (:scope (#'mcp-tools-dox/tool->entry (with-scope search-tool "agent:nope"))))))
   (testing "a tool publishing a :_meta :ui block is interactive"
     (is (true? (:inline-ui? (#'mcp-tools-dox/tool->entry
                              (assoc search-tool :_meta {:ui {:resourceUri "ui://metabase/visualize-query.html"}}))))))
@@ -90,12 +96,13 @@
                   "- Read-only.")
              (bullets search-tool))))
     (testing "a scope with no wording contributes no bullet"
-      (is (not (str/includes? (bullets (assoc search-tool :scope "agent:nope")) "Permission scope"))))
+      (is (not (str/includes? (bullets (with-scope search-tool "agent:nope")) "Permission scope"))))
     (testing "a writer says what it does to data, and whether repeating it is safe"
       (is (= (str "- Tool name: `search`\n"
                   "- Can overwrite or delete existing data or content.\n"
                   "- Running it again with the same arguments has the same effect as running it once.")
-             (bullets (assoc search-tool :scope "agent:nope" :annotations {:destructiveHint true :idempotentHint true})))))
+             (bullets (assoc (with-scope search-tool "agent:nope")
+                             :annotations {:destructiveHint true :idempotentHint true})))))
     (testing "an interactive tool says so; the page has no section grouping such tools, so each one says it for itself"
       (is (str/includes? (bullets (assoc search-tool :_meta {:ui {:resourceUri "ui://x"}})) "- Interactive:"))
       (is (not (str/includes? (bullets search-tool) "Interactive:"))))))
@@ -207,20 +214,25 @@
     (testing "a tool the MCP App calls for itself is left off the page"
       ;; the model never calls `refresh_ui_credential`; it takes no arguments and returns a credential
       (is (not (some #(= "refresh_ui_credential" (:name %)) tools)))
-      (is (some #(= "refresh_ui_credential" (:name %)) (v2.registry/all-tool-entries))
+      (is (some #(= "refresh_ui_credential" (:name %)) (v2.registry/list-tools))
           "no registered tool is named refresh_ui_credential; pick another app-only tool to guard against"))
     (testing "the MCP Apps tools are the ones carrying a :_meta :ui block, which is how the page flags them"
-      ;; `:inline-ui?` keys off `:_meta`; keep it in step with the extension the tool actually requires
-      (doseq [{:keys [name _meta required-extensions]} tools]
-        (is (= (contains? (set required-extensions) :mcp-app-ui) (some? (:ui _meta)))
-            (str name " disagrees about being an MCP Apps tool"))))))
+      ;; `:inline-ui?` keys off `:_meta`; keep it in step with the tools a client without MCP Apps never sees
+      (let [listed-without-ui (set (map :name (v2.registry/list-tools {:supports-mcp-ui? false})))]
+        (doseq [{:keys [name _meta]} tools]
+          (is (= (not (contains? listed-without-ui name)) (some? (:ui _meta)))
+              (str name " disagrees about being an MCP Apps tool")))))))
 
 (deftest all-arguments-described-test
   (testing "every top-level argument of every tool carries a description the page can show"
     ;; `description-cell` renders an em dash when a schema says nothing. Prose on the keys of a nested object is
     ;; unreachable by design (see `documented-elements`), so an array of objects needs it on the `:sequential`
     ;; wrapper and a nested map on the `:map` itself; anything else wants it on the innermost schema.
-    (doseq [{tool-name :name :keys [arguments]} (map #'mcp-tools-dox/tool->entry (documented-tools))
+    (doseq [{tool-name :name :keys [arguments]} (->> (documented-tools)
+                                                     ;; test-only, and still registered when a shared test JVM
+                                                     ;; has loaded `metabase.mcp.v2.test-util`
+                                                     (remove #(= "test_echo" (:name %)))
+                                                     (map #'mcp-tools-dox/tool->entry))
             {:keys [name] :as argument}         arguments]
       (is (not= "—" (#'mcp-tools-dox/description-cell argument))
           (str tool-name " argument " name " has no description")))))
@@ -256,7 +268,7 @@
             (is (contains? titles heading) (str "heading is not a tool: " heading))))
         (is (not (str/includes? markdown "\n### "))))
       (testing "tools run in name order"
-        ;; `all-tool-entries` name-sorts; the page keeps that rather than imposing an order of its own
+        ;; `list-tools` name-sorts; the page keeps that rather than imposing an order of its own
         (let [positions (map #(str/index-of markdown (str "\n## " (#'mcp-tools-dox/tool-title %) "\n")) documented)]
           (is (apply < positions))))
       (testing "an interactive tool says so, and a plain one doesn't"

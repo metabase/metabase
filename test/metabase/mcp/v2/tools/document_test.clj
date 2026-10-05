@@ -728,11 +728,7 @@
         (let [tool (first (filter #(= "document_write" (:name %)) (registry/list-tools)))]
           (is (seq (:description tool)))
           (is (str/includes? (:description tool) "No Markdown tables - embed a table-display question instead."))
-          (is (get-in tool [:inputSchema :properties :clear]))
-          (testing "and a `name` that keeps `DocumentName`'s length bounds beside its description"
-            (is (=? {:description "Document title. Required on create; on update, renames it."
-                     :oneOf       [{:type "string" :minLength 1 :maxLength 254} {:type "null"}]}
-                    (get-in tool [:inputSchema :properties :name])))))))))
+          (is (get-in tool [:inputSchema :properties :clear])))))))
 
 ;; Closes the inherited finding from slice 09a's review (.private/findings/slice-09a/parallel-review.md,
 ;; DEC-0001): create-document!/update-document!/clone-cards-in-document! enforce permissions by
