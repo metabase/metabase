@@ -37,7 +37,7 @@ describe("scenarios > dashboard > filters > query stages", () => {
         );
       });
 
-      it("allows to map to all relevant columns", () => {
+      it("allows to map to all relevant columns and applies a 1st stage implicit join (data source) filter", () => {
         H.editDashboard();
 
         cy.log("## date columns");
@@ -51,6 +51,25 @@ describe("scenarios > dashboard > filters > query stages", () => {
         cy.log("## number columns");
         QSHelpers.getFilter("Number").click();
         verifyNumberMappingOptions();
+
+        H.dashboardCancelButton().click();
+
+        cy.log("## 1st stage implicit join (data source)");
+        QSHelpers.setup1stStageImplicitJoinFromSourceFilter();
+
+        QSHelpers.verifyDashcardRowsCount({
+          dashcardIndex: 0,
+          dashboardCount: 1044,
+          queryBuilderCount: "Showing 1,044 rows",
+        });
+
+        QSHelpers.goBackToDashboard();
+
+        QSHelpers.verifyDashcardRowsCount({
+          dashcardIndex: 1,
+          dashboardCount: 1044,
+          queryBuilderCount: "Showing 1,044 rows",
+        });
 
         function verifyDateMappingOptions() {
           QSHelpers.verifyDashcardMappingOptions(
@@ -308,24 +327,6 @@ describe("scenarios > dashboard > filters > query stages", () => {
           });
           H.getDashboardCard(1).within(() => {
             H.assertTableRowsCount(953);
-          });
-        });
-
-        it("1st stage implicit join (data source)", () => {
-          QSHelpers.setup1stStageImplicitJoinFromSourceFilter();
-
-          QSHelpers.verifyDashcardRowsCount({
-            dashcardIndex: 0,
-            dashboardCount: 1044,
-            queryBuilderCount: "Showing 1,044 rows",
-          });
-
-          QSHelpers.goBackToDashboard();
-
-          QSHelpers.verifyDashcardRowsCount({
-            dashcardIndex: 1,
-            dashboardCount: 1044,
-            queryBuilderCount: "Showing 1,044 rows",
           });
         });
 

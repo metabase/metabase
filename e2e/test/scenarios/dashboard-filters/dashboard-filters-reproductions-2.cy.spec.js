@@ -312,22 +312,21 @@ describe("issue 45659", () => {
     });
   });
 
-  it("should remap initial parameter values and query each dashcard once in public dashboards (metabase#45659, metabase#17061)", () => {
+  it("should remap initial parameter values in public and embedded dashboards and query each public dashcard once (metabase#45659, metabase#17061)", () => {
     cy.intercept("GET", "/api/public/dashboard/*/dashcard/*/card/*").as(
       "publicDashcardData",
     );
-    createDashboard().then(({ dashboard }) =>
-      H.visitPublicDashboard(dashboard.id),
-    );
+    createDashboard().then(({ dashboard }) => {
+      cy.wrap(dashboard.id).as("dashboardId");
+      H.visitPublicDashboard(dashboard.id);
+    });
     verifyFilterWithRemapping();
     H.getDashboardCard().findByText("Tressa White").should("be.visible");
     cy.get("@publicDashcardData.all").should("have.length", 1);
-  });
 
-  it("should remap initial parameter values in embedded dashboards (metabase#45659)", () => {
-    createDashboard().then(({ dashboard }) =>
+    cy.get("@dashboardId").then((dashboardId) =>
       H.visitEmbeddedPage({
-        resource: { dashboard: dashboard.id },
+        resource: { dashboard: dashboardId },
         params: {},
       }),
     );
@@ -1542,15 +1541,19 @@ describe("issue 44090", () => {
     });
   });
 
-  it("should not overflow the dashboard header when a filter contains a long value that contains spaces (metabase#44090)", () => {
-    const LONG_VALUE =
+  it("should not overflow the dashboard header when a filter contains a long value (metabase#44090)", () => {
+    const LONG_VALUE_WITH_SPACES =
       "Minima non hic doloribus ipsa dolore ratione in numquam. Minima eos vel harum velit. Consequatur consequuntur culpa sed eum";
+    const LONG_VALUE_WITHOUT_SPACES =
+      "MinimanonhicdoloribusipsadolorerationeinnumquamMinimaeosvelharumvelitConsequaturconsequunturculpasedeum";
 
     H.filterWidget().click();
     H.popover()
       .first()
       .within(() => {
-        cy.findByPlaceholderText("Search the list").type(LONG_VALUE);
+        cy.findByPlaceholderText("Search the list").type(
+          LONG_VALUE_WITH_SPACES,
+        );
         cy.button("Add filter").click();
       });
 
@@ -1559,17 +1562,17 @@ describe("issue 44090", () => {
       .should("contain", "Minima")
       .invoke("outerWidth")
       .should("be.lt", 300);
-  });
 
-  it("should not overflow the dashboard header when a filter contains a long value that does not contain spaces (metabase#44090)", () => {
-    const LONG_VALUE =
-      "MinimanonhicdoloribusipsadolorerationeinnumquamMinimaeosvelharumvelitConsequaturconsequunturculpasedeum";
+    H.clearFilterWidget();
+    cy.location("search").should("not.contain", "string=Minima");
 
     H.filterWidget().click();
     H.popover()
       .first()
       .within(() => {
-        cy.findByPlaceholderText("Search the list").type(LONG_VALUE);
+        cy.findByPlaceholderText("Search the list").type(
+          LONG_VALUE_WITHOUT_SPACES,
+        );
         cy.button("Add filter").click();
       });
 

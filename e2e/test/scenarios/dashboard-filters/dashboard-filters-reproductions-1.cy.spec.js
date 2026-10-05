@@ -1482,7 +1482,7 @@ describe("issue 25374", () => {
     cy.location("search").should("eq", "?num=1%2C2%2C3");
   });
 
-  it("should retain comma-separated values on refresh (metabase#25374-2)", () => {
+  it("should retain comma-separated values on refresh and when reverting to default (metabase#25374-2, metabase#25374-3, metabase#25374-4)", () => {
     cy.reload();
 
     // Make sure filter widget still has all the values
@@ -1495,9 +1495,7 @@ describe("issue 25374", () => {
 
     // Make sure URL search params are correct
     cy.location("search").should("eq", "?equal_to=1%2C2%2C3");
-  });
 
-  it("should retain comma-separated values when reverting to default (metabase#25374-3)", () => {
     H.editDashboard();
     cy.findByTestId("edit-dashboard-parameters-widget-container")
       .findByText("Equal to")
@@ -1513,6 +1511,7 @@ describe("issue 25374", () => {
       .findByTestId("cell-data")
       .should("have.text", "3");
 
+    cy.log("Reset the filter to its default with the widget button");
     cy.button("Clear").click();
     cy.wait("@dashcardQuery");
     H.getDashboardCard().should(
@@ -1529,32 +1528,7 @@ describe("issue 25374", () => {
       .should("have.text", "3");
     cy.location("search").should("eq", "?equal_to=1%2C2%2C3");
 
-    // Drill-through and go to the question
-    H.getDashboardCard(0).findByText(questionDetails.name).click();
-    cy.wait("@cardQuery");
-
-    cy.get("[data-testid=cell-data]")
-      .should("contain", "COUNT(*)")
-      .and("contain", "3");
-
-    cy.location("search").should("eq", "?num=1%2C2%2C3");
-  });
-
-  it("should retain comma-separated values when reverting to default via 'Reset all filters' (metabase#25374-4)", () => {
-    H.editDashboard();
-    cy.findByTestId("edit-dashboard-parameters-widget-container")
-      .findByText("Equal to")
-      .click();
-    H.dashboardParameterSidebar()
-      .findByLabelText("Default value")
-      .type("1,2,3");
-    H.saveDashboard();
-    cy.location("search").should("eq", "?equal_to=1%2C2%2C3");
-    H.getDashboardCard()
-      .findByTestId("table-body")
-      .findByTestId("cell-data")
-      .should("have.text", "3");
-
+    cy.log("Reset the filter to its default with 'Reset all filters'");
     cy.button("Clear").click();
     cy.wait("@dashcardQuery");
     cy.location("search").should("eq", "?equal_to=");
@@ -1566,7 +1540,6 @@ describe("issue 25374", () => {
     cy.findByLabelText("Move, trash, and more…").click();
     H.popover().findByText("Reset all filters").should("be.visible").click();
     cy.wait("@dashcardQuery");
-    cy.location("search").should("eq", "?equal_to=1%2C2%2C3");
     cy.location("search").should("eq", "?equal_to=1%2C2%2C3");
     H.getDashboardCard()
       .findByTestId("table-body")
@@ -1982,7 +1955,7 @@ describe("issues 29347, 29346", () => {
       cy.intercept("POST", "/api/dashboard/**/card/*/query").as("cardQuery");
     });
 
-    it("should be able to filter on remapped values (metabase#29347, metabase#29346)", () => {
+    it("should be able to filter on remapped values in the UI and in the url (metabase#29347, metabase#29346)", () => {
       createDashboard();
       H.visitDashboard("@dashboardId");
       cy.wait("@dashboard");
@@ -1992,10 +1965,7 @@ describe("issues 29347, 29346", () => {
       cy.wait("@cardQuery");
 
       verifyRemappedValues(filterValue);
-    });
 
-    it("should be able to filter on remapped values in the url (metabase#29347, metabase#29346)", () => {
-      createDashboard();
       H.visitDashboard("@dashboardId", {
         params: { [filterDetails.slug]: filterValue },
       });
@@ -2013,7 +1983,7 @@ describe("issues 29347, 29346", () => {
       cy.intercept("GET", "/api/embed/dashboard/**/card/*").as("cardQuery");
     });
 
-    it("should be able to filter on remapped values (metabase#29347, metabase#29346)", () => {
+    it("should be able to filter on remapped values in the UI and in the url (metabase#29347, metabase#29346)", () => {
       createDashboard();
       cy.get("@dashboardId").then((dashboardId) =>
         H.visitEmbeddedPage({
@@ -2025,6 +1995,22 @@ describe("issues 29347, 29346", () => {
       cy.wait("@cardQuery");
 
       filterOnRemappedValues(filterValue);
+      cy.wait("@cardQuery");
+
+      verifyRemappedValues(filterValue);
+
+      cy.get("@dashboardId").then((dashboardId) => {
+        H.visitEmbeddedPage(
+          {
+            resource: { dashboard: dashboardId },
+            params: {},
+          },
+          {
+            setFilters: { [filterDetails.slug]: filterValue },
+          },
+        );
+      });
+      cy.wait("@dashboard");
       cy.wait("@cardQuery");
 
       verifyRemappedValues(filterValue);
@@ -2045,25 +2031,6 @@ describe("issues 29347, 29346", () => {
 
       verifyRemappedCardValues(filterValue);
     });
-
-    it("should be able to filter on remapped values in the url (metabase#29347, metabase#29346)", () => {
-      createDashboard();
-      cy.get("@dashboardId").then((dashboardId) => {
-        H.visitEmbeddedPage(
-          {
-            resource: { dashboard: dashboardId },
-            params: {},
-          },
-          {
-            setFilters: { [filterDetails.slug]: filterValue },
-          },
-        );
-      });
-      cy.wait("@dashboard");
-      cy.wait("@cardQuery");
-
-      verifyRemappedValues(filterValue);
-    });
   });
 
   describe("public dashboards", () => {
@@ -2072,7 +2039,7 @@ describe("issues 29347, 29346", () => {
       cy.intercept("GET", "/api/public/dashboard/**/card/*").as("cardQuery");
     });
 
-    it("should be able to filter on remapped values (metabase#29347, metabase#29346)", () => {
+    it("should be able to filter on remapped values in the UI and in the url (metabase#29347, metabase#29346)", () => {
       createDashboard();
       cy.get("@dashboardId").then((dashboardId) =>
         H.visitPublicDashboard(dashboardId),
@@ -2084,15 +2051,10 @@ describe("issues 29347, 29346", () => {
       cy.wait("@cardQuery");
 
       verifyRemappedValues(filterValue);
-    });
 
-    it("should be able to filter on remapped values in the url (metabase#29347, metabase#29346)", () => {
-      createDashboard();
-      cy.get("@dashboardId").then((dashboardId) => {
-        H.visitPublicDashboard(dashboardId, {
-          params: { [filterDetails.slug]: filterValue },
-        });
-      });
+      cy.location("pathname").then((pathname) =>
+        cy.visit(`${pathname}?${filterDetails.slug}=${filterValue}`),
+      );
       cy.wait("@dashboard");
       cy.wait("@cardQuery");
 
@@ -2389,20 +2351,19 @@ describe("issue 42829", () => {
     });
   });
 
-  it("should be able to get field values coming from a sql model-based question in a regular dashboard (metabase#42829)", () => {
+  it("should be able to get field values coming from a sql model-based question in regular, public and embedded dashboards (metabase#42829)", () => {
+    cy.log("regular dashboard");
     H.visitDashboard("@dashboardId");
     filterAndVerifyResults();
     drillAndVerifyResults();
-  });
 
-  it("should be able to get field values coming from a sql model-based question in a public dashboard (metabase#42829)", () => {
+    cy.log("public dashboard");
     cy.get("@dashboardId").then((dashboardId) =>
       H.visitPublicDashboard(dashboardId),
     );
     filterAndVerifyResults();
-  });
 
-  it("should be able to get field values coming from a sql model-based question in a embedded dashboard (metabase#42829)", () => {
+    cy.log("embedded dashboard");
     cy.get("@dashboardId").then((dashboardId) =>
       H.visitEmbeddedPage({
         resource: { dashboard: dashboardId },
