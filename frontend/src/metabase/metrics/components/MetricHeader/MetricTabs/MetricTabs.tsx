@@ -49,10 +49,13 @@ function getTabs(
   hasDimensions: boolean,
   canSeeDependencies: boolean,
 ): PillTab[] {
+  const aboutUrl = urls.about(card.id);
   const tabs: PillTab[] = [
     {
       label: t`About`,
-      to: urls.about(card.id),
+      to: aboutUrl,
+      isSelected: (pathname) =>
+        pathname === aboutUrl || pathname.replace(/-[^/]+$/, "") === aboutUrl,
     },
   ];
 

@@ -22,7 +22,7 @@ import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 import { MetricTabs } from "./MetricTabs";
 
 const urls: MetricUrls = {
-  about: (id) => `/metric/${id}/about`,
+  about: (id) => `/metric/${id}`,
   overview: (id) => `/metric/${id}/overview`,
   query: (id) => `/metric/${id}/query`,
   dimensions: (id) => `/metric/${id}/dimensions`,
@@ -48,11 +48,13 @@ describe("MetricTabs", () => {
     hasDimensions = true,
     hasDataPermissions = true,
     role = "consumer",
+    initialRoute = "/",
   }: {
     card?: Partial<Card>;
     hasDimensions?: boolean;
     hasDataPermissions?: boolean;
     role?: "admin" | "analyst" | "consumer";
+    initialRoute?: string;
   } = {}) {
     const card = createMockCard({
       type: "metric",
@@ -85,6 +87,7 @@ describe("MetricTabs", () => {
       <Route path="*" element={<MetricTabs card={card} urls={urls} />} />,
       {
         withRouter: true,
+        initialRoute,
         storeInitialState: state,
       },
     );
@@ -149,6 +152,26 @@ describe("MetricTabs", () => {
       expect(getTabLabels()).toContain("Dimensions");
     });
   });
+
+  it("marks About as the current page for a slugged metric URL (#83344)", async () => {
+    setup({ card: { id: 9 }, initialRoute: "/metric/9-revenue" });
+
+    expect(await screen.findByRole("link", { name: "About" })).toHaveAttribute(
+      "aria-current",
+      "page",
+    );
+  });
+
+  it.each(["/metric/9-revenue/query", "/metric/90-revenue"])(
+    "does not mark About as current at %s (#83344)",
+    async (initialRoute) => {
+      setup({ card: { id: 9 }, initialRoute });
+
+      expect(
+        await screen.findByRole("link", { name: "About" }),
+      ).not.toHaveAttribute("aria-current");
+    },
+  );
 
   describe("Dependencies tab (role-gated)", () => {
     it("shows for admins", async () => {
