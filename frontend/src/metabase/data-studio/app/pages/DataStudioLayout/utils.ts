@@ -5,7 +5,7 @@ type TabName =
   | "data"
   | "library"
   | "transforms"
-  | "actions"
+  | "data-actions"
   | "dependencies"
   | "schema-viewer"
   | "glossary"
@@ -29,7 +29,7 @@ export const getCurrentTab = (pathname: string): TabName => {
     case pathname.startsWith(Urls.transformList()):
       return "transforms";
     case pathname.startsWith(Urls.dataActionList()):
-      return "actions";
+      return "data-actions";
     case pathname.startsWith(Urls.dataStudioData()):
       return "data";
     case pathname.startsWith(Urls.dataStudioSettings()):

@@ -121,7 +121,7 @@ export function DataStudioLayout() {
             label={t`Data actions`}
             icon="bolt"
             to={Urls.dataActionList()}
-            isSelected={currentTab === "actions"}
+            isSelected={currentTab === "data-actions"}
             showLabel={isNavbarOpened}
           />
         )}
