@@ -225,6 +225,20 @@
         (is (nil? (#'ee-audit/maybe-sync-audit-db! audit-db false)))
         (is (= 0 (ee.audit.settings/last-analytics-views-checksum)))))))
 
+(deftest install-sync-records-views-checksum-test
+  (testing "the sync after install/update records the views checksum, so the views-stale sync does not repeat it"
+    (with-audit-db-restoration!
+      (let [audit-db (t2/select-one :model/Database :is_audit true)
+            syncs    (atom 0)]
+        (ee.audit.settings/last-analytics-views-checksum! 0)
+        (t2/update! :model/Database (:id audit-db) {:engine "postgres"})
+        (mt/with-dynamic-fn-redefs [ee-audit/views-checksum (constantly 12345)
+                                    sync.core/sync-database! (fn [& _] (swap! syncs inc))]
+          (is (= ::ee-audit/updated (#'ee-audit/maybe-install-audit-db!)))
+          (is (= 12345 (ee.audit.settings/last-analytics-views-checksum)))
+          (#'ee-audit/maybe-sync-audit-db! audit-db false)
+          (is (= 1 @syncs)))))))
+
 (deftest adjust-audit-db-to-source-test
   (testing "adjust-audit-db-to-source! correctly handles tables and fields with mixed case"
     (mt/with-temp [:model/Database {audit-db-id :id} {:engine "h2"}
