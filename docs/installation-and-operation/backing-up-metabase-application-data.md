@@ -48,3 +48,5 @@ Instructions can be found in the [Amazon RDS User Guide](https://docs.aws.amazon
 If you're hosting your own PostgreSQL database, simply follow PostgreSQL's instructions for [backing up your database](https://www.postgresql.org/docs/current/backup.html).
 
 As long as you have a dump of the Metabase database, you should be good to go.
+
+<!-- [test] Test-gate check: a large docs-only change. Not for merge. -->

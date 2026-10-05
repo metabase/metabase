@@ -73,3 +73,5 @@ If you have basic actions enabled for a model, you can click on an individual re
 - [Introduction to actions](./introduction.md)
 - [Custom actions](./custom.md)
 - [Actions in dashboards](../../../dashboards/actions.md)
+
+<!-- [test] Test-gate check: a large docs-only change. Not for merge. -->

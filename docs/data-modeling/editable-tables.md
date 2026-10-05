@@ -95,3 +95,5 @@ Use actions to:
 - Add a button to a dashboard to trigger a form or query.
 
 See [actions](../data-modeling/models/actions/introduction.md).
+
+<!-- [test] Test-gate check: a large docs-only change. Not for merge. -->

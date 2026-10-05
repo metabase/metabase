@@ -147,3 +147,5 @@ When configuring [guest embeds](../embedding/guest-embedding.md), you can select
 
 - [Customizing Metabase's appearance](./appearance.md)
 - [Embedding documentation](../embedding/start.md)
+
+<!-- [test] Test-gate check: a large docs-only change. Not for merge. -->

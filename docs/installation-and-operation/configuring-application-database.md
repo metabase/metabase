@@ -176,3 +176,5 @@ For more options to further tune the SSL connection parameters, see the [Postgre
 ## Further reading
 
 - [Environment variables](../configuring-metabase/environment-variables.md)
+
+<!-- [test] Test-gate check: a large docs-only change. Not for merge. -->

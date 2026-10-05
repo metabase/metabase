@@ -75,3 +75,5 @@ To view the shortcut menu in Metabase, press `?`, or click the **profile or grid
 | Action           | Shortcut     |
 | ---------------- | ------------ |
 | Change admin tab | 1, 2, 3, ... |
+
+<!-- [test] Test-gate check: a large docs-only change. Not for merge. -->

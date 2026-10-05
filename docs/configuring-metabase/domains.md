@@ -57,3 +57,5 @@ docs.example.com
 ```
 
 Metabase only allows `data.example.com` and `docs.example.com`. It blocks `example.com` and every other subdomain.
+
+<!-- [test] Test-gate check: a large docs-only change. Not for merge. -->

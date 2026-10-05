@@ -31,3 +31,5 @@ Set up a dashboard to email or Slack its results on a schedule.
 ## [Actions on dashboards](./actions.md)
 
 Add action buttons to dashboards.
+
+<!-- [test] Test-gate check: a large docs-only change. Not for merge. -->

@@ -168,3 +168,5 @@ Nobody's signed in when Metabase renders a subscription, so a card that uses a [
 - [Setting up Slack](../configuring-metabase/slack.md)
 - [Usage analytics](../usage-and-performance-tools/usage-analytics.md)
 - [Custom visualizations](../questions/visualizations/custom.md)
+
+<!-- [test] Test-gate check: a large docs-only change. Not for merge. -->

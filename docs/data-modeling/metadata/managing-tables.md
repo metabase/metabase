@@ -132,3 +132,5 @@ If you only want to give someone access to table metadata for some - but not all
 - [Segments](../semantic-layer/segments.md)
 - [Measures](../semantic-layer/measures.md)
 - [Schema viewer](../tools/schema-viewer.md)
+
+<!-- [test] Test-gate check: a large docs-only change. Not for merge. -->

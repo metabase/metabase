@@ -106,3 +106,5 @@ You can, however, sync [Metrics](./metrics.md) on any tables by syncing their co
 - [Segments](./segments.md)
 - [Metrics](./metrics.md)
 - [SQL snippets](../../questions/native-editor/snippets.md)
+
+<!-- [test] Test-gate check: a large docs-only change. Not for merge. -->

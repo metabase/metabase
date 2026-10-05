@@ -224,3 +224,5 @@ Metabase doesn't do any caching or rate limiting during the sync and scan proces
 
 - [Can't see tables](../troubleshooting-guide/cant-see-tables.md).
 - [Data in Metabase doesn't match my database](../troubleshooting-guide/sync-fingerprint-scan.md).
+
+<!-- [test] Test-gate check: a large docs-only change. Not for merge. -->

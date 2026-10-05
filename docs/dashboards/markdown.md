@@ -149,3 +149,4 @@ In a [document](../documents/introduction.md), Metabase formats your text as you
 ## Further reading
 
 - [The Markdown Guide](https://www.markdownguide.org/) for complete Markdown syntax
+<!-- [test] Test-gate check: a large docs-only change. Not for merge. -->

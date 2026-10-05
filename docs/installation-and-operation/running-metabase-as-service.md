@@ -160,3 +160,5 @@ sudo systemctl restart metabase.service
 sudo systemctl stop metabase.service
 sudo systemctl start metabase.service
 ```
+
+<!-- [test] Test-gate check: a large docs-only change. Not for merge. -->

@@ -29,3 +29,5 @@ and documented in this changelog.
     from a date or datetime.
   - `extract` applies an extraction to the query.
   - `extraction-expression` returns the expression for the extraction, allowing further editing.
+
+<!-- [test] Test-gate check: a large docs-only change. Not for merge. -->

@@ -117,3 +117,5 @@ getGroups().then((groups) => console.log("Groups in your Metabase:", groups));
 
 - [Metabase API reference](../api.html).
 - [Working with the Metabase API](https://www.metabase.com/learn/metabase-basics/administration/administration-and-operation/metabase-api).
+
+<!-- [test] Test-gate check: a large docs-only change. Not for merge. -->

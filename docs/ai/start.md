@@ -47,3 +47,5 @@ Chat with Metabot directly in Slack — ask questions, get charts, and manage su
 ## [AI usage auditing](./usage-auditing.md)
 
 See how people are using the AI features in your Metabase.
+
+<!-- [test] Test-gate check: a large docs-only change. Not for merge. -->

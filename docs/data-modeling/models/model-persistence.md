@@ -85,3 +85,5 @@ Persisted models differ from [cached results](../../configuring-metabase/caching
 
 - [Models](./models.md)
 - [Caching policies](../../configuring-metabase/caching.md)
+
+<!-- [test] Test-gate check: a large docs-only change. Not for merge. -->

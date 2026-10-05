@@ -259,3 +259,5 @@ NOTE: These endpoint changes were added in 0.49.3, and a bug in `GET /api/embed/
 - all endpoints that return data (e.g. exports in JSON, XLSX, CSV, endpoints that end in "/query")
 
   Starting from v49, we respond to the API calls with values formatted according to the instance localization options
+
+<!-- [test] Test-gate check: a large docs-only change. Not for merge. -->

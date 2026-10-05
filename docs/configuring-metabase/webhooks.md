@@ -123,3 +123,5 @@ Here's an example payload for an alert (we truncated the PNG encoding because it
 ## Further reading
 
 - [Alerts](../questions/alerts.md)
+
+<!-- [test] Test-gate check: a large docs-only change. Not for merge. -->

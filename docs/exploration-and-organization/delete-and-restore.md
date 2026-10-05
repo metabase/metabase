@@ -145,3 +145,5 @@ See [Deleting a subscription](../dashboards/subscriptions.md#deleting-a-subscrip
 ## Deleting databases
 
 See [Deleting databases](../databases/connecting.md#deleting-databases).
+
+<!-- [test] Test-gate check: a large docs-only change. Not for merge. -->

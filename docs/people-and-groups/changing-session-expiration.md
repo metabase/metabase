@@ -57,3 +57,5 @@ MB_SESSION_COOKIES=true java --add-opens java.base/java.nio=ALL-UNNAMED -jar met
 `MAX_SESSION_AGE` and `MB_SESSION_TIMEOUT` still apply — even someone who never closes their browser can be logged out by the age limit or an inactivity window.
 
 Many browsers support session restore, which automatically reopens tabs from the previous session on launch. When session restore is active, the browser behaves as if it was never closed, so session cookies persist across browser restarts. This is usually configurable in the browser's settings.
+
+<!-- [test] Test-gate check: a large docs-only change. Not for merge. -->

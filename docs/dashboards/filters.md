@@ -407,3 +407,5 @@ You can also set up a dashboard question to [update a filter on click](./interac
 - [Dashboard subscriptions](./subscriptions.md)
 - [Charts with multiple series](./multiple-series.md)
 - [Learn dashboards](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/dashboards)
+
+<!-- [test] Test-gate check: a large docs-only change. Not for merge. -->

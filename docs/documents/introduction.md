@@ -196,3 +196,5 @@ Dashboards work best for:
 ## Document permissions
 
 Whether someone can view or edit a document and its data depends on that person's collection and data permissions. See [Permissions](../permissions/introduction.md).
+
+<!-- [test] Test-gate check: a large docs-only change. Not for merge. -->

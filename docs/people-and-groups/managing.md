@@ -248,3 +248,5 @@ To promote someone to become a group manager:
 - [Configure Single Sign-On (SSO)](./start.md#authentication).
 - [Permissions strategies](https://www.metabase.com/learn/metabase-basics/administration/permissions/strategy).
 - [Embedding permissions](../permissions/embedding.md).
+
+<!-- [test] Test-gate check: a large docs-only change. Not for merge. -->

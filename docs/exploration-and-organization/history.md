@@ -47,3 +47,5 @@ Any change to the transform's query or script will be recorded as "changed sourc
 1. Go to the table source for the segment or measure in [Data Studio > Tables](../data-modeling/metadata/managing-tables.md).
 2. Pick the segment or measure in the right sidebar.
 3. On the segment or measure's page, go to **Revision history** tab.
+
+<!-- [test] Test-gate check: a large docs-only change. Not for merge. -->

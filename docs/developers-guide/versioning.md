@@ -67,3 +67,5 @@ If you see a version followed by an `-X`, like `v1.56.2-X01`, these are version 
 
 - [Metabase releases on GitHub](https://github.com/metabase/metabase/releases)
 - [Metabase release blog posts](https://www.metabase.com/releases)
+
+<!-- [test] Test-gate check: a large docs-only change. Not for merge. -->

@@ -50,3 +50,5 @@ Manage your Metabase Cloud instance, subscription, and billing via the [Metabase
 ## Terms of service
 
 - [Hosting terms of service](https://www.metabase.com/license/hosting)
+
+<!-- [test] Test-gate check: a large docs-only change. Not for merge. -->

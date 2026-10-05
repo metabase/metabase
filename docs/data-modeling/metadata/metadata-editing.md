@@ -223,3 +223,5 @@ See [Working with JSON](./json-unfolding.md).
 
 - [Keeping your analytics organized](https://www.metabase.com/learn/metabase-basics/administration/administration-and-operation/same-page)
 - [Data modeling tutorials](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/models)
+
+<!-- [test] Test-gate check: a large docs-only change. Not for merge. -->

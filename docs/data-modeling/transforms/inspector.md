@@ -65,3 +65,5 @@ Inspector lenses run queries against your database, and some lenses can take lon
 - [Transforms overview](transforms-overview.md)
 - [Query-based transforms](query.md)
 - [Python transforms](python.md)
+
+<!-- [test] Test-gate check: a large docs-only change. Not for merge. -->

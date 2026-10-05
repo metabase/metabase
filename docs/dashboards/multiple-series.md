@@ -96,3 +96,5 @@ Now go forth and start letting your data get to know each other!
 ## Further reading
 
 - [Time series comparisons](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/time-series/time-series-comparisons)
+
+<!-- [test] Test-gate check: a large docs-only change. Not for merge. -->

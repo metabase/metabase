@@ -55,3 +55,5 @@ docker run --platform linux/amd64 -d -p 127.0.0.1:3000:3000 --name metabase meta
 ```
 
 The “latest” tag is not automatically upgraded on your local machine, so the above commands ensure that you’re pulling the latest changes.
+
+<!-- [test] Test-gate check: a large docs-only change. Not for merge. -->

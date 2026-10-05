@@ -25,3 +25,5 @@ While we're working to make a product that is easy to use and inclusive to all, 
 If you're interested in helping us address these gaps, check out [our developers' guide](../developers-guide/start.md).
 
 To request a copy of our VPAT, contact us at [help@metabase.com](mailto:help@metabase.com).
+
+<!-- [test] Test-gate check: a large docs-only change. Not for merge. -->

@@ -49,3 +49,5 @@ We recommend switching regions during a time when people are less likely to use 
 ## Need help?
 
 No need to worry about backups (we have you covered), but if you run into any issues, contact support at [help@metabase.com](mailto:help@metabase.com).
+
+<!-- [test] Test-gate check: a large docs-only change. Not for merge. -->

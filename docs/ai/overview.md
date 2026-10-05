@@ -57,3 +57,5 @@ Use a coding agent like Claude Code with the Metabase CLI to create Metabase con
 **Plans**: Agent-driven workflows require a Pro/Enterprise plan.
 
 See [full docs for agent-driven workflow](./agent-driven-development.md)
+
+<!-- [test] Test-gate check: a large docs-only change. Not for merge. -->

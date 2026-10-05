@@ -86,3 +86,5 @@ If you've deleted the Metabase [Sample Database](https://www.metabase.com/glossa
 - [Metadata editing](../data-modeling/metadata/metadata-editing.md).
 - [Setting data access permissions](../permissions/data.md).
 - [Metabase at scale](https://www.metabase.com/learn/metabase-basics/administration/administration-and-operation/metabase-at-scale).
+
+<!-- [test] Test-gate check: a large docs-only change. Not for merge. -->

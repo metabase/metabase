@@ -122,3 +122,5 @@ You can also exchange a JWT for a session token via `POST /auth/sso/to_session` 
 - [Metabase API docs](../api.html)
 - [API keys](../people-and-groups/api-keys.md)
 - [JWT authentication](../people-and-groups/authenticating-with-jwt.md)
+
+<!-- [test] Test-gate check: a large docs-only change. Not for merge. -->

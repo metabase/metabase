@@ -145,3 +145,5 @@ Save your custom questions in the [Custom reports](../usage-and-performance-tool
 - [Metabot in Slack](./metabot-slack.md)
 - [Usage analytics](../usage-and-performance-tools/usage-analytics.md)
 - [Permissions overview](../permissions/start.md)
+
+<!-- [test] Test-gate check: a large docs-only change. Not for merge. -->

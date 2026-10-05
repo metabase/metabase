@@ -106,3 +106,5 @@ Unless you're on an Enterprise plan, transforms - either basic (on Metabase Clou
 When you upgrade from basic to advanced transforms, _all_ your transforms will be billed at advanced transforms rate.
 
 If you're on an Enterprise plan and have questions about billing, [contact us](https://www.metabase.com/help-premium).
+
+<!-- [test] Test-gate check: a large docs-only change. Not for merge. -->

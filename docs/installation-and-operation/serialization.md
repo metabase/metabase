@@ -641,3 +641,5 @@ We're interested in how we can improve serialization to suit your workflow. [Upv
 - [Multiple environments](https://www.metabase.com/learn/metabase-basics/administration/administration-and-operation/multi-env)
 - [Setting up a git-based workflow](https://www.metabase.com/learn/metabase-basics/administration/administration-and-operation/git-based-workflow)
 - Need help? Contact [support@metabase.com](mailto:support@metabase.com)
+
+<!-- [test] Test-gate check: a large docs-only change. Not for merge. -->

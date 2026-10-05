@@ -104,3 +104,5 @@ Selecting an item opens a details panel with:
 - Links to open the item or view it in the [dependency graph](../data-modeling/tools/graph.md)
 
 For tables, the sidebar also shows owners, descriptions, and links to open the schema or database. For tables created by transforms, the sidebar shows a link to the source transform.
+
+<!-- [test] Test-gate check: a large docs-only change. Not for merge. -->

@@ -247,3 +247,5 @@ On Metabase Pro/Enterprise, you also get access to detailed [AI usage auditing](
 - [AI usage auditing](usage-auditing.md)
 - [Metabot customization](customization.md)
 - [Metabot system prompts](system-prompts.md)
+
+<!-- [test] Test-gate check: a large docs-only change. Not for merge. -->

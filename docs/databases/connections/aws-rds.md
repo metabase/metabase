@@ -88,3 +88,5 @@ Use a secure connection (SSL):
 
 - **PostgreSQL**: Set the SSL Mode to **require**. See [PostgreSQL SSL options](./postgresql.md#ssl-mode).
 - **MySQL**: The SSL Mode will be automatically set to **verify-ca**. If you manually change the SSL Mode, it must be set to **verify-ca**. See [MySQL SSL options](./mysql.md#use-a-secure-connection-ssl).
+
+<!-- [test] Test-gate check: a large docs-only change. Not for merge. -->

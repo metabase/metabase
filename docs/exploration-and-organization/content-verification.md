@@ -53,3 +53,5 @@ Dashboard verification status has no effect on its questions. Questions must be 
 
 - [Official collections](./collections.md#official-collections)
 - [Library](../data-modeling/semantic-layer/library.md)
+
+<!-- [test] Test-gate check: a large docs-only change. Not for merge. -->

@@ -54,3 +54,5 @@ If you're having problems installing or using a community driver, your best bet 
 ## Write your own driver
 
 Check out [Guide to writing a Metabase driver](./drivers/start.md).
+
+<!-- [test] Test-gate check: a large docs-only change. Not for merge. -->

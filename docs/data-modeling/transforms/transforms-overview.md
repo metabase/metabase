@@ -282,3 +282,5 @@ Transforms are similar to models with model persistence turned on, but there are
 Use models to enable non-admins to create their own datasets within Metabase, and to add context like field descriptions and semantic types. Use transforms to create persisted datasets in your database and reuse them across Metabase. In future versions of Metabase, model persistence will be deprecated in favor of transforms.
 
 On Metabase Pro/Enterprise plans, you can convert Metabase models to transforms in bulk, see [Convert models to transforms](query.md#convert-models-to-transforms)
+
+<!-- [test] Test-gate check: a large docs-only change. Not for merge. -->

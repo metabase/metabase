@@ -131,3 +131,5 @@ Click **Done** in the sidebar, then **Save** your dashboard.
 Now we can use our navigation question (Orders by product category) to interactively filter the data across your dashboard. When people click on a value in the navigation question, Metabase will send the clicked value to the filter, and update every card on the dashboard by filtering them for the clicked value - every card except for the navigation question: Orders by product category. The reason we don't want the navigation question to update is so that we can click on other bars to update the filter with a different value.
 
 To learn more, check out [Cross-filtering: using a chart to update a dashboard filter](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/dashboards/cross-filtering).
+
+<!-- [test] Test-gate check: a large docs-only change. Not for merge. -->

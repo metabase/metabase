@@ -185,3 +185,5 @@ Note that while we only remove languages in major releases, we are happy to add 
 ### Contributing to translations for Metabase
 
 If you'd like to help make Metabase available in a language you're fluent in, we'd love your help! Check out our [Crowdin project](https://crowdin.com/project/metabase-i18n).
+
+<!-- [test] Test-gate check: a large docs-only change. Not for merge. -->

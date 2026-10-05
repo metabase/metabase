@@ -16,3 +16,5 @@ We try our best to make sure Metabase works in as many browsers as possible, but
 Metabase may run on older versions of these browsers or on browsers not listed above, but your mileage may vary.
 
 We recommend you use the most up-to-date browser you can.
+
+<!-- [test] Test-gate check: a large docs-only change. Not for merge. -->

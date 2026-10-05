@@ -508,3 +508,5 @@ Remote Sync does NOT sync table metadata, so if you're importing and exporting y
 
 - [Library](../data-modeling/semantic-layer/library.md)
 - [Serialization](./serialization.md)
+
+<!-- [test] Test-gate check: a large docs-only change. Not for merge. -->

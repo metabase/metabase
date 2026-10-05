@@ -191,3 +191,5 @@ If the transform runs successfully, but the source swap fails afterward, the tra
 Once conversion completes, all content that previously queried the model now queries the transform's output table. The original model just becomes a question.
 
 Newly created tables will be created with default permissions and will _not_ inherit the model's permissions. As an alternative, consider manually creating and running the transform first, setting up the permissions, then using [Replace data sources](../tools/replace-data-sources.md) to swap the model for the transform's output table once you configured permissions.
+
+<!-- [test] Test-gate check: a large docs-only change. Not for merge. -->

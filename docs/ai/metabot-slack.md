@@ -78,3 +78,5 @@ When you submit feedback, the form you send may contain sensitive data from your
 - [Metabot](./metabot.md)
 - [Metabot AI settings](./settings.md)
 - [Set up Slack](../configuring-metabase/slack.md)
+
+<!-- [test] Test-gate check: a large docs-only change. Not for merge. -->

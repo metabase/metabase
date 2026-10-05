@@ -60,3 +60,5 @@ If you want people outside of your Metabase to use an action, you can create a [
 
 - [Actions](../data-modeling/models/actions/start.md)
 - [Editable tables](../data-modeling/editable-tables.md)
+
+<!-- [test] Test-gate check: a large docs-only change. Not for merge. -->

@@ -59,3 +59,5 @@ Here are the IP addresses we use in each region.
 ## Changing regions
 
 To change regions, check out [Changing which region your Metabase is hosted in](./change-region.md).
+
+<!-- [test] Test-gate check: a large docs-only change. Not for merge. -->

@@ -139,3 +139,5 @@ If your Metabase is [set up to send email](../../configuring-metabase/email.md),
 
 - **Individual transform failures**: when transforms fail during a scheduled job run, Metabase emails the last person to edit each failed transform (or the transform's creator, or admins if neither is active). Each email covers a single job run.
 - **Daily digest of job failures**: each morning, Metabase emails all admins a summary of the scheduled job runs that failed or timed out the previous day. Manual runs aren't included in the digest, and Metabase skips the email entirely if no scheduled runs failed.
+
+<!-- [test] Test-gate check: a large docs-only change. Not for merge. -->

@@ -79,3 +79,5 @@ Before using actions in production, consider playing around with actions on some
 - [Basic actions](./basic.md)
 - [Custom actions](./custom.md)
 - [Actions in dashboards](../../../dashboards/actions.md)
+
+<!-- [test] Test-gate check: a large docs-only change. Not for merge. -->

@@ -96,3 +96,5 @@ See [Permissions to use Library content](library.md#permissions-to-use-library-c
 - [Library](./library.md)
 - [Managing tables](../metadata/managing-tables.md)
 - [Library permissions](./library.md#library-permissions)
+
+<!-- [test] Test-gate check: a large docs-only change. Not for merge. -->

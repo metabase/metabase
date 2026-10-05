@@ -154,3 +154,5 @@ Thumbs up are just as helpful as thumbs down. If you give a thumbs down, you can
 - Other
 
 > When you submit feedback, the form you send may contain sensitive data from your conversation.
+
+<!-- [test] Test-gate check: a large docs-only change. Not for merge. -->

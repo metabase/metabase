@@ -54,3 +54,5 @@ Send [Metabase logs](../monitor/application-logs.md), application database logs,
 ## Secure the surrounding infrastructure
 
 Apply your organization's security requirements and an established framework, such as the [NIST Cybersecurity Framework 2.0](https://www.nist.gov/cyberframework), to the rest of your deployment.
+
+<!-- [test] Test-gate check: a large docs-only change. Not for merge. -->

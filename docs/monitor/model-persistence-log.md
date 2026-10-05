@@ -23,3 +23,5 @@ For each persisted model, Metabase shows the:
 Click a model's name to open the model, or its collection to open the collection.
 
 To rerun a model's query and update its results, click the **refresh** icon at the end of the model's row.
+
+<!-- [test] Test-gate check: a large docs-only change. Not for merge. -->

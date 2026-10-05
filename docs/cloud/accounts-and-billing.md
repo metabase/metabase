@@ -143,3 +143,5 @@ If you're on Metabase Cloud but need to switch to hosting Metabase yourself, [co
 ## Further reading
 
 - [How billing works](https://www.metabase.com/how-billing-works)
+
+<!-- [test] Test-gate check: a large docs-only change. Not for merge. -->

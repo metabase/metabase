@@ -83,3 +83,5 @@ Once a day, Metabase deletes call records older than [`MB_AI_USAGE_MAX_RETENTION
 - [Agent API](../ai/agent-api.md)
 - [AI usage auditing](../ai/usage-auditing.md)
 - [Monitor overview](./start.md)
+
+<!-- [test] Test-gate check: a large docs-only change. Not for merge. -->

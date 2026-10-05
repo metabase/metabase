@@ -379,3 +379,5 @@ config:
     use-tenants: false
     user-visibility: all
 ```
+
+<!-- [test] Test-gate check: a large docs-only change. Not for merge. -->

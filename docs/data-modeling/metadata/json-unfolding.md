@@ -82,3 +82,5 @@ For example, if you upload a CSV with JSON in it, you might need to update the d
 ## Filtering JSON
 
 In the [query builder](../../questions/query-builder/editor.md), Metabase can't parse JSON in columns, so you can only filter by "Is empty" or "Not empty".
+
+<!-- [test] Test-gate check: a large docs-only change. Not for merge. -->

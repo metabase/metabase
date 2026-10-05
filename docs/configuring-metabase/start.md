@@ -73,3 +73,5 @@ Add your own chart types by uploading visualization plugins.
 ## [Customizing the Metabase Jetty webserver](./customizing-jetty-webserver.md)
 
 Set SSL and port settings for the Jetty webserver.
+
+<!-- [test] Test-gate check: a large docs-only change. Not for merge. -->

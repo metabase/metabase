@@ -44,3 +44,5 @@ You can change your password in [Account settings](account-settings.md).
 ## Reset a password
 
 See [Resetting passwords](managing.md#resetting-someones-password).
+
+<!-- [test] Test-gate check: a large docs-only change. Not for merge. -->

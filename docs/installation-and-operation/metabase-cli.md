@@ -121,3 +121,5 @@ Pair the CLI with version control to build content with an agent in a developmen
 - [Remote sync](./remote-sync.md)
 - [Serialization](./serialization.md)
 - [Metabase JAR commands](./commands.md)
+
+<!-- [test] Test-gate check: a large docs-only change. Not for merge. -->

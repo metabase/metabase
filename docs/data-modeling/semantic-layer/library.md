@@ -211,3 +211,5 @@ People who have View or Curate collection permissions to the **Library** subcoll
 - [Remote sync](../../installation-and-operation/remote-sync.md)
 - [Metrics](./metrics.md)
 - [Snippets](../../questions/native-editor/snippets.md).
+
+<!-- [test] Test-gate check: a large docs-only change. Not for merge. -->

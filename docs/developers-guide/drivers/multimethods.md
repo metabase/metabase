@@ -139,3 +139,5 @@ clojure -A:dev:drivers:drivers-dev
 ```
 
 You'll need to rebuild the driver and install it in your `./plugins` directory, and restart Metabase when you make changes.
+
+<!-- [test] Test-gate check: a large docs-only change. Not for merge. -->

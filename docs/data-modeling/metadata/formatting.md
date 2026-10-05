@@ -189,3 +189,5 @@ Formatting options vary depending on the type of visualization:
 - [Tables](../../questions/visualizations/table.md)
 - [Trend](../../questions/visualizations/trend.md)
 - [Waterfall chart](../../questions/visualizations/waterfall-chart.md)
+
+<!-- [test] Test-gate check: a large docs-only change. Not for merge. -->

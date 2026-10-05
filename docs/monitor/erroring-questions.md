@@ -26,3 +26,4 @@ For each question, Metabase shows the:
 You can search by question, error, database, or collection.
 
 To check whether you've fixed an error, select one or more questions and rerun them.
+<!-- [test] Test-gate check: a large docs-only change. Not for merge. -->

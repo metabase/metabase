@@ -101,3 +101,5 @@ To check how much storage you're using:
 The quota numbers update every 6 hours, so there might be a slight delay. Once you hit your quota limit, you won't be able to upload/sync more data until you either free up some space or increase your storage.
 
 To store more rows, see [increase Metabase Cloud storage](./storage.md#increase-metabase-cloud-storage).
+
+<!-- [test] Test-gate check: a large docs-only change. Not for merge. -->

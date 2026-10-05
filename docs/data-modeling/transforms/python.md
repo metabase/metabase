@@ -133,3 +133,5 @@ To make a Python transform incremental:
 - Only a [limited set of packages](#available-python-packages) are available for import. You can't install additional packages.
 - Because Python transforms use `pandas`, all data manipulation is done in memory. The available memory is determined by the Python execution add-on. For large datasets, consider using [query-based transforms](./query.md) that run in your database.
 - Only one Python transform can be run at any given time.
+
+<!-- [test] Test-gate check: a large docs-only change. Not for merge. -->

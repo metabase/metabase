@@ -161,3 +161,5 @@ When you delete the table, Metabase will give you the option to **Also send all 
 ## Further reading
 
 - [Setting up uploads](../databases/uploads.md)
+
+<!-- [test] Test-gate check: a large docs-only change. Not for merge. -->

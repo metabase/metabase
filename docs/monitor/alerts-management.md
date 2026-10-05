@@ -65,3 +65,4 @@ To edit the alert, click the **pencil** icon at the top of the sidebar.
 - [Setting up email](../configuring-metabase/email.md)
 - [Setting up Slack](../configuring-metabase/slack.md)
 - [Setting up webhooks](../configuring-metabase/webhooks.md)
+<!-- [test] Test-gate check: a large docs-only change. Not for merge. -->

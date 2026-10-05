@@ -118,3 +118,5 @@ java --add-opens java.base/java.nio=ALL-UNNAMED -jar metabase.jar
 ### Turn off colorized logs
 
 By default, Metabase will use color when displaying logs (both in **Monitor** > **Application logs** and in the terminal). You can disable colorized logs using the [`MB_COLORIZE_LOGS` environment variable](../configuring-metabase/environment-variables.md#mb_colorize_logs).
+
+<!-- [test] Test-gate check: a large docs-only change. Not for merge. -->

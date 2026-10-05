@@ -61,3 +61,5 @@ The Data Analyst group additionally needs to have at least [query builder](../..
 - [Table metadata](../metadata/metadata-editing.md)
 - [Syncs and scans](../../databases/sync-scan.md)
 - [Dependency graph](graph.md)
+
+<!-- [test] Test-gate check: a large docs-only change. Not for merge. -->

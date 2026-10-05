@@ -167,3 +167,5 @@ To require SSO for all logins, go to **Admin settings** > **Authentication** and
 ## OIDC example provider guide
 
 For a step-by-step walkthrough, see [Keycloak](./oidc-keycloak.md).
+
+<!-- [test] Test-gate check: a large docs-only change. Not for merge. -->

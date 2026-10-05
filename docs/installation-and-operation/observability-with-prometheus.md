@@ -169,3 +169,5 @@ Metrics exported by Metabase include:
 
 - [Running Metabase](../troubleshooting-guide/running.md)
 - [Profiling your Metabase](../troubleshooting-guide/profiling-metabase.md)
+
+<!-- [test] Test-gate check: a large docs-only change. Not for merge. -->

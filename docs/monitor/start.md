@@ -53,3 +53,5 @@ Who can see each Monitor page depends on their group:
 - **Groups with [Monitoring access](../permissions/application.md#monitoring-access)** can view every page except Dependency diagnostics and Alerts management.\*
 
 \* On OSS, only admins can view Monitor. The Data Analysts group and the Monitoring access permission are only available on [Pro and Enterprise plans](https://www.metabase.com/pricing).
+
+<!-- [test] Test-gate check: a large docs-only change. Not for merge. -->
