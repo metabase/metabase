@@ -49,7 +49,10 @@ describe("scenarios > dashboard > filters > location", () => {
       ([filter, { value, representativeResult }], index) => {
         // eslint-disable-next-line metabase/no-unsafe-element-filtering
         H.filterWidget().eq(index).click();
-        addWidgetStringFilter(value);
+        // The "Is" value matches its default, so the widget offers "Set to default"
+        addWidgetStringFilter(value, {
+          buttonLabel: index === 0 ? "Set to default" : "Add filter",
+        });
         cy.wait(`@dashcardQuery${ORDERS_DASHBOARD_DASHCARD_ID}`);
 
         cy.log(`Make sure ${filter} filter returns correct result`);

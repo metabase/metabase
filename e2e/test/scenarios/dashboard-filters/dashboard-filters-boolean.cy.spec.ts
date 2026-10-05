@@ -382,8 +382,8 @@ function setupDashboardClickBehavior() {
     H.visitDashboard(dashboardId);
     H.editDashboard();
     createAndMapParameter({ dashcardIndex: 1 });
-    H.showDashboardCardActions();
-    cy.findByLabelText("Click behavior").click();
+    H.showDashboardCardActions(0);
+    H.getDashboardCard(0).findByLabelText("Click behavior").click();
     addDashboardDestination({
       columnName: COLUMN_NAME,
       sourceName: COLUMN_NAME,

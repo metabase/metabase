@@ -55,8 +55,10 @@ describe("scenarios > dashboard > filters > SQL > management", () => {
       H.popover().findByText("Between").click();
 
       H.getDashboardCard()
-        .should("contain", "Variable to map to")
-        .and("contain", "No valid fields")
+        .should(
+          "contain",
+          "A number variable in this card can only be connected to a number filter with Equal to operator.",
+        )
         .and("not.contain", "Column to filter on");
 
       H.sidebar().findByText("Filter operator").next().click();
