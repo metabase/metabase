@@ -116,13 +116,16 @@
               role)))))))
 
 (defenterprise hash-input-for-impersonation
-  "Returns a hash-key for FieldValues if the current user uses impersonation for the database."
-  :feature :advanced-permissions
+  "Returns a hash-key for FieldValues if the current user uses impersonation for the database.
+  The role is nil while the `:advanced-permissions` feature is unavailable."
+  :feature :none
   [field]
   ;; Include the role in the hash key, so that we can cache the results of the query for each role.
   (let [db-id (field/field-id->database-id (u/the-id field))]
-    (when-let [role (and api/*current-user-id* (connection-impersonation-role db-id))]
-      {:impersonation-role role})))
+    (when-let [role (and api/*current-user-id*
+                         (t2/exists? :model/ConnectionImpersonation :db_id db-id)
+                         (connection-impersonation-role db-id))]
+      {:impersonation-role (when (premium-features/has-feature? :advanced-permissions) role)})))
 
 (def ^:dynamic *impersonation-role*
   "Set by Impersonation middleware, via the query processor, to define the role that should be used by

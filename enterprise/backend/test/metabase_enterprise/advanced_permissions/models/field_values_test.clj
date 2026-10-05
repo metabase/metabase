@@ -46,3 +46,11 @@
                     (is (= 2 (t2/count :model/FieldValues :field_id (u/the-id field) :type :advanced)))))))))
         (finally
           (t2/delete! :model/FieldValues :field_id (u/the-id field) :type :advanced))))))
+
+(deftest hash-input-without-advanced-permissions-test
+  (testing "an impersonated user gets no FieldValues cache key while advanced permissions are unavailable"
+    (impersonation.util-test/with-impersonations! {:impersonations [{:db-id (mt/id) :attribute "impersonation_attr"}]
+                                                   :attributes     {"impersonation_attr" "impersonation_role"}}
+      (mt/with-premium-features #{}
+        (is (nil? (params.field-values/hash-input-for-field-values
+                   (t2/select-one :model/Field :id (mt/id :categories :id)))))))))
