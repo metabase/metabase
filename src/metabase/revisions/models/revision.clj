@@ -15,6 +15,7 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.json :as json]
+   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
@@ -275,10 +276,11 @@
       object)))
 
 (mu/defn revert!
-  "Revert `entity` with `id` to a given Revision. When the revert writes a reversion revision, publishes the `:update`
-  topic of `entity` in [[revisioned-models]] once, with `:reverted-to-revision-id`, after the transaction of the revert
-  ends; in an outer transaction, that is before the outer commit. Publishes nothing for a model with no entry, or whose
-  hook publishes the update."
+  "Revert `entity` with `id` to a given Revision. Writes a reversion revision unless the newest revision equals the
+  target and the revert leaves the serialized entity unchanged. When the revert changes the serialized entity,
+  publishes the `:update` topic of `entity` in [[revisioned-models]] once, with `:reverted-to-revision-id`, after the
+  transaction of the revert ends; in an outer transaction, that is before the outer commit. Publishes nothing for a
+  model with no entry, or whose hook publishes the update. A listener error is logged, not thrown."
   [info :- [:map {:closed true}
             [:id          pos-int?]
             [:user-id     pos-int?]
@@ -288,29 +290,36 @@
         {update-topic :update :keys [previous-object? hook-publishes-update?]} (get revisioned-models entity)
         model-name (name entity)
         serialized-instance (revisions.db/revision-object model-name id revision-id)
-        ;; read outside the transaction, as `update-card!` does; a concurrent write before the transaction makes it
-        ;; stale
-        previous-object (when previous-object? (revisions.db/entity entity id))
-        [reverted? result]
+        [changed? previous-object object result]
         (t2/with-transaction [_conn]
-          (let [already-in-target-state? (= serialized-instance
-                                            (revisions.db/latest-revision-object model-name id))]
-            ;; Do the reversion of the object
-            (revert-to-revision! entity id user-id serialized-instance)
-            ;; Push a new revision to record this change
-            (let [last-revision (revisions.db/latest-revision model-name id)]
-              (if already-in-target-state?
-                [false last-revision]
-                (let [new-revision (revisions.db/insert-revision-returning! {:model        model-name
-                                                                             :model_id     id
-                                                                             :user_id      user-id
-                                                                             :object       serialized-instance
-                                                                             :is_creation  false
-                                                                             :is_reversion true})]
-                  [true (add-revision-details entity new-revision last-revision)])))))]
-    (when (and reverted? update-topic (not hook-publishes-update?))
-      (events/publish-event! update-topic (cond-> {:object                  (revisions.db/entity entity id)
-                                                   :user-id                 user-id
-                                                   :reverted-to-revision-id revision-id}
-                                            previous-object? (assoc :previous-object previous-object))))
+          ;; a writer with no revision (a remote-sync pull, a serdes import) makes the row and the newest revision
+          ;; differ, so whether the revert changes the entity comes from the row, not from the history
+          (let [history-in-target-state? (= serialized-instance
+                                            (revisions.db/latest-revision-object model-name id))
+                before                   (revisions.db/entity entity id)
+                ;; serialize before the write: a serialization can hydrate rows that the revert changes
+                before-json              (json/encode (serialize-instance entity id before))
+                _                        (revert-to-revision! entity id user-id serialized-instance)
+                after                    (revisions.db/entity entity id)
+                changed?                 (not= before-json (json/encode (serialize-instance entity id after)))
+                last-revision            (revisions.db/latest-revision model-name id)]
+            (if (and history-in-target-state? (not changed?))
+              [false nil nil last-revision]
+              (let [new-revision (revisions.db/insert-revision-returning! {:model        model-name
+                                                                           :model_id     id
+                                                                           :user_id      user-id
+                                                                           :object       serialized-instance
+                                                                           :is_creation  false
+                                                                           :is_reversion true})]
+                [changed? before after (add-revision-details entity new-revision last-revision)]))))]
+    (when (and changed? update-topic (not hook-publishes-update?))
+      (try
+        (events/publish-event! update-topic (cond-> {:object                  object
+                                                     :user-id                 user-id
+                                                     :reverted-to-revision-id revision-id}
+                                              previous-object? (assoc :previous-object previous-object)))
+        (catch Exception e
+          ;; the revert committed: the caller gets its result, and a retry would change nothing. `publish-event!` wraps
+          ;; each listener error in an `ex-info`
+          (log/errorf e "A listener failed on %s after the revert of %s %d" update-topic model-name id))))
     result))
