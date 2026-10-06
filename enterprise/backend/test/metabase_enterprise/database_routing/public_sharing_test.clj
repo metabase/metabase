@@ -1,9 +1,10 @@
 (ns ^:mb/driver-tests metabase-enterprise.database-routing.public-sharing-test
   "Public questions, public dashboards and public documents on a database with routing enabled answer from the router
-  database when an admin has granted that database anonymous access, and refuse when they have not.
+  database when an admin has granted that database anonymous access, and refuse when they have not. Every assertion
+  runs twice -- once with no account, once as a signed-in non-admin whose routing attribute points at a destination
+  database -- and asserts the two agree.
 
-  The grant is read off the database, never off whoever is visiting, so one public URL serves the same data to an
-  anonymous visitor and to a signed-in non-admin whose routing attribute points at a destination database."
+  See [[metabase-enterprise.database-routing.common]] for where that decision is made and why."
   (:require
    [clojure.string :as str]
    [clojure.test :refer [deftest is testing]]
@@ -40,94 +41,117 @@
           (execute-statement! router-db "ALTER TABLE \"my_database_name\" ADD COLUMN latitude DOUBLE")
           (execute-statement! router-db "ALTER TABLE \"my_database_name\" ADD COLUMN longitude DOUBLE")
           (sync/sync-database! router-db)
-          (execute-statement! router-db "INSERT INTO \"my_database_name\" (str, latitude, longitude) VALUES ('router-data', -10, 10)")
+          (execute-statement! router-db (str "INSERT INTO \"my_database_name\" (str, latitude, longitude) "
+                                             "VALUES ('router-data', -10, 10)"))
           (execute-statement! destination-db "INSERT INTO \"my_database_name\" (str) VALUES ('destination-data')")
-          (let [db-id        (u/the-id router-db)
-                table-id     (t2/select-one-pk :model/Table :db_id db-id)
-                field-id     (t2/select-one-pk :model/Field :table_id table-id :name "STR")
-                lat-field-id (t2/select-one-pk :model/Field :table_id table-id :name "LATITUDE")
-                lon-field-id (t2/select-one-pk :model/Field :table_id table-id :name "LONGITUDE")
-                str-query    {:database db-id
-                              :type     :query
-                              :query    {:source-table table-id
-                                         :fields       [[:field field-id nil]]}}
-                public-uuids (zipmap [:card :pivot-card :param-card :tile-card :dashboard :document]
-                                     (repeatedly #(str (random-uuid))))
-                shared       (fn [k] {:public_uuid (public-uuids k), :made_public_by_id (mt/user->id :crowberto)})]
+          (let [db-id         (u/the-id router-db)
+                table-id      (t2/select-one-pk :model/Table :db_id db-id)
+                field-id      (t2/select-one-pk :model/Field :table_id table-id :name "STR")
+                lat-field-id  (t2/select-one-pk :model/Field :table_id table-id :name "LATITUDE")
+                lon-field-id  (t2/select-one-pk :model/Field :table_id table-id :name "LONGITUDE")
+                str-dimension [:dimension [:field field-id nil]]
+                str-query     {:database db-id
+                               :type     :query
+                               :query    {:source-table table-id
+                                          :fields       [[:field field-id nil]]}}
+                ;; the pivot endpoints need an aggregation to pivot
+                pivot-query   {:database db-id
+                               :type     :query
+                               :query    {:source-table table-id
+                                          :aggregation  [[:count]]
+                                          :breakout     [[:field field-id nil]]}}
+                ;; the parameter-value endpoints need a parameter backed by a Field
+                param-query   {:database db-id
+                               :type     :native
+                               :native   {:query         (str "SELECT count(*) FROM \"my_database_name\" "
+                                                              "WHERE {{str}}")
+                                          :template-tags {"str" {:id           "_STR_"
+                                                                 :name         "str"
+                                                                 :display-name "Str"
+                                                                 :type         :dimension
+                                                                 :dimension    [:field field-id nil]
+                                                                 :widget-type  :string/=}}}}
+                ;; the map-tile endpoints resolve their lat/lon refs against the card's own columns, so this one
+                ;; selects every column rather than just `str`
+                tile-query    {:database db-id
+                               :type     :query
+                               :query    {:source-table table-id}}
+                card-uuid     (str (random-uuid))
+                pivot-uuid    (str (random-uuid))
+                param-uuid    (str (random-uuid))
+                tile-uuid     (str (random-uuid))
+                dash-uuid     (str (random-uuid))
+                doc-uuid      (str (random-uuid))
+                shared        (fn [uuid]
+                                {:public_uuid uuid, :made_public_by_id (mt/user->id :crowberto)})]
             (mt/with-temp [:model/DatabaseRouter _ {:database_id              db-id
                                                     :user_attribute           "db_name"
                                                     :anonymous_access_granted granted?}
-                           :model/Card card (merge (shared :card) {:dataset_query str-query})
-                           ;; the pivot endpoints need an aggregation to pivot
-                           :model/Card pivot-card (merge (shared :pivot-card)
-                                                         {:dataset_query {:database db-id
-                                                                          :type     :query
-                                                                          :query    {:source-table table-id
-                                                                                     :aggregation  [[:count]]
-                                                                                     :breakout     [[:field field-id nil]]}}})
-                           ;; the parameter-value endpoints need a parameter backed by a Field
-                           :model/Card _param-card (merge (shared :param-card)
-                                                          {:dataset_query
-                                                           {:database db-id
-                                                            :type     :native
-                                                            :native   {:query         "SELECT count(*) FROM \"my_database_name\" WHERE {{str}}"
-                                                                       :template-tags {"str" {:id           "_STR_"
-                                                                                              :name         "str"
-                                                                                              :display-name "Str"
-                                                                                              :type         :dimension
-                                                                                              :dimension    [:field field-id nil]
-                                                                                              :widget-type  :string/=}}}}})
-                           ;; the map-tile endpoints resolve their lat/lon refs against the card's own columns, so
-                           ;; this one selects every column rather than just `str`
-                           :model/Card tile-card (merge (shared :tile-card)
-                                                        {:dataset_query {:database db-id
-                                                                         :type     :query
-                                                                         :query    {:source-table table-id}}})
-                           :model/Dashboard dashboard (merge (shared :dashboard)
-                                                             {:parameters [{:id   "_STR_"
-                                                                            :name "Str"
-                                                                            :slug "str"
-                                                                            :type "string/="}]})
-                           :model/DashboardCard dashcard {:dashboard_id       (u/the-id dashboard)
-                                                          :card_id            (u/the-id card)
-                                                          :parameter_mappings [{:parameter_id "_STR_"
-                                                                                :card_id      (u/the-id card)
-                                                                                :target       [:dimension [:field field-id nil]]}]}
-                           :model/DashboardCard pivot-dashcard {:dashboard_id (u/the-id dashboard)
-                                                                :card_id      (u/the-id pivot-card)}
-                           :model/DashboardCard tile-dashcard {:dashboard_id (u/the-id dashboard)
-                                                               :card_id      (u/the-id tile-card)}
-                           :model/Document document (merge (shared :document)
-                                                           {:name     "Routed Document"
-                                                            :document (documents.test-util/text->prose-mirror-ast "placeholder")})
-                           :model/Card document-card {:name          "Routed document card"
-                                                      :document_id   (u/the-id document)
-                                                      :dataset_query str-query}]
+                           :model/Card card
+                           (merge (shared card-uuid) {:dataset_query str-query})
+                           :model/Card pivot-card
+                           (merge (shared pivot-uuid) {:dataset_query pivot-query})
+                           :model/Card _param-card
+                           (merge (shared param-uuid) {:dataset_query param-query})
+                           :model/Card tile-card
+                           (merge (shared tile-uuid) {:dataset_query tile-query})
+                           :model/Dashboard dashboard
+                           (merge (shared dash-uuid) {:parameters [{:id   "_STR_"
+                                                                    :name "Str"
+                                                                    :slug "str"
+                                                                    :type "string/="}]})
+                           :model/DashboardCard dashcard
+                           {:dashboard_id       (u/the-id dashboard)
+                            :card_id            (u/the-id card)
+                            :parameter_mappings [{:parameter_id "_STR_"
+                                                  :card_id      (u/the-id card)
+                                                  :target       str-dimension}]}
+                           :model/DashboardCard pivot-dashcard
+                           {:dashboard_id (u/the-id dashboard), :card_id (u/the-id pivot-card)}
+                           :model/DashboardCard tile-dashcard
+                           {:dashboard_id (u/the-id dashboard), :card_id (u/the-id tile-card)}
+                           :model/Document document
+                           (merge (shared doc-uuid)
+                                  {:name     "Routed Document"
+                                   :document (documents.test-util/text->prose-mirror-ast "placeholder")})
+                           :model/Card document-card
+                           {:name          "Routed document card"
+                            :document_id   (u/the-id document)
+                            :dataset_query str-query}]
               (t2/update! :model/Document (u/the-id document)
-                          {:document (documents.test-util/cards->prose-mirror-ast [(u/the-id document-card)])})
-              (mt/with-temporary-setting-values [enable-public-sharing true]
-                (f {:card-query          (str "public/card/" (public-uuids :card) "/query")
-                    :card-csv            (str "public/card/" (public-uuids :card) "/query/csv")
-                    :card-pivot          (str "public/pivot/card/" (public-uuids :pivot-card) "/query")
-                    :card-param-values   (str "public/card/" (public-uuids :param-card) "/params/_STR_/values")
-                    :card-param-search   (str "public/card/" (public-uuids :param-card) "/params/_STR_/search/router")
-                    :card-param-remap    (str "public/card/" (public-uuids :param-card) "/params/_STR_/remapping?value=router-data")
-                    :card-tile           (str "public/tiles/card/" (public-uuids :tile-card) "/1/1/1")
-                    :dashcard-query      (format "public/dashboard/%s/dashcard/%d/card/%d"
-                                                 (public-uuids :dashboard) (u/the-id dashcard) (u/the-id card))
-                    :dashcard-csv        (format "public/dashboard/%s/dashcard/%d/card/%d/csv"
-                                                 (public-uuids :dashboard) (u/the-id dashcard) (u/the-id card))
-                    :dashcard-pivot      (format "public/pivot/dashboard/%s/dashcard/%d/card/%d"
-                                                 (public-uuids :dashboard) (u/the-id pivot-dashcard) (u/the-id pivot-card))
-                    :dash-param-values   (str "public/dashboard/" (public-uuids :dashboard) "/params/_STR_/values")
-                    :dash-param-search   (str "public/dashboard/" (public-uuids :dashboard) "/params/_STR_/search/router")
-                    :dash-param-remap    (str "public/dashboard/" (public-uuids :dashboard) "/params/_STR_/remapping?value=router-data")
-                    :dash-tile           (format "public/tiles/dashboard/%s/dashcard/%d/card/%d/1/1/1"
-                                                 (public-uuids :dashboard) (u/the-id tile-dashcard) (u/the-id tile-card))
-                    :document-card-query (format "public/document/%s/card/%d" (public-uuids :document) (u/the-id document-card))
-                    :document-card-csv   (format "public/document/%s/card/%d/csv" (public-uuids :document) (u/the-id document-card))
-                    :lat-field           (json/encode [:field lat-field-id nil])
-                    :lon-field           (json/encode [:field lon-field-id nil])})))))))))
+                          {:document (documents.test-util/cards->prose-mirror-ast
+                                      [(u/the-id document-card)])})
+              (let [card-id     (u/the-id card)
+                    dc-id       (u/the-id dashcard)
+                    pivot-dc    [(u/the-id pivot-dashcard) (u/the-id pivot-card)]
+                    tile-dc     [(u/the-id tile-dashcard) (u/the-id tile-card)]
+                    doc-card-id (u/the-id document-card)]
+                (mt/with-temporary-setting-values [enable-public-sharing true]
+                  (f {:card-query          (str "public/card/" card-uuid "/query")
+                      :card-csv            (str "public/card/" card-uuid "/query/csv")
+                      :card-pivot          (str "public/pivot/card/" pivot-uuid "/query")
+                      :card-param-values   (str "public/card/" param-uuid "/params/_STR_/values")
+                      :card-param-search   (str "public/card/" param-uuid "/params/_STR_/search/router")
+                      :card-param-remap    (str "public/card/" param-uuid
+                                                "/params/_STR_/remapping?value=router-data")
+                      :card-tile           (str "public/tiles/card/" tile-uuid "/1/1/1")
+                      :dashcard-query      (format "public/dashboard/%s/dashcard/%d/card/%d"
+                                                   dash-uuid dc-id card-id)
+                      :dashcard-csv        (format "public/dashboard/%s/dashcard/%d/card/%d/csv"
+                                                   dash-uuid dc-id card-id)
+                      :dashcard-pivot      (apply format "public/pivot/dashboard/%s/dashcard/%d/card/%d"
+                                                  dash-uuid pivot-dc)
+                      :dash-param-values   (str "public/dashboard/" dash-uuid "/params/_STR_/values")
+                      :dash-param-search   (str "public/dashboard/" dash-uuid "/params/_STR_/search/router")
+                      :dash-param-remap    (str "public/dashboard/" dash-uuid
+                                                "/params/_STR_/remapping?value=router-data")
+                      :dash-tile           (apply format
+                                                  "public/tiles/dashboard/%s/dashcard/%d/card/%d/1/1/1"
+                                                  dash-uuid tile-dc)
+                      :document-card-query (format "public/document/%s/card/%d" doc-uuid doc-card-id)
+                      :document-card-csv   (format "public/document/%s/card/%d/csv" doc-uuid doc-card-id)
+                      :lat-field           (json/encode [:field lat-field-id nil])
+                      :lon-field           (json/encode [:field lon-field-id nil])}))))))))))
 
 (defn- from-both
   "Make the same public request as both [[requesters]], apply `extract` to each response, assert the two agree, and

@@ -23,9 +23,9 @@
         (= :off *database-routing-on*)
         nil
 
-        ;; Anonymous access (a public link) decides from the database's grant, never from whoever is visiting, so one
-        ;; public URL serves the same data to everyone. Granted means the router database answers, i.e. no routing.
-        (= :anonymous *database-routing-on*)
+        ;; The decision is the database's grant, never whoever is visiting -- that is what makes one public URL serve
+        ;; the same data to every viewer, signed in or not. Granted means no routing, i.e. the router database answers.
+        (= :router-if-granted *database-routing-on*)
         (when-not (database-routing.db/router-anonymous-access-granted? (u/the-id db-or-id))
           (throw (ex-info (tru "This database does not allow anonymous access.")
                           {:status-code                  400
@@ -93,8 +93,8 @@
 ;; a Destination Database
 ;;
 ;; `*database-routing-on*` records our intent: `:on` inside a routed query (destinations are expected), `:off` when we
-;; explicitly want the router (e.g. sync), `:anonymous` when we want the router but only if the database allows
-;; anonymous traffic (a public link), `:unset` otherwise. Concretely:
+;; explicitly want the router (e.g. sync), `:router-if-granted` when we want the router but only where the database
+;; grants anonymous access, `:unset` otherwise. Concretely:
 ;;
 ;; (a) looks like:
 ;; - I am looking at a Router Database,
@@ -104,7 +104,7 @@
 ;;
 ;; (b) looks like:
 ;; - I am looking at a destination Database, and
-;; - `*database-routing-on*` is not `:on` (i.e. `:off`, `:anonymous`, or `:unset`).
+;; - `*database-routing-on*` is not `:on` (i.e. `:off`, `:router-if-granted`, or `:unset`).
 ;; A tenancy boundary, enforced by `check-allowed-access!` below.
 
 (defenterprise with-database-routing-on-fn
@@ -121,12 +121,12 @@
   (binding [*database-routing-on* :off]
     (f)))
 
-(defenterprise with-database-routing-for-anonymous-access-fn
+(defenterprise with-database-routing-off-if-granted-fn
   "Enterprise version. Calls the function with Database Routing prohibited, and a router database reachable only if an
   admin has granted it anonymous access."
   :feature :database-routing
   [f]
-  (binding [*database-routing-on* :anonymous]
+  (binding [*database-routing-on* :router-if-granted]
     (f)))
 
 (defn- is-disallowed-destination-db-access?

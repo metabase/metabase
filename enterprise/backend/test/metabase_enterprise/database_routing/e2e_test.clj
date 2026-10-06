@@ -232,14 +232,17 @@
                                     (qp/process-query {:database (u/the-id router-db)
                                                        :type :query
                                                        :query {:source-table (t2/select-one-pk :model/Table :db_id (u/the-id router-db))}}))))
-            (testing "Anonymous access through a public link is decided by the database's grant, which this router does not have"
+            (testing "Through a public link the grant decides, and this router has none"
               ;; the granted side of this is covered end to end in
               ;; [[metabase-enterprise.database-routing.public-sharing-test]]
-              (is (thrown-with-msg? clojure.lang.ExceptionInfo #"This database does not allow anonymous access."
-                                    (database-routing/with-database-routing-for-anonymous-access
-                                      (qp/process-query {:database (u/the-id router-db)
-                                                         :type :query
-                                                         :query {:source-table (t2/select-one-pk :model/Table :db_id (u/the-id router-db))}})))))
+              (let [query {:database (u/the-id router-db)
+                           :type     :query
+                           :query    {:source-table (t2/select-one-pk :model/Table
+                                                                      :db_id (u/the-id router-db))}}]
+                (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                                      #"This database does not allow anonymous access."
+                                      (database-routing/with-database-routing-off-if-granted
+                                        (qp/process-query query))))))
             (testing "No destination database matches"
               (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Database Routing error: No Destination Database with slug `nonexistent_database_name` found."
                                     (mt/with-test-user :crowberto

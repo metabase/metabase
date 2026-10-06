@@ -52,10 +52,11 @@
           (e2e/with-routing-setup! [router-db [[_destination-db "destination-db"]]]
             (e2e/execute-statement! router-db "INSERT INTO \"my_database_name\" (str) VALUES ('keep')")
             (e2e/execute-statement! router-db "INSERT INTO \"my_database_name\" (str) VALUES ('drop')")
-            (let [router-table (t2/select-one :model/Table :db_id (u/the-id router-db))
-                  str-field    (t2/select-one :model/Field :table_id (u/the-id router-table))
-                  all-users    (perms/all-users-group)
-                  uuid         (str (random-uuid))]
+            (let [router-table  (t2/select-one :model/Table :db_id (u/the-id router-db))
+                  str-field     (t2/select-one :model/Field :table_id (u/the-id router-table))
+                  str-dimension [:dimension [:field (u/the-id str-field) nil]]
+                  all-users     (perms/all-users-group)
+                  uuid          (str (random-uuid))]
               (mt/with-no-data-perms-for-all-users!
                 (mt/with-temp [:model/DatabaseRouter _ {:database_id              (u/the-id router-db)
                                                         :user_attribute           "db_name"
@@ -63,9 +64,11 @@
                                :model/Sandbox _ {:group_id             (u/the-id all-users)
                                                  :table_id             (u/the-id router-table)
                                                  :card_id              nil
-                                                 :attribute_remappings {"filter_val" [:dimension [:field (u/the-id str-field) nil]]}}]
-                  (data-perms/set-database-permission! all-users (u/the-id router-db) :perms/view-data :unrestricted)
-                  (data-perms/set-table-permission! all-users (u/the-id router-table) :perms/create-queries :query-builder)
+                                                 :attribute_remappings {"filter_val" str-dimension}}]
+                  (data-perms/set-database-permission! all-users (u/the-id router-db)
+                                                       :perms/view-data :unrestricted)
+                  (data-perms/set-table-permission! all-users (u/the-id router-table)
+                                                    :perms/create-queries :query-builder)
                   (let [mp    (lib.metadata.jvm/application-database-metadata-provider (u/the-id router-db))
                         query (lib/query mp (lib.metadata/table mp (u/the-id router-table)))]
                     (mt/with-temp [:model/Card _ {:name              "Public router question"

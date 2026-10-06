@@ -934,23 +934,19 @@
 ;;`/dashboard` vs `/card`
 
 ;;; A public link has no Metabase account behind it, so there are no user attributes to route by: public query
-;;; execution uses the router (primary) database -- but only where an admin has granted that database anonymous
-;;; access, and otherwise it refuses.
+;;; execution uses the router (primary) database, where that database grants anonymous access. See
+;;; [[metabase.database-routing.core/with-database-routing-off-if-granted]] for what is decided and on what.
 ;;;
-;;; The wrap lives here, around every `/api/public` route, rather than on the individual execution helpers. Those
-;;; helpers are shared with guest embedding, which is gated separately, and wrapping the routes means no endpoint --
-;;; queries, export formats, parameter values, parameter search, remapping, pivot queries or map tiles -- can forget
-;;; it. Guest embedding learned that the hard way: its first implementation wrapped endpoints one at a time and missed
-;;; the parameter-value paths, so filter dropdowns threw while charts worked.
-;;;
-;;; The decision comes from the database, never from the visitor, so one public URL serves the same data to a signed-in
-;;; viewer and an anonymous one.
+;;; Wrap the routes, not the execution helpers: those helpers are shared with guest embedding, which is gated
+;;; separately, and the route is the one place no endpoint can forget -- queries, export formats, parameter values,
+;;; parameter search, remapping, pivot queries and map tiles all pass through it, and the parameter paths have no
+;;; shared helper to wrap.
 
 (defn- enforce-anonymous-database-routing
   "Ring middleware that runs a public request with database routing resolved for anonymous access (see above)."
   [handler]
   (fn [request respond raise]
-    (database-routing/with-database-routing-for-anonymous-access
+    (database-routing/with-database-routing-off-if-granted
       (handler request respond raise))))
 
 (def ^:private ^{:arglists '([handler])} +anonymous-database-routing
