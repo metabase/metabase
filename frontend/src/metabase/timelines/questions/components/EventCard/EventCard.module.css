@@ -1,0 +1,19 @@
+.root {
+  padding: var(--mantine-spacing-xxs) var(--mantine-spacing-md);
+  border-left: 0.25rem solid transparent;
+  cursor: pointer;
+
+  &:hover {
+    background-color: var(--mb-color-background_surface-hover);
+  }
+
+  &.selected {
+    border-left-color: var(--mb-color-core-brand);
+    background-color: var(--mb-color-background_surface-hover);
+  }
+}
+
+.aside {
+  flex: 0 0 auto;
+  align-self: start;
+}

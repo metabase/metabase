@@ -1,18 +1,14 @@
+import cx from "classnames";
 import type { ChangeEvent, SyntheticEvent } from "react";
 import { memo, useCallback } from "react";
 import { t } from "ttag";
 
 import { TimelineEventInfo } from "metabase/common/components/TimelineEventInfo";
 import { useScrollOnMount } from "metabase/common/hooks/use-scroll-on-mount";
-import { ActionIcon, Checkbox, Icon, Menu } from "metabase/ui";
+import { ActionIcon, Box, Checkbox, Flex, Icon, Menu } from "metabase/ui";
 import type { Timeline, TimelineEvent } from "metabase-types/api";
 
-import {
-  CardAside,
-  CardBody,
-  CardCheckboxContainer,
-  CardRoot,
-} from "./EventCard.styled";
+import S from "./EventCard.module.css";
 
 export interface EventCardProps {
   event: TimelineEvent;
@@ -64,24 +60,24 @@ const EventCard = ({
   }, []);
 
   return (
-    <CardRoot
+    <Flex
+      className={cx(S.root, { [S.selected]: isVisible && isSelected })}
       aria-label={t`Timeline event card`}
       ref={isSelected ? selectedRef : null}
-      isSelected={isVisible && isSelected}
       onClick={handleToggleSelected}
     >
-      <CardCheckboxContainer>
+      <Flex flex="0 0 auto" justify="center" align="center" w="2rem" h="2rem">
         <Checkbox
           checked={isVisible}
           onChange={handleChangeVisibility}
           onClick={handleAsideClick}
         />
-      </CardCheckboxContainer>
-      <CardBody>
+      </Flex>
+      <Box flex="1 1 auto" pt="xxxs" pr="md" pl="xxxs" miw={0}>
         <TimelineEventInfo event={event} />
-      </CardBody>
+      </Box>
       {menuItems.length > 0 && (
-        <CardAside onClick={handleAsideClick}>
+        <Box className={S.aside} onClick={handleAsideClick}>
           <Menu position="bottom-end" shadow="sm">
             <Menu.Target>
               <ActionIcon variant="subtle" aria-label={t`Event menu`}>
@@ -90,9 +86,9 @@ const EventCard = ({
             </Menu.Target>
             <Menu.Dropdown>{menuItems}</Menu.Dropdown>
           </Menu>
-        </CardAside>
+        </Box>
       )}
-    </CardRoot>
+    </Flex>
   );
 };
 
