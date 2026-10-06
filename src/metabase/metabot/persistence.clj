@@ -709,12 +709,6 @@
   ;; what the client saw happen to the turn outranks why the model stopped.
   (let [stored-reason (:finish_reason row)
         finish-reason (known-finish-reason stored-reason)]
-    (when (and (some? stored-reason) (nil? finish-reason))
-      ;; This build has no copy to show for a reason it doesn't know, so the turn reads as a
-      ;; normal completed one and the reason is thrown away. Warn so it leaves a trace: the
-      ;; row came either from a newer build or from a bad write.
-      (log/warnf "Unknown metabot_message.finish_reason %s on message %s; reading it as a completed turn"
-                 (pr-str stored-reason) (:id row)))
     (cond
       (placeholder-still-active? row)
       {:type "in_progress"}
@@ -730,7 +724,14 @@
         (and (= "length" finish-reason) (:context_window_full row)) (assoc :contextWindowFull true))
 
       :else
-      {:type "done"})))
+      (do
+        (when (some? stored-reason)
+          ;; This build has no copy to show for a reason it doesn't know, so the turn reads as a
+          ;; normal completed one and the reason is thrown away. Warn so it leaves a trace: the
+          ;; row came either from a newer build or from a bad write.
+          (log/warnf "Unknown metabot_message.finish_reason %s on message %s; reading it as a completed turn"
+                     (pr-str stored-reason) (:id row)))
+        {:type "done"}))))
 
 (defn- message->client-message
   "Convert one `MetabotMessage` row into its client shape: the row's parts, plus

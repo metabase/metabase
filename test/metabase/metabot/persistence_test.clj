@@ -998,9 +998,17 @@
            (:status (client-message {:role :assistant :finished false :finish_reason "length"
                                      :data []})))))
   (testing "a reason written by a newer build reads as done rather than failing the read"
-    (is (= {:type "done"}
-           (:status (client-message {:role :assistant :finished true :finish_reason "quantum-foam"
-                                     :data []}))))))
+    (log.capture/with-log-messages-for-level [logs [metabase.metabot.persistence :warn]]
+      (is (= {:type "done"}
+             (:status (client-message {:role :assistant :finished true :finish_reason "quantum-foam"
+                                       :data []}))))
+      (is (some #(re-find #"Unknown metabot_message.finish_reason" (:message %)) (logs)))))
+  (testing "an unknown reason on an aborted row does not warn: the reason is unused there"
+    (log.capture/with-log-messages-for-level [logs [metabase.metabot.persistence :warn]]
+      (is (= {:type "aborted"}
+             (:status (client-message {:role :assistant :finished false :finish_reason "quantum-foam"
+                                       :data []}))))
+      (is (not-any? #(re-find #"Unknown metabot_message.finish_reason" (:message %)) (logs))))))
 
 (deftest messages->client-messages-errored-pairs-test
   (testing "by default, errored assistant rows and the preceding user prompt are dropped"
