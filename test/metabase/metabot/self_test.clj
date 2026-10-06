@@ -653,7 +653,7 @@
         (is (=? (conj (vec streamed) {:type :tool-output-available :toolCallId "call-1"})
                 (into [] (self.core/tool-executor-xf test-util/TOOLS) (concat streamed [(last cut-off)]))))
         (testing "and a warning names the call that never ran"
-          (is (=? [{:level :warn :message #".*call-2.*"}] (messages))))))))
+          (is (=? [{:level :warn :message #".*call-2.*get-time.*"}] (messages))))))))
 
 ;;; tool argument validation tests
 

@@ -1053,7 +1053,8 @@
                (let [cut-off (for [[id {:keys [task]}] @active :when (not task)] id)]
                  (vreset! errored? true)
                  (when (seq cut-off)
-                   (log/warn "Dropping tool calls that a stream error cut off" {:tool-calls cut-off})
+                   (log/warn "Dropping tool calls that a stream error cut off"
+                             {:tool-calls (into {} (map (juxt identity #(get-in @active [% :chunks 0 :toolName]))) cut-off)})
                    (vswap! active #(apply dissoc % cut-off))))
 
                ;; otherwise: do nothing
