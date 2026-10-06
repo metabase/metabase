@@ -5,6 +5,7 @@
    [clojure.test :refer :all]
    [java-time.api :as t]
    [medley.core :as m]
+   [metabase.analytics.db :as analytics.db]
    [metabase.analytics.stats :as stats :refer [legacy-anonymous-usage-stats]]
    [metabase.app-db.core :as mdb]
    [metabase.channel.settings :as channel.settings]
@@ -13,9 +14,11 @@
    [metabase.lib.core :as lib]
    [metabase.premium-features.settings :as premium-features.settings]
    [metabase.query-processor.util :as qp.util]
+   [metabase.session.core :as session]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
+   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.json :as json]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -702,6 +705,38 @@
         (is (= {:library_data 1
                 :library_metrics 2}
                (#'stats/library-stats)))))))
+
+(defn- hours-ago
+  "`n` hours before now, as a DB-side expression."
+  [n]
+  (h2x/add-interval-honeysql-form (mdb/db-type) (h2x/current-datetime-honeysql-form (mdb/db-type)) (- n) :hour))
+
+(defn- insert-ended-session!
+  "Insert a `core_session` row that ended `hours` ago, bypassing the model hooks. The instant is the database's own,
+  as it is on every real ending path, so the count is compared across the two clocks the way it is in production."
+  [user-id end-reason hours]
+  (t2/insert! (t2/table-name :model/Session)
+              {:id         (session/generate-session-id)
+               :key_hashed nil
+               :user_id    user-id
+               :created_at (hours-ago (inc hours))
+               :ended_at   (hours-ago hours)
+               :end_reason end-reason}))
+
+(deftest sessions-revoked-by-admin-metric-test
+  (mt/with-empty-h2-app-db!
+    (mt/with-temp [:model/User {user-id :id} {}]
+      (let [count-since #(analytics.db/admin-revoked-session-count-since
+                          (t/minus (t/offset-date-time) (t/days 1)))]
+        (testing "with no ended sessions"
+          (is (zero? (count-since))))
+        (testing "a session an admin revoked in the last 24h is counted"
+          (insert-ended-session! user-id "admin" 1)
+          (is (= 1 (count-since))))
+        (testing "an older revoke, and an ending that was nobody's revoke, are not"
+          (insert-ended-session! user-id "admin" 25)
+          (insert-ended-session! user-id "logout" 1)
+          (is (= 1 (count-since))))))))
 
 (deftest transform-metrics-test
   (mt/with-empty-h2-app-db!
