@@ -417,8 +417,8 @@
                 "Response should not contain :trace key")
             (is (not (contains? error-response :via))
                 "Response should not contain :via key")
-            (is (= "test-value" (get-in error-response [:data :custom-data]))
-                "Response should include the listed ex-data")
+            (is (not (contains? error-response :data))
+                "Response should not contain the ex-data either, like the regular exception middleware")
             (is (not (str/includes? (pr-str error-response) "SELECT secret"))
                 "Response should not include unlisted ex-data")))))))
 
@@ -489,6 +489,120 @@
                 "Response should not contain :via key")
             (is (= "preserve-me" (:custom-data error-response))
                 "Response should still include custom data")))))))
+
+(defn- error-response-fn-for-test [error]
+  {:status :failed, :error "generic message", :original-keys (sort (keys error))})
+
+(defn- error-carrying-output-stream
+  "An output stream like the one a streaming response body is handed, carrying `error-response-fn`, that writes to
+  `os`."
+  ^java.io.OutputStream [os error-response-fn]
+  (#'streaming-response/delay-output-stream (delay os) error-response-fn))
+
+(deftest write-error-applies-error-response-fn-test
+  (testing "when the output stream carries an :error-response-fn, write-error! writes what it returns instead of the error itself"
+    (mt/with-temporary-setting-values [hide-stacktraces false]
+      (testing "for a raw exception (formatted to a map first, so the fn always sees a map)"
+        (let [baos (java.io.ByteArrayOutputStream.)]
+          (#'streaming-response/write-error! (error-carrying-output-stream baos error-response-fn-for-test)
+                                             (ex-info "SENSITIVE MESSAGE" {:query "SENSITIVE QUERY"})
+                                             :api)
+          (let [output (String. (.toByteArray baos) "UTF-8")]
+            (is (= {:status        "failed"
+                    :error         "generic message"
+                    :original-keys ["cause" "trace" "via"]}
+                   (json/decode output true)))
+            (is (not (re-find #"SENSITIVE" output))))))
+      (testing "for an already-formatted error map"
+        (let [baos (java.io.ByteArrayOutputStream.)]
+          (#'streaming-response/write-error! (error-carrying-output-stream baos error-response-fn-for-test)
+                                             {:status :failed, :error "SENSITIVE", :json_query "SENSITIVE"}
+                                             :api)
+          (let [output (String. (.toByteArray baos) "UTF-8")]
+            (is (= {:status        "failed"
+                    :error         "generic message"
+                    :original-keys ["error" "json_query" "status"]}
+                   (json/decode output true)))
+            (is (not (re-find #"SENSITIVE" output))))))
+      (testing "an output stream without one writes the error unchanged"
+        (let [baos (java.io.ByteArrayOutputStream.)]
+          (#'streaming-response/write-error! (error-carrying-output-stream baos nil)
+                                             {:status :failed, :error "visible"}
+                                             :api)
+          (is (= {:status "failed", :error "visible"}
+                 (json/decode (String. (.toByteArray baos) "UTF-8") true))))))))
+
+(defn- respond-and-capture
+  "Respond with `streaming-response` against a fake servlet response. Returns the status code and the body written."
+  [streaming-response]
+  (with-open [os (java.io.ByteArrayOutputStream.)]
+    (let [complete-promise (promise)
+          status           (atom nil)]
+      (server.protocols/respond streaming-response
+                                {:response (reify HttpServletResponse
+                                             (isCommitted [_] false)
+                                             (setStatus [_ new-status] (reset! status new-status))
+                                             (setContentType [_ _])
+                                             (setHeader [_ _ _])
+                                             (getOutputStream [_]
+                                               (proxy [ServletOutputStream] []
+                                                 (write
+                                                   ([byytes]
+                                                    (.write os ^bytes byytes))
+                                                   ([byytes offset length]
+                                                    (.write os ^bytes byytes offset length))))))
+                                 :async-context (reify AsyncContext
+                                                  (addListener [_ _])
+                                                  (complete [_]
+                                                    (deliver complete-promise true)))})
+      (is (true? (deref complete-promise 1000 ::timed-out)))
+      {:status @status
+       :body   (String. (.toByteArray os) "UTF-8")})))
+
+(deftest with-error-response-fn-test
+  (testing "with-error-response-fn makes a streaming response pass any error its body produces through the fn"
+    (mt/with-temporary-setting-values [hide-stacktraces false]
+      (testing "an exception thrown by the body, on the worker thread"
+        (let [{:keys [status body]} (respond-and-capture
+                                     (streaming-response/with-error-response-fn
+                                       (streaming-response/streaming-response {:content-type "application/json"} [_os _]
+                                         (throw (ex-info "SENSITIVE MESSAGE" {:query "SENSITIVE QUERY"})))
+                                       error-response-fn-for-test))]
+          (is (= 500 status))
+          (is (= {:status        "failed"
+                  :error         "generic message"
+                  :original-keys ["cause" "trace" "via"]}
+                 (json/decode body true)))
+          (is (not (re-find #"SENSITIVE" body)))))
+      (testing "an error map the body writes itself with write-error!, as the query processor does"
+        (let [{:keys [status body]} (respond-and-capture
+                                     (streaming-response/with-error-response-fn
+                                       (streaming-response/streaming-response {:content-type "application/json"} [os _]
+                                         (streaming-response/write-error! os {:status :failed, :error "SENSITIVE", :json_query "SENSITIVE"} :api 400))
+                                       error-response-fn-for-test))]
+          (is (= 400 status))
+          (is (= {:status        "failed"
+                  :error         "generic message"
+                  :original-keys ["error" "json_query" "status"]}
+                 (json/decode body true)))
+          (is (not (re-find #"SENSITIVE" body))))))))
+
+(deftest with-error-response-fn-response-shapes-test
+  (let [sr (streaming-response/streaming-response {:content-type "application/json"} [_os _])]
+    (testing "a streaming response gets the fn added to its options, which are otherwise kept"
+      (let [sr' (streaming-response/with-error-response-fn sr error-response-fn-for-test)]
+        (is (instance? metabase.server.streaming_response.StreamingResponse sr'))
+        (is (= {:content-type "application/json", :error-response-fn error-response-fn-for-test}
+               (.options ^metabase.server.streaming_response.StreamingResponse sr')))))
+    (testing "a Ring response map whose body is a streaming response gets its body updated"
+      (let [response (streaming-response/with-error-response-fn {:status 202, :body sr} error-response-fn-for-test)]
+        (is (= 202 (:status response)))
+        (is (= error-response-fn-for-test
+               (:error-response-fn (.options ^metabase.server.streaming_response.StreamingResponse (:body response)))))))
+    (testing "any other response is returned unchanged"
+      (is (= {:status 200, :body {:a 1}}
+             (streaming-response/with-error-response-fn {:status 200, :body {:a 1}} error-response-fn-for-test)))
+      (is (nil? (streaming-response/with-error-response-fn nil error-response-fn-for-test))))))
 
 (deftest ^:parallel streaming-response-schema-error-test
   (testing "streaming-response-schema correctly validates responses"
@@ -680,7 +794,7 @@
            finished-chan
            canceled-chan
            (AtomicBoolean. false)
-           executor)
+           {:executor executor})
           (is (= "custom-streaming-executor" (deref ran-on 5000 ::timed-out)))
           (is (= :completed (a/<!! finished-chan))))
         (finally

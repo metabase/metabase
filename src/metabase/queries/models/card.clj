@@ -1482,6 +1482,11 @@
 
       :else base)))
 
+;; A data app's resource collection holds the saved questions and metric copies the app runs.
+(defmethod collection/allowed-namespaces :model/Card
+  [_]
+  (conj collection/default-allowed-namespaces collection/data-apps-ns))
+
 (defmethod serdes/make-spec "Card"
   [_model-name _opts]
   {:copy [:archived :archived_directly :collection_position :collection_preview :description :display
@@ -1551,7 +1556,7 @@
     (mapcat #(serdes/mbql-deps allow-int-ids? %) parameter_mappings)
     (metrics/dimension-mappings-deps allow-int-ids? dimension_mappings)
     (serdes/parameters-deps allow-int-ids? parameters)
-    (when database_id [[{:model "Database" :id database_id}]])
+    (when (and allow-int-ids? database_id) [[{:model "Database" :id database_id}]])
     (when source_card_id #{[{:model "Card" :id source_card_id}]})
     (when collection_id #{[{:model "Collection" :id collection_id}]})
     (when dashboard_id #{[{:model "Dashboard" :id dashboard_id}]})

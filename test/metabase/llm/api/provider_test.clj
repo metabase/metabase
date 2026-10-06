@@ -293,6 +293,56 @@
                                 {:type "openai" :config {:api-key "sk-valid"}})
           (is (= "anthropic/claude-opus-4-8" (metabot.settings/llm-metabot-provider))))))))
 
+(deftest create-records-whether-the-listing-offered-the-mini-model-test
+  (testing "a connection whose listing includes its type's mini model runs quick tasks on it"
+    (mt/with-dynamic-fn-redefs [metabot.self/list-models
+                                (fn [& _] {:models [{:id "claude-sonnet-4-6" :display_name "Claude Sonnet 4.6"}
+                                                    {:id "claude-haiku-4-5-20251001" :display_name "Claude Haiku 4.5"}]})]
+      (mt/with-temporary-setting-values [llm-providers []]
+        (mt/with-temporary-raw-setting-values [llm-metabot-provider nil
+                                               llm-mini-model nil]
+          (mt/user-http-request :crowberto :post 200 "llm/providers"
+                                {:type "anthropic" :config {:api-key "sk-ant-valid"}})
+          (is (= {:api-key "sk-ant-valid" :mini-model "claude-haiku-4-5-20251001"} (stored-config "anthropic")))
+          (is (= "anthropic/claude-haiku-4-5-20251001" (metabot.settings/llm-mini-model)))))))
+  (testing "one whose listing leaves it out runs them on the Metabot model, not on a guess the account cannot serve"
+    (mt/with-dynamic-fn-redefs [metabot.self/list-models
+                                (fn [& _] {:models [{:id "claude-sonnet-4-6" :display_name "Claude Sonnet 4.6"}]})]
+      (mt/with-temporary-setting-values [llm-providers []]
+        (mt/with-temporary-raw-setting-values [llm-metabot-provider nil
+                                               llm-mini-model nil]
+          (mt/user-http-request :crowberto :post 200 "llm/providers"
+                                {:type "anthropic" :config {:api-key "sk-ant-valid"}})
+          (is (= {:api-key "sk-ant-valid"} (stored-config "anthropic")))
+          (is (nil? (setting/db-stored-value :llm-mini-model)))
+          (is (= "anthropic/claude-sonnet-4-6" (metabot.settings/llm-mini-model))))))))
+
+(deftest update-relists-the-mini-model-test
+  (testing "editing a connection asks its listing again, and the form echoing the old answer back does not keep it"
+    (mt/with-dynamic-fn-redefs [metabot.self/list-models
+                                (fn [& _] {:models [{:id "claude-sonnet-4-6" :display_name "Claude Sonnet 4.6"}]})]
+      (mt/with-temporary-setting-values [llm-providers [(connection "anthropic" "anthropic"
+                                                                    {:api-key    "sk-ant-stored"
+                                                                     :mini-model "claude-haiku-4-5-20251001"})]]
+        (mt/with-temporary-raw-setting-values [llm-metabot-provider "anthropic/claude-sonnet-4-6"
+                                               llm-mini-model nil]
+          (is (= [:api-key]
+                 (keys (:config (mt/user-http-request :crowberto :put 200 "llm/providers/anthropic"
+                                                      {:config {:api-key    "sk-ant-rotated"
+                                                                :mini-model "claude-haiku-4-5-20251001"}})))))
+          (is (= {:api-key "sk-ant-rotated"} (stored-config "anthropic")))
+          (is (= "anthropic/claude-sonnet-4-6" (metabot.settings/llm-mini-model)))))))
+  (testing "and records the mini model once the account serves it"
+    (mt/with-dynamic-fn-redefs [metabot.self/list-models
+                                (fn [& _] {:models [{:id "claude-sonnet-4-6" :display_name "Claude Sonnet 4.6"}
+                                                    {:id "claude-haiku-4-5-20251001" :display_name "Claude Haiku 4.5"}]})]
+      (mt/with-temporary-setting-values [llm-providers [(connection "anthropic" "anthropic" {:api-key "sk-ant-stored"})]]
+        (mt/with-temporary-raw-setting-values [llm-metabot-provider "anthropic/claude-sonnet-4-6"
+                                               llm-mini-model nil]
+          (mt/user-http-request :crowberto :put 200 "llm/providers/anthropic" {:name "Anthropic (prod)"})
+          (is (= {:api-key "sk-ant-stored" :mini-model "claude-haiku-4-5-20251001"} (stored-config "anthropic")))
+          (is (= "anthropic/claude-haiku-4-5-20251001" (metabot.settings/llm-mini-model))))))))
+
 (deftest create-vllm-connection-adopts-the-model-its-probe-exercised-test
   (testing (str "A vLLM server serves whatever the operator loaded, so there is no default model to select: "
                 "connecting adopts the model the connect-time probe actually ran the agent-loop contract "
@@ -1110,7 +1160,8 @@
     (mt/with-temporary-raw-setting-values [llm-metabot-provider "openai/gpt-5.4"
                                            llm-mini-model "anthropic/claude-haiku-4-5"]
       (mt/with-temporary-setting-values [llm-providers [(connection "anthropic" "anthropic" {:api-key "sk-ant-stored"})
-                                                        (connection "openai" "openai" {:api-key "sk-stored"})]]
+                                                        (connection "openai" "openai" {:api-key    "sk-stored"
+                                                                                       :mini-model "gpt-5.4-mini"})]]
         (mt/user-http-request :crowberto :delete 204 "llm/providers/anthropic")
         (is (nil? (setting/db-stored-value :llm-mini-model)))
         (is (= "openai/gpt-5.4-mini" (metabot.settings/llm-mini-model)))))))

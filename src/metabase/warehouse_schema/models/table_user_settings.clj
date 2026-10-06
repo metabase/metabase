@@ -160,10 +160,9 @@
   (conj (serdes/table->path (serdes/*export-table-fk* table_id))
         {:model "TableUserSettings" :id "1"}))
 
-(defmethod serdes/deserialization-dependencies "TableUserSettings" [tus]
-  (let [db-path (first (serdes/path tus))]
-    (cond-> [[db-path]]
-      (:collection_id tus) (conj [{:model "Collection" :id (:collection_id tus)}]))))
+(defmethod serdes/deserialization-dependencies "TableUserSettings" [{:keys [collection_id]}]
+  (when collection_id
+    [[{:model "Collection" :id collection_id}]]))
 
 (defmethod serdes/load-find-local "TableUserSettings" [path]
   (let [found-table (serdes/load-find-local (pop path))]

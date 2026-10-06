@@ -256,8 +256,7 @@
                                            (update :middleware select-keys [:js-int-to-string? :ignore-cached-results?]))
                                        :constraints (qp.constraints/default-query-constraints)
                                        :info        info)
-                                rff)
-      query)))
+                                rff))))
 
 (defn- parameter-field-values
   [field-ids query]

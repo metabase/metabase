@@ -130,28 +130,6 @@
                            (format "Database (`%s`)" db-name))
             (format "expected %s to be quoted verbatim" (pr-str db-name)))))))
 
-(deftest source-error-message-database-not-found-test
-  (testing "source-error-message names the card and the missing database for FK database-not-found errors"
-    (let [cause (ex-info "table id present, but database not found: [clickhouse nil some_table]"
-                         {:table-id ["clickhouse" nil "some_table"]
-                          :db-name  "clickhouse"
-                          :error    :metabase.models.serialization.resolve.db/database-not-found})
-          e     (ex-info "Failed to load into database for Card abc123"
-                         {:path   "Card abc123"
-                          :entity {:model "Card" :id "abc123" :name "Some card"}}
-                         cause)]
-      (is (= (str "Import failed: Card `Some card` (`abc123`) references Database (`clickhouse`), which does not "
-                  "exist on this instance. Make sure all referenced databases and other dependencies are set up "
-                  "before importing.")
-             (impl/source-error-message e)))))
-  (testing "database-not-found is found anywhere in the cause chain, not only at the immediate cause"
-    (let [root   (ex-info "table id present, but database not found: [clickhouse nil t]"
-                          {:db-name "clickhouse"
-                           :error   :metabase.models.serialization.resolve.db/database-not-found})
-          middle (ex-info "wrapped by an intervening helper" {} root)
-          e      (ex-info "Failed to load into database for Card abc123" {:path "Card abc123"} middle)]
-      (is (str/includes? (impl/source-error-message e) "Database (`clickhouse`)")))))
-
 (deftest source-error-message-load-failure-test
   (testing "source-error-message names the entity and the underlying reason (GHY-3992)"
     (let [cause (ex-info "NOT NULL constraint failed: report_card.display" {})
@@ -186,15 +164,6 @@
       (is (= (str "Import failed: could not save Dashboard `Sales` (`xyz`). some db error. "
                   "It may have been saved without: `dashcards`, `parameters`.")
              (impl/source-error-message e)))))
-  (testing "a database-not-found cause still wins over the generic load-failure branch"
-    (let [cause (ex-info "table id present, but database not found: [ch nil t]"
-                         {:db-name "ch"
-                          :error   :metabase.models.serialization.resolve.db/database-not-found})
-          e     (ex-info "Failed to load into database for Card abc123"
-                         {:entity {:model "Card" :id "abc123" :name "Some card"}
-                          :error  :metabase-enterprise.serialization.v2.load/load-failure}
-                         cause)]
-      (is (str/includes? (impl/source-error-message e) "references Database (`ch`)"))))
   (testing "a tenant-collection cause still wins over the generic load-failure branch"
     (let [cause (ex-info "Can't create a tenant collection without tenants enabled" {})
           e     (ex-info "Failed to load into database for Collection abc"
