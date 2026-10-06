@@ -340,7 +340,7 @@
             could never read, or a shell that never gets a credential"
     (let [advertised (set (mcp.core/all-scopes))]
       (testing "GHY-4543: data resources count, not just UI shells"
-        (is (contains? (v2.resources/resource-scopes) "agent:resource:read")))
+        (is (contains? (v2.resources/resource-scopes) "agent:content:read")))
       (doseq [scope (v2.resources/resource-scopes)]
         (is (contains? advertised scope) scope)))))
 
@@ -371,19 +371,23 @@
         (let [{:keys [text minted?]} (read-with v2.resources/visualize-query-uri viz-scopes)]
           (is (str/includes? text "test-ui-credential"))
           (is (true? minted?))))
-      (testing "GHY-4543: a scope covering the shell's scope earns the credential too: wildcards, and the unrestricted
-                sentinel a cookie session binds"
-        (doseq [token-scopes [#{"agent:*"} #{"agent:query:*"} #{"*"} #{:metabase.api.macros.scope/unrestricted}]]
+      (testing "a wildcard scope that would cover the shell's scope earns no credential: MCP honors literal scopes only"
+        (doseq [token-scopes [#{"agent:*"} #{"agent:query:*"} #{"*"}]]
           (testing (pr-str token-scopes)
             (let [{:keys [text minted?]} (read-with v2.resources/visualize-query-uri token-scopes)]
-              (is (str/includes? text "test-ui-credential"))
-              (is (true? minted?))))))
+              (is (not (str/includes? text "test-ui-credential")))
+              (is (false? minted?))))))
       (testing "GHY-4543: a data resource is denied without its scope, naming the scope so the transport can
                 challenge for it"
-        (is (= {:status :scope-denied :required-scope "agent:resource:read"}
-               (v2.resources/read-resource v2.resources/fields-catalog-uri #{"agent:content:read"} {}))))
-      (testing "the fields catalog reads with agent:resource:read, and a data resource mints no credential"
-        (let [{:keys [status minted?]} (read-with v2.resources/fields-catalog-uri #{"agent:resource:read"})]
+        (is (= {:status :scope-denied :required-scope "agent:content:read"}
+               (v2.resources/read-resource v2.resources/fields-catalog-uri #{"agent:query:run"} {}))))
+      (testing "nil token-scopes hold no scope, so a data resource read with none is denied, and a shell read with
+                none mints no credential"
+        (is (= {:status :scope-denied :required-scope "agent:content:read"}
+               (v2.resources/read-resource v2.resources/fields-catalog-uri nil {})))
+        (is (false? (:minted? (read-with v2.resources/visualize-query-uri nil)))))
+      (testing "the fields catalog reads with agent:content:read, and a data resource mints no credential"
+        (let [{:keys [status minted?]} (read-with v2.resources/fields-catalog-uri #{"agent:content:read"})]
           (is (= :ok status))
           (is (false? minted?))))
       (testing "GHY-4157: an unknown URI is not found"

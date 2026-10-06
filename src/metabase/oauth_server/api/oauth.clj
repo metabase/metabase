@@ -10,6 +10,7 @@
    [metabase.mcp.core :as mcp]
    [metabase.oauth-server.consent-page :as consent-page]
    [metabase.oauth-server.core :as oauth-server]
+   [metabase.oauth-server.db :as oauth-server.db]
    [metabase.oauth-server.models.oauth-client-event :as client-event]
    [metabase.oauth-server.settings :as oauth-settings]
    [metabase.request.core :as request]
@@ -21,6 +22,8 @@
    [oidc-provider.core :as oidc]
    [oidc-provider.protocol :as proto]
    [oidc-provider.registration :as reg]
+   [oidc-provider.store :as oidc.store]
+   [oidc-provider.token-endpoint :as oidc.token]
    [oidc-provider.util :as oidc-util]
    [ring.util.response :as response]
    [throttle.core :as throttle])
@@ -103,8 +106,7 @@
 
 (def ^:private consent-scope-order
   "The MCP v2 scopes in the order the consent page lists them, least to most harmful."
-  ["agent:resource:read"
-   "agent:content:read"
+  ["agent:content:read"
    "agent:query:run"
    "agent:content:write"
    "agent:sql:run"
@@ -167,6 +169,9 @@
 (def ^:private invalid-target-description
   "The resource parameter must be an absolute URI without a fragment.")
 
+(def ^:private refresh-binding-mismatch-description
+  "This refresh token was not issued for the requested resource. Authorize again for this resource.")
+
 (def ^:private narrowed-away-scope-description
   "The requested scopes are not accepted by the requested resource.")
 
@@ -186,6 +191,12 @@
   []
   (str "None of the requested scopes are supported. Request only scopes listed in scopes_supported at "
        (authorization-server-metadata-url)))
+
+(defn- mcp-scopes-for-another-resource-description
+  "The `error_description` for an authorization request for MCP scopes only that names a resource other than the MCP
+  endpoint or the Site URL."
+  []
+  (str "These scopes are for the MCP endpoint. Authorize again with resource=" (oauth-server/mcp-resource-url)))
 
 (defn- missing-scope-description
   "The `error_description` for an authorization request with no scope."
@@ -245,6 +256,55 @@
          :headers {"Location" url}
          :body    ""}
         (response/set-cookie csrf-cookie-name "" (csrf-cookie-opts 0)))))
+
+(defn- refresh-binding
+  "Decide the resource binding of a token request `body`. Returns `{:body <body for the provider> :rebind <resource
+  or nil>}`.
+
+  A refresh grant keeps the refresh token's binding, which decides where the new access token works: `resource` is
+  dropped from the body so the provider copies the stored binding. A requested resource within the stored binding
+  changes nothing, and neither does the Site URL when the stored binding is the MCP endpoint, since that binding may
+  have been inferred from a request naming the Site URL. When the stored binding is the MCP endpoint, a requested
+  resource that is also the MCP endpoint
+  (by [[oauth-server/mcp-resource?]], under any host, as after a Site URL change) is accepted, and `:rebind` names it,
+  so the new tokens move to it. Any other requested resource throws `invalid_grant`, so a REST refresh token never
+  moves onto the MCP endpoint. Any other grant is returned unchanged.
+
+  The client is authenticated before the refresh token is looked up, and the binding is decided only for a token the
+  client owns, so a caller without the client's credentials learns nothing about which refresh tokens are live."
+  [provider {:keys [grant_type refresh_token resource] :as body} authorization-header]
+  (if (= "refresh_token" grant_type)
+    (let [client   (oidc.token/authenticate-client body authorization-header (:client-store provider))
+          stored   (some->> refresh_token (oidc.store/get-refresh-token (:token-store provider)))
+          stored   (when (= (:client-id stored) (:client-id client)) stored)
+          granted  (:resource stored)
+          ;; An MCP binding may have been inferred from a request that named only the Site URL, and the client keeps
+          ;; naming the Site URL when it refreshes, so the Site URL is within an MCP binding.
+          outside? (and resource stored
+                        (not (oauth-server/resources-within? resource granted))
+                        (not (and (oauth-server/mcp-resource? granted)
+                                  (oauth-server/site-url-resource? resource))))
+          rebind?  (and outside? (oauth-server/mcp-resource? granted) (oauth-server/mcp-resource? resource))]
+      ;; `invalid_grant` (RFC 6749 section 5.2: the refresh token "does not match"), not RFC 8707 `invalid_target`:
+      ;; the refresh token can never serve this resource, so the client has to authorize again rather than retry.
+      (when (and outside? (not rebind?))
+        (throw (ex-info "resource is outside the refresh token's binding"
+                        {:error             "invalid_grant"
+                         :error-description refresh-binding-mismatch-description})))
+      {:body   (dissoc body :resource)
+       :rebind (when rebind? (if (string? resource) [resource] (vec resource)))})
+    {:body body}))
+
+(defn- rebind-refreshed-tokens!
+  "Move the tokens in the token `response` to the `rebind` resource, and return the response naming it. Returns
+  `response` unchanged when `rebind` is nil."
+  [response rebind]
+  (if-not rebind
+    response
+    (do (oauth-server.db/rebind-tokens! (some-> (:access_token response) oidc-util/hash-token)
+                                        (some-> (:refresh_token response) oidc-util/hash-token)
+                                        rebind)
+        (assoc response :resource rebind))))
 
 (defn- login-redirect-url
   "Build a redirect URL to the login page that will redirect back to the given path after login.
@@ -432,11 +492,65 @@
       (:error_description data)
       fallback))
 
+(def ^:private agent-resource-read
+  "The agent API's read-resource scope. It was in the MCP baseline before MCP tokens were bound to a resource, and is
+  not an MCP scope now."
+  "agent:resource:read")
+
+(defn- classify-scopes
+  "Classify the scope strings `scopes` against the current MCP v2 scopes. Returns `[kind scopes']`:
+
+  - `:mcp-only` when the scopes other than `agent:resource:read` are non-empty and all MCP scopes. `scopes'` drops
+    `agent:resource:read`: alongside MCP scopes only, it is the leftover of the old MCP baseline.
+  - `:mix` when the scopes other than `agent:resource:read` hold an MCP scope and a scope that is not one. `scopes'`
+    is `scopes` without the MCP scopes, keeping `agent:resource:read` and every other non-MCP scope.
+  - `:non-mcp` otherwise, including `agent:resource:read` alone. `scopes'` is `scopes`.
+
+  `BindLegacyMcpOAuthTokens` applies a frozen copy of this rule to tokens minted before binding. This one reads the
+  live MCP scopes, so the two can drift apart if the MCP scopes change."
+  [scopes]
+  (let [mcp    (set (mcp/v2-scopes))
+        others (remove #{agent-resource-read} scopes)]
+    (cond
+      (and (seq others) (every? mcp others)) [:mcp-only (vec others)]
+      (and (some mcp others) (some (complement mcp) others)) [:mix (vec (remove mcp scopes))]
+      :else [:non-mcp (vec scopes)])))
+
+(defn- scope-for-non-mcp-resource
+  "The scope to grant for the space-separated `registered` scopes of an authorization request whose `resources` do not
+  name the MCP endpoint. MCP scopes only are kept when `resources` are empty or name the Site URL, since the token is
+  then bound to the MCP endpoint by inference (see [[inferred-mcp-resource]]), and refused with `invalid_target` for
+  any other resource. A mix loses its MCP scopes and gives a REST token. Anything else is kept."
+  [resources registered]
+  (let [[kind scopes] (classify-scopes (str/split registered #"\s+"))]
+    (when (and (= :mcp-only kind)
+               (seq resources)
+               (not (oauth-server/site-url-resource? resources)))
+      (throw (ex-info "MCP scopes were requested for a resource that is not the MCP endpoint"
+                      {:oauth-error       "invalid_target"
+                       :error-description (mcp-scopes-for-another-resource-description)})))
+    (str/join " " scopes)))
+
+(defn- inferred-mcp-resource
+  "The resource binding to store on the authorization code of an approved request `parsed` granting the scope string
+  `granted`: the MCP endpoint under the Site URL when a Site URL is set, the request named no resource or only the Site
+  URL, and every granted scope is an MCP scope; otherwise the requested resource. The granted scopes are a subset of
+  what [[scope-to-grant]] offered, so they are MCP scopes only exactly when the offer was."
+  [{:keys [resource]} granted]
+  (if-let [mcp-url (and (or (empty? resource) (oauth-server/site-url-resource? resource))
+                        (= :mcp-only (first (classify-scopes (str/split granted #"\s+"))))
+                        (oauth-server/mcp-resource-url))]
+    [mcp-url]
+    resource))
+
 (defn- scope-to-grant
   "The scope a parsed authorization request may be granted: its requested scopes filtered to the registered ones,
-   then narrowed to the `resource` indicator it names. Throws `ex-info` carrying `:oauth-error` and
-   `:error-description` when the request names no scope, when none of its scopes are registered, or when none of
-   them survive narrowing.
+   then decided against the `resource` indicator it names. A resource that names the MCP endpoint narrows the scope
+   to the MCP scopes. Otherwise [[scope-for-non-mcp-resource]] decides: MCP scopes only are kept for no resource or
+   the Site URL, and refused for any other resource, and a mix loses its MCP scopes. Throws `ex-info` carrying
+   `:oauth-error` and `:error-description` when the request names no scope, when none of its scopes are registered,
+   when it asks for MCP scopes only for a resource that is not the MCP endpoint or the Site URL, or when none of them
+   survive narrowing.
 
    Applied by both the consent page and the decision endpoint. The consent form's signature proves only that the
    form was not tampered with by a third party: it is keyed by the CSRF token the page shows the user, so the user
@@ -462,7 +576,9 @@
                      (throw (ex-info "no requested scope is a registered scope"
                                      {:oauth-error       "invalid_scope"
                                       :error-description (no-supported-scopes-description)})))
-        narrowed   (oauth-server/narrow-scope-to-resource (:resource parsed) registered)]
+        narrowed   (if (oauth-server/mcp-resource? (:resource parsed))
+                     (oauth-server/narrow-scope-to-resource (:resource parsed) registered)
+                     (scope-for-non-mcp-resource (:resource parsed) registered))]
     ;; Nothing surviving means the client asked exclusively for scopes this resource does not
     ;; accept: dropping the parameter there renders a consent screen listing nothing and mints a
     ;; zero-scope token, which looks like success while authorizing nothing on the resource the
@@ -616,9 +732,15 @@
 
                         :else
                         (redirect-authorization-decision provider
+                                                         ;; The code stores `:resource`, which the code exchange and
+                                                         ;; every later refresh carry, so the inferred binding goes
+                                                         ;; there, after the signature has been checked.
                                                          (cond-> parsed
                                                            approved
-                                                           (assoc :scope (str/join " " granted)))
+                                                           (as-> p (let [scope (str/join " " granted)]
+                                                                     (assoc p
+                                                                            :scope    scope
+                                                                            :resource (inferred-mcp-resource p scope)))))
                                                          approved
                                                          request)))
                     (catch ExceptionInfo e
@@ -655,7 +777,9 @@
             (let [authorization-header (get-in request [:headers "authorization"])]
               (try
                 (check-resource-indicators! (:resource body))
-                (let [response (oidc/token-request provider body authorization-header)]
+                (let [{:keys [body rebind]} (refresh-binding provider body authorization-header)
+                      response              (-> (oidc/token-request provider body authorization-header)
+                                                (rebind-refreshed-tokens! rebind))]
                   {:status  200
                    :headers {"Content-Type"  "application/json"
                              "Cache-Control" "no-store"

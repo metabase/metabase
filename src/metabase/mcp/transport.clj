@@ -12,7 +12,6 @@
    [compojure.response :as compojure.response]
    [metabase.ai-tracing.core :as ait]
    [metabase.api.common :as api]
-   [metabase.api.macros.scope :as scope]
    [metabase.api.open-api :as open-api]
    [metabase.mcp.core :as mcp]
    [metabase.mcp.session :as mcp.session]
@@ -667,6 +666,17 @@
        (when (seq default-ask-scopes)
          (str ", scope=" (quoted-string (str/join " " default-ask-scopes))))))
 
+(def ^:private invalid-token-description
+  "The `error_description` of the `invalid_token` challenge. Its JSON-RPC error message spells the same text as a
+  literal, which `message/msg` requires."
+  "This token is not valid for this server. Authorize again for this resource.")
+
+(defn- oauth-surface-scopes
+  "The scopes an OAuth token holds at the MCP endpoint: those of `granted` that are literally MCP v2 scopes.
+  `mb:full`, the unrestricted sentinel, and wildcards such as `*` or `agent:*` grant nothing here."
+  [granted]
+  (into #{} (filter (set (mcp/v2-scopes))) granted))
+
 (defn make-handler
   "Build a Ring async handler for one MCP surface. Uses JSON-RPC 2.0 over HTTP rather than REST,
    so the OpenAPI spec is empty.
@@ -699,12 +709,15 @@
            session-auth  api/*current-user-id*
            token-scopes  (:token-scopes request)
            ;; RFC 6750 `invalid_token`, still carrying the RFC 9728 discovery parameters: a client whose token
-           ;; expired re-discovers the protected-resource metadata from this 401 (MCP auth spec MUST).
-           invalid-token (delay (json-response 401 (jsonrpc-error nil -32603 (message/msg ["Invalid bearer token"]))
+           ;; expired re-discovers the protected-resource metadata from this 401 (MCP auth spec MUST). The session
+           ;; middleware only tells us the token did not authenticate here -- expired, revoked, bound to another
+           ;; resource, or naming a deactivated user -- so the description is true of all of them.
+           invalid-token (delay (json-response 401 (jsonrpc-error nil -32603 (message/msg ["This token is not valid for this server. Authorize again for this resource."]))
                                                {"WWW-Authenticate"
                                                 (str (www-authenticate-discovery endpoint-paths default-path
                                                                                  default-ask-scopes request)
-                                                     ", error=\"invalid_token\"")}))]
+                                                     ", error=\"invalid_token\""
+                                                     ", error_description=" (quoted-string invalid-token-description))}))]
        (letfn [(dispatch [user-id token-scopes]
                  (request/with-current-user user-id
                    ;; Charge the throttle per JSON-RPC message, not per HTTP request, so a batch can't smuggle many
@@ -733,30 +746,28 @@
            (some? origin-error)
            (respond origin-error)
 
-           ;; The session middleware never authenticates an OAuth token without scopes. Should one arrive, the
-           ;; `session-auth` branch below would dispatch nil scopes as unrestricted, so refuse it as an invalid token.
-           (and (:authenticated-via-oauth? request) (empty? token-scopes))
-           (respond @invalid-token)
-
-           ;; Respect the scope set attached to an authenticated request. Sessions without one
-           ;; retain unrestricted access.
-           session-auth
-           ;; An OAuth bearer request lands here too — the session middleware resolves the token and
-           ;; attaches `:token-scopes`, so this branch is not "cookie sessions only".
-           (dispatch session-auth (or token-scopes #{::scope/unrestricted}))
+           ;; Only an OAuth bearer token bound to this resource is served, and it holds only its literal MCP scopes.
+           ;; The session middleware never authenticates an OAuth token without scopes; should one arrive, refuse it.
+           (and session-auth (:authenticated-via-oauth? request))
+           (if (empty? token-scopes)
+             (respond @invalid-token)
+             (dispatch session-auth (oauth-surface-scopes token-scopes)))
 
            ;; A bearer token that reaches here did NOT authenticate upstream: the session middleware
            ;; ([[metabase.server.middleware.session/current-user-info-for-oauth-token]]) resolves every *valid* bearer
            ;; token — including checking `user.is_active` and running the granted scopes through the
            ;; `oauth-token->token-scopes` trust hinge — and sets `*current-user-id*`, so an active user's token is
-           ;; served by the `session-auth` branch above. Landing here therefore means the token is unknown, expired,
-           ;; revoked, or names a DEACTIVATED user. We must not re-resolve and dispatch it: doing so bypassed the
+           ;; served by the branch above. Landing here therefore means the token is unknown, expired, revoked, names a
+           ;; DEACTIVATED user, is not bound to the MCP endpoint by its stored resource (a REST token, which the client
+           ;; must replace by re-authorizing for this resource), or lost to a session that the middleware prefers. We
+           ;; must not re-resolve and dispatch it: doing so bypassed the
            ;; active-user check (a disabled user's token still authenticated) and the scope trust hinge (raw token
            ;; scopes dispatched verbatim). Return the RFC 6750 `invalid_token` 401 and dispatch nothing.
            bearer-token
            (respond @invalid-token)
 
-           ;; No auth at all — return 401 with discovery
+           ;; No OAuth token: no auth at all, or a session, API key or other credential, none of which this endpoint
+           ;; serves. Return the 401 discovery challenge so the client starts the OAuth flow.
            :else
            (respond (json-response 401 (jsonrpc-error nil -32603 (message/msg ["Authentication required"]))
                                    {"WWW-Authenticate" (www-authenticate-discovery endpoint-paths default-path

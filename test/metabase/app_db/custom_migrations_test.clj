@@ -3088,3 +3088,183 @@
         (testing "tokens already carrying a v2 tool scope keep working"
           (is (not (revoked? :oauth_access_token v2-access)))
           (is (not (revoked? :oauth_refresh_token v2-refresh))))))))
+
+(defn- check-legacy-mcp-binding!
+  "Run `BindLegacyMcpOAuthTokens` over OAuth tokens of every shape after `seed!` writes the `site-url` setting row, and
+  check each row. `site-url` is the Site URL the migration should find, nil for none; `site-url-upper` is that URL with
+  its scheme or host uppercased; `not-site-url` is a resource that looks like a Site URL but is not the one in force."
+  [{:keys [seed! site-url site-url-upper not-site-url]}]
+  (impl/test-migrations ["v64.2026-10-05T00:00:00"] [migrate!]
+    (t2/query {:delete-from :setting :where [:= :key "site-url"]})
+    (seed!)
+    (let [user-id       (t2/insert-returning-pk!
+                         :core_user {:first_name  "MCP"
+                                     :last_name   "Binding"
+                                     :email       (str (random-uuid) "@metabase.com")
+                                     :password    "irrelevant"
+                                     :entity_id   (subs (str/replace (str (random-uuid)) "-" "") 0 21)
+                                     :date_joined :%now})
+          _             (t2/insert! :oauth_client {:client_id         "mcp-binding"
+                                                   :client_name       "MCP Client"
+                                                   :redirect_uris     (json/encode ["http://localhost/callback"])
+                                                   :grant_types       (json/encode ["authorization_code"])
+                                                   :response_types    (json/encode ["code"])
+                                                   :scopes            (json/encode ["openid"])
+                                                   :registration_type "dynamic"
+                                                   :client_type       "public"
+                                                   :created_at        :%now
+                                                   :updated_at        :%now})
+          ;; The resource an unbound MCP token is bound to: none without a Site URL.
+          bound         (when site-url [(str site-url "/api/metabase-mcp")])
+          mcp           ["https://mcp.example.com/api/metabase-mcp"]
+          other         ["https://mcp.example.com/api"]
+          enc           json/encode
+          insert-token! (fn [table scope resource]
+                          (t2/insert-returning-pk!
+                           table (cond-> {:token      (str (random-uuid))
+                                          :user_id    user-id
+                                          :client_id  "mcp-binding"
+                                          :scope      scope
+                                          :expiry     (+ (System/currentTimeMillis) 3600000)
+                                          :created_at :%now}
+                                   resource (assoc :resource (enc resource)))))
+          ;; label -> [scope column value, stored resource, expected row after the migration]. The expected row is
+          ;; `{:scope <decoded scope or the raw value> :resource <decoded resource>}`, or `:deleted`.
+          cases         (merge
+                         {"(1) NULL, the old baseline: bound to the Site URL's MCP endpoint, agent:resource:read dropped"
+                          [(enc ["agent:content:read" "agent:query:run" "agent:resource:read"]) nil
+                           {:scope ["agent:content:read" "agent:query:run"] :resource bound}]
+                          "(2) NULL, a mix: MCP scopes stripped, unbound"
+                          [(enc ["agent:content:read" "agent:search"]) nil
+                           {:scope ["agent:search"] :resource nil}]
+                          "(3) NULL, a mix with agent:resource:read: only MCP scopes stripped"
+                          [(enc ["agent:content:read" "agent:search" "agent:resource:read"]) nil
+                           {:scope ["agent:search" "agent:resource:read"] :resource nil}]
+                          "(4) NULL, agent:resource:read alone: unchanged"
+                          [(enc ["agent:resource:read"]) nil {:scope ["agent:resource:read"] :resource nil}]
+                          "(5) NULL, mb:full: unchanged"
+                          [(enc ["mb:full"]) nil {:scope ["mb:full"] :resource nil}]
+                          "(6) NULL, v1 scopes: unchanged"
+                          [(enc ["agent:sql:execute" "agent:question:create"]) nil
+                           {:scope ["agent:sql:execute" "agent:question:create"] :resource nil}]
+                          "(7) MCP resource, MCP scopes only: unchanged"
+                          [(enc ["agent:content:read" "agent:query:run"]) mcp
+                           {:scope ["agent:content:read" "agent:query:run"] :resource mcp}]
+                          "(8) MCP resource, a mix: only MCP scopes kept"
+                          [(enc ["agent:content:read" "agent:search" "mb:full"]) mcp
+                           {:scope ["agent:content:read"] :resource mcp}]
+                          "(9) MCP resource, no MCP scope: deleted"
+                          [(enc ["agent:search"]) mcp :deleted]
+                          "(10) the MCP alias under another host: only MCP scopes kept"
+                          [(enc ["agent:query:run" "agent:search"]) ["https://other.example/api/mcp"]
+                           {:scope ["agent:query:run"] :resource ["https://other.example/api/mcp"]}]
+                          "(11) another resource, a mix: MCP scopes stripped"
+                          [(enc ["agent:content:read" "agent:search"]) other
+                           {:scope ["agent:search"] :resource other}]
+                          "(12) another resource, MCP scopes only: deleted"
+                          [(enc ["agent:content:read" "agent:query:run"]) other :deleted]
+                          "(13) empty scope: unchanged"
+                          [(enc []) nil {:scope [] :resource nil}]
+                          "(13) malformed scope: unchanged"
+                          ["not json" nil {:scope "not json" :resource nil}]
+                          "(14) NULL, agent:resource:read with one MCP scope: bound to the Site URL's MCP endpoint"
+                          [(enc ["agent:content:read" "agent:resource:read"]) nil
+                           {:scope ["agent:content:read"] :resource bound}]
+                          "(15) a resource that is not the Site URL in force, MCP scopes only: another resource, deleted"
+                          [(enc ["agent:content:read" "agent:query:run"]) [not-site-url] :deleted]}
+                         (when site-url
+                           {"(16) the Site URL, MCP scopes only: bound like NULL"
+                            [(enc ["agent:content:read" "agent:resource:read"]) [site-url]
+                             {:scope ["agent:content:read"] :resource bound}]
+                            "(17) the Site URL with a trailing slash, MCP scopes only: bound like NULL"
+                            [(enc ["agent:query:run"]) [(str site-url "/")]
+                             {:scope ["agent:query:run"] :resource bound}]
+                            "(18) the Site URL spelled in another case, MCP scopes only: bound like NULL"
+                            [(enc ["agent:query:run"]) [site-url-upper]
+                             {:scope ["agent:query:run"] :resource bound}]
+                            "(19) the Site URL, a mix: MCP scopes stripped, the resource kept"
+                            [(enc ["agent:content:read" "agent:search"]) [site-url]
+                             {:scope ["agent:search"] :resource [site-url]}]
+                            "(20) the Site URL, no MCP scope: unchanged"
+                            [(enc ["agent:search"]) [site-url] {:scope ["agent:search"] :resource [site-url]}]}))
+          rows          (into {} (for [table           [:oauth_access_token :oauth_refresh_token]
+                                       [label [scope resource]] cases]
+                                   [[table label] (insert-token! table scope resource)]))
+          decode        (fn [v] (try (json/decode v) (catch Exception _ v)))
+          row-of        (fn [table id]
+                          (if-let [row (t2/query-one {:select [:scope :resource] :from [table] :where [:= :id id]})]
+                            {:scope    (decode (:scope row))
+                             :resource (some-> (:resource row) json/decode)}
+                            :deleted))
+          check!        (fn []
+                          (doseq [[[table label] id] rows]
+                            (testing (str (name table) " " label)
+                              (is (= (last (cases label)) (row-of table id))))))]
+      (migrate!)
+      (check!)
+      (testing "running it again changes nothing more"
+        (#'custom-migrations/bind-legacy-mcp-oauth-tokens!)
+        (check!)))))
+
+(defn- insert-site-url-row! [row]
+  (t2/query {:insert-into :setting :values [(assoc row :key "site-url")]}))
+
+(deftest bind-legacy-mcp-oauth-tokens-test
+  (testing (str "v64.2026-10-05T00:00:00: tokens issued before audience binding by MCP clients that sent no RFC 8707 "
+                "`resource`, or sent the Site URL, are not bound to the MCP endpoint, so the bearer bridge treats them "
+                "as REST tokens: refused at the MCP endpoint, yet served by the agent API's read-resource endpoint, "
+                "whose scope the old MCP baseline granted. Refresh rotates the refresh token, so such a grant lives "
+                "forever. The migration narrows every token the way `/oauth/authorize` now does, and binds an MCP-only "
+                "token to the Site URL's MCP endpoint. It never binds one to a made-up host.")
+    (testing "a plain Site URL in value_with_aad, stored with a trailing slash"
+      (encryption-test/with-secret-key nil
+        (mt/with-temp-env-var-value! [mb-site-url nil]
+          (check-legacy-mcp-binding!
+           {:seed!          #(insert-site-url-row! {:value          "https://mb.example.com/"
+                                                    :value_with_aad "https://mb.example.com/"})
+            :site-url       "https://mb.example.com"
+            :site-url-upper "https://MB.EXAMPLE.COM"
+            :not-site-url   "https://elsewhere.example.com"}))))
+    (testing "an encrypted Site URL in value_with_aad wins over a stale legacy value"
+      (encryption-test/with-secret-key "bind-legacy-mcp-site-url-key"
+        (mt/with-temp-env-var-value! [mb-site-url nil]
+          (check-legacy-mcp-binding!
+           {:seed!          #(insert-site-url-row!
+                              {:value          (encryption/encrypt "https://stale.example.com")
+                               :value_with_aad (encryption/maybe-encrypt "https://mb.example.com/metabase"
+                                                                         {:aad (mdb.setting/setting-aad "site-url")})})
+            :site-url       "https://mb.example.com/metabase"
+            :site-url-upper "HTTPS://Mb.Example.COM/metabase"
+            :not-site-url   "https://stale.example.com"}))))
+    (testing "an encrypted Site URL in the legacy value column only, as a version predating value_with_aad wrote it"
+      (encryption-test/with-secret-key "bind-legacy-mcp-site-url-key"
+        (mt/with-temp-env-var-value! [mb-site-url nil]
+          (check-legacy-mcp-binding!
+           {:seed!          #(insert-site-url-row! {:value (encryption/encrypt "https://mb.example.com")})
+            :site-url       "https://mb.example.com"
+            :site-url-upper "https://Mb.Example.Com"
+            :not-site-url   "https://elsewhere.example.com"}))))
+    (testing "a plain Site URL with no scheme in the legacy value column gets http:// like the setting's getter"
+      (encryption-test/with-secret-key nil
+        (mt/with-temp-env-var-value! [mb-site-url nil]
+          (check-legacy-mcp-binding!
+           {:seed!          #(insert-site-url-row! {:value "mb.example.com"})
+            :site-url       "http://mb.example.com"
+            :site-url-upper "HTTP://MB.EXAMPLE.COM:80"
+            :not-site-url   "https://mb.example.com/other"}))))
+    (testing "MB_SITE_URL overrides the setting row"
+      (encryption-test/with-secret-key nil
+        (mt/with-temp-env-var-value! [mb-site-url "https://env.example.com/"]
+          (check-legacy-mcp-binding!
+           {:seed!          #(insert-site-url-row! {:value          "https://mb.example.com"
+                                                    :value_with_aad "https://mb.example.com"})
+            :site-url       "https://env.example.com"
+            :site-url-upper "https://ENV.example.com"
+            :not-site-url   "https://mb.example.com"}))))
+    (testing "with no Site URL nothing is bound: an MCP-only token keeps no resource but is still narrowed"
+      (encryption-test/with-secret-key nil
+        (mt/with-temp-env-var-value! [mb-site-url nil]
+          (check-legacy-mcp-binding!
+           {:seed!        (constantly nil)
+            :site-url     nil
+            :not-site-url "https://mb.example.com"}))))))

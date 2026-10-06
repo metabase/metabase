@@ -21,7 +21,6 @@
    [clojure.string :as str]
    [metabase.agent-api.settings :as agent-api.settings]
    [metabase.api.common :as api]
-   [metabase.api.macros.scope :as scope]
    [metabase.metabot.scope :as metabot.scope]
    [metabase.util :as u]
    [metabase.util.json :as json]))
@@ -202,9 +201,8 @@
   The query endpoints declare no `:scope` of their own, so the endpoint scope middleware cannot tell a native
   query apart from any other one: [[metabase.mcp.ui-surface/request-surface]] charges the whole `/api/dataset`
   tree a single `agent:query:run`, and every credential minted for a client holding that scope satisfies it.
-  Raw SQL costs more, and that difference is spent here: it needs an SQL-execution scope
-  (`agent:sql:run`, or v1's concrete `agent:sql:execute`) off the credential's signed claim, and the
-  `mcp-execute-sql-enabled` kill switch.
+  Raw SQL costs more, and that difference is spent here: it needs the `agent:sql:run` scope off the credential's
+  signed claim, and the `mcp-execute-sql-enabled` kill switch.
 
   A credential whose claim is simply absent fails closed: a rolling deploy can hand this node one minted before
   the claim existed.
@@ -220,10 +218,10 @@
       ;; the same way whether or not the instance has raw SQL enabled. Testing the kill switch first
       ;; would leak that config bit — an unauthorized caller could tell `mcp-execute-sql-enabled`'s
       ;; state apart by which 403 message it got back.
-      (let [token-scopes (:token-scopes claims)]
-        (when-not (or (contains? token-scopes ::scope/unrestricted)
-                      (scope/scope-satisfied? token-scopes metabot.scope/agent-sql-run)
-                      (scope/scope-satisfied? token-scopes metabot.scope/agent-sql-execute))
+      ;; Literal comparison: MCP honors only the literal scopes a credential claims, never a wildcard. This repeats
+      ;; `metabase.mcp.scope/matches?` because the `mcp` module depends on `agent-api`, so requiring it here is a cycle.
+      (let [token-scopes (set (filter string? (:token-scopes claims)))]
+        (when-not (contains? token-scopes metabot.scope/agent-sql-run)
           (throw (ex-info (str "Running raw SQL requires the " metabot.scope/agent-sql-run
                                " scope, which this client was not granted.")
                           {:status-code 403}))))

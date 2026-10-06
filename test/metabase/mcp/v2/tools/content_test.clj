@@ -5,6 +5,7 @@
    [clojure.walk :as walk]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.mcp.test-util :as mcp.tu]
    [metabase.mcp.v2.message :as message]
    [metabase.mcp.v2.projections :as projections]
    [metabase.mcp.v2.registry :as registry]
@@ -22,9 +23,8 @@
 
 (defn- call-content
   "Invoke get_content through the registry — the same seam the JSON-RPC route uses, so scope
-   gating and argument validation are exercised. `token-scopes` of nil means an internal
-   caller, which satisfies every scope check."
-  ([args] (call-content nil args))
+   gating and argument validation are exercised. The one-argument arity holds every MCP scope."
+  ([args] (call-content mcp.tu/all-scopes args))
   ([token-scopes args]
    ;; `call-tool` answers `{:result …}` after dispatch, or `{:error …}` when the registry rejects
    ;; the call before it. Present a rejection in the same `{:isError true}` shape a handler error
@@ -38,7 +38,7 @@
 (defn- content-results
   "The `:results` vector from a successful get_content call. Throws when the call was rejected
    before per-item work, so a tool-level error can never masquerade as an empty batch."
-  ([args] (content-results nil args))
+  ([args] (content-results mcp.tu/all-scopes args))
   ([token-scopes args]
    (let [result (call-content token-scopes args)]
      (when (:isError result)
@@ -48,12 +48,12 @@
      (:results (json/decode+kw (-> result :content first :text v2.tu/strip-data-boundary))))))
 
 (defn- content-one
-  ([args] (content-one nil args))
+  ([args] (content-one mcp.tu/all-scopes args))
   ([token-scopes args] (first (content-results token-scopes args))))
 
 (defn- content-error
   "The tool-level error text for calls rejected before any per-item work."
-  ([args] (content-error nil args))
+  ([args] (content-error mcp.tu/all-scopes args))
   ([token-scopes args] (-> (call-content token-scopes args) :content first :text)))
 
 (defn- venues-query

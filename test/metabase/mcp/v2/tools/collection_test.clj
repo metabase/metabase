@@ -10,6 +10,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.collections.models.collection :as collection]
+   [metabase.mcp.test-util :as mcp.tu]
    [metabase.mcp.v2.message :as message]
    [metabase.mcp.v2.registry :as registry]
    [metabase.mcp.v2.test-util :as v2.tu]
@@ -31,8 +32,8 @@
 
 (defn- call-tool!
   "Drive `collection_write` as `user` (test-user keyword or user id) with bearer-style `scopes`
-   (nil = internal caller, which bypasses the scope gate)."
-  ([user args] (call-tool! user nil args))
+  ."
+  ([user args] (call-tool! user mcp.tu/all-scopes args))
   ([user scopes args]
    (mt/with-current-user (if (keyword? user) (mt/user->id user) user)
      (registry/call-tool scopes nil "collection_write" args))))

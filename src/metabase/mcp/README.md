@@ -46,7 +46,8 @@ The flow for a first-time connection:
 3. The user is redirected to Metabase to log in and approve the connection.
 4. The client receives an access token scoped to the user's Metabase permissions.
 
-Browser-based sessions (cookie auth) are also supported and receive unrestricted scopes.
+Only OAuth access tokens issued for this endpoint are accepted. Cookie sessions, API keys and any other credential get
+the same 401 as an unauthenticated request, so the client starts the OAuth flow.
 
 ### Scopes
 
@@ -54,17 +55,16 @@ Access tokens are scoped to limit what tools a client can use:
 
 | Scope | Tools it grants |
 | ----- | --------------- |
-| `agent:content:read` | `browse_collection`, `browse_data`, `get_content`, `get_parameter_values`, `glossary`, `learn`, `search` |
+| `agent:content:read` | `browse_collection`, `browse_data`, `get_content`, `get_parameter_values`, `glossary`, `learn`, `search`; also the `catalog://metabase/fields` resource (see [Resources](#resources)) |
 | `agent:content:write` | `bookmark_content`, `collection_write`, `dashboard_write`, `document_write`, `duplicate_content`, `measure_write`, `metric_write`, `question_write`, `segment_write`, `transform_write` |
 | `agent:delivery:write` | `alert_write`, `subscription_write` |
 | `agent:query:run` | `execute_query`, `refresh_ui_credential`, `render_drill_through`, `run_saved_question`, `visualize_query` |
 | `agent:sql:run` | `execute_sql` |
-| `agent:resource:read` | No tools: it gates reading the `catalog://metabase/fields` data resource (see [Resources](#resources)). |
 
-Wildcard patterns (e.g. `agent:*`) match any scope with that prefix.
+The MCP endpoint honors only the literal scopes in this table. A wildcard grant such as `agent:*` grants nothing there.
 
 Clients start with a baseline. The protected-resource metadata's `scopes_supported` and the `scope` of the 401
-challenge both list only `agent:content:read agent:query:run agent:resource:read`: a fresh connection can read,
+challenge both list only `agent:content:read agent:query:run`: a fresh connection can read,
 query, and chart. Writes (`agent:content:write`), raw SQL (`agent:sql:run`), and alerts and subscriptions
 (`agent:delivery:write`) need a step-up. The surface still accepts every scope in the table, and the authorization
 server metadata still advertises all of them.
@@ -152,7 +152,7 @@ clients can fetch supplementary content by URI without inflating tool descriptio
 | ------------ | ----- | ----------- |
 | `ui://metabase/visualize-query.html` | `agent:query:run` (UI credential only) | The MCP Apps iframe shell `visualize_query` points a capable client at. |
 | `ui://metabase/render-drill-through.html` | `agent:query:run` (UI credential only) | The shell `render_drill_through` points at. |
-| `catalog://metabase/fields` | `agent:resource:read` | The dot-paths each content type accepts in `fields` arguments. |
+| `catalog://metabase/fields` | `agent:content:read` | The dot-paths each content type accepts in `fields` arguments. |
 
 Every resource is listed whatever the token's scopes. A data resource, such as the fields catalog, is read only by a
 token holding its scope; otherwise the read gets the 403 `insufficient_scope` challenge described under
@@ -196,8 +196,8 @@ The implementation lives in these files:
 - **[`v2/registry.clj`](v2/registry.clj)** - The v2 tool registry. Tools self-register via `deftool`; the registry
   checks scopes, validates arguments, dispatches calls, and records usage.
 
-- **[`scope.clj`](scope.clj)** - Scope matching logic. Supports exact matches, wildcard patterns, and the
-  `::unrestricted` sentinel for session-based auth.
+- **[`scope.clj`](scope.clj)** - Scope matching logic for tools and resources.
+  Tokens reach it holding only the literal scopes in the table above.
 
 ### Request flow
 
@@ -205,7 +205,7 @@ The implementation lives in these files:
 MCP client
   -> POST /api/metabase-mcp (JSON-RPC)
   -> Origin + session validation
-  -> Auth: OAuth bearer token or browser session
+  -> Auth: OAuth bearer token bound to the MCP resource (anything else is a 401)
   -> Scope check against requested tool
   -> Synthetic request to Agent API endpoint
   -> Response materialized as MCP content

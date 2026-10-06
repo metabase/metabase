@@ -6,8 +6,10 @@
    [metabase.mcp.core :as mcp]
    [metabase.oauth-server.api.oauth :as api.oauth]
    [metabase.oauth-server.core :as oauth-server]
+   [metabase.system.core :as system]
    [metabase.test :as mt]
    [metabase.test.http-client :as client]
+   [oidc-provider.store :as oidc.store]
    [oidc-provider.util :as oidc-util]
    [toucan2.core :as t2])
   (:import
@@ -64,7 +66,7 @@
         (testing url
           (let [response      (mt/user-http-request :crowberto :get 200 url)
                 resource-path (str/replace (:resource response) "http://localhost:3000" "")]
-            (is (= #{"agent:content:read" "agent:query:run" "agent:resource:read"}
+            (is (= #{"agent:content:read" "agent:query:run"}
                    (set (:scopes_supported response))))
             (is (empty? (remove (set (oauth-server/mcp-resource-scopes resource-path))
                                 (:scopes_supported response))))))))))
@@ -77,7 +79,7 @@
       (let [advertised (set (:scopes_supported (mt/user-http-request :crowberto :get 200
                                                                      ".well-known/oauth-authorization-server")))]
         (doseq [scope ["agent:content:read" "agent:content:write" "agent:query:run"
-                       "agent:sql:run" "agent:delivery:write" "agent:resource:read"]]
+                       "agent:sql:run" "agent:delivery:write"]]
           (testing scope
             (is (contains? advertised scope))))
         (is (= (set (oauth-server/supported-scopes)) advertised))))))
@@ -93,7 +95,7 @@
                 response))
         (testing "the bare path is the one clients probe, so it advertises the same baseline as the canonical
                   path it names, and none of the retired per-entity agent-API scopes"
-          (is (= #{"agent:content:read" "agent:query:run" "agent:resource:read"}
+          (is (= #{"agent:content:read" "agent:query:run"}
                  (set (:scopes_supported response))))
           (is (not (contains? (set (:scopes_supported response)) "agent:question:create"))))))))
 
@@ -335,6 +337,12 @@
 
 ;;; ----------------------------------------- Authorization Endpoint ------------------------------------------------
 
+(defn- mcp-resource-uri
+  "The RFC 8707 resource indicator of the canonical MCP endpoint under the `http://localhost:3000` Site URL. A request
+  for MCP scopes only must name it."
+  []
+  (str "http://localhost:3000" (mcp/mcp-canonical-path)))
+
 (defn- create-test-client!
   "Insert a static OAuth client directly into the database and return a map
    with the client fields plus the plaintext `:client_secret`."
@@ -367,6 +375,7 @@
                          :redirect_uri  "https://example.com/callback"
                          :response_type "code"
                          :scope         "agent:content:read"
+                         :resource      (mcp-resource-uri)
                          :state         "test-state")
               body      (:body response)]
           (is (str/includes? (get-in response [:headers "Content-Type"]) "text/html"))
@@ -388,6 +397,52 @@
   "The resource parameter must be an absolute URI without a fragment.")
 
 (def ^:private invalid-token-request-description "The token request is invalid.")
+
+(def ^:private mcp-scopes-for-another-resource-description
+  "The error_description for an authorization request for MCP scopes only that names a resource other than the MCP
+  endpoint or the Site URL, under the `http://localhost:3000` Site URL."
+  (str "These scopes are for the MCP endpoint. Authorize again with "
+       "resource=http://localhost:3000/api/metabase-mcp"))
+
+(deftest authorize-mcp-scopes-for-another-resource-test
+  (testing "A request for MCP scopes only that names a resource other than the MCP endpoint or the Site URL would mint
+            a token that works nowhere. So it is refused up front with invalid_target, rendered in the user's
+            browser, and never redirected. With no resource, or the Site URL, the same request reaches consent: its
+            token is bound to the MCP endpoint by inference."
+    (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+      (t2/with-transaction [_conn nil {:rollback-only true}]
+        (let [{:keys [client_id]} (create-test-client!
+                                   {:scopes ["agent:content:read" "agent:query:run" "agent:search"
+                                             "agent:resource:read" oauth-server/full-access-scope]})
+              authorize           (fn [expected-status scope & resource]
+                                    (apply authorize-request! expected-status
+                                           :client_id     client_id
+                                           :redirect_uri  "https://example.com/callback"
+                                           :response_type "code"
+                                           :scope         scope
+                                           :state         "test-state"
+                                           resource))]
+          (testing "MCP scopes only, with a resource that is neither the MCP endpoint nor the Site URL"
+            (let [response (authorize 400 "agent:content:read agent:query:run"
+                                      :resource "http://localhost:3000/api")]
+              (is (= {:error             "invalid_target"
+                      :error_description mcp-scopes-for-another-resource-description}
+                     (select-keys (:body response) [:error :error_description])))
+              (is (nil? (get-in response [:headers "Location"])))))
+          (testing "these reach consent"
+            (doseq [[label scope resource] [["MCP scopes only, no resource" "agent:content:read agent:query:run" nil]
+                                            ["MCP scopes only, the Site URL" "agent:content:read agent:query:run"
+                                             "http://localhost:3000/"]
+                                            ["mb:full, no resource" oauth-server/full-access-scope nil]
+                                            ["an agent API scope, no resource" "agent:search" nil]
+                                            ["MCP scopes plus an agent API scope, no resource"
+                                             "agent:content:read agent:search" nil]
+                                            ["agent:resource:read alone, no resource" "agent:resource:read" nil]
+                                            ["MCP scopes with the MCP resource" "agent:content:read agent:query:run"
+                                             "http://localhost:3000/api/metabase-mcp"]]]
+              (testing label
+                (let [response (apply authorize 200 scope (when resource [:resource resource]))]
+                  (is (str/includes? (get-in response [:headers "Content-Type"]) "text/html")))))))))))
 
 (deftest authorize-invalid-client-id-test
   (testing "GHY-4542: a missing or unknown client identifier is answered with a 400 in the user's browser, with no
@@ -497,6 +552,7 @@
           :redirect_uri  "https://example.com/callback"
           :response_type "code"
           :scope         "agent:content:read"
+          :resource      (mcp-resource-uri)
           :state         "test-state"
           (mapcat identity extra-params))))
 
@@ -555,6 +611,7 @@
                              :redirect_uri  "https://example.com/callback"
                              :response_type "code"
                              :scope         "agent:content:read"
+                             :resource      (mcp-resource-uri)
                              :granted_scope "agent:content:read"
                              :state         "test-state"}
                             302
@@ -588,6 +645,7 @@
                              :redirect_uri  "https://example.com/callback"
                              :response_type "code"
                              :scope         "agent:content:read"
+                             :resource      (mcp-resource-uri)
                              :state         "test-state"}
                             302
                             :csrf-cookie csrf-cookie)
@@ -652,6 +710,7 @@
                               :redirect_uri  "https://example.com/callback"
                               :response_type "code"
                               :scope         "agent:content:read"
+                              :resource      (mcp-resource-uri)
                               :granted_scope "agent:content:read"
                               :state         "test-state"}
                              302
@@ -691,6 +750,7 @@
       :redirect_uri  "https://example.com/callback"
       :response_type "code"
       :scope         "agent:content:read"
+      :resource      (mcp-resource-uri)
       :granted_scope "agent:content:read"
       :state         "test-state"}
      302
@@ -731,6 +791,7 @@
                           :redirect_uri  "https://example.com/callback"
                           :response_type "code"
                           :scope         "agent:content:read"
+                          :resource      (mcp-resource-uri)
                           :state         "test-state"}
                          403)]
           (is (= "csrf_validation_failed" (:error (:body response)))))))))
@@ -751,6 +812,7 @@
                              :redirect_uri  "https://example.com/callback"
                              :response_type "code"
                              :scope         "agent:content:read"
+                             :resource      (mcp-resource-uri)
                              :state         "test-state"}
                             403
                             :csrf-cookie csrf-cookie)]
@@ -776,6 +838,7 @@
                              :redirect_uri  "https://example.com/callback"
                              :response_type "code"
                              :scope         "agent:content:read"
+                             :resource      (mcp-resource-uri)
                              :state         "tampered-state"}  ;; tampered state
                             403
                             :csrf-cookie csrf-cookie)]
@@ -800,6 +863,7 @@
                              :redirect_uri  "https://example.com/callback"
                              :response_type "code"
                              :scope         "agent:content:read"
+                             :resource      (mcp-resource-uri)
                              :state         "test-state"}
                             403
                             :csrf-cookie csrf-cookie)]
@@ -824,6 +888,7 @@
                              :redirect_uri  "https://example.com/callback"
                              :response_type "code"
                              :scope         "agent:content:read"
+                             :resource      (mcp-resource-uri)
                              :state         "test-state"}
                             403
                             :csrf-cookie csrf-cookie)]
@@ -869,6 +934,7 @@
                        :redirect_uri  "https://example.com/callback"
                        :response_type "code"
                        :scope         "agent:content:read"
+                       :resource      (mcp-resource-uri)
                        :granted_scope "agent:content:read"
                        :state         "test-state"}
                       302
@@ -1106,6 +1172,7 @@
                               :redirect_uri  "https://example.com/callback"
                               :response_type "code"
                               :scope         "agent:content:read"
+                              :resource      (mcp-resource-uri)
                               :granted_scope "agent:content:read"
                               :state         "test-state"}
                              extra-params)
@@ -1192,11 +1259,14 @@
                    {:request-options request-options}
                    params)))
 
-(deftest token-refresh-resource-outside-the-grant-keeps-the-generic-description-test
-  (testing "GHY-4542: oidc-provider raises `invalid_target` for a refresh whose `resource` is not in the original
-            grant, carrying no description of its own. That is a well-formed absolute URI, so answering it with the
-            description for an unparseable one would send the client chasing a syntax problem it does not have: only
-            this endpoint's own resource check knows the URI was malformed."
+(def ^:private refresh-binding-mismatch-description
+  "This refresh token was not issued for the requested resource. Authorize again for this resource.")
+
+(deftest token-refresh-resource-outside-the-grant-is-invalid-grant-test
+  (testing "GHY-4542: a refresh whose `resource` is not in the original grant names a well-formed absolute URI, so
+            answering it with the description for an unparseable one would send the client chasing a syntax problem
+            it does not have. The refresh token can never serve that resource, so the answer is RFC 6749
+            `invalid_grant`, telling the client to authorize again rather than retry the refresh."
     (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
       (t2/with-transaction [_conn nil {:rollback-only true}]
         (let [{:keys [client_id client_secret]} (create-test-client!)
@@ -1229,11 +1299,11 @@
                                                 :redirect_uri "https://example.com/callback"}
                                                :authorization (basic-auth-header client_id client_secret))]
           (is (some? (:refresh_token tokens)) "the original grant carries the resource it was issued for")
-          (is (= {:error             "invalid_target"
-                  :error_description invalid-token-request-description}
+          (is (= {:error             "invalid_grant"
+                  :error_description refresh-binding-mismatch-description}
                  (token-request! {:grant_type    "refresh_token"
                                   :refresh_token (:refresh_token tokens)
-                                  :resource      "https://other.example.com/api/mcp"}
+                                  :resource      "https://other.example.com/api"}
                                  :expected-status 400
                                  :authorization (basic-auth-header client_id client_secret)))))))))
 
@@ -1373,6 +1443,7 @@
                              :redirect_uri  "https://example.com/callback"
                              :response_type "code"
                              :scope         "agent:content:read"
+                             :resource      (mcp-resource-uri)
                              :state         state)
               consent-body  (:body consent-resp)
               csrf-token    (extract-csrf-token-from-consent consent-body)
@@ -1388,6 +1459,7 @@
                            :redirect_uri  "https://example.com/callback"
                            :response_type "code"
                            :scope         "agent:content:read"
+                           :resource      (mcp-resource-uri)
                            :granted_scope "agent:content:read"
                            :state         state}
                           302
@@ -1411,6 +1483,7 @@
                          :redirect_uri  "https://example.com/callback"
                          :response_type "code"
                          :scope         "agent:content:read"
+                         :resource      (mcp-resource-uri)
                          :state         "test-state")
               body      (:body response)]
           (is (not (str/includes? body "<script>alert('xss')</script>"))
@@ -1491,7 +1564,7 @@
                 "rendered raw in their browser tab and has no in-product recovery path. "
                 "`WidenDynamicOAuthClientScopesForMcpV2` unions the six v2 scopes into every dynamically registered "
                 "client's snapshot so the request validates and reaches consent.")
-    ;; GHY-4543: reading a dynamic client now adds the six v2 scopes whatever the registration setting says, so the
+    ;; GHY-4543: reading a dynamic client now adds the five v2 scopes whatever the registration setting says, so the
     ;; request reaches consent with or without the migration applied. Registration is disabled so only that MCP part
     ;; of the ceiling applies. A static client carrying the same legacy snapshot is the control: it is never widened,
     ;; so it shows what the stored snapshot alone decides.
@@ -1500,7 +1573,7 @@
       (t2/with-transaction [_conn nil {:rollback-only true}]
         (let [legacy-scopes ["agent:question:create" "agent:sql:construct" "agent:viz:mcp-ui:query"]
               v2-scopes     ["agent:content:read" "agent:content:write" "agent:query:run"
-                             "agent:sql:run" "agent:delivery:write" "agent:resource:read"]
+                             "agent:sql:run" "agent:delivery:write"]
               authorize!    (fn [client-id expected-status]
                               (mt/user-http-request-full-response
                                :crowberto :get expected-status "oauth/authorize"
@@ -1508,16 +1581,17 @@
                                :redirect_uri  "https://example.com/callback"
                                :response_type "code"
                                :scope         (str/join " " v2-scopes)
+                               :resource      (mcp-resource-uri)
                                :state         "test-state"))
               consent!      (fn [response]
                               (is (str/includes? (get-in response [:headers "Content-Type"]) "text/html")
                                   "the user sees a consent page, not a JSON error body rendered in their browser tab")
                               (is (str/includes? (:body response) "agent:content:read")
-                                  "and the six v2 scopes are what they are consenting to"))
+                                  "and the five v2 scopes are what they are consenting to"))
               static-id     (:client_id (create-test-client! {:scopes legacy-scopes}))
               dynamic-id    (:client_id (create-test-client! {:scopes            legacy-scopes
                                                               :registration_type "dynamic"}))]
-          (testing "control: the six v2 scopes are refused against the legacy snapshot alone"
+          (testing "control: the five v2 scopes are refused against the legacy snapshot alone"
             (is (= {:error             "invalid_scope"
                     :error_description invalid-request-description}
                    (:body (authorize! static-id 400)))))
@@ -1550,13 +1624,16 @@
                           (let [client-id (:client_id (create-test-client!
                                                        {:scopes            ["agent:content:read"]
                                                         :registration_type registration-type}))]
-                            (mt/user-http-request-full-response
-                             :crowberto :get "oauth/authorize"
-                             :client_id     client-id
-                             :redirect_uri  "https://example.com/callback"
-                             :response_type "code"
-                             :scope         scope
-                             :state         "test-state")))))
+                            ;; An MCP scope needs the MCP resource, or it is refused as a token that works nowhere.
+                            (apply mt/user-http-request-full-response
+                                   :crowberto :get "oauth/authorize"
+                                   :client_id     client-id
+                                   :redirect_uri  "https://example.com/callback"
+                                   :response_type "code"
+                                   :scope         scope
+                                   :state         "test-state"
+                                   (when (contains? (set (mcp/v2-scopes)) scope)
+                                     [:resource (mcp-resource-uri)]))))))
           consent?  (fn [response] (is (= 200 (:status response)) (pr-str (:body response))))
           refused?  (fn [response]
                       (is (= 400 (:status response)))
@@ -1575,10 +1652,9 @@
         (refused? (authorize "dynamic" false not-mcp))))))
 
 (deftest grant-ceiling-widening-respects-mcp-kill-switch-test
-  (testing (str "GHY-4543: the MCP-scope widening stops when an admin turns MCP off. `agent:resource:read` is an MCP "
-                "surface scope and also the declared scope of `POST /api/agent/v1/read-resource`, which a separate "
-                "lever (`agent-api-enabled`) gates — so widening onto it with MCP off hands a dynamic client a scope "
-                "its registration never included, and with the agent API on, a live endpoint to spend it at.")
+  (testing (str "GHY-4543: the MCP-scope widening stops when an admin turns MCP off. With MCP off no surface serves "
+                "the MCP scopes, so widening onto one would hand a dynamic client a scope its registration never "
+                "included.")
     (let [authorize (fn [mcp-on?]
                       (mt/with-temporary-setting-values [site-url                                  "http://localhost:3000"
                                                          mcp-enabled?                              mcp-on?
@@ -1596,7 +1672,8 @@
                              :client_id     client-id
                              :redirect_uri  "https://example.com/callback"
                              :response_type "code"
-                             :scope         "agent:resource:read"
+                             :scope         "agent:sql:run"
+                             :resource      (mcp-resource-uri)
                              :state         "test-state")))))]
       (testing "with MCP enabled a dynamic client is widened onto the MCP scopes and reaches consent"
         (let [response (authorize true)]
@@ -1667,16 +1744,17 @@
       (t2/with-transaction [_conn nil {:rollback-only true}]
         (doseq [[label registered requested resource expected absent]
                 [["a wildcard alongside a registered scope"
-                  ["agent:content:read" "*"] "agent:content:read *" nil "agent:content:read" []]
+                  ["agent:content:read" "*"] "agent:content:read *" (mcp-resource-uri) "agent:content:read" []]
                  ["a hierarchical wildcard alongside a registered scope"
-                  ["agent:content:read" "agent:*"] "agent:* agent:content:read" nil "agent:content:read" []]
+                  ["agent:content:read" "agent:*"] "agent:* agent:content:read" (mcp-resource-uri) "agent:content:read" []]
                  ["a scope deprecated since the client registered"
-                  ["agent:content:read" "agent:table:read"] "agent:table:read agent:content:read" nil
+                  ["agent:content:read" "agent:table:read"] "agent:table:read agent:content:read" (mcp-resource-uri)
                   "agent:content:read" ["agent:table:read"]]
+                 ;; non-MCP survivors: a mix of MCP and other scopes would lose its MCP scopes
                  ["several survivors, keeping the requested order"
-                  ["agent:content:read" "agent:question:create" "agent:table:read"]
-                  "agent:table:read agent:content:read agent:question:create" nil
-                  "agent:content:read agent:question:create" ["agent:table:read"]]
+                  ["agent:search" "agent:question:create" "agent:table:read"]
+                  "agent:table:read agent:search agent:question:create" nil
+                  "agent:search agent:question:create" ["agent:table:read"]]
                  ["a resource indicator narrowing the survivors further"
                   ["agent:content:read" "agent:question:create" "agent:table:read"]
                   "agent:table:read agent:content:read agent:question:create"
@@ -1710,6 +1788,7 @@
                                                :redirect_uri  "https://example.com/callback"
                                                :response_type "code"
                                                :scope         "* agent:content:read"
+                                               :resource      (mcp-resource-uri)
                                                :state         "test-state")
               body         (:body consent-resp)
               granted      (extract-hidden-field "scope" body)]
@@ -1723,6 +1802,7 @@
                            :redirect_uri  "https://example.com/callback"
                            :response_type "code"
                            :scope         granted
+                           :resource      (mcp-resource-uri)
                            :state         "test-state"}
                           302
                           :csrf-cookie (extract-csrf-cookie consent-resp))
@@ -1759,6 +1839,7 @@
                              (let [params (cond-> {:client_id     client_id
                                                    :redirect_uri  "https://example.com/callback"
                                                    :response_type "code"
+                                                   :resource      (mcp-resource-uri)
                                                    :state         "test-state"}
                                             scope (assoc :scope scope))]
                                (form-post-decision!
@@ -1766,7 +1847,7 @@
                                 (assoc params
                                        :approved   "true"
                                        :csrf_token csrf-token
-                                       :params_sig (sign-decision-params csrf-token params))
+                                       :params_sig (sign-decision-params csrf-token (update params :resource vector)))
                                 expected-status
                                 :csrf-cookie csrf-cookie)))
               refused      {:error             "invalid_request"
@@ -1951,10 +2032,7 @@
 
 (def ^:private v2-scope-set
   #{"agent:content:read" "agent:content:write" "agent:query:run"
-    "agent:sql:run" "agent:delivery:write" "agent:resource:read"})
-
-(defn- mcp-resource-uri []
-  (str "http://localhost:3000" (mcp/mcp-canonical-path)))
+    "agent:sql:run" "agent:delivery:write"})
 
 (defn- register-mcp-client!
   "Register a confidential DCR client with `registration` merged into the body. Returns the registration response."
@@ -2031,8 +2109,169 @@
 (defn- token-scope-set [token-response]
   (some-> (:scope token-response) (str/split #" ") set))
 
+(defn- run-flow!
+  "Run the whole authorization-code flow as crowberto: register a confidential DCR client with `registration`, GET
+  `/oauth/authorize` for `scope` naming `resource` (omitted when nil), approve with the offered scopes that `choose`
+  keeps (default: all), and exchange the code without naming a resource. Returns `{:client <registration response>
+  :authorize <consent response> :offered <offered scopes> :token <token response>}`; `:offered` and `:token` are
+  absent when the authorize request did not reach the consent page."
+  [{:keys [registration scope resource choose] :or {registration {} choose identity}}]
+  (let [client  (register-mcp-client! registration)
+        ;; see [[get-mcp-consent-page!]] for why the session is revalidated first
+        _       (mt/user-http-request :crowberto :get 200 "api/user/current")
+        consent (apply mt/user-http-request-full-response
+                       :crowberto :get "oauth/authorize"
+                       :client_id     (:client_id client)
+                       :redirect_uri  "https://example.com/callback"
+                       :response_type "code"
+                       :scope         scope
+                       :state         "test-state"
+                       (when resource [:resource resource]))]
+    (if-not (= 200 (:status consent))
+      {:client client :authorize consent}
+      (let [body     (:body consent)
+            offered  (offered-scopes consent)
+            decision (form-post-decision!
+                      :crowberto
+                      (cond-> {:approved      "true"
+                               :csrf_token    (extract-csrf-token-from-consent body)
+                               :params_sig    (extract-params-sig-from-consent body)
+                               :client_id     (:client_id client)
+                               :redirect_uri  "https://example.com/callback"
+                               :response_type "code"
+                               :scope         (extract-hidden-field "scope" body)
+                               :granted_scope (vec (choose offered))
+                               :state         "test-state"}
+                        resource (assoc :resource resource))
+                      302
+                      :csrf-cookie (extract-csrf-cookie consent))]
+        {:client    client
+         :authorize consent
+         :offered   offered
+         :token     (token-request! {:grant_type   "authorization_code"
+                                     :code         (extract-query-param (get-in decision [:headers "Location"]) "code")
+                                     :redirect_uri "https://example.com/callback"}
+                                    :authorization (basic-auth-header (:client_id client) (:client_secret client)))}))))
+
+(defn- served-status
+  "The status `method url` answers with the access token of `token-response` as the bearer, expecting
+  `expected-status`."
+  [token-response expected-status method url body]
+  (:status (apply client/client-full-response method expected-status url
+                  {:request-options {:headers {"authorization" (str "Bearer " (:access_token token-response))}}}
+                  (when body [body]))))
+
+(defn- check-served!
+  "Check which endpoints serve the access token of `token-response`: `mcp` is the status of an MCP `initialize`,
+  `rest` of `GET /api/user/current`, and `read-resource`, when given, of the agent API's read-resource endpoint."
+  [token-response {:keys [mcp rest read-resource]}]
+  (is (= mcp (served-status token-response mcp :post "api/metabase-mcp"
+                            {:jsonrpc "2.0" :method "initialize" :params {:capabilities {}} :id 1}))
+      "MCP initialize")
+  (is (= rest (served-status token-response rest :get "api/user/current" nil)) "GET /api/user/current")
+  (when read-resource
+    (is (= read-resource (served-status token-response read-resource :post "api/agent/v1/read-resource"
+                                        {:uris ["metabase://databases"]}))
+        "POST /api/agent/v1/read-resource")))
+
+(def ^:private binding-flow-registration
+  "A DCR registration whose ceiling covers every scope the binding flows request, and that may refresh."
+  {:scope       (str/join " " ["agent:content:read" "agent:query:run" "agent:resource:read" "agent:search"
+                               oauth-server/full-access-scope])
+   :grant_types ["authorization_code" "refresh_token"]})
+
+(deftest no-mcp-binding-is-inferred-without-a-site-url-test
+  (testing "With no Site URL there is no MCP endpoint URL to bind to, so an MCP-only grant is left unbound rather than
+            bound to a made-up or blank host"
+    (mt/with-temporary-setting-values [site-url nil]
+      (is (nil? (system/site-url)))
+      (is (nil? (oauth-server/mcp-resource-url)))
+      (doseq [resource [nil [] ["http://localhost:3000"]]]
+        (testing (pr-str resource)
+          (is (= resource (#'api.oauth/inferred-mcp-resource {:resource resource}
+                                                             "agent:content:read agent:query:run"))))))))
+
+(deftest authorize-infers-the-mcp-binding-test
+  (testing "The binding is decided at authorize time on the requested scopes, before consent, so the consent page
+            shows only what the token will hold. `agent:resource:read` is not an MCP scope; it is dropped only from
+            the old baseline shape, where everything else is MCP. Requests for MCP scopes only with no resource, or
+            the Site URL, are bound to the MCP endpoint by inference. A mix of MCP and other scopes loses its MCP
+            scopes and gives a REST token. MCP scopes only for any other resource are refused."
+    (mt/with-temporary-setting-values [site-url                                  "http://localhost:3000"
+                                       oauth-server-dynamic-registration-enabled true]
+      (mt/test-helpers-set-global-values!
+        (mt/with-model-cleanup [:model/OAuthClient :model/OAuthAccessToken :model/OAuthRefreshToken
+                                :model/OAuthAuthorizationCode]
+          (let [flow (fn [scope & {:as opts}]
+                       (run-flow! (merge {:registration binding-flow-registration :scope scope} opts)))]
+            (testing "(a) the old baseline, no resource: agent:resource:read dropped, MCP-bound"
+              (let [{:keys [client offered token]} (flow "agent:content:read agent:query:run agent:resource:read")]
+                (is (= ["agent:content:read" "agent:query:run"] offered))
+                (is (= #{"agent:content:read" "agent:query:run"} (token-scope-set token)))
+                (is (= [(mcp-resource-uri)] (:resource (oauth-server/resolve-access-token (:access_token token)))))
+                (check-served! token {:mcp 200 :rest 401 :read-resource 401})
+                (testing "(l) a refresh with no resource keeps the binding"
+                  (let [refreshed (token-request! {:grant_type "refresh_token" :refresh_token (:refresh_token token)}
+                                                  :authorization (basic-auth-header (:client_id client)
+                                                                                    (:client_secret client)))]
+                    (is (= [(mcp-resource-uri)]
+                           (:resource (oauth-server/resolve-access-token (:access_token refreshed)))))
+                    (check-served! refreshed {:mcp 200 :rest 401})))))
+            (testing "(b) MCP scopes only, no resource: MCP-bound"
+              (check-served! (:token (flow "agent:content:read agent:query:run")) {:mcp 200 :rest 401}))
+            (testing "(c) MCP scopes only, the Site URL: MCP-bound"
+              (check-served! (:token (flow "agent:content:read" :resource "http://localhost:3000"))
+                             {:mcp 200 :rest 401}))
+            (testing "(d) a mix, no resource: MCP scopes stripped, REST token"
+              (let [{:keys [offered token]} (flow "agent:content:read agent:search")]
+                (is (= ["agent:search"] offered))
+                (is (= #{"agent:search"} (token-scope-set token)))
+                (check-served! token {:mcp 401 :rest 403})))
+            (testing "(e) a mix with agent:resource:read, no resource: only the MCP scopes are stripped"
+              (let [{:keys [offered token]} (flow "agent:content:read agent:search agent:resource:read")]
+                (is (= #{"agent:search" "agent:resource:read"} (set offered)))
+                (is (= #{"agent:search" "agent:resource:read"} (token-scope-set token)))
+                (check-served! token {:mcp 401 :rest 403 :read-resource 200})))
+            (testing "(f) MCP scopes only, another resource: refused"
+              (let [{:keys [authorize]} (flow "agent:content:read agent:query:run"
+                                              :resource "http://localhost:3000/api")]
+                (is (= 400 (:status authorize)))
+                (is (= "invalid_target" (get-in authorize [:body :error])))
+                (is (nil? (get-in authorize [:headers "Location"])))))
+            (testing "(g) a mix, another resource: MCP scopes stripped, REST token"
+              (let [{:keys [offered token]} (flow "agent:content:read agent:search"
+                                                  :resource "http://localhost:3000/api")]
+                (is (= ["agent:search"] offered))
+                (check-served! token {:mcp 401 :rest 403})))
+            (testing "(h) mb:full, no resource: REST token"
+              (check-served! (:token (flow oauth-server/full-access-scope)) {:mcp 401 :rest 200}))
+            (testing "(i) mb:full with an MCP scope, no resource: a mix, so mb:full only"
+              (let [{:keys [offered token]} (flow (str oauth-server/full-access-scope " agent:content:read"))]
+                (is (= [oauth-server/full-access-scope] offered))
+                (check-served! token {:mcp 401 :rest 200})))
+            (testing "(j) agent:resource:read alone, no resource: REST token for the agent API"
+              (check-served! (:token (flow "agent:resource:read")) {:mcp 401 :rest 403 :read-resource 200}))
+            (testing "(k) agent:resource:read with an agent API scope, no resource: kept, REST token"
+              (let [{:keys [offered token]} (flow "agent:resource:read agent:search")]
+                (is (= #{"agent:resource:read" "agent:search"} (set offered)))
+                (check-served! token {:mcp 401 :rest 403 :read-resource 200})))))))))
+
+(deftest foreign-host-mcp-resource-is-narrowed-test
+  (testing "A resource naming the MCP endpoint path under another host binds the token to the MCP endpoint, so it is
+            narrowed like the MCP endpoint under the Site URL: the consent page never offers full access for a token
+            only the MCP endpoint serves, and the token holds only MCP scopes"
+    (mt/with-temporary-setting-values [site-url                                  "http://localhost:3000"
+                                       oauth-server-dynamic-registration-enabled true]
+      (t2/with-transaction [_conn nil {:rollback-only true}]
+        (let [{:keys [offered token]} (run-flow! {:registration {:scope (str oauth-server/full-access-scope
+                                                                             " agent:content:read")}
+                                                  :scope        (str oauth-server/full-access-scope " agent:content:read")
+                                                  :resource     "https://other-host.example/api/metabase-mcp"})]
+          (is (= ["agent:content:read"] offered))
+          (is (= #{"agent:content:read"} (token-scope-set token))))))))
+
 (def ^:private v2-baseline-scope-set
-  #{"agent:content:read" "agent:query:run" "agent:resource:read"})
+  #{"agent:content:read" "agent:query:run"})
 
 (deftest registration-scope-does-not-narrow-step-up-test
   (testing (str "GHY-4543: Claude Code registers with the scope it read from the protected-resource metadata, then "
@@ -2043,7 +2282,7 @@
                                        oauth-server-dynamic-registration-enabled true]
       (t2/with-transaction [_conn nil {:rollback-only true}]
         (let [{:keys [authorize token]} (register-then-authorize-mcp!
-                                         {:scope "agent:content:read agent:query:run agent:resource:read"}
+                                         {:scope "agent:content:read agent:query:run"}
                                          (str/join " " (sort v2-scope-set)))]
           (testing "the step-up request reaches the consent page"
             (is (= 200 (:status authorize)) (pr-str (:body authorize)))
@@ -2080,7 +2319,7 @@
       (t2/with-transaction [_conn nil {:rollback-only true}]
         (let [not-mcp                   (first (remove v2-scope-set (oauth-server/default-grant-scopes)))
               {:keys [authorize token]} (register-then-authorize-mcp!
-                                         {:scope "agent:content:read agent:query:run agent:resource:read"}
+                                         {:scope "agent:content:read agent:query:run"}
                                          (str/join " " (conj (sort v2-scope-set) not-mcp)))]
           (is (some? not-mcp) "the default ceiling holds a scope the MCP resource does not accept")
           (is (= 200 (:status authorize)) (pr-str (:body authorize)))
@@ -2111,13 +2350,13 @@
       (t2/with-transaction [_conn nil {:rollback-only true}]
         (testing "control: the same flow reaches consent for a scope inside the default ceiling"
           (let [response (register-then-authorize-without-resource!
-                          {:scope "agent:content:read agent:query:run agent:resource:read"}
-                          "agent:content:write")]
+                          {:scope "agent:content:read agent:query:run"}
+                          (first-non-mcp-default-scope))]
             (is (= 200 (:status response)) (pr-str (:body response)))))
         (doseq [scope [oauth-server/full-access-scope "*" "agent:*" "bogus:nonsense"]]
           (testing scope
             (let [response (register-then-authorize-without-resource!
-                            {:scope "agent:content:read agent:query:run agent:resource:read"}
+                            {:scope "agent:content:read agent:query:run"}
                             scope)]
               (is (= 400 (:status response)))
               (is (= "invalid_scope" (get-in response [:body :error]))))))))))
@@ -2139,7 +2378,7 @@
   (str/join " " (sort v2-scope-set)))
 
 (deftest decision-mints-only-chosen-scopes-test
-  (testing (str "GHY-4555: a client requests all six v2 scopes and the user ticks only `agent:content:write`. The "
+  (testing (str "GHY-4555: a client requests all five v2 scopes and the user ticks only `agent:content:write`. The "
                 "token carries that plus the always-granted baseline, and neither the token response nor the stored "
                 "token holds the scopes the user left unticked.")
     (mt/with-temporary-setting-values [site-url                                  "http://localhost:3000"
@@ -2148,7 +2387,7 @@
         (let [client       (register-mcp-client! {})
               consent-resp (get-mcp-consent-page! (:client_id client) all-v2-scopes)
               expected     (conj v2-baseline-scope-set "agent:content:write")]
-          (is (= v2-scope-set (set (offered-scopes consent-resp))) "the page offers all six")
+          (is (= v2-scope-set (set (offered-scopes consent-resp))) "the page offers all five")
           (let [token  (exchange-code! client (post-mcp-decision! (:client_id client) consent-resp
                                                                   ["agent:content:write"] 302))
                 stored (:scopes (oauth-server/resolve-access-token (:access_token token)))]
@@ -2168,7 +2407,7 @@
         (let [client       (register-mcp-client! {})
               consent-resp (get-mcp-consent-page!
                             (:client_id client)
-                            "agent:content:read agent:query:run agent:resource:read agent:content:write")]
+                            "agent:content:read agent:query:run agent:content:write")]
           (doseq [granted [["agent:sql:run"]
                            ["agent:content:write" "agent:delivery:write"]
                            [oauth-server/full-access-scope]
@@ -2185,14 +2424,15 @@
     (mt/with-temporary-setting-values [site-url                                  "http://localhost:3000"
                                        oauth-server-dynamic-registration-enabled true]
       (t2/with-transaction [_conn nil {:rollback-only true}]
-        (testing "a non-baseline scope requested without a resource indicator"
-          (let [client-id    (:client_id (create-test-client! {:scopes ["agent:content:write"]}))
+        (testing "a non-baseline, non-MCP scope requested without a resource indicator"
+          (let [scope        (first-non-mcp-default-scope)
+                client-id    (:client_id (create-test-client! {:scopes [scope]}))
                 consent-resp (mt/user-http-request-full-response
                               :crowberto :get 200 "oauth/authorize"
                               :client_id     client-id
                               :redirect_uri  "https://example.com/callback"
                               :response_type "code"
-                              :scope         "agent:content:write"
+                              :scope         scope
                               :state         "test-state")
                 consent-body (:body consent-resp)
                 response     (form-post-decision!
@@ -2203,7 +2443,7 @@
                                :client_id     client-id
                                :redirect_uri  "https://example.com/callback"
                                :response_type "code"
-                               :scope         "agent:content:write"
+                               :scope         scope
                                :state         "test-state"}
                               400
                               :csrf-cookie (extract-csrf-cookie consent-resp))]
@@ -2221,7 +2461,7 @@
     (mt/with-temporary-setting-values [site-url                                  "http://localhost:3000"
                                        oauth-server-dynamic-registration-enabled true]
       (t2/with-transaction [_conn nil {:rollback-only true}]
-        (testing "all six offered, nothing chosen: the token carries the baseline"
+        (testing "all five offered, nothing chosen: the token carries the baseline"
           (let [client       (register-mcp-client! {})
                 consent-resp (get-mcp-consent-page! (:client_id client) all-v2-scopes)
                 token        (exchange-code! client (post-mcp-decision! (:client_id client) consent-resp nil 302))]
@@ -2258,14 +2498,16 @@
      :disabled? (boolean (re-find #"\sdisabled[\s=/>]" tag))}))
 
 (deftest consent-page-scope-order-test
-  (testing (str "GHY-4555: the six v2 scopes are listed least to most harmful whatever order they were requested in, "
+  (testing (str "GHY-4555: the five v2 scopes are listed least to most harmful whatever order they were requested in, "
                 "and any other requested scope follows in request order")
     (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
       (t2/with-transaction [_conn nil {:rollback-only true}]
         ;; a registered non-v2 scope: GHY-4542 drops unregistered scopes before the page is rendered
-        (let [not-v2    (first-non-mcp-default-scope)
-              requested [not-v2 "agent:delivery:write" "agent:sql:run" oauth-server/full-access-scope
-                         "agent:content:write" "agent:query:run" "agent:content:read" "agent:resource:read"]
+        ;; A consent page no longer offers MCP and other scopes together: the MCP resource narrows to MCP scopes, and
+        ;; otherwise a mix loses its MCP scopes. So the page shows the five, and the renderer shows the ordering of
+        ;; a mix.
+        (let [requested ["agent:delivery:write" "agent:sql:run" "agent:content:write" "agent:query:run"
+                         "agent:content:read"]
               client-id (:client_id (create-test-client! {:scopes requested}))
               body      (:body (mt/user-http-request-full-response
                                 :crowberto :get 200 "oauth/authorize"
@@ -2273,21 +2515,26 @@
                                 :redirect_uri  "https://example.com/callback"
                                 :response_type "code"
                                 :scope         (str/join " " requested)
+                                :resource      (mcp-resource-uri)
                                 :state         "test-state"))]
-          (is (= ["agent:resource:read" "agent:content:read" "agent:query:run"
-                  "agent:content:write" "agent:sql:run" "agent:delivery:write"
-                  not-v2 oauth-server/full-access-scope]
+          (is (= ["agent:content:read" "agent:query:run"
+                  "agent:content:write" "agent:sql:run" "agent:delivery:write"]
                  (map :scope (consent-checkboxes body))))
-          (testing "the baseline is ticked and locked; everything else, `mb:full` included, starts unticked"
-            (is (= {"agent:resource:read"          [true true]
-                    "agent:content:read"           [true true]
-                    "agent:query:run"              [true true]
-                    "agent:content:write"          [false false]
-                    "agent:sql:run"                [false false]
-                    "agent:delivery:write"         [false false]
-                    not-v2                         [false false]
-                    oauth-server/full-access-scope [false false]}
-                   (into {} (map (juxt :scope (juxt :checked? :disabled?))) (consent-checkboxes body))))))))))
+          (testing "the baseline is ticked and locked; everything else starts unticked"
+            (is (= {"agent:content:read"   [true true]
+                    "agent:query:run"      [true true]
+                    "agent:content:write"  [false false]
+                    "agent:sql:run"        [false false]
+                    "agent:delivery:write" [false false]}
+                   (into {} (map (juxt :scope (juxt :checked? :disabled?))) (consent-checkboxes body))))))
+        (testing "any other scope follows the v2 scopes in request order, and `mb:full` is not locked"
+          (let [not-v2 (first-non-mcp-default-scope)]
+            (is (= [["agent:content:read" true] ["agent:sql:run" false]
+                    [not-v2 false] [oauth-server/full-access-scope false]]
+                   (map (juxt :scope :locked?)
+                        (#'api.oauth/requested-scope-descriptions
+                         (str/join " " [not-v2 "agent:sql:run" oauth-server/full-access-scope
+                                        "agent:content:read"])))))))))))
 
 (deftest consent-scope-order-covers-v2-scopes-test
   (testing "GHY-4555: the consent order ranks exactly the v2 scopes, so a new v2 scope is not silently listed last"
@@ -2360,8 +2607,7 @@
   (into {} (map (juxt :scope (juxt :checked? :disabled?))) (consent-checkboxes (:body response))))
 
 (def ^:private baseline-locked
-  {"agent:resource:read" [true true]
-   "agent:content:read"  [true true]
+  {"agent:content:read"  [true true]
    "agent:query:run"     [true true]})
 
 (deftest consent-page-does-not-pre-tick-held-scopes-test
@@ -2426,6 +2672,147 @@
                   :authorization (basic-auth-header (:client_id client) (:client_secret client))))
 
 (def ^:private claude-redirect "https://claude.ai/api/mcp/auth_callback")
+
+(defn- access-token-resource
+  "The stored RFC 8707 resource binding of `token-response`'s access token."
+  [token-response]
+  (:resource (oauth-server/resolve-access-token (:access_token token-response))))
+
+(deftest refresh-keeps-the-resource-binding-test
+  (testing "The resource binding decides where an access token works, so a refreshed access token carries the
+            refresh token's binding. A refresh request that names a different resource neither moves nor widens it."
+    (mt/with-temporary-setting-values [site-url                                  "http://localhost:3000"
+                                       oauth-server-dynamic-registration-enabled true]
+      (t2/with-transaction [_conn nil {:rollback-only true}]
+        (let [client (register-app-client! "Claude" claude-redirect)
+              basic  (basic-auth-header (:client_id client) (:client_secret client))
+              token  (authorize-at! client claude-redirect all-v2-scopes nil)]
+          (is (= [(mcp-resource-uri)] (access-token-resource token)))
+          (testing "a refresh that names no resource keeps the MCP binding"
+            (let [refreshed (refresh! client token)]
+              (is (= [(mcp-resource-uri)] (access-token-resource refreshed)))
+              (testing "a refresh that names another resource is refused, and the binding is not moved"
+                (let [response (token-request! {:grant_type    "refresh_token"
+                                                :refresh_token (:refresh_token refreshed)
+                                                :resource      "http://localhost:3000/api"}
+                                               :expected-status 400
+                                               :authorization basic)]
+                  (is (= {:error             "invalid_grant"
+                          :error_description refresh-binding-mismatch-description}
+                         (select-keys response [:error :error_description])))))
+              (testing "a refresh that names the same resource, spelled differently, keeps the stored binding"
+                (let [again (token-request! {:grant_type    "refresh_token"
+                                             :refresh_token (:refresh_token refreshed)
+                                             :resource      "http://LOCALHOST:3000/api/metabase-mcp/"}
+                                            :authorization basic)]
+                  (is (= [(mcp-resource-uri)] (access-token-resource again)))))))
+          (testing "a REST refresh token, with no binding, cannot be moved onto the MCP resource"
+            (let [rest-refresh (str (random-uuid))]
+              (oidc.store/save-refresh-token (:token-store (oauth-server/get-provider)) rest-refresh
+                                             (str (mt/user->id :crowberto)) (:client_id client)
+                                             ["agent:content:read"] nil nil)
+              (let [response (token-request! {:grant_type    "refresh_token"
+                                              :refresh_token rest-refresh
+                                              :resource      (mcp-resource-uri)}
+                                             :expected-status 400
+                                             :authorization basic)]
+                (is (= {:error             "invalid_grant"
+                        :error_description refresh-binding-mismatch-description}
+                       (select-keys response [:error :error_description]))))
+              (testing "and without a resource it refreshes as a REST token"
+                (is (nil? (access-token-resource (token-request! {:grant_type    "refresh_token"
+                                                                  :refresh_token rest-refresh}
+                                                                 :authorization basic))))))))))))
+
+(deftest refresh-after-a-site-url-change-test
+  (testing "An MCP refresh token stored under the old Site URL still refreshes after an admin changes it. A refresh that
+            names the MCP endpoint under the new URL moves the binding there; one that names no resource keeps it; one
+            that names a resource that is not the MCP endpoint is still refused."
+    (mt/with-temporary-setting-values [site-url                                  "http://localhost:3000"
+                                       oauth-server-dynamic-registration-enabled true]
+      (t2/with-transaction [_conn nil {:rollback-only true}]
+        (let [client      (register-app-client! "Claude" claude-redirect)
+              basic       (basic-auth-header (:client_id client) (:client_secret client))
+              old-mcp     "http://localhost:3000/api/metabase-mcp"
+              new-mcp     "https://mb.example.com/api/metabase-mcp"
+              mcp-refresh (fn []
+                            (let [token (str (random-uuid))]
+                              (oidc.store/save-refresh-token (:token-store (oauth-server/get-provider)) token
+                                                             (str (mt/user->id :crowberto)) (:client_id client)
+                                                             ["agent:content:read"] nil [old-mcp])
+                              token))
+              refresh     (fn [expected-status params]
+                            (token-request! (merge {:grant_type "refresh_token"} params)
+                                            :expected-status expected-status
+                                            :authorization basic))]
+          (mt/with-temporary-setting-values [site-url "https://mb.example.com"]
+            (testing "naming the new URL's MCP resource succeeds and binds the new token there"
+              (is (= [new-mcp] (access-token-resource
+                                (refresh 200 {:refresh_token (mcp-refresh) :resource new-mcp})))))
+            (testing "naming no resource keeps the stored binding"
+              (is (= [old-mcp] (access-token-resource (refresh 200 {:refresh_token (mcp-refresh)})))))
+            (testing "a refresh token rebound by `BindLegacyMcpOAuthTokens`, refreshed without a resource, stays
+                      MCP-bound"
+              (let [legacy ["https://migrated.example.com/api/metabase-mcp"]
+                    token  (str (random-uuid))]
+                (oidc.store/save-refresh-token (:token-store (oauth-server/get-provider)) token
+                                               (str (mt/user->id :crowberto)) (:client_id client)
+                                               ["agent:content:read"] nil legacy)
+                (let [refreshed (access-token-resource (refresh 200 {:refresh_token token}))]
+                  (is (= legacy refreshed))
+                  (is (oauth-server/mcp-resource? refreshed)))))
+            (testing "naming a resource that is not the MCP endpoint is refused"
+              (is (= "invalid_grant"
+                     (:error (refresh 400 {:refresh_token (mcp-refresh)
+                                           :resource      "https://mb.example.com/api"})))))))))))
+
+(deftest site-url-mcp-token-refreshes-with-the-same-resource-test
+  (testing "A client that authorized MCP scopes with resource=<Site URL> sends the same resource when it refreshes, and
+            the refreshed token keeps the inferred MCP binding"
+    (mt/with-temporary-setting-values [site-url                                  "http://localhost:3000"
+                                       oauth-server-dynamic-registration-enabled true]
+      (t2/with-transaction [_conn nil {:rollback-only true}]
+        (let [{:keys [client token]} (run-flow! {:registration binding-flow-registration
+                                                 :scope        "agent:content:read agent:query:run"
+                                                 :resource     "http://localhost:3000"})
+              basic                  (basic-auth-header (:client_id client) (:client_secret client))
+              refreshed              (token-request! {:grant_type    "refresh_token"
+                                                      :refresh_token (:refresh_token token)
+                                                      :resource      "http://localhost:3000"}
+                                                     :expected-status 200
+                                                     :authorization basic)]
+          (is (= [(mcp-resource-uri)] (access-token-resource refreshed)))
+          (testing "a REST refresh token that names the Site URL is refused: it cannot be moved onto any resource"
+            (let [rest-refresh (str (random-uuid))]
+              (oidc.store/save-refresh-token (:token-store (oauth-server/get-provider)) rest-refresh
+                                             (str (mt/user->id :crowberto)) (:client_id client)
+                                             ["agent:search"] nil nil)
+              (is (= "invalid_grant"
+                     (:error (token-request! {:grant_type    "refresh_token"
+                                              :refresh_token rest-refresh
+                                              :resource      "http://localhost:3000"}
+                                             :expected-status 400
+                                             :authorization basic)))))))))))
+
+(deftest refresh-without-client-credentials-reveals-nothing-test
+  (testing "A refresh request without client credentials for a confidential client gets the same answer whether its
+            refresh token is live or unknown, so the endpoint does not tell a caller which tokens are live. The
+            binding check runs only after the client has authenticated."
+    (mt/with-temporary-setting-values [site-url                                  "http://localhost:3000"
+                                       oauth-server-dynamic-registration-enabled true]
+      (t2/with-transaction [_conn nil {:rollback-only true}]
+        (let [client  (register-app-client! "Claude" claude-redirect)
+              live    (str (random-uuid))
+              _       (oidc.store/save-refresh-token (:token-store (oauth-server/get-provider)) live
+                                                     (str (mt/user->id :crowberto)) (:client_id client)
+                                                     ["agent:content:read"] nil [(mcp-resource-uri)])
+              refresh (fn [token]
+                        (token-request! {:grant_type    "refresh_token"
+                                         :refresh_token token
+                                         :client_id     (:client_id client)
+                                         :resource      "http://localhost:3000/api"}
+                                        :expected-status 400))]
+          (is (= (refresh (str (random-uuid))) (refresh live))))))))
 
 (deftest untick-leaves-other-live-tokens-alone-test
   (testing (str "GHY-4555: a consent decision governs only the token this authorization mints. Unticking a scope the "
@@ -2497,7 +2884,7 @@
                                  :state         "test-state"
                                  resource))]
           (is (some? not-mcp) "the default ceiling holds a scope the MCP surface does not accept")
-          (testing "the client reaches consent for all six v2 scopes against the MCP resource"
+          (testing "the client reaches consent for all five v2 scopes against the MCP resource"
             (let [response (authorize (str/join " " (sort v2-scope-set)) :resource mcp-uri)]
               (is (= 200 (:status response)) (pr-str (:body response)))
               (is (= v2-scope-set (some-> (extract-hidden-field "scope" (:body response)) (str/split #" ") set)))))

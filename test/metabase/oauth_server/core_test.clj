@@ -54,7 +54,7 @@
             but not SQL, writes or delivery. Every tool is listed whatever the token holds, and a call needing more is
             answered with a 403 `insufficient_scope` step-up, so asking for less degrades to a consent prompt rather
             than a hidden tool."
-    (is (= #{"agent:content:read" "agent:query:run" "agent:resource:read"} (set @#'v2.api/default-ask-scopes)))
+    (is (= #{"agent:content:read" "agent:query:run"} (set @#'v2.api/default-ask-scopes)))
     (testing "the surface still accepts every scope asked for, or narrowing strips the ask at consent"
       (is (empty? (remove (set (oauth-server/mcp-resource-scopes (mcp/mcp-canonical-path)))
                           @#'v2.api/default-ask-scopes))))
@@ -200,7 +200,7 @@
       (testing "GHY-4543: every v2 scope survives narrowing on every alias, although the resource metadata
                 advertises only the baseline — otherwise a step-up for a write scope is stripped at consent"
         (let [v2-scopes ["agent:content:read" "agent:content:write" "agent:query:run"
-                         "agent:sql:run" "agent:delivery:write" "agent:resource:read"]]
+                         "agent:sql:run" "agent:delivery:write"]]
           (doseq [path (mcp/mcp-endpoint-paths)]
             (testing path
               (is (= (set v2-scopes)
@@ -272,13 +272,18 @@
         (mt/with-temporary-setting-values [site-url "http://example.com"]
           (is (= narrowed (oauth-server/narrow-scope-to-resource
                            ["http://example.com:80/api/metabase-mcp"] wide)))))
+      (testing "an MCP endpoint path under another host, port or scheme is narrowed too: binding treats it as the MCP
+                endpoint, so the consent page must offer only what that endpoint serves"
+        (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+          (doseq [indicator ["http://localhost:3001/api/metabase-mcp"
+                             "https://localhost:3000/api/metabase-mcp"
+                             "http://evil.example.com/api/metabase-mcp"]]
+            (testing (str "narrows for " (pr-str indicator))
+              (is (= narrowed (oauth-server/narrow-scope-to-resource [indicator] wide)))))))
       (testing "canonicalization does not make unrelated resources match"
         (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
           (doseq [indicator ["http://localhost:3000/api/metabase-mcp/extra"
                              "http://localhost:3000/API/METABASE-MCP/V2"
-                             "http://localhost:3001/api/metabase-mcp"
-                             "https://localhost:3000/api/metabase-mcp"
-                             "http://evil.example.com/api/metabase-mcp"
                              "not-a-uri"]]
             (testing (str "leaves scope alone for " (pr-str indicator))
               (is (= wide (oauth-server/narrow-scope-to-resource [indicator] wide))))))))))

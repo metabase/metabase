@@ -11,6 +11,7 @@
    [metabase.driver :as driver]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
+   [metabase.mcp.test-util :as mcp.tu]
    [metabase.mcp.v2.message :as message]
    [metabase.mcp.v2.queries :as v2.queries]
    [metabase.mcp.v2.registry :as registry]
@@ -27,6 +28,11 @@
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
+
+(def all-mcp-scopes
+  "Every MCP scope, for calls that do not exercise scope gating. Public because kondo cannot see its uses inside
+  `with-target-db-support`."
+  mcp.tu/all-scopes)
 
 (use-fixtures :once (fixtures/initialize :db))
 
@@ -311,7 +317,7 @@
       (with-transforms
         (with-target-db-support
           (let [session-id (str (random-uuid))
-                handle     (-> (call-tool! :crowberto nil "execute_sql"
+                handle     (-> (call-tool! :crowberto all-mcp-scopes "execute_sql"
                                            {:database_id (mt/id) :sql "SELECT 1 AS n" :validate_only true}
                                            session-id)
                                tool-result
@@ -812,7 +818,7 @@
         (with-target-db-support
           (mt/with-temp [:model/Transform {id :id} (temp-transform-defaults "mcp_swap_handle")]
             (let [session-id (str (random-uuid))
-                  handle     (-> (call-tool! :crowberto nil "execute_sql"
+                  handle     (-> (call-tool! :crowberto all-mcp-scopes "execute_sql"
                                              {:database_id (mt/id) :sql "SELECT 2 AS n" :validate_only true}
                                              session-id)
                                  tool-result

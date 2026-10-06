@@ -379,8 +379,7 @@
   "An alert is a scheduled run of its question with the results delivered, so establishing one — or
    redirecting where one delivers — needs the same scope that seeing those results in-session
    would. The send itself happens later, tokenlessly, under the creator's permissions; this check
-   at write time is the only place the token's scopes can bound that deferred execution. No-op for
-   unscoped callers (cookie sessions bind the unrestricted sentinel, which matches everything)."
+   at write time is the only place the token's scopes can bound that deferred execution."
   [token-scopes action]
   (when-not (mcp.scope/matches? token-scopes metabot.scope/agent-query-run)
     (common/throw-insufficient-scope!

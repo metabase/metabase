@@ -1,0 +1,22 @@
+## MCP audience binding. An OAuth token's stored RFC 8707 `resource` decides where it works, and a token not bound to
+## the MCP endpoint is a REST token, refused there. This brings tokens minted before binding in line with what
+## /oauth/authorize grants as of this release, frozen against later edits. Like authorize, it treats a resource naming
+## the Site URL (MB_SITE_URL, else the site-url setting row) like no resource:
+## - No resource or the Site URL, MCP scopes only (agent:resource:read aside): keeps only the MCP scopes, bound to
+##   <Site URL>/api/metabase-mcp. With no Site URL configured it is not bound; its resource is left as it is.
+## - No resource or the Site URL, a mix of MCP and other scopes: the MCP scopes are dropped; the resource is left as
+##   it is.
+## - No resource or the Site URL, anything else (agent:resource:read alone included): unchanged.
+## - Bound to the MCP endpoint: keeps only its MCP scopes. Bound to anything else: loses its MCP scopes. Either is
+##   deleted when no scope is left.
+## Tokens with an empty or unparsable scope or an unparsable resource are unchanged.
+
+databaseChangeLog:
+  - changeSet:
+      id: v64.2026-10-05T00:00:00
+      author: ericnormand
+      comment: Bind and narrow OAuth tokens minted before MCP audience binding
+      changes:
+        - customChange:
+            class: metabase.app_db.custom_migrations.BindLegacyMcpOAuthTokens
+      rollback: []

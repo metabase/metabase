@@ -8,7 +8,6 @@
    [clojure.string :as str]
    [metabase.api.common :as api]
    [metabase.mcp.paths :as mcp.paths]
-   [metabase.mcp.scope :as mcp.scope]
    [metabase.mcp.session :as mcp.session]
    [metabase.mcp.transport :as transport]
    [metabase.mcp.v2.common :as common]
@@ -49,13 +48,12 @@
 
 (defn- step-up-scopes
   "The `scope` an `insufficient_scope` challenge asks for: the `surface-scopes` that are `required` or that
-   `token-scopes` matches, in `surface-scopes` order, then `required` when it is outside the surface."
+   `token-scopes` holds literally, in `surface-scopes` order, then `required` when it is outside the surface."
   [surface-scopes token-scopes required]
-  ;; Held scopes ride along because a client may replace its grant with the challenged scope. They are matched, not
-  ;; looked up, so a wildcard grant such as `agent:content:*` keeps the surface scopes it covers. Only scope strings
-  ;; count: nil and the unrestricted sentinel match everything but are never challenged.
+  ;; Held scopes ride along because a client may replace its grant with the challenged scope. The MCP endpoint honors
+  ;; only literal scopes, so nothing else counts as held.
   (let [held (set (filter string? token-scopes))]
-    (cond-> (filterv #(or (= required %) (mcp.scope/matches? held %)) surface-scopes)
+    (cond-> (filterv #(or (= required %) (contains? held %)) surface-scopes)
       (not (some #{required} surface-scopes)) (conj required))))
 
 (defn- step-up-description

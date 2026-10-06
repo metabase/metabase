@@ -9,6 +9,7 @@
    [metabase-enterprise.test :as met]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.mcp.test-util :as mcp.tu]
    [metabase.mcp.v2.message :as message]
    [metabase.mcp.v2.redaction :as redaction]
    [metabase.mcp.v2.registry :as registry]
@@ -53,7 +54,7 @@
 (defn- get-content-fields
   "`get_content` on `card-id` with the `fields` include, as the current test user."
   [card-id]
-  (let [{:keys [result error]} (registry/call-tool nil "test-session" "get_content"
+  (let [{:keys [result error]} (registry/call-tool mcp.tu/all-scopes "test-session" "get_content"
                                                    {:items [{:type "question" :id card-id}]
                                                     :include ["fields"]})]
     (when error
