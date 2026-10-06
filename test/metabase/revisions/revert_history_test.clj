@@ -6,7 +6,7 @@
    [metabase.events.core :as events]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.measures.api-test]
+   [metabase.measures.test-util :as measures.tu]
    [metabase.revisions.api]
    [metabase.revisions.core :as revisions]
    [metabase.test :as mt]
@@ -86,7 +86,7 @@
 
    :model/Measure
    (fn [f]
-     (let [definition (#'metabase.measures.api-test/mbql5-measure-definition (mt/id :venues) (mt/id :venues :price))
+     (let [definition (measures.tu/measure-definition (mt/id :venues) (mt/id :venues :price))
            id         (:id (mt/user-http-request :crowberto :post 200 "measure"
                                                  {:name "M0" :description "m" :definition definition}))]
        (try

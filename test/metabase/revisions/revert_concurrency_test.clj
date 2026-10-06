@@ -11,6 +11,7 @@
    [metabase.revisions.db :as revisions.db]
    [metabase.revisions.models.revision :as revision]
    [metabase.test :as mt]
+   [metabase.util :as u]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -31,36 +32,57 @@
     (revision/revert! {:id id :user-id (mt/user->id :crowberto) :entity entity
                        :revision-id (:id (last (revisions/revisions entity id)))})))
 
+(defn- revert-to-creation-signalling!
+  "[[revert-to-creation!]] in this thread. Delivers `reached` when the revert holds the lock of the revisions or has
+  read the latest revision; with `row-held-by-edit?`, also when the revert starts to lock the entity row. Each of these
+  steps comes before the first write of the revert, in any lock order."
+  [entity id reached {:keys [row-held-by-edit?]}]
+  (let [lock-entity     (mt/original-fn #'revisions.db/lock-entity!)
+        lock-revisions  (mt/original-fn #'revisions.db/lock-revisions!)
+        latest-revision (mt/original-fn #'revisions.db/latest-revision)]
+    (mt/with-dynamic-fn-redefs [revisions.db/lock-entity!    (fn [& args]
+                                                               ;; this lock waits for the edit, so signal before it
+                                                               (when row-held-by-edit?
+                                                                 (deliver reached true))
+                                                               (u/prog1 (apply lock-entity args)
+                                                                 (deliver reached true)))
+                                revisions.db/lock-revisions! (fn [& args]
+                                                               (u/prog1 (apply lock-revisions args)
+                                                                 (deliver reached true)))
+                                revisions.db/latest-revision (fn [& args]
+                                                               (u/prog1 (apply latest-revision args)
+                                                                 (deliver reached true)))]
+      (revert-to-creation! entity id))))
+
 (defn- edit-in-own-transaction!
-  "In one transaction: if `row-locked` is given, lock the row, deliver `row-locked`, wait for `go` and then 1 s more;
-  then rename the entity to \"Concurrent edit\". Returns the name that the transaction reads back after its update."
-  [entity id {:keys [row-locked go]}]
+  "In one transaction: if `row-locked` is given, lock the row, deliver `row-locked` and wait for `reached`; then rename
+  the entity to \"Concurrent edit\". Returns the name that the transaction reads back after its update."
+  [entity id {:keys [row-locked reached]}]
   (mt/with-current-user (mt/user->id :rasta)
     (t2/with-transaction [_]
       (when row-locked
         (t2/query {:select [:id] :from [(t2/table-name entity)] :where [:= :id id] :for :update})
         (deliver row-locked true)
-        (deref go 10000 :timeout)
-        ;; time for the revert to reach the row lock and wait for it
-        (Thread/sleep 1000))
+        (deref reached 10000 :timeout))
       (t2/update! entity id {:name "Concurrent edit"})
       (t2/select-one-fn :name entity :id id))))
 
 (defn edit-holds-row-during-revert!
-  "An edit holds the row of `entity` and then writes its change, while a revert to the creation starts. `with-entity`
-  calls its argument with the id of a committed entity named \"X0\" and then renamed to \"X1\"."
+  "An edit holds the row of `entity`, a revert to the creation starts, and the edit writes its change when the revert
+  reaches its first lock or has read the latest revision. `with-entity` calls its argument with the id of a committed
+  entity named \"X0\" and then renamed to \"X1\"."
   [entity with-entity]
   (with-entity
     (fn [id]
       (let [row-locked (promise)
-            go         (promise)
+            reached    (promise)
             edit-out   (atom nil)
-            edit       (Thread. #(reset! edit-out (try {:ok (edit-in-own-transaction! entity id {:row-locked row-locked :go go})}
+            edit       (Thread. #(reset! edit-out (try {:ok (edit-in-own-transaction! entity id {:row-locked row-locked
+                                                                                                 :reached    reached})}
                                                        (catch Throwable e {:error (error-text e)}))))
             _          (.start edit)
             _          (deref row-locked 10000 :timeout)
-            _          (deliver go true)
-            revert     (try (revert-to-creation! entity id)
+            revert     (try (revert-to-creation-signalling! entity id reached {:row-held-by-edit? true})
                             :ok
                             (catch Throwable e (str "error: " (error-text e))))]
         (.join edit 120000)
@@ -137,7 +159,7 @@
         (content-verification/create-review! {:moderated_item_id id :moderated_item_type "card"
                                               :moderator_id (mt/user->id :crowberto) :status "verified"})
         (let [mod-locked (promise)
-              go         (promise)
+              reached    (promise)
               edit-out   (atom nil)
               edit       (Thread.
                           #(reset! edit-out
@@ -148,20 +170,13 @@
                                                                              :moderator_id (mt/user->id :rasta) :status nil
                                                                              :text "Unverified due to edit"})
                                        (deliver mod-locked true)
-                                       (deref go 5000 :timeout)
-                                       (Thread/sleep 500)
+                                       (deref reached 10000 :timeout)
                                        (t2/update! :model/Card id {:name "Concurrent edit"})
                                        :ok)
                                      (catch Throwable e (str "error: " (error-text e))))))
               _          (.start edit)
               _          (deref mod-locked 10000 :timeout)
-              real-lock  (mt/original-fn #'revisions.db/lock-revisions!)
-              revert     (try (mt/with-dynamic-fn-redefs [revisions.db/lock-revisions!
-                                                          (fn [& args]
-                                                            (let [result (apply real-lock args)]
-                                                              (deliver go true)
-                                                              result))]
-                                (revert-to-creation! :model/Card id))
+              revert     (try (revert-to-creation-signalling! :model/Card id reached {:row-held-by-edit? false})
                               :ok
                               (catch Throwable e (str "error: " (error-text e))))]
           (.join edit 120000)
