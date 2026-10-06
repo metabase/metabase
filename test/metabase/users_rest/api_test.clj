@@ -2064,7 +2064,7 @@
               (is (some? body))
               (is (re-find #"/auth/reset_password/" body)))))))))
 
-(defn- invite-notification-count
+(defn- invite-notification-count!
   "POST /api/user for a new user with `email`. Return the number of invite notifications sent or queued.
   When `audit-log-fails?`, the audit log throws while it records the invite."
   [email audit-log-fails?]
@@ -2090,9 +2090,9 @@
     (mt/with-model-cleanup [:model/User]
       (testing "sends one invite notification"
         (let [email (mt/random-email)]
-          (is (= 1 (invite-notification-count email false)))
+          (is (= 1 (invite-notification-count! email false)))
           (is (t2/exists? :model/User :email email))))
       (testing "when a listener of the invite event throws, rolls back the user and sends no invite notification"
         (let [email (mt/random-email)]
-          (is (= 0 (invite-notification-count email true)))
+          (is (= 0 (invite-notification-count! email true)))
           (is (not (t2/exists? :model/User :email email))))))))

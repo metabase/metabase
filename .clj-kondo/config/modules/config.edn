@@ -1007,8 +1007,7 @@
   events
   {:team "DevEx"
    :api  #{metabase.events.core metabase.events.impl metabase.events.init}
-   :uses #{models
-           util}
+   :uses #{app-db models util}
    :model-imports #{:model/Action
                     :model/Card
                     :model/Collection
