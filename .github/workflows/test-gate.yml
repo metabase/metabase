@@ -6,9 +6,10 @@ name: Test gate
 # `force-run` and `force-skip` are global overrides; `defer` hands the decision
 # to the paths filter, which is the only path that pays for a checkout.
 #
-# Only the lowest unmerged PR of a stack runs CI: it is the one whose base ref
-# is the stack base. Every PR above it is force-skipped and gets tested once it
-# reaches the bottom of the stack.
+# In a stack of PRs, only the ends run CI: the lowest unmerged PR (the one whose
+# base ref is the stack base) and the top PR (the one at the last position).
+# Every PR in between is force-skipped and gets tested once it reaches the
+# bottom of the stack, unless it carries the `ci:run-all` label.
 on:
   workflow_call:
     inputs:
@@ -59,7 +60,9 @@ jobs:
             ${{ (github.ref_name == 'master' || startsWith(github.ref_name, 'release-x.')) && 'force-run'
             || contains(github.event.pull_request.labels.*.name, 'ci:run-all') && 'force-run'
             || contains(github.event.pull_request.labels.*.name, 'ci:skip') && 'force-skip'
-            || (github.event.pull_request.stack != null && github.event.pull_request.stack.base.ref != github.event.pull_request.base.ref) && 'force-skip'
+            || (github.event.pull_request.stack != null
+            && github.event.pull_request.stack.base.ref != github.event.pull_request.base.ref
+            && github.event.pull_request.stack.position != github.event.pull_request.stack.size) && 'force-skip'
             || 'defer' }}
         run: |
           echo "verdict=$VERDICT" | tee -a "$GITHUB_OUTPUT"
