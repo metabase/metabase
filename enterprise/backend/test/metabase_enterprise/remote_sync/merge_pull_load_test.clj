@@ -16,7 +16,9 @@
    [metabase.events.core :as events]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.search.appdb.index :as search.index]
    [metabase.search.core :as search]
+   [metabase.search.test-util :as search.tu]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util.yaml :as yaml]
@@ -569,3 +571,71 @@
               "no row of a deleted entity stays")
           (is (= "local edit" (t2/select-one-fn :description :model/Card a)))
           (is (= "update" (:status (row "Card" a)))))))))
+
+;;; ------------------------------ an archived card in a remote-deleted collection ------------------------------
+
+(defn- archive!
+  "Archive the card `card-id` and publish its update event, as an archive from the card API does."
+  [card-id]
+  (t2/update! :model/Card card-id {:archived true})
+  (let [card (t2/select-one :model/Card card-id)]
+    (events/publish-event! :event/card-update {:object card :previous-object card :user-id (mt/user->id :rasta)})))
+
+(defn- do-with-archived-card-in-beta!
+  "Synced collections Alpha (with card X) and Beta (with cards A and B), pushed and pulled as the version \"v0\". The
+  user then archives A and does not push. Calls `(f {:a :b :beta :t0})`."
+  [f]
+  (with-sync-settings
+    (mt/with-temp [:model/Collection {alpha :id} {:name "Alpha" :is_remote_synced true :location "/"}
+                   :model/Card _ {:name "Card X" :collection_id alpha}
+                   :model/Collection {beta :id} {:name "Beta" :is_remote_synced true :location "/"}
+                   :model/Card {a :id} {:name "Card A" :collection_id beta}
+                   :model/Card {b :id} {:name "Card B" :collection_id beta}]
+      (let [t0 (export-tree!)]
+        (pull-base! t0)
+        (archive! a)
+        (is (= {:status "delete" :file_path (path-of t0 "Card A")} (row "Card" a))
+            "precondition: the archive marks the row of A")
+        (f {:a a :b b :beta beta :t0 t0})))))
+
+(deftest remote-delete-and-revert-of-a-collection-with-a-locally-archived-card-test
+  (testing "The user archives card A in collection Beta and does not push. The remote deletes Beta, and later reverts
+            the delete. The delete of Beta removes A, so the row of A goes too. After the revert, a push keeps the file
+            of A, which the local side has again."
+    (do-with-archived-card-in-beta!
+     (fn [{:keys [a beta t0]}]
+       (let [a-path           (path-of t0 "Card A")
+             t1               (without-beta t0)
+             {:keys [result]} (merge-pull! t0 t1)]
+         (is (= :success (:status result)) (pr-str result))
+         (is (not (t2/exists? :model/Collection :id beta)))
+         (is (not (t2/exists? :model/Card :id a)) "the delete of Beta removes the archived card A")
+         (is (nil? (row "Card" a)) "the row of A goes with A")
+         ;; The remote reverts the delete of Beta. The version names differ from those of the first pull, because a
+         ;; pull of the last synced version does nothing.
+         (let [src (test-helpers/versioned-source :trees {"v1" t1 "v2" t0} :current "v2")
+               _   (sync! "import" #(impl/import! (source.p/snapshot src) % :merge? true
+                                                  :base-snapshot (source.p/snapshot-at src "v1")))
+               a2  (t2/select-one-pk :model/Card :name "Card A" :archived false)]
+           (is (some? a2) "the revert loads card A again")
+           (is (= #{a2} (t2/select-fn-set :model_id :model/RemoteSyncObject :model_type "Card" :file_path a-path))
+               "only the row of the new card A has the path of A")
+           (sync! "export" #(impl/export! (source.p/snapshot src) % "push" :source src))
+           (is (contains? (tree (source.p/snapshot src)) a-path) "the push keeps the file of card A")
+           (is (= {:status "synced" :file_path a-path} (row "Card" a2)))))))))
+
+(deftest remote-delete-of-a-collection-removes-its-archived-card-from-search-test
+  (testing "The user archives card A in collection Beta. The remote deletes Beta. The delete of Beta removes A, so the
+            search entry of A goes too."
+    (search.tu/with-appdb-search-if-available*
+      (do-with-archived-card-in-beta!
+       (fn [{:keys [a b t0]}]
+         ((mt/original-fn #'search/reindex!) {:async? false :in-place? true})
+         (let [entry? (fn [id] (t2/exists? (search.index/active-table) :model "card" :model_id (str id)))]
+           (is (entry? a) "precondition: the archived card A is in the search index")
+           (is (entry? b) "precondition: card B is in the search index")
+           (let [{:keys [result]} (merge-pull! t0 (without-beta t0))]
+             (is (= :success (:status result)) (pr-str result))
+             (is (not (t2/exists? :model/Card :id a)))
+             (is (not (entry? b)) "the search entry of the deleted card B goes")
+             (is (not (entry? a)) "the search entry of the removed card A goes"))))))))
