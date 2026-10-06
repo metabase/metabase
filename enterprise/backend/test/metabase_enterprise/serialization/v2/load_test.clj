@@ -10,6 +10,7 @@
    [metabase-enterprise.serialization.v2.load :as serdes.load]
    [metabase.actions.models :as action]
    [metabase.actions.schema :as actions.schema]
+   [metabase.app-db.core :as mdb]
    [metabase.collections.models.collection :as collection]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
@@ -1909,6 +1910,112 @@
               (is (= "pre-import"
                      (t2/select-one-fn :name :model/Card :id (:id card)))
                   "Card should retain its pre-import value"))))))))
+
+;; The `wrap-load-one` tests run on the configured app DB, not an empty H2 one: the rollback must hold on every app DB.
+
+(defn- extract-collection
+  "The serialized form of Collection `coll`."
+  [coll]
+  (->> (serdes.extract/extract {:no-settings   true
+                                :no-data-model true
+                                :targets       [["Collection" (:id coll)]]})
+       (into [])
+       (some #(when (= (:entity_id coll) (:entity_id %)) %))))
+
+(defn- as-new-collection
+  "`coll-ser` with a new `entity_id` and the name `coll-name`, so that a load inserts it."
+  [coll-ser coll-name]
+  (let [eid (u/generate-nano-id)]
+    (-> coll-ser
+        (assoc :entity_id eid :name coll-name)
+        (update :serdes/meta #(assoc-in % [(dec (count %)) :id] eid)))))
+
+(defn- collection-exists? [entity]
+  (t2/exists? :model/Collection :entity_id (:entity_id entity)))
+
+(defn- transient-db-error
+  "An exception that [[metabase.app-db.transient-error/transient-error?]] accepts on the configured app DB."
+  []
+  ;; Postgres matches the SQL state; H2, MySQL and MariaDB match the error code.
+  (java.sql.SQLException. "Deadlock detected" "40P01" (int (if (= :mysql (mdb/db-type)) 1213 40001))))
+
+(deftest wrap-load-one-runs-inside-the-entity-transaction-test
+  (mt/with-model-cleanup [:model/Collection]
+    (let [coll     (ts/create! :model/Collection :name "Wrapped collection")
+          coll-ser (extract-collection coll)]
+      (testing "a wrapper that throws after the load rolls back the entity, and the load does not retry it"
+        (let [entity (as-new-collection coll-ser "Rolled back collection")
+              calls  (atom [])
+              thrown (try
+                       (serdes.load/load-metabase! (ingestion-in-memory [entity])
+                                                   :wrap-load-one (fn [ingested local-or-nil load!]
+                                                                    (swap! calls conj [(:entity_id ingested) local-or-nil])
+                                                                    (load!)
+                                                                    (throw (ex-info "stop after the load" {::stop true}))))
+                       nil
+                       (catch Exception e e))]
+          (is (some? thrown))
+          (is (some (comp ::stop ex-data) (u/full-exception-chain thrown))
+              "the wrapper's exception is in the cause chain")
+          (is (= [[(:entity_id entity) nil]] @calls)
+              "the wrapper runs once, with the ingested entity and no local row")
+          (is (not (collection-exists? entity)))))
+      (testing "a wrapper gets the local row, and the load that it runs commits"
+        (let [entity (assoc coll-ser :name "Updated collection")
+              locals (atom [])]
+          (serdes.load/load-metabase! (ingestion-in-memory [entity])
+                                      :wrap-load-one (fn [_ingested local-or-nil load!]
+                                                       (swap! locals conj (:id local-or-nil))
+                                                       (load!)))
+          (is (= [(:id coll)] @locals))
+          (is (= "Updated collection" (t2/select-one-fn :name :model/Collection :id (:id coll))))))
+      (testing "with no wrapper, the load commits the entity"
+        (let [entity (as-new-collection coll-ser "Committed collection")]
+          (serdes.load/load-metabase! (ingestion-in-memory [entity]))
+          (is (collection-exists? entity)))))))
+
+(deftest wrap-load-one-runs-again-after-a-transient-error-test
+  (mt/with-model-cleanup [:model/Collection]
+    (let [coll   (ts/create! :model/Collection :name "Retried collection")
+          entity (as-new-collection (extract-collection coll) "Collection loaded on the retry")
+          calls  (atom [])]
+      (serdes.load/load-metabase! (ingestion-in-memory [entity])
+                                  :wrap-load-one (fn [_ingested local-or-nil load!]
+                                                   (swap! calls conj {:local           local-or-nil
+                                                                      :in-transaction? (mdb/in-transaction?)})
+                                                   (load!)
+                                                   (when (= 1 (count @calls))
+                                                     (throw (ex-info "deadlock after the load" {} (transient-db-error))))))
+      (is (= [{:local nil :in-transaction? true} {:local nil :in-transaction? true}] @calls)
+          "the retry runs the wrapper again, inside a transaction, with the same local row")
+      ;; the second load inserts again, so a first insert that did not roll back would violate the unique entity_id
+      (is (= 1 (t2/count :model/Collection :entity_id (:entity_id entity)))))))
+
+(deftest wrap-load-one-that-does-not-call-load-fails-the-entity-test
+  (mt/with-model-cleanup [:model/Collection]
+    (let [coll        (ts/create! :model/Collection :name "Collection the wrapper writes")
+          entity      (as-new-collection (extract-collection coll) "Collection that is not loaded")
+          no-load     (fn [_ingested _local-or-nil _load!]
+                        (t2/update! :model/Collection (:id coll) {:name "Written by the wrapper"})
+                        :did-not-load)
+          not-loaded? (fn [e]
+                        (some #(= ::serdes.load/load-not-called (:error (ex-data %)))
+                              (u/full-exception-chain e)))]
+      (testing "the load throws, and the writes of the wrapper roll back"
+        (let [thrown (try
+                       (serdes.load/load-metabase! (ingestion-in-memory [entity]) :wrap-load-one no-load)
+                       nil
+                       (catch Exception e e))]
+          (is (not-loaded? thrown))
+          (is (not (collection-exists? entity)))
+          (is (= "Collection the wrapper writes" (t2/select-one-fn :name :model/Collection :id (:id coll))))))
+      (testing "with continue-on-error, the entity is an error, and its path is not in :seen"
+        (let [result (serdes.load/load-metabase! (ingestion-in-memory [entity])
+                                                 :continue-on-error true
+                                                 :wrap-load-one no-load)]
+          (is (= [true] (map (comp boolean not-loaded?) (:errors result))))
+          (is (not (contains? (set (map no-labels (:seen result))) (no-labels (serdes/path entity)))))
+          (is (not (collection-exists? entity))))))))
 
 (deftest path-error-data-handles-lookup-failure-test
   (testing "path-error-data returns a well-formed map even when serdes/load-find-local throws
