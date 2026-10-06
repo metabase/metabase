@@ -16,7 +16,7 @@
 
 (def ^:private url "https://example.com/org/repo.git")
 
-(defn- do-with-registry
+(defn- do-with-registry!
   "Calls `(f registry)` with a new registry under a new temp directory, and shuts the registry down after."
   [f]
   (let [base     (io/file (System/getProperty "java.io.tmpdir") (str "clone-registry-test-" (random-uuid)))
@@ -42,7 +42,7 @@
 
 (deftest generation-directory-test
   (testing "a clone is in a directory named for its URL and generation, in an owner-only process root under the base"
-    (do-with-registry
+    (do-with-registry!
      (fn [registry]
        (let [clones (atom [])
              {:keys [id ^File dir]} (clone-registry/acquire! registry (clone-registry/new-lease url) (fake-clone clones (atom [])))
@@ -59,7 +59,7 @@
 
 (deftest leases-share-the-active-generation-test
   (testing "leases on one URL share its active generation, and only the first acquire clones"
-    (do-with-registry
+    (do-with-registry!
      (fn [registry]
        (let [clones (atom [])
              clone! (fake-clone clones (atom []))
@@ -70,7 +70,7 @@
 
 (deftest concurrent-acquires-share-one-clone-job-test
   (testing "concurrent first acquires of a URL wait for one clone job"
-    (do-with-registry
+    (do-with-registry!
      (fn [registry]
        (let [clones  (atom [])
              clone!  (let [f (fake-clone clones (atom []))]
@@ -88,7 +88,7 @@
 
 (deftest failed-clone-job-test
   (testing "a failed clone job fails every caller that waits for it, and the next acquire starts a new job"
-    (do-with-registry
+    (do-with-registry!
      (fn [registry]
        (let [attempts (atom 0)
              failing! (fn [_dir]
@@ -111,7 +111,7 @@
 
 (deftest interrupted-caller-does-not-stop-the-clone-job-test
   (testing "an interrupt of the caller that started a clone job ends its wait; the job goes on for the other callers"
-    (do-with-registry
+    (do-with-registry!
      (fn [registry]
        (let [clones   (atom [])
              in-clone (promise)
@@ -127,7 +127,7 @@
 
 (deftest retired-generation-lives-while-a-lease-holds-it-test
   (testing "a retired generation stays while a lease holds it, and is closed and deleted at its last lease"
-    (do-with-registry
+    (do-with-registry!
      (fn [registry]
        (let [clones  (atom [])
              closed  (atom [])
@@ -157,7 +157,7 @@
 
 (deftest active-generation-with-a-missing-directory-is-cloned-again-test
   (testing "when the directory of the active generation is gone, the next acquire retires it and clones again"
-    (do-with-registry
+    (do-with-registry!
      (fn [registry]
        (let [clones (atom [])
              closed (atom [])

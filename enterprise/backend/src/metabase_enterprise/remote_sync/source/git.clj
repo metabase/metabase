@@ -137,18 +137,14 @@
            e))
 
 (defn- clone-repository!
-  "Clones the repository at `remote-url` with the optional `token` into the new directory `dir`, as a bare clone, and
-  returns its Git instance.
+  "Clones every branch of the repository at `remote-url` with the optional `token` into the new directory `dir`, as a
+  bare clone, and returns its Git instance. A remote that advertises no HEAD is cloned too.
 
-  Asks the remote one time before the clone. A remote with no branch throws \"Cannot connect to uninitialized
-  repository\", and no clone starts. A JGit clone first fetches the branch that it is given (by default HEAD), and
-  fails when the remote does not advertise that ref; so a remote that advertises no HEAD is cloned with its
-  [[branch-without-head]]. The clone is bare and fetches every branch, and nothing reads the HEAD of the clone.
-
-  Throws ExceptionInfo if the remote or the clone fails, for example on a network error, an invalid URL or a rejected
-  token."
+  Throws \"Cannot connect to uninitialized repository\" for a remote with no branch, before any clone. Throws
+  ExceptionInfo if the remote or the clone fails, for example on a network error, an invalid URL or a rejected token."
   [^File dir {:keys [^String remote-url ^String token]}]
   (log/info "Cloning repository" {:url remote-url :repo-path dir})
+  ;; One lsRemote tells whether the remote has a branch, and gives the branch to clone when it advertises no HEAD.
   (let [args {:token token :remote-url remote-url}
         refs (try
                (ls-remote-refs args)
@@ -161,6 +157,8 @@
                         (.setDirectory dir)
                         (.setURI remote-url)
                         (.setBare true))]
+        ;; A JGit clone first fetches the branch that it is given (by default HEAD), and fails when the remote does not
+        ;; advertise that ref. Nothing reads the HEAD of the bare clone, so the branch has no other effect.
         (when-let [branch (branch-without-head refs)]
           (.setBranch command (qualify-branch branch)))
         (u/prog1 (call-remote-command command args)
