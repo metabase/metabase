@@ -1,0 +1,13 @@
+## Every data app owns a resource collection, a root collection of the `data-apps` namespace, from its insert on.
+## Apps created before the namespace existed hold theirs in the default namespace, and an app whose collection
+## was deleted has none: give the first the namespace and the second a collection.
+
+databaseChangeLog:
+  - changeSet:
+      id: v65.2026-10-06T00:00:00
+      author: timofei
+      comment: Put every data app's resource collection in the data-apps namespace, creating the missing ones
+      changes:
+        - customChange:
+            class: metabase.app_db.custom_migrations.MoveDataAppResourceCollectionsToTheirNamespace
+      rollback: []

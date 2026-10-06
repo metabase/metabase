@@ -3088,3 +3088,32 @@
         (testing "tokens already carrying a v2 tool scope keep working"
           (is (not (revoked? :oauth_access_token v2-access)))
           (is (not (revoked? :oauth_refresh_token v2-refresh))))))))
+
+(deftest move-data-app-resource-collections-to-their-namespace-test
+  (testing "v65.2026-10-06T00:00:00: every data app's resource collection is in the data-apps namespace"
+    (impl/test-migrations ["v65.2026-10-06T00:00:00"] [migrate!]
+      (let [insert-app! (fn [slug collection-id]
+                          (t2/insert-returning-pk! :data_app {:name                   slug
+                                                              :display_name           slug
+                                                              :bundle_path            "dist/index.js"
+                                                              :entity_id              (str slug "Entity0000000000")
+                                                              :resource_collection_id collection-id
+                                                              :created_at             :%now
+                                                              :updated_at             :%now}))
+            old-coll    (t2/insert-returning-pk! :collection {:name       "Data App: sales"
+                                                              :slug       "data_app__sales"
+                                                              :location   "/"
+                                                              :entity_id  "salesCollection000001"
+                                                              :created_at :%now})
+            with-coll   (insert-app! "sales" old-coll)
+            without     (insert-app! "ops" nil)]
+        (migrate!)
+        (testing "a collection from before the namespace existed is moved into it"
+          (is (= "data-apps" (t2/select-one-fn :namespace :collection :id old-coll)))
+          (is (= old-coll (t2/select-one-fn :resource_collection_id :data_app :id with-coll))))
+        (testing "an app without a collection gets one, at the root of the namespace"
+          (let [collection-id (t2/select-one-fn :resource_collection_id :data_app :id without)]
+            (is (some? collection-id))
+            (is (=? {:name "Data App: ops" :slug "data_app__ops" :location "/" :namespace "data-apps"}
+                    (t2/select-one :collection :id collection-id)))
+            (is (= 21 (count (t2/select-one-fn :entity_id :collection :id collection-id))))))))))

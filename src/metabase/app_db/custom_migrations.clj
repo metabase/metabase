@@ -31,6 +31,7 @@
    [metabase.app-db.quartz]
    [metabase.app-db.setting :as mdb.setting]
    [metabase.config.core :as config]
+   [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.encryption :as encryption]
    [metabase.util.honey-sql-2 :as h2x]
@@ -2311,3 +2312,27 @@
   ;; revoking their tokens would instead force them through the refresh-failure path. The changeset
   ;; stays so that instances which already ran it can still roll back past it.
   nil)
+
+(define-migration MoveDataAppResourceCollectionsToTheirNamespace
+  ;; Every data app owns a resource collection, a root collection of the `data-apps` namespace, from its insert
+  ;; on (see `metabase-enterprise.data-apps.models.data-app`). Collections created before the namespace existed sit
+  ;; in the default namespace; an app whose collection was deleted has none. Both are brought to the invariant here.
+  (t2/query {:update :collection
+             :set    {:namespace "data-apps"}
+             :where  [:in :id ^:allow-subquery {:select [:resource_collection_id]
+                                                :from   [:data_app]
+                                                :where  [:not= :resource_collection_id nil]}]})
+  (run! (fn [{:keys [id name]}]
+          (let [collection-name (str "Data App: " name)
+                collection-id   (t2/insert-returning-pk! :collection {:name       collection-name
+                                                                      :slug       (u/slugify collection-name {:unicode? true})
+                                                                      :location   "/"
+                                                                      :namespace  "data-apps"
+                                                                      :entity_id  (u/generate-nano-id)
+                                                                      :created_at :%now})]
+            (t2/query {:update :data_app
+                       :set    {:resource_collection_id collection-id}
+                       :where  [:= :id id]})))
+        (t2/reducible-query {:select [:id :name]
+                             :from   [:data_app]
+                             :where  [:= :resource_collection_id nil]})))
