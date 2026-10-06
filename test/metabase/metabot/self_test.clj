@@ -1012,7 +1012,14 @@
       (testing "a later usage carrying no finish reason leaves an earlier length in place"
         (is (=? {:type "finish" :finishReason "length"}
                 (last (sse-events [(usage-part "length" "max_tokens")
-                                   (usage-part nil nil)]))))))
+                                   (usage-part nil nil)])))))
+      (testing "a filtered step with a tool call, then a completed OpenAI Responses step, is a normal stop"
+        (let [parts [(usage-part "content-filter" "content_filter")
+                     {:type :tool-input :id "call-1" :function "search" :arguments {:query "test"}}
+                     (usage-part "stop" "completed")]]
+          (is (nil? (self.core/parts->incomplete-finish-reason parts)))
+          (is (=? {:type "finish" :finishReason "stop"}
+                  (last (sse-events parts)))))))
     (testing "a turn ending on a terminal tool call is a normal stop, not an incomplete turn"
       (is (=? {:type "finish" :finishReason "stop"}
               (last (sse-events [(usage-part "tool-calls" "tool_use")])))))
