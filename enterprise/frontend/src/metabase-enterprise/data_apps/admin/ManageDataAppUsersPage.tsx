@@ -15,7 +15,6 @@ import { isApiKeyGroupMember } from "metabase/common/utils/groups";
 import { useParams } from "metabase/router";
 import { SettingsPageWrapper } from "metabase/settings-components";
 import { Box, Button, Stack, Text } from "metabase/ui";
-import * as Urls from "metabase/urls";
 import { useGetDataAppQuery } from "metabase-enterprise/api";
 import type { Group, Member } from "metabase-types/api";
 
@@ -101,7 +100,7 @@ const DataAppUsers = ({
     <Stack gap="xl">
       <Box px="md">
         <Breadcrumbs
-          crumbs={[[t`Data apps`, Urls.dataAppsSettings()], [appTitle]]}
+          crumbs={[[t`Data apps`, "/admin/settings/apps"], [appTitle]]}
           size="large"
         />
       </Box>

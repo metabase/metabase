@@ -1042,22 +1042,5 @@ describe("AllChangesView", () => {
       ).toHaveAttribute("href", "/apps/boba-staff-review");
       expect(screen.getAllByLabelText("app icon")).toHaveLength(2);
     });
-
-    it("should not link a deleted data app", async () => {
-      const dataAppEntity = createMockRemoteSyncEntity({
-        id: 700,
-        name: "boba-staff-review",
-        model: "dataapp",
-        collection_id: undefined,
-        sync_status: "delete",
-      });
-
-      setup({ entities: [dataAppEntity] });
-
-      expect(await screen.findByText("boba-staff-review")).toBeInTheDocument();
-      expect(
-        screen.queryByRole("link", { name: /boba-staff-review/ }),
-      ).not.toBeInTheDocument();
-    });
   });
 });

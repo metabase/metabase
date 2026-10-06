@@ -170,23 +170,25 @@
    Row-locks the entry for the transaction, so this and a concurrent un-sync of the entity's collection
    settle in a fixed order rather than losing one of the two writes: whichever locks first commits, and
    the other then observes that result — the un-sync re-marking the row, or the eligibility re-check below
-   seeing the entity is gone from the synced set. `object`, when given, supplies the tracked fields of an
-   entity already deleted from the app DB."
-  [model-spec model-id status object]
+   seeing the entity is gone from the synced set."
+  [model-spec model-id status]
   (t2/with-transaction [_conn]
     (let [model-type (:model-type model-spec)
           existing   (remote-sync.db/lock-rso model-type model-id)]
       (cond
+        (and (not existing)
+             (contains? #{"removed" "delete"} status))
+        nil
+
         ;; No row to lock, so a concurrent un-sync that hasn't inserted yet is invisible here (a phantom the
         ;; row lock can't cover). Re-check eligibility so a stale tracked-status event does not start tracking
         ;; an entity that has since left the synced set. This narrows, but cannot fully close, that window.
         (and (not existing)
-             (not (contains? #{"removed" "delete"} status))
              (not (still-eligible? model-spec model-id)))
         nil
 
         (not existing)
-        (let [model-details (or (spec/hydrate-model-details model-spec model-id) object)
+        (let [model-details (spec/hydrate-model-details model-spec model-id)
               fields        (spec/build-sync-object-fields model-spec model-details)]
           (remote-sync.db/insert-rso!
            (merge {:model_type        model-type
@@ -238,10 +240,10 @@
         ;; Eligible branch: query actual entities and create RSOs for eligible children
         (doseq [child (remote-sync.db/eligible-children (:model-key child-spec) fk model-id filter)]
           (when (spec/check-eligibility child-spec child)
-            (create-or-update-sync-object-from-spec! child-spec (:id child) status nil)))
+            (create-or-update-sync-object-from-spec! child-spec (:id child) status)))
         ;; Ineligible branch: mark existing child RSOs as removed
         (doseq [child-rso (remote-sync.db/active-child-rsos (:model-type child-spec) model-id)]
-          (create-or-update-sync-object-from-spec! child-spec (:model_id child-rso) "removed" nil))))))
+          (create-or-update-sync-object-from-spec! child-spec (:model_id child-rso) "removed"))))))
 
 (defn- handle-model-event-from-spec
   "Generic event handler that uses a spec for all configuration.
@@ -262,13 +264,13 @@
       (do
         (log/infof "Creating remote sync object entry for %s %s (status: %s)"
                    model-type model-id status)
-        (create-or-update-sync-object-from-spec! model-spec model-id status object)
+        (create-or-update-sync-object-from-spec! model-spec model-id status)
         (when (seq (spec/children-specs (:model-key model-spec)))
           (cascade-to-children! model-spec model-id status true)))
       (and existing-entry (not eligible?))
       (do
         (log/infof "%s %s moved out of sync scope, marking as removed" model-type model-id)
-        (create-or-update-sync-object-from-spec! model-spec model-id "removed" nil)
+        (create-or-update-sync-object-from-spec! model-spec model-id "removed")
         (when (seq (spec/children-specs (:model-key model-spec)))
           (cascade-to-children! model-spec model-id "removed" false))))))
 
