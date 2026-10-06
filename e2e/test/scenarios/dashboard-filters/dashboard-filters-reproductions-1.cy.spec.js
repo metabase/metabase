@@ -1222,7 +1222,7 @@ describe("issue 25374", () => {
 
   beforeEach(() => {
     cy.intercept("POST", "/api/card/*/query").as("cardQuery");
-    cy.intercept("POST", "/api/dashboard/*/dashcard/*/card//*/query").as(
+    cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query").as(
       "dashcardQuery",
     );
 
