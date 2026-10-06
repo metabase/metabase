@@ -1,0 +1,31 @@
+name: Harness CI measurement
+
+on:
+  push:
+    branches:
+      - harness-ci-measure
+
+jobs:
+  measure:
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 75
+    strategy:
+      fail-fast: false
+      matrix:
+        attempt: [1, 2]
+    steps:
+      - uses: actions/checkout@v7
+      - name: Prepare front-end environment
+        uses: ./.github/actions/prepare-frontend
+      - name: Prepare back-end environment
+        uses: ./.github/actions/prepare-backend
+      - name: Build cljs
+        run: bun run build-pure:cljs
+      - name: Measure jest and the harness
+        run: node-test-spike/ci-measure.sh
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: harness-failures-${{ matrix.attempt }}
+          path: harness-failures-*.tsv
+          if-no-files-found: ignore
