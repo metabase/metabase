@@ -75,6 +75,35 @@
      :credentials    credentials
      :ai-proxy?      ai-proxy?}))
 
+(def ^:private provider-billing-error-codes
+  "Codes Anthropic and OpenAI put in an error body when the account is out of credit or over a spend limit."
+  #{"billing_error" "enforced_spend_limit_reached" "insufficient_quota" "credit_balance_exhausted"
+    "organization_spend_limit_exceeded" "project_spend_limit_exceeded" "organization_usage_limit_exceeded"})
+
+(def ^:private provider-unavailable-error-types
+  "Error types Anthropic uses for a failure on its side, in a 5xx response or in an error event streamed after a 200."
+  #{"api_error" "timeout_error" "overloaded_error"})
+
+(defn- provider-failure
+  "Classify a provider failure as `:billing`, `:rate-limit`, `:auth` or `:unavailable`, or nil for any other failure.
+  Reads its HTTP `status`, nil for an error streamed after a 200, and the `error` object the provider sent."
+  [status {error-type :type error-code :code :keys [message details]}]
+  (cond
+    (or (= status 402)
+        (some provider-billing-error-codes [error-type error-code (:error_code details)])
+        ;; Anthropic reports a used-up credit balance or spend limit as a plain invalid_request_error
+        (and (= status 400) (re-find #"credit balance|API usage limits" (str message))))
+    :billing
+
+    (= status 429)
+    :rate-limit
+
+    (or (= status 401) (= "permission_error" error-type))
+    :auth
+
+    (or (some-> status (>= 500)) (provider-unavailable-error-types error-type))
+    :unavailable))
+
 (defn- provider-stream
   "The reducible `stream-fn` returns for `streaming-opts`, opened when it is reduced, with whatever the provider
   throws — on the request, or mid-stream — kept in `provider-error`. What the consumer throws back through the
@@ -120,7 +149,9 @@
       result)
     (catch Exception e
       (when-let [failure @provider-error]
-        (llm.health/record-exception! conn-key failure))
+        (if (#{:billing :auth} (provider-failure (:status (ex-data failure)) (:error (:body (ex-data failure)))))
+          (llm.health/record-failure! conn-key (ex-message failure) true)
+          (llm.health/record-exception! conn-key failure)))
       (throw e))))
 
 (defn context-window-tokens
@@ -405,35 +436,6 @@
                (recur (inc attempt)))
            (:ok result)))))))
 
-(def ^:private provider-billing-error-codes
-  "Codes Anthropic and OpenAI put in an error body when the account is out of credit or over a spend limit."
-  #{"billing_error" "enforced_spend_limit_reached" "insufficient_quota" "credit_balance_exhausted"
-    "organization_spend_limit_exceeded" "project_spend_limit_exceeded" "organization_usage_limit_exceeded"})
-
-(def ^:private provider-unavailable-error-types
-  "Error types Anthropic uses for a failure on its side, in a 5xx response or in an error event streamed after a 200."
-  #{"api_error" "timeout_error" "overloaded_error"})
-
-(defn- provider-failure
-  "Classify a provider failure as `:billing`, `:rate-limit`, `:auth` or `:unavailable`, or nil for any other failure.
-  Reads its HTTP `status`, nil for an error streamed after a 200, and the `error` object the provider sent."
-  [status {error-type :type error-code :code :keys [message details]}]
-  (cond
-    (or (= status 402)
-        (some provider-billing-error-codes [error-type error-code (:error_code details)])
-        ;; Anthropic reports a used-up credit balance or spend limit as a plain invalid_request_error
-        (and (= status 400) (re-find #"credit balance|API usage limits" (str message))))
-    :billing
-
-    (= status 429)
-    :rate-limit
-
-    (or (= status 401) (= "permission_error" error-type))
-    :auth
-
-    (or (some-> status (>= 500)) (provider-unavailable-error-types error-type))
-    :unavailable))
-
 (def ^:private context-overflow-message
   "The overflow 400 text of providers that send no structured code for it.
 
@@ -491,17 +493,20 @@
 
 (defn provider-error
   "A user-facing `{:message :error-code}` for a provider failure we can explain better than the generic error, or nil.
-  Takes a provider API exception, or the failure's `provider`, `status` and `error` as [[provider-failure]] reads them.
+  Takes a provider API exception, or the failure's `provider`, `status` and `error` as [[provider-failure]] reads them,
+  and the `model-ref` the request ran on.
 
   On the managed provider only an outage gets one, since billing, rate limits and credentials there are Metabase's to
   fix. Only admins on their own key are told which provider failed and where to fix it."
   ([e]
+   (provider-error e (metabot.settings/llm-metabot-provider)))
+  ([e model-ref]
    (let [{:keys [api-error provider status body]} (ex-data e)]
      (when (and api-error provider)
-       (provider-error provider status (:error body)))))
-  ([provider status error]
+       (provider-error provider status (:error body) model-ref))))
+  ([provider status error model-ref]
    (when-let [failure (provider-failure status error)]
-     (let [managed?      (llm.provider/managed-model-ref? (metabot.settings/llm-metabot-provider))
+     (let [managed?      (llm.provider/managed-model-ref? model-ref)
            admin?        (and api/*is-superuser?* (not managed?))
            provider-name (or (some-> (llm.provider/provider-type provider) :label str) provider)]
        (when (or (= :unavailable failure) (not managed?))
@@ -529,17 +534,17 @@
   A context overflow gets [[context-full-error]]; there is no status to check. OpenRouter sends every failure after
   its 200 inside the stream, with a typed `error.metadata.error_type`
   (https://openrouter.ai/docs/api_reference/errors-and-debugging)."
-  [provider error]
+  [provider error model-ref]
   (if (context-overflow-object? error)
     (context-full-error)
-    (provider-error provider nil error)))
+    (provider-error provider nil error model-ref)))
 
 (defn- provider-error-xf
   "Transducer that replaces the error on a streamed `:error` part with [[streamed-error]]'s, when it has one."
-  [provider]
+  [provider model-ref]
   (map (fn [part]
          (if-let [error (when (= :error (:type part))
-                          (streamed-error provider (:error part)))]
+                          (streamed-error provider (:error part) model-ref))]
            (assoc part :error error)
            part))))
 
@@ -681,7 +686,7 @@
                                                 (core/lite-aisdk-xf)
                                                 (core/stamp-tool-titles-xf tools)
                                                 (report-aisdk-errors-xf tracking-opts)
-                                                (provider-error-xf provider)
+                                                (provider-error-xf provider provider-and-model)
                                                 (report-token-usage-xf tracking-opts)
                                                 (report-tool-usage-xf tracking-opts tools))
                                           (provider-stream stream-fn streaming-opts provider-error)))]

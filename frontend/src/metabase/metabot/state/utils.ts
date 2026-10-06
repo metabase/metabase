@@ -4,18 +4,19 @@ import { t } from "ttag";
 
 import { CONTEXT_FULL_ERROR_CODE } from "../constants";
 
-import type {
-  MetabotAgentChainOfThoughtMessage,
-  MetabotAgentTextChatMessage,
-  MetabotAgentTurnDisplayError,
-  MetabotAgentTurnError,
-  MetabotGeneratedCardPart,
-  MetabotIncompleteMessageStatus,
-  MetabotIncompleteReason,
-  MetabotMessage,
-  MetabotMessagePart,
-  MetabotUserTextChatMessage,
-  SlashCommand,
+import {
+  type MetabotAgentChainOfThoughtMessage,
+  type MetabotAgentTextChatMessage,
+  type MetabotAgentTurnDisplayError,
+  type MetabotAgentTurnError,
+  type MetabotGeneratedCardPart,
+  type MetabotIncompleteMessageStatus,
+  type MetabotIncompleteReason,
+  type MetabotMessage,
+  type MetabotMessagePart,
+  type MetabotUserTextChatMessage,
+  type SlashCommand,
+  RETRIABLE_METABOT_TURN_ERROR_CODES,
 } from "./types";
 
 export const createMessageId = () => {
@@ -45,12 +46,8 @@ export const isGeneratedCardPart = (
 // The error codes whose server-written message the chat shows as is.
 const SERVER_MESSAGE_ERROR_CODES = [
   "ai_usage_limit_reached",
-  "ai_provider_billing",
-  "ai_provider_rate_limit",
-  "ai_provider_auth",
-  "ai_provider_unavailable",
-  "provider_error",
   CONTEXT_FULL_ERROR_CODE,
+  ...RETRIABLE_METABOT_TURN_ERROR_CODES,
 ] as const;
 
 export const getServerErrorDisplay = (
