@@ -79,6 +79,7 @@ import {
   getSubmittableQuestion,
   isBasedOnExistingQuestion,
 } from "../../store/selectors";
+import { isLegacyTimelineEventsSource } from "../../utils/timeline-events";
 import { runDirtyQuestionQuery, runQuestionQuery } from "../querying";
 import { updateUrl } from "../url";
 import { zoomInRow } from "../zoom";
@@ -244,6 +245,7 @@ export const setDatasetQuery =
 export type OnCreateOptions = {
   dashboardTabId?: DashboardTabId | undefined;
   sourceCardId?: CardId | undefined;
+  sourceQuestion?: Question | undefined;
 };
 
 export const apiCreateQuestion = (
@@ -258,7 +260,11 @@ export const apiCreateQuestion = (
         null &&
       canDisplayTimelineEvents(submittableQuestion.display())
     ) {
-      if (submittableQuestion.isSaved() || options?.sourceCardId != null) {
+      if (
+        isLegacyTimelineEventsSource(
+          options?.sourceQuestion ?? submittableQuestion,
+        )
+      ) {
         submittableQuestion = submittableQuestion.updateSettings({
           "timeline.selected_timeline_ids": [],
           "timeline.excluded_timeline_event_ids": [],

@@ -55,6 +55,7 @@ import type {
 
 import { cleanIndexFlags } from "../model-indexes/actions";
 import { getWritableColumnProperties } from "../utils";
+import { isLegacyTimelineEventsSource } from "../utils/timeline-events";
 import { getQuestionWithDefaultVisualizationSettings } from "../utils/viz-settings";
 
 import {
@@ -832,15 +833,15 @@ export const getTimelineEventsVisibility = createSelector(
     (state: QueryBuilderStoreState) =>
       getRecordedTimelineEventsVisibility(getQuestion(state)?.settings()),
     (state: QueryBuilderStoreState) =>
-      Boolean(
-        getQuestion(state)?.isSaved() || getOriginalQuestion(state)?.isSaved(),
+      isLegacyTimelineEventsSource(
+        getOriginalQuestion(state) ?? getQuestion(state),
       ),
     (state: QueryBuilderStoreState) => getQuestion(state)?.collectionId(),
     getTransformedTimelines,
   ],
-  (savedVisibility, isSaved, collectionId, timelines) =>
+  (savedVisibility, isLegacySource, collectionId, timelines) =>
     savedVisibility ??
-    (isSaved
+    (isLegacySource
       ? NO_TIMELINE_EVENTS_VISIBILITY
       : getCollectionTimelinesVisibility(timelines, collectionId)),
 );

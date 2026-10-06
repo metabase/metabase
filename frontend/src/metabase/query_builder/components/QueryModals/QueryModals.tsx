@@ -269,6 +269,7 @@ export function QueryModals({
               sourceCardId: underlyingQuestion.isSaved()
                 ? underlyingQuestion.id()
                 : undefined,
+              sourceQuestion: underlyingQuestion,
             });
 
             return object.card();

@@ -14,6 +14,7 @@ export type SaveQuestionProps<C = CollectionId> = {
     options?: {
       dashboardTabId?: DashboardTabId;
       sourceCardId?: CardId;
+      sourceQuestion?: Question;
     },
   ) => Promise<Question>;
   onSave: (question: Question) => Promise<void>;
@@ -56,6 +57,7 @@ export type CreateQuestionOptions = {
   details: FormValues;
   question: Question;
   sourceCardId?: CardId;
+  sourceQuestion?: Question;
   onCreate: SaveQuestionProps["onCreate"];
 } & Pick<SaveQuestionProps, "targetCollection">;
 
