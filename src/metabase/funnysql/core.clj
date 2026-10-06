@@ -127,23 +127,25 @@
   (when-not (identifier-form? x)
     (throw (ex-info "Expected an identifier" {:x x}))))
 
-(defn- -identifier-with-optional-as!
+(defn- -identifier-with-optional-alias!
   "Handle an identifier form as seen in `:select`, `:from`, etc.; unwrapped or a vector with one element will act an
   unaliased identifier while a vector with two elements will emit `<x> AS <y>`."
-  [identifier context]
+  [identifier context & {:keys [lhs-must-be-identifier? include-as?], :or {lhs-must-be-identifier? false, include-as? true}}]
   (let [[lhs rhs] (if (vector? identifier)
                     identifier
                     [identifier])]
+    (when lhs-must-be-identifier?
+      (check-identifier-form lhs))
     (compile! lhs context)
     (when rhs
       ;; the alias is a name, not a value: a string here would otherwise become a `?` parameter and the database
       ;; would reject `count(*) AS ?`
       (check-identifier-form rhs)
-      (append-sql! context " AS ")
+      (append-sql! context (if include-as? " AS " " "))
       (compile! rhs context))))
 
 (defn- -table-with-optional-as!
-  "Like [[-identifier-with-optional-as!]], but for the table positions in `:from` and `:join`, where the thing being
+  "Like [[-identifier-with-optional-alias!]], but for the table positions in `:from` and `:join`, where the thing being
   named can be a `^:allow-subquery` subquery as well as an identifier. A subquery has to be wrapped in parens."
   [table context]
   (let [[lhs rhs] (if (vector? table)
@@ -319,9 +321,7 @@
 
 (defn- update! [identifier context]
   (append-sql! context "UPDATE ")
-  (let [identifier (unwrap-identifier identifier)]
-    (check-identifier-form identifier)
-    (compile! identifier context)))
+  (-identifier-with-optional-alias! identifier context :lhs-must-be-identifier? true, :include-as? false))
 
 (defn- set! [kvs context]
   (append-sql! context "SET ")
@@ -335,7 +335,7 @@
 
 (defn- select! [sql cols context]
   (append-sql! context sql)
-  (interpose-fn (->sequence cols) #(-identifier-with-optional-as! % context) #(append-sql! context ", ")))
+  (interpose-fn (->sequence cols) #(-identifier-with-optional-alias! % context) #(append-sql! context ", ")))
 
 (defn- from! [from context]
   (append-sql! context "FROM ")

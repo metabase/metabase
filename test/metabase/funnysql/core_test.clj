@@ -452,6 +452,10 @@
          #":values cannot have empty or nil rows"
          (funnysql/format {:insert-into :permissions, :values []} :postgres)))))
 
+(deftest ^:parallel update-with-table-alias-test
+  (is (= ["UPDATE \"table\" \"t\" SET \"t\".\"field\" = 1"]
+         (funnysql/format {:update [:table :t], :set {:t.field 1}} :postgres))))
+
 (deftest ^:parallel on-conflict-do-update-set-test
   (is (= ["INSERT INTO \"my_table\" (\"a\", \"b\") VALUES (?, ?) ON CONFLICT (\"a\") DO UPDATE SET \"b\" = ?, \"c\" = ?" "x" "y" "z" "a"]
          (funnysql/format {:insert-into   :my_table
