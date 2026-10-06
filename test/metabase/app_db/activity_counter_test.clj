@@ -6,6 +6,8 @@
    [metabase.app-db.activity-test-util :as activity]
    [metabase.app-db.connection :as mdb.connection]
    [metabase.app-db.core :as mdb]
+   [metabase.settings.core :as setting]
+   [metabase.settings.models.setting.cache-test :as setting.cache-test]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [toucan2.core :as t2])
@@ -21,10 +23,10 @@
   (t2/query-one ["SELECT 1 AS one"]))
 
 (defn- this-thread
-  "Counts made by the calling thread only. The totals are JVM-wide and can pick up background app-DB work, so exact
-  assertions use the per-thread counts."
+  "Counts made by the calling thread only, all zero when it made no app-DB call. The totals are JVM-wide and can pick
+  up background app-DB work, so exact assertions use the per-thread counts."
   [counts]
-  (get-in counts [:by-thread (.threadId (Thread/currentThread))]))
+  (get-in counts [:by-thread (.threadId (Thread/currentThread))] (zipmap activity/count-keys (repeat 0))))
 
 ;; Metabase's transaction implementation (metabase.app-db.connection/do-transaction) sets a savepoint at the start
 ;; of EVERY transaction scope, top-level included, and a failed transaction rolls back to that savepoint and then
@@ -162,3 +164,30 @@
                          (.execute other-stmt "SELECT 1")))))]
       (testing "only the statement on the counting connection counts"
         (is (=? {:statements 1 :prepares 1} (this-thread counts)))))))
+
+(defn- read-cached-setting []
+  (setting/get :site-name))
+
+(deftest settings-check-is-outside-the-count-test
+  (testing "a setting read in a count sends no settings check, also when the check is due at the start"
+    (mt/with-temporary-setting-values [site-name "activity counter"]
+      (setting.cache-test/reset-last-update-check!)
+      (let [counts (activity/count-db-activity! read-cached-setting)]
+        (is (= "activity counter" (:result counts)))
+        (is (=? {:statements 0} (this-thread counts)))
+        (is (nat-int? (:elapsed-ms counts)))))))
+
+(deftest settings-check-due-inside-the-thunk-is-counted-test
+  (testing "a thunk that makes the settings check due and then reads a setting sends the check inside the count"
+    (mt/with-temporary-setting-values [site-name "activity counter"]
+      (let [counts (activity/count-db-activity! #(do (setting.cache-test/reset-last-update-check!)
+                                                     (read-cached-setting)))]
+        (is (=? {:statements 1} (this-thread counts)))))))
+
+(deftest failed-settings-check-leaves-no-count-running-test
+  (testing "a settings check that throws makes the count throw"
+    (mt/with-dynamic-fn-redefs [setting/restore-cache-if-needed! (fn [& _] (throw (ex-info "settings check failed" {})))]
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"settings check failed"
+                            (activity/count-db-activity! (constantly :never))))))
+  (testing "and a later count runs"
+    (is (= :ran (:result (activity/count-db-activity! (constantly :ran)))))))
