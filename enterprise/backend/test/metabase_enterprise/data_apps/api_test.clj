@@ -10,7 +10,6 @@
    [metabase.actions.core :as actions]
    [metabase.api.macros.defendpoint.closed-schemas :as closed-schemas]
    [metabase.lib.core :as lib]
-   [metabase.lib.metadata :as lib.metadata]
    [metabase.permissions.core :as perms]
    [metabase.test :as mt]
    [metabase.util.json :as json]
@@ -357,42 +356,32 @@
         (is (not (t2/exists? :model/PermissionsGroupMembership :group_id group-id)))))))
 
 (deftest data-app-group-reaches-only-copied-actions-test
-  (testing "an action is reachable exactly when its model lives in the data app collection"
+  (testing "an action is reachable exactly when it lives in the data app collection"
     (mt/with-premium-features #{:data-apps}
       (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
         (mt/with-non-admin-groups-no-root-collection-perms
           ;; Its own slug: the `Data App: <slug>` group outlives other tests in
           ;; this namespace, so sharing "demo" collides on the group name.
           (let [{:keys [permission_group_id resource_collection_id]}
-                (data-app.resources/ensure-resources!
-                 (first (t2/insert-returning-instances! :model/DataApp
-                                                        {:name         "action-perms-app"
-                                                         :display_name "Action perms app"
-                                                         :bundle_path  "data_apps/action-perms-app/index.js"})))
-                metadata-provider (mt/metadata-provider)
-                venues            (lib.metadata/table metadata-provider (mt/id :venues))]
+                (first (t2/insert-returning-instances! :model/DataApp
+                                                       {:name         "action-perms-app"
+                                                        :display_name "Action perms app"
+                                                        :bundle_path  "data_apps/action-perms-app/index.js"}))]
             (perms/add-user-to-group! (mt/user->id :rasta) permission_group_id)
-            (mt/with-temp
-              [:model/Collection {source-collection-id :id} {}
-               :model/Card       {source-model-id :id}      {:type          :model
-                                                             :collection_id source-collection-id
-                                                             :dataset_query (lib/query metadata-provider venues)}
-               ;; A copy of the model in the app's own collection, carrying its own copy of the action.
-               :model/Card       {copied-model-id :id}      {:type          :model
-                                                             :collection_id resource_collection_id
-                                                             :dataset_query (lib/query metadata-provider venues)}]
-              (let [action     {:name "Create Venue", :type :implicit, :kind :row/create}
-                    source-id  (actions/insert! (assoc action :model_id source-model-id))
-                    copied-id  (actions/insert! (assoc action :model_id copied-model-id))]
+            (mt/with-temp [:model/Collection {source-collection-id :id} {}]
+              ;; A query action on no model, as a data app runs them, and its copy in the app's own collection.
+              (let [action    {:name          "Rename venue"
+                               :type          :query
+                               :database_id   (mt/id)
+                               :dataset_query (lib/native-query (mt/metadata-provider) "UPDATE venues SET name = 'x'")}
+                    source-id (actions/insert! (assoc action :collection_id source-collection-id))
+                    copied-id (actions/insert! (assoc action :collection_id resource_collection_id))]
                 (testing "the app's group reads the action copied into its collection"
                   (is (=? {:id copied-id}
                           (mt/user-http-request :rasta :get 200 (str "action/" copied-id)))))
                 (testing "the same group cannot read the source action it was copied from"
                   (is (= "You don't have permissions to do that."
                          (mt/user-http-request :rasta :get 403 (str "action/" source-id)))))
-                (testing "copying does not widen access to the source model"
-                  (is (= "You don't have permissions to do that."
-                         (mt/user-http-request :rasta :get 403 (str "card/" source-model-id)))))
                 (testing "a superuser still reads both"
                   (is (=? {:id source-id}
                           (mt/user-http-request :crowberto :get 200 (str "action/" source-id)))))))))))))
