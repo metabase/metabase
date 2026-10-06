@@ -12,6 +12,9 @@ import { PERMISSION_ERROR } from "./constants";
 
 export function setupFieldEndpoints(field: Field) {
   fetchMock.get(`path:/api/field/${field.id}`, field);
+  fetchMock.put(`path:/api/field/${field.id}`, field, {
+    name: `field-${field.id}-put`,
+  });
   fetchMock.post(
     `path:/api/field/${field.id}/rescan_values`,
     {},

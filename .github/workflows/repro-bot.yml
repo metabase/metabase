@@ -42,12 +42,12 @@ jobs:
 
         env:
           DISPATCH_ISSUE_NUMBER: ${{ github.event.inputs.issue_number }}
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: ./.github/actions/prepare-backend
       - uses: ./.github/actions/prepare-frontend
 
       - name: Checkout repro-bot
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           repository: metabase/repro-bot
           ref: ${{ github.event.inputs.repro_bot_branch || 'main' }}

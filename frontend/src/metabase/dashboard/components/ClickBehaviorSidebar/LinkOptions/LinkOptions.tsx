@@ -3,7 +3,7 @@ import { useCallback } from "react";
 import { t } from "ttag";
 
 import CS from "metabase/css/core/index.css";
-import { isTableDisplay } from "metabase/dashboard/utils";
+import { hasColumnLevelClickBehavior } from "metabase/utils/dashboard";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import type {
   ArbitraryCustomDestinationClickBehavior,
@@ -96,7 +96,7 @@ export function LinkOptions({
               clickBehavior={clickBehavior}
               updateSettings={updateSettings}
             />
-            {isTableDisplay(dashcard) && (
+            {hasColumnLevelClickBehavior(dashcard) && (
               <div>
                 <CustomLinkText
                   updateSettings={updateSettings}

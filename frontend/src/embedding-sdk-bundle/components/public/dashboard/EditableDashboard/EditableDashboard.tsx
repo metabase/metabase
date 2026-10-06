@@ -1,9 +1,12 @@
-import { useCallback } from "react";
+import { useCallback, useMemo } from "react";
 
 import { useTrackSdkComponentMount } from "embedding-sdk-bundle/analytics/component-events";
 import { withPublicComponentWrapper } from "embedding-sdk-bundle/components/private/PublicComponentWrapper";
 import { SdkInternalNavigationProvider } from "embedding-sdk-bundle/components/private/SdkInternalNavigation/SdkInternalNavigationProvider";
 import { useSdkInternalNavigation } from "embedding-sdk-bundle/components/private/SdkInternalNavigation/context";
+import { useSdkSelector } from "embedding-sdk-bundle/store";
+import { getPlugins } from "embedding-sdk-bundle/store/selectors";
+import type { MetabasePluginsConfig } from "embedding-sdk-bundle/types/plugins";
 import { DASHBOARD_EDITING_ACTIONS } from "metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow/constants";
 import { DASHBOARD_ACTION } from "metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow/dashboard-action-keys";
 import type { MetabasePluginsConfig as InternalMetabasePluginsConfig } from "metabase/embedding-sdk/types/plugins";
@@ -28,6 +31,7 @@ export type EditableDashboardProps = SdkDashboardProps &
   EditableDashboardOwnProps;
 
 const EditableDashboardContent = (props: EditableDashboardProps) => {
+  const globalPlugins = useSdkSelector(getPlugins);
   const { push: pushNavigation } = useSdkInternalNavigation();
 
   const {
@@ -59,6 +63,10 @@ const EditableDashboardContent = (props: EditableDashboardProps) => {
           DASHBOARD_ACTION.REFRESH_INDICATOR,
         ];
 
+  const plugins: MetabasePluginsConfig = useMemo(() => {
+    return { ...globalPlugins, ...props.plugins };
+  }, [globalPlugins, props.plugins]);
+
   const getClickActionMode: SdkDashboardInnerProps["getClickActionMode"] =
     useCallback(
       ({
@@ -69,10 +77,9 @@ const EditableDashboardContent = (props: EditableDashboardProps) => {
         getEmbeddingMode({
           question,
           queryMode: createEmbeddingSdkMode({ pushNavigation }),
-          plugins: props.drillThroughQuestionProps
-            ?.plugins as InternalMetabasePluginsConfig,
+          plugins: plugins as InternalMetabasePluginsConfig,
         }),
-      [pushNavigation, props.drillThroughQuestionProps?.plugins],
+      [plugins, pushNavigation],
     );
 
   return (

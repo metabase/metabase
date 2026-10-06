@@ -15,6 +15,7 @@
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.query-processor.util :as sql.qp.u]
    [metabase.util.honey-sql-2 :as h2x]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.performance :as perf :refer [mapv]])
@@ -39,17 +40,29 @@
                               :expression-literals     true}]
   (defmethod driver/database-supports? [:druid-jdbc feature] [_driver _feature _db] supported?))
 
+(defn- checked-connect-string-part
+  "`value` of the `detail` written into the Avatica connect string, refused when it carries the connect string's own
+  syntax: `;` starts another connection property, and quotes regroup what follows."
+  [detail value]
+  (let [s (str value)]
+    (when (re-find #"[;'\"\s]" s)
+      (throw (ex-info (tru "Invalid {0}." (name detail))
+                      {:status-code 400, :errors {detail (tru "must not contain spaces, quotes, or semicolons")}})))
+    s))
+
 (defmethod sql-jdbc.conn/connection-details->spec :druid-jdbc
   [driver {:keys [host port auth-enabled auth-username] :as db-details}]
-  (merge {:classname   "org.apache.calcite.avatica.remote.Driver"
-          :subprotocol "avatica:remote"
-          :subname     (str "url=" host ":" port "/druid/v2/sql/avatica/;transparent_reconnection=true")}
-         (when auth-enabled
-           {:user auth-username
-            :password (driver-api/secret-value-as-string driver db-details "auth-password")})
-         (when (some? (driver/report-timezone))
-           {:sqlTimeZone (driver/report-timezone)
-            :timeZone (driver/report-timezone)})))
+  (let [host (checked-connect-string-part :host host)
+        port (checked-connect-string-part :port port)]
+    (merge {:classname   "org.apache.calcite.avatica.remote.Driver"
+            :subprotocol "avatica:remote"
+            :subname     (str "url=" host ":" port "/druid/v2/sql/avatica/;transparent_reconnection=true")}
+           (when auth-enabled
+             {:user auth-username
+              :password (driver-api/secret-value-as-string driver db-details "auth-password")})
+           (when (some? (driver/report-timezone))
+             {:sqlTimeZone (driver/report-timezone)
+              :timeZone (driver/report-timezone)}))))
 
 (defmethod driver/db-default-timezone :druid-jdbc
   [_driver _database]

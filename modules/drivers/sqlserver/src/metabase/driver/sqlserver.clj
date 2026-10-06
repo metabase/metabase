@@ -38,7 +38,7 @@
    [metabase.util.performance :as perf :refer [empty? mapv get-in]]
    [next.jdbc :as next.jdbc])
   (:import
-   (java.sql Connection DatabaseMetaData PreparedStatement ResultSet Time)
+   (java.sql Connection DatabaseMetaData PreparedStatement ResultSet Time Types)
    (java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime)
    (java.time.format DateTimeFormatter)
    (java.util UUID)))
@@ -164,6 +164,42 @@
     (keyword "decimal identity")  :type/Decimal
     (keyword "numeric identity")  :type/Decimal} column-type))
 
+(def ^:private jdbc-type->base-type
+  {Types/BIGINT                  :type/BigInteger
+   Types/BIT                     :type/Boolean
+   Types/BOOLEAN                 :type/Boolean
+   Types/CHAR                    :type/Text
+   Types/DATE                    :type/Date
+   Types/DECIMAL                 :type/Decimal
+   Types/DOUBLE                  :type/Float
+   Types/FLOAT                   :type/Float
+   Types/INTEGER                 :type/Integer
+   Types/LONGNVARCHAR            :type/Text
+   Types/LONGVARCHAR             :type/Text
+   Types/NCHAR                   :type/Text
+   Types/NUMERIC                 :type/Decimal
+   Types/NVARCHAR                :type/Text
+   Types/REAL                    :type/Float
+   Types/SMALLINT                :type/Integer
+   Types/TIME                    :type/Time
+   Types/TIME_WITH_TIMEZONE      :type/TimeWithTZ
+   Types/TIMESTAMP               :type/DateTime
+   Types/TIMESTAMP_WITH_TIMEZONE :type/DateTimeWithZoneOffset
+   Types/TINYINT                 :type/Integer
+   Types/VARCHAR                 :type/Text})
+
+(defmethod sql-jdbc.sync/describe-table-fields :sqlserver
+  [driver conn table db-name-or-nil]
+  ;; When TYPE_NAME is a user-defined type alias (`CREATE TYPE Key10 FROM varchar(10)`),
+  ;; `database-type->base-type` can't resolve it. The MSSQL JDBC driver already exposes the underlying
+  ;; base type as `DATA_TYPE` (a `java.sql.Types` code), so use it as a fallback. `:database-type` stays
+  ;; the alias name, so the original type is still visible in field metadata.
+  (into #{}
+        (map (fn [{:keys [base-type jdbc-type] :as col}]
+               (cond-> col
+                 (= base-type :type/*) (assoc :base-type (get jdbc-type->base-type jdbc-type base-type)))))
+        ((get-method sql-jdbc.sync/describe-table-fields :sql-jdbc) driver conn table db-name-or-nil)))
+
 (defmulti ^:private type->database-type
   "Internal type->database-type multimethod for SQL Server that dispatches on type."
   {:arglists '([type])}
@@ -223,9 +259,10 @@
   #"(?i)(?:socketFactoryClass|socketFactoryConstructorArg|trustManagerClass|trustManagerConstructorArg|accessTokenCallbackClass)")
 
 (defmethod driver/validate-db-details! :sqlserver
-  [_driver {:keys [host additional-options]}]
+  [_driver {:keys [host additional-options] :as details}]
   (when-let [match (some->> (str host ";" additional-options) (re-find disallowed-additional-opts))]
-    (throw (ex-info "Potentially dangerous keys in connection details" {:disallowed-key match}))))
+    (throw (ex-info "Potentially dangerous keys in connection details" {:disallowed-key match})))
+  (sql-jdbc/reject-dangerous-additional-options! details))
 
 (defmethod driver/can-connect? :sqlserver
   [driver details]

@@ -1915,6 +1915,27 @@
   (is (nil? (setting/env-var-value :test-setting-with-deprecated-name)))
   (is (= [] (deprecated-env-var-warnings))))
 
+(deftest env-var-source-names-the-variable-actually-set-test
+  (testing "the value comes back with the name of the variable that supplied it, so a message about the value can
+           point at the variable the operator set rather than at one they did not"
+    (mt/with-temp-env-var-value! [mb-test-setting-with-deprecated-name "PRIMARY"]
+      (is (= ["MB_TEST_SETTING_WITH_DEPRECATED_NAME" "PRIMARY"]
+             (setting/env-var-source :test-setting-with-deprecated-name))))
+    (mt/with-temp-env-var-value! [mb-old-test-setting-name "LEGACY"]
+      (is (= ["MB_OLD_TEST_SETTING_NAME" "LEGACY"]
+             (setting/env-var-source :test-setting-with-deprecated-name))))
+    (testing "the primary wins when both are set"
+      (mt/with-temp-env-var-value! [mb-test-setting-with-deprecated-name "PRIMARY"
+                                    mb-old-test-setting-name             "LEGACY"]
+        (is (= ["MB_TEST_SETTING_WITH_DEPRECATED_NAME" "PRIMARY"]
+               (setting/env-var-source :test-setting-with-deprecated-name)))))
+    (testing "an empty primary means explicitly unset, and blocks the deprecated fallback"
+      (mt/with-temp-env-var-value! [mb-test-setting-with-deprecated-name ""
+                                    mb-old-test-setting-name             "LEGACY"]
+        (is (nil? (setting/env-var-source :test-setting-with-deprecated-name)))))
+    (testing "nil when neither is set"
+      (is (nil? (setting/env-var-source :test-setting-with-deprecated-name))))))
+
 (deftest deprecated-name-empty-primary-blocks-fallback-test
   (mt/with-temp-env-var-value! [mb-test-setting-with-deprecated-name ""
                                 mb-old-test-setting-name             "LEGACY"]

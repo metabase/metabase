@@ -6,10 +6,19 @@ import type {
   ActionDashboardCard,
   BaseDashboardCard,
   Card,
+  DashboardCard,
   QuestionDashboardCard,
   VirtualCard,
   VirtualDashboardCard,
 } from "metabase-types/api";
+import { isVisualizerDashboardCard } from "metabase-types/guards/dashboard";
+
+export function hasColumnLevelClickBehavior(dashcard: DashboardCard) {
+  if (isVisualizerDashboardCard(dashcard)) {
+    return dashcard.visualization_settings.visualization.display === "table";
+  }
+  return dashcard?.card?.display === "table";
+}
 
 export function isQuestionCard(card: Card | VirtualCard) {
   // Some old virtual cards have dataset_query equal to {} so we need to check for null and empty object

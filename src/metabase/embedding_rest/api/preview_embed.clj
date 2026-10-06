@@ -173,7 +173,7 @@
         dashboard-id     (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :dashboard])
         dashboard        (api/check-404 (t2/select-one :model/Dashboard dashboard-id))
         dashcard         (api/check-404 (t2/select-one :model/DashboardCard dashcard-id))
-        card             (api/check-404 (t2/select-one :model/Card card-id))
+        card             (api/check-404 (api.embed.common/active-card card-id))
         embedding-params (embed/get-in-unsigned-token-or-throw unsigned-token [:_embedding_params])
         token-params     (embed/get-in-unsigned-token-or-throw unsigned-token [:params])]
     (api.embed.common/process-query-for-dashcard
@@ -220,7 +220,7 @@
         dashboard-id     (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :dashboard])
         dashboard        (api/check-404 (t2/select-one :model/Dashboard dashboard-id))
         dashcard         (api/check-404 (t2/select-one :model/DashboardCard dashcard-id))
-        card             (api/check-404 (t2/select-one :model/Card card-id))
+        card             (api/check-404 (api.embed.common/active-card card-id))
         embedding-params (embed/get-in-unsigned-token-or-throw unsigned-token [:_embedding_params])
         token-params     (embed/get-in-unsigned-token-or-throw unsigned-token [:params])]
     (api.embed.common/process-query-for-dashcard
@@ -283,7 +283,7 @@
         dashboard-id     (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :dashboard])
         dashboard        (api/check-404 (t2/select-one :model/Dashboard dashboard-id))
         dashcard         (api/check-404 (t2/select-one :model/DashboardCard dashcard-id))
-        card             (api/check-404 (t2/select-one :model/Card card-id))]
+        card             (api/check-404 (api.embed.common/active-card card-id))]
     (request/as-admin
       (api.embed.common/process-tiles-query-for-dashcard
        dashboard dashcard card

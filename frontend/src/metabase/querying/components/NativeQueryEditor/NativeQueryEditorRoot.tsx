@@ -1,4 +1,4 @@
-import { useElementSize } from "@mantine/hooks";
+import { useDebouncedCallback, useElementSize } from "@mantine/hooks";
 import cx from "classnames";
 import {
   Children,
@@ -11,7 +11,7 @@ import {
   useRef,
   useState,
 } from "react";
-import { useMount } from "react-use";
+import { useLatest, useMount } from "react-use";
 import { t } from "ttag";
 
 import { useListCollectionsQuery, useListSnippetsQuery } from "metabase/api";
@@ -219,15 +219,41 @@ export const NativeQueryEditorRoot = forwardRef<
     }
   }, [nativeEditorSelectedText, isSelectedTextPopoverOpen]);
 
-  const handleChange = useCallback(
+  // The editor reconfigures itself whenever the identity of its callbacks
+  // changes, so they must not depend on the query, which changes on every
+  // keystroke.
+  const queryRef = useLatest(query);
+  const questionRef = useLatest(question);
+
+  const applyQueryText = useCallback(
     (queryText: string) => {
-      if (query.queryText() !== queryText) {
-        const updatedQuery = query.setQueryText(queryText);
-        setDatasetQuery(updatedQuery);
+      const currentQuery = queryRef.current;
+      if (currentQuery.queryText() !== queryText) {
+        setDatasetQuery(currentQuery.setQueryText(queryText));
       }
     },
-    [query, setDatasetQuery],
+    [queryRef, setDatasetQuery],
   );
+
+  // Putting the edit in the store rerenders the query builder, which is far
+  // more work than the keystroke that caused it. A zero delay runs it in the
+  // next task, so the editor paints the character first. That is what keeps
+  // typing responsive on large queries (DEV-3545).
+  const handleChange = useDebouncedCallback(applyQueryText, {
+    delay: 0,
+    flushOnUnmount: true,
+  });
+
+  // Anything that reads the query from the store needs the pending edit first.
+  const handleRunQuery = useCallback(() => {
+    handleChange.flush();
+    runQuery?.();
+  }, [handleChange, runQuery]);
+
+  const handleBlur = useCallback(() => {
+    handleChange.flush();
+    onBlur?.();
+  }, [handleChange, onBlur]);
 
   const handleSnippetUpdate = useCallback(
     (newSnippet: NativeQuerySnippet, oldSnippet: NativeQuerySnippet) => {
@@ -254,7 +280,7 @@ export const NativeQueryEditorRoot = forwardRef<
   }, [setIsNativeEditorOpen, shouldOpenDataReference, isNativeEditorOpen]);
 
   const handleFormatQuery = useCallback(async () => {
-    const query = question.query();
+    const query = questionRef.current.query();
     const engine = Lib.engine(query);
     const queryText = Lib.rawNativeQuery(query);
     const canFormatQuery = engine != null && canFormatForEngine(engine);
@@ -269,8 +295,9 @@ export const NativeQueryEditorRoot = forwardRef<
 
     const formattedQuery = await formatQuery(queryText, engine);
     handleChange(formattedQuery);
+    handleChange.flush();
     focusEditor();
-  }, [question, focusEditor, handleChange]);
+  }, [questionRef, focusEditor, handleChange]);
 
   const handleResize = useCallback(
     (height: number) => {
@@ -305,7 +332,7 @@ export const NativeQueryEditorRoot = forwardRef<
     isRunnable,
     isRunning,
     isResultDirty,
-    runQuery,
+    runQuery: handleRunQuery,
     cancelQuery,
     nativeEditorSelectedText,
     snippets,
@@ -362,9 +389,9 @@ export const NativeQueryEditorRoot = forwardRef<
                   placeholder={placeholder}
                   highlightedLineNumbers={highlightedLineNumbers}
                   extensions={extensions}
-                  onBlur={onBlur}
+                  onBlur={handleBlur}
                   onChange={handleChange}
-                  onRunQuery={runQuery}
+                  onRunQuery={handleRunQuery}
                   onSelectionChange={setNativeEditorSelectedRange}
                   onCursorMoveOverCardTag={openDataReferenceAtQuestion}
                   onRightClickSelection={handleRightClickSelection}
@@ -394,6 +421,7 @@ export const NativeQueryEditorRoot = forwardRef<
                               proposedQuestion.legacyNativeQuery();
                             if (proposedQuery) {
                               handleChange(proposedQuery.queryText());
+                              handleChange.flush();
                               onAcceptProposed(proposedQuery.datasetQuery());
                             }
                           }}

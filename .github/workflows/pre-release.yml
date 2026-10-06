@@ -33,7 +33,7 @@ jobs:
       package_manager: ${{ fromJson(steps.config.outputs.result).packageManager }}
       cypress_grep_flag: ${{ fromJson(steps.config.outputs.result).cypressGrepFlag }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           sparse-checkout: |
             release
@@ -81,7 +81,7 @@ jobs:
       oss_version: ${{ steps.version-properties.outputs.oss_version }}
       commit: ${{ steps.version-properties.outputs.commit }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           sparse-checkout: .github
       - name: Retrieve release uberjar artifact for ${{ matrix.edition }}
@@ -174,7 +174,7 @@ jobs:
       TERM: xterm
     steps:
       - name: Check out the code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           ref: ${{ needs.release-artifact.outputs.commit }}
       - name: Prepare Docker containers
@@ -252,9 +252,9 @@ jobs:
     with:
       edition: oss
       commit: ${{ inputs.commit }}
-      repo: ${{ vars.DOCKERHUB_OWNER }}/${{ vars.DOCKERHUB_STAGING_REPO }}
+      repo: ${{ vars.DOCKERHUB_STAGING_REPO }}
       tag: ${{ needs.release-artifact.outputs.oss_version }}-${{ inputs.commit }}
-      release: "true"
+      release: true
 
   containerize-ee:
     needs: release-artifact
@@ -263,9 +263,9 @@ jobs:
     with:
       edition: ee
       commit: ${{ inputs.commit }}
-      repo: ${{ vars.DOCKERHUB_OWNER }}/${{ vars.DOCKERHUB_STAGING_REPO }}
+      repo: ${{ vars.DOCKERHUB_STAGING_REPO }}
       tag: ${{ needs.release-artifact.outputs.ee_version }}-${{ inputs.commit }}
-      release: "true"
+      release: true
 
   tests-complete-message:
     if: always()
@@ -279,7 +279,7 @@ jobs:
       ]
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           sparse-checkout: |
             release

@@ -41,6 +41,7 @@
   db-type
   do-after-commit
   in-transaction?
+  quartz-data-source
   quoting-style
   unique-identifier
   with-unshared-connection]

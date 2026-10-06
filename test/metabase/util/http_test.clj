@@ -5,32 +5,11 @@
   (:import
    (clojure.lang ExceptionInfo)
    (java.io ByteArrayInputStream)
-   (java.net InetAddress)))
+   (java.net InetAddress)
+   (org.apache.http.conn DnsResolver)
+   (org.apache.http.impl.conn InMemoryDnsResolver)))
 
 (set! *warn-on-reflection* true)
-
-(deftest valid-host?-test
-  (testing "external-only strategy (default)"
-    (is (true? (http/valid-host? :external-only "https://example.com")))
-    (is (false? (http/valid-host? :external-only "http://localhost")))
-    (is (false? (http/valid-host? :external-only "http://192.168.1.1"))))
-  (testing "external-only strategy explicitly"
-    (is (true? (http/valid-host? :external-only "https://example.com")))
-    (is (false? (http/valid-host? :external-only "http://localhost")))
-    (is (false? (http/valid-host? :external-only "http://192.168.1.1"))))
-  (testing "allow-private strategy allows private networks but not localhost"
-    (is (true? (http/valid-host? :allow-private "https://example.com")))
-    (is (true? (http/valid-host? :allow-private "http://192.168.1.1")))
-    (is (true? (http/valid-host? :allow-private "http://10.0.0.1")))
-    (is (true? (http/valid-host? :allow-private "http://172.16.0.1")))
-    (is (false? (http/valid-host? :allow-private "http://localhost")))
-    (is (false? (http/valid-host? :allow-private "http://127.0.0.1")))
-    (is (false? (http/valid-host? :allow-private "http://169.254.1.1"))))
-  (testing "allow-all strategy allows everything"
-    (is (true? (http/valid-host? :allow-all "https://example.com")))
-    (is (true? (http/valid-host? :allow-all "http://localhost")))
-    (is (true? (http/valid-host? :allow-all "http://192.168.1.1")))
-    (is (true? (http/valid-host? :allow-all "http://169.254.1.1")))))
 
 (deftest ^:parallel host-allowed-external-only-test
   (testing "external-only allows only globally-routable addresses"
@@ -219,7 +198,26 @@
   (testing "the validating resolver throws when a host resolves to a non-public address"
     ;; `localhost` resolves to loopback (no network needed) -> must be refused
     (is (thrown? ExceptionInfo
-                 (.resolve ^org.apache.http.conn.DnsResolver @#'http/ssrf-safe-dns-resolver "localhost")))))
+                 (.resolve ^DnsResolver @#'http/ssrf-safe-dns-resolver "localhost")))))
+
+(deftest ^:parallel network-policy-dns-resolver-test
+  (testing ":allow-all imposes no restriction, so there is no resolver (clj-http uses its default)"
+    (is (nil? (http/network-policy-dns-resolver :allow-all))))
+  (testing "the resolver refuses a host that resolves to a disallowed address"
+    ;; `localhost` resolves to loopback with no network IO; loopback is denied by both policies
+    (doseq [policy [:external-only :allow-private]]
+      (is (thrown-with-msg? ExceptionInfo #"non-permitted"
+                            (.resolve ^DnsResolver (http/network-policy-dns-resolver policy) "localhost"))
+          (str policy))))
+  (testing "the resolver honors the policy: an injected private address passes :allow-private but not :external-only,
+           closing the DNS-rebinding gap that up-front-only validation leaves open"
+    (binding [http/*system-dns-resolver* (doto (InMemoryDnsResolver.)
+                                           (.add "rebind.example"
+                                                 (into-array [(InetAddress/getByName "10.0.0.1")])))]
+      (is (thrown-with-msg? ExceptionInfo #"non-permitted"
+                            (.resolve ^DnsResolver (http/network-policy-dns-resolver :external-only) "rebind.example")))
+      (is (= 1 (alength ^"[Ljava.net.InetAddress;"
+                (.resolve ^DnsResolver (http/network-policy-dns-resolver :allow-private) "rebind.example")))))))
 
 (deftest ^:parallel fetch-bytes-blocks-without-network-test
   (testing "blocked URLs return nil at the validation gate, never reaching the network"
@@ -237,3 +235,30 @@
     (is (= 5 (count (#'http/read-bounded (ByteArrayInputStream. (.getBytes "12345")) 5)))))
   (testing "returns nil when the stream exceeds the cap"
     (is (nil? (#'http/read-bounded (ByteArrayInputStream. (.getBytes "0123456789")) 5)))))
+
+(deftest ^:parallel env-network-policy-test
+  (testing "an unset environment variable names no policy, so the caller supplies its own default"
+    (doseq [raw [nil "" "   "]]
+      (is (nil? (http/env-network-policy "MB_TEST_ALLOWED_NETWORKS" raw)) (pr-str raw))))
+  (testing "a known policy is read as written"
+    (doseq [[raw expected] {"external-only"  :external-only
+                            "allow-private"  :allow-private
+                            "allow-all"      :allow-all
+                            "ALLOW-PRIVATE"  :allow-private
+                            "  allow-all  "  :allow-all}]
+      (is (= expected (http/env-network-policy "MB_TEST_ALLOWED_NETWORKS" raw)) raw)))
+  (testing "a value that is not a policy throws, naming the variable and what it accepts: nothing else validates
+           what is in the environment, and running on a policy nobody chose is not an option"
+    (doseq [raw ["allow-everything" "externl-only" "true" ":allow-all" "allow_all"
+                 ;; a policy of the address checker, but not one a deployment may ask for
+                 "loopback-and-private"]]
+      (is (thrown-with-msg? ExceptionInfo
+                            #"Invalid MB_TEST_ALLOWED_NETWORKS: .* Expected one of external-only, allow-private, allow-all\."
+                            (http/env-network-policy "MB_TEST_ALLOWED_NETWORKS" raw))
+          raw)))
+  (testing "the thrown data names the variable, the value and what was expected"
+    (is (= {:env-var  "MB_TEST_ALLOWED_NETWORKS"
+            :value    "allow-everything"
+            :expected [:external-only :allow-private :allow-all]}
+           (try (http/env-network-policy "MB_TEST_ALLOWED_NETWORKS" "allow-everything")
+                (catch ExceptionInfo e (ex-data e)))))))

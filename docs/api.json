@@ -15872,7 +15872,7 @@
       "get" : {
         "operationId" : "get-api-automagic-dashboards-model_index-model-index-id-primary_key-pk-id",
         "summary" : "GET /api/automagic-dashboards/model_index/{model-index-id}/primary_key/{pk-id}",
-        "description" : "Return an automagic dashboard for an entity detail specified by `entity`\n  with id `id` and a primary key of `indexed-value`.",
+        "description" : "Return an automagic dashboard for the record of the model indexed by `model-index-id` whose primary key is\n  `pk-id`. The record's value, used in the title, is read through the QP as the requesting user (never from\n  `model_index_value`, which is not permission-checked); a `pk-id` they cannot resolve yields a dashboard titled\n  by the pk, with no matching rows, rather than a 404.",
         "parameters" : [ {
           "in" : "path",
           "name" : "model-index-id",
