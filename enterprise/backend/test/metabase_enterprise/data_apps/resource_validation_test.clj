@@ -170,3 +170,55 @@
                                           :resource_collection_id collection-id}
                      :model/Card       _ {:name "Mine" :entity_id question-eid :collection_id collection-id}]
         (is (= [] (messages (shop (question-resources)))))))))
+
+(deftest refuses-a-field-that-doesnt-exist-test
+  (testing "a field a query names has to exist, on a database without schemas too"
+    (mt/with-temp [:model/Database {db-id :id} {:engine :h2 :name "no-schemas"}
+                   :model/Table    {table-id :id} {:db_id db-id :name "T" :schema nil :active true}
+                   :model/Field    _ {:table_id table-id :name "ID" :base_type :type/Integer}]
+      (let [filtering-on (fn [db schema table field]
+                           (edit-file (shop (question-resources)) question-path
+                                      #(assoc % :database_id db
+                                              :dataset_query {:database db
+                                                              :lib/type "mbql/query"
+                                                              :stages   [{:lib/type     "mbql.stage/mbql"
+                                                                          :source-table [db schema table]
+                                                                          :filters      [["=" {} ["field" {} [db schema table field]] 1]]}]})))]
+        (is (some #(str/includes? % "NOPE") (messages (filtering-on "no-schemas" nil "T" "NOPE"))))
+        (is (= [] (messages (filtering-on "no-schemas" nil "T" "ID"))))
+        (is (some #(str/includes? % "NOPE") (messages (filtering-on (:name (mt/db)) "PUBLIC" "VENUES" "NOPE"))))))))
+
+(deftest refuses-a-table-or-field-named-in-any-reference-test
+  (testing "serialization makes a placeholder for a missing table or field wherever a file references one"
+    (let [db      (:name (mt/db))
+          refused (fn [missing f]
+                    (is (some #(str/includes? % missing)
+                              (messages (edit-file (shop (question-resources)) question-path f)))
+                        missing))]
+      (testing "result metadata"
+        (refused "NOPE_META" #(assoc % :result_metadata [{:name      "NOPE"
+                                                          :base_type "type/Text"
+                                                          :id        [db "PUBLIC" "VENUES" "NOPE_META"]}])))
+      (testing "the source field of a field reference"
+        (refused "NOPE_SOURCE" #(assoc-in % [:dataset_query :stages 0 :fields]
+                                          [["field" {:source-field [db "PUBLIC" "VENUES" "NOPE_SOURCE"]}
+                                            [db "PUBLIC" "VENUES" "ID"]]])))
+      (testing "a field reference in the older form"
+        (refused "NOPE_LEGACY" #(assoc-in % [:dataset_query :stages 0 :filters]
+                                          [["=" {} ["field" [db "PUBLIC" "VENUES" "NOPE_LEGACY"] nil] 1]])))
+      (testing "a table template tag"
+        (refused "NOPE_TAG_TABLE" #(assoc % :dataset_query
+                                          {:database db
+                                           :lib/type "mbql/query"
+                                           :stages   [{:lib/type      "mbql.stage/native"
+                                                       :native        "SELECT * FROM {{t}}"
+                                                       :template-tags {"t" {:type         "table"
+                                                                            :name         "t"
+                                                                            :display-name "T"
+                                                                            :id           "7f2c2a0e-6c1e-4b53-9d0a-0d5a3a1d1c12"
+                                                                            :table-id     [db "PUBLIC" "NOPE_TAG_TABLE"]}}}]})))
+      (testing "a list of strings that isn't a reference is left alone, even when it starts with a database's name"
+        (is (= [] (messages (edit-file (shop (question-resources)) question-path
+                                       #(assoc % :visualization_settings {:some.custom/labels [db "Alpha" "Beta"]}))))))
+      (testing "and a file that names only what exists has no problems"
+        (is (= [] (messages (shop (question-resources)))))))))

@@ -151,20 +151,34 @@
     (problem path (tru "{0} references {1} {2}, which does not exist on this instance." path model id))))
 
 (defn- portable-refs
-  "The portable table references (`[db schema table]`) and field references (`[db schema table field ...]`) the
-  serialized queries in `entity` make."
+  "The portable table references (`[db schema table]`) and field references (`[db schema table field ...]`) that
+  `entity` makes, in each place where serialization reads one: a query's source table, a field clause in either form,
+  the source field of a field clause, a table template tag, and a column of the result metadata."
   [entity]
-  (let [refs (volatile! #{})]
+  (let [refs   (volatile! #{})
+        names? (fn [x] (and (vector? x) (string? (first x)) (every? #(or (nil? %) (string? %)) x)))
+        table? (fn [x] (and (names? x) (= 3 (count x))))
+        field? (fn [x] (and (names? x) (< 3 (count x))))
+        add!   (fn [kind x] (vswap! refs conj [kind x]))]
     (walk/postwalk (fn [x]
-                     (when (and (map? x) (vector? (:source-table x)))
-                       (vswap! refs conj [:table (:source-table x)]))
-                     (when (and (vector? x)
-                                (#{"field" :field} (first x))
-                                (vector? (last x))
-                                (every? string? (last x)))
-                       (vswap! refs conj [:field (last x)]))
+                     (cond
+                       (map? x)
+                       (do
+                         (doseq [k [:source-table :table-id :table_id]
+                                 :when (table? (get x k))]
+                           (add! :table (get x k)))
+                         (when (field? (:source-field x))
+                           (add! :field (:source-field x)))
+                         ;; a column of the result metadata names its field as `:id`
+                         (when (and (contains? x :base_type) (field? (:id x)))
+                           (add! :field (:id x))))
+
+                       (and (vector? x) (#{"field" :field} (first x)))
+                       (doseq [part (rest x)
+                               :when (field? part)]
+                         (add! :field part)))
                      x)
-                   (select-keys entity [:dataset_query :query :parameter_mappings]))
+                   (select-keys entity [:dataset_query :query :parameter_mappings :result_metadata]))
     @refs))
 
 (defn- missing-table-and-field-problems
