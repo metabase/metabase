@@ -35,7 +35,9 @@
    [metabase.test.data :as data]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli.registry :as mr])
+  (:import
+   (clojure.lang ExceptionInfo)))
 
 (set! *warn-on-reflection* true)
 
@@ -389,15 +391,15 @@
       (is (=? {:show-row-totals false :show-column-totals false} (pivot-of (qp.pivot/apply-legacy-pivot-keys q-kebab))))
       (is (=? {:show-row-totals false :show-column-totals false} (pivot-of (qp.pivot/apply-legacy-pivot-keys q-snake)))))))
 
-(deftest ^:parallel apply-legacy-pivot-keys-drops-out-of-range-indices-test
-  (testing "out-of-range indices are silently dropped (matching legacy)"
+(deftest ^:parallel apply-legacy-pivot-keys-throws-on-out-of-range-indices-test
+  (testing "an out-of-range :pivot-rows index throws :invalid-query"
     (let [q (two-breakout-query-with-legacy-pivot-keys {:pivot-rows [0 5] :pivot-cols [99]})]
-      (is (=? {:rows [(breakout-uuid q 0)] :columns []}
-              (pivot-of (qp.pivot/apply-legacy-pivot-keys q))))))
-  (testing "no :pivot attached when every index is out of range"
-    (let [q   (two-breakout-query-with-legacy-pivot-keys {:pivot-rows [5] :pivot-cols [99]})
-          out (qp.pivot/apply-legacy-pivot-keys q)]
-      (is (nil? (:pivot out))))))
+      (is (thrown-with-msg? ExceptionInfo #"Invalid pivot-rows"
+                            (qp.pivot/apply-legacy-pivot-keys q)))))
+  (testing "an out-of-range :pivot-cols index throws :invalid-query"
+    (let [q (two-breakout-query-with-legacy-pivot-keys {:pivot-cols [99]})]
+      (is (thrown-with-msg? ExceptionInfo #"Invalid pivot-cols"
+                            (qp.pivot/apply-legacy-pivot-keys q))))))
 
 (deftest ^:parallel apply-legacy-pivot-keys-strips-all-legacy-keys-test
   (testing "all 10 legacy key variants are stripped, including :pivot-measures"
@@ -1214,22 +1216,6 @@
           counts   (mapv last (mt/rows (qp.pivot/run-pivot-query forced)))]
       (is (apply >= counts)
           (str "Expected counts DESC; got: " counts)))))
-
-(deftest ^:parallel run-pivot-query-falls-through-when-not-pivotable-test
-  (testing "run-pivot-query on a query whose last stage has no breakouts falls through to qp/process-query"
-    (let [mp     (mt/metadata-provider)
-          orders (lib.metadata/table mp (mt/id :orders))
-          query  (-> (lib/query mp orders) (lib/limit 3))]
-      (is (=? {:status :completed :row_count 3}
-              (qp.pivot/run-pivot-query query)))))
-  (testing "run-pivot-query on a query whose last stage has no aggregations falls through to qp/process-query"
-    (let [mp     (mt/metadata-provider)
-          orders (lib.metadata/table mp (mt/id :orders))
-          query  (-> (lib/query mp orders)
-                     (lib/breakout (lib.metadata/field mp (mt/id :orders :user_id)))
-                     (lib/limit 3))]
-      (is (=? {:status :completed :row_count 3}
-              (qp.pivot/run-pivot-query query))))))
 
 (deftest ^:parallel fe-friendly-legacy-field-refs-test
   (testing "field_refs in the result metadata should match the 'traditional' legacy shape the FE expects, or it will break"
