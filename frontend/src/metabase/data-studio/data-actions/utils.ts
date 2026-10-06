@@ -1,13 +1,19 @@
-import { getDefaultFieldSettings } from "metabase/actions/utils";
+import {
+  getDefaultFieldSettings,
+  getFieldSettingsForFieldType,
+} from "metabase/actions/utils";
+import { hasNativeWritePermissions } from "metabase/common/utils/database";
 import { getTagTypeFromFieldSettings } from "metabase/querying/action-creator";
 import * as Lib from "metabase-lib";
 import { getTemplateTagParameters } from "metabase-lib/v1/parameters/utils/template-tags";
 import type {
   ActionFormSettings,
   CreateActionRequest,
+  Database,
   FieldSettings,
   FieldType,
   TemplateTag,
+  WritebackAction,
   WritebackParameter,
 } from "metabase-types/api";
 
@@ -35,8 +41,30 @@ function getFieldTypes(
   }
 }
 
+function getFieldSettings(
+  parameter: WritebackParameter,
+  index: number,
+  tag: TemplateTag | undefined,
+  existing: FieldSettings | undefined,
+): FieldSettings {
+  const fieldTypes = getFieldTypes(tag);
+  if (existing === undefined) {
+    return getDefaultFieldSettings({
+      id: parameter.id,
+      name: parameter.name,
+      title: parameter.name,
+      order: index,
+      required: parameter.required ?? true,
+      ...fieldTypes,
+    });
+  }
+  return existing.fieldType === fieldTypes.fieldType
+    ? existing
+    : getFieldSettingsForFieldType(existing, fieldTypes.fieldType);
+}
+
 /**
- * The form field settings for the variables of `query`, keeping the settings in `formSettings` whose type still matches.
+ * The form field settings for the variables of `query`, keeping the settings in `formSettings` and converting those whose variable type changed.
  */
 export function getFieldSettingsFromQuery(
   query: Lib.Query,
@@ -44,26 +72,34 @@ export function getFieldSettingsFromQuery(
 ): ActionFormSettings {
   const tags = Object.values(Lib.templateTags(query));
   const fields = Object.fromEntries(
-    getQueryParameters(query).map((parameter, index) => {
-      const fieldTypes = getFieldTypes(
+    getQueryParameters(query).map((parameter, index) => [
+      parameter.id,
+      getFieldSettings(
+        parameter,
+        index,
         tags.find((tag) => tag.id === parameter.id),
-      );
-      const existing = formSettings.fields?.[parameter.id];
-      const field =
-        existing?.fieldType === fieldTypes.fieldType
-          ? existing
-          : getDefaultFieldSettings({
-              id: parameter.id,
-              name: parameter.name,
-              title: parameter.name,
-              order: index,
-              required: parameter.required ?? false,
-              ...fieldTypes,
-            });
-      return [parameter.id, field];
-    }),
+        formSettings.fields?.[parameter.id],
+      ),
+    ]),
   );
   return { ...formSettings, fields };
+}
+
+/**
+ * Whether the current user can change the query of `action`, which needs native query permissions on its database.
+ */
+export function canEditActionQuery(
+  action: WritebackAction,
+  databases: Database[],
+): boolean {
+  return (
+    action.can_write === true &&
+    databases.some(
+      (database) =>
+        database.id === action.database_id &&
+        hasNativeWritePermissions(database),
+    )
+  );
 }
 
 export function setTemplateTagFieldType(

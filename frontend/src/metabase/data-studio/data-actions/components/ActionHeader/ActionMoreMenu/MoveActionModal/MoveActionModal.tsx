@@ -4,7 +4,6 @@ import { c, t } from "ttag";
 import { useUpdateActionMutation } from "metabase/api";
 import { canonicalCollectionId } from "metabase/common/collections/utils";
 import type {
-  EntityPickerOptions,
   OmniPickerItem,
   OmniPickerValue,
 } from "metabase/common/components/Pickers";
@@ -12,15 +11,7 @@ import { CollectionPickerModal } from "metabase/common/components/Pickers/Collec
 import { useMetadataToasts } from "metabase/common/hooks";
 import type { WritebackAction } from "metabase-types/api";
 
-const ACTION_COLLECTION_PICKER_OPTIONS: EntityPickerOptions = {
-  hasSearch: true,
-  hasRecents: false,
-  hasLibrary: false,
-  hasRootCollection: true,
-  hasPersonalCollections: true,
-  hasConfirmButtons: true,
-  canCreateCollections: true,
-};
+import { ACTION_COLLECTION_PICKER_OPTIONS } from "../../../../constants";
 
 type MoveActionModalProps = {
   action: WritebackAction;

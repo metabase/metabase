@@ -25,6 +25,29 @@ import {
   provideActionTags,
 } from "./tags";
 
+// The action editor passes the full WritebackAction it fetched
+// (including server-managed fields like `creator`, `created_at`,
+// `database_enabled_actions`, ...). The backend routes anything
+// outside the Action columns to the type-specific update table
+// (query_action / implicit_action), where those
+// columns don't exist and the request 500s. Whitelist only the
+// fields that the API endpoint actually accepts.
+const UPDATE_ACTION_KEYS = [
+  "id",
+  "archived",
+  "collection_id",
+  "database_id",
+  "dataset_query",
+  "description",
+  "kind",
+  "model_id",
+  "name",
+  "parameter_mappings",
+  "parameters",
+  "public_uuid",
+  "visualization_settings",
+];
+
 export const actionApi = Api.injectEndpoints({
   endpoints: (builder) => ({
     listActions: builder.query<WritebackAction[], ListActionsRequest>({
@@ -55,28 +78,7 @@ export const actionApi = Api.injectEndpoints({
       query: (body) => ({
         method: "PUT",
         url: `/api/action/${body.id}`,
-        // The action editor passes the full WritebackAction it fetched
-        // (including server-managed fields like `creator`, `created_at`,
-        // `database_enabled_actions`, ...). The backend routes anything
-        // outside the Action columns to the type-specific update table
-        // (query_action / implicit_action), where those
-        // columns don't exist and the request 500s. Whitelist only the
-        // fields that the API endpoint actually accepts.
-        body: _.pick(body, [
-          "id",
-          "archived",
-          "collection_id",
-          "database_id",
-          "dataset_query",
-          "description",
-          "kind",
-          "model_id",
-          "name",
-          "parameter_mappings",
-          "parameters",
-          "public_uuid",
-          "visualization_settings",
-        ]),
+        body: _.pick(body, UPDATE_ACTION_KEYS),
       }),
       invalidatesTags: (action, error) =>
         action
@@ -85,6 +87,24 @@ export const actionApi = Api.injectEndpoints({
               idTag("action", action.id),
             ])
           : [],
+      onQueryStarted: async (body, { dispatch, queryFulfilled }) => {
+        // Apply the update right away, so that an edit made before the
+        // refetch builds on it instead of on the stale action.
+        const patchResult = dispatch(
+          actionApi.util.updateQueryData(
+            "getAction",
+            { id: body.id },
+            (draft) => {
+              Object.assign(draft, _.pick(body, UPDATE_ACTION_KEYS));
+            },
+          ),
+        );
+        try {
+          await queryFulfilled;
+        } catch {
+          patchResult.undo();
+        }
+      },
     }),
     deleteAction: builder.mutation<WritebackAction, WritebackActionId>({
       query: (id) => ({

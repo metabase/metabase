@@ -2,6 +2,8 @@ import { useDisclosure } from "@mantine/hooks";
 import { useCallback, useMemo, useRef, useState } from "react";
 import { t } from "ttag";
 
+import { useGetDefaultCollectionId } from "metabase/common/collections/hooks";
+import { canonicalCollectionId } from "metabase/common/collections/utils";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import { Link } from "metabase/common/components/Link";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
@@ -43,6 +45,16 @@ export function NewActionPage() {
     );
   }
 
+  if (editableDatabases.length === 0) {
+    return (
+      <Center h="100%">
+        <LoadingAndErrorWrapper
+          error={t`To create an action, you need permission to write native queries on a database with actions enabled.`}
+        />
+      </Center>
+    );
+  }
+
   return <NewActionPageBody databases={editableDatabases} />;
 }
 
@@ -60,6 +72,7 @@ function NewActionPageBody({ databases }: NewActionPageBodyProps) {
     [databases],
   );
   const draft = useActionDraft({ initialDatasetQuery });
+  const defaultCollectionId = useGetDefaultCollectionId();
   const [name, setName] = useState("");
   const [uiState, setUiState] = useState(getInitialUiState);
   const [isModalOpened, { open: openModal, close: closeModal }] =
@@ -120,6 +133,7 @@ function NewActionPageBody({ databases }: NewActionPageBodyProps) {
         <CreateActionModal
           definition={draft.definition}
           defaultName={name}
+          defaultCollectionId={canonicalCollectionId(defaultCollectionId)}
           onCreate={handleCreate}
           onClose={closeModal}
         />

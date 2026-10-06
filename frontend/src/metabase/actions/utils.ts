@@ -5,6 +5,7 @@ import * as Yup from "yup";
 import { hasActionsEnabled } from "metabase/common/utils/database";
 import type { ButtonProps } from "metabase/ui";
 import * as Errors from "metabase/utils/errors";
+import { isNotNull } from "metabase/utils/types";
 import type Field from "metabase-lib/v1/metadata/Field";
 import { TYPE } from "metabase-lib/v1/types/constants";
 import type {
@@ -17,6 +18,7 @@ import type {
   FieldSettings,
   FieldSettingsMap,
   FieldType,
+  FieldValueOptions,
   IconName,
   InputComponentType,
   InputSettingType,
@@ -28,6 +30,7 @@ import type {
   WritebackParameter,
 } from "metabase-types/api";
 
+import { getInputTypes } from "./constants";
 import type {
   ActionFormFieldProps,
   ActionFormProps,
@@ -105,6 +108,53 @@ const isEditableField = (field: Field, parameter: Parameter) => {
 
 export const inputTypeHasOptions = (inputType: InputSettingType) =>
   ["select", "radio"].includes(inputType);
+
+function cleanFieldValue(
+  value: string | number | undefined,
+  fieldType: FieldType,
+) {
+  if (value == null) {
+    return value;
+  } else if (fieldType === "string") {
+    return String(value);
+  } else if (fieldType === "number") {
+    const number = Number(value);
+    return !Number.isNaN(number) ? number : undefined;
+  } else {
+    return undefined;
+  }
+}
+
+function cleanOptionValues(values: FieldValueOptions, fieldType: FieldType) {
+  return values
+    .map((value) => cleanFieldValue(value, fieldType))
+    .filter(isNotNull);
+}
+
+/**
+ * The field settings converted to `fieldType`, keeping the input type, options and default value where they still apply.
+ */
+export function getFieldSettingsForFieldType(
+  fieldSettings: FieldSettings,
+  fieldType: FieldType,
+): FieldSettings {
+  const inputTypes = getInputTypes()[fieldType].map((option) => option.value);
+
+  // Allows to preserve dropdown/radio input types across number/string field types
+  const inputType = inputTypes.includes(fieldSettings.inputType)
+    ? fieldSettings.inputType
+    : inputTypes[0];
+
+  return {
+    ...fieldSettings,
+    fieldType,
+    inputType,
+    valueOptions: inputTypeHasOptions(inputType)
+      ? cleanOptionValues(fieldSettings.valueOptions ?? [], fieldType)
+      : undefined,
+    defaultValue: cleanFieldValue(fieldSettings.defaultValue, fieldType),
+  };
+}
 
 export const sortActionParams =
   (formSettings: ActionFormSettings) => (a: Parameter, b: Parameter) => {

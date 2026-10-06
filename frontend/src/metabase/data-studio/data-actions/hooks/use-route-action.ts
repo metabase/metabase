@@ -1,3 +1,5 @@
+import { t } from "ttag";
+
 import { skipToken, useGetActionQuery } from "metabase/api";
 import { useParams } from "metabase/router";
 import * as Urls from "metabase/urls";
@@ -12,12 +14,16 @@ type RouteActionResult = {
 export function useRouteAction(): RouteActionResult {
   const params = useParams<{ actionId: string }>();
   const actionId = Urls.extractEntityId(params.actionId);
-  const { data, isLoading, error } = useGetActionQuery(
+  const { currentData, isFetching, error } = useGetActionQuery(
     actionId != null ? { id: actionId } : skipToken,
   );
+  const action = currentData?.type === "query" ? currentData : undefined;
+  const isLoading = currentData === undefined && isFetching;
+  const isNotFound = !isLoading && error === undefined && action === undefined;
+
   return {
-    action: data?.type === "query" ? data : undefined,
+    action,
     isLoading,
-    error,
+    error: isNotFound ? t`Action not found.` : error,
   };
 }

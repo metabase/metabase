@@ -21,6 +21,8 @@ type ActionFieldListProps = {
   onReorder: (fieldIds: string[]) => void;
 };
 
+const getFieldId = (field: ActionField) => field.parameter.id;
+
 export function ActionFieldList({
   actionId,
   fields,
@@ -50,7 +52,7 @@ export function ActionFieldList({
       <Stack gap="md" role="list">
         <SortableList<ActionField>
           items={fields}
-          getId={(field) => field.parameter.id}
+          getId={getFieldId}
           sensors={[pointerSensor]}
           renderItem={({ item: field }) => (
             <ActionFieldItem

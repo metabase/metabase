@@ -22,6 +22,7 @@ import { ActionHeader } from "../../components/ActionHeader";
 import { useActionDatabases } from "../../hooks/use-action-databases";
 import { useActionDraft } from "../../hooks/use-action-draft";
 import { useRouteAction } from "../../hooks/use-route-action";
+import { canEditActionQuery } from "../../utils";
 
 export function ActionQueryPage() {
   const { pathname } = useLocation();
@@ -52,8 +53,9 @@ export function ActionQueryPage() {
   }
 
   const readOnly = !action.can_write;
+  const canEditQuery = canEditActionQuery(action, databases);
 
-  return isEditRoute && !readOnly ? (
+  return isEditRoute && canEditQuery ? (
     <ActionEditPage
       key={action.id}
       action={action}
@@ -64,6 +66,7 @@ export function ActionQueryPage() {
       action={action}
       databases={editableDatabases}
       readOnly={readOnly}
+      canEditQuery={canEditQuery}
     />
   );
 }
@@ -71,14 +74,19 @@ export function ActionQueryPage() {
 type ActionPageProps = {
   action: WritebackQueryAction;
   databases: Database[];
-  readOnly?: boolean;
+};
+
+type ActionDefinitionPageProps = ActionPageProps & {
+  readOnly: boolean;
+  canEditQuery: boolean;
 };
 
 function ActionDefinitionPage({
   action,
   databases,
   readOnly,
-}: ActionPageProps) {
+  canEditQuery,
+}: ActionDefinitionPageProps) {
   const [uiState, setUiState] = useState(getInitialUiState);
 
   return (
@@ -91,7 +99,7 @@ function ActionDefinitionPage({
           databases={databases}
           readOnly
           topBarInnerContent={
-            !readOnly && (
+            canEditQuery && (
               <Button
                 component={Link}
                 to={Urls.dataActionEdit(action.id)}

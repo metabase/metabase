@@ -16,7 +16,10 @@ import { Alert, Box, Button, Group, Icon, Modal, Stack } from "metabase/ui";
 import * as Errors from "metabase/utils/errors";
 import type { WritebackAction } from "metabase-types/api";
 
-import { ACTION_NAME_MAX_LENGTH } from "../../../constants";
+import {
+  ACTION_COLLECTION_PICKER_OPTIONS,
+  ACTION_NAME_MAX_LENGTH,
+} from "../../../constants";
 import type { ActionDefinition } from "../../../utils";
 
 const getValidationSchema = () =>
@@ -33,6 +36,7 @@ type NewActionValues = Yup.InferType<ReturnType<typeof getValidationSchema>>;
 type CreateActionModalProps = {
   definition: ActionDefinition;
   defaultName: string;
+  defaultCollectionId: NewActionValues["collection_id"];
   onCreate: (action: WritebackAction) => void;
   onClose: () => void;
 };
@@ -40,6 +44,7 @@ type CreateActionModalProps = {
 export function CreateActionModal({
   definition,
   defaultName,
+  defaultCollectionId,
   onCreate,
   onClose,
 }: CreateActionModalProps) {
@@ -48,7 +53,7 @@ export function CreateActionModal({
   const initialValues: NewActionValues = {
     name: defaultName,
     description: null,
-    collection_id: null,
+    collection_id: defaultCollectionId,
   };
 
   const handleSubmit = async ({
@@ -86,6 +91,9 @@ export function CreateActionModal({
               name="collection_id"
               title={t`Collection`}
               style={{ marginBottom: 0 }}
+              collectionPickerModalProps={{
+                options: ACTION_COLLECTION_PICKER_OPTIONS,
+              }}
             />
             <Alert variant="light" icon={<Icon name="info" />}>
               {t`Anyone who can view this collection can run this action.`}

@@ -13,10 +13,9 @@ import { MoveActionModal } from "./MoveActionModal";
 
 type ActionMoreMenuProps = {
   action: WritebackAction;
-  readOnly?: boolean;
 };
 
-export function ActionMoreMenu({ action, readOnly }: ActionMoreMenuProps) {
+export function ActionMoreMenu({ action }: ActionMoreMenuProps) {
   const [isMoveModalOpened, setIsMoveModalOpened] = useState(false);
   const { modalContent: confirmationModal, show: showConfirmation } =
     useConfirmation();
@@ -53,7 +52,7 @@ export function ActionMoreMenu({ action, readOnly }: ActionMoreMenuProps) {
           </ActionIcon>
         </Menu.Target>
         <Menu.Dropdown>
-          {!readOnly && action.model_id == null && (
+          {action.model_id == null && (
             <Menu.Item
               leftSection={<Icon name="move" />}
               onClick={() => setIsMoveModalOpened(true)}
@@ -61,14 +60,12 @@ export function ActionMoreMenu({ action, readOnly }: ActionMoreMenuProps) {
               {t`Move`}
             </Menu.Item>
           )}
-          {!readOnly && (
-            <Menu.Item
-              leftSection={<Icon name="archive" />}
-              onClick={handleArchiveClick}
-            >
-              {t`Archive`}
-            </Menu.Item>
-          )}
+          <Menu.Item
+            leftSection={<Icon name="archive" />}
+            onClick={handleArchiveClick}
+          >
+            {t`Archive`}
+          </Menu.Item>
         </Menu.Dropdown>
       </Menu>
       {isMoveModalOpened && (

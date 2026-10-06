@@ -45,9 +45,7 @@ export function ActionHeader({
     <PaneHeader
       title={<ActionNameInput action={action} readOnly={readOnly} />}
       icon="bolt"
-      menu={
-        !isEditMode && <ActionMoreMenu action={action} readOnly={readOnly} />
-      }
+      menu={!isEditMode && !readOnly && <ActionMoreMenu action={action} />}
       tabs={!isEditMode && <ActionTabs actionId={action.id} />}
       actions={actions}
       data-testid="action-header"

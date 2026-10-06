@@ -2,10 +2,17 @@ import { useMemo } from "react";
 import { t } from "ttag";
 
 import { getFieldTypes, getInputTypes } from "metabase/actions/constants";
-import { inputTypeHasOptions } from "metabase/actions/utils";
+import { textToOptions } from "metabase/actions/containers/ActionCreator/FormCreator/OptionEditor";
+import { getDefaultValueInputType } from "metabase/actions/containers/ActionCreator/FormCreator/utils";
+import {
+  getFieldSettingsForFieldType,
+  inputTypeHasOptions,
+} from "metabase/actions/utils";
 import { TitledSection } from "metabase/metadata/components";
 import {
+  Alert,
   Code,
+  Icon,
   SegmentedControl,
   Select,
   Stack,
@@ -21,12 +28,14 @@ import type { ActionField } from "../../../hooks/use-action-fields";
 type ActionFieldDetailsProps = {
   field: ActionField;
   readOnly: boolean;
+  canChangeFieldType: boolean;
   onChange: (patch: Partial<FieldSettings>) => void;
 };
 
 export function ActionFieldDetails({
   field,
   readOnly,
+  canChangeFieldType,
   onChange,
 }: ActionFieldDetailsProps) {
   const { settings, variableName } = field;
@@ -34,15 +43,11 @@ export function ActionFieldDetails({
     () => getInputTypes()[settings.fieldType],
     [settings.fieldType],
   );
+  const isHiddenWithoutDefault =
+    settings.hidden && settings.required && settings.defaultValue === undefined;
 
   const handleFieldTypeChange = (fieldType: FieldType) => {
-    const [defaultInputType] = getInputTypes()[fieldType];
-    onChange({
-      fieldType,
-      inputType: defaultInputType.value,
-      defaultValue: undefined,
-      valueOptions: undefined,
-    });
+    onChange(getFieldSettingsForFieldType(settings, fieldType));
   };
 
   return (
@@ -78,7 +83,7 @@ export function ActionFieldDetails({
               value,
               label: name,
             }))}
-            disabled={readOnly}
+            disabled={readOnly || !canChangeFieldType}
             onChange={(value) => {
               const fieldType = getFieldTypes().find(
                 (option) => option.value === value,
@@ -111,12 +116,7 @@ export function ActionFieldDetails({
             value={(settings.valueOptions ?? []).join("\n")}
             readOnly={readOnly}
             onChange={(value) =>
-              onChange({
-                valueOptions: value
-                  .split("\n")
-                  .map((option) => option.trim())
-                  .filter((option) => option.length > 0),
-              })
+              onChange({ valueOptions: textToOptions(value) })
             }
           />
         )}
@@ -129,12 +129,15 @@ export function ActionFieldDetails({
         <BlurTextInput
           label={t`Default value`}
           placeholder={t`No default`}
+          type={getDefaultValueInputType(settings.inputType)}
           value={
             settings.defaultValue != null ? String(settings.defaultValue) : ""
           }
           readOnly={readOnly}
           onChange={(value) =>
-            onChange({ defaultValue: value === "" ? undefined : value })
+            onChange({
+              defaultValue: parseDefaultValue(value, settings.fieldType),
+            })
           }
         />
       </TitledSection>
@@ -157,15 +160,35 @@ export function ActionFieldDetails({
             onChange({ hidden: !event.currentTarget.checked })
           }
         />
+        {isHiddenWithoutDefault && (
+          <Alert color="warning" icon={<Icon name="warning" />}>
+            {t`Your action has a hidden required field with no default value. There's a good chance this will cause the action to fail.`}
+          </Alert>
+        )}
       </TitledSection>
     </Stack>
   );
+}
+
+function parseDefaultValue(
+  value: string,
+  fieldType: FieldType,
+): FieldSettings["defaultValue"] {
+  if (value.trim() === "") {
+    return undefined;
+  }
+  if (fieldType === "number") {
+    const number = Number(value);
+    return Number.isFinite(number) ? number : undefined;
+  }
+  return value;
 }
 
 type BlurInputProps = {
   label: string;
   description?: string;
   placeholder?: string;
+  type?: string;
   value: string;
   readOnly: boolean;
   onChange: (value: string) => void;

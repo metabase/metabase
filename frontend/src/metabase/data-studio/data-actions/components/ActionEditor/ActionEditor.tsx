@@ -33,7 +33,6 @@ export function ActionEditor({
   const uiOptions = useMemo(
     (): QueryEditorUiOptions => ({
       readOnly,
-      canChangeDatabase: !readOnly,
       hidePreview: true,
       hideRunButton: true,
       hidePreviewQueryButton: true,

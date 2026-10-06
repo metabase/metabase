@@ -9,8 +9,10 @@ import * as Urls from "metabase/urls";
 import type { WritebackQueryAction } from "metabase-types/api";
 
 import { ActionHeader } from "../../components/ActionHeader";
+import { useActionDatabases } from "../../hooks/use-action-databases";
 import { useActionFields } from "../../hooks/use-action-fields";
 import { useRouteAction } from "../../hooks/use-route-action";
+import { canEditActionQuery } from "../../utils";
 
 import { ActionFieldDetails } from "./ActionFieldDetails";
 import { ActionFieldList } from "./ActionFieldList";
@@ -22,25 +24,44 @@ export function ActionFieldsPage() {
     isLoading: isLoadingAction,
     error: actionError,
   } = useRouteAction();
-  if (isLoadingAction || actionError != null || action == null) {
+  const {
+    databases,
+    isLoading: isLoadingDatabases,
+    error: databasesError,
+  } = useActionDatabases();
+  const isLoading = isLoadingAction || isLoadingDatabases;
+  const error = actionError ?? databasesError;
+
+  if (isLoading || error != null || action == null) {
     return (
       <Center h="100%">
-        <LoadingAndErrorWrapper loading={isLoadingAction} error={actionError} />
+        <LoadingAndErrorWrapper loading={isLoading} error={error} />
       </Center>
     );
   }
 
   const readOnly = !action.can_write;
 
-  return <ActionFieldsPageBody action={action} readOnly={readOnly} />;
+  return (
+    <ActionFieldsPageBody
+      action={action}
+      readOnly={readOnly}
+      canChangeFieldType={canEditActionQuery(action, databases)}
+    />
+  );
 }
 
 type ActionFieldsPageBodyProps = {
   action: WritebackQueryAction;
   readOnly: boolean;
+  canChangeFieldType: boolean;
 };
 
-function ActionFieldsPageBody({ action, readOnly }: ActionFieldsPageBodyProps) {
+function ActionFieldsPageBody({
+  action,
+  readOnly,
+  canChangeFieldType,
+}: ActionFieldsPageBodyProps) {
   const { fieldId } = useParams<{ fieldId?: string }>();
   const { fields, updateField, reorderFields } = useActionFields(action);
   const field = fields.find((field) => field.parameter.id === fieldId);
@@ -100,6 +121,7 @@ function ActionFieldsPageBody({ action, readOnly }: ActionFieldsPageBodyProps) {
               key={field.parameter.id}
               field={field}
               readOnly={readOnly}
+              canChangeFieldType={canChangeFieldType}
               onChange={(patch) => updateField(field.parameter.id, patch)}
             />
           </Stack>
