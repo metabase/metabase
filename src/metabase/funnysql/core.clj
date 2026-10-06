@@ -787,10 +787,7 @@
 (defn- current-timestamp! [context]
   (append-sql! context "current_timestamp"))
 
-(defn- lift! [x context]
-  (object! x context))
-
-(defn- over! [[expr m :as _args] context]
+(defn- over! [[expr m] context]
   (compile! expr context)
   (append-sql! context " OVER (")
   (when-let [m (not-empty (select-keys m [:order-by :partition-by]))]
@@ -953,7 +950,7 @@
     :exists            (-exists! "EXISTS " (first args) context)
     :in                (-in! f args context)
     :inline            (inline! (first args) context)
-    :lift              (lift! (first args) context)
+    :lift              (object! (first args) context)
     :not               (not! args context)
     :not-exists        (-exists! "NOT EXISTS " (first args) context)
     :not-in            (-in! f args context)
