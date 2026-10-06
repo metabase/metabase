@@ -86,6 +86,7 @@
       "anthropic/claude-sonnet-5-5"         1000000
       "anthropic/claude-sonnet-5"           1000000
       "anthropic/claude-sonnet-4-6"         1000000
+      "anthropic/claude-haiku-4-5"           200000
       "anthropic/claude-haiku-4-5@20251001"  200000
       "anthropic/claude-unknown"            nil)))
 
@@ -411,8 +412,13 @@
                                   self.core/reducible-with-api-errors (fn [r _ _] r)
                                   debug/capture-stream                (fn [r _] r)
                                   http/request                        (fn [req] {:body req})]
+        ;; TODO (Paolo 2026-10-06) -- revisit once https://github.com/metabase/metabase/pull/82436 is merged. It sends
+        ;; one flat max_tokens for Metabot chat, so these per-model ceilings may no longer reach the request body.
         (doseq [[model max-tokens] {"anthropic/claude-sonnet-4-6"          128000
                                     "anthropic/claude-fable-5"             128000
+                                    "anthropic/claude-haiku-4-5"            64000
+                                    ;; an undated alias reads its dated row's ceiling, which is below the default
+                                    "anthropic/claude-opus-4-1"             32000
                                     "anthropic/claude-haiku-4-5@20251001"   64000}]
           (testing model
             (is (= max-tokens

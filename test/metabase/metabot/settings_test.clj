@@ -406,8 +406,8 @@
     (testing "accepts a publisher-qualified model, or a Model Garden endpoint"
       (mt/with-temporary-setting-values [llm-metabot-provider "google/google/gemini-3.5-flash"]
         (is (= "google/google/gemini-3.5-flash" (metabot.settings/llm-metabot-provider))))
-      (mt/with-temporary-setting-values [llm-metabot-provider "google/anthropic/claude-haiku-4-5@20251001"]
-        (is (= "google/anthropic/claude-haiku-4-5@20251001" (metabot.settings/llm-metabot-provider))))
+      (mt/with-temporary-setting-values [llm-metabot-provider "google/anthropic/claude-haiku-4-5"]
+        (is (= "google/anthropic/claude-haiku-4-5" (metabot.settings/llm-metabot-provider))))
       (mt/with-temporary-setting-values [llm-metabot-provider "google/endpoints/1234567890123456789"]
         (is (= "google/endpoints/1234567890123456789" (metabot.settings/llm-metabot-provider)))))))
 
@@ -522,6 +522,21 @@
                                  (mt/user-http-request :crowberto :get 200 "setting"))]
                 (is (= "openrouter/qwen/qwen3.8-max-0902" (get values "llm-metabot-provider")))
                 (is (= "openrouter/qwen/qwen3.8-max-0902" (get values "llm-mini-model")))))))))))
+
+(deftest google-dated-claude-haiku-reads-as-undated-test
+  (testing "a saved Google selection of the dated Claude Haiku 4.5 reads as the undated id the picker offers"
+    (with-connections [configured-google]
+      (with-selected-model "google/anthropic/claude-haiku-4-5@20251001"
+        (mt/with-temp-env-var-value! [mb-llm-mini-model nil]
+          (mt/with-temporary-raw-setting-values [llm-mini-model "google/anthropic/claude-haiku-4-5@20251001"]
+            (is (= "google/anthropic/claude-haiku-4-5" (metabot.settings/llm-metabot-provider)))
+            (is (= "google/anthropic/claude-haiku-4-5" (metabot.settings/llm-mini-model)))
+            (testing "including through the settings API the picker loads"
+              (let [values (into {}
+                                 (map (juxt :key :value))
+                                 (mt/user-http-request :crowberto :get 200 "setting"))]
+                (is (= "google/anthropic/claude-haiku-4-5" (get values "llm-metabot-provider")))
+                (is (= "google/anthropic/claude-haiku-4-5" (get values "llm-mini-model")))))))))))
 
 (deftest retired-model-is-stored-as-its-successor-test
   (testing "writing a retired OpenRouter id stores the model now serving it, so saved values converge"
