@@ -24,6 +24,16 @@
    :id
    {:default nil}))
 
+(defenterprise hydrate-router-anonymous-access-granted
+  "Enterprise implementation. Hydrates the router's anonymous-access grant on the databases"
+  :feature :database-routing
+  [k databases]
+  (mi/instances-with-hydrated-data
+   databases k
+   (fn [] (database-routing.db/router-anonymous-access-grants-by-database (map :id databases)))
+   :id
+   {:default nil}))
+
 (defenterprise hash-input-for-database-routing
   "Enterprise version. Returns a hash input that will be used for fields subject to database routing.
   The destination is nil while the `:database-routing` feature is unavailable."

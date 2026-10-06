@@ -78,6 +78,8 @@ export const DatabaseRoutingSection = ({
     [enabled],
   );
 
+  const anonymousAccessGranted = !!database.router_anonymous_access_granted;
+
   const [updateRouterDatabase, { error }] = useUpdateRouterDatabaseMutation();
   const userAttrsReq = useListUserAttributesQuery(
     shouldHideSection ? skipToken : undefined,
@@ -109,6 +111,22 @@ export const DatabaseRoutingSection = ({
     } else {
       sendToast({ message: t`Database routing updated` });
     }
+  };
+
+  const handleAnonymousAccessChange = async (granted: boolean) => {
+    if (!userAttribute) {
+      return;
+    }
+    await updateRouterDatabase({
+      id: database.id,
+      user_attribute: userAttribute,
+      anonymous_access_granted: granted,
+    });
+    sendToast({
+      message: granted
+        ? t`Anonymous access allowed`
+        : t`Anonymous access disallowed`,
+    });
   };
 
   const handleToggle = async (enabled: boolean) => {
@@ -226,6 +244,43 @@ export const DatabaseRoutingSection = ({
               </Tooltip>
             </Flex>
             {errMsg && <Error>{errMsg}</Error>}
+          </Stack>
+
+          <Stack mb="xxl" gap="sm">
+            <Flex justify="space-between" align="center" gap="sm">
+              <Box>
+                <Label htmlFor="db-routing-anonymous-access">
+                  {t`Allow anonymous access`}
+                </Label>
+                <Text
+                  c="text-secondary"
+                  mt="xxs"
+                  style={{ textWrap: "pretty" }}
+                >
+                  {t`Anonymous visitors have no user attribute, so they can't be routed to a destination database. Allow their queries to run against this database instead.`}
+                </Text>
+              </Box>
+              <Tooltip
+                label={t`Please choose a user attribute first`}
+                disabled={hasDbRoutingEnabled(database)}
+                withArrow
+              >
+                <Box data-testid="db-routing-anonymous-access-wrapper">
+                  <Switch
+                    id="db-routing-anonymous-access"
+                    checked={anonymousAccessGranted}
+                    disabled={
+                      !isAdmin ||
+                      !!disabledFeatMsg ||
+                      !hasDbRoutingEnabled(database)
+                    }
+                    onChange={(e) =>
+                      handleAnonymousAccessChange(e.currentTarget.checked)
+                    }
+                  />
+                </Box>
+              </Tooltip>
+            </Flex>
           </Stack>
 
           <Flex justify="space-between" align="center" mih="2.5rem">

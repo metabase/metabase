@@ -311,7 +311,7 @@
       include-schemas?             add-schemas
       can-query?                   (#(filter mi/can-query? %))
       true                         add-can-upload-to-dbs
-      true                         (t2/hydrate :router_user_attribute)
+      true                         (t2/hydrate :router_user_attribute :router_anonymous_access_granted)
       include-editable-data-model? filter-databases-by-data-model-perms
       exclude-uneditable-details?  (#(filter (some-fn :is_attached_dwh mi/can-write?) %))
       include-saved-questions-db?  (add-saved-questions-virtual-database :include-tables? include-saved-questions-tables?)
@@ -457,7 +457,7 @@
   "Get a single Database with `id`."
   [db {:keys [include include-editable-data-model?]}]
   (cond-> db
-    true                         (t2/hydrate :router_user_attribute)
+    true                         (t2/hydrate :router_user_attribute :router_anonymous_access_granted)
     true                         add-expanded-schedules
     true                         (get-database-hydrate-include include)
     true                         add-can-upload
