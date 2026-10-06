@@ -404,3 +404,30 @@
         (is (=? {:status :success :outcome {:kind "pull-skipped"}} (import-at! src "v0")))
         (testing "a pull that would load is still refused"
           (is (= :error (:status (import-at! src "v0" :force? true)))))))))
+
+(deftest pull-refuses-two-apps-that-name-one-collection-test
+  (with-data-apps-sync
+    (let [shared (data-apps.tu/collection-entity-id "shared")
+          app    (fn [slug] (data-apps.tu/app-files slug {:name slug :path "index.js" :bundle "B" :collection shared}))
+          src    (test-helpers/versioned-source :trees {"v0" (merge (app "first") (app "second"))} :current "v0")
+          result (import-at! src "v0" :force? true)]
+      (is (= :error (:status result)))
+      (is (str/includes? (:message result) "data_apps/first/data_app.yaml"))
+      (is (str/includes? (:message result) "data_apps/second/data_app.yaml"))
+      (is (not (t2/exists? :model/DataApp :name [:in ["first" "second"]])) "nothing loaded"))))
+
+(deftest pull-refuses-two-apps-that-define-one-card-test
+  (with-data-apps-sync
+    (let [app    (fn [slug]
+                   (let [collection (data-apps.tu/collection-entity-id slug)]
+                     (data-apps.tu/app-files slug {:name slug :path "index.js" :bundle "B" :collection collection
+                                                   :resources (data-apps.tu/build-resources
+                                                               collection
+                                                               [{:entity_id question-eid :name "VenuesList" :query (venues-query)}]
+                                                               [])})))
+          src    (test-helpers/versioned-source :trees {"v0" (merge (app "first") (app "second"))} :current "v0")
+          result (import-at! src "v0" :force? true)]
+      (is (= :error (:status result)))
+      (is (str/includes? (:message result) "data_apps/first/resources/cards/"))
+      (is (str/includes? (:message result) "data_apps/second/resources/cards/"))
+      (is (not (t2/exists? :model/Card :entity_id question-eid)) "nothing loaded"))))

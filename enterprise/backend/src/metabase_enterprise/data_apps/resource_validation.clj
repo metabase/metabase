@@ -257,17 +257,38 @@
            (external-dependency-problems resources)
            (mapcat missing-table-and-field-problems resources)))))))
 
+(defn- shared-collection-problems
+  "Two apps can't name one collection: only one of them would own it."
+  [files]
+  (for [[collection-entity-id manifests] (group-by (comp :collection :entity)
+                                                   (filter #(re-matches #"data_apps/[^/]+/data_app\.yaml" (:path %)) files))
+        :when (and collection-entity-id (< 1 (count manifests)))
+        {:keys [path]} manifests]
+    (problem path (tru "{0} names collection {1}, which another data app also names." path collection-entity-id))))
+
+(defn- cross-app-duplicate-problems
+  "Two apps can't define one card or action: the second file loaded would take it from the first app."
+  [files]
+  (for [[[model entity-id] dups] (group-by (fn [{:keys [entity]}] ((juxt :model :id) (last (:serdes/meta entity))))
+                                           (filter #(re-find #"^data_apps/[^/]+/resources/" (:path %)) files))
+        :when (and entity-id (< 1 (count (distinct (map #(second (str/split (:path %) #"/")) dups)))))]
+    (problem (:path (first dups))
+             (tru "{0} {1} is defined by more than one data app: {2}." model entity-id (str/join ", " (sort (map :path dups)))))))
+
 (defn problems
   "The problems with the data app entity files `files` (`{:path :entity}`, every entity file under `data_apps/`:
   manifests and resources), each as `{:file :message}`. An app whose resource files have a problem can't be loaded
   as the author meant it, so an import that sees one fails naming the file."
   [files]
   (let [by-dir (group-by (fn [{:keys [path]}] (second (str/split path #"/"))) files)]
-    (mapcat (fn [[dir dir-files]]
-              (let [prefix    (str "data_apps/" dir "/")
-                    manifest  (some #(when (= (:path %) (str prefix "data_app.yaml")) %) dir-files)
-                    resources (for [{:keys [path] :as file} dir-files
-                                    :when (str/starts-with? path (str prefix "resources/"))]
-                                (assoc file :relative-path (subs path (count (str prefix "resources/")))))]
-                (app-problems dir manifest resources)))
-            by-dir)))
+    (concat
+     (shared-collection-problems files)
+     (cross-app-duplicate-problems files)
+     (mapcat (fn [[dir dir-files]]
+               (let [prefix    (str "data_apps/" dir "/")
+                     manifest  (some #(when (= (:path %) (str prefix "data_app.yaml")) %) dir-files)
+                     resources (for [{:keys [path] :as file} dir-files
+                                     :when (str/starts-with? path (str prefix "resources/"))]
+                                 (assoc file :relative-path (subs path (count (str prefix "resources/")))))]
+                 (app-problems dir manifest resources)))
+             by-dir))))
