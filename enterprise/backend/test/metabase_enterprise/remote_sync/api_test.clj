@@ -104,8 +104,8 @@
                                          remote-sync-branch "main"
                                          remote-sync-type   :read-only]
         (mt/with-dynamic-fn-redefs [source.git/branches (fn [{url :remote-url token :token}]
-                                                                 (reset! captured {:url url :token token})
-                                                                 ["main"])]
+                                                          (reset! captured {:url url :token token})
+                                                          ["main"])]
           (mt/user-http-request :crowberto :post 200 "ee/remote-sync/test-connection"
                                 {:remote-sync-url   "https://github.com/other/repo.git"
                                  :remote-sync-token "new-token"})
@@ -120,8 +120,8 @@
                                          remote-sync-branch "main"
                                          remote-sync-type   :read-only]
         (mt/with-dynamic-fn-redefs [source.git/branches (fn [{token :token}]
-                                                                 (reset! captured token)
-                                                                 ["main"])]
+                                                          (reset! captured token)
+                                                          ["main"])]
           (mt/user-http-request :crowberto :post 200 "ee/remote-sync/test-connection"
                                 {:remote-sync-token (setting/obfuscate-value full-token)})
           (is (= full-token @captured)
@@ -2444,6 +2444,52 @@
                 "no new branch should be pushed to the source when the guard fires")
             (is (= tasks-before (t2/count :model/RemoteSyncTask))
                 "no NEW RemoteSyncTask row should be created when the guard fires")))))))
+
+(defn- forget-clone!
+  "Closes and removes the cached Git instance of `url` and deletes its clone directory."
+  [url]
+  (let [^java.io.File path (#'source.git/repo-path {:remote-url url})]
+    (some-> ^org.eclipse.jgit.api.Git (get @@#'source.git/jgit (.getPath path)) .close)
+    (swap! @#'source.git/jgit dissoc (.getPath path))
+    (org.apache.commons.io.FileUtils/deleteQuietly path)))
+
+(deftest create-branch-and-stash-refused-by-the-task-guard-do-not-clone-test
+  (testing "POST /api/ee/remote-sync/create-branch and /stash, refused because a task runs, do not clone the repository"
+    (doseq [[endpoint body] [["create-branch" {:name "feature-x"}]
+                             ["stash"         {:new_branch "stash-branch" :message "stash msg"}]]]
+      (testing endpoint
+        (mt/with-temp-dir [remote-dir nil]
+          (let [url                 (test-helpers/init-local-git-remote! remote-dir :branches ["develop"])
+                ^java.io.File clone (#'source.git/repo-path {:remote-url url})]
+            (try
+              (mt/with-temp [:model/RemoteSyncTask _ {:sync_task_type "import"
+                                                      :initiated_by   (mt/user->id :rasta)
+                                                      :started_at     (t/offset-date-time)
+                                                      :progress       0.0}]
+                (mt/with-temporary-setting-values [remote-sync-url    url
+                                                   remote-sync-token  nil
+                                                   remote-sync-branch "master"
+                                                   remote-sync-type   :read-write]
+                  (is (not (.exists clone)) "Precondition: no local clone yet")
+                  (is (re-find #"Remote sync task in progress"
+                               (str (mt/user-http-request :crowberto :post 400 (str "ee/remote-sync/" endpoint) body))))
+                  (is (not (.exists clone)) "A refused request must not clone the repository")))
+              (finally
+                (forget-clone! url)))))))))
+
+(deftest create-branch-and-stash-without-url-test
+  (testing "POST /api/ee/remote-sync/create-branch and /stash return 400 when no URL is configured"
+    (mt/with-temporary-setting-values [remote-sync-url    nil
+                                       remote-sync-token  nil
+                                       remote-sync-branch "main"
+                                       remote-sync-type   :read-write]
+      (is (= "Source not configured"
+             (mt/user-http-request :crowberto :post 400 "ee/remote-sync/create-branch"
+                                   {:name "feature-x"})))
+      (is (= "Source not configured"
+             (mt/user-http-request :crowberto :post 400 "ee/remote-sync/stash"
+                                   {:new_branch "stash-branch"
+                                    :message    "stash msg"}))))))
 
 (deftest moving-an-action-out-from-under-a-synced-dashboard-test
   (testing "an action a synced dashboard uses cannot move out of the synced collections"
