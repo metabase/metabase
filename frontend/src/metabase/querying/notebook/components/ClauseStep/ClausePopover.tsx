@@ -1,5 +1,5 @@
 import { useDndContext } from "@dnd-kit/core";
-import { useCallback, useLayoutEffect, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useState } from "react";
 
 import { Box, Popover } from "metabase/ui";
 import { PreventPopoverExitProvider } from "metabase/ui/components/utils/PreventPopoverExit";
@@ -23,6 +23,7 @@ export function ClausePopover({
 }: ClausePopoverProps) {
   const [isOpen, setIsOpen] = useState(isInitiallyOpen);
   const { active } = useDndContext();
+  const [hasSettled, setHasSettled] = useState(false);
 
   const handleOpen = useCallback(() => {
     setIsOpen(true);
@@ -42,6 +43,22 @@ export function ClausePopover({
     }
   }, [active]);
 
+  useEffect(() => {
+    if (!isOpen) {
+      setHasSettled(false);
+      return;
+    }
+
+    setHasSettled(false);
+    // Let Mantine flip placement before locking (first open).
+    const id = window.setTimeout(() => setHasSettled(true), 100);
+
+    return () => {
+      window.clearTimeout(id);
+      setHasSettled(false);
+    };
+  }, [isOpen]);
+
   const content = renderPopover(handleClose);
   const hasPopover = content !== null && !disabled;
 
@@ -55,6 +72,7 @@ export function ClausePopover({
         onChange={handleChange}
         classNames={{ dropdown: S.dropdown }}
         disabled={!hasPopover}
+        preventPositionChangeWhenVisible={hasSettled}
       >
         <Popover.Target>
           {renderItem(disabled ? noop : handleOpen, hasPopover)}
