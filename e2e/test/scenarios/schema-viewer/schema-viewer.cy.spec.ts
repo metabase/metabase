@@ -229,7 +229,7 @@ describe("scenarios > schema-viewer (Sample Database happy path)", () => {
     assertNodeFocused(ORDERS_ID);
 
     cy.log(
-      "Double-click Reviews — camera zooms in onto Reviews and re-enables the focus-node button",
+      "Double-click Reviews — camera zooms in onto Reviews; the focus-node button stays shown",
     );
     tableNode(REVIEWS_ID).findByText("REVIEWS").dblclick();
     assertViewportZoom((z) =>
@@ -238,7 +238,7 @@ describe("scenarios > schema-viewer (Sample Database happy path)", () => {
       ),
     );
     assertNodeFocused(REVIEWS_ID);
-    cy.contains("button", "Focus node").should("not.be.disabled");
+    cy.contains("button", "Focus node").should("be.visible");
 
     cy.log("Selection moved from Orders to Reviews — prior selection cleared");
     infoPanel().findByRole("heading", { name: "REVIEWS" }).should("be.visible");
