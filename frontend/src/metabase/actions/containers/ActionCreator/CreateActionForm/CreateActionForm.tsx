@@ -4,7 +4,6 @@ import * as Yup from "yup";
 
 import { FormModelPicker } from "metabase/actions/containers/ActionCreator/FormModelPicker";
 import type { CreateQueryActionParams } from "metabase/actions/types";
-import { FormFooter } from "metabase/common/components/FormFooter";
 import {
   Form,
   FormErrorMessage,
@@ -13,7 +12,7 @@ import {
   FormTextInput,
   FormTextarea,
 } from "metabase/forms";
-import { Button } from "metabase/ui";
+import { Button, Modal, Stack } from "metabase/ui";
 import * as Errors from "metabase/utils/errors";
 
 const ACTION_SCHEMA = Yup.object({
@@ -60,24 +59,28 @@ function CreateActionForm({
     >
       {({ isValid }) => (
         <Form disabled={!isValid} data-testid="create-action-form">
-          <FormTextInput
-            name="name"
-            label={t`Name`}
-            placeholder={t`My new fantastic action`}
-            data-autofocus
-            mb="lg"
-          />
-          <FormTextarea
-            name="description"
-            label={t`Description`}
-            placeholder={t`It's optional but oh, so helpful`}
-            minRows={5}
-            mb="lg"
-            nullable
-          />
-          <FormModelPicker name="model_id" title={t`Model it's saved in`} />
-          <FormFooter>
-            <FormErrorMessage />
+          <Stack gap="xl">
+            <FormTextInput
+              name="name"
+              label={t`Name`}
+              placeholder={t`My new fantastic action`}
+              data-autofocus
+            />
+            <FormTextarea
+              name="description"
+              label={t`Description`}
+              placeholder={t`It's optional but oh, so helpful`}
+              minRows={5}
+              nullable
+            />
+            <FormModelPicker
+              name="model_id"
+              title={t`Model it's saved in`}
+              mb={0}
+            />
+          </Stack>
+          <Modal.Footer>
+            <FormErrorMessage flex={1} />
             {!!onCancel && (
               <Button type="button" onClick={onCancel}>{t`Cancel`}</Button>
             )}
@@ -86,7 +89,7 @@ function CreateActionForm({
               disabled={!isValid}
               variant="filled"
             />
-          </FormFooter>
+          </Modal.Footer>
         </Form>
       )}
     </FormProvider>

@@ -6,7 +6,6 @@ import * as Yup from "yup";
 import { FormCollectionAndDashboardPicker } from "metabase/common/collections/containers/FormCollectionAndDashboardPicker";
 import { getEntityTypeFromCardType } from "metabase/common/collections/utils";
 import { FormDashboardTabSelect } from "metabase/common/components/FormDashboardTabSelect";
-import { FormFooter } from "metabase/common/components/FormFooter";
 import type { OmniPickerItem } from "metabase/common/components/Pickers";
 import { QUESTION_NAME_MAX_LENGTH } from "metabase/common/utils/card";
 import {
@@ -17,7 +16,7 @@ import {
   FormTextInput,
   FormTextarea,
 } from "metabase/forms";
-import { Button, Stack } from "metabase/ui";
+import { Button, Modal, Stack } from "metabase/ui";
 import * as Errors from "metabase/utils/errors";
 import type {
   Card,
@@ -110,7 +109,7 @@ export const CopyCardForm = ({
     >
       {({ values }) => (
         <Form>
-          <Stack gap="lg" mb="lg">
+          <Stack gap="xl">
             <FormTextInput
               name="name"
               label={t`Name`}
@@ -124,26 +123,23 @@ export const CopyCardForm = ({
               nullable
               minRows={4}
             />
-            <div>
-              <FormCollectionAndDashboardPicker
-                collectionIdFieldName="collection_id"
-                dashboardIdFieldName="dashboard_id"
-                dashboardTabIdFieldName="dashboard_tab_id"
-                title={t`Where do you want to save this?`}
-                entityType={
-                  model ? getEntityTypeFromCardType(model) : undefined
-                }
-                collectionPickerModalProps={{ models }}
-              />
-              <FormDashboardTabSelect
-                name="dashboard_tab_id"
-                label="Which tab should this go on?"
-                dashboardId={values.dashboard_id}
-              />
-            </div>
+            <FormCollectionAndDashboardPicker
+              collectionIdFieldName="collection_id"
+              dashboardIdFieldName="dashboard_id"
+              dashboardTabIdFieldName="dashboard_tab_id"
+              title={t`Where do you want to save this?`}
+              entityType={model ? getEntityTypeFromCardType(model) : undefined}
+              collectionPickerModalProps={{ models }}
+              mb={0}
+            />
+            <FormDashboardTabSelect
+              name="dashboard_tab_id"
+              label="Which tab should this go on?"
+              dashboardId={values.dashboard_id}
+            />
           </Stack>
-          <FormFooter>
-            <FormErrorMessage inline />
+          <Modal.Footer>
+            <FormErrorMessage flex={1} />
             {!!onCancel && (
               <Button type="button" onClick={onCancel}>{t`Cancel`}</Button>
             )}
@@ -151,7 +147,7 @@ export const CopyCardForm = ({
               label={c(`A verb, not a noun`).t`Duplicate`}
               variant="filled"
             />
-          </FormFooter>
+          </Modal.Footer>
         </Form>
       )}
     </FormProvider>

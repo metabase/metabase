@@ -4,7 +4,7 @@ import { t } from "ttag";
 import { useToast } from "metabase/common/hooks";
 import { useIsSmallScreen } from "metabase/common/hooks/use-is-small-screen";
 import { useSetting } from "metabase/settings";
-import { Button, Flex, Group, Icon, Modal, Stack } from "metabase/ui";
+import { Button, Icon, Modal, Stack } from "metabase/ui";
 
 import { useSendTestNotificationMutation } from "../../api";
 import {
@@ -79,6 +79,7 @@ export function NotificationChannelConfigModal({
 
   return (
     <Modal
+      density="relaxed"
       opened={opened}
       onClose={() => {
         resetConfig();
@@ -88,40 +89,39 @@ export function NotificationChannelConfigModal({
       size="lg"
       fullScreen={isSmallScreen}
     >
-      <Stack gap="lg" mt="lg">
+      <Stack gap="xl">
         <EmailChannelCard isConfigured={isEmailConfigured} />
         <SlackChannelCard isConfigured={isSlackConfigured} />
-        <Flex justify="space-between" gap="lg" mt="lg">
-          <Button
-            variant="subtle"
-            leftSection={<Icon name="mail" />}
-            onClick={handleSendTest}
-            loading={isSendingTest}
-          >
-            {t`Send test notification`}
-          </Button>
-          <Group gap="lg">
-            <Button
-              variant="subtle"
-              color="neutral"
-              onClick={() => {
-                resetConfig();
-                onClose();
-              }}
-            >
-              {t`Cancel`}
-            </Button>
-            <Button
-              variant="filled"
-              onClick={handleSave}
-              loading={isSaving}
-              disabled={!canSave}
-            >
-              {t`Save`}
-            </Button>
-          </Group>
-        </Flex>
       </Stack>
+      <Modal.Footer>
+        <Button
+          variant="subtle"
+          leftSection={<Icon name="mail" />}
+          onClick={handleSendTest}
+          loading={isSendingTest}
+          mr="auto"
+        >
+          {t`Send test notification`}
+        </Button>
+        <Button
+          variant="subtle"
+          color="neutral"
+          onClick={() => {
+            resetConfig();
+            onClose();
+          }}
+        >
+          {t`Cancel`}
+        </Button>
+        <Button
+          variant="filled"
+          onClick={handleSave}
+          loading={isSaving}
+          disabled={!canSave}
+        >
+          {t`Save`}
+        </Button>
+      </Modal.Footer>
     </Modal>
   );
 }

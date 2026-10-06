@@ -9,7 +9,7 @@ import {
   FormSubmitButton,
   FormTextInput,
 } from "metabase/forms";
-import { Button, Group, Modal, Paper, Stack, Text } from "metabase/ui";
+import { Button, Modal, Paper, Stack, Text } from "metabase/ui";
 import type { ApiKey, UpdateApiKeyRequest } from "metabase-types/api";
 
 import {
@@ -42,7 +42,6 @@ const RegenerateKeyModal = ({
   return (
     <Modal
       size="40rem"
-      padding="xxl"
       opened
       onClose={() => setModal("edit")}
       title={t`Regenerate API key`}
@@ -76,14 +75,14 @@ const RegenerateKeyModal = ({
             >
               <Text c="text-secondary">{t`Metabase will replace the existing API key with a new key. You won't be able to recover the old key.`}</Text>
             </Paper>
-            <FormErrorMessage />
-            <Group justify="flex-end">
-              <Button
-                onClick={() => setModal("edit")}
-              >{t`No, don't regenerate`}</Button>
-              <FormSubmitButton variant="filled" label={t`Regenerate`} />
-            </Group>
           </Stack>
+          <Modal.Footer>
+            <FormErrorMessage flex={1} />
+            <Button
+              onClick={() => setModal("edit")}
+            >{t`No, don't regenerate`}</Button>
+            <FormSubmitButton variant="filled" label={t`Regenerate`} />
+          </Modal.Footer>
         </Form>
       </FormProvider>
     </Modal>
@@ -131,7 +130,7 @@ export const EditApiKeyModal = ({
     return (
       <Modal
         size="40rem"
-        padding="xxl"
+        density="relaxed"
         opened
         onClose={onClose}
         title={t`Edit API key`}
@@ -143,7 +142,7 @@ export const EditApiKeyModal = ({
         >
           {({ dirty }) => (
             <Form>
-              <Stack gap="xxl">
+              <Stack gap="xl">
                 <FormTextInput name="name" label={t`Key name`} required />
                 <FormGroupWidget
                   name="group_id"
@@ -163,21 +162,20 @@ export const EditApiKeyModal = ({
                   }}
                   disabled
                 />
-                <FormErrorMessage />
-                <Group justify="space-between">
-                  <Button
-                    onClick={() => setModal("regenerate")}
-                  >{t`Regenerate API key`}</Button>
-                  <Group justify="flex-end">
-                    <Button onClick={onClose}>{t`Cancel`}</Button>
-                    <FormSubmitButton
-                      disabled={!dirty}
-                      variant="filled"
-                      label={t`Save`}
-                    />
-                  </Group>
-                </Group>
               </Stack>
+              <Modal.Footer>
+                <Button
+                  mr="auto"
+                  onClick={() => setModal("regenerate")}
+                >{t`Regenerate API key`}</Button>
+                <FormErrorMessage flex={1} />
+                <Button onClick={onClose}>{t`Cancel`}</Button>
+                <FormSubmitButton
+                  disabled={!dirty}
+                  variant="filled"
+                  label={t`Save`}
+                />
+              </Modal.Footer>
             </Form>
           )}
         </FormProvider>

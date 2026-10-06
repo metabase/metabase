@@ -14,19 +14,12 @@ import {
   FormTextInput,
   FormTextarea,
 } from "metabase/forms";
-import { Button, Radio, Stack, rem } from "metabase/ui";
+import { Button, Radio, Stack } from "metabase/ui";
 
 import type { OmniPickerItem } from "../Pickers";
 
 import S from "./SaveQuestionForm.module.css";
 import { useSaveQuestionContext } from "./context";
-
-const labelStyles = {
-  fontWeight: 900,
-  fontSize: "0.77rem",
-  color: "var(--mb-color-text-secondary)",
-  marginBottom: rem("7px"),
-};
 
 export const SaveQuestionForm = ({
   onCancel,
@@ -65,18 +58,7 @@ export const SaveQuestionForm = ({
   return (
     <Form>
       {showSaveType && (
-        <FormRadioGroup
-          name="saveType"
-          label={title}
-          styles={{
-            label: {
-              fontWeight: 900,
-              fontSize: "0.77rem",
-              color: "var(--mb-color-text-secondary)",
-              marginBottom: rem("7px"),
-            },
-          }}
-        >
+        <FormRadioGroup name="saveType" label={title}>
           <Stack gap="sm" mb="lg">
             <Radio
               name={overwriteOptionName}
@@ -108,7 +90,6 @@ export const SaveQuestionForm = ({
             name="name"
             label={t`Name`}
             placeholder={nameInputPlaceholder}
-            styles={{ label: labelStyles }}
           />
 
           <FormTextarea
@@ -116,7 +97,6 @@ export const SaveQuestionForm = ({
             label={t`Description`}
             minRows={4}
             placeholder={t`It's optional but oh, so helpful`}
-            styles={{ label: labelStyles }}
           />
 
           <div>
@@ -137,12 +117,6 @@ export const SaveQuestionForm = ({
               label={c("'this' refers to the question that's being saved")
                 .t`Which tab should this go on?`}
               dashboardId={values.dashboard_id}
-              styles={{
-                label: {
-                  ...labelStyles,
-                  marginBottom: rem("3px"),
-                },
-              }}
             />
           </div>
         </Stack>

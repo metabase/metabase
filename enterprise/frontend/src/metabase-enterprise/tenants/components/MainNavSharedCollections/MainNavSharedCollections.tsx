@@ -162,6 +162,7 @@ export const MainNavSharedCollections = ({
         </SidebarSection>
       )}
       <Modal
+        density="relaxed"
         opened={modalOpen}
         title={t`New shared collection`}
         onClose={() => setModalOpen(false)}

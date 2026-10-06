@@ -1,7 +1,6 @@
 import { t } from "ttag";
 import * as Yup from "yup";
 
-import { FormFooter } from "metabase/common/components/FormFooter";
 import {
   Form,
   FormErrorMessage,
@@ -9,7 +8,7 @@ import {
   FormSubmitButton,
   FormTextInput,
 } from "metabase/forms";
-import { Button } from "metabase/ui";
+import { Button, Modal, Stack } from "metabase/ui";
 import * as Errors from "metabase/utils/errors";
 import { LoginAttributesWidget } from "metabase-enterprise/sandboxes/components/LoginAttributesWidget/LoginAttributesWidget";
 import type { Tenant } from "metabase-types/api";
@@ -61,49 +60,51 @@ export const TenantForm = ({
       onSubmit={onSubmit}
     >
       {({ values, setFieldValue, dirty }) => (
-        <Form disabled={!dirty} mt="sm">
-          <FormTextInput
-            name="name"
-            title={t`Give this tenant a name`}
-            label={t`Give this tenant a name`}
-            description={t`This will be visible to users assigned to this tenant.`}
-            mb="lg"
-            placeholder="A wonderful tenant"
-            onChange={(e) => {
-              const value = e.target.value;
-              setFieldValue("name", value);
+        <Form disabled={!dirty}>
+          <Stack gap="xl">
+            <FormTextInput
+              name="name"
+              title={t`Give this tenant a name`}
+              label={t`Give this tenant a name`}
+              description={t`This will be visible to users assigned to this tenant.`}
+              placeholder="A wonderful tenant"
+              onChange={(e) => {
+                const value = e.target.value;
+                setFieldValue("name", value);
 
-              const isSlugModified =
-                slugify(values.name ?? "") !== (values.slug ?? "");
-              const shouldAutoSetSlug = !initialValues.slug && !isSlugModified;
-              if (shouldAutoSetSlug) {
-                setFieldValue("slug", slugify(value));
-              }
-            }}
-          />
-          <FormTextInput
-            name="slug"
-            title={t`Slug for this tenant`}
-            label={t`Slug for this tenant`}
-            description={t`This can’t be changed later, so choose wisely.`}
-            placeholder="permanent-tenant-identifier"
-            disabled={!!initialValues.slug}
-            mb="xxl"
-          />
-          <LoginAttributesWidget
-            name="attributes"
-            title={t`Default attributes`}
-            description={t`Attributes to be applied to all users in this tenant.`}
-          />
-          <FormFooter>
-            <FormErrorMessage inline />
+                const isSlugModified =
+                  slugify(values.name ?? "") !== (values.slug ?? "");
+                const shouldAutoSetSlug =
+                  !initialValues.slug && !isSlugModified;
+                if (shouldAutoSetSlug) {
+                  setFieldValue("slug", slugify(value));
+                }
+              }}
+            />
+            <FormTextInput
+              name="slug"
+              title={t`Slug for this tenant`}
+              label={t`Slug for this tenant`}
+              description={t`This can’t be changed later, so choose wisely.`}
+              placeholder="permanent-tenant-identifier"
+              disabled={!!initialValues.slug}
+            />
+            <LoginAttributesWidget
+              name="attributes"
+              title={t`Default attributes`}
+              description={t`Attributes to be applied to all users in this tenant.`}
+              mb={0}
+            />
+          </Stack>
+          <Modal.Footer>
+            <FormErrorMessage flex={1} />
             <Button type="button" onClick={onCancel}>{t`Cancel`}</Button>
             <FormSubmitButton
               label={submitText}
               disabled={!dirty}
               variant="filled"
             />
-          </FormFooter>
+          </Modal.Footer>
         </Form>
       )}
     </FormProvider>

@@ -3,7 +3,7 @@ import { t } from "ttag";
 
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { Button, Flex, Modal, type ModalProps, Stack, Text } from "metabase/ui";
+import { Button, Modal, type ModalProps, Stack, Text } from "metabase/ui";
 import type { useRegenerateScimTokenMutation } from "metabase-enterprise/api";
 
 import { CopyScimInput } from "./ScimInputs";
@@ -26,7 +26,6 @@ export const UserProvisioningFirstEnabledModal = ({
 }: UserProvisioningFirstEnabledModalProps) => {
   return (
     <Modal
-      padding="2rem"
       size="35rem"
       opened={opened}
       onClose={onClose}
@@ -48,13 +47,12 @@ export const UserProvisioningFirstEnabledModal = ({
         <ScimTextWarning>
           {t`Please copy the token and save it somewhere safe. For security reasons, we can't show the token to you again.`}
         </ScimTextWarning>
-
-        <Flex justify="end">
-          <Button variant="filled" onClick={onClose}>
-            {t`Done`}
-          </Button>
-        </Flex>
       </Stack>
+      <Modal.Footer>
+        <Button variant="filled" onClick={onClose}>
+          {t`Done`}
+        </Button>
+      </Modal.Footer>
     </Modal>
   );
 };
@@ -110,35 +108,32 @@ export const UserProvisioningRegenerateTokenModal = ({
   return (
     <Modal
       size="35rem"
-      padding="2rem"
       opened={opened}
       onClose={onClose}
       title={t`Copy and save the SCIM token`}
     >
-      <Stack gap="xl" mt="0.5rem">
-        <LoadingAndErrorWrapper
-          error={regenerateTokenReq.error}
-          loading={regenerateTokenReq.isLoading}
-        >
-          <CopyScimInput
-            label={t`SCIM token`}
-            value={scimTokenInputText}
-            disabled={false}
-          />
-          <ScimTextWarning>
-            {t`Please copy the token and save it somewhere safe. For security reasons, we can't show the token to you again.`}
-          </ScimTextWarning>
-        </LoadingAndErrorWrapper>
-        <Flex justify="end">
-          {!regenerateTokenReq.error ? (
-            <Button variant="filled" onClick={onClose}>
-              {t`Done`}
-            </Button>
-          ) : (
-            <Button onClick={onClose}>{t`Cancel`}</Button>
-          )}
-        </Flex>
-      </Stack>
+      <LoadingAndErrorWrapper
+        error={regenerateTokenReq.error}
+        loading={regenerateTokenReq.isLoading}
+      >
+        <CopyScimInput
+          label={t`SCIM token`}
+          value={scimTokenInputText}
+          disabled={false}
+        />
+        <ScimTextWarning>
+          {t`Please copy the token and save it somewhere safe. For security reasons, we can't show the token to you again.`}
+        </ScimTextWarning>
+      </LoadingAndErrorWrapper>
+      <Modal.Footer>
+        {!regenerateTokenReq.error ? (
+          <Button variant="filled" onClick={onClose}>
+            {t`Done`}
+          </Button>
+        ) : (
+          <Button onClick={onClose}>{t`Cancel`}</Button>
+        )}
+      </Modal.Footer>
     </Modal>
   );
 };

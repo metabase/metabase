@@ -125,15 +125,15 @@ export const QuestionMoveConfirmModal = ({
         return (
           <>
             <Text>{t`This question currently appears in a dashboard that you don't have permission to edit.`}</Text>
-            <Flex justify="end" gap="1rem" mt="1rem">
+            <Modal.Footer>
               <Button onClick={onClose}>{t`Okay`}</Button>
-            </Flex>
+            </Modal.Footer>
           </>
         );
       } else {
         return (
           <>
-            <Text my="0.5rem">{t`Moving a question into a dashboard removes it from all other dashboards it appears in`}</Text>
+            <Text mb="0.5rem">{t`Moving a question into a dashboard removes it from all other dashboards it appears in`}</Text>
             <List>
               {cardsThatAppearInOtherDashboards.map((cd) => {
                 const card = selectedItems.find(
@@ -158,21 +158,23 @@ export const QuestionMoveConfirmModal = ({
               })}
             </List>
 
-            <Flex justify="space-between" mt="1rem">
-              <Text c="feedback-negative">{errorMessage}</Text>
-              <Flex justify="end" gap="1rem">
-                <Button variant="subtle" color="neutral" onClick={onClose}>
-                  {t`Cancel`}
-                </Button>
-                <Button variant="filled" onClick={onConfirm}>
-                  {ngettext(
-                    msgid`Move it`,
-                    `Move them`,
-                    cardsThatAppearInOtherDashboards.length,
-                  )}
-                </Button>
-              </Flex>
-            </Flex>
+            <Modal.Footer>
+              {errorMessage && (
+                <Text c="feedback-negative" flex={1}>
+                  {errorMessage}
+                </Text>
+              )}
+              <Button variant="subtle" color="neutral" onClick={onClose}>
+                {t`Cancel`}
+              </Button>
+              <Button variant="filled" onClick={onConfirm}>
+                {ngettext(
+                  msgid`Move it`,
+                  `Move them`,
+                  cardsThatAppearInOtherDashboards.length,
+                )}
+              </Button>
+            </Modal.Footer>
           </>
         );
       }

@@ -5,7 +5,7 @@ import { useToast } from "metabase/common/hooks";
 import { getUserIsAdmin } from "metabase/current-user";
 import { dayjs } from "metabase/dayjs";
 import { useSelector } from "metabase/redux";
-import { Button, Group, Modal, Progress, Stack, Text } from "metabase/ui";
+import { Button, Modal, Progress, Stack, Text } from "metabase/ui";
 import { getUserName } from "metabase/utils/user";
 import { useCancelRemoteSyncCurrentTaskMutation } from "metabase-enterprise/api";
 import type {
@@ -84,18 +84,18 @@ export function SyncProgressModal({
   if (isError) {
     return (
       <Modal onClose={onDismiss} opened size="md" title={t`Sync failed`}>
-        <Stack mt="lg" gap="lg">
+        <Stack gap="lg">
           <Text>{t`An error occurred during sync.`}</Text>
           {errorMessage && <Text>{errorMessage}</Text>}
           {startedBy}
-          <Group justify="flex-end">
-            <Button
-              data-testid="sync-error-close-button"
-              onClick={onDismiss}
-              variant="filled"
-            >{t`Close`}</Button>
-          </Group>
         </Stack>
+        <Modal.Footer>
+          <Button
+            data-testid="sync-error-close-button"
+            onClick={onDismiss}
+            variant="filled"
+          >{t`Close`}</Button>
+        </Modal.Footer>
       </Modal>
     );
   }
@@ -105,16 +105,14 @@ export function SyncProgressModal({
 
     return (
       <Modal onClose={onDismiss} opened size="md" title={successTitle}>
-        <Stack mt="lg" gap="lg">
-          <Text>{getSuccessMessage(outcome, taskType)}</Text>
-          <Group justify="flex-end">
-            <Button
-              data-testid="sync-success-close-button"
-              onClick={onDismiss}
-              variant="filled"
-            >{t`Close`}</Button>
-          </Group>
-        </Stack>
+        <Text>{getSuccessMessage(outcome, taskType)}</Text>
+        <Modal.Footer>
+          <Button
+            data-testid="sync-success-close-button"
+            onClick={onDismiss}
+            variant="filled"
+          >{t`Close`}</Button>
+        </Modal.Footer>
       </Modal>
     );
   }
@@ -122,18 +120,18 @@ export function SyncProgressModal({
   if (isCancelled) {
     return (
       <Modal onClose={onDismiss} opened size="md" title={t`Sync stopped`}>
-        <Stack mt="lg" gap="lg">
+        <Stack gap="lg">
           <Text>{errorMessage || t`The sync was cancelled.`}</Text>
           <StoppedAtLine progress={progress} taskType={taskType} />
           {startedBy}
-          <Group justify="flex-end">
-            <Button
-              data-testid="sync-cancelled-close-button"
-              onClick={onDismiss}
-              variant="filled"
-            >{t`Close`}</Button>
-          </Group>
         </Stack>
+        <Modal.Footer>
+          <Button
+            data-testid="sync-cancelled-close-button"
+            onClick={onDismiss}
+            variant="filled"
+          >{t`Close`}</Button>
+        </Modal.Footer>
       </Modal>
     );
   }
@@ -148,7 +146,7 @@ export function SyncProgressModal({
       title={title}
       withCloseButton={false}
     >
-      <Stack mt="lg" gap="lg">
+      <Stack gap="lg">
         <Text ta="center">{progressLabel}</Text>
         <Progress value={progress * 100} transitionDuration={300} animated />
         {isQuiet && (
@@ -158,17 +156,17 @@ export function SyncProgressModal({
         <Text size="sm">
           {t`Please wait until this finishes before editing content.`}
         </Text>
-        {isAdmin && (
-          <Group justify="flex-end">
-            <ActionButton
-              actionFn={onCancel}
-              normalText={t`Cancel`}
-              activeText={t`Cancelling…`}
-              failedText={t`Cancel`}
-            />
-          </Group>
-        )}
       </Stack>
+      {isAdmin && (
+        <Modal.Footer>
+          <ActionButton
+            actionFn={onCancel}
+            normalText={t`Cancel`}
+            activeText={t`Cancelling…`}
+            failedText={t`Cancel`}
+          />
+        </Modal.Footer>
+      )}
     </Modal>
   );
 }

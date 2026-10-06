@@ -2,13 +2,14 @@ import { useField } from "formik";
 import type { HTMLAttributes } from "react";
 import { t } from "ttag";
 
-import { FormField } from "metabase/common/components/FormField";
 import { useUniqueId } from "metabase/common/hooks/use-unique-id";
+import { FormField, type FormFieldProps } from "metabase/forms";
 import { Center, Icon, SegmentedControl } from "metabase/ui";
 
 import { OFFICIAL_COLLECTION, REGULAR_COLLECTION } from "../constants";
 
 interface Props extends HTMLAttributes<HTMLDivElement> {
+  mb?: FormFieldProps["mb"];
   name: string;
   title?: string;
 }
@@ -30,6 +31,7 @@ const getOptions = () => [
 export function FormCollectionAuthorityLevel({
   className,
   style,
+  mb,
   name = "authority_level",
   title = t`Collection type`,
 }: Props) {
@@ -44,12 +46,14 @@ export function FormCollectionAuthorityLevel({
     <FormField
       className={className}
       style={style}
+      mb={mb}
       title={title}
       htmlFor={id}
       infoTooltip={t`The contents of Official collections will get a badge by their name and will be more likely to show up in search results.`}
       error={touched ? error : undefined}
     >
       <SegmentedControl
+        w="fit-content"
         value={String(value)}
         onChange={handleChange}
         data={getOptions().map((option) => ({

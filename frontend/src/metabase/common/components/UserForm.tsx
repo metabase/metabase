@@ -220,6 +220,7 @@ export const UserForm = ({
           {!hideAttributes && (
             <PLUGIN_ADMIN_USER_FORM_FIELDS.FormLoginAttributes
               userId={userId}
+              mt="xxl"
             />
           )}
           <FormFooter>

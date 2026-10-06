@@ -5,7 +5,6 @@ import * as Yup from "yup";
 import { skipToken, useGetCollectionQuery } from "metabase/api";
 import FormCollectionPicker from "metabase/common/collections/containers/FormCollectionPicker";
 import { useInitialCollectionId } from "metabase/common/collections/hooks";
-import { FormFooter } from "metabase/common/components/FormFooter";
 import type {
   EntityPickerOptions,
   FilterItemsInPersonalCollection,
@@ -21,7 +20,7 @@ import {
 } from "metabase/forms";
 import { PLUGIN_TENANTS } from "metabase/plugins";
 import { useLocation, useParams } from "metabase/router";
-import { Button, Flex } from "metabase/ui";
+import { Button, Modal, Stack } from "metabase/ui";
 import * as Errors from "metabase/utils/errors";
 import type { Collection, CollectionNamespace } from "metabase-types/api";
 
@@ -128,51 +127,48 @@ function CreateCollectionForm({
 
         return (
           <Form>
-            <FormTextInput
-              name="name"
-              label={t`Name`}
-              placeholder={t`My new fantastic collection`}
-              data-autofocus
-              mb="lg"
-            />
-            <FormTextarea
-              name="description"
-              label={t`Description`}
-              placeholder={t`It's optional but oh, so helpful`}
-              minRows={5}
-              mb="lg"
-              nullable
-            />
-            {showCollectionPicker && (
-              <FormCollectionPicker
-                collectionPickerModalProps={{
-                  options: pickerOptions,
-                  namespaces,
-                }}
-                entityType="collection"
-                filterPersonalCollections={filterPersonalCollections}
-                mb="1rem"
-                name="parent_id"
-                onCollectionSelect={setSelectedParentCollection}
-                title={t`Collection it's saved in`}
+            <Stack gap="xl">
+              <FormTextInput
+                name="name"
+                label={t`Name`}
+                placeholder={t`My new fantastic collection`}
+                data-autofocus
               />
-            )}
-            {showAuthorityLevelPicker && !isParentTenantCollection && (
-              <FormAuthorityLevelField />
-            )}
-            <FormFooter mt="xl">
-              <FormErrorMessage />
-              <Flex style={{ flexShrink: 1 }} justify="flex-end" gap="sm">
-                {!!onCancel && (
-                  <Button type="button" onClick={onCancel}>{t`Cancel`}</Button>
-                )}
-                <FormSubmitButton
-                  label={t`Create`}
-                  disabled={!dirty}
-                  variant="filled"
+              <FormTextarea
+                name="description"
+                label={t`Description`}
+                placeholder={t`It's optional but oh, so helpful`}
+                minRows={5}
+                nullable
+              />
+              {showCollectionPicker && (
+                <FormCollectionPicker
+                  collectionPickerModalProps={{
+                    options: pickerOptions,
+                    namespaces,
+                  }}
+                  entityType="collection"
+                  filterPersonalCollections={filterPersonalCollections}
+                  name="parent_id"
+                  onCollectionSelect={setSelectedParentCollection}
+                  title={t`Collection it's saved in`}
                 />
-              </Flex>
-            </FormFooter>
+              )}
+              {showAuthorityLevelPicker && !isParentTenantCollection && (
+                <FormAuthorityLevelField mb={0} />
+              )}
+            </Stack>
+            <Modal.Footer>
+              <FormErrorMessage flex={1} />
+              {!!onCancel && (
+                <Button type="button" onClick={onCancel}>{t`Cancel`}</Button>
+              )}
+              <FormSubmitButton
+                label={t`Create`}
+                disabled={!dirty}
+                variant="filled"
+              />
+            </Modal.Footer>
           </Form>
         );
       }}

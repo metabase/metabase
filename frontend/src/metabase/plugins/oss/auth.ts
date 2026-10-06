@@ -4,6 +4,7 @@ import {
   PluginPlaceholder,
   pluginPlaceholderRoute,
 } from "metabase/plugins/components/PluginPlaceholder";
+import type { BoxProps } from "metabase/ui";
 import type { User, UserId } from "metabase-types/api";
 
 import { definePluginSlot } from "../slot";
@@ -49,7 +50,10 @@ export const PLUGIN_IS_PASSWORD_USER = definePluginSlot(
 );
 
 const getDefaultPluginAdminUserFormFields = (): {
-  FormLoginAttributes: ComponentType<{ userId?: UserId | null }>;
+  FormLoginAttributes: ComponentType<{
+    userId?: UserId | null;
+    mt?: BoxProps["mt"];
+  }>;
 } => ({
   FormLoginAttributes: PluginPlaceholder,
 });
