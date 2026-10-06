@@ -47,6 +47,7 @@ const TEST_DATASET = createMockDataset({
 });
 
 const setup = ({ autoRunQueries }: { autoRunQueries: boolean }) => {
+  const onRun = jest.fn();
   const testDb = createMockDatabase({
     id: TEST_DB_ID,
     auto_run_queries: autoRunQueries,
@@ -76,7 +77,7 @@ const setup = ({ autoRunQueries }: { autoRunQueries: boolean }) => {
   const queryPath = `path:/api/card/${card.id}/query`;
 
   renderWithSDKProviders(
-    <SdkQuestion questionId={card.id}>
+    <SdkQuestion questionId={card.id} onRun={onRun}>
       <SdkQuestion.Title />
       <SdkQuestion.RefreshButton />
     </SdkQuestion>,
@@ -88,7 +89,10 @@ const setup = ({ autoRunQueries }: { autoRunQueries: boolean }) => {
     },
   );
 
-  return { queryCalls: () => fetchMock.callHistory.calls(queryPath).length };
+  return {
+    onRun,
+    queryCalls: () => fetchMock.callHistory.calls(queryPath).length,
+  };
 };
 
 describe("SdkQuestion.RefreshButton", () => {
@@ -100,13 +104,16 @@ describe("SdkQuestion.RefreshButton", () => {
   });
 
   it("should rerun the query when automatic reruns are off", async () => {
-    const { queryCalls } = setup({ autoRunQueries: false });
+    const { queryCalls, onRun } = setup({ autoRunQueries: false });
 
     const button = await screen.findByTestId("refresh-button");
     await waitFor(() => expect(queryCalls()).toBe(1));
 
+    expect(onRun).not.toHaveBeenCalled();
+
     await userEvent.click(button);
 
     await waitFor(() => expect(queryCalls()).toBe(2));
+    await waitFor(() => expect(onRun).toHaveBeenCalledTimes(1));
   });
 });

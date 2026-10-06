@@ -4,6 +4,7 @@ import { t } from "ttag";
 import { useSdkSelector } from "embedding-sdk-bundle/store";
 import { getIsGuestEmbed } from "embedding-sdk-bundle/store/selectors";
 import type { ButtonProps } from "embedding-sdk-bundle/types/ui";
+import { transformSdkQuestion } from "metabase/embedding-sdk/lib/transform-question";
 import { Button, Icon, Tooltip } from "metabase/ui";
 
 import { useSdkQuestionContext } from "../../context";
@@ -26,16 +27,18 @@ export const RefreshButton = ({
   onClick,
   ...buttonProps
 }: RefreshButtonProps = {}) => {
-  const { question, queryQuestion, isQueryRunning } = useSdkQuestionContext();
+  const { question, queryQuestion, isQueryRunning, onRun } =
+    useSdkQuestionContext();
   const isGuestEmbed = useSdkSelector(getIsGuestEmbed);
 
   if (!question || isGuestEmbed || question.canAutoRun()) {
     return null;
   }
 
-  const handleClick = (e: MouseEvent<HTMLButtonElement>) => {
-    queryQuestion();
+  const handleClick = async (e: MouseEvent<HTMLButtonElement>) => {
     onClick?.(e);
+    const nextQuestion = await queryQuestion();
+    onRun?.(nextQuestion && transformSdkQuestion(nextQuestion));
   };
 
   return (
