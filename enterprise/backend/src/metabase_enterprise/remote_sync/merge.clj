@@ -116,13 +116,14 @@
 (defn conflict-detail
   "Renders a single conflict from [[three-way-merge]] as an `\"entity\"` conflict detail (see
   `:metabase-enterprise.remote-sync.schema/remote-sync-task.conflict-detail`): the entity's name (or serdes
-  model + id) as `:label`, its file `:path`, and, for a serdes file, its `:model` and `:entity_id`."
+  model + id) as `:label`, its file `:path`, and its `:model` and `:entity_id` (both `nil` for a non-serdes file)."
   [conflict]
   (let [{entity-name :name, :keys [path model id descriptor]} (conflict-parts conflict)]
-    (cond-> {:kind  "entity"
-             :label (or entity-name descriptor)
-             :path  path}
-      model (assoc :model model :entity_id id))))
+    {:kind      "entity"
+     :model     model
+     :entity_id (when model id)
+     :label     (or entity-name descriptor)
+     :path      path}))
 
 (defn- merge-indexed
   "[[three-way-merge]] over sides already indexed by [[index-by-key]]."

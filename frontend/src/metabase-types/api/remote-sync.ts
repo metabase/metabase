@@ -229,9 +229,9 @@ export type RemoteSyncOutcome =
 export type RemoteSyncConflictDetail =
   | {
       kind: "entity";
-      /** Serdes model and id; absent for a non-serdes file. */
-      model?: string;
-      entity_id?: string;
+      /** Serdes model and id; `null` for a non-serdes file. */
+      model: string | null;
+      entity_id: string | null;
       label: string;
       path: string;
     }

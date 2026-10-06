@@ -171,8 +171,8 @@
             {:key    [["Card" "A"]]
              :ours   {:path "collections/a.yaml" :content "not-an-entity"}
              :theirs {:path "collections/a.yaml" :content "also-not"}}))))
-  (testing "a path-fallback key has no model or entity_id"
-    (is (= {:kind "entity" :label "collections/x.yaml" :path "collections/x.yaml"}
+  (testing "a path-fallback key sends a nil model and entity_id"
+    (is (= {:kind "entity" :model nil :entity_id nil :label "collections/x.yaml" :path "collections/x.yaml"}
            (remote-sync.merge/conflict-detail
             {:key    [::remote-sync.merge/by-path "collections/x.yaml"]
              :ours   {:path "collections/x.yaml" :content "not-an-entity"}

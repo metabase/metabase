@@ -108,7 +108,7 @@
 (deftest conflict-sync-task-stores-conflict-details-test
   (testing "stores every conflict-detail kind next to the conflict strings, round-tripped as JSON and valid against the schema"
     (let [details [{:kind "entity" :model "Card" :entity_id "abc" :label "Card A" :path "collections/a.yaml"}
-                   {:kind "entity" :label "transforms/lib.py" :path "transforms/lib.py"}
+                   {:kind "entity" :model nil :entity_id nil :label "transforms/lib.py" :path "transforms/lib.py"}
                    {:kind "first-import" :category "Library" :message "Import contains Library"}
                    {:kind "deletion" :category "Transforms" :message "Import would delete 1 unsynced local Transforms entity"}
                    {:kind "deletion" :category "Card" :model "Card" :count 2 :names ["A" "B"] :message "Import would delete 2"}]

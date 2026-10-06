@@ -16,8 +16,8 @@
    ;; last segment of the serdes path; a non-serdes file has neither.
    ["entity"       [:map {:closed true}
                     [:kind      [:= "entity"]]
-                    [:model     {:optional true} :string]
-                    [:entity_id {:optional true} :string]
+                    [:model     [:maybe :string]]
+                    [:entity_id [:maybe :string]]
                     [:label     :string]
                     [:path      :string]]]
    ;; The first import brings content that collides with unsynced local content of the same category.
@@ -66,35 +66,6 @@
    [:conflicts {:optional true} [:maybe [:sequential :string]]]
    [:conflict_details {:optional true} [:maybe [:sequential ::remote-sync-task.conflict-detail]]]
    [:status TaskStatus]])
-
-;;; ------------------------------------------- Conflict Schemas -------------------------------------------
-
-(def ConflictType
-  "Type of import conflict detected during pre-flight check."
-  [:enum
-   :entity-id-conflict    ; Local entity exists with same entity_id but not in RemoteSyncObject
-   :library-conflict      ; First import, local Library exists, import has Library
-   :transforms-conflict   ; Local has transforms AND import has transforms
-   :snippets-conflict     ; Local has snippets AND import has snippets
-   :dirty])               ; RemoteSyncObject has items with status != "synced"
-
-(def ConflictDetail
-  "Schema for detailed conflict information."
-  [:map
-   [:type ConflictType]
-   [:category {:optional true} :string]
-   [:count {:optional true} pos-int?]
-   [:entity-ids {:optional true} [:set :string]]
-   [:message {:optional true} :string]])
-
-(def ConflictResponse
-  "Schema for conflict error response from async-import!."
-  [:map
-   [:status-code [:= 400]]
-   [:conflicts [:= true]]
-   [:conflict-type {:optional true} ConflictType]
-   [:conflict-details {:optional true} [:sequential ConflictDetail]]
-   [:conflict-summary {:optional true} [:set :string]]])
 
 ;;; ------------------------------------------- Dirty Item Schemas -------------------------------------------
 
