@@ -4202,6 +4202,7 @@
                     :model/Collection
                     :model/Dashboard
                     :model/DataApp
+                    :model/Dimension
                     :model/Document
                     :model/Field
                     :model/FieldUserSettings
