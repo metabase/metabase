@@ -482,6 +482,11 @@
          (funnysql/format {:delete-from :card
                            :where       [:= :database_id 1]} :postgres))))
 
+(deftest ^:parallel delete-from-with-alias-test
+  (is (= ["DELETE FROM \"card\" \"c\" WHERE \"c\".\"database_id\" = 1"]
+         (funnysql/format {:delete-from [:card :c]
+                           :where       [:= :c/database_id 1]} :postgres))))
+
 (deftest ^:parallel returning-test
   (is (= ["DELETE FROM \"card\" WHERE \"database_id\" = 1 RETURNING \"id\", \"x\""]
          (funnysql/format {:delete-from :card

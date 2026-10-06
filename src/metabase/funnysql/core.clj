@@ -329,9 +329,7 @@
 
 (defn- delete-from! [identifier context]
   (append-sql! context "DELETE FROM ")
-  (let [identifier (unwrap-identifier identifier)]
-    (check-identifier-form identifier)
-    (compile! identifier context)))
+  (-identifier-with-optional-alias! identifier context :lhs-must-be-identifier? true, :include-as? false))
 
 (defn- select! [sql cols context]
   (append-sql! context sql)
