@@ -254,15 +254,18 @@ saved later when it is ready."
   ([{query :dataset_query metadata :result_metadata :as card} :- ::queries.schema/card
     changes :- [:maybe ::queries.schema/card]]
    (-> (cond
+         ;; A serdes export writes only the overrides of a model's columns (no base type, no field id). Checked before
+         ;; the query check, because a load that updates an existing model changes only its result_metadata.
+         (and mi/*deserializing?* (= (:type card) :model) query (seq metadata) (not-any? :id metadata)
+              (or (empty? changes) (contains? changes :result_metadata)))
+         (assoc card :result_metadata (or (infer-metadata-with-model-overrides query card) metadata))
+
          ;; not updating the query => no-op
          (and (not-empty changes)
               (not (contains? changes :dataset_query)))
          (do
            (log/debug "Not inferring result metadata for Card: query was not updated")
            card)
-
-         (and mi/*deserializing?* (= (:type card) :model) query (seq metadata) (not-any? :id metadata))
-         (assoc card :result_metadata (or (infer-metadata-with-model-overrides query card) metadata))
 
          ;; passing in metadata => use that metadata, but replace any placeholder idents in it.
          (or (and (not-empty changes) (contains? changes :result_metadata))
