@@ -29,13 +29,13 @@ const getTestResult = (
   return isSuccess ? { status: "success" } : null;
 };
 
-interface RemoteSyncTestConnectionButtonProps {
+interface GitTestConnectionButtonProps {
   values: RemoteSyncConfigurationSettings;
 }
 
-export const RemoteSyncTestConnectionButton = ({
+export const GitTestConnectionButton = ({
   values,
-}: RemoteSyncTestConnectionButtonProps) => {
+}: GitTestConnectionButtonProps) => {
   const [testConnection, { isSuccess, error, isLoading, originalArgs }] =
     useTestRemoteSyncConnectionMutation();
   const request = useMemo<TestRemoteSyncConnectionRequest>(
