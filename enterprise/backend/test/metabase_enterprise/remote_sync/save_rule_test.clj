@@ -695,6 +695,31 @@
           (is (nil? (row "Action" action-id)))
           (is (= "remote edit B" (desc b))))))))
 
+(deftest restore-of-an-archived-closure-entity-during-the-pull-stops-the-reconcile-test
+  (testing "The user archives action A of model M after the last sync. The remote deletes M and keeps the file of A.
+            After the load and before the reconcile, the user restores A. The reconcile stops the pull, and M and A
+            stay."
+    (with-sync-settings
+      (mt/with-temp [:model/Collection  {coll-id :id}   {:name "Merge Test" :is_remote_synced true :location "/"}
+                     :model/Card        {model-id :id}  {:name "Model M" :type :model :collection_id coll-id
+                                                         :dataset_query (venues-query)}
+                     :model/Action      {action-id :id} {:name "Old action" :type :query :model_id model-id}
+                     :model/QueryAction _               {:action_id     action-id
+                                                         :dataset_query (mt/native-query {:query "select 1"})}]
+        (let [t0         (export-and-pull!)
+              _          (archive-action! action-id)
+              restore!   (fn []
+                           (t2/update! :model/Action action-id {:archived false})
+                           (events/publish-event! :event/action-update {:object  (t2/select-one :model/Action action-id)
+                                                                        :user-id (mt/user->id :rasta)}))
+              [_ result] (merge-pull! t0 (dissoc t0 (path-of t0 "Model M")) (once-at! 0.75 restore!))]
+          (is (= :conflict (:status result)) (pr-str (summary result)))
+          (is (= (str "Import blocked: content changed locally during the pull, and the remote branch deleted the "
+                      "content that holds it. Your local change is kept.")
+                 (:message result)))
+          (is (t2/exists? :model/Card :id model-id) "the model stays")
+          (is (false? (t2/select-one-fn :archived :model/Action action-id)) "the restored action stays"))))))
+
 (deftest change-of-a-closure-entity-during-the-pull-stops-the-reconcile-test
   (testing "The remote deletes model M and keeps the file of its action A. After the load and before the reconcile, the
             user edits A. The reconcile stops the pull, and M and A stay with the edit."

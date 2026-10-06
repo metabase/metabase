@@ -564,7 +564,7 @@
                                  ;; entity rows before ledger rows, as every save path locks them
                                  (let [closure (save-rule/lock-closure! deletes)]
                                    (save-rule/lock-ledger-rows! save-rule closure)
-                                   (save-rule/check-closure! save-rule closure)
+                                   (save-rule/check-closure! save-rule closure :reconcile)
                                    closure)
                                  (remote-sync.db/delete-closure deletes))
                   {:keys [deleted] :as result} (delete-with-closure! deletes closure (:by-entity-id imported-data))
@@ -616,17 +616,18 @@
 
 (defn- delete-closure-conflicts
   "The conflicts of a merge pull that deletes the local entities `deleted-ids` (a map of model key to a set of ids)
-  with their delete closure (see [[remote-sync.db/delete-closure]]): one for each entity of ours in the closure whose
-  decision in the merge result `merge-result` is neither `:theirs` nor `:keep`. The delete would remove a local
-  change of that entity. Each conflict has the shape of a conflict of [[remote-sync.merge/three-way-merge]]."
-  [deleted-ids {:keys [decisions ours-units]}]
+  with their delete closure (see [[remote-sync.db/delete-closure]]): one for each entity in the closure whose decision
+  in the merge result `merge-result` does not let the pull delete it (see [[save-rule/delete-loses-no-change?]]). The
+  delete would remove a local change of that entity. Each conflict has the shape of a conflict of
+  [[remote-sync.merge/three-way-merge]]."
+  [deleted-ids {:keys [decisions ours-units] :as merge-result}]
   (when (seq deleted-ids)
-    (let [key-of (into {} (comp (filter remote-sync.merge/entity-key?) (map (juxt last identity))) (keys ours-units))]
+    (let [key-of (into {} (comp (filter remote-sync.merge/entity-key?) (map (juxt last identity))) (keys decisions))]
       (vec (for [[model-key ids] (:ids-by-model (remote-sync.db/delete-closure deleted-ids))
                  :let  [model-type (:model-type (spec/spec-for-model-key model-key))]
                  eid   (vals (remote-sync.db/entity-ids-by-id model-key (vec ids)))
                  :let  [k (key-of [model-type eid])]
-                 :when (and k (not (#{:theirs :keep} (get decisions k))))]
+                 :when (and k (not (save-rule/delete-loses-no-change? merge-result k (get decisions k))))]
              {:key k :ours (get ours-units k)})))))
 
 (defn- merge-conflict-result
@@ -660,8 +661,8 @@
 
   The load and the deletes follow the save rule (see [[save-rule]]): when a user changes an entity that the pull must
   write after the merge read it, or adds an entity under one that the pull deletes, the pull stops and returns
-  `:conflict` on that entity. The version does not move, and the entities that the load wrote before the stop keep the
-  remote content."
+  `:conflict` on that entity. A change made before the load stops the pull before any write. The version does not
+  move, and the entities that the load wrote before the stop keep the remote content."
   [snapshot base-snapshot task-id report sync-timestamp finalize!]
   (let [{:keys [conflicts merged summary decisions theirs-paths theirs-unit-paths] :as merge-result}
         (serdes/with-cache
@@ -692,7 +693,7 @@
             ingestable (when (seq load-paths)
                          (source.p/->ingestable snapshot {:path-filters (exact-path-filters load-paths)}))]
         (try
-          (save-rule/pre-check! state (remove (set delete-keys) load-keys) delete-keys)
+          (save-rule/pre-check! state (remove (set delete-keys) load-keys) delete-keys deleted-ids)
           (let [has-transforms? (snapshot-has-transforms? (source.p/->ingestable (source/specs->snapshot merged)
                                                                                  {:path-filters (managed-path-filters)}))
                 _               (enable-transforms-setting-for! has-transforms?)

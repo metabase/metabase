@@ -355,6 +355,15 @@
    id    :- ms/PositiveInt]
   (t2/select-one-fn :entity_id model :id id))
 
+(mu/defn archived-ids :- [:set ms/PositiveInt]
+  "The IDs of the instances of `model` with `ids` whose boolean column `archived-key` is true."
+  [model        :- :keyword
+   archived-key :- :keyword
+   ids          :- [:sequential ms/PositiveInt]]
+  (into #{}
+        (mapcat #(t2/select-pks-vec model :id [:in %] archived-key true))
+        (partition-all ids-per-query ids)))
+
 (mu/defn entity-ids-by-id
   "A map of ID to entity ID for the instances of `model` with `ids`."
   [model :- :keyword

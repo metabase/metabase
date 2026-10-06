@@ -6,7 +6,7 @@
   entity, and the version does not move.
 
   The pull checks the rule three times:
-  - [[pre-check!]], with no lock, before the load;
+  - [[pre-check!]], with no lock, before the load, also on the delete closure;
   - in the load transaction of each entity ([[wrap-load-one]]), with the entity row and its child rows locked;
   - in the reconcile transaction, with the entity rows of the delete closure ([[lock-closure!]]) and then the ledger
     rows ([[lock-ledger-rows!]]) locked: [[check-closure!]].
@@ -25,19 +25,18 @@
 (defn plan
   "The save-rule state of a merge pull with the result `merge-result` of [[remote-sync.merge/three-way-merge]]:
   - `:planned`: merge key -> the content hash of each entity of ours as the merge read it;
-  - `:decisions`, `:ours-units` and `:theirs-paths` of the merge;
+  - `:decisions` and `:ours-units` of the merge;
   - `:loaded`: an atom of the hashes that this pull wrote, `{:by-key {merge-key hash} :by-row {[model-type id]
     hash}}`."
-  [{:keys [decisions ours-units theirs-paths]}]
+  [{:keys [decisions ours-units]}]
   {:planned    (into {}
                      (keep (fn [[k unit]]
                              (when (remote-sync.merge/entity-key? k)
                                [k (source/file-spec-hash unit)])))
                      ours-units)
-   :decisions    decisions
-   :ours-units   ours-units
-   :theirs-paths theirs-paths
-   :loaded       (atom {:by-key {} :by-row {}})})
+   :decisions  decisions
+   :ours-units ours-units
+   :loaded     (atom {:by-key {} :by-row {}})})
 
 (def ^:private stop-error
   "The `:error` of the ex-data of a stop."
@@ -46,13 +45,15 @@
 (defn- stop!
   "Throw the stop of the pull on the entity with the merge key `k`. `phase` is `:pre-check`, `:load` or `:reconcile`;
   `reason` is `:changed`, `:decision` (an entity of the delete closure whose decision does not allow its delete) or
-  `:unknown` (an entity of the delete closure that the merge did not see)."
-  [phase reason k]
+  `:unknown` (an entity of the delete closure that the merge did not see). `closure?` is true for an entity of the
+  delete closure of a remote delete."
+  [phase reason k & {:keys [closure?]}]
   (throw (ex-info (format "Content changed locally during the pull: %s" (pr-str k))
-                  {:error  stop-error
-                   :phase  phase
-                   :reason reason
-                   :key    k})))
+                  {:error    stop-error
+                   :phase    phase
+                   :reason   reason
+                   :key      k
+                   :closure? (boolean closure?)})))
 
 (defn stop-data
   "The ex-data of the stop in the cause chain of `e` (a load wraps the exceptions of an entity), or nil."
@@ -65,12 +66,12 @@
 
 (defn stop-message
   "The message of the conflict result of a stop with the ex-data `data` (see [[stop-data]])."
-  [{:keys [phase reason]}]
+  [{:keys [reason closure?]}]
   (cond
     (= :unknown reason)
     "Import blocked: content was added locally during the pull under content that the remote branch deleted. Your local change is kept."
 
-    (= :reconcile phase)
+    closure?
     "Import blocked: content changed locally during the pull, and the remote branch deleted the content that holds it. Your local change is kept."
 
     :else
@@ -118,21 +119,6 @@
     (when (or plan own)
       (let [hash (content-hash model-type id)]
         (not-any? #(= hash %) (remove nil? [plan own]))))))
-
-(defn pre-check!
-  "Stop the pull, before any write, when an entity of ours that the pull will load or delete (the merge keys
-  `load-keys` and `delete-keys`) no longer has its planned hash. Takes no lock. An entity to delete that a user deleted
-  too passes."
-  [{:keys [planned] :as state} load-keys delete-keys]
-  (let [check! (fn [delete? k]
-                 (when (contains? planned k)
-                   (let [model-type (first (last k))
-                         local      (key->local k)]
-                     (when (and (not (and delete? (nil? local)))
-                                (changed? state k model-type (some->> local (local-id model-type))))
-                       (stop! :pre-check :changed k)))))]
-    (run! (partial check! false) load-keys)
-    (run! (partial check! true) delete-keys)))
 
 (defn- nested-children
   "The `{:model :backward-fk}` of the nested models that the serialization of the serdes model `model-type` includes
@@ -220,36 +206,62 @@
                                                   (for [[model-type id] (keys (loaded-hashes state))]
                                                     {:model_type model-type :model_id id})))))
 
-(defn- delete-loses-no-change?
-  "True when the merge `decision` of the entity with the merge key `k` lets the pull delete it: the local side did not
-  change it (`:keep`), only the remote changed it (`:theirs`), or both sides removed it (`:same` with no file in the
-  remote tip)."
-  [{:keys [theirs-paths]} k decision]
+(defn delete-loses-no-change?
+  "True when the merge `decision` of the entity with the merge key `k` lets a pull delete it with the delete closure of
+  a remote delete: the local side did not change it (`:keep`), only the remote changed it (`:theirs`), or the user
+  removed it, so that ours (the `:ours-units` of the merge result `merge-result`) has no file of it (`:ours`, or
+  `:same` when the remote removed its file too)."
+  [{:keys [ours-units] :as _merge-result} k decision]
   (or (#{:theirs :keep} decision)
-      (and (= :same decision) (nil? (get theirs-paths k)))))
+      (and (#{:ours :same} decision) (not (contains? ours-units k)))))
 
 (defn check-closure!
-  "Stop the pull unless the delete of each entity of the locked delete `closure` loses no local change (see
-  [[delete-loses-no-change?]]) and the entity has its planned hash (or the hash that this pull wrote for it). An entity
-  that the merge did not see stops the pull: a user created it during the pull."
-  [{:keys [decisions] :as state} closure]
+  "Stop the pull in the phase `phase` (`:pre-check` or `:reconcile`) unless the delete of each entity of the delete
+  `closure` loses no local change. An entity that ours holds needs a decision that allows its delete (see
+  [[delete-loses-no-change?]]) and its planned hash (or the hash that this pull wrote for it). An entity that ours does
+  not hold needs an archived row: else a user created it (it has no merge key) or restored it during the pull."
+  [{:keys [decisions ours-units] :as state} closure phase]
   (let [key-of (into {}
                      (comp (filter remote-sync.merge/entity-key?)
                            (map (juxt last identity)))
                      (keys decisions))]
     (doseq [[model-key ids]   (:ids-by-model closure)
-            :let  [model-type (:model-type (spec/spec-for-model-key model-key))]
+            :let  [{:keys [model-type archived-key]} (spec/spec-for-model-key model-key)
+                   archived (if archived-key
+                              (remote-sync.db/archived-ids model-key archived-key (vec ids))
+                              #{})]
             [id entity-id]    (remote-sync.db/entity-ids-by-id model-key (vec ids))
             :let  [k (key-of [model-type entity-id])]]
       (cond
-        (nil? k)
-        (stop! :reconcile :unknown [[model-type entity-id]])
+        (not (contains? ours-units k))
+        (when-not (contains? archived id)
+          (if k
+            (stop! phase :changed k :closure? true)
+            (stop! phase :unknown [[model-type entity-id]] :closure? true)))
 
         (not (delete-loses-no-change? state k (get decisions k)))
-        (stop! :reconcile :decision k)
+        (stop! phase :decision k :closure? true)
 
         (changed? state k model-type id)
-        (stop! :reconcile :changed k)))))
+        (stop! phase :changed k :closure? true)))))
+
+(defn pre-check!
+  "Stop the pull, before any write, when an entity of ours that the pull will load or delete (the merge keys
+  `load-keys` and `delete-keys`) no longer has its planned hash, or when the delete closure of the local entities
+  `deleted-ids` (a map of model key to a set of ids) does not pass [[check-closure!]]. Takes no lock. An entity to
+  delete that a user deleted too passes."
+  [{:keys [planned] :as state} load-keys delete-keys deleted-ids]
+  (let [check! (fn [delete? k]
+                 (when (contains? planned k)
+                   (let [model-type (first (last k))
+                         local      (key->local k)]
+                     (when (and (not (and delete? (nil? local)))
+                                (changed? state k model-type (some->> local (local-id model-type))))
+                       (stop! :pre-check :changed k)))))]
+    (run! (partial check! false) load-keys)
+    (run! (partial check! true) delete-keys)
+    (when (seq deleted-ids)
+      (check-closure! state (remote-sync.db/delete-closure deleted-ids) :pre-check))))
 
 (defn row-status
   "The ledger `:content_hash` and `:status` of a loaded entity that the pull wrote with the hash `loaded`, when its
