@@ -4,6 +4,7 @@ import { setupBasename } from "__support__/basename";
 import { setBasename } from "metabase/utils/basename";
 
 import { ApiClient } from "./client";
+import { setRefusedRequestHandler } from "./refused-request";
 import { PLUGIN_API, reinitializeRequestHandlers } from "./request-handlers";
 
 describe("api", () => {
@@ -469,6 +470,104 @@ describe("api", () => {
       await expect(
         apiInstance.request({ method: "GET", url: "/api/thing" }),
       ).resolves.toBe("plain text");
+    });
+  });
+
+  describe("resending a refused request", () => {
+    let apiInstance: ApiClient;
+
+    beforeEach(() => {
+      apiInstance = new ApiClient();
+    });
+
+    afterEach(() => {
+      fetchMock.removeRoutes().clearHistory();
+      setRefusedRequestHandler(null);
+      reinitializeRequestHandlers();
+    });
+
+    const request = (signal?: AbortSignal) =>
+      apiInstance.request({
+        method: "POST",
+        url: "/api/thing",
+        body: {},
+        signal,
+      });
+    const calls = () => fetchMock.callHistory.calls("path:/api/thing");
+
+    it("rejects a 401 as before when no handler is set", async () => {
+      fetchMock.post("path:/api/thing", 401);
+
+      await expect(request()).rejects.toMatchObject({ status: 401 });
+      expect(calls()).toHaveLength(1);
+    });
+
+    it("resends the request once when the handler says so, re-running the request pipeline", async () => {
+      let attempt = 0;
+      fetchMock.post("path:/api/thing", () =>
+        ++attempt === 1 ? 401 : { ok: true },
+      );
+      let credential = "first";
+      PLUGIN_API.onBeforeRequestHandlers.setEmbeddingRequestAuthHeaders =
+        async () => ({ headers: { "X-Test-Credential": credential } });
+      const handler = jest.fn(async () => {
+        credential = "second";
+        return true;
+      });
+      setRefusedRequestHandler(handler);
+
+      await expect(request()).resolves.toEqual({ ok: true });
+
+      expect(handler).toHaveBeenCalledWith({
+        method: "POST",
+        url: "/api/thing",
+      });
+      expect(
+        calls().map((call) =>
+          new Headers(call.options.headers).get("X-Test-Credential"),
+        ),
+      ).toEqual(["first", "second"]);
+    });
+
+    it("does not resend a second 401", async () => {
+      fetchMock.post("path:/api/thing", 401);
+      const handler = jest.fn(async () => true);
+      setRefusedRequestHandler(handler);
+
+      await expect(request()).rejects.toMatchObject({ status: 401 });
+      expect(handler).toHaveBeenCalledTimes(1);
+      expect(calls()).toHaveLength(2);
+    });
+
+    it("does not resend when the handler declines", async () => {
+      fetchMock.post("path:/api/thing", 401);
+      setRefusedRequestHandler(async () => false);
+
+      await expect(request()).rejects.toMatchObject({ status: 401 });
+      expect(calls()).toHaveLength(1);
+    });
+
+    it("does not resend a request aborted while the handler ran", async () => {
+      fetchMock.post("path:/api/thing", 401);
+      const controller = new AbortController();
+      setRefusedRequestHandler(async () => {
+        controller.abort();
+        return true;
+      });
+
+      await expect(request(controller.signal)).rejects.toMatchObject({
+        status: 401,
+      });
+      expect(calls()).toHaveLength(1);
+    });
+
+    it("does not ask about a status other than 401", async () => {
+      fetchMock.post("path:/api/thing", 403);
+      const handler = jest.fn(async () => true);
+      setRefusedRequestHandler(handler);
+
+      await expect(request()).rejects.toMatchObject({ status: 403 });
+      expect(handler).not.toHaveBeenCalled();
     });
   });
 });
