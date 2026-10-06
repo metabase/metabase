@@ -52,7 +52,6 @@ export function ActionQueryPage() {
     );
   }
 
-  const readOnly = !action.can_write;
   const canEditQuery = canEditActionQuery(action, databases);
 
   return isEditRoute && canEditQuery ? (
@@ -65,7 +64,6 @@ export function ActionQueryPage() {
     <ActionDefinitionPage
       action={action}
       databases={editableDatabases}
-      readOnly={readOnly}
       canEditQuery={canEditQuery}
     />
   );
@@ -77,21 +75,19 @@ type ActionPageProps = {
 };
 
 type ActionDefinitionPageProps = ActionPageProps & {
-  readOnly: boolean;
   canEditQuery: boolean;
 };
 
 function ActionDefinitionPage({
   action,
   databases,
-  readOnly,
   canEditQuery,
 }: ActionDefinitionPageProps) {
   const [uiState, setUiState] = useState(getInitialUiState);
 
   return (
     <PageContainer data-testid="action-definition">
-      <ActionHeader action={action} readOnly={readOnly} />
+      <ActionHeader action={action} />
       <ActionEditorPane>
         <ActionEditor
           datasetQuery={action.dataset_query}

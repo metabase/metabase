@@ -54,7 +54,7 @@ export function ActionSettingsPage() {
 
   return (
     <PageContainer data-testid="action-settings">
-      <ActionHeader action={action} readOnly={readOnly} />
+      <ActionHeader action={action} />
       <Stack gap="2.5rem">
         {isAdmin && isPublicSharingEnabled && (
           <PublicSharingSection action={action} />

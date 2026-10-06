@@ -41,7 +41,7 @@ export function ActionRunPage() {
 
   return (
     <PageContainer data-testid="action-run">
-      <ActionHeader action={action} readOnly={!action.can_write} />
+      <ActionHeader action={action} />
       <TitleSection label={t`Run this action`}>
         <Group p="xl">
           <Tooltip

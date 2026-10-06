@@ -27,14 +27,12 @@ type ActionHeaderProps = {
   action: WritebackAction;
   actions?: ReactNode;
   isEditMode?: boolean;
-  readOnly?: boolean;
 } & Omit<StackProps, "title">;
 
 export function ActionHeader({
   action,
   actions,
   isEditMode = false,
-  readOnly,
   ...stackProps
 }: ActionHeaderProps) {
   const { path, isLoadingPath } = useCollectionPath({
@@ -43,9 +41,11 @@ export function ActionHeader({
 
   return (
     <PaneHeader
-      title={<ActionNameInput action={action} readOnly={readOnly} />}
+      title={<ActionNameInput action={action} />}
       icon="bolt"
-      menu={!isEditMode && !readOnly && <ActionMoreMenu action={action} />}
+      menu={
+        !isEditMode && action.can_write && <ActionMoreMenu action={action} />
+      }
       tabs={!isEditMode && <ActionTabs actionId={action.id} />}
       actions={actions}
       data-testid="action-header"
@@ -72,10 +72,9 @@ export function ActionHeader({
 
 type ActionNameInputProps = {
   action: WritebackAction;
-  readOnly?: boolean;
 };
 
-function ActionNameInput({ action, readOnly }: ActionNameInputProps) {
+function ActionNameInput({ action }: ActionNameInputProps) {
   const [updateAction] = useUpdateActionMutation();
   const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
 
@@ -92,7 +91,7 @@ function ActionNameInput({ action, readOnly }: ActionNameInputProps) {
     <PaneHeaderInput
       initialValue={action.name}
       maxLength={ACTION_NAME_MAX_LENGTH}
-      readOnly={readOnly}
+      readOnly={!action.can_write}
       onChange={handleChangeName}
     />
   );

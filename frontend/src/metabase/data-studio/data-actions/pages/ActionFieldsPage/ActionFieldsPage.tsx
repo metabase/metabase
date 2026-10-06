@@ -68,7 +68,7 @@ function ActionFieldsPageBody({
 
   return (
     <PageContainer data-testid="action-fields" gap="lg" px={0} pb={0}>
-      <ActionHeader action={action} readOnly={readOnly} px="3.5rem" />
+      <ActionHeader action={action} px="3.5rem" />
       <Flex className={S.body} flex={1} mih={0}>
         <Stack
           className={S.column}
