@@ -215,8 +215,10 @@
                     {:id "google/gemini-3.6-flash"             :display_name "Gemini 3.6 Flash"}
                     {:id "google/gemini-3.7-flash"             :display_name "Gemini 3.7 Flash"}
                     {:id "anthropic/claude-fable-5"            :display_name "Claude Fable 5"}
+                    {:id "anthropic/claude-opus-5-5"           :display_name "Claude Opus 5.5"}
                     {:id "anthropic/claude-opus-5"             :display_name "Claude Opus 5"}
                     {:id "anthropic/claude-opus-4-6"           :display_name "Claude Opus 4.6"}
+                    {:id "anthropic/claude-sonnet-5-5"         :display_name "Claude Sonnet 5.5"}
                     {:id "anthropic/claude-sonnet-5"           :display_name "Claude Sonnet 5"}
                     {:id "anthropic/claude-sonnet-4-6"         :display_name "Claude Sonnet 4.6"}
                     {:id "anthropic/claude-haiku-4-5@20251001" :display_name "Claude Haiku 4.5"}]
