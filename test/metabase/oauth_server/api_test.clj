@@ -6,6 +6,7 @@
    [metabase.mcp.core :as mcp]
    [metabase.oauth-server.api.oauth :as api.oauth]
    [metabase.oauth-server.core :as oauth-server]
+   [metabase.system.core :as system]
    [metabase.test :as mt]
    [metabase.test.http-client :as client]
    [oidc-provider.store :as oidc.store]
@@ -2179,6 +2180,17 @@
                                oauth-server/full-access-scope])
    :grant_types ["authorization_code" "refresh_token"]})
 
+(deftest no-mcp-binding-is-inferred-without-a-site-url-test
+  (testing "With no Site URL there is no MCP endpoint URL to bind to, so an MCP-only grant is left unbound rather than
+            bound to a made-up or blank host"
+    (mt/with-temporary-setting-values [site-url nil]
+      (is (nil? (system/site-url)))
+      (is (nil? (oauth-server/mcp-resource-url)))
+      (doseq [resource [nil [] ["http://localhost:3000"]]]
+        (testing (pr-str resource)
+          (is (= resource (#'api.oauth/inferred-mcp-resource {:resource resource}
+                                                             "agent:content:read agent:query:run"))))))))
+
 (deftest authorize-infers-the-mcp-binding-test
   (testing "The binding is decided at authorize time on the requested scopes, before consent, so the consent page
             shows only what the token will hold. `agent:resource:read` is not an MCP scope; it is dropped only from
@@ -2741,7 +2753,7 @@
               (is (= [old-mcp] (access-token-resource (refresh 200 {:refresh_token (mcp-refresh)})))))
             (testing "a refresh token rebound by `BindLegacyMcpOAuthTokens`, refreshed without a resource, stays
                       MCP-bound"
-              (let [legacy ["http://localhost/api/metabase-mcp"]
+              (let [legacy ["https://migrated.example.com/api/metabase-mcp"]
                     token  (str (random-uuid))]
                 (oidc.store/save-refresh-token (:token-store (oauth-server/get-provider)) token
                                                (str (mt/user->id :crowberto)) (:client_id client)

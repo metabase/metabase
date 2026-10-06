@@ -209,9 +209,9 @@
     (boolean (and site (seq named) (every? #{site} named)))))
 
 (defn mcp-resource-url
-  "The RFC 8707 resource indicator of the canonical MCP endpoint under the Site URL."
+  "The RFC 8707 resource indicator of the canonical MCP endpoint under the Site URL, or nil when no Site URL is set."
   []
-  (str (system/site-url) (mcp/mcp-canonical-path)))
+  (some-> (system/site-url) (str (mcp/mcp-canonical-path))))
 
 (defn mcp-endpoint-request?
   "Whether the request path `uri` is served by the MCP endpoint, under any of its paths."

@@ -533,13 +533,14 @@
 
 (defn- inferred-mcp-resource
   "The resource binding to store on the authorization code of an approved request `parsed` granting the scope string
-  `granted`: the MCP endpoint under the Site URL when the request named no resource, or only the Site URL, and every
-  granted scope is an MCP scope; otherwise the requested resource. The granted scopes are a subset of what
-  [[scope-to-grant]] offered, so they are MCP scopes only exactly when the offer was."
+  `granted`: the MCP endpoint under the Site URL when a Site URL is set, the request named no resource or only the Site
+  URL, and every granted scope is an MCP scope; otherwise the requested resource. The granted scopes are a subset of
+  what [[scope-to-grant]] offered, so they are MCP scopes only exactly when the offer was."
   [{:keys [resource]} granted]
-  (if (and (or (empty? resource) (oauth-server/site-url-resource? resource))
-           (= :mcp-only (first (classify-scopes (str/split granted #"\s+")))))
-    [(oauth-server/mcp-resource-url)]
+  (if-let [mcp-url (and (or (empty? resource) (oauth-server/site-url-resource? resource))
+                        (= :mcp-only (first (classify-scopes (str/split granted #"\s+"))))
+                        (oauth-server/mcp-resource-url))]
+    [mcp-url]
     resource))
 
 (defn- scope-to-grant

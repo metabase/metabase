@@ -21,6 +21,7 @@
    [clojurewerkz.quartzite.jobs :as jobs]
    [clojurewerkz.quartzite.scheduler :as qs]
    [clojurewerkz.quartzite.triggers :as triggers]
+   [environ.core :as env]
    [medley.core :as m]
    [metabase.app-db.connection :as mdb.connection]
    [metabase.app-db.custom-migrations.llm-providers :as llm-providers]
@@ -2312,19 +2313,20 @@
 ;;; (`metabase.oauth-server.api.oauth/classify-scopes`), frozen here against later edits.
 ;;;
 ;;; The MCP scopes are the five below. `agent:resource:read` is not an MCP scope: it is dropped only from a token whose
-;;; other scopes are all MCP scopes, the shape of the old MCP baseline. For a token with no resource:
-;;; - MCP scopes only (besides `agent:resource:read`): bound to the MCP endpoint, keeping only the MCP scopes.
+;;; other scopes are all MCP scopes, the shape of the old MCP baseline. Authorize treats a resource naming the Site URL
+;;; like none, and so does this. For a token with no resource or the Site URL:
+;;; - MCP scopes only (besides `agent:resource:read`): keeps only the MCP scopes, and is bound to the Site URL's MCP
+;;;   endpoint. With no Site URL configured it is not bound: no host is made up, so its resource is left as it is.
 ;;; - A mix of MCP and other scopes: the MCP scopes are dropped, keeping `agent:resource:read` and every other scope.
+;;;   The resource is left as it is, as authorize stores it for such a grant.
 ;;; - Anything else, including `agent:resource:read` alone: unchanged.
 ;;; A token bound to the MCP endpoint keeps only its MCP scopes. A token bound to any other resource loses its MCP
 ;;; scopes. Either is deleted when no scope is left. A token with an empty or unparsable scope or an unparsable
 ;;; resource is unchanged. No table references these tokens, so a row can be deleted on its own.
 ;;;
-;;; The resource written is always `http://localhost/api/metabase-mcp`. Binding is decided by the resource's path, not
-;;; its host, and reading `site-url` here would mean handling an encrypted setting row and an environment override.
-
-(def ^:private ^:no-doc legacy-mcp-token-resource
-  ["http://localhost/api/metabase-mcp"])
+;;; The Site URL is read the way the `site-url` setting's getter reads it as of this release, frozen here: the
+;;; `MB_SITE_URL` env var when set, else the setting row; then a trailing slash is removed and `http://` is prepended
+;;; when there is no scheme. Resources are compared in the canonical form authorize compares them in.
 
 (def ^:private ^:no-doc binding-mcp-scopes
   "The MCP scopes as of audience binding."
@@ -2334,10 +2336,60 @@
   "The MCP endpoint paths as of audience binding."
   ["/api/metabase-mcp" "/api/mcp"])
 
+(defn- binding-canonical-uri
+  "Canonical form of a resource identifier `s`: scheme and host lowercased, the scheme's default port elided, a trailing
+  slash trimmed, query and fragment dropped. Nil when `s` is not an absolute URI with a host."
+  [^String s]
+  (try
+    (let [uri         (java.net.URI. s)
+          scheme      (some-> (.getScheme uri) (.toLowerCase Locale/ROOT))
+          ;; The authority rather than `.getHost`, which is nil for a host with an underscore.
+          authority   (some-> (.getAuthority uri) (.toLowerCase Locale/ROOT))
+          [host port] (when authority
+                        (if-let [[_ h p] (re-matches #"(?:[^@]*@)?(.*?)(?::(\d+))?" authority)]
+                          [h (some-> p parse-long)]
+                          [authority nil]))
+          path        (or (.getPath uri) "")]
+      (when (and scheme (not-empty host))
+        (str scheme "://" host
+             (when-not (or (nil? port) (= port ({"http" 80 "https" 443} scheme)))
+               (str ":" port))
+             (cond-> path
+               (str/ends-with? path "/") (subs 0 (dec (count path)))))))
+    (catch java.net.URISyntaxException _ nil)))
+
+(defn- binding-site-url-row-value
+  "The `site-url` setting row's value: `value_with_aad` decrypted under the setting's AAD, or, for a row only a version
+  predating that column wrote, `value`, decrypted when it is ciphertext. Nil when there is no row or it cannot be read."
+  []
+  (try
+    (when-let [{:keys [value value_with_aad]} (t2/query-one {:select [:value :value_with_aad]
+                                                             :from   [:setting]
+                                                             :where  [:= :key "site-url"]})]
+      (if (some? value_with_aad)
+        (encryption/maybe-decrypt value_with_aad {:aad (mdb.setting/setting-aad "site-url")})
+        (some-> value encryption/maybe-decrypt-accepting-plaintext)))
+    (catch Exception e
+      (log/warn e "Could not read the site-url setting; no OAuth token will be bound to the MCP endpoint")
+      nil)))
+
+(defn- binding-site-url
+  "The Site URL as the `site-url` setting's getter returns it, or nil when none is configured or it is not an absolute
+  URL: `MB_SITE_URL` when set, else the setting row, without a trailing slash and with `http://` when it has no scheme."
+  []
+  (let [env-value (env/env :mb-site-url)
+        raw       (if (str/blank? env-value) (binding-site-url-row-value) env-value)]
+    (when-not (str/blank? raw)
+      (let [s (str/replace raw #"/$" "")
+            s (if (str/starts-with? s "http") s (str "http://" s))]
+        (when (binding-canonical-uri s)
+          s)))))
+
 (defn- binding-resource
-  "`:mcp` when the `resource` column value names an MCP endpoint path under any host and subpath, `:other` when it names
-  anything else, nil when it is NULL, and `:unparsable` when it is not a JSON array of absolute URIs."
-  [resource]
+  "Classify the `resource` column value: `:site-url` when every URI in it is `site-url` (canonically), `:mcp` when it
+  names an MCP endpoint path under any host and subpath, `:other` when it names anything else, nil when it is NULL, and
+  `:unparsable` when it is not a JSON array of absolute URIs."
+  [resource site-url]
   (if (nil? resource)
     nil
     (let [uris  (json-array-out resource)
@@ -2346,60 +2398,64 @@
                                 (when (.isAbsolute uri)
                                   (str/replace (or (.getPath uri) "") #"/+$" "")))
                              uris)
-                       (catch java.net.URISyntaxException _ nil)))]
+                       (catch java.net.URISyntaxException _ nil)))
+          site  (some-> site-url binding-canonical-uri)]
       (cond
         (or (empty? paths) (some nil? paths)) :unparsable
+        (and site (every? #(= site (binding-canonical-uri %)) uris)) :site-url
         (some (fn [path] (some #(str/ends-with? path %) binding-mcp-endpoint-paths)) paths) :mcp
         :else :other))))
 
 (defn- narrowed-legacy-token
   "The new `{:scope ... :resource ...}` column values of an OAuth token row with `scope` and `resource` column values,
-  `:delete` when the row is to be deleted, or nil when it is unchanged."
-  [{:keys [scope resource]}]
+  given the Site URL `site-url` (nil for none), `:delete` when the row is to be deleted, or nil when it is unchanged."
+  [{:keys [scope resource]} site-url]
   (let [scopes (json-array-out scope)
-        bound  (binding-resource resource)]
+        bound  (binding-resource resource site-url)]
     (when (and (seq scopes) (every? string? scopes) (not= :unparsable bound))
       (let [others (remove #{"agent:resource:read"} scopes)
             mcp    (filterv binding-mcp-scopes scopes)
             non    (filterv (complement binding-mcp-scopes) scopes)
+            stored (some-> resource json-array-out)
             [kept new-resource]
             (case bound
-              nil    (cond
-                       (and (seq others) (every? binding-mcp-scopes others))
-                       [mcp legacy-mcp-token-resource]
+              (nil :site-url) (cond
+                                (and (seq others) (every? binding-mcp-scopes others))
+                                [mcp (if site-url [(str site-url "/api/metabase-mcp")] stored)]
 
-                       (and (some binding-mcp-scopes others) (some (complement binding-mcp-scopes) others))
-                       [non nil]
+                                (and (some binding-mcp-scopes others) (some (complement binding-mcp-scopes) others))
+                                [non stored]
 
-                       :else
-                       [scopes nil])
-              :mcp   [mcp (json-array-out resource)]
-              :other [non (json-array-out resource)])]
+                                :else
+                                [scopes stored])
+              :mcp            [mcp stored]
+              :other          [non stored])]
         (cond
-          (empty? kept)                                                  :delete
-          (and (= kept scopes) (= new-resource (json-array-out resource))) nil
-          :else                                                          {:scope    (json/encode kept)
-                                                                          :resource (some-> new-resource json/encode)})))))
+          (empty? kept)                                     :delete
+          (and (= kept scopes) (= new-resource stored))     nil
+          :else                                             {:scope    (json/encode kept)
+                                                             :resource (some-> new-resource json/encode)})))))
 
 (defn- bind-legacy-mcp-oauth-tokens!
   "Narrow every OAuth access and refresh token to what `/oauth/authorize` grants as of audience binding, binding MCP
-  tokens with no resource to the MCP endpoint, per the rule above. A row is written only when its values change, so
-  running this again changes nothing."
+  tokens with no resource or the Site URL to the Site URL's MCP endpoint, per the rule above. A row is written only when
+  its values change, so running this again changes nothing."
   []
-  (doseq [table [:oauth_access_token :oauth_refresh_token]]
-    ;; Collect the changes first: writing rows while a reducible query over the same table is open is not safe on
-    ;; every app DB.
-    (let [changes (into []
-                        (keep (fn [row]
-                                (when-let [change (narrowed-legacy-token row)]
-                                  [(:id row) change])))
-                        (t2/reducible-query {:select [:id :scope :resource] :from [table]}))]
-      (doseq [batch (partition-all 1000 (keep (fn [[id change]] (when (= :delete change) id)) changes))]
-        (t2/query {:delete-from table :where [:in :id batch]}))
-      ;; Each row gets its own values, so updates go one row at a time.
-      (doseq [[id change] changes
-              :when (not= :delete change)]
-        (t2/query {:update table :set change :where [:= :id id]})))))
+  (let [site-url (binding-site-url)]
+    (doseq [table [:oauth_access_token :oauth_refresh_token]]
+      ;; Collect the changes first: writing rows while a reducible query over the same table is open is not safe on
+      ;; every app DB.
+      (let [changes (into []
+                          (keep (fn [row]
+                                  (when-let [change (narrowed-legacy-token row site-url)]
+                                    [(:id row) change])))
+                          (t2/reducible-query {:select [:id :scope :resource] :from [table]}))]
+        (doseq [batch (partition-all 1000 (keep (fn [[id change]] (when (= :delete change) id)) changes))]
+          (t2/query {:delete-from table :where [:in :id batch]}))
+        ;; Each row gets its own values, so updates go one row at a time.
+        (doseq [[id change] changes
+                :when (not= :delete change)]
+          (t2/query {:update table :set change :where [:= :id id]}))))))
 
 (define-migration BindLegacyMcpOAuthTokens
   (bind-legacy-mcp-oauth-tokens!))
