@@ -62,7 +62,11 @@ export function MetabotChatHistory() {
           messages={chatMessages}
           size="md"
           onRetryMessage={metabot.retryMessage}
-          onContinueMessage={metabot.continueResponse}
+          onContinueMessage={
+            // The composer is hidden while the context window is full. Hide Continue too,
+            // because it would send another request into the full window.
+            metabot.isContextWindowFull ? undefined : metabot.continueResponse
+          }
           isDoingScience={metabot.isDoingScience}
           debug={metabot.debugMode}
           conversationId={metabot.conversationId}

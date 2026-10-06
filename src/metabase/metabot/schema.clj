@@ -364,7 +364,8 @@
    [:state                  {:optional true} [:maybe ::metabot-message.state]]
    [:forked_from_message_id {:optional true} [:maybe ms/PositiveInt]]
    [:context_tokens         {:optional true} [:maybe :int]]
-   [:finish_reason          {:optional true} [:maybe :string]]])
+   [:finish_reason          {:optional true} [:maybe :string]]
+   [:context_window_full    {:optional true} [:maybe :boolean]]])
 
 (mr/def ::metabot-prompt
   "A MetabotPrompt as selected from the app DB: every column of `:metabot_prompt`."

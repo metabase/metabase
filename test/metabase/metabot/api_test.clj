@@ -101,7 +101,45 @@
                             ;; the provider truncated this turn, so the row records why it stopped
                             :finished      true
                             :finish_reason "length"}]
-                          messages)))))))))))
+                          messages))
+                  (is (nil? (:context_window_full (second messages)))
+                      "15 context tokens against a 1000-token window leave room, so the row is not full"))))))))))
+
+(deftest native-agent-streaming-records-context-window-full-test
+  (testing "a length stop whose context reached the streamed window is saved as full"
+    (mt/with-temporary-setting-values [llm.settings/llm-providers llm.tu/default-connections
+                                       metabot.settings/llm-metabot-provider test-provider]
+      (binding [scope/*current-user-metabot-permissions* scope/all-yes-permissions]
+        (let [conversation-id (str (random-uuid))]
+          (mt/with-dynamic-fn-redefs [openrouter/openrouter (fn [_]
+                                                              (mut/mock-llm-response
+                                                               [{:type :start :id "msg-1"}
+                                                                {:type :text :text "cut o"}
+                                                                {:type  :usage       :usage {:promptTokens 10 :completionTokens 5}
+                                                                 :model "test-model" :id    "msg-1"
+                                                                 :finish-reason "length"}]))
+                                      metabot.self/context-window-tokens (constantly 15)
+                                      conversation-title/ensure-title! (constantly {:status :ready
+                                                                                    :title  "Orders by Month"})]
+            (mt/with-model-cleanup [:model/MetabotMessage
+                                    [:model/MetabotConversation :created_at]]
+              (let [response (mt/user-http-request :rasta :post 202 "metabot/agent-streaming"
+                                                   {:message         "Test full window"
+                                                    :context         {}
+                                                    :conversation_id conversation-id
+                                                    :state           {}})
+                    finish   (->> (str/split-lines response)
+                                  (filter #(str/starts-with? % "data: "))
+                                  (remove #(= "data: [DONE]" %))
+                                  (map #(json/decode+kw (subs % 6)))
+                                  (u/seek #(= "finish" (:type %))))]
+                (testing "the stream reports the same window the row is judged against"
+                  (is (=? {:finishReason    "length"
+                           :messageMetadata {:contextTokens 15 :contextWindowTokens 15}}
+                          finish)))
+                (is (=? {:finish_reason "length" :context_tokens 15 :context_window_full true}
+                        (t2/select-one :model/MetabotMessage
+                                       :conversation_id conversation-id :role "assistant")))))))))))
 
 (def ^:private openrouter-error-chunks
   "Raw OpenRouter chunks for a generation the upstream model abandoned: OpenRouter reports that as

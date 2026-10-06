@@ -3732,3 +3732,41 @@
           (migrate! :down 64)
           (is (not (contains? (message completed) :finish_reason)))
           (is (true? (:finished (message completed)))))))))
+
+(deftest metabot-message-context-window-full-column-test
+  (testing "v65.2026-10-05T00:00:01: metabot_message gains a nullable context_window_full"
+    (impl/test-migrations ["v65.2026-10-05T00:00:01"] [migrate!]
+      (let [user-id         (t2/insert-returning-pk! :core_user {:first_name    "Context"
+                                                                 :last_name     "Window"
+                                                                 :email         "context-window-full@test.com"
+                                                                 :date_joined   :%now
+                                                                 :password      "password"
+                                                                 :password_salt "salt"
+                                                                 ;; NOT NULL since v64.2026-07-23T12:00:05
+                                                                 :entity_id     (u/generate-nano-id)})
+            conversation-id (str (random-uuid))
+            _               (t2/insert! :metabot_conversation {:id conversation-id :user_id user-id})
+            ;; `finish_reason` exists already: its changeset runs before this one
+            message-id      (t2/insert-returning-pk! :metabot_message {:conversation_id conversation-id
+                                                                       :created_at      :%now
+                                                                       :profile_id      "internal"
+                                                                       :role            "assistant"
+                                                                       :data            "[]"
+                                                                       :total_tokens    0
+                                                                       :data_version    2
+                                                                       :finished        true
+                                                                       :finish_reason   "length"})
+            ;; Read whole rows: naming the column in the query would make the pre-migration run a SQL error,
+            ;; which says nothing about whether the migration added it.
+            message         #(t2/select-one :metabot_message :id message-id)]
+        (migrate!)
+        (testing "the column exists and a pre-migration row reads NULL"
+          (is (contains? (message) :context_window_full))
+          (is (nil? (:context_window_full (message)))))
+        (testing "the column stores the verdict"
+          (t2/update! :metabot_message message-id {:context_window_full true})
+          (is (true? (:context_window_full (message)))))
+        (testing "rolling back drops the column and keeps the row"
+          (migrate! :down 64)
+          (is (not (contains? (message) :context_window_full)))
+          (is (true? (:finished (message)))))))))

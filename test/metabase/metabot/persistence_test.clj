@@ -979,7 +979,15 @@
                                                :data [{:type "text" :text "partial"}]}))]
           (is (= {:type "incomplete" :finishReason reason} status))
           (is (not (contains? status :contextWindowFull))
-              "the row alone can't tell; `mark-context-window-full` adds it against the window")))))
+              "a row without `context_window_full` is not a full-window stop")))))
+  (testing "a length stop whose row records a full window carries the flag the client alerts on"
+    (is (= {:type "incomplete" :finishReason "length" :contextWindowFull true}
+           (:status (client-message {:role :assistant :finished true :finish_reason "length"
+                                     :context_window_full true :data []})))))
+  (testing "the flag is ignored on any other reason"
+    (is (= {:type "incomplete" :finishReason "content-filter"}
+           (:status (client-message {:role :assistant :finished true :finish_reason "content-filter"
+                                     :context_window_full true :data []})))))
   (testing "a content-filtered turn with no text still carries the status the FE alerts on"
     (let [message (client-message {:role :assistant :finished true :finish_reason "content-filter"
                                    :data []})]
@@ -993,25 +1001,6 @@
     (is (= {:type "done"}
            (:status (client-message {:role :assistant :finished true :finish_reason "quantum-foam"
                                      :data []}))))))
-
-(deftest ^:parallel mark-context-window-full-test
-  (let [message (fn [status tokens] (cond-> {:status status} tokens (assoc :contextTokens tokens)))
-        length  {:type "incomplete" :finishReason "length"}
-        flagged (assoc length :contextWindowFull true)
-        mark    (fn [status tokens window]
-                  (:status (first (metabot-persistence/mark-context-window-full [(message status tokens)] window))))]
-    (testing "a length stop whose context reached the window is flagged, as the live stream flags it"
-      (is (= flagged (mark length 100 100)))
-      (is (= flagged (mark length 150 100))))
-    (testing "a length stop with room left is a plain max-output truncation"
-      (is (= length (mark length 99 100))))
-    (testing "without a usable token count or window there is nothing to judge"
-      (is (= length (mark length nil 100)))
-      (is (= length (mark length 0 100)))
-      (is (= length (mark length 150 nil))))
-    (testing "only length stops can mean a full window"
-      (doseq [status [{:type "incomplete" :finishReason "content-filter"} {:type "done"} {:type "errored" :error "x"}]]
-        (is (= status (mark status 150 100)))))))
 
 (deftest messages->client-messages-errored-pairs-test
   (testing "by default, errored assistant rows and the preceding user prompt are dropped"
@@ -1195,6 +1184,28 @@
       (testing "an aborted turn keeps the reason for diagnostics, and still finalizes as not finished"
         (is (=? {:finish_reason "length" :finished false}
                 (finalize-parts! [(usage-part "length")] :finished? false)))))))
+
+(deftest finalize-assistant-turn-persists-context-window-full-test
+  (testing "finalize-assistant-turn! records whether a length stop filled the window of the model that ran it"
+    (t2/with-transaction [_conn nil {:rollback-only true}]
+      ;; `usage-part` puts 10 prompt + 5 completion = 15 tokens in the context
+      (let [truncated [{:type :text :text "cut o"} (usage-part "length")]]
+        (testing "context at the window"
+          (is (=? {:finish_reason "length" :context_tokens 15 :context_window_full true}
+                  (finalize-parts! truncated :context-window-tokens 15))))
+        (testing "context past the window"
+          (is (true? (:context_window_full (finalize-parts! truncated :context-window-tokens 10)))))
+        (testing "room left in the window: a plain output-cap stop, and the column stays NULL"
+          (is (nil? (:context_window_full (finalize-parts! truncated :context-window-tokens 16)))))
+        (testing "no known window: nothing to judge"
+          (is (nil? (:context_window_full (finalize-parts! truncated)))))
+        (testing "no usage observed: nothing to judge"
+          (is (nil? (:context_window_full (finalize-parts! [{:type :text :text "cut o"}]
+                                                           :context-window-tokens 15))))))
+      (testing "only a length stop can fill the window"
+        (doseq [parts [[(usage-part "content-filter")]
+                       [(usage-part nil)]]]
+          (is (nil? (:context_window_full (finalize-parts! parts :context-window-tokens 10)))))))))
 
 (deftest finalize-assistant-turn-persists-error-and-finish-reason-test
   (testing "a turn with both an error and an incomplete reason persists both, and still reloads as errored"
