@@ -85,7 +85,13 @@
    (fn [enable-advanced-permissions?]
      (first
       (t2.pipeline/compile*
-       (cond-> {:select    [[:api_key.user_id :metabase-user-id]
+       ;; `api-key-id` and `api-key-creator-id` are here for API-key usage analytics: the auth query already has
+       ;; both rows joined, so carrying them on the request costs nothing and spares the response path a second
+       ;; lookup. `api-key-creator-id` is the real human who created the key — distinct from `metabase-user-id`,
+       ;; which is the key's own synthetic service-account user used for permission checks.
+       (cond-> {:select    [[:api_key.id :api-key-id]
+                            [:api_key.creator_id :api-key-creator-id]
+                            [:api_key.user_id :metabase-user-id]
                             [:api_key.key :api-key]
                             [:user.is_superuser :is-superuser?]
                             [:user.is_data_analyst :is-data-analyst?]
@@ -151,8 +157,8 @@
     (t2/query-one (cons sql params))))
 
 (mu/defn api-key-user-info
-  "The user id, api key, superuser/data-analyst/group-manager flags, and locale for the active User whose ApiKey
-  starts with `key-prefix`, or nil if there is none."
+  "The API key id, user id, api key, superuser/data-analyst/group-manager flags, and locale for the active User
+  whose ApiKey starts with `key-prefix`, or nil if there is none."
   [key-prefix                   :- :string
    enable-advanced-permissions? :- :boolean]
   (t2/query-one (cons (user-data-for-api-key-prefix-query enable-advanced-permissions?) [key-prefix])))
