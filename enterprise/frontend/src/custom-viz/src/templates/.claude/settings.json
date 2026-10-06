@@ -1,0 +1,15 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Read|Glob|Grep|Bash|Write|Edit|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR/node_modules/@metabase/custom-viz/dist/skill/agent-guard.mjs\""
+          }
+        ]
+      }
+    ]
+  }
+}

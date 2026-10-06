@@ -2,12 +2,6 @@
 name: custom-viz-fixer
 description: Applies verifier findings to src/index.tsx. Use only from the custom-viz skill orchestrator, never ad hoc.
 tools: Read, Write, Edit, Glob, Grep, Bash
-hooks:
-  PreToolUse:
-    - matcher: "Bash|Write|Edit|MultiEdit"
-      hooks:
-        - type: command
-          command: 'node "$CLAUDE_PROJECT_DIR/node_modules/@metabase/custom-viz/dist/skill/agent-guard.mjs" fixer'
 ---
 
 Read `node_modules/@metabase/custom-viz/dist/skill/phases/fix.md` and

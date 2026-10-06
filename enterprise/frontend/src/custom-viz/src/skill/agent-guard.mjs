@@ -67,15 +67,26 @@ const findVerifierViolation = ({ tool_name, tool_input = {}, cwd = "." }) => {
 };
 
 const ROLES = {
-  builder: findWriterViolation("builder"),
-  fixer: findWriterViolation("fixer"),
-  verifier: findVerifierViolation,
+  "custom-viz-builder": findWriterViolation("builder"),
+  "custom-viz-fixer": findWriterViolation("fixer"),
+  "custom-viz-verifier": findVerifierViolation,
 };
 
-const findViolation = ROLES[process.argv[2]];
-const violation = findViolation
-  ? findViolation(JSON.parse(readFileSync(0, "utf-8")))
-  : `unknown agent-guard role "${process.argv[2]}"`;
+const readInput = () => {
+  try {
+    return JSON.parse(readFileSync(0, "utf-8"));
+  } catch {
+    return null;
+  }
+};
+
+const input = readInput();
+const findViolation = ROLES[input?.agent_type];
+const violation = !input
+  ? "agent-guard could not parse the hook input"
+  : findViolation
+    ? findViolation(input)
+    : null;
 if (violation) {
   console.error(`Blocked: ${violation}. Follow your phase file.`);
   process.exit(2);

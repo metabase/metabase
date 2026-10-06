@@ -6,12 +6,13 @@ import { describe, expect, it } from "vitest";
 const SCRIPT = join(__dirname, "..", "dist", "skill", "agent-guard.mjs");
 
 const run = (
-  role: string,
+  role: string | null,
   toolName: string,
   toolInput: Record<string, string>,
 ) =>
-  spawnSync(process.execPath, [SCRIPT, role], {
+  spawnSync(process.execPath, [SCRIPT], {
     input: JSON.stringify({
+      ...(role ? { agent_type: `custom-viz-${role}` } : {}),
       tool_name: toolName,
       tool_input: toolInput,
       cwd: "/project",
@@ -90,7 +91,9 @@ describe("agent-guard.mjs", () => {
     expect(run("builder", "Edit", { file_path: ".claude/fix-log.md" })).toBe(2);
   });
 
-  it("blocks an unknown role", () => {
-    expect(run("other", "Read", { file_path: "src/index.tsx" })).toBe(2);
+  it.each([null, "other"])("does not guard agent %s", (role) => {
+    expect(run(role, "Read", { file_path: ".claude/fix-log.md" })).toBe(0);
+    expect(run(role, "Bash", { command: "npm run dev" })).toBe(0);
+    expect(run(role, "Edit", { file_path: "package.json" })).toBe(0);
   });
 });
