@@ -6,11 +6,13 @@
    [metabase.app-db.activity-test-util :as activity]
    [metabase.app-db.connection :as mdb.connection]
    [metabase.app-db.core :as mdb]
+   [metabase.settings.core :as setting]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [toucan2.core :as t2])
   (:import
    (java.sql Connection)
+   (java.util.concurrent.atomic AtomicLong)
    (javax.sql DataSource)))
 
 (set! *warn-on-reflection* true)
@@ -162,3 +164,35 @@
                          (.execute other-stmt "SELECT 1")))))]
       (testing "only the statement on the counting connection counts"
         (is (=? {:statements 1 :prepares 1} (this-thread counts)))))))
+
+(defn- make-settings-check-due!
+  "Reset the 60 s throttle of the settings-cache check, so that the next setting read sends the check."
+  []
+  (.set ^AtomicLong (var-get #'metabase.settings.models.setting.cache/last-update-check) 0))
+
+(defn- read-cached-setting []
+  (setting/get :site-name))
+
+(deftest settings-check-is-outside-the-count-test
+  (testing "a setting read in a count sends no settings check, also when the check is due at the start"
+    (mt/with-temporary-setting-values [site-name "activity counter"]
+      (make-settings-check-due!)
+      (let [counts (activity/count-db-activity! read-cached-setting)]
+        (is (= "activity counter" (:result counts)))
+        (is (=? {:statements 0} (this-thread counts)))
+        (is (nat-int? (:elapsed-ms counts)))))))
+
+(deftest settings-check-due-inside-the-thunk-is-counted-test
+  (testing "a thunk that makes the settings check due and then reads a setting sends the check inside the count"
+    (mt/with-temporary-setting-values [site-name "activity counter"]
+      (let [counts (activity/count-db-activity! #(do (make-settings-check-due!)
+                                                     (read-cached-setting)))]
+        (is (=? {:statements 1} (this-thread counts)))))))
+
+(deftest failed-settings-check-leaves-no-count-running-test
+  (testing "a settings check that throws makes the count throw"
+    (mt/with-dynamic-fn-redefs [setting/restore-cache-if-needed! (fn [& _] (throw (ex-info "settings check failed" {})))]
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"settings check failed"
+                            (activity/count-db-activity! (constantly :never))))))
+  (testing "and a later count runs"
+    (is (= :ran (:result (activity/count-db-activity! (constantly :ran)))))))
