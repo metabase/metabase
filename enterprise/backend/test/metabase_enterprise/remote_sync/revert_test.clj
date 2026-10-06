@@ -1,5 +1,6 @@
 (ns metabase-enterprise.remote-sync.revert-test
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase-enterprise.remote-sync.impl :as impl]
    [metabase-enterprise.remote-sync.source.protocol :as source.p]
@@ -88,6 +89,51 @@
               (is (= :success (pull! source)))
               (is (= "Dash one" (t2/select-one-fn :name :model/Dashboard :entity_id dash-eid)))
               (is (= "Card one" (t2/select-one-fn :name :model/Card :entity_id card-eid))))))))))
+
+(defn- remote-rename!
+  "Changes each top-level `name: from` line to `name: to` in the files on the main branch of `source`, as a commit by
+  another person does."
+  [source from to]
+  (swap! (:files-atom source) update "main"
+         (fn [files]
+           (update-vals files #(str/replace % (re-pattern (str "(?m)^name: " from "$")) (str "name: " to))))))
+
+(deftest card-revert-after-a-pull-is-pushed-test
+  (mt/with-premium-features #{:remote-sync}
+    (mt/with-temporary-setting-values [remote-sync-type :read-write]
+      (mt/with-model-cleanup [:model/Card :model/Revision :model/RemoteSyncTask]
+        (mt/with-temp [:model/Collection {coll-id :id :as coll} {:name "Synced" :is_remote_synced true :location "/"}]
+          ;; without the ledger row of the collection, the export omits it, and the forced pull deletes its content
+          (events/publish-event! :event/collection-create {:object coll :user-id (mt/user->id :crowberto)})
+          (let [card-id  (:id (mt/user-http-request :crowberto :post 200 "card"
+                                                    {:name                   "Card one"
+                                                     :collection_id          coll-id
+                                                     :display                "table"
+                                                     :visualization_settings {}
+                                                     :dataset_query          (mt/native-query {:query "SELECT 1"})}))
+                source   (test-helpers/create-mock-source :initial-files {"main" {}})
+                card-eid (t2/select-one-fn :entity_id :model/Card :id card-id)]
+            (mt/user-http-request :crowberto :put 200 (str "card/" card-id) {:name "Card two"})
+            (mt/user-http-request :crowberto :put 200 (str "card/" card-id) {:name "Card one"})
+            (is (= :success (push! source)))
+            (remote-rename! source "Card one" "Card remote")
+            (is (= :success (pull! source)))
+            (let [card-id   (t2/select-one-pk :model/Card :entity_id card-eid)
+                  revisions (t2/select :model/Revision :model "Card" :model_id card-id {:order-by [[:id :asc]]})]
+              (testing "the pull changes the card and writes no revision, so the newest revision equals the oldest"
+                (is (= "Card remote" (t2/select-one-fn :name :model/Card card-id)))
+                (is (= ["Card one" "Card two" "Card one"] (map #(get-in % [:object :name]) revisions)))
+                (is (= "synced" (ledger-status "Card" card-id))))
+              (revert! "card" card-id (:id (first revisions)))
+              (is (= "Card one" (t2/select-one-fn :name :model/Card card-id)))
+              (testing "the revert marks the ledger row as updated"
+                (is (= "update" (ledger-status "Card" card-id))))
+              (testing "the next push writes the reverted name"
+                (is (= :success (push! source)))
+                (is (= #{"Synced" "Card one"} (repo-names source))))
+              (testing "a pull keeps the reverted name"
+                (is (= :success (pull! source)))
+                (is (= "Card one" (t2/select-one-fn :name :model/Card :entity_id card-eid)))))))))))
 
 (deftest transform-name-revert-is-pushed-test
   (mt/with-premium-features #{:remote-sync :transforms-basic}

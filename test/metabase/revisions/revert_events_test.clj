@@ -1,5 +1,6 @@
 (ns metabase.revisions.revert-events-test
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.events.core :as events]
    [metabase.lib-be.core :as lib-be]
@@ -151,6 +152,111 @@
         (testing "a revert to the current state publishes nothing and writes no revision"
           (is (= [] (:events-no-change result)))
           (is (= (:revisions-after result) (:revisions-after-no-change result))))))))
+
+(defn- push-names!
+  "Sets the name of `model` `id` to each of `entity-names` in order, and records a revision for each name. The first
+  revision is a creation revision."
+  [model id entity-names]
+  (doseq [[i entity-name] (map-indexed vector entity-names)]
+    (t2/update! model id {:name entity-name})
+    (revision/push-revision! {:entity       model
+                              :id           id
+                              :object       (t2/select-one model :id id)
+                              :user-id      (mt/user->id :crowberto)
+                              :is-creation? (zero? i)})))
+
+(defn- revert-after-unrecorded-rename!
+  "Creates an entity with a revision for each name of `recorded-names`, then renames it to `unrecorded-name` with no
+  revision, as a remote-sync pull does. Reverts it through the API to its first revision. Returns the facts that the
+  revert tests check."
+  [entity model recorded-names unrecorded-name]
+  (mt/with-temp [model {id :id} (assoc (with-temp-attributes entity) :name (first recorded-names))]
+    (push-names! model id recorded-names)
+    (t2/update! model id {:name unrecorded-name})
+    (let [[first-rev] (revisions-of model id)
+          before      (count (revisions-of model id))
+          events      (do-with-recorded-update-events!
+                       #(mt/user-http-request :crowberto :post 200 "revision/revert"
+                                              {:entity entity :id id :revision_id (:id first-rev)}))
+          after       (revisions-of model id)]
+      {:id            id
+       :revision-id   (:id first-rev)
+       :name          (t2/select-one-fn :name model :id id)
+       :new-revisions (- (count after) before)
+       :last-revision (last after)
+       :events        events})))
+
+(defn- entities-without-update-hook []
+  (for [[entity model] @#'metabase.revisions.api/entity->model
+        :when (and (contains? expected entity)
+                   (not (:hook? (expected entity))))]
+    [entity model]))
+
+(deftest revert-of-an-unrecorded-change-publishes-once-test
+  (doseq [[entity model] (entities-without-update-hook)]
+    (testing entity
+      (let [{update-topic :topic :keys [previous-object?]} (expected entity)
+            {:keys [id revision-id] :as result}
+            (mt/with-temporary-raw-setting-values [transforms-enabled "true"]
+              ;; the newest revision equals the target revision; the row does not
+              (revert-after-unrecorded-rename! entity model ["Name one" "Name two" "Name one"] "Name remote"))]
+        (testing "the revert restores the entity"
+          (is (= "Name one" (:name result))))
+        (testing "the revert adds one reversion revision"
+          (is (= 1 (:new-revisions result)))
+          (is (true? (:is_reversion (:last-revision result)))))
+        (testing "the revert publishes the update topic once, with the row before the revert as the previous object"
+          (is (=? [[update-topic (cond-> {:object                  {:id id :name "Name one"}
+                                          :user-id                 (mt/user->id :crowberto)
+                                          :reverted-to-revision-id revision-id}
+                                   previous-object? (assoc :previous-object {:id id :name "Name remote"}))]]
+                  (:events result))))))))
+
+(deftest revert-that-leaves-the-row-unchanged-publishes-nothing-test
+  (doseq [[entity model] (entities-without-update-hook)]
+    (testing entity
+      (let [result (mt/with-temporary-raw-setting-values [transforms-enabled "true"]
+                     ;; the row already has the values of the target revision; the newest revision does not
+                     (revert-after-unrecorded-rename! entity model ["Name one" "Name two"] "Name one"))]
+        (testing "the entity keeps the target values"
+          (is (= "Name one" (:name result))))
+        (testing "the revert adds one reversion revision, so the history shows the entity as it is"
+          (is (= 1 (:new-revisions result)))
+          (is (true? (:is_reversion (:last-revision result)))))
+        (testing "the revert publishes nothing"
+          (is (= [] (:events result))))))))
+
+(events/derive! ::thrower :metabase/event)
+
+(methodical/defmethod events/publish-event! ::thrower
+  [_topic _event]
+  (throw (ex-info "A test listener fails" {})))
+
+(deftest revert-answers-success-when-a-listener-throws-test
+  (mt/with-temp [:model/Card {id :id} {:name "Name one"}]
+    (push-names! :model/Card id ["Name one" "Name two"])
+    (let [revision-id (:id (first (revisions-of :model/Card id)))
+          before      (count (revisions-of :model/Card id))]
+      (events/derive! :event/card-update ::thrower)
+      (try
+        (mt/with-log-messages-for-level [messages [metabase.revisions :error]]
+          (let [response (mt/user-http-request :crowberto :post 200 "revision/revert"
+                                               {:entity "card" :id id :revision_id revision-id})]
+            (testing "the endpoint answers with the committed reversion revision"
+              (is (=? {:is_reversion true} response)))
+            (testing "the revert is saved"
+              (is (= "Name one" (t2/select-one-fn :name :model/Card :id id)))
+              (is (= (inc before) (count (revisions-of :model/Card id)))))
+            (testing "the listener failure is logged with the topic, the model and the id"
+              (is (some (fn [{:keys [level message e]}]
+                          (and (= :error level)
+                               (some? e)
+                               (str/includes? message (str :event/card-update))
+                               (str/includes? message "Card")
+                               (str/includes? message (str id))))
+                        (messages))))))
+        (finally
+          (events/underive! :event/card-update ::thrower))))))
 
 (deftest every-revertable-model-has-an-update-topic-test
   (doseq [[entity model] @#'metabase.revisions.api/entity->model]
