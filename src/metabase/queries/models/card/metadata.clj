@@ -246,21 +246,25 @@ saved later when it is ready."
 
 (mu/defn populate-result-metadata :- [:map
                                       [:result_metadata {:optional true} [:maybe [:sequential ::lib.schema.metadata/lib-or-legacy-column]]]]
-  "When inserting/updating a Card, populate the result metadata column if not already populated by inferring the
-  metadata from the query."
+  "Set `:result_metadata` of `card` for an insert (`changes` nil) or an update with `changes`.
+
+  - While deserializing a model whose given columns lack field ids, an insert or a change of its columns or query
+    infers them with the given columns as overrides; if the inference fails, keeps the given columns.
+  - An update that does not change the query keeps the card.
+  - Given metadata (an insert with it, or an update of it) is kept.
+  - While deserializing, a change of a native query keeps the given columns.
+  - Otherwise, infers the metadata from the query; nil if the inference fails."
   ([card :- ::queries.schema/card]
    (populate-result-metadata card nil))
 
   ([{query :dataset_query metadata :result_metadata :as card} :- ::queries.schema/card
     changes :- [:maybe ::queries.schema/card]]
    (-> (cond
-         ;; A serdes export writes only the overrides of a model's columns (no base type, no field id). Checked before
-         ;; the query check, because a load that updates an existing model can change only its result_metadata. A load
-         ;; can also change only its dataset_query; then the given columns are the fallback when the inference fails.
+         ;; An MBQL model's export keeps only column overrides (no base_type, no field id); infer the rest. Before the
+         ;; query check: a load often changes only result_metadata. dataset_query too: when the inference fails, keep
+         ;; the given columns, which the :else branch does not. Other updates (a rename) do not re-infer.
          (and mi/*deserializing?* (= (:type card) :model) query (seq metadata) (not-any? :id metadata)
-              (or (empty? changes)
-                  (contains? changes :result_metadata)
-                  (contains? changes :dataset_query)))
+              (or (empty? changes) (some (partial contains? changes) [:result_metadata :dataset_query])))
          (assoc card :result_metadata (or (infer-metadata-with-model-overrides query card) metadata))
 
          ;; not updating the query => no-op
@@ -275,6 +279,13 @@ saved later when it is ready."
              (and (empty? changes) metadata))
          (do
            (log/debug "Not inferring result metadata for Card: metadata was passed in to insert!/update!")
+           card)
+
+         ;; A native card's export keeps its full columns. A load that changes only the SQL gives them again, so
+         ;; `changes` lacks result_metadata. Keep them: the columns of a native query cannot be inferred.
+         (and mi/*deserializing?* (seq metadata) (contains? changes :dataset_query) (lib/native-only-query? query))
+         (do
+           (log/debug "Not inferring result metadata for Card: a load changed its native query")
            card)
 
          ;; query has changed (or new Card) and this is a native query => set metadata to nil
