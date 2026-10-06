@@ -5,6 +5,7 @@
    ^{:clj-kondo/ignore [:discouraged-namespace]}
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib-be.schema :as lib-be.schema]
+   [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util :as u]
@@ -92,6 +93,7 @@
                                                                                               [false [:fn {:error/message "map"} map?]]]]]]]
    [:pivot?                  {:optional true} :boolean]
    [:is_sandboxed            {:optional true} :boolean]
+   [:sandbox_details         {:optional true} [:sequential [:ref ::lib.schema/sandboxing.details.entry]]]
    [:download_perms          {:optional true} [:or :keyword :string]]
    [:results_metadata        {:optional true} [:map {:closed true}
                                                [:columns ::result-metadata.columns]]]

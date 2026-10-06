@@ -405,41 +405,21 @@
     (log/trace "Applied Sandbox: replaced stage with sandboxed stages")
     replacement-stages))
 
-(mr/def ::details-entry
-  "Audit-log entry describing one applied Sandbox, as recorded in `query_execution.sandbox_details`: which Table it
-  sandboxes, which Sandbox/group/Card it came from, and which login attributes were remapped to which Fields. An
-  attribute's `:value` is the user's actual attribute value, included only when
-  [[analytics.settings/analytics-pii-retention-enabled]] is set."
-  [:map {:closed true}
-   [:table_id   ::lib.schema.id/table]
-   [:sandbox_id [:maybe :int]]
-   [:group_id   [:maybe :int]]
-   [:card_id    [:maybe ::lib.schema.id/card]]
-   [:attributes [:map-of
-                 #_attribute-name ::lib.schema.common/non-blank-string
-                 #_remapping      [:map {:closed true}
-                                   [:field_id [:maybe ::lib.schema.id/field]]
-                                   [:value    {:optional true} :any]]]]])
-
-(mr/def ::details
-  "Audit-log details for the Sandboxes applied to a query, keyed by the Table ID each one sandboxes."
-  [:map-of ::lib.schema.id/table ::details-entry])
-
 (mr/def ::query-with-details
-  "A query that has been through [[apply-sandboxing]]. Carries [[::details]] under the `::details` key once at least
-  one Sandbox has been applied; the key is absent otherwise. [[merge-sandboxing-metadata]] reads it back out during
-  post-processing, and it never leaves the QP: it is an internal namespaced key, so
-  [[metabase.lib.serialize/prepare-for-serialization]] drops it before a query is returned to the client or saved to
-  the application database."
+  "A query that has been through [[apply-sandboxing]]. Carries [[metabase.lib.schema/sandboxing.details]] under the
+  `::details` key once at least one Sandbox has been applied; the key is absent otherwise.
+  [[merge-sandboxing-metadata]] reads it back out during post-processing, and it never leaves the QP: it is an
+  internal namespaced key, so [[metabase.lib.serialize/prepare-for-serialization]] drops it before a query is
+  returned to the client or saved to the application database."
   [:and
    ::lib.schema/query
    [:map
-    [::details {:optional true} ::details]]])
+    [::details {:optional true} ::lib.schema/sandboxing.details]]])
 
-(mu/defn- sandbox->details-entry :- ::details-entry
-  "Build the [[::details-entry]] for one applied Sandbox. The user's actual attribute values are included only
-  when [[analytics.settings/analytics-pii-retention-enabled]] is set, mirroring how that setting gates other
-  user-specific data in Usage Analytics."
+(mu/defn- sandbox->details-entry :- ::lib.schema/sandboxing.details.entry
+  "Build the [[metabase.lib.schema/sandboxing.details.entry]] for one applied Sandbox. The user's actual attribute
+  values are included only when [[analytics.settings/analytics-pii-retention-enabled]] is set, mirroring how that
+  setting gates other user-specific data in Usage Analytics."
   [{table-id   :table_id
     card-id    :card_id
     group-id   :group_id
@@ -465,7 +445,7 @@
   (into #{} (match/match-many query {:query-permissions/sandboxed-table (table-id :guard pos-int?)} table-id)))
 
 (mu/defn- attach-sandbox-details :- ::query-with-details
-  "Attach audit-log [[::details]] for the Sandboxes that have been applied to `query`, merged by Table ID since
+  "Attach audit-log details under `::details` for the Sandboxes that have been applied to `query`, merged by Table ID since
   sandboxing runs in multiple passes (e.g. again after JOINs are resolved) — markers whose Table has no entry in
   `table-id->sandbox` were applied (and recorded) in an earlier pass. [[merge-sandboxing-metadata]] copies the
   accumulated entries into the results metadata during post-processing."
