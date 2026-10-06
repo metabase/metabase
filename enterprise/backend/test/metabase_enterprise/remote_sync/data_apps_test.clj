@@ -70,7 +70,7 @@
                                              :current "v0")]
       (testing "a pull imports the app and its bundle"
         (is (=? {:status :success :outcome {:kind "pulled" :count 1}} (import-at! src "v0" :force? true)))
-        (is (=? {:entity_id sales-eid :display_name "Sales" :draft false :resource_collection_id pos-int?}
+        (is (=? {:entity_id sales-eid :display_name "Sales" :resource_collection_id pos-int?}
                 (t2/select-one :model/DataApp :name "sales")))
         (is (= "BUNDLE-V1" (bundle-text "sales"))))
       (testing "a pull whose repo no longer has the app removes it"

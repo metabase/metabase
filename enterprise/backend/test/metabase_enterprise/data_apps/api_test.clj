@@ -403,8 +403,6 @@
       (t2/insert! :model/DataApp :name "ready" :display_name "Ready" :bundle_path "data_apps/ready/index.js")
       (t2/insert! :model/DataApp :name "disabled" :display_name "Disabled" :bundle_path "data_apps/disabled/index.js"
                   :enabled false)
-      (t2/insert! :model/DataApp :name "draft" :display_name "Draft" :bundle_path "data_apps/draft/index.js"
-                  :draft true)
       (is (=? [{:name "ready" :display_name "Ready"}]
               (mt/user-http-request :rasta :get 200 "apps?available=true"))))))
 
@@ -517,7 +515,6 @@
                    :allowed_hosts          ["https://api.example.com"]
                    :version                1
                    :enabled                true
-                   :draft                  false
                    :bundle_hash            string?
                    :resource_collection_id pos-int?
                    :permission_group_id    pos-int?}
@@ -536,16 +533,6 @@
                        {:version 0}]]
             (mt/user-http-request :crowberto :post 400 "apps" (merge app-request {:name "other"} bad))
             (is (not (t2/exists? :model/DataApp :name "other")) (str "should refuse: " (pr-str bad)))))))))
-
-(deftest create-endpoint-fills-a-draft-test
-  (mt/with-premium-features #{:data-apps}
-    (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
-      (let [draft (t2/insert-returning-instance! :model/DataApp {:name "demo" :display_name "demo"
-                                                                 :bundle_path "dist/index.js" :draft true})]
-        (is (=? {:id                     (:id draft)
-                 :draft                  false
-                 :resource_collection_id (:resource_collection_id draft)}
-                (mt/user-http-request :crowberto :post 200 "apps" app-request)))))))
 
 (deftest update-endpoint-test
   (mt/test-helpers-set-global-values!

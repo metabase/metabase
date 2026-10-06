@@ -39,7 +39,6 @@ export const fakeDataApp = (overrides: Partial<DataApp> = {}): DataApp => ({
   outdated: false,
   bundle_path: "dist/index.js",
   enabled: true,
-  draft: false,
   resource_collection_id: 1,
   permission_group_id: null,
   table_ids: [],

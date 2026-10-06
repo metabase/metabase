@@ -12,12 +12,6 @@
 
 (set! *warn-on-reflection* true)
 
-(defn- insert-draft!
-  "A draft row with `slug`: a slug reserved before the app exists, which an import fills."
-  [slug]
-  (t2/insert-returning-instance! :model/DataApp {:name slug :display_name slug :bundle_path "dist/index.js"
-                                                 :draft true}))
-
 (defn- insert-app! [& {:as extra}]
   (t2/insert-returning-instance! :model/DataApp
                                  (merge {:name          "sales-ops"
@@ -32,7 +26,7 @@
   [dir & {:keys [with-collections?]}]
   (serialization/store! (if with-collections?
                           (extract/extract {:targets        (mapv (fn [id] ["DataApp" id])
-                                                                  (t2/select-pks-vec :model/DataApp :draft false))
+                                                                  (t2/select-pks-vec :model/DataApp))
                                             :no-settings    true
                                             :no-data-model  true})
                           (serdes/extract-all "DataApp" {}))
@@ -83,11 +77,6 @@
           (is (= "console.log(1)"
                  (slurp (io/file dump-dir "data_apps" "sales-ops" "dist" "index.js")))))))))
 
-(deftest drafts-are-not-exported-test
-  (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
-    (insert-draft! "draft-app")
-    (is (empty? (into [] (serdes/extract-all "DataApp" {}))))))
-
 (deftest round-trip-test
   (mt/with-premium-features #{:data-apps}
     (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
@@ -107,8 +96,7 @@
                      :display_name  "Sales Ops"
                      :bundle_path   "dist/index.js"
                      :bundle_hash   (:bundle_hash app)
-                     :allowed_hosts ["https://api.example.com"]
-                     :draft         false}
+                     :allowed_hosts ["https://api.example.com"]}
                     imported))
             (is (= "console.log(1)" (bundle-text imported)))
             (testing "the import links the collection the manifest names and creates the permission group"
@@ -156,20 +144,6 @@
             (is (= "console.log(2)" (bundle-text updated)))
             (is (not= (:bundle_hash app) (:bundle_hash updated)))))))))
 
-(deftest import-takes-over-a-draft-with-the-same-slug-test
-  (mt/with-premium-features #{:data-apps}
-    (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
-      (ts/with-random-dump-dir [dump-dir "data-app-draft-"]
-        (let [{id :id :as draft} (insert-draft! "draft-app")]
-          (write-app-files! dump-dir "draft_app" (app-yaml "Ld3cXiYs9n8HP3q3FvC7R" "draft-app")
-                            {"dist/index.js" "BUNDLE"})
-          (import! dump-dir)
-          (is (=? {:id                     id
-                   :entity_id              "Ld3cXiYs9n8HP3q3FvC7R"
-                   :draft                  false
-                   :resource_collection_id (:resource_collection_id draft)}
-                  (t2/select-one :model/DataApp :name "draft-app"))))))))
-
 (deftest import-rejects-invalid-apps-test
   (mt/with-premium-features #{:data-apps}
     (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
@@ -205,7 +179,7 @@
           (import! dump-dir)
           (is (nil? (t2/select-one-fn :description :model/DataApp :id (:id app)))))))))
 
-(deftest import-does-not-take-over-an-app-that-is-not-a-draft-test
+(deftest import-does-not-take-over-an-app-made-on-the-instance-test
   (mt/with-premium-features #{:data-apps}
     (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
       (ts/with-random-dump-dir [dump-dir "data-app-takeover-"]

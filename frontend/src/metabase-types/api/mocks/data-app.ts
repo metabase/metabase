@@ -10,7 +10,6 @@ export const createMockDataApp = (opts?: Partial<DataApp>): DataApp => ({
   outdated: false,
   bundle_path: "dist/index.js",
   enabled: true,
-  draft: false,
   resource_collection_id: 1,
   permission_group_id: 1,
   table_ids: [],
