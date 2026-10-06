@@ -554,3 +554,26 @@
                                                                  "nowhereSnippetEid0000"))))}
                        :current "v0")]
               (is (= :error (:status (import-at! src "v0" :force? true)))))))))))
+
+(deftest a-new-collection-keeps-the-apps-cards-test
+  (testing "a manifest that names a new collection moves the app's cards there, so what points at them still does"
+    (with-data-apps-sync
+      (let [new-eid   (data-apps.tu/collection-entity-id "shop2")
+            resources (data-apps.tu/build-resources
+                       new-eid [{:entity_id question-eid :name "VenuesList" :query (venues-query)}] [])
+            src       (test-helpers/versioned-source
+                       :trees {"v0" (shop-tree (question-resources))
+                               "v1" (data-apps.tu/app-files "shop" {:name "Shop" :path "index.js" :bundle "B"
+                                                                    :collection new-eid :resources resources})}
+                       :current "v0")]
+        (is (= :success (:status (import-at! src "v0" :force? true))))
+        (let [card-id        (t2/select-one-pk :model/Card :entity_id question-eid)
+              old-collection (shop-collection-id)]
+          (mt/with-temp [:model/Dashboard     {dashboard-id :id} {:name "Elsewhere"}
+                         :model/DashboardCard _ {:dashboard_id dashboard-id :card_id card-id}]
+            (is (= :success (:status (import-at! src "v1"))))
+            (is (= card-id (t2/select-one-pk :model/Card :entity_id question-eid)))
+            (is (= (t2/select-one-pk :model/Collection :entity_id new-eid)
+                   (t2/select-one-fn :collection_id :model/Card :id card-id)))
+            (is (t2/exists? :model/DashboardCard :dashboard_id dashboard-id :card_id card-id))
+            (is (not (t2/exists? :model/Collection :id old-collection)))))))))

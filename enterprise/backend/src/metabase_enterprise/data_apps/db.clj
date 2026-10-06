@@ -229,6 +229,12 @@
   [collection-id changes]
   (t2/update! :model/Collection :id collection-id changes))
 
+(defn move-resources!
+  "Move the cards and actions in the collection `from-collection-id` to the collection `to-collection-id`."
+  [from-collection-id to-collection-id]
+  (t2/update! :model/Card :collection_id from-collection-id {:collection_id to-collection-id})
+  (t2/update! :model/Action :collection_id from-collection-id {:collection_id to-collection-id}))
+
 (defn delete-resource-collection!
   "Delete the resource collection with `collection-id`."
   [collection-id]

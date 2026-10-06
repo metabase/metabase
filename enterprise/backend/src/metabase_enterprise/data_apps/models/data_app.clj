@@ -199,6 +199,9 @@
     (data-app.resources/ensure-resources! app {:create-collection? false})
     ;; A manifest naming a new collection leaves the previous one owned by nothing: delete it with its copies.
     (when (and previous (not= previous (:resource_collection_id app)))
+      ;; the cards and actions keep their rows, so what points at them by numeric ID survives the switch
+      (when-let [current (:resource_collection_id app)]
+        (data-apps.db/move-resources! previous current))
       (data-apps.db/delete-resource-collection! previous))
     app))
 
