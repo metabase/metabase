@@ -1,6 +1,6 @@
 (ns metabase.funnysql.core
   "Compiles Honey SQL-shaped app-DB queries to `[sql & args]` for `:h2`, `:postgres` or `:mysql.` Closed: a clause or
-  function absent from [[clause-fns]]/[[-fn-call!]] throws. Values bind as `?`; only numbers, booleans, validated
+  function absent from [[clause-fns]]/[[fn-call!]] throws. Values bind as `?`; only numbers, booleans, validated
   tokens and [[h2x/literal]] are spliced. A map compiles as a query only at top level or when marked
   `^:allow-subquery`. No support at all for `:raw`."
   (:refer-clojure :exclude [format])
@@ -89,12 +89,12 @@
     (or (sequential? x) (set? x)) x
     :else                         [x]))
 
-(defn- -commas! [xs context]
+(defn- commas! [xs context]
   (interpose-fn xs #(compile! % context) #(append-sql! context ", ")))
 
 (declare map!)
 
-(defn- -parens!
+(defn- parens!
   "Compile `x` wrapped in parens. A `^:allow-subquery` map is compiled directly rather than via [[compile!]], which
   would parenthesize it a second time."
   [x context]
@@ -102,9 +102,9 @@
   ((if (subquery? x) map! compile!) x context)
   (append-sql! context ")"))
 
-(defn- -list! [xs context]
+(defn- list! [xs context]
   (append-sql! context "(")
-  (-commas! xs context)
+  (commas! xs context)
   (append-sql! context ")"))
 
 (defn- identifier-form?
@@ -113,7 +113,7 @@
   [x]
   (or (keyword? x)
       (and (vector? x)
-           (= (first x) :metabase.util.honey-sql-2/identifier))))
+           (= (first x) ::h2x/identifier))))
 
 (defn- check-identifier-form
   "Table/column-name positions must never silently fall through to [[object!]]'s `?`-parameter handling just
@@ -124,7 +124,7 @@
   (when-not (identifier-form? x)
     (throw (ex-info "Expected an identifier" {:x x}))))
 
-(defn- -identifier-with-optional-alias!
+(defn- identifier-with-optional-alias!
   "Handle an identifier form as seen in `:select`, `:from`, etc.; unwrapped or a vector with one element will act an
   unaliased identifier while a vector with two elements will emit `<x> AS <y>`."
   [identifier context & {:keys [lhs-must-be-identifier? include-as?], :or {lhs-must-be-identifier? false, include-as? true}}]
@@ -141,22 +141,22 @@
       (append-sql! context (if include-as? " AS " " "))
       (compile! rhs context))))
 
-(defn- -identifier-list! [xs context]
+(defn- identifier-list! [xs context]
   (let [xs (->sequence xs)]
     (run! check-identifier-form xs)
-    (-list! xs context)))
+    (list! xs context)))
 
-(defn- -kvs-map! [kvs context]
-  (letfn [(-x-equals-y! [[x y]]
+(defn- kvs-map! [kvs context]
+  (letfn [(x-equals-y! [[x y]]
             (check-identifier-form x)
             (compile! x context)
             (append-sql! context " = ")
             (compile! y context))]
-    (interpose-fn kvs -x-equals-y! #(append-sql! context ", "))))
+    (interpose-fn kvs x-equals-y! #(append-sql! context ", "))))
 
 (defn- with! [sql ctes context]
   (append-sql! context sql)
-  (letfn [(-cte [[identifier subquery & options]]
+  (letfn [(cte! [[identifier subquery & options]]
             (let [[identifier {:keys [columns]}] (if (sequential? identifier)
                                                    identifier
                                                    [identifier])]
@@ -164,13 +164,13 @@
               (compile! identifier context)
               (when columns
                 (append-sql! context \space)
-                (-identifier-list! columns context)))
+                (identifier-list! columns context)))
             (append-sql! context " AS ")
             (doseq [option options]
               (case option
                 :materialized (append-sql! context "MATERIALIZED ")))
-            (-parens! subquery context))]
-    (interpose-fn ctes -cte #(append-sql! context ", "))))
+            (parens! subquery context))]
+    (interpose-fn ctes cte! #(append-sql! context ", "))))
 
 (defn- create-table! [identifier context]
   (let [[identifier & options] (if (vector? identifier)
@@ -183,9 +183,9 @@
         :if-not-exists (append-sql! context "IF NOT EXISTS ")))
     (compile! identifier context)))
 
-(declare -simple-fn!)
+(declare simple-fn!)
 
-(defn- -raw-type-name! [type-name context]
+(defn- raw-type-name! [type-name context]
   ;; `[::h2x/raw-type-name "<type>"]` is how `h2x/cast` carries an already-validated type name through Honey SQL,
   ;; which has no other form that splices one without mangling it. Here the name is just the name, so unwrap it.
   (let [type-name (if (and (vector? type-name)
@@ -196,7 +196,7 @@
         ;; to a string like `varchar(26)` so we can validate them
         type-name-str (-> (if (vector? type-name)
                             (let [recursive-context (default-context (engine context) (options context))]
-                              (-simple-fn! (first type-name) (rest type-name) recursive-context)
+                              (simple-fn! (first type-name) (rest type-name) recursive-context)
                               (first (result! recursive-context)))
                             (name type-name))
                           (str/replace #"-" " "))]
@@ -245,7 +245,7 @@
           (column-spec! [[column-identifier type-name & options]]
             (column-identifier! column-identifier)
             (append-sql! context \space)
-            (-raw-type-name! type-name context)
+            (raw-type-name! type-name context)
             (options! options))]
     (interpose-fn column-specs column-spec! #(append-sql! context ", ")))
   (append-sql! context ")"))
@@ -263,7 +263,7 @@
       (compile! identifier context)
       (when (seq columns)
         (append-sql! context \space)
-        (-identifier-list! columns context)))
+        (identifier-list! columns context)))
     (when subquery
       (append-sql! context \space)
       ;; `INSERT INTO t SELECT ...` -- the subquery is not wrapped in parens here
@@ -277,14 +277,14 @@
     ;; if rows are maps, infer columns from the map keys; look at all rows to get the complete set since some maps
     ;; might be partial.
     (let [columns (into (ordered-set/ordered-set) (mapcat keys) rows)]
-      (-identifier-list! columns context)
+      (identifier-list! columns context)
       (append-sql! context " VALUES ")
-      (interpose-fn rows #(-list! (map (or % {}) columns) context) #(append-sql! context ", ")))
+      (interpose-fn rows #(list! (map (or % {}) columns) context) #(append-sql! context ", ")))
     ;; otherwise assume columns have been specified with `:columns` and assume `rows` is a sequence of sequences, one
     ;; for each row.
     (do
       (append-sql! context "VALUES ")
-      (interpose-fn rows #(-list! % context) #(append-sql! context ", ")))))
+      (interpose-fn rows #(list! % context) #(append-sql! context ", ")))))
 
 (defn- drop-table! [table context]
   (let [options (butlast table)
@@ -300,25 +300,25 @@
 
 (defn- update! [identifier context]
   (append-sql! context "UPDATE ")
-  (-identifier-with-optional-alias! identifier context :lhs-must-be-identifier? true, :include-as? false))
+  (identifier-with-optional-alias! identifier context :lhs-must-be-identifier? true, :include-as? false))
 
 (defn- set! [kvs context]
   (append-sql! context "SET ")
-  (-kvs-map! kvs context))
+  (kvs-map! kvs context))
 
 (defn- delete-from! [identifier context]
   (append-sql! context "DELETE FROM ")
-  (-identifier-with-optional-alias! identifier context :lhs-must-be-identifier? true, :include-as? false))
+  (identifier-with-optional-alias! identifier context :lhs-must-be-identifier? true, :include-as? false))
 
 (defn- select! [sql cols context]
   (append-sql! context sql)
-  (interpose-fn (->sequence cols) #(-identifier-with-optional-alias! % context) #(append-sql! context ", ")))
+  (interpose-fn (->sequence cols) #(identifier-with-optional-alias! % context) #(append-sql! context ", ")))
 
 (defn- from! [from context]
   (append-sql! context "FROM ")
   (if (keyword? from)
-    (-identifier-with-optional-alias! from context)
-    (interpose-fn from #(-identifier-with-optional-alias! % context) #(append-sql! context ", "))))
+    (identifier-with-optional-alias! from context)
+    (interpose-fn from #(identifier-with-optional-alias! % context) #(append-sql! context ", "))))
 
 (defn- join!
   [join-type joins context]
@@ -331,14 +331,14 @@
                           :inner "INNER JOIN ")]
       (loop [[thing-to-join condition & more] joins]
         (append-sql! context join-type-sql)
-        (-identifier-with-optional-alias! thing-to-join context)
+        (identifier-with-optional-alias! thing-to-join context)
         (append-sql! context " ON ")
         (compile! condition context)
         (when (seq more)
           (append-sql! context \space)
           (recur more))))))
 
-(defn- -condition!
+(defn- condition!
   "Compile a `WHERE`/`HAVING` condition, dropping the clause entirely when there isn't one. Honey SQL ignores a nil or
   empty clause value and callers rely on that -- the `dashboard` search spec declares `:where []` to mean \"no extra
   filter\". Emitting it anyway is not merely untidy: `[]` compiles to `()`, which H2 reads as an empty ROW
@@ -350,20 +350,20 @@
     (compile! condition context)))
 
 (defn- where! [condition context]
-  (-condition! "WHERE " condition context))
+  (condition! "WHERE " condition context))
 
 (defn- group-by! [cols context]
   (when-let [cols (not-empty (->sequence cols))]
     (append-sql! context "GROUP BY ")
-    (-commas! cols context)))
+    (commas! cols context)))
 
 (defn- having! [condition context]
-  (-condition! "HAVING " condition context))
+  (condition! "HAVING " condition context))
 
 (defn- partition-by! [xs context]
   (when-let [xs (not-empty (->sequence xs))]
     (append-sql! context "PARTITION BY ")
-    (-commas! xs context)))
+    (commas! xs context)))
 
 (defn- order-by! [subclauses context]
   (when-let [subclauses (not-empty (->sequence subclauses))]
@@ -413,12 +413,12 @@
 (defn- on-conflict!
   [columns context]
   (append-sql! context "ON CONFLICT ")
-  (-identifier-list! columns context))
+  (identifier-list! columns context))
 
 (defn- do-update-set!
   [kvs context]
   (append-sql! context "DO UPDATE SET ")
-  (-kvs-map! kvs context))
+  (kvs-map! kvs context))
 
 (defn- for!
   [options context]
@@ -436,7 +436,7 @@
 
 (defn- returning! [cols context]
   (append-sql! context "RETURNING ")
-  (-commas! (->sequence cols) context))
+  (commas! (->sequence cols) context))
 
 (defn- union!
   "Compile the queries combined by a `UNION`. These are complete `SELECT`s rather than scalar subqueries, so unlike
@@ -453,7 +453,7 @@
    :create-table    create-table!
    :with-columns    with-columns!
    :insert-into     insert-into!
-   :columns         -identifier-list!
+   :columns         identifier-list!
    :values          values!
    :drop-table      drop-table!
    :update          update!
@@ -481,7 +481,7 @@
    :on-conflict     on-conflict!
    :do-update-set   do-update-set!
    :returning       returning!
-   :nest            -parens!))
+   :nest            parens!))
 
 (def ^:private clause-rank
   (into {}
@@ -500,7 +500,7 @@
                     (f (get m k) context)))
                 #(append-sql! context " ")))
 
-(defn- -identifier-part!
+(defn- identifier-part!
   "Emit a single quoted and escaped identifier part."
   [part context]
   (if (= part "*")
@@ -518,10 +518,10 @@
                                part))
         (append-sql! context quote-char)))))
 
-(defn- -identifier!
+(defn- identifier!
   "Emit a (possibly qualified) identifier composed of multiple [[-identifier-part!]]s."
   [s context]
-  (interpose-fn (str/split s #"\.") #(-identifier-part! % context) #(append-sql! context ".")))
+  (interpose-fn (str/split s #"\.") #(identifier-part! % context) #(append-sql! context ".")))
 
 (defn- keyword!
   "Compile a keyword as a quoted and escaped identifier."
@@ -542,12 +542,12 @@
 
       (qualified-keyword? k)
       (do
-        (-identifier! (namespace k) context)
+        (identifier! (namespace k) context)
         (append-sql! context ".")
-        (-identifier! (name k) context))
+        (identifier! (name k) context))
 
       :else
-      (-identifier! (name k) context))))
+      (identifier! (name k) context))))
 
 (def ^:private predicate-operators
   "Operators that compile to a bare SQL predicate -- `x IS NULL`, `a AND b`, `x IN (...)`, `x < 1`. Used as the operand
@@ -584,7 +584,7 @@
   (and (fn-call? x)
        (contains? predicate-operators (first x))))
 
-(defn- -equals! [sql nil-sql [x y :as args] context]
+(defn- equals! [sql nil-sql [x y :as args] context]
   (when-not (= (count args) 2)
     (throw (ex-info "Wrong number of args to :=/:!=/:<>/:not= (expected 2 args)" {:args args})))
   ;; A `nil` on *either* side becomes `IS [NOT] NULL` against whichever side is non-`nil`, matching Honey SQL's
@@ -595,7 +595,7 @@
             ;; make sure if the operand is itself something like `[:= x nil]` we get `(x IS NULL) = <y>` instead of
             ;; the unparsable `x IS NULL = y`. (A scalar subquery gets the same treatment, but [[compile!]] already
             ;; parenthesizes those.)
-            ((if (predicate-call? v) -parens! compile!) v context))]
+            ((if (predicate-call? v) parens! compile!) v context))]
     (if (or (nil? x) (nil? y))
       (do
         (operand! (if (nil? x) y x))
@@ -605,7 +605,7 @@
         (append-sql! context sql)
         (operand! y)))))
 
-(defn- -compound!
+(defn- compound!
   "Compile a compound boolean expression like `:and` or `:or`. Like Honey SQL we ignore `nil` args -- this is what makes
   `[:and x (when y z)]` work -- and if nothing is left we compile `identity-value` (`TRUE` for AND, `FALSE` for OR)
   rather than emitting nothing at all."
@@ -614,11 +614,11 @@
     (condp = (count xs)
       0 (compile! identity-value context)
       1 (compile! (first xs) context)
-      (interpose-fn xs #(-parens! % context) #(append-sql! context sql)))))
+      (interpose-fn xs #(parens! % context) #(append-sql! context sql)))))
 
 (defn- not! [[x] context]
   (append-sql! context "NOT ")
-  (-parens! x context))
+  (parens! x context))
 
 (defn- param-value
   "The value `context`'s options bind to `k`, for a `[:param k]` form. Throws if param named by `k` is missing from
@@ -662,7 +662,7 @@
         v
         vs))))
 
-(defn- -in! [f [lhs vs] context]
+(defn- in! [f [lhs vs] context]
   (let [vs (in-values vs context)]
     (when-not (or (empty? vs)
                   (sequential? vs)
@@ -689,7 +689,7 @@
                (not (fn-call? (first vs))))
           (do
             (append-sql! context "(")
-            (interpose-fn vs #(-list! % context) #(append-sql! context ", "))
+            (interpose-fn vs #(list! % context) #(append-sql! context ", "))
             (append-sql! context ")"))
 
           ;; Handle nonsense like`[:in :field [:inline [3]]]`
@@ -697,7 +697,7 @@
           (compile! vs context)
 
           :else
-          (-list! vs context))))))
+          (list! vs context))))))
 
 (defn- between! [[x y z] context]
   (compile! x context)
@@ -710,7 +710,7 @@
   (append-sql! context "CAST(")
   (compile! x context)
   (append-sql! context " AS ")
-  (-raw-type-name! type-name context)
+  (raw-type-name! type-name context)
   (append-sql! context ")"))
 
 (defn- case! [args context]
@@ -730,7 +730,7 @@
       (recur more)))
   (append-sql! context " END"))
 
-(defn- -exists! [sql subquery context]
+(defn- exists! [sql subquery context]
   (append-sql! context sql)
   ;; presumably always a map, but still don't compile it as such unless marked `^:allow-subquery`
   (compile! subquery context))
@@ -788,18 +788,18 @@
   (and (fn-call? x)
        (binary-arithmetic-operators (first x))))
 
-(defn- -unary-binary-operator! [f x context]
+(defn- unary-binary-operator! [f x context]
   (case f
     :+ (compile! x context)
     :- (if (number? x)
          (compile! (- x) context)
          (do
            (append-sql! context "-")
-           ((if (binary-arithmetic-call? x) -parens! compile!) x context)))))
+           ((if (binary-arithmetic-call? x) parens! compile!) x context)))))
 
-(defn- -binary-operator! [f args context]
+(defn- binary-operator! [f args context]
   (if (= (count args) 1)
-    (-unary-binary-operator! f (first args) context)
+    (unary-binary-operator! f (first args) context)
     (let [f-str (case f
                   :like     " LIKE "
                   :ilike    " ILIKE "
@@ -808,16 +808,16 @@
                   :is-not   " IS NOT "
                   (str \space (name f) \space))
           ;; wrap nested binary function calls in parens to avoid order-of-operation ambiguity
-          arg!  #((if (binary-arithmetic-call? %) -parens! compile!) % context)]
+          arg!  #((if (binary-arithmetic-call? %) parens! compile!) % context)]
       (interpose-fn args arg! #(append-sql! context f-str)))))
 
-(defn- -simple-fn! [f args context]
+(defn- simple-fn! [f args context]
   (let [f (name f)]
     (append-sql! context f))
-  (-list! args context))
+  (list! args context))
 
 (defn- h2x-identifier! [[_identifier-type parts] context]
-  (interpose-fn parts #(-identifier-part! % context) #(append-sql! context ".")))
+  (interpose-fn parts #(identifier-part! % context) #(append-sql! context ".")))
 
 (defn- h2x-literal! [s context]
   ;; only double backslashes on engines that actually treat `\` as an escape character inside a plain `'...'`
@@ -875,7 +875,7 @@
   (append-sql! context (name zone))
   (append-sql! context "')"))
 
-(defn- -h2x-interval! [engine [amount unit] context]
+(defn- h2x-interval! [engine [amount unit] context]
   (when-not (number? amount)
     (throw (ex-info "Invalid amount" {:amount amount})))
   (when-not (#{:millisecond :second :minute :hour :day :week :month :year} unit)
@@ -903,7 +903,7 @@
   (append-sql! context " @@ ")
   (compile! rhs context))
 
-(defn- -fn-call! [[f & args] context]
+(defn- fn-call! [[f & args] context]
   {:pre [(keyword? f)]}
   ;; This `case` has no default behavior for an unknown function on purpose: `f` can come from an attacker-derived
   ;; `:%foo` keyword (see `keyword!`), so an unrecognized function name must throw instead of being spliced into the
@@ -912,46 +912,46 @@
   ;; ⚠⚠⚠ DO NOT ADD SUPPORT FOR `:raw` -- IT IS NOT SUPPORTED ON PURPOSE ⚠⚠⚠
   ;;
   (case f
-    (:<> :!= :not=)    (-equals! " <> " " IS NOT NULL" args context)
-    :=                 (-equals! " = " " IS NULL" args context)
-    :and               (-compound! " AND " true args context)
+    (:<> :!= :not=)    (equals! " <> " " IS NOT NULL" args context)
+    :=                 (equals! " = " " IS NULL" args context)
+    :and               (compound! " AND " true args context)
     :between           (between! args context)
     :case              (case! args context)
     :cast              (cast! args context)
-    :composite         (-list! args context)
+    :composite         (list! args context)
     :current-timestamp (current-timestamp! context)
     :escape            (escape! args context)
-    :exists            (-exists! "EXISTS " (first args) context)
-    :in                (-in! f args context)
+    :exists            (exists! "EXISTS " (first args) context)
+    :in                (in! f args context)
     :inline            (inline! (first args) context)
     :lift              (object! (first args) context)
     :not               (not! args context)
-    :not-exists        (-exists! "NOT EXISTS " (first args) context)
-    :not-in            (-in! f args context)
-    :or                (-compound! " OR " false args context)
+    :not-exists        (exists! "NOT EXISTS " (first args) context)
+    :not-in            (in! f args context)
+    :or                (compound! " OR " false args context)
     :over              (over! (first args) context)
     :param             (param! (first args) context)
     :timestampdiff     (timestamp-diff! args context)
 
     (:< :<= :> :>= :like :ilike :not-like :+ :- :/ :* :% :|| :is :is-not)
-    (-binary-operator! f args context)
+    (binary-operator! f args context)
 
     ;; `:call` exists for Honey SQL 1 compatibility e.g. `[:call f & args]`, equivalent to `[f & args]`
     :call
     (recur args context)
 
     ;; custom legacy `h2x/` operators
-    :metabase.util.honey-sql-2/identifier        (h2x-identifier! args context)
-    :metabase.util.honey-sql-2/literal           (h2x-literal! (first args) context)
-    :metabase.util.honey-sql-2/extract           (h2x-extract! args context)
-    :metabase.util.honey-sql-2/distinct-count    (h2x-distinct-count! (first args) context)
-    :metabase.util.honey-sql-2/percentile-cont   (h2x-percentile-cont! args context)
-    :metabase.util.honey-sql-2/collate           (h2x-collate! args context)
-    :metabase.util.honey-sql-2/at-time-zone      (h2x-at-time-zone! args context)
-    :metabase.util.honey-sql-2/typed             (compile! (first args) context)
-    :metabase.util.honey-sql-2/raw-type-name     (-raw-type-name! (first args) context)
-    :metabase.util.honey-sql-2/postgres-interval (-h2x-interval! :postgres args context)
-    :metabase.util.honey-sql-2/mysql-interval    (-h2x-interval! :mysql args context)
+    ::h2x/identifier        (h2x-identifier! args context)
+    ::h2x/literal           (h2x-literal! (first args) context)
+    ::h2x/extract           (h2x-extract! args context)
+    ::h2x/distinct-count    (h2x-distinct-count! (first args) context)
+    ::h2x/percentile-cont   (h2x-percentile-cont! args context)
+    ::h2x/collate           (h2x-collate! args context)
+    ::h2x/at-time-zone      (h2x-at-time-zone! args context)
+    ::h2x/typed             (compile! (first args) context)
+    ::h2x/raw-type-name     (raw-type-name! (first args) context)
+    ::h2x/postgres-interval (h2x-interval! :postgres args context)
+    ::h2x/mysql-interval    (h2x-interval! :mysql args context)
 
     ;; other custom operators
     :metabase.funnysql.core/postgres-full-text-search-match
@@ -1005,15 +1005,15 @@
      :ts_rank
      :upper
      :year)
-    (-simple-fn! f args context)
+    (simple-fn! f args context)
 
     #_else
-    (throw (ex-info (clojure.core/format "Function %s is not currently supported; add it to metabase.funnysql.core/-fn-call! if it should be"
+    (throw (ex-info (clojure.core/format "Function %s is not currently supported; add it to metabase.funnysql.core/fn-call! if it should be"
                                          (pr-str f))
                     {:f f, :args args}))))
 
 (defn- sequence! [xs context]
-  ((if (fn-call? xs) -fn-call! -list!) xs context))
+  ((if (fn-call? xs) fn-call! list!) xs context))
 
 (extend-protocol Compile
   Object                      (compile! [this context] (object! this context))
@@ -1024,7 +1024,7 @@
   ;; a `^:allow-subquery` map compiled anywhere other than the top level is a subquery -- a scalar subquery in a
   ;; `SELECT` list or function argument, a derived table in `FROM`, etc. -- all of which need to be parenthesized.
   clojure.lang.IPersistentMap (compile! [this context] ((if (:allow-subquery (meta this))
-                                                          -parens!
+                                                          parens!
                                                           object!) this context))
   clojure.lang.IPersistentSet (compile! [this context] (sequence! this context))
   clojure.lang.Sequential     (compile! [this context] (sequence! this context)))
