@@ -217,9 +217,7 @@ export function expectedTickCount(
   const diffUnits = endTrunc.diff(startTrunc, unit);
 
   let startIdx: number;
-  if (unit === "year") {
-    startIdx = startTrunc.year();
-  } else if (unit === "quarter") {
+  if (unit === "quarter") {
     startIdx = startTrunc.quarter() - 1;
   } else if (unit === "month") {
     startIdx = startTrunc.month();
