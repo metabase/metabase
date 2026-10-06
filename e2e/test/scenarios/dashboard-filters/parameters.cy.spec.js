@@ -1199,13 +1199,14 @@ describe("scenarios > dashboard > parameters", () => {
       H.dashboardParameterSidebar().button("Done").click();
 
       cy.log("Removing the heading dashcard removes its filters");
-      H.getDashboardCard(0).findByText("Heading Text").should("exist");
       H.removeDashboardCard(0);
       H.saveDashboard();
 
       cy.wait("@updateDashboard").then((xhr) => {
         const { body: dashboard } = xhr.request;
         expect(dashboard.parameters).to.have.length(0);
+        expect(dashboard.dashcards).to.have.length(1);
+        expect(dashboard.dashcards[0].card_id).to.not.equal(null);
         dashboard.dashcards.forEach((dashcard) => {
           expect(dashcard.inline_parameters).to.have.length(0);
           expect(dashcard.parameter_mappings).to.have.length(0);

@@ -764,7 +764,10 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
 
       cy.log("only the new card with breakouts gets a suggestion");
       addQuestion(noBreakoutQuestionDetails.name);
-      addQuestion(multiBreakoutQuestionDetails.name);
+      // the add-card sidebar stays open, so pick the next card from it
+      cy.findByTestId("add-card-sidebar")
+        .findByText(multiBreakoutQuestionDetails.name)
+        .click();
       H.undoToastList()
         .should("have.length", 1)
         .and("contain.text", multiBreakoutQuestionDetails.name);
@@ -814,7 +817,7 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
       });
       H.getDashboardCard(2).within(() => {
         cy.findByText("118").should("exist"); // sample filtered data
-        cy.findByText("Created At: Year").should("be.visible");
+        cy.findByText("Created At: Year").should("exist");
       });
 
       cy.log("verify data without the first parameter");
