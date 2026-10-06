@@ -2,6 +2,7 @@
   {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase-enterprise.serialization.v2.e2e-test]}}}}}}
   (:require
    [clojure.java.io :as io]
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [medley.core :as m]
    [metabase-enterprise.serialization.cmd :as cmd]
@@ -246,7 +247,7 @@
                                      table (subdirs (io/file dump-dir "databases" db "tables"))
                                      :let  [fields-dir (io/file table "fields")]
                                      :when (.exists fields-dir)]
-                                 (count (dir->file-set fields-dir)))))
+                                 (count (remove #(str/includes? % "___") (dir->file-set fields-dir))))))
                   "Fields are scattered, so the directories are harder to count"))
             (testing "for cards, dashboards, and timelines"
               ;; In the new storage format, cards/dashboards/timelines are stored directly
@@ -524,8 +525,7 @@
                 (is (= #{[{:id dash-eid          :model "Dashboard"}]
                          [{:id coll-eid          :model "Collection"}]
                          [{:id model-eid         :model "Card"}]
-                         [{:id card-eid          :model "Card"}]
-                         [{:id "Linked database" :model "Database"}]}
+                         [{:id card-eid          :model "Card"}]}
                        (set (serdes/deserialization-dependencies extracted-dashboard))))
                 (storage/store! (seq extraction) (storage.files/file-writer dump-dir))))
             (testing "ingest and load"
@@ -1087,6 +1087,38 @@
         (is (=? {:table_id (:id table) :name field-name :active false}             field))
         (is (= (:id table) (lib/primary-source-table-id imported)))
         (is (=? [[:field {} (:id field)]] (lib/fields imported)))))))
+
+(deftest card-on-missing-database-imports-into-stub-database-test
+  (testing "Importing a Card whose database is absent from the export and the target creates a stub database"
+    (ts/with-random-dump-dir [dump-dir "serdesv2-"]
+      (ts/with-dbs [source-db dest-db]
+        (ts/with-db source-db
+          (let [db    (ts/create! :model/Database :name "source-only-db" :engine :h2)
+                table (ts/create! :model/Table :name "customers" :schema "PUBLIC" :db_id (:id db))
+                coll  (ts/create! :model/Collection :name "coll")
+                mp    (lib-be/application-database-metadata-provider (:id db))]
+            (ts/create! :model/Card
+                        :name          "Customers"
+                        :collection_id (:id coll)
+                        :database_id   (:id db)
+                        :table_id      (:id table)
+                        :dataset_query (lib/query mp (lib.metadata/table mp (:id table))))
+            (storage/store! (serdes/with-cache (into [] (extract/extract {:no-settings   true
+                                                                          :no-data-model true})))
+                            (storage.files/file-writer dump-dir))))
+        (ts/with-db dest-db
+          (is (not (t2/exists? :model/Database :name "source-only-db")))
+          (is (serdes/with-cache (serdes.load/load-metabase! (ingest/ingest-yaml dump-dir))))
+          (let [stub  (t2/select-one :model/Database :name "source-only-db")
+                table (t2/select-one :model/Table :db_id (:id stub) :name "customers")]
+            (is (=? {:engine  :postgres
+                     :details {}
+                     :is_stub true}
+                    stub))
+            (is (=? {:schema "PUBLIC" :active false} table))
+            (is (=? {:database_id (:id stub)
+                     :table_id    (:id table)}
+                    (t2/select-one :model/Card :name "Customers")))))))))
 
 (deftest orphaned-transform-yaml-round-trip-test
   (testing "A Transform whose source database was deleted round-trips through YAML storage as a tombstone"
