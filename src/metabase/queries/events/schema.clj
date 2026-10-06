@@ -13,10 +13,12 @@
 (mr/def :event/card-delete ::card)
 
 (mr/def :event/card-update
-  [:map {:closed true}
-   [:user-id         [:maybe pos-int?]]
-   [:object          [:fn #(t2/instance-of? :model/Card %)]]
-   [:previous-object [:fn #(t2/instance-of? :model/Card %)]]])
+  [:merge
+   [:map {:closed true}
+    [:user-id         [:maybe pos-int?]]
+    [:object          [:fn #(t2/instance-of? :model/Card %)]]
+    [:previous-object [:fn #(t2/instance-of? :model/Card %)]]]
+   :metabase.events.schema/revert])
 
 (mr/def :event/card-read
   [:map {:closed true}
