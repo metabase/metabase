@@ -17,6 +17,7 @@ import { waitFor } from "__support__/ui";
 import { Api } from "metabase/api";
 import type { DashboardState, State } from "metabase/redux/store";
 import { isQuestionDashCard } from "metabase/utils/dashboard";
+import { defer } from "metabase/utils/promise";
 import type { Dashboard } from "metabase-types/api";
 import {
   createMockCard,
@@ -82,21 +83,19 @@ function setup({
 
 describe("fetchDashboard", () => {
   describe("while the query metadata is still loading (DSN-749)", () => {
-    let resolveQueryMetadata = () => {};
+    let queryMetadataRequest = defer();
 
     const setupDeferredQueryMetadata = (dashboardId: number) => {
-      fetchMock.get(
-        `path:/api/dashboard/${dashboardId}/query_metadata`,
-        () =>
-          new Promise((resolve) => {
-            resolveQueryMetadata = () =>
-              resolve(createMockDashboardQueryMetadata());
-          }),
+      queryMetadataRequest = defer();
+      fetchMock.get(`path:/api/dashboard/${dashboardId}/query_metadata`, () =>
+        queryMetadataRequest.promise.then(() =>
+          createMockDashboardQueryMetadata(),
+        ),
       );
     };
 
     // Never leave the request pending, or teardown waits on it when a test fails.
-    afterEach(() => resolveQueryMetadata());
+    afterEach(() => queryMetadataRequest.resolve());
 
     it("publishes the dashboard layout before the fetch finishes", async () => {
       const dashboard = createMockDashboard({
@@ -117,7 +116,7 @@ describe("fetchDashboard", () => {
       });
       expect(store.getState().dashboard.dashboardId).toBeNull();
 
-      resolveQueryMetadata();
+      queryMetadataRequest.resolve();
       await expect(fetchResult).resolves.toHaveProperty(
         "type",
         "metabase/dashboard/FETCH_DASHBOARD/fulfilled",
@@ -150,7 +149,7 @@ describe("fetchDashboard", () => {
       await new Promise((resolve) => setTimeout(resolve, 0));
       expect(store.getState().dashboard.dashboards[1].name).toBe("Old");
 
-      resolveQueryMetadata();
+      queryMetadataRequest.resolve();
       await fetchResult;
       expect(store.getState().dashboard.dashboards[1].name).toBe("New");
     });
