@@ -595,15 +595,43 @@
                       [model-key (set ids)])))))
         (u/group-by first second (map last ks))))
 
+(def ^:private collection-content-model-keys
+  "The models that the ledger tracks by entity id and whose instances a Collection holds by `collection_id`."
+  (into []
+        (keep (fn [[model-key {:keys [identity tracking]}]]
+                (when (and (= :entity-id identity)
+                           (= :collection_id (get-in tracking [:field-mappings :model_collection_id])))
+                  model-key)))
+        spec/remote-sync-specs))
+
+(defn- collection-contents
+  "The Collections `collection-ids` and their descendants, and the instances of [[collection-content-model-keys]] in
+  them, as a map of model key to a set of ids."
+  [collection-ids]
+  (if (empty? collection-ids)
+    {}
+    (let [subtree (vec (remote-sync.db/subtree-collection-ids-of-ids (vec collection-ids)))]
+      (into {:model/Collection (set subtree)}
+            (keep (fn [model-key]
+                    (let [ids (remote-sync.db/ids-in-collections model-key subtree)]
+                      (when (seq ids)
+                        [model-key ids]))))
+            collection-content-model-keys))))
+
 (defn- delete-closure-conflicts
   "The conflicts of a merge pull that deletes the local entities `deleted-ids` (a map of model key to a set of ids)
   with their delete closure (see [[remote-sync.db/delete-closure]]): one for each entity of ours in the closure whose
   decision in the merge result `merge-result` is neither `:theirs` nor `:keep`. The delete would remove a local
-  change of that entity. Each conflict has the shape of a conflict of [[remote-sync.merge/three-way-merge]]."
+  change of that entity. Each conflict has the shape of a conflict of [[remote-sync.merge/three-way-merge]].
+
+  For a deleted Collection, the closure also holds the Collections under it and every entity in those Collections."
   [deleted-ids {:keys [decisions ours-units]}]
   (when (seq deleted-ids)
-    (let [key-of (into {} (comp (filter entity-key?) (map (juxt last identity))) (keys ours-units))]
-      (vec (for [[model-key ids] (:ids-by-model (remote-sync.db/delete-closure deleted-ids))
+    (let [key-of  (into {} (comp (filter entity-key?) (map (juxt last identity))) (keys ours-units))
+          ;; The before-delete hook of a Collection deletes its descendants and most of their contents; a Document
+          ;; stays, with no Collection. Either way the entity leaves the synced content.
+          checked (merge-with into deleted-ids (collection-contents (:model/Collection deleted-ids)))]
+      (vec (for [[model-key ids] (:ids-by-model (remote-sync.db/delete-closure checked))
                  :let  [model-type (:model-type (spec/spec-for-model-key model-key))]
                  eid   (vals (remote-sync.db/entity-ids-by-id model-key (vec ids)))
                  :let  [k (key-of [model-type eid])]

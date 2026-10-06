@@ -48,7 +48,13 @@
              (rolled-back #(remote-sync.db/entity-ids-by-id :model/Card (ids 65536))))))
     (testing "ids-by-entity-ids accepts 65,536 entity ids"
       (is (= {:result []}
-             (rolled-back #(remote-sync.db/ids-by-entity-ids :model/Card (set (map str (ids 65536))))))))))
+             (rolled-back #(remote-sync.db/ids-by-entity-ids :model/Card (set (map str (ids 65536))))))))
+    (testing "subtree-collection-ids-of-ids accepts 65,536 ids"
+      (is (= {:result #{}}
+             (rolled-back #(remote-sync.db/subtree-collection-ids-of-ids (ids 65536))))))
+    (testing "ids-in-collections accepts 65,536 collection ids"
+      (is (= {:result #{}}
+             (rolled-back #(remote-sync.db/ids-in-collections :model/Card (ids 65536))))))))
 
 (defn- model-index
   "The columns of a ModelIndex of the model Card `model-id`."
@@ -87,6 +93,26 @@
         (is (= #{model-1 model-2}
                (set (remote-sync.db/ids-by-entity-ids :model/Card
                                                       (into #{eid-1 eid-2} (map str) (ids (* 2 chunk-size)))))))))))
+
+(deftest collection-subtree-lookups-test
+  (let [chunk-size @#'remote-sync.db/ids-per-query]
+    (mt/with-temp [:model/Collection {beta :id}  {:name "Beta" :location "/"}
+                   :model/Collection {gamma :id} {:name "Gamma" :location (str "/" beta "/")}
+                   :model/Collection {delta :id} {:name "Delta" :location (str "/" beta "/" gamma "/")}
+                   :model/Collection {other :id} {:name "Other" :location "/"}
+                   :model/Card       {b :id}     {:name "Card B" :collection_id beta}
+                   :model/Card       {d :id}     {:name "Card D" :collection_id delta}
+                   :model/Card       _           {:name "Other card" :collection_id other}]
+      (testing "subtree-collection-ids-of-ids gives the Collections and all of their descendants"
+        (is (= #{beta gamma delta} (remote-sync.db/subtree-collection-ids-of-ids [beta])))
+        (is (= #{gamma delta} (remote-sync.db/subtree-collection-ids-of-ids [gamma]))))
+      (testing "subtree-collection-ids-of-ids finds the Collections in each chunk"
+        (is (= #{beta gamma delta other}
+               (remote-sync.db/subtree-collection-ids-of-ids (vec (concat [beta] (ids chunk-size) [other]))))))
+      (testing "ids-in-collections gives the instances in the Collections only"
+        (is (= #{b d} (remote-sync.db/ids-in-collections :model/Card [beta gamma delta]))))
+      (testing "ids-in-collections finds the instances in each chunk"
+        (is (= #{b d} (remote-sync.db/ids-in-collections :model/Card (vec (concat [beta] (ids chunk-size) [delta])))))))))
 
 (deftest delete-closure-test
   (mt/with-temp [:model/Dashboard  {dash-id :id}     {:name "Closure dashboard"}
