@@ -423,6 +423,21 @@
           (is (true? (spec/model-editable? :model/Card {:collection_id coll-id}))
               "Cards in non-synced collections should be editable"))))))
 
+(deftest data-apps-namespace-collections-are-synced-test
+  (testing "a data app's resource collection is synced content without any setting, like the app itself"
+    (mt/with-temp [:model/Collection {coll-id :id :as coll} {:name "Data App: sales" :namespace :data-apps :location "/"}]
+      (is (true? (spec/should-sync-collection? coll)))
+      (testing "an import's cleanup reaches into it only when the import holds it"
+        (is (contains? (set (spec/import-cleanup-collection-ids {:by-entity-id {"Collection" #{(:entity_id coll)}}}))
+                       coll-id))
+        (is (not (contains? (set (spec/import-cleanup-collection-ids {:by-entity-id {}})) coll-id))))
+      (testing "it is an export root"
+        (is (contains? (set (spec/query-export-roots (spec/spec-for-model-key :model/Collection)))
+                       ["Collection" coll-id])))
+      (testing "a card in it is not editable on a read-only instance"
+        (mt/with-temporary-setting-values [remote-sync-type :read-only]
+          (is (false? (spec/model-editable? :model/Card {:collection_id coll-id}))))))))
+
 (deftest model-editable?-nil-instance-test
   (testing "model-editable? works with nil instance for global eligibility models"
     (mt/with-temporary-setting-values [remote-sync-type :read-only

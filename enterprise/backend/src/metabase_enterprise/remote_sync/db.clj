@@ -437,6 +437,20 @@
   [namespace-name :- :string]
   (t2/select-pks-vec :model/Collection :namespace namespace-name))
 
+(mu/defn collection-ids-in-namespace-with-entity-ids
+  "The IDs of the Collections of `namespace-name` whose entity ID is one of `entity-ids`."
+  [namespace-name :- :string
+   entity-ids     :- [:maybe [:set :string]]]
+  (if (seq entity-ids)
+    (t2/select-pks-vec :model/Collection :namespace namespace-name :entity_id [:in entity-ids])
+    []))
+
+(mu/defn collection-namespace
+  "The namespace of the Collection with `collection-id`, nil for the default namespace or no such Collection."
+  [collection-id :- [:maybe ms/PositiveInt]]
+  (when collection-id
+    (t2/select-one-fn :namespace :model/Collection :id collection-id)))
+
 (mu/defn remote-synced-collection-ids
   "The IDs of the remote-synced Collections."
   []

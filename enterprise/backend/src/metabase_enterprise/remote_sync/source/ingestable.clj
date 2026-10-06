@@ -3,6 +3,7 @@
    [clojure.string :as str]
    [metabase-enterprise.remote-sync.source.protocol :as source.p]
    [metabase-enterprise.serialization.core :as serialization]
+   [metabase.collections.core :as collection]
    [metabase.models.serialization :as serdes]
    [metabase.util :as u]
    [metabase.util.log :as log]
@@ -31,33 +32,73 @@
   [file-content]
   (serialization/read-timestamps (yaml/parse-string file-content {:key-fn serialization/parse-key})))
 
+(defn- orphan-data-app-collection-ids
+  "The entity IDs of the collections of the `data-apps` namespace among `entities` that no data app's manifest names
+  as its `collection`. An author deletes an app by deleting its directory; the app's collection, written under
+  `collections/`, is what the author left behind."
+  [entities]
+  (let [model-of  (fn [[hierarchy _]] (:model (last hierarchy)))
+        parsed    (fn [[_ {:keys [content]}]] (ingest-content content))
+        named     (into #{}
+                        (comp (filter #(= "DataApp" (model-of %)))
+                              (keep (comp :collection parsed)))
+                        entities)]
+    (into #{}
+          (comp (filter #(= "Collection" (model-of %)))
+                (map parsed)
+                (filter #(= (keyword (:namespace %)) collection/data-apps-ns))
+                (map :entity_id)
+                (remove named))
+          entities)))
+
+(defn- without-orphan-data-app-collections
+  "`entities` without the collections of the `data-apps` namespace no data app names, and without what they hold.
+  The app that owned such a collection was deleted, which deleted the collection on this instance; its files are
+  leftovers, logged for the author to remove, not content to load back."
+  [entities]
+  (let [orphans (orphan-data-app-collection-ids entities)]
+    (if (empty? orphans)
+      entities
+      (let [orphan? (fn [[hierarchy {:keys [content]}]]
+                      (let [{:keys [model]} (last hierarchy)]
+                        (and (contains? #{"Collection" "Card" "Action"} model)
+                             (let [{:keys [entity_id collection_id]} (ingest-content content)]
+                               (or (and (= "Collection" model) (contains? orphans entity_id))
+                                   (contains? orphans collection_id))))))
+            skipped (filter orphan? entities)]
+        (doseq [[_ {:keys [path]}] skipped]
+          (log/warnf "Skipping %s: it belongs to a data app's collection that no data app names. Delete it from the repository." path))
+        (apply dissoc entities (map first skipped))))))
+
 (defn- ingest-all
   "Returns {:entities {stripped-hierarchy {:content <yaml-string> :path <repo-path>}}, :errors [Exception...]}.
   The repo `:path` is the actual file the entity was read from (including any dedup suffix), so callers
   can record where each entity lives without recomputing — recomputation would diverge on name
   collisions and slug changes. Dotfiles are silently skipped (editor temp files, see #41567).
-  Non-dotfile YAML parse/read failures are collected in :errors."
+  Non-dotfile YAML parse/read failures are collected in :errors. The files of a data app's collection whose
+  app the snapshot lacks are skipped (see [[without-orphan-data-app-collections]])."
   [snapshot]
   (let [errors (atom [])]
-    {:entities (into {} (for [path (source.p/list-files snapshot)
-                              :when (serialization/entity-file-path? path)
-                              :let [content (try
-                                              (source.p/read-file snapshot path)
+    {:entities (without-orphan-data-app-collections
+                (into {} (for [path (source.p/list-files snapshot)
+                               :when (serialization/entity-file-path? path)
+                               :let [content (try
+                                               (source.p/read-file snapshot path)
+                                               (catch Exception e
+                                                 (log/warn (u/strip-error e "Error reading file during ingestion"))
+                                                 (swap! errors conj (ex-info (format "Failed to read file: %s" path)
+                                                                             {:file path :reason (error-reason e)} e))
+                                                 nil))
+                                     loaded (try
+                                              (when content
+                                                (serdes/path (ingest-content content)))
                                               (catch Exception e
-                                                (log/warn (u/strip-error e "Error reading file during ingestion"))
-                                                (swap! errors conj (ex-info (format "Failed to read file: %s" path)
+                                                (log/warn (u/strip-error e "Error parsing file during ingestion"))
+                                                (swap! errors conj (ex-info (format "Failed to parse file: %s" path)
                                                                             {:file path :reason (error-reason e)} e))
-                                                nil))
-                                    loaded (try
-                                             (when content
-                                               (serdes/path (ingest-content content)))
-                                             (catch Exception e
-                                               (log/warn (u/strip-error e "Error parsing file during ingestion"))
-                                               (swap! errors conj (ex-info (format "Failed to parse file: %s" path)
-                                                                           {:file path :reason (error-reason e)} e))
-                                               nil))]
-                              :when loaded]
-                          [(serialization/strip-labels loaded) {:content content :path path}]))
+                                                nil))]
+                               :when loaded]
+                           [(serialization/strip-labels loaded) {:content content :path path}])))
      :errors @errors}))
 
 ;; Wraps another Ingestable calling a callback when a file is ingested

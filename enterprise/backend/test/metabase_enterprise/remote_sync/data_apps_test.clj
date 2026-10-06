@@ -77,6 +77,52 @@
         (is (= :success (:status (import-at! src "v1"))))
         (is (not (t2/exists? :model/DataApp :name "sales")))))))
 
+(def ^:private sales-collection-eid "salesCollectionEid001")
+
+(defn- collection-file
+  "The repo file of a data app's resource collection with entity id `eid`, as serialization writes it."
+  [eid]
+  {"collections/data_apps/data_app__sales.yaml"
+   (yaml/generate-string {:serdes/meta [{:model "Collection" :id eid :label "data_app__sales"}]
+                          :entity_id   eid
+                          :name        "Data App: sales"
+                          :namespace   "data-apps"
+                          :archived    false})})
+
+(deftest deleting-an-apps-directory-deletes-the-app-and-its-collection-test
+  (testing "an author deletes an app by deleting its directory; the collection's files, written under
+            collections/, are leftovers the next pull skips rather than content it loads back"
+    (with-data-apps-sync
+      (let [manifest   (update (app-tree sales-eid "sales" "BUNDLE") "data_apps/sales/data_app.yaml"
+                               #(yaml/generate-string (assoc (yaml/parse-string %) :collection sales-collection-eid)))
+            collection (collection-file sales-collection-eid)
+            src        (test-helpers/versioned-source :trees {"v0" (merge manifest collection)
+                                                              "v1" collection}
+                                                      :current "v0")]
+        (is (= :success (:status (import-at! src "v0" :force? true))))
+        (let [app (t2/select-one :model/DataApp :name "sales")]
+          (is (=? {:entity_id sales-collection-eid :namespace :data-apps}
+                  (t2/select-one :model/Collection :id (:resource_collection_id app)))
+              "the app links the collection its manifest names"))
+        (testing "the pull after the directory is deleted"
+          (is (= :success (:status (import-at! src "v1"))))
+          (is (not (t2/exists? :model/DataApp :name "sales")) "deletes the app")
+          (is (not (t2/exists? :model/Collection :entity_id sales-collection-eid))
+              "and its collection, which the leftover file doesn't bring back"))))))
+
+(deftest a-pull-keeps-the-collection-of-an-app-the-repository-does-not-mention-test
+  (testing "a manifest that names no collection gets one created on import; a later pull must not prune it as
+            content the repository lacks, since the repository never held it"
+    (with-data-apps-sync
+      (let [app (app-tree sales-eid "sales" "BUNDLE")
+            src (test-helpers/versioned-source :trees {"v0" app "v1" (assoc app "README.md" "x")} :current "v0")]
+        (is (= :success (:status (import-at! src "v0" :force? true))))
+        (let [collection-id (t2/select-one-fn :resource_collection_id :model/DataApp :name "sales")]
+          (is (pos-int? collection-id))
+          (is (= :success (:status (import-at! src "v1"))))
+          (is (= collection-id (t2/select-one-fn :resource_collection_id :model/DataApp :name "sales")))
+          (is (=? {:namespace :data-apps} (t2/select-one :model/Collection :id collection-id))))))))
+
 (deftest bundle-only-pull-updates-the-bundle-test
   (testing "a pull that changes only an app's bundle file falls back to a full import, so the new bundle lands"
     (with-data-apps-sync

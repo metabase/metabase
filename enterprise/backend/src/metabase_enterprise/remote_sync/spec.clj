@@ -702,6 +702,11 @@
   [object]
   (= (keyword (:namespace object)) :snippets))
 
+(defn data-apps-namespace-collection?
+  "Check if this is a data-apps-namespace collection: the resource collection of a data app, synced with the app."
+  [object]
+  (= (keyword (:namespace object)) collections/data-apps-ns))
+
 (defn library-collection?
   "Check if this is the Library collection."
   [collection]
@@ -709,13 +714,14 @@
 
 (defn should-sync-collection?
   "Check if a collection should be synced - either remote-synced, transforms-namespace with setting enabled,
-   or snippets-namespace with Library synced."
+   snippets-namespace with Library synced, or data-apps-namespace (data apps are synced globally)."
   [collection]
   (or (collections/remote-synced-collection? collection)
       (and (rs-settings/remote-sync-transforms)
            (transforms-namespace-collection? collection))
       (and (rs-settings/library-is-remote-synced?)
-           (snippets-namespace-collection? collection))))
+           (snippets-namespace-collection? collection))
+      (data-apps-namespace-collection? collection)))
 
 (defn all-syncable-collection-ids
   "Returns a vector of all collection IDs that are eligible for remote sync.
@@ -723,6 +729,9 @@
    - Collections with is_remote_synced=true
    - Transforms-namespace collections (when remote-sync-transforms setting is enabled)
    - Snippets-namespace collections (when Library is remote-synced)
+
+   A data app's collection is synced content too, but lives and dies with its app rather than with the
+   repository, so it is in this scope only when the import brings it: see [[import-cleanup-collection-ids]].
 
    Used by import cleanup to determine which collections to scope deletions to."
   []
@@ -733,6 +742,16 @@
            (remote-sync.db/collection-ids-in-namespace (name collections/transforms-ns)))
          (when (rs-settings/library-is-remote-synced?)
            (remote-sync.db/collection-ids-in-namespace "snippets"))]))
+
+(defn import-cleanup-collection-ids
+  "The collection IDs an import's cleanup scopes deletions to: [[all-syncable-collection-ids]] plus the data-apps
+   collections the import itself holds. A data app's collection is created with the app, so one the repository
+   doesn't mention yet (an app created on this instance, or a manifest naming none) must survive the pull; one the
+   repository holds is the repository's, and what it lacks inside is deleted like in any synced collection."
+  [{:keys [by-entity-id]}]
+  (into (all-syncable-collection-ids)
+        (remote-sync.db/collection-ids-in-namespace-with-entity-ids (name collections/data-apps-ns)
+                                                                    (get by-entity-id "Collection"))))
 
 (def ^:private max-conflict-names
   "Cap on how many entity names a collection deletion conflict carries, so the payload stays bounded when
@@ -751,8 +770,8 @@
 
    Takes imported-data from [[extract-imported-entities]]. Returns a vector of conflict maps
    ({:type :category :model :count :names :message}), one per affected model type."
-  [{:keys [by-entity-id]}]
-  (let [synced-collection-ids (all-syncable-collection-ids)]
+  [{:keys [by-entity-id] :as imported-data}]
+  (let [synced-collection-ids (import-cleanup-collection-ids imported-data)]
     (into []
           (for [[model-key spec] (specs-for-deletion)
                 :when (and (not (get-in spec [:removal :all-on-setting-disable]))
@@ -812,7 +831,9 @@
         collection-id   (:collection_id object)]
     (case collection-type
       :remote-synced
-      (collections/remote-synced-collection? collection-id)
+      (or (collections/remote-synced-collection? collection-id)
+          ;; a data app's collection is synced content, so what it holds is too
+          (= (keyword (remote-sync.db/collection-namespace collection-id)) collections/data-apps-ns))
 
       :transforms-namespace
       (and (rs-settings/remote-sync-transforms)
@@ -827,7 +848,8 @@
           (and (rs-settings/remote-sync-transforms)
                (transforms-namespace-collection? object))
           (and (rs-settings/library-is-remote-synced?)
-               (snippets-namespace-collection? object)))
+               (snippets-namespace-collection? object))
+          (data-apps-namespace-collection? object))
 
       false)))
 
@@ -1217,7 +1239,8 @@
        (when (rs-settings/remote-sync-transforms)
          (collection-keys (remote-sync.db/unarchived-root-collection-ids-in-namespace (name collections/transforms-ns))))
        (when (rs-settings/library-is-remote-synced?)
-         (collection-keys (remote-sync.db/unarchived-root-collection-ids-in-namespace "snippets")))))
+         (collection-keys (remote-sync.db/unarchived-root-collection-ids-in-namespace "snippets")))
+       (collection-keys (remote-sync.db/unarchived-root-collection-ids-in-namespace (name collections/data-apps-ns)))))
     :derived
     nil))
 
