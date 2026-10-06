@@ -3,6 +3,7 @@
    [clojure.test :refer :all]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.models.interface :as mi]
    [metabase.queries.models.card.metadata :as card.metadata]
    [metabase.queries.schema :as queries.schema]
    [metabase.test :as mt]
@@ -107,3 +108,39 @@
           (is (= typed (metadata typed-id))))
         (testing "a model whose metadata still cannot be inferred is not changed"
           (is (= unresolvable (metadata unresolvable-id))))))))
+
+(deftest deserializing-update-with-model-overrides-keeps-types-test
+  (testing "a serdes load that updates a model with only the overrides of its metadata keeps the inferred column types"
+    ;; An export writes only the overrides of a model's columns (no base_type, no field id), and the query of the
+    ;; model does not change, so the load updates only result_metadata.
+    (mt/with-temp [:model/Card {card-id :id} {:type :model :dataset_query (venues-query)}]
+      (binding [mi/*deserializing?* true]
+        (t2/update! :model/Card card-id {:result_metadata [{:name "ID" :display_name "ID"}
+                                                           {:name "NAME" :display_name "Venue Name"}]}))
+      (is (=? [{:name "ID" :base_type :type/BigInteger :id (mt/id :venues :id)}
+               {:name "NAME" :base_type :type/Text :id (mt/id :venues :name) :display_name "Venue Name"}
+               {:name "CATEGORY_ID" :base_type :type/Integer}
+               {:name "LATITUDE" :base_type :type/Float}
+               {:name "LONGITUDE" :base_type :type/Float}
+               {:name "PRICE" :base_type :type/Integer}]
+              (t2/select-one-fn :result_metadata :model/Card :id card-id))))))
+
+(deftest deserializing-update-without-metadata-does-not-infer-test
+  (testing "a serdes load that updates other columns of a model, and not result_metadata, does not infer its metadata"
+    ;; The stored columns have no field ids, as a load of overrides stores them when the inference fails.
+    (mt/with-temp [:model/Card {card-id :id} {:type            :model
+                                              :dataset_query   (venues-query)
+                                              :result_metadata [{:name "ID" :display_name "ID"}
+                                                                {:name "NAME" :display_name "Venue Name"}]}]
+      (let [calls    (atom 0)
+            original (mt/original-fn #'card.metadata/infer-metadata-with-model-overrides)]
+        (mt/with-dynamic-fn-redefs [card.metadata/infer-metadata-with-model-overrides
+                                    (fn [query card]
+                                      (swap! calls inc)
+                                      (original query card))]
+          (binding [mi/*deserializing?* true]
+            (t2/update! :model/Card card-id {:name "Renamed model"}))
+          (is (= 0 @calls))
+          (testing "control: an update of the query infers the metadata"
+            (t2/update! :model/Card card-id {:dataset_query (lib/limit (venues-query) 10)})
+            (is (= 1 @calls))))))))
