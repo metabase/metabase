@@ -151,9 +151,8 @@
 
 ;;; ------------------------------------------------- Serialization -------------------------------------------------
 
-(defmethod serdes/extract-query "TableUserSettings" [_model-name {:keys [filter-ids] :as opts}]
-  (serdes/extract-reducible-nested "TableUserSettings" (dissoc opts :filter-column :filter-ids)
-                                   (warehouse-schema.db/table-user-settings-with-field-settings filter-ids)))
+(defmethod serdes/extract-query "TableUserSettings" [_model-name {:keys [filter-ids]}]
+  (warehouse-schema.db/table-user-settings-for-tables filter-ids))
 
 (defmethod serdes/entity-id "TableUserSettings" [_ _] nil)
 
@@ -166,12 +165,6 @@
     (cond-> [[db-path]]
       (:collection_id tus) (conj [{:model "Collection" :id (:collection_id tus)}]))))
 
-(defmethod serdes/load-one! "TableUserSettings" [ingested maybe-local]
-  (let [settings (serdes/default-load-one! ingested maybe-local)]
-    (when (:field_order ingested)
-      (table/update-field-positions! (warehouse-schema.db/table (:table_id settings))))
-    settings))
-
 (defmethod serdes/load-find-local "TableUserSettings" [path]
   (let [found-table (serdes/load-find-local (pop path))]
     (warehouse-schema.db/table-user-settings (:id found-table))))
@@ -182,6 +175,21 @@
       table-ref
       ;; It's too short, so no schema. Shift them over and add a nil schema.
       [db nil schema])))
+
+(def ^:private legacy-fields
+  "The FieldUserSettings a settings file carried before they got files of their own."
+  (serdes/nested :model/FieldUserSettings :table_id
+                 {:delete-children! warehouse-schema.db/delete-field-user-settings-for-table!}))
+
+(defmethod serdes/load-one! "TableUserSettings" [ingested maybe-local]
+  (let [settings (serdes/default-load-one! ingested maybe-local)
+        table-id (serdes/*import-table-fk* (table-path->table-ref (serdes/path ingested)))]
+    (when (contains? ingested :fields)
+      ((:import-with-context legacy-fields)
+       (t2/instance :model/TableUserSettings {:table_id table-id}) :fields (:fields ingested)))
+    (when (:field_order ingested)
+      (table/update-field-positions! (warehouse-schema.db/table table-id)))
+    settings))
 
 (defmethod serdes/make-spec "TableUserSettings" [_model-name _opts]
   {:copy      [:display_name :description :entity_type :visibility_type :field_order :caveats :points_of_interest
@@ -201,17 +209,11 @@
                :table_id      {::serdes/fk true
                                :export     (constantly ::serdes/skip)
                                :import-with-context (fn [current _ _]
-                                                      (serdes/*import-table-fk* (table-path->table-ref (serdes/path current))))}
-               :fields        (serdes/nested :model/FieldUserSettings :table_id
-                                             {:sort-by          :field_name
-                                              :delete-children! warehouse-schema.db/delete-field-user-settings-for-table!})}})
+                                                      (serdes/*import-table-fk* (table-path->table-ref (serdes/path current))))}}})
 
 (def ^:private table-user-settings-slug "___tableusersettings")
 
-(defmethod serdes/storage-path "TableUserSettings" [tus {:keys [inline-user-settings]}]
+(defmethod serdes/storage-path "TableUserSettings" [tus _ctx]
   (let [table-path (pop (serdes/path tus))]
-    (if inline-user-settings
-      (conj (serdes/storage-path-prefixes table-path)
-            {:label (:id (peek table-path)) :key (:id (peek table-path))})
-      (conj (serdes/storage-path-prefixes table-path)
-            {:label (str (:id (peek table-path)) table-user-settings-slug)}))))
+    (conj (serdes/storage-path-prefixes table-path)
+          {:label (:id (peek table-path)) :suffix table-user-settings-slug})))

@@ -741,4 +741,4 @@
   (let [hierarchy    (serdes/path fv)
         field-path   (serdes/storage-path-prefixes (drop-last hierarchy))]
     (update field-path (dec (count field-path))
-            (fn [segment] (update segment :label str field-values-slug)))))
+            (fn [segment] (assoc segment :suffix field-values-slug)))))

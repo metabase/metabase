@@ -688,8 +688,8 @@
 
 (deftest git-sync-exports-only-user-settings-test
   (testing "git sync stores what users changed about a Table and its Fields, never the Table or Fields themselves --
-            those belong to sync, which runs against each instance's own warehouse -- as one TableUserSettings
-            entity per Table inlining its Fields' edits, never separate FieldUserSettings entities"
+            those belong to sync, which runs against each instance's own warehouse -- each settings row and Dimension
+            as an entity of its own"
     (mt/with-premium-features #{:library}
       (mt/with-temp [:model/Collection {coll-id :id}  {:is_remote_synced true :name "RS" :type "library-data"}
                      :model/Database   {db-id :id}    {:name "DB"}
@@ -699,17 +699,16 @@
                      :model/Field      {f2 :id}       {:name "F2" :table_id table-id}]
         (t2/insert! :model/FieldUserSettings {:field_id f2 :description "curated" :description_set true})
         (t2/insert! :model/TableUserSettings {:table_id table-id :display_name "Renamed"})
-        (let [exportable (spec/exportable-entities)]
-          (is (contains? (set (get exportable "TableUserSettings")) table-id)
-              "the Table's own edit, plus its edited Field's, are carried by one TableUserSettings entity")
-          (is (nil? (get exportable "FieldUserSettings"))
-              "FieldUserSettings is never exported as its own entity")
+        (let [dimension-id (t2/insert-returning-pk! :model/Dimension {:field_id f1 :name "F1" :type :internal})
+              exportable   (spec/exportable-entities)]
+          (is (= [table-id] (get exportable "TableUserSettings")))
+          (is (= [f2] (get exportable "FieldUserSettings")))
+          (is (= [dimension-id] (get exportable "Dimension")))
           (is (not (contains? (set (get exportable "Table")) table-id)))
           (is (empty? (filter #{f1 f2} (get exportable "Field")))))))))
 
-(deftest git-sync-exports-table-user-settings-for-field-only-edit-test
-  (testing "a Table with no TableUserSettings row of its own, but an edited Field, is still exportable -- the
-            TableUserSettings entity is synthesized to carry the Field's edit"
+(deftest git-sync-exports-no-table-user-settings-for-field-only-edit-test
+  (testing "a Table with no TableUserSettings row of its own exports only its edited Field's settings"
     (mt/with-premium-features #{:library}
       (mt/with-temp [:model/Collection {coll-id :id}  {:is_remote_synced true :name "RS" :type "library-data"}
                      :model/Database   {db-id :id}    {:name "DB"}
@@ -718,10 +717,8 @@
                      :model/Field      {f1 :id}       {:name "F1" :table_id table-id}]
         (t2/insert! :model/FieldUserSettings {:field_id f1 :description "curated" :description_set true})
         (let [exportable (spec/exportable-entities)]
-          (is (not (t2/exists? :model/TableUserSettings :table_id table-id))
-              "the Table has no settings row of its own")
-          (is (contains? (set (get exportable "TableUserSettings")) table-id)
-              "the Table is still exportable, synthesized from its Field's edit"))))))
+          (is (nil? (get exportable "TableUserSettings")))
+          (is (= [f1] (get exportable "FieldUserSettings"))))))))
 
 (deftest ^:parallel exportable-entity-count-test
   (testing "exportable-entity-count sums the ids across every model in the targets map"

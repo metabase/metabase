@@ -3091,6 +3091,7 @@
                     :model/Database
                     :model/Field
                     :model/Measure
+                    :model/QueryAction
                     :model/Table}}
 
   typed-schemas.rest
@@ -4201,6 +4202,7 @@
                     :model/Collection
                     :model/Dashboard
                     :model/DataApp
+                    :model/Dimension
                     :model/Document
                     :model/Field
                     :model/FieldUserSettings
