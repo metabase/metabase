@@ -637,8 +637,10 @@
     (try
       (let [snapshot-version      (source.p/version snapshot)
             ;; Before anything is read for loading: an app's resource files are confined to its own collection.
-            _                     (source.ingestable/check-data-app-files! snapshot)
             last-imported-version (remote-sync.task/last-version)
+            ;; a pull of the commit already imported loads nothing, so there is nothing to check
+            _                     (when (or force? merge? (not= last-imported-version snapshot-version))
+                                    (source.ingestable/check-data-app-files! snapshot))
             first-import?         (nil? last-imported-version)
             ;; force-deletion? defaults to force? when a caller doesn't pass it.
             force-deletion?       (if (nil? force-deletion?) force? force-deletion?)

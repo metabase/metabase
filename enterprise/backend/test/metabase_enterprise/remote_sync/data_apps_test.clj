@@ -393,3 +393,13 @@
           (testing "a card anywhere else still can be archived"
             (mt/with-temp [:model/Card {other-id :id} {:name "Elsewhere"}]
               (mt/user-http-request :crowberto :put 200 (str "card/" other-id) {:archived true}))))))))
+
+(deftest a-pull-of-the-commit-already-imported-is-skipped-test
+  (testing "a pull that would load nothing isn't failed by the state of the instance"
+    (with-data-apps-sync
+      (let [src (test-helpers/versioned-source :trees {"v0" (shop-tree (question-resources))} :current "v0")]
+        (is (= :success (:status (import-at! src "v0" :force? true))))
+        (t2/update! :model/Card :entity_id question-eid {:collection_id nil})
+        (is (=? {:status :success :outcome {:kind "pull-skipped"}} (import-at! src "v0")))
+        (testing "a pull that would load is still refused"
+          (is (= :error (:status (import-at! src "v0" :force? true)))))))))
