@@ -100,6 +100,15 @@ export function DataStudioLayout() {
             }
           />
         )}
+        {hasActionDatabases && (
+          <AreaTab
+            label={t`Data actions`}
+            icon="bolt"
+            to={Urls.dataActionList()}
+            isSelected={currentTab === "data-actions"}
+            showLabel={isNavbarOpened}
+          />
+        )}
       </AreaTabGroup>
 
       <AreaTabGroup label={t`Library`} showLabel={isNavbarOpened}>
@@ -116,15 +125,6 @@ export function DataStudioLayout() {
             ) : null
           }
         />
-        {hasActionDatabases && (
-          <AreaTab
-            label={t`Data actions`}
-            icon="bolt"
-            to={Urls.dataActionList()}
-            isSelected={currentTab === "data-actions"}
-            showLabel={isNavbarOpened}
-          />
-        )}
         <AreaTab
           label={t`Glossary`}
           icon="glossary"
