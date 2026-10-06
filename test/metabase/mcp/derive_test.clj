@@ -375,6 +375,30 @@
               (is (= 400 (:status response)))
               (is (re-find #"(?i)native" (str (:body response)))))))))))
 
+(deftest derive-rechecks-data-permissions-test
+  (testing "Derive and drills re-check the user's permission on the stored query, and refuse with a 403 before
+            reading any column, so whether a column exists cannot be learned without access to the data"
+    (mt/with-model-cleanup [:model/McpQueryHandle]
+      (let [{:keys [user-id session-id] :as auth} (ui.tu/ui-auth! :rasta)
+            handle  (ui.tu/store-query-handle! session-id user-id (venues))
+            sort-on (fn [column-name]
+                      {:type "drill-thru" :drill "sort" :direction "asc" :context {:column column-name}})
+            derive  (fn [column-name]
+                      (:status (ui.tu/ui-request! auth :post nil (str "embed-mcp/queries/" handle "/derive")
+                                                  {:operations [(sort-on column-name)]})))
+            drill   (fn [column-name]
+                      (:status (ui.tu/ui-request! auth :post nil "embed-mcp/drills"
+                                                  {:handle handle :operation (sort-on column-name)})))]
+        (mt/with-no-data-perms-for-all-users!
+          (doseq [column-name ["PRICE" "NOT_A_COLUMN"]]
+            (testing column-name
+              (is (= 403 (derive column-name)))
+              (is (= 403 (drill column-name))))))
+        (testing "control: with permission, derive and drills work"
+          (mt/with-full-data-perms-for-all-users!
+            (is (= 200 (derive "PRICE")))
+            (is (= 200 (drill "PRICE")))))))))
+
 (deftest derive-gates-test
   (mt/with-model-cleanup [:model/McpQueryHandle]
     (testing "Gate 1: derive costs agent:query:run"

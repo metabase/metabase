@@ -264,6 +264,8 @@
    current user, and return `{:handle :query}` where `:query` is the new query base64-encoded."
   [session-id handle operations]
   (let [{:keys [query prompt]} (resolve-handle! session-id handle)
+        ;; Before any column is read, so a user who lost access cannot learn which columns exist.
+        _       (query-guards/check-token-query-permissions! query)
         base    (lib/query (lib-be/application-database-metadata-provider (:database query)) query)
         derived (mcp.derive/derive-query base operations)]
     (api/check-403 (group-policy-permits-derive? base derived))
