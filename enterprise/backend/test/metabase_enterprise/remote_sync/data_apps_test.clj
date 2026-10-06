@@ -470,3 +470,48 @@
           (is (str/includes? (:message result) "data_apps/shop/data_app.yaml"))
           (is (t2/exists? :model/Collection :id collection-id))
           (is (t2/exists? :model/Card :id card-id)))))))
+
+(defn- export-merged!
+  "Export to `src` with `merge`, as an instance whose last sync was `base-version` does once the remote has advanced."
+  [src base-version]
+  (t2/delete! :model/RemoteSyncTask :sync_task_type "export")
+  (let [task   (new-task! "export")
+        result (impl/export! (source.p/snapshot src) task "export"
+                             :merge? true :source src :base-snapshot (source.p/snapshot-at src base-version))]
+    (impl/handle-task-result! result task)
+    result))
+
+(deftest an-export-that-merges-checks-and-records-like-a-pull-test
+  (with-data-apps-sync
+    (testing "a remote file that a pull refuses is refused by an export that merges it in"
+      (mt/with-temp [:model/Collection {elsewhere :id} {:name "Elsewhere"}
+                     :model/Card       {foreign-id :id} {:name "Someone else's" :entity_id "foreignCardEntityId00"
+                                                         :collection_id elsewhere}]
+        (let [remote (data-apps.tu/build-resources
+                      shop-collection-eid
+                      [{:entity_id question-eid :name "VenuesList" :query (venues-query)}
+                       {:entity_id "foreignCardEntityId00" :name "Taken" :query (venues-query)}]
+                      [])
+              src    (test-helpers/versioned-source
+                      :trees {"v0" (shop-tree (question-resources)) "v1" (shop-tree remote)}
+                      :current "v1")]
+          (is (= :success (:status (import-at! src "v0" :force? true))))
+          (is (= :error (:status (export-merged! src "v0"))))
+          (is (=? {:name "Someone else's" :collection_id elsewhere}
+                  (t2/select-one :model/Card :id foreign-id))))))))
+
+(deftest an-export-that-merges-records-the-tables-test
+  (with-data-apps-sync
+    (let [remote (data-apps.tu/build-resources
+                  shop-collection-eid
+                  [{:entity_id question-eid :name "VenuesList" :query (venues-query)}
+                   {:entity_id "shopQuestionCheckins0" :name "Checkins"
+                    :query {:stages [{:source {:type "table" :id (mt/id :checkins)} :limit 5}]}}]
+                  [])
+          src    (test-helpers/versioned-source
+                  :trees {"v0" (shop-tree (question-resources)) "v1" (shop-tree remote)}
+                  :current "v1")]
+      (is (= :success (:status (import-at! src "v0" :force? true))))
+      (is (= :success (:status (export-merged! src "v0"))))
+      (is (= (sort [(mt/id :venues) (mt/id :checkins)])
+             (t2/select-one-fn :table_ids :model/DataApp :name "shop"))))))
