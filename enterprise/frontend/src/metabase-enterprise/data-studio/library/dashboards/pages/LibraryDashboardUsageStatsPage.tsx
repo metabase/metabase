@@ -1,16 +1,15 @@
-import { t } from "ttag";
-
-import { Center, Text } from "metabase/ui";
-
+import { DashboardUsageStats } from "../components/DashboardUsageStats";
+import S from "../components/LibraryDashboardOverview.module.css";
 import { LibraryDashboardPage } from "../components/LibraryDashboardPage";
 
 export function LibraryDashboardUsageStatsPage() {
   return (
     <LibraryDashboardPage data-testid="library-dashboard-usage-stats-page">
-      {() => (
-        <Center flex={1}>
-          <Text c="text-secondary">{t`Stats will go here later`}</Text>
-        </Center>
+      {(dashboard) => (
+        <DashboardUsageStats
+          dashboardId={dashboard.id}
+          className={S.usageStats}
+        />
       )}
     </LibraryDashboardPage>
   );

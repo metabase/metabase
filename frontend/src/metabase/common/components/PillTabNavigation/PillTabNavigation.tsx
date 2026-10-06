@@ -1,4 +1,5 @@
 import cx from "classnames";
+import type { ReactNode } from "react";
 
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { UpsellGem } from "metabase/common/components/upsells/components/UpsellGem";
@@ -14,6 +15,8 @@ export type PillTab = {
   icon?: IconName;
   isGated?: boolean;
   isSelected?: boolean | ((pathname: string) => boolean);
+  /** Shown after the label, e.g. a count */
+  badge?: ReactNode;
 };
 
 type PillTabNavigationProps = {
@@ -47,6 +50,7 @@ export function PillTabNavigation({ tabs }: PillTabNavigationProps) {
           >
             {tab.icon !== undefined && <FixedSizeIcon name={tab.icon} />}
             <Ellipsified className={S.label}>{tab.label}</Ellipsified>
+            {tab.badge}
             {tab.isGated && <UpsellGem.New size={14} />}
           </Flex>
         );

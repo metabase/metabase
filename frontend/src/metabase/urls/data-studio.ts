@@ -118,6 +118,12 @@ export function dataStudioLibraryDashboardContents(dashboardId: DashboardId) {
   return `${dataStudioLibraryDashboard(dashboardId)}/contents`;
 }
 
+export function dataStudioLibraryDashboardSubscriptions(
+  dashboardId: DashboardId,
+) {
+  return `${dataStudioLibraryDashboard(dashboardId)}/subscriptions`;
+}
+
 export function dataStudioLibraryDashboardUsageStats(dashboardId: DashboardId) {
   return `${dataStudioLibraryDashboard(dashboardId)}/usage`;
 }

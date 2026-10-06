@@ -1,6 +1,9 @@
 import { t } from "ttag";
 
-import { useUpdateDashboardMutation } from "metabase/api";
+import {
+  useListSubscriptionsQuery,
+  useUpdateDashboardMutation,
+} from "metabase/api";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { Link } from "metabase/common/components/Link/Link";
 import {
@@ -17,7 +20,7 @@ import { useMetadataToasts } from "metabase/common/hooks";
 import { DASHBOARD_NAME_MAX_LENGTH } from "metabase/common/utils/dashboard";
 import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
 import { useLocation, useNavigate } from "metabase/router";
-import { Button, Group, Icon } from "metabase/ui";
+import { Badge, Button, Group, Icon } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type { Dashboard } from "metabase-types/api";
 
@@ -32,6 +35,9 @@ export function LibraryDashboardHeader({
   const navigate = useNavigate();
   const [updateDashboard] = useUpdateDashboardMutation();
   const { sendErrorToast } = useMetadataToasts();
+  const { data: subscriptions } = useListSubscriptionsQuery({
+    dashboard_id: dashboard.id,
+  });
   const { path, isLoadingPath } = useCollectionPath({
     collectionId: dashboard.collection_id,
   });
@@ -61,7 +67,9 @@ export function LibraryDashboardHeader({
           onChange={handleNameChange}
         />
       }
-      tabs={<PillTabNavigation tabs={getTabs(dashboard)} />}
+      tabs={
+        <PillTabNavigation tabs={getTabs(dashboard, subscriptions?.length)} />
+      }
       actions={
         // aligned to the bottom of the header, on the tabs' line
         <Group gap="sm" wrap="nowrap" style={{ alignSelf: "flex-end" }}>
@@ -93,7 +101,10 @@ export function LibraryDashboardHeader({
   );
 }
 
-function getTabs(dashboard: Dashboard): PillTab[] {
+function getTabs(
+  dashboard: Dashboard,
+  subscriptionCount: number | undefined,
+): PillTab[] {
   const tabs: PillTab[] = [
     {
       label: t`Overview`,
@@ -116,10 +127,21 @@ function getTabs(dashboard: Dashboard): PillTab[] {
     });
   }
 
-  tabs.push({
-    label: t`Usage stats`,
-    to: Urls.dataStudioLibraryDashboardUsageStats(dashboard.id),
-  });
+  tabs.push(
+    {
+      label: t`Usage stats`,
+      to: Urls.dataStudioLibraryDashboardUsageStats(dashboard.id),
+    },
+    {
+      label: t`Subscriptions`,
+      to: Urls.dataStudioLibraryDashboardSubscriptions(dashboard.id),
+      badge: subscriptionCount != null && (
+        <Badge variant="light" color="neutral" aria-hidden>
+          {subscriptionCount}
+        </Badge>
+      ),
+    },
+  );
 
   return tabs;
 }

@@ -58,12 +58,6 @@
   user-select: none;
 }
 
-.statisticLink {
-  :hover {
-    color: var(--mb-color-core-brand);
-  }
-}
-
 /* The owner picker reads as plain text until clicked, like on the table page */
 .ownerInputRoot {
   flex-grow: 1;
@@ -104,4 +98,9 @@
     width: 0.75rem !important;
     height: 0.75rem !important;
   }
+}
+
+/* The usage charts sit directly on the page, leaving 56px at the bottom (with the page's 2rem padding) */
+.usageStats {
+  margin-bottom: 1.5rem;
 }

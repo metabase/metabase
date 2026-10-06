@@ -1,20 +1,32 @@
 import cx from "classnames";
+import type { ReactNode } from "react";
 import { t } from "ttag";
 
 import { useUpdateDashboardMutation } from "metabase/api";
 import { DateTime } from "metabase/common/components/DateTime";
 import { EditableText } from "metabase/common/components/EditableText";
-import { Link } from "metabase/common/components/Link/Link";
 import { useMetadataToasts } from "metabase/common/hooks";
 import { UserInput } from "metabase/metadata/components";
-import { Box, Card, Flex, Group, Icon, Stack, Text, rem } from "metabase/ui";
-import * as Urls from "metabase/urls";
-import { isQuestionDashCard } from "metabase/utils/dashboard";
+import {
+  Box,
+  Card,
+  Flex,
+  Group,
+  Icon,
+  Loader,
+  Stack,
+  Text,
+  rem,
+} from "metabase/ui";
 import { getUserName } from "metabase/utils/user";
 import type { Dashboard, UserId } from "metabase-types/api";
 
 import S from "./LibraryDashboardOverview.module.css";
 import { useDashboardOwner } from "./use-dashboard-owner";
+import {
+  useAverageLoadingTime,
+  useCachingLabel,
+} from "./use-dashboard-performance";
 
 type LibraryDashboardDescriptionSectionProps = {
   dashboard: Dashboard;
@@ -53,8 +65,8 @@ export function LibraryDashboardDescriptionSection({
   };
 
   const lastEditInfo = dashboard["last-edit-info"];
-  const chartCount = dashboard.dashcards.filter(isQuestionDashCard).length;
-  const filterCount = dashboard.parameters?.length ?? 0;
+  const averageLoadingTime = useAverageLoadingTime(dashboard);
+  const cachingLabel = useCachingLabel(dashboard);
   const tabCount = dashboard.tabs?.length ?? 0;
 
   return (
@@ -124,45 +136,36 @@ export function LibraryDashboardDescriptionSection({
 
       <Card mx="xl" my="xl" shadow="none">
         <Statistic
-          label={t`Charts`}
-          value={chartCount}
-          to={Urls.dataStudioLibraryDashboardContents(dashboard.id)}
+          label={t`Avg loading time (s)`}
+          value={
+            averageLoadingTime === undefined ? (
+              <Loader size="xs" />
+            ) : (
+              (averageLoadingTime?.toFixed(1) ?? "—")
+            )
+          }
         />
-        <Statistic label={t`Filters`} value={filterCount} />
+        <Statistic label={t`Caching policy`} value={cachingLabel ?? "—"} />
+        <Statistic
+          label={t`Auto-apply filters`}
+          value={dashboard.auto_apply_filters ? t`On` : t`Off`}
+        />
         {tabCount > 1 && <Statistic label={t`Tabs`} value={tabCount} />}
       </Card>
     </Stack>
   );
 }
 
-function Statistic({
-  label,
-  value,
-  to,
-}: {
-  label: string;
-  value: number;
-  to?: string;
-}) {
-  const valueText = (
-    <Text size="xl" fw={600}>
-      {value}
-    </Text>
-  );
-
+function Statistic({ label, value }: { label: string; value: ReactNode }) {
   return (
     <Card.Section withBorder py={rem(12)} px="lg">
-      <Flex justify="space-between" align="center">
+      <Flex justify="space-between" align="center" gap="md">
         <Text size="md" c="text-secondary">
           {label}
         </Text>
-        {to && value > 0 ? (
-          <Link to={to} className={S.statisticLink}>
-            {valueText}
-          </Link>
-        ) : (
-          valueText
-        )}
+        <Text size="md" fw={600} ta="right">
+          {value}
+        </Text>
       </Flex>
     </Card.Section>
   );
