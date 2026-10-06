@@ -2102,6 +2102,63 @@
 (defn- token-scope-set [token-response]
   (some-> (:scope token-response) (str/split #" ") set))
 
+(defn- run-flow!
+  "Run the whole authorization-code flow as crowberto: register a confidential DCR client with `registration`, GET
+  `/oauth/authorize` for `scope` naming `resource` (omitted when nil), approve with the offered scopes that `choose`
+  keeps (default: all), and exchange the code without naming a resource. Returns `{:authorize <consent response>
+  :offered <offered scopes> :token <token response>}`; `:offered` and `:token` are absent when the authorize request
+  did not reach the consent page."
+  [{:keys [registration scope resource choose] :or {registration {} choose identity}}]
+  (let [client  (register-mcp-client! registration)
+        ;; see [[get-mcp-consent-page!]] for why the session is revalidated first
+        _       (mt/user-http-request :crowberto :get 200 "api/user/current")
+        consent (apply mt/user-http-request-full-response
+                       :crowberto :get "oauth/authorize"
+                       :client_id     (:client_id client)
+                       :redirect_uri  "https://example.com/callback"
+                       :response_type "code"
+                       :scope         scope
+                       :state         "test-state"
+                       (when resource [:resource resource]))]
+    (if-not (= 200 (:status consent))
+      {:authorize consent}
+      (let [body     (:body consent)
+            offered  (offered-scopes consent)
+            decision (form-post-decision!
+                      :crowberto
+                      (cond-> {:approved      "true"
+                               :csrf_token    (extract-csrf-token-from-consent body)
+                               :params_sig    (extract-params-sig-from-consent body)
+                               :client_id     (:client_id client)
+                               :redirect_uri  "https://example.com/callback"
+                               :response_type "code"
+                               :scope         (extract-hidden-field "scope" body)
+                               :granted_scope (vec (choose offered))
+                               :state         "test-state"}
+                        resource (assoc :resource resource))
+                      302
+                      :csrf-cookie (extract-csrf-cookie consent))]
+        {:authorize consent
+         :offered   offered
+         :token     (token-request! {:grant_type   "authorization_code"
+                                     :code         (extract-query-param (get-in decision [:headers "Location"]) "code")
+                                     :redirect_uri "https://example.com/callback"}
+                                    :authorization (basic-auth-header (:client_id client) (:client_secret client)))}))))
+
+(deftest foreign-host-mcp-resource-is-narrowed-test
+  (testing "A resource naming the MCP endpoint path under another host binds the token to the MCP endpoint, so it is
+            narrowed like the MCP endpoint under the Site URL: the consent page never offers full access for a token
+            only the MCP endpoint serves, and the token holds only MCP scopes"
+    (mt/with-temporary-setting-values [site-url                                  "http://localhost:3000"
+                                       oauth-server-dynamic-registration-enabled true]
+      (t2/with-transaction [_conn nil {:rollback-only true}]
+        (let [{:keys [offered token]} (run-flow! {:registration {:scope (str oauth-server/full-access-scope
+                                                                             " agent:content:read")}
+                                                  :scope        (str oauth-server/full-access-scope " agent:content:read")
+                                                  :resource     "https://other-host.example/api/metabase-mcp"})]
+          (is (= ["agent:content:read"] offered))
+          (is (= #{"agent:content:read"} (token-scope-set token))))))))
+
 (def ^:private v2-baseline-scope-set
   #{"agent:content:read" "agent:query:run"})
 

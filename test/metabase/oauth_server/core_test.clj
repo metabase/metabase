@@ -272,13 +272,18 @@
         (mt/with-temporary-setting-values [site-url "http://example.com"]
           (is (= narrowed (oauth-server/narrow-scope-to-resource
                            ["http://example.com:80/api/metabase-mcp"] wide)))))
+      (testing "an MCP endpoint path under another host, port or scheme is narrowed too: binding treats it as the MCP
+                endpoint, so the consent page must offer only what that endpoint serves"
+        (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+          (doseq [indicator ["http://localhost:3001/api/metabase-mcp"
+                             "https://localhost:3000/api/metabase-mcp"
+                             "http://evil.example.com/api/metabase-mcp"]]
+            (testing (str "narrows for " (pr-str indicator))
+              (is (= narrowed (oauth-server/narrow-scope-to-resource [indicator] wide)))))))
       (testing "canonicalization does not make unrelated resources match"
         (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
           (doseq [indicator ["http://localhost:3000/api/metabase-mcp/extra"
                              "http://localhost:3000/API/METABASE-MCP/V2"
-                             "http://localhost:3001/api/metabase-mcp"
-                             "https://localhost:3000/api/metabase-mcp"
-                             "http://evil.example.com/api/metabase-mcp"
                              "not-a-uri"]]
             (testing (str "leaves scope alone for " (pr-str indicator))
               (is (= wide (oauth-server/narrow-scope-to-resource [indicator] wide))))))))))

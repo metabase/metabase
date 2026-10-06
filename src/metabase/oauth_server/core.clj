@@ -174,22 +174,21 @@
   ;; characters, none of which canonicalize, so normalize first.
   (into #{} (keep canonical-resource-uri) (cond-> resources (string? resources) vector)))
 
-(defn- mcp-paths-named
-  "The MCP endpoint paths that `resources` (RFC 8707 indicators) name, compared as [[canonical-resource-uri]]. Every
-  alias in [[metabase.mcp.core/mcp-endpoint-paths]] counts, not just the canonical one."
-  [resources]
-  (let [named (canonical-resources resources)]
-    (filter #(contains? named (canonical-resource-uri (str (system/site-url) %)))
-            (mcp/mcp-endpoint-paths))))
-
-(defn- mcp-endpoint-resource?
-  "Whether the canonical resource URI `resource` names an MCP endpoint path under any host and subpath: its path ends
-  with one of [[metabase.mcp.core/mcp-endpoint-paths]]. Every endpoint path starts with `/`, so the match is at a
-  segment boundary."
+(defn- resource-path
+  "The path of the canonical resource URI `resource`, or nil when it does not parse."
   [resource]
-  (let [path (try (.getPath (java.net.URI. ^String resource))
-                  (catch java.net.URISyntaxException _ nil))]
-    (boolean (and path (some #(str/ends-with? path %) (mcp/mcp-endpoint-paths))))))
+  (try (.getPath (java.net.URI. ^String resource))
+       (catch java.net.URISyntaxException _ nil)))
+
+(defn- mcp-paths-named
+  "The MCP endpoint paths that `resources` (RFC 8707 indicators) name: those that the path of some
+  [[canonical-resource-uri]] form of `resources` ends with, under any host and subpath. Every alias in
+  [[metabase.mcp.core/mcp-endpoint-paths]] counts, not just the canonical one. Every endpoint path starts with `/`, so
+  the match is at a segment boundary."
+  [resources]
+  (let [paths (keep resource-path (canonical-resources resources))]
+    (filter (fn [endpoint-path] (some #(str/ends-with? % endpoint-path) paths))
+            (mcp/mcp-endpoint-paths))))
 
 (defn mcp-resource?
   "Whether `resources`, the RFC 8707 binding stored on a token, names the MCP endpoint.
@@ -199,7 +198,7 @@
   each canonical resource, not by the current Site URL, so a token stays bound when an admin changes the Site URL's
   host or subpath. A resource that does not parse as an absolute URI binds nothing."
   [resources]
-  (boolean (some mcp-endpoint-resource? (canonical-resources resources))))
+  (boolean (seq (mcp-paths-named resources))))
 
 (defn mcp-endpoint-request?
   "Whether the request path `uri` is served by the MCP endpoint, under any of its paths."
@@ -216,8 +215,9 @@
 (defn narrow-scope-to-resource
   "Narrow an OAuth `scope` string to what the requested `resources` accept.
 
-  `resources` are RFC 8707 resource indicators from the authorization request. When one names the MCP resource —
-  compared as [[canonical-resource-uri]], since clients disagree on trailing slashes, case, and default ports — scopes
+  `resources` are RFC 8707 resource indicators from the authorization request. When one names the MCP resource — by
+  the same path-based rule as [[mcp-resource?]], so under any host or subpath, since a token bound that way is served
+  only by the MCP endpoint — scopes
   no named surface accepts are dropped, so the consent screen asks for what the token can actually be used for
   rather than everything the client registered. Several indicators may be sent, and the token has to work against
   each, so what survives is the union of what they accept. Returns the scope unchanged when no indicator names a
