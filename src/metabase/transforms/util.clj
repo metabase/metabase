@@ -24,7 +24,6 @@
    [metabase.transforms-base.util :as transforms-base.u]
    [metabase.transforms.canceling :as canceling]
    [metabase.transforms.db :as transforms.db]
-   [metabase.transforms.feature-gating :as transforms.gating]
    [metabase.transforms.instrumentation :as transforms.instrumentation]
    [metabase.transforms.models.transform-run :as transform-run]
    [metabase.transforms.settings :as transforms.settings]
@@ -44,12 +43,6 @@
     (transforms-base.u/query-transform? transform) (premium-features/query-transforms-enabled?)
     (transforms-base.u/python-transform? transform) (premium-features/python-transforms-enabled?)
     :else false))
-
-(defn enabled-source-types-for-user
-  "Returns set of enabled source types for WHERE clause filtering."
-  []
-  (when (api/entitled-data-analyst?)
-    (transforms.gating/enabled-source-types)))
 
 (defn- source-query-permissions-ok?
   "Whether the current user may run a query transform's source `query`, per the query processor's own permission

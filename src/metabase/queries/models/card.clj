@@ -537,18 +537,6 @@
               :card      (queries.db/update-card! po-id {:parameters new-parameters})
               :dashboard (queries.db/update-dashboard! po-id {:parameters new-parameters}))))))))
 
-(mu/defn model-supports-implicit-actions?
-  "A model with implicit action supported iff they are a raw table,
-  meaning there are no clauses such as filter, limit, breakout...
-
-  It should be the opposite of [[metabase.lib.stage/has-clauses]] but for all stages."
-  [{query :dataset_query :as _card} :- ::queries.schema/card]
-  (and (seq query)
-       (every? (fn [stage-number]
-                 (and (lib/mbql-stage? query stage-number)
-                      (not (lib/has-clauses? query stage-number))))
-               (range 0 (count (:stages query))))))
-
 (defn- disable-implicit-action-for-model!
   "Delete all implicit actions of a model if exists."
   [model-id]
@@ -592,13 +580,16 @@
       ;; updating a model dataset query to not support implicit actions will disable implicit actions if they exist
       (when (and (:dataset_query changes)
                  (= (:type old-card-info) :model)
-                 (not (model-supports-implicit-actions? changes)))
+                 (not (query/supports-implicit-actions? (:dataset_query changes))))
         (disable-implicit-action-for-model! id))
       ;; Changing from a Model to a Question: archive associated actions
       (when (and (= (:type changes) :question)
                  (= (:type old-card-info) :model))
+        (queries.db/delete-dashcards-for-model-actions! id)
         (queries.db/archive-explicit-actions-for-model! id)
         (queries.db/delete-implicit-actions-for-model! id))
+      (when (contains? changes :archived)
+        (queries.db/set-actions-of-model-archived! id (boolean (:archived changes))))
       ;; Make sure any native query template tags match the DB in the query.
       (check-field-filter-fields-are-from-correct-database changes)
       ;; Make sure the Collection is in the default Collection namespace (e.g. as opposed to the Snippets Collection
@@ -685,24 +676,39 @@
 ;; Curated metric dimensions. New metrics seed their own-table columns only, with joined/FK
 ;; columns available to add on demand. But metrics created before curated dimensions shipped implicitly
 ;; exposed EVERY breakoutable column (own-table + implicitly-joined), and existing dashboard filters may
-;; be mapped to those joined columns. Modernize such a metric on read by backfilling the full
-;; implicitly-joined dimension set, so every existing mapping still corresponds to a live dimension.
-;; Only un-curated metrics (`:dimensions` still nil) are touched; once a metric is curated (any write),
-;; its `card_schema` is bumped to current and this upgrade no longer runs, so removals stay sticky.
+;; be mapped to those joined columns. This schema upgrade modernizes a pre-curation metric in one of two ways.
+;;
+;; `:dimensions` which were set before schema 24 do not have the correct `:default` set, and the representation differs
+;; slightly from the current form. The `:default` is inferred from the single breakout on the metric's query, or left
+;; unset if there's no breakout.
+;;
+;; When the metric's `:dimensions` have never been set, we backfill the complete implicitly-joined dimension set,
+;; preserving the pre-curation behavior for those metrics.
+;;
+;; This runs on every read of an un-curated metric and persists nothing, so the dimension ids it hands out have to
+;; be the same every time — hence the `:entity_id` seed and `:entity_id`'s place in
+;; [[card-schema/schema-upgrade-triggers]]. See `metabase.lib-metric.dimension.jvm/dimension-id`.
 (defmethod upgrade-card-schema-to 24
-  [card _schema-version]
+  [{:keys [dataset_query dimensions entity_id] :as card} _schema-version]
   (cond
     (not= :metric (keyword (:type card))) card   ; Ignore non-:metric cards
-    (empty? (:dataset_query card))        card   ; And those without real queries
+    (empty? dataset_query)                card   ; And those without real queries
 
-    ;; If the `:dimensions` are populated, update their (pre-curation) representation to the current form.
-    (:dimensions card)                    (update card :dimensions metrics/modernize-pre-curation-dimensions)
+    ;; Metric with `:dimensions` not populated at all, so generate them.
+    ;; We generate the legacy, "full" dimensions, selecting all breakoutable columns as a dimension.
+    ;; (In contrast, a newly created metric starts with only its *own* table's columns as dimensions.)
+    (nil? dimensions)
+    (let [{:keys [dimensions dimension-mappings]} (metrics/compute-full-dimension-set entity_id dataset_query)]
+      (assoc card :dimensions dimensions :dimension_mappings dimension-mappings))
 
-    ;; If the `:dimensions` are unset, populate them with the present representation but with pre-curation semantics:
-    ;; all implicitly joinable columns become dimensions, not just "available" dimensions.
+    ;; Metric with legacy `:dimensions` already set.
+    ;; Update their (pre-curation) representation to the current form, then populate the `:default` flag based on
+    ;; the breakout in the query.
     :else
-    (let [{:keys [dimensions dimension-mappings]} (metrics/compute-full-dimension-set (:dataset_query card))]
-      (assoc card :dimensions dimensions :dimension_mappings dimension-mappings))))
+    (update card :dimensions #(-> %
+                                  metrics/modernize-pre-curation-dimensions
+                                  (metrics/recover-pre-curation-default-dimension (:dimension_mappings card)
+                                                                                  dataset_query)))))
 
 (defn- schema-governed-select?
   "Whether `card` is a Card row SELECTed with any [[card-schema/schema-governed-columns]], and therefore holds a
@@ -879,6 +885,13 @@
       (sync.field-values/update-field-values-for-on-demand-dbs! field-ids))
     (parameter-card/upsert-or-delete-from-parameters! "card" (:id card) (:parameters card))))
 
+(defn- move-model-actions
+  "Moves the Actions of `card` into its Collection when the update changes it, returning `card`."
+  [card original]
+  (u/prog1 card
+    (when (not= (:collection_id card) (:collection_id original))
+      (queries.db/move-actions-of-models! #{(:id card)} (:collection_id card)))))
+
 (defn- apply-dashboard-question-updates [card changes]
   (if-let [dashboard-id (:dashboard_id changes)]
     (assoc card :collection_id (queries.db/dashboard-collection-id dashboard-id))
@@ -933,6 +946,7 @@
         (populate-query-fields (contains? changes :dataset_query))
         (clear-metabot-origin changes)
         (pre-update changes)
+        (move-model-actions original)
         maybe-populate-initially-published-at
         public-sharing/add-public-uuid-prefix-if-changed)))
 
@@ -1332,15 +1346,18 @@
         (log/errorf "Update of dependent card parameters failed!: %s" (ex-message e))))
     (collection/check-for-remote-sync-update card-before-update)))
 
-(defn- retired-action-events
-  "The `[topic action]` pairs that announce how an update to a model retired its actions: `:event/action-delete` with
+(defn- changed-action-events
+  "The `[topic action]` pairs that announce how an update to a card changed its actions: `:event/action-delete` with
   the old action for each of `actions-before` absent from `actions-after`, and `:event/action-update` with the new
-  action for each one that became archived."
+  action for each one that was archived, unarchived, or moved to another Collection while unarchived."
   [actions-before actions-after]
   (let [id->after (m/index-by :id actions-after)]
     (for [before actions-before
           :let   [after (id->after (:id before))]
-          :when  (or (nil? after) (and (:archived after) (not (:archived before))))]
+          :when  (or (nil? after)
+                     (not= (:archived after) (:archived before))
+                     (and (not= (:collection_id after) (:collection_id before))
+                          (not (and (:archived before) (:archived after)))))]
       (if after
         [:event/action-update after]
         [:event/action-delete before]))))
@@ -1348,14 +1365,13 @@
 (defn update-card!
   "Update a Card. Metadata is fetched asynchronously. If it is ready before [[metadata-sync-wait-ms]] elapses it will be
   included, otherwise the metadata will be saved to the database asynchronously. Publishes `:event/card-update`, plus
-  an action event for each action of a model that the update deletes or archives."
+  an action event for each action of the card that the update deletes, archives, unarchives, or moves."
   [{:keys [card-before-update card-updates actor delete-old-dashcards?]}]
-  ;; The card hooks delete or archive a model's actions without events, so compare the actions before and after.
-  (let [actions-before (when (= :model (keyword (:type card-before-update)))
-                         (queries.db/actions-for-model (:id card-before-update)))]
+  ;; The card hooks delete, archive, or move a card's actions without events, so compare the actions before and after.
+  (let [actions-before (queries.db/actions-for-model (:id card-before-update))]
     (update-card-in-db! card-before-update card-updates actor delete-old-dashcards?)
     (when (seq actions-before)
-      (doseq [[topic action] (retired-action-events actions-before (queries.db/actions-for-model (:id card-before-update)))]
+      (doseq [[topic action] (changed-action-events actions-before (queries.db/actions-for-model (:id card-before-update)))]
         (events/publish-event! topic {:object action :user-id api/*current-user-id*}))))
   ;; Fetch the updated Card from the DB
   (let [card (queries.db/card (:id card-before-update))]
@@ -1547,7 +1563,7 @@
 (defmethod serdes/deserialization-dependencies "Card" [card]
   (card-deps false card))
 
-(defmethod serdes/descendants "Card" [_model-name id {:keys [skip-archived]}]
+(defmethod serdes/descendants "Card" [_model-name id _opts]
   (let [card               (queries.db/card id)
         query              (not-empty (:dataset_query card))
         source-cards       (some-> query lib/all-source-card-ids)
@@ -1563,11 +1579,7 @@
               (for [card-id parameters-card-id]
                 {["Card" card-id] {"Card" id}})
               (for [snippet-id snippets]
-                {["NativeQuerySnippet" snippet-id] {"Card" id}})
-              ;; An Action points at its model, but the model doesn't reference its actions, so list them here.
-              (when (= :model (:type card))
-                (for [action-id (queries.db/action-ids-for-model id skip-archived)]
-                  {["Action" action-id] {"Card" id}}))))))
+                {["NativeQuerySnippet" snippet-id] {"Card" id}})))))
 
 (defmethod serdes/extract-query "Card"
   [model-name {:keys [collection-set filter-column filter-ids] :as opts}]

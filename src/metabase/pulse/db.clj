@@ -21,7 +21,7 @@
   ;; `pulse`, so requiring it back would add a module cycle for one query. Keep in sync with
   ;; `metabase.queries.card-schema/schema-upgrade-triggers`.
   (t2/select-one-fn :dataset_query
-                    [:model/Card :id :dataset_query :card_schema :type
+                    [:model/Card :id :dataset_query :card_schema :type :entity_id
                      :result_metadata :dimensions :dimension_mappings]
                     card-id))
 
@@ -30,6 +30,11 @@
   which case the result is nil."
   [dashboard-id :- [:maybe ::lib.schema.id/dashboard]]
   (t2/select-one :model/Dashboard :id dashboard-id))
+
+(mu/defn dashboard-archived? :- :boolean
+  "Whether the Dashboard with `dashboard-id` exists and is archived."
+  [dashboard-id :- [:maybe ::lib.schema.id/dashboard]]
+  (t2/exists? :model/Dashboard :id dashboard-id :archived true))
 
 (mu/defn dashboard-collection-id
   "The Collection id of the Dashboard with `dashboard-id`, or nil."
