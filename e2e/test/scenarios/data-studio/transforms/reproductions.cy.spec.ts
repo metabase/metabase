@@ -76,7 +76,7 @@ describe("issue GDGT-1776", () => {
         offset: null,
         total: ITEMS_COUNT,
       },
-    });
+    }).as("rootCollectionItems");
   });
 
   it("should not crash the app when processing lots of hidden items in the MiniPicker (GDGT-1776)", () => {
@@ -84,7 +84,9 @@ describe("issue GDGT-1776", () => {
     cy.button("Create a transform").click();
     H.popover().findByText("Query builder").click();
     H.popover().findByText("Our analytics").click();
+    cy.wait("@rootCollectionItems");
 
+    H.miniPicker().should("be.visible");
     cy.findByTestId("loading-indicator").should("not.exist");
     H.main().findByText("Something’s gone wrong").should("not.exist");
     cy.button("Cancel").should("be.visible");
@@ -267,8 +269,10 @@ describe("issue GDGT-2429", () => {
       cy.button("Save").click();
     });
     cy.wait("@createTransform");
+    cy.location("pathname").should("match", /\/transforms\/\d+$/);
 
     cy.go("back");
+    cy.location("pathname").should("not.match", /\/transforms\/\d+$/);
     H.leaveConfirmationModal().should("not.exist");
   });
 });

@@ -209,6 +209,7 @@ describe(
           "include",
           `/data-studio/data/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}/table/${ORDERS_ID}/segments`,
         );
+        SegmentList.getEmptyState().scrollIntoView().should("be.visible");
         SegmentList.get()
           .findByText("Segment to Delete", { timeout: 1000 })
           .should("not.exist");
@@ -681,5 +682,6 @@ function verifySegmentNotInQueryBuilder(
   H.openTable({ table: tableId, mode: "notebook" });
 
   H.getNotebookStep("data").button("Filter").click();
+  H.popover().findByText("Total").should("be.visible");
   H.popover().findByText(segmentName).should("not.exist");
 }

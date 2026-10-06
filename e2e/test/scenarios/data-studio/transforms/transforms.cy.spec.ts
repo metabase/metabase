@@ -483,15 +483,24 @@ LIMIT
 
     it("should not be possible to create an MBQL transform from an unsupported database or from metrics", () => {
       H.getTableId({ name: "Animals", databaseId: WRITABLE_DB_ID }).then(
-        (tableId) =>
+        (tableId) => {
+          H.createQuestion({
+            name: "Animal Question",
+            database: WRITABLE_DB_ID,
+            query: {
+              "source-table": tableId,
+            },
+          });
           H.createQuestion({
             name: "Animal Metric",
             type: "metric",
+            database: WRITABLE_DB_ID,
             query: {
               "source-table": tableId,
               aggregation: [["count"]],
             },
-          }),
+          });
+        },
       );
 
       visitTransformListPage();
@@ -504,6 +513,7 @@ LIMIT
         cy.findByText("Sample Database").should("not.exist");
 
         cy.findByText("Our analytics").click();
+        cy.findByText("Animal Question").should("be.visible");
         cy.findByText(/metric/i).should("not.exist");
       });
 
@@ -588,9 +598,9 @@ LIMIT
       getQueryEditor().within(() => {
         cy.findByTestId("run-button").eq(0).click();
         cy.findByTestId("loading-indicator").should("not.exist");
-
-        cy.findAllByTestId("detail-shortcut").should("not.exist");
       });
+      H.assertTableData({ columns: ["Name", "Score"] });
+      getQueryEditor().findAllByTestId("detail-shortcut").should("not.exist");
     });
 
     it("should not be possible to create a transform from a question or a model that is based of an unsupported database", () => {
@@ -1029,8 +1039,7 @@ LIMIT
       cy.log("Toggle incremental on");
       getIncrementalSwitch().click();
 
-      cy.log("Wait for debounce period");
-      cy.wait(500);
+      cy.wait("@updateTransformNetworkError");
 
       cy.log("Verify error toast is shown");
       H.undoToast().should(
@@ -1355,6 +1364,7 @@ LIMIT
       cy.log("before table creation");
       createMbqlTransform({ visitTransform: true });
       H.DataStudio.Transforms.settingsTab().click();
+      getTransformsTargetContent().button("Change target").should("be.visible");
       getTransformsTargetContent()
         .findByText("Edit this table's metadata")
         .should("not.exist");
@@ -1703,6 +1713,7 @@ LIMIT
       H.DataStudio.Transforms.header().icon("ellipsis").click();
       H.popover().findByText("Delete").click();
       H.modal().within(() => {
+        cy.button("Delete transform").should("be.visible");
         cy.findByLabelText("Delete the transform only").should("not.exist");
         cy.findByLabelText("Delete the transform and the table").should(
           "not.exist",
@@ -2660,6 +2671,7 @@ LIMIT
       cy.visit("/data-studio/transforms/1");
 
       cy.log("'edit definition' button is not displayed");
+      H.DataStudio.Transforms.runTab().should("be.visible");
       H.DataStudio.Transforms.editDefinitionButton().should("not.exist");
 
       cy.log("visit the Run tab");
@@ -2673,6 +2685,7 @@ LIMIT
       H.DataStudio.Transforms.settingsTab().click();
 
       cy.log("'Change target' button is not displayed");
+      getSchemaLink().should("be.visible");
       cy.findByRole("button", { name: /Change target/ }).should("not.exist");
 
       cy.log("'Only process new data' switch is not displayed");
@@ -2757,6 +2770,7 @@ describe("scenarios > admin > transforms > databases without :schemas", () => {
     H.DataStudio.Transforms.settingsTab().click();
     getTransformsTargetContent().button("Change target").click();
 
+    H.modal().findByLabelText("New table name").should("be.visible");
     H.modal().findByLabelText("Schema").should("not.exist");
   });
 
@@ -2771,6 +2785,7 @@ describe("scenarios > admin > transforms > databases without :schemas", () => {
       cy.findByText("Orders").click();
     });
     getQueryEditor().button("Save").click();
+    H.modal().findByLabelText("Table name").should("be.visible");
     H.modal().findByLabelText("Schema").should("not.exist");
   });
 });
@@ -2963,6 +2978,7 @@ describe("scenarios > admin > transforms > jobs", () => {
       assertOptionSelected("daily");
 
       getTagsInput().type("{backspace}");
+      cy.wait("@updateJob");
       assertOptionSelected("hourly");
       assertOptionNotSelected("daily");
     });
@@ -3040,7 +3056,7 @@ describe("scenarios > admin > transforms > jobs", () => {
         cy.button("Delete job").click();
         cy.wait("@deleteJob");
       });
-      H.DataStudio.Jobs.list().should("be.visible");
+      H.DataStudio.Jobs.list().findByText("Hourly job").should("be.visible");
       H.DataStudio.Jobs.list().findByText("New job").should("not.exist");
     });
   });
@@ -4222,6 +4238,7 @@ describe("scenarios > data studio > transforms > permissions > oss", () => {
       cy.button("Create a transform").should("be.visible").click();
 
       cy.log("Verify Python transforms are not available in OSS");
+      H.popover().findByText("Query builder").should("be.visible");
       H.popover()
         .findByText(/Python/i)
         .should("not.exist");

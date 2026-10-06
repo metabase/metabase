@@ -197,7 +197,7 @@ describe("scenarios > data studio > measures > queries", () => {
       H.popover().button("Update").click();
       MeasureEditor.getSaveButton().click();
 
-      H.undoToast().should("contain.text", "Failed to update measure");
+      H.undoToastList().should("contain.text", "Failed to update measure");
     });
 
     it("should not be possible to create a measure that references a metric", () => {
@@ -215,6 +215,7 @@ describe("scenarios > data studio > measures > queries", () => {
       MeasureEditor.getNameInput().type(MEASURE_NAME);
       MeasureEditor.getAggregationPlaceholder().click();
 
+      H.popover().findByText("Custom Expression").should("be.visible");
       H.popover().findByText("Metrics").should("not.exist");
       H.popover().findByText("Custom Expression").click();
 

@@ -861,6 +861,7 @@ describe("scenarios > data studio > datamodel", () => {
     TablePicker.getTable("Orders").click();
     TableSection.clickFieldsTab();
     TableSection.clickField("Subtotal");
+    FieldSection.getNameInput().should("have.value", "Subtotal");
     PreviewSection.get().should("not.exist");
     FieldSection.get().should("exist");
     TableSection.get().should("exist");

@@ -202,6 +202,9 @@ describe("scenarios > data studio > snippets", () => {
         cy.wait("@updateSnippet");
       });
 
+      H.DataStudio.Library.emptyStateRow(
+        "Reusable bits of code that save your time",
+      ).should("be.visible");
       H.DataStudio.Library.libraryPage()
         .findByText("Test snippet")
         .should("not.exist");

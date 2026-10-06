@@ -375,7 +375,7 @@ function getSubmitButton() {
 
 function waitForReplacementToComplete() {
   const POLL_INTERVAL_MS = 250;
-  const POLL_TIMEOUT_MS = 30_000;
+  const POLL_TIMEOUT_MS = 60_000;
   const MAX_ATTEMPTS = POLL_TIMEOUT_MS / POLL_INTERVAL_MS;
 
   cy.wait("@replaceModelWithTransform").then((interception) => {

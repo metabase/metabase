@@ -374,6 +374,7 @@ describe("bulk table operations", { viewportWidth: 1600 }, () => {
     cy.findByTestId("loading-placeholder").should("not.exist");
     cy.findAllByTestId("tree-item")
       .filter('[data-type="table"]')
+      .should("have.length", 2)
       .each((table) => {
         cy.wrap(table)
           .findByTestId("table-owner")

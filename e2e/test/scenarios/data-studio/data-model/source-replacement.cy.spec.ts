@@ -289,6 +289,7 @@ describe(
           "segment no longer shows on the source table in the data model UI",
         );
         visitWritableTableSegments("@sourceTableId");
+        H.DataModel.SegmentList.getEmptyState().should("be.visible");
         H.DataModel.SegmentList.get().should("not.contain", "High amount");
 
         cy.log("measure now shows on the target table in the data model UI");
@@ -299,6 +300,7 @@ describe(
           "measure no longer shows on the source table in the data model UI",
         );
         visitWritableTableMeasures("@sourceTableId");
+        H.DataModel.MeasureList.getEmptyState().should("be.visible");
         H.DataModel.MeasureList.get().should("not.contain", "Total amount");
 
         cy.log("measure still aggregates correctly against the target table");

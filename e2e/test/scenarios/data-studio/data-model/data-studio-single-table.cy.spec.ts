@@ -67,6 +67,7 @@ describe("Table editing", () => {
         H.DataStudio.Dependencies.graph().should("be.visible");
       });
       cy.go("back");
+      H.DataModel.TableSection.getNameInput().should("have.value", "Orders");
 
       cy.log("publish the table and verify it's published");
       TablePicker.getTable("Orders")
@@ -97,6 +98,9 @@ describe("Table editing", () => {
         .findByTestId("table-published")
         .should("not.exist");
       H.DataStudio.nav().findByLabelText("Semantic layer").click();
+      H.DataStudio.Library.emptyStateRow(
+        "Cleaned, pre-transformed data sources ready for exploring",
+      ).should("be.visible");
       H.DataStudio.Library.allTableItems().should("have.length", 0);
     },
   );

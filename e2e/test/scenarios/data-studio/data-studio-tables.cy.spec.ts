@@ -45,6 +45,9 @@ describe("scenarios > data studio > library > tables", () => {
       H.DataStudio.Tables.moreMenu().click();
       H.popover().findByText("Unpublish").click();
       H.modal().findByText("Unpublish this table").click();
+      H.DataStudio.Library.emptyStateRow(
+        "Cleaned, pre-transformed data sources ready for exploring",
+      ).should("be.visible");
       H.DataStudio.Library.allTableItems().should("have.length", 0);
     });
   });
@@ -140,6 +143,8 @@ describe("scenarios > data studio > library > tables", () => {
       H.DataModel.FieldSection.getPreviewButton().click({
         scrollBehavior: "center",
       });
+      H.DataModel.PreviewSection.get().should("be.visible");
+      H.DataModel.FieldSection.get().should("be.visible");
 
       H.DataModel.FieldSection.getCloseButton().click();
 
@@ -147,8 +152,8 @@ describe("scenarios > data studio > library > tables", () => {
       H.DataModel.FieldSection.get().should("not.exist");
 
       H.DataModel.TableSection.clickField("Discount");
-      H.DataModel.PreviewSection.get().should("not.exist");
       H.DataModel.FieldSection.get().should("exist");
+      H.DataModel.PreviewSection.get().should("not.exist");
     });
   });
 

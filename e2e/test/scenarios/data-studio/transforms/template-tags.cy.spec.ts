@@ -49,8 +49,8 @@ describe("scenarios > admin > transforms", () => {
         .should("be.visible")
         .within(() => {
           cy.log("The current database should be opened by default");
-          cy.findByText("Data Reference").should("not.exist");
           cy.findByText("Writable Postgres12").should("be.visible");
+          cy.findByText("Data Reference").should("not.exist");
         });
 
       cy.findByTestId("native-query-editor-action-buttons")
@@ -377,6 +377,7 @@ function getRunButton(options: { timeout?: number } = {}) {
 
 function assertNoParameterSettingsAreVisible() {
   editorSidebar().within(() => {
+    cy.findByLabelText("Variable type").should("exist");
     cy.findByText("How should users filter on this variable?").should(
       "not.exist",
     );
