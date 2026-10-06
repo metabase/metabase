@@ -7,6 +7,7 @@
    [clojure.test :refer [deftest is testing]]
    [metabase.api.macros :as api.macros]
    [metabase.api.macros.scope :as scope]
+   [metabase.config.core :as config]
    [metabase.mcp.paths :as mcp.paths]
    ;; Loaded for its load-time side effects: it requires every v2 tool namespace, which registers the tools.
    [metabase.mcp.v2.api]
@@ -17,10 +18,12 @@
 (set! *warn-on-reflection* true)
 
 (defn- load-all-api-namespaces!
-  "Load the OSS and EE route tables, which require every namespace that declares endpoints."
+  "Load the OSS route table and, when it is available, the EE one. They require every namespace that declares
+  endpoints."
   []
-  (require 'metabase.api-routes.routes
-           'metabase-enterprise.api-routes.routes))
+  (require 'metabase.api-routes.routes)
+  (when config/ee-available?
+    (require 'metabase-enterprise.api-routes.routes)))
 
 (defn- declared-scope
   "The `:scope` string a `defendpoint` in `nmspace` declares, or nil when it declares none or a keyword such as
@@ -68,9 +71,10 @@
     (let [routes (endpoint-scope->routes)
           nss    (into #{} (comp cat (map first)) (vals routes))]
       (is (contains? nss 'metabase.agent-api.api))
-      (is (seq (filter #(:api/endpoints (meta %))
-                       (filter #(.startsWith (name (ns-name %)) "metabase-enterprise.") (all-ns))))
-          "at least one EE namespace with endpoints must be loaded"))))
+      (when config/ee-available?
+        (is (seq (filter #(:api/endpoints (meta %))
+                         (filter #(.startsWith (name (ns-name %)) "metabase-enterprise.") (all-ns))))
+            "at least one EE namespace with endpoints must be loaded")))))
 
 (deftest cli-oauth-and-mcp-oauth-use-different-scopes-test
   (load-all-api-namespaces!)
