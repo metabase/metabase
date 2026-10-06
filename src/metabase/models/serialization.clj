@@ -1040,17 +1040,17 @@
         (map (fn [field-name] {:model "Field" :id field-name}))
         field-names))
 
-(defn field-path->field-ref
-  "The `[db-name schema table-name & field-names]` reference of the Field at `field-path`, nested Fields included."
-  [field-path]
-  (let [[table-path fields] (split-with #(not= "Field" (:model %)) field-path)
-        id-of               (fn [model] (some #(when (= model (:model %)) (:id %)) table-path))]
-    (into [(id-of "Database") (id-of "Schema") (id-of "Table")] (map :id) fields)))
-
 (defn table-path->table-ref
   "The `[db-name schema table-name]` reference of the Table at `table-path`, with a nil schema for a schemaless Table."
   [table-path]
-  (subvec (field-path->field-ref table-path) 0 3))
+  (let [id-of (fn [model] (some #(when (= model (:model %)) (:id %)) table-path))]
+    [(id-of "Database") (id-of "Schema") (id-of "Table")]))
+
+(defn field-path->field-ref
+  "The `[db-name schema table-name & field-names]` reference of the Field at `field-path`, nested Fields included."
+  [field-path]
+  (let [[table-path fields] (split-with #(not= "Field" (:model %)) field-path)]
+    (into (table-path->table-ref table-path) (map :id) fields)))
 
 ;;; ## MBQL Fields
 
