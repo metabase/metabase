@@ -40,6 +40,18 @@
 (defn- root-dir ^File [registry]
   (:dir @(:root registry)))
 
+(defn- owner-only?
+  "True iff only the owner can read, write or enter `dir`, or the file system has no POSIX permissions."
+  [^File dir]
+  (or (not (contains? (.supportedFileAttributeViews (FileSystems/getDefault)) "posix"))
+      (= "rwx------" (PosixFilePermissions/toString
+                      (Files/getPosixFilePermissions (.toPath dir) (make-array LinkOption 0))))))
+
+(defn- process-roots
+  "The process roots on disk under the base directory of `registry`."
+  [registry]
+  (vec (filter #(str/starts-with? (.getName ^File %) "p-") (.listFiles ^File (:base-dir registry)))))
+
 (deftest generation-directory-test
   (testing "a clone is in a directory named for its URL and generation, in an owner-only process root under the base"
     (do-with-registry!
@@ -52,10 +64,66 @@
          (is (= root (.getParentFile dir)))
          (is (= (:base-dir registry) (.getParentFile root)))
          (is (str/starts-with? (.getName root) "p-"))
-         (when (contains? (.supportedFileAttributeViews (FileSystems/getDefault)) "posix")
-           (is (= "rwx------" (PosixFilePermissions/toString
-                               (Files/getPosixFilePermissions (.toPath root) (make-array LinkOption 0))))))
+         (is (owner-only? root))
          (is (.isValid ^FileLock (:lock @(:root registry))) "the process holds the lock of its root"))))))
+
+(deftest deleted-process-root-is-replaced-test
+  (testing "when a cleaner of the temp dir deletes the process root, the next clone is in a new owner-only root that holds its lock file"
+    (do-with-registry!
+     (fn [registry]
+       (let [clone!       (fake-clone (atom []) (atom []))
+             {dir-1 :dir} (clone-registry/acquire! registry (clone-registry/new-lease url) clone!)
+             root-1       (.getParentFile ^File dir-1)]
+         (FileUtils/deleteDirectory root-1)
+         (let [{id-2 :id dir-2 :dir} (clone-registry/acquire! registry (clone-registry/new-lease url) clone!)
+               root-2                (.getParentFile ^File dir-2)]
+           (is (= 2 id-2) "the next acquire clones again")
+           (is (not= root-1 root-2) "the next clone is in a new root")
+           (is (not (.exists root-1)) "no clone makes the deleted root again")
+           (is (= root-2 (root-dir registry)))
+           (is (owner-only? root-2))
+           (is (.isFile (io/file root-2 ".lock")))
+           (is (.isValid ^FileLock (:lock @(:root registry))) "the process holds the lock of its new root")))))))
+
+(deftest deleted-lock-file-retires-the-process-root-test
+  (testing "when the lock file of the process root is gone, the next acquire clones into a new root; the old root stays while a lease holds a clone in it, and a shutdown deletes it"
+    (let [base     (io/file (System/getProperty "java.io.tmpdir") (str "clone-registry-test-" (random-uuid)))
+          registry (clone-registry/make-registry base)
+          clone!   (fake-clone (atom []) (atom []))]
+      (try
+        (let [{dir-1 :dir} (clone-registry/acquire! registry (clone-registry/new-lease url) clone!)
+              root-1       (.getParentFile ^File dir-1)]
+          (io/delete-file (io/file root-1 ".lock"))
+          (let [{id-2 :id dir-2 :dir} (clone-registry/acquire! registry (clone-registry/new-lease url) clone!)
+                root-2                (.getParentFile ^File dir-2)]
+            (is (= 2 id-2) "the active generation in the old root is retired")
+            (is (not= root-1 root-2) "the next clone is in a new root")
+            (is (.isFile (io/file root-2 ".lock")))
+            (is (.exists ^File dir-1) "a lease holds the retired generation in the old root")
+            (clone-registry/shutdown! registry)
+            (is (= [] (process-roots registry)) "a shutdown deletes the old root and the new root")))
+        (finally
+          (FileUtils/deleteQuietly base))))))
+
+(deftest failed-root-lock-leaves-no-directory-test
+  (testing "when the lock file of a new process root cannot be opened, the registry deletes the new root"
+    (do-with-registry!
+     (fn [registry]
+       (let [clones  (atom [])
+             create! (mt/original-fn #'clone-registry/create-owner-only-dir!)]
+         ;; A directory with the name of the lock file makes the open of the lock file throw.
+         (mt/with-dynamic-fn-redefs [clone-registry/create-owner-only-dir! (fn [^File dir]
+                                                                             (create! dir)
+                                                                             (.mkdir (io/file dir ".lock")))]
+           (dotimes [_ 2]
+             (is (thrown? java.io.IOException
+                          (clone-registry/acquire! registry (clone-registry/new-lease url) (fake-clone clones (atom [])))))))
+         (is (= [] (process-roots registry)) "no process root stays on disk")
+         (is (= [] @clones) "no clone starts")
+         (is (nil? @(:root registry)) "the registry has no root")
+         (let [{:keys [^File dir]} (clone-registry/acquire! registry (clone-registry/new-lease url) (fake-clone clones (atom [])))]
+           (is (.isDirectory dir) "the next acquire makes a root and clones")
+           (is (= [(.getParentFile dir)] (process-roots registry)))))))))
 
 (deftest leases-share-the-active-generation-test
   (testing "leases on one URL share its active generation, and only the first acquire clones"
@@ -108,6 +176,21 @@
          (let [clones (atom [])]
            (is (= 2 (:id (clone-registry/acquire! registry (clone-registry/new-lease url) (fake-clone clones (atom []))))))
            (is (= 1 (count @clones)) "the next acquire clones")))))))
+
+(deftest failed-clone-deletes-its-directory-test
+  (testing "a clone job that fails after it wrote into its directory deletes the directory"
+    (do-with-registry!
+     (fn [registry]
+       (let [made   (atom nil)
+             clone! (fn [^File dir]
+                      (reset! made dir)
+                      (.mkdirs dir)
+                      (spit (io/file dir "partial") "x")
+                      (throw (ex-info "Connection timed out" {})))]
+         (is (thrown-with-msg? Exception #"Connection timed out"
+                               (clone-registry/acquire! registry (clone-registry/new-lease url) clone!)))
+         (is (some? @made) "precondition: the clone job ran")
+         (is (not (.exists ^File @made))))))))
 
 (deftest interrupted-caller-does-not-stop-the-clone-job-test
   (testing "an interrupt of the caller that started a clone job ends its wait; the job goes on for the other callers"
