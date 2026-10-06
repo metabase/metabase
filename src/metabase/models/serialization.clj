@@ -772,10 +772,10 @@
               [{:label (:name entity) :key (:entity_id entity)}]])))
 
 (defmulti storage-path
-  "Returns a vector of maps with `:label` and optional `:key` and `:style` for each path segment.
+  "Returns a vector of maps with `:label` and optional `:key`, `:style` and `:suffix` for each path segment.
   `:label` is the human-readable name; `:key` is a deduplication identity (entity_id, name, or nil); `:style` is
   `:name` (the default) for a label that is slugified into a file name, or `:slug` for a label that is already a slug
-  safe to use as a file name as is.
+  safe to use as a file name as is; `:suffix` is appended to the file name after the label is slugified and truncated.
   Dispatches on model name."
   {:arglists '([entity ctx])}
   (fn [entity _] (ingested-model entity)))
@@ -1014,6 +1014,13 @@
                   (when schema {:model "Schema" :id schema})
                   {:model "Table" :id table-name}
                   {:model "Field" :id field-name}]))
+
+(defn field-path->field-ref
+  "The `[db-name schema table-name & field-names]` reference of the Field at `field-path`, nested Fields included."
+  [field-path]
+  (let [[table-path fields] (split-with #(not= "Field" (:model %)) field-path)
+        id-of               (fn [model] (some #(when (= model (:model %)) (:id %)) table-path))]
+    (into [(id-of "Database") (id-of "Schema") (id-of "Table")] (map :id) fields)))
 
 ;;; ## MBQL Fields
 

@@ -46,8 +46,9 @@
 
 (deftest ^:parallel supported-models-test
   (testing "whitelisted models are supported"
-    (doseq [id ["anthropic.claude-fable-5" "anthropic.claude-opus-5" "anthropic.claude-opus-4-8"
-                "anthropic.claude-sonnet-5" "openai.gpt-5.5" "openai.gpt-6-astra"]]
+    (doseq [id ["anthropic.claude-fable-5" "anthropic.claude-opus-5-5" "anthropic.claude-opus-5"
+                "anthropic.claude-opus-4-8" "anthropic.claude-sonnet-5-5" "anthropic.claude-sonnet-5"
+                "openai.gpt-5.5" "openai.gpt-6-astra"]]
       (is (contains? bedrock/supported-models id) id)))
   (testing "non-whitelisted models are not supported, even for supported vendors"
     (doseq [id ["anthropic.claude-3-5-sonnet" "openai.gpt-oss-120b"
@@ -590,6 +591,7 @@
   (are [model reasoning? context-window] (= [reasoning? context-window]
                                             [(bedrock/reasoning-model? model) (bedrock/context-window-tokens model)])
     "eu.anthropic.claude-sonnet-4-6"                  true  1000000
+    "global.anthropic.claude-sonnet-5-5"              true  1000000
     "global.anthropic.claude-haiku-4-5-20251001-v1:0" false 200000
     profile-arn                                       true  1000000
     "arn:aws:bedrock:us-east-1:123456789012:application-inference-profile/abcdef123456" false nil))

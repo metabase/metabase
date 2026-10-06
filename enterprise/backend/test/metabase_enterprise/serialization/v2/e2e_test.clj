@@ -2,6 +2,7 @@
   {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase-enterprise.serialization.v2.e2e-test]}}}}}}
   (:require
    [clojure.java.io :as io]
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [medley.core :as m]
    [metabase-enterprise.serialization.cmd :as cmd]
@@ -17,6 +18,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.models.serialization :as serdes]
+   [metabase.queries.card-schema :as card-schema]
    [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.search.core :as search]
@@ -245,7 +247,7 @@
                                      table (subdirs (io/file dump-dir "databases" db "tables"))
                                      :let  [fields-dir (io/file table "fields")]
                                      :when (.exists fields-dir)]
-                                 (count (dir->file-set fields-dir)))))
+                                 (count (remove #(str/includes? % "___") (dir->file-set fields-dir))))))
                   "Fields are scattered, so the directories are harder to count"))
             (testing "for cards, dashboards, and timelines"
               ;; In the new storage format, cards/dashboards/timelines are stored directly
@@ -1004,11 +1006,7 @@
                                                                                                               [:field %products.category {:join-alias "Products"}]]}]})}]
             ;; Populate the native source card's result_metadata the way the app does when a user runs and
             ;; saves the query. This is the state serdes must preserve across the round-trip.
-            (let [source-cols  (-> (qp/process-query (t2/select-one-fn :dataset_query
-                                                                       [:model/Card :id :dataset_query :card_schema
-                                                                        :type :database_id :result_metadata
-                                                                        :dimensions :dimension_mappings]
-                                                                       native-id))
+            (let [source-cols  (-> (qp/process-query (t2/select-one-fn :dataset_query (card-schema/selection) native-id))
                                    (get-in [:data :results_metadata :columns]))
                   source-names (mapv :name source-cols)]
               (t2/update! :model/Card native-id {:result_metadata source-cols})
