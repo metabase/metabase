@@ -736,10 +736,7 @@
                                        {:name  "Should Not Save"
                                         :query (u/encode-base64 (json/encode q))})]
         (is (= "You cannot save this Question because you do not have permissions to run its query."
-               (:message body)))
-        (is (not (contains? body :query)))
-        (is (not (contains? (:data body) :query)))
-        (is (not (str/includes? (pr-str body) "sec_1173_marker")))))))
+               body))))))
 
 ;;; ----------------------------------------- Construct / Save Native Query ------------------------------------------
 

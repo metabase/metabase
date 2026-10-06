@@ -1583,15 +1583,10 @@
           (testing "admin should be able to save a Card if All Users doesn't have ad-hoc data perms"
             (is (some? (create-card! :crowberto 200))))
           (testing "non-admin should get an error"
-            (testing "Permissions errors should be meaningful and include info for debugging (#14931)"
-              (let [body (create-card! :rasta 403)]
-                (is (malli= [:map
-                             [:message [:= "You cannot save this Question because you do not have permissions to run its query."]]
-                             [:trace   [:sequential :any]]]
-                            body))
-                (testing "but the ex-data -- the (preprocessed) query, which inlines source Cards the user may not read, and the permissions -- stays server-side"
-                  (is (empty? (select-keys body [:query :required-perms :actual-perms])))
-                  (is (= {:status-code 403} (:data body))))))))))))
+            (testing "Permissions errors keep their meaningful message (#14931)"
+              (testing "but not the ex-data: the (preprocessed) query inlines source Cards the user may not read (SEC-1173)"
+                (is (= "You cannot save this Question because you do not have permissions to run its query."
+                       (create-card! :rasta 403)))))))))))
 
 (deftest create-card-nested-unreadable-card-403-does-not-leak-definition-test
   (testing "POST /api/card"
@@ -1605,11 +1600,7 @@
                                                   {:dataset_query (mt/mbql-query nil {:source-table (str "card__" secret-id)})
                                                    :collection_id (-> :rasta mt/user->id collection/user->personal-collection u/the-id)})))]
           (is (= "You cannot save this Question because you do not have permissions to run its query."
-                 (:message body)))
-          (is (not (contains? body :query)))
-          (is (not (contains? (:data body) :query)))
-          (is (not (str/includes? (pr-str body) "sec_1173_marker")))
-          (is (not (str/includes? (pr-str body) "stage-metadata"))))))))
+                 body)))))))
 
 (deftest create-card-parameter-permissions-generic-error-test
   (testing "POST /api/card"
@@ -2323,15 +2314,10 @@
                          :name "Updated name"}
                         (update-card! :rasta 200 {:name "Updated name"}))))
               (testing "should *not* be allowed to update query"
-                (testing "Permissions errors should be meaningful and include info for debugging (#14931)"
-                  (let [body (update-card! :rasta 403 {:dataset_query (mt/mbql-query users)})]
-                    (is (malli= [:map
-                                 [:message [:= "You cannot save this Question because you do not have permissions to run its query."]]
-                                 [:trace   [:sequential :any]]]
-                                body))
-                    (testing "but the ex-data -- the (preprocessed) query, which inlines source Cards the user may not read, and the permissions -- stays server-side"
-                      (is (empty? (select-keys body [:query :required-perms :actual-perms])))
-                      (is (= {:status-code 403} (:data body))))))
+                (testing "Permissions errors keep their meaningful message (#14931)"
+                  (testing "but not the ex-data: the (preprocessed) query inlines source Cards the user may not read (SEC-1173)"
+                    (is (= "You cannot save this Question because you do not have permissions to run its query."
+                           (update-card! :rasta 403 {:dataset_query (mt/mbql-query users)})))))
                 (testing "make sure query hasn't changed in the DB"
                   (is (=? {:lib/type :mbql/query
                            :stages   [{:source-table (mt/id :checkins)}]}

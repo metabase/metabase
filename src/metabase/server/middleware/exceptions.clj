@@ -36,16 +36,14 @@
 (defmethod api-exception-response Throwable
   [^Throwable e request]
   (let [{:keys [status-code], :as info} (ex-data e)
-        other-info                      (dissoc info :status-code :schema :type :toucan2/context-trace ::log/context
-                                                ::api-error/keys)
         ;; only the keys the throw site listed go to the client; the rest is server-side context. See
         ;; [[metabase.util.api-error]]
         api-data                        (api-error/response-data info)
         body                            (cond
-                                          (and status-code (not= status-code 500) (empty? other-info))
-                                          ;; If status code was specified (but not a 500 -- an unexpected error, and
-                                          ;; other data wasn't, it's something like a 404. Return message as
-                                          ;; the (plain-text) body.
+                                          (and status-code (not= status-code 500) (empty? api-data))
+                                          ;; If status code was specified (but not a 500 -- an unexpected error), and
+                                          ;; there is nothing client-facing in the ex-data, it's something like a 404.
+                                          ;; Return message as the (plain-text) body.
                                           (.getMessage e)
 
                                           ;; if the response includes `:errors`, (e.g., it's something like a generic

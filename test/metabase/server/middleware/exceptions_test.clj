@@ -59,6 +59,8 @@
               response  (mw.exceptions/api-exception-response exception nil)
               body      (pr-str (:body response))]
           (is (= 403 (:status response)))
+          (is (= "You cannot save this Question because you do not have permissions to run its query."
+                 (:body response)))
           (is (not (str/includes? body "SELECT salary")))
           (is (not (str/includes? body "required-perms"))))))))
 
@@ -159,17 +161,16 @@
         (is (= "Resource not found" (:body response))
             "Should return plain message for 404s")))))
 
-(deftest api-exception-response-404-with-extra-data-hides-details-test
-  (testing "404 errors with extra data hide details when hide-stacktraces is enabled"
-    (mt/with-temporary-setting-values [server.settings/hide-stacktraces true]
-      (let [exception (ex-info "Resource not found with details" {:status-code 404 :resource-id 123})
-            response (mw.exceptions/api-exception-response exception nil)]
-        (is (= 404 (:status response))
-            "Status should remain 404 from exception")
-        (is (= "Something went wrong" (get-in response [:body :message]))
-            "Should return generic message")
-        (is (not (contains? (:body response) :resource-id))
-            "Should not include resource-id from ex-data")))))
+(deftest api-exception-response-404-with-internal-data-test
+  (testing "a non-500 whose ex-data has nothing client-facing returns its plain message, whatever hide-stacktraces says"
+    (doseq [hide? [false true]]
+      (mt/with-temporary-setting-values [server.settings/hide-stacktraces hide?]
+        (let [exception (ex-info "Resource not found with details" {:status-code 404 :resource-id 123})
+              response  (mw.exceptions/api-exception-response exception nil)]
+          (is (= 404 (:status response))
+              "Status should remain 404 from exception")
+          (is (= "Resource not found with details" (:body response))
+              "Should return the message as the body, without the internal ex-data"))))))
 
 (deftest api-exception-response-validation-errors-with-stacktraces-disabled-test
   (testing "Validation errors with :errors key are returned when hide-stacktraces is false"
