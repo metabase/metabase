@@ -2315,6 +2315,10 @@
 ;;; is not `agent:resource:read`. That scope alone is also the declared scope of the agent API's read-resource
 ;;; endpoint, so a token holding only it may be a legitimate agent API REST token.
 ;;;
+;;; This rule is frozen, and differs from the one `/oauth/authorize` applies to new requests
+;;; (`metabase.oauth-server.api.oauth/classify-scopes`), which matches the current five MCP scopes and treats
+;;; `agent:resource:read` as a non-MCP scope.
+;;;
 ;;; The resource is always `http://localhost/api/metabase-mcp`. Binding is decided by the resource's path, not its
 ;;; host, and reading `site-url` here would mean handling an encrypted setting row and an environment override.
 

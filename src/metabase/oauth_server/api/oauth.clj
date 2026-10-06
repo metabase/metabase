@@ -191,11 +191,11 @@
   (str "None of the requested scopes are supported. Request only scopes listed in scopes_supported at "
        (authorization-server-metadata-url)))
 
-(defn- mcp-scopes-without-resource-description
-  "The `error_description` for an authorization request for MCP scopes only that names no resource."
+(defn- mcp-scopes-for-another-resource-description
+  "The `error_description` for an authorization request for MCP scopes only that names a resource other than the MCP
+  endpoint or the Site URL."
   []
-  (str "This request asks for MCP scopes but names no resource. Authorize again with resource="
-       (system/site-url) (mcp/mcp-canonical-path)))
+  (str "These scopes are for the MCP endpoint. Authorize again with resource=" (oauth-server/mcp-resource-url)))
 
 (defn- missing-scope-description
   "The `error_description` for an authorization request with no scope."
@@ -479,11 +479,64 @@
       (:error_description data)
       fallback))
 
+(def ^:private agent-resource-read
+  "The agent API's read-resource scope. It was in the MCP baseline before MCP tokens were bound to a resource, and is
+  not an MCP scope now."
+  "agent:resource:read")
+
+(defn- classify-scopes
+  "Classify the scope strings `scopes` against the current MCP v2 scopes. Returns `[kind scopes']`:
+
+  - `:mcp-only` when the scopes other than `agent:resource:read` are non-empty and all MCP scopes. `scopes'` drops
+    `agent:resource:read`: alongside MCP scopes only, it is the leftover of the old MCP baseline.
+  - `:mix` when the scopes other than `agent:resource:read` hold an MCP scope and a scope that is not one. `scopes'`
+    is `scopes` without the MCP scopes, keeping `agent:resource:read` and every other non-MCP scope.
+  - `:non-mcp` otherwise, including `agent:resource:read` alone. `scopes'` is `scopes`.
+
+  This is the current MCP rule, not the frozen one `BindLegacyMcpOAuthTokens` applies to tokens minted before binding:
+  that migration matches the six MCP scopes of that time, `agent:resource:read` among them."
+  [scopes]
+  (let [mcp    (set (mcp/v2-scopes))
+        others (remove #{agent-resource-read} scopes)]
+    (cond
+      (and (seq others) (every? mcp others)) [:mcp-only (vec others)]
+      (and (some mcp others) (some (complement mcp) others)) [:mix (vec (remove mcp scopes))]
+      :else [:non-mcp (vec scopes)])))
+
+(defn- scope-for-non-mcp-resource
+  "The scope to grant for the space-separated `registered` scopes of an authorization request whose `resources` do not
+  name the MCP endpoint. MCP scopes only are kept when `resources` are empty or name the Site URL, since the token is
+  then bound to the MCP endpoint by inference (see [[inferred-mcp-resource]]), and refused with `invalid_target` for
+  any other resource. A mix loses its MCP scopes and gives a REST token. Anything else is kept."
+  [resources registered]
+  (let [[kind scopes] (classify-scopes (str/split registered #"\s+"))]
+    (when (and (= :mcp-only kind)
+               (seq resources)
+               (not (oauth-server/site-url-resource? resources)))
+      (throw (ex-info "MCP scopes were requested for a resource that is not the MCP endpoint"
+                      {:oauth-error       "invalid_target"
+                       :error-description (mcp-scopes-for-another-resource-description)})))
+    (str/join " " scopes)))
+
+(defn- inferred-mcp-resource
+  "The resource binding to store on the authorization code of an approved request `parsed` granting the scope string
+  `granted`: the MCP endpoint under the Site URL when the request named no resource, or only the Site URL, and every
+  granted scope is an MCP scope; otherwise the requested resource. The granted scopes are a subset of what
+  [[scope-to-grant]] offered, so they are MCP scopes only exactly when the offer was."
+  [{:keys [resource]} granted]
+  (if (and (or (empty? resource) (oauth-server/site-url-resource? resource))
+           (= :mcp-only (first (classify-scopes (str/split granted #"\s+")))))
+    [(oauth-server/mcp-resource-url)]
+    resource))
+
 (defn- scope-to-grant
   "The scope a parsed authorization request may be granted: its requested scopes filtered to the registered ones,
-   then narrowed to the `resource` indicator it names. Throws `ex-info` carrying `:oauth-error` and
-   `:error-description` when the request names no scope, when none of its scopes are registered, when every
-   registered scope is an MCP scope but the request names no resource, or when none of them survive narrowing.
+   then decided against the `resource` indicator it names. A resource that names the MCP endpoint narrows the scope
+   to the MCP scopes. Otherwise [[scope-for-non-mcp-resource]] decides: MCP scopes only are kept for no resource or
+   the Site URL, and refused for any other resource, and a mix loses its MCP scopes. Throws `ex-info` carrying
+   `:oauth-error` and `:error-description` when the request names no scope, when none of its scopes are registered,
+   when it asks for MCP scopes only for a resource that is not the MCP endpoint or the Site URL, or when none of them
+   survive narrowing.
 
    Applied by both the consent page and the decision endpoint. The consent form's signature proves only that the
    form was not tampered with by a third party: it is keyed by the CSRF token the page shows the user, so the user
@@ -509,14 +562,9 @@
                      (throw (ex-info "no requested scope is a registered scope"
                                      {:oauth-error       "invalid_scope"
                                       :error-description (no-supported-scopes-description)})))
-        ;; A token holding only MCP scopes and bound to no resource works nowhere: the REST API refuses narrow MCP
-        ;; scopes, and the MCP endpoint refuses a token bound to no resource. Refuse it before it is minted.
-        _          (when (and (empty? (:resource parsed))
-                              (every? (set (mcp/v2-scopes)) (str/split registered #"\s+")))
-                     (throw (ex-info "MCP scopes were requested without a resource"
-                                     {:oauth-error       "invalid_target"
-                                      :error-description (mcp-scopes-without-resource-description)})))
-        narrowed   (oauth-server/narrow-scope-to-resource (:resource parsed) registered)]
+        narrowed   (if (oauth-server/mcp-resource? (:resource parsed))
+                     (oauth-server/narrow-scope-to-resource (:resource parsed) registered)
+                     (scope-for-non-mcp-resource (:resource parsed) registered))]
     ;; Nothing surviving means the client asked exclusively for scopes this resource does not
     ;; accept: dropping the parameter there renders a consent screen listing nothing and mints a
     ;; zero-scope token, which looks like success while authorizing nothing on the resource the
@@ -670,9 +718,15 @@
 
                         :else
                         (redirect-authorization-decision provider
+                                                         ;; The code stores `:resource`, which the code exchange and
+                                                         ;; every later refresh carry, so the inferred binding goes
+                                                         ;; there, after the signature has been checked.
                                                          (cond-> parsed
                                                            approved
-                                                           (assoc :scope (str/join " " granted)))
+                                                           (as-> p (let [scope (str/join " " granted)]
+                                                                     (assoc p
+                                                                            :scope    scope
+                                                                            :resource (inferred-mcp-resource p scope)))))
                                                          approved
                                                          request)))
                     (catch ExceptionInfo e

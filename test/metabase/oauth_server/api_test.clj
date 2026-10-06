@@ -397,16 +397,17 @@
 
 (def ^:private invalid-token-request-description "The token request is invalid.")
 
-(def ^:private mcp-scopes-without-resource-description
-  "The error_description for an authorization request for MCP scopes only that names no resource, under the
-  `http://localhost:3000` Site URL."
-  (str "This request asks for MCP scopes but names no resource. Authorize again with "
+(def ^:private mcp-scopes-for-another-resource-description
+  "The error_description for an authorization request for MCP scopes only that names a resource other than the MCP
+  endpoint or the Site URL, under the `http://localhost:3000` Site URL."
+  (str "These scopes are for the MCP endpoint. Authorize again with "
        "resource=http://localhost:3000/api/metabase-mcp"))
 
-(deftest authorize-mcp-scopes-without-resource-test
-  (testing "A request for MCP scopes only that names no resource would mint a token that works nowhere: the REST API
-            refuses narrow MCP scopes, and the MCP endpoint refuses a token bound to no resource. So it is refused up
-            front with invalid_target, rendered in the user's browser, and never redirected."
+(deftest authorize-mcp-scopes-for-another-resource-test
+  (testing "A request for MCP scopes only that names a resource other than the MCP endpoint or the Site URL would mint
+            a token that works nowhere. So it is refused up front with invalid_target, rendered in the user's
+            browser, and never redirected. With no resource, or the Site URL, the same request reaches consent: its
+            token is bound to the MCP endpoint by inference."
     (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
       (t2/with-transaction [_conn nil {:rollback-only true}]
         (let [{:keys [client_id]} (create-test-client!
@@ -420,14 +421,18 @@
                                            :scope         scope
                                            :state         "test-state"
                                            resource))]
-          (testing "MCP scopes only, no resource"
-            (let [response (authorize 400 "agent:content:read agent:query:run")]
+          (testing "MCP scopes only, with a resource that is neither the MCP endpoint nor the Site URL"
+            (let [response (authorize 400 "agent:content:read agent:query:run"
+                                      :resource "http://localhost:3000/api")]
               (is (= {:error             "invalid_target"
-                      :error_description mcp-scopes-without-resource-description}
+                      :error_description mcp-scopes-for-another-resource-description}
                      (select-keys (:body response) [:error :error_description])))
               (is (nil? (get-in response [:headers "Location"])))))
-          (testing "these still reach consent"
-            (doseq [[label scope resource] [["mb:full, no resource" oauth-server/full-access-scope nil]
+          (testing "these reach consent"
+            (doseq [[label scope resource] [["MCP scopes only, no resource" "agent:content:read agent:query:run" nil]
+                                            ["MCP scopes only, the Site URL" "agent:content:read agent:query:run"
+                                             "http://localhost:3000/"]
+                                            ["mb:full, no resource" oauth-server/full-access-scope nil]
                                             ["an agent API scope, no resource" "agent:search" nil]
                                             ["MCP scopes plus an agent API scope, no resource"
                                              "agent:content:read agent:search" nil]
@@ -1744,10 +1749,11 @@
                  ["a scope deprecated since the client registered"
                   ["agent:content:read" "agent:table:read"] "agent:table:read agent:content:read" (mcp-resource-uri)
                   "agent:content:read" ["agent:table:read"]]
+                 ;; non-MCP survivors: a mix of MCP and other scopes would lose its MCP scopes
                  ["several survivors, keeping the requested order"
-                  ["agent:content:read" "agent:question:create" "agent:table:read"]
-                  "agent:table:read agent:content:read agent:question:create" nil
-                  "agent:content:read agent:question:create" ["agent:table:read"]]
+                  ["agent:search" "agent:question:create" "agent:table:read"]
+                  "agent:table:read agent:search agent:question:create" nil
+                  "agent:search agent:question:create" ["agent:table:read"]]
                  ["a resource indicator narrowing the survivors further"
                   ["agent:content:read" "agent:question:create" "agent:table:read"]
                   "agent:table:read agent:content:read agent:question:create"
@@ -2105,9 +2111,9 @@
 (defn- run-flow!
   "Run the whole authorization-code flow as crowberto: register a confidential DCR client with `registration`, GET
   `/oauth/authorize` for `scope` naming `resource` (omitted when nil), approve with the offered scopes that `choose`
-  keeps (default: all), and exchange the code without naming a resource. Returns `{:authorize <consent response>
-  :offered <offered scopes> :token <token response>}`; `:offered` and `:token` are absent when the authorize request
-  did not reach the consent page."
+  keeps (default: all), and exchange the code without naming a resource. Returns `{:client <registration response>
+  :authorize <consent response> :offered <offered scopes> :token <token response>}`; `:offered` and `:token` are
+  absent when the authorize request did not reach the consent page."
   [{:keys [registration scope resource choose] :or {registration {} choose identity}}]
   (let [client  (register-mcp-client! registration)
         ;; see [[get-mcp-consent-page!]] for why the session is revalidated first
@@ -2121,7 +2127,7 @@
                        :state         "test-state"
                        (when resource [:resource resource]))]
     (if-not (= 200 (:status consent))
-      {:authorize consent}
+      {:client client :authorize consent}
       (let [body     (:body consent)
             offered  (offered-scopes consent)
             decision (form-post-decision!
@@ -2138,12 +2144,105 @@
                         resource (assoc :resource resource))
                       302
                       :csrf-cookie (extract-csrf-cookie consent))]
-        {:authorize consent
+        {:client    client
+         :authorize consent
          :offered   offered
          :token     (token-request! {:grant_type   "authorization_code"
                                      :code         (extract-query-param (get-in decision [:headers "Location"]) "code")
                                      :redirect_uri "https://example.com/callback"}
                                     :authorization (basic-auth-header (:client_id client) (:client_secret client)))}))))
+
+(defn- served-status
+  "The status `method url` answers with the access token of `token-response` as the bearer, expecting
+  `expected-status`."
+  [token-response expected-status method url body]
+  (:status (apply client/client-full-response method expected-status url
+                  {:request-options {:headers {"authorization" (str "Bearer " (:access_token token-response))}}}
+                  (when body [body]))))
+
+(defn- check-served!
+  "Check which endpoints serve the access token of `token-response`: `mcp` is the status of an MCP `initialize`,
+  `rest` of `GET /api/user/current`, and `read-resource`, when given, of the agent API's read-resource endpoint."
+  [token-response {:keys [mcp rest read-resource]}]
+  (is (= mcp (served-status token-response mcp :post "api/metabase-mcp"
+                            {:jsonrpc "2.0" :method "initialize" :params {:capabilities {}} :id 1}))
+      "MCP initialize")
+  (is (= rest (served-status token-response rest :get "api/user/current" nil)) "GET /api/user/current")
+  (when read-resource
+    (is (= read-resource (served-status token-response read-resource :post "api/agent/v1/read-resource"
+                                        {:uris ["metabase://databases"]}))
+        "POST /api/agent/v1/read-resource")))
+
+(def ^:private binding-flow-registration
+  "A DCR registration whose ceiling covers every scope the binding flows request, and that may refresh."
+  {:scope       (str/join " " ["agent:content:read" "agent:query:run" "agent:resource:read" "agent:search"
+                               oauth-server/full-access-scope])
+   :grant_types ["authorization_code" "refresh_token"]})
+
+(deftest authorize-infers-the-mcp-binding-test
+  (testing "The binding is decided at authorize time on the requested scopes, before consent, so the consent page
+            shows only what the token will hold. `agent:resource:read` is not an MCP scope; it is dropped only from
+            the old baseline shape, where everything else is MCP. Requests for MCP scopes only with no resource, or
+            the Site URL, are bound to the MCP endpoint by inference. A mix of MCP and other scopes loses its MCP
+            scopes and gives a REST token. MCP scopes only for any other resource are refused."
+    (mt/with-temporary-setting-values [site-url                                  "http://localhost:3000"
+                                       oauth-server-dynamic-registration-enabled true]
+      (mt/test-helpers-set-global-values!
+        (mt/with-model-cleanup [:model/OAuthClient :model/OAuthAccessToken :model/OAuthRefreshToken
+                                :model/OAuthAuthorizationCode]
+          (let [flow (fn [scope & {:as opts}]
+                       (run-flow! (merge {:registration binding-flow-registration :scope scope} opts)))]
+            (testing "(a) the old baseline, no resource: agent:resource:read dropped, MCP-bound"
+              (let [{:keys [client offered token]} (flow "agent:content:read agent:query:run agent:resource:read")]
+                (is (= ["agent:content:read" "agent:query:run"] offered))
+                (is (= #{"agent:content:read" "agent:query:run"} (token-scope-set token)))
+                (is (= [(mcp-resource-uri)] (:resource (oauth-server/resolve-access-token (:access_token token)))))
+                (check-served! token {:mcp 200 :rest 401 :read-resource 401})
+                (testing "(l) a refresh with no resource keeps the binding"
+                  (let [refreshed (token-request! {:grant_type "refresh_token" :refresh_token (:refresh_token token)}
+                                                  :authorization (basic-auth-header (:client_id client)
+                                                                                    (:client_secret client)))]
+                    (is (= [(mcp-resource-uri)]
+                           (:resource (oauth-server/resolve-access-token (:access_token refreshed)))))
+                    (check-served! refreshed {:mcp 200 :rest 401})))))
+            (testing "(b) MCP scopes only, no resource: MCP-bound"
+              (check-served! (:token (flow "agent:content:read agent:query:run")) {:mcp 200 :rest 401}))
+            (testing "(c) MCP scopes only, the Site URL: MCP-bound"
+              (check-served! (:token (flow "agent:content:read" :resource "http://localhost:3000"))
+                             {:mcp 200 :rest 401}))
+            (testing "(d) a mix, no resource: MCP scopes stripped, REST token"
+              (let [{:keys [offered token]} (flow "agent:content:read agent:search")]
+                (is (= ["agent:search"] offered))
+                (is (= #{"agent:search"} (token-scope-set token)))
+                (check-served! token {:mcp 401 :rest 403})))
+            (testing "(e) a mix with agent:resource:read, no resource: only the MCP scopes are stripped"
+              (let [{:keys [offered token]} (flow "agent:content:read agent:search agent:resource:read")]
+                (is (= #{"agent:search" "agent:resource:read"} (set offered)))
+                (is (= #{"agent:search" "agent:resource:read"} (token-scope-set token)))
+                (check-served! token {:mcp 401 :rest 403 :read-resource 200})))
+            (testing "(f) MCP scopes only, another resource: refused"
+              (let [{:keys [authorize]} (flow "agent:content:read agent:query:run"
+                                              :resource "http://localhost:3000/api")]
+                (is (= 400 (:status authorize)))
+                (is (= "invalid_target" (get-in authorize [:body :error])))
+                (is (nil? (get-in authorize [:headers "Location"])))))
+            (testing "(g) a mix, another resource: MCP scopes stripped, REST token"
+              (let [{:keys [offered token]} (flow "agent:content:read agent:search"
+                                                  :resource "http://localhost:3000/api")]
+                (is (= ["agent:search"] offered))
+                (check-served! token {:mcp 401 :rest 403})))
+            (testing "(h) mb:full, no resource: REST token"
+              (check-served! (:token (flow oauth-server/full-access-scope)) {:mcp 401 :rest 200}))
+            (testing "(i) mb:full with an MCP scope, no resource: a mix, so mb:full only"
+              (let [{:keys [offered token]} (flow (str oauth-server/full-access-scope " agent:content:read"))]
+                (is (= [oauth-server/full-access-scope] offered))
+                (check-served! token {:mcp 401 :rest 200})))
+            (testing "(j) agent:resource:read alone, no resource: REST token for the agent API"
+              (check-served! (:token (flow "agent:resource:read")) {:mcp 401 :rest 403 :read-resource 200}))
+            (testing "(k) agent:resource:read with an agent API scope, no resource: kept, REST token"
+              (let [{:keys [offered token]} (flow "agent:resource:read agent:search")]
+                (is (= #{"agent:resource:read" "agent:search"} (set offered)))
+                (check-served! token {:mcp 401 :rest 403 :read-resource 200})))))))))
 
 (deftest foreign-host-mcp-resource-is-narrowed-test
   (testing "A resource naming the MCP endpoint path under another host binds the token to the MCP endpoint, so it is
@@ -2392,9 +2491,11 @@
     (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
       (t2/with-transaction [_conn nil {:rollback-only true}]
         ;; a registered non-v2 scope: GHY-4542 drops unregistered scopes before the page is rendered
-        (let [not-v2    (first-non-mcp-default-scope)
-              requested [not-v2 "agent:delivery:write" "agent:sql:run" oauth-server/full-access-scope
-                         "agent:content:write" "agent:query:run" "agent:content:read"]
+        ;; A consent page no longer offers MCP and other scopes together: the MCP resource narrows to MCP scopes, and
+        ;; otherwise a mix loses its MCP scopes. So the page shows the five, and the renderer shows the ordering of
+        ;; a mix.
+        (let [requested ["agent:delivery:write" "agent:sql:run" "agent:content:write" "agent:query:run"
+                         "agent:content:read"]
               client-id (:client_id (create-test-client! {:scopes requested}))
               body      (:body (mt/user-http-request-full-response
                                 :crowberto :get 200 "oauth/authorize"
@@ -2402,20 +2503,26 @@
                                 :redirect_uri  "https://example.com/callback"
                                 :response_type "code"
                                 :scope         (str/join " " requested)
+                                :resource      (mcp-resource-uri)
                                 :state         "test-state"))]
           (is (= ["agent:content:read" "agent:query:run"
-                  "agent:content:write" "agent:sql:run" "agent:delivery:write"
-                  not-v2 oauth-server/full-access-scope]
+                  "agent:content:write" "agent:sql:run" "agent:delivery:write"]
                  (map :scope (consent-checkboxes body))))
-          (testing "the baseline is ticked and locked; everything else, `mb:full` included, starts unticked"
-            (is (= {"agent:content:read"           [true true]
-                    "agent:query:run"              [true true]
-                    "agent:content:write"          [false false]
-                    "agent:sql:run"                [false false]
-                    "agent:delivery:write"         [false false]
-                    not-v2                         [false false]
-                    oauth-server/full-access-scope [false false]}
-                   (into {} (map (juxt :scope (juxt :checked? :disabled?))) (consent-checkboxes body))))))))))
+          (testing "the baseline is ticked and locked; everything else starts unticked"
+            (is (= {"agent:content:read"   [true true]
+                    "agent:query:run"      [true true]
+                    "agent:content:write"  [false false]
+                    "agent:sql:run"        [false false]
+                    "agent:delivery:write" [false false]}
+                   (into {} (map (juxt :scope (juxt :checked? :disabled?))) (consent-checkboxes body))))))
+        (testing "any other scope follows the v2 scopes in request order, and `mb:full` is not locked"
+          (let [not-v2 (first-non-mcp-default-scope)]
+            (is (= [["agent:content:read" true] ["agent:sql:run" false]
+                    [not-v2 false] [oauth-server/full-access-scope false]]
+                   (map (juxt :scope :locked?)
+                        (#'api.oauth/requested-scope-descriptions
+                         (str/join " " [not-v2 "agent:sql:run" oauth-server/full-access-scope
+                                        "agent:content:read"])))))))))))
 
 (deftest consent-scope-order-covers-v2-scopes-test
   (testing "GHY-4555: the consent order ranks exactly the v2 scopes, so a new v2 scope is not silently listed last"

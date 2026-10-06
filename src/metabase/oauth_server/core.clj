@@ -163,7 +163,7 @@
                (when-not (or (nil? port) (= port (scheme-default-port scheme)))
                  (str ":" port))
                (cond-> path
-                 (and (> (count path) 1) (str/ends-with? path "/"))
+                 (str/ends-with? path "/")
                  (subs 0 (dec (count path)))))))
       (catch java.net.URISyntaxException _ nil))))
 
@@ -199,6 +199,19 @@
   host or subpath. A resource that does not parse as an absolute URI binds nothing."
   [resources]
   (boolean (seq (mcp-paths-named resources))))
+
+(defn site-url-resource?
+  "Whether `resources`, RFC 8707 indicators, all name the Site URL itself, compared as [[canonical-resource-uri]] so a
+  trailing slash, case and a default port do not matter. False when the Site URL is unset or `resources` is empty."
+  [resources]
+  (let [site  (canonical-resource-uri (system/site-url))
+        named (canonical-resources resources)]
+    (boolean (and site (seq named) (every? #{site} named)))))
+
+(defn mcp-resource-url
+  "The RFC 8707 resource indicator of the canonical MCP endpoint under the Site URL."
+  []
+  (str (system/site-url) (mcp/mcp-canonical-path)))
 
 (defn mcp-endpoint-request?
   "Whether the request path `uri` is served by the MCP endpoint, under any of its paths."
