@@ -28,7 +28,10 @@ const RECLAIMED_CONTENT_BOTTOM_PADDING = "var(--mantine-spacing-xl)";
 export interface McpQuestionViewProps {
   queryKey: string | null;
   safeAreaPaddingTop: number;
-  deriveQuery: (operations: McpDeriveOperation[]) => Promise<DerivedQuery>;
+  deriveQuery: (
+    operations: McpDeriveOperation[],
+    apply: (derived: DerivedQuery) => void,
+  ) => Promise<DerivedQuery>;
   applyOperationsRef: MutableRefObject<ApplyMcpOperations | null>;
   isQueryRunningRef: MutableRefObject<boolean>;
 }
@@ -52,6 +55,15 @@ function getDeriveErrorMessage(error: unknown): string {
   return t`This change could not be applied.`;
 }
 
+function isStaleDerive(error: unknown): boolean {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "isStale" in error &&
+    error.isStale === true
+  );
+}
+
 function useApplyMcpOperations(
   deriveQuery: McpQuestionViewProps["deriveQuery"],
   onError: (message: string | null) => void,
@@ -64,20 +76,25 @@ function useApplyMcpOperations(
         return;
       }
 
-      deriveQuery(operations)
-        .then(({ query }) => {
-          const derived = getMcpDeserializedQuery(query);
+      const apply = ({ query }: DerivedQuery) => {
+        const derived = getMcpDeserializedQuery(query);
 
-          if (!derived) {
-            throw new Error("The derived query could not be read.");
-          }
+        if (!derived) {
+          throw new Error("The derived query could not be read.");
+        }
 
-          onError(null);
-          updateQuestion(question.setDatasetQuery(derived.card.dataset_query), {
-            run: true,
-          });
-        })
+        updateQuestion(question.setDatasetQuery(derived.card.dataset_query), {
+          run: true,
+        });
+      };
+
+      deriveQuery(operations, apply)
+        .then(() => onError(null))
         .catch((error) => {
+          // A new tool result replaced the chart; this change no longer applies to it.
+          if (isStaleDerive(error)) {
+            return;
+          }
           console.error("Error changing the MCP query", error);
           onError(getDeriveErrorMessage(error));
         });

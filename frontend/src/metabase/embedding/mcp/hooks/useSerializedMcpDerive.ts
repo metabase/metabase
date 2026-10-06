@@ -14,11 +14,16 @@ interface UseSerializedMcpDeriveParams {
 }
 
 /**
- * `deriveQuery` derives a new query from the current handle and makes the new
- * handle current. Derives run one after another, so each change starts from
- * the handle the previous one produced. A failed derive rejects its own
- * promise and leaves the current handle as it was. `pendingDerivesRef` counts
- * the derives that have not finished.
+ * `deriveQuery(operations, apply)` derives a new query from the current
+ * handle, makes the new handle current, and calls `apply` with the result so
+ * the chart shows it. Derives run one after another, so each change starts
+ * from the handle the previous one produced.
+ *
+ * The current handle always names the query the chart shows: a failed
+ * derive, or an `apply` that throws, leaves or puts back the old handle. A
+ * derive whose base handle was replaced while it was in flight, for example by
+ * a new tool result, rejects with `isStale: true` and applies nothing.
+ * `pendingDerivesRef` counts the derives that have not finished.
  */
 export function useSerializedMcpDerive({
   instanceUrl,
@@ -29,7 +34,10 @@ export function useSerializedMcpDerive({
   const pendingDerivesRef = useRef(0);
 
   const deriveQuery = useCallback(
-    (operations: McpDeriveOperation[]): Promise<DerivedQuery> => {
+    (
+      operations: McpDeriveOperation[],
+      apply: (derived: DerivedQuery) => void,
+    ): Promise<DerivedQuery> => {
       pendingDerivesRef.current += 1;
 
       const derive = lastDeriveRef.current.then(async () => {
@@ -48,7 +56,22 @@ export function useSerializedMcpDerive({
           operations,
         });
 
+        if (getCurrentMcpQueryHandle() !== queryHandle) {
+          throw Object.assign(
+            new Error("The query changed while this change was in flight."),
+            { isStale: true },
+          );
+        }
+
+        // The question re-runs through the current handle, so it moves first.
         setCurrentMcpQueryHandle(derived.handle);
+
+        try {
+          apply(derived);
+        } catch (error) {
+          setCurrentMcpQueryHandle(queryHandle);
+          throw error;
+        }
 
         return derived;
       });
