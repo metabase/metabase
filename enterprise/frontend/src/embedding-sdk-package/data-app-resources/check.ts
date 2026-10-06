@@ -95,7 +95,7 @@ function leftoverProblems(
     )
     .map(
       (file) =>
-        `${resourcePath(file)} is ${isQuestion(file) ? "a question" : "an action"} no definition names. Delete it.`,
+        `${resourcePath(file)} is a resource that is not referenced anywhere.`,
     );
 }
 

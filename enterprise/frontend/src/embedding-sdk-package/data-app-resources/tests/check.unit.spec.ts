@@ -121,13 +121,13 @@ describe("resource check", () => {
       "a question no query names",
       "cards/stale.yaml",
       cardFile("staleQuestionEntity01", "question"),
-      "resources/cards/stale.yaml is a question no definition names. Delete it.",
+      "resources/cards/stale.yaml is a resource that is not referenced anywhere.",
     ],
     [
       "an action no definition names",
       "actions/stale.yaml",
       actionFile("staleActionEntityId01"),
-      "resources/actions/stale.yaml is an action no definition names. Delete it.",
+      "resources/actions/stale.yaml is a resource that is not referenced anywhere.",
     ],
   ])("fails for %s", async (_, relativePath, entity, message) => {
     const appRoot = checkedApp();
@@ -141,7 +141,7 @@ describe("resource check", () => {
     writeResource(appRoot, "actions/stale.yaml", actionFile(QUESTION));
 
     await expect(checkResources(appRoot)).rejects.toThrow(
-      "resources/actions/stale.yaml is an action no definition names. Delete it.",
+      "resources/actions/stale.yaml is a resource that is not referenced anywhere.",
     );
   });
 
@@ -157,7 +157,7 @@ describe("resource check", () => {
     });
 
     await expect(checkResources(appRoot)).rejects.toThrow(
-      "resources/cards/unnamed.yaml is a question no definition names. Delete it.",
+      "resources/cards/unnamed.yaml is a resource that is not referenced anywhere.",
     );
   });
 

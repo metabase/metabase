@@ -136,7 +136,7 @@ describe("Embedding SDK: data-app resources (queries)", () => {
           `queries/orders.query.ts:Orders names saved question ${question}, which no file in resources/cards/ holds.`,
         );
         expect(stderr).to.contain(
-          "is a question no definition names. Delete it.",
+          "is a resource that is not referenced anywhere.",
         );
       });
     });
