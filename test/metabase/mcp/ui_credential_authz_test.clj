@@ -11,7 +11,8 @@
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.test :as mt]
-   [metabase.test.fixtures :as fixtures]))
+   [metabase.test.fixtures :as fixtures]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -69,6 +70,23 @@
         (is (= 403 (:status (handle-post! #{"agent:query:run" "agent:sql:*"} "run" (native-query))))))
       (testing "control: the literal scopes are served"
         (is (= 202 (:status (handle-post! #{"agent:query:run" "agent:sql:run"} "run" (native-query)))))))))
+
+(deftest run-records-the-mcp-ui-auth-method-test
+  (testing "A query the iframe runs is recorded with the mcp-ui auth method, so MCP App queries can be told apart in
+            usage analytics"
+    (mt/with-full-data-perms-for-all-users!
+      (mt/with-temporary-setting-values [synchronous-batch-updates true]
+        (let [before    (or (t2/select-one-pk :model/QueryExecution {:order-by [[:id :desc]]}) 0)
+              _         (is (= 202 (:status (handle-post! ui.tu/query-scopes "run" (venues-query)))))
+              ;; QueryExecutions are saved asynchronously, so wait a little for this one.
+              execution (some (fn [_]
+                                (or (t2/select-one :model/QueryExecution
+                                                   :executor_id (mt/user->id :rasta)
+                                                   :id [:> before]
+                                                   {:order-by [[:id :desc]]})
+                                    (do (Thread/sleep 100) nil)))
+                              (range 30))]
+          (is (= "mcp-ui" (:auth_method execution))))))))
 
 (deftest run-runs-only-what-the-user-may-query-test
   (testing "Gate 2: the credential's scope lets the iframe run a handle, and the user's own data permissions decide

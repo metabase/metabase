@@ -1380,6 +1380,7 @@
    :model-exports #{:model/McpGroupPermission :model/McpSessionLog :model/McpToolCallLog}
    :uses #{activity-feed
            ai-tracing
+           analytics
            api
            api-scope
            api.eid-translation
