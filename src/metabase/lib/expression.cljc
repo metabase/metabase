@@ -808,3 +808,25 @@
                      (not (lib.metadata/database-supports? query :expression-literals)))
             {:message  (i18n/tru "Standalone constants are not supported.")
              :friendly true})))))
+
+(defn- unique-name [names original-name index]
+  (let [indexed-name (str original-name " (" index ")")]
+    (if (names indexed-name)
+      (recur names original-name (inc index))
+      indexed-name)))
+
+(defn unique-expression-name
+  "Generates an expression name that's unique in the query."
+  [the-query stage-number expression-number suggested-name]
+  (let [stage (lib.util/query-stage the-query stage-number)
+        columns (lib.metadata.calculation/visible-columns the-query stage-number)
+        existing (and expression-number (nth (:expressions stage) expression-number))
+        other-names (cond-> (set (map :display-name columns))
+                      expression-number (disj (expression->name existing)))]
+    (if (not (other-names suggested-name))
+      suggested-name
+      (let [re-duplicates (re-pattern (str "^" suggested-name " \\([0-9]+\\)$"))
+            duplicates    (set (filter #(or (= % suggested-name)
+                                            (re-matches re-duplicates %))
+                                       other-names))]
+        (unique-name duplicates suggested-name (count duplicates))))))
