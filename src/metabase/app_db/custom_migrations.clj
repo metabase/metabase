@@ -2324,8 +2324,9 @@
                                                 :where  [:not= :resource_collection_id nil]}]})
   (run! (fn [{:keys [id name]}]
           (let [collection-name (str "Data App: " name)
+                ;; slugified as the Collection model does (`collection-slug-max-length`), so a later rename changes nothing
                 collection-id   (t2/insert-returning-pk! :collection {:name       collection-name
-                                                                      :slug       (u/slugify collection-name {:unicode? true})
+                                                                      :slug       (u/slugify collection-name {:max-length 510})
                                                                       :location   "/"
                                                                       :namespace  "data-apps"
                                                                       :entity_id  (u/generate-nano-id)

@@ -1,16 +1,15 @@
 (ns metabase-enterprise.data-apps.resources
   "Lifecycle for the permission group and resource collection owned by a data app.
 
-   The collection is created with the app, in the `data-apps` collection namespace, and never changes: the model's
-   hooks hold that invariant. What this namespace keeps in step afterwards is its name, its place out of the trash,
-   and the permissions on it and on the group."
+   The collection is created with the app, in the `data-apps` collection namespace, and is never replaced: the
+   model's hooks hold that invariant. What this namespace keeps in step afterwards is its name, its place out of
+   the trash, the permissions on it and on the group, and its existence, should it have been deleted on its own."
   (:require
    [metabase-enterprise.data-apps.db :as data-apps.db]
    [metabase-enterprise.data-apps.permissions :as data-app.permissions]
    [metabase.collections.core :as collection]
    [metabase.permissions.core :as perms]
-   [metabase.request.core :as request]
-   [metabase.util.i18n :refer [tru]]))
+   [metabase.request.core :as request]))
 
 (set! *warn-on-reflection* true)
 
@@ -74,13 +73,15 @@
   (data-app.permissions/reconcile-app-group-permissions! (:id group) (data-apps.db/non-router-database-ids))
   (apply-collection-permissions! group collection))
 
-(defn- resource-collection
-  "The resource collection of `app`. Every app has one from its insert on, so none is a broken row."
+(defn- resource-collection!
+  "The resource collection of `app`, created again if the app's was deleted out from under it: the reference is
+   nullable so that deleting the app can delete the collection first, which also lets the collection go alone."
   [app]
   (or (some->> (:resource_collection_id app)
                (data-apps.db/resource-collection))
-      (throw (ex-info (tru "Data app {0} has no resource collection." (:name app))
-                      {:status-code 500, :data-app-id (:id app)}))))
+      (let [collection (create-resource-collection! app)]
+        (data-apps.db/update-data-app! (:id app) {:resource_collection_id (:id collection)})
+        collection)))
 
 (defn ensure-resources!
   "Create or restore the server-owned permission resources for `app` and return their IDs."
@@ -88,7 +89,7 @@
   (perms/with-global-permissions-lock
     (let [app        (data-apps.db/data-app (:id app))
           group      (permission-group! app)
-          collection (resource-collection app)]
+          collection (resource-collection! app)]
       (data-apps.db/update-permission-group! (:id group)
                                              {:name (resource-name app)})
       (data-apps.db/update-resource-collection! (:id collection)

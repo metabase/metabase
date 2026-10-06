@@ -84,7 +84,10 @@
 (t2/define-before-update :model/DataApp
   [data-app]
   (let [changes (t2/changes data-app)]
-    (when (contains? changes :resource_collection_id)
+    ;; A missing collection (the column is nullable, so the row survives its collection's deletion) may be set
+    ;; again; one the app has is never replaced or cleared.
+    (when (and (contains? changes :resource_collection_id)
+               (some? (:resource_collection_id (t2/original data-app))))
       (throw (ex-info (tru "A data app''s resource collection cannot be changed.")
                       {:status-code 400, :data-app-id (:id data-app)})))
     (merge data-app (some->> changes (prepare ::data-apps.schema/data-app.update)))))

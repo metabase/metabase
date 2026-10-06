@@ -66,7 +66,12 @@
         (is (= collection-id (t2/select-one-fn :resource_collection_id :model/DataApp id)))
         (testing "an update that names the same collection is not a change"
           (t2/update! :model/DataApp id {:resource_collection_id collection-id :display_name "Renamed"})
-          (is (= "Renamed" (t2/select-one-fn :display_name :model/DataApp id))))))))
+          (is (= "Renamed" (t2/select-one-fn :display_name :model/DataApp id))))
+        (testing "an app whose collection was deleted out from under it may be given one again"
+          (t2/delete! :model/Collection :id collection-id)
+          (is (nil? (t2/select-one-fn :resource_collection_id :model/DataApp id)) "the reference was cleared")
+          (t2/update! :model/DataApp id {:resource_collection_id other-id})
+          (is (= other-id (t2/select-one-fn :resource_collection_id :model/DataApp id))))))))
 
 (deftest delete-removes-the-resources-the-app-owns-test
   (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]

@@ -54,6 +54,19 @@
             (is (false? (t2/select-one-fn :archived :model/Card :id card-id))
                 "the copy the app serves is readable again")))))))
 
+(deftest ensure-resources-recreates-a-deleted-collection-test
+  (testing "the reference is nullable so the collection can be deleted on its own; the next import gives the app
+            a collection again rather than leaving it broken"
+    (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
+      (let [app (create-data-app! "finches")]
+        (t2/delete! :model/Collection :id (:resource_collection_id app))
+        (let [{:keys [resource_collection_id]} (data-app.resources/ensure-resources! app)]
+          (is (pos-int? resource_collection_id))
+          (is (not= (:resource_collection_id app) resource_collection_id))
+          (is (=? {:name "Data App: finches" :namespace :data-apps :location "/"}
+                  (t2/select-one :model/Collection :id resource_collection_id)))
+          (is (= resource_collection_id (t2/select-one-fn :resource_collection_id :model/DataApp :id (:id app)))))))))
+
 (deftest ensure-resources-blocks-the-app-groups-view-data-test
   (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
     (let [app (create-data-app! "birds")
