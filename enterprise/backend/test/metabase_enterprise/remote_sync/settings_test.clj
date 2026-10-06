@@ -115,20 +115,20 @@
                                                          :remote-sync-type  :read-only}))))
   (testing "Non-GitHub HTTPS URLs are accepted"
     (mt/with-dynamic-fn-redefs [git/branches (fn [_] ["main"])]
-      (is (nil? (settings/check-git-settings! {:remote-sync-url   "https://gitlab.com/foo/bar.git"
-                                               :remote-sync-token nil
-                                               :remote-sync-branch "main"
-                                               :remote-sync-type  :read-only}))
+      (is (some? (settings/check-git-settings! {:remote-sync-url   "https://gitlab.com/foo/bar.git"
+                                                :remote-sync-token nil
+                                                :remote-sync-branch "main"
+                                                :remote-sync-type  :read-only}))
           "GitLab HTTPS URLs should be accepted")
-      (is (nil? (settings/check-git-settings! {:remote-sync-url   "https://bitbucket.org/foo/bar.git"
-                                               :remote-sync-token nil
-                                               :remote-sync-branch "main"
-                                               :remote-sync-type  :read-only}))
+      (is (some? (settings/check-git-settings! {:remote-sync-url   "https://bitbucket.org/foo/bar.git"
+                                                :remote-sync-token nil
+                                                :remote-sync-branch "main"
+                                                :remote-sync-type  :read-only}))
           "Bitbucket HTTPS URLs should be accepted")
-      (is (nil? (settings/check-git-settings! {:remote-sync-url   "https://dev.azure.com/org/project/_git/repo"
-                                               :remote-sync-token nil
-                                               :remote-sync-branch "main"
-                                               :remote-sync-type  :read-only}))
+      (is (some? (settings/check-git-settings! {:remote-sync-url   "https://dev.azure.com/org/project/_git/repo"
+                                                :remote-sync-token nil
+                                                :remote-sync-branch "main"
+                                                :remote-sync-type  :read-only}))
           "Azure DevOps HTTPS URLs should be accepted"))))
 
 (deftest cannot-set-remote-sync-type-to-invalid-value
@@ -243,7 +243,7 @@
                                                                 :remote-sync-branch branch
                                                                 :remote-sync-type   :read-only}))]
         (is (not (.exists clone-dir)) "Precondition: no local clone yet")
-        (is (nil? (check! "develop")))
+        (is (some? (check! "develop")))
         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Invalid branch name" (check! "nope")))
         (is (not (.exists clone-dir)) "Checking settings must not clone the repository")))))
 

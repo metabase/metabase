@@ -170,6 +170,9 @@
 
   If no args are passed, it validates the current settings.
 
+  Returns the [[source.p/Remote]] that it asked, which answers later questions (such as the default branch) with no
+  further call to the remote; nil when no args are passed and remote sync is disabled.
+
   Throws ExceptionInfo if unable to connect to the repository with the provided settings."
   ([] (when (setting/get :remote-sync-enabled) (check-git-settings! {:remote-sync-url    (setting/get :remote-sync-url)
                                                                      :remote-sync-token  (setting/get :remote-sync-token)
@@ -184,11 +187,13 @@
      (throw (ex-info "Invalid repository URL: only HTTPS URLs are supported (e.g., https://git-host.example.com/yourcompany/repo.git)"
                      {:url remote-sync-url})))
    ;; Ask a remote, not a `git/git-source`: a source clones the whole repository when no clone exists yet.
-   (let [branches (source.p/branches (git/git-remote remote-sync-url remote-sync-token))]
+   (let [remote   (git/git-remote remote-sync-url remote-sync-token)
+         branches (source.p/branches remote)]
      (when (empty? branches)
        (throw (ex-info "Cannot connect to uninitialized repository" {:url remote-sync-url})))
      (when (and (= :read-only remote-sync-type) (not (str/blank? remote-sync-branch)) (not (some #{remote-sync-branch} branches)))
-       (throw (ex-info "Invalid branch name" {:url remote-sync-url :branch remote-sync-branch}))))))
+       (throw (ex-info "Invalid branch name" {:url remote-sync-url :branch remote-sync-branch})))
+     remote)))
 
 (defsetting remote-sync-allow
   (deferred-tru "Allow specific remote sync behaviors. Set to overwrite-unpublished to allow overwriting unpublished changes on startup.")
@@ -230,13 +235,18 @@
             token-to-check (if env-set-token
                              (setting/get :remote-sync-token)
                              (if obfuscated? current-token remote-sync-token))]
-        (when updating-git-settings?
-          (check-git-settings! (assoc settings :remote-sync-token token-to-check)))
-        (t2/with-transaction [_conn]
-          (doseq [k [:remote-sync-url :remote-sync-token :remote-sync-type :remote-sync-branch :remote-sync-auto-import :remote-sync-transforms]]
-            (when (and (not= :env (setting/get-raw-value-source k)) (contains? settings k)
-                       (not (and (= k :remote-sync-token) obfuscated?)))
-              (setting/set! k (k settings)))))))))
+        (let [remote (when updating-git-settings?
+                       (check-git-settings! (assoc settings :remote-sync-token token-to-check)))]
+          (t2/with-transaction [_conn]
+            (doseq [k [:remote-sync-url :remote-sync-token :remote-sync-type :remote-sync-branch :remote-sync-auto-import :remote-sync-transforms]]
+              (when (and (not= :env (setting/get-raw-value-source k)) (contains? settings k)
+                         (not (and (= k :remote-sync-token) obfuscated?)))
+                (setting/set! k (k settings))))
+            ;; `remote` answers from the lsRemote of the check, so the default branch costs no second call
+            (when (and remote
+                       (remote-sync-enabled)
+                       (str/blank? (setting/get :remote-sync-branch)))
+              (setting/set! :remote-sync-branch (source.p/default-branch remote)))))))))
 
 (defn library-is-remote-synced?
   "Returns true if the Library collection exists and is remote-synced.
