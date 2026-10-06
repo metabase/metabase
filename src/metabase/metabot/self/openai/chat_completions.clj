@@ -40,16 +40,16 @@
   "Move the server's usage in `chunks`, a reducible of Chat Completions chunks, to one final chunk.
 
   The final `{:usage ...}` chunk carries the last usage the server sent. Some servers repeat their running totals on
-  every chunk, and translating each would count the call many times over. A stream that fails partway still passes
-  on the usage it received before the failure is rethrown."
+  every chunk, and translating each would count the call many times over. A stream that fails partway, or that the
+  consumer stops, still passes on the usage it received."
   [chunks]
   (reify clojure.lang.IReduceInit
     (reduce [_ rf init]
       (let [usage  (volatile! nil)
             latest (volatile! init)
             flush  (fn [acc]
-                     (cond-> acc
-                       (and @usage (not (reduced? @latest))) (rf {:usage @usage})))
+                     (cond-> (unreduced acc)
+                       @usage (rf {:usage @usage})))
             acc    (try
                      (reduce (fn [acc chunk]
                                (when-let [u (:usage chunk)]

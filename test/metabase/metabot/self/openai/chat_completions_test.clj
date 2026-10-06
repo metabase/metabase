@@ -342,12 +342,17 @@
               :finish-reason "stop"}]
             (usage-parts (chat-completions/usage-once running-usage-chunks))))))
 
+(defn- sse-stream
+  "An SSE body that sends `chunks`."
+  [chunks]
+  (java.io.ByteArrayInputStream.
+   (.getBytes ^String (str/join (map #(str "data: " (json/encode %) "\n\n") chunks)) "UTF-8")))
+
 (defn- failing-sse-stream
   "An SSE body that sends `chunks`, then fails the way a reset connection does."
   [chunks]
   (java.io.SequenceInputStream.
-   (java.io.ByteArrayInputStream.
-    (.getBytes ^String (str/join (map #(str "data: " (json/encode %) "\n\n") chunks)) "UTF-8"))
+   (sse-stream chunks)
    (proxy [java.io.InputStream] []
      (read
        ([] (throw (java.io.IOException. "Connection reset")))
@@ -363,6 +368,20 @@
                       nil
                       (chat-completions/usage-once
                        (self.core/sse-reducible (failing-sse-stream (pop running-usage-chunks)))))))
+      (is (=? [{:type :usage :usage {:promptTokens 120 :completionTokens 2}}]
+              (filterv #(= :usage (:type %)) @parts))))))
+
+(deftest ^:parallel usage-once-passes-on-usage-when-the-consumer-stops-test
+  (testing "a consumer that stops partway, as a disconnected client does, still counts the usage it received, once"
+    (let [parts (atom [])]
+      (transduce (chat-completions/chat-completions->aisdk-chunks-xf)
+                 (fn ([acc] acc)
+                   ([acc part]
+                    (swap! parts conj part)
+                    (cond-> acc (= "lo" (:delta part)) reduced)))
+                 nil
+                 (chat-completions/usage-once
+                  (self.core/sse-reducible (sse-stream running-usage-chunks))))
       (is (=? [{:type :usage :usage {:promptTokens 120 :completionTokens 2}}]
               (filterv #(= :usage (:type %)) @parts))))))
 
