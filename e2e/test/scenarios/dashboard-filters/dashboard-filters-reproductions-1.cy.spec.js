@@ -1682,6 +1682,7 @@ describe("issues 29347, 29346", () => {
 
   const createDashboard = ({
     dashboardDetails = editableDashboardDetails,
+    alias = "dashboardId",
   } = {}) => {
     H.createQuestionAndDashboard({ questionDetails, dashboardDetails }).then(
       ({ body: { id, card_id, dashboard_id } }) => {
@@ -1705,7 +1706,7 @@ describe("issues 29347, 29346", () => {
           ],
         });
 
-        cy.wrap(dashboard_id).as("dashboardId");
+        cy.wrap(dashboard_id).as(alias);
       },
     );
   };
@@ -1722,7 +1723,7 @@ describe("issues 29347, 29346", () => {
   };
 
   const verifyRemappedValues = (fieldValue) => {
-    verifyRemappedFilterValues(filterValue);
+    verifyRemappedFilterValues(fieldValue);
     verifyRemappedCardValues(fieldValue);
   };
 
@@ -1744,121 +1745,109 @@ describe("issues 29347, 29346", () => {
     addFieldRemapping(ORDERS.QUANTITY);
   });
 
-  describe("regular dashboards", () => {
-    beforeEach(() => {
-      cy.intercept("GET", "/api/dashboard/*").as("dashboard");
-      cy.intercept("POST", "/api/dashboard/**/card/*/query").as("cardQuery");
+  it("should be able to filter on remapped values in the UI, in the url and in the token (metabase#29347, metabase#29346)", () => {
+    cy.intercept("GET", "/api/dashboard/*").as("dashboard");
+    cy.intercept("POST", "/api/dashboard/**/card/*/query").as("cardQuery");
+    cy.intercept("GET", "/api/public/dashboard/*").as("publicDashboard");
+    cy.intercept("GET", "/api/public/dashboard/**/card/*").as(
+      "publicCardQuery",
+    );
+    cy.intercept("GET", "/api/embed/dashboard/*").as("embedDashboard");
+    cy.intercept("GET", "/api/embed/dashboard/**/card/*").as("embedCardQuery");
+
+    createDashboard();
+    createDashboard({
+      dashboardDetails: lockedDashboardDetails,
+      alias: "lockedDashboardId",
     });
 
-    it("should be able to filter on remapped values in the UI and in the url (metabase#29347, metabase#29346)", () => {
-      createDashboard();
-      H.visitDashboard("@dashboardId");
-      cy.wait("@dashboard");
-      cy.wait("@cardQuery");
+    cy.log("Regular dashboard");
+    H.visitDashboard("@dashboardId");
+    cy.wait("@dashboard");
+    cy.wait("@cardQuery");
 
-      filterOnRemappedValues(filterValue);
-      cy.wait("@cardQuery");
+    filterOnRemappedValues(filterValue);
+    cy.wait("@cardQuery");
 
-      verifyRemappedValues(filterValue);
+    verifyRemappedValues(filterValue);
 
-      // Clear the last used value so the url value is the only source
-      H.clearFilterWidget();
-      cy.wait("@cardQuery");
+    // Clear the last used value so the url value is the only source
+    H.clearFilterWidget();
+    cy.wait("@cardQuery");
 
-      H.visitDashboard("@dashboardId", {
-        params: { [filterDetails.slug]: filterValue },
-      });
-
-      cy.wait("@dashboard");
-      cy.wait("@cardQuery");
-
-      verifyRemappedValues(filterValue);
-    });
-  });
-
-  describe("embedded dashboards", () => {
-    beforeEach(() => {
-      cy.intercept("GET", "/api/embed/dashboard/*").as("dashboard");
-      cy.intercept("GET", "/api/embed/dashboard/**/card/*").as("cardQuery");
+    H.visitDashboard("@dashboardId", {
+      params: { [filterDetails.slug]: filterValue },
     });
 
-    it("should be able to filter on remapped values in the UI and in the url (metabase#29347, metabase#29346)", () => {
-      createDashboard();
-      cy.get("@dashboardId").then((dashboardId) =>
-        H.visitEmbeddedPage({
+    cy.wait("@dashboard");
+    cy.wait("@cardQuery");
+
+    verifyRemappedValues(filterValue);
+
+    cy.log("Public dashboard");
+    cy.get("@dashboardId").then((dashboardId) =>
+      H.visitPublicDashboard(dashboardId),
+    );
+    cy.wait("@publicDashboard");
+    cy.wait("@publicCardQuery");
+
+    filterOnRemappedValues(filterValue);
+    cy.wait("@publicCardQuery");
+
+    verifyRemappedValues(filterValue);
+
+    cy.location("pathname").then((pathname) =>
+      cy.visit(`${pathname}?${filterDetails.slug}=${filterValue}`),
+    );
+    cy.wait("@publicDashboard");
+    cy.wait("@publicCardQuery");
+
+    verifyRemappedValues(filterValue);
+
+    cy.log("Embedded dashboard with an editable parameter");
+    cy.get("@dashboardId").then((dashboardId) =>
+      H.visitEmbeddedPage({
+        resource: { dashboard: dashboardId },
+        params: {},
+      }),
+    );
+    cy.wait("@embedDashboard");
+    cy.wait("@embedCardQuery");
+
+    filterOnRemappedValues(filterValue);
+    cy.wait("@embedCardQuery");
+
+    verifyRemappedValues(filterValue);
+
+    cy.get("@dashboardId").then((dashboardId) => {
+      H.visitEmbeddedPage(
+        {
           resource: { dashboard: dashboardId },
           params: {},
-        }),
+        },
+        {
+          setFilters: { [filterDetails.slug]: filterValue },
+        },
       );
-      cy.wait("@dashboard");
-      cy.wait("@cardQuery");
+    });
+    cy.wait("@embedDashboard");
+    cy.wait("@embedCardQuery");
 
-      filterOnRemappedValues(filterValue);
-      cy.wait("@cardQuery");
+    verifyRemappedValues(filterValue);
 
-      verifyRemappedValues(filterValue);
-
-      cy.get("@dashboardId").then((dashboardId) => {
-        H.visitEmbeddedPage(
-          {
-            resource: { dashboard: dashboardId },
-            params: {},
-          },
-          {
-            setFilters: { [filterDetails.slug]: filterValue },
-          },
-        );
+    cy.log("Embedded dashboard with a locked parameter in the token");
+    cy.get("@lockedDashboardId").then((dashboardId) => {
+      H.visitEmbeddedPage({
+        resource: { dashboard: dashboardId },
+        params: {
+          [filterDetails.slug]: filterValue,
+        },
       });
-      cy.wait("@dashboard");
-      cy.wait("@cardQuery");
-
-      verifyRemappedValues(filterValue);
     });
+    cy.wait("@embedDashboard");
+    cy.wait("@embedCardQuery");
 
-    it("should be able to filter on remapped values in the token (metabase#29347, metabase#29346)", () => {
-      createDashboard({ dashboardDetails: lockedDashboardDetails });
-      cy.get("@dashboardId").then((dashboardId) => {
-        H.visitEmbeddedPage({
-          resource: { dashboard: dashboardId },
-          params: {
-            [filterDetails.slug]: filterValue,
-          },
-        });
-      });
-      cy.wait("@dashboard");
-      cy.wait("@cardQuery");
-
-      verifyRemappedCardValues(filterValue);
-    });
-  });
-
-  describe("public dashboards", () => {
-    beforeEach(() => {
-      cy.intercept("GET", "/api/public/dashboard/*").as("dashboard");
-      cy.intercept("GET", "/api/public/dashboard/**/card/*").as("cardQuery");
-    });
-
-    it("should be able to filter on remapped values in the UI and in the url (metabase#29347, metabase#29346)", () => {
-      createDashboard();
-      cy.get("@dashboardId").then((dashboardId) =>
-        H.visitPublicDashboard(dashboardId),
-      );
-      cy.wait("@dashboard");
-      cy.wait("@cardQuery");
-
-      filterOnRemappedValues(filterValue);
-      cy.wait("@cardQuery");
-
-      verifyRemappedValues(filterValue);
-
-      cy.location("pathname").then((pathname) =>
-        cy.visit(`${pathname}?${filterDetails.slug}=${filterValue}`),
-      );
-      cy.wait("@dashboard");
-      cy.wait("@cardQuery");
-
-      verifyRemappedValues(filterValue);
-    });
+    verifyRemappedCardValues(filterValue);
   });
 });
 
