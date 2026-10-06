@@ -1,6 +1,9 @@
 import fetchMock from "fetch-mock";
 
-import { setupDatabaseListEndpoint } from "__support__/server-mocks";
+import {
+  setupDatabaseListEndpoint,
+  setupEnginesEndpoint,
+} from "__support__/server-mocks";
 import { createMockState } from "__support__/state";
 import { renderWithProviders, screen } from "__support__/ui";
 import { createMockDatabase, createMockUser } from "metabase-types/api/mocks";
@@ -8,6 +11,7 @@ import { createMockDatabase, createMockUser } from "metabase-types/api/mocks";
 import { DatabaseListApp } from "./DatabaseListApp";
 
 const setup = () => {
+  setupEnginesEndpoint({});
   setupDatabaseListEndpoint([
     createMockDatabase({ id: 1, name: "Stubbed DB", is_stub: true }),
   ]);

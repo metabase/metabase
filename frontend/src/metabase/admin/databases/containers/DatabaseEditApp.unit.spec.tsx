@@ -3,6 +3,7 @@ import fetchMock from "fetch-mock";
 import {
   setupDatabaseEndpoints,
   setupDatabaseUsageInfoEndpoint,
+  setupEnginesEndpoint,
 } from "__support__/server-mocks";
 import { createMockState } from "__support__/state";
 import { renderWithProviders, screen } from "__support__/ui";
@@ -13,6 +14,7 @@ import { createMockDatabase, createMockUser } from "metabase-types/api/mocks";
 import { DatabaseEditApp } from "./DatabaseEditApp";
 
 const setup = ({ database }: { database: Database }) => {
+  setupEnginesEndpoint({});
   setupDatabaseEndpoints(database);
   setupDatabaseUsageInfoEndpoint(database, {
     question: 0,
