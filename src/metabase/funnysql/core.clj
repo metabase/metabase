@@ -170,11 +170,6 @@
             (compile! y context))]
     (interpose-fn kvs -x-equals-y! #(append-sql! context ", "))))
 
-(defn- unwrap-identifier [identifier]
-  (if (vector? identifier)
-    (recur (first identifier))
-    identifier))
-
 (defn- with! [sql ctes context]
   (append-sql! context sql)
   (letfn [(-cte [[identifier subquery & options]]

@@ -289,7 +289,7 @@
     (is (thrown-with-msg?
          clojure.lang.ExceptionInfo
          #"\Q`:order-by` only supports [<expression> <direction>], but got more than 2 args\E"
-         (funnysql/format (funnysql/format {:select [:a], :from [:t], :order-by [[:a :asc :nulls-first]]} :postgres))))))
+         (funnysql/format {:select [:a], :from [:t], :order-by [[:a :asc :nulls-first]]} :postgres)))))
 
 (deftest ^:parallel limit-test
   (is (= ["LIMIT 10"]
