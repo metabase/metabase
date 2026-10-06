@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.remote-sync.merge :as remote-sync.merge]
+   [metabase-enterprise.remote-sync.source :as source]
    [metabase.test :as mt]
    [metabase.util.yaml :as yaml]))
 
@@ -203,6 +204,114 @@
       (is (= {card-a-key "collections/a2.yaml" [["Card" "B"]] "collections/b.yaml"} (:theirs-paths result)))
       (is (= {card-a-key "collections/a.yaml" [["Card" "C"]] "collections/c.yaml"} (:ours-paths result)))
       (is (= {card-a-key (:content (first ours)) [["Card" "C"]] (:content (second ours))} (:ours-contents result))))))
+
+(defn- data-app
+  "Builds the `{:path :content}` specs of a DataApp with entity `id` and `slug`: its `data_app.yaml`, which declares a
+  bundle at `dist/index.js`, and that bundle with the text `bundle`. An optional `extra` fragment varies the YAML."
+  ([id slug bundle] (data-app id slug bundle ""))
+  ([id slug bundle extra]
+   [{:path    (str "data_apps/" slug "/data_app.yaml")
+     :content (str "serdes/meta:\n- model: DataApp\n  id: " id "\n  label: " slug "\nentity_id: " id "\nslug: " slug
+                   "\npath: dist/index.js\n" extra)}
+    {:path    (str "data_apps/" slug "/dist/index.js")
+     :content bundle}]))
+
+(def ^:private app-s-key
+  "The identity key of the DataApp the [[data-app]] helper builds with id \"S\"."
+  [["DataApp" "S"]])
+
+(deftest ^:parallel resource-file-and-yaml-changed-on-different-sides-is-conflict-test
+  (testing "the remote changes the bundle and the local side changes the data_app.yaml -> one conflict on the app"
+    (let [result (remote-sync.merge/three-way-merge (data-app "S" "sales" "v1")
+                                                    (data-app "S" "sales" "v1" "description: ours\n")
+                                                    (data-app "S" "sales" "v2"))]
+      (is (= [app-s-key] (map :key (:conflicts result))))
+      (is (empty? (:merged result)))
+      (is (= {} (:decisions result)))))
+  (testing "the remote changes the data_app.yaml and the local side changes the bundle -> one conflict on the app"
+    (let [result (remote-sync.merge/three-way-merge (data-app "S" "sales" "v1")
+                                                    (data-app "S" "sales" "v2")
+                                                    (data-app "S" "sales" "v1" "description: theirs\n"))]
+      (is (= [app-s-key] (map :key (:conflicts result))))
+      (is (empty? (:merged result))))))
+
+(deftest ^:parallel resource-file-changed-only-by-the-remote-is-theirs-test
+  (testing "only the remote changes the bundle -> one decision :theirs for the app, which takes the remote bundle"
+    (let [theirs (data-app "S" "sales" "v2")
+          result (remote-sync.merge/three-way-merge (data-app "S" "sales" "v1") (data-app "S" "sales" "v1") theirs)]
+      (is (empty? (:conflicts result)))
+      (is (= {app-s-key :theirs} (:decisions result)))
+      (is (= theirs (:merged result)))
+      (is (= {:added 0 :updated 1 :removed 0} (:summary result)))))
+  (testing "the remote changes both parts and the local side changes nothing -> :theirs"
+    (let [theirs (data-app "S" "sales" "v2" "description: theirs\n")
+          result (remote-sync.merge/three-way-merge (data-app "S" "sales" "v1") (data-app "S" "sales" "v1") theirs)]
+      (is (= {app-s-key :theirs} (:decisions result)))
+      (is (= theirs (:merged result)))))
+  (testing "the remote adds the app -> :theirs, and the unit counts as one added entity"
+    (let [result (remote-sync.merge/three-way-merge [] [] (data-app "S" "sales" "v1"))]
+      (is (= {app-s-key :theirs} (:decisions result)))
+      (is (= {:added 1 :updated 0 :removed 0} (:summary result))))))
+
+(deftest ^:parallel resource-file-changed-only-locally-is-ours-test
+  (testing "only the local side changes the bundle -> one decision :ours for the app, which keeps the local bundle"
+    (let [ours   (data-app "S" "sales" "v2")
+          result (remote-sync.merge/three-way-merge (data-app "S" "sales" "v1") ours (data-app "S" "sales" "v1"))]
+      (is (empty? (:conflicts result)))
+      (is (= {app-s-key :ours} (:decisions result)))
+      (is (= ours (:merged result)))
+      (is (= {:added 0 :updated 0 :removed 0} (:summary result))))))
+
+(deftest ^:parallel resource-file-changed-the-same-way-on-both-sides-is-same-test
+  (testing "both sides make the same change to the bundle -> :same"
+    (let [result (remote-sync.merge/three-way-merge (data-app "S" "sales" "v1") (data-app "S" "sales" "v2")
+                                                    (data-app "S" "sales" "v2"))]
+      (is (= {app-s-key :same} (:decisions result))))))
+
+(deftest ^:parallel load-unit-does-not-depend-on-the-order-of-the-specs-test
+  (testing "a resource spec that comes before the YAML spec that declares it joins the same unit"
+    (let [result (remote-sync.merge/three-way-merge (reverse (data-app "S" "sales" "v1"))
+                                                    (data-app "S" "sales" "v1" "description: ours\n")
+                                                    (reverse (data-app "S" "sales" "v2")))]
+      (is (= [app-s-key] (map :key (:conflicts result)))))))
+
+(deftest ^:parallel merge-returns-the-paths-of-each-unit-in-theirs-test
+  (testing "the result maps each entity key to every path of its unit in theirs, the YAML file first"
+    (let [result (remote-sync.merge/three-way-merge [] [] (conj (data-app "S" "sales" "v1") (card "A" "a")))]
+      (is (= {app-s-key  ["data_apps/sales/data_app.yaml" "data_apps/sales/dist/index.js"]
+              card-a-key ["collections/a.yaml"]}
+             (:theirs-unit-paths result)))
+      (is (= {app-s-key "data_apps/sales/data_app.yaml" card-a-key "collections/a.yaml"}
+             (:theirs-paths result))))))
+
+(deftest ^:parallel merge-returns-each-unit-in-ours-test
+  (testing "the result maps each entity key to its unit in ours: the YAML file, and its resource files when it has any"
+    (let [[app-yaml bundle] (data-app "S" "sales" "v1")
+          result            (remote-sync.merge/three-way-merge [] (conj (data-app "S" "sales" "v1") (card "A" "a")) [])]
+      (is (= {app-s-key  (assoc app-yaml :resources [bundle])
+              card-a-key (card "A" "a")}
+             (:ours-units result))))))
+
+(deftest ^:parallel unchanged-locally-unit-with-a-hand-written-yaml-takes-a-remote-resource-change-test
+  (testing "the repo data_app.yaml is hand-written, the ledger hash of the last sync matches the local app and its
+            bundle, and the remote changes the bundle -> :theirs, not a conflict"
+    (let [ours      (data-app "S" "sales" "v1")
+          synced    {"data_apps/sales/data_app.yaml" (source/file-spec-hash {:content   (:content (first ours))
+                                                                             :resources [(second ours)]})}
+          hand      (fn [bundle] (update (data-app "S" "sales" bundle) 0 update :content str "# hand-written\n"))
+          result    (remote-sync.merge/three-way-merge (hand "v1") ours (hand "v2")
+                                                       :unchanged-locally? (#'source/unchanged-since-sync-fn synced))]
+      (is (empty? (:conflicts result)))
+      (is (= {app-s-key :theirs} (:decisions result))))))
+
+(deftest ^:parallel undeclared-non-yaml-file-merges-by-its-path-test
+  (testing "a non-YAML file that no YAML file declares keeps its own path key"
+    (let [base   [(card "A" "a") {:path "collections/notes.txt" :content "v1"}]
+          theirs [(card "A" "a") {:path "collections/notes.txt" :content "v2"}]
+          result (remote-sync.merge/three-way-merge base base theirs)]
+      (is (= {card-a-key                                     :keep
+              [::remote-sync.merge/by-path "collections/notes.txt"] :theirs}
+             (:decisions result))))))
 
 (deftest ^:parallel remote-delete-takes-effect-test
   (testing "remote deletes A; local untouched -> A removed from merged, counted as remote removal"
