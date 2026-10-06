@@ -553,12 +553,14 @@ describe("issue 17211", () => {
   it("should not falsely alert that no matching dashboard filter has been found (metabase#17211)", () => {
     H.filterWidget().click();
 
-    H.popover().within(() => {
-      cy.findByPlaceholderText("Search the list").type("abb");
-      cy.findByTestId("Abbeville-filter-value").click();
-      cy.findByTestId("Abbeville-filter-value").should("be.checked");
-      cy.findByText("Didn't find anything").should("not.exist");
-    });
+    H.popover().findByPlaceholderText("Search the list").type("abb");
+    // eslint-disable-next-line metabase/no-unsafe-element-filtering
+    H.popover().last().findByText("Abbeville").click();
+
+    H.multiAutocompleteValue(0)
+      .should("be.visible")
+      .should("contain", "Abbeville");
+    H.popover().should("not.contain", "No matching City found");
   });
 });
 
