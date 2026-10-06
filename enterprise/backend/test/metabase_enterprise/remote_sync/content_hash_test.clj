@@ -450,7 +450,7 @@
     (mt/with-premium-features #{:transforms-basic}
       (mt/with-temporary-setting-values [remote-sync-enabled true]
         ;; the import stores `remote-sync-transforms` true; remove the stored value after the test
-        (test-helpers/clean-transforms-setting
+        (test-helpers/clean-remote-sync-settings
          (fn []
            (mt/with-model-cleanup [:model/Transform :model/Collection]
              ;; the transform YAML references the "test-data (h2)" database by name; force it to load so the
@@ -473,7 +473,7 @@
     (mt/with-premium-features #{:transforms-basic}
       (mt/with-temporary-setting-values [remote-sync-enabled true]
         ;; the import stores `remote-sync-transforms` true; remove the stored value after the test
-        (test-helpers/clean-transforms-setting
+        (test-helpers/clean-remote-sync-settings
          (fn []
            (mt/with-model-cleanup [:model/TransformTag]
              (let [tag-eid "test-transform-tag-xx"

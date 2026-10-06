@@ -494,7 +494,7 @@ width: fixed
   (setting/restore-cache!)
   (delete-transforms-ledger-rows!))
 
-(defn clean-transforms-setting
+(defn clean-remote-sync-settings
   "Test fixture that saves every stored `remote-sync%` setting row, removes the stored `remote-sync-transforms` row for
   the test, and after the test writes back the saved rows as they were stored: a setting with no row before has no
   row after. It deletes all Transforms RemoteSyncObject rows before and after the test.
@@ -520,7 +520,7 @@ width: fixed
   model tables (Transform, TransformTag, PythonLibrary) are clean, that no stored `remote-sync-transforms` value
   adds a ledger row, that the stored `remote-sync%` setting rows after the test equal the rows before it, and that
   content the test imported (Dashboards, Cards, Actions, Documents, DataApps, Collections) does not outlive it."
-  (t/join-fixtures [clean-imported-content clean-object clean-transforms-setting clean-task-table
+  (t/join-fixtures [clean-imported-content clean-object clean-remote-sync-settings clean-task-table
                     clean-optional-feature-models]))
 
 (defn commit-with-temp
