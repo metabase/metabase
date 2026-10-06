@@ -201,9 +201,9 @@
 
 (deftest clean-remote-sync-state-keeps-existing-transforms-ledger-row-test
   (testing "a Transforms ledger row that existed before clean-remote-sync-state outlives it, because clean-object
-            restores it after clean-transforms-setting deletes it"
+            restores it after clean-remote-sync-settings deletes it"
     ;; The status "synced" shows that the row is the old row: the :on-change hook writes only "create" and "delete".
-    ;; In the reverse fixture order, clean-transforms-setting deletes the row after clean-object restored it.
+    ;; In the reverse fixture order, clean-remote-sync-settings deletes the row after clean-object restored it.
     (mt/with-dynamic-fn-redefs [search/reindex! (constantly nil)]
       (do-with-remote-sync-state-restored!
        (fn []
