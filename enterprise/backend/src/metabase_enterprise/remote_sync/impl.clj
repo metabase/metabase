@@ -416,7 +416,7 @@
     ;; commit, blocking the heartbeat for the whole reconcile and hashing phase.
     (report 0.75 {:force? true})
     (t2/with-transaction [_conn]
-      (let [synced-collection-ids (spec/import-cleanup-collection-ids imported-data)
+      (let [synced-collection-ids (spec/all-syncable-collection-ids)
             _                     (remove-unsynced! synced-collection-ids imported-data)
             settings-table-ids    (remove-unsynced-user-settings! synced-collection-ids base-ingestable seen-paths)]
         ;; Replace the RemoteSyncObject table, folding each entity's repo file_path (so later renames/deletes
