@@ -17,12 +17,12 @@
   (format "Data App: %s" (:name app)))
 
 (defn create-resource-collection!
-  "Create the resource collection of `app`, a root collection in the `data-apps` namespace, and return it. Called
-   as the app is inserted, so the collection exists before the row does."
+  "Create the resource collection of `app`, a root collection in the `data-apps` namespace, as the app is inserted.
+   Created like any collection, so its events are published; as admin, since an import has no user bound."
   [app]
-  (data-apps.db/insert-resource-collection! {:name      (resource-name app)
-                                             :location  "/"
-                                             :namespace collection/data-apps-ns}))
+  (request/as-admin
+    (collection/create-collection! {:name      (resource-name app)
+                                    :namespace (name collection/data-apps-ns)})))
 
 (defn- create-permission-group! [app]
   (let [group (data-apps.db/insert-permission-group! {:name (resource-name app)

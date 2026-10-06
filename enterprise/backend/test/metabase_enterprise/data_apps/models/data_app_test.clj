@@ -6,6 +6,7 @@
    [metabase-enterprise.data-apps.db :as data-apps.db]
    [metabase-enterprise.data-apps.models.data-app]
    [metabase.api.common :as api]
+   [metabase.events.core :as events]
    [metabase.models.interface :as mi]
    [metabase.test :as mt]
    [metabase.util.json :as json]
@@ -44,6 +45,17 @@
               (t2/select-one :model/Collection :id resource_collection_id))
           "the collection is the app's own, in the data-apps namespace")
       (is (t2/exists? :model/PermissionsGroup :id permission_group_id :is_data_app_group true)))))
+
+(deftest insert-publishes-the-creation-of-the-collection-test
+  (testing "the collection is created the way any collection is, so what listens to collection events (remote sync,
+            the activity log) sees it"
+    (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
+      (let [created (atom [])]
+        (mt/with-dynamic-fn-redefs [events/publish-event! (fn [topic {:keys [object]}]
+                                                            (when (= :event/collection-create topic)
+                                                              (swap! created conj (:id object))))]
+          (let [id (insert-app!)]
+            (is (= [(t2/select-one-fn :resource_collection_id :model/DataApp id)] @created))))))))
 
 (deftest insert-keeps-the-collection-it-is-given-test
   (testing "an import names the collection its manifest references, so the insert links that one rather than creating"

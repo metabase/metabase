@@ -170,11 +170,6 @@
   [collection-id]
   (t2/select-one :model/Collection :id collection-id))
 
-(defn insert-resource-collection!
-  "Insert a resource collection and return it."
-  [row]
-  (t2/insert-returning-instance! :model/Collection row))
-
 (defn update-resource-collection!
   "Apply `changes` to the resource collection with `collection-id`."
   [collection-id changes]
