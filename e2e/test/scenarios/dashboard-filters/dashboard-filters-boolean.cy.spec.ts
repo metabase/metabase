@@ -27,7 +27,7 @@ describe("scenarios > dashboard > filters > boolean", () => {
       cy.signInAsAdmin();
     });
 
-    it("should allow to map a boolean parameter to a boolean column of an MBQL query, update it with a click behavior, and drill-thru", () => {
+    it("should allow to map a boolean parameter to a boolean column of an MBQL query, update it with a click behavior, drill-thru, and use a 'Go to a custom destination - Saved question' click behavior", () => {
       createQuestionAndDashboard().then(({ dashboardId }) =>
         H.visitDashboard(dashboardId),
       );
@@ -68,19 +68,19 @@ describe("scenarios > dashboard > filters > boolean", () => {
       H.queryBuilderFiltersPanel()
         .findByText(`${COLUMN_NAME} is true`)
         .should("be.visible");
-    });
 
-    it("should allow to use a 'Go to a custom destination - Saved question' click behavior", () => {
-      createQuestionAndDashboard().then(({ dashboardId }) =>
-        H.visitDashboard(dashboardId),
-      );
+      cy.go("back");
+      H.filterWidget().findByText("True").should("be.visible");
+      H.filterWidget().icon("close").click();
+      H.getDashboardCard().findByText("200 rows").should("be.visible");
 
-      cy.log("set up click behavior");
+      cy.log("'Go to a custom destination - Saved question' click behavior");
       H.editDashboard();
       H.showDashboardCardActions();
       cy.findByLabelText("Click behavior").click();
       H.sidebar().within(() => {
         cy.findByText(COLUMN_NAME).click();
+        cy.findByText("Update a dashboard filter").click();
         cy.findByText("Go to a custom destination").click();
         cy.findByText("Saved question").click();
       });
@@ -92,7 +92,6 @@ describe("scenarios > dashboard > filters > boolean", () => {
       H.selectDropdown().findByText(COLUMN_NAME).click();
       H.saveDashboard();
 
-      cy.log("assert click behavior");
       H.getDashboardCard().findAllByText("true").first().click();
       H.queryBuilderFiltersPanel()
         .findByText(`${COLUMN_NAME} is true`)
