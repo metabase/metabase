@@ -1,6 +1,7 @@
 (ns metabase.events.schema-test
   (:require
    [clojure.test :refer :all]
+   [malli.core :as mc]
    [metabase.events.core :as events]
    [metabase.queries.events.schema]
    [metabase.util.malli.registry :as mr]
@@ -24,6 +25,11 @@
         (is (not (mr/validate (events/event-schema topic) (assoc (event model) :reverted-to-revision-id 0)))))
       (testing "no other key is allowed"
         (is (not (mr/validate (events/event-schema topic) (assoc (event model) :reverted? true))))))))
+
+(deftest ^:parallel update-topics-take-no-description-from-the-revert-key-test
+  (doseq [topic [:event/card-update :event/dashboard-update :event/segment-update :event/measure-update]]
+    (testing topic
+      (is (nil? (:description (mc/properties (mr/resolve-schema topic))))))))
 
 (deftest ^:parallel create-and-delete-topics-refuse-reverted-to-revision-id-test
   (doseq [[topic model] {:event/card-create      :model/Card
