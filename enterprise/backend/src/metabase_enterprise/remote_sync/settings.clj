@@ -241,9 +241,12 @@
                              (:remote-sync-branch settings)
                              (setting/get :remote-sync-branch))
             enabled-after? (or (contains? settings :remote-sync-url) (remote-sync-enabled))
+            ;; The save does not change an env-set URL, so `remote` can be a remote other than the one in effect.
+            ;; Then `finish-remote-config!` reads the default branch of the URL in effect.
+            keeps-url?     (or (not env-set-url) (= remote-sync-url (setting/get :remote-sync-url)))
             ;; `remote` answers from the lsRemote of the check, so the default branch costs no second call. It is
             ;; read before the transaction, so that a remote with no default branch fails the save before any write.
-            default-branch (when (and remote enabled-after? (str/blank? branch-after))
+            default-branch (when (and remote keeps-url? enabled-after? (str/blank? branch-after))
                              (source.p/default-branch remote))]
         (t2/with-transaction [_conn]
           (doseq [k [:remote-sync-url :remote-sync-token :remote-sync-type :remote-sync-branch :remote-sync-auto-import :remote-sync-transforms]]
