@@ -28,8 +28,7 @@ Admin → Embedding → Embedded analytics SDK → CORS.
 
 ```bash
 npm run print-resources               # prints what resources/ is written from, as JSON
-npm run validate-resources            # validates the repository's Metabase YAML
-npm run check-resources               # checks resources/ backs every definition
+npm run check-resources               # checks resources/ backs every definition, then validates the repository's Metabase YAML
 npm run build                         # produces a single dist/index.js
 ```
 

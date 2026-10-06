@@ -7,8 +7,7 @@
     "dev": "vite --port 5174",
     "build": "vite build",
     "print-resources": "embedding-sdk-react data-apps print-resources",
-    "check-resources": "embedding-sdk-react data-apps check-resources",
-    "validate-resources": "representations validate-schema --folder ../..",
+    "check-resources": "embedding-sdk-react data-apps check-resources && representations validate-schema --folder ../..",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

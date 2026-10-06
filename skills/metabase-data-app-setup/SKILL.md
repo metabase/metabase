@@ -198,8 +198,8 @@ project scaffold and proving the starter bundle works.
    `npx representations generate-entity-id`, write
    `resources/collection.yaml`, and add `collection: <id>` to `data_app.yaml`
    (use skill discovery to find the data-app guidance on writing an app's
-   `resources/`). Then run `npm run validate-resources` and
-   `npm run check-resources`. Neither changes anything in Metabase.
+   `resources/`). Then run `npm run check-resources`, which also validates
+   the repository's YAML against the format. It changes nothing in Metabase.
 3. Run `npm run build`.
 4. Confirm `git status` shows the app source, lockfile, `data_app.yaml`,
    `resources/`, and the built bundle (`dist/index.js` by default) as
@@ -542,7 +542,7 @@ Do not wrap `InteractiveQuestion` or `StaticQuestion` in containers that clip or
 
 Data apps are delivered by Git — you commit the app directory and Metabase pulls it on its next remote-sync import.
 
-1. After any change to `queries/` or `actions/`, update `resources/` to match (regenerating `src/metabase.data.ts` first if it doesn't cover what the definitions use), and run `npm run validate-resources` and `npm run check-resources`. Nothing reaches Metabase until the pull in step 4 applies it.
+1. After any change to `queries/` or `actions/`, update `resources/` to match (regenerating `src/metabase.data.ts` first if it doesn't cover what the definitions use), and run `npm run check-resources`. Nothing reaches Metabase until the pull in step 4 applies it.
 2. `npm run build` produces the bundle at your `data_app.yaml` `path` (the template builds to `dist/index.js`). It fails when `resources/` doesn't match the definitions; fix `resources/` and rebuild.
 3. From the **repo root**, commit the app directory — its `data_app.yaml`, `resources/`, the built bundle (the file `path` points at), the source, and the lockfile — and **push**:
    ```bash
@@ -555,7 +555,7 @@ Data apps are delivered by Git — you commit the app directory and Metabase pul
 > **Don't offer to "deploy" the app or ask how the bundle reaches a staging environment** — there is no separate deploy step, and the question only confuses users: Metabase imports the committed bundle straight from the connected repo on its next sync. Once the change is on the branch Metabase syncs from — however the user gets it there (a merged PR, or a push straight to that branch) — just tell them to pull it in and open the app in Metabase at `/apps/<slug>`.
 
 - **To update:** update `resources/` if the definitions changed, commit a new build, and pull again.
-- **To remove:** delete the app's directory from the repo and push — the next sync removes it, with its collection, saved questions, and actions.
+- **To remove:** delete the app's directory from the repo and push — the next sync removes it, with its collection, saved questions, metrics and actions.
 
 ## Common pitfalls
 

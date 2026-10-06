@@ -124,9 +124,9 @@ Do not batch steps across upgrades. Do not touch `version` before item 5.
    names an SDK symbol no upgrade guide mentions is a gap in the guides, not a user
    problem: surface the exact error, say which guide should have covered it, and
    stop. Otherwise, at most three fix rounds, then stop and ask.
-2. `npm run validate-resources`, `npm run check-resources`, then
-   `npm run build`, which refuses to bundle when `resources/` doesn't back the
-   definitions. Follow their messages; none of them calls Metabase.
+2. `npm run check-resources`, then `npm run build`, which refuses to bundle
+   when `resources/` doesn't back the definitions. Follow their messages;
+   neither calls Metabase.
 3. `npm run dev`, then take the preview URL from the `Local:` line Vite prints.
    The template asks for port 5174, but Vite moves to the next free port when
    that one is taken, so never assume it. Open that URL, then read the
