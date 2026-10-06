@@ -113,10 +113,23 @@ describe("SegmentedControl", () => {
     });
 
     await userEvent.click(screen.getByLabelText("Preview"));
-    await userEvent.click(screen.getByLabelText("Preview"));
 
     expect(onChange).toHaveBeenCalledTimes(1);
     expect(onChange).toHaveBeenCalledWith("preview");
+  });
+
+  it("doesn't call onChange when clicking the selected item", async () => {
+    const { onChange } = setup({
+      value: "preview",
+      data: [
+        { value: "code", label: "Code" },
+        { value: "preview", ariaLabel: "Preview", icon: "eye_filled" },
+      ],
+    });
+
+    await userEvent.click(screen.getByLabelText("Preview"));
+
+    expect(onChange).not.toHaveBeenCalled();
   });
 
   it("should disable individual items", () => {
