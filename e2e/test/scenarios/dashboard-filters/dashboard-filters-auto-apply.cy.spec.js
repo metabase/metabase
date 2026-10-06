@@ -48,7 +48,12 @@ describe(
     });
 
     describe("modifying only dashboard", () => {
-      it("should handle toggling auto applying filters on and off", () => {
+      it("should handle toggling auto applying filters on and off and send snowplow events only when disabling them", () => {
+        H.resetSnowplow();
+        cy.signInAsAdmin();
+        H.enableTracking();
+        cy.signInAsNormalUser();
+
         createDashboard();
         openDashboard();
         cy.wait("@cardQuery");
@@ -72,6 +77,9 @@ describe(
           cy.findByLabelText(filterToggleLabel).click();
           cy.wait("@updateDashboard");
           cy.findByLabelText(filterToggleLabel).should("not.be.checked");
+        });
+        H.expectUnstructuredSnowplowEvent({
+          event: "auto_apply_filters_disabled",
         });
         H.closeDashboardSettingsSidebar();
         H.filterWidget().findByText("Gadget").should("be.visible");
@@ -108,6 +116,10 @@ describe(
           cy.wait("@updateDashboard");
           cy.findByLabelText(filterToggleLabel).should("be.checked");
         });
+        cy.log("enabling auto-apply filters should not send an event");
+        H.expectUnstructuredSnowplowEvent({
+          event: "auto_apply_filters_disabled",
+        });
         H.closeDashboardSettingsSidebar();
 
         H.filterWidget().findByText("Widget").should("be.visible");
@@ -136,6 +148,11 @@ describe(
         cy.get("@cardQuery.all").should("have.length", 5);
 
         cy.get("@updateDashboardSpy").should("have.callCount", 3);
+        H.expectUnstructuredSnowplowEvent(
+          { event: "auto_apply_filters_disabled" },
+          2,
+        );
+        H.expectNoBadSnowplowEvents();
       });
     });
 
@@ -317,44 +334,6 @@ describe(
     });
   },
 );
-
-describe("scenarios > dashboards > filters > auto apply", () => {
-  beforeEach(() => {
-    H.restore();
-    H.resetSnowplow();
-    cy.signInAsAdmin();
-    H.enableTracking();
-    cy.intercept("PUT", "/api/dashboard/*").as("updateDashboard");
-  });
-
-  afterEach(() => {
-    H.expectNoBadSnowplowEvents();
-  });
-
-  it("should send snowplow events only when disabling auto-apply filters", () => {
-    createDashboard();
-    openDashboard();
-    cy.wait("@cardQuery");
-
-    H.openDashboardSettingsSidebar();
-    H.sidesheet().within(() => {
-      cy.findByLabelText(filterToggleLabel).click();
-      cy.wait("@updateDashboard");
-      cy.findByLabelText(filterToggleLabel).should("not.be.checked");
-      H.expectUnstructuredSnowplowEvent({
-        event: "auto_apply_filters_disabled",
-      });
-
-      cy.log("enabling auto-apply filters should not send an event");
-      cy.findByLabelText(filterToggleLabel).click();
-      cy.wait("@updateDashboard");
-      cy.findByLabelText(filterToggleLabel).should("be.checked");
-      H.expectUnstructuredSnowplowEvent({
-        event: "auto_apply_filters_disabled",
-      });
-    });
-  });
-});
 
 const createDashboard = ({
   dashboardDetails: dashboardOpts = {},
