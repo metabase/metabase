@@ -243,9 +243,11 @@ describe("scenarios > dashboard > filters > boolean", () => {
 function createQuestionAndDashboard({
   questionName = QUESTION_NAME,
   dashboardName = DASHBOARD_NAME,
+  parameters,
 }: {
   questionName?: string;
   dashboardName?: string;
+  parameters?: DashboardDetails["parameters"];
 } = {}) {
   const questionDetails: StructuredQuestionDetails = {
     name: questionName,
@@ -262,6 +264,7 @@ function createQuestionAndDashboard({
   };
   const dashboardDetails: DashboardDetails = {
     name: dashboardName,
+    parameters,
   };
   return H.createQuestionAndDashboard({
     questionDetails,
@@ -357,14 +360,33 @@ function createAndMapParameter({
 
 function setupDashboardClickBehavior() {
   cy.log("setup target dashboard");
+  const parameter = {
+    id: "f8ec7c71",
+    name: PARAMETER_NAME,
+    slug: "boolean_parameter",
+    type: "boolean/=",
+    sectionId: "boolean",
+  };
   createQuestionAndDashboard({
     dashboardName: DASHBOARD_NAME,
     questionName: QUESTION_NAME,
-  }).then(({ dashboardId }) => {
-    H.visitDashboard(dashboardId);
-    H.editDashboard();
-    createAndMapParameter();
-    H.saveDashboard();
+    parameters: [parameter],
+  }).then(({ dashboardId, questionId }) => {
+    H.updateDashboardCards({
+      dashboard_id: dashboardId,
+      cards: [
+        {
+          card_id: questionId,
+          parameter_mappings: [
+            {
+              parameter_id: parameter.id,
+              card_id: questionId,
+              target: ["dimension", ["expression", COLUMN_NAME]],
+            },
+          ],
+        },
+      ],
+    });
   });
 
   cy.log(
