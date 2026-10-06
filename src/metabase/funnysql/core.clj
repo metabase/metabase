@@ -819,7 +819,7 @@
 
 (defn- binary-fn-call? [x]
   (and (fn-call? x)
-       (binary-operators (first x) )))
+       (binary-operators (first x))))
 
 (defn- -unary-binary-operator! [f x context]
   (case f
