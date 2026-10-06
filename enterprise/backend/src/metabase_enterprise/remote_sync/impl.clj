@@ -8,6 +8,7 @@
    [metabase-enterprise.remote-sync.merge :as remote-sync.merge]
    [metabase-enterprise.remote-sync.models.remote-sync-object :as remote-sync.object]
    [metabase-enterprise.remote-sync.models.remote-sync-task :as remote-sync.task]
+   [metabase-enterprise.remote-sync.save-rule :as save-rule]
    [metabase-enterprise.remote-sync.settings :as settings]
    [metabase-enterprise.remote-sync.source :as source]
    [metabase-enterprise.remote-sync.source.ingestable :as source.ingestable]
@@ -69,8 +70,8 @@
              + 0 ids-by-model))
 
 (defn- delete-with-closure!
-  "Deletes the entities `ids-by-model` (a map of model key to a set of ids) and the rest of their delete closure
-  (see [[remote-sync.db/delete-closure]]), children before parents in [[spec/specs-for-deletion]] order. Run it in
+  "Deletes the entities of `closure`, the delete closure of the entities `ids-by-model` (a map of model key to a set of
+  ids; see [[remote-sync.db/delete-closure]]), children before parents in [[spec/specs-for-deletion]] order. Run it in
   the transaction of the pull. `loaded` is a map of model type to the set of entity ids that the pull loaded.
   Returns:
    - `:deleted`: the closure, as a map of model key to a set of ids;
@@ -78,9 +79,8 @@
      `loaded`;
    - `:search-ids`: a map of search model to the search-index ids (strings) of every deleted row, also the
      model-index values that the delete removes by cascade."
-  [ids-by-model loaded]
-  (let [{closure :ids-by-model :keys [model-index-ids]} (remote-sync.db/delete-closure ids-by-model)
-        ;; read before the delete, which removes the values by cascade
+  [ids-by-model {closure :ids-by-model :keys [model-index-ids]} loaded]
+  (let [;; read before the delete, which removes the values by cascade
         value-ids    (remote-sync.db/model-index-value-search-ids (vec model-index-ids))
         ;; read before the delete, which removes the entity ids
         loaded-count (loaded-count (into {}
@@ -110,17 +110,18 @@
 
   Path-based models (Table, Field) are not removed here - they are controlled by published table settings."
   [synced-collection-ids {:keys [by-entity-id]}]
-  (delete-with-closure!
-   (into {}
-         (for [[model-key model-spec] (spec/specs-for-deletion)
-               :let [entity-ids (get by-entity-id (:model-type model-spec) [])
-                     ids        (remote-sync.db/removed-instance-ids
-                                 model-key
-                                 (spec/removal-opts model-spec synced-collection-ids entity-ids))]
-               :when (seq ids)]
-           [model-key ids]))
-   ;; the full import does not count deletes in its outcome
-   {}))
+  (let [ids-by-model (into {}
+                           (for [[model-key model-spec] (spec/specs-for-deletion)
+                                 :let [entity-ids (get by-entity-id (:model-type model-spec) [])
+                                       ids        (remote-sync.db/removed-instance-ids
+                                                   model-key
+                                                   (spec/removal-opts model-spec synced-collection-ids entity-ids))]
+                                 :when (seq ids)]
+                             [model-key ids]))]
+    (delete-with-closure! ids-by-model
+                          (remote-sync.db/delete-closure ids-by-model)
+                          ;; the full import does not count deletes in its outcome
+                          {})))
 
 (defn- quoted
   "Wraps `s` in backticks so that leading and trailing whitespace is visible to the reader."
@@ -336,11 +337,22 @@
 
 (defn- insert-with-metadata!
   "Inserts RemoteSyncObject `rows` after an import, one `content-hash-batch-size` chunk at a time, folding
-  each chunk's file_path + content_hash (`repo-paths` gives entity-id models their real path) into its insert."
-  [rows repo-paths]
-  (serdes/with-cache
-    (doseq [chunk (partition-all app-db-batch-size rows)]
-      (remote-sync.db/insert-rsos! (merge-content-metadata chunk (import-content-metadata chunk repo-paths))))))
+  each chunk's file_path + content_hash (`repo-paths` gives entity-id models their real path) into its insert.
+
+  `loaded`, when given, is `{[model-type id] hash}` of the entities that a merge pull wrote (see
+  [[save-rule/loaded-hashes]]): such a row gets the hash of what the pull wrote, and its status follows
+  [[save-rule/row-status]]."
+  ([rows repo-paths]
+   (insert-with-metadata! rows repo-paths nil))
+  ([rows repo-paths loaded]
+   (serdes/with-cache
+     (doseq [chunk (partition-all app-db-batch-size rows)]
+       (remote-sync.db/insert-rsos!
+        (cond->> (merge-content-metadata chunk (import-content-metadata chunk repo-paths))
+          loaded (mapv (fn [{:keys [model_type model_id content_hash] :as row}]
+                         (if-let [hash (get loaded [model_type model_id])]
+                           (merge row (save-rule/row-status hash content_hash))
+                           row)))))))))
 
 (defn- branch-changed-since-scheduling?
   "Returns true if `pre-task-branch` was captured by the async-* function and the
@@ -512,15 +524,19 @@
   `:success` result map carrying `snapshot-version`. The caller decides whether an incremental load is safe; this
   assumes the plan is valid.
 
+  `save-rule`, when given, is the save-rule state of a merge pull (see [[save-rule/plan]]): the load and the
+  reconcile follow the save rule, and a stop throws (see [[save-rule/stop-data]]).
+
   Renames are handled by entity identity, not path: a rename re-loads the same entity_id at the new path
   (an add), so the old path's delete is recognized as a rename and the entity is not removed."
-  [{:keys [ingestable deleted-rsos] :as _plan} snapshot-version report sync-timestamp & {:keys [finalize!]}]
+  [{:keys [ingestable deleted-rsos] :as _plan} snapshot-version report sync-timestamp & {:keys [finalize! save-rule]}]
   (report 0.05 {:force? true})
   (let [load-result   (when ingestable
                         (serdes/with-cache
                           (serialization/load-metabase!
                            (source.ingestable/wrap-progress-ingestable report [0.05 0.7] ingestable)
-                           :reindex? false)))
+                           :reindex? false
+                           :wrap-load-one (some-> save-rule save-rule/wrap-load-one))))
         imported-data (spec/extract-imported-entities (:seen load-result))
         loaded-eid?   (fn [model-type eid]
                         ;; by-entity-id holds sets of raw entity_id strings, keyed by model type
@@ -544,7 +560,14 @@
           (t2/with-transaction [_conn]
             ;; The closure runs after the load. A Card file with no `dashboard_id` does not clear the old value, so
             ;; the closure still holds a Card that the remote moved out of a deleted Dashboard.
-            (let [{:keys [deleted] :as result} (delete-with-closure! deletes (:by-entity-id imported-data))
+            (let [closure      (if save-rule
+                                 ;; entity rows before ledger rows, as every save path locks them
+                                 (let [closure (save-rule/lock-closure! deletes)]
+                                   (save-rule/lock-ledger-rows! save-rule closure)
+                                   (save-rule/check-closure! save-rule closure)
+                                   closure)
+                                 (remote-sync.db/delete-closure deletes))
+                  {:keys [deleted] :as result} (delete-with-closure! deletes closure (:by-entity-id imported-data))
                   closure-keys (for [[model-key ids] deleted
                                      :let [model-type (:model-type (spec/spec-for-model-key model-key))]
                                      id ids]
@@ -556,7 +579,9 @@
               (when (seq sync-rows)
                 ;; fold file_path + content_hash into the insert so the touched rows are written once (chunked)
                 (remote-sync.db/delete-rsos-of-keys! sync-rows)
-                (insert-with-metadata! sync-rows (when ingestable (source.ingestable/cached-file-paths ingestable))))
+                (insert-with-metadata! sync-rows
+                                       (when ingestable (source.ingestable/cached-file-paths ingestable))
+                                       (some-> save-rule save-rule/loaded-hashes)))
               (when finalize! (finalize!))
               result))]
       (report 0.9 {:force? true})
@@ -577,12 +602,6 @@
                            loaded-count)
                  :branch (settings/remote-sync-branch)}})))
 
-(defn- entity-key?
-  "True for the merge key of an entity (a vector of `[model id]` pairs), false for the path key of a file that is not
-  an entity file."
-  [k]
-  (vector? (first k)))
-
 (defn- local-ids-by-model
   "The local ids of the entities with the merge keys `ks`, as a map of model key to a set of ids. Leaves out the keys
   of models with no entity id, and of entities with no local row."
@@ -602,7 +621,7 @@
   change of that entity. Each conflict has the shape of a conflict of [[remote-sync.merge/three-way-merge]]."
   [deleted-ids {:keys [decisions ours-units]}]
   (when (seq deleted-ids)
-    (let [key-of (into {} (comp (filter entity-key?) (map (juxt last identity))) (keys ours-units))]
+    (let [key-of (into {} (comp (filter remote-sync.merge/entity-key?) (map (juxt last identity))) (keys ours-units))]
       (vec (for [[model-key ids] (:ids-by-model (remote-sync.db/delete-closure deleted-ids))
                  :let  [model-type (:model-type (spec/spec-for-model-key model-key))]
                  eid   (vals (remote-sync.db/entity-ids-by-id model-key (vec ids)))
@@ -620,6 +639,14 @@
      :conflicts labels
      :message   message}))
 
+(defn- stop-result
+  "The `:conflict` result of a merge pull of `snapshot` that the save rule stopped, or nil when `e` is not a stop (see
+  [[save-rule/stop-data]]). The stop rolled back the transaction that it ran in, so the version does not move."
+  [snapshot state e]
+  (when-let [data (save-rule/stop-data e)]
+    (log/infof "Pull merge stopped: content changed locally during the pull (%s)" (pr-str (select-keys data [:phase :reason :key])))
+    (merge-conflict-result snapshot [(save-rule/stop-conflict state data)] (save-rule/stop-message data))))
+
 (defn- import-merged!
   "Import in merge mode. Should only be called when you have a base-snapshot and its version differs from snaphot's version.
 
@@ -629,7 +656,12 @@
   - else loads from the remote tip only the load units that the remote changed (decision `:theirs` or `:same`),
     deletes the entities whose files the remote deleted with their delete closure, writes the ledger rows of those
     entities only, with the paths of their files in the remote tip, and sets the version to the remote tip. Every
-    other row, dirty or synced, keeps its status, hash and path."
+    other row, dirty or synced, keeps its status, hash and path.
+
+  The load and the deletes follow the save rule (see [[save-rule]]): when a user changes an entity that the pull must
+  write after the merge read it, or adds an entity under one that the pull deletes, the pull stops and returns
+  `:conflict` on that entity. The version does not move, and the entities that the load wrote before the stop keep the
+  remote content."
   [snapshot base-snapshot task-id report sync-timestamp finalize!]
   (let [{:keys [conflicts merged summary decisions theirs-paths theirs-unit-paths] :as merge-result}
         (serdes/with-cache
@@ -638,12 +670,12 @@
                                   snapshot base-snapshot task-id
                                   :total (spec/exportable-entity-count targets)
                                   :synced-hashes (remote-sync.db/synced-content-hashes-by-path))))
-        deleted-ids     (when (empty? conflicts)
-                          (local-ids-by-model (for [[k decision] decisions
-                                                    :when (and (= :theirs decision)
-                                                               (entity-key? k)
-                                                               (nil? (get theirs-paths k)))]
-                                                k)))
+        load-keys        (for [[k decision] decisions
+                               :when (and (#{:theirs :same} decision) (remote-sync.merge/entity-key? k))]
+                           k)
+        delete-keys      (filter #(nil? (get theirs-paths %)) load-keys)
+        deleted-ids      (when (empty? conflicts)
+                           (local-ids-by-model (filter #(= :theirs (get decisions %)) delete-keys)))
         delete-conflicts (delete-closure-conflicts deleted-ids merge-result)]
     (cond
       (seq conflicts)
@@ -655,32 +687,35 @@
                              "Import blocked: the remote branch deleted content that holds a local change. Your local change is kept.")
 
       :else
-      (let [load-paths      (into []
-                                  (comp (filter (fn [[k decision]]
-                                                  (and (#{:theirs :same} decision) (entity-key? k))))
-                                        (mapcat (fn [[k _]] (get theirs-unit-paths k))))
-                                  decisions)
-            ingestable      (when (seq load-paths)
-                              (source.p/->ingestable snapshot {:path-filters (exact-path-filters load-paths)}))
-            has-transforms? (snapshot-has-transforms? (source.p/->ingestable (source/specs->snapshot merged)
-                                                                             {:path-filters (managed-path-filters)}))
-            _               (enable-transforms-setting-for! has-transforms?)
-            result          (incremental-load-snapshot! {:ingestable   ingestable
-                                                         :deleted-rsos (for [[model-key ids] deleted-ids
-                                                                             :let [model-type (:model-type (spec/spec-for-model-key model-key))]
-                                                                             id ids]
-                                                                         {:model_type model-type :model_id id})}
-                                                        (source.p/version snapshot) report sync-timestamp
-                                                        :finalize! finalize!)]
-        (disable-transforms-setting-for! has-transforms?)
-        (log/infof "Pull merge: folded in %d remote change(s) (added %d, updated %d, removed %d); kept %d local change(s)"
-                   (apply + (vals summary)) (:added summary) (:updated summary) (:removed summary)
-                   (count (filter #{:ours} (vals decisions))))
-        (assoc result
-               :merge-summary summary
-               :outcome       {:kind   "pulled"
-                               :count  (apply + (vals summary))
-                               :branch (settings/remote-sync-branch)})))))
+      (let [state      (save-rule/plan merge-result)
+            load-paths (into [] (mapcat #(get theirs-unit-paths %)) load-keys)
+            ingestable (when (seq load-paths)
+                         (source.p/->ingestable snapshot {:path-filters (exact-path-filters load-paths)}))]
+        (try
+          (save-rule/pre-check! state (remove (set delete-keys) load-keys) delete-keys)
+          (let [has-transforms? (snapshot-has-transforms? (source.p/->ingestable (source/specs->snapshot merged)
+                                                                                 {:path-filters (managed-path-filters)}))
+                _               (enable-transforms-setting-for! has-transforms?)
+                result          (incremental-load-snapshot! {:ingestable   ingestable
+                                                             :deleted-rsos (for [[model-key ids] deleted-ids
+                                                                                 :let [model-type (:model-type (spec/spec-for-model-key model-key))]
+                                                                                 id ids]
+                                                                             {:model_type model-type :model_id id})}
+                                                            (source.p/version snapshot) report sync-timestamp
+                                                            :finalize! finalize!
+                                                            :save-rule state)]
+            (disable-transforms-setting-for! has-transforms?)
+            (log/infof "Pull merge: folded in %d remote change(s) (added %d, updated %d, removed %d); kept %d local change(s)"
+                       (apply + (vals summary)) (:added summary) (:updated summary) (:removed summary)
+                       (count (filter #{:ours} (vals decisions))))
+            (assoc result
+                   :merge-summary summary
+                   :outcome       {:kind   "pulled"
+                                   :count  (apply + (vals summary))
+                                   :branch (settings/remote-sync-branch)}))
+          (catch Exception e
+            (or (stop-result snapshot state e)
+                (throw e))))))))
 
 (defn import!
   "Imports and reloads Metabase entities from a remote snapshot.

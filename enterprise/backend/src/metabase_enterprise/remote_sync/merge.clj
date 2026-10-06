@@ -36,14 +36,21 @@
       (log/warnf "Could not parse serialized content during merge; treating it as a non-serdes (path-keyed) file: %s" (ex-message e))
       nil)))
 
-(defn- entity-identity
-  "Returns a stable, rename-independent identity key for a parsed serialized `entity`, or nil if it has no serdes
-  path. The key is a vector of `[model id]` pairs (the serdes path with labels dropped)."
+(defn entity-identity
+  "Returns a stable, rename-independent identity key for a parsed serialized `entity` (also an ingested entity of a
+  serdes load), or nil if it has no serdes path. The key is a vector of `[model id]` pairs (the serdes path with labels
+  dropped). It is the key of the entity in the results of [[three-way-merge]]."
   [entity]
   (when (map? entity)
     (some->> (serdes/path entity)
              seq
              (mapv (fn [seg] [(str (:model seg)) (str (:id seg))])))))
+
+(defn entity-key?
+  "True for the key of an entity in the results of [[three-way-merge]] (see [[entity-identity]]), false for the key of
+  a file that is not an entity file."
+  [k]
+  (vector? (first k)))
 
 (defn- parent-dir [^String path]
   (when-let [idx (str/last-index-of path "/")]

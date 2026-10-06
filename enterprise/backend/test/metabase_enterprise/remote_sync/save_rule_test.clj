@@ -12,6 +12,7 @@
    [metabase-enterprise.remote-sync.impl :as impl]
    [metabase-enterprise.remote-sync.models.remote-sync-object :as remote-sync.object]
    [metabase-enterprise.remote-sync.models.remote-sync-task :as remote-sync.task]
+   [metabase-enterprise.remote-sync.save-rule :as save-rule]
    [metabase-enterprise.remote-sync.source :as source]
    [metabase-enterprise.remote-sync.source.protocol :as source.p]
    [metabase-enterprise.remote-sync.spec :as spec]
@@ -24,6 +25,7 @@
    [metabase.search.core :as search]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
+   [metabase.util :as u]
    [toucan2.core :as t2])
   (:import
    (java.time Instant OffsetDateTime ZoneOffset)))
@@ -87,7 +89,7 @@
   [src]
   (sync! "import" #(impl/import! (source.p/snapshot src) % :merge? true :base-snapshot (source.p/snapshot-at src "v0"))))
 
-(defn- once-at
+(defn- once-at!
   "A function of a progress fraction that calls `f` the first time the fraction is `fraction`."
   [fraction f]
   (let [done (atom false)]
@@ -178,7 +180,7 @@
                                  :error (str/join " | " (keep ex-message (take-while some? (iterate ex-cause e))))})))))))
     p))
 
-(defn- hold-at
+(defn- hold-at!
   "A function that, the first time `(pred & args)` holds, starts `f` on a plain Thread and then waits `hold-ms` on the
   calling thread. Returns `[hold! user]`: call `(hold! & args)` at the fixed point, and deref `user` for the result of
   `f` (see [[on-thread]])."
@@ -192,7 +194,7 @@
      user]))
 
 (defn- user-result
-  "The result of the concurrent user write of [[hold-at]], or `{:error \"not started\"}`."
+  "The result of the concurrent user write of [[hold-at!]], or `{:error \"not started\"}`."
   [user]
   (let [p (deref user 60000 nil)]
     (if p (deref p 60000 {:error "timed out"}) {:error "not started"})))
@@ -228,7 +230,7 @@
 (defn- deadlock?
   "True when the text `s` names a deadlock."
   [s]
-  (boolean (some-> s str/lower-case (str/includes? "deadlock"))))
+  (boolean (some-> s u/lower-case-en (str/includes? "deadlock"))))
 
 ;;; ------------------------------- the witness of a save is the content of the entity -------------------------------
 
@@ -239,7 +241,7 @@
     (do-with-synced-cards!
      (fn [{:keys [a t0]}]
        (let [[_ result] (merge-pull! t0 (edit t0 "Card A" "remote edit A")
-                                     (once-at 0.05 #(t2/update! :model/Card a {:description "edit during pull"})))]
+                                     (once-at! 0.05 #(t2/update! :model/Card a {:description "edit during pull"})))]
          (publish-card-update! a)
          (is (= :conflict (:status result)) (pr-str (summary result)))
          (is (= "edit during pull" (desc a)) "the edit is not overwritten")
@@ -252,12 +254,12 @@
      (fn [{:keys [a t0]}]
        (let [real-odt   t/offset-date-time
              [_ result] (merge-pull! t0 (edit t0 "Card A" "remote edit A")
-                                     (once-at 0.05 #(with-redefs [t/offset-date-time
-                                                                  (fn [& args]
-                                                                    (if (seq args)
-                                                                      (apply real-odt args)
-                                                                      (t/minus (real-odt) (t/seconds 2))))]
-                                                      (save! a "edit during pull"))))]
+                                     (once-at! 0.05 #(with-redefs [t/offset-date-time
+                                                                   (fn [& args]
+                                                                     (if (seq args)
+                                                                       (apply real-odt args)
+                                                                       (t/minus (real-odt) (t/seconds 2))))]
+                                                       (save! a "edit during pull"))))]
          (is (= :conflict (:status result)) (pr-str (summary result)))
          (is (= "edit during pull" (desc a)) "the edit is not overwritten"))))))
 
@@ -270,12 +272,12 @@
              real-odt   t/offset-date-time
              [_ result] (with-redefs [t/instant (fn ([] fixed) ([& args] (apply real-inst args)))]
                           (merge-pull! t0 (edit t0 "Card A" "remote edit A")
-                                       (once-at 0.05 #(with-redefs [t/offset-date-time
-                                                                    (fn [& args]
-                                                                      (if (seq args)
-                                                                        (apply real-odt args)
-                                                                        (OffsetDateTime/ofInstant fixed ZoneOffset/UTC)))]
-                                                        (save! a "edit during pull")))))]
+                                       (once-at! 0.05 #(with-redefs [t/offset-date-time
+                                                                     (fn [& args]
+                                                                       (if (seq args)
+                                                                         (apply real-odt args)
+                                                                         (OffsetDateTime/ofInstant fixed ZoneOffset/UTC)))]
+                                                         (save! a "edit during pull")))))]
          (is (= :conflict (:status result)) (pr-str (summary result)))
          (is (= "edit during pull" (desc a)) "the edit is not overwritten"))))))
 
@@ -284,7 +286,7 @@
             does not overwrite the edit: it stops before it writes A."
     (do-with-synced-cards!
      (fn [{:keys [a t0]}]
-       (let [[_ result] (merge-pull! t0 (edit t0 "Card A" "remote edit A") (once-at 0.05 #(save! a "edit during pull")))]
+       (let [[_ result] (merge-pull! t0 (edit t0 "Card A" "remote edit A") (once-at! 0.05 #(save! a "edit during pull")))]
          (is (= :conflict (:status result)) (pr-str (summary result)))
          (is (= "edit during pull" (desc a)))
          (is (= "update" (:status (row "Card" a)))))))))
@@ -293,7 +295,7 @@
   (testing "The user saves card A with no change during the load of a merge pull that takes the remote version of A."
     (do-with-synced-cards!
      (fn [{:keys [a t0]}]
-       (let [[_ result] (merge-pull! t0 (edit t0 "Card A" "remote edit A") (once-at 0.05 #(publish-card-update! a)))]
+       (let [[_ result] (merge-pull! t0 (edit t0 "Card A" "remote edit A") (once-at! 0.05 #(publish-card-update! a)))]
          (is (= :success (:status result)) (pr-str (summary result)))
          (is (= "remote edit A" (desc a)))
          (is (= "synced" (:status (row "Card" a)))))))))
@@ -305,7 +307,7 @@
   `:src` and the `:result` of the pull."
   [{:keys [b t0] :as m}]
   (let [t1           (-> t0 (edit "Card A" "remote edit A") (edit "Card B" "remote edit B") (edit "Card C" "remote edit C"))
-        [src result] (merge-pull! t0 t1 (once-at 0.05 #(save! b "edit during pull")))]
+        [src result] (merge-pull! t0 t1 (once-at! 0.05 #(save! b "edit during pull")))]
     (assoc m :src src :result result)))
 
 (deftest stop-reports-a-conflict-on-the-changed-entity-test
@@ -378,7 +380,7 @@
     (do-with-synced-cards!
      (fn [{:keys [a t0]}]
        (let [eid           (t2/select-one-fn :entity_id :model/Card a)
-             [hold! user]  (hold-at (ingested-is? "Card" eid) #(save! a "edit during load") 1500)
+             [hold! user]  (hold-at! (ingested-is? "Card" eid) #(save! a "edit during load") 1500)
              [src result]  (holding-the-load hold! (merge-pull! t0 (edit t0 "Card A" "remote edit A")))
              {:keys [ms error]} (user-result user)]
          (is (= :success (:status result)) (pr-str (summary result)))
@@ -411,8 +413,8 @@
                                                                        :row 10 :col 0})
                              :delete (t2/delete! :model/DashboardCard dc))
                            (publish-dashboard-update! d))
-            [hold! user] (hold-at (ingested-is? "Dashboard" (t2/select-one-fn :entity_id :model/Dashboard d))
-                                  user! 1000)
+            [hold! user] (hold-at! (ingested-is? "Dashboard" (t2/select-one-fn :entity_id :model/Dashboard d))
+                                   user! 1000)
             [_ result]   (holding-the-load hold! (merge-pull! t0 (edit t0 "Dash D" "remote edit D")))
             dashcards    (t2/select-fn-set (juxt :card_id :size_x) :model/DashboardCard :dashboard_id d)]
         {:result result
@@ -464,9 +466,9 @@
               ;; waits only for the load
               _            (put! 4)
               t0           (export-and-pull!)
-              [hold! user] (hold-at (ingested-is? "Dashboard" (t2/select-one-fn :entity_id :model/Dashboard d))
-                                    #(put! 9)
-                                    1000)
+              [hold! user] (hold-at! (ingested-is? "Dashboard" (t2/select-one-fn :entity_id :model/Dashboard d))
+                                     #(put! 9)
+                                     1000)
               [_ result]   (holding-the-load hold! (merge-pull! t0 (edit t0 "Dash D" "remote edit D")))
               {:keys [ms error]} (user-result user)]
           (is (= :success (:status result)) (pr-str (summary result)))
@@ -501,10 +503,10 @@
     (do-with-synced-cards!
      (fn [{:keys [a c t0]}]
        (let [user-c       (promise)
-             [hold! user] (hold-at (constantly true)
-                                   #(do (deliver user-c (on-thread (fn [] (save! c "edit C during reconcile"))))
-                                        (save! a "edit A during reconcile"))
-                                   1500)
+             [hold! user] (hold-at! (constantly true)
+                                    #(do (deliver user-c (on-thread (fn [] (save! c "edit C during reconcile"))))
+                                         (save! a "edit A during reconcile"))
+                                    1500)
              [_ result]   (holding-the-reconcile hold! (merge-pull! t0 (edit t0 "Card A" "remote edit A")))
              save-a       (user-result user)
              save-c       (user-result user-c)]
@@ -527,24 +529,41 @@
                             :object-id id
                             :user-id   (mt/user->id :crowberto)})))
 
+(defn- hold-between-the-reconcile-locks!
+  "Call `thunk` with the reconcile of a pull calling `hold!` after it locked the entity rows of the delete closure and
+  before it locks the ledger rows."
+  [hold! thunk]
+  (let [real (mt/original-fn #'save-rule/lock-ledger-rows!)]
+    (mt/with-dynamic-fn-redefs [save-rule/lock-ledger-rows! (fn [& args]
+                                                              (hold!)
+                                                              (apply real args))]
+      (thunk))))
+
+(defn- hold-after-the-reconcile-locks!
+  "Call `thunk` with the reconcile of a pull calling `hold!` after it locked the entity rows and the ledger rows."
+  [hold! thunk]
+  (holding-the-reconcile hold! (thunk)))
+
 (deftest public-link-on-a-remote-deleted-entity-during-the-reconcile-has-no-deadlock-test
   (testing "The remote deletes a dashboard (or a card). During the reconcile, an admin creates its public link, which
             locks the entity row and then, in its event, the ledger row. The reconcile takes the same order, so there
             is no deadlock: the pull succeeds, and the public link fails only because the pull deleted its entity."
-    (doseq [model-key [:model/Dashboard :model/Card]]
-      (testing model-key
+    (doseq [model-key           [:model/Dashboard :model/Card]
+            [fixed-point hold-in] {:between-the-reconcile-locks hold-between-the-reconcile-locks!
+                                   :after-the-reconcile-locks   hold-after-the-reconcile-locks!}]
+      (testing [model-key fixed-point]
         (with-sync-settings
           (mt/with-temp [:model/Collection {coll :id} {:name "Merge Test" :is_remote_synced true :location "/"}
                          :model/Dashboard  {d :id}    {:name "Dash D" :collection_id coll}
                          :model/Card       {y :id}    {:name "Card Y" :description "original" :collection_id coll}
                          :model/Card       {x :id}    {:name "Card X" :description "original" :collection_id coll}]
-            (let [t0           (export-and-pull!)
-                  _            (save! x "local edit X")
+            (let [t0             (export-and-pull!)
+                  _              (save! x "local edit X")
                   [gone-name id] (if (= :model/Card model-key) ["Card Y" y] ["Dash D" d])
-                  [hold! user] (hold-at (constantly true) #(public-link-tx! model-key id) 1000)
-                  [_ result]   (holding-the-reconcile hold! (merge-pull! t0 (dissoc t0 (path-of t0 gone-name))))
+                  [hold! user]   (hold-at! (constantly true) #(public-link-tx! model-key id) 1000)
+                  [_ result]     (hold-in hold! #(merge-pull! t0 (dissoc t0 (path-of t0 gone-name))))
                   {:keys [error]} (user-result user)
-                  gone?        (not (t2/exists? model-key :id id))]
+                  gone?          (not (t2/exists? model-key :id id))]
               (is (= :success (:status result)) (pr-str (summary result)))
               (is (not (deadlock? error)) (str "the public link does not deadlock: " error))
               (is (or (nil? error) gone?) "the public link succeeds, or it fails because the pull deleted its entity")
@@ -571,7 +590,7 @@
                                (events/publish-event! :event/action-create {:object  (t2/select-one :model/Action id)
                                                                             :user-id (mt/user->id :rasta)})
                                (reset! action-id id)))
-                [_ result] (merge-pull! t0 (dissoc t0 (path-of t0 "Model M")) (once-at 0.75 add!))]
+                [_ result] (merge-pull! t0 (dissoc t0 (path-of t0 "Model M")) (once-at! 0.75 add!))]
             (is (= :conflict (:status result)) (pr-str (summary result)))
             (is (= (str "Import blocked: content was added locally during the pull under content that the remote "
                         "branch deleted. Your local change is kept.")
@@ -580,3 +599,24 @@
             (is (t2/exists? :model/Card model-id) "the model stays")
             (is (t2/exists? :model/Action @action-id) "the new action stays")
             (is (= "create" (:status (row "Action" @action-id))))))))))
+
+(deftest remote-model-delete-with-a-locally-archived-action-test
+  (testing "The user archives action A of model M. The remote deletes M and the file of A. Both sides removed A, so the
+            pull deletes M and A with no conflict."
+    (with-sync-settings
+      (mt/with-temp [:model/Collection  {coll-id :id}   {:name "Merge Test" :is_remote_synced true :location "/"}
+                     :model/Card        {model-id :id}  {:name "Model M" :type :model :collection_id coll-id
+                                                         :dataset_query (venues-query)}
+                     :model/Action      {action-id :id} {:name "Old action" :type :query :model_id model-id}
+                     :model/QueryAction _               {:action_id     action-id
+                                                         :dataset_query (mt/native-query {:query "select 1"})}]
+        (let [t0         (export-and-pull!)
+              _          (t2/update! :model/Action action-id {:archived true})
+              _          (events/publish-event! :event/action-update {:object  (t2/select-one :model/Action action-id)
+                                                                      :user-id (mt/user->id :rasta)})
+              [_ result] (merge-pull! t0 (dissoc t0 (path-of t0 "Model M") (path-of t0 "Old action")))]
+          (is (some? (path-of t0 "Old action")))
+          (is (= :success (:status result)) (pr-str (summary result)))
+          (is (not (t2/exists? :model/Card :id model-id)))
+          (is (not (t2/exists? :model/Action :id action-id)))
+          (is (nil? (row "Action" action-id))))))))

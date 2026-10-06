@@ -233,32 +233,76 @@
    [:fn {:error/message "a Toucan 2 model key"} #(and (qualified-keyword? %) (= "model" (namespace %)))]
    [:set ms/PositiveInt]])
 
+(defn- lock-rows!
+  "Lock the rows of the table `table` whose column `column` is in `values`, for update, in the order of the column
+  `pk`. Returns the values of `pk` of the locked rows."
+  [table pk column values]
+  (into []
+        (mapcat #(t2/query {:select   [pk]
+                            :from     [table]
+                            :where    [:in column %]
+                            :order-by [[pk :asc]]
+                            :for      :update}))
+        (partition-all ids-per-query values)))
+
+(mu/defn lock-instances! :- [:sequential ms/PositiveInt]
+  "Lock the rows of the instances of `model` whose primary key is in `ids`, for update, in primary-key order. Returns
+  the primary keys of the rows that exist."
+  [model :- :keyword
+   ids   :- [:sequential ms/PositiveInt]]
+  (let [pk (first (t2/primary-keys model))]
+    (mapv pk (lock-rows! (t2/table-name model) pk pk ids))))
+
+(mu/defn lock-children! :- [:sequential ms/PositiveInt]
+  "Lock the rows of `model` whose column `fk` is in `parent-ids`, for update, in primary-key order. Returns their
+  primary keys."
+  [model      :- :keyword
+   fk         :- :keyword
+   parent-ids :- [:sequential ms/PositiveInt]]
+  (let [pk (first (t2/primary-keys model))]
+    (mapv pk (lock-rows! (t2/table-name model) pk fk parent-ids))))
+
+(def ^:private closure-lock-order
+  "The order in which [[delete-closure]] locks the models of one round: parents before children."
+  [:model/Dashboard :model/Document :model/Card :model/Action])
+
 (mu/defn delete-closure :- [:map
                             [:ids-by-model    IdsByModel]
                             [:model-index-ids [:set ms/PositiveInt]]]
   "The delete closure of the entities `ids-by-model`: those entities, plus every entity that a delete of them removes
   by foreign-key cascade and that the ledger can track (the Cards of each Dashboard and Document, and the Actions of
   each Card), until no new entity comes. Also returns the ids of the ModelIndexes of the closure's Cards, which the
-  delete removes by cascade with their values. Takes no lock."
-  [ids-by-model :- IdsByModel]
-  (loop [closure   ids-by-model
-         frontier  ids-by-model
-         index-ids #{}]
-    (let [{:keys [action-ids] new-index-ids :index-ids} (cascaded-action-and-index-ids
-                                                         (vec (:model/Card frontier)))
-          children  {:model/Card   (set (child-card-ids (vec (:model/Dashboard frontier))
-                                                        (vec (:model/Document frontier))))
-                     :model/Action (set action-ids)}
-          fresh     (into {}
-                          (keep (fn [[model-key ids]]
-                                  (let [new-ids (into #{} (remove (get closure model-key #{})) ids)]
-                                    (when (seq new-ids)
-                                      [model-key new-ids]))))
-                          children)
-          index-ids (into index-ids new-index-ids)]
-      (if (empty? fresh)
-        {:ids-by-model closure :model-index-ids index-ids}
-        (recur (merge-with into closure fresh) fresh index-ids)))))
+  delete removes by cascade with their values.
+
+  With `:lock?`, it locks the rows of the entities of each round for update, parents first, before it reads their
+  children. Else it takes no lock."
+  ([ids-by-model :- IdsByModel]
+   (delete-closure ids-by-model {}))
+  ([ids-by-model :- IdsByModel
+    {:keys [lock?]} :- [:map {:closed true} [:lock? {:optional true} :boolean]]]
+   (loop [closure   ids-by-model
+          frontier  ids-by-model
+          index-ids #{}]
+     (when lock?
+       (doseq [model-key (into closure-lock-order (remove (set closure-lock-order)) (keys frontier))
+               :let [ids (get frontier model-key)]
+               :when (seq ids)]
+         (lock-instances! model-key (vec (sort ids)))))
+     (let [{:keys [action-ids] new-index-ids :index-ids} (cascaded-action-and-index-ids
+                                                          (vec (:model/Card frontier)))
+           children  {:model/Card   (set (child-card-ids (vec (:model/Dashboard frontier))
+                                                         (vec (:model/Document frontier))))
+                      :model/Action (set action-ids)}
+           fresh     (into {}
+                           (keep (fn [[model-key ids]]
+                                   (let [new-ids (into #{} (remove (get closure model-key #{})) ids)]
+                                     (when (seq new-ids)
+                                       [model-key new-ids]))))
+                           children)
+           index-ids (into index-ids new-index-ids)]
+       (if (empty? fresh)
+         {:ids-by-model closure :model-index-ids index-ids}
+         (recur (merge-with into closure fresh) fresh index-ids))))))
 
 (mu/defn delete-instances! :- :int
   "Delete the instances of `model` with `ids`. Returns the number deleted."
@@ -530,6 +574,16 @@
   (t2/select-one :model/RemoteSyncObject
                  {:where [:and [:= :model_type model-type] [:= :model_id model-id]]
                   :for   :update}))
+
+(mu/defn lock-rsos-of-keys! :- [:sequential ms/PositiveInt]
+  "Lock the RemoteSyncObjects keyed by the `:model_type`/`:model_id` of `rows`, for update, in id order. Returns their
+  ids."
+  [rows :- [:sequential [:map {:closed true} [:model_type :string] [:model_id ModelId]]]]
+  (into []
+        (mapcat #(t2/select-pks-vec :model/RemoteSyncObject {:where    (rso-keys-expr %)
+                                                             :order-by [[:id :asc]]
+                                                             :for      :update}))
+        (partition-all ids-per-query rows)))
 
 (mu/defn rso-by-file-path
   "The RemoteSyncObject at `file-path`, or nil."
