@@ -36,6 +36,32 @@
      :cacheCreationTokens (or (:cache_write_tokens details) 0)
      :cacheReadTokens     (or (:cached_tokens details) 0)}))
 
+(defn usage-once
+  "Move the server's usage in `chunks`, a reducible of Chat Completions chunks, to one final chunk.
+
+  The final `{:usage ...}` chunk carries the last usage the server sent. Some servers repeat their running totals on
+  every chunk, and translating each would count the call many times over. A stream that fails partway still passes
+  on the usage it received before the failure is rethrown."
+  [chunks]
+  (reify clojure.lang.IReduceInit
+    (reduce [_ rf init]
+      (let [usage  (volatile! nil)
+            latest (volatile! init)
+            flush  (fn [acc]
+                     (cond-> acc
+                       (and @usage (not (reduced? @latest))) (rf {:usage @usage})))
+            acc    (try
+                     (reduce (fn [acc chunk]
+                               (when-let [u (:usage chunk)]
+                                 (vreset! usage u))
+                               (vreset! latest (rf acc (dissoc chunk :usage))))
+                             init
+                             chunks)
+                     (catch Throwable t
+                       (flush @latest)
+                       (throw t)))]
+        (unreduced (flush acc))))))
+
 ;;; AISDK parts → Chat Completions messages
 
 (defn- merge-consecutive-assistant-messages

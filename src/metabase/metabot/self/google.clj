@@ -37,6 +37,7 @@
    [metabase.metabot.self.google.models :as models]
    [metabase.metabot.self.google.raw-predict :as raw-predict]
    [metabase.metabot.self.google.stream-generate-content :as stream-generate-content]
+   [metabase.metabot.self.openai.chat-completions :as chat-completions]
    [metabase.metabot.self.vllm :as vllm]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
@@ -695,8 +696,7 @@
         raw (apply google-raw args)]
     ;; Keep this dispatch in sync with `google-raw`, which independently uses
     ;; `model->family` to select the request protocol.
-    (eduction (case (model->family model)
-                :anthropic        (raw-predict/->aisdk-chunks-xf)
-                :google           (stream-generate-content/->aisdk-chunks-xf)
-                :chat-completions (vllm/vllm->aisdk-chunks-xf))
-              raw)))
+    (case (model->family model)
+      :anthropic        (eduction (raw-predict/->aisdk-chunks-xf) raw)
+      :google           (eduction (stream-generate-content/->aisdk-chunks-xf) raw)
+      :chat-completions (eduction (vllm/vllm->aisdk-chunks-xf) (chat-completions/usage-once raw)))))

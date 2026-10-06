@@ -500,4 +500,4 @@
   "Call a vLLM server's Chat Completions API, return AISDK stream."
   [& args]
   (let [raw (apply vllm-raw args)]
-    (eduction (vllm->aisdk-chunks-xf) raw)))
+    (eduction (vllm->aisdk-chunks-xf) (chat-completions/usage-once raw))))

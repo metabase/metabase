@@ -114,4 +114,4 @@
   "Call the xAI Chat Completions API, return AISDK stream."
   [& args]
   (let [raw (apply xai-raw args)]
-    (eduction (xai->aisdk-chunks-xf) raw)))
+    (eduction (xai->aisdk-chunks-xf) (chat-completions/usage-once raw))))

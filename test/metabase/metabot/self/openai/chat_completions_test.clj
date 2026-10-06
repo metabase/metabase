@@ -1,5 +1,6 @@
 (ns metabase.metabot.self.openai.chat-completions-test
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.metabot.self.core :as self.core]
    [metabase.metabot.self.mistral :as mistral]
@@ -321,6 +322,49 @@
                                   :finish_reason "tool_calls"
                                   :usage         dual-location-usage}]}
                       {:choices [] :usage dual-location-usage}]))))))
+
+(def ^:private running-usage-chunks
+  "A reply from a server that repeats its running usage totals on every chunk."
+  [{:id      "chatcmpl-5"
+    :model   "qwen3-235b"
+    :choices [{:index 0 :delta {:role "assistant" :content "Hel"}}]
+    :usage   {:prompt_tokens 120 :completion_tokens 1}}
+   {:choices [{:index 0 :delta {:content "lo"}}]
+    :usage   {:prompt_tokens 120 :completion_tokens 2}}
+   {:choices [{:index 0 :delta {} :finish_reason "stop"}]
+    :usage   {:prompt_tokens 120 :completion_tokens 3}}])
+
+(deftest ^:parallel usage-once-counts-running-usage-once-test
+  (testing "a server that repeats its running totals on every chunk is counted once, with its last totals"
+    (is (= [:start :text-start :text-delta :text-delta :text-end :usage]
+           (chunk-types (chat-completions/usage-once running-usage-chunks))))
+    (is (=? [{:usage         {:promptTokens 120 :completionTokens 3}
+              :finish-reason "stop"}]
+            (usage-parts (chat-completions/usage-once running-usage-chunks))))))
+
+(defn- failing-sse-stream
+  "An SSE body that sends `chunks`, then fails the way a reset connection does."
+  [chunks]
+  (java.io.SequenceInputStream.
+   (java.io.ByteArrayInputStream.
+    (.getBytes ^String (str/join (map #(str "data: " (json/encode %) "\n\n") chunks)) "UTF-8"))
+   (proxy [java.io.InputStream] []
+     (read
+       ([] (throw (java.io.IOException. "Connection reset")))
+       ([_bytes _offset _length] (throw (java.io.IOException. "Connection reset")))))))
+
+(deftest ^:parallel usage-once-passes-on-usage-when-the-stream-fails-test
+  (testing "a stream that fails partway still counts the usage it received, once, before the failure"
+    (let [parts (atom [])]
+      (is (thrown-with-msg?
+           java.io.IOException #"Connection reset"
+           (transduce (chat-completions/chat-completions->aisdk-chunks-xf)
+                      (fn ([acc] acc) ([acc part] (swap! parts conj part) acc))
+                      nil
+                      (chat-completions/usage-once
+                       (self.core/sse-reducible (failing-sse-stream (pop running-usage-chunks)))))))
+      (is (=? [{:type :usage :usage {:promptTokens 120 :completionTokens 2}}]
+              (filterv #(= :usage (:type %)) @parts))))))
 
 (deftest ^:parallel chunks-xf-cache-reads-come-from-prompt-tokens-details-test
   (testing "cacheReadTokens is read from prompt_tokens_details, and cached tokens are a subset of promptTokens"
