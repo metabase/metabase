@@ -191,8 +191,9 @@
                :creator_id    (serdes/fk :model/User)
                ;; Normalize on import so template-tag name keys come back as strings (YAML ingest keywordizes
                ;; them).
-               :template_tags {:export identity
-                               :import #(lib/normalize :metabase.lib.schema.template-tag/template-tag-map %)}}
+               :template_tags {:export serdes/export-mbql
+                               :import #(some->> % serdes/import-mbql
+                                                 (lib/normalize :metabase.lib.schema.template-tag/template-tag-map))}}
    :defaults {:archived false}})
 
 (defmethod serdes/required "NativeQuerySnippet"
@@ -201,15 +202,21 @@
     {["Collection" collection_id] {"NativeQuerySnippet" id}}))
 
 (defmethod serdes/deserialization-dependencies "NativeQuerySnippet"
-  [{:keys [collection_id]}]
-  (when collection_id
-    [[{:model "Collection" :id collection_id}]]))
+  [{:keys [collection_id template_tags]}]
+  (set
+   (concat
+    (when collection_id
+      [[{:model "Collection" :id collection_id}]])
+    (serdes/mbql-deps false template_tags))))
 
 (defmethod serdes/serialization-dependencies "NativeQuerySnippet"
-  [_model-name {:keys [collection_id]}]
-  ;; A snippet only references its containing Collection, which a selective export may legitimately omit.
-  (when collection_id
-    #{[{:model "Collection" :id collection_id}]}))
+  [_model-name {:keys [collection_id template_tags]}]
+  ;; A snippet's containing Collection may legitimately be omitted by a selective export.
+  (set
+   (concat
+    (when collection_id
+      [[{:model "Collection" :id collection_id}]])
+    (serdes/mbql-deps true template_tags))))
 
 (defmethod serdes/storage-path "NativeQuerySnippet" [snippet ctx]
   (serdes/storage-default-collection-path snippet ctx "snippets"))
