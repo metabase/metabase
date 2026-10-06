@@ -43,7 +43,8 @@
                              :type/Integer                "INTEGER"
                              :type/Text                   "VARCHAR"
                              :type/Time                   "TIME"
-                             :type/TimeWithTZ             "TIME WITH TIME ZONE"}]
+                             :type/TimeWithTZ             "TIME WITH TIME ZONE"
+                             :type/UUID                   "UUID"}]
   (defmethod sql.tx/field-base-type->sql-type [:starburst base-type] [_ _] db-type))
 
 (defmethod tx/dbdef->connection-details :starburst
@@ -74,8 +75,8 @@
   nil)
 
 (defmethod load-data/row-xform :starburst
-  [_driver _dbdef _tabledef]
-  (load-data/add-ids-xform))
+  [_driver _dbdef tabledef]
+  (load-data/maybe-add-ids-xform tabledef))
 
 (defmethod ddl/insert-rows-dml-statements :starburst
   [driver table-identifier rows]
