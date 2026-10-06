@@ -363,3 +363,33 @@
               (card 400 "model")))
           (mt/with-temp [:model/Dashboard {dashboard-id :id} {:name "Elsewhere"}]
             (mt/user-http-request :crowberto :put 400 (str "dashboard/" dashboard-id) {:collection_id collection-id})))))))
+
+(deftest a-card-in-an-apps-collection-stays-what-a-pull-accepts-test
+  (testing "a card there can't become what the resource validator refuses, since the next export would write it"
+    (with-data-apps-sync
+      (let [mock (test-helpers/create-mock-source :initial-files {"main" (shop-tree (question-resources))})
+            mp   (mt/metadata-provider)
+            q    (lib/->legacy-MBQL (lib/query mp (lib.metadata/table mp (mt/id :venues))))]
+        (is (= :success (:status (import-at! mock "main" :force? true))))
+        (let [card-id       (t2/select-one-pk :model/Card :entity_id question-eid)
+              collection-id (shop-collection-id)]
+          (testing "archived, public, or a model"
+            (mt/with-temporary-setting-values [enable-public-sharing true]
+              (mt/user-http-request :crowberto :post 400 (str "card/" card-id "/public_link")))
+            (mt/user-http-request :crowberto :put 400 (str "card/" card-id) {:archived true})
+            (mt/user-http-request :crowberto :put 400 (str "card/" card-id) {:type "model"})
+            (is (=? {:archived false :public_uuid nil :type :question} (t2/select-one :model/Card :id card-id))))
+          (testing "a card that is already public can't be moved in"
+            (mt/with-temp [:model/Card {public-id :id} {:name              "Already public"
+                                                        :dataset_query     q
+                                                        :public_uuid       (str (random-uuid))
+                                                        :made_public_by_id (mt/user->id :crowberto)}]
+              (mt/user-http-request :crowberto :put 400 (str "card/" public-id) {:collection_id collection-id})))
+          (testing "it can still be edited, and the export keeps its file"
+            (mt/user-http-request :crowberto :put 200 (str "card/" card-id) {:description "still editable"})
+            (is (= :success (:status (export! mock))))
+            (is (some #(str/includes? % "/resources/cards/") (resource-files mock)))
+            (is (= :success (:status (import-at! mock "main" :force? true)))))
+          (testing "a card anywhere else still can be archived"
+            (mt/with-temp [:model/Card {other-id :id} {:name "Elsewhere"}]
+              (mt/user-http-request :crowberto :put 200 (str "card/" other-id) {:archived true}))))))))

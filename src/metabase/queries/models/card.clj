@@ -1073,6 +1073,15 @@
     (when (or (contains? changes :visualization_settings) (contains? changes :display))
       (check-timeline-visibility-permissions! card original))
     (check-allowed-content card changes)
+    ;; a card in a data app's collection stays what a pull of the app accepts
+    (when (and (some? (:collection_id card))
+               (or (not (contains? #{:question :metric} (keyword (:type card))))
+                   (:archived card)
+                   (:public_uuid card)
+                   (:enable_embedding card))
+               (contains? (set (perms/data-app-collection-ids)) (:collection_id card)))
+      (throw (ex-info "A card in a data app's collection must be a question or metric that is not archived, public or embedded"
+                      {:status-code 400})))
     (-> card
         (dissoc :verified-result-metadata?)
         (migrate-schema-governed-columns original changes)
