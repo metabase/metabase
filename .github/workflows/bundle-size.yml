@@ -14,7 +14,7 @@ concurrency:
 
 jobs:
   gate:
-    uses: ./.github/workflows/test-gate.yml
+    uses: ./.github/workflows/test.gate.yml
     with:
       filters: frontend_sources
 

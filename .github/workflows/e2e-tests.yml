@@ -15,7 +15,7 @@ concurrency:
 
 jobs:
   gate:
-    uses: ./.github/workflows/test-gate.yml
+    uses: ./.github/workflows/test.gate.yml
     with:
       filters: e2e_all
 

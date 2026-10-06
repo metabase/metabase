@@ -21,7 +21,7 @@ jobs:
   # A CI run is a smoke run -- Postgres Latest alone, to keep PRs cheap -- unless the whole suite is
   # forced to run (master, release branches, `ci:run-all`).
   gate:
-    uses: ./.github/workflows/test-gate.yml
+    uses: ./.github/workflows/test.gate.yml
     with:
       filters: backend_all
 

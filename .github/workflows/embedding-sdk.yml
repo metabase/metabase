@@ -10,7 +10,7 @@ concurrency:
 jobs:
   # Each job below maps to its own filter, so they read `matched` rather than `run`.
   gate:
-    uses: ./.github/workflows/test-gate.yml
+    uses: ./.github/workflows/test.gate.yml
     with:
       filters: >-
         frontend_sources embedding_documentation embedding_sdk_components

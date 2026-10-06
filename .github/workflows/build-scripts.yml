@@ -5,7 +5,7 @@ on:
 
 jobs:
   gate:
-    uses: ./.github/workflows/test-gate.yml
+    uses: ./.github/workflows/test.gate.yml
     with:
       filters: build_scripts embedder_plugin
 

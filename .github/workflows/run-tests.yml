@@ -20,7 +20,7 @@ jobs:
   # Force-cancel is the only decision left here. The jobs below read `matched`;
   # each suite that owns its gating calls the gate itself with the filters it cares about.
   gate:
-    uses: ./.github/workflows/test-gate.yml
+    uses: ./.github/workflows/test.gate.yml
     with:
       filters: build_embedding_sdk_package build_uberjar e2e_all
 

@@ -16,7 +16,7 @@ env:
 
 jobs:
   gate:
-    uses: ./.github/workflows/test-gate.yml
+    uses: ./.github/workflows/test.gate.yml
     with:
       filters: backend_all project_backend_checks project_migration_checks project_ratchet_checks
 
