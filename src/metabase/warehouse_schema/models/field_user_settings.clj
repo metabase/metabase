@@ -145,4 +145,4 @@
 (defmethod serdes/storage-path "FieldUserSettings" [field-user-settings _ctx]
   (let [field-path (serdes/storage-path-prefixes (pop (serdes/path field-user-settings)))]
     (update field-path (dec (count field-path))
-            (fn [segment] (update segment :label str field-user-settings-slug)))))
+            (fn [segment] (assoc segment :suffix field-user-settings-slug)))))

@@ -184,6 +184,25 @@
                    ["fields" "id.yaml"]}
                  (file-set (io/file dump-dir "databases" "my_company_data" "tables" "customers")))))))))
 
+(deftest long-field-name-user-settings-storage-test
+  (testing "a long Field name keeps the settings, Dimension and values suffixes, so their files don't replace the Field's"
+    (ts/with-random-dump-dir [dump-dir "serdesv2-"]
+      (mt/with-empty-h2-app-db!
+        (let [field-name (apply str (repeat 150 "x"))
+              slug       (apply str (repeat 100 "x"))]
+          (ts/with-temp-dpc [:model/Database          db    {:name "My Company Data"}
+                             :model/Table             table {:name "Customers" :db_id (:id db)}
+                             :model/Field             field {:name field-name :table_id (:id table)}
+                             :model/FieldUserSettings _     {:field_id (:id field) :description "edited"}
+                             :model/Dimension         _     {:field_id (:id field) :name "Long" :type :internal}
+                             :model/FieldValues       _     {:field_id (:id field)}]
+            (storage/store! (into [] (extract/extract {:include-field-values true})) (storage.files/file-writer dump-dir))
+            (is (= #{[(str slug ".yaml")]
+                     [(str slug "___fieldusersettings.yaml")]
+                     [(str slug "___dimension.yaml")]
+                     [(str slug "___fieldvalues.yaml")]}
+                   (file-set (io/file dump-dir "databases" "my_company_data" "tables" "customers" "fields"))))))))))
+
 (deftest entity-counts-report-test
   (ts/with-random-dump-dir [dump-dir "serdesv2-"]
     (mt/with-empty-h2-app-db!

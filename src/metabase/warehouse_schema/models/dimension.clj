@@ -60,4 +60,4 @@
 (defmethod serdes/storage-path "Dimension" [dimension _ctx]
   (let [field-path (serdes/storage-path-prefixes (pop (serdes/path dimension)))]
     (update field-path (dec (count field-path))
-            (fn [segment] (update segment :label str dimension-slug)))))
+            (fn [segment] (assoc segment :suffix dimension-slug)))))

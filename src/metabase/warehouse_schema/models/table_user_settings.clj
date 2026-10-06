@@ -216,4 +216,4 @@
 (defmethod serdes/storage-path "TableUserSettings" [tus _ctx]
   (let [table-path (pop (serdes/path tus))]
     (conj (serdes/storage-path-prefixes table-path)
-          {:label (str (:id (peek table-path)) table-user-settings-slug)})))
+          {:label (:id (peek table-path)) :suffix table-user-settings-slug})))
