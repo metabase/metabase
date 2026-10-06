@@ -122,13 +122,11 @@ const mapped = [
   [/^locales\/(.*)\.json$/, (m) => abs(`frontend/test/__mocks__/locales/${m[1]}.json`)],
   [/^csv-parse\/browser\/esm\/sync$/, () => abs("node_modules/csv-parse/dist/cjs/sync.cjs")],
   [/^csv-stringify\/browser\/esm\/sync$/, () => abs("node_modules/csv-stringify/dist/cjs/sync.cjs")],
-  [/^(sdk-ee-plugins|sdk-iframe-embedding-ee-plugins|sdk-iframe-embedding-script-ee-plugins|ee-plugins|ee-overrides)$/, () => abs("frontend/src/metabase/utils/noop.ts")],
+  [/^sdk-ee-plugins$/, () => abs("frontend/src/metabase/plugins/noop.ts")],
+  [/^(sdk-iframe-embedding-ee-plugins|sdk-iframe-embedding-script-ee-plugins|ee-plugins|ee-overrides)$/, () => abs("frontend/src/metabase/utils/noop.ts")],
   [/^docs\/embedding\/sdk\/snippets\//, () => fileStub],
   [/^docs\/(.*)$/, (m) => abs(`docs/${m[1]}`)],
   [/^build-configs\/(.*)$/, (m) => findFile(abs(`frontend/build/${m[1]}`))],
-  // jest's jsdom environment resolves with the browser condition, so the suite
-  // runs on whatwg-fetch, whose bodies are not single-read streams.
-  [/^cross-fetch\/polyfill$/, () => path.join(bunModule("cross-fetch"), "dist/browser-polyfill.js")],
   [/^jose$/, () => abs("node_modules/jose/dist/node/cjs/index.js")],
   [/^remend$/, () => abs("node_modules/remend/dist/index.js")],
 ];
@@ -158,8 +156,15 @@ const mocks = new Map();
 let bypassMocks = 0;
 const state = { mocks, mockExports: new Map() };
 globalThis.__nodeTestSpike = {
+  debugMocks: () => [...mocks.keys()].filter((key) => key.startsWith("node:")).map((key) => [key, Object.keys(state.mockExports.get(key) ?? {}).length, String(mocks.get(key)).slice(0, 120)]),
   mockExports(file) {
-    if (!state.mockExports.has(file)) state.mockExports.set(file, mocks.get(file)());
+    if (!state.mockExports.has(file)) {
+      state.mockExports.set(file, mocks.get(file)());
+      if (process.env.NT_DEBUG_MOCK_SHAPE && file.includes(process.env.NT_DEBUG_MOCK_SHAPE)) {
+        const made = state.mockExports.get(file);
+        console.error(`[mock-shape] ${file.replace(root, "")} keys=${Object.keys(made ?? {}).length} undefinedKeys=${Object.keys(made ?? {}).filter((key) => made[key] === undefined).length}\n    ${String(new Error().stack).split("\n").slice(2, 14).map((l) => l.trim().replace(root, "").replace(/.*node_modules\//, "nm/")).filter((l) => !l.includes("node:internal")).join("\n    ")}`);
+      }
+    }
     return state.mockExports.get(file);
   },
 };
@@ -179,7 +184,7 @@ const mockStub = (file) => {
 
 const isProjectSource = (file) =>
   /\.(tsx?|jsx?)$/.test(file) && !file.includes("/node_modules/") && !file.includes("/target/cljs_dev/") && !file.startsWith(cacheDir) &&
-  (file.startsWith(abs("frontend/")) || file.startsWith(abs("enterprise/frontend/")) || file.startsWith(abs("node-test-spike/")));
+  (file.startsWith(abs("frontend/")) || file.startsWith(abs("enterprise/frontend/")) || file.startsWith(abs("e2e/support/")) || file.startsWith(abs("node-test-spike/")));
 
 registerHooks({
   resolve(specifier, context, nextResolve) {
@@ -187,6 +192,9 @@ registerHooks({
     if (process.env.NT_DEBUG && specifier.startsWith(".")) console.error("[resolve]", specifier, "parentURL=", context.parentURL, "->", parentFile && resolveProject(specifier, parentFile));
     const projectFile = specifier.startsWith("file:") || specifier.startsWith("node:") ? null : resolveProject(specifier, parentFile);
     const result = projectFile ? { url: pathToFileURL(projectFile).href, shortCircuit: true } : nextResolve(specifier, context);
+    if (!bypassMocks && result.url.startsWith("node:") && mocks.has(result.url)) {
+      return { url: pathToFileURL(mockStub(result.url)).href, format: "commonjs", shortCircuit: true };
+    }
     if (!bypassMocks && result.url.startsWith("file:")) {
       const file = fileURLToPath(result.url.split("?")[0]);
       if (mocks.has(file)) return { url: pathToFileURL(mockStub(file)).href, format: "commonjs", shortCircuit: true };
@@ -207,6 +215,19 @@ const { JSDOM } = require(bunModule("jsdom").replace(/jsdom@[^/]+/, (m) => m));
 const dom = new JSDOM("<!DOCTYPE html><html><head></head><body></body></html>", { url: "http://localhost/", pretendToBeVisual: process.env.NT_NO_RAF !== "1" });
 const win = dom.window;
 const keep = new Set(["undefined", "globalThis", "window", "self", "global", "setTimeout", "clearTimeout", "setInterval", "clearInterval", "setImmediate", "clearImmediate", "queueMicrotask", "console", "process", "performance", "structuredClone", "crypto", "URL", "URLSearchParams", "TextEncoder", "TextDecoder", "AbortController", "AbortSignal", "fetch", "Request", "Response", "Headers", "Blob", "File", "ReadableStream", "WritableStream", "TransformStream", "constructor"]);
+// jest's jsdom environment has no Node fetch. jest-setup.js installs the
+// cross-fetch polyfill, which is node-fetch there, and the suite uses jsdom's
+// own AbortSignal, Blob, File and FormData. Node's versions are a different
+// realm, and jsdom's addEventListener and FileReader reject them.
+if (process.env.NT_NODE_FETCH !== "1") {
+  // Node defines these lazily, and the first touch of any of them loads its
+  // fetch implementation, which reads AbortSignal. Touch them while Node's
+  // AbortSignal still exists, or the replacement below fails without a trace.
+  for (const name of ["fetch", "Request", "Response", "Headers", "FormData", "MessageEvent", "WebSocket", "EventSource", "CloseEvent"]) void globalThis[name];
+  for (const name of ["AbortController", "AbortSignal", "Blob", "File"]) keep.delete(name);
+  for (const name of ["fetch", "Request", "Response", "Headers", "FormData", "AbortController", "AbortSignal", "Blob", "File"]) delete globalThis[name];
+  if (typeof globalThis.self === "undefined") globalThis.self = globalThis;
+}
 const windowKeys = new Set();
 for (let proto = win; proto && proto !== Object.prototype; proto = Object.getPrototypeOf(proto)) {
   for (const key of Object.getOwnPropertyNames(proto)) windowKeys.add(key);
@@ -572,14 +593,27 @@ const resetFocus = () => {
 };
 
 // jest runs all of these for every file, so an evicted graph has to see them all.
-const SETUP_CHAIN = [
-  "frontend/test/jest-setup.js",
-  "frontend/test/metabase-bootstrap.js",
-  "frontend/test/register-visualizations.js",
-  "frontend/test/jest-setup-eager.js",
-  "frontend/test/jest-setup-env.js",
-  "frontend/test/jest-setup-env-core.js",
-];
+// setupFiles then setupFilesAfterEnv, as jest.config.js lists them for each
+// project. The SDK project has its own additions and leaves the core one out.
+const SETUP_CHAIN = process.env.NT_PROJECT === "sdk"
+  ? [
+      "frontend/test/jest-setup.js",
+      "frontend/test/metabase-bootstrap.js",
+      "frontend/test/register-visualizations.js",
+      "frontend/src/embedding-sdk-shared/jest/setup-env.ts",
+      "frontend/test/jest-setup-eager.js",
+      "frontend/test/jest-setup-env.js",
+      "frontend/src/embedding-sdk-shared/jest/setup-after-env.ts",
+      "frontend/src/embedding-sdk-shared/jest/console-restrictions.ts",
+    ]
+  : [
+      "frontend/test/jest-setup.js",
+      "frontend/test/metabase-bootstrap.js",
+      "frontend/test/register-visualizations.js",
+      "frontend/test/jest-setup-eager.js",
+      "frontend/test/jest-setup-env.js",
+      "frontend/test/jest-setup-env-core.js",
+    ];
 
 // jest's own runner, behind NT_CIRCUS=1, so its collection, hook ordering,
 // timeouts and failure semantics replace the hand-rolled ones.
@@ -917,15 +951,27 @@ const callerFile = () => {
 };
 const Module = require("node:module");
 const resolveFrom = (id, from) => {
+  // A builtin has no file, so its mock is keyed by the url the resolve hook sees.
+  if (Module.isBuiltin(id)) return `node:${id.replace(/^node:/, "")}`;
   const project = resolveProject(id, from);
   if (project) return project;
   return Module.createRequire(from).resolve(id);
 };
+// Node remembers what each directory resolved a request to, and skips the
+// resolve hook when that module is still cached. A spec directory that has
+// been handed the stub for a path would get the stub again here, so the real
+// module is asked for from a directory that only ever sees real modules.
+const requireFromActual = Module.createRequire(path.join(processDir, "actual", "index.js"));
 const requireActual = (id) => {
   const from = callerFile();
   const file = resolveFrom(id, from);
+  if (file.startsWith("node:")) return process.getBuiltinModule(file);
   bypassMocks += 1;
-  try { return Module.createRequire(from)(file); } finally { bypassMocks -= 1; }
+  try {
+    const actual = requireFromActual(file);
+    if (process.env.NT_DEBUG_MOCK_SHAPE) console.error(`[require-actual] id=${id} from=${from.replace(root, "")} file=${String(file).replace(root, "")} keys=${Object.keys(actual ?? {}).length} cached=${Boolean(require.cache[file])} loaded=${require.cache[file]?.loaded}`);
+    return actual;
+  } finally { bypassMocks -= 1; }
 };
 const jestMock = (id, factory) => {
   const from = callerFile();
@@ -933,7 +979,10 @@ const jestMock = (id, factory) => {
   const manualMock = path.join(path.dirname(file), "__mocks__", path.basename(file));
   if (factory) mocks.set(file, factory);
   else if (findFile(manualMock.replace(/\.[jt]sx?$/, ""))) mocks.set(file, () => Module.createRequire(from)(findFile(manualMock.replace(/\.[jt]sx?$/, ""))));
-  else mocks.set(file, () => { bypassMocks += 1; try { return moduleMocker.generateFromMetadata(moduleMocker.getMetadata(Module.createRequire(from)(file))); } finally { bypassMocks -= 1; } });
+  // The loader remembers what a parent resolved a request to, and for a builtin
+  // that is now the stub, so the real module comes from the process instead.
+  else if (file.startsWith("node:")) mocks.set(file, () => moduleMocker.generateFromMetadata(moduleMocker.getMetadata(process.getBuiltinModule(file))));
+  else mocks.set(file, () => { bypassMocks += 1; try { return moduleMocker.generateFromMetadata(moduleMocker.getMetadata(requireFromActual(file))); } finally { bypassMocks -= 1; } });
   state.mockExports.delete(file);
   mockedThisFile = true;
   // Consumers require the mock through a stub path, and Node caches that module,
@@ -967,6 +1016,17 @@ const restoreSetupMocks = () => {
     if (!mock.getMockImplementation()) mock.mockImplementation(implementation);
   }
 };
+const takeProjectModules = () => {
+  const taken = new Map();
+  for (const file of Object.keys(require.cache)) {
+    if (isEvictable(file)) { taken.set(file, require.cache[file]); delete require.cache[file]; }
+  }
+  return taken;
+};
+const putProjectModules = (taken) => {
+  evictProjectModules();
+  for (const [file, cached] of taken) require.cache[file] = cached;
+};
 globalThis.jest = {
   fn: (implementation) => {
     const mock = moduleMocker.fn(implementation);
@@ -984,9 +1044,25 @@ globalThis.jest = {
   doMock: jestMock,
   unmock: (id) => { mocks.delete(resolveFrom(id, callerFile())); return globalThis.jest; },
   requireActual,
-  requireMock: (id) => Module.createRequire(callerFile())(resolveFrom(id, callerFile())),
-  resetModules: () => globalThis.jest,
-  isolateModules: (fn) => fn(),
+  requireMock: (id) => {
+    const from = callerFile();
+    const file = resolveFrom(id, from);
+    return mocks.has(file) ? globalThis.__nodeTestSpike.mockExports(file) : Module.createRequire(from)(file);
+  },
+  // Project modules load again on their next require. Packages stay, as they
+  // do for an isolated file, so React and the testing library keep one copy.
+  resetModules: () => {
+    if (!process.env.NT_NO_RESET_MODULES) { evictProjectModules(); state.mockExports.clear(); }
+    return globalThis.jest;
+  },
+  isolateModules: (fn) => {
+    const outer = takeProjectModules();
+    try { fn(); } finally { putProjectModules(outer); }
+  },
+  isolateModulesAsync: async (fn) => {
+    const outer = takeProjectModules();
+    try { await fn(); } finally { putProjectModules(outer); }
+  },
   useFakeTimers: (config) => {
     fakeTimers.useFakeTimers(config);
     usedFakeTimers = true;

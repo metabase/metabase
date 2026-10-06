@@ -10,7 +10,15 @@ const workers = Number(countArg ?? 4);
 const harness = path.join(__dirname, "hooks.cjs");
 const runner = path.join(__dirname, "run.cjs");
 
-let next = 0;
+// jest runs the SDK specs as a project of their own, with different setup files.
+// A worker loads one project's setup when it starts, so each worker serves one
+// project, and the pool moves workers to whichever project has files left.
+const SDK_PROJECT = /^(frontend\/src\/embedding-sdk-(bundle|shared)|enterprise\/frontend\/src\/embedding-sdk-(package|ee))\//;
+const projectOf = (file) => (process.env.NT_ONE_PROJECT !== "1" && SDK_PROJECT.test(path.relative(path.resolve(__dirname, ".."), path.resolve(file))) ? "sdk" : "core");
+const queues = { core: [], sdk: [] };
+for (const file of files) queues[projectOf(file)].push(file);
+const serving = { core: 0, sdk: 0 };
+
 let live = 0;
 let crashed = 0;
 const started = Date.now();
@@ -22,7 +30,18 @@ const report = () => {
   );
 };
 
-const spawn = () => {
+// The project with the most files left for each worker it already has.
+const neediest = () => {
+  let best = null;
+  for (const project of Object.keys(queues)) {
+    if (queues[project].length === 0) continue;
+    const load = queues[project].length / (serving[project] + 1);
+    if (!best || load > best.load) best = { project, load };
+  }
+  return best?.project ?? null;
+};
+
+const spawn = (project) => {
   const child = fork(runner, [], {
     execArgv: [
       "--require", harness,
@@ -30,32 +49,32 @@ const spawn = () => {
       `--test-reporter=${process.env.NT_REPORTER ?? "dot"}`,
       ...(process.env.NT_NODE_EXTRA ? process.env.NT_NODE_EXTRA.split(" ") : []),
     ],
-    env: { ...process.env, NT_QUEUE: "1" },
+    env: { ...process.env, NT_QUEUE: "1", NT_PROJECT: project },
     stdio: ["ignore", "pipe", "pipe", "ipc"],
   });
   live += 1;
-  let assigned = null;
+  serving[project] += 1;
   child.stdout.on("data", (chunk) => { if (process.env.NT_STDOUT) require("node:fs").appendFileSync(process.env.NT_STDOUT, chunk); });
   child.stderr.on("data", (chunk) => process.stderr.write(chunk));
   child.on("message", (message) => {
     if (!message?.ready) return;
-    assigned = next < files.length ? files[next++] : null;
+    const assigned = queues[project].shift();
     child.send(assigned ? { file: assigned } : { done: true });
   });
   child.on("exit", (code) => {
     live -= 1;
-    // A worker that dies mid-file takes the rest of its queue with it unless a
-    // replacement picks the queue back up. The file it died on is not retried.
-    // 75 is a deliberate recycle, not a crash, but either way the queue needs a
-    // replacement worker to keep draining.
-    const died = code !== 0 && code !== null;
-    if (died && next < files.length) {
-      crashed += 1;
-      spawn();
-      return;
-    }
-    if (live === 0) report();
+    serving[project] -= 1;
+    // 75 is a deliberate recycle, anything else non-zero is a crash. The file a
+    // worker died on is not retried. Either way the slot goes to the project
+    // that now needs it most.
+    if (code !== 0 && code !== null) crashed += 1;
+    const nextProject = neediest();
+    if (nextProject) spawn(nextProject);
+    else if (live === 0) report();
   });
 };
 
-for (let index = 0; index < workers; index += 1) spawn();
+for (let index = 0; index < workers; index += 1) {
+  const project = neediest();
+  if (project) spawn(project);
+}
