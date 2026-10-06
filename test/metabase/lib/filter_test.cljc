@@ -605,6 +605,18 @@
   (let [created-at (meta/field-metadata :products :created-at)]
     (check-display-names
      [{:clause [:= created-at "2023-10-03"], :name "Created At is on Oct 3, 2023"}
+      {:clause [:= created-at (lib/absolute-datetime "2026-07-01" :day)],
+       :name "Created At is Jul 1, 2026"}
+      {:clause [:= created-at (lib/absolute-datetime "2026-07-01" :month)],
+       :name "Created At is Jul 1–31, 2026"}
+      {:clause [:= created-at (lib/absolute-datetime "2026-07-01T12:34:00" :default)],
+       :name "Created At is Jul 1, 2026, 12:34 PM"}
+      {:clause [:= created-at (lib/absolute-datetime :current :day)],
+       :name "Created At is today"}
+      {:clause [:between created-at
+                (lib/absolute-datetime "2026-07-01" :day)
+                (lib/absolute-datetime "2026-07-31" :day)],
+       :name "Created At is between Jul 1, 2026 and Jul 31, 2026"}
       {:clause [:= created-at "2023-10-03T12:30:00"],
        :name "Created At is on Oct 3, 2023, 12:30 PM"}
       {:clause [:> created-at "2023-10-03"], :name "Created At is after Oct 3, 2023"}
