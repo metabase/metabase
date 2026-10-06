@@ -89,6 +89,14 @@ describe("scenarios > visualizations > line chart", () => {
     });
 
     H.openVizSettingsSidebar();
+
+    cy.log("x-axis column settings (metabase#51952)");
+    cy.findByTestId("settings-CREATED_AT").click();
+    H.popover().findByText("Abbreviate days and months").click();
+    H.echartsContainer().findByText("Jan 2027");
+    cy.realPress("Escape");
+    H.popover().should("not.exist");
+
     H.openSeriesSettings("Count");
 
     H.popover().within(() => {
