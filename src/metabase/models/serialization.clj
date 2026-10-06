@@ -58,6 +58,7 @@
   (:require
    [clojure.set :as set]
    [clojure.string :as str]
+   [clojure.walk :as walk]
    [malli.core :as mc]
    [malli.transform :as mtx]
    [medley.core :as m]
@@ -587,6 +588,28 @@
   [entity]
   (:serdes/meta entity))
 
+(defmulti ingested-path
+  "The abstract path of `ingested`, an entity read from a file, computed from its own keys."
+  {:arglists '([model-name ingested])}
+  (fn [model-name _ingested] model-name))
+
+(defmethod ingested-path :default [model-name ingested]
+  [(infer-self-path model-name ingested)])
+
+(defn restore-path
+  "`ingested` with its `:serdes/meta` path computed by [[ingested-path]] when its file stores only the model."
+  [ingested]
+  (let [{:keys [model] :as self} (last (:serdes/meta ingested))]
+    (cond-> ingested
+      (and self (not (contains? self :id))) (assoc :serdes/meta (ingested-path model ingested)))))
+
+(defn storable
+  "`entity` as its file stores it: `:serdes/meta` reduced to `[{:model ...}]`, and removed from nested entities."
+  [entity]
+  (let [model (-> entity :serdes/meta last :model)]
+    (-> (walk/postwalk #(cond-> % (map? %) (dissoc :serdes/meta)) entity)
+        (assoc :serdes/meta [{:model model}]))))
+
 (defmulti resource-paths
   "Paths of the `:serdes/resources` stored next to an ingested entity's YAML file, relative to its directory."
   {:arglists '([ingested])}
@@ -1009,13 +1032,13 @@
   (resolve/import-field-fk (import-resolver) field-id))
 
 (defn field->path
-  "Given a `field_id` as exported by [[export-field-fk]], turn it into a `[{:model ...}]` path for the Field.
+  "Given a `field_id` as exported by [[export-field-fk]], turn it into a `[{:model ...}]` path for the Field, with one
+  Field segment per name for a nested Field.
   This is useful for writing [[deserialization-dependencies]] implementations."
-  [[db-name schema table-name field-name]]
-  (filterv some? [{:model "Database" :id db-name}
-                  (when schema {:model "Schema" :id schema})
-                  {:model "Table" :id table-name}
-                  {:model "Field" :id field-name}]))
+  [[db-name schema table-name & field-names]]
+  (into (table->path [db-name schema table-name])
+        (map (fn [field-name] {:model "Field" :id field-name}))
+        field-names))
 
 (defn field-path->field-ref
   "The `[db-name schema table-name & field-names]` reference of the Field at `field-path`, nested Fields included."

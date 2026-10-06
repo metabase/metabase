@@ -19,6 +19,4 @@ template_tags:
     snippet-name: Date Range Filter
     type: snippet
 serdes/meta:
-- id: c5PMqT66HwWoy0m52WTI5
-  label: active_recent_filter
-  model: NativeQuerySnippet
+- model: NativeQuerySnippet

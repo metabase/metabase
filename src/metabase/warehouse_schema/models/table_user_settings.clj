@@ -206,9 +206,12 @@
                :owner_user_id (serdes/fk :model/User)
                :data_layer    (serdes/optional-kw)
                :table_id      {::serdes/fk true
-                               :export     (constantly ::serdes/skip)
+                               :export     #(serdes/*export-table-fk* %)
                                :import-with-context (fn [current _ _]
                                                       (serdes/*import-table-fk* (table-path->table-ref (serdes/path current))))}}})
+
+(defmethod serdes/ingested-path "TableUserSettings" [_ {:keys [table_id]}]
+  (conj (serdes/table->path table_id) {:model "TableUserSettings" :id "1"}))
 
 (def ^:private table-user-settings-slug "___tableusersettings")
 
