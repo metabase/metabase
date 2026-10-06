@@ -458,53 +458,68 @@ width: fixed
   (mt/with-model-cleanup [:model/Dashboard :model/Card :model/Action :model/Document :model/DataApp :model/Collection]
     (f)))
 
-(defn- stored-transforms-setting
-  "The stored `remote-sync-transforms` value, or nil when the setting has no row."
+(defn- stored-remote-sync-setting-rows
+  "The raw `setting` rows whose key starts with `remote-sync`, every column as stored."
   []
-  (t2/select-one-fn :value :model/Setting :key "remote-sync-transforms"))
+  ;; the table, not `:model/Setting`: its hooks decrypt on select and encrypt on insert, so a round trip through the
+  ;; model can change a row (a row with no `value_with_aad` reads as nil)
+  (t2/select :setting :key [:like "remote-sync%"]))
 
-(defn- write-transforms-setting!
-  "Store `value` as the `remote-sync-transforms` row (nil: no row) and restore the settings cache from the app DB.
-  Then delete the Transforms RemoteSyncObject rows, which the setting's `:on-change` hook writes when the restore
-  changes the cached value."
-  [value]
-  (t2/delete! :model/Setting :key "remote-sync-transforms")
-  (when value
-    (t2/insert! :model/Setting {:key "remote-sync-transforms" :value value}))
-  (setting/restore-cache!)
+(defn- delete-transforms-ledger-rows!
+  "Delete the Transforms RemoteSyncObject rows, which the `:on-change` hook of `remote-sync-transforms` writes when a
+  settings-cache restore changes the cached value."
+  []
   (t2/delete! :model/RemoteSyncObject
               :model_type "Collection"
               :model_id   remote-sync.settings/transforms-root-id))
 
+(defn- write-remote-sync-setting-rows!
+  "Replace every `remote-sync%` row of the `setting` table with the raw `rows` in one transaction, restore the settings
+  cache from the app DB, then delete the Transforms RemoteSyncObject rows. If the insert fails, the delete rolls back
+  and the exception propagates."
+  [rows]
+  ;; raw rows: no `:on-change` hook runs during the write; the cache restore runs the hooks of the changed values
+  (t2/with-transaction [_conn]
+    (t2/delete! :setting :key [:like "remote-sync%"])
+    (when (seq rows)
+      (t2/insert! :setting rows)))
+  (setting/restore-cache!)
+  (delete-transforms-ledger-rows!))
+
 (defn- remove-transforms-setting!
-  "Remove the stored `remote-sync-transforms` value, then delete the Transforms RemoteSyncObject rows."
+  "Remove the stored `remote-sync-transforms` row, restore the settings cache from the app DB, then delete the
+  Transforms RemoteSyncObject rows."
   []
-  (write-transforms-setting! nil))
+  (t2/delete! :setting :key "remote-sync-transforms")
+  (setting/restore-cache!)
+  (delete-transforms-ledger-rows!))
 
 (defn clean-transforms-setting
-  "Test fixture that removes a stored `remote-sync-transforms` value for the test, and writes it back after the test.
-  It deletes all Transforms RemoteSyncObject rows before and after the test.
+  "Test fixture that saves every stored `remote-sync%` setting row, removes the stored `remote-sync-transforms` row for
+  the test, and after the test writes back the saved rows as they were stored: a setting with no row before has no
+  row after. It deletes all Transforms RemoteSyncObject rows before and after the test.
 
-  The settings cache calls the `:on-change` hook of this setting each time a cache restore changes its value, and
-  the hook adds a \"Transforms\" RemoteSyncObject row. An import that finds transforms in the source stores the
-  value as true. On a persistent app DB, that value can outlive the run, and then the first cache restore of the next
-  run adds the row in the middle of a test. A test that needs the setting uses `mt/with-temporary-setting-values`.
+  The settings cache calls the `:on-change` hook of `remote-sync-transforms` each time a cache restore changes its
+  value, and the hook adds a \"Transforms\" RemoteSyncObject row. An import that finds transforms in the source stores
+  the value as true. On a persistent app DB, that value can outlive the run, and then the first cache restore of the
+  next run adds the row in the middle of a test. A test that needs the setting uses `mt/with-temporary-setting-values`,
+  which stores the earlier getter value as a row when the binding ends; the write-back removes that row.
 
   Compose inside [[clean-object]]: [[clean-object]] then restores a Transforms row that existed before the test,
   after this fixture deletes it, so the row and the written-back value agree."
   [f]
-  (let [stored (stored-transforms-setting)]
+  (let [rows (stored-remote-sync-setting-rows)]
     (remove-transforms-setting!)
     (try
       (f)
       (finally
-        (write-transforms-setting! stored)))))
+        (write-remote-sync-setting-rows! rows)))))
 
 (def clean-remote-sync-state
   "Composed test fixture that ensures RemoteSyncObject, RemoteSyncTask, and optional feature
   model tables (Transform, TransformTag, PythonLibrary) are clean, that no stored `remote-sync-transforms` value
-  adds a ledger row, and that content the test imported (Dashboards, Cards, Actions, Documents, DataApps,
-  Collections) does not outlive it."
+  adds a ledger row, that the stored `remote-sync%` setting rows after the test equal the rows before it, and that
+  content the test imported (Dashboards, Cards, Actions, Documents, DataApps, Collections) does not outlive it."
   (t/join-fixtures [clean-imported-content clean-object clean-transforms-setting clean-task-table
                     clean-optional-feature-models]))
 
