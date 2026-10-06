@@ -17,37 +17,55 @@
    [metabase.api.common :as api]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
+   [metabase.lib.schema :as lib.schema]
    [metabase.models.serialization :as serdes]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
+   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
 
 (set! *warn-on-reflection* true)
 
-(defn- fail [message]
-  (throw (ex-info message {})))
+(defn- fail
+  "Throws the refusal of an item: a reason the author has to act on, which is not a failure of the export."
+  [message]
+  (throw (ex-info message {::refusal true})))
 
 (defn- with-item-error
   "Calls `export`, or answers `item` with the `:error` that stopped it, so one item that can't be exported doesn't
-  fail the rest."
+  fail the rest. Anything other than a refusal is logged, so a bug in an export leaves a trace on the server."
   [item export]
   (try
     (export)
     (catch Exception e
+      (when-not (::refusal (ex-data e))
+        (log/warn e "Could not export a data app resource" item))
       (assoc item :error (or (ex-message e) (tru "Could not export it."))))))
 
 (defn- extract-by-entity-id
   "The entities of `model-name` with `ids`, as serialization exports them, keyed by entity ID: one extraction for
-  them all. Serialization leaves out what it can't export (an exploration's card) or answers with the error, so an
-  entity missing from the result couldn't be exported."
+  them all. Serialization leaves out what it can't export (an exploration's card), and goes on past one it fails
+  on, so an entity missing from the result couldn't be exported; [[extraction-error]] says why."
   [model-name ids]
   (if (seq ids)
     (into {}
           (comp (filter map?)
                 (map (juxt (comp :id last :serdes/meta) identity)))
-          (serdes/extract-all model-name {:filter-column :id :filter-ids (vec ids)}))
+          (serdes/extract-all model-name {:filter-column :id :filter-ids (vec ids) :continue-on-error true}))
     {}))
+
+(defn- extraction-error
+  "Why serialization can't export the `model-name` entity with `id`, or nil when it can: the one entity is extracted
+  on its own, with the error let through."
+  [model-name id]
+  (try
+    ;; reduced rather than seq'd: the extraction is a reducible, not a seq
+    (run! identity (serdes/extract-all model-name {:filter-column :id :filter-ids [id]}))
+    nil
+    (catch Exception e
+      (or (:cause (ex-data e)) (ex-message e)))))
 
 (defn- cards-read
   "The IDs, as a comma-separated string, of the cards the `model-name` entity `source` references everywhere
@@ -79,16 +97,21 @@
   (when-let [card-ids (cards-read model-name source own-cards)]
     (fail (tru "{0} reads card {1}, which a data app''s resources can''t hold." label card-ids)))
   (when-not exported
-    (fail (tru "Serialization could not export {0}." label))))
+    (fail (tru "Serialization could not export {0}: {1}" label (extraction-error model-name (:id source))))))
+
+(def ^:private public-keys
+  "What makes a source public or embedded. A copy never is, and the pull refuses a file that says it is."
+  [:public_uuid :made_public_by_id :enable_embedding :embedding_params :embedding_type])
 
 (defn- as-written
-  "`entity` as the author writes it: in the key order serialization writes, and without the keys it leaves unset,
-  which the format omits. The query is kept whole; nothing in it is unset."
+  "`entity` as the author writes it: in the key order serialization writes, without the keys it leaves unset, which
+  the format omits, and without what makes the source public or embedded. The query is kept whole; nothing in it is
+  unset."
   [entity]
   (let [query (:dataset_query entity)]
     (serialization.dump/serialization-deep-sort
      (cond-> (walk/postwalk (fn [x] (if (map? x) (into {} (remove (comp nil? val)) x) x))
-                            (dissoc entity :dataset_query))
+                            (apply dissoc entity :dataset_query public-keys))
        query (assoc :dataset_query query)))))
 
 (defn- export-name->card-name
@@ -109,30 +132,12 @@
    :name                   (export-name->card-name export)
    :type                   :question
    :display                :table
-   :description            nil
-   :collection_id          nil
-   :collection_position    nil
-   :collection_preview     true
-   :dashboard_id           nil
-   :document_id            nil
-   :archived               false
-   :archived_directly      false
-   :public_uuid            nil
-   :made_public_by_id      nil
-   :enable_embedding       false
-   :embedding_params       nil
-   :embedding_type         nil
    :creator_id             api/*current-user-id*
-   :created_at             nil
-   :card_schema            nil
    :database_id            (:database built)
    :dataset_query          (lib/prepare-for-serialization built)
    :visualization_settings {}
    :parameters             []
-   :parameter_mappings     []
-   :result_metadata        nil
-   :dimensions             nil
-   :dimension_mappings     nil})
+   :parameter_mappings     []})
 
 (mu/defn- built-query
   "The query Metabase builds from `query-definition`, as the dev preview does. (A routing destination has no tables
@@ -141,7 +146,12 @@
   (let [table (data-apps.db/table table-id)]
     (when-not table
       (fail (tru "Table {0} does not exist." (str table-id))))
-    (lib/test-query (lib-be/application-database-metadata-provider (:db_id table)) query-definition)))
+    (let [built (lib/test-query (lib-be/application-database-metadata-provider (:db_id table)) query-definition)]
+      ;; The request schema accepts what a type lets through, such as a fractional limit, and the checks in lib
+      ;; that would refuse it are off in production: an invalid query must not export and then fail when it runs.
+      (when-not (mr/validate ::lib.schema/query built)
+        (fail (tru "The definition does not build a valid query.")))
+      built)))
 
 (mu/defn- export-query
   "A `defineQuery` definition as `{:export :entity :metric_ids}`, the entity being the saved question that holds the

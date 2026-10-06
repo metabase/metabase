@@ -1,13 +1,16 @@
 (ns metabase-enterprise.data-apps.resource-export-test
   "`POST /api/apps/export-resources`: what a data app's `resources/` files are written from."
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase-enterprise.data-apps.resource-export :as resource-export]
    [metabase-enterprise.data-apps.test-util :as data-apps.tu]
    [metabase.actions.core :as actions]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.models.serialization :as serdes]
    [metabase.test :as mt]
+   [metabase.util.malli.fn :as mu.fn]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -168,7 +171,85 @@
   (is (=? {:queries [{:export "Nothing" :error (str "Table " Integer/MAX_VALUE " does not exist.")}]}
           (export! :crowberto 200
                    {:queries [{:export "Nothing"
-                               :query  {:stages [{:source {:type "table" :id Integer/MAX_VALUE}}]}}]}))))
+                               :query  {:stages [{:source {:type "table" :id Integer/MAX_VALUE}}]}}]})))
+  (testing "a deactivated table is gone too, as it is from the typed schema"
+    (mt/with-temp [:model/Table {table-id :id} {:db_id (mt/id) :active false}]
+      (is (=? {:queries [{:export "Gone" :error (str "Table " table-id " does not exist.")}]}
+              (export! :crowberto 200
+                       {:queries [{:export "Gone"
+                                   :query  {:stages [{:source {:type "table" :id table-id}}]}}]}))))))
+
+(deftest refuses-a-definition-that-builds-an-invalid-query-test
+  (testing "the request schema accepts what a type lets through, and lib's own checks are off in production, so the
+            built query is checked: an invalid one must not export and then fail when it runs"
+    (mt/with-premium-features #{:data-apps}
+      (mt/with-current-user (mt/user->id :crowberto)
+        (binding [mu.fn/*enforce* false]
+          (is (=? {:queries [{:export "Half" :error "The definition does not build a valid query."}
+                             {:export "Whole" :entity map?}]}
+                  (resource-export/export-resources
+                   [{:export "Half" :query {:stages [{:source {:type :table :id (mt/id :venues)} :limit 1.5}]}}
+                    {:export "Whole" :query {:stages [{:source {:type :table :id (mt/id :venues)} :limit 2}]}}]
+                   []))))))))
+
+(deftest a-public-source-exports-as-the-private-copy-the-author-writes-test
+  (testing "what makes a source public or embedded is left out, since the pull refuses a copy that says it is"
+    (data-apps.tu/do-with-sources!
+     (fn [{:keys [metric-id action-id]}]
+       (t2/update! :model/Card :id metric-id {:public_uuid       (str (random-uuid))
+                                              :made_public_by_id (mt/user->id :crowberto)
+                                              :enable_embedding  true
+                                              :embedding_params  {}})
+       (t2/update! :model/Action :id action-id {:public_uuid       (str (random-uuid))
+                                                :made_public_by_id (mt/user->id :crowberto)})
+       (let [{:keys [actions metrics]} (export! :crowberto 200
+                                                {:queries [{:export "VenueCount"
+                                                            :query  {:stages [{:source       {:type "table" :id (mt/id :venues)}
+                                                                               :aggregations [{:type "metric" :id metric-id}]}]}}]
+                                                 :actions [action-id]})]
+         (doseq [{:keys [entity]} (concat actions metrics)]
+           (is (map? entity))
+           (is (not-any? (partial contains? entity)
+                         [:public_uuid :made_public_by_id :enable_embedding :embedding_params :embedding_type]))))))))
+
+(deftest an-item-serialization-cannot-export-answers-with-the-cause-test
+  (testing "one entity serialization fails on comes back with its error, and the rest still export"
+    (data-apps.tu/do-with-sources!
+     (fn [{:keys [metric-id action-id]}]
+       (let [extract-one @#'serdes/extract-one]
+         (mt/with-dynamic-fn-redefs [serdes/extract-one (fn [model-name opts instance]
+                                                          (if (and (= model-name "Card") (= metric-id (:id instance)))
+                                                            (throw (ex-info "the metric is broken" {}))
+                                                            (extract-one model-name opts instance)))]
+           ;; called directly: the redefinition is bound on this thread, not on the one a request runs on
+           (is (=? {:queries [{:export "VenueCount" :entity map?}]
+                    :actions [{:id action-id :entity map?}]
+                    :metrics [{:id metric-id :error (str "Serialization could not export Metric " metric-id ": the metric is broken")}]}
+                   (mt/with-premium-features #{:data-apps}
+                     (mt/with-current-user (mt/user->id :crowberto)
+                       (resource-export/export-resources
+                        [{:export "VenueCount"
+                          :query  {:stages [{:source       {:type :table :id (mt/id :venues)}
+                                             :aggregations [{:type :metric :id metric-id}]}]}}]
+                        [action-id])))))))))))
+
+(deftest a-failure-of-the-export-is-logged-and-a-refusal-is-not-test
+  (testing "a refusal is the author's to act on; anything else is a failure the server keeps a trace of"
+    (mt/with-premium-features #{:data-apps}
+      (mt/with-current-user (mt/user->id :crowberto)
+        (mt/with-log-messages-for-level [messages [metabase-enterprise.data-apps.resource-export :warn]]
+          (is (=? {:queries [{:export "Broken" :error "No column found"}
+                             {:export "Nothing" :error (str "Table " Integer/MAX_VALUE " does not exist.")}]}
+                  (resource-export/export-resources
+                   [{:export "Broken"
+                     :query  {:stages [{:source {:type :table :id (mt/id :venues)}
+                                        :fields [{:type :column :name "NOT_A_COLUMN"}]}]}}
+                    {:export "Nothing"
+                     :query  {:stages [{:source {:type :table :id Integer/MAX_VALUE}}]}}]
+                   [])))
+          (let [logged (filter #(str/includes? (:message %) "Could not export a data app resource") (messages))]
+            (is (= 1 (count logged)))
+            (is (str/includes? (:message (first logged)) "Broken"))))))))
 
 (deftest refuses-archived-sources-test
   (testing "the pull refuses an archived resource, so the export refuses an archived source"
