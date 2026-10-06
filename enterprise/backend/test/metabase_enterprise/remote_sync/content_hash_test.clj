@@ -472,12 +472,15 @@
   (testing "After a real import, a no-op TransformTag update stays synced (GHY-3933)"
     (mt/with-premium-features #{:transforms-basic}
       (mt/with-temporary-setting-values [remote-sync-enabled true]
-        (mt/with-model-cleanup [:model/TransformTag]
-          (let [tag-eid "test-transform-tag-xx"
-                files {"main" {"transforms/transform_tags/test_tag.yaml"
-                               (test-helpers/generate-transform-tag-yaml tag-eid "Test Tag")}}]
-            (is (= "synced"
-                   (import-then-noop-status!
-                    files "TransformTag"
-                    #(t2/select-one :model/TransformTag :entity_id tag-eid)
-                    :event/transform-tag-update)))))))))
+        ;; the import stores `remote-sync-transforms` true; remove the stored value after the test
+        (test-helpers/clean-transforms-setting
+         (fn []
+           (mt/with-model-cleanup [:model/TransformTag]
+             (let [tag-eid "test-transform-tag-xx"
+                   files {"main" {"transforms/transform_tags/test_tag.yaml"
+                                  (test-helpers/generate-transform-tag-yaml tag-eid "Test Tag")}}]
+               (is (= "synced"
+                      (import-then-noop-status!
+                       files "TransformTag"
+                       #(t2/select-one :model/TransformTag :entity_id tag-eid)
+                       :event/transform-tag-update)))))))))))

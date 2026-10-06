@@ -58,6 +58,15 @@
               (run-var-quietly #'content-hash-test/transform-import-then-noop-stays-synced-test)))
        (is (nil? (stored-value :remote-sync-transforms)))))))
 
+(deftest transform-tag-import-test-stores-no-transforms-setting-test
+  (testing "transform-tag-import-then-noop-stays-synced-test leaves no stored remote-sync-transforms value"
+    (do-without-stored-value!
+     :remote-sync-transforms
+     (fn []
+       (is (= {:pass 3 :fail 0 :error 0}
+              (run-var-quietly #'content-hash-test/transform-tag-import-then-noop-stays-synced-test)))
+       (is (nil? (stored-value :remote-sync-transforms)))))))
+
 (deftest settings-api-test-stores-no-auto-import-setting-test
   (testing "settings-preserves-transforms-when-not-specified-test leaves no stored remote-sync-auto-import value"
     (do-without-stored-value!
