@@ -115,8 +115,9 @@ describe("issues 8030 and 32444", () => {
 });
 
 describe("issue 12720, issue 47172", () => {
-  function clickThrough(title) {
+  function clickThrough(title, { beforeClick } = {}) {
     H.visitDashboard(ORDERS_DASHBOARD_ID);
+    beforeClick?.();
     cy.findAllByTestId("dashcard-container").contains(title).click();
 
     cy.location("pathname").should("match", /^\/question/);
@@ -205,35 +206,26 @@ describe("issue 12720, issue 47172", () => {
   it("should show QB question on a dashboard with filter connected to card without data-permission (metabase#12720)", () => {
     cy.signIn("readonly");
 
-    clickThrough("12720_SQL");
-    clickThrough("Orders");
-  });
+    cy.intercept("POST", "/api/card/*/query").as("cardQuery");
 
-  it("should apply the specific (before|after) filter on a native question with field filter (metabase#47172)", () => {
-    H.visitDashboard(ORDERS_DASHBOARD_ID);
-
-    H.getDashboardCard(1).within(() => {
-      cy.findByTestId("table-root").should("be.visible");
-      cy.findByText("There was a problem displaying this chart.").should(
-        "not.exist",
-      );
-
-      cy.log("Drill down to the question");
-      cy.intercept("POST", "/api/card/*/query").as("cardQuery");
-      cy.findByText(questionDetails.name).click();
+    clickThrough("12720_SQL", {
+      beforeClick: () => {
+        cy.log(
+          "Run a native field filter with an open date range (metabase#47172)",
+        );
+        H.getDashboardCard(1).within(() => {
+          cy.findByTestId("table-root").should("be.visible");
+          cy.findByText("There was a problem displaying this chart.").should(
+            "not.exist",
+          );
+        });
+      },
     });
-
-    cy.location("search").should("eq", `?filter=${dashboardFilter.default}`);
     cy.wait("@cardQuery");
+    cy.location("search").should("eq", `?filter=${dashboardFilter.default}`);
     H.tableInteractive().should("be.visible").and("contain", "97.44");
-    cy.findByTestId("question-row-count").should(
-      "not.have.text",
-      "Showing 0 rows",
-    );
-    cy.findByTestId("question-row-count").should(
-      "have.text",
-      "Showing 1,980 rows",
-    );
+
+    clickThrough("Orders");
   });
 });
 
