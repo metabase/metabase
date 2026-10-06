@@ -89,13 +89,8 @@
     (or (sequential? x) (set? x)) x
     :else                         [x]))
 
-(defn- -interpose!
-  "Compile all the forms in `xs` and interpose the `separator` string between them."
-  [separator xs context]
-  (interpose-fn xs #(compile! % context) #(append-sql! context separator)))
-
 (defn- -commas! [xs context]
-  (-interpose! ", " xs context))
+  (interpose-fn xs #(compile! % context) #(append-sql! context ", ")))
 
 (declare map!)
 
@@ -104,9 +99,7 @@
   would parenthesize it a second time."
   [x context]
   (append-sql! context "(")
-  ((if (subquery? x)
-     map!
-     compile!) x context)
+  ((if (subquery? x) map! compile!) x context)
   (append-sql! context ")"))
 
 (defn- -list! [xs context]
@@ -248,19 +241,13 @@
           (options! [options]
             (when (seq options)
               (append-sql! context \space)
-              (interpose-fn
-               options
-               option!
-               #(append-sql! context \space))))
+              (interpose-fn options option! #(append-sql! context \space))))
           (column-spec! [[column-identifier type-name & options]]
             (column-identifier! column-identifier)
             (append-sql! context \space)
             (-raw-type-name! type-name context)
             (options! options))]
-    (interpose-fn
-     column-specs
-     column-spec!
-     #(append-sql! context ", ")))
+    (interpose-fn column-specs column-spec! #(append-sql! context ", ")))
   (append-sql! context ")"))
 
 (defn- insert-into! [x context]
@@ -280,9 +267,7 @@
     (when subquery
       (append-sql! context \space)
       ;; `INSERT INTO t SELECT ...` -- the subquery is not wrapped in parens here
-      ((if (subquery? subquery)
-         map!
-         compile!) subquery context))))
+      ((if (subquery? subquery) map! compile!) subquery context))))
 
 (defn- values! [rows context]
   (when-not (and (coll? rows)
@@ -458,9 +443,7 @@
   [[compile!]] don't wrap them in parens -- use `:nest` for that."
   [separator queries context]
   (interpose-fn queries
-                #((if (subquery? %)
-                    map!
-                    compile!) % context)
+                #((if (subquery? %) map! compile!) % context)
                 #(append-sql! context separator)))
 
 (def ^:private clause-fns
@@ -612,9 +595,7 @@
             ;; make sure if the operand is itself something like `[:= x nil]` we get `(x IS NULL) = <y>` instead of
             ;; the unparsable `x IS NULL = y`. (A scalar subquery gets the same treatment, but [[compile!]] already
             ;; parenthesizes those.)
-            ((if (predicate-call? v)
-               -parens!
-               compile!) v context))]
+            ((if (predicate-call? v) -parens! compile!) v context))]
     (if (or (nil? x) (nil? y))
       (do
         (operand! (if (nil? x) y x))
@@ -708,10 +689,7 @@
                (not (fn-call? (first vs))))
           (do
             (append-sql! context "(")
-            (interpose-fn
-             vs
-             #(-list! % context)
-             #(append-sql! context ", "))
+            (interpose-fn vs #(-list! % context) #(append-sql! context ", "))
             (append-sql! context ")"))
 
           ;; Handle nonsense like`[:in :field [:inline [3]]]`
@@ -817,9 +795,7 @@
          (compile! (- x) context)
          (do
            (append-sql! context "-")
-           ((if (binary-arithmetic-call? x)
-              -parens!
-              compile!) x context)))))
+           ((if (binary-arithmetic-call? x) -parens! compile!) x context)))))
 
 (defn- -binary-operator! [f args context]
   (if (= (count args) 1)
@@ -832,9 +808,7 @@
                   :is-not   " IS NOT "
                   (str \space (name f) \space))
           ;; wrap nested binary function calls in parens to avoid order-of-operation ambiguity
-          arg!  #((if (binary-arithmetic-call? %)
-                    -parens!
-                    compile!) % context)]
+          arg!  #((if (binary-arithmetic-call? %) -parens! compile!) % context)]
       (interpose-fn args arg! #(append-sql! context f-str)))))
 
 (defn- -simple-fn! [f args context]
@@ -1039,9 +1013,7 @@
                     {:f f, :args args}))))
 
 (defn- sequence! [xs context]
-  (if (fn-call? xs)
-    (-fn-call! xs context)
-    (-list! xs context)))
+  ((if (fn-call? xs) -fn-call! -list!) xs context))
 
 (extend-protocol Compile
   Object                      (compile! [this context] (object! this context))
@@ -1061,8 +1033,7 @@
   "A map, `[:fn-call & args]` vector, keyword, etc."
   :any)
 
-(mr/def ::engine
-  [:enum :h2 :postgres :mysql])
+(mr/def ::engine [:enum :h2 :postgres :mysql])
 
 (mu/defn format :- [:cat #_sql :string #_args [:* :any]]
   "Compile `honeysql-form` (either a top-level map or an individual clause) to SQL for `engine`.
@@ -1080,9 +1051,7 @@
    (try
      (let [context (default-context engine options)]
        ;; [[compile!]] doesn't support compiling maps recursively unless marked `^:allow-subquery`
-       ((if (map? honeysql-form)
-          map!
-          compile!) honeysql-form context)
+       ((if (map? honeysql-form) map! compile!) honeysql-form context)
        (result! context))
      (catch Exception e
        (throw (ex-info (str "Error compiling Honey SQL: " (ex-message e))
