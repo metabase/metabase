@@ -1,4 +1,4 @@
-import { renderHook } from "@testing-library/react";
+import { renderHook, waitFor } from "@testing-library/react";
 import fetchMock from "fetch-mock";
 
 import {
@@ -14,6 +14,7 @@ const deriveUrl = (handle: string) =>
 
 const YEAR = { type: "temporal-bucket/set", unit: "year" } as const;
 const CLEAR = { type: "date-filter/clear" } as const;
+const APPLY = () => {};
 
 function setup() {
   const { result } = renderHook(() =>
@@ -52,8 +53,8 @@ describe("useSerializedMcpDerive", () => {
     fetchMock.post(deriveUrl("handle-2"), { handle: "handle-3", query: "q3" });
 
     const { deriveQuery: derive } = setup();
-    const first = derive([YEAR]);
-    const second = derive([CLEAR]);
+    const first = derive([YEAR], APPLY);
+    const second = derive([CLEAR], APPLY);
 
     await expect(first).resolves.toEqual({ handle: "handle-2", query: "q2" });
     await expect(second).resolves.toEqual({ handle: "handle-3", query: "q3" });
@@ -69,8 +70,8 @@ describe("useSerializedMcpDerive", () => {
     );
 
     const { deriveQuery: derive } = setup();
-    const failed = derive([YEAR]);
-    const next = derive([CLEAR]);
+    const failed = derive([YEAR], APPLY);
+    const next = derive([CLEAR], APPLY);
 
     await expect(failed).rejects.toMatchObject({ status: 400 });
     await expect(next).resolves.toEqual({ handle: "handle-2", query: "q2" });
@@ -90,8 +91,8 @@ describe("useSerializedMcpDerive", () => {
     const { deriveQuery: derive, pendingDerivesRef } = setup();
     expect(pendingDerivesRef.current).toBe(0);
 
-    const failed = derive([YEAR]).catch(() => undefined);
-    const next = derive([CLEAR]);
+    const failed = derive([YEAR], APPLY).catch(() => undefined);
+    const next = derive([CLEAR], APPLY);
     expect(pendingDerivesRef.current).toBe(2);
 
     await failed;
@@ -99,5 +100,45 @@ describe("useSerializedMcpDerive", () => {
 
     await next;
     expect(pendingDerivesRef.current).toBe(0);
+  });
+
+  it("makes the derived handle current while applying it, and restores the old one when applying fails", async () => {
+    fetchMock.post(deriveUrl("handle-1"), { handle: "handle-2", query: "q2" });
+
+    const { deriveQuery: derive } = setup();
+    const handleWhileApplying: Array<string | null> = [];
+    const failingApply = () => {
+      handleWhileApplying.push(getCurrentMcpQueryHandle());
+      throw new Error("The derived query could not be read.");
+    };
+
+    await expect(derive([YEAR], failingApply)).rejects.toThrow(
+      "could not be read",
+    );
+
+    expect(handleWhileApplying).toEqual(["handle-2"]);
+    expect(getCurrentMcpQueryHandle()).toBe("handle-1");
+  });
+
+  it("drops a derive whose base handle was replaced while it was in flight", async () => {
+    fetchMock.post(
+      deriveUrl("handle-1"),
+      { handle: "handle-2", query: "q2" },
+      { delay: 500 },
+    );
+
+    const { deriveQuery: derive } = setup();
+    const apply = jest.fn();
+    const derived = derive([YEAR], apply);
+
+    // A new tool result loads while the derive is in flight.
+    await waitFor(() => {
+      expect(fetchMock.callHistory.calls()).toHaveLength(1);
+    });
+    setCurrentMcpQueryHandle("tool-result-handle");
+
+    await expect(derived).rejects.toMatchObject({ isStale: true });
+    expect(apply).not.toHaveBeenCalled();
+    expect(getCurrentMcpQueryHandle()).toBe("tool-result-handle");
   });
 });

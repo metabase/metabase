@@ -101,9 +101,10 @@ const BOOTSTRAP = createMockMcpAppsBootstrapResponse({
 function setup() {
   const { user, settings } = BOOTSTRAP;
   const isQueryRunningRef = { current: false };
-  const deriveQuery = jest.fn<Promise<DerivedQuery>, [McpDeriveOperation[]]>(
-    () => new Promise(() => {}),
-  );
+  const deriveQuery = jest.fn<
+    Promise<DerivedQuery>,
+    [McpDeriveOperation[], (derived: DerivedQuery) => void]
+  >(() => new Promise(() => {}));
 
   // Reproduces the widening `useMcpUserAndSettingsFetch` does when it seeds the cache: at
   // runtime the store holds a `User` carrying only these fields.
@@ -192,9 +193,10 @@ describe("McpQuestionView with the MCP Apps bootstrap projection (GHY-4400)", ()
     await userEvent.click(await screen.findByText("by quarter"));
     await userEvent.click(await screen.findByRole("option", { name: "Month" }));
 
-    expect(deriveQuery).toHaveBeenCalledWith([
-      { type: "temporal-bucket/set", unit: "month" },
-    ]);
+    expect(deriveQuery).toHaveBeenCalledWith(
+      [{ type: "temporal-bucket/set", unit: "month" }],
+      expect.any(Function),
+    );
   });
 
   it("shows why a change failed, and clears it once a change succeeds", async () => {
