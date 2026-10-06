@@ -9,6 +9,7 @@
    [compojure.response]
    [malli.error :as me]
    [metabase.agent-api.query-guards :as query-guards]
+   [metabase.analytics.core :as analytics]
    [metabase.api.common :as api]
    [metabase.api.open-api :as open-api]
    [metabase.lib-be.core :as lib-be]
@@ -367,17 +368,19 @@
                       {:status-code 403}))
 
       :else
-      ;; The response is sent inside the binding: a body may hold lazy values that realize as it is encoded.
-      (request/do-with-current-user
-       user
-       (fn []
-         (let [session-id (get-in request [:headers "mcp-session-id"])]
-           (check-session-header! session-id api/*current-user-id* (:sid claims))
-           (respond-with (handler {:claims       claims
-                                   :session-id   session-id
-                                   :route-params route-params}
-                                  request)
-                         request respond raise)))))))
+      ;; The response is sent inside the bindings: a body may hold lazy values that realize as it is encoded. The auth
+      ;; method marks the queries the iframe runs in usage analytics.
+      (analytics/with-auth-method! "mcp-ui"
+        (request/do-with-current-user
+         user
+         (fn []
+           (let [session-id (get-in request [:headers "mcp-session-id"])]
+             (check-session-header! session-id api/*current-user-id* (:sid claims))
+             (respond-with (handler {:claims       claims
+                                     :session-id   session-id
+                                     :route-params route-params}
+                                    request)
+                           request respond raise))))))))
 
 (defn- handler
   [request respond raise]
