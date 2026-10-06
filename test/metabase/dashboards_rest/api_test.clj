@@ -4294,9 +4294,8 @@
                                        dashcard-id)]
               (testing "Without actions enabled"
                 (is (= "Actions are not enabled."
-                       (:cause
-                        (mt/user-http-request :crowberto :post 400 execute-path
-                                              {:parameters {"name" "Birds"}})))))
+                       (mt/user-http-request :crowberto :post 400 execute-path
+                                             {:parameters {"name" "Birds"}}))))
               ;; Actions cannot run with access to the DB blocked, which is an enterprise feature.  See tests in
               ;; enterprise/backend/test/metabase_enterprise/advanced_permissions/common_test.clj and at the bottom of
               ;; this file
@@ -4333,9 +4332,8 @@
                                        dashcard-id)]
               (testing "Fails with actions disabled"
                 (is (= "Actions are not enabled."
-                       (:cause
-                        (mt/user-http-request :crowberto :post 400 execute-path
-                                              {:parameters {"id" 1}})))))
+                       (mt/user-http-request :crowberto :post 400 execute-path
+                                             {:parameters {"id" 1}}))))
               ;; Actions cannot run with access to the DB blocked, which is an enterprise feature.  See tests in
               ;; enterprise/backend/test/metabase_enterprise/advanced_permissions/common_test.clj and at the bottom of
               ;; this file.
@@ -4443,9 +4441,9 @@
                                                                           :group_id group-id}]
                         (data-perms.graph/update-data-perms-graph!* [group-id (mt/id) :view-data] :blocked)
                         (data-perms.graph/update-data-perms-graph!* [(:id (perms-group/all-users)) (mt/id) :view-data] :blocked)
-                        (is (partial= {:message "You don't have permissions to do that."}
-                                      (mt/user-http-request :rasta :post 403 execute-path
-                                                            {:parameters {"id" 1}}))
+                        (is (= "You don't have permissions to do that."
+                               (mt/user-http-request :rasta :post 403 execute-path
+                                                     {:parameters {"id" 1}}))
                             "Data permissions should be required")))))))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

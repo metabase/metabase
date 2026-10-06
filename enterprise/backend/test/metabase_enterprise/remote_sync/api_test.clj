@@ -2450,8 +2450,8 @@
                        :model/Dashboard     {dashboard-id :id} {:collection_id synced-id}
                        :model/DashboardCard _                 {:dashboard_id dashboard-id :action_id action-id}]
           (is (= "Used by remote synced content."
-                 (:message (mt/user-http-request :crowberto :put 400 (str "action/" action-id)
-                                                 {:collection_id plain-id}))))
+                 (mt/user-http-request :crowberto :put 400 (str "action/" action-id)
+                                       {:collection_id plain-id})))
           (is (= synced-id (t2/select-one-fn :collection_id :model/Action :id action-id))))))))
 
 (deftest archiving-a-synced-model-with-actions-test

@@ -384,8 +384,8 @@
                     (count (mt/rows (mt/user-http-request :rasta :post 202 "dataset" (mt/mbql-query venues)))))]
             (is (= 1 (sandboxed-row-count)))
             (is (= "You do not have permissions to modify a snippet that is used for row and column level security."
-                   (:message (mt/user-http-request editor :put 403 (str "native-query-snippet/" (:id snippet))
-                                                   {:content "1 = 1"}))))
+                   (mt/user-http-request editor :put 403 (str "native-query-snippet/" (:id snippet))
+                                         {:content "1 = 1"})))
             (is (= "ID = 1" (t2/select-one-fn :content :model/NativeQuerySnippet :id (:id snippet))))
             (is (= 1 (sandboxed-row-count)))))))))
 

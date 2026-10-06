@@ -21,6 +21,7 @@
    [metabase.metabot.settings :as metabot.settings]
    [metabase.metabot.usage :as usage]
    [metabase.util :as u]
+   [metabase.util.api-error :as api-error]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
@@ -593,10 +594,11 @@
   [provider-and-model messages json-schema temperature max-tokens opts]
   (warn-when-missing-required-permission "call-llm-structured-with-trace" opts)
   (when-let [limit-msg (usage/check-usage-limits!)]
-    (throw (ex-info limit-msg
-                    {:type       :metabot/usage-limit-reached
-                     :error-code "ai_usage_limit_reached"
-                     :message    limit-msg})))
+    (throw (api-error/ex-info limit-msg
+                              {:type       :metabot/usage-limit-reached
+                               :error-code "ai_usage_limit_reached"
+                               :message    limit-msg}
+                              #{:error-code :message})))
   (check-permission! (:required-permission opts))
   (let [{:keys [provider stream-fn model credentials ai-proxy?]} (parse-provider-model provider-and-model)
         [system-msg input] (if (= "system" (some-> messages first :role name))

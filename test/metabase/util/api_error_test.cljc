@@ -42,7 +42,10 @@
   (testing "keeps the cause"
     (let [cause (ex-info "root" {})
           e     (api-error/ex-info "Nope" {:status-code 400, :errors 1} #{:errors} cause)]
-      (is (identical? cause (ex-cause e))))))
+      (is (identical? cause (ex-cause e)))))
+  (testing "a cause in the keys' position, the shape of clojure.core/ex-info, is rejected clearly"
+    (is (thrown-with-msg? #?(:clj clojure.lang.ExceptionInfo :cljs js/Error) #"client-facing keys before the cause"
+                          (api-error/ex-info "Nope" {:status-code 400} (ex-info "cause" {}))))))
 
 #?(:clj
    (deftest ^:parallel exposing-test
@@ -55,7 +58,12 @@
          (is (= {:status-code 400, :errors {:username "wait"}, :ip "1.2.3.4", ::api-error/keys #{:errors}}
                 (ex-data e)))))
      (testing "returns the body's value when nothing is thrown"
-       (is (= 3 (api-error/exposing #{:errors} (* 1 3)))))))
+       (is (= 3 (api-error/exposing #{:errors} (* 1 3)))))
+     (testing "an exception that already exposes the keys is rethrown as it is"
+       (let [e (api-error/ex-info "Too many attempts!" {:status-code 400, :errors {:username "wait"}} #{:errors})]
+         (is (identical? e (try
+                             (api-error/exposing #{:errors} (throw e))
+                             (catch clojure.lang.ExceptionInfo e' e'))))))))
 
 #?(:clj
    (deftest ^:parallel throwable->map-test

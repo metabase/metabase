@@ -21,14 +21,23 @@
   [data]
   (select-keys data (::keys data)))
 
+(defn- check-api-keys
+  "`api-keys` is the third argument of [[ex-info]], where [[clojure.core/ex-info]] takes the cause: fail clearly when a
+  cause is passed there."
+  [api-keys]
+  (when-not (or (nil? api-keys) (coll? api-keys))
+    (throw (clojure.core/ex-info "api-error/ex-info takes the client-facing keys before the cause"
+                                 {:api-keys api-keys})))
+  api-keys)
+
 (defn ex-info
   "Like [[clojure.core/ex-info]], with `api-keys`, the keys of `data` that are sent to the client.
 
     (api-error/ex-info (tru \"Invalid card\") {:status-code 400, :card-id id, :errors {:card_id \"...\"}} #{:errors})"
   ([msg data api-keys]
-   (clojure.core/ex-info msg (apply expose data api-keys)))
+   (clojure.core/ex-info msg (apply expose data (check-api-keys api-keys))))
   ([msg data api-keys cause]
-   (clojure.core/ex-info msg (apply expose data api-keys) cause)))
+   (clojure.core/ex-info msg (apply expose data (check-api-keys api-keys)) cause)))
 
 #?(:clj
    (defmacro exposing
@@ -42,7 +51,9 @@
      `(try
         ~@body
         (catch clojure.lang.ExceptionInfo e#
-          (throw (clojure.core/ex-info (ex-message e#) (apply expose (ex-data e#) ~api-keys) e#))))))
+          (throw (if (every? (::keys (ex-data e#) #{}) ~api-keys)
+                   e#
+                   (clojure.core/ex-info (ex-message e#) (apply expose (ex-data e#) ~api-keys) e#)))))))
 
 #?(:clj
    (defn throwable->map

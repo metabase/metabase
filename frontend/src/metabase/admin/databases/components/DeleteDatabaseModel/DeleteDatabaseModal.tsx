@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { jt, t } from "ttag";
 
 import { useGetDatabaseUsageInfoQuery } from "metabase/api";
+import { getErrorMessage } from "metabase/api/utils/errors";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useNavigate } from "metabase/router";
 import {
@@ -30,20 +31,8 @@ const hasContentInDatabase = (usageInfo: DatabaseUsageInfo) => {
   return entityTypesCount(usageInfo) > 0;
 };
 
-const getErrorMessage = (error: any) => {
-  if (!error) {
-    return null;
-  }
-
-  let errorMessage = t`Server error encountered`;
-  if (error.data && error.data.message) {
-    errorMessage = error.data.message;
-  } else if (error.message) {
-    errorMessage = error.message;
-  }
-
-  return errorMessage;
-};
+const getDeleteErrorMessage = (error: unknown) =>
+  error ? getErrorMessage(error, t`Server error encountered`) : null;
 
 export interface DeleteDatabaseModalProps {
   opened: boolean;
@@ -102,7 +91,7 @@ export const DeleteDatabaseModal = ({
 
   const deleteButtonLabel = t`Delete this DB connection`;
 
-  const errorMessage = getErrorMessage(error);
+  const errorMessage = getDeleteErrorMessage(error);
   const hasMoreThanOneEntityType = usageInfo && entityTypesCount(usageInfo) > 1;
 
   const databaseNameConfirmationRef = useRef<HTMLInputElement>(null);

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { useListLogsQuery } from "metabase/api/logger";
+import { findErrorMessage } from "metabase/api/utils/errors";
 import type { Log } from "metabase-types/api";
 
 import { maybeMergeLogs } from "./utils";
@@ -24,12 +25,7 @@ export function usePollingLogsQuery(pollingDurationMs: number) {
     if (!queryError) {
       return null;
     }
-    // Unjustified type cast. FIXME
-    const errorWithData = queryError as {
-      data?: { message?: string };
-      message?: string;
-    };
-    return errorWithData.data?.message ?? errorWithData.message ?? null;
+    return findErrorMessage(queryError) ?? null;
   }, [queryError]);
 
   return { loaded: isSuccess, error, logs };
