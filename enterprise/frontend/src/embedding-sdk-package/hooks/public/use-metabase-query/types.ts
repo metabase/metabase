@@ -403,10 +403,11 @@ type TableQueryBase<TTable> = {
   source: TTable extends TableSchema ? SourceQuerySpec<TTable> : TableSchema;
   fields?: readonly FieldReference<TTable>[];
   /**
-   * The entity ID of this query's saved question in the data app's
-   * `resources/cards/`. A production build runs that card instead of the table:
-   * it sits in the app's collection, which the app's viewers can read, and a
-   * table source isn't. The dev preview ignores it and runs the table source.
+   * The entity ID of this query's saved question in the app's collection,
+   * under the repository's `collections/data_apps/`. A production build runs
+   * that card instead of the table: it sits in the app's collection, which the
+   * app's viewers can read, and a table source isn't. The dev preview ignores
+   * it and runs the table source.
    */
   savedQuestionEntityId?: string;
 } & StageClauses<

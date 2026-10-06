@@ -14,7 +14,7 @@ import { defineAction } from "@metabase/embedding-sdk-react/data-app";
 import schema from "../src/metabase.data";
 
 export const CreateOrder = defineAction({
-  copiedActionEntityId: "<entity ID of the copy in resources/actions/>",
+  copiedActionEntityId: "<entity ID of the copy in the app's collection>",
   action: schema.actions.createOrder,
 });
 ```
@@ -57,8 +57,8 @@ Rules:
   (`include-actions=true`).
 - Pass the export itself to `useAction`. Never pass
   `schema.actions.<action>` or its `.id`.
-- `copiedActionEntityId` is the entity ID of the action's copy in
-  `resources/actions/`. Production runs that copy instead of the action the
+- `copiedActionEntityId` is the entity ID of the action's copy in the app's
+  collection. Production runs that copy instead of the action the
   schema names; the dev preview runs the schema's action, so the app works
   before the copy exists.
 - Never copy a `copiedActionEntityId` to another definition, or remove it while

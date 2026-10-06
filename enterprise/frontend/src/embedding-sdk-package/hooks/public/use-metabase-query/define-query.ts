@@ -12,7 +12,7 @@ type SavedQuestionBinding = {
 
 /**
  * Defines a source-controlled data app query. `savedQuestionEntityId` is the
- * entity ID of its saved question in the app's `resources/cards/`, which a
+ * entity ID of its saved question in the app's collection under `collections/data_apps/`, which a
  * production build runs.
  */
 export function defineQuery<

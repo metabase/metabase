@@ -81,7 +81,7 @@ describe("executeAction", () => {
       await expect(
         executeAction(setup())({ actionId: { action: { id: AUTHORED_ID } } }),
       ).rejects.toThrow(
-        "This action has no copy. Copy it into the app's `resources/actions/`",
+        "This action has no copy. Copy it into the app's collection under `collections/data_apps/`",
       );
     });
 

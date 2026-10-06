@@ -72,7 +72,7 @@ function toExecutableActionId(input: SdkActionInput): SdkActionId {
 
   if (input.copiedActionEntityId === undefined) {
     throw new Error(
-      "This action has no copy. Copy it into the app's `resources/actions/`, set its `copiedActionEntityId`, run `npm run check-resources`, commit, and rebuild.",
+      "This action has no copy. Copy it into the app's collection under `collections/data_apps/`, set its `copiedActionEntityId`, run `npm run check-resources`, commit, and rebuild.",
     );
   }
 

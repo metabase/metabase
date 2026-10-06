@@ -66,7 +66,7 @@ Rules:
   helper queries are queries too.
 - Pass the export itself to the hook. Never spread or copy it.
 - Each definition carries `savedQuestionEntityId`, the entity ID of its saved
-  question in `resources/cards/`. Production runs that saved question instead
+  question in the app's collection. Production runs that saved question instead
   of the table; the dev preview runs the table, so the app works before the
   saved question exists.
 - Never copy a `savedQuestionEntityId` to another definition, or remove it while
