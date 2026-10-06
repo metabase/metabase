@@ -204,6 +204,55 @@
          (is (= {:stored "true" :ledger [["Transforms" "synced"]]}
                 (transforms-state))))))))
 
+(defn- remote-sync-setting-rows
+  "The raw `setting` rows whose key starts with `remote-sync`, as `[key value value_with_aad]`, sorted by key."
+  []
+  (->> (t2/select :setting :key [:like "remote-sync%"])
+       (map (juxt :key :value :value_with_aad))
+       sort
+       vec))
+
+(defn- do-with-remote-sync-setting-rows-restored!
+  "Runs `thunk`, then puts back the raw `remote-sync%` setting rows and the RemoteSyncObject rows that existed before
+  it, and restores the settings cache."
+  [thunk]
+  (let [settings (t2/select :setting :key [:like "remote-sync%"])
+        ledger   (t2/select :model/RemoteSyncObject)]
+    (try
+      (thunk)
+      (finally
+        (t2/delete! :setting :key [:like "remote-sync%"])
+        (when (seq settings)
+          (t2/insert! :setting settings))
+        (setting/restore-cache!)
+        (t2/delete! :model/RemoteSyncObject)
+        (when (seq ledger)
+          (t2/insert! :model/RemoteSyncObject ledger))))))
+
+(deftest clean-remote-sync-state-restores-every-remote-sync-setting-row-test
+  (testing "the raw remote-sync setting rows after clean-remote-sync-state equal the rows before it, also when the test
+            binds settings that had no row"
+    (mt/with-dynamic-fn-redefs [search/reindex! (constantly nil)]
+      (do-with-remote-sync-setting-rows-restored!
+       (fn []
+         (t2/delete! :setting :key [:in ["remote-sync-type" "remote-sync-branch" "remote-sync-auto-import"
+                                         "remote-sync-git-timeout-seconds"]])
+         (t2/insert! :setting [{:key "remote-sync-type" :value "read-write" :value_with_aad "read-write"}
+                               ;; a row that only a version before the `value_with_aad` column wrote
+                               {:key "remote-sync-branch" :value "legacy" :value_with_aad nil}])
+         (setting/restore-cache!)
+         (let [before (remote-sync-setting-rows)]
+           (th/clean-remote-sync-state
+            (fn []
+              (mt/with-temporary-setting-values [remote-sync-type                :read-only
+                                                 remote-sync-auto-import         true
+                                                 remote-sync-git-timeout-seconds 5]
+                (is (= [:read-only true 5]
+                       [(remote-sync.settings/remote-sync-type)
+                        (remote-sync.settings/remote-sync-auto-import)
+                        (remote-sync.settings/remote-sync-git-timeout-seconds)])))))
+           (is (= before (remote-sync-setting-rows)))))))))
+
 (deftest stored-transforms-setting-test-keeps-existing-transforms-state-test
   (testing "clean-remote-sync-state-removes-stored-transforms-setting-test leaves the remote-sync-transforms value and
             the Transforms ledger row that existed before it"
