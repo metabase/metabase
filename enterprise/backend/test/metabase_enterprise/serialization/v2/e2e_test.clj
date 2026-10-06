@@ -2,6 +2,7 @@
   {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase-enterprise.serialization.v2.e2e-test]}}}}}}
   (:require
    [clojure.java.io :as io]
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [medley.core :as m]
    [metabase-enterprise.serialization.cmd :as cmd]
@@ -17,6 +18,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.models.serialization :as serdes]
+   [metabase.queries.card-schema :as card-schema]
    [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.search.core :as search]
@@ -122,11 +124,11 @@
         (ts/with-db source-db
           (testing "insert"
             (test-gen/insert!
-             {;; Actions are special case where there is a 1:1 relationship between an action and an action subtype (query, implicit, or http)
+             {;; Actions are special case where there is a 1:1 relationship between an action and an action subtype (query or implicit)
               ;; We generate 10 actions for each subtype, and 10 of each subtype.
-              ;; actions 0-9 are query actions, 10-19 are implicit actions, and 20-29 are http actions.
+              ;; actions 0-9 are query actions, and 10-19 are implicit actions.
               :action                  (apply concat
-                                              (for [type [:query :implicit :http]]
+                                              (for [type [:query :implicit]]
                                                 (many-random-fks 10
                                                                  {:spec-gen {:type type}}
                                                                  {:model_id   [:sm 10]
@@ -140,12 +142,6 @@
                                           (update-in x [1 :refs]
                                                      (fn [refs]
                                                        (assoc refs :action_id (keyword (str "action" (+ 10 idx)))))))
-                                        (many-random-fks 10 {} {}))
-              :http-action             (map-indexed
-                                        (fn [idx x]
-                                          (update-in x [1 :refs]
-                                                     (fn [refs]
-                                                       (assoc refs :action_id (keyword (str "action" (+ 20 idx)))))))
                                         (many-random-fks 10 {} {}))
               :collection              [[100 {:refs     {:personal_owner_id ::rs/omit}}]
                                         [10  {:refs     {:personal_owner_id ::rs/omit}
@@ -223,7 +219,10 @@
           (testing "storage"
             (storage/store! (seq @extraction) (storage.files/file-writer dump-dir))
             (testing "for Actions"
-              (is (= 30 (count (dir->file-set (io/file dump-dir "actions"))))))
+              (let [main-dir (io/file dump-dir "collections" "main")]
+                (is (= 20 (count (for [f (file-set main-dir)
+                                       :when (= "Action" (yaml-model-at main-dir f))]
+                                   f))))))
             (testing "for Collections"
               ;; +1 for the Trash collection
               (let [colls-dir  (io/file dump-dir "collections")
@@ -248,7 +247,7 @@
                                      table (subdirs (io/file dump-dir "databases" db "tables"))
                                      :let  [fields-dir (io/file table "fields")]
                                      :when (.exists fields-dir)]
-                                 (count (dir->file-set fields-dir)))))
+                                 (count (remove #(str/includes? % "___") (dir->file-set fields-dir))))))
                   "Fields are scattered, so the directories are harder to count"))
             (testing "for cards, dashboards, and timelines"
               ;; In the new storage format, cards/dashboards/timelines are stored directly
@@ -258,7 +257,7 @@
               ;; exact count may vary by 1 depending on naming collisions with collection names
               (let [main-dir (io/file dump-dir "collections" "main")]
                 (is (<= 269 (count (for [f (file-set main-dir)
-                                         :when (not= "Collection" (yaml-model-at main-dir f))]
+                                         :when (not (#{"Collection" "Action"} (yaml-model-at main-dir f)))]
                                      f)) 271))))
             (testing "for segments"
               (is (= 30 (reduce + (for [db    (dir->dir-set (io/file dump-dir "databases"))
@@ -1007,11 +1006,7 @@
                                                                                                               [:field %products.category {:join-alias "Products"}]]}]})}]
             ;; Populate the native source card's result_metadata the way the app does when a user runs and
             ;; saves the query. This is the state serdes must preserve across the round-trip.
-            (let [source-cols  (-> (qp/process-query (t2/select-one-fn :dataset_query
-                                                                       [:model/Card :id :dataset_query :card_schema
-                                                                        :type :database_id :result_metadata
-                                                                        :dimensions :dimension_mappings]
-                                                                       native-id))
+            (let [source-cols  (-> (qp/process-query (t2/select-one-fn :dataset_query (card-schema/selection) native-id))
                                    (get-in [:data :results_metadata :columns]))
                   source-names (mapv :name source-cols)]
               (t2/update! :model/Card native-id {:result_metadata source-cols})

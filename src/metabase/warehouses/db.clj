@@ -102,6 +102,13 @@
                        :select [:id]
                        :where  [:= :database_id database-id]}))
 
+(mu/defn delete-query-actions-for-database!
+  "Delete the query Actions whose query runs against the Database with `database-id`, returning the number deleted."
+  [database-id :- ::lib.schema.id/database]
+  (if-let [action-ids (not-empty (t2/select-fn-set :action_id :model/QueryAction :database_id database-id))]
+    (t2/delete! :model/Action :id [:in action-ids])
+    0))
+
 (mu/defn delete-cards-for-database!
   "Delete the Cards of the Database with `database-id`."
   [database-id :- ::lib.schema.id/database]

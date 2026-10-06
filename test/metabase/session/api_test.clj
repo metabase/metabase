@@ -4,6 +4,7 @@
    [clj-http.client :as http]
    [clojure.test :refer :all]
    [medley.core :as m]
+   [metabase.appearance.core :as appearance]
    [metabase.auth-identity.core :as auth-identity]
    [metabase.driver.h2 :as h2]
    [metabase.login-history.db :as login-history.db]
@@ -20,8 +21,11 @@
    [metabase.test.data.users :as test.users]
    [metabase.test.fixtures :as fixtures]
    [metabase.test.http-client :as client]
+   [metabase.test.util :as tu]
    [metabase.util :as u]
+   [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.json :as json]
+   [metabase.util.jvm :as u.jvm]
    [metabase.util.malli.schema :as ms]
    [metabase.util.string :as string]
    [toucan2.core :as t2]))
@@ -625,13 +629,107 @@
                (-> (mt/user-http-request :crowberto :get 200 "session/properties")
                    :test-session-api-setting)))))))
 
+(defn- image-data-uri [content-type content]
+  (str "data:" content-type ";base64," (u.jvm/encode-base64 content)))
+
+(defn- do-with-raw-value! [setting-key value thunk]
+  (tu/do-with-temporary-setting-value! setting-key value thunk :raw-setting? true))
+
+(defn- illustration-request
+  "Call the API as rasta for the landing page illustration, which needs a logged in user, else anonymously."
+  [setting-key & args]
+  (if (= setting-key :landing-page-illustration-custom)
+    (apply mt/user-http-request-full-response :rasta args)
+    (apply mt/client-full-response args)))
+
+(defn- fetch-illustration [setting-key expected-status & args]
+  (apply illustration-request setting-key :get expected-status (str "session/illustration/" (name setting-key)) args))
+
+(defn- do-with-each-uploaded-illustration!
+  "Upload an image to each custom illustration setting and call `(f setting-key image-hash)`."
+  [f]
+  (mt/with-premium-features #{:whitelabel}
+    (doseq [setting-key appearance/custom-illustration-settings]
+      (testing setting-key
+        (do-with-raw-value! setting-key (image-data-uri "image/png" "png bytes")
+                            #(f setting-key (second (re-find #"v=(.+)$" (setting/get setting-key)))))))))
+
+(deftest illustration-test
+  (do-with-each-uploaded-illustration!
+   (fn [setting-key _image-hash]
+     (let [{:keys [body headers]} (fetch-illustration setting-key 200)]
+       (is (= "png bytes" body))
+       (is (= "image/png" (get headers "Content-Type")))
+       (testing "no Cross-Origin-Resource-Policy, the React SDK loads it from the host app origin"
+         (is (nil? (get headers "Cross-Origin-Resource-Policy"))))))))
+
+(deftest illustration-session-properties-test
+  (testing "session properties contain the URL, not the image"
+    (do-with-each-uploaded-illustration!
+     (fn [setting-key image-hash]
+       (is (= (str "api/session/illustration/" (name setting-key) "?v=" image-hash)
+              (get-in (illustration-request setting-key :get 200 "session/properties") [:body setting-key])))))))
+
+(deftest illustration-cache-test
+  (do-with-each-uploaded-illustration!
+   (fn [setting-key image-hash]
+     (let [cached "private, max-age=31536000, immutable"]
+       (testing "the URL without a hash is not cached"
+         (is (= "private, no-cache" (get-in (fetch-illustration setting-key 200) [:headers "Cache-Control"]))))
+       (testing "the URL with the current hash is cached"
+         (is (= cached (get-in (fetch-illustration setting-key 200 :v image-hash) [:headers "Cache-Control"]))))
+       (testing "a URL with another hash is not cached"
+         (is (= "private, no-cache"
+                (get-in (fetch-illustration setting-key 200 :v "0000000000000000") [:headers "Cache-Control"]))))))))
+
+(deftest illustration-authentication-test
+  (testing "the landing page illustration needs a logged in user"
+    (mt/with-premium-features #{:whitelabel}
+      (mt/with-temporary-raw-setting-values [landing-page-illustration-custom (image-data-uri "image/png" "png bytes")]
+        (mt/client-full-response :get 401 "session/illustration/landing-page-illustration-custom")))))
+
+(deftest illustration-svg-test
+  (testing "SVG images get a sandbox CSP"
+    (mt/with-premium-features #{:whitelabel}
+      (doseq [content-type ["image/svg+xml" "image/svg+xml;charset=iso-8859-1"]]
+        (testing (str "Content-Type = " content-type)
+          (mt/with-temporary-raw-setting-values [login-page-illustration-custom (image-data-uri content-type "<svg/>")]
+            (let [{:keys [headers]} (fetch-illustration :login-page-illustration-custom 200)]
+              (is (= content-type (get headers "Content-Type")))
+              (is (= "default-src 'none'; style-src 'unsafe-inline'; sandbox"
+                     (get headers "Content-Security-Policy"))))))))))
+
+(deftest illustration-not-found-test
+  (mt/with-premium-features #{:whitelabel}
+    (testing "404 when there is no uploaded image"
+      (doseq [setting-key appearance/custom-illustration-settings
+              value       [nil "https://example.com/login.png"]]
+        (testing [setting-key value]
+          (do-with-raw-value! setting-key value #(fetch-illustration setting-key 404)))))
+    (testing "404 for other settings"
+      (mt/with-temporary-raw-setting-values [application-logo-url (image-data-uri "image/png" "png bytes")]
+        (fetch-illustration :application-logo-url 404)
+        (fetch-illustration :not-a-setting 404))))
+  (testing "404 without the whitelabel feature"
+    (mt/with-premium-features #{}
+      (mt/with-temporary-raw-setting-values [login-page-illustration-custom (image-data-uri "image/png" "png bytes")]
+        (fetch-illustration :login-page-illustration-custom 404)))))
+
+(defsetting test-session-api-i18n-setting
+  "Public setting whose value nests a deferred-tru, so the locale header has something to translate."
+  :encryption :no
+  :visibility :public
+  :setter     :none
+  :getter     (fn [] {:display-name (deferred-tru "Connection String")})
+  :doc        false)
+
 (deftest properties-i18n-test
   (testing "GET /session/properties"
     (testing "Setting the X-Metabase-Locale header should result give you properties in that locale"
       (mt/with-mock-i18n-bundles! {"es" {:messages {"Connection String" "Cadena de conexión !"}}}
         (is (= "Cadena de conexión !"
                (-> (mt/client :get 200 "session/properties" {:request-options {:headers {"x-metabase-locale" "es"}}})
-                   :engines :h2 :details-fields first :display-name)))))))
+                   :test-session-api-i18n-setting :display-name)))))))
 
 (deftest properties-skip-sensitive-test
   (testing "GET /session/properties"

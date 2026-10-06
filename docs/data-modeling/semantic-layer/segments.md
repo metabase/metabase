@@ -8,15 +8,19 @@ redirect_from:
 
 # Segments
 
+_Data Studio > Connected data > Segments_
+
 Segments are saved filters on tables. You can use segments to create official definitions of a subset of customers, users, or products that everyone on your team can refer to consistently (for example what constitutes an "active user").
 
 People will see segments as options in the Filter block of the [query builder](../../questions/query-builder/editor.md).
 
 ![Segment in the query builder](./images/segment.png)
 
+You can define segments on any table. Segments on [published tables](published-tables.md) are part of your [semantic layer](library.md#semantic-layer).
+
 For now, in addition to Data Studio, segments can also be managed through **Admin > Table Metadata**, see [Segments in table metadata](./legacy-segments.md).
 
-To see all segments on a table, select the table in [Managing tables](../metadata/managing-tables.md) and switch to the **Segments** tab.
+To see all segments on a table, select the table in **Data Studio > Connected data** and switch to the **Segments** tab.
 
 ## Create segments
 
@@ -25,7 +29,7 @@ To see all segments on a table, select the table in [Managing tables](../metadat
 Segments are created in [Data Studio](../data-studio.md).
 
 1. Go to **Data Studio** by clicking the **grid icon** in top right of the screen and selecting **Data Studio**.
-2. In Data Studio, go to **Tables** in the left sidebar, and select the table to define a segment on.
+2. In Data Studio, go to **Connected data** in the left sidebar, and select the table to define a segment on.
 3. In the right sidebar for the table, select **Segments**.
 4. Click on **+ New Segment**. You'll see an abridged version of Metabase's query builder.
 5. Add the filters describing the segment (e.g. `Active = true`) and name the segment.
@@ -51,7 +55,7 @@ Segments will only appear in questions that use the segment's table as the prima
 Deleting a segment will not break questions using it. The questions that use the segment will keep using the same filters as before.
 
 1. Go to **Data Studio** by clicking the **grid icon** in top right of the screen and selecting **Data Studio**.
-2. In Data Studio, go to **Tables**, and select the segment's table.
+2. In Data Studio, go to **Connected data**, and select the segment's table.
 3. In the right sidebar for the table, switch to **Segments** tab
 4. Choose the segment you want to delete.
 5. On the segment's page, click on the **three dots** icon next to the segment's name and select **Remove segment**.

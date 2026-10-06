@@ -14,7 +14,6 @@
   revert-to-revision!
   revisions]
  [metabase.revisions.models.revision.last-edit
-  MaybeAnnotated
   edit-information-for-user
   fetch-last-edited-info
   with-last-edit-info])
