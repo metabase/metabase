@@ -22,9 +22,26 @@ const HANDLE_ROUTES: Record<string, string> = {
 
 let currentQueryHandle: string | null = null;
 
-/** Set the handle whose stored query the iframe's question is showing. */
+/** Counts the handles set from outside a derive, such as a new tool result. */
+let queryHandleGeneration = 0;
+
+/**
+ * Set the handle whose stored query the iframe's question is showing, for a
+ * new tool result. A derive in progress started from an older one.
+ */
 export function setCurrentMcpQueryHandle(handle: string | null) {
   currentQueryHandle = handle;
+  queryHandleGeneration += 1;
+}
+
+/** Set the current handle to one a derive produced from it, or back after a failed derive. */
+export function advanceCurrentMcpQueryHandle(handle: string | null) {
+  currentQueryHandle = handle;
+}
+
+/** Changes whenever `setCurrentMcpQueryHandle` replaces the current handle. */
+export function getMcpQueryHandleGeneration(): number {
+  return queryHandleGeneration;
 }
 
 export function getCurrentMcpQueryHandle(): string | null {
