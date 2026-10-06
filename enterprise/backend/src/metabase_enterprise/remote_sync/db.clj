@@ -577,11 +577,6 @@
   []
   (t2/select-pks-set :model/RemoteSyncObject))
 
-(mu/defn unsynced-rsos
-  "The RemoteSyncObjects whose status is not synced."
-  []
-  (t2/select :model/RemoteSyncObject {:where [:not= :status "synced"]}))
-
 (mu/defn dirty-rso-exists?
   "Whether a RemoteSyncObject of a model type other than `excluded-model-types` is not synced."
   [excluded-model-types :- [:set :string]]

@@ -13,6 +13,8 @@
    [metabase-enterprise.remote-sync.source.protocol :as source.p]
    [metabase-enterprise.remote-sync.test-helpers :as test-helpers]
    [metabase.events.core :as events]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.search.core :as search]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -77,7 +79,7 @@
                                                 :merge? true :base-snapshot (source.p/snapshot-at src "v0"))))))]
     {:src src :result result :loaded loaded}))
 
-(defn- once-at
+(defn- once-at!
   "A function of a progress fraction that calls `f` the first time the fraction is `fraction`."
   [fraction f]
   (let [done (atom false)]
@@ -112,6 +114,12 @@
   [model-key id]
   [(name model-key) (t2/select-one-fn :entity_id model-key :id id)])
 
+(defn- venues-query
+  "An MBQL query of the venues table of the test data."
+  []
+  (let [mp (mt/metadata-provider)]
+    (lib/query mp (lib.metadata/table mp (mt/id :venues)))))
+
 (defmacro ^:private with-sync-settings
   "Run `body` with read-write remote sync, and with no search reindex."
   [& body]
@@ -139,7 +147,7 @@
     (do-with-synced-cards!
      (fn [{:keys [a t0]}]
        (let [{:keys [src result]} (merge-pull! t0 (edit t0 "Card B" "remote edit B")
-                                               :on-report (once-at 0.75 #(save! a "edit during pull")))]
+                                               :on-report (once-at! 0.75 #(save! a "edit during pull")))]
          (is (= :success (:status result)) (pr-str result))
          (is (= "edit during pull" (t2/select-one-fn :description :model/Card a)))
          (is (= "update" (:status (row "Card" a))) "the save during the pull keeps the row dirty")
@@ -155,7 +163,7 @@
     (do-with-synced-cards!
      (fn [{:keys [a b t0]}]
        (let [{:keys [result loaded]} (merge-pull! t0 (edit t0 "Card B" "remote edit B")
-                                                  :on-report (once-at 0.05 #(save! a "edit during pull")))]
+                                                  :on-report (once-at! 0.05 #(save! a "edit during pull")))]
          (is (= :success (:status result)) (pr-str result))
          (is (= #{(entity-key :model/Card b)} loaded) "the pull loads only the remote change")
          (is (= "remote edit B" (t2/select-one-fn :description :model/Card b)))
@@ -170,7 +178,7 @@
     (with-sync-settings
       (mt/with-temp [:model/Collection {coll-id :id} {:name "Merge Test" :is_remote_synced true :location "/"}
                      :model/Card {model-id :id} {:name "Model M" :type :model :collection_id coll-id
-                                                 :dataset_query (mt/mbql-query venues)}]
+                                                 :dataset_query (venues-query)}]
         (let [t0        (export-tree!)
               _         (pull-base! t0)
               action-id (t2/insert-returning-pk! :model/Action {:name "New action" :type :query :model_id model-id})
@@ -192,7 +200,7 @@
     (with-sync-settings
       (mt/with-temp [:model/Collection {coll-id :id} {:name "Merge Test" :is_remote_synced true :location "/"}
                      :model/Card {model-id :id} {:name "Model M" :type :model :collection_id coll-id
-                                                 :dataset_query (mt/mbql-query venues)}
+                                                 :dataset_query (venues-query)}
                      :model/Action {action-id :id} {:name "Old action" :type :query :model_id model-id}
                      :model/QueryAction _ {:action_id action-id :dataset_query (mt/native-query {:query "select 1"})}
                      :model/Card {card-id :id} {:name "Card A" :description "original" :collection_id coll-id}]

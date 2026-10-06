@@ -365,6 +365,34 @@
                   (t2/with-connection [_conn (mdb/app-db)]
                     (remote-sync.task/update-progress! task-id fraction))))}))
 
+(defn- managed-path-filters
+  "Path filters that keep the files under the managed top-level directories."
+  []
+  (mapv #(re-pattern (str % "/.*")) serialization/legal-top-level-paths))
+
+(defn- exact-path-filters
+  "Path filters that keep the files at `paths` only."
+  [paths]
+  (mapv #(re-pattern (java.util.regex.Pattern/quote %)) paths))
+
+(defn- enable-transforms-setting-for!
+  "Turns the `remote-sync-transforms` setting on when `has-transforms?` (the content that a pull loads has transforms)
+  and the setting is off."
+  [has-transforms?]
+  (when (and has-transforms?
+             (not (settings/remote-sync-transforms)))
+    (log/info "Detected transforms in remote source, enabling remote-sync-transforms setting")
+    (settings/remote-sync-transforms! true)))
+
+(defn- disable-transforms-setting-for!
+  "Turns the `remote-sync-transforms` setting off when the content that a pull loads has no transforms (not
+  `has-transforms?`) and the setting is on."
+  [has-transforms?]
+  (when (and (not has-transforms?)
+             (settings/remote-sync-transforms))
+    (log/info "No transforms in remote source, disabling remote-sync-transforms setting")
+    (settings/remote-sync-transforms! false)))
+
 (defn load-snapshot!
   "Loads a snapshot's serialized entities into the app DB and reconciles local state to match it:
   runs `load-metabase!`, toggles the `remote-sync-transforms` setting based on the snapshot's contents,
@@ -377,11 +405,10 @@
   bookkeeping) as the `:finalize!` thunk, which runs inside the same transaction as the object-table
   reconcile. That keeps the version pointer, RemoteSyncObject statuses, and the reconcile atomic: either
   they all commit or all roll back, so a crash can never leave the version advanced past stale local
-  state or drop captured dirty markers (see [[import-merged!]])."
+  state."
   [snapshot report sync-timestamp & {:keys [finalize!]}]
   (report 0.05 {:force? true})
-  (let [path-filters        (mapv #(re-pattern (str % "/.*")) serialization/legal-top-level-paths)
-        base-ingestable     (source.p/->ingestable snapshot {:path-filters path-filters})
+  (let [base-ingestable     (source.p/->ingestable snapshot {:path-filters (managed-path-filters)})
         has-transforms?     (snapshot-has-transforms? base-ingestable)
         ingestable-snapshot (source.ingestable/wrap-progress-ingestable report [0.05 0.7] base-ingestable)
         load-result         (serdes/with-cache
@@ -389,10 +416,7 @@
         seen-paths          (:seen load-result)
         imported-data       (spec/extract-imported-entities seen-paths)]
     (report 0.7 {:force? true})
-    (when (and has-transforms?
-               (not (settings/remote-sync-transforms)))
-      (log/info "Detected transforms in remote source, enabling remote-sync-transforms setting")
-      (settings/remote-sync-transforms! true))
+    (enable-transforms-setting-for! has-transforms?)
     ;; Reported before the transaction, not inside it: a write inside would hold the task row's lock until
     ;; commit, blocking the heartbeat for the whole reconcile and hashing phase.
     (report 0.75 {:force? true})
@@ -406,10 +430,7 @@
                              (source.ingestable/cached-file-paths base-ingestable))
       (when finalize! (finalize!)))
     (report 0.9 {:force? true})
-    (when (and (not has-transforms?)
-               (settings/remote-sync-transforms))
-      (log/info "No transforms in remote source, disabling remote-sync-transforms setting")
-      (settings/remote-sync-transforms! false))
+    (disable-transforms-setting-for! has-transforms?)
     ;; On H2 the reindex's table DDL blocks readers and can deadlock with them, so it must finish
     ;; inside the task; other app DBs keep the previous behavior of reindexing asynchronously.
     (try
@@ -458,7 +479,7 @@
         ;; file_path values are long, making an IN clause bulky for marginal gain).
         deleted-rsos (mapv remote-sync.db/rso-by-file-path deleted)
         ingestable (when (seq add-mod)
-                     (source.p/->ingestable snapshot {:path-filters (mapv #(re-pattern (java.util.regex.Pattern/quote %)) add-mod)}))
+                     (source.p/->ingestable snapshot {:path-filters (exact-path-filters add-mod)}))
         add-models (if ingestable
                      (into #{} (map #(:model (last %))) (serialization/ingest-list ingestable))
                      #{})
@@ -484,12 +505,12 @@
       {:ingestable ingestable :deleted-rsos deleted-rsos})))
 
 (defn- incremental-load-snapshot!
-  "Applies an incremental `plan` from [[incremental-import-plan]]: loads only its added/modified entities,
-  deletes only those genuinely removed and their delete closure (see [[delete-with-closure!]]), and reconciles
-  just those rows of the RemoteSyncObject table — leaving everything else untouched. Runs `finalize!` inside the reconcile transaction, then logs success and
-  returns [[import!]]'s `:success` result map carrying `snapshot-version`. The caller decides whether an
-  incremental load is safe (see [[incremental-import-plan]] and [[import!]]); this assumes the plan is valid
-  and local state matches the diff base.
+  "Applies an incremental `plan` from [[incremental-import-plan]] or [[import-merged!]]: loads only its
+  added/modified entities, deletes only those genuinely removed and their delete closure (see
+  [[delete-with-closure!]]), and reconciles just those rows of the RemoteSyncObject table — leaving everything else
+  untouched. Runs `finalize!` inside the reconcile transaction, then logs success and returns [[import!]]'s
+  `:success` result map carrying `snapshot-version`. The caller decides whether an incremental load is safe; this
+  assumes the plan is valid.
 
   Renames are handled by entity identity, not path: a rename re-loads the same entity_id at the new path
   (an add), so the old path's delete is recognized as a rename and the entity is not removed."
@@ -556,69 +577,110 @@
                            loaded-count)
                  :branch (settings/remote-sync-branch)}})))
 
-(defn- capture-dirty-objects
-  "Returns the current non-synced RemoteSyncObject rows — the local changes that have not been pushed.
-  Captured before a local-only merge so they can be restored afterwards (see [[import-merged!]])."
-  []
-  (remote-sync.db/unsynced-rsos))
+(defn- entity-key?
+  "True for the merge key of an entity (a vector of `[model id]` pairs), false for the path key of a file that is not
+  an entity file."
+  [k]
+  (vector? (first k)))
 
-(defn- restore-dirty-objects!
-  "Re-applies captured dirty rows after a merge load (which marks everything 'synced'). For each captured row,
-  updates the matching freshly-synced row, or re-inserts it when no row exists (e.g. a pending local deletion,
-  whose entity is absent from the merged set).
+(defn- local-ids-by-model
+  "The local ids of the entities with the merge keys `ks`, as a map of model key to a set of ids. Leaves out the keys
+  of models with no entity id, and of entities with no local row."
+  [ks]
+  (into {}
+        (keep (fn [[model-type eids]]
+                (let [{:keys [model-key identity]} (spec/spec-for-model-type model-type)]
+                  (when (and model-key (#{:entity-id :hybrid} identity))
+                    (when-let [ids (seq (remote-sync.db/ids-by-entity-ids model-key (set eids)))]
+                      [model-key (set ids)])))))
+        (u/group-by first second (map last ks))))
 
-  The update restores the captured `content_hash` and `file_path` along with the status. A full load rewrites
-  them from the entity's local, un-pushed content; left that way, the save-event handler would see a no-op re-save
-  match the hash and mark the entity synced, and its edit would drop out of the next push."
-  [dirty-objects timestamp]
-  (doseq [{:keys [model_type model_id status content_hash file_path] :as row} dirty-objects]
-    (if-let [existing (remote-sync.db/rso model_type model_id)]
-      (remote-sync.db/update-rso! (:id existing) {:status            status
-                                                  :status_changed_at timestamp
-                                                  :content_hash      content_hash
-                                                  :file_path         file_path})
-      (remote-sync.db/insert-rso! (-> row (dissoc :id) (assoc :status_changed_at timestamp))))))
+(defn- delete-closure-conflicts
+  "The conflicts of a merge pull that deletes the local entities `deleted-ids` (a map of model key to a set of ids)
+  with their delete closure (see [[remote-sync.db/delete-closure]]): one for each entity of ours in the closure whose
+  decision in the merge result `merge-result` is neither `:theirs` nor `:keep`. The delete would remove a local
+  change of that entity. Each conflict has the shape of a conflict of [[remote-sync.merge/three-way-merge]]."
+  [deleted-ids {:keys [decisions ours-units]}]
+  (when (seq deleted-ids)
+    (let [key-of (into {} (comp (filter entity-key?) (map (juxt last identity))) (keys ours-units))]
+      (vec (for [[model-key ids] (:ids-by-model (remote-sync.db/delete-closure deleted-ids))
+                 :let  [model-type (:model-type (spec/spec-for-model-key model-key))]
+                 eid   (vals (remote-sync.db/entity-ids-by-id model-key (vec ids)))
+                 :let  [k (key-of [model-type eid])]
+                 :when (and k (not (#{:theirs :keep} (get decisions k))))]
+             {:key k :ours (get ours-units k)})))))
+
+(defn- merge-conflict-result
+  "The `:conflict` result of a merge pull of `snapshot` with `conflicts` (see [[remote-sync.merge/three-way-merge]])."
+  [snapshot conflicts message]
+  (let [labels (mapv remote-sync.merge/conflict-label conflicts)]
+    (log/infof "Pull merge conflict on %d entit(ies)" (count labels))
+    {:status    :conflict
+     :version   (source.p/version snapshot)
+     :conflicts labels
+     :message   message}))
 
 (defn- import-merged!
   "Import in merge mode. Should only be called when you have a base-snapshot and its version differs from snaphot's version.
 
   Entity-identity 3-way merge of local state against the remote tip:
-  - on same-entity conflict, returns `:conflict` without touching local state;
-  - on a clean merge, applies the merged result to the LOCAL app DB only (no push).
-    - Marks remote changes synced
-    - Local changes stay dirty
-    - Sets version to remote tip"
+  - returns `:conflict`, with no write, when an entity changed differently on both sides, or when a remote delete
+    would remove a local change through the delete closure;
+  - else loads from the remote tip only the load units that the remote changed (decision `:theirs` or `:same`),
+    deletes the entities whose files the remote deleted with their delete closure, writes the ledger rows of those
+    entities only, with the paths of their files in the remote tip, and sets the version to the remote tip. Every
+    other row, dirty or synced, keeps its status, hash and path."
   [snapshot base-snapshot task-id report sync-timestamp finalize!]
-  (let [{:keys [conflicts merged summary]} (serdes/with-cache
-                                             (let [targets (spec/exportable-entities)]
-                                               (source/compute-merge (spec/extract-entities-for-export targets)
-                                                                     snapshot base-snapshot task-id
-                                                                     :total (spec/exportable-entity-count targets)
-                                                                     :synced-hashes (remote-sync.db/synced-content-hashes-by-path))))]
-    (if (seq conflicts)
-      (let [labels (mapv remote-sync.merge/conflict-label conflicts)]
-        (log/infof "Pull merge conflict on %d entit(ies)" (count labels))
-        {:status    :conflict
-         :version   (source.p/version snapshot)
-         :conflicts labels
-         :message   "Import blocked: the same content was changed both locally and on the remote branch."})
-      ;; Capture the local (un-pushed) changes before loading; the clean merge guarantees they are disjoint
-      ;; from the remote changes, so restoring them reproduces exactly the local diff vs remote. Restore +
-      ;; finalize! run inside the load's transaction so a crash can't leave the dirty markers overwritten.
-      (let [dirty-objects (capture-dirty-objects)]
-        (load-snapshot! (source/specs->snapshot merged) report sync-timestamp
-                        :finalize! (fn []
-                                     (restore-dirty-objects! dirty-objects sync-timestamp)
-                                     (finalize!)))
+  (let [{:keys [conflicts merged summary decisions theirs-paths theirs-unit-paths] :as merge-result}
+        (serdes/with-cache
+          (let [targets (spec/exportable-entities)]
+            (source/compute-merge (spec/extract-entities-for-export targets)
+                                  snapshot base-snapshot task-id
+                                  :total (spec/exportable-entity-count targets)
+                                  :synced-hashes (remote-sync.db/synced-content-hashes-by-path))))
+        deleted-ids     (when (empty? conflicts)
+                          (local-ids-by-model (for [[k decision] decisions
+                                                    :when (and (= :theirs decision)
+                                                               (entity-key? k)
+                                                               (nil? (get theirs-paths k)))]
+                                                k)))
+        delete-conflicts (delete-closure-conflicts deleted-ids merge-result)]
+    (cond
+      (seq conflicts)
+      (merge-conflict-result snapshot conflicts
+                             "Import blocked: the same content was changed both locally and on the remote branch.")
+
+      (seq delete-conflicts)
+      (merge-conflict-result snapshot delete-conflicts
+                             "Import blocked: the remote branch deleted content that holds a local change. Your local change is kept.")
+
+      :else
+      (let [load-paths      (into []
+                                  (comp (filter (fn [[k decision]]
+                                                  (and (#{:theirs :same} decision) (entity-key? k))))
+                                        (mapcat (fn [[k _]] (get theirs-unit-paths k))))
+                                  decisions)
+            ingestable      (when (seq load-paths)
+                              (source.p/->ingestable snapshot {:path-filters (exact-path-filters load-paths)}))
+            has-transforms? (snapshot-has-transforms? (source.p/->ingestable (source/specs->snapshot merged)
+                                                                             {:path-filters (managed-path-filters)}))
+            _               (enable-transforms-setting-for! has-transforms?)
+            result          (incremental-load-snapshot! {:ingestable   ingestable
+                                                         :deleted-rsos (for [[model-key ids] deleted-ids
+                                                                             :let [model-type (:model-type (spec/spec-for-model-key model-key))]
+                                                                             id ids]
+                                                                         {:model_type model-type :model_id id})}
+                                                        (source.p/version snapshot) report sync-timestamp
+                                                        :finalize! finalize!)]
+        (disable-transforms-setting-for! has-transforms?)
         (log/infof "Pull merge: folded in %d remote change(s) (added %d, updated %d, removed %d); kept %d local change(s)"
                    (apply + (vals summary)) (:added summary) (:updated summary) (:removed summary)
-                   (count dirty-objects))
-        {:status        :success
-         :version       (source.p/version snapshot)
-         :merge-summary summary
-         :outcome       {:kind "pulled"
-                         :count (apply + (vals summary))
-                         :branch (settings/remote-sync-branch)}}))))
+                   (count (filter #{:ours} (vals decisions))))
+        (assoc result
+               :merge-summary summary
+               :outcome       {:kind   "pulled"
+                               :count  (apply + (vals summary))
+                               :branch (settings/remote-sync-branch)})))))
 
 (defn import!
   "Imports and reloads Metabase entities from a remote snapshot.
@@ -648,7 +710,7 @@
             finalize!             (fn []
                                     (remote-sync.task/set-version! task-id snapshot-version))
             report                (import-progress-reporter task-id)
-            path-filters          (mapv #(re-pattern (str % "/.*")) serialization/legal-top-level-paths)
+            path-filters          (managed-path-filters)
             ;; First-import conflicts only block the first import; deletion conflicts block every import (an
             ;; already-configured instance must not silently delete unsynced transforms). The get-conflicts tree scan
             ;; is itself deferred so it only runs when one of the gates is open (e.g. a forced import with
