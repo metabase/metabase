@@ -2754,6 +2754,34 @@
                      (:error (refresh 400 {:refresh_token (mcp-refresh)
                                            :resource      "https://mb.example.com/api"})))))))))))
 
+(deftest site-url-mcp-token-refreshes-with-the-same-resource-test
+  (testing "A client that authorized MCP scopes with resource=<Site URL> sends the same resource when it refreshes, and
+            the refreshed token keeps the inferred MCP binding"
+    (mt/with-temporary-setting-values [site-url                                  "http://localhost:3000"
+                                       oauth-server-dynamic-registration-enabled true]
+      (t2/with-transaction [_conn nil {:rollback-only true}]
+        (let [{:keys [client token]} (run-flow! {:registration binding-flow-registration
+                                                 :scope        "agent:content:read agent:query:run"
+                                                 :resource     "http://localhost:3000"})
+              basic                  (basic-auth-header (:client_id client) (:client_secret client))
+              refreshed              (token-request! {:grant_type    "refresh_token"
+                                                      :refresh_token (:refresh_token token)
+                                                      :resource      "http://localhost:3000"}
+                                                     :expected-status 200
+                                                     :authorization basic)]
+          (is (= [(mcp-resource-uri)] (access-token-resource refreshed)))
+          (testing "a REST refresh token that names the Site URL is refused: it cannot be moved onto any resource"
+            (let [rest-refresh (str (random-uuid))]
+              (oidc.store/save-refresh-token (:token-store (oauth-server/get-provider)) rest-refresh
+                                             (str (mt/user->id :crowberto)) (:client_id client)
+                                             ["agent:search"] nil nil)
+              (is (= "invalid_grant"
+                     (:error (token-request! {:grant_type    "refresh_token"
+                                              :refresh_token rest-refresh
+                                              :resource      "http://localhost:3000"}
+                                             :expected-status 400
+                                             :authorization basic)))))))))))
+
 (deftest refresh-without-client-credentials-reveals-nothing-test
   (testing "A refresh request without client credentials for a confidential client gets the same answer whether its
             refresh token is live or unknown, so the endpoint does not tell a caller which tokens are live. The

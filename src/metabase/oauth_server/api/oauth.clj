@@ -263,7 +263,9 @@
 
   A refresh grant keeps the refresh token's binding, which decides where the new access token works: `resource` is
   dropped from the body so the provider copies the stored binding. A requested resource within the stored binding
-  changes nothing. When the stored binding is the MCP endpoint, a requested resource that is also the MCP endpoint
+  changes nothing, and neither does the Site URL when the stored binding is the MCP endpoint, since that binding may
+  have been inferred from a request naming the Site URL. When the stored binding is the MCP endpoint, a requested
+  resource that is also the MCP endpoint
   (by [[oauth-server/mcp-resource?]], under any host, as after a Site URL change) is accepted, and `:rebind` names it,
   so the new tokens move to it. Any other requested resource throws `invalid_grant`, so a REST refresh token never
   moves onto the MCP endpoint. Any other grant is returned unchanged.
@@ -276,7 +278,12 @@
           stored   (some->> refresh_token (oidc.store/get-refresh-token (:token-store provider)))
           stored   (when (= (:client-id stored) (:client-id client)) stored)
           granted  (:resource stored)
-          outside? (and resource stored (not (oauth-server/resources-within? resource granted)))
+          ;; An MCP binding may have been inferred from a request that named only the Site URL, and the client keeps
+          ;; naming the Site URL when it refreshes, so the Site URL is within an MCP binding.
+          outside? (and resource stored
+                        (not (oauth-server/resources-within? resource granted))
+                        (not (and (oauth-server/mcp-resource? granted)
+                                  (oauth-server/site-url-resource? resource))))
           rebind?  (and outside? (oauth-server/mcp-resource? granted) (oauth-server/mcp-resource? resource))]
       ;; `invalid_grant` (RFC 6749 section 5.2: the refresh token "does not match"), not RFC 8707 `invalid_target`:
       ;; the refresh token can never serve this resource, so the client has to authorize again rather than retry.
