@@ -54,11 +54,15 @@
 
 (driver/register! :mysql, :parent #{:sql-jdbc ::like-escape-char-built-in/like-escape-char-built-in})
 
-(defmethod driver/host-carrying-parameters :mysql [_driver] [])
+(defmethod driver/host-carrying-parameters :mysql
+  [_driver]
+  ;; the client fetches `serverSslCert` when it is a URL, and a `file:` URL naming a host other than localhost is
+  ;; fetched over FTP
+  ["serverSslCert"])
 
 (defmethod driver/non-host-parameters :mysql
   [_driver]
-  ["disableSslHostnameVerification" "localSocketAddress" "serverRsaPublicKeyFile" "serverSslCert" "serverTimezone"
+  ["disableSslHostnameVerification" "localSocketAddress" "serverRsaPublicKeyFile" "serverTimezone"
    "tcpNoDelay" "trustServerCertificate" "useServerPrepStmts"])
 
 (def ^:private ^:const min-supported-mysql-version 5.7)

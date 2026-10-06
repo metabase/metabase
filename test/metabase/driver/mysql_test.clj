@@ -99,6 +99,21 @@
                  :mysql
                  {:host "h" :port 3306 :dbname "db" :user "u" :ssl true :ssl-cert "http://example.com/server-ca.pem"}))))))
 
+(deftest ssl-cert-url-host-is-a-connection-parameter-host-test
+  ;; a URL in the certificate field is fetched by the client, so the host it names is one the connection reaches and
+  ;; has to pass the network policy like any other. Every path is readable here, which is the self-hosted default,
+  ;; so the readable-paths check does not refuse the URL first.
+  (mt/with-temp-env-var-value! [mb-readable-paths "/"]
+    (let [details {:host "h" :port 3306 :dbname "db" :user "u" :ssl true}
+          hosts   #(set (driver/connection-parameter-hosts :mysql (merge details %)))]
+      (testing "the certificate field"
+        (is (contains? (hosts {:ssl-cert "http://10.0.0.1/server-ca.pem"}) "10.0.0.1"))
+        (is (contains? (hosts {:ssl-cert "file://10.0.0.2/server-ca.pem"}) "10.0.0.2")))
+      (testing "serverSslCert in the additional options"
+        ;; a name rather than an address: an undeclared parameter of the connection string is only read for an address
+        (is (contains? (hosts {:additional-options "serverSslCert=http://certs.example/server-ca.pem"})
+                       "certs.example"))))))
+
 (deftest default-schema-test
   (mt/test-driver :mysql
     (is (nil? (driver.sql/default-schema :mysql (mt/db))))))
