@@ -3,7 +3,7 @@ import { useMemo } from "react";
 import type { IconData, IconModel } from "metabase/common/utils/icon";
 import { useGetIcon } from "metabase/hooks/use-icon";
 import { Anchor, Group, Icon, Text } from "metabase/ui";
-import { dataApp, modelToUrl } from "metabase/urls";
+import { getSubpathSafeUrl, modelToUrl } from "metabase/urls";
 import type { RemoteSyncEntity } from "metabase-types/api";
 
 import { getSyncStatusColor, getSyncStatusIcon } from "../../utils";
@@ -19,10 +19,11 @@ function getEntityUrl(entity: RemoteSyncEntity): string | null {
   if (entity.model === "action") {
     return null;
   }
-  if (entity.model === "dataapp") {
-    return dataApp(entity.name);
+  // A deleted entity has no page left to open.
+  if (entity.sync_status === "delete") {
+    return null;
   }
-  return modelToUrl(entity);
+  return getSubpathSafeUrl(modelToUrl(entity));
 }
 
 export const EntityLink = ({ entity }: EntityLinkProps) => {
@@ -30,10 +31,6 @@ export const EntityLink = ({ entity }: EntityLinkProps) => {
   const entityIcon = useMemo((): IconData => {
     if (entity.model === "field") {
       return { name: "field" };
-    }
-
-    if (entity.model === "dataapp") {
-      return { name: "app" };
     }
 
     return getIcon({

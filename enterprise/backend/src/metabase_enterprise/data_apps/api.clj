@@ -323,13 +323,15 @@
   [{:keys [slug]} :- [:map {:closed true} [:slug ms/NonBlankString]]
    _query-params
    changes :- UpdateDataAppRequest]
-  (let [app (write-check-data-app slug)]
-    (when (seq (dissoc changes :enabled))
+  (let [app            (write-check-data-app slug)
+        synced-changes (dissoc changes :enabled)]
+    (when (seq synced-changes)
       (check-editable! app))
     (when (seq changes)
       (data-apps.db/update-data-app! (:id app) (with-bundle changes)))
     (let [app (data-apps.db/data-app (:id app))]
-      (events/publish-event! :event/data-app-update {:object app :user-id api/*current-user-id*})
+      (when (seq synced-changes)
+        (events/publish-event! :event/data-app-update {:object app :user-id api/*current-user-id*}))
       (data-app-response app))))
 
 (api.macros/defendpoint :delete ["/:slug" :slug slug-regex] :- :nil

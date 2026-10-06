@@ -128,9 +128,11 @@
                                          remote-sync-type :read-only]
         (testing "a read-only instance refuses to create, change, or delete an app"
           (mt/user-http-request :crowberto :post 403 "apps" (assoc app-request :name "other"))
+          (is (not (t2/exists? :model/DataApp :name "other")))
           (mt/user-http-request :crowberto :put 403 "apps/demo" {:display_name "Renamed"})
+          (mt/user-http-request :crowberto :put 403 "apps/demo" {:enabled false :display_name "Renamed"})
           (mt/user-http-request :crowberto :delete 403 "apps/demo")
-          (is (=? {:display_name "Demo"} (t2/select-one :model/DataApp :name "demo"))))
+          (is (=? {:display_name "Demo" :enabled true} (t2/select-one :model/DataApp :name "demo"))))
         (testing "enabling and disabling stays allowed"
           (is (=? {:enabled false}
                   (mt/user-http-request :crowberto :put 200 "apps/demo" {:enabled false}))))
@@ -142,6 +144,17 @@
         (testing "a read-write instance allows changes"
           (is (=? {:display_name "Renamed"}
                   (mt/user-http-request :crowberto :put 200 "apps/demo" {:display_name "Renamed"}))))))))
+
+(deftest enabling-a-data-app-is-not-a-synced-change-test
+  (mt/with-premium-features #{:data-apps}
+    (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup :model/RemoteSyncObject]
+      (create-app!)
+      (let [app-id (t2/select-one-pk :model/DataApp :name "demo")]
+        (mt/user-http-request :crowberto :put 200 "apps/demo" {:enabled false})
+        (is (not (t2/exists? :model/RemoteSyncObject :model_type "DataApp" :model_id app-id)))
+        (mt/user-http-request :crowberto :put 200 "apps/demo" {:display_name "Renamed"})
+        (is (=? {:model_name "demo" :status "update"}
+                (t2/select-one :model/RemoteSyncObject :model_type "DataApp" :model_id app-id)))))))
 
 (deftest ^:parallel query-definition-request-schema-is-closed-test
   (is (empty? (closed-schemas/findings ::query-definition/query-definition))))

@@ -4,6 +4,7 @@ import { t } from "ttag";
 import { useConfirmation, useToast } from "metabase/common/hooks";
 import { Link } from "metabase/router";
 import { ActionIcon, Icon, Menu } from "metabase/ui";
+import * as Urls from "metabase/urls";
 import {
   useDeleteDataAppMutation,
   useSetDataAppEnabledMutation,
@@ -75,7 +76,7 @@ export const DataAppActionsMenu = ({ app, canRemove = false }: Props) => {
           {app.permission_group_id != null && (
             <Menu.Item
               component={Link}
-              to={`/admin/settings/apps/${app.name}/users`}
+              to={Urls.dataAppUsersSettings(app.name)}
             >
               {t`Manage user access`}
             </Menu.Item>

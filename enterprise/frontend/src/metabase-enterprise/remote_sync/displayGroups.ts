@@ -2,6 +2,7 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { isLibraryCollection } from "metabase/common/collections/utils";
+import { dataAppsSettings, transformList } from "metabase/urls";
 import type {
   Collection,
   CollectionId,
@@ -20,7 +21,7 @@ export const TRANSFORMS_ROOT_ID = -1;
 /**
  * Sentinel value for the virtual Data apps root collection.
  */
-export const DATA_APPS_ROOT_ID = -2;
+const DATA_APPS_ROOT_ID = -2;
 
 /**
  * Configuration for how entities are grouped and displayed in the changes view.
@@ -37,6 +38,8 @@ export type DisplayGroupSpec = {
   virtualRootId?: number;
   /** i18n function for virtual root name */
   virtualRootName?: () => string;
+  /** Page the virtual root links to, since it has no collection page */
+  virtualRootUrl?: () => string;
   /** Icon to display for this group's collections */
   icon: IconName;
   /** ID of another group whose path should be prepended */
@@ -56,6 +59,7 @@ const displayGroupSpecs: DisplayGroupSpec[] = [
     models: new Set(["transform", "transformtag", "pythonlibrary"]),
     virtualRootId: TRANSFORMS_ROOT_ID,
     virtualRootName: () => t`Transforms`,
+    virtualRootUrl: transformList,
     icon: "transform",
     priority: 100,
   },
@@ -79,6 +83,7 @@ const displayGroupSpecs: DisplayGroupSpec[] = [
     models: new Set(["dataapp"]),
     virtualRootId: DATA_APPS_ROOT_ID,
     virtualRootName: () => t`Data apps`,
+    virtualRootUrl: dataAppsSettings,
     icon: "app",
     priority: 70,
   },
@@ -187,8 +192,8 @@ const getGroupKeyInfo = (
     }
     return { groupKey: entity.collection_id, spec };
   }
-  if (spec.id === "data-apps") {
-    return { groupKey: DATA_APPS_ROOT_ID, spec };
+  if (spec.virtualRootId != null) {
+    return { groupKey: spec.virtualRootId, spec };
   }
   if (entity.collection_id != null) {
     return { groupKey: entity.collection_id, spec };
@@ -274,6 +279,32 @@ const getPathPrefixSegments = (
   }
   return [];
 };
+
+const getSpecByVirtualRootId = (
+  id: CollectionId | undefined,
+): DisplayGroupSpec | undefined =>
+  id == null
+    ? undefined
+    : displayGroupSpecs.find((spec) => spec.virtualRootId === id);
+
+/**
+ * Path segments for a virtual root group, or undefined for a real collection.
+ */
+const getVirtualRootSegments = (
+  id: CollectionId | undefined,
+): CollectionPathSegment[] | undefined => {
+  const spec = getSpecByVirtualRootId(id);
+  if (spec?.virtualRootId == null) {
+    return undefined;
+  }
+  return [{ id: spec.virtualRootId, name: spec.virtualRootName?.() ?? "" }];
+};
+
+/**
+ * The page a virtual root links to, or undefined for a real collection.
+ */
+export const getVirtualRootUrl = (id: CollectionId): string | undefined =>
+  getSpecByVirtualRootId(id)?.virtualRootUrl?.();
 
 /**
  * Get the spec by ID.
@@ -441,11 +472,9 @@ const buildCollectionGroup = ({
     ? TRANSFORMS_ROOT_ID
     : Number(collectionId) || undefined;
 
-  let pathSegments = isTransformsRoot
-    ? [{ id: TRANSFORMS_ROOT_ID, name: t`Transforms` }]
-    : numericCollectionId === DATA_APPS_ROOT_ID
-      ? [{ id: DATA_APPS_ROOT_ID, name: t`Data apps` }]
-      : getCollectionPathSegments(numericCollectionId, collectionMap);
+  let pathSegments =
+    getVirtualRootSegments(numericCollectionId) ??
+    getCollectionPathSegments(numericCollectionId, collectionMap);
   const prefixSegments = getPathPrefixSegments(
     groupSpec,
     numericCollectionId,

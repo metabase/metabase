@@ -2,6 +2,7 @@ import { t } from "ttag";
 
 import { Link } from "metabase/router";
 import { ActionIcon, Flex, Group, Icon, Tooltip } from "metabase/ui";
+import * as Urls from "metabase/urls";
 import type { DataApp } from "metabase-types/api";
 
 import { DataAppActionsMenu } from "../DataAppActionsMenu/DataAppActionsMenu";
@@ -31,7 +32,7 @@ export const DataAppListItem = ({ app, canRemove = false }: Props) => (
           <ActionIcon
             aria-label={t`Some users are missing data access.`}
             component={Link}
-            to={`/admin/settings/apps/${app.name}/users`}
+            to={Urls.dataAppUsersSettings(app.name)}
             bg="background_surface-warning-strong"
             c="text-primary"
             bdrs="sm"

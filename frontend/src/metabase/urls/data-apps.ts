@@ -30,3 +30,8 @@ export function dataApp(name: string) {
 export function dataAppsSettings() {
   return `/admin/settings/${DATA_APP_URL_SEGMENT}`;
 }
+
+/** Admin page managing a data app's users: `/admin/settings/apps/:name/users`. */
+export function dataAppUsersSettings(name: string) {
+  return `${dataAppsSettings()}/${encodeURIComponent(name)}/users`;
+}

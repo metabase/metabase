@@ -20,7 +20,8 @@ export type IconModel =
   | "user"
   | "nativequerysnippet"
   | "pythonlibrary"
-  | "glossary";
+  | "glossary"
+  | "dataapp";
 
 export type ObjectWithModel = {
   id?: unknown;
@@ -62,6 +63,7 @@ export const modelIconMap: Record<IconModel, IconName> = {
   pythonlibrary: "code_block",
   glossary: "glossary",
   exploration: "telescope",
+  dataapp: "app",
 };
 
 export type IconData = {

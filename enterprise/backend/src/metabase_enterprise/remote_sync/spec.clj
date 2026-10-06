@@ -48,7 +48,8 @@
                        :types  - Vector of event types to handle [:create :update :delete]
    - :eligibility    - Eligibility configuration:
                        :type       - :collection, :published-table, :parent-table, :parent, :setting,
-                                     or :library-synced (:parent follows :parent-fk to a :parent-model instance)
+                                     :library-synced, or :always (:parent follows :parent-fk to a :parent-model
+                                     instance)
                        :collection - For :collection type: :remote-synced, :transforms-namespace, :snippets-namespace, or :any
                        :setting    - For :setting type: setting keyword to check
                        (Note: :library-synced type uses the library-is-remote-synced? setting to determine eligibility)
@@ -367,8 +368,7 @@
     :identity       :entity-id
     :events         {:prefix :event/data-app
                      :types  [:create :update :delete]}
-    :eligibility    {:type    :setting
-                     :setting :remote-sync-enabled}
+    :eligibility    {:type :always}
     :archived-key   nil
     :tracking       {:select-fields  [:name]
                      :field-mappings {:model_name :name}}
@@ -844,11 +844,15 @@
 
 (defmethod check-eligibility-by-type :setting
   [{:keys [eligibility]} _object]
-  (boolean (setting/get (:setting eligibility))))
+  (setting/get-value-of-type :boolean (:setting eligibility)))
 
 (defmethod check-eligibility-by-type :library-synced
   [_spec _object]
   (rs-settings/library-is-remote-synced?))
+
+(defmethod check-eligibility-by-type :always
+  [_ _]
+  true)
 
 (defmethod check-eligibility-by-type :default
   [_ _]
@@ -877,6 +881,7 @@
   "Determines if a model instance is editable based on remote sync configuration.
 
    Returns false if:
+   - Remote sync is enabled AND
    - The model has a spec in remote-sync-specs AND
    - The instance is eligible for sync (via check-eligibility) AND
    - remote-sync-type is :read-only
@@ -884,16 +889,15 @@
    For models with global eligibility (e.g., :library-synced, :setting), the instance
    argument can be nil or an empty map since eligibility doesn't depend on instance data."
   [model-key instance]
-  (if-let [spec (spec-for-model-key model-key)]
+  (if-let [spec (and (rs-settings/remote-sync-enabled) (spec-for-model-key model-key))]
     (or (= (rs-settings/remote-sync-type) :read-write)
         (not (check-eligibility spec instance)))
-    ;; Model not in spec, always editable
     true))
 
 (defn batch-model-editable?
   "Batch version of model-editable?. Returns a map of instance-id -> editable? boolean."
   [model-key instances]
-  (if-let [spec (spec-for-model-key model-key)]
+  (if-let [spec (and (rs-settings/remote-sync-enabled) (spec-for-model-key model-key))]
     (if (= (rs-settings/remote-sync-type) :read-write)
       (into {} (map (fn [inst] [(:id inst) true])) instances)
       (let [eligibility-map (batch-check-eligibility spec instances)]
@@ -1241,6 +1245,15 @@
             (map (fn [id] [model-type id]))
             (remote-sync.db/ids-where model-key (when archived-key {archived-key false})))
       nil)))
+
+(defmethod query-export-roots :always
+  [{:keys [export-scope model-key model-type] :as spec}]
+  (case export-scope
+    :all
+    (into #{}
+          (map (fn [id] [model-type id]))
+          (remote-sync.db/ids-where model-key (export-conditions spec)))
+    nil))
 
 (defmethod query-export-roots :default [_] nil)
 
