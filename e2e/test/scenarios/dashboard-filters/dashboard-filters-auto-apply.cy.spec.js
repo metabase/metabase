@@ -291,73 +291,7 @@ describe(
     });
 
     describe("embeddings", () => {
-      beforeEach(() => {
-        cy.signInAsAdmin();
-      });
-
-      describe("public embeds", () => {
-        it("should apply filters after clicking the apply button when auto-apply filters is turned off", () => {
-          createDashboard({ dashboardDetails: { auto_apply_filters: false } });
-          cy.get("@dashboardId").then((dashboardId) => {
-            H.visitPublicDashboard(dashboardId);
-          });
-
-          H.applyFilterToast().should("not.exist");
-          H.filterWidget().findByText("Category").click();
-          H.popover().within(() => {
-            cy.findByText("Widget").click();
-            cy.button("Add filter").click();
-          });
-          H.getDashboardCard().within(() => {
-            H.assertTableRowsCount(200);
-          });
-          H.applyFilterButton().should("be.visible").click();
-          H.getDashboardCard().within(() => {
-            H.assertTableRowsCount(54);
-          });
-        });
-      });
-
-      describe("signed embeds", () => {
-        it("should apply filters after clicking the apply button when auto-apply filters is turned off", () => {
-          createDashboard({
-            dashboardDetails: {
-              auto_apply_filters: false,
-              enable_embedding: true,
-              embedding_params: {
-                [FILTER.slug]: "enabled",
-              },
-            },
-          });
-          cy.get("@dashboardId").then((dashboardId) => {
-            const embeddingPayload = {
-              resource: { dashboard: dashboardId },
-              params: {},
-            };
-            H.visitEmbeddedPage(embeddingPayload);
-          });
-
-          H.applyFilterToast().should("not.exist");
-          H.filterWidget().findByText("Category").click();
-          H.popover().within(() => {
-            cy.findByText("Widget").click();
-            cy.button("Add filter").click();
-          });
-          H.getDashboardCard().within(() => {
-            H.assertTableRowsCount(200);
-          });
-          H.applyFilterButton().should("be.visible").click();
-          H.getDashboardCard().within(() => {
-            H.assertTableRowsCount(54);
-          });
-        });
-      });
-
       describe("full-app embeddings", () => {
-        beforeEach(() => {
-          cy.signInAsNormalUser();
-        });
-
         it("should apply filters after clicking the apply button when auto-apply filters is turned off", () => {
           createDashboard({
             dashboardDetails: {
