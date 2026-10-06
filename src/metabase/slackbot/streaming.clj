@@ -538,7 +538,7 @@
    - `:start-with-thinking!` — posts a 'Thinking...' placeholder in the thread
    - `:request-flush!` — schedules a drain of pending text to Slack
    - `:dismiss-thinking!` — schedules deletion of that placeholder, for a reply that streamed no text
-   - `:text-streamed?` — atom, true once any text has reached the stream
+   - `:text-streamed?` — atom, true once any non-blank text has reached the stream
    - `:tools-streamed?` — atom, true once any tool progress (a task update) has reached the stream
    - `:stream-state` — atom holding `{:stream_ts :channel}` once started, nil before
    - `:slack-writer` — agent; callers should `(await slack-writer)` before stopping the stream
@@ -594,7 +594,8 @@
 
         on-text (fn [text]
                   (when (seq text)
-                    (reset! text-streamed? true)
+                    (when-not (str/blank? text)
+                      (reset! text-streamed? true))
                     (swap! pending-text str text)
                     (when (>= (count @pending-text) min-text-batch-size)
                       (request-flush!))))

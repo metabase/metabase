@@ -744,6 +744,13 @@
       (is (= [(str "_" no-response-copy "_")] (context-texts blocks))
           "nothing stopped this turn early, so the \"couldn't answer\" copy is the only aside"))))
 
+(deftest ^:synchronized slackbot-dm-whitespace-only-reply-test
+  (testing "a reply of only whitespace is an empty reply, like the channel path, which trims first"
+    (let [{:keys [blocks deleted]} (dm-turn-with-parts! [{:type :text :text "\n\n"}])]
+      (is (some #{"placeholder-1"} deleted))
+      (is (= [(str "_" no-response-copy "_")] (context-texts blocks))
+          "whitespace is invisible in Slack, so the \"couldn't answer\" copy still shows"))))
+
 (deftest ^:synchronized slackbot-dm-textless-reply-with-viz-has-no-fallback-test
   (testing "a reply that is only a visualization is not an empty reply -- no fallback copy (AC7)"
     (let [{:keys [appended blocks deleted]}
