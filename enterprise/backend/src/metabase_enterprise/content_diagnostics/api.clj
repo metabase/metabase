@@ -13,6 +13,7 @@
    [java-time.api :as t]
    [metabase-enterprise.content-diagnostics.api.common :as api.common]
    [metabase-enterprise.content-diagnostics.db :as cd.db]
+   [metabase-enterprise.content-diagnostics.schema :as cd.schema]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :as routes.common :refer [+auth]]
@@ -226,11 +227,11 @@
   #{:empty :sparse :crowded})
 
 (def ^:private imbalanced-entity-types
-  "Entity types the `/imbalanced` filter accepts. Its own enum rather than the shared
-  `covered-entity-types`: `collection` sits outside the shared stale/slow set, `card` emits only
+  "Entity types the `/imbalanced` filter accepts. The full vocabulary rather than
+  `non-collection-entity-types`: `collection` sits outside the stale/slow set, `card` emits only
   `empty`, and `transform` emits nothing - the filter vocabulary is shared across
   `empty`/`sparse`/`crowded`, so it stays a superset of what they emit."
-  #{:card :collection :dashboard :document :transform})
+  cd.schema/entity-types)
 
 (def ^:private duplicated-finding-types
   "The finding types the `/duplicated` endpoint spans."
@@ -242,10 +243,9 @@
   (assoc api.common/base-sort-column->field :duplicate-count :duplicate_count))
 
 (def ^:private duplicated-entity-types
-  "Entity types the duplicated finding types can emit - the shared `api.common/covered-entity-types` plus
-  `:collection` (its own endpoint enum, not the shared set, so the stale/slow endpoints stay
-  collection-free)."
-  (conj api.common/covered-entity-types :collection))
+  "Entity types the duplicated finding types can emit - all of them, since the checker walks every entity
+  type in `common/entity-type->model`."
+  cd.schema/entity-types)
 
 (defn- entity-types-param
   "Param schema for `entity-types` - the flat vocabulary `api.common/filter-types` builds from the
@@ -356,7 +356,7 @@
        [:include-personal-collections {:optional true} :boolean]
        [:sort-column    {:optional true} (ms/enum-decode-keyword (keys stale-sort-column->field))]
        [:sort-direction {:optional true} (ms/enum-decode-keyword api.common/sort-directions)]
-       [:entity-types   {:optional true} (entity-types-param api.common/covered-entity-types)]
+       [:entity-types   {:optional true} (entity-types-param cd.schema/non-collection-entity-types)]
        [:threshold-days {:optional true} ms/PositiveInt]
        [:query          {:optional true} :string]]]
   (let [exclude-personal? (not include-personal-collections)]
@@ -400,7 +400,7 @@
        [:include-personal-collections {:optional true} :boolean]
        [:sort-column     {:optional true} (ms/enum-decode-keyword (keys slow-sort-column->field))]
        [:sort-direction  {:optional true} (ms/enum-decode-keyword api.common/sort-directions)]
-       [:entity-types    {:optional true} (entity-types-param api.common/covered-entity-types)]
+       [:entity-types    {:optional true} (entity-types-param cd.schema/non-collection-entity-types)]
        [:min-duration-ms {:optional true} ms/PositiveInt]
        [:query           {:optional true} :string]]]
   (let [exclude-personal? (not include-personal-collections)]

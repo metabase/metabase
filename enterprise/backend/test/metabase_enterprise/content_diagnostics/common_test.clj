@@ -12,6 +12,8 @@
    [metabase-enterprise.content-diagnostics.checkers.duplicated :as checkers.duplicated]
    [metabase-enterprise.content-diagnostics.checkers.imbalanced.common :as imbalanced.common]
    [metabase-enterprise.content-diagnostics.common :as common]
+   [metabase-enterprise.content-diagnostics.scan :as scan]
+   [metabase-enterprise.content-diagnostics.schema :as cd.schema]
    [metabase.collections.models.collection :as collection]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
@@ -65,8 +67,8 @@
     (doseq [[etype model] common/entity-type->model]
       (is (= etype (common/model->entity-type model)))
       (is (= model (common/entity-type->model etype)))))
-  (testing "it covers exactly the five content-diagnostics entity types"
-    (is (= #{:card :collection :dashboard :document :transform} (set (keys common/entity-type->model))))))
+  (testing "it covers exactly the shared entity-type vocabulary"
+    (is (= cd.schema/entity-types (set (keys common/entity-type->model))))))
 
 (deftest entity-type-hierarchy-and-registry-test
   (testing "card/dashboard/document derive ::collection-item; transform and collection are explicit outliers"
@@ -98,11 +100,11 @@
                     "hydrate-owner"    @#'api.common/hydrate-owner
                     "entity-context"   @#'api.common/entity-context
                     "candidate-rows"   @#'checkers.duplicated/candidate-rows}]
-    (testing "every duplicated/serve covered entity-type resolves a method (registry completeness)"
+    (testing "every duplicated/serve non-collection entity-type resolves a method (registry completeness)"
       (doseq [[mm-name mm] mm-by-name
-              etype        api.common/covered-entity-types]
+              etype        cd.schema/non-collection-entity-types]
         (is (some? (get-method mm etype))
-            (format "%s has no method for covered type %s" mm-name etype))))
+            (format "%s has no method for non-collection type %s" mm-name etype))))
     (testing ":collection resolves candidate-rows/read-entity-rows/entity-context,
               but is intentionally NOT a hydrate-owner subject (collections have no owner column)"
       (doseq [[mm-name mm] (dissoc mm-by-name "hydrate-owner")]
@@ -124,8 +126,7 @@
   ;; `finalize-finding` dispatches per row on the stored `finding_type` with NO permissive :default, so a
   ;; new finding type left unregistered fails here (and at dispatch), not by silently serving an unfinalized
   ;; row missing its native top-level column / details rewrite.
-  ;; This branch serves stale/slow/duplicate_name plus the imbalanced umbrella (empty/sparse/crowded).
-  (let [served-finding-types #{:stale :slow :duplicate_name :empty :sparse :crowded}]
+  (let [served-finding-types (scan/covered-finding-types)]
     (testing "every served finding-type resolves a method (registry completeness)"
       (doseq [ftype served-finding-types]
         (is (some? (get-method @#'api.common/finalize-finding ftype))
