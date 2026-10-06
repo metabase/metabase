@@ -191,9 +191,14 @@
     (interpose-fn ctes -cte #(append-sql! context ", "))))
 
 (defn- create-table! [identifier context]
-  (let [identifier (unwrap-identifier identifier)]
-    (append-sql! context "CREATE TABLE ")
+  (let [[identifier & options] (if (vector? identifier)
+                                 identifier
+                                 [identifier])]
     (check-identifier-form identifier)
+    (append-sql! context "CREATE TABLE ")
+    (doseq [option options]
+      (case option
+        :if-not-exists (append-sql! context "IF NOT EXISTS ")))
     (compile! identifier context)))
 
 (declare -simple-fn!)

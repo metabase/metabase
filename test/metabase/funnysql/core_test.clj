@@ -1034,6 +1034,10 @@
                            :with-columns [[:id :bigint :totally-bogus-option]]}
                           :h2)))))
 
+(deftest ^:parallel create-table-if-not-exists-test
+  (is (= ["CREATE TABLE IF NOT EXISTS \"t\" (\"id\" integer)"]
+         (funnysql/format {:create-table [:t :if-not-exists], :with-columns [[:id :integer]]} :postgres))))
+
 (deftest ^:parallel from-subquery-test
   (is (= [(str "SELECT EXISTS ("
                "SELECT 1 FROM ("
