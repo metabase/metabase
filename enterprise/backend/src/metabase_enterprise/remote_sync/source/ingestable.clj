@@ -46,7 +46,18 @@
                                       (catch Exception _ nil))]
                        :when entity]
                    {:path path :entity entity})
-        problems (data-apps/problems files)]
+        ;; a snippet, segment or measure that this snapshot loads counts as present for a resource that names it
+        defined  (into #{}
+                       (for [path  (source.p/list-files snapshot)
+                             :when (and (not (str/starts-with? path "data_apps/"))
+                                        (serialization/entity-file-path? path))
+                             :let  [entity (try
+                                             (ingest-content (source.p/read-file snapshot path))
+                                             (catch Exception _ nil))
+                                    {:keys [model id]} (last (:serdes/meta entity))]
+                             :when (contains? #{"NativeQuerySnippet" "Segment" "Measure"} model)]
+                         [model id]))
+        problems (data-apps/problems files defined)]
     (when (seq problems)
       (throw (ex-info (str/join " " (map (fn [{:keys [file message]}] (format "Invalid data app file %s: %s" file message))
                                          problems))
