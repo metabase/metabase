@@ -23,13 +23,14 @@ Steps:
    with user-readable errors; settings via `defineSetting`; the
    `project.md` Defaults on every data mark, minus what the statement
    opted out; everything in Notes.
-2. Run Checks (`project.md`).
+2. Re-read `src/index.tsx` against every `known-mistakes.md` detector;
+   fix what fails.
+3. Run Checks (`project.md`).
 
 Rules:
 
 - Edit only `src/index.tsx`.
-- No comments that explain a fix or argue the code is correct; the
-  verifier reads the code cold.
+- No comments that explain a fix or argue the code is correct.
 - Never start the dev server.
 - A feature needs a blocked capability with no clean substitute → stop
   and return the question, citing the restriction label.
