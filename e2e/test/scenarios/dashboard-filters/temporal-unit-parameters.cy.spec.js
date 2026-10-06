@@ -161,6 +161,7 @@ const nativeUnitQuestionDetails = {
     query:
       "SELECT 'month' AS UNIT " +
       "UNION ALL SELECT 'year' AS UNIT " +
+      "UNION ALL SELECT 'quarter' AS UNIT " +
       "UNION ALL SELECT 'invalid' AS UNIT",
   },
 };
@@ -589,23 +590,24 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
       });
     });
 
-    it("should pass a temporal unit 'custom destination -> dashboard' click behavior", () => {
+    it("should pass a temporal unit with 'custom destination -> dashboard' and 'custom destination -> url' click behaviors", () => {
       createDashboardWithMappedQuestion({
         dashboardDetails: {
           name: "Target dashboard",
         },
-      });
+      }).then((dashboard) => cy.wrap(dashboard.id).as("targetDashboardId"));
       H.createDashboardWithQuestions({
         dashboardDetails: {
           name: "Source dashboard",
         },
-        questions: [nativeUnitQuestionDetails],
+        questions: [nativeUnitQuestionDetails, nativeUnitQuestionDetails],
+        cards: [{}, { col: 11 }],
       }).then(({ dashboard }) => cy.wrap(dashboard.id).as("sourceDashboardId"));
       H.visitDashboard("@sourceDashboardId");
 
-      cy.log("setup click behavior");
+      cy.log("setup dashboard click behavior on the first card");
       H.editDashboard();
-      H.getDashboardCard()
+      H.getDashboardCard(0)
         .findByLabelText("Click behavior")
         .click({ force: true });
       H.sidebar().within(() => {
@@ -616,41 +618,10 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
       H.modal().findByText("Target dashboard").click();
       H.sidebar().findByText(parameterDetails.name).click();
       H.popover().findByText("UNIT").click();
-      H.saveDashboard();
+      H.sidebar().button("Done").click();
 
-      cy.log("verify that invalid temporal units are ignored");
-      H.getDashboardCard().findByText("invalid").click();
-      H.dashboardHeader().findByText("Target dashboard").should("be.visible");
-      H.filterWidget()
-        .findByText(/invalid/i)
-        .should("not.exist");
-      H.getDashboardCard().findByText("Created At: Month").should("be.visible");
-
-      cy.log("verify click behavior with a valid temporal unit");
-      H.visitDashboard("@sourceDashboardId");
-      H.getDashboardCard().findByText("year").click();
-      H.dashboardHeader().findByText("Target dashboard").should("be.visible");
-      H.filterWidget().findByText("Year").should("be.visible");
-      H.getDashboardCard().findByText("Created At: Year").should("be.visible");
-    });
-
-    it("should pass a temporal unit with 'custom destination -> url' click behavior", () => {
-      createDashboardWithMappedQuestion({
-        dashboardDetails: {
-          name: "Target dashboard",
-        },
-      }).then((dashboard) => cy.wrap(dashboard.id).as("targetDashboardId"));
-      H.createDashboardWithQuestions({
-        dashboardDetails: {
-          name: "Source dashboard",
-        },
-        questions: [nativeUnitQuestionDetails],
-      }).then(({ dashboard }) => cy.wrap(dashboard.id).as("sourceDashboardId"));
-      H.visitDashboard("@sourceDashboardId");
-
-      cy.log("setup click behavior");
-      H.editDashboard();
-      H.getDashboardCard()
+      cy.log("setup url click behavior on the second card");
+      H.getDashboardCard(1)
         .findByLabelText("Click behavior")
         .click({ force: true });
       H.sidebar().within(() => {
@@ -674,15 +645,40 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
       });
       H.saveDashboard();
 
-      cy.log("verify click behavior with a temporal valid unit");
-      H.getDashboardCard().findByText("year").click();
+      cy.log(
+        "dashboard destination: verify that invalid temporal units are ignored",
+      );
+      H.getDashboardCard(0).findByText("invalid").click();
+      H.dashboardHeader().findByText("Target dashboard").should("be.visible");
+      H.filterWidget()
+        .findByText(/invalid/i)
+        .should("not.exist");
+      H.getDashboardCard().findByText("Created At: Month").should("be.visible");
+
+      cy.log(
+        "dashboard destination: verify click behavior with a valid temporal unit",
+      );
+      H.visitDashboard("@sourceDashboardId");
+      H.getDashboardCard(0).findByText("year").click();
       H.dashboardHeader().findByText("Target dashboard").should("be.visible");
       H.filterWidget().findByText("Year").should("be.visible");
       H.getDashboardCard().findByText("Created At: Year").should("be.visible");
 
-      cy.log("verify that invalid temporal units are ignored");
+      // the target parameter keeps "Year" as the last used value, so this step needs a different unit
+      cy.log(
+        "url destination: verify click behavior with a valid temporal unit",
+      );
       H.visitDashboard("@sourceDashboardId");
-      H.getDashboardCard().findByText("invalid").click();
+      H.getDashboardCard(1).findByText("quarter").click();
+      H.dashboardHeader().findByText("Target dashboard").should("be.visible");
+      H.filterWidget().findByText("Quarter").should("be.visible");
+      H.getDashboardCard()
+        .findByText("Created At: Quarter")
+        .should("be.visible");
+
+      cy.log("url destination: verify that invalid temporal units are ignored");
+      H.visitDashboard("@sourceDashboardId");
+      H.getDashboardCard(1).findByText("invalid").click();
       H.dashboardHeader().findByText("Target dashboard").should("be.visible");
       H.filterWidget()
         .findByText(/invalid/i)
