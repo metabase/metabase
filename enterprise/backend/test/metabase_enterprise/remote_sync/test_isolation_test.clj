@@ -85,7 +85,7 @@
         (t2/delete! :model/RemoteSyncObject)
         (is (= {:pass 10 :fail 0 :error 0}
                (run-var-quietly #'spec-test/excluded-model-types-test)))
-        (is (= [] (t2/select-fn-vec (juxt :model_type :model_id :status) :model/RemoteSyncObject)))
+        (is (empty? (t2/select-fn-vec (juxt :model_type :model_id :status) :model/RemoteSyncObject)))
         (finally
           (t2/delete! :model/RemoteSyncObject)
           (when (seq old-rows)
@@ -110,4 +110,4 @@
             (is (= {:pass 3 :fail 0 :error 0}
                    (run-var-quietly #'content-hash-test/transform-tag-import-then-noop-stays-synced-test)))
             (is (= rows (remote-sync-setting-rows)))
-            (is (= [] (t2/select-fn-vec (juxt :model_type :status) :model/RemoteSyncObject))))))))))
+            (is (empty? (t2/select-fn-vec (juxt :model_type :status) :model/RemoteSyncObject))))))))))
