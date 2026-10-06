@@ -811,12 +811,16 @@
         (check-eligibility-by-type spec object))))
 
 (defmethod check-eligibility-by-type :collection
-  [{:keys [eligibility]} object]
+  [{:keys [eligibility model-key]} object]
   (let [collection-type (:collection eligibility)
         collection-id   (:collection_id object)]
     (case collection-type
       :remote-synced
-      (collections/remote-synced-collection? collection-id)
+      (or (collections/remote-synced-collection? collection-id)
+          ;; a card or action in a data app's collection is synced with the app
+          (and (some? collection-id)
+               (contains? #{:model/Card :model/Action} model-key)
+               (data-apps/resource-collection? collection-id)))
 
       :transforms-namespace
       (and (rs-settings/remote-sync-transforms)

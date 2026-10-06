@@ -303,3 +303,42 @@
   "The resource files of the `shop` app in `mock`'s repository."
   [mock]
   (into #{} (filter #(re-find #"^data_apps/shop/resources/" %)) (keys (get @(:files-atom mock) "main"))))
+
+(deftest export-keeps-the-file-of-a-resource-edited-here-test
+  (testing "a card and an action edited in Metabase are exported as changed, not removed from the repository"
+    (with-data-apps-sync
+      (data-apps.tu/do-with-sources!
+       (fn [{:keys [action-id]}]
+         (let [resources (data-apps.tu/build-resources
+                          shop-collection-eid
+                          [{:entity_id question-eid :name "VenuesList" :query (venues-query)}]
+                          [action-id])
+               mock      (test-helpers/create-mock-source :initial-files {"main" (shop-tree resources)})]
+           (is (= :success (:status (import-at! mock "main" :force? true))))
+           (let [card-id (t2/select-one-pk :model/Card :entity_id question-eid)
+                 copy-id (t2/select-one-pk :model/Action :collection_id (shop-collection-id))]
+             (mt/user-http-request :crowberto :put 200 (str "card/" card-id) {:description "edited here"})
+             (mt/with-actions-enabled
+               (mt/user-http-request :crowberto :put 200 (str "action/" copy-id) {:name "Renamed venue"}))
+             (is (= :success (:status (export! mock))))
+             (is (some #(str/includes? % "/resources/cards/") (resource-files mock)))
+             (is (some #(str/includes? % "/resources/actions/") (resource-files mock)))
+             (is (some #(str/includes? (get-in @(:files-atom mock) ["main" %]) "edited here") (resource-files mock)))
+             (testing "and a pull of what was exported keeps both"
+               (is (= :success (:status (import-at! mock "main" :force? true))))
+               (is (t2/exists? :model/Card :id card-id))
+               (is (t2/exists? :model/Action :id copy-id))))))))))
+
+(deftest a-read-only-instance-refuses-an-edit-to-a-resource-test
+  (testing "with remote sync read-only, a card in an app's collection can't be edited here, like any synced card"
+    (with-data-apps-sync
+      (let [src (test-helpers/versioned-source :trees {"v0" (shop-tree (question-resources))} :current "v0")]
+        (is (= :success (:status (import-at! src "v0" :force? true))))
+        (let [card-id (t2/select-one-pk :model/Card :entity_id question-eid)]
+          (testing "without remote sync the card is not synced, so it can be edited"
+            (mt/with-temporary-setting-values [remote-sync-type :read-only remote-sync-url nil]
+              (mt/user-http-request :crowberto :put 200 (str "card/" card-id) {:description "edited without sync"})))
+          (mt/with-temporary-setting-values [remote-sync-type :read-only remote-sync-url "https://example.com/repo.git"]
+            (mt/user-http-request :crowberto :put 403 (str "card/" card-id) {:description "edited here"})
+            (testing "and the instance still pulls"
+              (is (= :success (:status (import-at! src "v0" :force? true)))))))))))
