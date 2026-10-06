@@ -24,8 +24,8 @@ from everyone else, and a 409 to open.
 ## Serialization
 
 A serialized app is a `data_app.yaml` in its own directory under `data_apps/`, with its bundle as a
-plain file next to it at its `path`, and its resource collection a collection of the `data-apps`
-namespace under `collections/data_apps/`, serialized like any collection:
+plain file next to it at its `path`. Its resource collection is a collection of the `data-apps`
+namespace, serialized like any collection under `collections/`:
 
 ```
 data_apps/
@@ -33,7 +33,7 @@ data_apps/
     data_app.yaml          # serdes/meta, entity_id, slug, name, description, version, path, allowed_hosts, collection
     dist/index.js          # the bundle
 collections/
-  data_apps/
+  main/
     data_app__sales.yaml   # the app's resource collection (namespace: data-apps)
     data_app__sales/
       *.yaml               # the saved questions, metric copies, and action copies the app runs
@@ -55,8 +55,8 @@ reasserts the app's resources. A manifest that names a collection the repository
 other than the collection the app already owns, fails to load. It is a no-op without the
 `:data-apps` feature.
 
-Remote sync treats data apps like any other entity, globally rather than per collection, and a
-`data-apps` collection as synced content. Because the bundle is a separate file, a pull that changes
+Remote sync treats data apps like any other entity, globally rather than per collection; the app's
+collection and what it holds travel with it as its serdes descendants. Because the bundle is a separate file, a pull that changes
 only a bundle, or an export that touches an app, takes the full rather than the incremental path.
 An app's directory also holds its source, which serialization doesn't own, so exports replace only
 the YAML and resource files in `data_apps/`.

@@ -221,9 +221,9 @@
   (t2/delete! model parent-column parent-id :entity_id [:not-in entity-ids]))
 
 (mu/defn collection-paths-columns
-  "The id, entity id, location, name, and namespace of every Collection."
+  "The id, entity id, location, and name of every Collection."
   []
-  (t2/select [:model/Collection :id :entity_id :location :name :namespace]))
+  (t2/select [:model/Collection :id :entity_id :location :name]))
 
 (mu/defn dashboard-entity-ids-and-names
   "The entity id and name of every Dashboard."

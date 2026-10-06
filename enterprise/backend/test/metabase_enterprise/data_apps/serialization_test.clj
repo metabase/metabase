@@ -90,9 +90,9 @@
         (let [app                  (insert-app!)
               collection-entity-id (t2/select-one-fn :entity_id :model/Collection :id (:resource_collection_id app))]
           (export! dump-dir :with-collections? true)
-          (testing "the app's collection is exported with it, under the folder of the data-apps namespace"
+          (testing "the app's collection is exported with it, like any collection"
             (is (= [collection-entity-id]
-                   (->> (file-seq (io/file dump-dir "collections" "data_apps"))
+                   (->> (file-seq (io/file dump-dir "collections"))
                         (filter #(.isFile ^java.io.File %))
                         (map (comp :entity_id yaml/from-file))))))
           (t2/delete! :model/DataApp (:id app))

@@ -2176,8 +2176,13 @@
     (merge child-colls dashboards cards documents timelines actions tables transforms)))
 
 (defmethod serdes/storage-path "Collection" [coll {:keys [collections]}]
-  (into [{:label "collections"} {:label (serdes/collection-namespace-folder (:namespace coll))}]
-        (get collections (:entity_id coll))))
+  (let [path      (get collections (:entity_id coll))
+        ns-folder (case (:namespace coll)
+                    :snippets   "snippets"
+                    :transforms "transforms"
+                    nil         "main"
+                    "main")]
+    (into [{:label "collections"} {:label ns-folder}] path)))
 
 (defn- parent-id->location-path [parent-id]
   (if-not parent-id
