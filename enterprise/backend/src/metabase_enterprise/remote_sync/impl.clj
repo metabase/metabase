@@ -1230,8 +1230,9 @@
             diverged? ;; and not merge? option
             {:status    :conflict
              :version   remote-version
-             ;; The task row keeps only `:conflicts`, so the label is how a caller learns why it stopped.
-             :conflicts ["Remote branch changed since the last sync."]
+             ;; The task row keeps only `:conflicts`, so a stable token is how a caller learns why it stopped;
+             ;; clients own the wording.
+             :conflicts ["remote-changed"]
              :message   "The remote branch has changed since your last sync. Choose how to proceed."}
 
             ;; There's nothing to export: no dirty rows and no stale files.

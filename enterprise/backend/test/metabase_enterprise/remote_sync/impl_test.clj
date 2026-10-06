@@ -1987,7 +1987,7 @@ serdes/meta:
                                      :source (export-test-source)
                                      :base-snapshot (export-test-snapshot "base-B"))]
             (is (= :conflict (:status result)))
-            (is (= ["Remote branch changed since the last sync."]
+            (is (= ["remote-changed"]
                    (:conflicts result))
                 "the conflict names its cause, since the task row stores only the conflicts")
             (is (false? @merged?) "no merge without the merge flag")
@@ -2002,7 +2002,7 @@ serdes/meta:
                                  :source (export-test-source)
                                  :base-snapshot (export-test-snapshot "base-B"))]
         (impl/handle-task-result! result task-id)
-        (is (= {:version "remote-R" :conflicts ["Remote branch changed since the last sync."]}
+        (is (= {:version "remote-R" :conflicts ["remote-changed"]}
                (t2/select-one [:model/RemoteSyncTask :version :conflicts] :id task-id))
             "the task row records the remote version it conflicted against and the cause")
         (is (= "base-B" (remote-sync.task/last-version)))))))
