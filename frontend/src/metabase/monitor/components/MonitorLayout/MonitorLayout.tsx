@@ -26,9 +26,11 @@ import * as Urls from "metabase/urls";
 
 import { MonitorContent } from "./MonitorContent";
 
-function getActiveSection(pathname: string): MonitorSection | null {
+type ActiveSection = MonitorSection | null;
+
+function getActiveSection(pathname: string): ActiveSection {
   return match(pathname)
-    .returnType<MonitorSection | null>()
+    .returnType<ActiveSection>()
     .with(
       P.string.startsWith(Urls.dependencyDiagnostics()),
       () => "diagnostics",
@@ -45,6 +47,7 @@ function getActiveSection(pathname: string): MonitorSection | null {
       P.string.startsWith(Urls.monitorModelPersistenceLog()),
       () => "model-caching",
     )
+    .with(P.string.startsWith(Urls.monitorApiKeyUsage()), () => "api-key-usage")
     .with(
       P.string.startsWith(Urls.monitorSessions()),
       () => "session-management",
@@ -187,6 +190,15 @@ export function MonitorLayout() {
               onClick={() => trackMonitorSectionClicked("session-management")}
             />
           )}
+          <AreaTab
+            label={t`API key usage`}
+            icon="key"
+            to={Urls.monitorApiKeyUsage()}
+            isSelected={activeSection === "api-key-usage"}
+            showLabel={isNavbarOpened}
+            isGated={!hasAuditAppFeature}
+            onClick={() => trackMonitorSectionClicked("api-key-usage")}
+          />
         </AreaTabGroup>
       )}
       {canAccessAiAuditingTab && hasAuditAppFeature && (

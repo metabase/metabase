@@ -7,6 +7,8 @@ type MonitorPlugin = {
   getDependencyDiagnosticsRoutes: () => ReactNode;
   isSessionManagementEnabled: boolean;
   getSessionManagementRoutes: () => ReactNode;
+  isApiKeyUsageEnabled: boolean;
+  getApiKeyUsageRoutes: () => ReactNode;
 };
 
 const getDefaultPluginMonitor = (): MonitorPlugin => ({
@@ -14,6 +16,8 @@ const getDefaultPluginMonitor = (): MonitorPlugin => ({
   getDependencyDiagnosticsRoutes: () => null,
   isSessionManagementEnabled: false,
   getSessionManagementRoutes: () => null,
+  isApiKeyUsageEnabled: false,
+  getApiKeyUsageRoutes: () => null,
 });
 
 export const PLUGIN_MONITOR = definePluginSlot(getDefaultPluginMonitor);
