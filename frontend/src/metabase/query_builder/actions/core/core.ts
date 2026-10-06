@@ -258,10 +258,7 @@ export const apiCreateQuestion = (
         null &&
       canDisplayTimelineEvents(submittableQuestion.display())
     ) {
-      if (
-        submittableQuestion.isSaved() ||
-        getOriginalQuestion(getState())?.isSaved()
-      ) {
+      if (submittableQuestion.isSaved() || options?.sourceCardId != null) {
         submittableQuestion = submittableQuestion.updateSettings({
           "timeline.selected_timeline_ids": [],
           "timeline.excluded_timeline_event_ids": [],

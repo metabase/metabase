@@ -196,7 +196,9 @@ describe("QueryBuilder > timeline events", () => {
     const question = checkNotNull(getQuestion(store.getState()));
 
     await act(async () => {
-      await store.dispatch(apiCreateQuestion(question));
+      await store.dispatch(
+        apiCreateQuestion(question, { sourceCardId: CARD.id }),
+      );
     });
 
     expect(getCreatedCard().visualization_settings).toMatchObject(EVENTS_OFF);
@@ -212,7 +214,9 @@ describe("QueryBuilder > timeline events", () => {
     const question = checkNotNull(getQuestion(store.getState()));
 
     await act(async () => {
-      await store.dispatch(apiCreateQuestion(question));
+      await store.dispatch(
+        apiCreateQuestion(question, { sourceCardId: CARD.id }),
+      );
     });
 
     expect(getCreatedCard().visualization_settings).toMatchObject(EVENTS_OFF);
@@ -276,6 +280,30 @@ describe("QueryBuilder > timeline events", () => {
     });
 
     expect(createCallBeforeTimelinesLoaded).toBeUndefined();
+    expect(getCreatedCard().visualization_settings).toMatchObject({
+      "timeline.selected_timeline_ids": [destinationTimeline.id],
+    });
+  });
+
+  it("a new question saved after another one still records its collection's timelines", async () => {
+    const destinationTimeline = createMockTimeline({
+      id: 2,
+      collection_id: DESTINATION_COLLECTION.id,
+      collection: DESTINATION_COLLECTION,
+      events: [createMockTimelineEvent({ ...RC1, id: 97, timeline_id: 2 })],
+    });
+    const store = await setupNewQuestion({ timelines: [destinationTimeline] });
+    const question = checkNotNull(
+      getQuestion(store.getState()),
+    ).setCollectionId(DESTINATION_COLLECTION.id);
+
+    await act(async () => {
+      await store.dispatch(apiCreateQuestion(question));
+    });
+    await act(async () => {
+      await store.dispatch(apiCreateQuestion(question));
+    });
+
     expect(getCreatedCard().visualization_settings).toMatchObject({
       "timeline.selected_timeline_ids": [destinationTimeline.id],
     });
