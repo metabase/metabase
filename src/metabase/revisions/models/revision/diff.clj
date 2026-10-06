@@ -4,6 +4,7 @@
    [metabase.models.interface :as mi]
    [metabase.revisions.db :as revisions.db]
    [metabase.util.i18n :refer [deferred-tru]]
+   [metabase.util.log :as log]
    [metabase.util.match :as match]))
 
 (defn- readable-name
@@ -164,7 +165,12 @@
   The directionality of the statement should indicate that `o1` changed into `o2`."
   [model o1 o2]
   (when-let [[before after] (data/diff o1 o2)]
-    (let [model-name (model-str->i18n-str model)
+    (let [model-name (try
+                       (model-str->i18n-str model)
+                       ;; A missing display name costs one untranslated word, not the whole history read.
+                       (catch Exception e
+                         (log/warnf e "No display name for model %s; the revision description uses the model string" model)
+                         model))
           ;; ignore collection_id as part of diff if the dashboard_id has changed
           ;; so that the final diff string doesn't contain two messages about moving
           ks         (cond->> (keys (or after before))

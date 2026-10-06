@@ -130,8 +130,12 @@
              (set (keys model->display-name))))
       (doseq [[model display-name] model->display-name]
         (testing model
-          (is (= (str "renamed this " display-name " from \"A\" to \"B\".")
-                 (u/build-sentence (revision/diff-strings model {:name "A"} {:name "B"})))))))))
+          (mt/with-log-messages-for-level [messages [metabase.revisions.models.revision.diff :warn]]
+            (is (= (str "renamed this " display-name " from \"A\" to \"B\".")
+                   (u/build-sentence (revision/diff-strings model {:name "A"} {:name "B"}))))
+            ;; A missing display name falls back to the model string, which equals the display name for most models.
+            (testing "with no warning of a missing display name"
+              (is (= [] (messages))))))))))
 
 (deftest ^:parallel model-with-no-display-name-gets-a-description-test
   (testing "A model with no display name gets a description with the model string, and a warning that names the model"
