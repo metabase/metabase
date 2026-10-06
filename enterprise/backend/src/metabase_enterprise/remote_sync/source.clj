@@ -223,14 +223,16 @@
 (defn- unchanged-since-sync-fn
   "The `unchanged-locally?` predicate of [[remote-sync.merge/three-way-merge]] for a ledger `synced-hashes`
   ({file_path content_hash}, the RemoteSyncObject rows): an entity is unchanged locally when the hash of its fresh
-  serialization equals the hash the ledger recorded for the repo file it was last synced as. That hash is of
-  Metabase's own serialization at the sync, so it matches however the repo file's text differs from it."
+  serialization, with its resource files, equals the hash the ledger recorded for the repo file it was last synced
+  as. That hash is of Metabase's own serialization at the sync, so it matches however the repo file's text differs
+  from it."
   [synced-hashes]
   (if (empty? synced-hashes)
     (constantly false)
-    (fn [{base-path :path} {ours-content :content}]
+    (fn [{base-path :path} ours-unit]
       (if-let [synced (get synced-hashes base-path)]
-        (= synced (content-hash ours-content))
+        ;; the merge's load unit has the shape of a file spec: `:content`, and `:resources` sorted by path
+        (= synced (file-spec-hash ours-unit))
         false))))
 
 (defn compute-merge
