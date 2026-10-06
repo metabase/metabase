@@ -863,8 +863,9 @@ describe("scenarios > visualizer > basics", () => {
       });
     });
 
+    // `cy.on` runs when the test is defined, so register it in the command queue to skip the earlier visit
     const windowLoad = cy.spy().as("windowLoad");
-    cy.on("window:before:load", windowLoad);
+    cy.then(() => cy.on("window:before:load", windowLoad));
 
     H.visitDashboard("@dashboardId");
     H.getDashboardCard(0)

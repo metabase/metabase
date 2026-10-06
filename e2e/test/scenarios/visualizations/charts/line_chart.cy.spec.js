@@ -105,7 +105,7 @@ describe("scenarios > visualizations > line chart", () => {
     H.popover().findByText("Abbreviate days and months").click();
     H.echartsContainer().findByText("Jan 2027");
     cy.realPress("Escape");
-    H.popover().should("not.exist");
+    cy.get("[data-element-id=mantine-popover]").should("not.exist");
 
     H.openSeriesSettings("Count");
 
@@ -1107,8 +1107,8 @@ describe("scenarios > visualizations > line chart", () => {
     });
     H.visualize();
 
-    cy.log("A 1x1 result changes the display to a scalar");
-    cy.findByTestId("scalar-value").should("have.text", "18,760");
+    cy.findByTestId("visualization-placeholder").should("be.visible");
+    cy.icon("warning").should("not.exist");
   });
 
   it("should not crash when saved dimension settings refer to a non-existent column (metabase#59830)", () => {
