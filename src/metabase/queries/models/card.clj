@@ -906,9 +906,9 @@
     card))
 
 (defn- check-allowed-content
-  "Checks that the Collection `card` ends up in allows it when `changes` touch its collection, dashboard, or type."
+  "Checks that the Collection `card` ends up in allows it when `changes` touch its collection or dashboard."
   [card changes]
-  (when (some #(contains? changes %) [:collection_id :dashboard_id :type])
+  (when (some #(contains? changes %) [:collection_id :dashboard_id])
     (let [card (apply-dashboard-question-updates card changes)]
       (collection/check-allowed-content (library-content-type card) (:collection_id card)))))
 

@@ -29,7 +29,7 @@ const getEmptyStateConfig = (
     },
     dashboards: {
       description: t`Curated dashboards built on the semantic layer`,
-      actionLabel: t`New dashboard`,
+      actionLabel: t`Create a dashboard`,
     },
     snippets: {
       description: t`Reusable bits of code that save your time`,

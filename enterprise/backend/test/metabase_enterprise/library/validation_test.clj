@@ -157,14 +157,6 @@
         (mt/user-http-request :crowberto :put 200 (str "dashboard/" (:id dashboard)) {:collection_id (:id allow-dashboards)})
         (is (= (:id allow-dashboards) (t2/select-one-fn :collection_id :model/Card :id (:id dashboard-card))))))))
 
-(deftest change-card-type-in-library-collection-test
-  (mt/with-premium-features #{:library}
-    (mt/with-temp [:model/Collection allow-metrics {:name "Test Base Library" :type collection/library-metrics-collection-type}
-                   :model/Card       metric        {:collection_id (:id allow-metrics) :type :metric}]
-      (testing "Cannot change the type of a card to one its collection does not allow"
-        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Can only add metrics to the 'Metrics' collection"
-                              (t2/update! :model/Card (:id metric) {:type :model})))))))
-
 (deftest tables-cannot-be-moved-to-non-library-data-collections
   (mt/with-premium-features #{:library}
     (mt/with-temp [:model/Collection library-data {:name "Library Data" :type collection/library-data-collection-type}
