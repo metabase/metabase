@@ -3748,6 +3748,7 @@
            models
            permissions
            premium-features
+           remote-sync
            request
            settings
            util

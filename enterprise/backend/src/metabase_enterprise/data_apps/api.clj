@@ -22,6 +22,7 @@
    [metabase.lib-be.core :as lib-be]
    [metabase.lib-be.schema :as lib-be.schema]
    [metabase.lib.core :as lib]
+   [metabase.remote-sync.core :as remote-sync]
    [metabase.settings.core :as setting]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
@@ -298,12 +299,18 @@
   [slug]
   (api/write-check (api/check-404 (data-apps.db/data-app-by-slug slug))))
 
+(defn- check-editable!
+  "Throws a 403 when `app` is read-only under remote sync."
+  [app]
+  (api/check-403 (remote-sync/model-editable? :model/DataApp app)))
+
 (api.macros/defendpoint :post "/" :- DataAppResponse
   "Create a data app from its manifest fields and bundle. A draft with the same slug becomes the app."
   [_route-params
    _query-params
    body :- CreateDataAppRequest]
   (api/create-check :model/DataApp body)
+  (check-editable! (assoc body :draft false))
   (let [app (data-apps.db/data-app (data-apps.apps/create-app! (with-bundle body)))]
     (events/publish-event! :event/data-app-create {:object app :user-id api/*current-user-id*})
     (data-app-response app)))
@@ -317,6 +324,8 @@
    _query-params
    changes :- UpdateDataAppRequest]
   (let [app (write-check-data-app slug)]
+    (when (seq (dissoc changes :enabled))
+      (check-editable! app))
     (when (seq changes)
       (data-apps.db/update-data-app! (:id app) (with-bundle changes)))
     (let [app (data-apps.db/data-app (:id app))]
@@ -327,6 +336,7 @@
   "Delete a data app, its bundle, and the collection and permission group it owns."
   [{:keys [slug]} :- [:map {:closed true} [:slug ms/NonBlankString]]]
   (let [app (write-check-data-app slug)]
+    (check-editable! app)
     (data-apps.db/delete-data-app! (:id app))
     (events/publish-event! :event/data-app-delete {:object app :user-id api/*current-user-id*}))
   ;; a `nil` body is rendered as a 204; matches the `:- :nil` response schema

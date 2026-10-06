@@ -48,8 +48,7 @@
                        :types  - Vector of event types to handle [:create :update :delete]
    - :eligibility    - Eligibility configuration:
                        :type       - :collection, :published-table, :parent-table, :parent, :setting,
-                                     :library-synced, or :always (:parent follows :parent-fk to a :parent-model
-                                     instance)
+                                     or :library-synced (:parent follows :parent-fk to a :parent-model instance)
                        :collection - For :collection type: :remote-synced, :transforms-namespace, :snippets-namespace, or :any
                        :setting    - For :setting type: setting keyword to check
                        (Note: :library-synced type uses the library-is-remote-synced? setting to determine eligibility)
@@ -368,7 +367,8 @@
     :identity       :entity-id
     :events         {:prefix :event/data-app
                      :types  [:create :update :delete]}
-    :eligibility    {:type :always}
+    :eligibility    {:type    :setting
+                     :setting :remote-sync-enabled}
     :archived-key   nil
     :tracking       {:select-fields  [:name]
                      :field-mappings {:model_name :name}}
@@ -844,15 +844,11 @@
 
 (defmethod check-eligibility-by-type :setting
   [{:keys [eligibility]} _object]
-  (setting/get-value-of-type :boolean (:setting eligibility)))
+  (boolean (setting/get (:setting eligibility))))
 
 (defmethod check-eligibility-by-type :library-synced
   [_spec _object]
   (rs-settings/library-is-remote-synced?))
-
-(defmethod check-eligibility-by-type :always
-  [_ _]
-  true)
 
 (defmethod check-eligibility-by-type :default
   [_ _]
@@ -1245,15 +1241,6 @@
             (map (fn [id] [model-type id]))
             (remote-sync.db/ids-where model-key (when archived-key {archived-key false})))
       nil)))
-
-(defmethod query-export-roots :always
-  [{:keys [export-scope model-key model-type] :as spec}]
-  (case export-scope
-    :all
-    (into #{}
-          (map (fn [id] [model-type id]))
-          (remote-sync.db/ids-where model-key (export-conditions spec)))
-    nil))
 
 (defmethod query-export-roots :default [_] nil)
 
