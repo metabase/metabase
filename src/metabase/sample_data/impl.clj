@@ -3,6 +3,7 @@
   (:require
    [clojure.java.io :as io]
    [clojure.string :as str]
+   [metabase.driver.settings :as driver.settings]
    [metabase.driver.util :as driver.u]
    [metabase.plugins.core :as plugins]
    [metabase.sample-data.db :as sample-data.db]
@@ -59,8 +60,11 @@
   [engine dest-path]
   (case engine
     ;; SQLite `:details` only need a filesystem path. URL-decode in case it got URL-encoded from a JAR `URL`.
-    ;; The bundled file is read-only.
-    :sqlite {:db (codec/url-decode dest-path), :read-only? true}
+    ;; The bundled file is read-only. Register the path so the driver's hosted-instance guard will permit opening
+    ;; this one file (and no other) -- see [[metabase.driver.settings/register-allowed-sqlite-path!]].
+    :sqlite (let [db (codec/url-decode dest-path)]
+              (driver.settings/register-allowed-sqlite-path! db)
+              {:db db, :read-only? true})
     ;; H2 connects to the file by path (sans the `.mv.db` suffix).
     :h2     {:db (-> (str "file:" dest-path)
                      (str/replace #"\.mv\.db$" "")

@@ -232,6 +232,27 @@
   Sample Database (sync, schema refresh, fingerprinting, etc.) bind this to `true`."
   false)
 
+(def ^:private allowed-sqlite-paths
+  "The exact `:db` path strings SQLite is always permitted to open -- just the bundled Sample Database, registered by
+  the sample-data module. On a hosted instance, SQLite may open nothing else; on self-hosted, a path here is exempt
+  from the `readable-paths` allowlist. Exact-string match is enough: a stored Database row carries the registered
+  string verbatim, so a match can only name the Sample Database file itself."
+  (atom #{}))
+
+(defn register-allowed-sqlite-path!
+  "Record `path` as a SQLite file the hosted-instance guard will permit to be opened. Called by the sample-data module
+  for the bundled Sample Database."
+  [path]
+  (when path
+    (swap! allowed-sqlite-paths conj path)))
+
+(defn sqlite-path-allowed?
+  "Whether `db` (a SQLite `:db` connection detail) names a file the hosted-instance guard permits -- i.e. the bundled
+  Sample Database registered via [[register-allowed-sqlite-path!]]."
+  [db]
+  (boolean (and (string? db)
+                (contains? @allowed-sqlite-paths db))))
+
 (defn- -jdbc-data-warehouse-unreturned-connection-timeout-seconds []
   (or (setting/get-value-of-type :integer :jdbc-data-warehouse-unreturned-connection-timeout-seconds)
       (long (/ *query-timeout-ms* 1000))))
