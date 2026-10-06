@@ -82,7 +82,11 @@ export const TableActionInputSearchableSelect = ({
         const option = options.find((item) => item.value === value);
         if (option) {
           return (
-            <Text truncate="end" className={classNames?.selectLabel}>
+            <Text
+              c="inherit"
+              truncate="end"
+              className={classNames?.selectLabel}
+            >
               {option.label}
             </Text>
           );
@@ -92,7 +96,7 @@ export const TableActionInputSearchableSelect = ({
       // Display the raw value if `searchFieldId` is not provided (e.g. for FKs)
       else {
         return (
-          <Text truncate="end" className={classNames?.selectLabel}>
+          <Text c="inherit" truncate="end" className={classNames?.selectLabel}>
             {value}
           </Text>
         );
@@ -124,7 +128,7 @@ export const TableActionInputSearchableSelect = ({
     // Fallback to the raw value instead of a label
     if (value) {
       return (
-        <Text truncate="end" className={classNames?.selectLabel}>
+        <Text c="inherit" truncate="end" className={classNames?.selectLabel}>
           {value}
         </Text>
       );

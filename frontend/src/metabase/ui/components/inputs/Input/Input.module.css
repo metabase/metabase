@@ -99,6 +99,16 @@
   }
 }
 
+.wrapper:has(> .input:disabled, > .input[data-disabled]) .section {
+  color: var(--mb-color-icon-disabled);
+}
+
+/* Input.ClearButton is a CloseButton, which draws its own icon at 70% of the button, not an Icon.
+   Give it the same size as the other section icons. */
+.clearButton {
+  --cb-icon-size: var(--input-section-icon-size, 70%);
+}
+
 .label {
   color: var(--mb-color-text-primary);
   font-size: var(--mantine-font-size-md);
