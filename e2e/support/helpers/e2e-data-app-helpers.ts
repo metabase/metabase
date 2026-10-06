@@ -1,20 +1,21 @@
+import { nanoid } from "@reduxjs/toolkit";
 import yaml from "js-yaml";
 
 import { USER_GROUPS, WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import * as Urls from "metabase/urls/data-apps";
+import { NANOID_LENGTH } from "metabase-types/api";
 import type {
   Collection,
   CollectionId,
   CollectionPermission,
   CollectionPermissionsGraph,
-  CreateApiKeyResponse,
   DataApp,
   Group,
   WritebackAction,
 } from "metabase-types/api";
 import { isObject } from "metabase-types/guards";
 
-import { createTestNativeQuery } from "./api";
+import { createApiKey, createTestNativeQuery } from "./api";
 import type { DataAppTestEnv } from "./data-app-test-env";
 import { getIframeBody } from "./e2e-embedding-helpers";
 import {
@@ -314,15 +315,8 @@ export function resetDataAppHostAppSources() {
   });
 }
 
-const ENTITY_ID_ALPHABET =
-  "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_-";
-
 /** A new entity ID, as `representations generate-entity-id` makes one for an author. */
-export const newEntityId = () =>
-  Array.from(
-    crypto.getRandomValues(new Uint8Array(21)),
-    (byte) => ENTITY_ID_ALPHABET[byte & 63],
-  ).join("");
+export const newEntityId = () => nanoid(NANOID_LENGTH);
 
 /**
  * A table as serialized YAML references it: database, schema, and table name.
@@ -344,7 +338,7 @@ const serdesMeta = (model: string, entityId: string, name: string) => [
 ];
 
 /** The app's `resources/collection.yaml`. */
-export const resourceCollection = (
+const resourceCollection = (
   entityId: string,
   name: string,
 ): ResourceEntity => ({
@@ -358,7 +352,7 @@ export const resourceCollection = (
  * query definition, or a copy of a model or metric from the repository. `stage`
  * holds the clauses besides the source table.
  */
-export const resourceCard = ({
+const resourceCard = ({
   entityId,
   name,
   type,
@@ -388,6 +382,16 @@ export const resourceCard = ({
   visualization_settings: {},
   "serdes/meta": serdesMeta("Card", entityId, name),
 });
+
+/**
+ * The YAML an author writes under an app's `resources/`, in the Metabase
+ * representation format: plain data for `writeDataAppResources`, read from
+ * nothing and written nowhere by itself.
+ */
+export const dataAppRepresentations = {
+  collection: resourceCollection,
+  card: resourceCard,
+};
 
 const fileName = (entity: ResourceEntity) =>
   `${slugOf(String(entity.name))}_${String(entity.entity_id)}.yaml`;
@@ -476,15 +480,13 @@ export function runDataAppCli(command: string, env?: Record<string, string>) {
  * as the environment variables `.env.local` would otherwise hold.
  */
 export function dataAppCliEnv() {
-  return cy
-    .request<CreateApiKeyResponse>("POST", "/api/api-key", {
-      name: `data-app-cli-e2e-${Date.now()}`,
-      group_id: USER_GROUPS.ADMIN_GROUP,
-    })
-    .then(({ body }) => ({
-      DATA_APP_MB_URL: String(Cypress.config("baseUrl")),
-      DATA_APP_MB_API_KEY: body.unmasked_key,
-    }));
+  return createApiKey(
+    `data-app-cli-e2e-${Date.now()}`,
+    USER_GROUPS.ADMIN_GROUP,
+  ).then(({ body }) => ({
+    DATA_APP_MB_URL: String(Cypress.config("baseUrl")),
+    DATA_APP_MB_API_KEY: body.unmasked_key,
+  }));
 }
 
 export const copySyncedDataAppsFixture = () =>

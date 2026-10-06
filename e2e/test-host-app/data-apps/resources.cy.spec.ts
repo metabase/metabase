@@ -26,11 +26,11 @@ serdes/meta:
 const ORDERS_TABLE: PortableTable = ["Sample Database", "PUBLIC", "ORDERS"];
 
 const collection = () =>
-  H.resourceCollection(COLLECTION, "Data App: Vite 6 Data App");
+  H.dataAppRepresentations.collection(COLLECTION, "Data App: Vite 6 Data App");
 
 /** The saved question an author writes for a plain `Orders` definition. */
 const ordersQuestion = (entityId: string, stage = {}) =>
-  H.resourceCard({
+  H.dataAppRepresentations.card({
     entityId,
     name: "Orders",
     type: "question",
