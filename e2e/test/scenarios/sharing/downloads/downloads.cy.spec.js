@@ -334,7 +334,7 @@ describe("scenarios > question > download", () => {
       });
 
       // In CI agents after downloads Cypress gets stuck for a while so the downloads status gets closed by timeout
-      assertOrdersExport({ assertParameters: [{ type: "id" }] });
+      assertOrdersExport({ assertParameters: [{ type: "number/=" }] });
     });
 
     it("should allow downloading parameterized cards opened from dashboards as a user with no self-service permission (metabase#20868)", () => {

@@ -758,7 +758,7 @@ describe("scenarios > dashboard > subscriptions", () => {
         addParametersToDashboard();
       });
 
-      it("should show default filter values in the subscription and allow setting parameters", () => {
+      it("should show a filter description containing default values, even when not explicitly added to subscription", () => {
         assignRecipient();
         clickButton("Done");
 
@@ -805,7 +805,6 @@ describe("scenarios > dashboard > subscriptions", () => {
           .click();
 
         // verify existing subscription show new default in email
-        H.clearInbox();
         H.sendEmailAndVisitIt();
         cy.get("table.header")
           .first()
@@ -813,13 +812,17 @@ describe("scenarios > dashboard > subscriptions", () => {
             cy.findByText("Text").next().findByText("Sallie Flatley");
             cy.findByText("Text 1").should("not.exist");
           });
+      });
 
-        openDashboardSubscriptions();
+      it("should allow for setting parameters in subscription", () => {
+        assignRecipient();
+        clickButton("Done");
+
         // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
         cy.findByText("Emailed hourly").click();
 
         // eslint-disable-next-line metabase/no-unsafe-element-filtering
-        cy.findAllByText("Sallie Flatley").last().click();
+        cy.findAllByText("Corbin Mertz").last().click();
         H.popover().within(() => {
           H.fieldValuesCombobox().type("Bob");
           cy.findByText("Bobby Kessler").click();
@@ -840,12 +843,11 @@ describe("scenarios > dashboard > subscriptions", () => {
           .findByText("Text: 2 selections and 1 more filter")
           .click();
 
-        H.clearInbox();
         H.sendEmailAndVisitIt();
         cy.get("table.header").within(() => {
           cy.findByText("Text")
             .next()
-            .findByText("Sallie Flatley and Bobby Kessler");
+            .findByText("Corbin Mertz and Bobby Kessler");
           cy.findByText("Text 1").next().findByText("Gizmo");
         });
       });

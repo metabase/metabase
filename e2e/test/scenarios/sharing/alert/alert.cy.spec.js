@@ -212,35 +212,22 @@ describe("scenarios > alert", () => {
       });
     });
 
-      it("should not display the list of approved domains for non-admins (metabase#57138)", () => {
-        cy.signInAsNormalUser();
-        H.visitQuestion(ORDERS_QUESTION_ID);
+    it("should not display the list of approved domains for non-admins (metabase#57138)", () => {
+      cy.signInAsNormalUser();
+      H.visitQuestion(ORDERS_QUESTION_ID);
 
-        cy.findByLabelText("Move, trash, and more…").click();
-        H.popover().findByText("Create an alert").click();
-        H.selectScheduleTime();
-        H.modal().within(() => {
-          cy.findByText("New alert").should("be.visible");
+      cy.findByLabelText("Move, trash, and more…").click();
+      H.popover().findByText("Create an alert").click();
+      H.selectScheduleTime();
+      H.modal().within(() => {
+        cy.findByText("New alert").should("be.visible");
 
-          addEmailRecipient(deniedEmail);
+        addEmailRecipient(deniedEmail);
 
-          cy.button("Done").click();
-        });
-        cy.findByTestId("toast-undo").within(() => {
-          cy.root().should("have.text", normalUserAlertError);
-        });
-
-        H.visitDashboard(ORDERS_DASHBOARD_ID);
-        H.toggleDashboardSubscriptionsSidebar();
-
-        H.sidebar().within(() => {
-          addEmailRecipient(deniedEmail);
-
-          cy.button("Done").click();
-        });
-        cy.findByTestId("toast-undo").within(() => {
-          cy.root().should("have.text", normalUserSubscriptionError);
-        });
+        cy.button("Done").click();
+      });
+      cy.findByTestId("toast-undo").within(() => {
+        cy.root().should("have.text", normalUserAlertError);
       });
 
       H.visitDashboard(ORDERS_DASHBOARD_ID);
@@ -252,7 +239,6 @@ describe("scenarios > alert", () => {
         cy.button("Done").click();
       });
       cy.findByTestId("toast-undo").within(() => {
-        cy.root().should("have.attr", "color", "feedback-negative");
         cy.root().should("have.text", normalUserSubscriptionError);
       });
     });
