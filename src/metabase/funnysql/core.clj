@@ -597,7 +597,9 @@
   (and (fn-call? x)
        (contains? predicate-operators (first x))))
 
-(defn- -equals! [sql nil-sql [x y] context]
+(defn- -equals! [sql nil-sql [x y :as args] context]
+  (when-not (= (count args) 2)
+    (throw (ex-info "Wrong number of args to :=/:!=/:<>/:not= (expected 2 args)" {:args args})))
   ;; A `nil` on *either* side becomes `IS [NOT] NULL` against whichever side is non-`nil`, matching Honey SQL's
   ;; `:transform-null-equals`. This has to cover `[:= nil x]` as well as `[:= x nil]`: compiling the `nil` as a plain
   ;; operand would give `NULL = x`, which evaluates to `NULL` rather than `TRUE` and so silently matches no rows.

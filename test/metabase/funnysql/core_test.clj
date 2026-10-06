@@ -43,6 +43,14 @@
   (is (= ["WHERE (\"x\" IS NULL) = \"y\""]
          (funnysql/format {:where [:= [:= :x nil] :y]} :postgres))))
 
+(deftest ^:parallel equals-with-more-than-two-args-test
+  (testing "throw if := or :!= have more than two args"
+    (are [op] (thrown-with-msg?
+               clojure.lang.ExceptionInfo
+               #"\QWrong number of args to :=/:!=/:<>/:not= (expected 2 args)\E"
+               (funnysql/format [op 1 2 3] :postgres))
+      := :!= :not= :<>)))
+
 (deftest ^:parallel nil-on-the-left-test
   (testing "`nil` on the LHS has to become `IS [NOT] NULL` too -- `NULL = x` is always NULL, so it matches no rows"
     (are [clause expected] (= [expected]
