@@ -422,6 +422,7 @@ describe("issue 44790", () => {
       },
     });
     H.getDashboardCard().should("contain", "borer-hudson@yahoo.com");
+    H.getDashboardCard().within(() => H.assertTableRowsCount(5));
 
     cy.log("wrong value for number filter should be ignored");
     H.visitDashboard("@dashboardId", {
@@ -431,6 +432,7 @@ describe("issue 44790", () => {
       },
     });
     H.getDashboardCard().should("contain", "borer-hudson@yahoo.com");
+    H.getDashboardCard().within(() => H.assertTableRowsCount(1));
   });
 });
 
