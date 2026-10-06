@@ -11,3 +11,5 @@
   :default    false
   :setter     :none
   :audit      :getter)
+
+;; [test] Test-gate check: a backend-only change. Not for merge.
