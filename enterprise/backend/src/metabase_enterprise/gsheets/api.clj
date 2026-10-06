@@ -13,6 +13,7 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.util :as u]
+   [metabase.util.api-error :as api-error]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
@@ -86,14 +87,16 @@
   ([^long status-code ^String message hm-response] (throw-error status-code message hm-response {}))
 
   ([^long status-code ^String message hm-response data]
-   (throw (ex-info message (merge data {;; the `:errors true` bit informs the exception middleware to return the message
-                                        ;; in the body, even if we want to pass a status code. Without `:errors true`,
-                                        ;; sending a status code will elide the message from the response.
-                                        :errors true
-                                        :status-code status-code
-                                        :hm/response (loggable-response hm-response)
-                                        :message message
-                                        :error_message ((comp :status-reason :body) hm-response)})))))
+   (throw (api-error/ex-info message
+                             (merge data {;; the `:errors true` bit informs the exception middleware to return the message
+                                          ;; in the body, even if we want to pass a status code. Without `:errors true`,
+                                          ;; sending a status code will elide the message from the response.
+                                          :errors true
+                                          :status-code status-code
+                                          :hm/response (loggable-response hm-response)
+                                          :message message
+                                          :error_message ((comp :status-reason :body) hm-response)})
+                             #{:errors :message :error_message}))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; MB <-> HM APIs

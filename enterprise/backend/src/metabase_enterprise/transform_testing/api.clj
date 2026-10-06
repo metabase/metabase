@@ -8,6 +8,7 @@
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.models.interface :as mi]
+   [metabase.util.api-error :as api-error]
    [metabase.util.malli.schema :as ms]))
 
 (set! *warn-on-reflection* true)
@@ -23,10 +24,11 @@
     (thunk)
     (catch clojure.lang.ExceptionInfo e
       (if-let [error-type (:error-type (ex-data e))]
-        (throw (ex-info (ex-message e)
-                        (assoc (dissoc (ex-data e) :error-type)
-                               :status-code (transform-testing.errors/status-code error-type)
-                               :error-code  (transform-testing.errors/code error-type))))
+        (throw (api-error/ex-info (ex-message e)
+                                  (assoc (dissoc (ex-data e) :error-type)
+                                         :status-code (transform-testing.errors/status-code error-type)
+                                         :error-code  (transform-testing.errors/code error-type))
+                                  #{:error-code}))
         (throw e)))))
 
 (api.macros/defendpoint :get "/" :- [:sequential ::transform-testing.schema/transform-test]

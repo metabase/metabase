@@ -16,6 +16,7 @@
    [metabase.query-processor.api :as api.dataset]
    [metabase.query-processor.card :as qp.card]
    [metabase.util :as u]
+   [metabase.util.api-error :as api-error]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -144,7 +145,8 @@
     (api/write-check document)
     (when-not (:archived document)
       (let [msg (tru "Document must be archived before it can be deleted.")]
-        (throw (ex-info msg {:status-code 400, :errors {:archived msg}}))))
+        (throw (api-error/ex-info msg {:status-code 400, :errors {:archived msg}}
+                                  #{:errors}))))
     (documents.db/delete-document! document-id)
     (events/publish-event! :event/document-delete
                            {:object document

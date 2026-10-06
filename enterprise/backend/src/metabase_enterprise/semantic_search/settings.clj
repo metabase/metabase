@@ -6,6 +6,7 @@
    [metabase.request.current :as request.current]
    [metabase.search.config :as search.config]
    [metabase.settings.core :as setting :refer [defsetting]]
+   [metabase.util.api-error :as api-error]
    [metabase.util.i18n :refer [deferred-tru tru]]))
 
 ;; Topic for the just-in-time HNSW build, handled in metabase-enterprise.semantic-search.events. Declared
@@ -93,12 +94,13 @@
                              (not-empty (setting/get-value-of-type :string :ee-embedding-service-api-key))
                              (not= new-value (normalize-base-url
                                               (setting/get-value-of-type :string :ee-embedding-service-base-url))))
-                    (throw (ex-info (if (setting/env-var-value :ee-embedding-service-api-key)
-                                      (tru "The embedding service API key comes from an environment variable. Set its base URL there too.")
-                                      (tru "Clear the embedding service API key before changing its base URL, then set a replacement key."))
-                                    {:status-code 400
-                                     :api-error   true
-                                     :error-code  :embedding-base-url-change-requires-credentials})))
+                    (throw (api-error/ex-info (if (setting/env-var-value :ee-embedding-service-api-key)
+                                                (tru "The embedding service API key comes from an environment variable. Set its base URL there too.")
+                                                (tru "Clear the embedding service API key before changing its base URL, then set a replacement key."))
+                                              {:status-code 400
+                                               :api-error   true
+                                               :error-code  :embedding-base-url-change-requires-credentials}
+                                              #{:error-code})))
                   (when-let [problem (llm-settings/llm-url-problem new-value)]
                     (throw (ex-info problem {:status-code 400})))
                   (setting/set-value-of-type! :string :ee-embedding-service-base-url new-value)))

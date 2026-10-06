@@ -11,6 +11,7 @@
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.util :as u]
+   [metabase.util.api-error :as api-error]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -52,11 +53,12 @@
                  ancestor-types)
         (let [message (tru "Invalid value for Field column {0}: {1} is not a descendant of any of these types: {2}"
                            (pr-str column-name) (pr-str k) (pr-str ancestor-types))]
-          (throw (ex-info message
-                          {:status-code       400
-                           :errors            {column-name message}
-                           :value             k
-                           :allowed-ancestors ancestor-types}))))
+          (throw (api-error/ex-info message
+                                    {:status-code       400
+                                     :errors            {column-name message}
+                                     :value             k
+                                     :allowed-ancestors ancestor-types}
+                                    #{:errors}))))
       (u/qualified-name k))))
 
 (defn- hierarchy-keyword-out [column-name & {:keys [fallback-type ancestor-types]}]

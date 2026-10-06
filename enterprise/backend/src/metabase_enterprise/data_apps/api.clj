@@ -24,6 +24,7 @@
    [metabase.lib.core :as lib]
    [metabase.settings.core :as setting]
    [metabase.util :as u]
+   [metabase.util.api-error :as api-error]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
    [metabase.util.malli.schema :as ms])
@@ -265,10 +266,11 @@
    other use for it. Superusers still read it, to badge the app and manage its users."
   [app]
   (when (data-app.config/outdated? app)
-    (throw (ex-info (tru (str "This app was built for version {0} of data apps. Migrate it to the current "
-                              "version, then rebuild and sync it again.")
-                         (:version app))
-                    {:status-code 409, :error-code "data-app-outdated"})))
+    (throw (api-error/ex-info (tru (str "This app was built for version {0} of data apps. Migrate it to the current "
+                                        "version, then rebuild and sync it again.")
+                                   (:version app))
+                              {:status-code 409, :error-code "data-app-outdated"}
+                              #{:error-code})))
   app)
 
 (api.macros/defendpoint :get "/" :- [:sequential [:or DataAppResponse PublicDataAppResponse]]

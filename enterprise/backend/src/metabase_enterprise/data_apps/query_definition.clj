@@ -11,6 +11,7 @@
    [metabase.lib.schema.literal :as literal]
    [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
    [metabase.util :as u]
+   [metabase.util.api-error :as api-error]
    [metabase.util.malli.registry :as mr]))
 
 (defn- normalize-binning [column]
@@ -164,9 +165,10 @@
       ;; validate before the middleware silently drops unsupported fields
       (let [query (decode value)]
         (when-not (validate query)
-          (throw (ex-info "Invalid data app query"
-                          {:status-code 400
-                           :errors (me/humanize (mr/explain schema query))})))
+          (throw (api-error/ex-info "Invalid data app query"
+                                    {:status-code 400
+                                     :errors (me/humanize (mr/explain schema query))}
+                                    #{:errors})))
         query))))
 
 (mr/def ::query-definition

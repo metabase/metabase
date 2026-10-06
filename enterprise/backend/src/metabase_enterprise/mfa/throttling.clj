@@ -7,6 +7,7 @@
   there the success is the thing being rate-limited."
   (:require
    [metabase.config.core :as config]
+   [metabase.util.api-error :as api-error]
    [throttle.core :as throttle]))
 
 (set! *warn-on-reflection* true)
@@ -19,7 +20,8 @@
   No-op when `MB_DISABLE_SESSION_THROTTLE` is set."
   [throttler throttle-key]
   (when-not throttling-disabled?
-    (throttle/check throttler throttle-key)))
+    (api-error/exposing #{:errors}
+      (throttle/check throttler throttle-key))))
 
 (defn call-with-failure-throttling
   "Run `f` guarded by `pairs` of `[throttler throttle-key]`. Only a thrown exception counts as an
@@ -37,5 +39,5 @@
         ;; `:status-code` (unlike `throttle/check`'s), which would surface as a 500
         (let [data (ex-data e)]
           (if (and (:errors data) (nil? (:status-code data)))
-            (throw (ex-info (ex-message e) (assoc data :status-code 400) e))
+            (throw (api-error/ex-info (ex-message e) (assoc data :status-code 400) #{:errors} e))
             (throw e)))))))

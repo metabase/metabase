@@ -19,6 +19,7 @@
    [metabase.task.core :as task]
    [metabase.test :as mt]
    [metabase.util :as u]
+   [metabase.util.api-error :as api-error]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -31,7 +32,7 @@
   [_channel-type {:keys [return-type return-value] :as _details}]
   (case return-type
     "throw"
-    (throw (ex-info "Test error" return-value))
+    (throw (api-error/ex-info "Test error" return-value (keys return-value)))
 
     "return-value"
     return-value))

@@ -10,6 +10,7 @@
    [metabase.driver.util :as driver.u]
    [metabase.premium-features.core :as premium-features]
    [metabase.util :as u]
+   [metabase.util.api-error :as api-error]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli.schema :as ms]))
 
@@ -96,9 +97,10 @@
   (when card_id
     (let [db (sandbox.db/database-of-table table_id)]
       (when (not (driver.u/supports? (:engine db) :saved-question-sandboxing db))
-        (throw (ex-info (tru "Sandboxing with a saved question is not enabled for this database.")
-                        {:status-code 400
-                         :message     (tru "Sandboxing with a saved question is not enabled for this database.")})))))
+        (throw (api-error/ex-info (tru "Sandboxing with a saved question is not enabled for this database.")
+                                  {:status-code 400
+                                   :message     (tru "Sandboxing with a saved question is not enabled for this database.")}
+                                  #{:message})))))
   (sandbox/check-columns-match-table {:table_id table_id
                                       :card_id  card_id}))
 

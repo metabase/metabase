@@ -16,6 +16,7 @@
    [metabase.premium-features.core :as premium-features]
    [metabase.settings.core :as setting]
    [metabase.util :as u]
+   [metabase.util.api-error :as api-error]
    [metabase.util.i18n :refer [tru]]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
@@ -184,9 +185,10 @@
   The error payload includes the offending IDs under `[:errors :tenant-group-ids]`."
   [group-ids]
   (when-let [offending (seq (hidden-tenant-group-ids group-ids))]
-    (throw (ex-info (tru "Tenant groups are not editable while the Tenants feature is disabled.")
-                    {:status-code 400
-                     :errors      {:tenant-group-ids (sort offending)}}))))
+    (throw (api-error/ex-info (tru "Tenant groups are not editable while the Tenants feature is disabled.")
+                              {:status-code 400
+                               :errors      {:tenant-group-ids (sort offending)}}
+                              #{:errors}))))
 
 (defn- group-id->num-members
   "Return a map of `PermissionsGroup` ID -> number of members in the group. (This doesn't include entries for empty

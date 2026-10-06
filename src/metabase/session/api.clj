@@ -23,6 +23,7 @@
    [metabase.sso.core :as sso]
    [metabase.system.core :as system]
    [metabase.util :as u]
+   [metabase.util.api-error :as api-error]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -70,7 +71,7 @@
         ;; `:status-code` (unlike `throttle/check`'s), which would surface as a 500
         (let [data (ex-data e)]
           (if (and (:errors data) (nil? (:status-code data)))
-            (throw (ex-info (ex-message e) (assoc data :status-code 400) e))
+            (throw (api-error/ex-info (ex-message e) (assoc data :status-code 400) #{:errors} e))
             (throw e)))))))
 
 (def ^:private password-fail-message (deferred-tru "Password did not match stored password."))
@@ -93,16 +94,18 @@
         nil
 
         (= (:error result) :invalid-credentials)
-        (throw (ex-info (str password-fail-message)
-                        {:status-code 401
-                         :errors {:password password-fail-snippet}}))
+        (throw (api-error/ex-info (str password-fail-message)
+                                  {:status-code 401
+                                   :errors      {:password password-fail-snippet}}
+                                  #{:errors}))
 
         (:success? result)
         (if (:mfa/pending? result) result (:session result))
 
         :else
-        (throw (ex-info (str (:message result)) {:errors {:_error (:error result)}
-                                                 :status-code 401}))))))
+        (throw (api-error/ex-info (str (:message result)) {:errors {:_error (:error result)}
+                                                           :status-code 401}
+                                  #{:errors}))))))
 
 (mu/defn- email-login :- [:maybe [:or session.schema/SessionSchema [:map [:mfa/pending? [:= true]]]]]
   "Find a matching `User` if one exists and return a new Session for them (or an MFA-pending result
@@ -117,14 +120,16 @@
     (cond
       (contains? #{:invalid-credentials :server-error :authentication-expired} (:error result)) nil
       (:success? result) (if (:mfa/pending? result) result (:session result))
-      :else (throw (ex-info (str (:message result)) {:errors {:_error (:error result)}
-                                                     :status-code 401})))))
+      :else (throw (api-error/ex-info (str (:message result)) {:errors {:_error (:error result)}
+                                                               :status-code 401}
+                                      #{:errors})))))
 
 (defn- throttle-check
   "Pass through to `throttle/check` but will not check if `throttling-disabled?` is true"
   [throttler throttle-key]
   (when-not throttling-disabled?
-    (throttle/check throttler throttle-key)))
+    (api-error/exposing #{:errors}
+      (throttle/check throttler throttle-key))))
 
 (mu/defn- login :- [:or session.schema/SessionSchema [:map [:mfa/pending? [:= true]]]]
   "Attempt to login with different available methods with `username` and `password`, returning a new Session (or an
@@ -138,9 +143,10 @@
       ;; If nothing succeeded complain about it
       ;; Don't leak whether the account doesn't exist or the password was incorrect
       (throw
-       (ex-info (str password-fail-message)
-                {:status-code 401
-                 :errors      {:password password-fail-snippet}}))))
+       (api-error/ex-info (str password-fail-message)
+                          {:status-code 401
+                           :errors      {:password password-fail-snippet}}
+                          #{:errors}))))
 
 (defn- session-response
   "Ring response that sets the session cookies for a freshly created `session`.
@@ -274,9 +280,10 @@
     (if throttling-disabled?
       (do-login)
       (http-401-on-error
-        (throttle/with-throttling [(login-throttlers :ip-address) ip-address
-                                   (login-throttlers :username)   (u/lower-case-en username)]
-          (do-login))))))
+        (api-error/exposing #{:errors}
+          (throttle/with-throttling [(login-throttlers :ip-address) ip-address
+                                     (login-throttlers :username)   (u/lower-case-en username)]
+            (do-login)))))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -520,14 +527,16 @@
 
                 ;; Login failed
                 :else
-                (throw (ex-info (or (str (:message login-result)) "Authentication failed")
-                                {:status-code 401
-                                 :errors {:_error (or (:error login-result) "Authentication failed")}})))))]
+                (throw (api-error/ex-info (or (str (:message login-result)) "Authentication failed")
+                                          {:status-code 401
+                                           :errors {:_error (or (:error login-result) "Authentication failed")}}
+                                          #{:errors})))))]
     (http-401-on-error
       (if throttling-disabled?
         (do-login)
-        (throttle/with-throttling [(login-throttlers :ip-address) (request/ip-address request)]
-          (do-login))))))
+        (api-error/exposing #{:errors}
+          (throttle/with-throttling [(login-throttlers :ip-address) (request/ip-address request)]
+            (do-login)))))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen

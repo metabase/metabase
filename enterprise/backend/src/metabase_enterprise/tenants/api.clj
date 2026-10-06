@@ -9,6 +9,7 @@
    [metabase.collections.models.collection :as collection]
    [metabase.events.core :as events]
    [metabase.request.core :as request]
+   [metabase.util.api-error :as api-error]
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
@@ -47,9 +48,10 @@
   necessary."
   [tenant]
   (when-not (mr/validate CreateTenantArguments tenant)
-    (throw (ex-info "Invalid Tenant"
-                    {:status-code 400
-                     :errors (mr/explain CreateTenantArguments tenant)})))
+    (throw (api-error/ex-info "Invalid Tenant"
+                              {:status-code 400
+                               :errors (mr/explain CreateTenantArguments tenant)}
+                              #{:errors})))
   (api/check-403 api/*is-superuser?*)
   (api/check-400 (not (tenant/tenant-exists? tenant))
                  "This tenant name or slug is already taken.")

@@ -26,6 +26,7 @@
    [metabase.settings.core :as setting]
    [metabase.tracing.core :as tracing]
    [metabase.util :as u]
+   [metabase.util.api-error :as api-error]
    [metabase.util.i18n :refer [trs tru]]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
@@ -645,9 +646,9 @@
     (catch Throwable e
       (log/errorf "Error setting premium features token: %s" (ex-message e))
       ;; merge in error-details if present
-      (throw (ex-info (.getMessage e) (merge
-                                       {:message (.getMessage e), :status-code 400}
-                                       (ex-data e)))))))
+      (throw (api-error/ex-info (.getMessage e) (merge {:message (.getMessage e), :status-code 400}
+                                                       (ex-data e))
+                                #{:message :error-details})))))
 
 (defn -airgap-enabled
   "Getter for [[metabase.premium-features.settings/airgap-enabled]]"
@@ -734,9 +735,10 @@
 (defn ee-feature-error
   "Returns an error that can be used to throw when an enterprise feature check fails."
   [feature-name]
-  (ex-info (tru "{0} is a paid feature not currently available to your instance. Please upgrade to use it. Learn more at metabase.com/upgrade/"
-                feature-name)
-           {:status-code 402 :status "error-premium-feature-not-available"}))
+  (api-error/ex-info (tru "{0} is a paid feature not currently available to your instance. Please upgrade to use it. Learn more at metabase.com/upgrade/"
+                          feature-name)
+                     {:status-code 402 :status "error-premium-feature-not-available"}
+                     #{:status}))
 
 (mu/defn assert-has-feature
   "Check if an token with `feature` is present. If not, throw an error with a message using `feature-name`.

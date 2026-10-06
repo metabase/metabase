@@ -21,6 +21,7 @@
    [metabase-enterprise.transform-testing.schema :as transform-testing.schema]
    [metabase-enterprise.transform-testing.util :as transform-testing.u]
    [metabase.sql-parsing.core :as sql-parsing]
+   [metabase.util.api-error :as api-error]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]))
 
@@ -190,19 +191,19 @@
             ::transform-testing.errors/missing-inputs
             (tru "The transform reads table(s) with no declared test input: {0}. Add an input for each."
                  (str/join ", " (map table-label missing)))
-            {:tables (mapv table-label missing)})))
+            (api-error/expose {:tables (mapv table-label missing)} :tables))))
   (when-let [unused (seq (unused-inputs inputs referenced-tables default-schema))]
     (throw (transform-testing.errors/ex
             ::transform-testing.errors/unused-inputs
             (tru "Test input(s) declared for table(s) the transform does not read: {0}. Remove them."
                  (str/join ", " (map table-label unused)))
-            {:tables (mapv table-label unused)})))
+            (api-error/expose {:tables (mapv table-label unused)} :tables))))
   (when-let [colliding (seq (colliding-inputs inputs default-schema))]
     (throw (transform-testing.errors/ex
             ::transform-testing.errors/duplicate-input-table
             (tru "Duplicate test inputs; each input table may be declared only once: {0}"
                  (str/join ", " colliding))
-            {:tables (vec colliding)})))
+            (api-error/expose {:tables (vec colliding)} :tables))))
   (let [temp-tables (into #{} (map :table) (vals replacements))]
     (check-rewrite driver rewritten-transform temp-tables nil)
     (doseq [{:keys [name sql]} expectations

@@ -7,6 +7,7 @@
    [metabase.eid-translation.impl :as eid-translation]
    [metabase.eid-translation.settings :as eid-translation.settings]
    [metabase.util :as u]
+   [metabase.util.api-error :as api-error]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
@@ -144,11 +145,12 @@
   "Given a map of model names to a sequence of entity-ids for each, return a map from entity-id -> id."
   [model-key->entity-ids]
   (when-not (mr/validate ModelToEntityIds model-key->entity-ids)
-    (throw (ex-info "Invalid format." {:explanation (me/humanize
-                                                     (me/with-spell-checking
-                                                       (mr/explain ModelToEntityIds model-key->entity-ids)))
-                                       :allowed-models (sort (keys api-name->model))
-                                       :status-code 400})))
+    (throw (api-error/ex-info "Invalid format." {:explanation (me/humanize
+                                                               (me/with-spell-checking
+                                                                 (mr/explain ModelToEntityIds model-key->entity-ids)))
+                                                 :allowed-models (sort (keys api-name->model))
+                                                 :status-code 400}
+                              #{:explanation :allowed-models})))
   (u/prog1 (into {}
                  (mapcat
                   (fn [[model eids]] (entity-ids->id-for-model model eids))

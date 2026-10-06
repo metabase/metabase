@@ -7,6 +7,7 @@
    [metabase.actions.core :as actions]
    [metabase.driver.util :as driver.u]
    [metabase.util :as u]
+   [metabase.util.api-error :as api-error]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [methodical.core :as methodical])
@@ -78,9 +79,10 @@
                             :when errors]
                   [table-id errors]))]
     (when errors
-      (throw (ex-info "Failed validation" {:errors      errors
-                                           :status-code 400
-                                           :error-code  ::invalid-input})))))
+      (throw (api-error/ex-info "Failed validation" {:errors      errors
+                                                     :status-code 400
+                                                     :error-code  ::invalid-input}
+                                #{:errors :error-code})))))
 
 (defn- coerce-inputs [inputs]
   (let [table-id->inputs (group-by :table-id inputs)

@@ -8,6 +8,7 @@
    [metabase.server.settings :as server.settings]
    [metabase.server.streaming-response.thread-pool :as thread-pool]
    [metabase.util :as u]
+   [metabase.util.api-error :as api-error]
    [metabase.util.async :as async.u]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
@@ -41,7 +42,7 @@
    (.write os ba offset len)))
 
 (defn- format-exception [e]
-  (cond-> (Throwable->map e)
+  (cond-> (api-error/throwable->map e)
     (server.settings/hide-stacktraces) (dissoc :via :trace)))
 
 #_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}

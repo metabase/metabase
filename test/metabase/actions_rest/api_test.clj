@@ -193,8 +193,7 @@
                   (let [action   (cross-db-action (:id model) test-data-id)
                         response (mt/user-http-request :rasta :post 400 "action" action)]
                     (testing "Checks both databases for actions enabled"
-                      (is (partial= {:message "Actions are not enabled."
-                                     :data    {:database-id test-data-id}}
+                      (is (partial= {:message "Actions are not enabled."}
                                     response))))))))))
       (testing "When executing, both dbs are checked for enabled"
         (mt/dataset test-data
@@ -202,8 +201,7 @@
             (mt/with-actions-test-data-and-actions-enabled
               (mt/with-actions [{model-id :id} {:type :model, :dataset_query (mt/mbql-query categories)}
                                 {action-on-other-id :action-id} (cross-db-action model-id test-data-id)]
-                (is (partial= {:message "Actions are not enabled."
-                               :data    {:database-id test-data-id}}
+                (is (partial= {:message "Actions are not enabled."}
                               (mt/user-http-request :rasta
                                                     :post 400
                                                     (format "action/%s/execute" action-on-other-id)

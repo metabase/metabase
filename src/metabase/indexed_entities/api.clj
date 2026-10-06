@@ -9,6 +9,7 @@
    [metabase.indexed-entities.task.index-values :as task.index-values]
    ;; legacy usage, do not use this in new code
    ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.normalize :as mbql.normalize]
+   [metabase.util.api-error :as api-error]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli.schema :as ms]))
 
@@ -25,11 +26,12 @@
                       :type/PK                   :semantic_type
                       (:type/Integer :type/Text) :effective_type)]
       (when-not (isa? (type-slot field) t)
-        (throw (ex-info (tru "Field is not of {0} `{1}`" type-slot t)
-                        {:status-code   400
-                         :expected-type t
-                         :type          (:effective_type field)
-                         :field         (:name field)}))))
+        (throw (api-error/ex-info (tru "Field is not of {0} `{1}`" type-slot t)
+                                  {:status-code   400
+                                   :expected-type t
+                                   :type          (:effective_type field)
+                                   :field         (:name field)}
+                                  #{:expected-type :field}))))
     (throw (ex-info (tru "Could not identify field by ref {0}" ref)
                     {:status-code 400
                      :ref         ref

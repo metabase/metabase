@@ -11,6 +11,7 @@
    [metabase.channel.shared :as channel.shared]
    [metabase.channel.urls :as urls]
    [metabase.util :as u]
+   [metabase.util.api-error :as api-error]
    [metabase.util.http :as u.http]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
@@ -95,8 +96,10 @@
       (let [data (ex-data e)]
         ;; throw an appropriate error if it's a connection error
         (if (= ::http/unexceptional-status (:type data))
-          (throw (ex-info (tru "Failed to connect to channel") {:request-status (:status data)
-                                                                :request-body   (maybe-parse-json (:body data))}))
+          (throw (api-error/ex-info (tru "Failed to connect to channel")
+                                    {:request-status (:status data)
+                                     :request-body   (maybe-parse-json (:body data))}
+                                    #{:request-status :request-body}))
           (throw e))))))
 
 ;; ------------------------------------------------------------------------------------------------;;

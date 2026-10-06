@@ -10,6 +10,7 @@
    [metabase.pulse.db :as pulse.db]
    [metabase.pulse.models.pulse :as models.pulse]
    [metabase.request.core :as request]
+   [metabase.util.api-error :as api-error]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli.schema :as ms]
    [throttle.core :as throttle]
@@ -21,7 +22,8 @@
 
 (defn- check-hash [pulse-id email hash ip-address]
   (when-not throttling-disabled?
-    (throttle/check unsubscribe-throttler ip-address))
+    (api-error/exposing #{:errors}
+      (throttle/check unsubscribe-throttler ip-address)))
   (when (not= hash (messages/generate-pulse-unsubscribe-hash pulse-id email))
     (throw (ex-info (tru "Invalid hash.")
                     {:type        type

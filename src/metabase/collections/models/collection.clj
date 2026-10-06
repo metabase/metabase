@@ -23,6 +23,7 @@
    ;; Trying to use metabase.search would cause a circular reference ;_;
    [metabase.search.spec :as search.spec]
    [metabase.util :as u]
+   [metabase.util.api-error :as api-error]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [trs tru deferred-tru]]
    [metabase.util.log :as log]
@@ -344,8 +345,9 @@
 (defn- slugify [collection-name]
   ;; double-check that someone isn't trying to use a blank string as the collection name
   (when (str/blank? collection-name)
-    (throw (ex-info (tru "Collection name cannot be blank!")
-                    {:status-code 400, :errors {:name (tru "cannot be blank")}})))
+    (throw (api-error/ex-info (tru "Collection name cannot be blank!")
+                              {:status-code 400, :errors {:name (tru "cannot be blank")}}
+                              #{:errors})))
   (u/slugify collection-name {:max-length collection-slug-max-length}))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -505,17 +507,20 @@
   (when (contains? collection :location)
     (when-not (valid-location-path? location)
       (let [msg (tru "Invalid Collection location: path is invalid.")]
-        (throw (ex-info msg {:status-code 400, :errors {:location msg}
-                             :collection collection}))))
+        (throw (api-error/ex-info msg {:status-code 400, :errors {:location msg}
+                                       :collection collection}
+                                  #{:errors}))))
     ;; if this is a Personal Collection it's only allowed to go in the Root Collection: you can't put it anywhere else!
     (when (:personal_owner_id collection)
       (when-not (= location "/")
         (let [msg (tru "You cannot move a Personal Collection.")]
-          (throw (ex-info msg {:status-code 400, :errors {:location msg}})))))
+          (throw (api-error/ex-info msg {:status-code 400, :errors {:location msg}}
+                                    #{:errors})))))
     ;; Also make sure that all the IDs referenced in the Location path actually correspond to real Collections
     (when-not (all-ids-in-location-path-are-valid? location)
       (let [msg (tru "Invalid Collection location: some or all ancestors do not exist.")]
-        (throw (ex-info msg {:status-code 404, :errors {:location msg}}))))))
+        (throw (api-error/ex-info msg {:status-code 404, :errors {:location msg}}
+                                  #{:errors}))))))
 
 (defn- assert-valid-namespace
   "Check that the namespace of this Collection is valid -- it must belong to the same namespace as its parent
@@ -529,11 +534,13 @@
       (let [parent-namespace (collections.db/collection-namespace parent-id)]
         (when-not (= (keyword collection-namespace) (keyword parent-namespace))
           (let [msg (tru "Collection must be in the same namespace as its parent")]
-            (throw (ex-info msg {:status-code 400, :errors {:location msg}})))))))
+            (throw (api-error/ex-info msg {:status-code 400, :errors {:location msg}}
+                                      #{:errors})))))))
   ;; non-default namespace Collections cannot be personal Collections
   (when (and owner-id collection-namespace)
     (let [msg (tru "Personal Collections must be in the default namespace")]
-      (throw (ex-info msg {:status-code 400, :errors {:personal_owner_id msg}})))))
+      (throw (api-error/ex-info msg {:status-code 400, :errors {:personal_owner_id msg}}
+                                #{:errors})))))
 
 (defn- assert-valid-remote-synced-parent
   "Check that if this Collection is remote-synced, its parent is either remote-synced or the root collection.
@@ -547,7 +554,8 @@
         (let [msg (if is_remote_synced
                     (tru "A remote-synced Collection can only be placed in another remote-synced Collection or the root Collection.")
                     (tru "A Collection placed in a remote-synced Collection must also be remote-synced."))]
-          (throw (ex-info msg {:status-code 400, :errors {:location msg}})))))))
+          (throw (api-error/ex-info msg {:status-code 400, :errors {:location msg}}
+                                    #{:errors})))))))
 
 (defenterprise check-allowed-content
   "Checks contents of a collection before saving it. The OSS implementation is a no-op."
@@ -1911,7 +1919,8 @@
                                                                (get collection-updates k ::api/not-provided))))
                             first)]
       (throw
-       (ex-info msg {:status-code 400 :errors {k msg}})))))
+       (api-error/ex-info msg {:status-code 400 :errors {k msg}}
+                          #{:errors})))))
 
 ;; MOVING COLLECTIONS ACROSS "PERSONAL" BOUNDARIES
 ;;
@@ -2026,7 +2035,8 @@
     (when (contains? collection-updates :namespace)
       (when-not (namespace-equals? (:namespace collection-before-updates) (:namespace collection-updates))
         (let [msg (tru "You cannot move a Collection to a different namespace once it has been created.")]
-          (throw (ex-info msg {:status-code 400, :errors {:namespace msg}})))))
+          (throw (api-error/ex-info msg {:status-code 400, :errors {:namespace msg}}
+                                    #{:errors})))))
     (assert-valid-namespace (merge (select-keys collection-before-updates [:namespace]) collection-updates))
     ;; (3.6) Check that the parent collection allows this collection to be there
     (check-allowed-content (:type collection) (when-let [location (:location collection)] (location-path->parent-id location)))
@@ -2265,8 +2275,9 @@
   (when collection-id
     (let [collection           (or (collections.db/collection-id-and-namespace collection-id)
                                    (let [msg (tru "Collection does not exist.")]
-                                     (throw (ex-info msg {:status-code 404
-                                                          :errors      {:collection_id msg}}))))
+                                     (throw (api-error/ex-info msg {:status-code 404
+                                                                    :errors      {:collection_id msg}}
+                                                               #{:errors}))))
           collection-namespace (keyword (:namespace collection))
           allowed-namespaces   (allowed-namespaces model)]
       (when-not (contains? allowed-namespaces collection-namespace)
@@ -2274,10 +2285,11 @@
                        (name model)
                        (str/join (format " %s " (tru "or")) (map #(pr-str (or % (tru "default")))
                                                                  allowed-namespaces)))]
-          (throw (ex-info msg {:status-code          400
-                               :errors               {:collection_id msg}
-                               :allowed-namespaces   allowed-namespaces
-                               :collection-namespace collection-namespace})))))))
+          (throw (api-error/ex-info msg {:status-code          400
+                                         :errors               {:collection_id msg}
+                                         :allowed-namespaces   allowed-namespaces
+                                         :collection-namespace collection-namespace}
+                                    #{:errors :allowed-namespaces :collection-namespace})))))))
 
 (defn annotate-collections
   "Annotate collections with `:below` and `:here` keys to indicate which types are in their subtree and which types are

@@ -13,6 +13,7 @@
    [metabase.api.routes.common :refer [+auth]]
    [metabase.transforms.core :as transforms]
    [metabase.transforms.schema :as transforms.schema]
+   [metabase.util.api-error :as api-error]
    [ring.util.response :as response]))
 
 (set! *warn-on-reflection* true)
@@ -53,8 +54,9 @@
                 [source_entity_type source_entity_id]
                 [target_entity_type target_entity_id])]
     (when-not (:success result)
-      (throw (ex-info "Sources are not replaceable" {:status-code 400
-                                                     :errors      (:errors result)}))))
+      (throw (api-error/ex-info "Sources are not replaceable" {:status-code 400
+                                                               :errors      (:errors result)}
+                                #{:errors}))))
   (let [work-fn  (fn [progress]
                    (analytics/track-event! :snowplow/simple_event
                                            {:event "replace_data_source_started"})

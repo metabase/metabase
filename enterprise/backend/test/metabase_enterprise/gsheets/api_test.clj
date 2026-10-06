@@ -168,13 +168,12 @@
         (mt/with-dynamic-fn-redefs [hm.client/make-request (partial mock-make-request happy-responses)]
           (let [result (mt/user-http-request :crowberto :post 502 "ee/gsheets/connection" {:url gsheet-error-link})]
             (is (partial=
-                 {:message     "Unable to setup drive folder sync.\nPlease check that the folder is shared with the proper service account email and sharing permissions."
+                 {:message       "Unable to setup drive folder sync.\nPlease check that the folder is shared with the proper service account email and sharing permissions."
                   :error_message "Status Reason"
-                  :errors      true
-                  :hm/response {:status 400
-                                :body   {:error-detail "Error detail"
-                                         :status-reason "Status Reason"}}}
-                 result)))
+                  :errors        true}
+                 result))
+            (testing "the Harbormaster response stays server-side"
+              (is (not (contains? result :hm/response)))))
           (let [saved (gsheets)]
             (is (= {} saved))))))))
 

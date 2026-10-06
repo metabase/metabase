@@ -24,6 +24,7 @@
    [metabase.search.core :as search]
    [metabase.settings.core :as setting]
    [metabase.util :as u]
+   [metabase.util.api-error :as api-error]
    [metabase.util.jvm :as u.jvm]
    [metabase.util.log :as log]
    [metabase.util.yaml :as yaml]
@@ -1619,12 +1620,13 @@
                                    snapshot
                                    (source.p/snapshot-at source last-task-version)))]
     (when (and has-dirty? (not force?) (not merge?))
-      (throw (ex-info "There are unsaved changes in the Remote Sync collection which will be overwritten by the import. Force the import to discard these changes."
-                      {:status-code 400
-                       :conflicts true
-                       ;; The un-pushed local changes a switch would discard, so the client can name exactly
-                       ;; what would be lost without a second round-trip to /dirty.
-                       :dirty_objects (remote-sync.object/dirty-objects)})))
+      (throw (api-error/ex-info "There are unsaved changes in the Remote Sync collection which will be overwritten by the import. Force the import to discard these changes."
+                                {:status-code 400
+                                 :conflicts true
+                                 ;; The un-pushed local changes a switch would discard, so the client can name exactly
+                                 ;; what would be lost without a second round-trip to /dirty.
+                                 :dirty_objects (remote-sync.object/dirty-objects)}
+                                #{:conflicts :dirty_objects})))
     (run-async! "import" branch
                 (fn [task-id]
                   (when (branch-changed-since-scheduling? pre-task-branch)

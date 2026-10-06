@@ -8,6 +8,7 @@
    [metabase.server.middleware.security :as mw.security]
    [metabase.server.settings :as server.settings]
    [metabase.util :as u]
+   [metabase.util.api-error :as api-error]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log])
   (:import
@@ -35,7 +36,11 @@
 (defmethod api-exception-response Throwable
   [^Throwable e request]
   (let [{:keys [status-code], :as info} (ex-data e)
-        other-info                      (dissoc info :status-code :schema :type :toucan2/context-trace ::log/context)
+        other-info                      (dissoc info :status-code :schema :type :toucan2/context-trace ::log/context
+                                                ::api-error/keys)
+        ;; only the keys the throw site listed go to the client; the rest is server-side context. See
+        ;; [[metabase.util.api-error]]
+        api-data                        (api-error/response-data info)
         body                            (cond
                                           (and status-code (not= status-code 500) (empty? other-info))
                                           ;; If status code was specified (but not a 500 -- an unexpected error, and
@@ -44,28 +49,27 @@
                                           (.getMessage e)
 
                                           ;; if the response includes `:errors`, (e.g., it's something like a generic
-                                          ;; parameter validation exception), just return the `other-info` from the
-                                          ;; ex-data.
-                                          (and status-code (:errors other-info))
-                                          other-info
+                                          ;; parameter validation exception), just return the client-facing data.
+                                          (and status-code (:errors api-data))
+                                          api-data
 
                                           ;; a machine-readable error code means the throw site authored this as an
-                                          ;; API response; return it as-is, without a stacktrace
-                                          (and status-code (not= status-code 500) (:error-code other-info))
-                                          (merge {:message (ex-message e)} other-info)
+                                          ;; API response; return it without a stacktrace
+                                          (and status-code (not= status-code 500) (:error-code api-data))
+                                          (merge {:message (ex-message e)} api-data)
 
                                           ;; allow administrators to configure their instances to suppress stacktraces
                                           ;; returns 500 with a generic message
                                           (server.settings/hide-stacktraces)
                                           {:message (tru "Something went wrong")}
 
-                                          ;; Otherwise return the full `Throwable->map` representation with Stacktrace
-                                          ;; and ex-data
+                                          ;; Otherwise return the `Throwable->map` representation with Stacktrace
+                                          ;; and the client-facing ex-data
                                           :else
                                           (merge
-                                           (Throwable->map e)
+                                           (api-error/throwable->map e)
                                            {:message (.getMessage e)}
-                                           other-info))]
+                                           api-data))]
     (when (nil? status-code)
       (analytics/inc! :metabase-api/unhandled-errors))
     {:status  (or status-code 500)

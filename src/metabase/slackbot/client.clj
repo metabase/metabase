@@ -7,6 +7,7 @@
    [clj-http.client :as http]
    [medley.core :as m]
    [metabase.util :as u]
+   [metabase.util.api-error :as api-error]
    [metabase.util.http :as u.http]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
@@ -79,11 +80,12 @@
         {:body body :headers headers}
         (let [error-code (:error body)
               invalid-token? (slack-token-error-codes error-code)]
-          (throw (ex-info (if invalid-token?
-                            (tru "Invalid Slack bot token: {0}" error-code)
-                            (tru "Slack API error: {0}" error-code))
-                          {:status-code (if invalid-token? 400 502)
-                           :error-code error-code})))))
+          (throw (api-error/ex-info (if invalid-token?
+                                      (tru "Invalid Slack bot token: {0}" error-code)
+                                      (tru "Slack API error: {0}" error-code))
+                                    {:status-code (if invalid-token? 400 502)
+                                     :error-code error-code}
+                                    #{:error-code})))))
     (catch clojure.lang.ExceptionInfo e
       (throw e))
     (catch Exception e

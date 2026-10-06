@@ -25,6 +25,7 @@
    [metabase.users.schema :as users.schema]
    [metabase.users.settings :as users.settings]
    [metabase.util :as u]
+   [metabase.util.api-error :as api-error]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
@@ -633,7 +634,8 @@
     ;; `old_password` for them regular users have to know their password, however
     (when-not api/*is-superuser?*
       (when-not (config/config-bool :mb-disable-session-throttle)
-        (throttle/check password-change-throttler id))
+        (api-error/exposing #{:errors}
+          (throttle/check password-change-throttler id)))
       (api/checkp (true? (:success? (auth-identity/authenticate :provider/password {:email    (:email user)
                                                                                     :password old_password})))
                   "old_password"

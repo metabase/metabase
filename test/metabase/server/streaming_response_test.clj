@@ -2,6 +2,7 @@
   (:require
    [clj-http.client :as http]
    [clojure.core.async :as a]
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [clojure.walk :as walk]
    [compojure.response]
@@ -16,6 +17,7 @@
    [metabase.test :as mt]
    [metabase.test.http-client :as client]
    [metabase.util :as u]
+   [metabase.util.api-error :as api-error]
    [metabase.util.json :as json]
    [metabase.util.malli.registry :as mr])
   (:import
@@ -386,7 +388,7 @@
   (testing "write-error! includes stacktrace and exception chain when hide-stacktraces is false"
     (mt/with-temporary-setting-values [hide-stacktraces false]
       (with-open [os (java.io.ByteArrayOutputStream.)]
-        (let [exception (ex-info "Test error message" {:custom-data "test-value"})]
+        (let [exception (api-error/ex-info "Test error message" {:custom-data "test-value", :query "SELECT secret"} #{:custom-data})]
           (#'streaming-response/write-error! os exception :api)
           (let [error-response (json/decode (String. (.toByteArray os) "UTF-8") true)]
             (is (= "Test error message" (:cause error-response))
@@ -398,13 +400,15 @@
             (is (contains? error-response :via)
                 "Response should contain :via key")
             (is (= "test-value" (get-in error-response [:data :custom-data]))
-                "Response should include custom data from ex-info")))))))
+                "Response should include the listed ex-data")
+            (is (not (str/includes? (pr-str error-response) "SELECT secret"))
+                "Response should not include unlisted ex-data")))))))
 
 (deftest write-error-omits-stacktrace-when-hide-stacktraces-enabled-test
   (testing "write-error! omits stacktrace and exception chain when hide-stacktraces is true"
     (mt/with-temporary-setting-values [hide-stacktraces true]
       (with-open [os (java.io.ByteArrayOutputStream.)]
-        (let [exception (ex-info "Test error message with sensitive info" {:custom-data "test-value"})]
+        (let [exception (api-error/ex-info "Test error message with sensitive info" {:custom-data "test-value", :query "SELECT secret"} #{:custom-data})]
           (#'streaming-response/write-error! os exception :api)
           (let [error-response (json/decode (String. (.toByteArray os) "UTF-8") true)]
             (is (= "Test error message with sensitive info" (:cause error-response))
@@ -414,7 +418,9 @@
             (is (not (contains? error-response :via))
                 "Response should not contain :via key")
             (is (= "test-value" (get-in error-response [:data :custom-data]))
-                "Response should include custom data from ex-info")))))))
+                "Response should include the listed ex-data")
+            (is (not (str/includes? (pr-str error-response) "SELECT secret"))
+                "Response should not include unlisted ex-data")))))))
 
 (deftest write-error-nested-exception-with-stacktraces-disabled-test
   (testing "write-error! includes nested exception details when hide-stacktraces is false"

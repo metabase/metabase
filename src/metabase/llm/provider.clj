@@ -23,6 +23,7 @@
    [metabase.request.current :as request.current]
    [metabase.settings.core :as setting]
    [metabase.util :as u]
+   [metabase.util.api-error :as api-error]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.log :as log]))
 
@@ -502,20 +503,24 @@
   "Run one field's `:validate` hook against the value `config` supplies for it, if it has both."
   [{:keys [key validate]} config]
   (when-let [problem (and validate (some-> (u/trimmed-string (get config key)) validate))]
-    (throw (ex-info (str problem) {:status-code 400 :field key}))))
+    (throw (api-error/ex-info (str problem) {:status-code 400 :field key}
+                              #{:field}))))
 
 (defn- validate-field!
   [type-name {:keys [key label required? prefix default options] :as field} config]
   (let [value (u/trimmed-string (get config key))]
     (when (and required? (not value) (not default))
-      (throw (ex-info (tru "{0} is required for {1}." (str label) type-name)
-                      {:status-code 400 :field key})))
+      (throw (api-error/ex-info (tru "{0} is required for {1}." (str label) type-name)
+                                {:status-code 400 :field key}
+                                #{:field})))
     (when (and value prefix (not (str/starts-with? value prefix)))
-      (throw (ex-info (tru "Invalid {0} for {1}. It must start with ''{2}''." (str label) type-name prefix)
-                      {:status-code 400 :field key})))
+      (throw (api-error/ex-info (tru "Invalid {0} for {1}. It must start with ''{2}''." (str label) type-name prefix)
+                                {:status-code 400 :field key}
+                                #{:field})))
     (when (and value (seq options) (not-any? #(= value (:value %)) options))
-      (throw (ex-info (tru "Invalid {0} for {1}." (str label) type-name)
-                      {:status-code 400 :field key})))
+      (throw (api-error/ex-info (tru "Invalid {0} for {1}." (str label) type-name)
+                                {:status-code 400 :field key}
+                                #{:field})))
     (validate-field-value! field config)))
 
 (defn- validate-config-field!
@@ -1040,20 +1045,21 @@
      (when (and (not= (:base-url old-config) (:base-url new-config))
                 (seq missing-secrets))
        (let [env-secret? (some env-fields missing-secrets)]
-         (throw (ex-info (cond
-                           env-secret?
-                           (tru "This connection''s credentials come from environment variables. Change its base URL there too.")
+         (throw (api-error/ex-info (cond
+                                     env-secret?
+                                     (tru "This connection''s credentials come from environment variables. Change its base URL there too.")
 
-                           legacy-setting?
-                           (tru "Use the provider connection settings to change the base URL and enter the credentials again.")
+                                     legacy-setting?
+                                     (tru "Use the provider connection settings to change the base URL and enter the credentials again.")
 
-                           :else
-                           (tru "Enter this connection''s credentials again to point it at a different base URL."))
-                         {:status-code 400
-                          :api-error   true
-                          :error-code  :llm-base-url-change-requires-credentials
-                          :field       :base-url
-                          :secrets     (mapv name missing-secrets)})))))))
+                                     :else
+                                     (tru "Enter this connection''s credentials again to point it at a different base URL."))
+                                   {:status-code 400
+                                    :api-error   true
+                                    :error-code  :llm-base-url-change-requires-credentials
+                                    :field       :base-url
+                                    :secrets     (mapv name missing-secrets)}
+                                   #{:error-code :field})))))))
 
 (defn- assert-credential-write-authorized!
   "Reject adding a secret to a connection sitting on a base URL this API cannot show the caller.
@@ -1070,11 +1076,12 @@
       (when (and base-url
                  (not= base-url (:base-url (with-field-defaults type-name {})))
                  (not (contains? (set env-fields) :base-url)))
-        (throw (ex-info (tru "This connection has its own base URL. Use the provider connection settings to enter its credentials.")
-                        {:status-code 400
-                         :api-error   true
-                         :error-code  :llm-credential-change-requires-connection-settings
-                         :field       field}))))))
+        (throw (api-error/ex-info (tru "This connection has its own base URL. Use the provider connection settings to enter its credentials.")
+                                  {:status-code 400
+                                   :api-error   true
+                                   :error-code  :llm-credential-change-requires-connection-settings
+                                   :field       field}
+                                  #{:error-code :field}))))))
 
 (defn set-single-provider-setting!
   "Write `new-value` for the per-provider credential setting `setting-kw` into the connection its settings group
@@ -1105,11 +1112,12 @@
                 ;; Persisting an inert value underneath the environment overlay would make it live if the operator
                 ;; later removed that variable, carrying any stored credentials to a URL the API caller planted
                 ;; earlier.
-                (throw (ex-info (tru "This connection''s base URL comes from an environment variable. Change it there.")
-                                {:status-code 400
-                                 :api-error   true
-                                 :error-code  :llm-base-url-is-env-managed
-                                 :field       :base-url})))
+                (throw (api-error/ex-info (tru "This connection''s base URL comes from an environment variable. Change it there.")
+                                          {:status-code 400
+                                           :api-error   true
+                                           :error-code  :llm-base-url-is-env-managed
+                                           :field       :base-url}
+                                          #{:error-code :field})))
               (let [current-config (or (:config live) {})
                     new-config     (if value
                                      (assoc current-config field value)

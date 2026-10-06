@@ -23,6 +23,7 @@
    [metabase.premium-features.core :as premium-features]
    [metabase.request.core :as request]
    [metabase.sso.core :as sso]
+   [metabase.util.api-error :as api-error]
    [metabase.util.encryption :as encryption]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
@@ -105,9 +106,10 @@
                (when-not (verify-user-password api/*current-user-id* password)
                  ;; 400, not 401: the session is fine, the re-auth input is wrong. The FE (and any
                  ;; well-behaved client) treats a 401 as an expired session and bounces to login.
-                 (throw (ex-info (tru "Invalid password.")
-                                 {:status-code 400
-                                  :errors      {:password (tru "Invalid password.")}})))
+                 (throw (api-error/ex-info (tru "Invalid password.")
+                                           {:status-code 400
+                                            :errors      {:password (tru "Invalid password.")}}
+                                           #{:errors})))
                ;; Precondition for [[enrollment/start-enrollment!]] is met: this user is logged in and we just
                ;; re-validated their password.
                (or (enrollment/start-enrollment! api/*current-user-id*)

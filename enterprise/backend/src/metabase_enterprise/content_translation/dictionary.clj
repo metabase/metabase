@@ -8,6 +8,7 @@
    [metabase-enterprise.content-translation.db :as content-translation.db]
    [metabase.premium-features.core :as premium-features]
    [metabase.util :as u]
+   [metabase.util.api-error :as api-error]
    [metabase.util.i18n :as i18n :refer [tru]]
    [toucan2.core :as t2]))
 
@@ -103,9 +104,10 @@
                  (nil? (some #{"string"} parsed)) (conj "Header must have String")
                  (nil? (some #{"translation"} parsed)) (conj "Header must have translation"))]
     (when (seq errors)
-      (throw (ex-info "This file could not be uploaded due to the following error(s):"
-                      {:status-code http-status-unprocessable
-                       :errors errors})))
+      (throw (api-error/ex-info "This file could not be uploaded due to the following error(s):"
+                                {:status-code http-status-unprocessable
+                                 :errors errors}
+                                #{:errors})))
     parsed))
 
 (defn- process-rows
@@ -141,9 +143,10 @@
   [rows]
   (let [{:keys [translations errors]} (process-rows rows)]
     (when (seq errors)
-      (throw (ex-info (tru "The file could not be uploaded due to the following error(s):")
-                      {:status-code http-status-unprocessable
-                       :errors errors})))
+      (throw (api-error/ex-info (tru "The file could not be uploaded due to the following error(s):")
+                                {:status-code http-status-unprocessable
+                                 :errors errors}
+                                #{:errors})))
     ;; remove bad msgstrs after error generator for line number reporting reasons
     (let [usable-rows (filter (comp is-msgstr-usable :msgstr) translations)]
       (t2/with-transaction [_tx]
@@ -169,11 +172,12 @@
               error-message (tru "Error parsing CSV at row {0}: {1}"
                                  row-no
                                  (.getMessage ^Exception e))]
-          (throw (ex-info error-message
-                          {:status-code http-status-unprocessable
-                           :errors [error-message]
-                           :row row-no}
-                          e)))))
+          (throw (api-error/ex-info error-message
+                                    {:status-code http-status-unprocessable
+                                     :errors [error-message]
+                                     :row row-no}
+                                    #{:errors}
+                                    e)))))
     (import-translations! @rows)))
 
 (defn read-and-import-csv!
