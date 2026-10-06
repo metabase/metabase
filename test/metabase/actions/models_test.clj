@@ -9,10 +9,12 @@
    [metabase.driver :as driver]
    [metabase.driver.mysql :as mysql]
    [metabase.lib.core :as lib]
+   [metabase.models.serialization :as serdes]
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.sync.core :as sync]
    [metabase.test :as mt]
    [metabase.test.data.one-off-dbs :as one-off-dbs]
+   [metabase.util :as u]
    [toucan2.core :as t2]))
 
 (deftest hydrate-query-action-test
@@ -225,27 +227,72 @@
           (action/update! {:id action-id, :database_id Integer/MAX_VALUE} existing)
           (is (= model-db-id (:database_id (action/select-action :id action-id)))))))))
 
+(deftest query-action-without-model-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :actions/custom)
+    (testing "a query action can be inserted and updated without a model, and keeps its own collection"
+      (mt/with-temp [:model/Collection {coll-id :id} {}]
+        (mt/with-model-cleanup [:model/Action]
+          (let [action-id (action/insert! (lib/normalize ::actions.schema/action.for-insert
+                                                         {:type          :query
+                                                          :name          "No model"
+                                                          :collection_id coll-id
+                                                          :database_id   (mt/id)
+                                                          :dataset_query (mt/native-query {:query "update categories set name = 'x' where id = 1"})}))]
+            (is (=? {:model_id nil :collection_id coll-id :database_id (mt/id)}
+                    (action/select-action :id action-id)))
+            (action/update! {:id action-id :name "Renamed"} (action/select-action :id action-id))
+            (is (=? {:name "Renamed" :model_id nil :collection_id coll-id}
+                    (action/select-action :id action-id)))))))))
+
+(deftest implicit-action-requires-model-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :actions/custom)
+    (testing "an implicit action cannot be inserted without a model"
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"model_id"
+                            (action/insert! {:type :implicit :name "No model" :kind :row/create}))))
+    (testing "an implicit action cannot be detached from its model"
+      (mt/with-actions-enabled
+        (mt/with-actions [{:keys [action-id]} {:type :implicit :kind "row/create"}]
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"model_id"
+                                (action/update! {:id action-id :model_id nil} (action/select-action :id action-id))))
+          (is (some? (t2/select-one-fn :model_id :model/Action :id action-id))))))))
+
+(deftest switching-to-implicit-checks-the-model-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :actions/custom)
+    (mt/with-actions-enabled
+      (testing "a query action cannot become implicit when its card is a question"
+        (mt/with-temp [:model/Card {question-id :id} {:type :question :dataset_query (mt/mbql-query categories)}]
+          (mt/with-model-cleanup [:model/Action]
+            (let [action-id (action/insert! (lib/normalize ::actions.schema/action.for-insert
+                                                           {:type          :query
+                                                            :name          "On a question"
+                                                            :model_id      question-id
+                                                            :dataset_query (mt/native-query {:query "update categories set name = 'x' where id = 1"})}))]
+              (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Actions must be made with models, not cards"
+                                    (action/update! {:id action-id :type :implicit :kind :row/update}
+                                                    (action/select-action :id action-id))))))))
+      (testing "a query action cannot become implicit when its model has clauses"
+        (mt/with-actions [_                   {:type :model :dataset_query (mt/mbql-query categories {:limit 1})}
+                          {:keys [action-id]} {:type :query}]
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"not supported for models with clauses"
+                                (action/update! {:id action-id :type :implicit :kind :row/update}
+                                                (action/select-action :id action-id)))))))))
+
 (deftest model-to-saved-question-test
   (mt/test-drivers (mt/normal-drivers-with-feature :actions/custom)
     (mt/with-actions-enabled
-      (testing "Non-implicit actions are archived if their model is converted to a saved question"
-        (doseq [type [:http :query]]
-          (mt/with-actions [{:keys [action-id model-id]} {:type type}]
+      (testing "Non-implicit actions are archived directly, and their dashboard buttons deleted, if their model is converted to a saved question"
+        (mt/with-actions [{:keys [action-id model-id]} {:type :query}]
+          (mt/with-temp [:model/Dashboard     {dashboard-id :id} {}
+                         :model/DashboardCard {dashcard-id :id}  {:action_id action-id :dashboard_id dashboard-id}]
             (is (false? (t2/select-one-fn :archived :model/Action action-id)))
             (t2/update! :model/Card model-id {:type :question})
-            (is (true? (t2/select-one-fn :archived :model/Action action-id))))))
+            (is (= [true true] ((juxt :archived :archived_directly) (t2/select-one :model/Action :id action-id))))
+            (is (not (t2/exists? :model/DashboardCard :id dashcard-id))))))
       (testing "Implicit actions are deleted if their model is converted to a saved question"
         (mt/with-actions [{:keys [action-id model-id]} {:type :implicit}]
           (is (false? (t2/select-one-fn :archived :model/Action action-id)))
           (t2/update! :model/Card model-id {:type :question})
-          (is (false? (t2/exists? :model/Action action-id)))))
-      (testing "Actions can't be unarchived if their model is a saved question"
-        (mt/with-actions [{:keys [action-id model-id]} {}]
-          (t2/update! :model/Card model-id {:type :question})
-          (is (thrown-with-msg?
-               Exception
-               #"Actions must be made with models, not cards"
-               (t2/update! :model/Action action-id {:archived false}))))))))
+          (is (false? (t2/exists? :model/Action action-id))))))))
 
 (deftest model-to-saved-question-test-2
   (mt/test-drivers (mt/normal-drivers-with-feature :actions/custom)
@@ -390,3 +437,13 @@
               (is (= {"name" true}  (hide-state (action/select-action action-id))))
               (exec! "ALTER TABLE \"FOO\" ALTER COLUMN \"name\" BIGINT;")
               (is (= {"name" true}  (hide-state (action/select-action action-id)))))))))))
+
+(deftest load-skips-http-actions-test
+  (testing "HTTP actions from older exports are skipped on load"
+    (let [entity-id (u/generate-nano-id)]
+      (serdes/load-one! {:type        "http"
+                         :name        "Old HTTP action"
+                         :entity_id   entity-id
+                         :serdes/meta [{:model "Action" :id entity-id}]}
+                        nil)
+      (is (not (t2/exists? :model/Action :entity_id entity-id))))))

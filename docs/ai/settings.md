@@ -217,7 +217,7 @@ Metabase will try to set semantic types automatically, but you should confirm th
 
 ### Define domain-specific terms in the glossary
 
-Add your organization's terminology, acronyms, and business-specific terms to the [glossary](../exploration-and-organization/data-model-reference.md#glossary). When you submit a prompt, Metabot can look up terms in the glossary to better understand your request.
+Add your organization's terminology, acronyms, and business-specific terms to the [glossary](../data-modeling/semantic-layer/glossary.md). Metabot can look up terms in the glossary to better understand your request.
 
 For example, if you define "MRR" as "Monthly Recurring Revenue" in your glossary, Metabot will know what you mean when you ask "What's our MRR for Q4?" This is especially helpful for industry-specific jargon, internal product names, or abbreviations unique to your organization.
 

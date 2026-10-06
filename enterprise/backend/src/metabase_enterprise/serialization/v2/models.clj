@@ -4,7 +4,9 @@
 (def data-model
   "Schema model types"
   ["Database"
+   "Dimension"
    "Field"
+   "FieldUserSettings"
    "Measure"
    "Segment"
    "Table"
@@ -17,6 +19,8 @@
   ["Table"
    "TableUserSettings"
    "Field"
+   "FieldUserSettings"
+   "Dimension"
    "Segment"])
 
 (def content
@@ -35,6 +39,7 @@
   (concat data-model
           content
           ["CustomVizPlugin"
+           "DataApp"
            "EmbeddingTheme"
            "FieldValues"
            "Metabot"
@@ -52,8 +57,6 @@
   For example, the models should also have their entity_id fields populated (if they have one)."
   ["DashboardCard"
    "DashboardTab"
-   "Dimension"
-   "FieldUserSettings"
    "ParameterCard"
    "DashboardCardSeries"
    "MetabotPrompt"
@@ -85,7 +88,6 @@
    "ContentDiagnosticsFinding"
    "ContentTranslation"
    "DashboardBookmark"
-   "DataApp"
    "DataComplexityScore"
    "DataPermissions"
    "DatabaseRouter"
@@ -100,7 +102,6 @@
    "ExplorationQueryResult"
    "ExplorationThread"
    "ExplorationThreadTimeline"
-   "HTTPAction"
    "ImplicitAction"
    "LoginHistory"
    "McpFeedback"

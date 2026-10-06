@@ -14,7 +14,7 @@ import {
   createMockParameter,
 } from "metabase-types/api/mocks";
 
-import { setAdHocFilter } from "../native-filters/helpers/e2e-date-filter-helpers";
+import { setAdHocFilter } from "../native/helpers/e2e-date-filter-helpers";
 
 const {
   ORDERS,

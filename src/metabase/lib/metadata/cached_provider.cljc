@@ -1,7 +1,7 @@
 (ns metabase.lib.metadata.cached-provider
   (:refer-clojure :exclude [update-keys get-in #?(:clj doseq)])
   (:require
-   #?@(:clj (^{:clj-kondo/ignore [:discouraged-namespace]} [clj-yaml.core]
+   #?@(:clj ([clj-yaml.core]
              [metabase.util.json :as json]
              [pretty.core :as pretty]))
    [clojure.set :as set]

@@ -36,7 +36,7 @@ const compareAllowedHosts = (
 };
 
 /**
- * Not a full validator: the manifest rules live in the backend's `parse-app-config`
+ * Not a full validator: the manifest rules live in the backend's data-apps schemas
  * and a copy here would drift. This only adds what the backend cannot see —
  * this machine's disk, and what the dev server booted with.
  */
