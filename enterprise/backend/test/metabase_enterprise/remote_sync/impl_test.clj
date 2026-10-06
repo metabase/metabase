@@ -2014,9 +2014,9 @@ serdes/meta:
 ;;; ------------------------------- conflict_details on the task row (GHY-4817) -------------------------------
 
 (defn- stored-conflicts
-  "The `:conflicts` and `:conflict_details` the task row with `task-id` was left with."
+  "The `:conflicts`, `:conflict_details`, and `:outcome` the task row with `task-id` was left with."
   [task-id]
-  (into {} (t2/select-one [:model/RemoteSyncTask :conflicts :conflict_details] :id task-id)))
+  (into {} (t2/select-one [:model/RemoteSyncTask :conflicts :conflict_details :outcome] :id task-id)))
 
 (def ^:private entity-conflict
   "A three-way-merge conflict on Card `abc` named \"Card A\"."
@@ -2024,8 +2024,8 @@ serdes/meta:
    :ours   {:path "collections/a.yaml" :content "name: Card A\nentity_id: abc\n"}
    :theirs {:path "collections/a.yaml" :content "name: Card A\nentity_id: abc\ndescription: remote\n"}})
 
-(deftest conflict-details-remote-changed-test
-  (testing "a diverged plain export stores a remote-changed detail"
+(deftest diverged-export-stores-cause-in-outcome-test
+  (testing "a diverged plain export collided with nothing: empty conflicts and conflict_details, cause in outcome"
     (mt/with-temp [:model/RemoteSyncTask {task-id :id} {:sync_task_type "export"}]
       (mt/with-dynamic-fn-redefs [remote-sync.task/last-version (constantly "base-B")]
         (impl/handle-task-result! (impl/export! (export-test-snapshot "remote-R") task-id "msg"
@@ -2033,12 +2033,13 @@ serdes/meta:
                                                 :base-snapshot (export-test-snapshot "base-B"))
                                   task-id))
       (is (= {:conflicts        []
-              :conflict_details [{:kind "remote-changed"}]}
+              :conflict_details []
+              :outcome          {:kind "remote-changed"}}
              (stored-conflicts task-id))))))
 
-(deftest conflict-details-history-rewritten-test
+(deftest history-rewritten-stores-cause-in-outcome-test
   (let [conflicts ["Remote history was rewritten (force-push or rebase); cannot merge automatically."]]
-    (testing "a merge export with no merge base stores a history-rewritten detail"
+    (testing "a merge export with no merge base keeps its conflicts sentence, no details, and the cause in outcome"
       (mt/with-temp [:model/RemoteSyncTask {task-id :id} {:sync_task_type "export"}]
         (mt/with-dynamic-fn-redefs [remote-sync.task/last-version (constantly "base-B")]
           (impl/handle-task-result! (impl/export! (export-test-snapshot "remote-R") task-id "msg"
@@ -2047,16 +2048,18 @@ serdes/meta:
                                                   :base-snapshot nil)
                                     task-id))
         (is (= {:conflicts        conflicts
-                :conflict_details [{:kind "history-rewritten"}]}
+                :conflict_details []
+                :outcome          {:kind "history-rewritten"}}
                (stored-conflicts task-id)))))
-    (testing "a merge import with no merge base stores a history-rewritten detail"
+    (testing "a merge import with no merge base keeps its conflicts sentence, no details, and the cause in outcome"
       (mt/with-temp [:model/RemoteSyncTask {task-id :id} {:sync_task_type "import"}]
         (impl/handle-task-result! (impl/import! (export-test-snapshot "remote-R") task-id
                                                 :merge? true
                                                 :base-snapshot nil)
                                   task-id)
         (is (= {:conflicts        conflicts
-                :conflict_details [{:kind "history-rewritten"}]}
+                :conflict_details []
+                :outcome          {:kind "history-rewritten"}}
                (stored-conflicts task-id)))))))
 
 (deftest conflict-details-entity-test
@@ -2065,7 +2068,8 @@ serdes/meta:
                                       :model     "Card"
                                       :entity_id "abc"
                                       :label     "Card A"
-                                      :path      "collections/a.yaml"}]}]
+                                      :path      "collections/a.yaml"}]
+                  :outcome          nil}]
     (mt/with-dynamic-fn-redefs [source/compute-merge (fn [& _]
                                                        {:merged    []
                                                         :conflicts [entity-conflict]
@@ -2103,7 +2107,8 @@ serdes/meta:
           (is (= {:conflicts        ["Library"]
                   :conflict_details [{:kind     "first-import"
                                       :category "Library"
-                                      :message  "Import contains Library but local instance has an unsynced Library collection"}]}
+                                      :message  "Import contains Library but local instance has an unsynced Library collection"}]
+                  :outcome          nil}
                  (stored-conflicts task-id))))))))
 
 (deftest conflict-details-deletion-test
@@ -2126,7 +2131,8 @@ serdes/meta:
                                     :model    "Card"
                                     :count    1
                                     :names    ["Card 2"]
-                                    :message  "Import would delete 1 unsynced local Card entity"}]}
+                                    :message  "Import would delete 1 unsynced local Card entity"}]
+                :outcome          nil}
                (stored-conflicts task-id)))))))
 
 (deftest export!-force-overwrites-without-merging-test

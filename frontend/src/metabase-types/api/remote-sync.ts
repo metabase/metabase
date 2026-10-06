@@ -222,12 +222,11 @@ export type RemoteSyncOutcome =
   | { kind: "history-rewritten" };
 
 /**
- * Why a sync task ended in conflict, tagged by `kind`. Stored next to the `conflicts` strings, which
- * older servers send alone.
+ * One thing that collided in a sync task that ended in conflict, tagged by `kind`. Stored next to the
+ * `conflicts` strings, which older servers send alone. Why a task stopped when nothing collided lives in
+ * the task's `outcome`.
  */
 export type RemoteSyncConflictDetail =
-  | { kind: "remote-changed" }
-  | { kind: "history-rewritten" }
   | {
       kind: "entity";
       /** Serdes model and id; absent for a non-serdes file. */

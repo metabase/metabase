@@ -296,13 +296,15 @@
 (defn conflict-sync-task!
   "Marks a sync task as having conflicts.
 
-  Takes the ID of the sync task, a collection of what collided (`import!` reports category names as a set), the
-  same conflicts as `conflict-details` maps tagged by `:kind` (see
-  `:metabase-enterprise.remote-sync.schema/remote-sync-task.conflict-detail`), and the `:outcome` naming why the task
-  stopped when that is not a collision (`nil` otherwise). All are serialized to JSON via the model transform.
+  Takes the ID of the sync task and a map of
+  - `:conflicts`: what collided, as strings (`import!` reports category names as a set),
+  - `:conflict-details`: the same collisions as maps tagged by `:kind` (see
+    `:metabase-enterprise.remote-sync.schema/remote-sync-task.conflict-detail`),
+  - `:outcome`: why the task stopped when that is not a collision (`nil` otherwise).
+  All are serialized to JSON via the model transform.
 
   Returns the number of rows updated (should be 1 if successful)."
-  [task-id conflicts conflict-details outcome]
+  [task-id {:keys [conflicts conflict-details outcome]}]
   (remote-sync.db/end-task! task-id
                             {:conflicts        (vec conflicts)
                              :conflict_details (vec conflict-details)

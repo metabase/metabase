@@ -8,37 +8,32 @@
 ;;; ------------------------------------------- Task Schemas -------------------------------------------
 
 (mr/def ::remote-sync-task.conflict-detail
-  "One entry of the `:conflict_details` column of a RemoteSyncTask: why the task stopped, tagged by `:kind`.
-  The `:conflicts` strings stay next to it for older clients."
+  "One entry of the `:conflict_details` column of a RemoteSyncTask: one thing that collided, tagged by `:kind`.
+  The `:conflicts` strings stay next to it for older clients. Why a task stopped when nothing collided (the remote
+  changed, or its history was rewritten) lives in `:outcome`, not here."
   [:multi {:dispatch :kind}
-   ;; A plain (non-merge) export found the remote branch ahead of the last sync.
-   ["remote-changed"    [:map {:closed true}
-                         [:kind [:= "remote-changed"]]]]
-   ;; A merge found no merge base: the remote was force-pushed or rebased.
-   ["history-rewritten" [:map {:closed true}
-                         [:kind [:= "history-rewritten"]]]]
    ;; A three-way merge found one entity changed differently on both sides. `:model` and `:entity_id` are the
    ;; last segment of the serdes path; a non-serdes file has neither.
-   ["entity"            [:map {:closed true}
-                         [:kind      [:= "entity"]]
-                         [:model     {:optional true} :string]
-                         [:entity_id {:optional true} :string]
-                         [:label     :string]
-                         [:path      :string]]]
+   ["entity"       [:map {:closed true}
+                    [:kind      [:= "entity"]]
+                    [:model     {:optional true} :string]
+                    [:entity_id {:optional true} :string]
+                    [:label     :string]
+                    [:path      :string]]]
    ;; The first import brings content that collides with unsynced local content of the same category.
-   ["first-import"      [:map {:closed true}
-                         [:kind     [:= "first-import"]]
-                         [:category :string]
-                         [:message  :string]]]
+   ["first-import" [:map {:closed true}
+                    [:kind     [:= "first-import"]]
+                    [:category :string]
+                    [:message  :string]]]
    ;; The import would delete unsynced local content. Content models also carry the true `:count` and a bounded
    ;; sample of `:names`.
-   ["deletion"          [:map {:closed true}
-                         [:kind     [:= "deletion"]]
-                         [:category :string]
-                         [:message  :string]
-                         [:model    {:optional true} :string]
-                         [:count    {:optional true} pos-int?]
-                         [:names    {:optional true} [:sequential [:maybe :string]]]]]])
+   ["deletion"     [:map {:closed true}
+                    [:kind     [:= "deletion"]]
+                    [:category :string]
+                    [:message  :string]
+                    [:model    {:optional true} :string]
+                    [:count    {:optional true} pos-int?]
+                    [:names    {:optional true} [:sequential [:maybe :string]]]]]])
 
 (def TaskStatus
   "Status of a remote sync task."
