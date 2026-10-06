@@ -89,6 +89,32 @@ describe("getMcpClickActions", () => {
     ).toEqual([]);
   });
 
+  it("keeps a drill the default action, so a PK or FK click runs it without a popover", () => {
+    const pkAction: ClickAction = {
+      ...questionAction("pk"),
+      section: "details",
+      default: true,
+    };
+    const [action] = getMcpClickActions(
+      [pkAction],
+      CLICKED,
+      jest.fn(),
+      NOT_BUSY,
+      {},
+    );
+
+    expect(action).toMatchObject({ name: "pk", default: true });
+    expect(
+      getMcpClickActions(
+        [questionAction("sort.ascending")],
+        CLICKED,
+        jest.fn(),
+        NOT_BUSY,
+        {},
+      )[0],
+    ).not.toHaveProperty("default");
+  });
+
   it("keeps actions that leave the query alone", () => {
     const hideColumn: ClickAction = {
       ...questionAction("hide-column"),
