@@ -85,13 +85,13 @@ describe("Public dashboards/questions downloads (results and pdf)", () => {
       });
     });
 
-    it("#downloads=results should enable only dashcard results downloads and allow downloading a public dashcard as CSV", () => {
-      cy.visit(`${publicLink}#downloads=results`);
+    it("should enable both downloads by default, allow downloading a public dashcard as CSV, and #downloads=results should enable only dashcard results downloads", () => {
+      cy.visit(publicLink);
       waitLoading();
 
       cy.get("header")
         .findByRole("button", { name: "Download as PDF" })
-        .should("not.exist");
+        .should("exist");
 
       const uuid = publicLink.split("/").at(-1);
 
@@ -110,6 +110,21 @@ describe("Public dashboards/questions downloads (results and pdf)", () => {
         accessed_via: "public-link",
         export_type: "csv",
       });
+
+      cy.visit(`${publicLink}#downloads=results`);
+      cy.reload();
+      waitLoading();
+
+      H.getDashboardCard()
+        .findAllByTestId("cell-data")
+        .should("have.length.above", 0);
+      cy.get("header")
+        .findByRole("button", { name: "Download as PDF" })
+        .should("not.exist");
+
+      H.main().realHover();
+      H.getEmbeddedDashboardCardMenu().click();
+      cy.findByLabelText("Download results").should("be.visible");
     });
 
     it("#downloads=results, pdf should handle whitespace between parameters", () => {

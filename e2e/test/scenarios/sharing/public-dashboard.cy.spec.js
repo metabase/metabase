@@ -179,19 +179,11 @@ describe("scenarios > public > dashboard", () => {
     });
   });
 
-  it("should respect full dashboard width setting in a public dashboard", () => {
+  it("should render when a filter passed with value starting from '0', support #theme=dark, and respect full width (metabase#41483, metabase#65731)", () => {
     cy.get("@dashboardId").then((id) => {
       cy.request("PUT", `/api/dashboard/${id}`, {
         width: "full",
       });
-      H.visitPublicDashboard(id);
-    });
-
-    H.assertDashboardFullWidth();
-  });
-
-  it("should render when a filter passed with value starting from '0' and support #theme=dark (metabase#41483, metabase#65731)", () => {
-    cy.get("@dashboardId").then((id) => {
       H.visitPublicDashboard(id, {
         params: { text: "002" },
         hash: {
@@ -208,6 +200,8 @@ describe("scenarios > public > dashboard", () => {
     cy.findByRole("heading", {
       name: "Test Dashboard",
     }).should("have.css", "color", "rgba(255, 255, 255, 0.95)");
+
+    H.assertDashboardFullWidth();
   });
 
   it("should respect click behavior", () => {

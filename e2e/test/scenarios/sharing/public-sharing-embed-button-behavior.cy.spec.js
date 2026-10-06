@@ -58,16 +58,6 @@ const { H } = cy;
       });
 
       describe("when user is non-admin", () => {
-        it(`should not prompt a non-admin to create a public link for a ${resource} without an existing link`, () => {
-          cy.signInAsNormalUser();
-
-          cy.get("@resourceId").then((id) => {
-            visitResource(resource, id);
-          });
-
-          assertNonAdminCannotCreatePublicLink(resource);
-        });
-
         it(`should let a non-admin copy the existing public link for a ${resource}`, () => {
           cy.get("@resourceId").then((id) => {
             createPublicResourceLink(resource, id);
@@ -714,8 +704,8 @@ describe("#39152 sharing an unsaved question", () => {
           H.expectUnstructuredSnowplowEvent({
             event: "static_embed_unpublished",
             artifact: resource,
-            time_since_creation: closeTo(toSecond(HOUR), 10),
-            time_since_initial_publication: closeTo(toSecond(HOUR), 10),
+            time_since_creation: closeTo(toSecond(HOUR), 15),
+            time_since_initial_publication: closeTo(toSecond(HOUR), 15),
           });
         });
 

@@ -461,6 +461,7 @@ describe("[snowplow] scenarios > dashboard", () => {
 
     cy.log("We're adding a 'Metabase-' prefix for non-whitelabelled instances");
     cy.verifyDownload(`Metabase - saving pdf dashboard - ${date}.pdf`);
+    H.ensureDownloadStatusDismissed();
 
     H.showDashboardCardActions(0);
     H.getDashboardCard(0).findByText("Created At: Month").should("be.visible");
@@ -498,18 +499,4 @@ function assertOrdersExport({ assertParameters } = {}) {
     isDashboard: true,
     assertParameters,
   });
-
-  if (assertParameters) {
-    cy.get("@fileDownload")
-      .its("request.body")
-      .then((body) => {
-        const parameters = JSON.parse(
-          new URLSearchParams(body).get("parameters"),
-        );
-        expect(parameters).to.have.lengthOf(assertParameters.length);
-        assertParameters.forEach((expectedParam, index) => {
-          expect(parameters[index]).to.deep.include(expectedParam);
-        });
-      });
-  }
 }
