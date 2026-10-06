@@ -137,6 +137,73 @@
                   :unchanged-locally? (fn [_ _] (throw (ex-info "should not be asked" {}))))]
       (is (= 1 (count (:conflicts result)))))))
 
+(def ^:private card-a-key
+  "The identity key of the Card the [[card]] helper builds with id \"A\"."
+  [["Card" "A"]])
+
+(deftest ^:parallel decision-keep-test
+  (testing "neither side changed A -> :keep"
+    (let [result (remote-sync.merge/three-way-merge [(card "A" "a")] [(card "A" "a")] [(card "A" "a")])]
+      (is (= {card-a-key :keep} (:decisions result)))))
+  (testing "ours differs from the base, but A is unchanged locally, and the remote left it alone -> :keep"
+    (let [result (remote-sync.merge/three-way-merge [(card "A" "a" "# hand-written\n")] [(card "A" "a")]
+                                                    [(card "A" "a" "# hand-written\n")]
+                                                    :unchanged-locally? (constantly true))]
+      (is (= {card-a-key :keep} (:decisions result))))))
+
+(deftest ^:parallel decision-ours-test
+  (testing "only ours edited A -> :ours"
+    (let [result (remote-sync.merge/three-way-merge [(card "A" "a")] [(card "A" "a" "x: 1\n")] [(card "A" "a")])]
+      (is (= {card-a-key :ours} (:decisions result)))))
+  (testing "only ours added A -> :ours"
+    (let [result (remote-sync.merge/three-way-merge [] [(card "A" "a")] [])]
+      (is (= {card-a-key :ours} (:decisions result)))))
+  (testing "only ours deleted A -> :ours"
+    (let [result (remote-sync.merge/three-way-merge [(card "A" "a")] [] [(card "A" "a")])]
+      (is (= {card-a-key :ours} (:decisions result))))))
+
+(deftest ^:parallel decision-theirs-test
+  (testing "only theirs edited A -> :theirs"
+    (let [result (remote-sync.merge/three-way-merge [(card "A" "a")] [(card "A" "a")] [(card "A" "a" "x: 1\n")])]
+      (is (= {card-a-key :theirs} (:decisions result)))))
+  (testing "only theirs added A -> :theirs"
+    (let [result (remote-sync.merge/three-way-merge [] [] [(card "A" "a")])]
+      (is (= {card-a-key :theirs} (:decisions result)))))
+  (testing "only theirs deleted A -> :theirs"
+    (let [result (remote-sync.merge/three-way-merge [(card "A" "a")] [(card "A" "a")] [])]
+      (is (= {card-a-key :theirs} (:decisions result)))))
+  (testing "ours differs from the base, but A is unchanged locally, and the remote edited it -> :theirs"
+    (let [result (remote-sync.merge/three-way-merge [(card "A" "a" "# hand-written\n")] [(card "A" "a")]
+                                                    [(card "A" "a" "x: 1\n")]
+                                                    :unchanged-locally? (constantly true))]
+      (is (= {card-a-key :theirs} (:decisions result))))))
+
+(deftest ^:parallel decision-same-test
+  (testing "both sides made the same edit to A -> :same"
+    (let [result (remote-sync.merge/three-way-merge [(card "A" "a")] [(card "A" "a" "x: 1\n")]
+                                                    [(card "A" "a" "x: 1\n")])]
+      (is (= {card-a-key :same} (:decisions result)))))
+  (testing "both sides deleted A -> :same"
+    (let [result (remote-sync.merge/three-way-merge [(card "A" "a")] [] [])]
+      (is (= {card-a-key :same} (:decisions result))))))
+
+(deftest ^:parallel decision-conflict-stays-in-conflicts-test
+  (testing "A edited differently on both sides -> a conflict, and no decision for A"
+    (let [result (remote-sync.merge/three-way-merge [(card "A" "a") (card "B" "b")]
+                                                    [(card "A" "a" "x: ours\n") (card "B" "b")]
+                                                    [(card "A" "a" "x: theirs\n") (card "B" "b")])]
+      (is (= [card-a-key] (map :key (:conflicts result))))
+      (is (= {[["Card" "B"]] :keep} (:decisions result))))))
+
+(deftest ^:parallel merge-returns-the-paths-and-contents-of-the-sides-test
+  (testing "the result maps each entity key to its path in theirs, and to its content and path in ours"
+    (let [ours   [(card "A" "a" "x: ours\n") (card "C" "c")]
+          theirs [(card "A" "a2") (card "B" "b")]
+          result (remote-sync.merge/three-way-merge [(card "A" "a")] ours theirs)]
+      (is (= {card-a-key "collections/a2.yaml" [["Card" "B"]] "collections/b.yaml"} (:theirs-paths result)))
+      (is (= {card-a-key "collections/a.yaml" [["Card" "C"]] "collections/c.yaml"} (:ours-paths result)))
+      (is (= {card-a-key (:content (first ours)) [["Card" "C"]] (:content (second ours))} (:ours-contents result))))))
+
 (deftest ^:parallel remote-delete-takes-effect-test
   (testing "remote deletes A; local untouched -> A removed from merged, counted as remote removal"
     (let [result (remote-sync.merge/three-way-merge

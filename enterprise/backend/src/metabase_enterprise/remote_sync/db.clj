@@ -512,13 +512,14 @@
   (t2/select [:model/RemoteSyncObject :id :model_type :model_id]))
 
 (mu/defn synced-content-hashes-by-path :- [:map-of :string :string]
-  "{file_path content_hash} of every RemoteSyncObject with both: the hash of Metabase's serialization of each
-  entity as of its last sync, keyed by the repo file it was synced as."
+  "{file_path content_hash} of every synced RemoteSyncObject with both: the hash of Metabase's serialization of each
+  entity as of its last sync, keyed by the repo file it was synced as. A dirty row is left out: its hash need not be
+  the hash of the last sync."
   []
   (into {}
         (map (juxt :file_path :content_hash))
         (t2/select [:model/RemoteSyncObject :file_path :content_hash]
-                   :file_path [:not= nil] :content_hash [:not= nil])))
+                   :status "synced" :file_path [:not= nil] :content_hash [:not= nil])))
 
 (mu/defn departed-rso-keys
   "The `:id`, `:model_type`, and `:model_id` of the RemoteSyncObjects pending removal or deletion."
