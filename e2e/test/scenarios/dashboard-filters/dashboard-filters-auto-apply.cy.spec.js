@@ -311,7 +311,6 @@ describe(
           // Ensure that we're viewing the dashboard in full-app embedding mode, since `logo` is a full-app embedding parameter.
           cy.findByTestId("main-logo").should("not.exist");
 
-          H.applyFilterToast().should("not.exist");
           H.filterWidget().findByText("Category").click();
           H.popover().within(() => {
             cy.findByText("Widget").click();
@@ -321,6 +320,7 @@ describe(
             H.assertTableRowsCount(200);
           });
           H.applyFilterButton().should("be.visible").click();
+          H.applyFilterToast().should("not.exist");
           H.getDashboardCard().within(() => {
             H.assertTableRowsCount(54);
           });
