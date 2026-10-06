@@ -30,7 +30,7 @@
    [toucan2.tools.with-temp :as t2.with-temp])
   (:import
    (com.clickhouse.jdbc ConnectionImpl)
-   (java.sql Connection)))
+   (java.sql Connection ResultSet SQLException Statement)))
 
 (set! *warn-on-reflection* true)
 
@@ -341,7 +341,8 @@
       (let [version (driver/dbms-version :clickhouse db)]
         (is (number? (get-in version [:semantic-version :major])))
         (is (number? (get-in version [:semantic-version :minor])))
-        (is (string? (get    version :version)))))))
+        (is (string? (get    version :version)))
+        (is (true? (:single-node version)))))))
 
 (deftest ^:parallel clickhouse-server-timezone
   (mt/test-driver :clickhouse
@@ -727,24 +728,55 @@
                  (mt/rows results))))))))
 
 (deftest ^:parallel uploads-supported-test
-  (mt/test-driver :clickhouse
-    (is (false? (driver/database-supports? driver/*driver* :uploads (mt/db))))
-    (is (true? (driver/database-supports? driver/*driver* :uploads (assoc-in (mt/db) [:dbms-version :cloud] true))))
-    (is (true? (driver/database-supports? driver/*driver* :uploads (assoc-in (mt/db) [:dbms_version :cloud] true))))))
+  (doseq [version-key [:dbms-version :dbms_version]
+          [version supported?] [[nil false]
+                                [{} false]
+                                [{:cloud false} false]
+                                [{:cloud true} true]
+                                [{:cloud true :single-node false} true]
+                                [{:cloud false :single-node true} true]
+                                [{:single-node true} true]
+                                [{:cloud false :single-node false} false]]]
+    (testing (str "Upload support using " version-key " " version)
+      (is (= supported? (driver/database-supports? :clickhouse :uploads {version-key version}))))))
+
+(deftest ^:parallel single-node-detection-test
+  (doseq [[description result expected] [["no remote nodes" true true]
+                                         ["remote nodes configured" false false]
+                                         ["no result" nil false]
+                                         ["cluster metadata is inaccessible" (SQLException. "Access denied") false]]]
+    (testing description
+      (let [closed (atom #{})
+            conn   (reify Connection
+                     (createStatement [_]
+                       (reify Statement
+                         (executeQuery [_ sql]
+                           (is (= "SELECT count() = 0 FROM system.clusters WHERE is_local = 0" sql))
+                           (if (instance? SQLException result)
+                             (throw result)
+                             (reify ResultSet
+                               (next [_] (some? result))
+                               (^boolean getBoolean [_ ^int _index] (boolean result))
+                               (close [_] (swap! closed conj :result-set)))))
+                         (close [_] (swap! closed conj :statement)))))]
+        (is (= expected (#'clickhouse-version/single-node? conn)))
+        (is (= (if (instance? SQLException result) #{:statement} #{:statement :result-set})
+               @closed))))))
 
 (deftest ^:synchronized csv-upload-and-sync-test
-  (testing "ClickHouse CSV uploads work correctly when cloud mode is enabled"
-    (mt/test-driver :clickhouse
-      (mt/with-dynamic-fn-redefs [clickhouse-version/dbms-version (constantly {:cloud true
-                                                                               :version "24.8.1"
-                                                                               :semantic-version {:major 24 :minor 8}})]
+  (doseq [deployment [:cloud :single-node]]
+    (testing (str "ClickHouse CSV uploads work correctly on " deployment)
+      (mt/test-driver :clickhouse
         (let [details   (-> (mt/dbdef->connection-details :clickhouse :db {:database-name "uploads_schema"})
                             (assoc :enable-multiple-db false))
               conn-spec (sql-jdbc.conn/connection-details->spec :clickhouse details)]
           (driver/create-schema-if-needed! :clickhouse conn-spec "uploads_schema")
           (try
-            (mt/with-temp [:model/Database db {:engine  :clickhouse
-                                               :details details}]
+            (mt/with-temp [:model/Database db {:engine       :clickhouse
+                                               :details      details
+                                               ;; Use real standalone detection; emulate Cloud only for that case.
+                                               :dbms_version (cond-> (driver/dbms-version :clickhouse (mt/db))
+                                                               (= deployment :cloud) (assoc :cloud true))}]
               (is (true? (driver/database-supports? :clickhouse :uploads db)))
               (testing "an upload schema is required"
                 (is (thrown-with-msg?

@@ -186,7 +186,8 @@
         (sql-jdbc.common/handle-additional-options details :separator-style :url))))
 
 (defmethod driver/database-supports? [:clickhouse :uploads] [_driver _feature db]
-  (boolean (-> db clickhouse-version/dbms-version :cloud)))
+  (let [{:keys [cloud single-node]} (clickhouse-version/dbms-version db)]
+    (boolean (or cloud single-node))))
 
 (defmethod driver/can-connect? :clickhouse
   [driver details]

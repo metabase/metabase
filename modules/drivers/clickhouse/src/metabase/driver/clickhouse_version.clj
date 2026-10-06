@@ -8,7 +8,10 @@
    [metabase.driver.connection :as driver.conn]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
-   [metabase.driver.util :as driver.u]))
+   [metabase.driver.util :as driver.u]
+   [metabase.util.log :as log])
+  (:import
+   (java.sql Connection SQLException)))
 
 (set! *warn-on-reflection* true)
 
@@ -19,6 +22,19 @@
 (def ^:private clickhouse-version-query
   (str "WITH s AS (SELECT version() AS ver, splitByChar('.', ver) AS verSplit) "
        "SELECT s.ver, toInt32(verSplit[1]), toInt32(verSplit[2]) FROM s"))
+
+(defn- single-node?
+  "Whether the server has no remote nodes configured. An empty system.clusters or clusters containing only the
+  local server are both standalone deployments. Don't rely on macros: self-hosted clusters need not define them."
+  [^Connection conn]
+  (try
+    (with-open [stmt (.createStatement conn)
+                rset (.executeQuery stmt "SELECT count() = 0 FROM system.clusters WHERE is_local = 0")]
+      (and (.next rset) (.getBoolean rset 1)))
+    (catch SQLException e
+      ;; Missing permissions must not break version detection or enable uploads on an unknown deployment.
+      (log/warn e "Could not determine whether ClickHouse is a single-node deployment; uploads remain disabled.")
+      false)))
 
 (def ^:private ^{:arglists '([database])} get-clickhouse-version
   (memoize/ttl
@@ -33,14 +49,15 @@
                     ver-rset   (.executeQuery ver-stmt clickhouse-version-query)
                     cloud-stmt (.createStatement conn)
                     cloud-rset (.executeQuery cloud-stmt "SELECT value='1' FROM system.settings WHERE name='cloud_mode'")]
-          (cond-> nil
-            (.next ver-rset)
-            (assoc :version          (.getString ver-rset 1)
-                   :semantic-version {:major (.getInt ver-rset 2)
-                                      :minor (.getInt ver-rset 3)})
+          (let [cloud? (and (.next cloud-rset) (.getBoolean cloud-rset 1))]
+            (cond-> {:cloud cloud?}
+              (.next ver-rset)
+              (assoc :version          (.getString ver-rset 1)
+                     :semantic-version {:major (.getInt ver-rset 2)
+                                        :minor (.getInt ver-rset 3)})
 
-            (.next cloud-rset)
-            (assoc :cloud (.getBoolean cloud-rset 1)))))))
+              (not cloud?)
+              (assoc :single-node (single-node? conn))))))))
    :ttl/threshold default-cache-ttl))
 
 (defmethod driver/dbms-version :clickhouse

@@ -105,6 +105,14 @@ A fingerprinting query examines the first 10,000 rows from each column and uses 
 
 Set up an additional connection used for write operations. See [Writable connections](../writable-connection.md).
 
+## Uploads
+
+Metabase supports [CSV uploads](../uploads.md) to ClickHouse Cloud and self-hosted single-node ClickHouse deployments. Self-hosted clusters aren't supported.
+
+For self-hosted deployments, Metabase checks `system.clusters` during schema sync and enables uploads when there are no remote nodes configured. The database user must be able to read this system table, as well as create tables and insert data in the database selected for uploads. Select that ClickHouse database as the upload schema in Metabase.
+
+For an existing connection, sync the database schema after upgrading Metabase so it can detect upload support.
+
 ## Model features
 
 There aren't (yet) any model features for ClickHouse.
