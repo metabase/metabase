@@ -6,6 +6,8 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.metabot.tools.run-query :as run-query]
    [metabase.metabot.tools.shared :as shared]
+   [metabase.permissions.core :as perms]
+   [metabase.permissions.models.permissions-group :as perms-group]
    ;; Tests redefine `process-query` here, not in `metabase.query-processor.core`. The core var is a potemkin copy of
    ;; this one, so once other tests have patched both, redefining the copy no longer takes effect.
    [metabase.query-processor :as qp]
@@ -24,6 +26,17 @@
   (let [mp (mt/metadata-provider)]
     (as-> (lib/query mp (lib.metadata/table mp (mt/id :venues))) q
       (lib/order-by q (lib.metadata/field mp (mt/id :venues :id))))))
+
+(defn- venues-count
+  []
+  (let [mp (mt/metadata-provider)]
+    (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+        (lib/aggregate (lib/count)))))
+
+(defn- card-query
+  "A notebook query whose source is the saved question `card-id`."
+  [card-id]
+  {:database (mt/id), :type :query, :query {:source-table (str "card__" card-id)}})
 
 (defn- data-lines
   "The table lines between the data boundary markers of a `run_query` output."
@@ -122,3 +135,35 @@
       (let [cols (for [i (range 40)] {:display_name (str "c" i)})
             out  (output cols [(vec (range 40))])]
         (is (str/includes? out "Only the first 30 of 40 columns are shown."))))))
+
+(deftest run-query-saved-question-test
+  (mt/with-non-admin-groups-no-root-collection-perms
+    (mt/with-temp [:model/Collection {open :id}   {}
+                   :model/Collection {hidden :id} {}
+                   :model/Card {notebook-card :id}   {:collection_id open
+                                                      :dataset_query (venues-count)}
+                   :model/Card {sql-card :id}        {:collection_id open
+                                                      :dataset_query (mt/native-query
+                                                                      {:query "SELECT ID FROM VENUES ORDER BY ID"})}
+                   :model/Card {over-sql-card :id}   {:collection_id open
+                                                      :dataset_query (card-query sql-card)}
+                   :model/Card {hidden-card :id}     {:collection_id hidden
+                                                      :dataset_query (venues-count)}
+                   :model/Card {hidden-sql-card :id} {:collection_id hidden
+                                                      :dataset_query (mt/native-query {:query "SELECT 1"})}]
+      (perms/grant-collection-read-permissions! (perms-group/all-users) open)
+      (testing "a notebook query over a saved notebook question runs"
+        (is (=? {:structured-output {:returned 1, :truncated? false}}
+                (run-tool! {"q1" (card-query notebook-card)} {:query_id "q1"}))))
+      (testing "a notebook query over a saved SQL question is refused as SQL"
+        (doseq [[shape card-id] {"read directly"                    sql-card
+                                 "read through a notebook question" over-sql-card}]
+          (testing shape
+            (is (= {:output (str "run_query only runs notebook queries, and this one reads a saved SQL question. "
+                                 "To get values, rebuild the question with construct_notebook_query, "
+                                 "then run that query with run_query.")}
+                   (run-tool! {"q1" (card-query card-id)} {:query_id "q1"}))))))
+      (testing "a saved question the user can't read gets one refusal, whether or not it is SQL"
+        (doseq [card-id [hidden-card hidden-sql-card]]
+          (is (= {:output "You do not have permission to run this query."}
+                 (run-tool! {"q1" (card-query card-id)} {:query_id "q1"}))))))))
