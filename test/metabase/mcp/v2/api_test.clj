@@ -558,12 +558,12 @@
 (deftest ui-tools-hidden-from-client-switched-off-test
   (testing "EMB-2406: a client the admin switched off under \"Show inline charts\" is not offered the UI tools"
     (let [handshake (fn []
-                      (-> (mcp-request (jsonrpc-request "initialize"
-                                                        (assoc mcp-app-ui-capabilities
-                                                               :clientInfo {:name "ChatGPT"})))
+                      (-> (mcp-request! (jsonrpc-request "initialize"
+                                                         (assoc mcp-app-ui-capabilities
+                                                                :clientInfo {:name "ChatGPT"})))
                           (get-in [:headers "Mcp-Session-Id"])))
           tool-names (fn [session-id]
-                       (->> (mcp-request (jsonrpc-request "tools/list") {"mcp-session-id" session-id})
+                       (->> (mcp-request! (jsonrpc-request "tools/list") {"mcp-session-id" session-id})
                             :body :result :tools (map :name) set))]
       (mt/with-temporary-setting-values [mcp.settings/mcp-apps-cors-enabled-clients []]
         (is (not (contains? (tool-names (handshake)) "visualize_query"))))
