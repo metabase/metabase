@@ -121,6 +121,15 @@
   [card-ids :- [:set ::lib.schema.id/card]]
   (t2/select-pks-set :model/Card {:where [:and [:in :id card-ids] [:= :archived false]]}))
 
+(mu/defn lock-entity!
+  "Lock the row of `entity` with `id` for update."
+  [entity :- :keyword
+   id     :- ms/PositiveInt]
+  (t2/query {:select [:id]
+             :from   [(t2/table-name entity)]
+             :where  [:= :id id]
+             :for    :update}))
+
 (mu/defn lock-revisions!
   "Lock the Revisions of the `model-name` row with `model-id` for update."
   [model-name :- :string
@@ -141,6 +150,14 @@
                     :model_id model-id
                     {:order-by [[:timestamp :desc]
                                 [:id :desc]]}))
+
+(mu/defn revision-ids-after
+  "The ids of the Revisions of the `model-name` row with `model-id` that are newer than the Revision with
+  `revision-id`."
+  [model-name  :- :string
+   model-id    :- ms/PositiveInt
+   revision-id :- ms/PositiveInt]
+  (t2/select-pks-vec :model/Revision :model model-name :model_id model-id :id [:> revision-id]))
 
 (mu/defn delete-revisions!
   "Delete the Revisions with `ids`, returning the number deleted."

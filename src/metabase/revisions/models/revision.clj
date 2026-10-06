@@ -214,6 +214,19 @@
                              [:is-creation? {:optional true} [:maybe :boolean]]
                              [:message      {:optional true} [:maybe :string]]]])))
 
+;;; Keys that a stored revision object can carry and that must not make two versions differ:
+;;; - Card `:card_schema`: after-select adds it to old revisions; it is a technical field.
+;;; - Document: older revisions hold the keys that the API hydrates onto the document it publishes. The Document hook
+;;;   publishes the plain row, and [[serialize-instance]] of Document drops these keys.
+(def ^:private ignored-in-comparison
+  {:model/Card     #{:card_schema}
+   :model/Document #{:creator :can_write :can_delete :can_restore :is_remote_synced}})
+
+(defn- comparable-object
+  [entity object]
+  (when object
+    (apply dissoc object (ignored-in-comparison entity))))
+
 (mu/defn push-revision!
   "Record a new Revision for `entity` with `id` if it's changed compared to the last revision.
   Returns `object` or `nil` if the object does not changed."
@@ -223,11 +236,7 @@
   (let [entity-name (name entity)
         serialized-object (serialize-instance entity id (dissoc object :message))
         last-object (revisions.db/latest-revision-object entity-name id)
-        ;; For Card entities, ensure :card_schema is excluded from comparison
-        ;; Old revisions might have :card_schema added by after-select, but this field
-        ;; shouldn't trigger new revisions as it's a technical/internal field
-        last-object-for-comparison (cond-> last-object
-                                     (= entity :model/Card) (dissoc :card_schema))]
+        last-object-for-comparison (comparable-object entity last-object)]
     ;; make sure we still have a map after calling out serialization function
     (assert (map? serialized-object))
     ;; the last-object could have nested object, e.g: Dashboard can have multiple Card in it,
@@ -245,8 +254,14 @@
                                       :message      message})
       object)))
 
+(def ^:private hook-records-revision?
+  "Models whose after-update hook publishes the update topic inside the writer's transaction. A writer of one of these
+  holds the entity row while the revisions listener records a Revision, and a revert of one of them records one too."
+  #{:model/Document :model/TransformTest})
+
 (mu/defn revert!
-  "Revert `entity` with `id` to a given Revision."
+  "Revert `entity` with `id` to a given Revision. Unless the entity is already in the target state, records exactly
+  one Revision, the reversion, as the newest Revision of the entity, and returns it with its details."
   [info :- [:map {:closed true}
             [:id          pos-int?]
             [:user-id     pos-int?]
@@ -254,20 +269,31 @@
             [:entity      [:fn toucan-model?]]]]
   (let [{:keys [id user-id revision-id entity]} info
         model-name (name entity)
-        serialized-instance (revisions.db/revision-object model-name id revision-id)]
+        serialized-instance (revisions.db/revision-object model-name id revision-id)
+        hook-revision? (hook-records-revision? entity)]
     (t2/with-transaction [_conn]
-      (let [already-in-target-state? (= serialized-instance
-                                        (revisions.db/latest-revision-object model-name id))]
-        ;; Do the reversion of the object
+      (when hook-revision?
+        ;; The lock order of an edit: the row, then its Revisions. Until the commit, no other transaction can add a
+        ;; Revision of this entity, so each Revision newer than `last-revision` comes from this revert.
+        (revisions.db/lock-entity! entity id)
+        (revisions.db/lock-revisions! model-name id))
+      (let [last-revision            (revisions.db/latest-revision model-name id)
+            already-in-target-state? (= (comparable-object entity serialized-instance)
+                                        (comparable-object entity (:object last-revision)))]
         (revert-to-revision! entity id user-id serialized-instance)
-        ;; Push a new revision to record this change
-        (let [last-revision (revisions.db/latest-revision model-name id)]
-          (if already-in-target-state?
-            last-revision
-            (let [new-revision (revisions.db/insert-revision-returning! {:model        model-name
-                                                                         :model_id     id
-                                                                         :user_id      user-id
-                                                                         :object       serialized-instance
-                                                                         :is_creation  false
-                                                                         :is_reversion true})]
-              (add-revision-details entity new-revision last-revision))))))))
+        (if already-in-target-state?
+          (revisions.db/latest-revision model-name id)
+          (do
+            (when hook-revision?
+              ;; The hook published an update event during `revert-to-revision!`, and the revisions listener recorded
+              ;; a plain Revision. The reversion replaces it.
+              (when-let [extra-ids (not-empty (revisions.db/revision-ids-after model-name id (:id last-revision)))]
+                (revisions.db/delete-revisions! extra-ids)))
+            (add-revision-details entity
+                                  (revisions.db/insert-revision-returning! {:model        model-name
+                                                                            :model_id     id
+                                                                            :user_id      user-id
+                                                                            :object       serialized-instance
+                                                                            :is_creation  false
+                                                                            :is_reversion true})
+                                  last-revision)))))))

@@ -23,7 +23,13 @@
     :collection_position
     :public_uuid
     :public_uuid_prefix
-    :made_public_by_id})
+    :made_public_by_id
+    ;; keys that the API hydrates onto the document it publishes; the Document hook publishes the plain row
+    :creator
+    :can_write
+    :can_delete
+    :can_restore
+    :is_remote_synced})
 
 (defmethod revision/serialize-instance :model/Document
   [_model _id instance]
