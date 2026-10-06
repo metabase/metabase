@@ -20,7 +20,8 @@ type McpDrillHandler = (
 ) => void;
 
 /** Drill name -> the result-column name of each dimension it is offered on, in order. */
-type McpDrillDimensions = Partial<Record<string, string[]>>;
+/** Null where the drill acts on no single dimension, such as the binned lat/lon zoom. */
+type McpDrillDimensions = Partial<Record<string, (string | null)[]>>;
 
 /** Drills Lib offers once per clicked dimension rather than once per click. */
 const PER_DIMENSION_DRILLS = new Set(["zoom-in.binning", "zoom-in.geographic"]);
@@ -57,8 +58,13 @@ export function getDrillDimensions(
 
       if (PER_DIMENSION_DRILLS.has(name)) {
         // Any drill's details carry the column it acts on.
-        const { column } = Lib.combineColumnDrillDetails(drill);
-        const columnName = Lib.displayInfo(query, stageIndex, column).name;
+        // Null keeps the order aligned with the actions while naming nothing.
+        // Typed non-null, but a drill with no `:column`, like the binned lat/lon zoom, yields null.
+        const column: Lib.ColumnMetadata | null =
+          Lib.combineColumnDrillDetails(drill).column ?? null;
+        const columnName = column
+          ? Lib.displayInfo(query, stageIndex, column).name
+          : null;
         dimensions[name] = [...(dimensions[name] ?? []), columnName];
       }
     }
@@ -105,7 +111,7 @@ export function getMcpClickActions(
     // The k-th action of a per-dimension drill acts on its k-th dimension.
     const index = seenByDrill.get(action.name) ?? 0;
     seenByDrill.set(action.name, index + 1);
-    const dimension = drillDimensions[action.name]?.[index];
+    const dimension = drillDimensions[action.name]?.[index] ?? undefined;
 
     const operation = isChartChanging()
       ? null
