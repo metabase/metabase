@@ -3,10 +3,13 @@
 ## was deleted has none: give the first the namespace and the second a collection.
 
 databaseChangeLog:
+  ## MySQL, MariaDB, and H2 index a foreign key's column themselves; Postgres doesn't. On MySQL a second index
+  ## would take over the constraint and refuse to be dropped on rollback, so this one is Postgres-only.
   - changeSet:
       id: v65.2026-10-06T00:00:00
       author: timofei
-      comment: Index data apps by their resource collection
+      comment: Index data apps by their resource collection (PostgreSQL)
+      dbms: postgresql
       changes:
         - createIndex:
             tableName: data_app
