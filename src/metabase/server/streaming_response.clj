@@ -379,9 +379,11 @@
 
 (defn- respond
   [{:keys [^HttpServletResponse response ^AsyncContext async-context request-map response-map request]}
-   f {:keys [content-type status headers executor], :as _options} finished-chan]
+   f {:keys [content-type status headers executor async-timeout-ms], :as _options} finished-chan]
   (let [canceled-chan (a/promise-chan)
         completed?   (AtomicBoolean. false)]
+    (when async-timeout-ms
+      (.setTimeout async-context async-timeout-ms))
     (.addListener async-context
                   (reify AsyncListener
                     (onTimeout [_ _event]
@@ -500,7 +502,9 @@
      which is a small fixed pool: responses that block for the life of a client connection (rather than for the life
      of a query) must supply their own executor so they cannot exhaust it. The supplied executor's futures must
      support real interruption (`Future.cancel(true)`) — the hung-request escalation interrupts the worker, and a
-     ForkJoinPool-backed executor silently ignores it."
+     ForkJoinPool-backed executor silently ignores it.
+  *  `:async-timeout-ms` -- how long the response may run before Jetty completes it, cutting the stream short.
+     Defaults to `MB_JETTY_ASYNC_RESPONSE_TIMEOUT`; `0` means no limit."
   {:style/indent 2, :arglists '([options [os-binding canceled-chan-binding] & body])}
   [options [os-binding canceled-chan-binding :as bindings] & body]
   {:pre [(= (count bindings) 2)]}

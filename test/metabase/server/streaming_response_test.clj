@@ -652,6 +652,39 @@
           (is (false? (.await complete-called 100 TimeUnit/MILLISECONDS))
               "Worker thread should not call .complete when timeout already completed the context"))))))
 
+(deftest async-timeout-ms-test
+  (mt/with-temp-env-var-value! [mb-jetty-async-response-timeout 100]
+    (let [started (promise)
+          release (promise)
+          handler (fn [req respond _raise]
+                    (let [no-timeout? (= "/no-timeout" (:uri req))
+                          options     (cond-> {:content-type "text/plain"}
+                                        no-timeout? (assoc :async-timeout-ms 0))]
+                      (respond
+                       (compojure.response/render
+                        (streaming-response/streaming-response options [os _]
+                          (when no-timeout?
+                            (deliver started true))
+                          (deref release 5000 nil)
+                          (.write os (.getBytes "done" "UTF-8")))
+                        req))))
+          server  (doto (server.instance/create-server handler {:port 0 :join? false})
+                    .start)
+          body    (fn [path]
+                    (:body (http/get (str "http://localhost:" (.. server getURI getPort) path)
+                                     {:decompress-body false, :connection-timeout 5000, :socket-timeout 5000})))]
+      (try
+        (let [no-timeout (future (body "/no-timeout"))]
+          (is (true? (deref started 5000 ::timed-out)))
+          (testing "Jetty completes a response that runs past MB_JETTY_ASYNC_RESPONSE_TIMEOUT"
+            (is (= "" (body "/"))))
+          (deliver release true)
+          (testing "unless the response sets :async-timeout-ms 0"
+            (is (= "done" (deref no-timeout 5000 ::timed-out)))))
+        (finally
+          (deliver release true)
+          (.stop server))))))
+
 (deftest do-f-async-custom-executor-test
   (testing "the :executor option runs `f` on that executor instead of the shared streaming pool"
     (let [executor      (java.util.concurrent.Executors/newSingleThreadExecutor

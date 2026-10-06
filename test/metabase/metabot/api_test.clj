@@ -1,5 +1,6 @@
 (ns metabase.metabot.api-test
   (:require
+   [clj-http.client :as http]
    [clojure.core.async :as a]
    [clojure.string :as str]
    [clojure.test :refer :all]
@@ -305,6 +306,54 @@
                               "start-turn! inserted exactly user + placeholder; no extra row from finalize"))))))))))
         (finally
           (.stop llm-server))))))
+
+(deftest turn-longer-than-async-response-timeout-finishes-test
+  (testing "A turn that outlasts MB_JETTY_ASYNC_RESPONSE_TIMEOUT streams its finish event and finalizes as finished"
+    (let [turn-started (promise)
+          release      (promise)
+          finished     (promise)
+          slow-turn    (reify clojure.lang.IReduceInit
+                         (reduce [_ rf init]
+                           (deliver turn-started true)
+                           (deref release 5000 nil)
+                           (reduce rf init [{:type :start :id "msg-1"} {:type :text :text "Done"}])))]
+      (mt/with-temp-env-var-value! [mb-jetty-async-response-timeout 100]
+        (mt/with-dynamic-fn-redefs
+          [agent/run-agent-loop                         (constantly slow-turn)
+           metabot.context/create-context               (fn [ctx & _] ctx)
+           metabot.self/context-window-tokens           (constantly 1000)
+           metabot.persistence/finalize-assistant-turn! (fn [_ _ & {:keys [finished?]}] (deliver finished finished?))]
+          (let [handler (bound-fn [req respond _raise]
+                          (respond (compojure.response/render
+                                    (if (= "/control" (:uri req))
+                                      (sr/streaming-response {:content-type "text/plain"} [_ _]
+                                        (deref release 5000 nil))
+                                      (#'api/native-agent-streaming-request {:profile-id "internal"
+                                                                             :message    {:role "user" :content "Hi"}
+                                                                             :context    {}}))
+                                    req)))
+                server  (doto (server.instance/create-server handler {:port 0 :join? false})
+                          .start)
+                body    (fn [path]
+                          (:body (http/get (str "http://localhost:" (.. server getURI getPort) path)
+                                           {:decompress-body false, :connection-timeout 5000, :socket-timeout 5000})))]
+            (try
+              (let [turn (future (body "/"))]
+                (is (true? (deref turn-started 5000 ::timed-out)))
+                (is (= "" (body "/control")) "the timeout cuts a plain stream that started after the turn")
+                (deliver release true)
+                (let [lines  (->> (deref turn 5000 "")
+                                  str/split-lines
+                                  (filter #(str/starts-with? % "data: ")))
+                      events (->> lines
+                                  (remove #(= "data: [DONE]" %))
+                                  (mapv #(json/decode+kw (subs % 6))))]
+                  (is (= "data: [DONE]" (last lines)))
+                  (is (= "finish" (:type (last events))))
+                  (is (true? (deref finished 5000 ::timed-out)))))
+              (finally
+                (deliver release true)
+                (.stop server)))))))))
 
 (deftest thrown-during-agent-setup-persists-as-errored-test
   (testing "A throwable escaping the agent loop (e.g. permission/setup throw before
