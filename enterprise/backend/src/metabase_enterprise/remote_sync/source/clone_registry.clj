@@ -1,7 +1,7 @@
 (ns metabase-enterprise.remote-sync.source.clone-registry
   "The local clones of git remotes that one process holds. A registry makes each clone new, in a directory under its
-  process root `<base-dir>/p-<uuid>`, which it creates with owner-only permissions and locks for its whole life. It
-  never opens a directory that it did not make.
+  process root `<base-dir>/p-<uuid>`, which it locks for its whole life. It makes the root and `base-dir` owner-only.
+  It never opens a directory that it did not make.
 
   Each clone of a URL is one generation of that URL. At most one generation of a URL is active. A source holds one
   lease, which can hold several generations of its URL.
@@ -20,7 +20,7 @@
   (:import
    (java.io File)
    (java.nio.channels FileChannel FileLock)
-   (java.nio.file FileSystems Files OpenOption StandardOpenOption)
+   (java.nio.file FileSystems Files LinkOption OpenOption StandardOpenOption)
    (java.nio.file.attribute FileAttribute PosixFilePermissions)
    (java.util.concurrent ExecutorService Executors ThreadFactory)
    (org.apache.commons.io FileUtils)))
@@ -49,21 +49,48 @@
   (when (.exists dir)
     (log/warn "Could not delete a git clone directory" {:path (str dir)})))
 
+(defn- posix?
+  "True iff the file system has POSIX permissions."
+  []
+  (contains? (.supportedFileAttributeViews (FileSystems/getDefault)) "posix"))
+
+(def ^:private owner-only
+  "The POSIX permissions that let only the owner read, write or enter a directory."
+  (PosixFilePermissions/fromString "rwx------"))
+
+(defn- owner-only-attributes
+  "The attributes that create an owner-only directory, where the file system has POSIX permissions."
+  ^"[Ljava.nio.file.attribute.FileAttribute;" []
+  (if (posix?)
+    (into-array FileAttribute [(PosixFilePermissions/asFileAttribute owner-only)])
+    (make-array FileAttribute 0)))
+
 (defn- create-owner-only-dir!
   "Creates the new directory `dir`. Where the file system has POSIX permissions, only the owner can read, write or enter
   it. Throws if `dir` exists."
   [^File dir]
-  (Files/createDirectory (.toPath dir)
-                         (if (contains? (.supportedFileAttributeViews (FileSystems/getDefault)) "posix")
-                           (into-array FileAttribute [(PosixFilePermissions/asFileAttribute
-                                                       (PosixFilePermissions/fromString "rwx------"))])
-                           (make-array FileAttribute 0))))
+  (Files/createDirectory (.toPath dir) (owner-only-attributes)))
+
+(defn- make-owner-only-base!
+  "Creates `base-dir` and its missing parents. Where the file system has POSIX permissions, makes `base-dir` owner-only,
+  also when it exists. Does not change a symbolic link or its target. A failure to change the permissions is logged."
+  [^File base-dir]
+  ;; A cleaner of the temp dir can delete a process root while a clone writes into it, and JGit then makes the root
+  ;; again with default permissions. No other user can enter that root below an owner-only base.
+  (let [path (.toPath base-dir)]
+    (Files/createDirectories path (owner-only-attributes))
+    (when (and (posix?) (not (Files/isSymbolicLink path)))
+      (try
+        (when (not= owner-only (Files/getPosixFilePermissions path (make-array LinkOption 0)))
+          (Files/setPosixFilePermissions path owner-only))
+        (catch Throwable e
+          (log/warn e "Could not make the git clone directory owner-only" {:path (str base-dir)}))))))
 
 (defn- make-root!
   "Creates a new process root under `base-dir` and locks its lock file. Returns the root: its `:dir`, and the `:channel`
   and `:lock` of its lock file. On a failure, no new root stays on disk."
   [^File base-dir]
-  (Files/createDirectories (.toPath base-dir) (make-array FileAttribute 0))
+  (make-owner-only-base! base-dir)
   (let [dir (io/file base-dir (str "p-" (random-uuid)))]
     (create-owner-only-dir! dir)
     (try
@@ -179,6 +206,18 @@
         (log/info "A git clone directory is gone, so the next use clones again" {:path (str dir)})
         (retire! registry url active)))))
 
+(defn- retire-outside-root!
+  "Retires the active generation of `url` if its directory is not in the current process root of `registry`."
+  [{:keys [root state] :as registry} url]
+  ;; A clone job writes into the directory that it got before it started. If a concurrent acquire retires that root in
+  ;; the meantime, the job publishes a generation in a retired root.
+  (let [{:keys [active generations]} (get @state url)]
+    (when-let [^File dir (get-in generations [active :dir])]
+      (when-not (= (some-> @root :dir) (.getParentFile dir))
+        (log/warn "A git clone is outside the git clone directory of this process, so the next use clones again"
+                  {:path (str dir)})
+        (retire! registry url active)))))
+
 (defn- retire-broken-root!
   "When the process root of `registry` is not intact, retires it and each active generation in it, so that the next
   clone makes a new root. [[shutdown!]] deletes a retired root."
@@ -257,6 +296,7 @@
   [{:keys [state] :as registry} {lease-id :id url :url} clone!]
   (loop []
     (retire-broken-root! registry)
+    (retire-outside-root! registry url)
     (retire-missing! registry url)
     (let [[old new]            (swap-vals! state update url
                                            (fn [{:keys [active job] :as entry}]
