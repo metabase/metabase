@@ -329,15 +329,21 @@
 
 ;;; create a custom HoneySQL quoting style called `::application-db` that uses the appropriate quote function based on
 ;;; [[*application-db*]]; register this as the default quoting style for Toucan. Then
-(defn quote-for-application-db
-  "Quote SQL identifier string `s` appropriately for the currently bound application database."
+(defn ^:deprecated quote-for-application-db
+  "Quote SQL identifier string `s` appropriately for the currently bound application database.
+
+  DEPRECATED: this is only useful for compilation with Honey SQL, and we should be using Funny
+  SQL ([[metabase.funnysql.core]]) to compile app DB queries going forward."
   ([s]
    (quote-for-application-db (mdb.connection/quoting-style (mdb.connection/db-type)) s))
   ([dialect s]
    {:pre [(#{:h2 :ansi :mysql} dialect)]}
    ((:quote (sql/get-dialect dialect)) s)))
 
-(defn- clause-order-fn-for-application-db [clauses]
+(defn- ^:deprecated clause-order-fn-for-application-db
+  "DEPRECATED: this is only useful for compilation with Honey SQL, and we should be using Funny
+  SQL ([[metabase.funnysql.core]]) to compile app DB queries going forward."
+  [clauses]
   (case (mdb.connection/db-type)
     (:postgres :h2) clauses
     :mysql          (let [{f :clause-order-fn} (sql/get-dialect :mysql)]
@@ -346,6 +352,7 @@
 ;;; register with Honey SQL 2
 (sql/register-dialect!
  ::application-db
+ #_{:clj-kondo/ignore [:deprecated-var]}
  (assoc (sql/get-dialect :ansi)
         :quote           quote-for-application-db
         :clause-order-fn clause-order-fn-for-application-db))
