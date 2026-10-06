@@ -574,3 +574,30 @@
                (is (= [(str action-id)]
                       (into [] (comp (filter #(= :model/Action (first %))) (mapcat second)) @deleted))
                    (pr-str @deleted))))))))))
+
+(deftest pull-outcome-counts-each-entity-once-test
+  (testing "A pull that deletes a model and edits the file of its Action loads the Action, then deletes it by FK
+            cascade. The outcome counts each of the two entities one time"
+    (search.tu/with-index-disabled
+      (do-with-bench!
+       (fn [_f0]
+         (mt/with-temp [:model/Card        {model-id :id}  {:name "Bench Model" :type :model
+                                                            :collection_id (:id (bench-collection))}
+                        :model/Action      {action-id :id} {:name "Zebra action" :type :query :model_id model-id}
+                        :model/QueryAction _               {:action_id     action-id
+                                                            :dataset_query (mt/native-query {:query "select 1"})}]
+           (mt/with-model-cleanup [:model/Action]
+             (let [g0          (synced-tree)
+                   action-path (path-with g0 "zebra_action")
+                   g1          (-> g0
+                                   (dissoc (path-with g0 "bench_model"))
+                                   (update action-path #(str/replace-first % #"(?m)^(name: .*\n)"
+                                                                           "$1description: remote edit\n")))
+                   src         (rs.test/versioned-source :trees {"v0" g0 "v1" g1} :current "v0")]
+               (is (= :success (:status (import-at! src "v0" :force? true))) "baseline import of v0 succeeds")
+               (let [[result path] (import-v1-under-test! src)]
+                 (is (= :incremental path))
+                 (is (=? {:status  :success
+                          :outcome {:kind "pulled" :count 2}}
+                         result))
+                 (is (not (t2/exists? :model/Action action-id)) "the cascade deleted the loaded action"))))))))))
