@@ -402,7 +402,6 @@ describe("dashboard filters auto-wiring", () => {
             },
           ],
         });
-        cy.wrap(id).as("productsQuestionId");
       });
 
       H.createQuestion({
