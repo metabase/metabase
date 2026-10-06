@@ -18,6 +18,11 @@ import type {
 export const TRANSFORMS_ROOT_ID = -1;
 
 /**
+ * Sentinel value for the virtual Data apps root collection.
+ */
+export const DATA_APPS_ROOT_ID = -2;
+
+/**
  * Configuration for how entities are grouped and displayed in the changes view.
  * Similar to the backend remote-sync-specs pattern.
  */
@@ -68,6 +73,14 @@ const displayGroupSpecs: DisplayGroupSpec[] = [
     icon: "glossary",
     pathPrefixGroupId: "library",
     priority: 80,
+  },
+  {
+    id: "data-apps",
+    models: new Set(["dataapp"]),
+    virtualRootId: DATA_APPS_ROOT_ID,
+    virtualRootName: () => t`Data apps`,
+    icon: "app",
+    priority: 70,
   },
   {
     id: "tables",
@@ -173,6 +186,9 @@ const getGroupKeyInfo = (
       return { groupKey: "transforms-root", spec };
     }
     return { groupKey: entity.collection_id, spec };
+  }
+  if (spec.id === "data-apps") {
+    return { groupKey: DATA_APPS_ROOT_ID, spec };
   }
   if (entity.collection_id != null) {
     return { groupKey: entity.collection_id, spec };
@@ -427,7 +443,9 @@ const buildCollectionGroup = ({
 
   let pathSegments = isTransformsRoot
     ? [{ id: TRANSFORMS_ROOT_ID, name: t`Transforms` }]
-    : getCollectionPathSegments(numericCollectionId, collectionMap);
+    : numericCollectionId === DATA_APPS_ROOT_ID
+      ? [{ id: DATA_APPS_ROOT_ID, name: t`Data apps` }]
+      : getCollectionPathSegments(numericCollectionId, collectionMap);
   const prefixSegments = getPathPrefixSegments(
     groupSpec,
     numericCollectionId,

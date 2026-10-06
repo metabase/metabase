@@ -16,6 +16,7 @@ import { timelineEventApi } from "metabase/api/timeline-event";
 import { transformApi } from "metabase/api/transform";
 import { transformTagApi } from "metabase/api/transform-tag";
 import type { State } from "metabase/redux/store";
+import { dataAppApi } from "metabase-enterprise/api/data-app";
 import { pythonLibraryApi } from "metabase-enterprise/api/python-transform-library";
 import { tableApi as enterpriseTableApi } from "metabase-enterprise/api/table";
 import type { CollectionId } from "metabase-types/api";
@@ -205,6 +206,12 @@ export const MODEL_MUTATION_CONFIGS: ModelMutationConfig[] = [
     updateEndpoints: [
       pythonLibraryApi.endpoints.updatePythonLibrary.matchFulfilled,
     ],
+    invalidation: { type: InvalidationType.Always },
+  },
+  {
+    modelType: "dataApp",
+    updateEndpoints: [dataAppApi.endpoints.setDataAppEnabled.matchFulfilled],
+    deleteEndpoints: [dataAppApi.endpoints.deleteDataApp.matchFulfilled],
     invalidation: { type: InvalidationType.Always },
   },
 ];

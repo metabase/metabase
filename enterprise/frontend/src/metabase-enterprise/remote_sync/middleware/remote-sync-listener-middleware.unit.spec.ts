@@ -16,10 +16,12 @@ import { cardApi } from "metabase/api/card";
 import { collectionApi } from "metabase/api/collection";
 import { dashboardApi } from "metabase/api/dashboard";
 import { glossaryApi } from "metabase/api/glossary";
+import { dataAppApi } from "metabase-enterprise/api/data-app";
 import { remoteSyncApi } from "metabase-enterprise/api/remote-sync";
 import type { EnterpriseSettings } from "metabase-types/api";
 import {
   createMockCollection,
+  createMockDataApp,
   createMockSettings,
   createMockUser,
 } from "metabase-types/api/mocks";
@@ -1003,6 +1005,57 @@ describe("remote-sync-listener-middleware", () => {
       await subscribeAndSettle(store);
 
       store.dispatch(glossaryApi.endpoints.deleteGlossary.initiate({ id: 1 }));
+
+      await waitForCondition(() => dirtyCallCount() > 1);
+      expect(dirtyCallCount()).toBeGreaterThan(1);
+    });
+  });
+
+  describe("data app listeners", () => {
+    afterEach(() => {
+      fetchMock.clearHistory();
+    });
+
+    const subscribeAndSettle = async (
+      store: ReturnType<typeof createTestStore>,
+    ) => {
+      store.dispatch(
+        remoteSyncApi.endpoints.getRemoteSyncChanges.initiate(undefined),
+      );
+      await waitForCondition(() =>
+        fetchMock.callHistory.done("remote-sync-dirty"),
+      );
+    };
+
+    const dirtyCallCount = () =>
+      fetchMock.callHistory.calls("remote-sync-dirty").length;
+
+    it("invalidates when a data app is enabled or disabled", async () => {
+      fetchMock.put("path:/api/apps/my-app", createMockDataApp());
+      setupRemoteSyncDirtyEndpoint();
+
+      const store = createTestStore();
+      await subscribeAndSettle(store);
+
+      store.dispatch(
+        dataAppApi.endpoints.setDataAppEnabled.initiate({
+          name: "my-app",
+          enabled: false,
+        }),
+      );
+
+      await waitForCondition(() => dirtyCallCount() > 1);
+      expect(dirtyCallCount()).toBeGreaterThan(1);
+    });
+
+    it("invalidates when a data app is deleted", async () => {
+      fetchMock.delete("path:/api/apps/my-app", 204);
+      setupRemoteSyncDirtyEndpoint();
+
+      const store = createTestStore();
+      await subscribeAndSettle(store);
+
+      store.dispatch(dataAppApi.endpoints.deleteDataApp.initiate("my-app"));
 
       await waitForCondition(() => dirtyCallCount() > 1);
       expect(dirtyCallCount()).toBeGreaterThan(1);

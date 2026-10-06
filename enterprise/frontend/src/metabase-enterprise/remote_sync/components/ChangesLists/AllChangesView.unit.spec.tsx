@@ -1015,4 +1015,32 @@ describe("AllChangesView", () => {
       ).not.toBeInTheDocument();
     });
   });
+
+  describe("data apps", () => {
+    it("should group data apps under a Data apps root linked to the admin page", async () => {
+      const dataAppEntity = createMockRemoteSyncEntity({
+        id: 700,
+        name: "boba-staff-review",
+        model: "dataapp",
+        collection_id: undefined,
+        sync_status: "update",
+      });
+      const rootEntity = createMockRemoteSyncEntity({
+        id: 701,
+        name: "Root Question",
+        collection_id: undefined,
+      });
+
+      setup({ entities: [dataAppEntity, rootEntity] });
+
+      expect(
+        await screen.findByRole("link", { name: "Data apps" }),
+      ).toHaveAttribute("href", "/admin/settings/apps");
+      expect(screen.getByText("Root")).toBeInTheDocument();
+      expect(
+        screen.getByRole("link", { name: /boba-staff-review/ }),
+      ).toHaveAttribute("href", "/apps/boba-staff-review");
+      expect(screen.getAllByLabelText("app icon")).toHaveLength(2);
+    });
+  });
 });
