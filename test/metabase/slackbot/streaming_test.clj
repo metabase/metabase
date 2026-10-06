@@ -390,6 +390,11 @@
                                       :type    "clojure.lang.ExceptionInfo"
                                       :data    {:status-code 400 :api-error true :error-code :llm-not-configured}}})]
       (is (str/includes? text "The AI provider isn't configured correctly. Ask your Metabase admin to check the AI settings."))))
+  (testing "a provider failure the customer can fix keeps the message the agent loop wrote for it"
+    (doseq [code ["ai_provider_billing" "ai_provider_rate_limit" "ai_provider_auth"]]
+      (let [text (dm-error-part-appended-text!
+                  {:type :error :error {:message "Ask your administrator to check the AI provider." :error-code code}})]
+        (is (str/includes? text "Ask your administrator to check the AI provider.") code))))
   (testing "an unrecognized error keeps the generic copy and leaks nothing from the provider"
     (let [text (dm-error-part-appended-text!
                 {:type :error :error {:message "upstream rejected key sk-ant-oops"}})]
