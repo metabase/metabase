@@ -927,6 +927,15 @@
         original (t2/original card)
         card     (normalize-card card)]
     (collection/check-allowed-content (:type card) (:collection_id changes))
+    ;; a card in a data app's collection stays what a pull of the app accepts
+    (when (and (some? (:collection_id card))
+               (or (not (contains? #{:question :metric} (keyword (:type card))))
+                   (:archived card)
+                   (:public_uuid card)
+                   (:enable_embedding card))
+               (contains? (set (perms/data-app-collection-ids)) (:collection_id card)))
+      (throw (ex-info "A card in a data app's collection must be a question or metric that is not archived, public or embedded"
+                      {:status-code 400})))
     (-> card
         (dissoc :verified-result-metadata?)
         (migrate-schema-governed-columns original changes)
