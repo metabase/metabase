@@ -2,6 +2,7 @@
   (:require
    [clojure.data :as data]
    [malli.core :as mc]
+   [metabase.app-db.core :as mdb]
    [metabase.config.core :as config]
    [metabase.events.core :as events]
    [metabase.explorations.schema]
@@ -280,7 +281,8 @@
   target and the revert leaves the serialized entity unchanged. When the revert changes the serialized entity,
   publishes the `:update` topic of `entity` in [[revisioned-models]] once, with `:reverted-to-revision-id`, after the
   transaction of the revert ends; in an outer transaction, that is before the outer commit. Publishes nothing for a
-  model with no entry, or whose hook publishes the update. A listener error is logged, not thrown."
+  model with no entry, or whose hook publishes the update. A listener error is thrown inside an outer transaction;
+  outside one, it is logged and the committed reversion revision is returned."
   [info :- [:map {:closed true}
             [:id          pos-int?]
             [:user-id     pos-int?]
@@ -319,6 +321,10 @@
                                                      :reverted-to-revision-id revision-id}
                                               previous-object? (assoc :previous-object previous-object)))
         (catch Exception e
+          ;; an outer transaction can still roll back the revert (a failed listener statement aborts it on Postgres),
+          ;; so the caller must see the error
+          (when (mdb/in-transaction?)
+            (throw e))
           ;; the revert committed: the caller gets its result, and a retry would change nothing. `publish-event!` wraps
           ;; each listener error in an `ex-info`
           (log/errorf e "A listener failed on %s after the revert of %s %d" update-topic model-name id))))

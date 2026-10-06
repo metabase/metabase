@@ -233,30 +233,37 @@
   (throw (ex-info "A test listener fails" {})))
 
 (deftest revert-answers-success-when-a-listener-throws-test
-  (mt/with-temp [:model/Card {id :id} {:name "Name one"}]
-    (push-names! :model/Card id ["Name one" "Name two"])
-    (let [revision-id (:id (first (revisions-of :model/Card id)))
-          before      (count (revisions-of :model/Card id))]
-      (events/derive! :event/card-update ::thrower)
+  ;; no `mt/with-temp`: the revert must run outside any transaction, and the request runs in the rollback-only
+  ;; transaction of `mt/with-temp`
+  (mt/with-model-cleanup [:model/AuditLog :model/Revision]
+    (let [id (t2/insert-returning-pk! :model/Card (assoc (t2.with-temp/with-temp-defaults :model/Card) :name "Name one"))]
       (try
-        (mt/with-log-messages-for-level [messages [metabase.revisions :error]]
-          (let [response (mt/user-http-request :crowberto :post 200 "revision/revert"
-                                               {:entity "card" :id id :revision_id revision-id})]
-            (testing "the endpoint answers with the committed reversion revision"
-              (is (=? {:is_reversion true} response)))
-            (testing "the revert is saved"
-              (is (= "Name one" (t2/select-one-fn :name :model/Card :id id)))
-              (is (= (inc before) (count (revisions-of :model/Card id)))))
-            (testing "the listener failure is logged with the topic, the model and the id"
-              (is (some (fn [{:keys [level message e]}]
-                          (and (= :error level)
-                               (some? e)
-                               (str/includes? message (str :event/card-update))
-                               (str/includes? message "Card")
-                               (str/includes? message (str id))))
-                        (messages))))))
+        (is (nil? t2.connection/*current-connectable*))
+        (push-names! :model/Card id ["Name one" "Name two"])
+        (let [revision-id (:id (first (revisions-of :model/Card id)))
+              before      (count (revisions-of :model/Card id))]
+          (events/derive! :event/card-update ::thrower)
+          (try
+            (mt/with-log-messages-for-level [messages [metabase.revisions :error]]
+              (let [response (mt/user-http-request :crowberto :post 200 "revision/revert"
+                                                   {:entity "card" :id id :revision_id revision-id})]
+                (testing "the endpoint answers with the committed reversion revision"
+                  (is (=? {:is_reversion true} response)))
+                (testing "the revert is saved"
+                  (is (= "Name one" (t2/select-one-fn :name :model/Card :id id)))
+                  (is (= (inc before) (count (revisions-of :model/Card id)))))
+                (testing "the listener failure is logged with the topic, the model and the id"
+                  (is (some (fn [{:keys [level message e]}]
+                              (and (= :error level)
+                                   (some? e)
+                                   (str/includes? message (str :event/card-update))
+                                   (str/includes? message "Card")
+                                   (str/includes? message (str id))))
+                            (messages))))))
+            (finally
+              (events/underive! :event/card-update ::thrower))))
         (finally
-          (events/underive! :event/card-update ::thrower))))))
+          (t2/delete! :model/Card :id id))))))
 
 (deftest revert-in-an-outer-transaction-throws-a-listener-error-test
   ;; the outer transaction can still roll back the revert, so success is not known
