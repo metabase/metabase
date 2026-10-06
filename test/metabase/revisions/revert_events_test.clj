@@ -258,6 +258,22 @@
         (finally
           (events/underive! :event/card-update ::thrower))))))
 
+(deftest revert-in-an-outer-transaction-throws-a-listener-error-test
+  ;; the outer transaction can still roll back the revert, so success is not known
+  (mt/with-temp [:model/Card {id :id} {:name "Name one"}]
+    (push-names! :model/Card id ["Name one" "Name two"])
+    (let [revision-id (:id (first (revisions-of :model/Card id)))]
+      (events/derive! :event/card-update ::thrower)
+      (try
+        (t2/with-transaction [_conn]
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"A test listener fails"
+                                (revision/revert! {:entity      :model/Card
+                                                   :id          id
+                                                   :user-id     (mt/user->id :crowberto)
+                                                   :revision-id revision-id}))))
+        (finally
+          (events/underive! :event/card-update ::thrower))))))
+
 (deftest every-revertable-model-has-an-update-topic-test
   (doseq [[entity model] @#'metabase.revisions.api/entity->model]
     (testing entity
