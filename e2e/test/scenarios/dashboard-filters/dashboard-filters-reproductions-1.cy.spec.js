@@ -2031,11 +2031,11 @@ describe("issue 43154", () => {
     cy.signInAsNormalUser();
   });
 
-  it("should be able to see field values with a model-based question (metabase#43154)", () => {
+  it("should be able to see field values with a model-based question with and without aggregation (metabase#43154)", () => {
+    cy.log("Question without aggregation");
     verifyNestedFilter(questionDetails);
-  });
 
-  it("should be able to see field values with a model-based question with aggregation (metabase#43154)", () => {
+    cy.log("Question with aggregation");
     verifyNestedFilter(questionWithAggregationDetails, () =>
       H.getDashboardCard().findByText("18,760").should("be.visible"),
     );
