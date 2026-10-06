@@ -9,7 +9,8 @@
    (java.io File)
    (java.nio.channels FileLock)
    (java.nio.file FileSystems Files LinkOption)
-   (java.nio.file.attribute PosixFilePermissions)
+   (java.nio.file.attribute FileAttribute PosixFilePermissions)
+   (java.util.concurrent CountDownLatch TimeUnit)
    (org.apache.commons.io FileUtils)))
 
 (set! *warn-on-reflection* true)
@@ -124,6 +125,98 @@
          (let [{:keys [^File dir]} (clone-registry/acquire! registry (clone-registry/new-lease url) (fake-clone clones (atom [])))]
            (is (.isDirectory dir) "the next acquire makes a root and clones")
            (is (= [(.getParentFile dir)] (process-roots registry)))))))))
+
+;; A clone job writes into the directory that it got before it started. A concurrent acquire can retire the root of
+;; that directory in the meantime.
+(defn- check-clone-job-in-a-retired-root!
+  "A clone job of [[url]] gets its directory in the process root R1. Then `break-root!` breaks R1, and an acquire of
+  another URL retires R1 and clones into a new root R2. Then the job writes its clone into R1. Checks that the acquire
+  that waited for the job, and a later acquire, get a clone in R2."
+  [break-root!]
+  (do-with-registry!
+   (fn [registry]
+     (let [got-dir (promise)
+           go      (CountDownLatch. 1)
+           slow!   (fn [^File dir]
+                     (deliver got-dir dir)
+                     (.await go 10 TimeUnit/SECONDS)
+                     ;; As JGit does: make the directory and its missing parents, then write the repository.
+                     (.mkdirs dir)
+                     (spit (io/file dir "HEAD") "ref: refs/heads/master")
+                     (reify java.lang.AutoCloseable (close [_])))
+           clone!  (fake-clone (atom []) (atom []))]
+       (try
+         (clone-registry/acquire! registry (clone-registry/new-lease "https://example.com/org/first.git") clone!)
+         (let [root-1      (root-dir registry)
+               waiter      (future (clone-registry/acquire! registry (clone-registry/new-lease url) slow!))
+               ^File dir-1 (deref got-dir 10000 nil)]
+           (is (= root-1 (some-> dir-1 .getParentFile)) "precondition: the clone job got a directory in R1")
+           (break-root! root-1)
+           (let [{other :dir} (clone-registry/acquire! registry (clone-registry/new-lease "https://example.com/org/other.git")
+                                                       clone!)
+                 root-2       (.getParentFile ^File other)]
+             (is (not= root-1 root-2) "precondition: the acquire of the other URL retired R1 and made R2")
+             (.countDown go)
+             (doseq [[what {:keys [^File dir]}] [["the acquire that waited for the job" (deref waiter 10000 nil)]
+                                                 ["a later acquire" (clone-registry/acquire! registry (clone-registry/new-lease url) slow!)]]]
+               (testing what
+                 (is (= root-2 (some-> dir .getParentFile)) "gets a clone in the current root")
+                 (is (.isFile (io/file root-2 ".lock")))))
+             (is (not (.exists dir-1)) "the clone that the job wrote into R1 is deleted")))
+         (finally
+           (.countDown go)))))))
+
+(deftest clone-job-in-a-deleted-root-test
+  (testing "when a cleaner deletes the process root while a clone job runs, and another acquire makes a new root, the clone of the job is not used"
+    (check-clone-job-in-a-retired-root! (fn [^File root] (FileUtils/deleteDirectory root)))))
+
+(deftest clone-job-in-a-root-without-its-lock-file-test
+  (testing "when a cleaner deletes the lock file of the process root while a clone job runs, and another acquire makes a new root, the clone of the job is not used"
+    (check-clone-job-in-a-retired-root! (fn [^File root] (io/delete-file (io/file root ".lock"))))))
+
+(defn- posix? []
+  (contains? (.supportedFileAttributeViews (FileSystems/getDefault)) "posix"))
+
+(defn- set-permissions! [^File f ^String permissions]
+  (Files/setPosixFilePermissions (.toPath f) (PosixFilePermissions/fromString permissions)))
+
+(deftest base-directory-is-owner-only-test
+  (testing "a clone makes the base directory owner-only, so that no other user can enter a directory below it"
+    (testing "a new base directory"
+      (do-with-registry!
+       (fn [registry]
+         (clone-registry/acquire! registry (clone-registry/new-lease url) (fake-clone (atom []) (atom [])))
+         (is (owner-only? (:base-dir registry))))))
+    (when (posix?)
+      (testing "a base directory that exists with wider permissions"
+        (do-with-registry!
+         (fn [registry]
+           (.mkdirs ^File (:base-dir registry))
+           (set-permissions! (:base-dir registry) "rwxr-xr-x")
+           (clone-registry/acquire! registry (clone-registry/new-lease url) (fake-clone (atom []) (atom [])))
+           (is (owner-only? (:base-dir registry)))))))))
+
+(deftest base-directory-symlink-target-keeps-its-permissions-test
+  (when (posix?)
+    (testing "when the base directory is a symbolic link, a clone does not change the permissions of its target"
+      (let [target (io/file (System/getProperty "java.io.tmpdir") (str "clone-registry-test-target-" (random-uuid)))
+            base   (io/file (System/getProperty "java.io.tmpdir") (str "clone-registry-test-" (random-uuid)))]
+        (try
+          (.mkdirs target)
+          (set-permissions! target "rwxr-xr-x")
+          (Files/createSymbolicLink (.toPath base) (.toPath target) (make-array FileAttribute 0))
+          (let [registry (clone-registry/make-registry base)]
+            (try
+              (let [{:keys [^File dir]} (clone-registry/acquire! registry (clone-registry/new-lease url)
+                                                                 (fake-clone (atom []) (atom [])))]
+                (is (.isDirectory dir) "the clone works")
+                (is (= "rwxr-xr-x" (PosixFilePermissions/toString
+                                    (Files/getPosixFilePermissions (.toPath target) (make-array LinkOption 0))))))
+              (finally
+                (clone-registry/shutdown! registry))))
+          (finally
+            (Files/deleteIfExists (.toPath base))
+            (FileUtils/deleteQuietly target)))))))
 
 (deftest leases-share-the-active-generation-test
   (testing "leases on one URL share its active generation, and only the first acquire clones"

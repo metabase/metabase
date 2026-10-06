@@ -847,6 +847,44 @@
               (is (= "rwx------" permissions) "only the owner can use the root")))
           (finally (forget-clones! url)))))))
 
+(deftest root-deleted-during-ls-remote-test
+  (testing "when a cleaner deletes the process root during the lsRemote of a clone, JGit makes the root again below the
+            owner-only base directory, and the caller gets a clone in a new root that holds its lock file"
+    (mt/with-temp-dir [remote-dir nil]
+      (let [url      (remote-url (init-remote! remote-dir :files {"master.txt" "File in master"}))
+            base     (io/file (System/getProperty "java.io.tmpdir") (str "git-test-" (random-uuid)))
+            registry (clone-registry/make-registry base)
+            ls       (mt/original-fn #'git/ls-remote-refs)
+            deleted  (atom nil)
+            seen     (atom [])
+            clone!   (fn [^File dir]
+                       (u/prog1 ((#'git/clone-job url nil) dir)
+                         ;; what is on disk when JGit returns
+                         (swap! seen conj {:root       (.getParentFile dir)
+                                           :root?      (.isDirectory (.getParentFile dir))
+                                           :base-perms (posix-permissions base)})))]
+        (try
+          (mt/with-dynamic-fn-redefs [git/ls-remote-refs (fn [args]
+                                                           (when (compare-and-set! deleted nil (:dir @(:root registry)))
+                                                             (FileUtils/deleteDirectory ^File @deleted))
+                                                           (ls args))]
+            (let [{:keys [^File dir git]} (clone-registry/acquire! registry (clone-registry/new-lease url) clone!)
+                  root                    (.getParentFile dir)
+                  {root-1     :root
+                   root?      :root?
+                   base-perms :base-perms} (first @seen)]
+              (is (= @deleted root-1) "precondition: the first clone job got its directory in the deleted root")
+              (is root? "precondition: JGit made the deleted root again")
+              (when base-perms
+                (is (= "rwx------" base-perms)
+                    "no other user can enter the base directory, so no other user can read the clone in the root that JGit made"))
+              (is (not= root-1 root) "the caller gets a clone in a new root")
+              (is (.isFile (io/file root ".lock")))
+              (is (= "File in master" (git/read-file {:git git :version "master"} "master.txt")))))
+          (finally
+            (clone-registry/shutdown! registry)
+            (FileUtils/deleteQuietly base)))))))
+
 (deftest repository-planted-at-the-old-clone-path-is-not-opened-test
   (testing "a repository at metabase-git/<sha1 of the URL> before the first use is not opened: the source clones anew"
     (mt/with-temp-dir [remote-dir nil]
