@@ -61,23 +61,44 @@
 
 (defn- make-root!
   "Creates a new process root under `base-dir` and locks its lock file. Returns the root: its `:dir`, and the `:channel`
-  and `:lock` of its lock file."
+  and `:lock` of its lock file. On a failure, no new root stays on disk."
   [^File base-dir]
   (Files/createDirectories (.toPath base-dir) (make-array FileAttribute 0))
   (let [dir (io/file base-dir (str "p-" (random-uuid)))]
     (create-owner-only-dir! dir)
-    ;; The channel stays open until `shutdown!`, and nothing in this JVM opens the lock file again: when a JVM closes
-    ;; any channel on a file that it locked, the OS releases the lock.
-    (let [channel (FileChannel/open (.toPath (io/file dir lock-file-name))
-                                    ^"[Ljava.nio.file.OpenOption;"
-                                    (into-array OpenOption [StandardOpenOption/CREATE StandardOpenOption/WRITE]))]
-      (try
-        (u/prog1 {:dir dir :channel channel :lock (.tryLock channel)}
-          (swap! own-roots conj (.getCanonicalPath dir))
-          (log/info "Created the git clone directory of this process" {:path (str dir)}))
-        (catch Throwable e
-          (.close channel)
-          (throw e))))))
+    (try
+      ;; The channel stays open until the root is closed, and nothing in this JVM opens the lock file again: when a JVM
+      ;; closes any channel on a file that it locked, the OS releases the lock.
+      (let [channel (FileChannel/open (.toPath (io/file dir lock-file-name))
+                                      ^"[Ljava.nio.file.OpenOption;"
+                                      (into-array OpenOption [StandardOpenOption/CREATE StandardOpenOption/WRITE]))]
+        (try
+          (u/prog1 {:dir dir :channel channel :lock (.tryLock channel)}
+            (swap! own-roots conj (.getCanonicalPath dir))
+            (log/info "Created the git clone directory of this process" {:path (str dir)}))
+          (catch Throwable e
+            (.close channel)
+            (throw e))))
+      (catch Throwable e
+        (delete-dir! dir)
+        (throw e)))))
+
+(defn- close-root!
+  "Releases the lock of `root` and closes the channel of its lock file."
+  [{:keys [dir ^FileChannel channel ^FileLock lock]}]
+  (try
+    (when (.isOpen channel)
+      (some-> lock .release)
+      (.close channel))
+    (catch Throwable e
+      (log/warn e "Could not release the lock of the git clone directory of this process" {:path (str dir)}))))
+
+(defn- intact-root?
+  "True iff the directory of `root` and its lock file exist."
+  [{:keys [^File dir]}]
+  ;; A cleaner of the temp dir can delete either one. A root without its lock file looks unused to other processes.
+  (and (.isDirectory dir)
+       (.isFile (io/file dir lock-file-name))))
 
 (defn- clone-thread-factory
   "Daemon threads for the clone jobs."
@@ -91,23 +112,11 @@
 (defn make-registry
   "A registry whose process root is a new directory under `base-dir`. It makes nothing on disk before its first clone."
   [^File base-dir]
-  {:base-dir base-dir
-   :root     (atom nil)
-   :state    (atom {})
-   :executor (delay (Executors/newCachedThreadPool (clone-thread-factory)))})
-
-(defn- root!
-  "The process root of `registry`. Makes it at the first call."
-  [{:keys [base-dir root]}]
-  (or @root
-      (locking root
-        (or @root
-            (reset! root (make-root! base-dir))))))
-
-(defn- generation-dir
-  "The directory of generation `id` of `url`."
-  ^File [registry url id]
-  (io/file (:dir (root! registry)) (str (url-key url) "-" id)))
+  {:base-dir  base-dir
+   :root      (atom nil)
+   :old-roots (atom [])
+   :state     (atom {})
+   :executor  (delay (Executors/newCachedThreadPool (clone-thread-factory)))})
 
 (defn new-lease
   "A new lease on the clones of `url`. It holds no generation before [[acquire!]]."
@@ -170,6 +179,37 @@
         (log/info "A git clone directory is gone, so the next use clones again" {:path (str dir)})
         (retire! registry url active)))))
 
+(defn- retire-broken-root!
+  "When the process root of `registry` is not intact, retires it and each active generation in it, so that the next
+  clone makes a new root. [[shutdown!]] deletes a retired root."
+  [{:keys [root old-roots state] :as registry}]
+  (when-let [current @root]
+    (when (and (not (intact-root? current))
+               (compare-and-set! root current nil))
+      (log/warn "The git clone directory of this process or its lock file is gone, so the next clone makes a new one"
+                {:path (str (:dir current))})
+      (close-root! current)
+      (swap! old-roots conj (:dir current))
+      (doseq [[url {:keys [active generations]}] @state
+              :let  [^File dir (get-in generations [active :dir])]
+              :when (and dir (= (:dir current) (.getParentFile dir)))]
+        (retire! registry url active)))))
+
+(defn- root!
+  "The intact process root of `registry`. Makes a new root at the first call, and when the current root is not intact."
+  [{:keys [base-dir root] :as registry}]
+  ;; A clone into a deleted root would make its path again, with default permissions and no lock file.
+  (retire-broken-root! registry)
+  (or @root
+      (locking root
+        (or @root
+            (reset! root (make-root! base-dir))))))
+
+(defn- generation-dir
+  "The directory of generation `id` of `url`."
+  ^File [registry url id]
+  (io/file (:dir (root! registry)) (str (url-key url) "-" id)))
+
 (defn- start-job!
   "Runs the clone job of generation `id` of `url` on the executor of `registry`, and delivers its result to `job`."
   [{:keys [state executor] :as registry} url id job clone!]
@@ -216,6 +256,7 @@
   its own wait. A failure of the job goes to every caller that waits for it, and the next call starts a new job."
   [{:keys [state] :as registry} {lease-id :id url :url} clone!]
   (loop []
+    (retire-broken-root! registry)
     (retire-missing! registry url)
     (let [[old new]            (swap-vals! state update url
                                            (fn [{:keys [active job] :as entry}]
@@ -236,8 +277,9 @@
                  (recur))))))
 
 (defn shutdown!
-  "Stops the clone jobs of `registry`, closes every clone, releases the lock of the process root and deletes the root."
-  [{:keys [state root executor]}]
+  "Stops the clone jobs of `registry`, closes every clone, releases the lock of the process root, and deletes the root
+  and each retired root."
+  [{:keys [state root old-roots executor]}]
   (when (realized? executor)
     (.shutdownNow ^ExecutorService @executor))
   (doseq [[_ {:keys [generations]}] @state
@@ -246,13 +288,10 @@
       (.close git)
       (catch Throwable e
         (log/warn e "Could not close a git clone" {:path (str dir)}))))
-  (when-let [{:keys [dir ^FileChannel channel ^FileLock lock]} @root]
-    (try
-      (some-> lock .release)
-      (.close channel)
-      (catch Throwable e
-        (log/warn e "Could not release the lock of the git clone directory of this process" {:path (str dir)})))
-    (delete-dir! dir)))
+  (when-let [current @root]
+    (close-root! current)
+    (delete-dir! (:dir current)))
+  (run! delete-dir! @old-roots))
 
 (defonce ^:private ^{:doc "The registry of this process, under `<java.io.tmpdir>/metabase-git`. Its shutdown hook
   runs [[shutdown!]]."}
