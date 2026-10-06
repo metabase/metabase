@@ -133,6 +133,24 @@
                     (not (contains? external-dependency-models model)))]
         (problem path (tru "{0} references {1} {2}, which is not one of the app''s resources." path model id))))))
 
+(defn- numeric-reference-problems
+  "A serialized query names cards, tables, fields and snippets by entity ID or by path. A numeric ID names a row on one
+  instance only, and the dependency checks, which read entity IDs, don't see it."
+  [{:keys [path entity]}]
+  (let [numeric? (volatile! false)]
+    (walk/postwalk (fn [x]
+                     (when (or (and (map? x)
+                                    (some #(integer? (get x %)) [:source-card :source-table :card-id :snippet-id :table-id]))
+                               (and (vector? x)
+                                    (or (string? (first x)) (keyword? (first x)))
+                                    (contains? #{"field" "metric" "segment" "measure"} (name (first x)))
+                                    (some integer? (rest x))))
+                       (vreset! numeric? true))
+                     x)
+                   (select-keys entity [:dataset_query :query]))
+    (when @numeric?
+      [(problem path (tru "{0} must not reference a card, table, field or snippet by numeric ID." path))])))
+
 (defn- duplicate-problems [resources]
   (for [[[model entity-id] files] (group-by (juxt :model (comp :entity_id :entity)) resources)
         :when (< 1 (count files))]
@@ -269,6 +287,7 @@
           structural
           (concat
            (mapcat (partial model-problems collection-entity-id) resources)
+           (mapcat numeric-reference-problems resources)
            (mapcat (partial dependency-problems collection-entity-id card-entity-ids) resources)
            (ownership-problems (-> manifest :entity :entity_id) collection-entity-id resources)
            (external-dependency-problems defined resources)
