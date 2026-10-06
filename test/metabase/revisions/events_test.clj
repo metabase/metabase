@@ -35,7 +35,7 @@
 (defn- table-topics [entry]
   (vals (select-keys entry [:create :update :delete])))
 
-(defn- listener-calls
+(defn- listener-calls!
   "The `[model is-creation?]` of each `revision/push-revision!` call when the revisions listener handles `topic`."
   [topic model]
   (let [calls (atom [])]
@@ -68,7 +68,7 @@
   (testing "the listener pushes one revision for each topic, with the model and :is-creation? of the topic"
     (doseq [[topic [model :as call]] topic->listener-call]
       (testing topic
-        (is (= [call] (listener-calls topic model)))))))
+        (is (= [call] (listener-calls! topic model)))))))
 
 (defn- card-properties
   "Some default properties for `Cards` for use in tests in this namespace."
