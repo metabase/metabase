@@ -1,0 +1,42 @@
+.dropdownFieldSet {
+  min-width: 0;
+  text-overflow: ellipsis;
+  border: 2px solid var(--mb-color-border-neutral);
+  margin: 0;
+  padding: var(--mantine-spacing-sm) var(--mantine-spacing-md);
+  cursor: pointer;
+
+  & legend {
+    min-width: 0;
+    max-width: 100%;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    text-transform: none;
+    position: relative;
+    height: 2px;
+    line-height: 0;
+    margin-left: -0.45em;
+    padding: 0 0.5em;
+  }
+}
+
+.hasValue {
+  border-color: var(--mb-color-core-brand);
+
+  &,
+  & legend {
+    color: var(--mb-color-core-brand);
+  }
+}
+
+.labelIcon {
+  overflow: visible;
+}
+
+.overflowHidden {
+  overflow: hidden;
+}
+
+.eventSandbox {
+  display: contents;
+}

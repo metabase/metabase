@@ -6,12 +6,17 @@ import type {
   SearchFilterPropTypes,
 } from "metabase/common/search/types";
 import type { StackProps } from "metabase/ui";
-import { Button, Center, FocusTrap, Group, Loader } from "metabase/ui";
-
 import {
-  DropdownApplyButtonDivider,
-  SearchPopoverContainer,
-} from "./SearchFilterPopoverWrapper.styled";
+  Box,
+  Button,
+  Center,
+  FocusTrap,
+  Group,
+  Loader,
+  Stack,
+} from "metabase/ui";
+
+import S from "./SearchFilterPopoverWrapper.module.css";
 
 type SearchFilterPopoverWrapperProps<T extends FilterTypeKeys = any> = {
   children: ReactNode;
@@ -41,13 +46,13 @@ export const SearchFilterPopoverWrapper = ({
 
   return (
     <FocusTrap active>
-      <SearchPopoverContainer gap={0} {...stackProps}>
+      <Stack className={S.container} w="100%" gap={0} {...stackProps}>
         {children}
-        <DropdownApplyButtonDivider />
+        <Box component="hr" className={S.divider} w="100%" />
         <Group justify="flex-end" align="center" px="sm" pb="sm">
           <SearchFilterApplyButton onApply={onApply} />
         </Group>
-      </SearchPopoverContainer>
+      </Stack>
     </FocusTrap>
   );
 };

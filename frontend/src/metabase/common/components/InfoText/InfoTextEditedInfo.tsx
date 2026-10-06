@@ -2,16 +2,14 @@ import { t } from "ttag";
 import { isNull } from "underscore";
 
 import { useListUserRecipientsQuery } from "metabase/api";
+import { LastEditInfoLabel } from "metabase/common/components/LastEditInfoLabel";
 import { dayjs } from "metabase/dayjs";
 import { Text, Tooltip } from "metabase/ui";
 import { getRelativeTime } from "metabase/utils/time-dayjs";
 import { isNotNull } from "metabase/utils/types";
 import type { SearchResult, UserListResult } from "metabase-types/api";
 
-import {
-  LastEditedInfoText,
-  LastEditedInfoTooltip,
-} from "./InfoTextEditedInfo.styled";
+import S from "./InfoTextEditedInfo.module.css";
 
 const LoadingText = () => (
   <Text
@@ -87,14 +85,26 @@ export const InfoTextEditedInfo = ({
     if (isCompact) {
       const formattedDuration = timestamp && getRelativeTime(timestamp);
       return (
-        <Tooltip label={<LastEditedInfoTooltip {...lastEditedInfoData} />}>
+        <Tooltip
+          label={
+            <LastEditInfoLabel
+              className={S.lastEditedInfoTooltip}
+              {...lastEditedInfoData}
+            />
+          }
+        >
           <Text component="span" size="sm" c="text-secondary" truncate>
             {formattedDuration}
           </Text>
         </Tooltip>
       );
     }
-    return <LastEditedInfoText {...lastEditedInfoData} />;
+    return (
+      <LastEditInfoLabel
+        className={S.lastEditedInfoText}
+        {...lastEditedInfoData}
+      />
+    );
   };
 
   return (

@@ -1,0 +1,21 @@
+.lastEditedInfoText {
+  color: var(--mb-color-text-secondary);
+  font-size: var(--mantine-font-size-sm);
+  font-weight: 500;
+  cursor: pointer;
+
+  &:hover {
+    color: var(--mb-color-core-brand);
+  }
+
+  @media (--breakpoint-max-sm) {
+    text-overflow: ellipsis;
+    overflow: hidden;
+    white-space: nowrap;
+    max-width: 50%;
+  }
+}
+
+.lastEditedInfoTooltip {
+  color: var(--mb-color-tooltip-text);
+}
