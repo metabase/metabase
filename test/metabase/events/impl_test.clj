@@ -34,3 +34,65 @@
       (is (= {:metabase.events.impl-test/test-topic  {:some :object}
               :metabase.events.impl-test/test-topics {:some :object}}
              @*method-calls*)))))
+
+(events.hierarchy/derive! ::throwing-topics :metabase/event)
+(events.hierarchy/derive! ::throwing-topic ::throwing-topics)
+
+(defn- record-call-and-maybe-throw!
+  "Listener body for the throwing topics: records the call, then throws when `listener` is in the event's `::throw`
+  set."
+  [listener event]
+  (swap! *method-calls* assoc listener event)
+  (when (contains? (::throw event) listener)
+    (throw (ex-info (str "boom " listener) {:listener listener}))))
+
+(methodical/defmethod events/publish-event! ::throwing-topics
+  [_topic event]
+  (record-call-and-maybe-throw! ::throwing-topics event))
+
+(methodical/defmethod events/publish-event! ::throwing-topic
+  [_topic event]
+  (record-call-and-maybe-throw! ::throwing-topic event))
+
+(defn- publish-and-catch
+  "Publish `event` to `::throwing-topic`; return the thrown exception, or nil."
+  [event]
+  (try
+    (events/publish-event! ::throwing-topic event)
+    nil
+    (catch Throwable e
+      e)))
+
+(deftest every-listener-runs-when-another-throws-test
+  ;; The order of the listeners is not fixed, so make each one the thrower in turn.
+  (doseq [thrower [::throwing-topic ::throwing-topics]]
+    (testing (str "listener " thrower " throws")
+      (binding [*method-calls* (atom {})]
+        (let [event {::throw #{thrower}}
+              e     (publish-and-catch event)
+              cause (ex-cause e)]
+          (testing "every listener ran"
+            (is (= {::throwing-topic  event
+                    ::throwing-topics event}
+                   @*method-calls*)))
+          (testing "publish-event! throws the error of the listener"
+            (is (= {:topic ::throwing-topic, :event event}
+                   (ex-data e)))
+            (is (= {:listener thrower}
+                   (ex-data cause)))
+            (is (empty? (.getSuppressed ^Throwable cause))))))))
+  (testing "both listeners throw"
+    (binding [*method-calls* (atom {})]
+      (let [event {::throw #{::throwing-topic ::throwing-topics}}
+            e     (publish-and-catch event)
+            cause ^Throwable (ex-cause e)]
+        (testing "every listener ran"
+          (is (= {::throwing-topic  event
+                  ::throwing-topics event}
+                 @*method-calls*)))
+        (testing "publish-event! throws one error, with the other as suppressed"
+          (is (= 1 (count (.getSuppressed cause))))
+          (is (= #{::throwing-topic ::throwing-topics}
+                 (into #{}
+                       (map (comp :listener ex-data))
+                       (cons cause (.getSuppressed cause))))))))))
