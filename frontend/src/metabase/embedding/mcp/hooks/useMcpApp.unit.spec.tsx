@@ -479,6 +479,21 @@ describe("useMcpApp", () => {
       expect(getCurrentMcpQueryHandle()).toBe(NEXT_QUERY_HANDLE);
     });
 
+    it("keeps a derived handle current when the host delivers the same tool result again", async () => {
+      const { app } = setup({
+        callServerTool: jest.fn().mockResolvedValue(createAuthResult()),
+        getHostCapabilities: jest.fn(() => ({ serverTools: {} })),
+      });
+
+      await act(async () => app.ontoolresult(QUERY_RESULT));
+      setCurrentMcpQueryHandle(NEXT_QUERY_HANDLE);
+
+      // The same handle again, in a new payload object.
+      await act(async () => app.ontoolresult({ ...QUERY_RESULT }));
+
+      expect(getCurrentMcpQueryHandle()).toBe(NEXT_QUERY_HANDLE);
+    });
+
     it("makes a new tool result's handle current", async () => {
       const { app, result } = setup({
         callServerTool: jest.fn().mockResolvedValue(createAuthResult()),

@@ -90,10 +90,12 @@ export function useMcpApp(): McpAppState {
   const pendingQueryHandleRef = useRef<string | null>(null);
 
   /**
-   * The tool result already resolved. Once resolved, the iframe may have
-   * derived other handles from it, so resolving it again would undo them.
+   * The tool result handle already resolved. Once resolved, the iframe may have
+   * derived other handles from it, so resolving it again would undo them. A
+   * host may deliver the same result again as a new payload, so this is the
+   * handle, not the payload.
    */
-  const resolvedToolResultRef = useRef<VisualizeQueryToolPayload | null>(null);
+  const resolvedQueryHandleRef = useRef<string | null>(null);
 
   // `app` is stable across re-renders
   const { app } = useApp({
@@ -122,14 +124,17 @@ export function useMcpApp(): McpAppState {
   /**
    * Runs once the UI credential exists, because resolving a handle needs it.
    * The credential is refreshed on a timer, so this fires again for the same
-   * payload. A payload is resolved only once: a repeat would make the original
+   * payload. A handle is resolved only once: a repeat would make the original
    * handle current again over any handle the iframe has since derived.
    */
   const handleAuthenticated = useCallback(
     (auth: { uiCredential: string; mcpSessionId: string }) => {
       const toolResult = pendingToolResultRef.current;
 
-      if (!toolResult || toolResult === resolvedToolResultRef.current) {
+      if (
+        !toolResult ||
+        toolResult.query_handle === resolvedQueryHandleRef.current
+      ) {
         return;
       }
 
@@ -164,7 +169,7 @@ export function useMcpApp(): McpAppState {
 
           // Before the query: the question built from it runs through this handle.
           setCurrentMcpQueryHandle(queryHandle);
-          resolvedToolResultRef.current = toolResult;
+          resolvedQueryHandleRef.current = queryHandle;
           setQuery(resolved.query);
           setPrompt(resolved.prompt ?? prompt ?? null);
         } catch (error) {
