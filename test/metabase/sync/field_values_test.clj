@@ -81,16 +81,16 @@
              (venues-price-field-values))))))
 
 (deftest sync-skips-field-values-of-user-hidden-table-test
-  (testing "syncing refreshes the FieldValues of a visible table but not of one hidden through PUT /api/table/:id"
+  (testing "sync refreshes a table's FieldValues until a user hides it through PUT /api/table/:id"
     (data/with-temp-copy-of-db
-      (letfn [(stale-values-after-sync! []
+      (letfn [(field-values-after-sync! []
                 (field-values/get-or-create-full-field-values! (t2/select-one :model/Field (mt/id :venues :price)))
                 (t2/update! :model/FieldValues :field_id (mt/id :venues :price) :type :full {:values [10 20 30 40]})
                 (sync/update-field-values! (data/db))
                 (venues-price-field-values))]
-        (is (= [1 2 3 4] (stale-values-after-sync!)))
+        (is (= [1 2 3 4] (field-values-after-sync!)))
         (mt/user-http-request :crowberto :put 200 (format "table/%d" (mt/id :venues)) {:visibility_type "hidden"})
-        (is (= [10 20 30 40] (stale-values-after-sync!)))))))
+        (is (= [10 20 30 40] (field-values-after-sync!)))))))
 
 (deftest sync-should-properly-handle-last-used-at
   (try

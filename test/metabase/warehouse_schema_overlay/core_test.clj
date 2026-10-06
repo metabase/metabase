@@ -36,17 +36,17 @@
                    :model/Table {put-hidden :id}       {}
                    :model/Table {data-studio :id}      {}
                    :model/Table {cruft-cleared :id}    {:visibility_type :cruft}
-                   :model/Table {description-only :id} {}]
+                   :model/Table {description-only :id} {:visibility_type :cruft}]
       (mt/user-http-request :crowberto :put 200 (format "table/%d" put-hidden) {:visibility_type "hidden"})
       (mt/user-http-request :crowberto :post 200 "data-studio/table/edit"
                             {:table_ids [data-studio] :data_layer "hidden"})
       (t2/insert! :model/TableUserSettings {:table_id cruft-cleared :visibility_type nil})
       (t2/insert! :model/TableUserSettings {:table_id description-only :description "user description"})
-      (doseq [[desc table-id expected] [["no settings row"                                  plain            nil]
-                                        ["sync's cruft with no settings row"                cruft            "cruft"]
-                                        ["hidden through PUT /api/table/:id"                put-hidden       "hidden"]
-                                        ["data_layer hidden through Data Studio"            data-studio      "hidden"]
-                                        ["an explicit user NULL over sync's cruft"          cruft-cleared    nil]
-                                        ["a settings row that leaves visibility_type unset" description-only nil]]]
+      (doseq [[desc table-id expected] [["no settings row"                                      plain            nil]
+                                        ["sync's cruft with no settings row"                    cruft            "cruft"]
+                                        ["hidden through PUT /api/table/:id"                    put-hidden       "hidden"]
+                                        ["data_layer hidden through Data Studio"                data-studio      "hidden"]
+                                        ["an explicit user NULL over sync's cruft"              cruft-cleared    nil]
+                                        ["a settings row with visibility_type unset over cruft" description-only "cruft"]]]
         (testing desc
           (is (= [expected expected] (visibility-types table-id))))))))

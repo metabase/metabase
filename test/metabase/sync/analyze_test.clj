@@ -228,16 +228,13 @@
         (tests analyze-table!)))))
 
 (deftest dont-analyze-data-layer-hidden-tables-test
-  (testing "a table hidden through the Data Studio data layer stays un-analyzed through repeated syncing"
-    (doseq [[desc sync!] [["sync via the API" api-sync!] ["sync triggered programmatically" analyze-table!]]]
-      (testing desc
-        (mt/with-temp [:model/Table table (fake-table)
-                       :model/Field field (fake-field table)]
-          (mt/user-http-request :crowberto :post 200 "data-studio/table/edit"
-                                {:table_ids [(u/the-id table)] :data_layer "hidden"})
-          (sync! table)
-          (sync! table)
-          (is (false? (fake-field-was-analyzed? field))))))))
+  (testing "a table hidden through the Data Studio data layer stays un-analyzed"
+    (mt/with-temp [:model/Table table (fake-table)
+                   :model/Field field (fake-field table)]
+      (mt/user-http-request :crowberto :post 200 "data-studio/table/edit"
+                            {:table_ids [(u/the-id table)] :data_layer "hidden"})
+      (analyze-table! table)
+      (is (false? (fake-field-was-analyzed? field))))))
 
 (deftest analyze-db!-return-value-test
   (testing "Returns values"

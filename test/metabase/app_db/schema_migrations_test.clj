@@ -3458,8 +3458,8 @@
                   (t2/select-one :metabase_field_user_settings :field_id mixed-id))))))))
 
 (deftest table-user-settings-migration-keeps-hidden-tables-hidden-test
-  (testing "v64.2026-09-11T00:00:06: a table hidden before the move to metabase_table_user_settings stays hidden as
-           users see it, whether or not the backfill gave it a settings row"
+  (testing "v64.2026-09-11T00:00:05-06: the backfill and the reset leave the visibility_type users see unchanged, with
+           or without a settings row"
     (impl/test-migrations ["v64.2026-09-11T00:00:00" "v64.2026-09-11T00:00:06"] [migrate!]
       (let [db-id           (t2/insert-returning-pk! :metabase_database {:name       "Table User Settings Test DB"
                                                                          :engine     "h2"

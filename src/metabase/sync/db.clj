@@ -21,8 +21,8 @@
    [toucan2.core :as t2]))
 
 (mu/defn- sync-tables-clause
-  "Honey SQL clause selecting the Tables aliased `table-alias` that take part in sync: active and not hidden, as
-  users see it."
+  "Honey SQL clause matching the Tables aliased `table-alias` that take part in sync: active, with no
+  `visibility_type` as users see it."
   [table-alias :- :keyword]
   [:and
    [:= (u/qualified-key table-alias :active) true]
