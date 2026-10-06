@@ -300,6 +300,35 @@
          (is (= "remote edit A" (desc a)))
          (is (= "synced" (:status (row "Card" a)))))))))
 
+;;; ------------------------------------------------- the pre-check -------------------------------------------------
+
+(defmacro ^:private before-the-pre-check
+  "Run `body` with the pre-check of a merge pull first calling `(f)`. The pull runs the pre-check after the merge and
+  before the load."
+  [f & body]
+  `(let [real# (mt/original-fn #'save-rule/pre-check!)]
+     (mt/with-dynamic-fn-redefs [save-rule/pre-check! (fn [& args#]
+                                                        (~f)
+                                                        (apply real# args#))]
+       ~@body)))
+
+(deftest save-after-the-merge-and-before-the-load-stops-the-pull-before-any-write-test
+  (testing "The remote edits A, B and C. After the merge read ours and before the load, the user saves B. The
+            pre-check stops the pull with a conflict on B, and the pull writes nothing."
+    (do-with-synced-cards!
+     (fn [{:keys [a b c t0]}]
+       (let [version0   (remote-sync.task/last-version)
+             t1         (-> t0 (edit "Card A" "remote edit A") (edit "Card B" "remote edit B") (edit "Card C" "remote edit C"))
+             [_ result] (before-the-pre-check #(save! b "edit before the load") (merge-pull! t0 t1))]
+         (is (= :conflict (:status result)) (pr-str (summary result)))
+         (is (= ["Card B"] (distinct (keep #(re-find #"Card [ABC]" %) (:conflicts result)))))
+         (is (= (str "Import blocked: content changed locally during the pull, and the remote branch also changed it. "
+                     "Your local change is kept.")
+                (:message result)))
+         (is (= version0 (remote-sync.task/last-version)) "a stop does not move the version")
+         (is (= ["original" "edit before the load" "original"] [(desc a) (desc b) (desc c)]) "the pull writes nothing")
+         (is (= "update" (:status (row "Card" b)))))))))
+
 ;;; --------------------------------------------- the stop and what follows ---------------------------------------------
 
 (defn- stopped-pull!
@@ -569,7 +598,151 @@
               (is (or (nil? error) gone?) "the public link succeeds, or it fails because the pull deleted its entity")
               (is gone? "the remote delete lands"))))))))
 
-;;; ------------------------------------------ the delete closure (R13) ------------------------------------------
+;;; ---------------------------------------------- the delete closure ----------------------------------------------
+
+(defn- archive-action!
+  "Archive the action `action-id` and publish its update event, as the action API does."
+  [action-id]
+  (t2/update! :model/Action action-id {:archived true})
+  (events/publish-event! :event/action-update {:object  (t2/select-one :model/Action action-id)
+                                               :user-id (mt/user->id :rasta)}))
+
+(defn- add-action!
+  "Add a query action to the model `model-id` and publish its create event, as the action API does. Returns its id."
+  [model-id]
+  (let [id (t2/insert-returning-pk! :model/Action {:name "New action" :type :query :model_id model-id})]
+    (t2/insert! :model/QueryAction {:action_id id :dataset_query (mt/native-query {:query "select 1"})})
+    (events/publish-event! :event/action-create {:object  (t2/select-one :model/Action id)
+                                                 :user-id (mt/user->id :rasta)})
+    id))
+
+(defn- push!
+  "Push the local changes over the synced files `t0` (the version \"v0\"). Returns the pushed files. The ledger and the
+  task then record the pushed version as the last sync."
+  [t0]
+  (let [src    (test-helpers/versioned-source :trees {"v0" t0} :current "v0")
+        result (sync! "export" #(impl/export! (source.p/snapshot src) % "push" :source src))]
+    (is (= :success (:status result)) (pr-str (summary result)))
+    (tree (source.p/snapshot src))))
+
+(defn- merge-pull-over-last-push!
+  "Merge-pull the files `t2` over the files `t1` of the version that the last push recorded. Returns the result."
+  [t1 t2]
+  (let [v1  (remote-sync.task/last-version)
+        src (test-helpers/versioned-source :trees {v1 t1 "v2" t2} :current "v2")]
+    (sync! "import" #(impl/import! (source.p/snapshot src) % :merge? true :base-snapshot (source.p/snapshot-at src v1)))))
+
+(deftest archived-and-pushed-action-of-a-remote-deleted-model-test
+  (testing "The user archives action A of model M and pushes, so the last sync has no file of A. The remote then
+            deletes M and edits card B. The delete of the archived A loses no local change, so the pull succeeds."
+    (with-sync-settings
+      (mt/with-temp [:model/Collection  {coll-id :id}   {:name "Merge Test" :is_remote_synced true :location "/"}
+                     :model/Card        {model-id :id}  {:name "Model M" :type :model :collection_id coll-id
+                                                         :dataset_query (venues-query)}
+                     :model/Card        {b :id}         {:name "Card B" :description "original" :collection_id coll-id}
+                     :model/Action      {action-id :id} {:name "Old action" :type :query :model_id model-id}
+                     :model/QueryAction _               {:action_id     action-id
+                                                         :dataset_query (mt/native-query {:query "select 1"})}]
+        (let [t0     (export-and-pull!)
+              _      (archive-action! action-id)
+              t1     (push! t0)
+              _      (is (nil? (path-of t1 "Old action")) "the push removes the file of the archived action")
+              result (merge-pull-over-last-push! t1 (-> t1 (dissoc (path-of t1 "Model M")) (edit "Card B" "remote edit B")))]
+          (is (= :success (:status result)) (pr-str (summary result)))
+          (is (not (t2/exists? :model/Card :id model-id)))
+          (is (not (t2/exists? :model/Action :id action-id)))
+          (is (nil? (row "Action" action-id)))
+          (is (= "remote edit B" (desc b))))))))
+
+(deftest archived-and-pushed-dashboard-question-of-a-remote-deleted-dashboard-test
+  (testing "The user archives dashboard question Q of dashboard D and pushes. The remote then deletes D. The delete of
+            the archived Q loses no local change, so the pull succeeds."
+    (with-sync-settings
+      (mt/with-temp [:model/Collection {coll-id :id} {:name "Merge Test" :is_remote_synced true :location "/"}
+                     :model/Dashboard  {d :id}       {:name "Dash D" :collection_id coll-id}
+                     :model/Card       {q :id}       {:name "Question Q" :collection_id coll-id :dashboard_id d}
+                     :model/Card       _             {:name "Card B" :collection_id coll-id}]
+        (let [t0     (export-and-pull!)
+              _      (t2/update! :model/Card q {:archived true})
+              _      (publish-card-update! q)
+              t1     (push! t0)
+              _      (is (nil? (path-of t1 "Question Q")) "the push removes the file of the archived question")
+              result (merge-pull-over-last-push! t1 (dissoc t1 (path-of t1 "Dash D")))]
+          (is (= :success (:status result)) (pr-str (summary result)))
+          (is (not (t2/exists? :model/Dashboard :id d)))
+          (is (not (t2/exists? :model/Card :id q)))
+          (is (nil? (row "Card" q))))))))
+
+(deftest locally-archived-action-of-a-remote-deleted-model-whose-file-the-remote-keeps-test
+  (testing "The user archives action A of model M after the last sync. The remote deletes M, keeps the file of A, and
+            edits card B. Both sides remove A (the user archived it, and the remote deleted its model), so its delete
+            loses no local change: the pull succeeds, and A and its ledger row are gone."
+    (with-sync-settings
+      (mt/with-temp [:model/Collection  {coll-id :id}   {:name "Merge Test" :is_remote_synced true :location "/"}
+                     :model/Card        {model-id :id}  {:name "Model M" :type :model :collection_id coll-id
+                                                         :dataset_query (venues-query)}
+                     :model/Card        {b :id}         {:name "Card B" :description "original" :collection_id coll-id}
+                     :model/Action      {action-id :id} {:name "Old action" :type :query :model_id model-id}
+                     :model/QueryAction _               {:action_id     action-id
+                                                         :dataset_query (mt/native-query {:query "select 1"})}]
+        (let [t0         (export-and-pull!)
+              _          (archive-action! action-id)
+              [_ result] (merge-pull! t0 (-> t0 (dissoc (path-of t0 "Model M")) (edit "Card B" "remote edit B")))]
+          (is (some? (path-of t0 "Old action")))
+          (is (= :success (:status result)) (pr-str (summary result)))
+          (is (not (t2/exists? :model/Card :id model-id)))
+          (is (not (t2/exists? :model/Action :id action-id)))
+          (is (nil? (row "Action" action-id)))
+          (is (= "remote edit B" (desc b))))))))
+
+(deftest change-of-a-closure-entity-during-the-pull-stops-the-reconcile-test
+  (testing "The remote deletes model M and keeps the file of its action A. After the load and before the reconcile, the
+            user edits A. The reconcile stops the pull, and M and A stay with the edit."
+    (with-sync-settings
+      (mt/with-temp [:model/Collection  {coll-id :id}   {:name "Merge Test" :is_remote_synced true :location "/"}
+                     :model/Card        {model-id :id}  {:name "Model M" :type :model :collection_id coll-id
+                                                         :dataset_query (venues-query)}
+                     :model/Action      {action-id :id} {:name "Old action" :description "original" :type :query
+                                                         :model_id model-id}
+                     :model/QueryAction _               {:action_id     action-id
+                                                         :dataset_query (mt/native-query {:query "select 1"})}]
+        (let [t0         (export-and-pull!)
+              version0   (remote-sync.task/last-version)
+              edit!      (fn []
+                           (t2/update! :model/Action action-id {:description "edit during pull"})
+                           (events/publish-event! :event/action-update {:object  (t2/select-one :model/Action action-id)
+                                                                        :user-id (mt/user->id :rasta)}))
+              [_ result] (merge-pull! t0 (dissoc t0 (path-of t0 "Model M")) (once-at! 0.75 edit!))]
+          (is (= :conflict (:status result)) (pr-str (summary result)))
+          (is (= (str "Import blocked: content changed locally during the pull, and the remote branch deleted the "
+                      "content that holds it. Your local change is kept.")
+                 (:message result)))
+          (is (= version0 (remote-sync.task/last-version)) "a stop does not move the version")
+          (is (t2/exists? :model/Card :id model-id) "the model stays")
+          (is (= "edit during pull" (t2/select-one-fn :description :model/Action action-id)) "the edit stays"))))))
+
+(deftest action-added-before-the-load-under-a-remote-deleted-model-stops-before-any-write-test
+  (testing "The remote deletes model M and edits card B. After the merge read ours and before the load, the user adds
+            an action to M. The pull stops before the load, so it writes nothing: B keeps its text."
+    (with-sync-settings
+      (mt/with-temp [:model/Collection {coll-id :id}  {:name "Merge Test" :is_remote_synced true :location "/"}
+                     :model/Card       {model-id :id} {:name "Model M" :type :model :collection_id coll-id
+                                                       :dataset_query (venues-query)}
+                     :model/Card       {b :id}        {:name "Card B" :description "original" :collection_id coll-id}]
+        (mt/with-model-cleanup [:model/Action]
+          (let [t0         (export-and-pull!)
+                version0   (remote-sync.task/last-version)
+                action-id  (atom nil)
+                [_ result] (before-the-pre-check #(reset! action-id (add-action! model-id))
+                                                 (merge-pull! t0 (-> t0 (dissoc (path-of t0 "Model M")) (edit "Card B" "remote edit B"))))]
+            (is (= :conflict (:status result)) (pr-str (summary result)))
+            (is (= (str "Import blocked: content was added locally during the pull under content that the remote "
+                        "branch deleted. Your local change is kept.")
+                   (:message result)))
+            (is (= version0 (remote-sync.task/last-version)) "a stop does not move the version")
+            (is (= "original" (desc b)) "the pull writes nothing")
+            (is (t2/exists? :model/Card :id model-id) "the model stays")
+            (is (t2/exists? :model/Action :id @action-id) "the new action stays")))))))
 
 (deftest action-created-during-the-pull-under-a-remote-deleted-model-stops-the-pull-test
   (testing "The remote deletes model M. After the merge and before the reconcile, the user adds an action to M. The
