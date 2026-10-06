@@ -3,18 +3,21 @@ import { Fragment } from "react";
 import { Anchor, Group, Text } from "metabase/ui";
 import { collection as collectionUrl } from "metabase/urls";
 
-import { getVirtualRootUrl } from "../../displayGroups";
+import { findVirtualRoot } from "../../displayGroups";
 import type { CollectionPathSegment } from "../../utils";
 
 interface CollectionPathProps {
   segments: CollectionPathSegment[];
 }
 
-const segmentUrl = (segment: CollectionPathSegment): string =>
+const segmentUrl = (segment: CollectionPathSegment): string => {
   // Virtual roots (sentinel ids) have no real collection page, so link them to
   // their list pages instead of building a dead /collection/-1-... URL.
-  getVirtualRootUrl(segment.id) ??
-  collectionUrl({ id: segment.id, name: segment.name });
+  const virtualRoot = findVirtualRoot(segment.id);
+  return virtualRoot
+    ? virtualRoot.url()
+    : collectionUrl({ id: segment.id, name: segment.name });
+};
 
 // TODO: see if we can use the CollectionBreadcrumb component here
 export const CollectionPath = ({ segments }: CollectionPathProps) => {

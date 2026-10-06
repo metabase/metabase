@@ -27,6 +27,18 @@ const DATA_APPS_ROOT_ID = -2;
  * Configuration for how entities are grouped and displayed in the changes view.
  * Similar to the backend remote-sync-specs pattern.
  */
+/**
+ * A synthetic root collection for a group whose entities have no real one.
+ */
+export type VirtualRoot = {
+  /** Sentinel collection ID (e.g., -1 for Transforms) */
+  id: number;
+  /** i18n function for the root's name */
+  name: () => string;
+  /** Page the root links to, since it has no collection page */
+  url: () => string;
+};
+
 export type DisplayGroupSpec = {
   /** Unique identifier for this group */
   id: string;
@@ -34,12 +46,8 @@ export type DisplayGroupSpec = {
   namespace?: string;
   /** Model types that belong to this group */
   models?: Set<RemoteSyncEntityModel>;
-  /** Virtual root ID for groups that have a synthetic root (e.g., -1 for Transforms) */
-  virtualRootId?: number;
-  /** i18n function for virtual root name */
-  virtualRootName?: () => string;
-  /** Page the virtual root links to, since it has no collection page */
-  virtualRootUrl?: () => string;
+  /** Synthetic root for groups whose entities have no real collection */
+  virtualRoot?: VirtualRoot;
   /** Icon to display for this group's collections */
   icon: IconName;
   /** ID of another group whose path should be prepended */
@@ -57,9 +65,11 @@ const displayGroupSpecs: DisplayGroupSpec[] = [
     id: "transforms",
     namespace: "transforms",
     models: new Set(["transform", "transformtag", "pythonlibrary"]),
-    virtualRootId: TRANSFORMS_ROOT_ID,
-    virtualRootName: () => t`Transforms`,
-    virtualRootUrl: transformList,
+    virtualRoot: {
+      id: TRANSFORMS_ROOT_ID,
+      name: () => t`Transforms`,
+      url: transformList,
+    },
     icon: "transform",
     priority: 100,
   },
@@ -81,9 +91,11 @@ const displayGroupSpecs: DisplayGroupSpec[] = [
   {
     id: "data-apps",
     models: new Set(["dataapp"]),
-    virtualRootId: DATA_APPS_ROOT_ID,
-    virtualRootName: () => t`Data apps`,
-    virtualRootUrl: dataAppsSettings,
+    virtualRoot: {
+      id: DATA_APPS_ROOT_ID,
+      name: () => t`Data apps`,
+      url: dataAppsSettings,
+    },
     icon: "app",
     priority: 70,
   },
@@ -192,8 +204,8 @@ const getGroupKeyInfo = (
     }
     return { groupKey: entity.collection_id, spec };
   }
-  if (spec.virtualRootId != null) {
-    return { groupKey: spec.virtualRootId, spec };
+  if (spec.virtualRoot) {
+    return { groupKey: spec.virtualRoot.id, spec };
   }
   if (entity.collection_id != null) {
     return { groupKey: entity.collection_id, spec };
@@ -262,8 +274,8 @@ const getPathPrefixSegments = (
   collectionMap: Map<number, Collection>,
   libraryCollectionId: number | null,
 ): CollectionPathSegment[] => {
-  if (spec.id === "transforms" && spec.virtualRootId != null) {
-    return [{ id: spec.virtualRootId, name: spec.virtualRootName?.() ?? "" }];
+  if (spec.id === "transforms" && spec.virtualRoot) {
+    return [getVirtualRootSegment(spec.virtualRoot)];
   }
   if (
     spec.pathPrefixGroupId === "library" &&
@@ -280,31 +292,15 @@ const getPathPrefixSegments = (
   return [];
 };
 
-const getSpecByVirtualRootId = (
-  id: CollectionId | undefined,
-): DisplayGroupSpec | undefined =>
-  id == null
-    ? undefined
-    : displayGroupSpecs.find((spec) => spec.virtualRootId === id);
-
 /**
- * Path segments for a virtual root group, or undefined for a real collection.
+ * Find the virtual root with this sentinel collection ID.
  */
-const getVirtualRootSegments = (
-  id: CollectionId | undefined,
-): CollectionPathSegment[] | undefined => {
-  const spec = getSpecByVirtualRootId(id);
-  if (spec?.virtualRootId == null) {
-    return undefined;
-  }
-  return [{ id: spec.virtualRootId, name: spec.virtualRootName?.() ?? "" }];
-};
+export const findVirtualRoot = (id: CollectionId): VirtualRoot | undefined =>
+  displayGroupSpecs.find((spec) => spec.virtualRoot?.id === id)?.virtualRoot;
 
-/**
- * The page a virtual root links to, or undefined for a real collection.
- */
-export const getVirtualRootUrl = (id: CollectionId): string | undefined =>
-  getSpecByVirtualRootId(id)?.virtualRootUrl?.();
+const getVirtualRootSegment = (
+  virtualRoot: VirtualRoot,
+): CollectionPathSegment => ({ id: virtualRoot.id, name: virtualRoot.name() });
 
 /**
  * Get the spec by ID.
@@ -472,9 +468,11 @@ const buildCollectionGroup = ({
     ? TRANSFORMS_ROOT_ID
     : Number(collectionId) || undefined;
 
-  let pathSegments =
-    getVirtualRootSegments(numericCollectionId) ??
-    getCollectionPathSegments(numericCollectionId, collectionMap);
+  const virtualRoot =
+    numericCollectionId != null ? findVirtualRoot(numericCollectionId) : null;
+  let pathSegments = virtualRoot
+    ? [getVirtualRootSegment(virtualRoot)]
+    : getCollectionPathSegments(numericCollectionId, collectionMap);
   const prefixSegments = getPathPrefixSegments(
     groupSpec,
     numericCollectionId,
