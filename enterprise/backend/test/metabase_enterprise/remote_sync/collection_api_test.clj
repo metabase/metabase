@@ -16,6 +16,7 @@
    [toucan2.core :as t2]))
 
 (use-fixtures :each
+  test-helpers/clean-remote-sync-state
   (fn [f]
     (mt/with-temporary-setting-values [settings/remote-sync-type :read-write]
       (f))))

@@ -15,7 +15,6 @@
    [metabase.collections.test-utils :as collections.tu]
    [metabase.events.core :as events]
    [metabase.glossary.core :as glossary.core]
-   [metabase.search.core :as search]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
@@ -24,19 +23,7 @@
 
 (use-fixtures :once (fixtures/initialize :db))
 
-(defn- clean-remote-sync-state
-  "Test fixture that cleans up remote sync state before and after each test."
-  [f]
-  (try
-    (t2/delete! :model/RemoteSyncObject)
-    (f)
-    (finally
-      (t2/delete! :model/RemoteSyncObject))))
-
-(use-fixtures :each (fn [f]
-                      (mt/with-dynamic-fn-redefs [search/reindex! (constantly nil)]
-                        (clean-remote-sync-state f)))
-  test-helpers/commit-with-temp)
+(use-fixtures :each test-helpers/clean-remote-sync-state-without-reindex test-helpers/commit-with-temp)
 
 (defn- rso [entry]
   (t2/select-one :model/RemoteSyncObject :model_type "Glossary" :model_id (:id entry)))

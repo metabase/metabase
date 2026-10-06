@@ -10,6 +10,7 @@
    [metabase-enterprise.remote-sync.spec :as spec]
    [metabase-enterprise.serialization.v2.ingest :as ingest]
    [metabase-enterprise.transforms-python.core :as transforms-python]
+   [metabase.search.core :as search]
    [metabase.settings.core :as setting]
    [metabase.test :as mt]
    [metabase.test.util.thread-local :as tu.thread-local]
@@ -519,9 +520,23 @@ width: fixed
   "Composed test fixture that ensures RemoteSyncObject, RemoteSyncTask, and optional feature
   model tables (Transform, TransformTag, PythonLibrary) are clean, that no stored `remote-sync-transforms` value
   adds a ledger row, that the stored `remote-sync%` setting rows after the test equal the rows before it, and that
-  content the test imported (Dashboards, Cards, Actions, Documents, DataApps, Collections) does not outlive it."
-  (t/join-fixtures [clean-imported-content clean-object clean-remote-sync-settings clean-task-table
-                    clean-optional-feature-models]))
+  content the test imported (Dashboards, Cards, Actions, Documents, DataApps, Collections) does not outlive it.
+
+  Each module test namespace that uses the app DB has this fixture, or [[clean-remote-sync-state-without-reindex]], as
+  its first `:each` fixture, so that a setting binding in a later fixture ends before the write-back. Both carry the
+  metadata `{::shared-fixture true}`, by which a check finds them among the `:each` fixtures of a namespace."
+  (with-meta
+   (t/join-fixtures [clean-imported-content clean-object clean-remote-sync-settings clean-task-table
+                     clean-optional-feature-models])
+   {::shared-fixture true}))
+
+(def clean-remote-sync-state-without-reindex
+  "[[clean-remote-sync-state]] with `search/reindex!` stubbed for the test and for the cleanup."
+  (with-meta
+   (fn [f]
+     (mt/with-dynamic-fn-redefs [search/reindex! (constantly nil)]
+       (clean-remote-sync-state f)))
+   {::shared-fixture true}))
 
 (defn commit-with-temp
   "Test fixture (`:each`) that makes `with-temp` COMMIT its rows instead of wrapping the test body in a

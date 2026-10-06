@@ -4,9 +4,12 @@
    [metabase-enterprise.remote-sync.guards :as guards]
    [metabase-enterprise.remote-sync.settings :as settings]
    [metabase-enterprise.remote-sync.source.git :as git]
+   [metabase-enterprise.remote-sync.test-helpers :as rs.test]
    [metabase.collections.models.collection.root :as collection.root]
    [metabase.settings.core :as setting]
    [metabase.test :as mt]))
+
+(use-fixtures :each rs.test/clean-remote-sync-state)
 
 (deftest check-and-update-remote-settings
   (let [full-token "full_token_value"

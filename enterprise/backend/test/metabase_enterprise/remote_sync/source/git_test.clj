@@ -5,6 +5,7 @@
    [clojure.test :refer :all]
    [metabase-enterprise.remote-sync.source.git :as git]
    [metabase-enterprise.remote-sync.source.protocol :as source.p]
+   [metabase-enterprise.remote-sync.test-helpers :as rs.test]
    [metabase-enterprise.serialization.v2.ingest :as ingest]
    [metabase.test :as mt]
    [metabase.util :as u])
@@ -18,6 +19,8 @@
            (org.eclipse.jgit.transport UsernamePasswordCredentialsProvider)))
 
 (set! *warn-on-reflection* true)
+
+(use-fixtures :each rs.test/clean-remote-sync-state)
 
 (defn- write-files!
   "Test seeding helper: wholesale-write `files` ({:path :content}) to `snapshot` via the commit builder
@@ -745,7 +748,7 @@
           (is (= ["branch-1" "master"] (source.p/branches fresh-source))
               "branches works again after the dir was deleted, without an instance restart"))))))
 
-(deftest ^:parallel credentials-provider-test
+(deftest credentials-provider-test
   (testing "GitHub URL uses x-access-token"
     (let [provider (git/credentials-provider "https://github.com/org/repo.git" "my-token")]
       (is (instance? UsernamePasswordCredentialsProvider provider))))

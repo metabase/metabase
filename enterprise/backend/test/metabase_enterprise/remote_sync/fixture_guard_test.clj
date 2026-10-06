@@ -8,6 +8,8 @@
    [clojure.test :refer :all]
    [metabase-enterprise.remote-sync.test-helpers :as rs.test]))
 
+(set! *warn-on-reflection* true)
+
 (def ^:private exemptions
   "The module test namespaces that do not use the shared fixture, each with its reason."
   '{metabase-enterprise.remote-sync.fixture-guard-test          "no app DB: reads namespace metadata"

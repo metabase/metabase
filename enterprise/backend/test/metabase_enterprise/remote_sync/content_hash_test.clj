@@ -27,6 +27,7 @@
    [toucan2.core :as t2]))
 
 (use-fixtures :once (fixtures/initialize :db))
+(use-fixtures :each test-helpers/clean-remote-sync-state)
 
 (defn- noop-update-status!
   "Seeds a synced RemoteSyncObject for [model-type model-id] whose `content_hash` matches the entity's

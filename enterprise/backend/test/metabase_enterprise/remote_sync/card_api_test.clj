@@ -2,12 +2,15 @@
   {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase-enterprise.remote-sync.card-api-test]}}}}}}
   (:require
    [clojure.test :refer :all]
+   [metabase-enterprise.remote-sync.test-helpers :as rs.test]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
-(use-fixtures :each (fn [f]
-                      (mt/with-temporary-setting-values [remote-sync-type :read-write]
-                        (f))))
+(use-fixtures :each
+  rs.test/clean-remote-sync-state
+  (fn [f]
+    (mt/with-temporary-setting-values [remote-sync-type :read-write]
+      (f))))
 
 (deftest bulk-move-into-remote-synced-with-non-remote-synced-deps-test
   (testing "POST /api/card/collections rejects bulk-moving a card with non-remote-synced dependencies into a remote-synced collection (GHY-3791)"

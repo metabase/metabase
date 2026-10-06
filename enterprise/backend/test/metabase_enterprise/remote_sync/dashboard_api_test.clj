@@ -3,12 +3,15 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase-enterprise.remote-sync.test-helpers :as rs.test]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
-(use-fixtures :each (fn [f]
-                      (mt/with-temporary-setting-values [remote-sync-type :read-write]
-                        (f))))
+(use-fixtures :each
+  rs.test/clean-remote-sync-state
+  (fn [f]
+    (mt/with-temporary-setting-values [remote-sync-type :read-write]
+      (f))))
 
 (deftest api-update-dashboard-collection-id-remote-synced-dependency-checking-success-test
   (testing "PUT /api/dashboard/:id with collection_id in remote-synced succeeds when all dependencies are in remote-synced"

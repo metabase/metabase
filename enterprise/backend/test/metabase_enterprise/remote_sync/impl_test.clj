@@ -23,10 +23,7 @@
 
 (use-fixtures :once (fixtures/initialize :db))
 
-;; `reindex!` below is ok in a parallel test since it's not actually executing anything
-(use-fixtures :each (fn [f]
-                      (mt/with-dynamic-fn-redefs [search/reindex! (constantly nil)]
-                        (test-helpers/clean-remote-sync-state f))))
+(use-fixtures :each test-helpers/clean-remote-sync-state-without-reindex)
 
 ;; import! tests
 

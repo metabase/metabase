@@ -13,7 +13,6 @@
    [metabase-enterprise.transforms-python.core :as transforms-python]
    [metabase.collections.models.collection :as collection]
    [metabase.events.core :as events]
-   [metabase.search.core :as search]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
@@ -21,10 +20,7 @@
 
 (use-fixtures :once (fixtures/initialize :db))
 
-(use-fixtures :each test-helpers/commit-with-temp
-  (fn [f]
-    (mt/with-dynamic-fn-redefs [search/reindex! (constantly nil)]
-      (test-helpers/clean-remote-sync-state f))))
+(use-fixtures :each test-helpers/clean-remote-sync-state-without-reindex test-helpers/commit-with-temp)
 
 (deftest transform-event-creates-sync-object-when-setting-enabled-test
   (testing "Creating a transform creates a RemoteSyncObject entry when remote-sync-transforms is enabled"

@@ -5,12 +5,15 @@
    [java-time.api :as t]
    [metabase-enterprise.remote-sync.db :as remote-sync.db]
    [metabase-enterprise.remote-sync.spec :as spec]
+   [metabase-enterprise.remote-sync.test-helpers :as rs.test]
    [metabase-enterprise.transforms-python.core :as transforms-python]
    [metabase.collections.test-utils :as collections.tu]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
+
+(use-fixtures :each rs.test/clean-remote-sync-state)
 
 ;;; ------------------------------------------------ Spec Validation Tests ---------------------------------------------
 
@@ -723,7 +726,7 @@
           (is (contains? (set (get exportable "TableUserSettings")) table-id)
               "the Table is still exportable, synthesized from its Field's edit"))))))
 
-(deftest ^:parallel exportable-entity-count-test
+(deftest exportable-entity-count-test
   (testing "exportable-entity-count sums the ids across every model in the targets map"
     (is (= 0 (spec/exportable-entity-count {})))
     (is (= 5 (spec/exportable-entity-count {"Card" [1 2 3] "Collection" [4 5]})))))
