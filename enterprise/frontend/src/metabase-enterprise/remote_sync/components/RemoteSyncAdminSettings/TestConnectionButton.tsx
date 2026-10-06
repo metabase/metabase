@@ -1,14 +1,12 @@
-import { useCallback } from "react";
 import { t } from "ttag";
 
 import { getErrorMessage } from "metabase/api/utils";
-import { useToast } from "metabase/common/hooks";
-import { Button } from "metabase/ui";
+import {
+  TestConnectionButton as BaseTestConnectionButton,
+  type TestConnectionResult,
+} from "metabase/common/components/TestConnectionButton";
 import { useTestRemoteSyncConnectionMutation } from "metabase-enterprise/api/remote-sync";
-import type {
-  RemoteSyncConfigurationSettings,
-  TestRemoteSyncConnectionRequest,
-} from "metabase-types/api";
+import type { RemoteSyncConfigurationSettings } from "metabase-types/api";
 
 import { TOKEN_KEY, URL_KEY } from "../../constants";
 
@@ -17,37 +15,29 @@ interface TestConnectionButtonProps {
 }
 
 export const TestConnectionButton = ({ values }: TestConnectionButtonProps) => {
-  const [testConnection, { isLoading }] = useTestRemoteSyncConnectionMutation();
-  const [sendToast] = useToast();
+  const [testConnection] = useTestRemoteSyncConnectionMutation();
 
-  const handleTestConnection = useCallback(async () => {
-    const body: TestRemoteSyncConnectionRequest = {
-      [URL_KEY]: values[URL_KEY],
-      [TOKEN_KEY]: values[TOKEN_KEY],
-    };
-
+  const handleTestConnection = async (): Promise<TestConnectionResult> => {
     try {
-      await testConnection(body).unwrap();
-      sendToast({
-        message: t`Connected to remote sync repository`,
-        icon: "check",
-      });
+      await testConnection({
+        [URL_KEY]: values[URL_KEY],
+        [TOKEN_KEY]: values[TOKEN_KEY],
+      }).unwrap();
+      return { status: "success" };
     } catch (error) {
-      sendToast({
+      return {
+        status: "error",
         message: getErrorMessage(error, t`Could not connect to repository`),
-        icon: "warning",
-      });
+      };
     }
-  }, [testConnection, values, sendToast]);
+  };
 
   return (
-    <Button
+    <BaseTestConnectionButton
       data-testid="remote-sync-test-connection-button"
-      disabled={isLoading || !values[URL_KEY]}
-      loading={isLoading}
-      onClick={handleTestConnection}
-    >
-      {t`Test connection`}
-    </Button>
+      values={values}
+      disabled={!values[URL_KEY]}
+      onTest={handleTestConnection}
+    />
   );
 };
