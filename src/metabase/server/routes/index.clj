@@ -156,8 +156,10 @@
   (cond
     (not (premium-features/enable-data-apps?)) (respond nil)
     (nil? (:metabase-user-id request))         (respond (login-redirect request))
-    :else (try
-            (data-apps/check-data-app-access! request)
-            (data-app-shell request respond raise)
-            (catch Throwable e
-              (raise e)))))
+    :else (if-let [error (try
+                           (data-apps/check-data-app-access! request)
+                           nil
+                           (catch Throwable e
+                             e))]
+            (raise error)
+            (data-app-shell request respond raise))))
