@@ -9,6 +9,7 @@
    [metabase-enterprise.remote-sync.core :as remote-sync.core]
    [metabase-enterprise.remote-sync.events :as remote-sync.events]
    [metabase-enterprise.remote-sync.spec :as spec]
+   [metabase-enterprise.remote-sync.test-helpers :as rs.test]
    [metabase.collections.models.collection :as collection]
    [metabase.collections.test-utils :refer [with-library-synced]]
    [metabase.events.core :as events]
@@ -19,6 +20,8 @@
    [toucan2.core :as t2]))
 
 (use-fixtures :once (fixtures/initialize :db))
+(use-fixtures :each rs.test/clean-remote-sync-state)
+
 (defn- mark-synced!
   "Populate the RemoteSyncObject table with synced rows for `imported-data` (a `:by-entity-id` map), as a
   successful import does — used to set up a synced baseline before firing an event."
@@ -847,35 +850,35 @@
       (let [entries (t2/select :model/RemoteSyncObject :model_type "Card" :model_id (:id card))]
         (is (= 0 (count entries)))))))
 
-(deftest ^:parallel card-event-derivation-test
+(deftest card-event-derivation-test
   (testing "card events properly derive from :metabase/event"
     (is (events/isa? ::remote-sync.events/card-change-event :metabase/event))
     (is (events/isa? :event/card-create ::remote-sync.events/card-change-event))
     (is (events/isa? :event/card-update ::remote-sync.events/card-change-event))
     (is (events/isa? :event/card-delete ::remote-sync.events/card-change-event))))
 
-(deftest ^:parallel dashboard-event-derivation-test
+(deftest dashboard-event-derivation-test
   (testing "dashboard events properly derive from :metabase/event"
     (is (events/isa? ::remote-sync.events/dashboard-change-event :metabase/event))
     (is (events/isa? :event/dashboard-create ::remote-sync.events/dashboard-change-event))
     (is (events/isa? :event/dashboard-update ::remote-sync.events/dashboard-change-event))
     (is (events/isa? :event/dashboard-delete ::remote-sync.events/dashboard-change-event))))
 
-(deftest ^:parallel document-event-derivation-test
+(deftest document-event-derivation-test
   (testing "document events properly derive from :metabase/event"
     (is (events/isa? ::remote-sync.events/document-change-event :metabase/event))
     (is (events/isa? :event/document-create ::remote-sync.events/document-change-event))
     (is (events/isa? :event/document-update ::remote-sync.events/document-change-event))
     (is (events/isa? :event/document-delete ::remote-sync.events/document-change-event))))
 
-(deftest ^:parallel snippet-event-derivation-test
+(deftest snippet-event-derivation-test
   (testing "snippet events properly derive from :metabase/event"
     (is (events/isa? ::remote-sync.events/snippet-change-event :metabase/event))
     (is (events/isa? :event/snippet-create ::remote-sync.events/snippet-change-event))
     (is (events/isa? :event/snippet-update ::remote-sync.events/snippet-change-event))
     (is (events/isa? :event/snippet-delete ::remote-sync.events/snippet-change-event))))
 
-(deftest ^:parallel collection-event-derivation-test
+(deftest collection-event-derivation-test
   (testing "collection events properly derive from :metabase/event"
     (is (events/isa? ::remote-sync.events/collection-change-event :metabase/event))
     (is (events/isa? :event/collection-create ::remote-sync.events/collection-change-event))
@@ -1156,7 +1159,7 @@
         (let [update-entry (t2/select-one :model/RemoteSyncObject :model_type "Table" :model_id (:id table))]
           (is (= "removed" (:status update-entry))))))))
 
-(deftest ^:parallel table-event-derivation-test
+(deftest table-event-derivation-test
   (testing "table events properly derive from :metabase/event"
     (is (events/isa? ::remote-sync.events/table-change-event :metabase/event))
     (is (events/isa? :event/table-create ::remote-sync.events/table-change-event))
@@ -1312,7 +1315,7 @@
           (let [update-entry (t2/select-one :model/RemoteSyncObject :model_type "Segment" :model_id (:id segment))]
             (is (= "update" (:status update-entry)))))))))
 
-(deftest ^:parallel segment-event-derivation-test
+(deftest segment-event-derivation-test
   (testing "segment events properly derive from :metabase/event"
     (is (events/isa? ::remote-sync.events/segment-change-event :metabase/event))
     (is (events/isa? :event/segment-create ::remote-sync.events/segment-change-event))

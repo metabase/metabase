@@ -3,12 +3,15 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.remote-sync.settings :as settings]
+   [metabase-enterprise.remote-sync.test-helpers :as rs.test]
    [metabase.collections.models.collection :as collections]
    [metabase.collections.test-utils :as collections.tu]
    [metabase.lib.core :as lib]
    [metabase.models.interface :as mi]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
+
+(use-fixtures :each rs.test/clean-remote-sync-state)
 
 (defn- text->prose-mirror-ast
   "Convert text to a simple ProseMirror AST for document content."

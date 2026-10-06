@@ -3,6 +3,7 @@
    Verifies that write operations are blocked when library is synced and mode is read-only."
   (:require
    [clojure.test :refer :all]
+   [metabase-enterprise.remote-sync.test-helpers :as rs.test]
    [metabase.collections.test-utils :as collections.tu]
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.models.permissions :as perms]
@@ -10,6 +11,8 @@
    [metabase.test :as mt]
    [metabase.util :as u]
    [toucan2.core :as t2]))
+
+(use-fixtures :each rs.test/clean-remote-sync-state)
 
 ;;; ------------------------------------------- Create Snippet API Tests -------------------------------------------
 
