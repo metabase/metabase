@@ -2108,6 +2108,29 @@ describe("scenarios > dashboard > parameters", () => {
         .findByText(/Category/)
         .should("not.exist");
       H.undoToast().should("not.exist");
+      H.dashboardParameterSidebar().button("Done").click();
+
+      cy.log("Inline filters can't connect to cards on another tab");
+      H.createNewTab();
+      H.goToTab("Tab 2");
+      H.openQuestionsSidebar();
+      H.sidebar().findByText("Orders, Count").click();
+
+      H.goToTab("Tab 1");
+      H.getDashboardCard(0).within(() => {
+        H.filterWidget({ isEditing: true }).contains("Category").click();
+      });
+      H.goToTab("Tab 2");
+      H.getDashboardCard(0)
+        .findByText("The selected filter is on another tab.")
+        .should("be.visible");
+      H.goToTab("Tab 1");
+
+      cy.log("Disconnect the filter from its card through the sidebar");
+      H.sidebar().findByText("Disconnect from card").click();
+      H.getDashboardCard(1)
+        .findByText("This filter can only connect to its own card.")
+        .should("be.visible");
     });
 
     it("should duplicate filters and mappings when duplicating a dashcard", () => {
@@ -2259,53 +2282,6 @@ describe("scenarios > dashboard > parameters", () => {
         category: "Widget",
         category_1: "Doohickey",
         count: "5000",
-      });
-    });
-
-    it("should allow connecting inline parameters only to their own card, not to cards on another tab", () => {
-      H.createQuestionAndDashboard({
-        questionDetails: ordersCountByCategory,
-      }).then(({ body: dashcard }) => {
-        H.visitDashboard(dashcard.dashboard_id);
-        H.editDashboard();
-
-        // Add a second card
-        H.openQuestionsSidebar();
-        H.sidebar().findByText("Orders, Count").click();
-        H.getDashboardCard(1).findByText("Count").should("exist");
-
-        // Add a second tab
-        H.createNewTab();
-        H.goToTab("Tab 2");
-
-        // Add a question to the second tab
-        H.sidebar().findByText("Orders, Count").click();
-
-        H.goToTab("Tab 1");
-
-        // Add a filter to the first card
-        H.setDashCardFilter(0, "Text or Category", null, "Category");
-        H.selectDashboardFilter(H.getDashboardCard(0), "Category");
-
-        // Ensure the filter can't be connected to the second card on the same tab
-        H.getDashboardCard(1)
-          .findByText("This filter can only connect to its own card.")
-          .should("be.visible");
-
-        // Ensure the filter can't be connected to the card on the other tab
-        H.goToTab("Tab 2");
-        H.getDashboardCard(0)
-          .findByText("The selected filter is on another tab.")
-          .should("be.visible");
-        H.goToTab("Tab 1");
-
-        // Disconnect the filter from the first card
-        H.sidebar().findByText("Disconnect from card").click();
-
-        // Ensure it still can't be connected to the second card
-        H.getDashboardCard(1)
-          .findByText("This filter can only connect to its own card.")
-          .should("be.visible");
       });
     });
   });
