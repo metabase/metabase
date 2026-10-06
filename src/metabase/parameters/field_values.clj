@@ -86,8 +86,8 @@
 (defn field-id->field-values-for-current-user
   "Fetch *existing* FieldValues for a sequence of `field-ids` for the current User. Values are returned as a map of
     {field-id FieldValues-instance}
-  Returns `nil` if `field-ids` is empty or no matching FieldValues exist. A field whose restrictions can't be keyed
-  for the current User maps to an empty map."
+  Returns `nil` if `field-ids` is empty or no matching FieldValues exist. A restricted field that shouldn't have
+  FieldValues, or whose restrictions can't be keyed for the current User, maps to an empty map."
   [field-ids]
   (let [fields                 (when (seq field-ids)
                                  (t2/hydrate (parameters.db/fields (set field-ids)) :table))
@@ -168,13 +168,14 @@
 
 (defn- get-or-create-field-values-with-hash-input!
   [field constraints hash-input]
-  (when hash-input
+  (when (and hash-input (field-values/field-should-have-field-values? field))
     (if (not= hash-input {:field-id (u/the-id field)})
       (get-or-create-advanced-field-values! field constraints hash-input)
       (field-values/get-or-create-full-field-values! field))))
 
 (defn get-or-create-field-values!
-  "Gets or creates field values. Returns nil when [[hash-input-for-field-values]] can't key the current user's access."
+  "Gets or creates field values. Returns nil when `field` shouldn't have any, or when [[hash-input-for-field-values]]
+  can't key the current user's access."
   ([field] (get-or-create-field-values! field nil))
   ([field constraints]
    (get-or-create-field-values-with-hash-input! field constraints (hash-input-for-field-values field constraints))))

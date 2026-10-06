@@ -1,14 +1,25 @@
 (ns metabase-enterprise.data-apps.models.data-app
   (:require
+   [metabase-enterprise.data-apps.config :as data-app.config]
    [metabase-enterprise.data-apps.db :as data-apps.db]
    [metabase-enterprise.data-apps.resources :as data-app.resources]
+   [metabase-enterprise.data-apps.schema :as data-apps.schema]
    [metabase.api.common :as api]
+   [metabase.events.core :as events]
+   [metabase.lib.core :as lib]
    [metabase.models.interface :as mi]
+   [metabase.models.serialization :as serdes]
    [metabase.premium-features.core :refer [defenterprise]]
+   [metabase.util.i18n :refer [tru]]
+   [metabase.util.malli :as mu]
    [methodical.core :as methodical]
-   [toucan2.core :as t2])
+   [toucan2.core :as t2]
+   [toucan2.tools.default-fields :as t2.default-fields])
   (:import
-   (java.sql Blob)))
+   (java.nio.charset StandardCharsets)
+   (java.security MessageDigest)
+   (java.sql Blob)
+   (org.apache.commons.codec.binary Hex)))
 
 (set! *warn-on-reflection* true)
 
@@ -33,25 +44,41 @@
 
 (doto :model/DataApp
   (derive :metabase/model)
+  (derive :hook/entity-id)
   (derive :hook/timestamped?))
 
-(defn- default-last-synced-at
-  "A sync that records `last_synced_sha` happened now unless it says otherwise."
+(t2.default-fields/define-default-fields :model/DataApp
+  data-apps.db/non-blob-columns)
+
+(events/derive! ::event :metabase/event)
+(doseq [e [:event/data-app-create :event/data-app-update :event/data-app-delete]]
+  (events/derive! e ::event))
+
+(defn- bytes-hash ^String [^bytes b]
+  (let [^MessageDigest md (MessageDigest/getInstance "SHA-256")]
+    (Hex/encodeHexString ^bytes (.digest md b))))
+
+(defn- with-bundle-hash
+  "The `row` with `bundle_hash` matching the `bundle` it sets."
   [row]
   (cond-> row
-    (and (contains? row :last_synced_sha) (not (contains? row :last_synced_at)))
-    (assoc :last_synced_at (mi/now))))
+    (contains? row :bundle) (assoc :bundle_hash (some-> ^bytes (:bundle row) bytes-hash))))
+
+(defn- prepare
+  "The DataApp `row` normalized and validated against `schema`, with the hash of any bundle it sets."
+  [schema row]
+  (->> row
+       (lib/normalize schema)
+       (mu/validate-throw schema)
+       with-bundle-hash))
 
 (t2/define-before-insert :model/DataApp
   [data-app]
-  (default-last-synced-at data-app))
+  (prepare ::data-apps.schema/data-app.insert data-app))
 
 (t2/define-before-update :model/DataApp
   [data-app]
-  (let [changes (t2/changes data-app)]
-    (cond-> data-app
-      (and (contains? changes :last_synced_sha) (not (contains? changes :last_synced_at)))
-      (assoc :last_synced_at (mi/now)))))
+  (merge data-app (some->> (t2/changes data-app) (prepare ::data-apps.schema/data-app.update))))
 
 ;; Reads always see `allowed_hosts` as a vector, never nil — a row synced before
 ;; the column existed has NULL until it's re-synced. Guard on `contains?` so
@@ -78,6 +105,10 @@
   [_model _instance]
   api/*is-superuser?*)
 
+(t2/define-after-insert :model/DataApp
+  [app]
+  (merge app (data-app.resources/ensure-resources! app)))
+
 (t2/define-before-delete :model/DataApp
   [app]
   (data-app.resources/delete-resources! app))
@@ -87,9 +118,79 @@
   [data-app json-generator]
   (next-method (dissoc data-app :bundle) json-generator))
 
+(defn- bundle->file
+  "The `bundle` bytes as the text of its file."
+  [^bytes bundle]
+  (String. bundle StandardCharsets/UTF_8))
+
+(defn file->bundle
+  "The `content` of a bundle file as the bytes the app is served."
+  ^bytes [^String content]
+  (.getBytes content StandardCharsets/UTF_8))
+
+(defn- ingested-bundle-path
+  "The normalized bundle path of the ingested data app `ingested`."
+  [ingested]
+  (lib/normalize ::data-apps.schema/bundle-path (:path ingested)))
+
+(defmethod serdes/make-spec "DataApp"
+  [_model-name _opts]
+  {:copy      [:entity_id :description :version :allowed_hosts]
+   :skip      [;; admin-owned state of this instance
+               :enabled
+               ;; set by the import itself
+               :draft :bundle_hash
+               ;; server-managed resources, recreated on import
+               :resource_collection_id :permission_group_id :table_ids]
+   :transform {:created_at   (serdes/date)
+               :name         {:as :slug :export identity :import identity}
+               :display_name {:as :name :export identity :import identity}
+               :bundle_path  {:as :path :export identity :import identity}
+               :bundle       {:as                  :serdes/resources
+                              :export-with-context (fn [app _k bundle]
+                                                     (if bundle
+                                                       {(:bundle_path app) (bundle->file bundle)}
+                                                       ::serdes/skip))
+                              :import-with-context (fn [ingested _k files]
+                                                     (let [path (ingested-bundle-path ingested)]
+                                                       (file->bundle
+                                                        (or (get files path)
+                                                            (throw (ex-info (tru "Bundle file \"{0}\" not found." path)
+                                                                            {:status-code 400}))))))}}
+   :defaults  {:description nil :version 1 :allowed_hosts []}})
+
+(defmethod serdes/extract-query "DataApp"
+  [model-name {:keys [filter-column filter-ids] :as opts}]
+  (eduction (remove :draft)
+            (data-apps.db/reducible-data-apps-with-bundles filter-column filter-ids
+                                                           (serdes/extract-order-columns model-name opts))))
+
+(defmethod serdes/storage-path "DataApp" [app _ctx]
+  [{:label data-app.config/apps-dir}
+   {:label (:slug app) :key (:entity_id app) :style :slug}
+   {:label "data_app"}])
+
+(defmethod serdes/resource-paths "DataApp" [ingested]
+  [(ingested-bundle-path ingested)])
+
+(defmethod serdes/load-one! "DataApp"
+  [ingested maybe-local]
+  (let [local (or maybe-local (data-apps.db/draft-by-slug (:slug ingested)))
+        app   (serdes/default-load-one! ingested local)]
+    (data-apps.db/update-data-app! (:id app) {:draft false})
+    (when local
+      (data-app.resources/ensure-resources! app))
+    app))
+
 (defenterprise data-app-group-ids
   "The data-app permission groups (those flagged `is_data_app_group`). SSO group sync must never touch
    their membership."
   :feature :none
   []
   (data-apps.db/data-app-group-ids))
+
+(defenterprise data-app-collection-ids
+  "The resource collections of the data apps, which hold the copies `sync-resources` makes."
+  :feature :none
+  []
+  (data-apps.db/resource-collection-ids))

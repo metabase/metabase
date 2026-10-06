@@ -1,10 +1,8 @@
-import { RuleTester } from "eslint";
-
 import rule from "../eslint-plugin-metabase/rules/no-direct-memoize-import";
 
-const ruleTester = new RuleTester({
-  languageOptions: { ecmaVersion: 2022, sourceType: "module" },
-});
+import { createRuleTester } from "./rule-tester";
+
+const ruleTester = createRuleTester();
 
 const error = { messageId: "noDirectMemoizeImport" };
 const FILE = "/repo/frontend/src/metabase/thing/new-file.ts";

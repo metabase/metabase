@@ -13,7 +13,7 @@
 
 (deftest get-or-create-field-values!-test
   (mt/with-premium-features #{:advanced-permissions}
-    (let [field (t2/select-one :model/Field :id (mt/id :categories :id))]
+    (let [field (assoc (t2/select-one :model/Field :id (mt/id :categories :id)) :has_field_values :list)]
       (try
         (testing "creates new field values for user using impersonation"
           (impersonation.util-test/with-impersonations! {:impersonations [{:db-id (mt/id) :attribute "impersonation_attr"}]

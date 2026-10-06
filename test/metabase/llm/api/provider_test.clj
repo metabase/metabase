@@ -1,11 +1,12 @@
 (ns metabase.llm.api.provider-test
   (:require
    [clj-http.client :as http]
-   [clojure.test :refer [deftest is testing use-fixtures]]
+   [clojure.test :refer [are deftest is testing use-fixtures]]
    [medley.core :as m]
    [metabase.llm.api.provider :as llm.api.provider]
    [metabase.llm.provider :as llm.provider]
    [metabase.metabot.self :as metabot.self]
+   [metabase.metabot.self.bedrock-test :as bedrock-test]
    [metabase.metabot.settings :as metabot.settings]
    [metabase.permissions.core :as perms]
    [metabase.settings.core :as setting]
@@ -58,11 +59,11 @@
 (deftest provider-types-test
   (testing "every provider type is listed with the credential fields a connection needs"
     (let [types (mt/user-http-request :crowberto :get 200 "llm/provider-types")]
-      (is (= #{"anthropic" "openai" "openrouter" "mistral" "zai" "moonshot" "deepseek" "google" "azure" "bedrock"
-               "vllm" "metabase"}
+      (is (= #{"anthropic" "openai" "openrouter" "mistral" "zai" "moonshot" "deepseek" "xai" "google" "azure"
+               "bedrock" "vllm" "metabase"}
              (set (map :type types))))
-      (is (= ["anthropic" "openai" "openrouter" "mistral" "zai" "moonshot" "deepseek" "google" "azure" "bedrock"
-              "vllm"]
+      (is (= ["anthropic" "openai" "openrouter" "mistral" "zai" "moonshot" "deepseek" "xai" "google" "azure"
+              "bedrock" "vllm"]
              (remove #{"metabase"} (map :type types)))
           "the bring-your-own-key providers keep their registry order")
       (is (=? {:type          "anthropic"
@@ -95,7 +96,8 @@
       (testing "the API-key prefixes reach the client, which uses them to recognize a pasted key"
         (is (= {"anthropic"  "sk-ant-"
                 "openai"     "sk-"
-                "openrouter" "sk-or-v1-"}
+                "openrouter" "sk-or-v1-"
+                "xai"        "xai-"}
                (into {}
                      (keep (fn [{:keys [type fields]}]
                              (when-let [prefix (some :prefix fields)]
@@ -107,6 +109,7 @@
         (is (= {"access-key-id"     false
                 "secret-access-key" false
                 "region"            false
+                "model-id"          false
                 "session-token"     true}
                (->> types
                     (filter #(= "bedrock" (:type %)))
@@ -147,8 +150,10 @@
                   {:id "google/gemini-3.6-flash" :display_name "Gemini 3.6 Flash"}
                   {:id "google/gemini-3.7-flash" :display_name "Gemini 3.7 Flash"}
                   {:id "anthropic/claude-fable-5" :display_name "Claude Fable 5"}
+                  {:id "anthropic/claude-opus-5-5" :display_name "Claude Opus 5.5"}
                   {:id "anthropic/claude-opus-5" :display_name "Claude Opus 5"}
                   {:id "anthropic/claude-opus-4-6" :display_name "Claude Opus 4.6"}
+                  {:id "anthropic/claude-sonnet-5-5" :display_name "Claude Sonnet 5.5"}
                   {:id "anthropic/claude-sonnet-5" :display_name "Claude Sonnet 5"}
                   {:id "anthropic/claude-sonnet-4-6" :display_name "Claude Sonnet 4.6"}
                   {:id "anthropic/claude-haiku-4-5@20251001" :display_name "Claude Haiku 4.5"}]
@@ -164,7 +169,7 @@
     (mt/with-premium-features #{:hosting}
       (let [bedrock (m/find-first #(= "bedrock" (:type %))
                                   (mt/user-http-request :crowberto :get 200 "llm/provider-types"))]
-        (is (= {"access-key-id" true "secret-access-key" true "region" false "session-token" false}
+        (is (= {"access-key-id" true "secret-access-key" true "region" false "model-id" false "session-token" false}
                (->> bedrock :fields (into {} (map (juxt :key :required))))))
         (is (= "On Metabase Cloud, Bedrock always authenticates with your own AWS keys."
                (:help (m/find-first #(= "access-key-id" (:key %)) (:fields bedrock)))))))))
@@ -471,6 +476,41 @@
                                       model (assoc :model model)))
               (is (=? {:model "endpoints/1234567890123456789" :probe? true} @opts))
               (is (= "google/endpoints/1234567890123456789" (metabot.settings/llm-metabot-provider))))))))))
+
+(def ^:private bedrock-inference-profile-connection
+  {:type   "bedrock"
+   :config {:access-key-id     "AKIAIOSFODNN7EXAMPLE"
+            :secret-access-key "wJalrXUtnFEMI/K7MDENG+bPxRfiCYEXAMPLEKEY"
+            :region            "eu-central-1"
+            :model-id          "eu.anthropic.claude-sonnet-4-6"}})
+
+(deftest create-bedrock-connection-with-an-inference-profile-test
+  (testing "a Bedrock connection that names an inference profile is checked on bedrock-runtime and Metabot runs on it"
+    (let [requested (atom [])]
+      (mt/with-dynamic-fn-redefs [http/request (fn [req]
+                                                 (swap! requested conj (:url req))
+                                                 (bedrock-test/runtime-response-for bedrock-test/one-token-completion))]
+        (mt/with-temporary-setting-values [llm-providers []]
+          (mt/with-temporary-raw-setting-values [llm-metabot-provider nil]
+            (mt/user-http-request :crowberto :post 200 "llm/providers" bedrock-inference-profile-connection)
+            (is (= [(str "https://bedrock-runtime.eu-central-1.amazonaws.com/model/eu.anthropic.claude-sonnet-4-6"
+                         "/invoke-with-response-stream")]
+                   @requested))
+            (is (= "bedrock/eu.anthropic.claude-sonnet-4-6" (metabot.settings/llm-metabot-provider)))))))))
+
+(deftest create-bedrock-connection-is-rejected-when-the-model-does-not-finish-test
+  (testing "the connection is not saved when the model errors partway through or never finishes its response"
+    (mt/with-temporary-setting-values [llm-providers []]
+      (let [connect!   (fn [messages]
+                         (mt/with-dynamic-fn-redefs [http/request (fn [_] (bedrock-test/runtime-response-for messages))]
+                           (:message (mt/user-http-request :crowberto :post 400 "llm/providers"
+                                                           bedrock-inference-profile-connection))))
+            incomplete "AWS Bedrock returned an incomplete response from \"eu.anthropic.claude-sonnet-4-6\""]
+        (are [messages error] (= error (connect! messages))
+          [bedrock-test/message-start bedrock-test/stream-error] "Model stream error"
+          []                                                     incomplete
+          [bedrock-test/message-start]                           incomplete))
+      (is (= [] (llm.provider/connections))))))
 
 (deftest writes-keep-a-stored-connection-the-environment-shadows-test
   (testing (str "The environment wins on read, but it must not take the stored credentials with it: they are what "
@@ -1225,8 +1265,10 @@
                               {:id "google/gemini-3.6-flash" :display_name "Gemini 3.6 Flash"}
                               {:id "google/gemini-3.7-flash" :display_name "Gemini 3.7 Flash"}
                               {:id "anthropic/claude-fable-5" :display_name "Claude Fable 5"}
+                              {:id "anthropic/claude-opus-5-5" :display_name "Claude Opus 5.5"}
                               {:id "anthropic/claude-opus-5" :display_name "Claude Opus 5"}
                               {:id "anthropic/claude-opus-4-6" :display_name "Claude Opus 4.6"}
+                              {:id "anthropic/claude-sonnet-5-5" :display_name "Claude Sonnet 5.5"}
                               {:id "anthropic/claude-sonnet-5" :display_name "Claude Sonnet 5"}
                               {:id "anthropic/claude-sonnet-4-6" :display_name "Claude Sonnet 4.6"}
                               {:id "anthropic/claude-haiku-4-5@20251001" :display_name "Claude Haiku 4.5"}]}]
@@ -1246,7 +1288,7 @@
                                                                        :project-id         "my-project"
                                                                        :location           "us-east5"
                                                                        :probed-model       "anthropic/claude-sonnet-4-6"})]]
-          (is (=? [{:key "claude-only" :models [{:id "google/gemini-3.5-flash"} some?  some? some? some? some? some? some? some?]}]
+          (is (=? [{:key "claude-only" :models [{:id "google/gemini-3.5-flash"} some? some? some? some? some? some? some? some? some? some?]}]
                   (mt/user-http-request :crowberto :get 200 "llm/models")))
           (is (= "anthropic/claude-sonnet-4-6" @probed)))))))
 
@@ -1290,7 +1332,7 @@
                                                                      :project-id         "my-project"})]]
         (mt/with-temporary-raw-setting-values [llm-metabot-provider "wrong-model-google/anthropic/claude-opus-5"]
           (is (=? [{:key    "wrong-model-google"
-                    :models [{:id "google/gemini-3.5-flash"} some? some? some? some? some? some? some? some?]
+                    :models [{:id "google/gemini-3.5-flash"} some? some? some? some? some? some? some? some? some? some?]
                     :error  "Google API error: model not found"}]
                   (mt/user-http-request :crowberto :get 200 "llm/models"))))))))
 
@@ -1306,7 +1348,7 @@
                                                                      :project-id         "my-project"})]]
         (mt/with-temporary-raw-setting-values [llm-metabot-provider "forbidden-model-google/anthropic/claude-opus-5"]
           (is (=? [{:key    "forbidden-model-google"
-                    :models [{:id "google/gemini-3.5-flash"} some? some? some? some? some? some? some? some?]
+                    :models [{:id "google/gemini-3.5-flash"} some? some? some? some? some? some? some? some? some? some?]
                     :error  "Google API error: PERMISSION_DENIED"}]
                   (mt/user-http-request :crowberto :get 200 "llm/models"))))))))
 
@@ -1323,7 +1365,7 @@
         (is (=? [{:key    "bad-key-google"
                   :name   "bad-key-google"
                   :type   "google"
-                  :models [{:id "google/gemini-3.5-flash"} some? some? some? some? some? some? some? some?]
+                  :models [{:id "google/gemini-3.5-flash"} some? some? some? some? some? some? some? some? some? some?]
                   :error  "Google API error: invalid authentication credentials"}]
                 (mt/user-http-request :crowberto :get 200 "llm/models")))))))
 

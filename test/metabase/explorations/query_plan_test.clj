@@ -4,6 +4,7 @@
   (:require
    [clojure.test :refer :all]
    [java-time.api :as t]
+   [metabase.explorations.api :as explorations.api]
    [metabase.explorations.query-plan :as query-plan]
    [metabase.explorations.query-plan.mechanical :as qp.mech]
    [metabase.explorations.query-plan.planner :as planner]
@@ -28,6 +29,9 @@
 ;;; ---------------------------------------------------------------------------
 ;;; Page reconciliation (mechanical planner, end-to-end through the DB)
 ;;; ---------------------------------------------------------------------------
+
+(def ^:private d1 "A dimension id; dimension ids are uuids." "00000000-0000-4000-8000-0000000000d1")
+(def ^:private d2 "A dimension id; dimension ids are uuids." "00000000-0000-4000-8000-0000000000d2")
 
 (defn- count-metric-query []
   (lib/->legacy-MBQL
@@ -58,8 +62,8 @@
                    :model/Exploration e {:name "x"}
                    :model/ExplorationThread t {:exploration_id (:id e)}]
       (let [cid (:id metric)
-            g1  (mk-block! (:id t) cid "d1" "Price" "type/Number")
-            g2  (mk-block! (:id t) cid "d2" "Name" "type/Text")]
+            g1  (mk-block! (:id t) cid d1 "Price" "type/Number")
+            g2  (mk-block! (:id t) cid d2 "Name" "type/Text")]
         (is (= :ok (query-plan/generate-query-plan! (:id t))))
         (let [qrows  (t2/select [:model/ExplorationQuery :id :page_id :card_id :dimension_id]
                                 :exploration_thread_id (:id t))
@@ -70,8 +74,8 @@
             (is (every? :page_id qrows))
             (is (= #{(:id g1) (:id g2)} (set (map blk qrows)))))
           (testing "each block's queries only reference that block's (metric, dim) pair"
-            (is (every? #(= "d1" (:dimension_id %)) (filter #(= (:id g1) (blk %)) qrows)))
-            (is (every? #(= "d2" (:dimension_id %)) (filter #(= (:id g2) (blk %)) qrows)))
+            (is (every? #(= d1 (:dimension_id %)) (filter #(= (:id g1) (blk %)) qrows)))
+            (is (every? #(= d2 (:dimension_id %)) (filter #(= (:id g2) (blk %)) qrows)))
             (is (every? #(= cid (:card_id %)) qrows))))))))
 
 (deftest duplicate-pair-across-blocks-materializes-once-per-block-test
@@ -80,8 +84,8 @@
                    :model/Exploration e {:name "x"}
                    :model/ExplorationThread t {:exploration_id (:id e)}]
       (let [cid (:id metric)
-            g1  (mk-block! (:id t) cid "d1" "Price" "type/Number")
-            g2  (mk-block! (:id t) cid "d1" "Price" "type/Number")]
+            g1  (mk-block! (:id t) cid d1 "Price" "type/Number")
+            g2  (mk-block! (:id t) cid d1 "Price" "type/Number")]
         (is (= :ok (query-plan/generate-query-plan! (:id t))))
         (let [by-blk (group-by :exploration_block_id
                                (t2/select :model/ExplorationPage
@@ -99,8 +103,8 @@
                    :model/Exploration e {:name "x"}
                    :model/ExplorationThread t {:exploration_id (:id e)}]
       (let [cid (:id metric)
-            g1  (mk-block! (:id t) cid "d1" "Price" "type/Number")
-            g2  (mk-block! (:id t) cid "d2" "Name" "type/Text")]
+            g1  (mk-block! (:id t) cid d1 "Price" "type/Number")
+            g2  (mk-block! (:id t) cid d2 "Name" "type/Text")]
         (is (= :ok (query-plan/generate-query-plan! (:id t))))
         (let [qrows (t2/select [:model/ExplorationQuery :id :page_id :card_id
                                 :dimension_id :query_type]
@@ -128,7 +132,7 @@
     (mt/with-temp [:model/Card metric {:type :metric :dataset_query (count-metric-query)}
                    :model/Exploration e {:name "x"}
                    :model/ExplorationThread t {:exploration_id (:id e)}]
-      (let [g        (mk-block! (:id t) (:id metric) "d1" "Price" "type/Number")
+      (let [g        (mk-block! (:id t) (:id metric) d1 "Price" "type/Number")
             page-ids #(set (t2/select-pks-vec :model/ExplorationPage :exploration_block_id (:id g)))]
         (is (= :ok (query-plan/generate-query-plan! (:id t))))
         (let [before (page-ids)]
@@ -147,7 +151,7 @@
                    :model/Exploration e {:name "x"}
                    :model/ExplorationThread t {:exploration_id (:id e)}]
       (let [cid    (:id metric)
-            g      (mk-block! (:id t) cid "d1" "Price" "type/Number")
+            g      (mk-block! (:id t) cid d1 "Price" "type/Number")
             orphan (t2/insert-returning-pk! :model/ExplorationPage
                                             {:exploration_block_id (:id g)
                                              :card_id              cid
@@ -192,7 +196,7 @@
                    :model/Exploration e {:name "x"}
                    :model/ExplorationThread t {:exploration_id (:id e)}]
       (let [cid       (:id metric)
-            g         (mk-block! (:id t) cid "d1" "Price" "type/Number")
+            g         (mk-block! (:id t) cid d1 "Price" "type/Number")
             ;; two selections the planner won't regenerate: one with a comment, one without.
             commented (orphan-page! (:id g) cid "gone-but-commented")
             bare      (orphan-page! (:id g) cid "gone-no-comment")
@@ -213,7 +217,7 @@
                    :model/Exploration e {:name "x"}
                    :model/ExplorationThread t {:exploration_id (:id e)}]
       (let [cid     (:id metric)
-            g       (mk-block! (:id t) cid "d1" "Price" "type/Number")
+            g       (mk-block! (:id t) cid d1 "Price" "type/Number")
             starred (orphan-page! (:id g) cid "gone-but-starred" {:starred true})
             bare    (orphan-page! (:id g) cid "gone-no-star")]
         (is (= :ok (query-plan/generate-query-plan! (:id t))))
@@ -228,7 +232,7 @@
                    :model/Exploration e {:name "x"}
                    :model/ExplorationThread t {:exploration_id (:id e)}]
       (let [cid    (:id metric)
-            g      (mk-block! (:id t) cid "d1" "Price" "type/Number")
+            g      (mk-block! (:id t) cid d1 "Price" "type/Number")
             orphan (orphan-page! (:id g) cid "gone-deleted-comment")]
         (comment-on-page! (:id e) orphan {:deleted_at (t/offset-date-time)})
         (is (= :ok (query-plan/generate-query-plan! (:id t))))
@@ -241,7 +245,7 @@
                    :model/Exploration e {:name "x"}
                    :model/ExplorationThread t {:exploration_id (:id e)}]
       (let [cid    (:id metric)
-            g      (mk-block! (:id t) cid "d1" "Price" "type/Number")
+            g      (mk-block! (:id t) cid d1 "Price" "type/Number")
             orphan (orphan-page! (:id g) cid "would-be-orphan")]
         (is (= :no-rows (#'query-plan/insert-plan-rows! (:id t) {} [])))
         (is (some? (t2/select-one-pk :model/ExplorationPage :id orphan))
@@ -277,7 +281,7 @@
     (mt/with-temp [:model/Card metric {:type :metric :dataset_query (count-metric-query)}
                    :model/Exploration e {:name "x"}
                    :model/ExplorationThread t {:exploration_id (:id e)}]
-      (mk-block! (:id t) (:id metric) "d1" "Price" "type/Number")
+      (mk-block! (:id t) (:id metric) d1 "Price" "type/Number")
       ;; force every plan item to fail to materialize → insert-plan-rows! sees zero rows
       (mt/with-dynamic-fn-redefs [query-plan/materialize-item (fn [_ _] (throw (ex-info "boom" {})))]
         (is (= :skip-empty (query-plan/generate-query-plan! (:id t)))))
@@ -286,6 +290,61 @@
       (let [{:keys [analysis_started_at completed_at]} (terminal-stamps (:id t))]
         (is (some? completed_at) "completed_at stamped so the client stops polling")
         (is (some? analysis_started_at))))))
+
+;;; ---------------------------------------------------------------------------
+;;; Transcript persistence
+;;; ---------------------------------------------------------------------------
+
+(deftest planner-run-persists-its-transcript-test
+  (testing "a planner run's transcript, planner notes included, is saved on the thread"
+    (mt/with-temp [:model/Card metric {:type :metric :dataset_query (count-metric-query)}
+                   :model/Exploration e {:name "x"}
+                   :model/ExplorationThread t {:exploration_id (:id e)}]
+      (mk-block! (:id t) (:id metric) d1 "Price" "type/Number")
+      (is (= :ok (query-plan/generate-query-plan! (:id t))))
+      (is (=? {:planner    :mechanical
+               :outcome    :ok
+               :rows-count pos-int?
+               :transcript {:outcome       :ok
+                            :planner-notes {:strategy "mechanical"}}}
+              (query-plan/debug-transcript (:id t)))))))
+
+(deftest planner-with-nothing-to-chart-reads-as-empty-test
+  (testing "a planner that reports :skip-not-applicable leaves the thread reading as empty, not failed"
+    (mt/with-temp [:model/Card metric {:type :metric :dataset_query (count-metric-query)}
+                   :model/Exploration e {:name "x"}
+                   :model/ExplorationThread t {:exploration_id (:id e)
+                                               :started_at     (t/offset-date-time)}]
+      (mk-block! (:id t) (:id metric) d1 "Price" "type/Number")
+      (mt/with-dynamic-fn-redefs [query-plan/pick-planner!
+                                  (constantly (reify planner/QueryPlanner
+                                                (planner-name [_] :stub)
+                                                (plan! [_ _]
+                                                  {:outcome    :skip-not-applicable
+                                                   :transcript {:reason "nothing applicable" :n-blocks 1}})))]
+        (is (= :skip-empty (query-plan/generate-query-plan! (:id t)))))
+      (is (=? {:outcome    :skip-empty
+               :transcript {:outcome       :skip-not-applicable
+                            :planner-notes {:reason "nothing applicable" :n-blocks 1}}}
+              (query-plan/debug-transcript (:id t))))
+      (is (= "empty" (#'explorations.api/thread-status
+                      (t2/select-one :model/ExplorationThread :id (:id t))))))))
+
+(deftest transcript-that-violates-its-schema-throws-test
+  (testing "a transcript the column schema rejects is a real error where schemas are validated, not a
+            silently dropped transcript"
+    (mt/with-temp [:model/Card metric {:type :metric :dataset_query (count-metric-query)}
+                   :model/Exploration e {:name "x"}
+                   :model/ExplorationThread t {:exploration_id (:id e)}]
+      (mk-block! (:id t) (:id metric) d1 "Price" "type/Number")
+      (mt/with-dynamic-fn-redefs [query-plan/pick-planner!
+                                  (constantly (reify planner/QueryPlanner
+                                                (planner-name [_] :stub)
+                                                (plan! [_ _]
+                                                  {:outcome    :skip-not-applicable
+                                                   :transcript "not a map"})))]
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Invalid input"
+                              (query-plan/generate-query-plan! (:id t))))))))
 
 ;;; ---------------------------------------------------------------------------
 ;;; Redelivery safety
@@ -303,7 +362,7 @@
                    :model/Exploration e {:name "x"}
                    :model/ExplorationThread t {:exploration_id (:id e)}]
       (let [cid (:id metric)]
-        (mk-block! (:id t) cid "d1" "Price" "type/Number")
+        (mk-block! (:id t) cid d1 "Price" "type/Number")
         (is (= :ok (query-plan/generate-query-plan! (:id t))))
         (let [after-first (t2/count :model/ExplorationQuery :exploration_thread_id (:id t))]
           (is (pos? after-first) "the first plan produced rows")
@@ -330,7 +389,7 @@
                    :model/Exploration e {:name "x"}
                    :model/ExplorationThread t {:exploration_id (:id e)}]
       (let [cid    (:id metric)
-            g      (mk-block! (:id t) cid "d1" "Price" "type/Number")
+            g      (mk-block! (:id t) cid d1 "Price" "type/Number")
             ;; `original-fn`, not `@#'`: once the var has been proxied, deref'ing it returns the
             ;; proxy, and delegating to that would recur forever
             orig   (dynamic-redefs/original-fn #'query-plan/materialize-item)
@@ -341,8 +400,8 @@
                                  {:exploration_thread_id (:id t)
                                   :card_id               cid
                                   :database_id           (mt/id)
-                                  :page_id               (orphan-page! (:id g) cid "d1")
-                                  :dimension_id          "d1"
+                                  :page_id               (orphan-page! (:id g) cid d1)
+                                  :dimension_id          d1
                                   :query_type            "default"
                                   :dataset_query         (count-metric-query)
                                   :status                "pending"
@@ -355,7 +414,7 @@
           (query-plan/generate-query-plan! (:id t)))
         (is (= 1 (t2/count :model/ExplorationQuery :exploration_thread_id (:id t)))
             "the losing planner discards its rows instead of appending them")
-        (is (= 1 (t2/count :model/ExplorationPage :exploration_block_id (:id g) :dimension_id "d1"))
+        (is (= 1 (t2/count :model/ExplorationPage :exploration_block_id (:id g) :dimension_id d1))
             "and never reaches find-or-create-page!, so the thread's page is not duplicated")))))
 
 (deftest gc-retains-pages-that-still-have-queries-test
@@ -365,14 +424,14 @@
                    :model/Exploration e {:name "x"}
                    :model/ExplorationThread t {:exploration_id (:id e)}]
       (let [cid     (:id metric)
-            g       (mk-block! (:id t) cid "d1" "Price" "type/Number")
-            page-id (orphan-page! (:id g) cid "d1")
+            g       (mk-block! (:id t) cid d1 "Price" "type/Number")
+            page-id (orphan-page! (:id g) cid d1)
             q-id    (t2/insert-returning-pk! :model/ExplorationQuery
                                              {:exploration_thread_id (:id t)
                                               :card_id               cid
                                               :database_id           (mt/id)
                                               :page_id               page-id
-                                              :dimension_id          "d1"
+                                              :dimension_id          d1
                                               :dataset_query         (count-metric-query)
                                               :status                "pending"
                                               :position              0})]
@@ -392,14 +451,14 @@
                         {:exploration_thread_id (:id t)
                          :metrics    [{:card_id cid
                                        :dimension_mappings
-                                       [{:dimension-id "d1" :table-id (mt/id :venues)
+                                       [{:dimension-id d1 :table-id (mt/id :venues)
                                          :target ["field" {} (mt/id :venues :price)]}
-                                        {:dimension-id "d2" :table-id (mt/id :venues)
+                                        {:dimension-id d2 :table-id (mt/id :venues)
                                          :target ["field" {} (mt/id :venues :name)]}]}]
-                         :dimensions [{:dimension-id "d1" :display-name "Price" :effective-type "type/Number"}
-                                      {:dimension-id "d2" :display-name "Name" :effective-type "type/Text"}]
+                         :dimensions [{:dimension-id d1 :display-name "Price" :effective-type "type/Number"}
+                                      {:dimension-id d2 :display-name "Name" :effective-type "type/Text"}]
                          :position   0}))
-            b   (mk-block! (:id t) cid "d1" "Price" "type/Number")]
+            b   (mk-block! (:id t) cid d1 "Price" "type/Number")]
         (is (= :ok (query-plan/generate-query-plan! (:id t))))
         (doseq [block [a b]]
           (let [positions (t2/select-fn-vec :position :model/ExplorationPage
