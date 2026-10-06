@@ -66,13 +66,14 @@ describe("scenarios > data-studio > transforms > inspect", () => {
   });
 
   describe("generic-summary lens", () => {
-    it("should show Summary and Column Distributions lenses for an MBQL transform and the Summary lens for a SQL transform", () => {
+    it("should show Summary and Column Distributions lenses for an MBQL transform and the Summary lens for a SQL transform, and show the loading spinner only on the active tab", () => {
       H.createAndRunMbqlTransform({
         sourceTable: SOURCE_TABLE,
         targetTable: "inspect_mbql_table",
         targetSchema: TARGET_SCHEMA,
         name: "MBQL inspect transform",
       }).then(({ transformId }) => {
+        cy.wrap(transformId).as("mbqlTransformId");
         H.DataStudio.Transforms.visitInspect(transformId);
       });
 
@@ -186,6 +187,60 @@ describe("scenarios > data-studio > transforms > inspect", () => {
       cy.findByRole("heading", { name: /1 output table/i }).should(
         "be.visible",
       );
+
+      cy.log("the tab loading spinner shows only on the active tab");
+      cy.intercept("POST", "/api/ee/transforms/*/inspect/*/query", (req) => {
+        req.continue((res) => {
+          res.setDelay(1000);
+        });
+      }).as("inspectorQuery");
+
+      cy.get<TransformId>("@mbqlTransformId").then((transformId) => {
+        H.DataStudio.Transforms.visitInspect(transformId);
+      });
+
+      cy.wait("@inspectorDiscovery");
+
+      const summaryTab = () => cy.findByRole("tab", { name: /Summary/ });
+      const colDistTab = () =>
+        cy.findByRole("tab", { name: /Column Distributions/ });
+
+      cy.log("the active Summary tab shows a spinner while its cards load");
+      summaryTab().findByTestId("lens-tab-loader").should("be.visible");
+
+      cy.log("switch away before Summary finishes loading");
+      colDistTab().click();
+
+      cy.log(
+        "the previous tab does not get stuck — the fast Summary lens reverts to no indicator",
+      );
+      summaryTab().within(() => {
+        cy.findByTestId("lens-tab-loader").should("not.exist");
+        cy.findByLabelText(/clock icon/i).should("not.exist");
+      });
+
+      cy.log("the newly active tab now shows the spinner");
+      colDistTab().findByTestId("lens-tab-loader").should("be.visible");
+
+      cy.log("the spinner clears once the lens finishes loading");
+      cy.findAllByTestId("visualization-root").should("have.length", 4);
+      colDistTab().within(() => {
+        cy.findByTestId("lens-tab-loader").should("not.exist");
+        cy.findByLabelText(/clock icon/i).should("not.exist");
+      });
+
+      cy.log(
+        "switch back: the loaded tab shows no indicator, active one re-loads cleanly",
+      );
+      summaryTab().click();
+
+      colDistTab().within(() => {
+        cy.findByTestId("lens-tab-loader").should("not.exist");
+        cy.findByLabelText(/clock icon/i).should("not.exist");
+      });
+
+      cy.findByTestId("generic-summary-tables").should("be.visible");
+      summaryTab().findByTestId("lens-tab-loader").should("not.exist");
     });
   });
 
@@ -305,68 +360,6 @@ describe("scenarios > data-studio > transforms > inspect", () => {
       H.expectUnstructuredSnowplowEvent({
         event: "transform_inspect_drill_lens_closed",
       });
-    });
-  });
-
-  describe("loading indicator", () => {
-    it("shows the spinner only on the active tab and never leaves it stuck when switching tabs", () => {
-      cy.intercept("POST", "/api/ee/transforms/*/inspect/*/query", (req) => {
-        req.continue((res) => {
-          res.setDelay(1000);
-        });
-      }).as("inspectorQuery");
-
-      H.createAndRunMbqlTransform({
-        sourceTable: SOURCE_TABLE,
-        targetTable: "inspect_loading_table",
-        targetSchema: TARGET_SCHEMA,
-        name: "Loading indicator inspect transform",
-      }).then(({ transformId }) => {
-        H.DataStudio.Transforms.visitInspect(transformId);
-      });
-
-      cy.wait("@inspectorDiscovery");
-
-      const summaryTab = () => cy.findByRole("tab", { name: /Summary/ });
-      const colDistTab = () =>
-        cy.findByRole("tab", { name: /Column Distributions/ });
-
-      cy.log("the active Summary tab shows a spinner while its cards load");
-      summaryTab().findByTestId("lens-tab-loader").should("be.visible");
-
-      cy.log("switch away before Summary finishes loading");
-      colDistTab().click();
-
-      cy.log(
-        "the previous tab does not get stuck — the fast Summary lens reverts to no indicator",
-      );
-      summaryTab().within(() => {
-        cy.findByTestId("lens-tab-loader").should("not.exist");
-        cy.findByLabelText(/clock icon/i).should("not.exist");
-      });
-
-      cy.log("the newly active tab now shows the spinner");
-      colDistTab().findByTestId("lens-tab-loader").should("be.visible");
-
-      cy.log("the spinner clears once the lens finishes loading");
-      cy.findAllByTestId("visualization-root").should("have.length", 4);
-      colDistTab().within(() => {
-        cy.findByTestId("lens-tab-loader").should("not.exist");
-        cy.findByLabelText(/clock icon/i).should("not.exist");
-      });
-
-      cy.log(
-        "switch back: the loaded tab shows no indicator, active one re-loads cleanly",
-      );
-      summaryTab().click();
-
-      colDistTab().within(() => {
-        cy.findByTestId("lens-tab-loader").should("not.exist");
-        cy.findByLabelText(/clock icon/i).should("not.exist");
-      });
-
-      cy.findByTestId("generic-summary-tables").should("be.visible");
-      summaryTab().findByTestId("lens-tab-loader").should("not.exist");
     });
   });
 });

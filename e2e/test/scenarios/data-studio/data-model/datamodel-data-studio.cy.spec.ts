@@ -225,44 +225,8 @@ describe("scenarios > data studio > datamodel", () => {
       });
     });
 
-    describe("Field name and description", () => {
-      it("should allow clearing the field description", () => {
-        H.DataModel.visitDataStudio({
-          databaseId: SAMPLE_DB_ID,
-          schemaId: SAMPLE_DB_SCHEMA_ID,
-          tableId: ORDERS_ID,
-        });
-
-        TableSection.clickFieldsTab();
-        TableSection.getFieldDescriptionInput("Total").clear().blur();
-        cy.wait("@updateField");
-        verifyAndCloseToast("Description of Total updated");
-        TableSection.getFieldDescriptionInput("Total").should("have.value", "");
-
-        cy.log("verify preview");
-        TableSection.clickField("Total");
-        FieldSection.getPreviewButton().click();
-        verifyTablePreview({
-          column: "Total",
-          values: ["39.72", "117.03", "49.21", "115.23", "134.91"],
-        });
-        PreviewSection.get().findByTestId("header-cell").realHover();
-        H.hovercard()
-          .should("contain.text", "No description")
-          .and("not.contain.text", "The total billed amount.");
-
-        cy.visit(
-          `/reference/databases/${SAMPLE_DB_ID}/tables/${ORDERS_ID}/fields/${ORDERS.TOTAL}`,
-        );
-        // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-        cy.findByText("Total").should("be.visible");
-        // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-        cy.findByText("No description yet").should("be.visible");
-      });
-    });
-
     describe("Sorting", () => {
-      it("should allow sorting fields as in the database, alphabetically, and smartly", () => {
+      it("should allow sorting fields as in the database, by drag & drop with a switch back to a predefined order (metabase#56482), alphabetically, and smartly", () => {
         cy.log("database order");
         H.DataModel.visitDataStudio({
           databaseId: SAMPLE_DB_ID,
@@ -290,70 +254,7 @@ describe("scenarios > data studio > datamodel", () => {
           ],
         });
 
-        cy.log("alphabetical order");
-        H.DataModel.visitDataStudio({
-          databaseId: SAMPLE_DB_ID,
-          schemaId: SAMPLE_DB_SCHEMA_ID,
-          tableId: PRODUCTS_ID,
-        });
-
-        TableSection.clickFieldsTab();
-        TableSection.getSortButton().click();
-        TableSection.getSortOrderInput()
-          .findByLabelText("Alphabetical order")
-          .click();
-        cy.wait("@updateTable");
-        verifyAndCloseToast("Field order updated");
-        TableSection.getSortOrderInput()
-          .findByDisplayValue("alphabetical")
-          .should("be.checked");
-
-        H.openProductsTable();
-        H.assertTableData({
-          columns: [
-            "Category",
-            "Created At",
-            "Ean",
-            "ID",
-            "Price",
-            "Rating",
-            "Title",
-            "Vendor",
-          ],
-        });
-
-        cy.log("smart order");
-        H.DataModel.visitDataStudio({
-          databaseId: SAMPLE_DB_ID,
-          schemaId: SAMPLE_DB_SCHEMA_ID,
-          tableId: PRODUCTS_ID,
-        });
-
-        TableSection.clickFieldsTab();
-        TableSection.getSortButton().click();
-        TableSection.getSortOrderInput().findByLabelText("Auto order").click();
-        cy.wait("@updateTable");
-        verifyAndCloseToast("Field order updated");
-        TableSection.getSortOrderInput()
-          .findByDisplayValue("smart")
-          .should("be.checked");
-
-        H.openProductsTable();
-        H.assertTableData({
-          columns: [
-            "ID",
-            "Created At",
-            "Category",
-            "Ean",
-            "Price",
-            "Rating",
-            "Title",
-            "Vendor",
-          ],
-        });
-      });
-
-      it("should allow switching to predefined order after drag & drop (metabase#56482)", () => {
+        cy.log("drag & drop order");
         H.DataModel.visitDataStudio({
           databaseId: SAMPLE_DB_ID,
           schemaId: SAMPLE_DB_SCHEMA_ID,
@@ -438,44 +339,68 @@ describe("scenarios > data studio > datamodel", () => {
             "Created At",
           ],
         });
-      });
-    });
 
-    describe("Sync options", () => {
-      it("should allow to sync table schema, re-scan field values, and discard cached field values from the actions menu", () => {
-        cy.intercept("POST", "/api/data-studio/table/sync-schema").as(
-          "syncSchema",
-        );
-        cy.intercept("POST", "/api/data-studio/table/rescan-values").as(
-          "rescanValues",
-        );
-        cy.intercept("POST", "/api/data-studio/table/discard-values").as(
-          "discardValues",
-        );
-
+        cy.log("alphabetical order");
         H.DataModel.visitDataStudio({
           databaseId: SAMPLE_DB_ID,
           schemaId: SAMPLE_DB_SCHEMA_ID,
           tableId: PRODUCTS_ID,
         });
 
-        cy.log("re-sync schema");
-        TableSection.getActionsMenuButton().click();
-        H.menu().findByText("Re-sync schema").click();
-        cy.wait("@syncSchema");
-        verifyAndCloseToast("Sync triggered");
+        TableSection.clickFieldsTab();
+        TableSection.getSortButton().click();
+        TableSection.getSortOrderInput()
+          .findByLabelText("Alphabetical order")
+          .click();
+        cy.wait("@updateTable");
+        verifyAndCloseToast("Field order updated");
+        TableSection.getSortOrderInput()
+          .findByDisplayValue("alphabetical")
+          .should("be.checked");
 
-        cy.log("re-scan field values");
-        TableSection.getActionsMenuButton().click();
-        H.menu().findByText("Re-scan field values").click();
-        cy.wait("@rescanValues");
-        verifyAndCloseToast("Scan triggered");
+        H.openProductsTable();
+        H.assertTableData({
+          columns: [
+            "Category",
+            "Created At",
+            "Ean",
+            "ID",
+            "Price",
+            "Rating",
+            "Title",
+            "Vendor",
+          ],
+        });
 
-        cy.log("discard cached field values");
-        TableSection.getActionsMenuButton().click();
-        H.menu().findByText("Discard cached field values").click();
-        cy.wait("@discardValues");
-        verifyAndCloseToast("Discard triggered");
+        cy.log("smart order");
+        H.DataModel.visitDataStudio({
+          databaseId: SAMPLE_DB_ID,
+          schemaId: SAMPLE_DB_SCHEMA_ID,
+          tableId: PRODUCTS_ID,
+        });
+
+        TableSection.clickFieldsTab();
+        TableSection.getSortButton().click();
+        TableSection.getSortOrderInput().findByLabelText("Auto order").click();
+        cy.wait("@updateTable");
+        verifyAndCloseToast("Field order updated");
+        TableSection.getSortOrderInput()
+          .findByDisplayValue("smart")
+          .should("be.checked");
+
+        H.openProductsTable();
+        H.assertTableData({
+          columns: [
+            "ID",
+            "Created At",
+            "Category",
+            "Ean",
+            "Price",
+            "Rating",
+            "Title",
+            "Vendor",
+          ],
+        });
       });
     });
   });
@@ -700,7 +625,7 @@ describe("scenarios > data studio > datamodel", () => {
     });
   });
 
-  it("should allow you to close table and field details", () => {
+  it("should allow you to close table and field details, clear a field description, and use sync options, also for a hidden table", () => {
     H.DataModel.visitDataStudio({
       databaseId: SAMPLE_DB_ID,
       schemaId: SAMPLE_DB_SCHEMA_ID,
@@ -731,6 +656,72 @@ describe("scenarios > data studio > datamodel", () => {
     PreviewSection.get().should("not.exist");
     FieldSection.get().should("exist");
     TableSection.get().should("exist");
+
+    cy.log("clear the field description");
+    H.DataModel.visitDataStudio({
+      databaseId: SAMPLE_DB_ID,
+      schemaId: SAMPLE_DB_SCHEMA_ID,
+      tableId: ORDERS_ID,
+    });
+
+    TableSection.clickFieldsTab();
+    TableSection.getFieldDescriptionInput("Total").clear().blur();
+    cy.wait("@updateField");
+    verifyAndCloseToast("Description of Total updated");
+    TableSection.getFieldDescriptionInput("Total").should("have.value", "");
+
+    cy.log("verify preview");
+    TableSection.clickField("Total");
+    FieldSection.getPreviewButton().click();
+    verifyTablePreview({
+      column: "Total",
+      values: ["39.72", "117.03", "49.21", "115.23", "134.91"],
+    });
+    PreviewSection.get().findByTestId("header-cell").realHover();
+    H.hovercard()
+      .should("contain.text", "No description")
+      .and("not.contain.text", "The total billed amount.");
+
+    cy.visit(
+      `/reference/databases/${SAMPLE_DB_ID}/tables/${ORDERS_ID}/fields/${ORDERS.TOTAL}`,
+    );
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
+    cy.findByText("Total").should("be.visible");
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
+    cy.findByText("No description yet").should("be.visible");
+
+    cy.log("sync options from the actions menu");
+    cy.intercept("POST", "/api/data-studio/table/sync-schema").as("syncSchema");
+    cy.intercept("POST", "/api/data-studio/table/rescan-values").as(
+      "rescanValues",
+    );
+    cy.intercept("POST", "/api/data-studio/table/discard-values").as(
+      "discardValues",
+    );
+
+    H.DataModel.visitDataStudio({
+      databaseId: SAMPLE_DB_ID,
+      schemaId: SAMPLE_DB_SCHEMA_ID,
+      tableId: PRODUCTS_ID,
+    });
+
+    cy.log("re-sync schema");
+    TableSection.getActionsMenuButton().click();
+    H.menu().findByText("Re-sync schema").click();
+    cy.wait("@syncSchema");
+    verifyAndCloseToast("Sync triggered");
+
+    cy.log("re-scan field values");
+    TableSection.getActionsMenuButton().click();
+    H.menu().findByText("Re-scan field values").click();
+    cy.wait("@rescanValues");
+    verifyAndCloseToast("Scan triggered");
+
+    cy.log("discard cached field values");
+    TableSection.getActionsMenuButton().click();
+    H.menu().findByText("Discard cached field values").click();
+    cy.wait("@discardValues");
+    verifyAndCloseToast("Discard triggered");
 
     cy.log("should not crash when viewing filtering preview of a hidden table");
     H.DataModel.visitDataStudio({

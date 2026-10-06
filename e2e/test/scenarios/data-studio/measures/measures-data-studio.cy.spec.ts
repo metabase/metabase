@@ -164,7 +164,7 @@ describe("scenarios > data studio > data model > measures", () => {
   });
 
   describe("Measure editing", () => {
-    it("should display and update existing measure", () => {
+    it("should display and update existing measure, and navigate back to measures tab via breadcrumb", () => {
       createTestMeasure({
         name: "Test Measure",
         description: "Test description",
@@ -198,16 +198,7 @@ describe("scenarios > data studio > data model > measures", () => {
       cy.wait("@updateMeasure");
       H.undoToastList().should("contain.text", "Measure updated");
 
-      cy.log("verify updated measure in query builder");
-      verifyMeasureInQueryBuilder("Test Measure Updated");
-    });
-
-    it("should navigate back to measures tab via breadcrumb", () => {
-      createTestMeasure({ name: "Breadcrumb Test Measure" });
-      cy.get<number>("@measureId").then((measureId) => {
-        visitDataModelMeasure(ORDERS_ID, measureId);
-      });
-
+      cy.log("navigate back to measures tab via breadcrumb");
       MeasureEditor.getBreadcrumb("Orders").click();
 
       cy.url().should(
@@ -217,6 +208,9 @@ describe("scenarios > data studio > data model > measures", () => {
       cy.findByRole("tab", { name: /Measures/i })
         .scrollIntoView()
         .should("have.attr", "aria-selected", "true");
+
+      cy.log("verify updated measure in query builder");
+      verifyMeasureInQueryBuilder("Test Measure Updated");
     });
   });
 

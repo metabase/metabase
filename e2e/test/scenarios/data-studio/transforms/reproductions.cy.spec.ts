@@ -85,7 +85,7 @@ describe("issue #68378 and GDGT-1776", () => {
   });
 });
 
-describe("issue GDGT-1774", () => {
+describe("issues GDGT-2429, UXW-3160, 69904 and GDGT-1774", () => {
   beforeEach(() => {
     H.restore("postgres-writable");
     H.resetTestTable({ type: "postgres", table: "many_schemas" });
@@ -93,54 +93,6 @@ describe("issue GDGT-1774", () => {
     H.activateToken("pro-self-hosted");
     H.updateSetting("transforms-enabled", true);
     H.resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: SOURCE_TABLE });
-  });
-
-  it("should display field options in the incremental update field picker (GDGT-1774)", () => {
-    H.getTableId({ name: SOURCE_TABLE })
-      .then((tableId) =>
-        H.getFieldId({ tableId, name: "score" }).then((fieldId) =>
-          H.createTransform({
-            name: "Incremental MBQL transform",
-            source: {
-              type: "query",
-              query: {
-                database: WRITABLE_DB_ID,
-                type: "query",
-                query: { "source-table": tableId },
-              },
-              "source-incremental-strategy": {
-                type: "checkpoint",
-                "checkpoint-filter-field-id": fieldId,
-              },
-            },
-            target: {
-              type: "table-incremental",
-              database: WRITABLE_DB_ID,
-              name: TARGET_TABLE,
-              schema: TARGET_SCHEMA,
-              "target-incremental-strategy": { type: "append" },
-            },
-          }),
-        ),
-      )
-      .then((res) => H.DataStudio.Transforms.visitSettingsTab(res.body.id));
-
-    cy.log("Field picker should be visible and have selectable options");
-    cy.findByLabelText("Field to check for new values")
-      .scrollIntoView()
-      .should("be.visible")
-      .click();
-
-    H.popover().findAllByRole("option").should("have.length.greaterThan", 0);
-  });
-});
-
-describe("issues GDGT-2429, UXW-3160 and 69904", () => {
-  beforeEach(() => {
-    H.restore("postgres-writable");
-    cy.signInAsAdmin();
-    H.activateToken("pro-self-hosted");
-    H.updateSetting("transforms-enabled", true);
   });
 
   function startNewSqlTransform() {
@@ -158,7 +110,7 @@ describe("issues GDGT-2429, UXW-3160 and 69904", () => {
 
   // createAndRunSqlTransform waits for any succeeded run, so the metabase#69904
   // part must run before any other transform run.
-  it("should warn about unsaved changes in the save modal, scroll a long read-only SQL definition, and open a table of a deleted transform (metabase#GDGT-2429, UXW-3160, metabase#69904)", () => {
+  it("should warn about unsaved changes in the save modal, scroll a long read-only SQL definition, open a table of a deleted transform, and display field options in the incremental update field picker (metabase#GDGT-2429, UXW-3160, metabase#69904, GDGT-1774)", () => {
     cy.log(
       "warn about unsaved changes when navigating away while the save modal is open (metabase#GDGT-2429)",
     );
@@ -255,6 +207,46 @@ describe("issues GDGT-2429, UXW-3160 and 69904", () => {
         .findByText("Transform does not exist anymore")
         .should("be.visible");
     });
+
+    cy.log(
+      "display field options in the incremental update field picker (GDGT-1774)",
+    );
+    H.getTableId({ name: SOURCE_TABLE })
+      .then((tableId) =>
+        H.getFieldId({ tableId, name: "score" }).then((fieldId) =>
+          H.createTransform({
+            name: "Incremental MBQL transform",
+            source: {
+              type: "query",
+              query: {
+                database: WRITABLE_DB_ID,
+                type: "query",
+                query: { "source-table": tableId },
+              },
+              "source-incremental-strategy": {
+                type: "checkpoint",
+                "checkpoint-filter-field-id": fieldId,
+              },
+            },
+            target: {
+              type: "table-incremental",
+              database: WRITABLE_DB_ID,
+              name: TARGET_TABLE,
+              schema: TARGET_SCHEMA,
+              "target-incremental-strategy": { type: "append" },
+            },
+          }),
+        ),
+      )
+      .then((res) => H.DataStudio.Transforms.visitSettingsTab(res.body.id));
+
+    cy.log("Field picker should be visible and have selectable options");
+    cy.findByLabelText("Field to check for new values")
+      .scrollIntoView()
+      .should("be.visible")
+      .click();
+
+    H.popover().findAllByRole("option").should("have.length.greaterThan", 0);
   });
 });
 

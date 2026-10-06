@@ -278,37 +278,9 @@ describe("scenarios > data studio > measures > queries", () => {
       useMeasureInAdhocQuestion();
       verifyScalarValue("18,759");
     });
-
-    it("should be possible to offset a measure in a query", () => {
-      H.createMeasure({
-        name: MEASURE_NAME,
-        definition: {
-          database: SAMPLE_DB_ID,
-          type: "query",
-          query: {
-            "source-table": ORDERS_ID,
-            aggregation: [["sum", ["field", ORDERS.TOTAL, null]]],
-          },
-        },
-      });
-
-      useMeasureInAdhocQuestion({
-        customizeQuery() {
-          H.getNotebookStep("summarize").findByText("Table Measure").click();
-          H.CustomExpressionEditor.clear().type(
-            `Offset([${MEASURE_NAME}], -1)`,
-          );
-          H.popover().button("Update").click();
-
-          breakout("Created At");
-        },
-      });
-
-      verifyRowValues([["April 2025"], ["May 2025", "52.76"]]);
-    });
   });
 
-  it("should be possible to order by an aggregation using a measure directly or a custom expression based on a measure", () => {
+  it("should be possible to use a measure in queries, follow up stages, pivot tables and saved questions, and to rename the measure without breaking queries", () => {
     H.createMeasure({
       name: MEASURE_NAME,
       definition: {
@@ -319,7 +291,22 @@ describe("scenarios > data studio > measures > queries", () => {
           aggregation: [["sum", ["field", ORDERS.TOTAL, null]]],
         },
       },
+    }).then(({ body: measure }) => {
+      cy.wrap(measure.id).as("measureId");
     });
+
+    cy.log("offset the measure in a query");
+    useMeasureInAdhocQuestion({
+      customizeQuery() {
+        H.getNotebookStep("summarize").findByText("Table Measure").click();
+        H.CustomExpressionEditor.clear().type(`Offset([${MEASURE_NAME}], -1)`);
+        H.popover().button("Update").click();
+
+        breakout("Created At");
+      },
+    });
+
+    verifyRowValues([["April 2025"], ["May 2025", "52.76"]]);
 
     cy.log("order by the measure directly");
     useMeasureInAdhocQuestion({
@@ -359,149 +346,228 @@ describe("scenarios > data studio > measures > queries", () => {
       ["April 2029", "16"],
       ["May 2025", "17"],
     ]);
-  });
 
-  describe("follow up stages", () => {
-    it("should be possible to use results of a measure in follow up stages and join on a measure in a follow up stage", () => {
-      H.createMeasure({
-        name: MEASURE_NAME,
-        definition: {
-          database: SAMPLE_DB_ID,
-          type: "query",
+    cy.log("use results of the measure in follow up stages");
+    useMeasureInAdhocQuestion({
+      customizeQuery() {
+        breakout("Created At");
+
+        H.getNotebookStep("summarize").button("Filter").click();
+        H.popover().within(() => {
+          cy.findByText(MEASURE_NAME).click();
+          cy.findByPlaceholderText("Min").type("100");
+          cy.button("Add filter").click();
+        });
+
+        H.getNotebookStep("summarize").button("Custom column").click();
+        H.enterCustomColumnDetails({
+          formula: `floor([${MEASURE_NAME}] * 2)`,
+          name: "Double measure",
+          clickDone: true,
+        });
+
+        H.getNotebookStep("filter", { stage: 1 })
+          .findByText("Summarize")
+          .click();
+        H.popover().within(() => {
+          cy.findByText("Minimum of ...").click();
+          cy.findByText("Double measure").click();
+        });
+      },
+    });
+    verifyScalarValue("2,531");
+
+    cy.log("join on the measure in a follow up stage");
+    useMeasureInAdhocQuestion({
+      customizeQuery() {
+        breakout("Created At");
+
+        H.getNotebookStep("summarize").button("Join data").click();
+        H.popover().within(() => {
+          cy.findByText("Sample Database").click();
+          cy.findByText("Orders").click();
+        });
+
+        H.popover().findByText("Table Measure").click();
+        H.popover().findByText("Total").click();
+      },
+    });
+
+    verifyRowValues([["April 2025", "52.76", "8685"]]);
+
+    cy.log("join on the measure in a follow up stage with a custom expression");
+    useMeasureInAdhocQuestion({
+      customizeQuery() {
+        breakout("Created At");
+
+        H.getNotebookStep("summarize").button("Join data").click();
+        H.popover().within(() => {
+          cy.findByText("Sample Database").click();
+          cy.findByText("Orders").click();
+        });
+
+        H.popover().findByText("Custom Expression").click();
+
+        H.CustomExpressionEditor.clear()
+          .type("floor([Table Measure]/10)")
+          .blur();
+        H.popover().findByText("Done").click();
+
+        H.popover().findByText("ID").click();
+      },
+    });
+
+    verifyRowValues([["April 2025", "52.76", "5", "1"]]);
+
+    cy.log("rename an aggregation expression based on the measure");
+    useMeasureInAdhocQuestion({
+      customizeQuery() {
+        H.getNotebookStep("summarize").findByText("Table Measure").click();
+        H.CustomExpressionEditor.nameInput()
+          .clear()
+          .type("Renamed aggregation");
+        H.popover().button("Update").click();
+      },
+    });
+
+    verifyScalarValue("1,510,621.68");
+
+    cy.log("use the measure in a pivot table");
+    cy.get<number>("@measureId").then((measureId) => {
+      H.createQuestion(
+        {
+          name: "Question with measure",
+          display: "pivot",
+          visualization_settings: {
+            "table.pivot_column": "Created At: Week",
+            "table.cell_column": "Table Measure",
+          },
           query: {
             "source-table": ORDERS_ID,
-            aggregation: [["sum", ["field", ORDERS.TOTAL, null]]],
+            aggregation: [
+              ["measure", { "display-name": MEASURE_NAME }, measureId],
+            ],
+            breakout: [
+              ["field", ORDERS.CREATED_AT, { "temporal-unit": "year" }],
+              [
+                "field",
+                PRODUCTS.CATEGORY,
+                { "base-type": "type/Text", "source-field": ORDERS.PRODUCT_ID },
+              ],
+            ],
           },
         },
-      });
-
-      cy.log("use results of the measure in follow up stages");
-      useMeasureInAdhocQuestion({
-        customizeQuery() {
-          breakout("Created At");
-
-          H.getNotebookStep("summarize").button("Filter").click();
-          H.popover().within(() => {
-            cy.findByText(MEASURE_NAME).click();
-            cy.findByPlaceholderText("Min").type("100");
-            cy.button("Add filter").click();
-          });
-
-          H.getNotebookStep("summarize").button("Custom column").click();
-          H.enterCustomColumnDetails({
-            formula: `floor([${MEASURE_NAME}] * 2)`,
-            name: "Double measure",
-            clickDone: true,
-          });
-
-          H.getNotebookStep("filter", { stage: 1 })
-            .findByText("Summarize")
-            .click();
-          H.popover().within(() => {
-            cy.findByText("Minimum of ...").click();
-            cy.findByText("Double measure").click();
-          });
-        },
-      });
-      verifyScalarValue("2,531");
-
-      cy.log("join on the measure in a follow up stage");
-      useMeasureInAdhocQuestion({
-        customizeQuery() {
-          breakout("Created At");
-
-          H.getNotebookStep("summarize").button("Join data").click();
-          H.popover().within(() => {
-            cy.findByText("Sample Database").click();
-            cy.findByText("Orders").click();
-          });
-
-          H.popover().findByText("Table Measure").click();
-          H.popover().findByText("Total").click();
-        },
-      });
-
-      verifyRowValues([["April 2025", "52.76", "8685"]]);
-
-      cy.log(
-        "join on the measure in a follow up stage with a custom expression",
+        { visitQuestion: true },
       );
-      useMeasureInAdhocQuestion({
-        customizeQuery() {
-          breakout("Created At");
-
-          H.getNotebookStep("summarize").button("Join data").click();
-          H.popover().within(() => {
-            cy.findByText("Sample Database").click();
-            cy.findByText("Orders").click();
-          });
-
-          H.popover().findByText("Custom Expression").click();
-
-          H.CustomExpressionEditor.clear()
-            .type("floor([Table Measure]/10)")
-            .blur();
-          H.popover().findByText("Done").click();
-
-          H.popover().findByText("ID").click();
-        },
-      });
-
-      verifyRowValues([["April 2025", "52.76", "5", "1"]]);
     });
+
+    cy.findByTestId("pivot-table").within(() => {
+      cy.findByText("Row totals").should("be.visible");
+      cy.findByText("Grand totals").should("be.visible");
+      cy.findAllByTestId("pivot-table-cell")
+        .should("have.length", 42)
+        .eq(12) // a random cell
+        .should("have.text", "9,031.56");
+    });
+
+    cy.log("use the measure results in a saved question");
+    cy.get<number>("@measureId").then((measureId) => {
+      H.createQuestion({
+        name: "Question with measure",
+        query: {
+          "source-table": ORDERS_ID,
+          aggregation: [
+            ["measure", { "display-name": MEASURE_NAME }, measureId],
+          ],
+          breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "week" }]],
+        },
+      }).then(({ body: question }) => {
+        cy.wrap(question.id).as("questionId");
+      });
+    });
+
+    cy.log("follow up question");
+    cy.get<number>("@questionId").then((questionId) => {
+      H.createQuestion(
+        {
+          query: {
+            "source-table": `card__${questionId}`,
+          },
+          display: "scalar",
+        },
+        { visitQuestion: true },
+      );
+    });
+
+    H.openNotebook();
+
+    H.filter({ mode: "notebook" });
+    H.popover().within(() => {
+      cy.findByText(MEASURE_NAME).click();
+      cy.findByPlaceholderText("Min").type("100");
+      cy.button("Add filter").click();
+    });
+
+    H.summarize({ mode: "notebook" });
+    H.popover().findByText("Custom Expression").click();
+    H.enterCustomColumnDetails({
+      formula: `Sum([${MEASURE_NAME}])`,
+      name: "Table Measure Sum",
+      clickDone: true,
+    });
+
+    H.visualize();
+    verifyScalarValue("1,510,568.93");
+
+    cy.log("follow up model");
+    cy.get<number>("@questionId").then((questionId) => {
+      H.createQuestion(
+        {
+          type: "model",
+          query: {
+            "source-table": `card__${questionId}`,
+          },
+          display: "scalar",
+        },
+        { visitQuestion: true },
+      );
+    });
+
+    H.openQuestionActions("Edit query definition");
+
+    H.filter({ mode: "notebook" });
+    H.popover().within(() => {
+      cy.findByText(MEASURE_NAME).click();
+      cy.findByPlaceholderText("Min").type("100");
+      cy.button("Add filter").click();
+    });
+
+    H.summarize({ mode: "notebook" });
+    H.popover().findByText("Custom Expression").click();
+    H.enterCustomColumnDetails({
+      formula: `Sum([${MEASURE_NAME}])`,
+      name: "Table Measure Sum",
+      clickDone: true,
+    });
+
+    cy.findByTestId("dataset-edit-bar").button("Save changes").click();
+    verifyScalarValue("1,510,568.93");
+
+    cy.log("rename the measure without breaking queries that reference it");
+    useMeasureInAdhocQuestion();
+
+    cy.get<number>("@measureId").then((measureId) => {
+      H.updateMeasure({
+        id: measureId,
+        name: "Renamed measure",
+      });
+    });
+
+    cy.reload();
+    verifyScalarValue("1,510,621.68");
   });
 
   describe("measure refs", () => {
-    it("should be possible to rename a measure without breaking queries that reference it", () => {
-      H.createMeasure({
-        name: MEASURE_NAME,
-        definition: {
-          database: SAMPLE_DB_ID,
-          type: "query",
-          query: {
-            "source-table": ORDERS_ID,
-            aggregation: [["sum", ["field", ORDERS.TOTAL, null]]],
-          },
-        },
-      }).then(({ body: measure }) => {
-        useMeasureInAdhocQuestion();
-
-        H.updateMeasure({
-          id: measure.id,
-          name: "Renamed measure",
-        });
-
-        cy.reload();
-        verifyScalarValue("1,510,621.68");
-      });
-    });
-
-    it("should be possible to rename an aggregation expression based on a measure without breaking it", () => {
-      H.createMeasure({
-        name: MEASURE_NAME,
-        definition: {
-          database: SAMPLE_DB_ID,
-          type: "query",
-          query: {
-            "source-table": ORDERS_ID,
-            aggregation: [["sum", ["field", ORDERS.TOTAL, null]]],
-          },
-        },
-      });
-
-      useMeasureInAdhocQuestion({
-        customizeQuery() {
-          H.getNotebookStep("summarize").findByText("Table Measure").click();
-          H.CustomExpressionEditor.nameInput()
-            .clear()
-            .type("Renamed aggregation");
-          H.popover().button("Update").click();
-        },
-      });
-
-      verifyScalarValue("1,510,621.68");
-    });
-
     it("changing the top-level aggregation expression in a measure might break queries that reference it in follow up stages", () => {
       H.createMeasure({
         name: MEASURE_NAME,
@@ -563,153 +629,6 @@ describe("scenarios > data studio > measures > queries", () => {
             .should("be.visible");
         });
       });
-    });
-  });
-
-  it("should be possible to use a measure in a pivot table", () => {
-    H.createMeasure({
-      name: MEASURE_NAME,
-      definition: {
-        database: SAMPLE_DB_ID,
-        type: "query",
-        query: {
-          "source-table": ORDERS_ID,
-          aggregation: [["sum", ["field", ORDERS.TOTAL, null]]],
-        },
-      },
-    }).then(({ body: measure }) => {
-      H.createQuestion(
-        {
-          name: "Question with measure",
-          display: "pivot",
-          visualization_settings: {
-            "table.pivot_column": "Created At: Week",
-            "table.cell_column": "Table Measure",
-          },
-          query: {
-            "source-table": ORDERS_ID,
-            aggregation: [
-              ["measure", { "display-name": measure.name }, measure.id],
-            ],
-            breakout: [
-              ["field", ORDERS.CREATED_AT, { "temporal-unit": "year" }],
-              [
-                "field",
-                PRODUCTS.CATEGORY,
-                { "base-type": "type/Text", "source-field": ORDERS.PRODUCT_ID },
-              ],
-            ],
-          },
-        },
-        { visitQuestion: true },
-      );
-    });
-
-    cy.findByTestId("pivot-table").within(() => {
-      cy.findByText("Row totals").should("be.visible");
-      cy.findByText("Grand totals").should("be.visible");
-      cy.findAllByTestId("pivot-table-cell")
-        .should("have.length", 42)
-        .eq(12) // a random cell
-        .should("have.text", "9,031.56");
-    });
-  });
-
-  describe("using measures in saved questions", () => {
-    it("should be possible to use measure results in a saved question as source for a follow up question and a follow up model", () => {
-      H.createMeasure({
-        name: MEASURE_NAME,
-        definition: {
-          database: SAMPLE_DB_ID,
-          type: "query",
-          query: {
-            "source-table": ORDERS_ID,
-            aggregation: [["sum", ["field", ORDERS.TOTAL, null]]],
-          },
-        },
-      }).then(({ body: measure }) => {
-        H.createQuestion({
-          name: "Question with measure",
-          query: {
-            "source-table": ORDERS_ID,
-            aggregation: [
-              ["measure", { "display-name": measure.name }, measure.id],
-            ],
-            breakout: [
-              ["field", ORDERS.CREATED_AT, { "temporal-unit": "week" }],
-            ],
-          },
-        }).then(({ body: question }) => {
-          cy.wrap(question.id).as("questionId");
-        });
-      });
-
-      cy.log("follow up question");
-      cy.get<number>("@questionId").then((questionId) => {
-        H.createQuestion(
-          {
-            query: {
-              "source-table": `card__${questionId}`,
-            },
-            display: "scalar",
-          },
-          { visitQuestion: true },
-        );
-      });
-
-      H.openNotebook();
-
-      H.filter({ mode: "notebook" });
-      H.popover().within(() => {
-        cy.findByText(MEASURE_NAME).click();
-        cy.findByPlaceholderText("Min").type("100");
-        cy.button("Add filter").click();
-      });
-
-      H.summarize({ mode: "notebook" });
-      H.popover().findByText("Custom Expression").click();
-      H.enterCustomColumnDetails({
-        formula: `Sum([${MEASURE_NAME}])`,
-        name: "Table Measure Sum",
-        clickDone: true,
-      });
-
-      H.visualize();
-      verifyScalarValue("1,510,568.93");
-
-      cy.log("follow up model");
-      cy.get<number>("@questionId").then((questionId) => {
-        H.createQuestion(
-          {
-            type: "model",
-            query: {
-              "source-table": `card__${questionId}`,
-            },
-            display: "scalar",
-          },
-          { visitQuestion: true },
-        );
-      });
-
-      H.openQuestionActions("Edit query definition");
-
-      H.filter({ mode: "notebook" });
-      H.popover().within(() => {
-        cy.findByText(MEASURE_NAME).click();
-        cy.findByPlaceholderText("Min").type("100");
-        cy.button("Add filter").click();
-      });
-
-      H.summarize({ mode: "notebook" });
-      H.popover().findByText("Custom Expression").click();
-      H.enterCustomColumnDetails({
-        formula: `Sum([${MEASURE_NAME}])`,
-        name: "Table Measure Sum",
-        clickDone: true,
-      });
-
-      cy.findByTestId("dataset-edit-bar").button("Save changes").click();
-      verifyScalarValue("1,510,568.93");
     });
   });
 

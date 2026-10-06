@@ -22,8 +22,8 @@ describe(
       cy.intercept("GET", "/api/table/*/query_metadata*").as("metadata");
     });
 
-    describe("Segment list", () => {
-      it("should navigate between Fields and Segments tabs", () => {
+    describe("Segment list and creation", () => {
+      it("should navigate between Fields and Segments tabs, show empty state, guard unsaved changes, and create a segment with filters", () => {
         visitDataStudioTable(ORDERS_ID);
 
         cy.log("verify both tabs visible");
@@ -48,11 +48,7 @@ describe(
         cy.log("navigate back to fields tab");
         cy.findByRole("tab", { name: /Fields/i }).click();
         cy.url().should("include", "/field");
-      });
-    });
 
-    describe("Segment creation", () => {
-      it("should show empty state, guard unsaved changes, and create a segment with filters", () => {
         visitDataStudioSegments(ORDERS_ID);
 
         cy.log("verify empty state");
@@ -123,7 +119,7 @@ describe(
     });
 
     describe("Segment editing", () => {
-      it("should update an existing segment and navigate back via breadcrumb", () => {
+      it("should update an existing segment, navigate back via breadcrumb, and use a segment based on another segment", () => {
         createTestSegment({
           name: "Test Segment",
           description: "Test description",
@@ -169,6 +165,45 @@ describe(
 
         cy.log("verify updated segment in query builder");
         verifySegmentInQueryBuilder("Test Segment Updated");
+
+        cy.log("create base segment");
+        createTestSegment({
+          name: "High Value Orders",
+          filter: [">", ["field", ORDERS.TOTAL, null], 100],
+        });
+
+        cy.get<number>("@segmentId").then((baseSegmentId) => {
+          cy.log("create segment based on segment");
+          H.createSegment({
+            name: "High Value Recent Orders",
+            definition: {
+              type: "query",
+              database: SAMPLE_DB_ID,
+              query: {
+                "source-table": ORDERS_ID,
+                filter: [
+                  "and",
+                  ["segment", baseSegmentId],
+                  [">", ["field", ORDERS.CREATED_AT, null], "2020-01-01"],
+                ],
+              },
+            },
+          });
+        });
+
+        cy.log("verify both segments appear in query builder");
+        verifySegmentInQueryBuilder("High Value Orders");
+        H.openTable({ table: ORDERS_ID, mode: "notebook" });
+        H.getNotebookStep("data").button("Filter").click();
+        H.popover().findByText("High Value Recent Orders").should("be.visible");
+
+        cy.log("verify dependent segment works");
+        H.popover().findByText("High Value Recent Orders").click();
+        H.visualize();
+        H.tableInteractive().should("be.visible");
+        H.queryBuilderFiltersPanel()
+          .findByText("High Value Recent Orders")
+          .should("be.visible");
       });
     });
 
@@ -222,45 +257,28 @@ describe(
       });
     });
 
-    describe("Segment with implicit joins", () => {
-      it("should create a segment with implicit join filter", () => {
-        visitDataStudioSegments(ORDERS_ID);
-
-        cy.log("navigate to new segment page");
-        SegmentList.getNewSegmentLink().scrollIntoView().click();
-
-        cy.log("fill in segment name");
-        SegmentEditor.getNameInput().type("Widget Orders");
-
-        cy.log("add filter via implicit join");
-        SegmentEditor.getFilterPlaceholder().click();
-        H.popover().within(() => {
-          cy.findByText("Product").click();
-          cy.findByText("Category").click();
-          cy.findByText("Widget").click();
-          cy.button("Add filter").click();
+    describe("Segment field values modes", () => {
+      it("should display search input on Email field, list values on Category field, then add a Price filter with preview", () => {
+        cy.request("PUT", `/api/field/${PEOPLE.EMAIL}`, {
+          has_field_values: "search",
         });
 
-        cy.log("verify filter was added and save");
-        SegmentEditor.get()
-          .findByText(/Product → Category is Widget/i)
-          .should("exist");
-        SegmentEditor.getSaveButton().click();
-        cy.wait("@createSegment");
+        visitDataStudioSegments(PEOPLE_ID);
+        SegmentList.getNewSegmentLink().scrollIntoView().click();
 
-        cy.log("verify redirected to edit page with segment name");
-        SegmentEditor.get().should("be.visible");
-        SegmentEditor.get()
-          .findByDisplayValue("Widget Orders")
+        cy.log("open filter picker for Email");
+        SegmentEditor.getFilterPlaceholder().click();
+        H.popover().findByText("Email").click();
+
+        cy.log("verify search mode UI and search for email");
+        H.popover().within(() => {
+          cy.findByRole("combobox").should("be.visible");
+          cy.findByRole("combobox").type("borer-hudson@yahoo.com");
+        });
+        cy.findByRole("listbox")
+          .findByText("borer-hudson@yahoo.com")
           .should("be.visible");
 
-        cy.log("verify segment works in query builder");
-        verifySegmentInQueryBuilder("Widget Orders");
-      });
-    });
-
-    describe("Segment field values modes", () => {
-      it("should display list values on Category field, then add a Price filter with preview", () => {
         cy.request("PUT", `/api/field/${PRODUCTS.CATEGORY}`, {
           has_field_values: "list",
         });
@@ -302,29 +320,7 @@ describe(
         H.popover().findByText("Preview").should("be.visible");
       });
 
-      it("should display search input when creating segment filter on Email field", () => {
-        cy.request("PUT", `/api/field/${PEOPLE.EMAIL}`, {
-          has_field_values: "search",
-        });
-
-        visitDataStudioSegments(PEOPLE_ID);
-        SegmentList.getNewSegmentLink().scrollIntoView().click();
-
-        cy.log("open filter picker for Email");
-        SegmentEditor.getFilterPlaceholder().click();
-        H.popover().findByText("Email").click();
-
-        cy.log("verify search mode UI and search for email");
-        H.popover().within(() => {
-          cy.findByRole("combobox").should("be.visible");
-          cy.findByRole("combobox").type("borer-hudson@yahoo.com");
-        });
-        cy.findByRole("listbox")
-          .findByText("borer-hudson@yahoo.com")
-          .should("be.visible");
-      });
-
-      it("should display list values for implicit join field and hide FK table segments", () => {
+      it("should display list values for implicit join field, hide FK table segments, and create a segment that works in the query builder", () => {
         cy.request("PUT", `/api/field/${PRODUCTS.CATEGORY}`, {
           has_field_values: "list",
         });
@@ -385,49 +381,9 @@ describe(
         SegmentEditor.get()
           .findByDisplayValue("Gadget Orders")
           .should("be.visible");
-      });
-    });
 
-    describe("Segment dependencies", () => {
-      it("should create and use a segment based on another segment", () => {
-        cy.log("create base segment");
-        createTestSegment({
-          name: "High Value Orders",
-          filter: [">", ["field", ORDERS.TOTAL, null], 100],
-        });
-
-        cy.get<number>("@segmentId").then((baseSegmentId) => {
-          cy.log("create segment based on segment");
-          H.createSegment({
-            name: "High Value Recent Orders",
-            definition: {
-              type: "query",
-              database: SAMPLE_DB_ID,
-              query: {
-                "source-table": ORDERS_ID,
-                filter: [
-                  "and",
-                  ["segment", baseSegmentId],
-                  [">", ["field", ORDERS.CREATED_AT, null], "2020-01-01"],
-                ],
-              },
-            },
-          });
-        });
-
-        cy.log("verify both segments appear in query builder");
-        verifySegmentInQueryBuilder("High Value Orders");
-        H.openTable({ table: ORDERS_ID, mode: "notebook" });
-        H.getNotebookStep("data").button("Filter").click();
-        H.popover().findByText("High Value Recent Orders").should("be.visible");
-
-        cy.log("verify dependent segment works");
-        H.popover().findByText("High Value Recent Orders").click();
-        H.visualize();
-        H.tableInteractive().should("be.visible");
-        H.queryBuilderFiltersPanel()
-          .findByText("High Value Recent Orders")
-          .should("be.visible");
+        cy.log("verify segment works in query builder");
+        verifySegmentInQueryBuilder("Gadget Orders");
       });
     });
 

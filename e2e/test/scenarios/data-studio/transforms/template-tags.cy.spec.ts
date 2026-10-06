@@ -20,7 +20,7 @@ describe("scenarios > data-studio > transforms > template tags", () => {
     cy.intercept("POST", "/api/transform/*/run").as("runTransform");
   });
 
-  it("should be possible to use template tags in SQL transform", () => {
+  it("should be possible to use template tags in an SQL transform, and the data reference, snippets and multiple template tags in a new SQL transform", () => {
     H.createTestNativeQuery({
       database: WRITABLE_DB_ID,
       query: "SELECT 1",
@@ -197,9 +197,7 @@ describe("scenarios > data-studio > transforms > template tags", () => {
     });
     testFieldTemplateTag();
     testTableTemplateTag();
-  });
 
-  it("should be possible to use the data reference and snippets, and to add multiple template tags in a new SQL transform", () => {
     H.createSnippet({
       name: "snippet1",
       content: "'foo'",

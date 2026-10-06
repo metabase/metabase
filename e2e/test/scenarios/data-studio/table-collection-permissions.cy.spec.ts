@@ -58,30 +58,6 @@ describe("scenarios > data studio > table collection permissions", () => {
   });
 
   describe("queries", () => {
-    it("should create a question based on a published table", () => {
-      H.publishTables({ table_ids: [PRODUCTS_ID] });
-
-      cy.signIn("nodata");
-      cy.visit("/");
-      H.newButton().click();
-      H.popover().within(() => {
-        cy.findByText("Question").should("be.visible");
-        cy.findByText("SQL query").should("not.exist");
-        cy.findByText("Question").click();
-      });
-      H.popover().within(() => {
-        cy.findByText("Products").should("be.visible");
-        cy.findByText("Orders").should("not.exist");
-        cy.findByText("Products").click();
-      });
-      H.visualize();
-      H.assertQueryBuilderRowCount(200);
-
-      H.saveQuestion("Test question", { wrapId: true });
-      H.visitQuestion("@questionId");
-      H.assertQueryBuilderRowCount(200);
-    });
-
     it("should create questions with explicit and implicit joins when not all FK tables are published", () => {
       H.publishTables({ table_ids: [ORDERS_ID, PRODUCTS_ID] });
 
@@ -192,37 +168,12 @@ describe("scenarios > data studio > table collection permissions", () => {
       H.assertQueryBuilderRowCount(1);
     });
 
-    it("should be able to drill-thru", () => {
+    it("should use list field values, x-ray, drill-thru, and create a question on a published table", () => {
       H.publishTables({ table_ids: [PRODUCTS_ID] });
 
       cy.signIn("nodata");
-      H.visitQuestionAdhoc(productsQuestionDetails);
-      H.tableInteractive().findByText("82.75").click();
-      H.popover().findByText("=").click();
-      H.assertQueryBuilderRowCount(1);
-    });
-  });
 
-  describe("x-rays", () => {
-    it("should be able to x-ray a table", () => {
-      H.publishTables({ table_ids: [PRODUCTS_ID] });
-
-      cy.signIn("nodata");
-      H.visitQuestionAdhoc(productsByTimeQuestionDetails);
-      H.cartesianChartCircle().first().click();
-      H.popover().findByText("Automatic insights…").click();
-      H.popover().findByText("X-ray").click();
-      H.main()
-        .findByText(/A closer look at number of Products/)
-        .should("be.visible");
-    });
-  });
-
-  describe("field values", () => {
-    it("should be able to use list field values", () => {
-      H.publishTables({ table_ids: [PRODUCTS_ID] });
-
-      cy.signIn("nodata");
+      cy.log("List field values");
       H.visitQuestionAdhoc(productsQuestionDetails);
       H.tableHeaderClick("Category");
       H.popover().within(() => {
@@ -231,8 +182,45 @@ describe("scenarios > data studio > table collection permissions", () => {
         cy.button("Add filter").click();
       });
       H.assertQueryBuilderRowCount(53);
-    });
 
+      cy.log("X-ray");
+      H.visitQuestionAdhoc(productsByTimeQuestionDetails);
+      H.cartesianChartCircle().first().click();
+      H.popover().findByText("Automatic insights…").click();
+      H.popover().findByText("X-ray").click();
+      H.main()
+        .findByText(/A closer look at number of Products/)
+        .should("be.visible");
+
+      cy.log("Drill-thru");
+      H.visitQuestionAdhoc(productsQuestionDetails);
+      H.tableInteractive().findByText("82.75").click();
+      H.popover().findByText("=").click();
+      H.assertQueryBuilderRowCount(1);
+
+      cy.log("Create a question");
+      cy.visit("/");
+      H.newButton().click();
+      H.popover().within(() => {
+        cy.findByText("Question").should("be.visible");
+        cy.findByText("SQL query").should("not.exist");
+        cy.findByText("Question").click();
+      });
+      H.popover().within(() => {
+        cy.findByText("Products").should("be.visible");
+        cy.findByText("Orders").should("not.exist");
+        cy.findByText("Products").click();
+      });
+      H.visualize();
+      H.assertQueryBuilderRowCount(200);
+
+      H.saveQuestion("Test question", { wrapId: true });
+      H.visitQuestion("@questionId");
+      H.assertQueryBuilderRowCount(200);
+    });
+  });
+
+  describe("field values", () => {
     it("should be able to use search field values", () => {
       H.publishTables({ table_ids: [PEOPLE_ID] });
 

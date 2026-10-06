@@ -87,9 +87,25 @@ describe("scenarios > data studio > library > tables", () => {
   });
 
   describe("fields", () => {
-    it("should close field panels, rename a field, and view the table in the query builder", () => {
+    it("should view table dependencies, close field panels, rename a field, and view the table in the query builder", () => {
       H.createLibrary();
       H.publishTables({ table_ids: [ORDERS_ID] });
+      H.createQuestion({
+        name: "Test question",
+        query: { "source-table": ORDERS_ID },
+      });
+      H.waitForBackfillComplete();
+
+      cy.log("View the table dependencies");
+      H.DataStudio.Tables.visitOverviewPage(ORDERS_ID);
+      H.DataStudio.Tables.dependenciesTab().click();
+      H.DependencyGraph.graph().within(() => {
+        cy.findByText("Orders").should("be.visible");
+        cy.findByText(/question/).click();
+      });
+      H.DependencyGraph.dependencyPanel()
+        .findByText("Test question")
+        .should("be.visible");
 
       cy.log("Close the field details and preview panels");
       H.DataStudio.Tables.visitFieldsPage(ORDERS_ID);
@@ -133,27 +149,6 @@ describe("scenarios > data studio > library > tables", () => {
         cy.findByText("Data").should("be.visible");
         cy.findByText("Orders").should("be.visible");
       });
-    });
-  });
-
-  describe("dependencies", () => {
-    it("should be able to view dependencies for a table", () => {
-      H.createLibrary();
-      H.publishTables({ table_ids: [ORDERS_ID] });
-      H.createQuestion({
-        name: "Test question",
-        query: { "source-table": ORDERS_ID },
-      });
-      H.waitForBackfillComplete();
-      H.DataStudio.Tables.visitOverviewPage(ORDERS_ID);
-      H.DataStudio.Tables.dependenciesTab().click();
-      H.DependencyGraph.graph().within(() => {
-        cy.findByText("Orders").should("be.visible");
-        cy.findByText(/question/).click();
-      });
-      H.DependencyGraph.dependencyPanel()
-        .findByText("Test question")
-        .should("be.visible");
     });
   });
 });

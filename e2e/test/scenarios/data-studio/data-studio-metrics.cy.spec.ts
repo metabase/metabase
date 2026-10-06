@@ -111,7 +111,7 @@ describe("scenarios > data studio > library > metrics", () => {
     });
   });
 
-  it("should rename the metric, link to the metrics explorer, and change caching settings", () => {
+  it("should rename the metric, link to the metrics explorer, change caching settings, and revert or warn about unsaved changes", () => {
     cy.intercept("PUT", "/api/cache").as("updateCacheConfig");
 
     visitMetricPage();
@@ -174,9 +174,10 @@ describe("scenarios > data studio > library > metrics", () => {
     H.modal()
       .findByTestId("cache-strategy-select")
       .should("have.value", "Duration");
-  });
+    cy.realPress("Escape");
+    H.modal().should("not.exist");
 
-  it("should revert changes on cancel and warn about unsaved changes when navigating away", () => {
+    cy.log("Cancel reverts changes, navigating away warns about them");
     visitMetricPage();
 
     cy.log("Navigate to definition tab");
@@ -265,7 +266,7 @@ describe("scenarios > data studio > library > metrics", () => {
     );
   });
 
-  it("should duplicate metric via more menu", () => {
+  it("should duplicate and move a metric via more menu", () => {
     visitMetricPage();
 
     cy.log("Verify metric is loaded");
@@ -314,12 +315,10 @@ describe("scenarios > data studio > library > metrics", () => {
           expect(names).to.include("Trusted Orders Metric - Duplicate");
         }),
     );
-  });
 
-  it("should move metric to different collection via more menu", () => {
     visitMetricPage();
 
-    cy.log("Verify metric is loaded");
+    cy.log("Verify the original metric is loaded");
     H.DataStudio.Metrics.aboutPage()
       .findByDisplayValue("Trusted Orders Metric")
       .should("be.visible");

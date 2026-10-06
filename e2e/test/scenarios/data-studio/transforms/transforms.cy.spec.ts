@@ -668,51 +668,8 @@ LIMIT
     });
   });
 
-  describe("ownership", () => {
-    it("should be able to view and manage transform ownership", () => {
-      createMbqlTransform({ visitTransform: true });
-      H.DataStudio.Transforms.settingsTab().click();
-
-      cy.log("verify the ownership section is displayed");
-      getTransformsTargetContent().within(() => {
-        cy.findByText("Ownership").should("be.visible");
-        cy.findByText("Specify who is responsible for this transform.").should(
-          "be.visible",
-        );
-        cy.findByText("Owner").should("be.visible");
-      });
-
-      cy.log("change the owner to another user");
-      getTransformsTargetContent().within(() => {
-        cy.findByLabelText("Owner").click();
-      });
-      H.popover().findByText("Robert Tableton").click();
-      cy.wait("@updateTransform");
-      H.undoToast().findByText("Transform owner updated").should("be.visible");
-      H.undoToast().icon("close").click();
-
-      cy.log("set an external email as owner");
-      getTransformsTargetContent().within(() => {
-        cy.findByLabelText("Owner").click();
-        cy.findByLabelText("Owner").clear().type("external@example.com");
-      });
-      H.popover().findByText("external@example.com").click();
-      cy.wait("@updateTransform");
-      H.undoToast().findByText("Transform owner updated").should("be.visible");
-      H.undoToast().icon("close").click();
-
-      cy.log("clear the owner");
-      getTransformsTargetContent().within(() => {
-        cy.findByLabelText("Owner").click();
-      });
-      H.popover().findByText("No owner").click();
-      cy.wait("@updateTransform");
-      H.undoToast().findByText("Transform owner updated").should("be.visible");
-    });
-  });
-
   describe("tags", () => {
-    it("should be able to add and remove tags", () => {
+    it("should be able to add, remove, delete, and rename tags", () => {
       createMbqlTransform({ visitTransform: true });
       H.DataStudio.Transforms.runTab().click();
       getTagsInput().click();
@@ -747,16 +704,17 @@ LIMIT
 
       assertOptionSelected("hourly");
       assertOptionNotSelected("daily");
-    });
 
-    it("should be able to delete and update tags inline", () => {
-      createMbqlTransform({ visitTransform: true });
+      cy.log("reload to close the popover and the tag toasts");
+      cy.reload();
       H.DataStudio.Transforms.runTab().click();
+      assertOptionSelected("hourly");
+      H.undoToastList().should("have.length", 0);
 
-      cy.log("delete a tag");
+      cy.log("delete a tag that is not selected");
       getTagsInput().click();
       H.popover()
-        .findByText("hourly")
+        .findByText("daily")
         .parent()
         .findByLabelText("Delete tag")
         .click({ force: true });
@@ -765,11 +723,12 @@ LIMIT
         cy.wait("@deleteTag");
       });
       H.undoToast().should("contain.text", "Transform tags updated");
+      assertOptionSelected("hourly");
 
       getTagsInput().click();
       H.popover().within(() => {
-        cy.findByText("daily").should("be.visible");
-        cy.findByText("hourly").should("not.exist");
+        cy.findByText("hourly").should("be.visible");
+        cy.findByText("daily").should("not.exist");
       });
 
       cy.log("rename a tag");
@@ -833,8 +792,8 @@ LIMIT
     });
   });
 
-  describe("incremental settings inline editing", () => {
-    it("should update incremental settings inline, debounce no-op toggles, and roll back on errors", () => {
+  describe("settings inline editing", () => {
+    it("should manage ownership, update incremental settings inline, debounce no-op toggles, and roll back on errors", () => {
       createMbqlTransform({ visitTransform: true });
       H.DataStudio.Transforms.settingsTab().click();
 
@@ -842,6 +801,43 @@ LIMIT
         H.undoToast().icon("close").click();
         H.undoToast().should("not.exist");
       };
+
+      cy.log("verify the ownership section is displayed");
+      getTransformsTargetContent().within(() => {
+        cy.findByText("Ownership").should("be.visible");
+        cy.findByText("Specify who is responsible for this transform.").should(
+          "be.visible",
+        );
+        cy.findByText("Owner").should("be.visible");
+      });
+
+      cy.log("change the owner to another user");
+      getTransformsTargetContent().within(() => {
+        cy.findByLabelText("Owner").click();
+      });
+      H.popover().findByText("Robert Tableton").click();
+      cy.wait("@updateTransform");
+      H.undoToast().findByText("Transform owner updated").should("be.visible");
+      dismissToast();
+
+      cy.log("set an external email as owner");
+      getTransformsTargetContent().within(() => {
+        cy.findByLabelText("Owner").click();
+        cy.findByLabelText("Owner").clear().type("external@example.com");
+      });
+      H.popover().findByText("external@example.com").click();
+      cy.wait("@updateTransform");
+      H.undoToast().findByText("Transform owner updated").should("be.visible");
+      dismissToast();
+
+      cy.log("clear the owner");
+      getTransformsTargetContent().within(() => {
+        cy.findByLabelText("Owner").click();
+      });
+      H.popover().findByText("No owner").click();
+      cy.wait("@updateTransform");
+      H.undoToast().findByText("Transform owner updated").should("be.visible");
+      dismissToast();
 
       cy.log("Toggle incremental on");
       isIncrementalSwitchDisabled();
