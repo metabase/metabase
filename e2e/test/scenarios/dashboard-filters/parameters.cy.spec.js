@@ -785,6 +785,22 @@ describe("scenarios > dashboard > parameters", () => {
         H.editDashboard();
       });
 
+      cy.log("Undo the heading dashcard removal (VIZ-1236)");
+      H.removeDashboardCard(0);
+      H.getDashboardCard().findByText("test question").should("exist");
+
+      H.undo();
+
+      H.getDashboardCard(0).within(() => {
+        H.filterWidget({ isEditing: true }).contains("Category").click();
+      });
+      H.getDashboardCard(1)
+        .findByTestId("parameter-mapper-container")
+        .findByText(/Category/)
+        .should("exist");
+      H.dashboardParameterSidebar().button("Done").click();
+
+      cy.log("Edit the restored filter");
       H.getDashboardCard(0).within(() => {
         H.filterWidget({ isEditing: true }).contains("Category").click();
       });
@@ -824,6 +840,27 @@ describe("scenarios > dashboard > parameters", () => {
 
       cy.location().should(({ search }) => {
         expect(search).to.eq("?count=4000");
+      });
+
+      cy.log("Removing the heading dashcard removes its filters");
+      cy.intercept("PUT", "/api/dashboard/*").as("updateDashboard");
+      H.editDashboard();
+      H.removeDashboardCard(0);
+      H.getDashboardCard().findByText("test question").should("exist");
+      H.undo();
+      H.getDashboardCard(0).findByDisplayValue("Heading Text").should("exist");
+      H.removeDashboardCard(0);
+      H.saveDashboard();
+
+      cy.wait("@updateDashboard").then((xhr) => {
+        const { body: dashboard } = xhr.request;
+        expect(dashboard.parameters).to.have.length(0);
+        expect(dashboard.dashcards).to.have.length(1);
+        expect(dashboard.dashcards[0].card_id).to.not.equal(null);
+        dashboard.dashcards.forEach((dashcard) => {
+          expect(dashcard.inline_parameters).to.have.length(0);
+          expect(dashcard.parameter_mappings).to.have.length(0);
+        });
       });
     });
 
@@ -1158,76 +1195,6 @@ describe("scenarios > dashboard > parameters", () => {
 
       cy.location().should(({ search }) => {
         expect(search).to.eq("?category=Gadget");
-      });
-    });
-
-    it("should correctly undo dashcard removal and remove filters with the dashcard (VIZ-1236)", () => {
-      cy.intercept("PUT", "/api/dashboard/*").as("updateDashboard");
-
-      H.createQuestionAndDashboard({
-        questionDetails: ordersCountByCategory,
-        dashboardDetails: {
-          parameters: [categoryParameter],
-        },
-      }).then(({ body: dashcard }) => {
-        H.updateDashboardCards({
-          dashboard_id: dashcard.dashboard_id,
-          cards: [
-            createMockHeadingDashboardCard({
-              inline_parameters: [categoryParameter.id],
-              size_x: 24,
-              size_y: 1,
-            }),
-            {
-              id: dashcard.id,
-              row: 1,
-              size_x: 12,
-              size_y: 6,
-              parameter_mappings: [
-                {
-                  parameter_id: categoryParameter.id,
-                  card_id: dashcard.card_id,
-                  target: [
-                    "dimension",
-                    categoryFieldRef,
-                    { "stage-number": 0 },
-                  ],
-                },
-              ],
-            },
-          ],
-        });
-        H.visitDashboard(dashcard.dashboard_id);
-        H.editDashboard();
-      });
-
-      H.removeDashboardCard(0);
-      H.getDashboardCard().findByText("test question").should("exist");
-
-      H.undo();
-
-      H.getDashboardCard(0).within(() => {
-        H.filterWidget({ isEditing: true }).contains("Category").click();
-      });
-      H.getDashboardCard(1)
-        .findByTestId("parameter-mapper-container")
-        .findByText(/Category/)
-        .should("exist");
-      H.dashboardParameterSidebar().button("Done").click();
-
-      cy.log("Removing the heading dashcard removes its filters");
-      H.removeDashboardCard(0);
-      H.saveDashboard();
-
-      cy.wait("@updateDashboard").then((xhr) => {
-        const { body: dashboard } = xhr.request;
-        expect(dashboard.parameters).to.have.length(0);
-        expect(dashboard.dashcards).to.have.length(1);
-        expect(dashboard.dashcards[0].card_id).to.not.equal(null);
-        dashboard.dashcards.forEach((dashcard) => {
-          expect(dashcard.inline_parameters).to.have.length(0);
-          expect(dashcard.parameter_mappings).to.have.length(0);
-        });
       });
     });
 
