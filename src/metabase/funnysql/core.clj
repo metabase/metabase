@@ -526,7 +526,8 @@
   (interpose-fn (sort-by clause-rank (keys m))
                 (fn [k]
                   (let [f (or (clause-fns k)
-                              (throw (ex-info "Top-level map key is not currently supported" {:k k})))]
+                              (throw (ex-info (clojure.core/format "Top-level map key %s is not currently supported" (pr-str k))
+                                              {:k k})))]
                     (f (get m k) context)))
                 #(append-sql! context " ")))
 

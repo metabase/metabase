@@ -1249,3 +1249,13 @@
   (testing "Wrap nested arithmetic expressions in parens"
     (is (= ["1 * (2 + 3)"]
            (funnysql/format [:* 1 [:+ 2 3]] :postgres)))))
+
+(deftest ^:parallel no-raw-test
+  (is (thrown-with-msg?
+       clojure.lang.ExceptionInfo
+       #"Function :raw is not currently supported"
+       (funnysql/format [:raw "x"] :postgres)))
+  (is (thrown-with-msg?
+       clojure.lang.ExceptionInfo
+       #"Top-level map key :raw is not currently supported"
+       (funnysql/format {:raw "x"} :postgres))))
