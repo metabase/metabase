@@ -118,7 +118,9 @@
       (is (= {:output "Query execution is turned off for Metabot."}
              (call-tool! {:state {:queries {"q1" (venues-by-id)}}} {:query_id "q1"})))))
   (testing "an unknown id lists the ids the model can use"
-    (is (= {:output "No query with id nope. Known query ids: [q1]."}
+    (is (= {:output (str "No query with id nope. Known query ids: [q1]. A saved question or model has no query id: "
+                         "to run one, build a notebook query with it as the source-card using "
+                         "construct_notebook_query, then run that query.")}
            (run-tool! {"q1" (venues-by-id)} {:query_id "nope"}))))
   (testing "a SQL query is refused with a pointer to construct_notebook_query while SQL execution is off"
     (mt/with-temporary-setting-values [metabot-sql-execution-enabled? false]

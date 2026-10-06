@@ -322,6 +322,7 @@
   (testing "with run_query the model is told how to read results"
     (let [rendered (render-internal-template all-yes-perms ["construct_notebook_query" "run_query"])]
       (is (re-find #"# You can see results only by running a query" rendered))
+      (is (re-find #"To read a saved question or model.*`source-card`" rendered))
       (is (not (re-find #"you cannot see query results" rendered))))))
 
 (deftest prompt-gates-sql-execution-guidance-test

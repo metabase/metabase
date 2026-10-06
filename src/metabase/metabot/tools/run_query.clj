@@ -97,8 +97,9 @@
   [query-id]
   (let [queries (shared/current-queries-state)]
     (or (get queries query-id)
-        (throw (refusal (str "No query with id " query-id ". Known query ids: ["
-                             (str/join ", " (keys queries)) "]."))))))
+        (throw (refusal (str "No query with id " query-id ". Known query ids: [" (str/join ", " (keys queries)) "]. "
+                             "A saved question or model has no query id: to run one, build a notebook query with it "
+                             "as the source-card using construct_notebook_query, then run that query."))))))
 
 (defn- conversation-open-to-others?
   "Whether someone other than the current user can read the current conversation, now or by joining it later."
@@ -441,6 +442,7 @@
   "Run a query you already have and read its first rows (default 20, max 200).
   Use it when the answer needs actual values: a number, the top item, whether a filter matches anything.
   `query_id` is the id of a query you built, or of a query the user is viewing.
+  A saved question or model has no query id: build a notebook query with it as the source-card and run that.
   A SQL query, whether built with create_sql_query or viewed by the user, runs only where SQL execution is
   on, and only when it is a single read-only SELECT statement; otherwise it is refused, and you get values by
   building the question with construct_notebook_query.
