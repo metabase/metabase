@@ -633,13 +633,24 @@
           (is (= [false false] (state))))))))
 
 (deftest update-checks-actions-enabled-test
-  (testing "any update of a query action is refused while actions are disabled on its database"
+  (testing "while actions are disabled on its database, a query action's query can't change but the rest of it can"
     (mt/with-actions-test-data-and-actions-enabled
       (mt/with-model-cleanup [:model/Action]
-        (let [path (str "action/" (:id (mt/user-http-request :crowberto :post 200 "action" (model-less-query-action nil))))]
+        (let [created (mt/user-http-request :crowberto :post 200 "action" (model-less-query-action nil))
+              path    (str "action/" (:id created))]
           (mt/with-actions-disabled
-            (is (= "Actions are not enabled."
-                   (:cause (mt/user-http-request :crowberto :put 400 path {:name "Renamed"}))))))))))
+            (testing "changing the query is refused"
+              (is (= "Actions are not enabled."
+                     (:cause (mt/user-http-request :crowberto :put 400 path
+                                                   {:dataset_query (:dataset_query created)})))))
+            (testing "renaming, settings and archiving are allowed"
+              (is (=? {:name "Renamed"}
+                      (mt/user-http-request :crowberto :put 200 path {:name "Renamed"})))
+              (is (=? {:visualization_settings {:successMessage "Done"}}
+                      (mt/user-http-request :crowberto :put 200 path
+                                            {:visualization_settings {:successMessage "Done"}})))
+              (mt/user-http-request :crowberto :put 200 path {:archived true})
+              (is (true? (t2/select-one-fn :archived :model/Action :id (:id created)))))))))))
 
 (deftest remap-parameter-keys-test
   (testing "remap-parameter-keys translates incoming parameter keys to the destination parameter's :id"

@@ -107,7 +107,8 @@
   (let [existing-action (api/write-check :model/Action id)
         action          (api/updates-with-archived-directly existing-action action)]
     (api/update-check existing-action action)
-    (actions/check-action-databases-enabled (merge (actions/select-action :id id) action))
+    (when (some #(contains? action %) [:dataset_query :database_id :type :kind :model_id])
+      (actions/check-action-databases-enabled (merge (actions/select-action :id id) action)))
     (actions/update! (assoc action :id id) existing-action))
   (let [{:keys [parameters type] :as action} (actions/select-action :id id)]
     (events/publish-event! :event/action-update {:object action :user-id api/*current-user-id*})
