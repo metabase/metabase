@@ -27,6 +27,7 @@ import {
 import { getBeforeUnloadUnsavedMessage } from "metabase/common/hooks/use-before-unload";
 import { DashboardApp } from "metabase/dashboard/containers/DashboardApp/DashboardApp";
 import { Route } from "metabase/router";
+import { defer } from "metabase/utils/promise";
 import { checkNotNull } from "metabase/utils/types";
 import type { Dashboard } from "metabase-types/api";
 import {
@@ -75,19 +76,15 @@ function renderDashboardApp({
   const queryMetadata = createMockDashboardQueryMetadata({
     databases: [TEST_DATABASE_WITH_ACTIONS],
   });
-  let resolveQueryMetadata = () => {};
+  const queryMetadataRequest = defer();
 
   setupNotificationChannelsEndpoints({});
 
   setupDatabasesEndpoints([TEST_DATABASE_WITH_ACTIONS]);
   setupDashboardEndpoints(mockDashboard);
   if (deferQueryMetadata) {
-    fetchMock.get(
-      `path:/api/dashboard/${dashboardId}/query_metadata`,
-      () =>
-        new Promise((resolve) => {
-          resolveQueryMetadata = () => resolve(queryMetadata);
-        }),
+    fetchMock.get(`path:/api/dashboard/${dashboardId}/query_metadata`, () =>
+      queryMetadataRequest.promise.then(() => queryMetadata),
     );
   } else {
     setupDashboardQueryMetadataEndpoint(mockDashboard, queryMetadata);
@@ -138,7 +135,7 @@ function renderDashboardApp({
     router: checkNotNull(router),
     store,
     mockEventListener,
-    resolveQueryMetadata: () => resolveQueryMetadata(),
+    resolveQueryMetadata: () => queryMetadataRequest.resolve(),
   };
 }
 
