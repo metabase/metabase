@@ -104,20 +104,20 @@ export function FormCreatorPopoverBody({
     fieldSettings.fieldType !== "date" && fieldSettings.inputType !== "radio";
 
   return (
-    <Box p="xxl" data-testid="field-settings-popover">
+    <Stack p="xxl" gap="lg" data-testid="field-settings-popover">
       <InputTypeSelect
         value={fieldSettings.inputType}
         fieldType={fieldSettings.fieldType}
         onChange={handleUpdateInputType}
       />
-      <Divider my="lg" data-testid="divider" />
+      <Divider data-testid="divider" />
       {hasPlaceholder && (
         <>
           <PlaceholderInput
             value={fieldSettings.placeholder ?? ""}
             onChange={handleUpdatePlaceholder}
           />
-          <Divider my="lg" data-testid="divider" />
+          <Divider data-testid="divider" />
         </>
       )}
       <RequiredInput
@@ -125,7 +125,7 @@ export function FormCreatorPopoverBody({
         onChangeRequired={handleUpdateRequired}
         onChangeDefaultValue={handleUpdateDefaultValue}
       />
-    </Box>
+    </Stack>
   );
 }
 

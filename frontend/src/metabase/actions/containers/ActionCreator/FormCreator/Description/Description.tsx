@@ -4,7 +4,7 @@ import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { useSelector } from "metabase/redux";
 import { getDocsUrl } from "metabase/selectors/settings";
 import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
-import { Box } from "metabase/ui";
+import { Text } from "metabase/ui";
 
 export function Description() {
   const docsLink = useSelector((state) =>
@@ -13,7 +13,7 @@ export function Description() {
   const showMetabaseLinks = useSelector(getShowMetabaseLinks);
 
   return (
-    <Box c="text-secondary">
+    <Text c="text-secondary" lh="md">
       {jt`Configure your parameters' types and properties here. The values for these parameters can come from user input, or from a dashboard filter.`}
       {showMetabaseLinks && (
         <>
@@ -24,6 +24,6 @@ export function Description() {
           >{t`Learn more`}</ExternalLink>
         </>
       )}
-    </Box>
+    </Text>
   );
 }

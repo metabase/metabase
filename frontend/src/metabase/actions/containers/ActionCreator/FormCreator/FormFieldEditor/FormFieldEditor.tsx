@@ -9,7 +9,7 @@ import { getFieldTypes, getInputTypes } from "metabase/actions/constants";
 import type { ActionFormFieldProps } from "metabase/actions/types";
 import { inputTypeHasOptions } from "metabase/actions/utils";
 import CS from "metabase/css/core/index.css";
-import { Box, Checkbox, Flex, Group, Radio, Stack } from "metabase/ui";
+import { Box, Checkbox, Flex, Group, Radio, Stack, Text } from "metabase/ui";
 import { isNotNull } from "metabase/utils/types";
 import type {
   FieldSettings,
@@ -184,8 +184,8 @@ type SubtitleProps = {
 
 function Subtitle({ children }: SubtitleProps) {
   return (
-    <Box c="text-secondary" fz="md" fw="bold" mt="1.2rem">
+    <Text c="text-secondary" fz="md" fw="bold" lh="md" mt="1.2rem">
       {children}
-    </Box>
+    </Text>
   );
 }
