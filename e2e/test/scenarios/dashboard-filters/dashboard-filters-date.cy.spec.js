@@ -110,6 +110,17 @@ describe("scenarios > dashboard > filters > date", () => {
     cy.log("show sub-day resolutions in relative date filter (metabase#6660)");
     H.setFilter("Date picker", "All Options");
     H.dashboardParameterSidebar().findByText("No default").click();
+
+    cy.log("re-position the default value popover on resize (metabase#52918)");
+    H.popover().within(() => {
+      cy.findByText("Fixed date range…").click();
+      cy.findByText("Between").should("be.visible");
+    });
+    H.popover().should(([element]) => {
+      expect(element.offsetWidth).to.gte(element.scrollWidth);
+    });
+    H.popover().button("Back").click();
+
     H.popover().within(() => {
       cy.findByText("Relative date range…").click();
       cy.findByText("Next").click();
