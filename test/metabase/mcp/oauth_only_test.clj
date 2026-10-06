@@ -161,16 +161,18 @@
                       (testing "control: an MCP-bound OAuth token holding the scope is served at both paths"
                         (doseq [path ["metabase-mcp" "mcp"]]
                           (testing path
-                            (let [headers    (mcp.tu/bearer-headers! :rasta)
-                                  init       (send! 200 :post path headers nil
-                                                    (jsonrpc-request "initialize" {:capabilities {}}))
-                                  session-id (get-in init [:headers "Mcp-Session-Id"])]
-                              (is (= 200 (:status init)))
-                              (is (= 200 (:status (send! 200 :post path headers session-id
-                                                         (jsonrpc-request "tools/call"
-                                                                          {:name probe-tool :arguments {}})))))
-                              (testing "DELETE gets past auth to the transport's own 405"
-                                (is (= 405 (:status (send! 405 :delete path headers session-id nil))))))))
+                            (mcp.tu/do-with-bearer-headers!
+                             :rasta mcp.tu/all-scopes
+                             (fn [headers]
+                               (let [init       (send! 200 :post path headers nil
+                                                       (jsonrpc-request "initialize" {:capabilities {}}))
+                                     session-id (get-in init [:headers "Mcp-Session-Id"])]
+                                 (is (= 200 (:status init)))
+                                 (is (= 200 (:status (send! 200 :post path headers session-id
+                                                            (jsonrpc-request "tools/call"
+                                                                             {:name probe-tool :arguments {}})))))
+                                 (testing "DELETE gets past auth to the transport's own 405"
+                                   (is (= 405 (:status (send! 405 :delete path headers session-id nil))))))))))
                         (is (= 2 @calls)))))
                    (finally
                      (doseq [[key-id] (vals api-keys)]
@@ -181,12 +183,12 @@
   (testing "An MCP-bound bearer for rasta sent with crowberto's session cookie: the session middleware prefers the
             session, so the request is not OAuth-authenticated and the MCP endpoint refuses it. It never runs as
             crowberto."
-    (mcp.tu/do-with-site-url!
-     (fn []
+    (mcp.tu/do-with-bearer-headers!
+     :rasta mcp.tu/all-scopes
+     (fn [bearer]
        (do-with-probe-tool!
         (fn [calls]
-          (let [headers    (merge (mcp.tu/bearer-headers! :rasta)
-                                  (session-cookie (test.users/username->token :crowberto)))
+          (let [headers    (merge bearer (session-cookie (test.users/username->token :crowberto)))
                 session-id (mcp.session/create! (mt/user->id :crowberto))]
             (doseq [path ["metabase-mcp" "mcp"]
                     [label method body-fn] mcp-requests]
