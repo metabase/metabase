@@ -41,8 +41,7 @@
       (let [assigned (into #{} (map :permission_group_id) (data-apps.db/app-assignments [(:id app)]))]
         (api/check-400 (not-any? assigned group-ids) (tru "One or more groups already have access to this data app.")))
       (data-apps.db/insert-assignments! (:id app) group-ids)
-      ; ensure the groups has access to the data app collection
-      (resources/ensure-resources! app)))
+      (resources/reconcile-existing-collection-permissions! app)))
   (assigned-groups app))
 
 (defn remove-group!

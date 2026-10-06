@@ -175,6 +175,7 @@
           (perms/add-user-to-group! (mt/user->id :rasta) group-id)
           (doseq [slug ["old" "current"]
                   :let [app (t2/select-one :model/DataApp :name slug)]]
+            (data-app.resources/ensure-resources! app)
             (group-access/add-groups! app [group-id])))
         (with-redefs [data-app.config/supported-app-version 2]
           (testing "a regular user is never told about the outdated app in a list"

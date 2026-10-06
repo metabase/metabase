@@ -68,6 +68,14 @@
         (data-apps.db/update-data-app! (:id app) {:resource_collection_id (:id collection)})
         collection)))
 
+(defn reconcile-existing-collection-permissions!
+  "Reconcile grants for an existing resource collection without creating or restoring it."
+  [app]
+  (perms/with-global-permissions-lock
+    (when-let [collection (some-> (:id app) data-apps.db/non-blob-data-app :resource_collection_id
+                                  data-apps.db/resource-collection)]
+      (reconcile-collection-permissions! app collection))))
+
 (defn ensure-resources!
   "Create or restore the server-owned permission resources for `app` and return their IDs."
   [app]
