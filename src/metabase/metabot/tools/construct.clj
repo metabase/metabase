@@ -1,6 +1,7 @@
 (ns metabase.metabot.tools.construct
   "Notebook query construction tool wrappers."
   (:require
+   [clojure.string :as str]
    [malli.error :as me]
    [metabase.agent-lib.representations :as repr]
    [metabase.agent-lib.representations.repair :as repr.repair]
@@ -650,13 +651,43 @@
                  (nil? (:status-code base)) (assoc :status-code 400))]
     (ex-info (ex-message e) data e)))
 
+(defn- not-runnable-problem
+  "What is wrong at a Malli schema `error`, phrased for the LLM. Missing keys the LLM never writes
+  itself are translated into their usual cause instead of being named."
+  [error]
+  (let [missing (when (= :malli.core/missing-key (:type error)) (peek (:in error)))]
+    (cond
+      ;; normalization stamps `:lib/uuid` on every clause; one missing means normalizing a clause
+      ;; inside it failed, often because it references something that doesn't exist
+      (= :lib/uuid missing)
+      (tru "a reference inside it could not be resolved - often a field reference to a column, join alias, or expression that does not exist. Refer to a join''s or an earlier stage''s columns by their exact machine name (an aggregation is `min`, `count`, `sum`)")
+
+      (= :base-type missing)
+      (tru "a field reference by name is missing `base-type`, usually because the name matches no real column")
+
+      missing
+      (tru "missing `{0}`" (name missing))
+
+      ;; the message of `::lib.schema.expression/expression.definition`'s aggregation check
+      (= "non-aggregation expression" (me/error-message error))
+      (tru "{0}: aggregation and window functions such as `offset` cannot be custom columns - move them to `aggregation:` or `order-by:`" (me/error-message error))
+
+      :else
+      (me/error-message error))))
+
 (defn- query-not-runnable-explanation
-  "When `pmbql-query` would make the FE's `canRun` gate return false, return a humanized Malli
-  explanation of why; nil when the query is runnable."
+  "When `pmbql-query` would make the FE's `canRun` gate return false, return an LLM-facing
+  description of where and why; nil when the query is runnable."
   [pmbql-query]
   (binding [lib.schema.expression/*suppress-expression-type-check?* true]
     (when-let [explanation (mr/explain :metabase.lib.schema/query pmbql-query)]
-      (me/humanize explanation))))
+      (or (some->> (:errors explanation)
+                   (map #(str (pr-str (:in %)) ": " (not-runnable-problem %)))
+                   distinct
+                   (take 3)
+                   seq
+                   (str/join "; "))
+          (tru "the query does not match the query builder''s schema")))))
 
 (defn- execute-representations-query*
   "Execute a notebook query in the canonical portable MBQL 5 representations format.
@@ -738,8 +769,8 @@
             _validated    (repr/validate-query repaired)
             pmbql-query   (repr.resolve/resolve-query mp repaired permission-aware-content-store)
             _runnable     (when-let [why (query-not-runnable-explanation pmbql-query)]
-                            (throw (ex-info (tru "The constructed query is not runnable - it would fail the query builder''s validation, so it cannot be visualized or saved. This usually means a field reference is missing its type or names a column that does not exist, or an aggregation/window function (e.g. `offset`) was placed in `expressions:` (custom columns) where it is not allowed - move it to `aggregation:` or `order-by:`. Schema validation details: {0}"
-                                                 (pr-str why))
+                            (throw (ex-info (tru "The constructed query is not runnable - it would fail the query builder''s validation, so it cannot be visualized or saved. Problem in {0}."
+                                                 why)
                                             {:agent-error? true
                                              :error        :query-not-runnable
                                              :status-code  400})))
