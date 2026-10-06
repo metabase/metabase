@@ -897,6 +897,35 @@
           (str "Expected " (count ids) " rows with category " category
                " in table " table-name ", but got " actual-count)))))
 
+(deftest target-table-exists-conflict-test
+  (testing "a target table that already exists is a conflict (409), not a permission error (403)"
+    (mt/with-premium-features #{:advanced-permissions :transforms-basic :hosting}
+      (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
+        (mt/dataset transforms-dataset/transforms-test
+          (with-transforms-api-users! [user]
+            (with-transform-db-perms!
+              (let [existing-table (t2/select-one :model/Table (mt/id :transforms_products))
+                    existing       {:type   "table"
+                                    :schema (:schema existing-table)
+                                    :name   (:name existing-table)}]
+                (testing "on create"
+                  (is (= "A table with that name already exists."
+                         (mt/user-http-request user :post 409 "transform"
+                                               {:name   "Clobber"
+                                                :source {:type "query" :query (make-query "Gadget")}
+                                                :target existing}))))
+                (with-transform-cleanup! [table-name "gadget_products"]
+                  (let [{id :id} (mt/user-http-request user :post 200 "transform"
+                                                       {:name   "Gadget Products"
+                                                        :source {:type "query" :query (make-query "Gadget")}
+                                                        :target {:type   "table"
+                                                                 :schema (:schema existing-table)
+                                                                 :name   table-name}})]
+                    (testing "on update that retargets the transform"
+                      (is (= "A table with that name already exists."
+                             (mt/user-http-request user :put 409 (format "transform/%s" id)
+                                                   {:target existing}))))))))))))))
+
 (deftest execute-transform-test
   (mt/with-premium-features #{:advanced-permissions :transforms-basic :hosting}
     (testing "transform execution with :transforms/table target"
