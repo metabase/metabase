@@ -105,21 +105,26 @@ function SidebarHeader({ finding, tab, onClose }: SidebarHeaderProps) {
       justify="space-between"
       data-testid="content-diagnostics-sidebar-header"
     >
-      <Group gap="sm" wrap="nowrap" align="center" miw={0}>
-        <DiagnosticsEntityIcon entity={finding} getIcon={getIcon} />
-        <Anchor
-          className={cx(S.wrap, S.titleLink)}
-          component={ForwardRefLink}
-          fz="h3"
-          fw="bold"
-          lh="h3"
-          to={entityUrl}
-          target="_blank"
-          onClick={trackEntityOpened}
-        >
-          {getEntityName(finding)}
-        </Anchor>
-      </Group>
+      <Anchor
+        className={cx(S.wrap, S.titleLink)}
+        component={ForwardRefLink}
+        fz="h3"
+        fw="bold"
+        lh="h3"
+        miw={0}
+        to={entityUrl}
+        target="_blank"
+        onClick={trackEntityOpened}
+      >
+        <Group component="span" gap="sm" wrap="nowrap" align="center" miw={0}>
+          <DiagnosticsEntityIcon
+            entity={finding}
+            getIcon={getIcon}
+            aria-hidden
+          />
+          <span className={S.wrap}>{getEntityName(finding)}</span>
+        </Group>
+      </Anchor>
       <Group gap="xs" wrap="nowrap">
         <Tooltip label={viewLabel} openDelay={TOOLTIP_OPEN_DELAY_MS}>
           <ActionIcon
