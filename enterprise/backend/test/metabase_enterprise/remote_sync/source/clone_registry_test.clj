@@ -266,6 +266,15 @@
             (clone-registry/shutdown! registry)))))
     (log/info "No directory that another user owns and this process can write into, so this test checks nothing")))
 
+(deftest base-directory-of-another-process-user-is-refused-test
+  (testing "when the base directory is not owned by the user of the process, the registry refuses to clone and makes nothing in it"
+    (do-with-registry!
+     (fn [registry]
+       (.mkdirs ^File (:base-dir registry))
+       (mt/with-dynamic-fn-redefs [clone-registry/process-user (fn [] (reify UserPrincipal (getName [_] "another-user")))]
+         (check-refused! registry (:base-dir registry) :another-owner))
+       (is (= [] (process-roots registry)) "no process root is made in the base directory")))))
+
 (deftest process-root-replaced-by-a-symlink-is-refused-test
   (when (posix?)
     (testing "when the process root is replaced by a symbolic link to a directory with a lock file, the registry refuses to clone into it"

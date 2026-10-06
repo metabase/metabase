@@ -1,7 +1,8 @@
 (ns metabase-enterprise.remote-sync.source.clone-registry
   "The local clones of git remotes that one process holds. A registry makes each clone new, in a directory under its
   process root `<base-dir>/p-<uuid>`, which it locks for its whole life. It makes the root and `base-dir` owner-only.
-  It never opens a directory that it did not make.
+  It never opens a directory that it did not make. It refuses to clone, and throws, when `base-dir` or the root is a
+  symbolic link, is not a directory, or is owned by a user other than the user of this process.
 
   Each clone of a URL is one generation of that URL. At most one generation of a URL is active. A source holds one
   lease, which can hold several generations of its URL.
@@ -21,7 +22,7 @@
    (java.io File)
    (java.nio.channels FileChannel FileLock)
    (java.nio.file FileSystems Files LinkOption OpenOption StandardOpenOption)
-   (java.nio.file.attribute FileAttribute PosixFilePermissions)
+   (java.nio.file.attribute FileAttribute PosixFilePermissions UserPrincipal)
    (java.util.concurrent ExecutorService Executors ThreadFactory)
    (org.apache.commons.io FileUtils)))
 
@@ -71,29 +72,75 @@
   [^File dir]
   (Files/createDirectory (.toPath dir) (owner-only-attributes)))
 
+(defn- no-follow
+  "The link options that do not follow a symbolic link."
+  ^"[Ljava.nio.file.LinkOption;" []
+  (into-array LinkOption [LinkOption/NOFOLLOW_LINKS]))
+
+(def ^:private process-user*
+  "The cached result of [[process-user]]."
+  (atom nil))
+
+(defn- process-user
+  "The user that owns the files that this process creates."
+  ^UserPrincipal []
+  ;; A lookup by the `user.name` property fails when the user id of the process has no user name, as in some containers.
+  (or @process-user*
+      (let [file (Files/createTempFile "metabase-git-owner" nil (make-array FileAttribute 0))]
+        (try
+          (reset! process-user* (Files/getOwner file (no-follow)))
+          (finally
+            (Files/deleteIfExists file))))))
+
+(defn- check-own-directory!
+  "Throws unless `dir` is a directory, and not a symbolic link, that the user of this process owns. The error names the
+  path, and its data has the `:path` and the `:reason`: `:symbolic-link`, `:not-a-directory` or `:another-owner`."
+  [^File dir]
+  (let [path    (.toPath dir)
+        refuse! (fn [reason ^String problem]
+                  (throw (ex-info (str "The git clone directory " path " " problem
+                                       ". Metabase clones only into a directory that the Metabase user owns.")
+                                  {:path (str path) :reason reason})))]
+    (cond
+      (Files/isSymbolicLink path)
+      (refuse! :symbolic-link "is a symbolic link")
+
+      (not (Files/isDirectory path (no-follow)))
+      (refuse! :not-a-directory "is not a directory")
+
+      :else
+      (let [owner (Files/getOwner path (no-follow))
+            user  (process-user)]
+        (when-not (= user owner)
+          (refuse! :another-owner (str "is owned by the user " (.getName owner)
+                                       ", not by the Metabase user " (.getName user))))))))
+
 (defn- make-owner-only-base!
-  "Creates `base-dir` and its missing parents. Where the file system has POSIX permissions, makes `base-dir` owner-only,
-  also when it exists. Does not change a symbolic link or its target. A failure to change the permissions is logged."
+  "Creates `base-dir` and its missing parents, and checks it with [[check-own-directory!]]. Where the file system has
+  POSIX permissions, makes `base-dir` owner-only, also when it exists. A failure to change the permissions is logged."
   [^File base-dir]
   ;; A cleaner of the temp dir can delete a process root while a clone writes into it, and JGit then makes the root
   ;; again with default permissions. No other user can enter that root below an owner-only base.
   (let [path (.toPath base-dir)]
     (Files/createDirectories path (owner-only-attributes))
-    (when (and (posix?) (not (Files/isSymbolicLink path)))
+    (check-own-directory! base-dir)
+    (when (posix?)
       (try
-        (when (not= owner-only (Files/getPosixFilePermissions path (make-array LinkOption 0)))
+        (when (not= owner-only (Files/getPosixFilePermissions path (no-follow)))
           (Files/setPosixFilePermissions path owner-only))
         (catch Throwable e
           (log/warn e "Could not make the git clone directory owner-only" {:path (str base-dir)}))))))
 
 (defn- make-root!
   "Creates a new process root under `base-dir` and locks its lock file. Returns the root: its `:dir`, and the `:channel`
-  and `:lock` of its lock file. On a failure, no new root stays on disk."
+  and `:lock` of its lock file. Throws when [[check-own-directory!]] refuses `base-dir` or the root. On a failure, no
+  new root stays on disk."
   [^File base-dir]
   (make-owner-only-base! base-dir)
   (let [dir (io/file base-dir (str "p-" (random-uuid)))]
     (create-owner-only-dir! dir)
     (try
+      (check-own-directory! dir)
       ;; The channel stays open until the root is closed, and nothing in this JVM opens the lock file again: when a JVM
       ;; closes any channel on a file that it locked, the OS releases the lock.
       (let [channel (FileChannel/open (.toPath (io/file dir lock-file-name))
@@ -206,17 +253,10 @@
         (log/info "A git clone directory is gone, so the next use clones again" {:path (str dir)})
         (retire! registry url active)))))
 
-(defn- retire-outside-root!
-  "Retires the active generation of `url` if its directory is not in the current process root of `registry`."
-  [{:keys [root state] :as registry} url]
-  ;; A clone job writes into the directory that it got before it started. If a concurrent acquire retires that root in
-  ;; the meantime, the job publishes a generation in a retired root.
-  (let [{:keys [active generations]} (get @state url)]
-    (when-let [^File dir (get-in generations [active :dir])]
-      (when-not (= (some-> @root :dir) (.getParentFile dir))
-        (log/warn "A git clone is outside the git clone directory of this process, so the next use clones again"
-                  {:path (str dir)})
-        (retire! registry url active)))))
+(defn- in-root?
+  "True iff `dir` is in the process root `root`."
+  [root ^File dir]
+  (= (:dir root) (.getParentFile dir)))
 
 (defn- retire-broken-root!
   "When the process root of `registry` is not intact, retires it and each active generation in it, so that the next
@@ -231,18 +271,22 @@
       (swap! old-roots conj (:dir current))
       (doseq [[url {:keys [active generations]}] @state
               :let  [^File dir (get-in generations [active :dir])]
-              :when (and dir (= (:dir current) (.getParentFile dir)))]
+              :when (and dir (in-root? current dir))]
         (retire! registry url active)))))
 
 (defn- root!
-  "The intact process root of `registry`. Makes a new root at the first call, and when the current root is not intact."
+  "The intact process root of `registry`. Makes a new root at the first call, and when the current root is not intact.
+  Throws when [[check-own-directory!]] refuses the base directory or the root."
   [{:keys [base-dir root] :as registry}]
   ;; A clone into a deleted root would make its path again, with default permissions and no lock file.
   (retire-broken-root! registry)
-  (or @root
-      (locking root
-        (or @root
-            (reset! root (make-root! base-dir))))))
+  (if-let [current @root]
+    (do (check-own-directory! base-dir)
+        (check-own-directory! (:dir current))
+        current)
+    (locking root
+      (or @root
+          (reset! root (make-root! base-dir))))))
 
 (defn- generation-dir
   "The directory of generation `id` of `url`."
@@ -285,6 +329,25 @@
   (when-let [e (:error @job)]
     (throw e)))
 
+(defn- take-generation
+  "The state `entry` of a URL after an acquire by lease `lease-id`. The lease is added to the active generation. When
+  the active generation is not in the current process root of the `root` atom, it is retired instead. When the URL then
+  has no active generation and no clone job, `entry` gets a new `:job` promise and the next generation id in `:next`."
+  [{:keys [active] :as entry} root lease-id]
+  ;; A clone job writes into the directory that it got before it started. If an acquire retires that root in the
+  ;; meantime, the job publishes a generation in a retired root. The swap reads the root, so that it never takes a
+  ;; generation in a root that was retired before the swap.
+  (let [{:keys [active job] :as entry} (cond-> entry
+                                         (and active (not (in-root? @root (get-in entry [:generations active :dir]))))
+                                         (-> (dissoc :active)
+                                             (assoc-in [:generations active :retired?] true)))]
+    (cond
+      active (update-in entry [:generations active :leases] (fnil conj #{}) lease-id)
+      job    entry
+      :else  (-> entry
+                 (update :next (fnil inc 0))
+                 (assoc :job (promise))))))
+
 (defn acquire!
   "Adds the active generation of the URL of `lease` to `lease`, and returns that generation: a map with its `:id`, its
   `:dir` and its `:git`.
@@ -293,28 +356,24 @@
   `(clone! dir)` on an executor thread, with the dynamic bindings of the caller that started it. `clone!` makes the
   clone in the new directory `dir` and returns its Git instance (an AutoCloseable). An interrupt of a caller ends only
   its own wait. A failure of the job goes to every caller that waits for it, and the next call starts a new job."
-  [{:keys [state] :as registry} {lease-id :id url :url} clone!]
+  [{:keys [root state] :as registry} {lease-id :id url :url} clone!]
   (loop []
     (retire-broken-root! registry)
-    (retire-outside-root! registry url)
     (retire-missing! registry url)
-    (let [[old new]            (swap-vals! state update url
-                                           (fn [{:keys [active job] :as entry}]
-                                             (cond
-                                               active (update-in entry [:generations active :leases] (fnil conj #{}) lease-id)
-                                               job    entry
-                                               :else  (-> entry
-                                                          (update :next (fnil inc 0))
-                                                          (assoc :job (promise))))))
-          {:keys [active job]} (get old url)]
+    (let [[old new]                         (swap-vals! state update url take-generation root lease-id)
+          {old-active :active old-job :job} (get old url)
+          {:keys [active job next]}         (get new url)]
+      (when (and old-active (not= old-active active))
+        (log/warn "A git clone is outside the git clone directory of this process, so the next use clones again"
+                  {:path (str (get-in old [url :generations old-active :dir]))})
+        (delete-unleased! registry url))
       (cond
-        active (select-keys (get-in new [url :generations active]) [:id :dir :git])
-        job    (do (await-job! job)
-                   (recur))
-        :else  (let [{:keys [next job]} (get new url)]
-                 (start-job! registry url next job clone!)
-                 (await-job! job)
-                 (recur))))))
+        active                   (select-keys (get-in new [url :generations active]) [:id :dir :git])
+        (identical? job old-job) (do (await-job! job)
+                                     (recur))
+        :else                    (do (start-job! registry url next job clone!)
+                                     (await-job! job)
+                                     (recur))))))
 
 (defn shutdown!
   "Stops the clone jobs of `registry`, closes every clone, releases the lock of the process root, and deletes the root
