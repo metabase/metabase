@@ -342,7 +342,7 @@
    {:keys [name]} :- [:map {:closed true} [:name ms/NonBlankString]]]
   (api/check-superuser)
   (let [base-branch (or (remote-sync.task/last-version) (settings/remote-sync-branch))]
-    (api/check-400 (source/source-from-settings) "Source not configured")
+    (api/check-400 (source/remote-from-settings) "Source not configured")
     (api/check-400 base-branch "Base commit not found")
     (try
       (impl/create-branch! name base-branch)
@@ -366,7 +366,7 @@
                                                  [:message ms/NonBlankString]]]
   (api/check-superuser)
   (api/check-400 (= (settings/remote-sync-type) :read-write) "Stash is only allowed when remote-sync-type is set to 'read-write'")
-  (api/check-400 (source/source-from-settings) "Source not configured")
+  (api/check-400 (source/remote-from-settings) "Source not configured")
   (try
     (let [user-id       api/*current-user-id*
           {task-id :id} (impl/stash! new-branch message
