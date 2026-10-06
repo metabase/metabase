@@ -395,3 +395,16 @@
            clojure.lang.ExceptionInfo
            #"Invalid input.*:template-tags"
            (serdes/import-mbql query-with-unknown-tag-type))))))
+
+(deftest ^:parallel field-path->field-ref-test
+  (testing "a Field path turns into the reference `*import-field-fk*` takes, with or without a schema"
+    (is (= ["db" "PUBLIC" "orders" "id"]
+           (serdes/field-path->field-ref [{:model "Database" :id "db"} {:model "Schema" :id "PUBLIC"}
+                                          {:model "Table" :id "orders"} {:model "Field" :id "id"}])))
+    (is (= ["db" nil "orders" "id"]
+           (serdes/field-path->field-ref [{:model "Database" :id "db"} {:model "Table" :id "orders"}
+                                          {:model "Field" :id "id"}]))))
+  (testing "a nested Field of a Table without a schema keeps the Table and every parent Field in place"
+    (is (= ["db" nil "orders" "customer" "tier"]
+           (serdes/field-path->field-ref [{:model "Database" :id "db"} {:model "Table" :id "orders"}
+                                          {:model "Field" :id "customer"} {:model "Field" :id "tier"}])))))
