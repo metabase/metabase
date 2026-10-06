@@ -189,9 +189,10 @@
     (str "One of: " (str/join ", " (map md/code enum)) ".")))
 
 (defn- description-cell
-  "The Description column: enum, then prose. An em dash when the schema says nothing."
+  "The Description column: enum, then prose, each description an [[md/sentence]] so several don't run together. An
+  em dash when the schema says nothing."
   [{:keys [descriptions] :as argument}]
-  (or (not-empty (md/sentences (cons (enum-sentence argument) descriptions)))
+  (or (not-empty (md/sentences (cons (enum-sentence argument) (map md/sentence descriptions))))
       "—"))
 
 (defn- argument-row

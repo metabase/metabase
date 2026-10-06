@@ -178,6 +178,11 @@
     "A keyword query."                         {:type "array" :items {:type "string" :description "A keyword query."}}
     ;; prose is flattened and Liquid-fenced
     "Use {% raw %}{{tag}}{% endraw %}."        {:type "string" :description "Use\n  {{tag}}."}
+    ;; each description is terminated, so a property's prose and its items' prose don't run together
+    "Max rows."                                {:type "string" :description "Max rows"}
+    "Keywords. One per term."                  {:type "array" :description "Keywords" :items {:type "string" :description "One per term"}}
+    ;; a dangling lead-in reads as a period once it stands alone
+    "Pass one of."                             {:type "string" :description "Pass one of:"}
     ;; nothing at all is an em dash, not an empty cell
     "—"                                        {:type "string"}))
 
