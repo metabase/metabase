@@ -222,3 +222,52 @@
                                        #(assoc % :visualization_settings {:some.custom/labels [db "Alpha" "Beta"]}))))))
       (testing "and a file that names only what exists has no problems"
         (is (= [] (messages (shop (question-resources)))))))))
+
+(deftest refuses-more-of-what-a-resource-may-not-hold-test
+  (let [refused (fn [tree message]
+                  (is (some #(str/includes? % message) (messages tree)) message))
+        tree    (fn [] (shop (question-resources)))]
+    (testing "a collection file that isn't a plain root collection"
+      (doseq [change [{:parent_id "someOtherCollection01"} {:namespace "snippets"} {:archived true}
+                      {:is_remote_synced true} {:authority_level "official"}]]
+        (refused (edit-file (tree) "data_apps/shop/resources/collection.yaml" #(merge % change))
+                 "must be a plain root collection")))
+    (testing "a card that belongs to a dashboard or a document"
+      (refused (edit-file (tree) question-path #(assoc % :dashboard_id "someDashboardEntity01"))
+               "must not belong to a dashboard or document")
+      (refused (edit-file (tree) question-path #(assoc % :document_id "someDocumentEntityI01"))
+               "must not belong to a dashboard or document"))
+    (testing "an embedded card"
+      (refused (edit-file (tree) question-path #(assoc % :enable_embedding true))
+               "must not be public or embedded"))
+    (testing "a snippet that the instance doesn't have"
+      (refused (edit-file (tree) question-path
+                          #(assoc % :dataset_query
+                                  {:database (:database (:dataset_query %))
+                                   :lib/type "mbql/query"
+                                   :stages   [{:lib/type      "mbql.stage/native"
+                                               :native        "SELECT 1 {{snippet: s}}"
+                                               :template-tags {"snippet: s" {:type         "snippet"
+                                                                             :name         "snippet: s"
+                                                                             :display-name "Snippet: s"
+                                                                             :id           "7f2c2a0e-6c1e-4b53-9d0a-0d5a3a1d1c13"
+                                                                             :snippet-name "s"
+                                                                             :snippet-id   "nowhereSnippetEid0000"}}}]}))
+               "references NativeQuerySnippet nowhereSnippetEid0000, which does not exist on this instance"))
+    (testing "one card defined by two files"
+      (let [resources (question-resources)
+            path      (some #(when (str/starts-with? % "cards/") %) (keys resources))]
+        (refused (shop (assoc resources "cards/copy.yaml" (get resources path)))
+                 "is defined by more than one file")))))
+
+(deftest refuses-an-action-that-takes-its-parameter-values-from-a-card-test
+  (data-apps.tu/do-with-sources!
+   (fn [{:keys [action-id]}]
+     (let [resources (data-apps.tu/build-resources
+                      collection-eid
+                      [{:entity_id question-eid :name "VenuesList" :query (venues-query)}]
+                      [action-id])
+           tree      (edit-file (shop resources) "data_apps/shop/resources/actions/"
+                                #(assoc % :parameters [{:id "name" :slug "name" :type "string/="
+                                                        :values_source_config {:card_id question-eid}}]))]
+       (is (some #(str/includes? % "must not take parameter values from a card") (messages tree)))))))
