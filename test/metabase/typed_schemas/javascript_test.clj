@@ -36,10 +36,8 @@
 (deftest arrays-of-objects-render-multiline-with-metadata-test
   (is (= ["const x = ["
           "  {"
+          "    /* metadata: { \"displayName\": \"Total\" } */"
           "    name: \"total\""
-          "    /* metadata: {"
-          "      \"displayName\": \"Total\""
-          "    } */"
           "  },"
           "  {"
           "    name: \"tax\""
@@ -51,15 +49,12 @@
                         [:obj ["name" [:lit "total"]]]]
                        [:obj ["name" [:lit "tax"]]]]]))))
 
-(deftest objects-render-metadata-inside-and-quote-non-identifier-keys-test
+(deftest objects-render-metadata-first-and-quote-non-identifier-keys-test
   (is (= ["const x = {"
           "  orders: {"
+          "    /* metadata: { \"entityId\": \"abc123\", \"description\": \"All orders\" } */"
           "    type: \"table\","
           "    \"has-totals\": true"
-          "    /* metadata: {"
-          "      \"entityId\": \"abc123\","
-          "      \"description\": \"All orders\""
-          "    } */"
           "  }"
           "} as const;"]
          (render-lines
@@ -72,25 +67,26 @@
 (deftest metadata-renders-in-an-otherwise-empty-object-test
   (is (= ["const x = {"
           "  orders: {"
-          "    /* metadata: {"
-          "      \"id\": 1"
-          "    } */"
+          "    /* metadata: { \"id\": 1 } */"
           "  }"
           "} as const;"]
          (render-lines
           [:const "x" [:obj ["orders" {:metadata {"id" 1}} [:obj]]]]))))
 
-(deftest metadata-nests-objects-and-keeps-arrays-inline-test
+(deftest metadata-with-nested-values-renders-one-item-per-line-test
   (is (= ["const x = {"
           "  orders: {"
-          "    id: 1"
           "    /* metadata: {"
-          "      \"filters\": [\"Status is paid\", \"Total is greater than 10\"],"
+          "      \"filters\": ["
+          "        \"Status is paid\","
+          "        \"Total is greater than 10\""
+          "      ],"
           "      \"sourceTable\": {"
           "        \"databaseName\": \"Sample\","
           "        \"tableName\": \"ORDERS\""
           "      }"
           "    } */"
+          "    id: 1"
           "  }"
           "} as const;"]
          (render-lines

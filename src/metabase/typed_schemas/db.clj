@@ -2,7 +2,6 @@
   "Application database queries for the typed schemas module. Every function here is a direct Toucan 2 call with no
   additional logic, so the rest of the module never talks to `toucan2.core` itself."
   (:require
-   [metabase.collections.models.collection :as collection]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.queries.core :as queries]
    [metabase.util.malli :as mu]
@@ -25,8 +24,9 @@
       [:= column -1])))
 
 (mu/defn cards-ordered-by-name
-  "The non-archived Cards of `card-type` in visible collections, among `database-ids` and/or `collection-ids` (either nil for
-  unscoped), in name then id order."
+  "The non-archived Cards of `card-type` among `database-ids` and/or `collection-ids` (either nil for unscoped), in
+  name then id order. The schema is for superusers, who see every collection, and what an archived collection or
+  the trash holds is archived itself."
   [card-type      :- [:enum :model :question :metric]
    database-ids   :- [:maybe [:set ::lib.schema.id/database]]
    collection-ids :- [:maybe [:set ::lib.schema.id/collection]]]
@@ -34,7 +34,6 @@
              {:where    [:and
                          [:= :type (name card-type)]
                          [:= :archived false]
-                         (collection/visible-collection-filter-clause :collection_id)
                          (scope-filter-clause database-ids :database_id)
                          (scope-filter-clause collection-ids :collection_id)]
               :order-by [[:name :asc] [:id :asc]]}))
@@ -56,8 +55,8 @@
   (t2/select [:model/Table :id :db_id :name :display_name] :id [:in table-ids] {:from [(warehouse-schema-overlay/table-query)]}))
 
 (mu/defn model-less-query-action-ids
-  "The ids of the unarchived query Actions without a model in visible collections, outside
-  `excluded-collection-ids`, among `database-ids` (nil for unscoped), in name then id order."
+  "The ids of the unarchived query Actions without a model outside `excluded-collection-ids`, among `database-ids`
+  (nil for unscoped), in name then id order."
   [database-ids            :- [:maybe [:set ::lib.schema.id/database]]
    excluded-collection-ids :- [:set ::lib.schema.id/collection]]
   (t2/select-pks-vec :model/Action
@@ -65,7 +64,6 @@
                                  [:= :model_id nil]
                                  [:= :type "query"]
                                  [:= :archived false]
-                                 (collection/visible-collection-filter-clause :collection_id)
                                  (when (seq excluded-collection-ids)
                                    [:or [:= :collection_id nil] [:not-in :collection_id excluded-collection-ids]])
                                  (when database-ids

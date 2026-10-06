@@ -78,16 +78,16 @@
   (let [body (typed-schemas/render-typescript compacting-schema)]
     (testing "context for agents is a metadata block, never a line comment"
       (is (not (re-find #"(?m)^\s*//" body)))
-      (is (re-find #"(?s)type: \"card\"\n\s*/\* metadata: \{\n\s*\"description\": \"Saved orders\"\n\s*\} \*/" body))
-      (is (str/includes? body "\"description\": \"Total order revenue\""))
-      (is (str/includes? body "\"filters\": [\"Status is paid\", \"Created At is in the previous 30 days\"]"))
-      (is (re-find (re-pattern (str "(?s)tableId: 10\\n\\s*/\\* metadata: \\{\\n"
-                                    "\\s*\"displayName\": \"Payment Method\",\\n"
-                                    "\\s*\"semanticType\": \"type/Category\"\\n\\s*\\} \\*/"))
-                   body)))
+      (testing "an entry opens with its block, so a reader meets the context before the data"
+        (is (re-find #"(?s)ordersQuestion: \{\n\s*/\* metadata: \{ \"description\": \"Saved orders\" \} \*/\n\s*type: \"card\"" body))
+        (is (str/includes? body "\"description\": \"Total order revenue\""))
+        (is (str/includes? body (str "/* metadata: { \"displayName\": \"Payment Method\", "
+                                     "\"semanticType\": \"type/Category\" } */\n        type: \"column\""))))
+      (testing "a block with a nested value prints one array item per line"
+        (is (re-find #"(?s)\"filters\": \[\n\s*\"Status is paid\",\n\s*\"Created At is in the previous 30 days\"\n\s*\]" body))))
     (testing "data for the Lib.createTestQuery DSL stays runtime"
-      (is (str/includes? body "ordersQuestion: {\n    type: \"card\""))
-      (is (str/includes? body "paymentMethod: {\n        type: \"column\""))
+      (is (str/includes? body "ordersQuestion: {\n    /* metadata:"))
+      (is (str/includes? body "paymentMethod: {\n        /* metadata:"))
       (is (str/includes? body "databaseId: 1"))
       (is (str/includes? body "sourceTableId: 10"))
       (is (str/includes? body "mappedTableIds: [ 10, 20 ]")))
@@ -107,12 +107,16 @@
                                           :id          31
                                           :sourceTable {:databaseName "Sample Database"
                                                         :schemaName   nil
-                                                        :tableName    "ORDERS"}}}})]
-    (testing "a table in a database without schemas has no schema key, not a null one"
-      (is (re-find (re-pattern (str "(?s)\"sourceTable\": \\{\\n\\s*\"databaseName\": \"Sample Database\",\\n"
-                                    "\\s*\"tableName\": \"ORDERS\"\\n\\s*\\}"))
-                   body))
-      (is (not (str/includes? body "null"))))
+                                                        :tableName    "ORDERS"}}
+                               "profit"  {:type        "metric"
+                                          :id          32
+                                          :sourceTable {:databaseName "Sample Database"
+                                                        :schemaName   ""
+                                                        :tableName    "PRODUCTS"}}}})]
+    (testing "a table in a database without schemas has no schema key, whether the schema is nil or blank"
+      (is (= 2 (count (re-seq #"\"sourceTable\": \{\n\s*\"databaseName\": \"Sample Database\",\n\s*\"tableName\": \"(ORDERS|PRODUCTS)\"\n\s*\}" body))))
+      (is (not (str/includes? body "null")))
+      (is (not (str/includes? body "schemaName"))))
     (testing "a blank description is not written"
       (is (not (str/includes? body "description"))))))
 

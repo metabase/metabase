@@ -2,8 +2,10 @@
   "Typed schema generation for tables, fields, segments and measures."
   (:require
    [medley.core :as m]
+   [metabase.audit-app.core :as audit]
    [metabase.lib-be.core :as lib-be]
    [metabase.metabot.core :as metabot]
+   [metabase.premium-features.core :as premium-features]
    [metabase.typed-schemas.common :as common]
    [metabase.typed-schemas.db :as typed-schemas.db]
    [metabase.typed-schemas.schema.common :as schema.common]))
@@ -35,13 +37,15 @@
       :tableId (when (integer? table-id) table-id)
       :defaultTemporalBucket (:unit field)))))
 
-(defn- without-destination-tables
-  "`tables` without any backed by a destination (routed) database -- see [[schema.common/destination-db-ids]]."
+(defn- without-unavailable-tables
+  "`tables` without any backed by a destination (routed) database -- see [[schema.common/destination-db-ids]] -- and
+  without the audit database's while the audit feature is off, since the table details lookup refuses those."
   [tables]
-  (let [destination-ids (schema.common/destination-db-ids (into #{} (keep :db_id) tables))]
-    (if (seq destination-ids)
-      (remove #(contains? destination-ids (:db_id %)) tables)
-      tables)))
+  (let [destination-ids (schema.common/destination-db-ids (into #{} (keep :db_id) tables))
+        audit-off?      (not (premium-features/enable-audit-app?))]
+    (cond->> tables
+      (seq destination-ids) (remove #(contains? destination-ids (:db_id %)))
+      audit-off?            (remove #(= audit/audit-db-id (:db_id %))))))
 
 (defn select-tables
   "Returns the active tables, with optional database and table-id scopes.
@@ -50,13 +54,13 @@
   only their id filters differ."
   [database-ids table-ids]
   (->> (typed-schemas.db/active-tables-in-scope database-ids table-ids)
-       (without-destination-tables)))
+       (without-unavailable-tables)))
 
 (defn select-library-tables
   "Returns published tables from the library based on the given scope."
   [{:keys [data-collection-ids]}]
   (->> (typed-schemas.db/published-library-tables-in-collections data-collection-ids)
-       (without-destination-tables)))
+       (without-unavailable-tables)))
 
 (defn segment-schema
   "Returns the schema for a segment."

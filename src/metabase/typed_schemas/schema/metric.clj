@@ -171,24 +171,20 @@
 
 (defn- table-key-disambiguators
   "Returns table display keys used to disambiguate compacted metric dimensions."
-  ([table-ids]
-   (table-key-disambiguators table-ids (table-source-rows table-ids)))
-  ([_dimension-table-ids table-rows]
-   (when (seq table-rows)
-     (->> table-rows
-          (map (fn [{:keys [id name display_name]}]
-                 [id (common/pascal-case (common/generated-key (or display_name name) id))]))
-          (into {})))))
+  [table-rows]
+  (when (seq table-rows)
+    (->> table-rows
+         (map (fn [{:keys [id name display_name]}]
+                [id (common/pascal-case (common/generated-key (or display_name name) id))]))
+         (into {}))))
 
 (defn- table-source-names
   "Returns table names emitted as metric dimension source names."
-  ([table-ids]
-   (table-source-names table-ids (table-source-rows table-ids)))
-  ([_dimension-table-ids table-rows]
-   (when (seq table-rows)
-     (->> table-rows
-          (map (juxt :id :name))
-          (into {})))))
+  [table-rows]
+  (when (seq table-rows)
+    (->> table-rows
+         (map (juxt :id :name))
+         (into {}))))
 
 (defn- source-table-schema
   "Returns the metric source table identity from portable table metadata."
@@ -249,8 +245,8 @@
   (let [dimension-table-id-pairs (metric-dimensions-with-table-ids details source-card-id-value)
         table-ids                (->> dimension-table-id-pairs (keep second) (filter integer?) distinct)
         table-rows               (table-source-rows table-ids)
-        table-key-by-id          (table-key-disambiguators table-ids table-rows)
-        table-source-name-by-id  (table-source-names table-ids table-rows)
+        table-key-by-id          (table-key-disambiguators table-rows)
+        table-source-name-by-id  (table-source-names table-rows)
         dimension-schemas        (mapv (fn [[dimension table-id]]
                                          (dimension-schema dimension
                                                            metric-id
