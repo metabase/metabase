@@ -133,6 +133,14 @@
           (is (= (str "renamed this " display-name " from \"A\" to \"B\".")
                  (u/build-sentence (revision/diff-strings model {:name "A"} {:name "B"})))))))))
 
+(deftest ^:parallel model-with-no-display-name-gets-a-description-test
+  (testing "A model with no display name gets a description with the model string, and a warning that names the model"
+    (mt/with-log-messages-for-level [messages [metabase.revisions.models.revision.diff :warn]]
+      (is (= "renamed this NoSuchModel from \"A\" to \"B\"."
+             (u/build-sentence (revision.diff/diff-strings* "NoSuchModel" {:name "A"} {:name "B"}))))
+      (is (=? [{:level :warn, :message #".*NoSuchModel.*"}]
+              (messages))))))
+
 ;;; # REVISIONS + PUSH-REVISION!
 
 (deftest new-object-no-revisions-test

@@ -6,6 +6,7 @@
    [metabase-enterprise.transform-testing.run-tracking :as transform-testing.run-tracking]
    [metabase.revisions.core :as revisions]
    [metabase.revisions.events]
+   [metabase.revisions.models.revision.diff :as revision.diff]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -97,3 +98,24 @@
                      {:is_creation true
                       :description "created this."}]
                     (mt/user-http-request :crowberto :get 200 (str "revision/transform-test/" transform-test-id))))))))))
+
+(deftest transform-test-revision-history-without-display-name-api-test
+  (testing "GET /api/revision/transform-test/:id loads when the model has no display name"
+    (mt/with-premium-features #{:transforms-basic :transforms-testing}
+      (mt/with-temporary-raw-setting-values [transforms-enabled "true"]
+        (mt/with-current-user (mt/user->id :crowberto)
+          (mt/with-temp [:model/Transform     {transform-id :id} {}
+                         :model/TransformTest {transform-test-id :id} {:transform_id transform-id
+                                                                       :name         "Original"}]
+            (t2/update! :model/TransformTest transform-test-id {:name "Renamed"})
+            (mt/with-dynamic-fn-redefs [revision.diff/model-str->i18n-str
+                                        (fn [model-str]
+                                          (throw (IllegalArgumentException. (str "No matching clause: " model-str))))]
+              (mt/with-log-messages-for-level [messages [metabase.revisions.models.revision.diff :warn]]
+                (is (=? [{:is_creation false
+                          :description "renamed this TransformTest from \"Original\" to \"Renamed\"."}
+                         {:is_creation true
+                          :description "created this."}]
+                        (mt/user-http-request :crowberto :get 200 (str "revision/transform-test/" transform-test-id))))
+                (is (=? [{:level :warn, :message #".*TransformTest.*"}]
+                        (messages)))))))))))
