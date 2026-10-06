@@ -255,9 +255,12 @@ saved later when it is ready."
     changes :- [:maybe ::queries.schema/card]]
    (-> (cond
          ;; A serdes export writes only the overrides of a model's columns (no base type, no field id). Checked before
-         ;; the query check, because a load that updates an existing model changes only its result_metadata.
+         ;; the query check, because a load that updates an existing model can change only its result_metadata. A load
+         ;; can also change only its dataset_query; then the given columns are the fallback when the inference fails.
          (and mi/*deserializing?* (= (:type card) :model) query (seq metadata) (not-any? :id metadata)
-              (or (empty? changes) (contains? changes :result_metadata)))
+              (or (empty? changes)
+                  (contains? changes :result_metadata)
+                  (contains? changes :dataset_query)))
          (assoc card :result_metadata (or (infer-metadata-with-model-overrides query card) metadata))
 
          ;; not updating the query => no-op

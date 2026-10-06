@@ -126,7 +126,7 @@
               (t2/select-one-fn :result_metadata :model/Card :id card-id))))))
 
 (deftest deserializing-update-without-metadata-does-not-infer-test
-  (testing "a serdes load that updates other columns of a model, and not result_metadata, does not infer its metadata"
+  (testing "a serdes load that updates neither the query nor result_metadata of a model does not infer its metadata"
     ;; The stored columns have no field ids, as a load of overrides stores them when the inference fails.
     (mt/with-temp [:model/Card {card-id :id} {:type            :model
                                               :dataset_query   (venues-query)
