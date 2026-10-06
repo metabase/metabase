@@ -31,9 +31,9 @@
         (log/warnf "Failed to process revision event for model %s: %s" model (ex-message e))))))
 
 (defn- model-dispatch-value
-  "The [[events/publish-event!]] dispatch value of the revisions listener for `model`, e.g. `::card-event`."
+  "The [[events/publish-event!]] dispatch value of the revisions listener for `model`, e.g. `::transform-test-event`."
   [model]
-  (keyword (namespace ::event) (str (u/lower-case-en (name model)) "-event")))
+  (keyword (namespace ::event) (str (u/->kebab-case-en (name model)) "-event")))
 
 (doseq [[model {create-topic :create :as topics}] revision/revisioned-models
         :let [dispatch-value (model-dispatch-value model)]]

@@ -33,7 +33,7 @@
   "Model -> its revision event topics: `:create`, `:update` and optional `:delete`. The revisions listener records a
   revision for each topic. Flags:
   - `:previous-object?`: an `:update` event requires `:previous-object`.
-  - `:hook-publishes-update?`: an after-update Toucan hook of the model publishes `:update`, so a revert publishes it."
+  - `:hook-publishes-update?`: each update of a model row publishes `:update`; a caller must not publish it again."
   {:model/Card          {:create           :event/card-create
                          :update           :event/card-update
                          :previous-object? true}
