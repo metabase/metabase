@@ -1,8 +1,7 @@
 (ns metabase.sync.db
-  "Application database queries for the sync module. Table reads here ask for the rows sync itself wrote
-  (`{:user-settings? false}`): it reconciles them against what the warehouse reports, so it has to see a Table as it
-  recorded it, whatever a reader would be shown instead. Which Tables take part in sync is the exception: a Table a
-  user hid stays out, so that choice reads the `visibility_type` users see.
+  "Application database queries for the sync module. Reads of what sync reconciles against the warehouse ask for the
+  rows sync itself wrote (`{:user-settings? false}`), whatever a reader would be shown instead; choices of which
+  Tables or Fields to act on read what users see.
 
   Every function here is a direct Toucan 2 call with no additional logic, so the rest of the module never talks to
   `toucan2.core` itself."
@@ -115,8 +114,8 @@
    table-name  :- :string]
   (t2/select-one-pk :model/Table :db_id database-id :name table-name :active true {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]}))
 
-(mu/defn sync-tables-by-lower-name-and-schema
-  "The synced Tables of the Database with `database-id` whose lower-cased name and schema match."
+(mu/defn active-tables-by-lower-name-and-schema
+  "The active Tables of the Database with `database-id` whose lower-cased name and schema match, hidden ones included."
   [database-id  :- ::lib.schema.id/database
    lower-name   :- :string
    lower-schema :- [:maybe :string]]
@@ -124,8 +123,8 @@
              :db_id database-id
              :%lower.name lower-name
              :%lower.schema lower-schema
-             {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]
-              :where (sync-tables-clause :metabase_table)}))
+             :active true
+             {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]}))
 
 (mu/defn tables-by-name
   "The `columns` of the Tables of the Database with `database-id` named one of `table-names`."

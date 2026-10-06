@@ -147,19 +147,15 @@
 
 (mu/defn table-user-visibility-type
   "Honey SQL expression for the `visibility_type` users see for the Table aliased `table-alias`: the user value
-  when set, else the Table's. Correlated rather than joined, so a query can filter on it while reading
-  `metabase_table` as sync wrote it."
+  when set, else the Table's. Reads only `table-alias`'s `id`, so it can filter a query over raw `metabase_table`."
   [table-alias :- :keyword]
-  (let [settings-where (fn [& conditions]
-                         (into [:and [:= :uv.table_id (u/qualified-key table-alias :id)]] conditions))]
-    [:case
-     [:exists ^:allow-subquery {:select [1]
-                                :from   [[(t2/table-name :model/TableUserSettings) :uv]]
-                                :where  (settings-where (table-user-set-condition :visibility_type :uv))}]
-     ^:allow-subquery {:select [:uv.visibility_type]
-                       :from   [[(t2/table-name :model/TableUserSettings) :uv]]
-                       :where  (settings-where)}
-     :else (u/qualified-key table-alias :visibility_type)]))
+  ;; A scalar subquery, not a join, so the caller's rows keep `metabase_table`'s shape. It re-reads the Table so the
+  ;; LEFT JOIN always yields one row: a user-set NULL must not fall back to the Table's value.
+  ^:allow-subquery
+  {:select    [[(table-user-settings-column :visibility_type :vt_t :vt_u)]]
+   :from      [[(t2/table-name :model/Table) :vt_t]]
+   :left-join (table-user-settings-join :vt_t :vt_u)
+   :where     [:= :vt_t.id (u/qualified-key table-alias :id)]})
 
 (mu/defn table-query :- [:tuple :any :keyword]
   "The source a query over Tables reads from: `metabase_table` merged with the user values, with the options of
