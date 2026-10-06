@@ -361,7 +361,9 @@ describe("scenarios > organization > timelines > question persistence", () => {
     });
     createTimeSeries();
 
+    cy.intercept("GET", "/api/timeline?include=events").as("getTimelines");
     H.visitQuestion("@questionId");
+    cy.wait("@getTimelines");
     expectEvents([], EVENT_NAMES);
     H.openVizSettingsSidebar();
     H.vizSettingsSidebar().within(() => {
@@ -385,6 +387,7 @@ describe("scenarios > organization > timelines > question persistence", () => {
         });
     });
     cy.reload();
+    cy.wait("@getTimelines");
     expectEvents([], EVENT_NAMES);
 
     cy.log("the dashboard only shows events saved on the question");
