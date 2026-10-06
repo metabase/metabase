@@ -16,9 +16,9 @@
   MBQL suitable for `lib.query/query` / the QP.
 
   Implemented scope for the representations pipeline:
-    * `import-table-fk`, `import-field-fk`, `export-table-fk`, `export-field-fk` for
+    * `import-database-fk`, `import-table-fk`, `import-field-fk`, `export-table-fk`, `export-field-fk` for
       warehouse metadata.
-    * `import-fk-keyed` / `export-fk-keyed` for `:model/Database` by `:name`.
+    * `export-fk-keyed` for `:model/Database` by `:name`.
     * `import-fk` / `export-fk` for `Card`, `Measure`, and `Segment` references by `entity_id`.
 
   Everything else throws `:not-implemented-yet` for now.
@@ -733,7 +733,6 @@
 
   Implemented methods:
     * `import-database-fk`, `import-table-fk`, `import-field-fk`.
-    * `import-fk-keyed` for `:model/Database` by `:name`.
     * `import-fk` for `Card`, `Measure`, and `Segment` by `entity_id`.
 
   Other methods throw `:not-implemented-yet`."
@@ -759,14 +758,7 @@
          (measure-model? model) (import-measure-by-entity-id metadata-provider content-store eid)
          (segment-model? model) (import-segment-by-entity-id metadata-provider content-store eid)
          :else                  (not-implemented! :import-fk)))
-     (import-fk-keyed [_ portable model field]
-       (cond
-         (and (or (= model :model/Database) (= model 'Database))
-              (= field :name))
-         (import-database-by-name metadata-provider portable)
-
-         :else
-         (not-implemented! :import-fk-keyed)))
+     (import-fk-keyed [_ _portable _model _field] (not-implemented! :import-fk-keyed))
      (import-user     [_ _email]                  (not-implemented! :import-user))
      (import-database-fk [_ db-name]
        (when db-name

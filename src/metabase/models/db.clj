@@ -259,11 +259,6 @@
   [database-id :- [:maybe ::lib.schema.id/database]]
   (t2/select-one-fn :name [:model/Database :id :name] :id database-id))
 
-(mu/defn database-names
-  "The names of every Database."
-  []
-  (t2/select-fn-vec :name :model/Database))
-
 (mu/defn database-id-by-name
   "The id of the Database named `database-name`, or nil."
   [database-name :- :string]
