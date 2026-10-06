@@ -1408,6 +1408,7 @@
            premium-features
            pulse
            queries
+           query-permissions
            query-processor
            request
            server

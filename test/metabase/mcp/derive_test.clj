@@ -9,6 +9,8 @@
    [metabase.mcp.callback-api :as mcp.callback-api]
    [metabase.mcp.session :as mcp.session]
    [metabase.mcp.ui-test-util :as ui.tu]
+   [metabase.permissions.core :as perms]
+   [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
@@ -431,6 +433,41 @@
           (is (not (contains? (ui.tu/decode-query (:query body)) :parameters)))
           (is (= 202 (:status (ui.tu/ui-request! auth :post nil
                                                  (str "embed-mcp/queries/" (:handle body) "/run") {})))))))))
+
+(deftest derive-rechecks-card-permissions-test
+  (testing "Derive refuses a handle whose source is a saved question the user can no longer read, before it reads any
+            column, so the 200-or-400 answer cannot reveal which columns the question returns"
+    (mt/with-full-data-perms-for-all-users!
+      (mt/with-temp [:model/Collection {coll-id :id} {}
+                     :model/Card       {card-id :id} {:collection_id coll-id :dataset_query (venues)}]
+        (mt/with-model-cleanup [:model/McpQueryHandle]
+          (mt/with-non-admin-groups-no-collection-perms coll-id
+            (let [mp (mt/metadata-provider)]
+              (doseq [column-name ["PRICE" "NOT_A_COLUMN"]]
+                (testing column-name
+                  (is (= 403 (:status (derive! (lib/query mp (lib.metadata/card mp card-id))
+                                               {:operations [{:type      "drill-thru" :drill "sort"
+                                                              :direction "asc" :context {:column column-name}}]})))))))))))))
+
+(deftest derive-rechecks-joined-table-permissions-test
+  (testing "Derive refuses a handle that joins a table the user may not query, whatever column the click names"
+    (mt/with-model-cleanup [:model/McpQueryHandle]
+      (let [mp    (mt/metadata-provider)
+            query (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+                      (lib/join (lib/join-clause (lib.metadata/table mp (mt/id :categories))
+                                                 [(lib/= (lib.metadata/field mp (mt/id :venues :category_id))
+                                                         (lib.metadata/field mp (mt/id :categories :id)))])))
+            sort! #(:status (derive! query {:operations [{:type      "drill-thru" :drill "sort"
+                                                          :direction "asc" :context {:column %}}]}))]
+        (mt/with-no-data-perms-for-all-users!
+          (perms/set-table-permission! (perms-group/all-users) (mt/id :venues) :perms/view-data :unrestricted)
+          (perms/set-table-permission! (perms-group/all-users) (mt/id :venues) :perms/create-queries :query-builder)
+          (doseq [column-name ["PRICE" "NOT_A_COLUMN"]]
+            (testing column-name
+              (is (= 403 (sort! column-name))))))
+        (testing "control: with permission on both tables the drill works"
+          (mt/with-full-data-perms-for-all-users!
+            (is (= 200 (sort! "PRICE")))))))))
 
 (deftest derive-rechecks-data-permissions-test
   (testing "Derive and drills re-check the user's permission on the stored query, and refuse with a 403 before
