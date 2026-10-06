@@ -5,6 +5,7 @@
    [clojure.string :as str]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.metabot.query-execution :as query-execution]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.settings :as metabot.settings]
@@ -12,6 +13,7 @@
    [metabase.metabot.tools.shared :as shared]
    [metabase.metabot.tools.shared.llm-shape :as llm-shape]
    [metabase.metabot.tools.util :as tools.u]
+   [metabase.query-permissions.core :as query-perms]
    [metabase.util.malli :as mu]))
 
 (set! *warn-on-reflection* true)
@@ -85,15 +87,42 @@
         (throw (ex-info (str "No query with id " query-id ". Known query ids: [" (str/join ", " (keys queries)) "].")
                         {:agent-error? true})))))
 
+(defn- check-cards-runnable!
+  "Refuse `query` when it reads a saved question and the current user may not run it. Checked before
+   [[reads-sql-card?]] looks inside those questions, so a refusal for SQL never tells the user what a question they
+   can't read holds."
+  [query]
+  (when (and (lib/all-source-card-ids query)
+             (not (query-perms/can-run-query? query)))
+    (throw (ex-info "You do not have permission to run this query."
+                    {:agent-error? true}))))
+
+(defn- reads-sql-card?
+  "Whether `query` reads a saved SQL question at any depth: as its source, in a join, or through another saved
+   question. The SQL of such a question runs inside the notebook query around it, so the query is a SQL query here,
+   although no stage of `query` itself is native."
+  [query]
+  (boolean
+   (some (fn [card-id]
+           (some-> (lib.metadata/card query card-id) :dataset-query not-empty lib/any-native-stage?))
+         (lib/all-source-card-ids-recursive query))))
+
+(defn- sql-refusal
+  [sql-source]
+  (ex-info (str "run_query only runs notebook queries, and this one " sql-source ". "
+                "To get values, rebuild the question with construct_notebook_query, "
+                "then run that query with run_query.")
+           {:agent-error? true}))
+
 (defn- runnable-query
   "The serialized MBQL 5 form of `query`, which state may hold as MBQL 4 (the user's viewing context) or MBQL 5."
   [query]
   (let [normalized (lib-be/normalize-query query)]
     (when (lib/any-native-stage? normalized)
-      (throw (ex-info (str "run_query only runs notebook queries, and this one is a SQL query. "
-                           "To get values, rebuild the question with construct_notebook_query, "
-                           "then run that query with run_query.")
-                      {:agent-error? true})))
+      (throw (sql-refusal "is a SQL query")))
+    (check-cards-runnable! normalized)
+    (when (reads-sql-card? normalized)
+      (throw (sql-refusal "reads a saved SQL question")))
     (lib/prepare-for-serialization normalized)))
 
 (defn- cell-text
