@@ -62,6 +62,7 @@ const spawn = (project) => {
     child.send(assigned ? { file: assigned } : { done: true });
   });
   child.on("exit", (code) => {
+    fs.rmSync(path.join(__dirname, "../node_modules/.cache/node-test-spike", `process-${child.pid}`), { recursive: true, force: true });
     live -= 1;
     serving[project] -= 1;
     // 75 is a deliberate recycle, anything else non-zero is a crash. The file a
