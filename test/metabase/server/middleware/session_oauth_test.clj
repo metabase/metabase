@@ -234,7 +234,7 @@
 (defn- request-body [body-key]
   (case body-key
     nil              nil
-    :native-select-1 {:database (mt/id) :type "native" :native {:query "SELECT 1"}}
+    :native-select-1 {:database (mt/id) :type "native" :native {:query "SELECT 'mcp-scoped-token-test'"}}
     :new-collection  {:name (str "oauth-scope-test-" (random-uuid))}))
 
 (defn- bearer-response
@@ -339,7 +339,7 @@
                    (is (= 401 (bearer-status token :get "user/current" nil :expected-status 401))))
                  (testing "POST dataset"
                    (is (= 401 (bearer-status token :post "dataset"
-                                             {:database (mt/id) :type "native" :native {:query "SELECT 1"}}
+                                             {:database (mt/id) :type "native" :native {:query "SELECT 'mcp-token-off-mcp-endpoint-test'"}}
                                              :expected-status 401))))
                  (testing "GET /oauth/authorize, a defendpoint outside /api, sends the anonymous user to log in"
                    (is (= 302 (:status (binding [client/*url-prefix* ""]
