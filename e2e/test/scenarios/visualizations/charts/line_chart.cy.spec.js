@@ -105,7 +105,9 @@ describe("scenarios > visualizations > line chart", () => {
     H.popover().findByText("Abbreviate days and months").click();
     H.echartsContainer().findByText("Jan 2027");
     cy.realPress("Escape");
-    cy.get("[data-element-id=mantine-popover]").should("not.exist");
+    cy.get("[data-element-id=mantine-popover]")
+      .filter(":visible")
+      .should("not.exist");
 
     H.openSeriesSettings("Count");
 
