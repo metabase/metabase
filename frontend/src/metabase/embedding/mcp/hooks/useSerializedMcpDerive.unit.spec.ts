@@ -141,4 +141,31 @@ describe("useSerializedMcpDerive", () => {
     expect(apply).not.toHaveBeenCalled();
     expect(getCurrentMcpQueryHandle()).toBe("tool-result-handle");
   });
+
+  it("drops a derive requested before a new tool result replaced the handle", async () => {
+    fetchMock.post(deriveUrl("tool-result-handle"), {
+      handle: "handle-9",
+      query: "q9",
+    });
+
+    const { deriveQuery: derive } = setup();
+    const apply = jest.fn();
+    const derived = derive([YEAR], apply);
+    setCurrentMcpQueryHandle("tool-result-handle");
+
+    await expect(derived).rejects.toMatchObject({ isStale: true });
+    expect(apply).not.toHaveBeenCalled();
+  });
+
+  it("does not count its own new handle as a replacement, so a queued derive still runs", async () => {
+    fetchMock.post(deriveUrl("handle-1"), { handle: "handle-2", query: "q2" });
+    fetchMock.post(deriveUrl("handle-2"), { handle: "handle-3", query: "q3" });
+
+    const { deriveQuery: derive } = setup();
+    const first = derive([YEAR], APPLY);
+    const second = derive([CLEAR], APPLY);
+
+    await expect(Promise.all([first, second])).resolves.toHaveLength(2);
+    expect(getCurrentMcpQueryHandle()).toBe("handle-3");
+  });
 });
