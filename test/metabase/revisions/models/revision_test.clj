@@ -4,6 +4,8 @@
    [metabase.config.core :as config]
    [metabase.models.interface :as mi]
    [metabase.queries.core :as queries]
+   [metabase.revisions.api :as revisions.api]
+   [metabase.revisions.db :as revisions.db]
    [metabase.revisions.models.revision :as revision]
    [metabase.revisions.models.revision.diff :as revision.diff]
    [metabase.test :as mt]
@@ -114,6 +116,16 @@
              :model/Card
              {:private true :collection_unknown_field nil}
              {:private false :collection_unknown_field 1}))))))
+
+(deftest ^:parallel every-revisioned-model-has-a-diff-description-test
+  (testing "A change of a revisioned model gets a description, so its revision history loads"
+    (doseq [model (into (set (vals @#'revisions.api/entity->model))
+                        (concat (keys revisions.db/revisioned-model-row-schema)
+                                (filter #(= "model" (namespace %))
+                                        (keys (methods revision/serialize-instance)))))]
+      (testing model
+        (is (re-matches #"renamed this .+ from \"A\" to \"B\"\."
+                        (u/build-sentence (revision/diff-strings model {:name "A"} {:name "B"}))))))))
 
 ;;; # REVISIONS + PUSH-REVISION!
 

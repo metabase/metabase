@@ -82,3 +82,18 @@
           (is (zero? (t2/count :model/Revision :model "TransformTestRun" :model_id run-id)))
           (finally
             (t2/delete! :model/TransformTestRun :id run-id)))))))
+
+(deftest transform-test-revision-history-api-test
+  (testing "GET /api/revision/transform-test/:id describes a rename"
+    (mt/with-premium-features #{:transforms-basic :transforms-testing}
+      (mt/with-temporary-raw-setting-values [transforms-enabled "true"]
+        (mt/with-current-user (mt/user->id :crowberto)
+          (mt/with-temp [:model/Transform     {transform-id :id} {}
+                         :model/TransformTest {transform-test-id :id} {:transform_id transform-id
+                                                                       :name         "Original"}]
+            (t2/update! :model/TransformTest transform-test-id {:name "Renamed"})
+            (is (=? [{:is_creation false
+                      :description "renamed this Transform test from \"Original\" to \"Renamed\"."}
+                     {:is_creation true
+                      :description "created this."}]
+                    (mt/user-http-request :crowberto :get 200 (str "revision/transform-test/" transform-test-id))))))))))
