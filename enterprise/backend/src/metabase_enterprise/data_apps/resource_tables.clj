@@ -6,7 +6,8 @@
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.lib-be.core :as lib-be]
-   [metabase.lib.core :as lib]))
+   [metabase.lib.core :as lib]
+   [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
 
@@ -30,7 +31,14 @@
   the ones a query reaches only through an implicit join."
   [collection-id]
   (->> (data-apps.db/collection-dataset-queries collection-id)
-       (into #{} (mapcat query-table-ids))
+       (into #{} (mapcat (fn [dataset-query]
+                           ;; a query whose tables can't be read, such as a native query on a driver that can't
+                           ;; parse one, must not fail the pull that loaded it
+                           (try
+                             (query-table-ids dataset-query)
+                             (catch Exception e
+                               (log/warn e "Could not read the tables of a data app query")
+                               nil)))))
        sort
        vec))
 
