@@ -468,51 +468,6 @@ describe(
       });
     });
 
-    describe("Segment cycles", () => {
-      it.skip("should prevent creating segment cycles", () => {
-        cy.log("create Segment A");
-        H.createSegment({
-          name: "Segment A",
-          definition: {
-            type: "query",
-            database: SAMPLE_DB_ID,
-            query: {
-              "source-table": ORDERS_ID,
-              filter: [">", ["field", ORDERS.TOTAL, null], 50],
-            },
-          },
-        }).then(({ body: segmentA }) => {
-          cy.log("create Segment B that depends on A");
-          H.createSegment({
-            name: "Segment B",
-            definition: {
-              type: "query",
-              database: SAMPLE_DB_ID,
-              query: {
-                "source-table": ORDERS_ID,
-                filter: ["segment", segmentA.id],
-              },
-            },
-          });
-
-          cy.log("edit Segment A via UI and try to add Segment B as filter");
-          visitDataModelSegment(ORDERS_ID, segmentA.id);
-          cy.wait("@metadata");
-
-          SegmentEditor.get().icon("add").click();
-          H.popover().findByText("Segment B").click();
-
-          cy.log("try to save and verify error");
-          SegmentEditor.getSaveButton().click();
-          cy.wait("@updateSegment");
-          H.undoToast().should(
-            "contain.text",
-            "Unable to save segments with circular dependencies",
-          );
-        });
-      });
-    });
-
     describe("Revision history", () => {
       it("should display revision history with changes to name, description, and filter", () => {
         createTestSegment({

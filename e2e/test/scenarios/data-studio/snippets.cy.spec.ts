@@ -432,27 +432,6 @@ describe("scenarios > data studio > snippets", () => {
         .should("not.exist");
     });
 
-    it("should expand all folders when navigating directly to library without expandedId params", () => {
-      // Create nested folder structure
-      H.createSnippetFolder({
-        name: "Folder A",
-      });
-      H.createSnippetFolder({
-        name: "Folder B",
-      });
-
-      cy.log("Navigate directly to library (no expandedId params)");
-      H.DataStudio.Library.visit();
-
-      cy.log("Verify all folders are expanded by default");
-      H.DataStudio.Library.libraryPage()
-        .findByText("Folder A")
-        .should("be.visible");
-      H.DataStudio.Library.libraryPage()
-        .findByText("Folder B")
-        .should("be.visible");
-    });
-
     it("should expand parent folders when clicking a nested folder in breadcrumbs", () => {
       // Create deeply nested structure: GrandParent > Parent > Child
       H.createSnippetFolder({

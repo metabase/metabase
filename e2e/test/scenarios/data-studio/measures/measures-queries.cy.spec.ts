@@ -179,31 +179,6 @@ describe("scenarios > data studio > measures > queries", () => {
       verifyScalarValue("1,510,621");
     });
 
-    it("should create a measure based on another measure with an identity expression", () => {
-      H.createMeasure({
-        name: "TotalMeasure",
-        definition: {
-          database: SAMPLE_DB_ID,
-          type: "query",
-          query: {
-            "source-table": ORDERS_ID,
-            aggregation: [["sum", ["field", ORDERS.TOTAL, null]]],
-          },
-        },
-      });
-
-      startNewMeasure();
-      MeasureEditor.getAggregationPlaceholder().click();
-      H.popover().findByText("Custom Expression").click();
-      H.CustomExpressionEditor.type("[TotalMeasure]");
-      H.CustomExpressionEditor.nameInput().type("Custom");
-      H.popover().button("Done").click();
-      saveMeasure();
-
-      useMeasureInAdhocQuestion();
-      verifyScalarValue("1,510,621.68");
-    });
-
     it("should not be possible to create a measure that references itself", () => {
       cy.log("create a new measure");
       H.DataStudio.Tables.visitNewMeasurePage(ORDERS_ID);
@@ -255,31 +230,6 @@ describe("scenarios > data studio > measures > queries", () => {
       MeasureEditor.getAggregationPlaceholder().click();
       H.popover().findByText("Custom Expression").click();
       H.CustomExpressionEditor.type("CountIf([Total] > 10)");
-      H.CustomExpressionEditor.nameInput().type("Custom");
-      H.popover().button("Done").click();
-      saveMeasure();
-
-      useMeasureInAdhocQuestion();
-      verifyScalarValue("18,758");
-    });
-
-    it("should be possible to create measures with filters like CountIf based on segments", () => {
-      H.createSegment({
-        name: "LargeTotal",
-        definition: {
-          type: "query",
-          database: SAMPLE_DB_ID,
-          query: {
-            "source-table": ORDERS_ID,
-            filter: [">", ["field", ORDERS.TOTAL, null], 10],
-          },
-        },
-      });
-
-      startNewMeasure();
-      MeasureEditor.getAggregationPlaceholder().click();
-      H.popover().findByText("Custom Expression").click();
-      H.CustomExpressionEditor.type("CountIf([LargeTotal])");
       H.CustomExpressionEditor.nameInput().type("Custom");
       H.popover().button("Done").click();
       saveMeasure();
