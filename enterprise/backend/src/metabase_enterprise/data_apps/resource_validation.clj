@@ -139,11 +139,14 @@
     (problem (:path (first files))
              (tru "{0} {1} is defined by more than one file: {2}." model entity-id (str/join ", " (map :path files))))))
 
-(defn- external-dependency-problems [resources]
+(defn- external-dependency-problems
+  "`defined` holds the `[model entity-id]` of each dependency that the same pull loads from outside `data_apps/`."
+  [defined resources]
   (for [{:keys [path] :as file} resources
         dependency (first (dependencies file))
         :let [{:keys [model id]} (leaf dependency)]
         :when (and (contains? external-dependency-models model)
+                   (not (contains? defined [model id]))
                    (nil? (serdes/load-find-local dependency)))]
     (problem path (tru "{0} references {1} {2}, which does not exist on this instance." path model id))))
 
@@ -217,7 +220,7 @@
 (defn- app-problems
   "The problems of one app directory: its manifest `{:path :entity}` (or nil) and the `{:path :entity}` of the
   resource files under it, with their paths relative to `resources/`."
-  [dir manifest resources]
+  [defined dir manifest resources]
   (let [resources (for [{:keys [relative-path] :as file} resources]
                     (assoc file :model (resource-model relative-path)))
         unknown   (filter (comp nil? :model) resources)
@@ -254,7 +257,7 @@
            (mapcat (partial model-problems collection-entity-id) resources)
            (mapcat (partial dependency-problems collection-entity-id card-entity-ids) resources)
            (ownership-problems (-> manifest :entity :entity_id) collection-entity-id resources)
-           (external-dependency-problems resources)
+           (external-dependency-problems defined resources)
            (mapcat missing-table-and-field-problems resources)))))))
 
 (defn- shared-collection-problems
@@ -278,9 +281,11 @@
 (defn problems
   "The problems with the data app entity files `files` (`{:path :entity}`, every entity file under `data_apps/`:
   manifests and resources), each as `{:file :message}`. An app whose resource files have a problem can't be loaded
-  as the author meant it, so an import that sees one fails naming the file."
-  [files]
-  (let [by-dir (group-by (fn [{:keys [path]}] (second (str/split path #"/"))) files)]
+  as the author meant it, so an import that sees one fails naming the file. `defined` holds the `[model entity-id]`
+  of each snippet, segment and measure that the same import loads from outside `data_apps/`."
+  [files & [defined]]
+  (let [defined (or defined #{})
+        by-dir  (group-by (fn [{:keys [path]}] (second (str/split path #"/"))) files)]
     (concat
      (shared-collection-problems files)
      (cross-app-duplicate-problems files)
@@ -290,5 +295,5 @@
                      resources (for [{:keys [path] :as file} dir-files
                                      :when (str/starts-with? path (str prefix "resources/"))]
                                  (assoc file :relative-path (subs path (count (str prefix "resources/")))))]
-                 (app-problems dir manifest resources)))
+                 (app-problems defined dir manifest resources)))
              by-dir))))

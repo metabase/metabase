@@ -515,3 +515,41 @@
       (is (= :success (:status (export-merged! src "v0"))))
       (is (= (sort [(mt/id :venues) (mt/id :checkins)])
              (t2/select-one-fn :table_ids :model/DataApp :name "shop"))))))
+
+(deftest pull-loads-a-snippet-with-the-card-that-uses-it-test
+  (testing "a resource may use a snippet that the same pull brings"
+    (with-data-apps-sync
+      (mt/with-model-cleanup [:model/NativeQuerySnippet]
+        (let [snippet-eid "appSnippetEntityId000"
+              resources   (question-resources)
+              path        (some #(when (str/starts-with? % "cards/") %) (keys resources))
+              parsed      (yaml/parse-string (get resources path))
+              native      (assoc parsed :dataset_query
+                                 {:database (:database (:dataset_query parsed))
+                                  :lib/type "mbql/query"
+                                  :stages   [{:lib/type      "mbql.stage/native"
+                                              :native        "SELECT * FROM venues {{snippet: Remote Snippet}}"
+                                              :template-tags {"snippet: Remote Snippet"
+                                                              {:type         "snippet"
+                                                               :name         "snippet: Remote Snippet"
+                                                               :id           "7f2c2a0e-6c1e-4b53-9d0a-0d5a3a1d1c11"
+                                                               :display-name "Snippet: Remote Snippet"
+                                                               :snippet-name "Remote Snippet"
+                                                               :snippet-id   snippet-eid}}}]})
+              tree        (merge (shop-tree (assoc resources path (yaml/generate-string native)))
+                                 {"snippets/remote_snippet.yaml"
+                                  (test-helpers/generate-snippet-yaml snippet-eid "Remote Snippet" "WHERE 1 = 1")})
+              src         (test-helpers/versioned-source :trees {"v0" tree} :current "v0")
+              result      (import-at! src "v0" :force? true)]
+          (is (= :success (:status result)) (:message result))
+          (is (t2/exists? :model/NativeQuerySnippet :entity_id snippet-eid))
+          (is (=? {:query_type :native} (t2/select-one :model/Card :entity_id question-eid)))
+          (testing "a snippet that nothing defines is still refused"
+            (let [src (test-helpers/versioned-source
+                       :trees {"v0" (shop-tree (assoc resources path
+                                                      (yaml/generate-string
+                                                       (assoc-in native [:dataset_query :stages 0 :template-tags
+                                                                         "snippet: Remote Snippet" :snippet-id]
+                                                                 "nowhereSnippetEid0000"))))}
+                       :current "v0")]
+              (is (= :error (:status (import-at! src "v0" :force? true)))))))))))
