@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.audit-app.core :as audit]
+   [metabase.config.core :as config]
    [metabase.lib-be.core :as lib-be]
    [metabase.metabot.core :as metabot]
    [metabase.test :as mt]
@@ -147,9 +148,11 @@
               leaves them out rather than fail an unscoped request"
       (mt/with-premium-features #{}
         (is (= [1] (map :id (#'schema.table/without-unavailable-tables tables))))))
-    (testing "with the feature on they are listed"
-      (mt/with-premium-features #{:audit-app}
-        (is (= [1 2] (map :id (#'schema.table/without-unavailable-tables tables))))))))
+    ;; a premium feature is never on without the EE code, whatever the token says
+    (when config/ee-available?
+      (testing "with the feature on they are listed"
+        (mt/with-premium-features #{:audit-app}
+          (is (= [1 2] (map :id (#'schema.table/without-unavailable-tables tables)))))))))
 
 ;; Batch measure definitions to avoid N+1 queries.
 (deftest table-schema-bulk-loads-measure-definitions-test
