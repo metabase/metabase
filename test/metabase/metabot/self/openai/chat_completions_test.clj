@@ -544,7 +544,7 @@
       (is (=? expected (assembled-tool-calls chunks-xf parts-xf stream))))))
 
 (deftest ^:parallel chunks-xf-tool-call-chunks-are-not-interleaved-test
-  (testing "each tool call's chunks are emitted contiguously, in index order, with its arguments joined, once the calls finish"
+  (testing "each tool call's chunks are emitted together, in arrival order, with joined arguments, at finish"
     (is (= [{:type :tool-input-start :toolCallId "call_00_a" :toolName "search"}
             {:type :tool-input-delta :toolCallId "call_00_a" :inputTextDelta "{\"query\": \"revenue\"}"}
             {:type :tool-input-available :toolCallId "call_00_a" :toolName "search"}

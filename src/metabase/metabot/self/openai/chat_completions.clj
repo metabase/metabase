@@ -260,7 +260,8 @@
      (let [current-type (volatile! nil) ;; :text | :reasoning | nil
            message-id   (volatile! nil)
            model-name   (volatile! nil)
-           payload      (volatile! {})  ;; carried across start/delta/end, same as openai.clj; :id is the open block's id
+           ;; carried across start/delta/end, same as openai.clj; :id is the open block's id
+           payload      (volatile! {})
            stop-reason  (volatile! nil)
            no-calls     {:calls [] :by-key {} :previous nil}
            tool-calls   (volatile! no-calls)
@@ -356,7 +357,8 @@
                                                                          :providerMetadata reasoning-md))
               ;; Every tool_calls entry joins its call, whatever the delta's content type
               (seq call-deltas)                                (u/prog1
-                                                                 (vswap! tool-calls #(reduce conj-tool-call-delta % call-deltas)))
+                                                                 (vswap! tool-calls
+                                                                         #(reduce conj-tool-call-delta % call-deltas)))
               ;; Emitting a tool call runs it, so drop the calls an error cuts off
               error-text                                       (u/prog1
                                                                  (vreset! tool-calls no-calls))
