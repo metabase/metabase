@@ -317,6 +317,31 @@
           (testing "updating a missing app 404s"
             (mt/user-http-request :crowberto :put 404 "apps/missing" {:enabled false})))))))
 
+(deftest delete-endpoint-requires-a-superuser-test
+  (mt/with-premium-features #{:data-apps}
+    (mt/with-model-cleanup [:model/DataApp :model/Collection]
+      (create-app!)
+      (mt/with-temp [:model/PermissionsGroup {group-id :id} {}
+                     :model/PermissionsGroupMembership _ {:user_id (mt/user->id :rasta), :group_id group-id}]
+        (let [app (t2/select-one :model/DataApp :name "demo")]
+          (data-app.resources/ensure-resources! app)
+          (group-access/add-groups! app [group-id]))
+        (testing "an assigned user can open the app"
+          (mt/user-http-request :rasta :get 200 "apps/demo"))
+        (testing "an assigned user cannot delete the app"
+          (is (= "You don't have permissions to do that."
+                 (mt/user-http-request :rasta :delete 403 "apps/demo")))
+          (is (t2/exists? :model/DataApp :name "demo")))))))
+
+(deftest delete-endpoint-404s-for-a-missing-app-test
+  (mt/with-premium-features #{:data-apps}
+    (mt/user-http-request :crowberto :delete 404 "apps/missing")))
+
+(deftest data-app-write-endpoints-require-feature-token-test
+  (mt/with-premium-features #{}
+    (mt/user-http-request :crowberto :put 402 "apps/demo/table-dependencies" {:table_ids []})
+    (mt/user-http-request :crowberto :post 402 "apps/demo/draft")))
+
 (deftest delete-endpoint-preserves-assigned-groups-test
   (mt/with-premium-features #{:data-apps}
     (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
