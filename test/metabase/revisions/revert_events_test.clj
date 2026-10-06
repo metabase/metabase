@@ -10,7 +10,11 @@
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [methodical.core :as methodical]
-   [toucan2.core :as t2]))
+   [toucan2.connection :as t2.connection]
+   [toucan2.core :as t2]
+   [toucan2.tools.with-temp :as t2.with-temp]))
+
+(set! *warn-on-reflection* true)
 
 (use-fixtures :once (fixtures/initialize :db :test-users :web-server))
 
@@ -34,13 +38,18 @@
 (def ^:private expected
   "Entity name of the revert API -> the update topic that a revert publishes, whether the event has
   `:previous-object`, and whether a Toucan hook of the model publishes the update itself (then the event has no revert
-  key). TransformTest is EE only; its revert test is in the transform-testing tests."
+  key)."
   {"card"      {:topic :event/card-update :previous-object? true}
    "dashboard" {:topic :event/dashboard-update}
    "document"  {:topic :event/document-update :hook? true}
    "segment"   {:topic :event/segment-update}
    "measure"   {:topic :event/measure-update}
    "transform" {:topic :event/transform-update}})
+
+(def ^:private reverts-tested-elsewhere
+  "Entity names of the revert API whose revert test is not in this namespace. TransformTest is EE only; its revert test
+  is in the transform-testing tests."
+  #{"transform-test"})
 
 (defn- update-topics []
   (map :topic (vals expected)))
@@ -148,6 +157,12 @@
     (testing entity
       (is (some? (:update (get revision/revisioned-models model)))))))
 
+(deftest every-revertable-entity-has-a-revert-test-test
+  (doseq [entity (keys @#'metabase.revisions.api/entity->model)]
+    (testing entity
+      (is (or (contains? expected entity)
+              (contains? reverts-tested-elsewhere entity))))))
+
 (deftest update-event-of-another-entity-during-a-revert-gets-its-revision-test
   (mt/with-temp [:model/Card {card-id :id}  {:name "Name one"}
                  :model/Card {other-id :id} {:name "Other one"}]
@@ -177,3 +192,44 @@
            (mt/user-http-request :crowberto :post 200 "revision/revert"
                                  {:entity "card" :id card-id :revision_id first-rev-id})))
         (is (= (inc other-before) (count (revisions-of :model/Card other-id))))))))
+
+(defn- reversion-count-on-another-connection
+  "The count of reversion revisions of `model` `id`, read on a new thread with no bindings, so on a connection that
+  sees only committed rows."
+  [model id]
+  (let [result (promise)]
+    (.start (Thread. ^Runnable (fn []
+                                 (deliver result (try
+                                                   (t2/count :model/Revision :model (name model) :model_id id :is_reversion true)
+                                                   (catch Throwable e e))))))
+    (deref result 10000 ::timeout)))
+
+(deftest revert-publishes-after-its-transaction-commits-test
+  ;; no `mt/with-temp`: its rollback-only transaction would hold the revert, so nothing would commit before the publish
+  (doseq [[entity model] [["card" :model/Card] ["dashboard" :model/Dashboard]]]
+    (testing entity
+      (mt/with-model-cleanup [:model/AuditLog :model/Revision]
+        (let [id (t2/insert-returning-pk! model (assoc (t2.with-temp/with-temp-defaults model) :name "Name one"))]
+          (try
+            (is (nil? t2.connection/*current-connectable*))
+            (let [push! (fn [creation?]
+                          (revision/push-revision! {:entity       model
+                                                    :id           id
+                                                    :object       (t2/select-one model :id id)
+                                                    :user-id      (mt/user->id :crowberto)
+                                                    :is-creation? creation?}))
+                  _     (push! true)
+                  _     (t2/update! model id {:name "Name two"})
+                  _     (push! false)
+                  seen  (atom ::not-published)]
+              (do-with-recorded-update-events!
+               (fn []
+                 (reset! on-record (fn [_topic event]
+                                     (when (= id (get-in event [:object :id]))
+                                       (reset! seen (reversion-count-on-another-connection model id)))))
+                 (mt/user-http-request :crowberto :post 200 "revision/revert"
+                                       {:entity entity :id id :revision_id (:id (first (revisions-of model id)))})))
+              (testing "another connection sees the reversion revision when a listener gets the event"
+                (is (= 1 @seen))))
+            (finally
+              (t2/delete! model :id id))))))))

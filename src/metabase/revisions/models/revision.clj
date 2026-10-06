@@ -276,8 +276,9 @@
 
 (mu/defn revert!
   "Revert `entity` with `id` to a given Revision. When the revert writes a reversion revision, publishes the `:update`
-  topic of `entity` in [[revisioned-models]] once, after the commit, with `:reverted-to-revision-id`. Publishes nothing
-  for a model with no entry, or whose hook publishes the update."
+  topic of `entity` in [[revisioned-models]] once, with `:reverted-to-revision-id`, after the transaction of the revert
+  ends; in an outer transaction, that is before the outer commit. Publishes nothing for a model with no entry, or whose
+  hook publishes the update."
   [info :- [:map {:closed true}
             [:id          pos-int?]
             [:user-id     pos-int?]
@@ -307,7 +308,6 @@
                                                                              :is_creation  false
                                                                              :is_reversion true})]
                   [true (add-revision-details entity new-revision last-revision)])))))]
-    ;; inside an outer transaction this publishes before the outer commit
     (when (and reverted? update-topic (not hook-publishes-update?))
       (events/publish-event! update-topic (cond-> {:object                  (revisions.db/entity entity id)
                                                    :user-id                 user-id
