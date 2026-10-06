@@ -28,69 +28,6 @@ describe("scenarios > admin > transforms", () => {
     cy.intercept("POST", "/api/transform/*/run").as("runTransform");
   });
 
-  it("should be able to use the data reference and snippets when writing a SQL transform", () => {
-    H.createSnippet({
-      name: "snippet1",
-      content: "'foo'",
-    });
-
-    visitTransformListPage();
-    cy.button("Create a transform").click();
-    H.popover().findByText("SQL query").click();
-    H.popover().findByText(DB_NAME).click();
-
-    function testDataReference() {
-      cy.log("open the data reference");
-      cy.findByTestId("native-query-editor-action-buttons")
-        .findByLabelText("Learn about your data")
-        .click();
-
-      editorSidebar()
-        .should("be.visible")
-        .within(() => {
-          cy.log("The current database should be opened by default");
-          cy.findByText("Writable Postgres12").should("be.visible");
-          cy.findByText("Data Reference").should("not.exist");
-        });
-
-      cy.findByTestId("native-query-editor-action-buttons")
-        .findByLabelText("Learn about your data")
-        .click();
-
-      editorSidebar().should("not.exist");
-    }
-
-    function testSnippets() {
-      cy.findByTestId("native-query-editor-action-buttons")
-        .findByLabelText("SQL Snippets")
-        .click();
-
-      editorSidebar()
-        .should("be.visible")
-        .within(() => {
-          cy.findByText("snippet1").should("be.visible");
-          cy.icon("snippet").click();
-        });
-
-      H.NativeEditor.value().should("eq", "{{snippet: snippet1}}");
-
-      cy.findByTestId("native-query-editor-action-buttons")
-        .findByLabelText("SQL Snippets")
-        .click();
-
-      editorSidebar().should("not.exist");
-
-      cy.findByTestId("native-query-editor-action-buttons")
-        .findByLabelText("Preview the query")
-        .click();
-
-      H.modal().findByText("'foo'").should("be.visible");
-    }
-
-    testDataReference();
-    testSnippets();
-  });
-
   it("should be possible to use template tags in SQL transform", () => {
     H.createTestNativeQuery({
       database: WRITABLE_DB_ID,
@@ -270,11 +207,64 @@ describe("scenarios > admin > transforms", () => {
     testTableTemplateTag();
   });
 
-  it("should be possible to add multiple template tags", () => {
+  it("should be possible to use the data reference and snippets, and to add multiple template tags in a new SQL transform", () => {
+    H.createSnippet({
+      name: "snippet1",
+      content: "'foo'",
+    });
+
     cy.log("create a new transform");
     visitTransformListPage();
     cy.button("Create a transform").click();
     H.popover().findByText("SQL query").click();
+    H.popover().findByText(DB_NAME).click();
+
+    cy.log("open the data reference");
+    cy.findByTestId("native-query-editor-action-buttons")
+      .findByLabelText("Learn about your data")
+      .click();
+
+    editorSidebar()
+      .should("be.visible")
+      .within(() => {
+        cy.log("The current database should be opened by default");
+        cy.findByText("Writable Postgres12").should("be.visible");
+        cy.findByText("Data Reference").should("not.exist");
+      });
+
+    cy.findByTestId("native-query-editor-action-buttons")
+      .findByLabelText("Learn about your data")
+      .click();
+
+    editorSidebar().should("not.exist");
+
+    cy.log("insert a snippet");
+    cy.findByTestId("native-query-editor-action-buttons")
+      .findByLabelText("SQL Snippets")
+      .click();
+
+    editorSidebar()
+      .should("be.visible")
+      .within(() => {
+        cy.findByText("snippet1").should("be.visible");
+        cy.icon("snippet").click();
+      });
+
+    H.NativeEditor.value().should("eq", "{{snippet: snippet1}}");
+
+    cy.findByTestId("native-query-editor-action-buttons")
+      .findByLabelText("SQL Snippets")
+      .click();
+
+    editorSidebar().should("not.exist");
+
+    cy.findByTestId("native-query-editor-action-buttons")
+      .findByLabelText("Preview the query")
+      .click();
+
+    H.modal().findByText("'foo'").should("be.visible");
+    cy.realPress("Escape");
+    H.modal().should("not.exist");
 
     cy.log("Add a query with multiple template tags");
     H.NativeEditor.clear()

@@ -7,7 +7,7 @@ const SOURCE_TABLE = "Animals";
 const TARGET_TABLE = "transform_table";
 const TARGET_SCHEMA = "Schema A";
 
-describe("issue #68378", () => {
+describe("issue #68378 and GDGT-1776", () => {
   beforeEach(() => {
     H.restore("postgres-writable");
     H.resetTestTable({ type: "postgres", table: "empty_schema" });
@@ -16,7 +16,8 @@ describe("issue #68378", () => {
     H.updateSetting("transforms-enabled", true);
   });
 
-  it("should show empty schemas when picking a target schema (metabase#68378)", () => {
+  it("should show empty schemas when picking a target schema and not crash the MiniPicker with lots of hidden items (metabase#68378, GDGT-1776)", () => {
+    cy.log("show empty schemas when picking a target schema (metabase#68378)");
     cy.intercept("POST", "/api/transform").as("createTransform");
 
     visitTransformListPage();
@@ -39,17 +40,10 @@ describe("issue #68378", () => {
 
     H.DataStudio.Transforms.settingsTab().click();
     cy.findByTestId("schema-link").should("have.text", "empty_schema");
-  });
-});
 
-describe("issue GDGT-1776", () => {
-  beforeEach(() => {
-    H.restore("postgres-writable");
-    H.resetTestTable({ type: "postgres", table: "empty_schema" });
-    cy.signInAsAdmin();
-    H.activateToken("pro-self-hosted");
-    H.updateSetting("transforms-enabled", true);
-
+    cy.log(
+      "do not crash the app when processing lots of hidden items in the MiniPicker (GDGT-1776)",
+    );
     const ITEMS_COUNT = 1000;
 
     cy.intercept("GET", "/api/collection/root/items*", {
@@ -77,9 +71,7 @@ describe("issue GDGT-1776", () => {
         total: ITEMS_COUNT,
       },
     }).as("rootCollectionItems");
-  });
 
-  it("should not crash the app when processing lots of hidden items in the MiniPicker (GDGT-1776)", () => {
     visitTransformListPage();
     cy.button("Create a transform").click();
     H.popover().findByText("Query builder").click();
@@ -143,83 +135,7 @@ describe("issue GDGT-1774", () => {
   });
 });
 
-describe("issue UXW-3160", () => {
-  beforeEach(() => {
-    H.restore("postgres-writable");
-    cy.signInAsAdmin();
-    H.activateToken("pro-self-hosted");
-    H.updateSetting("transforms-enabled", true);
-  });
-
-  it("should let the read-only definition view scroll to the last line of a long SQL transform (UXW-3160)", () => {
-    const lastLineMarker = "-- UXW_3160_LAST_LINE";
-    const longSql =
-      "SELECT\n  " +
-      Array.from({ length: 80 }, (_, i) => `'col_${i}' AS col_${i}`).join(
-        ",\n  ",
-      ) +
-      `\n${lastLineMarker}`;
-
-    H.createSqlTransform({
-      name: "Long SQL transform",
-      sourceQuery: longSql,
-      targetTable: "uxw_3160_target",
-      targetSchema: "public",
-      visitTransform: true,
-    });
-
-    cy.get(".cm-scroller").then(($el) => {
-      const scroller = $el[0];
-      scroller.scrollTop = scroller.scrollHeight;
-    });
-
-    cy.get(".cm-scroller").should(($el) => {
-      const rect = $el[0].getBoundingClientRect();
-      expect(rect.bottom).to.be.at.most(Cypress.config("viewportHeight"));
-    });
-
-    cy.get(".cm-scroller").findByText(lastLineMarker).should("be.visible");
-  });
-});
-
-describe("issue 69904", () => {
-  const TRANSFORM_TARGET_TABLE = "deleted_transform_table";
-
-  beforeEach(() => {
-    H.restore("postgres-writable");
-    cy.signInAsAdmin();
-    H.activateToken("pro-self-hosted");
-    H.updateSetting("transforms-enabled", true);
-  });
-
-  it("should not crash the app when opening table created by a deleted transform (metabase#69904)", () => {
-    H.createAndRunSqlTransform({
-      name: "Transform to delete",
-      sourceQuery: "SELECT 1 AS answer",
-      targetTable: TRANSFORM_TARGET_TABLE,
-      targetSchema: "public",
-    }).then(({ transformId }) => {
-      cy.request("DELETE", `/api/transform/${transformId}`);
-
-      H.getTableId({
-        databaseId: WRITABLE_DB_ID,
-        name: TRANSFORM_TARGET_TABLE,
-      }).then((tableId) => {
-        H.DataModel.visitDataStudio({
-          databaseId: WRITABLE_DB_ID,
-          schemaId: `${WRITABLE_DB_ID}:public`,
-          tableId,
-        });
-      });
-
-      H.DataModel.TableSection.get()
-        .findByText("Transform does not exist anymore")
-        .should("be.visible");
-    });
-  });
-});
-
-describe("issue GDGT-2429", () => {
+describe("issues GDGT-2429, UXW-3160 and 69904", () => {
   beforeEach(() => {
     H.restore("postgres-writable");
     cy.signInAsAdmin();
@@ -240,7 +156,12 @@ describe("issue GDGT-2429", () => {
     H.modal().findByText("Save your transform").should("be.visible");
   }
 
-  it("should warn about unsaved changes when navigating away while the save modal is open (metabase#GDGT-2429)", () => {
+  // createAndRunSqlTransform waits for any succeeded run, so the metabase#69904
+  // part must run before any other transform run.
+  it("should warn about unsaved changes in the save modal, scroll a long read-only SQL definition, and open a table of a deleted transform (metabase#GDGT-2429, UXW-3160, metabase#69904)", () => {
+    cy.log(
+      "warn about unsaved changes when navigating away while the save modal is open (metabase#GDGT-2429)",
+    );
     cy.intercept("POST", "/api/transform").as("createTransform");
 
     startNewSqlTransform();
@@ -274,6 +195,66 @@ describe("issue GDGT-2429", () => {
     cy.go("back");
     cy.location("pathname").should("not.match", /\/transforms\/\d+$/);
     H.leaveConfirmationModal().should("not.exist");
+
+    cy.log(
+      "let the read-only definition view scroll to the last line of a long SQL transform (UXW-3160)",
+    );
+    const lastLineMarker = "-- UXW_3160_LAST_LINE";
+    const longSql =
+      "SELECT\n  " +
+      Array.from({ length: 80 }, (_, i) => `'col_${i}' AS col_${i}`).join(
+        ",\n  ",
+      ) +
+      `\n${lastLineMarker}`;
+
+    H.createSqlTransform({
+      name: "Long SQL transform",
+      sourceQuery: longSql,
+      targetTable: "uxw_3160_target",
+      targetSchema: "public",
+      visitTransform: true,
+    });
+
+    cy.get(".cm-scroller").then(($el) => {
+      const scroller = $el[0];
+      scroller.scrollTop = scroller.scrollHeight;
+    });
+
+    cy.get(".cm-scroller").should(($el) => {
+      const rect = $el[0].getBoundingClientRect();
+      expect(rect.bottom).to.be.at.most(Cypress.config("viewportHeight"));
+    });
+
+    cy.get(".cm-scroller").findByText(lastLineMarker).should("be.visible");
+
+    cy.log(
+      "do not crash the app when opening a table created by a deleted transform (metabase#69904)",
+    );
+    const TRANSFORM_TARGET_TABLE = "deleted_transform_table";
+
+    H.createAndRunSqlTransform({
+      name: "Transform to delete",
+      sourceQuery: "SELECT 1 AS answer",
+      targetTable: TRANSFORM_TARGET_TABLE,
+      targetSchema: "public",
+    }).then(({ transformId }) => {
+      cy.request("DELETE", `/api/transform/${transformId}`);
+
+      H.getTableId({
+        databaseId: WRITABLE_DB_ID,
+        name: TRANSFORM_TARGET_TABLE,
+      }).then((tableId) => {
+        H.DataModel.visitDataStudio({
+          databaseId: WRITABLE_DB_ID,
+          schemaId: `${WRITABLE_DB_ID}:public`,
+          tableId,
+        });
+      });
+
+      H.DataModel.TableSection.get()
+        .findByText("Transform does not exist anymore")
+        .should("be.visible");
+    });
   });
 });
 

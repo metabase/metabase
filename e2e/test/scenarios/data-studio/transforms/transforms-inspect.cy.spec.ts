@@ -66,7 +66,7 @@ describe("scenarios > data-studio > transforms > inspect", () => {
   });
 
   describe("generic-summary lens", () => {
-    it("should show Summary and Column Distributions lenses after running an MBQL transform", () => {
+    it("should show Summary and Column Distributions lenses for an MBQL transform and the Summary lens for a SQL transform", () => {
       H.createAndRunMbqlTransform({
         sourceTable: SOURCE_TABLE,
         targetTable: "inspect_mbql_table",
@@ -162,6 +162,30 @@ describe("scenarios > data-studio > transforms > inspect", () => {
             cy.findByRole("link").should("exist");
           });
         });
+
+      cy.log("show the Summary tab for a SQL transform");
+      H.createSqlTransform({
+        name: "SQL inspect transform",
+        sourceQuery: `SELECT * FROM "${TARGET_SCHEMA}"."${SOURCE_TABLE}"`,
+        targetTable: "inspect_sql_table",
+        targetSchema: TARGET_SCHEMA,
+      }).then(({ body: transform }) => {
+        H.runTransformAndWaitForSuccess(transform.id);
+        H.DataStudio.Transforms.visitInspect(transform.id);
+      });
+
+      cy.wait("@inspectorDiscovery");
+
+      cy.findByRole("tab", { name: /Summary/ }).should(
+        "have.attr",
+        "aria-selected",
+        "true",
+      );
+
+      cy.findByRole("heading", { name: /1 input table/i }).should("be.visible");
+      cy.findByRole("heading", { name: /1 output table/i }).should(
+        "be.visible",
+      );
     });
   });
 
@@ -201,7 +225,7 @@ describe("scenarios > data-studio > transforms > inspect", () => {
       cy.findByRole("heading", { name: /1 join/i }).should("be.visible");
     });
 
-    it("should show unmatched rows alert for left join with non-matching rows", () => {
+    it("should show unmatched rows alert for left join with non-matching rows and load the unmatched-rows drill-down lens", () => {
       H.resetTestTable({ type: "postgres", table: "no_pk_table" });
       H.resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: "no_pk_table" });
 
@@ -238,25 +262,8 @@ describe("scenarios > data-studio > transforms > inspect", () => {
       H.expectUnstructuredSnowplowEvent({
         event: "transform_inspect_alert_clicked",
       });
-    });
-  });
 
-  describe("drill-down lenses", () => {
-    it("loads unmatched-rows drill-down lens when triggered", () => {
-      H.resetTestTable({ type: "postgres", table: "no_pk_table" });
-      H.resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: "no_pk_table" });
-      createAndRunMbqlJoinTransform({
-        name: "Left join unmatched transform",
-        targetTable: "inspect_unmatched_table",
-        sourceTable: "no_pk_table",
-        sourceSchema: undefined,
-        joinTable: SOURCE_TABLE,
-        joinSchema: TARGET_SCHEMA,
-        joinStrategy: "left-join",
-      });
-
-      cy.findByRole("tab", { name: /Join Analysis/ }).click();
-
+      cy.log("load the unmatched-rows drill-down lens");
       cy.findByRole("button", {
         name: /Unmatched rows in Animals - Name/,
       }).click();
@@ -360,32 +367,6 @@ describe("scenarios > data-studio > transforms > inspect", () => {
 
       cy.findByTestId("generic-summary-tables").should("be.visible");
       summaryTab().findByTestId("lens-tab-loader").should("not.exist");
-    });
-  });
-
-  describe("sql transforms", () => {
-    it("should show Summary tab for a SQL transform", () => {
-      H.createAndRunSqlTransform({
-        name: "SQL inspect transform",
-        sourceQuery: `SELECT * FROM "${TARGET_SCHEMA}"."${SOURCE_TABLE}"`,
-        targetTable: "inspect_sql_table",
-        targetSchema: TARGET_SCHEMA,
-      }).then(({ transformId }) => {
-        H.DataStudio.Transforms.visitInspect(transformId);
-      });
-
-      cy.wait("@inspectorDiscovery");
-
-      cy.findByRole("tab", { name: /Summary/ }).should(
-        "have.attr",
-        "aria-selected",
-        "true",
-      );
-
-      cy.findByRole("heading", { name: /1 input table/i }).should("be.visible");
-      cy.findByRole("heading", { name: /1 output table/i }).should(
-        "be.visible",
-      );
     });
   });
 });

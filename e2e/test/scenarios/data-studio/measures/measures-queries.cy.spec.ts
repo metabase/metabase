@@ -309,7 +309,7 @@ describe("scenarios > data studio > measures > queries", () => {
     });
   });
 
-  it("should be possible to order by an aggregation using a measure directly", () => {
+  it("should be possible to order by an aggregation using a measure directly or a custom expression based on a measure", () => {
     H.createMeasure({
       name: MEASURE_NAME,
       definition: {
@@ -322,6 +322,7 @@ describe("scenarios > data studio > measures > queries", () => {
       },
     });
 
+    cy.log("order by the measure directly");
     useMeasureInAdhocQuestion({
       customizeQuery() {
         breakout("Created At");
@@ -336,21 +337,8 @@ describe("scenarios > data studio > measures > queries", () => {
       ["January 2029", "52,249.59"],
       ["January 2028", "51,634.16"],
     ]);
-  });
 
-  it("should be possible to order by an aggregation using a custom expression based on a measure", () => {
-    H.createMeasure({
-      name: MEASURE_NAME,
-      definition: {
-        database: SAMPLE_DB_ID,
-        type: "query",
-        query: {
-          "source-table": ORDERS_ID,
-          aggregation: [["sum", ["field", ORDERS.TOTAL, null]]],
-        },
-      },
-    });
-
+    cy.log("order by a custom expression based on the measure");
     useMeasureInAdhocQuestion({
       customizeQuery() {
         H.getNotebookStep("summarize").findByText("Table Measure").click();
@@ -375,7 +363,7 @@ describe("scenarios > data studio > measures > queries", () => {
   });
 
   describe("follow up stages", () => {
-    it("should be possible to use results of a measure in follow up stages", () => {
+    it("should be possible to use results of a measure in follow up stages and join on a measure in a follow up stage", () => {
       H.createMeasure({
         name: MEASURE_NAME,
         definition: {
@@ -388,6 +376,7 @@ describe("scenarios > data studio > measures > queries", () => {
         },
       });
 
+      cy.log("use results of the measure in follow up stages");
       useMeasureInAdhocQuestion({
         customizeQuery() {
           breakout("Created At");
@@ -416,21 +405,8 @@ describe("scenarios > data studio > measures > queries", () => {
         },
       });
       verifyScalarValue("2,531");
-    });
 
-    it("should be possible to join on a measure in a follow up stage", () => {
-      H.createMeasure({
-        name: MEASURE_NAME,
-        definition: {
-          database: SAMPLE_DB_ID,
-          type: "query",
-          query: {
-            "source-table": ORDERS_ID,
-            aggregation: [["sum", ["field", ORDERS.TOTAL, null]]],
-          },
-        },
-      });
-
+      cy.log("join on the measure in a follow up stage");
       useMeasureInAdhocQuestion({
         customizeQuery() {
           breakout("Created At");
@@ -447,43 +423,33 @@ describe("scenarios > data studio > measures > queries", () => {
       });
 
       verifyRowValues([["April 2025", "52.76", "8685"]]);
-    });
-  });
 
-  it("should be possible to join on a measure in a follow up stage with a custom expression", () => {
-    H.createMeasure({
-      name: MEASURE_NAME,
-      definition: {
-        database: SAMPLE_DB_ID,
-        type: "query",
-        query: {
-          "source-table": ORDERS_ID,
-          aggregation: [["sum", ["field", ORDERS.TOTAL, null]]],
+      cy.log(
+        "join on the measure in a follow up stage with a custom expression",
+      );
+      useMeasureInAdhocQuestion({
+        customizeQuery() {
+          breakout("Created At");
+
+          H.getNotebookStep("summarize").button("Join data").click();
+          H.popover().within(() => {
+            cy.findByText("Sample Database").click();
+            cy.findByText("Orders").click();
+          });
+
+          H.popover().findByText("Custom Expression").click();
+
+          H.CustomExpressionEditor.clear()
+            .type("floor([Table Measure]/10)")
+            .blur();
+          H.popover().findByText("Done").click();
+
+          H.popover().findByText("ID").click();
         },
-      },
+      });
+
+      verifyRowValues([["April 2025", "52.76", "5", "1"]]);
     });
-    useMeasureInAdhocQuestion({
-      customizeQuery() {
-        breakout("Created At");
-
-        H.getNotebookStep("summarize").button("Join data").click();
-        H.popover().within(() => {
-          cy.findByText("Sample Database").click();
-          cy.findByText("Orders").click();
-        });
-
-        H.popover().findByText("Custom Expression").click();
-
-        H.CustomExpressionEditor.clear()
-          .type("floor([Table Measure]/10)")
-          .blur();
-        H.popover().findByText("Done").click();
-
-        H.popover().findByText("ID").click();
-      },
-    });
-
-    verifyRowValues([["April 2025", "52.76", "5", "1"]]);
   });
 
   describe("measure refs", () => {
@@ -651,7 +617,7 @@ describe("scenarios > data studio > measures > queries", () => {
   });
 
   describe("using measures in saved questions", () => {
-    it("should be possible to use measure results in a saved question as source for a follow up question", () => {
+    it("should be possible to use measure results in a saved question as source for a follow up question and a follow up model", () => {
       H.createMeasure({
         name: MEASURE_NAME,
         definition: {
@@ -675,16 +641,21 @@ describe("scenarios > data studio > measures > queries", () => {
             ],
           },
         }).then(({ body: question }) => {
-          H.createQuestion(
-            {
-              query: {
-                "source-table": `card__${question.id}`,
-              },
-              display: "scalar",
-            },
-            { visitQuestion: true },
-          );
+          cy.wrap(question.id).as("questionId");
         });
+      });
+
+      cy.log("follow up question");
+      cy.get<number>("@questionId").then((questionId) => {
+        H.createQuestion(
+          {
+            query: {
+              "source-table": `card__${questionId}`,
+            },
+            display: "scalar",
+          },
+          { visitQuestion: true },
+        );
       });
 
       H.openNotebook();
@@ -706,43 +677,19 @@ describe("scenarios > data studio > measures > queries", () => {
 
       H.visualize();
       verifyScalarValue("1,510,568.93");
-    });
 
-    it("should be possible to use measure results in a saved question as source for a follow up model", () => {
-      H.createMeasure({
-        name: MEASURE_NAME,
-        definition: {
-          database: SAMPLE_DB_ID,
-          type: "query",
-          query: {
-            "source-table": ORDERS_ID,
-            aggregation: [["sum", ["field", ORDERS.TOTAL, null]]],
-          },
-        },
-      }).then(({ body: measure }) => {
-        H.createQuestion({
-          name: "Question with measure",
-          query: {
-            "source-table": ORDERS_ID,
-            aggregation: [
-              ["measure", { "display-name": measure.name }, measure.id],
-            ],
-            breakout: [
-              ["field", ORDERS.CREATED_AT, { "temporal-unit": "week" }],
-            ],
-          },
-        }).then(({ body: question }) => {
-          H.createQuestion(
-            {
-              type: "model",
-              query: {
-                "source-table": `card__${question.id}`,
-              },
-              display: "scalar",
+      cy.log("follow up model");
+      cy.get<number>("@questionId").then((questionId) => {
+        H.createQuestion(
+          {
+            type: "model",
+            query: {
+              "source-table": `card__${questionId}`,
             },
-            { visitQuestion: true },
-          );
-        });
+            display: "scalar",
+          },
+          { visitQuestion: true },
+        );
       });
 
       H.openQuestionActions("Edit query definition");
@@ -765,45 +712,10 @@ describe("scenarios > data studio > measures > queries", () => {
       cy.findByTestId("dataset-edit-bar").button("Save changes").click();
       verifyScalarValue("1,510,568.93");
     });
-
-    it("should be possible x-ray a question containing a measure", () => {
-      H.createMeasure({
-        name: MEASURE_NAME,
-        definition: {
-          database: SAMPLE_DB_ID,
-          type: "query",
-          query: {
-            "source-table": ORDERS_ID,
-            aggregation: [["count"]],
-          },
-        },
-      })
-        .then(({ body: measure }) => {
-          H.createQuestion({
-            name: "Test model",
-            query: {
-              "source-table": ORDERS_ID,
-              aggregation: [
-                ["measure", { "display-name": measure.name }, measure.id],
-              ],
-              breakout: [
-                ["field", ORDERS.CREATED_AT, { "temporal-unit": "day" }],
-              ],
-            },
-          });
-        })
-        .then(({ body: model }) => {
-          cy.visit(`/auto/dashboard/question/${model.id}`);
-
-          H.main()
-            .findByText("A look at the Table Measure")
-            .should("be.visible");
-        });
-    });
   });
 
-  describe("using measures in models", () => {
-    it("should be possible x-ray a model containing a measure", () => {
+  describe("x-rays", () => {
+    it("should be possible x-ray a question and a model containing a measure", () => {
       H.createMeasure({
         name: MEASURE_NAME,
         definition: {
@@ -814,29 +726,46 @@ describe("scenarios > data studio > measures > queries", () => {
             aggregation: [["count"]],
           },
         },
-      })
-        .then(({ body: measure }) => {
-          H.createQuestion({
-            type: "model",
-            name: "Test model",
-            query: {
-              "source-table": ORDERS_ID,
-              aggregation: [
-                ["measure", { "display-name": measure.name }, measure.id],
-              ],
-              breakout: [
-                ["field", ORDERS.CREATED_AT, { "temporal-unit": "day" }],
-              ],
-            },
-          });
-        })
-        .then(({ body: model }) => {
-          cy.visit(`/auto/dashboard/model/${model.id}`);
-
+      }).then(({ body: measure }) => {
+        cy.log("x-ray a question");
+        H.createQuestion({
+          name: "Test question",
+          query: {
+            "source-table": ORDERS_ID,
+            aggregation: [
+              ["measure", { "display-name": measure.name }, measure.id],
+            ],
+            breakout: [
+              ["field", ORDERS.CREATED_AT, { "temporal-unit": "day" }],
+            ],
+          },
+        }).then(({ body: question }) => {
+          cy.visit(`/auto/dashboard/question/${question.id}`);
           H.main()
             .findByText("A look at the Table Measure")
             .should("be.visible");
         });
+
+        cy.log("x-ray a model");
+        H.createQuestion({
+          type: "model",
+          name: "Test model",
+          query: {
+            "source-table": ORDERS_ID,
+            aggregation: [
+              ["measure", { "display-name": measure.name }, measure.id],
+            ],
+            breakout: [
+              ["field", ORDERS.CREATED_AT, { "temporal-unit": "day" }],
+            ],
+          },
+        }).then(({ body: model }) => {
+          cy.visit(`/auto/dashboard/model/${model.id}`);
+          H.main()
+            .findByText("A look at the Table Measure")
+            .should("be.visible");
+        });
+      });
     });
   });
 });

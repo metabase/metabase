@@ -35,72 +35,80 @@ describe(
       ).as("replaceModelWithTransform");
     });
 
-    describe("Successful conversions", () => {
-      it("updates direct and nested questions built on the converted model", () => {
-        createTestTables();
-        createSourceModel("Target model").then(({ body: model }) => {
-          createQuestionOnModel("Direct dependent", model.id).as("direct");
-          createQuestionOnCard("Nested dependent", model.id)
-            .as("nested")
-            .then(({ body: parent }) => {
-              H.createQuestion({
-                name: "Second level nested",
-                database: WRITABLE_DB_ID,
-                query: { "source-table": `card__${parent.id}` },
-              }).as("secondLevel");
-            });
-        });
-
-        convertModelToTransform("Target model");
-        insertNewSourceRow();
-
-        cy.log("direct dependent now reads from the transform's output table");
-        cy.get<Cypress.Response<{ id: CardId }>>("@direct").then(({ body }) => {
-          H.visitQuestion(body.id);
-          assertOutputRowsVisible();
-          H.openNotebook();
-          assertDataSourceIs(OUTPUT_TABLE_LABEL);
-        });
-
-        cy.log("nested dependent now reads from the transform's output table");
-        cy.get<Cypress.Response<{ id: CardId }>>("@nested").then(({ body }) => {
-          H.visitQuestion(body.id);
-          assertOutputRowsVisible();
-        });
-
-        cy.log("two-level nested question reads the transform's output table");
-        cy.get<Cypress.Response<{ id: CardId }>>("@secondLevel").then(
-          ({ body }) => {
-            H.visitQuestion(body.id);
-            assertOutputRowsVisible();
+    it("converts a model to a transform and rewires all its dependents", () => {
+      createTestTables();
+      H.createQuestion({
+        name: "Sample DB model",
+        database: SAMPLE_DB_ID,
+        type: "model",
+        query: { "source-table": SAMPLE_DATABASE.ORDERS_ID },
+      });
+      createSourceModel("Target model").then(({ body: model }) => {
+        createQuestionOnModel("Direct dependent", model.id).as("direct");
+        createQuestionOnCard("Nested dependent", model.id)
+          .as("nested")
+          .then(({ body: parent }) => {
+            H.createQuestion({
+              name: "Second level nested",
+              database: WRITABLE_DB_ID,
+              query: { "source-table": `card__${parent.id}` },
+            }).as("secondLevel");
+          });
+        createFilteredDashboardOnModel(model.id).as("dashboardInfo");
+        H.createQuestion({
+          name: "Amount sum metric",
+          database: WRITABLE_DB_ID,
+          type: "metric",
+          query: {
+            "source-table": `card__${model.id}`,
+            aggregation: [
+              ["sum", ["field", "amount", { "base-type": "type/Decimal" }]],
+            ],
           },
-        );
+        }).as("metric");
+        createQuestionJoiningModel("Joined question", model.id).as("joined");
       });
 
-      it("creates a transform that can be opened and queries the original source table", () => {
-        createTestTables();
-        createSourceModel("Transform source model");
+      cy.log(
+        "trigger is disabled when the database doesn't support transforms",
+      );
+      openMigrateModelsPage();
+      selectModelInTable("Sample DB model");
+      cy.findByTestId("model-sidebar")
+        .findByRole("button", { name: /Convert to a transform/ })
+        .should("be.disabled");
 
-        convertModelToTransform("Transform source model");
+      cy.log("convert the model");
+      selectModelInTable("Target model");
+      openReplaceWithTransformModal();
+      submitReplaceWithTransformForm();
+      waitForReplacementToComplete();
+      insertNewSourceRow();
 
-        cy.log("new transform appears on the transform list and opens cleanly");
-        cy.visit("/data-studio/transforms");
-        H.main().findByText("Transform source model").click();
-        assertDataSourceIs(SOURCE_TABLE_LABEL);
+      cy.log("direct dependent now reads from the transform's output table");
+      cy.get<Cypress.Response<{ id: CardId }>>("@direct").then(({ body }) => {
+        H.visitQuestion(body.id);
+        assertOutputRowsVisible();
+        H.openNotebook();
+        assertDataSourceIs(OUTPUT_TABLE_LABEL);
       });
 
-      it("keeps a dashboard with a parameter filter working after conversion", () => {
-        createTestTables();
-        createSourceModel("Dashboard model").then(({ body: model }) => {
-          createFilteredDashboardOnModel(model.id).as("dashboardInfo");
-        });
+      cy.log("nested dependent now reads from the transform's output table");
+      cy.get<Cypress.Response<{ id: CardId }>>("@nested").then(({ body }) => {
+        H.visitQuestion(body.id);
+        assertOutputRowsVisible();
+      });
 
-        convertModelToTransform("Dashboard model");
-        insertNewSourceRow();
+      cy.log("two-level nested question reads the transform's output table");
+      cy.get<Cypress.Response<{ id: CardId }>>("@secondLevel").then(
+        ({ body }) => {
+          H.visitQuestion(body.id);
+          assertOutputRowsVisible();
+        },
+      );
 
-        cy.get<{ dashboard_id: number; card_id: CardId }>(
-          "@dashboardInfo",
-        ).then(({ dashboard_id, card_id }) => {
+      cy.get<{ dashboard_id: number; card_id: CardId }>("@dashboardInfo").then(
+        ({ dashboard_id, card_id }) => {
           cy.log("dashboard still renders after conversion");
           H.visitDashboard(dashboard_id);
           H.main().findByText(SOURCE_ROW_NAME).should("be.visible");
@@ -112,80 +120,37 @@ describe(
           H.main().findByText(SOURCE_ROW_NAME).should("be.visible");
           H.main().findByText(SOURCE_ROW_NAME_2).should("not.exist");
 
-          cy.log("the underlying question now points to the transform output");
+          cy.log("the dashboard question now points to the transform output");
           H.visitQuestion(card_id);
           H.openNotebook();
           assertDataSourceIs(OUTPUT_TABLE_LABEL);
-        });
+        },
+      );
+
+      cy.get<Cypress.Response<{ id: CardId }>>("@metric").then(({ body }) => {
+        cy.log("the metric sum does not include the row added to the source");
+        H.visitMetric(body.id);
+        H.main().findByText("301.25").should("be.visible");
       });
 
-      it("keeps a metric built on the model producing the same result", () => {
-        createTestTables();
-        createSourceModel("Metric base model").then(({ body: model }) => {
-          H.createQuestion({
-            name: "Amount sum metric",
-            database: WRITABLE_DB_ID,
-            type: "metric",
-            query: {
-              "source-table": `card__${model.id}`,
-              aggregation: [
-                ["sum", ["field", "amount", { "base-type": "type/Decimal" }]],
-              ],
-            },
-          }).as("metric");
-        });
+      cy.get<Cypress.Response<{ id: CardId }>>("@joined").then(({ body }) => {
+        cy.log("joined question still runs");
+        H.visitQuestion(body.id);
+        assertSourceRowsVisible();
 
-        convertModelToTransform("Metric base model");
-        insertNewSourceRow();
-
-        cy.get<Cypress.Response<{ id: CardId }>>("@metric").then(({ body }) => {
-          cy.log("the sum does not include the row added to the source table");
-          H.visitMetric(body.id);
-          H.main().findByText("301.25").should("be.visible");
-        });
+        cy.log("the join now reads from the transform's output table");
+        H.openNotebook();
+        H.getNotebookStep("join")
+          .findByLabelText("Right table")
+          .should("have.text", OUTPUT_TABLE_LABEL);
       });
 
-      it("keeps a joined question working after converting its joined model", () => {
-        createTestTables();
-        createSourceModel("Joined model").then(({ body: model }) => {
-          createQuestionJoiningModel("Joined question", model.id).as("joined");
-        });
+      cy.log("new transform appears on the transform list and opens cleanly");
+      cy.visit("/data-studio/transforms");
+      H.main().findByText("Target model").click();
+      assertDataSourceIs(SOURCE_TABLE_LABEL);
 
-        convertModelToTransform("Joined model");
-
-        cy.get<Cypress.Response<{ id: CardId }>>("@joined").then(({ body }) => {
-          H.visitQuestion(body.id);
-          assertSourceRowsVisible();
-
-          cy.log("the join now reads from the transform's output table");
-          H.openNotebook();
-          H.getNotebookStep("join")
-            .findByLabelText("Right table")
-            .should("have.text", OUTPUT_TABLE_LABEL);
-        });
-      });
-    });
-
-    it("disables the trigger when the model's database doesn't support transforms", () => {
-      H.createQuestion({
-        name: "Sample DB model",
-        database: SAMPLE_DB_ID,
-        type: "model",
-        query: { "source-table": SAMPLE_DATABASE.ORDERS_ID },
-      });
-
-      openMigrateModelsPage();
-      selectModelInTable("Sample DB model");
-
-      cy.findByTestId("model-sidebar")
-        .findByRole("button", { name: /Convert to a transform/ })
-        .should("be.disabled");
-    });
-
-    it("non-admin users cannot access the migrate models page", () => {
-      createTestTables();
-      createSourceModel("Access test model");
-
+      cy.log("non-admin users cannot access the migrate models page");
       cy.signInAsNormalUser();
       cy.visit(MIGRATE_MODELS_PATH);
       H.main()
@@ -404,14 +369,6 @@ function waitForReplacementToComplete() {
   });
 
   H.resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: OUTPUT_TABLE_SLUG });
-}
-
-function convertModelToTransform(modelName: string) {
-  openMigrateModelsPage();
-  selectModelInTable(modelName);
-  openReplaceWithTransformModal();
-  submitReplaceWithTransformForm();
-  waitForReplacementToComplete();
 }
 
 function assertSourceRowsVisible() {

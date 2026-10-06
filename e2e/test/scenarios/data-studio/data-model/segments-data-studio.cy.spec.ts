@@ -534,15 +534,18 @@ describe(
     });
 
     describe("Readonly access for data analysts", () => {
-      it("should show segments in list but hide New segment button for non-admin", () => {
-        createTestSegment({ name: "Readonly Test Segment" });
+      it("should show segments read-only and block segment creation for non-admin", () => {
+        createTestSegment({
+          name: "Readonly Detail Segment",
+          description: "Test description for readonly",
+        });
 
         H.setUserAsAnalyst(NODATA_USER_ID);
         cy.signIn("nodata");
 
         cy.log("verify segment is visible in list");
         visitDataStudioSegments(ORDERS_ID);
-        SegmentList.getSegment("Readonly Test Segment")
+        SegmentList.getSegment("Readonly Detail Segment")
           .scrollIntoView()
           .should("be.visible");
 
@@ -551,56 +554,46 @@ describe(
           .findByRole("link", { name: /New segment/i })
           .should("not.exist");
 
+        cy.get<number>("@segmentId").then((segmentId) => {
+          visitDataModelSegment(ORDERS_ID, segmentId);
+        });
+
+        cy.log("verify segment name input is disabled");
+        SegmentEditor.get()
+          .findByDisplayValue("Readonly Detail Segment")
+          .should("be.disabled");
+
+        cy.log("verify description is displayed as plain text");
+        SegmentEditor.get().findByText("Description").should("be.visible");
+        SegmentEditor.get()
+          .findByText("Test description for readonly")
+          .should("be.visible");
+
+        cy.log("verify filter is shown but cannot be changed");
+        SegmentEditor.get()
+          .findByText(/Total is less than 100/i)
+          .should("be.visible");
+        SegmentEditor.get().icon("add").should("not.exist");
+
+        cy.log("verify Remove segment option is hidden in actions menu");
+        SegmentEditor.getActionsButton().click();
+        H.popover().findByText("Preview").should("be.visible");
+        H.popover().findByText("Remove segment").should("not.exist");
+        cy.realPress("Escape");
+
+        cy.log("verify revision history is still accessible");
+        SegmentEditor.getRevisionHistoryTab().click();
+        SegmentRevisionHistory.get().within(() => {
+          cy.findByText(/created this segment/i)
+            .scrollIntoView()
+            .should("be.visible");
+        });
+
         cy.log("verify direct navigation to new segment page is blocked");
         cy.visit(
           `/data-studio/data/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}/table/${ORDERS_ID}/segments/new`,
         );
         cy.url().should("include", "/unauthorized");
-      });
-
-      it("should display segment detail in readonly mode for non-admin", () => {
-        createTestSegment({
-          name: "Readonly Detail Segment",
-          description: "Test description for readonly",
-        });
-
-        cy.get<number>("@segmentId").then((segmentId) => {
-          H.setUserAsAnalyst(NODATA_USER_ID);
-          cy.signIn("nodata");
-
-          visitDataModelSegment(ORDERS_ID, segmentId);
-
-          cy.log("verify segment name input is disabled");
-          SegmentEditor.get()
-            .findByDisplayValue("Readonly Detail Segment")
-            .should("be.disabled");
-
-          cy.log("verify description is displayed as plain text");
-          SegmentEditor.get().findByText("Description").should("be.visible");
-          SegmentEditor.get()
-            .findByText("Test description for readonly")
-            .should("be.visible");
-
-          cy.log("verify filter is shown but cannot be changed");
-          SegmentEditor.get()
-            .findByText(/Total is less than 100/i)
-            .should("be.visible");
-          SegmentEditor.get().icon("add").should("not.exist");
-
-          cy.log("verify Remove segment option is hidden in actions menu");
-          SegmentEditor.getActionsButton().click();
-          H.popover().findByText("Preview").should("be.visible");
-          H.popover().findByText("Remove segment").should("not.exist");
-          cy.realPress("Escape");
-
-          cy.log("verify revision history is still accessible");
-          SegmentEditor.getRevisionHistoryTab().click();
-          SegmentRevisionHistory.get().within(() => {
-            cy.findByText(/created this segment/i)
-              .scrollIntoView()
-              .should("be.visible");
-          });
-        });
       });
     });
   },

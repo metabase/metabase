@@ -40,99 +40,134 @@ describe("bulk table operations", { viewportWidth: 1600 }, () => {
     );
   });
 
-  it("syncing multiple tables", { tags: ["@external"] }, () => {
-    H.restore("postgres-writable");
-    H.activateToken("pro-self-hosted");
-    // Re-authenticate after restoring the writable-DB snapshot, like the
-    // sibling tests do, otherwise visiting Data Studio can land in an
-    // unauthenticated state and the TablePicker never issues the schema
-    // request.
-    cy.signInAsAdmin();
-    H.DataModel.visitDataStudio();
-    TablePicker.expandDatabase("Writable Postgres12");
-
-    // Capture the expected table IDs from a direct API request rather than the
-    // intercepted UI response: under stress the intercepted response body is
-    // occasionally a non-array (e.g. an error map), which made `tables.find`
-    // throw `TypeError: tables.find is not a function`. A `cy.request`
-    // deterministically returns the table list.
-    cy.request<Table[]>(
-      `/api/database/${WRITABLE_DB_ID}/schema/public?include_hidden=true`,
-    ).then(({ body: tables }) => {
-      const ordersTableId = getTableId(tables, "Orders");
-      const productsTableId = getTableId(tables, "Products");
-
-      cy.wrap([ordersTableId, productsTableId]).as("tableIds");
-    });
-
-    TablePicker.getTable("Orders").find('input[type="checkbox"]').check();
-    TablePicker.getTable("Products").find('input[type="checkbox"]').check();
-    cy.findByRole("heading", { name: /2 tables selected/ });
-
-    cy.findByRole("button", { name: /Sync settings/ }).click();
-    H.expectUnstructuredSnowplowEvent({
-      event: "data_studio_bulk_sync_settings_clicked",
-    });
-    cy.findByRole("button", { name: /Sync table schemas/ }).click();
-    cy.findByRole("button", { name: /Sync triggered!/ }).should("be.visible");
-    cy.get<number[]>("@tableIds").then((tableIds) => {
-      cy.wait<TablesActionRequest, TablesActionsResponse>("@syncSchema").then(
-        ({ request, response }) => {
-          expect(request.body.table_ids).to.deep.eq(tableIds);
-          expect(response?.statusCode).to.eq(204);
-        },
-      );
-    });
-    H.expectUnstructuredSnowplowEvent({
-      event: "data_studio_table_schema_sync_started",
-      result: "success",
-    });
-
-    cy.findByRole("button", { name: /Re-scan tables/ }).click();
-    cy.findByRole("button", { name: /Scan triggered!/ }).should("be.visible");
-
-    cy.get<number[]>("@tableIds").then((tableIds) => {
-      cy.wait<TablesActionRequest, TablesActionsResponse>("@rescanValues").then(
-        ({ request, response }) => {
-          expect(request.body.table_ids).to.deep.eq(tableIds);
-          expect(response?.statusCode).to.eq(204);
-        },
-      );
-    });
-    H.expectUnstructuredSnowplowEvent({
-      event: "data_studio_table_fields_rescan_started",
-      result: "success",
-    });
-
-    cy.findByRole("button", { name: /Discard cached field values/ }).click();
-    cy.findByRole("button", { name: /Discard triggered!/ }).should(
-      "be.visible",
-    );
-    cy.get<number[]>("@tableIds").then((tableIds) => {
-      cy.wait<TablesActionRequest, TablesActionsResponse>(
-        "@discardValues",
-      ).then(({ request, response }) => {
-        expect(request.body.table_ids).to.deep.eq(tableIds);
-        expect(response?.statusCode).to.eq(204);
-      });
-    });
-    H.expectUnstructuredSnowplowEvent({
-      event: "data_studio_table_field_values_discard_started",
-      result: "success",
-    });
-  });
-
   it(
-    "allows publishing and unpublishing multiple tables",
+    "syncs, edits attributes, publishes and unpublishes multiple tables",
     { tags: ["@external"] },
     () => {
       H.restore("postgres-writable");
       H.activateToken("pro-self-hosted");
+      // Re-authenticate after restoring the writable-DB snapshot, like the
+      // sibling tests do, otherwise visiting Data Studio can land in an
+      // unauthenticated state and the TablePicker never issues the schema
+      // request.
       cy.signInAsAdmin();
       H.DataModel.visitDataStudio();
-
-      cy.log("select multiple tables");
       TablePicker.expandDatabase("Writable Postgres12");
+
+      // Capture the expected table IDs from a direct API request rather than the
+      // intercepted UI response: under stress the intercepted response body is
+      // occasionally a non-array (e.g. an error map), which made `tables.find`
+      // throw `TypeError: tables.find is not a function`. A `cy.request`
+      // deterministically returns the table list.
+      cy.request<Table[]>(
+        `/api/database/${WRITABLE_DB_ID}/schema/public?include_hidden=true`,
+      ).then(({ body: tables }) => {
+        const ordersTableId = getTableId(tables, "Orders");
+        const productsTableId = getTableId(tables, "Products");
+
+        cy.wrap([ordersTableId, productsTableId]).as("tableIds");
+      });
+
+      TablePicker.getTable("Orders").find('input[type="checkbox"]').check();
+      TablePicker.getTable("Products").find('input[type="checkbox"]').check();
+      cy.findByRole("heading", { name: /2 tables selected/ });
+
+      cy.findByRole("button", { name: /Sync settings/ }).click();
+      H.expectUnstructuredSnowplowEvent({
+        event: "data_studio_bulk_sync_settings_clicked",
+      });
+      cy.findByRole("button", { name: /Sync table schemas/ }).click();
+      cy.findByRole("button", { name: /Sync triggered!/ }).should("be.visible");
+      cy.get<number[]>("@tableIds").then((tableIds) => {
+        cy.wait<TablesActionRequest, TablesActionsResponse>("@syncSchema").then(
+          ({ request, response }) => {
+            expect(request.body.table_ids).to.deep.eq(tableIds);
+            expect(response?.statusCode).to.eq(204);
+          },
+        );
+      });
+      H.expectUnstructuredSnowplowEvent({
+        event: "data_studio_table_schema_sync_started",
+        result: "success",
+      });
+
+      cy.findByRole("button", { name: /Re-scan tables/ }).click();
+      cy.findByRole("button", { name: /Scan triggered!/ }).should("be.visible");
+
+      cy.get<number[]>("@tableIds").then((tableIds) => {
+        cy.wait<TablesActionRequest, TablesActionsResponse>(
+          "@rescanValues",
+        ).then(({ request, response }) => {
+          expect(request.body.table_ids).to.deep.eq(tableIds);
+          expect(response?.statusCode).to.eq(204);
+        });
+      });
+      H.expectUnstructuredSnowplowEvent({
+        event: "data_studio_table_fields_rescan_started",
+        result: "success",
+      });
+
+      cy.findByRole("button", { name: /Discard cached field values/ }).click();
+      cy.findByRole("button", { name: /Discard triggered!/ }).should(
+        "be.visible",
+      );
+      cy.get<number[]>("@tableIds").then((tableIds) => {
+        cy.wait<TablesActionRequest, TablesActionsResponse>(
+          "@discardValues",
+        ).then(({ request, response }) => {
+          expect(request.body.table_ids).to.deep.eq(tableIds);
+          expect(response?.statusCode).to.eq(204);
+        });
+      });
+      H.expectUnstructuredSnowplowEvent({
+        event: "data_studio_table_field_values_discard_started",
+        result: "success",
+      });
+
+      cy.realPress("Escape");
+      H.modal().should("not.exist");
+
+      cy.log("edit attributes for multiple tables");
+      H.selectHasValue("Owner", "").click();
+      H.selectDropdown().contains("Bobby Tables").click();
+      H.expectUnstructuredSnowplowEvent({
+        event: "data_studio_bulk_attribute_updated",
+        event_detail: "owner",
+        result: "success",
+      });
+
+      H.selectHasValue("Visibility layer", "").click();
+      H.selectDropdown().contains("Final").click();
+      H.expectUnstructuredSnowplowEvent({
+        event: "data_studio_bulk_attribute_updated",
+        event_detail: "layer",
+        result: "success",
+      });
+
+      H.selectHasValue("Entity type", "").click();
+      H.selectDropdown().contains("Person").click();
+      H.expectUnstructuredSnowplowEvent({
+        event: "data_studio_bulk_attribute_updated",
+        event_detail: "entity_type",
+        result: "success",
+      });
+
+      H.selectHasValue("Source", "").click();
+      H.selectDropdown().contains("Ingested").click();
+      H.expectUnstructuredSnowplowEvent({
+        event: "data_studio_bulk_attribute_updated",
+        event_detail: "data_source",
+        result: "success",
+      });
+      H.undoToastList().should("have.length", 4);
+      TablePicker.getTable("Orders")
+        .findByTestId("table-owner")
+        .should("have.text", "Bobby Tables");
+      TablePicker.getTable("Products")
+        .findByTestId("table-owner")
+        .should("have.text", "Bobby Tables");
+
+      cy.log("publish and unpublish multiple tables");
       TablePicker.getTable("Orders").findByRole("checkbox").check();
       TablePicker.getTable("Products").findByRole("checkbox").check();
       TablePicker.getTable("Reviews").findByRole("checkbox").check();
@@ -168,55 +203,6 @@ describe("bulk table operations", { viewportWidth: 1600 }, () => {
       });
     },
   );
-
-  it("allows to edit attributes for tables", { tags: ["@external"] }, () => {
-    H.restore("postgres-writable");
-    H.activateToken("pro-self-hosted");
-    cy.signInAsAdmin();
-    H.DataModel.visitDataStudio();
-    TablePicker.expandDatabase("Writable Postgres12");
-    TablePicker.getTable("Orders").find('input[type="checkbox"]').check();
-    TablePicker.getTable("Products").find('input[type="checkbox"]').check();
-
-    H.selectHasValue("Owner", "").click();
-    H.selectDropdown().contains("Bobby Tables").click();
-    H.expectUnstructuredSnowplowEvent({
-      event: "data_studio_bulk_attribute_updated",
-      event_detail: "owner",
-      result: "success",
-    });
-
-    H.selectHasValue("Visibility layer", "").click();
-    H.selectDropdown().contains("Final").click();
-    H.expectUnstructuredSnowplowEvent({
-      event: "data_studio_bulk_attribute_updated",
-      event_detail: "layer",
-      result: "success",
-    });
-
-    H.selectHasValue("Entity type", "").click();
-    H.selectDropdown().contains("Person").click();
-    H.expectUnstructuredSnowplowEvent({
-      event: "data_studio_bulk_attribute_updated",
-      event_detail: "entity_type",
-      result: "success",
-    });
-
-    H.selectHasValue("Source", "").click();
-    H.selectDropdown().contains("Ingested").click();
-    H.expectUnstructuredSnowplowEvent({
-      event: "data_studio_bulk_attribute_updated",
-      event_detail: "data_source",
-      result: "success",
-    });
-    H.undoToastList().should("have.length", 4);
-    TablePicker.getTable("Orders")
-      .findByTestId("table-owner")
-      .should("have.text", "Bobby Tables");
-    TablePicker.getTable("Products")
-      .findByTestId("table-owner")
-      .should("have.text", "Bobby Tables");
-  });
 
   describe(
     "several databases with several schemas at once (GDGT-1275)",
