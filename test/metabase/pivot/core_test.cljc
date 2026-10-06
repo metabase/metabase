@@ -573,12 +573,7 @@
     ;; column, and the backend drill therefore can't find the aggregation UUID.
     (let [values-by-key {["A" 1] {:values [10 20]
                                   :valueColNames ["count" "sum"]
-                                  :data [{:value 1 :colIdx 0}
-                                         {:value "A" :colIdx 1}
-                                         {:value 10 :colIdx 2}
-                                         {:value 20 :colIdx 3}]
-                                  :dimensions [{:value 1 :colIdx 0}
-                                               {:value "A" :colIdx 1}]}}
+                                  :row [1 "A" 10 20]}}
           subtotal-values {[1] {[1] [100 200]}}
           value-formatters [#(str "$" %) #(str % "%")]
           col-indexes [1]
@@ -587,9 +582,12 @@
           col-paths [["A"]]
           row-paths [[1]]
           color-getter (constantly "blue")
+          ;; columns 0 and 1 (breakout values "1" and "A") are the breakout columns
+          breakout-col-indexes [0 1]
           getter (#'pivot/create-row-section-getter values-by-key subtotal-values value-formatters
                                                     col-indexes row-indexes val-indexes
-                                                    col-paths row-paths color-getter)
+                                                    col-paths row-paths color-getter
+                                                    breakout-col-indexes)
           result (getter 0 0)]
       (is (= [{:value "$10"
                :backgroundColor "blue"
