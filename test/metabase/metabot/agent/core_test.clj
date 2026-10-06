@@ -1085,9 +1085,10 @@
                 (error-parts "anthropic/claude-sonnet-4-6" throw-credit)))))
     (testing "on the managed provider, the error part keeps today's generic shape"
       (is (= [{:type  :error
-               :error {:message (ex-message credit-error)
-                       :type    (str (type credit-error))
-                       :data    (ex-data credit-error)}}]
+               :error {:message    (ex-message credit-error)
+                       :type       (str (type credit-error))
+                       :data       (ex-data credit-error)
+                       :error-code "provider_error"}}]
              (mt/as-admin (error-parts "metabase/anthropic/claude-sonnet-4-6" throw-credit)))))
     (testing "an outage says to try again later on either connection, whether the request failed or the stream did"
       (doseq [claude-fn [(fn [_] (throw (api-error 529 overloaded)))
@@ -1097,7 +1098,16 @@
         (is (=? [{:error {:error-code "ai_provider_unavailable" :message #"Anthropic is having problems .*"}}]
                 (mt/as-admin (error-parts "anthropic/claude-sonnet-4-6" claude-fn))))
         (is (=? [{:error {:error-code "ai_provider_unavailable" :message #"The AI provider is having problems .*"}}]
-                (mt/as-admin (error-parts "metabase/anthropic/claude-sonnet-4-6" claude-fn))))))))
+                (mt/as-admin (error-parts "metabase/anthropic/claude-sonnet-4-6" claude-fn))))))
+    (testing "a managed selection that fell back to the customer's own key explains the failure as theirs"
+      (mt/with-premium-features #{:ai-controls}
+        (llm.health/record-failure! "metabase" "service unavailable" true)
+        (try
+          (is (=? [{:error {:error-code "ai_provider_billing" :message #"Anthropic rejected the request .*"}}]
+                  (mt/as-admin (error-parts "metabase/anthropic/claude-sonnet-4-6" throw-credit))))
+          (finally
+            (llm.health/record-success! "metabase")
+            (llm.health/record-success! "anthropic")))))))
 
 ;;; ===================== Prometheus Metrics Tests =====================
 
@@ -1473,9 +1483,12 @@
             offer a retry — which resolves to the fallback provider, the failure having just been recorded"
     (is (= "provider_error"
            (get-in (#'agent/error-part (ex-info "Anthropic API error (HTTP 400) — credit balance too low"
-                                                {:api-error true :status 400}))
+                                                {:api-error true :status 400})
+                                       "anthropic/claude-sonnet-4-6")
                    [:error :error-code]))))
   (testing "an internal failure gets no code: its message is not written for a person and stays behind the
             client's generic alert"
-    (is (nil? (get-in (#'agent/error-part (ex-info "boom" {:some :data})) [:error :error-code])))
-    (is (nil? (get-in (#'agent/error-part (RuntimeException. "npe-ish")) [:error :error-code])))))
+    (is (nil? (get-in (#'agent/error-part (ex-info "boom" {:some :data}) "anthropic/claude-sonnet-4-6")
+                      [:error :error-code])))
+    (is (nil? (get-in (#'agent/error-part (RuntimeException. "npe-ish") "anthropic/claude-sonnet-4-6")
+                      [:error :error-code])))))
