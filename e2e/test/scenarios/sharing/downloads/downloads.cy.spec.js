@@ -10,6 +10,9 @@ const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
 
 const testCases = ["csv", "xlsx"];
 
+const formatUrl =
+  "/api/user-key-value/namespace/last_download_format/key/download_format_preference";
+
 const canSavePngQuestion = {
   name: "Q1",
   display: "line",
@@ -49,18 +52,18 @@ describe("scenarios > question > download", () => {
       H.expectNoBadSnowplowEvents();
     });
 
-    testCases.forEach((fileType) => {
-      it(`downloads ${fileType} file`, () => {
-        H.startNewQuestion();
-        H.miniPicker().within(() => {
-          cy.findByText("Our analytics").click();
-          cy.findByText("Orders, Count").click();
-        });
+    it("downloads csv and xlsx files", () => {
+      H.startNewQuestion();
+      H.miniPicker().within(() => {
+        cy.findByText("Our analytics").click();
+        cy.findByText("Orders, Count").click();
+      });
 
-        H.visualize();
-        // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-        cy.contains("18,760");
+      H.visualize();
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
+      cy.contains("18,760");
 
+      testCases.forEach((fileType) => {
         H.downloadAndAssert({ fileType });
 
         H.expectUnstructuredSnowplowEvent({
@@ -73,34 +76,34 @@ describe("scenarios > question > download", () => {
     });
   });
 
-  testCases.forEach((fileType) => {
-    it(`should allow downloading unformatted ${fileType} data`, () => {
-      const fieldRef = ["field", ORDERS.TOTAL, null];
-      const columnKey = `["ref",${JSON.stringify(fieldRef)}]`;
+  it("should allow downloading unformatted csv and xlsx data", () => {
+    const fieldRef = ["field", ORDERS.TOTAL, null];
+    const columnKey = `["ref",${JSON.stringify(fieldRef)}]`;
 
-      H.createQuestion(
-        {
-          query: {
-            "source-table": ORDERS_ID,
-            fields: [fieldRef],
-          },
-          visualization_settings: {
-            column_settings: {
-              [columnKey]: {
-                currency: "USD",
-                currency_in_header: false,
-                currency_style: "code",
-                number_style: "currency",
-              },
+    H.createQuestion(
+      {
+        query: {
+          "source-table": ORDERS_ID,
+          fields: [fieldRef],
+        },
+        visualization_settings: {
+          column_settings: {
+            [columnKey]: {
+              currency: "USD",
+              currency_in_header: false,
+              currency_style: "code",
+              number_style: "currency",
             },
           },
         },
-        { visitQuestion: true, wrapId: true },
-      );
+      },
+      { visitQuestion: true, wrapId: true },
+    );
 
-      H.queryBuilderMain().findByText("USD 39.72").should("exist");
+    H.queryBuilderMain().findByText("USD 39.72").should("exist");
 
-      cy.get("@questionId").then((questionId) => {
+    cy.get("@questionId").then((questionId) => {
+      testCases.forEach((fileType) => {
         const opts = { questionId, fileType };
 
         H.downloadAndAssert({
@@ -147,13 +150,11 @@ describe("scenarios > question > download", () => {
 
   describe("download format preference", () => {
     beforeEach(() => {
-      const formatUrl =
-        "/api/user-key-value/namespace/last_download_format/key/download_format_preference";
       cy.intercept("PUT", formatUrl).as("saveFormat");
       cy.intercept("GET", formatUrl).as("fetchFormat");
     });
 
-    it("should remember the downloaded format across page reloads", () => {
+    it("should show tooltips for the download and share buttons and remember the downloaded format across page reloads (metabase#16108)", () => {
       H.createQuestion(
         {
           name: "Format Preference Test",
@@ -169,6 +170,12 @@ describe("scenarios > question > download", () => {
       cy.findByTestId("view-footer")
         .findByText("Showing 5 rows")
         .should("be.visible");
+
+      cy.icon("download").realHover();
+      H.tooltip().findByText("Download results");
+      H.sharingMenuButton().realHover();
+      H.tooltip().findByText("Share");
+
       cy.findByTestId("view-footer").button("Download results").click();
 
       H.popover().findByText(".xlsx").click();
@@ -188,46 +195,7 @@ describe("scenarios > question > download", () => {
         cy.findByText(".xlsx")
           .parent()
           .should("have.attr", "data-active", "true");
-      });
-    });
-
-    it("should remember the downloaded format on dashboards", () => {
-      H.createQuestion({
-        name: "Dashboard Format Test",
-        query: {
-          "source-table": ORDERS_ID,
-          limit: 5,
-        },
-        display: "table",
-      }).then(({ body: { id: questionId } }) => {
-        H.createDashboard().then(({ body: { id: dashboardId } }) => {
-          H.addOrUpdateDashboardCard({
-            card_id: questionId,
-            dashboard_id: dashboardId,
-          });
-
-          H.visitDashboard(dashboardId);
-
-          H.getDashboardCard(0).realHover();
-          H.getDashboardCardMenu(0).click();
-          H.popover().findByText("Download results").click();
-
-          H.popover().findByText(".xlsx").click();
-          cy.findByTestId("download-results-button").click();
-          cy.wait("@saveFormat");
-
-          cy.reload();
-          cy.wait("@fetchFormat");
-
-          H.getDashboardCard(0).realHover();
-          H.getDashboardCardMenu(0).click();
-          H.popover().findByText("Download results").click();
-          H.popover().within(() => {
-            cy.findByText(".xlsx")
-              .parent()
-              .should("have.attr", "data-active", "true");
-          });
-        });
+        cy.findByText(".png").should("not.exist");
       });
     });
   });
@@ -314,15 +282,31 @@ describe("scenarios > question > download", () => {
   });
 
   describe("from dashboards", () => {
-    it("should allow downloading card data", () => {
-      cy.intercept("GET", "/api/dashboard/**").as("dashboard");
+    it("should allow downloading card data and remember the downloaded format", () => {
+      cy.intercept("PUT", formatUrl).as("saveFormat");
+      cy.intercept("GET", formatUrl).as("fetchFormat");
       H.visitDashboard(ORDERS_DASHBOARD_ID);
       cy.findByTestId("dashcard").within(() => {
         cy.findByTestId("legend-caption").realHover();
       });
 
       // In CI agents after downloads Cypress gets stuck for a while so the downloads status gets closed by timeout
-      assertOrdersExport(18760);
+      assertOrdersExport();
+      cy.wait("@saveFormat");
+
+      cy.reload();
+      cy.wait("@fetchFormat");
+
+      H.getDashboardCard(0).realHover();
+      H.getDashboardCardMenu(0).click();
+      H.popover().findByText("Download results").click();
+      H.popover().within(() => {
+        cy.findByText(".xlsx")
+          .parent()
+          .should("have.attr", "data-active", "true");
+      });
+      cy.realPress("Escape");
+      H.popover({ skipVisibilityCheck: true }).should("not.exist");
 
       H.editDashboard();
 
@@ -337,17 +321,20 @@ describe("scenarios > question > download", () => {
 
       H.popover().within(() => H.fieldValuesCombobox().type("1"));
 
+      cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query").as(
+        "dashcardQuery",
+      );
       // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Add filter").click();
 
-      cy.wait("@dashboard");
+      cy.wait("@dashcardQuery");
 
       cy.findByTestId("dashcard").within(() => {
         cy.findByTestId("legend-caption").realHover();
       });
 
       // In CI agents after downloads Cypress gets stuck for a while so the downloads status gets closed by timeout
-      assertOrdersExport(1);
+      assertOrdersExport({ assertParameters: [{ type: "number/=" }] });
     });
 
     it("should allow downloading parameterized cards opened from dashboards as a user with no self-service permission (metabase#20868)", () => {
@@ -420,32 +407,8 @@ describe("scenarios > question > download", () => {
   });
 
   describe("png images", () => {
-    it("from dashboards", () => {
-      H.createDashboardWithQuestions({
-        dashboardName: "saving pngs dashboard",
-        questions: [canSavePngQuestion, cannotSavePngQuestion],
-      }).then(({ dashboard }) => {
-        H.visitDashboard(dashboard.id);
-      });
-
-      H.showDashboardCardActions(0);
-      H.getDashboardCard(0)
-        .findByText("Created At: Month")
-        .should("be.visible");
-      H.getDashboardCardMenu(0).click();
-
-      H.exportFromDashcard(".png");
-
-      H.showDashboardCardActions(1);
-      H.getDashboardCard(1).findByText("User ID").should("be.visible");
-      H.getDashboardCardMenu(1).click();
-
-      H.popover().within(() => {
-        cy.findByText("Download results").click();
-        cy.findByText(".png").should("not.exist");
-      });
-
-      cy.verifyDownload(".png", { contains: true });
+    beforeEach(() => {
+      cy.deleteDownloadsFolder();
     });
 
     it("from query builder", () => {
@@ -459,41 +422,7 @@ describe("scenarios > question > download", () => {
       });
 
       cy.verifyDownload(".png", { contains: true });
-
-      H.createQuestion(cannotSavePngQuestion, { visitQuestion: true });
-
-      cy.findByRole("button", { name: "Download results" }).click();
-
-      H.popover().within(() => {
-        cy.findByText(".png").should("not.exist");
-      });
     });
-  });
-});
-
-describe("scenarios > dashboard > download pdf", () => {
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-    cy.deleteDownloadsFolder();
-  });
-
-  it("should allow you to download a PDF of a dashboard", () => {
-    const date = Date.now();
-    H.createDashboardWithQuestions({
-      dashboardName: `saving pdf dashboard - ${date}`,
-      questions: [canSavePngQuestion, cannotSavePngQuestion],
-    }).then(({ dashboard }) => {
-      H.visitDashboard(dashboard.id);
-    });
-
-    H.openSharingMenu("Export as PDF");
-    cy.findByTestId("status-root-container")
-      .should("contain", "Downloading")
-      .and("contain", `Dashboard for saving pdf dashboard - ${date}`);
-
-    cy.log("We're adding a 'Metabase-' prefix for non-whitelabelled instances");
-    cy.verifyDownload(`Metabase - saving pdf dashboard - ${date}.pdf`);
   });
 });
 
@@ -503,15 +432,17 @@ describe("[snowplow] scenarios > dashboard", () => {
     H.resetSnowplow();
     cy.signInAsAdmin();
     H.enableTracking();
+    cy.deleteDownloadsFolder();
   });
 
   afterEach(() => {
     H.expectNoBadSnowplowEvents();
   });
 
-  it("should allow you to download a PDF of a dashboard", () => {
+  it("should download a PDF of a dashboard and png images from dashcards", () => {
+    const date = Date.now();
     H.createDashboardWithQuestions({
-      dashboardName: "test dashboard",
+      dashboardName: `saving pdf dashboard - ${date}`,
       questions: [canSavePngQuestion, cannotSavePngQuestion],
     }).then(({ dashboard }) => {
       H.visitDashboard(dashboard.id);
@@ -519,7 +450,7 @@ describe("[snowplow] scenarios > dashboard", () => {
 
       cy.findByTestId("status-root-container")
         .should("contain", "Downloading")
-        .and("contain", "Dashboard for test dashboard");
+        .and("contain", `Dashboard for saving pdf dashboard - ${date}`);
 
       H.expectUnstructuredSnowplowEvent({
         event: "dashboard_pdf_exported",
@@ -527,15 +458,10 @@ describe("[snowplow] scenarios > dashboard", () => {
         dashboard_accessed_via: "internal",
       });
     });
-  });
 
-  it("should send the `download_results_clicked` event when downloading dashcards results", () => {
-    H.createDashboardWithQuestions({
-      dashboardName: "saving pngs dashboard",
-      questions: [canSavePngQuestion, cannotSavePngQuestion],
-    }).then(({ dashboard }) => {
-      H.visitDashboard(dashboard.id);
-    });
+    cy.log("We're adding a 'Metabase-' prefix for non-whitelabelled instances");
+    cy.verifyDownload(`Metabase - saving pdf dashboard - ${date}.pdf`);
+    H.ensureDownloadStatusDismissed();
 
     H.showDashboardCardActions(0);
     H.getDashboardCard(0).findByText("Created At: Month").should("be.visible");
@@ -549,15 +475,28 @@ describe("[snowplow] scenarios > dashboard", () => {
       accessed_via: "internal",
       export_type: "png",
     });
+
+    H.showDashboardCardActions(1);
+    H.getDashboardCard(1).findByText("User ID").should("be.visible");
+    H.getDashboardCardMenu(1).click();
+
+    H.popover().within(() => {
+      cy.findByText("Download results").click();
+      cy.findByText(".csv").should("be.visible");
+      cy.findByText(".png").should("not.exist");
+    });
+
+    cy.verifyDownload(".png", { contains: true });
   });
 });
 
-function assertOrdersExport(length) {
+function assertOrdersExport({ assertParameters } = {}) {
   H.downloadAndAssert({
     fileType: "xlsx",
     questionId: ORDERS_QUESTION_ID,
     dashcardId: ORDERS_DASHBOARD_DASHCARD_ID,
     dashboardId: ORDERS_DASHBOARD_ID,
     isDashboard: true,
+    assertParameters,
   });
 }
