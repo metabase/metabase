@@ -472,9 +472,10 @@ describe("scenarios > dashboard > parameters", () => {
 
   describe("when parameters are (dis)connected to dashcards", () => {
     beforeEach(() => {
-      createDashboardWithCards({ cards }).then((dashboardId) =>
-        H.visitDashboard(dashboardId),
-      );
+      H.createDashboard().then(({ body: { id } }) => {
+        H.updateDashboardCards({ dashboard_id: id, cards });
+        H.visitDashboard(id);
+      });
 
       const { interceptor } = H.spyRequestFinished("dashcardRequestSpy");
 
@@ -2607,18 +2608,4 @@ function isFilterSelected(filter, bool) {
   cy.findByLabelText(filter).should(
     `${bool === false ? "not." : ""}be.checked`,
   );
-}
-
-function createDashboardWithCards({
-  dashboardName = "my dash",
-  cards = [],
-} = {}) {
-  return H.createDashboard({ name: dashboardName }).then(({ body: { id } }) => {
-    H.updateDashboardCards({
-      dashboard_id: id,
-      cards,
-    });
-
-    cy.wrap(id).as("dashboardId");
-  });
 }
