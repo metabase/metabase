@@ -25,6 +25,7 @@ import type { CollectionId } from "metabase-types/api";
 
 import { LibraryEmptyState } from "../components/LibraryEmptyState";
 
+import { CreateLibraryDashboardModal } from "./components/CreateLibraryDashboardModal";
 import { CreateMenu } from "./components/CreateMenu";
 import { LibraryBulkActions } from "./components/LibraryBulkActions";
 import { PublishTableModal } from "./components/PublishTableModal";
@@ -50,6 +51,10 @@ function LibraryPageContent() {
     showPublishTableModal,
     { open: openPublishTableModal, close: closePublishTableModal },
   ] = useDisclosure(false);
+  const [
+    showCreateDashboardModal,
+    { open: openCreateDashboardModal, close: closeCreateDashboardModal },
+  ] = useDisclosure(false);
   const { data: collections = [], isLoading: isLoadingCollections } =
     useListCollectionsTreeQuery({
       "exclude-other-user-collections": true,
@@ -64,15 +69,21 @@ function LibraryPageContent() {
     emptyMessage,
     refreshTableCollections,
     refreshMetricCollections,
+    refreshDashboardCollections,
   } = useLibraryTreeTableInstance({
     collections,
     isLoadingCollections,
     searchQuery,
     onPublishTableClick: openPublishTableModal,
+    onNewDashboardClick: openCreateDashboardModal,
   });
 
-  const { libraryCollection, tableCollection, metricCollection } =
-    useLibraryCollections(collections);
+  const {
+    libraryCollection,
+    tableCollection,
+    metricCollection,
+    dashboardCollection,
+  } = useLibraryCollections(collections);
   const writableMetricCollection = useMemo(
     () =>
       libraryCollection &&
@@ -99,6 +110,7 @@ function LibraryPageContent() {
   const moveDefaultCollectionId = match(selectionSection)
     .with("data", () => tableCollection?.id)
     .with("metrics", () => metricCollection?.id)
+    .with("dashboards", () => dashboardCollection?.id)
     .otherwise(() => undefined);
 
   const handleActionComplete = useCallback(
@@ -107,11 +119,18 @@ function LibraryPageContent() {
         refreshTableCollections(affectedCollectionIds);
       } else if (section === "metrics") {
         refreshMetricCollections(affectedCollectionIds);
+      } else if (section === "dashboards") {
+        refreshDashboardCollections(affectedCollectionIds);
       }
       // Snippet sections refetch via RTK tag invalidation.
       clearSelection();
     },
-    [refreshTableCollections, refreshMetricCollections, clearSelection],
+    [
+      refreshTableCollections,
+      refreshMetricCollections,
+      refreshDashboardCollections,
+      clearSelection,
+    ],
   );
 
   return (
@@ -149,6 +168,11 @@ function LibraryPageContent() {
                   canWriteToMetricCollection={!!writableMetricCollection}
                   dataCollectionId={tableCollection?.id}
                   canWriteToDataCollection={!!tableCollection?.can_write}
+                  dashboardCollectionId={dashboardCollection?.id}
+                  canWriteToDashboardCollection={
+                    !!dashboardCollection?.can_write
+                  }
+                  onNewDashboardClick={openCreateDashboardModal}
                 />
               </Flex>
               <Card withBorder p={0}>
@@ -188,6 +212,13 @@ function LibraryPageContent() {
         onClose={closePublishTableModal}
         onPublished={closePublishTableModal}
       />
+      {dashboardCollection && (
+        <CreateLibraryDashboardModal
+          opened={showCreateDashboardModal}
+          collectionId={dashboardCollection.id}
+          onClose={closeCreateDashboardModal}
+        />
+      )}
       {!isRemoteSyncReadOnly && (
         <LibraryBulkActions
           selectedItems={selectedItems}

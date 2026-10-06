@@ -22,6 +22,10 @@ export function canPlaceEntityInCollection(
     return entityType === "metric" || entityType === "collection";
   }
 
+  if (collectionType === "library-dashboards") {
+    return entityType === "dashboard" || entityType === "collection";
+  }
+
   return false;
 }
 
@@ -36,7 +40,8 @@ export function canPlaceEntityInCollectionOrDescendants(
   if (collectionType === "library") {
     return (
       canPlaceEntityInCollection(entityType, "library-data") ||
-      canPlaceEntityInCollection(entityType, "library-metrics")
+      canPlaceEntityInCollection(entityType, "library-metrics") ||
+      canPlaceEntityInCollection(entityType, "library-dashboards")
     );
   }
 

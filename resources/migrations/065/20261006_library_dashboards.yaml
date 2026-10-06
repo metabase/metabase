@@ -1,0 +1,40 @@
+## The Library gets a Dashboards section next to Data and Metrics. New Libraries create it with the other sections;
+## existing Libraries get it here, with the Library's own collection permissions.
+
+databaseChangeLog:
+  - changeSet:
+      id: v65.2026-10-06T16:00:00
+      author: ranquild
+      comment: Add the Dashboards section to an existing Library
+      changes:
+        - sql:
+            sql: >-
+              INSERT INTO collection (name, slug, type, location, entity_id, is_remote_synced)
+              SELECT 'Dashboards', 'dashboards', 'library-dashboards', CONCAT('/', lib.id, '/'),
+                     'librarylibrarydashbrd', lib.is_remote_synced
+              FROM collection lib
+              WHERE lib.entity_id = 'librarylibrarylibrary'
+                AND NOT EXISTS (SELECT 1 FROM collection d WHERE d.entity_id = 'librarylibrarydashbrd')
+      rollback:
+        - empty: {}
+
+  - changeSet:
+      id: v65.2026-10-06T16:00:01
+      author: ranquild
+      comment: Copy the Library's collection permissions to its Dashboards section
+      changes:
+        - sql:
+            sql: >-
+              INSERT INTO permissions (object, group_id, perm_type, perm_value, collection_id)
+              SELECT CASE WHEN p.perm_value = 'read'
+                          THEN CONCAT('/collection/', d.id, '/read/')
+                          ELSE CONCAT('/collection/', d.id, '/')
+                     END,
+                     p.group_id, p.perm_type, p.perm_value, d.id
+              FROM permissions p
+              JOIN collection lib ON lib.id = p.collection_id
+              JOIN collection d ON d.entity_id = 'librarylibrarydashbrd'
+              WHERE lib.entity_id = 'librarylibrarylibrary'
+                AND p.perm_type = 'perms/collection-access'
+      rollback:
+        - empty: {}

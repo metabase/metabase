@@ -568,7 +568,7 @@
 (mu/defn library-collection-ids
   "The IDs of the library Collections."
   []
-  (t2/select-pks-set :model/Collection :type [:in ["library" "library-data" "library-metrics"]]))
+  (t2/select-pks-set :model/Collection :type [:in ["library" "library-data" "library-metrics" "library-dashboards"]]))
 
 (mu/defn namespace-clause
   "Honey SQL clause to filter `namespace-keyword` by `namespace-val`, also matching the audit-app and tenant

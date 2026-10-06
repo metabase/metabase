@@ -11,6 +11,7 @@ type LibraryCollectionRowMenuProps = {
   collection: Collection;
   refreshMetricCollections: (collectionIds: CollectionId[]) => void;
   refreshTableCollections: (collectionIds: CollectionId[]) => void;
+  refreshDashboardCollections: (collectionIds: CollectionId[]) => void;
 };
 
 export function LibraryCollectionRowMenu(props: LibraryCollectionRowMenuProps) {
@@ -19,6 +20,7 @@ export function LibraryCollectionRowMenu(props: LibraryCollectionRowMenuProps) {
     collection,
     refreshMetricCollections,
     refreshTableCollections,
+    refreshDashboardCollections,
   } = props;
   const isLibraryDataCollection =
     collection.type === "library-data" && !collection.is_library_root;
@@ -31,8 +33,17 @@ export function LibraryCollectionRowMenu(props: LibraryCollectionRowMenuProps) {
       if (collection.type === "library-data") {
         refreshTableCollections(collectionIds);
       }
+
+      if (collection.type === "library-dashboards") {
+        refreshDashboardCollections(collectionIds);
+      }
     },
-    [refreshMetricCollections, refreshTableCollections, collection.type],
+    [
+      refreshMetricCollections,
+      refreshTableCollections,
+      refreshDashboardCollections,
+      collection.type,
+    ],
   );
 
   const onArchiveSuccess = useCallback(() => {

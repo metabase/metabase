@@ -16,10 +16,16 @@ type ActionCellProps = {
   treeItem: TreeItem;
   refreshTableCollections: (collectionIds: CollectionId[]) => void;
   refreshMetricCollections: (collectionIds: CollectionId[]) => void;
+  refreshDashboardCollections: (collectionIds: CollectionId[]) => void;
 };
 
 export function ActionCell(props: ActionCellProps) {
-  const { treeItem, refreshTableCollections, refreshMetricCollections } = props;
+  const {
+    treeItem,
+    refreshTableCollections,
+    refreshMetricCollections,
+    refreshDashboardCollections,
+  } = props;
   const { data, children } = treeItem;
 
   if (isEmptyStateData(data)) {
@@ -55,6 +61,7 @@ export function ActionCell(props: ActionCellProps) {
         collection={data}
         refreshMetricCollections={refreshMetricCollections}
         refreshTableCollections={refreshTableCollections}
+        refreshDashboardCollections={refreshDashboardCollections}
       />
     );
   }

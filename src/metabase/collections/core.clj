@@ -30,6 +30,7 @@
   instance-analytics-collection-type
   library-collection
   library-collection-type
+  library-dashboards-collection-type
   library-data-collection-type
   library-metrics-collection-type
   location-path

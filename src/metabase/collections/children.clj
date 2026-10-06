@@ -98,9 +98,7 @@
                [:or [:= :personal_owner_id nil] [:= :personal_owner_id api/*current-user-id*]])
              (when-not include-library?
                [:or [:= nil :type]
-                [:not-in :type [collection/library-collection-type
-                                collection/library-data-collection-type
-                                collection/library-metrics-collection-type]]])
+                [:not-in :type collection/library-collection-types]])
              [:or
               (when (contains? namespaces nil)
                 [:= :namespace nil])
@@ -706,9 +704,7 @@
              [:= :type collection-type]))
          (when-not include-library?
            [:or [:= nil :type]
-            [:not [:in :type [collection/library-collection-type
-                              collection/library-metrics-collection-type
-                              collection/library-data-collection-type]]]])
+            [:not [:in :type collection/library-collection-types]]])
          (if archived?
            [:or
             [:= :archived true]

@@ -118,6 +118,8 @@ function getLibrarySectionName(type: LibrarySubCollectionType) {
       return t`Data`;
     case "library-metrics":
       return t`Metrics`;
+    case "library-dashboards":
+      return t`Dashboards`;
   }
 }
 
@@ -135,6 +137,7 @@ export function getCollectionPickerItems({
   const librarySubCollectionType: LibrarySubCollectionType[] = [
     "library-data",
     "library-metrics",
+    "library-dashboards",
   ];
 
   return librarySubCollectionType.flatMap((type) => {
@@ -193,6 +196,13 @@ export const getLibraryCollectionEmptyStateMessages = (
     };
   }
 
+  if (type === "library-dashboards") {
+    return {
+      title: t`No dashboards yet`,
+      description: t`Put dashboards in the semantic layer to see them here.`,
+    };
+  }
+
   return {
     title: t`No metrics yet`,
     description: t`Put metrics in the semantic layer to see them here.`,
@@ -202,7 +212,11 @@ export const getLibraryCollectionEmptyStateMessages = (
 export const isLibrarySubCollectionType = (
   type?: string | null,
 ): type is LibrarySubCollectionType => {
-  return type === "library-data" || type === "library-metrics";
+  return (
+    type === "library-data" ||
+    type === "library-metrics" ||
+    type === "library-dashboards"
+  );
 };
 
 export const isLibraryDataCollectionType = (

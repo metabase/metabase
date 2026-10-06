@@ -10,7 +10,8 @@
   "A map from the `:type` of the parent collection to a spec for what contents it permits."
   {collection/library-collection-type
    {:allowed-content-types #{collection/library-data-collection-type
-                             collection/library-metrics-collection-type}
+                             collection/library-metrics-collection-type
+                             collection/library-dashboards-collection-type}
     :error-message         "Cannot add anything to the semantic layer"}
 
    collection/library-data-collection-type
@@ -19,7 +20,11 @@
 
    collection/library-metrics-collection-type
    {:allowed-content-types #{:metric collection/library-metrics-collection-type}
-    :error-message         "Can only add metrics to the 'Metrics' collection"}})
+    :error-message         "Can only add metrics to the 'Metrics' collection"}
+
+   collection/library-dashboards-collection-type
+   {:allowed-content-types #{:model/Dashboard :dashboard-question collection/library-dashboards-collection-type}
+    :error-message         "Can only add dashboards to the 'Dashboards' collection"}})
 
 (defenterprise check-allowed-content
   "Check if the collection's content matches the allowed content.

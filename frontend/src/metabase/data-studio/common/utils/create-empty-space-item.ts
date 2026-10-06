@@ -27,6 +27,10 @@ const getEmptyStateConfig = (
       description: t`Standardized calculations with known dimensions`,
       actionLabel: t`New metric`,
     },
+    dashboards: {
+      description: t`Curated dashboards built on the semantic layer`,
+      actionLabel: t`New dashboard`,
+    },
     snippets: {
       description: t`Reusable bits of code that save your time`,
       actionLabel: t`New snippet`,
@@ -49,7 +53,7 @@ export const createEmptyStateItem = (
   } else if (sectionType === "snippets" && !hideAction) {
     actionUrl = Urls.newDataStudioSnippet();
   }
-  // "data" section opens a modal, so no actionUrl
+  // "data" and "dashboards" sections open a modal, so no actionUrl
 
   return {
     id: `empty-state:${sectionType}`,

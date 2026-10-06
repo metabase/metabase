@@ -27,6 +27,7 @@ function setup({
 }: Partial<Parameters<typeof LibraryCollectionRowMenu>[0]> = {}) {
   const refreshMetricCollections = jest.fn();
   const refreshTableCollections = jest.fn();
+  const refreshDashboardCollections = jest.fn();
   const parentCollection = createMockCollection({
     id: 22,
     name: "Data",
@@ -44,6 +45,7 @@ function setup({
       collection={collection}
       refreshMetricCollections={refreshMetricCollections}
       refreshTableCollections={refreshTableCollections}
+      refreshDashboardCollections={refreshDashboardCollections}
     />,
     {
       storeInitialState: createMockState({

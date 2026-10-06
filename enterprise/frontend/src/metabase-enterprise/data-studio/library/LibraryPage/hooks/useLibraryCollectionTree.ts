@@ -21,7 +21,15 @@ import type {
   Collection,
   CollectionId,
   CollectionItem,
+  CollectionItemModel,
 } from "metabase-types/api";
+
+const LIBRARY_ITEM_MODELS: CollectionItemModel[] = [
+  "metric",
+  "table",
+  "dashboard",
+  "collection",
+];
 
 export function useLibraryCollectionTree(
   collection: Collection | undefined,
@@ -40,7 +48,7 @@ export function useLibraryCollectionTree(
     collection
       ? {
           id: collection.id,
-          models: ["metric", "table", "collection"],
+          models: LIBRARY_ITEM_MODELS,
           archived: false,
         }
       : skipToken,
@@ -71,7 +79,7 @@ export function useLibraryCollectionTree(
         collectionApi.endpoints.listCollectionItems.initiate(
           {
             id: collectionId,
-            models: ["metric", "table", "collection"],
+            models: LIBRARY_ITEM_MODELS,
             archived: false,
           },
           { forceRefetch: true },

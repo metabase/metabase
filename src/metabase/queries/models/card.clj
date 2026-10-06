@@ -861,6 +861,13 @@
   (cond->> (lib/normalize ::queries.schema/card card)
     (mu.fn/instrument-ns? *ns*) (mu.fn/validate-output {:fn-name `normalize-card} [:maybe ::queries.schema/card])))
 
+(defn- library-content-type
+  "The content type a Library collection checks `card` against."
+  [card]
+  (if (:dashboard_id card)
+    :dashboard-question
+    (:type card)))
+
 (t2/define-before-insert :model/Card
   [card]
   (u/prog1
@@ -875,7 +882,7 @@
         pre-insert
         populate-query-fields
         public-sharing/add-public-uuid-prefix)
-    (collection/check-allowed-content (:type <>) (:collection_id <>))))
+    (collection/check-allowed-content (library-content-type <>) (:collection_id <>))))
 
 (t2/define-after-insert :model/Card
   [card]
@@ -896,6 +903,13 @@
   (if-let [dashboard-id (:dashboard_id changes)]
     (assoc card :collection_id (queries.db/dashboard-collection-id dashboard-id))
     card))
+
+(defn- check-allowed-content
+  "Checks that the Collection `card` ends up in allows it when `changes` touch its collection, dashboard, or type."
+  [card changes]
+  (when (some #(contains? changes %) [:collection_id :dashboard_id :type])
+    (let [card (apply-dashboard-question-updates card changes)]
+      (collection/check-allowed-content (library-content-type card) (:collection_id card)))))
 
 (mu/defn- populate-result-metadata :- [:map
                                        [:result_metadata {:optional true} [:maybe
@@ -934,7 +948,7 @@
         ;; normalization preserving the instance's original.
         original (t2/original card)
         card     (normalize-card card)]
-    (collection/check-allowed-content (:type card) (:collection_id changes))
+    (check-allowed-content card changes)
     (-> card
         (dissoc :verified-result-metadata?)
         (migrate-schema-governed-columns original changes)
