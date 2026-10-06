@@ -128,12 +128,8 @@
   Actually changing the name brings a whole host of problems, and we very rarely actually present the names of
   Permissions Groups to users. (These are the only endpoints that reveal them.) So I think it makes sense to just
   adjust them here."
-  [{:keys [magic_group_type] :as group} using-tenants?]
-  (update group :name (fn [n]
-                        (if (and (= magic_group_type perms/all-users-magic-group-type)
-                                 using-tenants?)
-                          "All internal users"
-                          n))))
+  [group using-tenants?]
+  (assoc group :name (perms/group-display-name group using-tenants?)))
 
 (defn- maybe-fix-names
   "See [[maybe-fix-name]] for details."

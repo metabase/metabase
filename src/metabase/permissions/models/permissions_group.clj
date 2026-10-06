@@ -77,8 +77,8 @@
 (defn group-display-name
   "The group's display name, with internal membership explicit when tenants are enabled."
   [{:keys [magic_group_type name]} using-tenants?]
-  (if (= magic_group_type all-users-magic-group-type)
-    (if using-tenants? (tru "All internal users") (tru "All Users"))
+  (if (and (= magic_group_type all-users-magic-group-type) using-tenants?)
+    "All internal users"
     name))
 
 (def ^{:arglists '([])} data-analyst
