@@ -455,3 +455,18 @@
           (is (= :success (:status result)) (:message result))
           (is (= "v0" (remote-sync.task/last-version)))
           (is (= [(mt/id :venues)] (t2/select-one-fn :table_ids :model/DataApp :name "shop"))))))))
+
+(deftest pull-refuses-a-manifest-that-names-a-collection-it-doesnt-define-test
+  (testing "a manifest with no resource files can't claim a collection that is already here"
+    (with-data-apps-sync
+      (mt/with-temp [:model/Collection {collection-id :id, collection-eid :entity_id} {:name "Finance"}
+                     :model/Card       {card-id :id} {:name "Finance card" :collection_id collection-id}]
+        (let [src    (test-helpers/versioned-source
+                      :trees {"v0" (data-apps.tu/app-files "shop" {:name "Shop" :path "index.js" :bundle "B"
+                                                                   :collection collection-eid :resources nil})}
+                      :current "v0")
+              result (import-at! src "v0" :force? true)]
+          (is (= :error (:status result)))
+          (is (str/includes? (:message result) "data_apps/shop/data_app.yaml"))
+          (is (t2/exists? :model/Collection :id collection-id))
+          (is (t2/exists? :model/Card :id card-id)))))))
