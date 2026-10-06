@@ -6,7 +6,54 @@ import type {
   SubmitMcpAppsFeedbackRequest,
 } from "metabase-types/api";
 
+import { refreshMcpCredential } from "./auth/credentialRefresh";
 import type { McpDeriveOperation, McpDrillOperation } from "./derive";
+
+type McpRequestAuth = {
+  uiCredential: string;
+  mcpSessionId: string;
+};
+
+/**
+ * Sends `init` to the iframe route at `url` with the UI credential in `auth`.
+ * On a 401 it gets a fresh credential and retries once; the retry's response
+ * is returned whatever it is. A credential stops working as soon as the access
+ * token behind it does, which can happen well before the next scheduled
+ * refresh.
+ */
+async function fetchEmbedMcp(
+  url: string,
+  init: { method: "GET" | "POST"; body?: string },
+  auth: McpRequestAuth,
+): Promise<Response> {
+  const send = ({ uiCredential, mcpSessionId }: McpRequestAuth) =>
+    fetch(url, {
+      ...init,
+      headers: {
+        ...(init.body !== undefined && { "Content-Type": "application/json" }),
+        "X-Metabase-Client": EMBEDDING_SDK_CONFIG.metabaseClientRequestHeader,
+        "X-Metabase-Mcp-Ui-Auth": uiCredential,
+        "Mcp-Session-Id": mcpSessionId,
+      },
+    });
+
+  const response = await send(auth);
+
+  if (response.status !== 401) {
+    return response;
+  }
+
+  try {
+    const fresh = await refreshMcpCredential();
+
+    return await send({
+      uiCredential: fresh.credential,
+      mcpSessionId: fresh.sessionId,
+    });
+  } catch {
+    return response;
+  }
+}
 
 type StoreDrillQueryRequest = {
   instanceUrl: string;
@@ -43,14 +90,11 @@ export async function fetchMcpBootstrap({
   uiCredential,
   mcpSessionId,
 }: McpBootstrapRequest): Promise<McpAppsBootstrapResponse> {
-  const response = await fetch(`${instanceUrl}/api/embed-mcp/bootstrap`, {
-    method: "GET",
-    headers: {
-      "X-Metabase-Client": EMBEDDING_SDK_CONFIG.metabaseClientRequestHeader,
-      "X-Metabase-Mcp-Ui-Auth": uiCredential,
-      "Mcp-Session-Id": mcpSessionId,
-    },
-  });
+  const response = await fetchEmbedMcp(
+    `${instanceUrl}/api/embed-mcp/bootstrap`,
+    { method: "GET" },
+    { uiCredential, mcpSessionId },
+  );
 
   if (!response.ok) {
     throw Object.assign(
@@ -79,16 +123,14 @@ export async function storeDrillQuery({
   queryHandle,
   operation,
 }: StoreDrillQueryRequest): Promise<StoreDrillQueryResponse> {
-  const response = await fetch(`${instanceUrl}/api/embed-mcp/drills`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "X-Metabase-Client": EMBEDDING_SDK_CONFIG.metabaseClientRequestHeader,
-      "X-Metabase-Mcp-Ui-Auth": uiCredential,
-      "Mcp-Session-Id": mcpSessionId,
+  const response = await fetchEmbedMcp(
+    `${instanceUrl}/api/embed-mcp/drills`,
+    {
+      method: "POST",
+      body: JSON.stringify({ handle: queryHandle, operation }),
     },
-    body: JSON.stringify({ handle: queryHandle, operation }),
-  });
+    { uiCredential, mcpSessionId },
+  );
 
   if (!response.ok) {
     throw new Error(
@@ -126,18 +168,10 @@ export async function deriveMcpQuery({
   queryHandle,
   operations,
 }: DeriveQueryRequest): Promise<DerivedQuery> {
-  const response = await fetch(
+  const response = await fetchEmbedMcp(
     `${instanceUrl}/api/embed-mcp/queries/${encodeURIComponent(queryHandle)}/derive`,
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-Metabase-Client": EMBEDDING_SDK_CONFIG.metabaseClientRequestHeader,
-        "X-Metabase-Mcp-Ui-Auth": uiCredential,
-        "Mcp-Session-Id": mcpSessionId,
-      },
-      body: JSON.stringify({ operations }),
-    },
+    { method: "POST", body: JSON.stringify({ operations }) },
+    { uiCredential, mcpSessionId },
   );
 
   if (!response.ok) {
@@ -190,15 +224,10 @@ export async function fetchQueryByHandle({
   mcpSessionId,
   queryHandle,
 }: FetchQueryByHandleRequest): Promise<FetchQueryByHandleResponse> {
-  const response = await fetch(
+  const response = await fetchEmbedMcp(
     `${instanceUrl}/api/embed-mcp/queries/${encodeURIComponent(queryHandle)}`,
-    {
-      headers: {
-        "X-Metabase-Client": EMBEDDING_SDK_CONFIG.metabaseClientRequestHeader,
-        "X-Metabase-Mcp-Ui-Auth": uiCredential,
-        "Mcp-Session-Id": mcpSessionId,
-      },
-    },
+    { method: "GET" },
+    { uiCredential, mcpSessionId },
   );
 
   if (!response.ok) {
@@ -221,16 +250,11 @@ export async function submitMcpFeedback({
   mcpSessionId,
   payload,
 }: SubmitMcpFeedbackPayload): Promise<void> {
-  const response = await fetch(`${instanceUrl}/api/embed-mcp/feedback`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "X-Metabase-Client": EMBEDDING_SDK_CONFIG.metabaseClientRequestHeader,
-      "X-Metabase-Mcp-Ui-Auth": uiCredential,
-      "Mcp-Session-Id": mcpSessionId,
-    },
-    body: JSON.stringify(payload),
-  });
+  const response = await fetchEmbedMcp(
+    `${instanceUrl}/api/embed-mcp/feedback`,
+    { method: "POST", body: JSON.stringify(payload) },
+    { uiCredential, mcpSessionId },
+  );
 
   if (!response.ok) {
     throw new Error(
