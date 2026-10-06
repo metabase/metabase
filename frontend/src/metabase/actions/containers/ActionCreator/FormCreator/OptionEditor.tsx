@@ -46,11 +46,11 @@ export interface OptionEditorProps {
   onChange: (options: FieldValueOptions) => void;
 }
 
-export function OptionPopover({
+export const OptionPopover = ({
   fieldType,
   options,
   onChange,
-}: OptionEditorProps) {
+}: OptionEditorProps) => {
   const [text, setText] = useState(optionsToText(options));
   const [error, setError] = useState<string | null>(null);
   const [isOpened, { open, close, toggle }] = useDisclosure(false);
@@ -129,4 +129,4 @@ export function OptionPopover({
       </Popover.Dropdown>
     </Popover>
   );
-}
+};

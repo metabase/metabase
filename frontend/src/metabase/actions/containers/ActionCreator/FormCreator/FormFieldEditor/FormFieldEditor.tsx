@@ -143,42 +143,37 @@ export function FormFieldEditor({
           <Subtitle>{t`Appearance`}</Subtitle>
         </Stack>
       </Flex>
-      <Flex
-        className={S.borderTop}
-        gap="sm"
+      <Box
+        className={cx(S.borderTop, S.previewField)}
         p="lg"
+        pl="xl"
         pb="xxl"
         bg="background_page-secondary"
         data-testid="preview-container"
       >
-        <Stack gap={0} />
-        <Stack gap={0} flex={1}>
-          <div className={S.previewField}>
-            <ActionFormFieldWidget
-              hidden={hidden}
-              actions={
-                <Checkbox
-                  styles={{
-                    label: {
-                      fontSize: "12px",
-                      color: "var(--mb-color-text-secondary)",
-                    },
-                  }}
-                  onChange={() => {
-                    onChange({
-                      ...fieldSettings,
-                      hidden: !hidden,
-                    });
-                  }}
-                  checked={!hidden}
-                  label={t`Show field`}
-                />
-              }
-              formField={field}
+        <ActionFormFieldWidget
+          hidden={hidden}
+          actions={
+            <Checkbox
+              styles={{
+                label: {
+                  fontSize: "12px",
+                  color: "var(--mb-color-text-secondary)",
+                },
+              }}
+              onChange={() => {
+                onChange({
+                  ...fieldSettings,
+                  hidden: !hidden,
+                });
+              }}
+              checked={!hidden}
+              label={t`Show field`}
             />
-          </div>
-        </Stack>
-      </Flex>
+          }
+          formField={field}
+        />
+      </Box>
     </Box>
   );
 }

@@ -6,7 +6,7 @@ import { Box, Icon, Stack, Text, Title } from "metabase/ui";
 
 import S from "./EmptyFormPlaceholder.module.css";
 
-export function EmptyFormPlaceholder() {
+export const EmptyFormPlaceholder = () => {
   const { url, showMetabaseLinks } = useDocsUrl("actions/custom");
 
   return (
@@ -36,4 +36,4 @@ export function EmptyFormPlaceholder() {
       )}
     </Stack>
   );
-}
+};
