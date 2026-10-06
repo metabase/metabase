@@ -770,13 +770,9 @@
       (mt/with-actions-enabled
         (let [action-opts (shared-action-opts)]
           (mt/with-actions [{:keys [action-id]} action-opts]
-            (testing "We *cannot* unshare an action if actions are disabled"
+            (testing "We can unshare an action even when actions are disabled"
               (mt/with-actions-disabled
-                (is (= "Actions are not enabled."
-                       (:cause
-                        (mt/user-http-request :crowberto :delete 400 (format "action/%d/public_link" action-id)))))))
-            (testing "Test that we can unshare an action"
-              (mt/user-http-request :crowberto :delete 204 (format "action/%d/public_link" action-id))
+                (mt/user-http-request :crowberto :delete 204 (format "action/%d/public_link" action-id)))
               (is (= false
                      (t2/exists? :model/Action :id action-id, :public_uuid (:public_uuid action-opts)))))))
         (testing "Test that we cannot unshare an action if it's archived"

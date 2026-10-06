@@ -156,7 +156,6 @@
   (perms/check-has-application-permission :setting)
   (public-sharing.validation/check-public-sharing-enabled)
   (api/check-exists? :model/Action :id id, :public_uuid [:not= nil], :archived false)
-  (actions/check-actions-enabled id)
   (actions-rest.db/set-action-public-uuid! id nil nil)
   {:status 204, :body nil})
 
