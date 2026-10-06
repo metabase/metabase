@@ -13,7 +13,7 @@ import { useActionQuery } from "../../hooks/use-action-query";
 type ActionEditorProps = {
   datasetQuery: DatasetQuery;
   uiState: QueryEditorUiState;
-  databases?: Database[];
+  databases: Database[];
   readOnly?: boolean;
   topBarInnerContent?: ReactNode;
   onChangeDatasetQuery: (datasetQuery: DatasetQuery) => void;
@@ -23,7 +23,7 @@ type ActionEditorProps = {
 export function ActionEditor({
   datasetQuery,
   uiState,
-  databases = [],
+  databases,
   readOnly = false,
   topBarInnerContent,
   onChangeDatasetQuery,

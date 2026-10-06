@@ -1,7 +1,7 @@
 import {
   setupActionEndpoints,
   setupCollectionByIdEndpoint,
-  setupDatabaseEndpoints,
+  setupDatabaseListEndpoint,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { createMockState } from "__support__/state";
@@ -26,7 +26,7 @@ type SetupOpts = {
 
 function setup({ action, database, user }: SetupOpts) {
   setupActionEndpoints(action);
-  setupDatabaseEndpoints(database);
+  setupDatabaseListEndpoint([database]);
   setupCollectionByIdEndpoint({
     collections: [createMockCollection(ROOT_COLLECTION)],
   });

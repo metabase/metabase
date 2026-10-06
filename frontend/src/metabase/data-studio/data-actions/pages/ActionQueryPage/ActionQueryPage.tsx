@@ -61,7 +61,11 @@ export function ActionQueryPage() {
       databases={editableDatabases}
     />
   ) : (
-    <ActionDefinitionPage action={action} canEditQuery={canEditQuery} />
+    <ActionDefinitionPage
+      action={action}
+      databases={editableDatabases}
+      canEditQuery={canEditQuery}
+    />
   );
 }
 
@@ -70,13 +74,13 @@ type ActionPageProps = {
   databases: Database[];
 };
 
-type ActionDefinitionPageProps = {
-  action: WritebackQueryAction;
+type ActionDefinitionPageProps = ActionPageProps & {
   canEditQuery: boolean;
 };
 
 function ActionDefinitionPage({
   action,
+  databases,
   canEditQuery,
 }: ActionDefinitionPageProps) {
   const [uiState, setUiState] = useState(getInitialUiState);
@@ -88,6 +92,7 @@ function ActionDefinitionPage({
         <ActionEditor
           datasetQuery={action.dataset_query}
           uiState={uiState}
+          databases={databases}
           readOnly
           topBarInnerContent={
             canEditQuery && (

@@ -1,7 +1,7 @@
 import {
   setupActionEndpoints,
   setupCollectionByIdEndpoint,
-  setupDatabaseEndpoints,
+  setupDatabaseListEndpoint,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
 import { ROOT_COLLECTION } from "metabase/common/collections/constants";
@@ -22,7 +22,7 @@ type SetupOpts = {
 
 function setup({ action, database }: SetupOpts) {
   setupActionEndpoints(action);
-  setupDatabaseEndpoints(database);
+  setupDatabaseListEndpoint([database]);
   setupCollectionByIdEndpoint({
     collections: [createMockCollection(ROOT_COLLECTION)],
   });

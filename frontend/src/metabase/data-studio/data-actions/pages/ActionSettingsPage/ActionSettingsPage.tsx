@@ -2,10 +2,8 @@ import { useState } from "react";
 import { t } from "ttag";
 
 import {
-  skipToken,
   useCreateActionPublicLinkMutation,
   useDeleteActionPublicLinkMutation,
-  useGetDatabaseQuery,
   useUpdateActionMutation,
 } from "metabase/api";
 import { CopyTextInput } from "metabase/common/components/CopyTextInput";
@@ -14,7 +12,6 @@ import { PageContainer } from "metabase/common/data-studio/components/PageContai
 import { TitleSection } from "metabase/common/data-studio/components/TitleSection";
 import { useMetadataToasts } from "metabase/common/hooks";
 import { useConfirmation } from "metabase/common/hooks/use-confirmation";
-import { hasActionsEnabled } from "metabase/common/utils/database";
 import { getUserIsAdmin } from "metabase/current-user";
 import { useSelector } from "metabase/redux";
 import { useSetting } from "metabase/settings";
@@ -32,6 +29,7 @@ import * as Urls from "metabase/urls";
 import type { WritebackQueryAction } from "metabase-types/api";
 
 import { ActionHeader } from "../../components/ActionHeader";
+import { useActionDatabases } from "../../hooks/use-action-databases";
 import { useRouteAction } from "../../hooks/use-route-action";
 
 export function ActionSettingsPage() {
@@ -40,12 +38,20 @@ export function ActionSettingsPage() {
     isLoading: isLoadingAction,
     error: actionError,
   } = useRouteAction();
+  const {
+    databases,
+    isLoading: isLoadingDatabases,
+    error: databasesError,
+  } = useActionDatabases();
   const isAdmin = useSelector(getUserIsAdmin);
   const isPublicSharingEnabled = useSetting("enable-public-sharing");
-  if (isLoadingAction || actionError != null || action == null) {
+  const isLoading = isLoadingAction || isLoadingDatabases;
+  const error = actionError ?? databasesError;
+
+  if (isLoading || error != null || action == null) {
     return (
       <Center h="100%">
-        <LoadingAndErrorWrapper loading={isLoadingAction} error={actionError} />
+        <LoadingAndErrorWrapper loading={isLoading} error={error} />
       </Center>
     );
   }
@@ -57,7 +63,12 @@ export function ActionSettingsPage() {
       <ActionHeader action={action} />
       <Stack gap="2.5rem">
         {isAdmin && isPublicSharingEnabled && (
-          <PublicSharingSection action={action} />
+          <PublicSharingSection
+            action={action}
+            canMakePublic={databases.some(
+              (database) => database.id === action.database_id,
+            )}
+          />
         )}
         <SuccessMessageSection
           key={action.id}
@@ -74,7 +85,15 @@ type SectionProps = {
   readOnly?: boolean;
 };
 
-function PublicSharingSection({ action }: SectionProps) {
+type PublicSharingSectionProps = {
+  action: WritebackQueryAction;
+  canMakePublic: boolean;
+};
+
+function PublicSharingSection({
+  action,
+  canMakePublic,
+}: PublicSharingSectionProps) {
   const siteUrl = useSetting("site-url");
   const [createPublicLink] = useCreateActionPublicLinkMutation();
   const [deletePublicLink] = useDeleteActionPublicLinkMutation();
@@ -82,11 +101,6 @@ function PublicSharingSection({ action }: SectionProps) {
     useConfirmation();
   const { sendErrorToast } = useMetadataToasts();
   const isPublic = action.public_uuid != null;
-  const databaseId = action.database_id;
-  const { data: database } = useGetDatabaseQuery(
-    databaseId != null ? { id: databaseId } : skipToken,
-  );
-  const canMakePublic = database != null && hasActionsEnabled(database);
 
   const handleDisable = async () => {
     const { error } = await deletePublicLink({ id: action.id });
