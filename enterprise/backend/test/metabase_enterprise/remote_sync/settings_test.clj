@@ -390,3 +390,25 @@
             (is (= {"LsRemoteCommand" 1} (frequencies @commands))
                 "One lsRemote answers both the settings check and the default branch")
             (is (= "master" (settings/remote-sync-branch)) "The save stores the default branch of the remote")))))))
+
+(deftest blank-branch-save-of-remote-without-default-branch-saves-nothing-test
+  (testing "a save with a blank branch of a remote whose HEAD is detached (so it has no default branch) fails, and
+            saves no setting"
+    (mt/with-temp-dir [remote-dir nil]
+      (let [url (test-helpers/init-local-git-remote! remote-dir :branches ["alpha"])]
+        (with-open [remote-git (Git/open (io/file remote-dir))]
+          (let [remote-repo (.getRepository remote-git)]
+            (doto (.updateRef remote-repo "HEAD" true)
+              (.setNewObjectId (.resolve remote-repo "master"))
+              (.forceUpdate))))
+        (mt/with-temporary-setting-values [remote-sync-url    nil
+                                           remote-sync-token  nil
+                                           remote-sync-type   nil
+                                           remote-sync-branch nil]
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Failed to get a default branch"
+                                (settings/check-and-update-remote-settings! {:remote-sync-url    url
+                                                                             :remote-sync-token  nil
+                                                                             :remote-sync-type   :read-write
+                                                                             :remote-sync-branch ""})))
+          (is (nil? (settings/remote-sync-url)) "The rejected settings are not saved")
+          (is (nil? (settings/remote-sync-branch))))))))
