@@ -1,6 +1,5 @@
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import { openNotebook } from "e2e/support/helpers";
 import type { Measure, TableId } from "metabase-types/api";
 
 const { H } = cy;
@@ -28,7 +27,7 @@ describe("scenarios > data studio > measures > queries", () => {
       verifyScalarValue("18,760");
     });
 
-    it("should create a measure with with a column from the main data source", () => {
+    it("should create a measure with a column from the main data source", () => {
       startNewMeasure();
       MeasureEditor.getAggregationPlaceholder().click();
       H.popover().within(() => {
@@ -41,7 +40,7 @@ describe("scenarios > data studio > measures > queries", () => {
       verifyScalarValue("1,510,621.68");
     });
 
-    it("should create a measure with with a column from the main data source using offset", () => {
+    it("should create a measure with a column from the main data source using offset", () => {
       startNewMeasure();
       MeasureEditor.getAggregationPlaceholder().click();
       H.popover().findByText("Custom Expression").click();
@@ -239,7 +238,7 @@ describe("scenarios > data studio > measures > queries", () => {
       verifyScalarValue("18,758");
     });
 
-    it("should be possible to create measures with filters like based on segments that are nested", () => {
+    it("should be possible to create measures with filters based on segments that are nested", () => {
       H.createSegment({
         name: "LargeTotal",
         definition: {
@@ -528,7 +527,7 @@ describe("scenarios > data studio > measures > queries", () => {
         }).then(({ body: question }) => {
           cy.log("Add a second stage that references the measure");
           H.visitQuestion(question.id);
-          openNotebook();
+          H.openNotebook();
           H.getNotebookStep("summarize").findByText("Filter").click();
           H.popover().within(() => {
             cy.findByText(MEASURE_NAME).click();
@@ -557,7 +556,7 @@ describe("scenarios > data studio > measures > queries", () => {
             },
           });
 
-          cy.log("Add a second stage that references the measure");
+          cy.log("verify the question with the changed measure shows an error");
           H.visitQuestion(question.id);
           cy.findByTestId("query-builder-main")
             .findByText("There was a problem with your question")
@@ -715,7 +714,7 @@ describe("scenarios > data studio > measures > queries", () => {
   });
 
   describe("x-rays", () => {
-    it("should be possible x-ray a question and a model containing a measure", () => {
+    it("should be possible to x-ray a question and a model containing a measure", () => {
       H.createMeasure({
         name: MEASURE_NAME,
         definition: {

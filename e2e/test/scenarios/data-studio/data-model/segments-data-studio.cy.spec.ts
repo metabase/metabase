@@ -19,7 +19,6 @@ describe(
 
       cy.intercept("POST", "/api/segment").as("createSegment");
       cy.intercept("PUT", "/api/segment/*").as("updateSegment");
-      cy.intercept("DELETE", "/api/segment/*").as("deleteSegment");
       cy.intercept("GET", "/api/table/*/query_metadata*").as("metadata");
     });
 
@@ -53,7 +52,7 @@ describe(
     });
 
     describe("Segment creation", () => {
-      it("should create a segment with filters and verify across features", () => {
+      it("should show empty state, guard unsaved changes, and create a segment with filters", () => {
         visitDataStudioSegments(ORDERS_ID);
 
         cy.log("verify empty state");
@@ -124,7 +123,7 @@ describe(
     });
 
     describe("Segment editing", () => {
-      it("should display and update existing segment", () => {
+      it("should update an existing segment and navigate back via breadcrumb", () => {
         createTestSegment({
           name: "Test Segment",
           description: "Test description",
@@ -627,14 +626,12 @@ function createTestSegment(
   opts: {
     name?: string;
     description?: string;
-    tableId?: number;
     filter?: unknown[];
   } = {},
 ) {
   const {
     name = "Test Segment",
     description,
-    tableId = ORDERS_ID,
     filter = ["<", ["field", ORDERS.TOTAL, null], 100],
   } = opts;
 
@@ -645,7 +642,7 @@ function createTestSegment(
       type: "query",
       database: SAMPLE_DB_ID,
       query: {
-        "source-table": tableId,
+        "source-table": ORDERS_ID,
         filter,
       },
     },
@@ -654,11 +651,8 @@ function createTestSegment(
   });
 }
 
-function verifySegmentInQueryBuilder(
-  segmentName: string,
-  tableId: number = ORDERS_ID,
-) {
-  H.openTable({ table: tableId, mode: "notebook" });
+function verifySegmentInQueryBuilder(segmentName: string) {
+  H.openTable({ table: ORDERS_ID, mode: "notebook" });
 
   H.getNotebookStep("data").button("Filter").click();
   H.popover().findByText(segmentName).click();
@@ -668,11 +662,8 @@ function verifySegmentInQueryBuilder(
   H.queryBuilderFiltersPanel().findByText(segmentName).should("be.visible");
 }
 
-function verifySegmentNotInQueryBuilder(
-  segmentName: string,
-  tableId: number = ORDERS_ID,
-) {
-  H.openTable({ table: tableId, mode: "notebook" });
+function verifySegmentNotInQueryBuilder(segmentName: string) {
+  H.openTable({ table: ORDERS_ID, mode: "notebook" });
 
   H.getNotebookStep("data").button("Filter").click();
   H.popover().findByText("Total").should("be.visible");

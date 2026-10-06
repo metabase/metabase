@@ -54,7 +54,7 @@ describe("scenarios > data studio > transforms > python library", () => {
       .should("be.visible");
 
     cy.log("refresh the page and check the content is persisted");
-    cy.url().reload();
+    cy.reload();
 
     H.DataStudio.PythonLibrary.editor()
       .findByText(/hello world/)

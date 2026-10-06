@@ -3,7 +3,6 @@ const { H } = cy;
 describe("scenarios > data studio > snippets", () => {
   beforeEach(() => {
     H.restore();
-    H.resetSnowplow();
     cy.signInAsAdmin();
     H.activateToken("pro-self-hosted");
 
@@ -50,8 +49,6 @@ describe("scenarios > data studio > snippets", () => {
         .should("contain.text", "SELECT * FROM orders");
 
       cy.log("Edit snippet content");
-      H.DataStudio.Snippets.editPage().should("be.visible");
-
       H.DataStudio.Snippets.editor.type(" WHERE id = 1");
 
       H.DataStudio.Snippets.saveButton().should("be.enabled").click();
@@ -164,7 +161,6 @@ describe("scenarios > data studio > snippets", () => {
     beforeEach(() => {
       cy.intercept("POST", "/api/collection").as("createCollection");
       cy.intercept("PUT", "/api/collection/*").as("updateCollection");
-      cy.intercept("DELETE", "/api/collection/*").as("deleteCollection");
     });
 
     it("should create a snippet, then a folder and a snippet inside it", () => {

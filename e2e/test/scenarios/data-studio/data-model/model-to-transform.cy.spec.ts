@@ -23,8 +23,6 @@ describe(
   { tags: ["@external"] },
   () => {
     beforeEach(() => {
-      dropAllTestTables();
-
       H.restore("postgres-writable");
       cy.signInAsAdmin();
       H.activateToken("bleeding-edge");
@@ -45,7 +43,7 @@ describe(
       });
       createSourceModel("Target model").then(({ body: model }) => {
         createQuestionOnModel("Direct dependent", model.id).as("direct");
-        createQuestionOnCard("Nested dependent", model.id)
+        createQuestionOnModel("Nested dependent", model.id)
           .as("nested")
           .then(({ body: parent }) => {
             H.createQuestion({
@@ -211,14 +209,6 @@ function createQuestionOnModel(name: string, modelId: CardId) {
     name,
     database: WRITABLE_DB_ID,
     query: { "source-table": `card__${modelId}` },
-  });
-}
-
-function createQuestionOnCard(name: string, parentCardId: CardId) {
-  return H.createQuestion({
-    name,
-    database: WRITABLE_DB_ID,
-    query: { "source-table": `card__${parentCardId}` },
   });
 }
 

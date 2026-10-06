@@ -7,24 +7,16 @@ const SOURCE_TABLE = "Animals";
 const TARGET_SCHEMA = "Schema A";
 const TARGET_TABLE = "transform_table";
 
-describe("scenarios > admin > transforms", () => {
+describe("scenarios > data-studio > transforms > template tags", () => {
   beforeEach(() => {
     H.restore("postgres-writable");
     H.resetTestTable({ type: "postgres", table: "many_schemas" });
-    H.resetSnowplow();
     cy.signInAsAdmin();
     H.activateToken("pro-self-hosted");
     H.updateSetting("transforms-enabled", true);
     H.resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: SOURCE_TABLE });
 
-    cy.intercept("PUT", "/api/field/*").as("updateField");
-    cy.intercept("POST", "/api/transform").as("createTransform");
     cy.intercept("PUT", "/api/transform/*").as("updateTransform");
-    cy.intercept("DELETE", "/api/transform/*").as("deleteTransform");
-    cy.intercept("DELETE", "/api/transform/*/table").as("deleteTransformTable");
-    cy.intercept("POST", "/api/transform-tag").as("createTag");
-    cy.intercept("PUT", "/api/transform-tag/*").as("updateTag");
-    cy.intercept("DELETE", "/api/transform-tag/*").as("deleteTag");
     cy.intercept("POST", "/api/transform/*/run").as("runTransform");
   });
 

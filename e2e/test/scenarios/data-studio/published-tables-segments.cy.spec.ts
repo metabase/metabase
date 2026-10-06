@@ -71,7 +71,7 @@ describe("scenarios > data studio > library > published tables > segments", () =
 
   describe("Breadcrumbs", () => {
     it("should display collection-based breadcrumbs and navigate back to published table segments", () => {
-      createTestSegment({ name: "Breadcrumb Nav Test" });
+      createTestSegment("Breadcrumb Nav Test");
       cy.get<number>("@segmentId").then((segmentId) => {
         H.DataStudio.Tables.visitSegmentPage(ORDERS_ID, segmentId);
       });
@@ -89,7 +89,7 @@ describe("scenarios > data studio > library > published tables > segments", () =
 
   describe("Segment deletion", () => {
     it("should open a segment from the list and redirect to the list after deletion", () => {
-      createTestSegment({ name: "Segment to Delete" });
+      createTestSegment("Segment to Delete");
       H.DataStudio.Tables.visitSegmentsPage(ORDERS_ID);
 
       SegmentList.getSegment("Segment to Delete").click();
@@ -115,12 +115,9 @@ describe("scenarios > data studio > library > published tables > segments", () =
   });
 });
 
-function createTestSegment(opts: { name?: string; description?: string } = {}) {
-  const { name = "Test Segment", description } = opts;
-
+function createTestSegment(name: string) {
   H.createSegment({
     name,
-    description,
     definition: {
       type: "query",
       database: SAMPLE_DB_ID,

@@ -5,7 +5,7 @@ const { H } = cy;
 const { MeasureList, MeasureEditor } = H.DataModel;
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
-// Majority of the measures pages functionality is covered in the data-model/measures-data-studio.cy.spec.ts spec
+// Majority of the measures pages functionality is covered in the measures/measures-data-studio.cy.spec.ts spec
 // This spec is focused on the published tables measures pages functionality while doing some smoke tests
 describe("scenarios > data studio > library > published tables > measures", () => {
   beforeEach(() => {

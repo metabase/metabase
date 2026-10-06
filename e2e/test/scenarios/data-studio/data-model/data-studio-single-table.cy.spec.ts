@@ -11,22 +11,8 @@ interface MetadataResponse {
 describe("Table editing", () => {
   beforeEach(() => {
     H.resetSnowplow();
-    H.restore();
     cy.signInAsAdmin();
-    H.activateToken("pro-self-hosted");
-    cy.intercept("GET", "/api/database?*").as("databases");
-    cy.intercept("GET", "/api/database/*/schemas?*").as("schemas");
     cy.intercept("GET", "/api/table/*/query_metadata*").as("metadata");
-    cy.intercept("GET", "/api/database/*/schema/*").as("schema");
-    cy.intercept("POST", "/api/dataset*").as("dataset");
-    cy.intercept("GET", "/api/field/*/values").as("fieldValues");
-    cy.intercept("PUT", "/api/field/*", cy.spy().as("updateFieldSpy")).as(
-      "updateField",
-    );
-    cy.intercept("PUT", "/api/table/*/fields/order").as("updateFieldOrder");
-    cy.intercept("POST", "/api/field/*/values").as("updateFieldValues");
-    cy.intercept("POST", "/api/field/*/dimension").as("updateFieldDimension");
-    cy.intercept("PUT", "/api/table").as("updateTables");
     cy.intercept("PUT", "/api/table/*").as("updateTable");
     cy.intercept("POST", "/api/ee/data-studio/table/publish-tables").as(
       "publishTables",

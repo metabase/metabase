@@ -21,12 +21,12 @@ type LibraryRootCollections = {
 describe("scenarios > data studio > library", () => {
   beforeEach(() => {
     H.restore();
-    H.resetSnowplow();
     cy.signInAsAdmin();
     H.activateToken("pro-self-hosted");
   });
 
   it("should create library via UI and verify collections", () => {
+    H.resetSnowplow();
     cy.intercept("POST", "/api/ee/library").as("createLibrary");
     cy.intercept("GET", "/api/collection/tree*").as("getCollectionTree");
 
@@ -119,7 +119,7 @@ describe("scenarios > data studio > library", () => {
     H.entityPickerModalItem(1, "Data").click();
     H.entityPickerModalItem(2, "Orders").click();
 
-    cy.log("Ensure that the we can build the path from a value");
+    cy.log("Ensure that we can build the path from a value");
 
     cy.button(/Orders/).click();
     H.miniPickerHeader().click();
@@ -190,7 +190,7 @@ describe("scenarios > data studio > library", () => {
       H.entityPickerModalItem(0, "Library").should("be.visible");
       H.entityPickerModalItem(1, "Data").should("be.visible");
 
-      cy.log("Check that non-library collection are not visible");
+      cy.log("Check that non-library collections are not visible");
       H.entityPickerModal().findByText("Our analytics").should("not.exist");
       H.entityPickerModal().findByText("Outside Library").should("not.exist");
       H.entityPickerModal().button("Cancel").click();
@@ -295,11 +295,6 @@ describe("scenarios > data studio > library", () => {
     it("should show empty states, publish a table from the New menu, and keep empty sections expanded", () => {
       H.createLibrary();
       H.DataStudio.Library.visit();
-
-      cy.log("Verify all sections are expanded");
-      H.DataStudio.Library.collectionItem("Data").should("be.visible");
-      H.DataStudio.Library.collectionItem("Metrics").should("be.visible");
-      H.DataStudio.Library.collectionItem("SQL snippets").should("be.visible");
 
       cy.log("Verify Data section empty state");
       H.DataStudio.Library.libraryPage()

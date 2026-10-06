@@ -11,8 +11,6 @@ describe("scenarios > data studio > library > metrics", () => {
 
     cy.intercept("POST", "/api/card").as("createCard");
     cy.intercept("PUT", "/api/card/*").as("updateCard");
-    cy.intercept("POST", "/api/collection").as("createCollection");
-    cy.intercept("PUT", "/api/collection/*").as("updateCollection");
 
     createLibraryWithItems();
   });

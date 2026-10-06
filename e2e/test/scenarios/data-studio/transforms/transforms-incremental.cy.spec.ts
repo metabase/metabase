@@ -20,14 +20,7 @@ describe("scenarios > admin > transforms incremental", () => {
     H.updateSetting("transforms-enabled", true);
     H.resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: SOURCE_TABLE });
 
-    cy.intercept("PUT", "/api/field/*").as("updateField");
     cy.intercept("POST", "/api/transform").as("createTransform");
-    cy.intercept("PUT", "/api/transform/*").as("updateTransform");
-    cy.intercept("DELETE", "/api/transform/*").as("deleteTransform");
-    cy.intercept("DELETE", "/api/transform/*/table").as("deleteTransformTable");
-    cy.intercept("POST", "/api/transform-tag").as("createTag");
-    cy.intercept("PUT", "/api/transform-tag/*").as("updateTag");
-    cy.intercept("DELETE", "/api/transform-tag/*").as("deleteTag");
     cy.intercept("POST", "/api/transform/*/reset-checkpoint").as(
       "resetCheckpoint",
     );
@@ -72,15 +65,10 @@ describe("scenarios > admin > transforms incremental", () => {
         }).click({ force: true });
 
         cy.button("Save").click();
-        cy.wait("@createTransform").then(({ response }) => {
-          const transformId = response?.body?.id;
-          if (transformId != null) {
-            cy.wrap(transformId).as("transformId");
-          }
-        });
+        cy.wait("@createTransform");
       });
 
-      cy.log("run the transform and make sure its table can be queried");
+      cy.log("run the transform");
       H.DataStudio.Transforms.runTab().click();
       runTransformAndWaitForSuccess();
       H.expectUnstructuredSnowplowEvent({
@@ -216,7 +204,7 @@ def transform(animals):
           timeout: TRANSFORM_DETAIL_TIMEOUT,
         }).should("be.visible");
 
-        cy.log("run the transform and make sure its table can be queried");
+        cy.log("run the transform");
         H.DataStudio.Transforms.runTab().click();
         runTransformAndWaitForSuccess();
         H.expectUnstructuredSnowplowEvent({
@@ -337,7 +325,7 @@ def transform(animals):
         cy.wait("@createTransform");
       });
 
-      cy.log("run the transform and make sure its table can be queried");
+      cy.log("run the transform");
       H.DataStudio.Transforms.runTab().click();
       runTransformAndWaitForSuccess();
       H.expectUnstructuredSnowplowEvent({

@@ -573,7 +573,7 @@ LIMIT
       );
     });
 
-    it("not show the 'Show details' buttons in ID columns (metabase#64473)", () => {
+    it("should not show the 'Show details' buttons in ID columns (metabase#64473)", () => {
       const databaseId = WRITABLE_DB_ID;
       const sourceTable = SOURCE_TABLE;
       const nameColumn = "name";
@@ -603,7 +603,7 @@ LIMIT
       getQueryEditor().findAllByTestId("detail-shortcut").should("not.exist");
     });
 
-    it("should not be possible to create a transform from a question or a model that is based of an unsupported database", () => {
+    it("should not be possible to create a transform from a question or a model that is based on an unsupported database", () => {
       const cardTypes: CardType[] = ["question", "model"];
 
       cy.log("create queries in the target database");
@@ -872,7 +872,7 @@ LIMIT
       cy.intercept("PUT", "/api/transform/*", (req) => {
         updateCallCount++;
         req.continue();
-      }).as("updateTransformCounted");
+      });
 
       // Toggle on then immediately off (within debounce window)
       getIncrementalSwitch().click();
@@ -2617,15 +2617,6 @@ describe("scenarios > admin > transforms > databases without :schemas", () => {
     cy.signInAsAdmin();
     H.activateToken("pro-self-hosted");
     H.updateSetting("transforms-enabled", true);
-
-    cy.intercept("PUT", "/api/field/*").as("updateField");
-    cy.intercept("POST", "/api/transform").as("createTransform");
-    cy.intercept("PUT", "/api/transform/*").as("updateTransform");
-    cy.intercept("DELETE", "/api/transform/*").as("deleteTransform");
-    cy.intercept("DELETE", "/api/transform/*/table").as("deleteTransformTable");
-    cy.intercept("POST", "/api/transform-tag").as("createTag");
-    cy.intercept("PUT", "/api/transform-tag/*").as("updateTag");
-    cy.intercept("DELETE", "/api/transform-tag/*").as("deleteTag");
   });
 
   it("should not be possible to create a new schema when the database does not support schemas", () => {
@@ -2773,10 +2764,6 @@ describe("scenarios > admin > transforms > jobs", () => {
   });
 
   describe("schedule", () => {
-    beforeEach(() => {
-      H.resetSnowplow();
-    });
-
     afterEach(() => {
       H.expectNoBadSnowplowEvents();
     });
@@ -2891,10 +2878,6 @@ describe("scenarios > admin > transforms > jobs", () => {
   });
 
   describe("runs", () => {
-    beforeEach(() => {
-      H.resetSnowplow();
-    });
-
     it("should be able to manually run a job", () => {
       H.createTransformTag({ name: "New tag" }).then(({ body: tag }) => {
         createMbqlTransform({
@@ -2913,7 +2896,7 @@ describe("scenarios > admin > transforms > jobs", () => {
         .should("be.visible");
       getJobTransformTable().findByText("MBQL transform").should("be.visible");
 
-      runJobAndWaitForSuccess();
+      runTransformAndWaitForSuccess();
       H.expectUnstructuredSnowplowEvent({
         event: "transform_job_trigger_manual_run",
       });
@@ -2944,7 +2927,7 @@ describe("scenarios > admin > transforms > jobs", () => {
           { visitTransformJob: true },
         );
       });
-      runJobAndWaitForFailure();
+      runTransformAndWaitForFailure();
       H.DataStudio.Jobs.editor().findByText(
         "Last run failed a few seconds ago.",
       );
@@ -3763,16 +3746,6 @@ function runTransformAndWaitForFailure() {
   getRunButton().should("have.text", "Run failed");
 }
 
-function runJobAndWaitForSuccess() {
-  getRunButton().click();
-  getRunButton().should("have.text", "Ran successfully");
-}
-
-function runJobAndWaitForFailure() {
-  getRunButton().click();
-  getRunButton().should("have.text", "Run failed");
-}
-
 function createMbqlTransform(
   opts: {
     sourceTable?: string;
@@ -3917,7 +3890,7 @@ describe("scenarios > data studio > transforms > permissions", () => {
   });
 
   it("should allow non-admin users with data-studio permission to create transforms", () => {
-    cy.log("grant data-studio permission to All Users");
+    cy.log("grant transforms permission to the data group");
     cy.visit("/admin/permissions/application");
     cy.updatePermissionsGraph({
       [USER_GROUPS.DATA_GROUP]: {
@@ -3931,7 +3904,7 @@ describe("scenarios > data studio > transforms > permissions", () => {
     H.setUserAsAnalyst(NORMAL_USER_ID);
 
     cy.log(
-      "Ensure that transform permissions are visible when instance is hosted and transform feature is present",
+      "Ensure that transform permissions are visible with the pro-self-hosted token",
     );
 
     cy.findByRole("tab", { name: "Data" }).click({ force: true });

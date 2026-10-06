@@ -21,7 +21,7 @@ interface Table {
 
 describe("bulk table operations", { viewportWidth: 1600 }, () => {
   beforeEach(() => {
-    H.restore();
+    H.restore("postgres-writable");
     H.resetSnowplow();
     cy.signInAsAdmin();
     H.activateToken("pro-self-hosted");
@@ -44,13 +44,6 @@ describe("bulk table operations", { viewportWidth: 1600 }, () => {
     "syncs, edits attributes, publishes and unpublishes multiple tables",
     { tags: ["@external"] },
     () => {
-      H.restore("postgres-writable");
-      H.activateToken("pro-self-hosted");
-      // Re-authenticate after restoring the writable-DB snapshot, like the
-      // sibling tests do, otherwise visiting Data Studio can land in an
-      // unauthenticated state and the TablePicker never issues the schema
-      // request.
-      cy.signInAsAdmin();
       H.DataModel.visitDataStudio();
       TablePicker.expandDatabase("Writable Postgres12");
 
@@ -209,10 +202,7 @@ describe("bulk table operations", { viewportWidth: 1600 }, () => {
     { tags: ["@external"] },
     () => {
       beforeEach(() => {
-        H.restore("postgres-writable");
-        H.activateToken("pro-self-hosted");
         H.createLibrary();
-        cy.signInAsAdmin();
         H.resetTestTable({ type: "postgres", table: "multi_schema" });
         H.resyncDatabase({ dbId: WRITABLE_DB_ID });
         H.DataModel.visitDataStudio();
@@ -284,10 +274,7 @@ describe("bulk table operations", { viewportWidth: 1600 }, () => {
   );
 
   it("allows to edit attributes for db", { tags: ["@external"] }, () => {
-    H.restore("postgres-writable");
-    H.activateToken("pro-self-hosted");
     H.createLibrary();
-    cy.signInAsAdmin();
     H.DataModel.visitDataStudio();
 
     cy.log(
@@ -330,10 +317,7 @@ describe("bulk table operations", { viewportWidth: 1600 }, () => {
   });
 
   it("allows to edit attributes for schema", { tags: ["@external"] }, () => {
-    H.restore("postgres-writable");
-    H.activateToken("pro-self-hosted");
     H.resetTestTable({ type: "postgres", table: "many_schemas" });
-    cy.signInAsAdmin();
     H.resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: "Animals" });
     H.DataModel.visitDataStudio();
     TablePicker.expandDatabase("Writable Postgres12");

@@ -19,20 +19,12 @@ describe("scenarios > data studio > datamodel", () => {
     cy.signInAsAdmin();
     H.activateToken("pro-self-hosted");
 
-    cy.intercept("GET", "/api/database").as("databases");
-    cy.intercept("GET", "/api/database/*/schemas?*").as("schemas");
-    cy.intercept("GET", "/api/table/*/query_metadata*").as("metadata");
-    cy.intercept("GET", "/api/database/*/schema/*").as("schema");
     cy.intercept("POST", "/api/dataset*").as("dataset");
-    cy.intercept("GET", "/api/field/*/values").as("fieldValues");
     cy.intercept("GET", "/api/table?*").as("listTables");
-    cy.intercept("PUT", "/api/field/*", cy.spy().as("updateFieldSpy")).as(
-      "updateField",
-    );
+    cy.intercept("PUT", "/api/field/*").as("updateField");
     cy.intercept("PUT", "/api/table/*/fields/order").as("updateFieldOrder");
     cy.intercept("POST", "/api/field/*/values").as("updateFieldValues");
     cy.intercept("POST", "/api/field/*/dimension").as("updateFieldDimension");
-    cy.intercept("PUT", "/api/table").as("updateTables");
     cy.intercept("PUT", "/api/table/*").as("updateTable");
   });
 
@@ -488,7 +480,6 @@ describe("scenarios > data studio > datamodel", () => {
 
   describe("Field section", () => {
     beforeEach(() => {
-      H.resetSnowplow();
       H.enableTracking();
     });
 
@@ -628,34 +619,6 @@ describe("scenarios > data studio > datamodel", () => {
   });
 
   describe("Preview section", () => {
-    describe("Empty states", { tags: "@external" }, () => {
-      beforeEach(() => {
-        H.restore("postgres-writable");
-        H.activateToken("pro-self-hosted");
-        H.resetTestTable({ type: "postgres", table: "multi_schema" });
-        H.resyncDatabase({ dbId: WRITABLE_DB_ID });
-        H.queryWritableDB('delete from "Domestic"."Animals"');
-      });
-
-      it("should show empty state when there is no data", () => {
-        H.DataModel.visitDataStudio();
-
-        TablePicker.getDatabase("Writable Postgres12").click();
-        TablePicker.getSchema("Domestic").click();
-        TablePicker.getTable("Animals").click();
-        TableSection.clickFieldsTab();
-        TableSection.clickField("Name");
-        FieldSection.getPreviewButton().click();
-
-        PreviewSection.get()
-          .scrollIntoView()
-          .findByText("No data to show")
-          .should("be.visible");
-        PreviewSection.getPreviewTypeInput().findByText("Detail").click();
-        PreviewSection.get().findByText("No data to show").should("be.visible");
-      });
-    });
-
     it("should close the preview with Esc key only when no overlay is open, and not auto-focus inputs in filtering preview", () => {
       H.DataModel.visitDataStudio({
         databaseId: SAMPLE_DB_ID,
@@ -791,6 +754,39 @@ describe("scenarios > data studio > datamodel", () => {
   });
 });
 
+describe(
+  "scenarios > data studio > datamodel > preview empty states",
+  { tags: "@external" },
+  () => {
+    beforeEach(() => {
+      H.restore("postgres-writable");
+      cy.signInAsAdmin();
+      H.activateToken("pro-self-hosted");
+      H.resetTestTable({ type: "postgres", table: "multi_schema" });
+      H.resyncDatabase({ dbId: WRITABLE_DB_ID });
+      H.queryWritableDB('delete from "Domestic"."Animals"');
+    });
+
+    it("should show empty state when there is no data", () => {
+      H.DataModel.visitDataStudio();
+
+      TablePicker.getDatabase("Writable Postgres12").click();
+      TablePicker.getSchema("Domestic").click();
+      TablePicker.getTable("Animals").click();
+      TableSection.clickFieldsTab();
+      TableSection.clickField("Name");
+      FieldSection.getPreviewButton().click();
+
+      PreviewSection.get()
+        .scrollIntoView()
+        .findByText("No data to show")
+        .should("be.visible");
+      PreviewSection.getPreviewTypeInput().findByText("Detail").click();
+      PreviewSection.get().findByText("No data to show").should("be.visible");
+    });
+  },
+);
+
 type TableSummary = {
   id: TableId;
   db_id: number;
@@ -888,11 +884,9 @@ function verifyAndCloseToast(message: string) {
 
 function verifyTablePreview({
   column,
-  description,
   values,
 }: {
   column: string;
-  description?: string;
   values: string[];
 }) {
   PreviewSection.getPreviewTypeInput().findByText("Table").click();
@@ -903,13 +897,5 @@ function verifyTablePreview({
       columns: [column],
       firstRows: values.map((value) => [value]),
     });
-
-    if (description != null) {
-      cy.findByTestId("header-cell").realHover();
-    }
   });
-
-  if (description != null) {
-    H.hovercard().should("contain.text", description);
-  }
 }

@@ -44,8 +44,6 @@ describe(
   { tags: ["@external"] },
   () => {
     beforeEach(() => {
-      dropAllTestTables();
-
       H.restore("postgres-writable");
       cy.signInAsAdmin();
       H.activateToken("bleeding-edge");
@@ -406,7 +404,7 @@ describe(
           .should("be.visible");
         SourceReplacement.getReplaceButton().should("be.disabled");
 
-        cy.log("non-admin users cannot access source replacement");
+        cy.log("non-admin users cannot open the data model in data studio");
         cy.signInAsNormalUser();
         cy.visit("/data-studio/data");
         H.main()
@@ -521,8 +519,8 @@ describe(
           cy.wrap(cardId).as("directFilterCardId");
         });
         createQuestionUsingFieldIdRef().then(({ cardId, amountRef }) => {
-          setNestedCardColumnTitle({
-            nestedCardId: cardId,
+          setCardColumnTitle({
+            cardId,
             columnRef: amountRef,
           });
           cy.wrap(cardId).as("directVizSettingsCardId");
@@ -1324,11 +1322,11 @@ function crossfilterClickBehavior(parameterId: string) {
   };
 }
 
-function setNestedCardColumnTitle({
-  nestedCardId,
+function setCardColumnTitle({
+  cardId,
   columnRef,
 }: {
-  nestedCardId: number;
+  cardId: number;
   columnRef: ConcreteFieldReference;
 }) {
   // Legacy column_settings keys store refs with null options. See
@@ -1339,7 +1337,7 @@ function setNestedCardColumnTitle({
     null,
   ] as ConcreteFieldReference;
   const columnKey = JSON.stringify(["ref", legacyRef]);
-  return cy.request("PUT", `/api/card/${nestedCardId}`, {
+  return cy.request("PUT", `/api/card/${cardId}`, {
     visualization_settings: {
       column_settings: {
         [columnKey]: { column_title: "Renamed Column" },
