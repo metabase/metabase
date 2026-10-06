@@ -119,7 +119,7 @@
   (let [{:keys [model id]} (last parent-path)]
     (if (= model "Table")
       {:entity_type "table"
-       :entity_local_id (serdes/*import-table-fk* (mapv :id parent-path))}
+       :entity_local_id (serdes/*import-table-fk* (serdes/table-path->table-ref parent-path))}
       (when-let [etype (parent-model->entity-type model)]
         (when-let [toucan (entity-type->toucan etype)]
           {:entity_type etype :entity_local_id (serdes/*import-fk* id toucan)})))))
@@ -167,7 +167,7 @@
                                  (fn [current _ local-id]
                                    (let [parent (entity-parent-path (:entity_type current) local-id)]
                                      (if (= "table" (:entity_type current))
-                                       (mapv :id parent)
+                                       (serdes/table-path->table-ref parent)
                                        (:id (last parent)))))
                                  :import-with-context
                                  (fn [current _ _] (:entity_local_id (parent-path->entity (pop (serdes/path current)))))}}})

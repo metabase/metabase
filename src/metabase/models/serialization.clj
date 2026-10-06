@@ -1047,6 +1047,11 @@
         id-of               (fn [model] (some #(when (= model (:model %)) (:id %)) table-path))]
     (into [(id-of "Database") (id-of "Schema") (id-of "Table")] (map :id) fields)))
 
+(defn table-path->table-ref
+  "The `[db-name schema table-name]` reference of the Table at `table-path`, with a nil schema for a schemaless Table."
+  [table-path]
+  (subvec (field-path->field-ref table-path) 0 3))
+
 ;;; ## MBQL Fields
 
 (mr/def ::mbql-node
