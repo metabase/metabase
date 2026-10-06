@@ -577,3 +577,20 @@
                    (t2/select-one-fn :collection_id :model/Card :id card-id)))
             (is (t2/exists? :model/DashboardCard :dashboard_id dashboard-id :card_id card-id))
             (is (not (t2/exists? :model/Collection :id old-collection)))))))))
+
+(deftest pull-records-the-table-a-native-query-names-test
+  (testing "a native query's table is matched by name whatever its case"
+    (with-data-apps-sync
+      (let [resources (question-resources)
+            path      (some #(when (str/starts-with? % "cards/") %) (keys resources))
+            parsed    (yaml/parse-string (get resources path))
+            native    (assoc parsed :dataset_query {:database (:database (:dataset_query parsed))
+                                                    :lib/type "mbql/query"
+                                                    :stages   [{:lib/type "mbql.stage/native"
+                                                                :native   "select * from Venues"}]})
+            src       (test-helpers/versioned-source
+                       :trees {"v0" (shop-tree (assoc resources path (yaml/generate-string native)))}
+                       :current "v0")
+            result    (import-at! src "v0" :force? true)]
+        (is (= :success (:status result)) (:message result))
+        (is (= [(mt/id :venues)] (t2/select-one-fn :table_ids :model/DataApp :name "shop")))))))
