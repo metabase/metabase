@@ -52,7 +52,7 @@
 
 (mu/defn non-blob-data-apps
   "DataApps in the read scope without bundles, ordered by display name. Optionally restrict to enabled, error-free apps."
-  [scope :- [:or [:= :all] [:map {:closed true} [:user-id [:maybe ms/PositiveInt]]]]
+  [scope :- [:or [:= :all] [:map {:closed true} [:user-id ms/PositiveInt]]]
    available? :- [:maybe :boolean]]
   (t2/select non-blob-model
              {:order-by [[:display_name :asc]]
