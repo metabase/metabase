@@ -1,6 +1,4 @@
 databaseChangeLog:
-  - logicalFilePath: migrations/065/20260916_data_app_groups.yaml
-
   - changeSet:
       id: v65.2026-09-16T00:00:00
       author: poom
