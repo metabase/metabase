@@ -218,6 +218,32 @@ export type RemoteSyncOutcome =
   | { kind: "push-skipped" }
   | { kind: "merged"; pulled: number; pushed: number; branch: string };
 
+/**
+ * Why a sync task ended in conflict, tagged by `kind`. Stored next to the `conflicts` strings, which
+ * older servers send alone.
+ */
+export type RemoteSyncConflictDetail =
+  | { kind: "remote-changed" }
+  | { kind: "history-rewritten" }
+  | {
+      kind: "entity";
+      /** Serdes model and id; absent for a non-serdes file. */
+      model?: string;
+      entity_id?: string;
+      label: string;
+      path: string;
+    }
+  | { kind: "first-import"; category: string; message: string }
+  | {
+      kind: "deletion";
+      category: string;
+      message: string;
+      /** Set for content models, with the true count and a bounded sample of names. */
+      model?: string;
+      count?: number;
+      names?: (string | null)[];
+    };
+
 export type RemoteSyncTaskUser = {
   id: UserId;
   first_name: string | null;
@@ -240,6 +266,7 @@ export type RemoteSyncTask = {
   /** Absent on auto-imports, which have no initiating user. */
   initiated_by_user?: RemoteSyncTaskUser | null;
   conflicts?: string[];
+  conflict_details?: RemoteSyncConflictDetail[] | null;
 };
 
 export type RemoteSyncConflictVariant =

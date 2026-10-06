@@ -1522,8 +1522,11 @@ serdes/meta:
               "Should return backward-compatible :conflicts set")
           (is (seq (:conflict-details result))
               "Should include detailed conflict information")
-          (is (some #(= :library-conflict (:type %)) (:conflict-details result))
-              "Should have library-conflict type in details"))))))
+          (is (= [{:kind     "first-import"
+                   :category "Library"
+                   :message  "Import contains Library but local instance has an unsynced Library collection"}]
+                 (:conflict-details result))
+              "Should have a first-import Library conflict in details"))))))
 
 (deftest remove-unsynced!-preserves-exploration-documents-test
   (testing "remove-unsynced! does not delete local exploration documents in remote-synced collections (UXW-4091)"
@@ -1557,7 +1560,7 @@ serdes/meta:
               result (impl/import! (source.p/snapshot mock-source) task-id)]
           (is (= :conflict (:status result)))
           (is (contains? (:conflicts result) "Transforms"))
-          (is (some #(= :transforms-conflict (:type %)) (:conflict-details result))))))))
+          (is (some #(= ["first-import" "Transforms"] ((juxt :kind :category) %)) (:conflict-details result))))))))
 
 (deftest import!-snippets-conflict-test
   (testing "import! detects snippets conflict when local has snippets and import has snippets"
@@ -1571,7 +1574,7 @@ serdes/meta:
               result (impl/import! (source.p/snapshot mock-source) task-id)]
           (is (= :conflict (:status result)))
           (is (contains? (:conflicts result) "Snippets"))
-          (is (some #(= :snippets-conflict (:type %)) (:conflict-details result))))))))
+          (is (some #(= ["first-import" "Snippets"] ((juxt :kind :category) %)) (:conflict-details result))))))))
 
 (deftest transforms-namespace-collection-conflict-test
   (testing "import with transforms-namespace Collection + local unsynced transforms-namespace Collection = conflict"
@@ -1587,7 +1590,7 @@ serdes/meta:
                 result (impl/import! (source.p/snapshot mock-source) task-id)]
             (is (= :conflict (:status result)))
             (is (contains? (:conflicts result) "Transforms"))
-            (is (some #(= :transforms-conflict (:type %)) (:conflict-details result)))))))))
+            (is (some #(= ["first-import" "Transforms"] ((juxt :kind :category) %)) (:conflict-details result)))))))))
 
 (deftest snippets-namespace-collection-conflict-test
   (testing "import with snippets-namespace Collection + local unsynced snippets-namespace Collection = conflict"
@@ -1603,7 +1606,7 @@ serdes/meta:
                 result (impl/import! (source.p/snapshot mock-source) task-id)]
             (is (= :conflict (:status result)))
             (is (contains? (:conflicts result) "Snippets"))
-            (is (some #(= :snippets-conflict (:type %)) (:conflict-details result)))))))))
+            (is (some #(= ["first-import" "Snippets"] ((juxt :kind :category) %)) (:conflict-details result)))))))))
 
 (deftest no-conflict-when-namespace-collections-synced-test
   (testing "no conflict when local namespace collections are fully tracked in RemoteSyncObject"
@@ -2006,6 +2009,124 @@ serdes/meta:
                (t2/select-one [:model/RemoteSyncTask :version :conflicts] :id task-id))
             "the task row records the remote version it conflicted against and the cause")
         (is (= "base-B" (remote-sync.task/last-version)))))))
+
+;;; ------------------------------- conflict_details on the task row (GHY-4817) -------------------------------
+
+(defn- stored-conflicts
+  "The `:conflicts` and `:conflict_details` the task row with `task-id` was left with."
+  [task-id]
+  (into {} (t2/select-one [:model/RemoteSyncTask :conflicts :conflict_details] :id task-id)))
+
+(def ^:private entity-conflict
+  "A three-way-merge conflict on Card `abc` named \"Card A\"."
+  {:key    [["Card" "abc"]]
+   :ours   {:path "collections/a.yaml" :content "name: Card A\nentity_id: abc\n"}
+   :theirs {:path "collections/a.yaml" :content "name: Card A\nentity_id: abc\ndescription: remote\n"}})
+
+(deftest conflict-details-remote-changed-test
+  (testing "a diverged plain export stores a remote-changed detail next to its token"
+    (mt/with-temp [:model/RemoteSyncTask {task-id :id} {:sync_task_type "export"}]
+      (mt/with-dynamic-fn-redefs [remote-sync.task/last-version (constantly "base-B")]
+        (impl/handle-task-result! (impl/export! (export-test-snapshot "remote-R") task-id "msg"
+                                                :source (export-test-source)
+                                                :base-snapshot (export-test-snapshot "base-B"))
+                                  task-id))
+      (is (= {:conflicts        ["remote-changed"]
+              :conflict_details [{:kind "remote-changed"}]}
+             (stored-conflicts task-id))))))
+
+(deftest conflict-details-history-rewritten-test
+  (let [conflicts ["Remote history was rewritten (force-push or rebase); cannot merge automatically."]]
+    (testing "a merge export with no merge base stores a history-rewritten detail"
+      (mt/with-temp [:model/RemoteSyncTask {task-id :id} {:sync_task_type "export"}]
+        (mt/with-dynamic-fn-redefs [remote-sync.task/last-version (constantly "base-B")]
+          (impl/handle-task-result! (impl/export! (export-test-snapshot "remote-R") task-id "msg"
+                                                  :merge? true
+                                                  :source (export-test-source)
+                                                  :base-snapshot nil)
+                                    task-id))
+        (is (= {:conflicts        conflicts
+                :conflict_details [{:kind "history-rewritten"}]}
+               (stored-conflicts task-id)))))
+    (testing "a merge import with no merge base stores a history-rewritten detail"
+      (mt/with-temp [:model/RemoteSyncTask {task-id :id} {:sync_task_type "import"}]
+        (impl/handle-task-result! (impl/import! (export-test-snapshot "remote-R") task-id
+                                                :merge? true
+                                                :base-snapshot nil)
+                                  task-id)
+        (is (= {:conflicts        conflicts
+                :conflict_details [{:kind "history-rewritten"}]}
+               (stored-conflicts task-id)))))))
+
+(deftest conflict-details-entity-test
+  (let [expected {:conflicts        ["Card A (collections/a.yaml)"]
+                  :conflict_details [{:kind      "entity"
+                                      :model     "Card"
+                                      :entity_id "abc"
+                                      :label     "Card A"
+                                      :path      "collections/a.yaml"}]}]
+    (mt/with-dynamic-fn-redefs [source/compute-merge (fn [& _]
+                                                       {:merged    []
+                                                        :conflicts [entity-conflict]
+                                                        :summary   {:added 0 :updated 0 :removed 0}})]
+      (testing "a merge export with a same-entity conflict stores an entity detail"
+        (mt/with-temp [:model/RemoteSyncTask {task-id :id} {:sync_task_type "export"}]
+          (mt/with-dynamic-fn-redefs [remote-sync.task/last-version    (constantly "base-B")
+                                      spec/extract-entities-for-export (constantly [{:dummy true}])]
+            (impl/handle-task-result! (impl/export! (export-test-snapshot "remote-R") task-id "msg"
+                                                    :merge? true
+                                                    :source (export-test-source)
+                                                    :base-snapshot (export-test-snapshot "base-B"))
+                                      task-id))
+          (is (= expected (stored-conflicts task-id)))))
+      (testing "a merge import with a same-entity conflict stores an entity detail"
+        (mt/with-temp [:model/RemoteSyncTask {task-id :id} {:sync_task_type "import"}]
+          (impl/handle-task-result! (impl/import! (export-test-snapshot "remote-R") task-id
+                                                  :merge? true
+                                                  :base-snapshot (export-test-snapshot "base-B"))
+                                    task-id)
+          (is (= expected (stored-conflicts task-id))))))))
+
+(deftest conflict-details-first-import-test
+  (testing "a first import blocked by an unsynced local Library stores a first-import detail"
+    (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "import" :initiated_by (mt/user->id :rasta)})]
+      (t2/delete! :model/Collection :entity_id collection/library-entity-id)
+      (mt/with-temp [:model/Collection _ {:name      "Test Library Collection"
+                                          :type      "library"
+                                          :entity_id collection/library-entity-id
+                                          :location  "/"}]
+        (let [mock-source (test-helpers/create-mock-source
+                           :initial-files {"main" {"collections/main/test_collection/test_collection.yaml"
+                                                   (test-helpers/generate-collection-yaml collection/library-entity-id "Another Library")}})]
+          (impl/handle-task-result! (impl/import! (source.p/snapshot mock-source) task-id) task-id)
+          (is (= {:conflicts        ["Library"]
+                  :conflict_details [{:kind     "first-import"
+                                      :category "Library"
+                                      :message  "Import contains Library but local instance has an unsynced Library collection"}]}
+                 (stored-conflicts task-id))))))))
+
+(deftest conflict-details-deletion-test
+  (testing "an import that would delete unsynced local content stores a deletion detail with its count and names"
+    (mt/with-temp [:model/Collection {coll1-id :id} {:name "Collection 1" :is_remote_synced true :entity_id "test-collection-1xxxx" :location "/"}
+                   :model/Collection {coll2-id :id} {:name "Collection 2" :is_remote_synced true :entity_id "test-collection-2xxxx" :location "/"}
+                   :model/Card _ {:name "Card 1" :collection_id coll1-id :entity_id "test-card-1xxxxxxxxxx"}
+                   :model/Card _ {:name "Card 2" :collection_id coll2-id :entity_id "test-card-2xxxxxxxxxx"}
+                   :model/RemoteSyncTask {task-id :id} {:sync_task_type "import"}]
+      (let [mock-source (test-helpers/create-mock-source
+                         :initial-files {"main" {"collections/main/test_collection_1/test_collection_1.yaml"
+                                                 (test-helpers/generate-collection-yaml "test-collection-1xxxx" "Test Collection 1")
+                                                 "collections/main/test_collection_1/test_card_1.yaml"
+                                                 (test-helpers/generate-card-yaml "test-card-1xxxxxxxxxx" "Test Card 1" "test-collection-1xxxx")}})]
+        (impl/handle-task-result! (impl/import! (source.p/snapshot mock-source) task-id :force? true :force-deletion? false)
+                                  task-id)
+        (is (= {:conflicts        ["Card"]
+                :conflict_details [{:kind     "deletion"
+                                    :category "Card"
+                                    :model    "Card"
+                                    :count    1
+                                    :names    ["Card 2"]
+                                    :message  "Import would delete 1 unsynced local Card entity"}]}
+               (stored-conflicts task-id)))))))
 
 (deftest export!-force-overwrites-without-merging-test
   (testing "force? overwrites the remote wholesale (full export) even when it advanced — no merge"

@@ -236,6 +236,12 @@
      :deletion-conflicts     (into (spec/check-deletion-conflicts imported-data)
                                    (spec/check-content-deletion-conflicts imported-data))}))
 
+(defn- import-conflict-detail
+  "A conflict map from [[get-conflicts]] as a `kind` (`\"first-import\"` or `\"deletion\"`) conflict detail (see
+  `:metabase-enterprise.remote-sync.schema/remote-sync-task.conflict-detail`)."
+  [kind conflict]
+  (assoc (select-keys conflict [:category :message :model :count :names]) :kind kind))
+
 (def app-db-batch-size
   "Max rows per select/update batch, to keep IN-lists and CASE expressions bounded."
   500)
@@ -532,10 +538,11 @@
     (if (seq conflicts)
       (let [labels (mapv remote-sync.merge/conflict-label conflicts)]
         (log/infof "Pull merge conflict on %d entit(ies)" (count labels))
-        {:status    :conflict
-         :version   (source.p/version snapshot)
-         :conflicts labels
-         :message   "Import blocked: the same content was changed both locally and on the remote branch."})
+        {:status           :conflict
+         :version          (source.p/version snapshot)
+         :conflicts        labels
+         :conflict-details (mapv remote-sync.merge/conflict-detail conflicts)
+         :message          "Import blocked: the same content was changed both locally and on the remote branch."})
       ;; Capture the local (un-pushed) changes before loading; the clean merge guarantees they are disjoint
       ;; from the remote changes, so restoring them reproduces exactly the local diff vs remote. Restore +
       ;; finalize! run inside the load's transaction so a crash can't leave the dirty markers overwritten.
@@ -594,10 +601,12 @@
                                                                   first-import?))]
                                    (cond-> []
                                      (and first-import? (not force?))
-                                     (into (:first-import-conflicts @conflicts))
+                                     (into (map #(import-conflict-detail "first-import" %))
+                                           (:first-import-conflicts @conflicts))
 
                                      (not force-deletion?)
-                                     (into (:deletion-conflicts @conflicts)))))
+                                     (into (map #(import-conflict-detail "deletion" %))
+                                           (:deletion-conflicts @conflicts)))))
             incremental-plan   (delay (incremental-import-plan snapshot last-imported-version))
             dirty?             (delay (remote-sync.object/dirty?))
             result
@@ -607,10 +616,11 @@
               (cond
                 ;; No safe merge base (no prior sync, or base orphaned by a force-push/rebase) — can't 3-way merge.
                 (nil? base-snapshot)
-                {:status    :conflict
-                 :version   snapshot-version
-                 :conflicts ["Remote history was rewritten (force-push or rebase); cannot merge automatically."]
-                 :message   "Cannot merge: the remote branch history was rewritten. Discard local changes and pull, or push to a new branch."}
+                {:status           :conflict
+                 :version          snapshot-version
+                 :conflicts        ["Remote history was rewritten (force-push or rebase); cannot merge automatically."]
+                 :conflict-details [{:kind "history-rewritten"}]
+                 :message          "Cannot merge: the remote branch history was rewritten. Discard local changes and pull, or push to a new branch."}
 
                 ;; Remote hasn't advanced past the merge base — nothing to fold in; keep local changes dirty.
                 (= (source.p/version base-snapshot) snapshot-version)
@@ -744,11 +754,12 @@
     (if (seq conflicts)
       (let [labels (mapv remote-sync.merge/conflict-label conflicts)]
         (log/infof "Export merge conflict on %d entit(ies)" (count labels))
-        {:status        :conflict
-         :version       (source.p/version snapshot)
-         :conflicts     labels
-         :merge-summary summary
-         :message       "Export blocked: the same content was changed both locally and on the remote branch."})
+        {:status           :conflict
+         :version          (source.p/version snapshot)
+         :conflicts        labels
+         :conflict-details (mapv remote-sync.merge/conflict-detail conflicts)
+         :merge-summary    summary
+         :message          "Export blocked: the same content was changed both locally and on the remote branch."})
       (let [[_ version] (commit-staged! snapshot message
                                         (fn [commit]
                                           (source/replace-managed-files! commit snapshot) ; merged set replaces the managed files wholesale
@@ -1216,10 +1227,11 @@
             (and diverged? merge?)
             (cond
               (nil? base-snapshot)
-              {:status    :conflict
-               :version   remote-version
-               :conflicts ["Remote history was rewritten (force-push or rebase); cannot merge automatically."]
-               :message   "Cannot merge: the remote branch history was rewritten. Re-import then export, or force the export to overwrite."}
+              {:status           :conflict
+               :version          remote-version
+               :conflicts        ["Remote history was rewritten (force-push or rebase); cannot merge automatically."]
+               :conflict-details [{:kind "history-rewritten"}]
+               :message          "Cannot merge: the remote branch history was rewritten. Re-import then export, or force the export to overwrite."}
 
               :else
               (let [targets (spec/exportable-entities)]
@@ -1228,12 +1240,12 @@
                                 :total (spec/exportable-entity-count targets))))
 
             diverged? ;; and not merge? option
-            {:status    :conflict
-             :version   remote-version
-             ;; The task row keeps only `:conflicts`, so a stable token is how a caller learns why it stopped;
-             ;; clients own the wording.
-             :conflicts ["remote-changed"]
-             :message   "The remote branch has changed since your last sync. Choose how to proceed."}
+            {:status           :conflict
+             :version          remote-version
+             ;; A stable token rather than a sentence, so a caller learns why it stopped; clients own the wording.
+             :conflicts        ["remote-changed"]
+             :conflict-details [{:kind "remote-changed"}]
+             :message          "The remote branch has changed since your last sync. Choose how to proceed."}
 
             ;; There's nothing to export: no dirty rows and no stale files.
             (and (empty? @dirty-rows) (empty? @disabled-files))
@@ -1384,8 +1396,8 @@
   Takes a result map with a :status key (either :success, :conflict, or :error) and optional :message key, a
   RemoteSyncTask ID, and an optional branch name. On success, updates the remote-sync-branch setting (if branch
   provided), marks the task complete, and invalidates the remote changes cache. On conflict, sets the version and
-  stores the conflicts. On error, marks the task as failed with the error message. For any other status, marks the
-  task as failed with 'Unexpected Error'.
+  stores the conflicts and their `:conflict-details`. On error, marks the task as failed with the error message. For
+  any other status, marks the task as failed with 'Unexpected Error'.
 
   If the task has already been terminated (`ended_at` is set, e.g., because an admin cancelled it
   via POST /current-task/cancel while the virtual thread was still running), this function logs a
@@ -1417,7 +1429,7 @@
                              (remote-sync.task/complete-sync-task! task-id (:outcome result)))
                   :conflict (do
                               (remote-sync.task/set-version! task-id (:version result))
-                              (remote-sync.task/conflict-sync-task! task-id (:conflicts result)))
+                              (remote-sync.task/conflict-sync-task! task-id (:conflicts result) (:conflict-details result)))
                   :error (remote-sync.task/fail-sync-task! task-id (:message result))
                   (remote-sync.task/fail-sync-task! task-id "Unexpected Error"))
                 true))))]

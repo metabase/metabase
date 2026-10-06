@@ -5,10 +5,12 @@
    [java-time.api :as t]
    [metabase-enterprise.remote-sync.db :as remote-sync.db]
    [metabase-enterprise.remote-sync.models.remote-sync-task :as rst]
+   [metabase-enterprise.remote-sync.schema :as remote-sync.schema]
    [metabase-enterprise.remote-sync.test-helpers :as th]
    [metabase.models.interface :as mi]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
+   [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -102,6 +104,24 @@
       (let [completed-task (t2/select-one :model/RemoteSyncTask :id (:id task))]
         (is (= {:kind "pulled" :count 12 :branch "main"} (:outcome completed-task)))
         (is (nil? (:error_message completed-task)))))))
+
+(deftest conflict-sync-task-stores-conflict-details-test
+  (testing "stores every conflict-detail kind next to the conflict strings, round-tripped as JSON and valid against the schema"
+    (let [details [{:kind "remote-changed"}
+                   {:kind "history-rewritten"}
+                   {:kind "entity" :model "Card" :entity_id "abc" :label "Card A" :path "collections/a.yaml"}
+                   {:kind "entity" :label "transforms/lib.py" :path "transforms/lib.py"}
+                   {:kind "first-import" :category "Library" :message "Import contains Library"}
+                   {:kind "deletion" :category "Transforms" :message "Import would delete 1 unsynced local Transforms entity"}
+                   {:kind "deletion" :category "Card" :model "Card" :count 2 :names ["A" "B"] :message "Import would delete 2"}]
+          task    (rst/create-sync-task! "export" (mt/user->id :rasta))]
+      (is (every? #(mr/validate ::remote-sync.schema/remote-sync-task.conflict-detail %) details))
+      (rst/conflict-sync-task! (:id task) ["some conflict"] details)
+      (is (= {:conflicts ["some conflict"] :conflict_details details}
+             (into {} (t2/select-one [:model/RemoteSyncTask :conflicts :conflict_details] :id (:id task)))))))
+  (testing "the schema rejects an unknown kind and a payload field a kind does not carry"
+    (is (not (mr/validate ::remote-sync.schema/remote-sync-task.conflict-detail {:kind "nope"})))
+    (is (not (mr/validate ::remote-sync.schema/remote-sync-task.conflict-detail {:kind "remote-changed" :label "x"})))))
 
 ;;; ------------------------------------------------------------------------------------------------
 ;;; Tests for fail-sync-task!
@@ -521,7 +541,7 @@
       (testing "Ignores a conflict task even though it records the version it conflicted against"
         (let [conflict-task (rst/create-sync-task! "import" (mt/user->id :rasta))]
           (rst/set-version! (:id conflict-task) "version 1.5")
-          (rst/conflict-sync-task! (:id conflict-task) ["some conflict"])
+          (rst/conflict-sync-task! (:id conflict-task) ["remote-changed"] [{:kind "remote-changed"}])
           (is (= "version 1" (rst/last-version)))))
       (testing "Returns a newer successful task's version"
         (let [new-task (rst/create-sync-task! "import" (mt/user->id :rasta))]

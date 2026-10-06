@@ -25,8 +25,9 @@
 (derive :model/RemoteSyncTask :metabase/model)
 
 (t2/deftransforms :model/RemoteSyncTask
-  {:conflicts mi/transform-json
-   :outcome   mi/transform-json})
+  {:conflicts        mi/transform-json
+   :conflict_details mi/transform-json
+   :outcome          mi/transform-json})
 
 (declare current-task)
 
@@ -295,13 +296,16 @@
 (defn conflict-sync-task!
   "Marks a sync task as having conflicts.
 
-  Takes the ID of the sync task and a collection of conflict category names (`import!` reports them as a
-  set). Conflicts are automatically serialized to JSON via the model transform.
+  Takes the ID of the sync task, a collection of conflict strings (`import!` reports category names as a
+  set), and the same conflicts as `conflict-details` maps tagged by `:kind` (see
+  `:metabase-enterprise.remote-sync.schema/remote-sync-task.conflict-detail`). Both are serialized to JSON via the
+  model transform.
 
   Returns the number of rows updated (should be 1 if successful)."
-  [task-id conflicts]
+  [task-id conflicts conflict-details]
   (remote-sync.db/end-task! task-id
-                            {:conflicts (vec conflicts)}))
+                            {:conflicts        (vec conflicts)
+                             :conflict_details (vec conflict-details)}))
 
 ;;; ------------------------------------------- Hydration -------------------------------------------
 

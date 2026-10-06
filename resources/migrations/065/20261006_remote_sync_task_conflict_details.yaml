@@ -1,0 +1,22 @@
+## Add conflict_details to remote_sync_task: a structured, kind-tagged twin of the conflicts strings (GHY-4817)
+
+databaseChangeLog:
+
+  - changeSet:
+      id: v65.2026-10-06T00:00:00
+      author: escherize
+      comment: Add remote_sync_task.conflict_details, a JSON list of conflict maps tagged by kind (e.g. [{"kind":"remote-changed"}]) stored next to the conflicts strings
+      changes:
+        - addColumn:
+            tableName: remote_sync_task
+            columns:
+              - column:
+                  name: conflict_details
+                  type: ${text.type}
+                  remarks: JSON list of the task's conflicts, each a map tagged by kind; null unless the task ended in conflict
+                  constraints:
+                    nullable: true
+      rollback:
+        - dropColumn:
+            tableName: remote_sync_task
+            columnName: conflict_details

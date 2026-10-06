@@ -158,6 +158,26 @@
              :ours   {:path "collections/x.yaml" :content "not-an-entity"}
              :theirs {:path "collections/x.yaml" :content "also-not"}})))))
 
+(deftest ^:parallel conflict-detail-test
+  (testing "conflict-detail carries the serdes model and id, the entity's name as label, and the path"
+    (is (= {:kind "entity" :model "Card" :entity_id "A" :label "bar" :path "collections/bar.yaml"}
+           (remote-sync.merge/conflict-detail
+            {:key    [["Card" "A"]]
+             :ours   (card "A" "bar")
+             :theirs (card "A" "baz")}))))
+  (testing "falls back to model + id as the label when the content has no name"
+    (is (= {:kind "entity" :model "Card" :entity_id "A" :label "Card A" :path "collections/a.yaml"}
+           (remote-sync.merge/conflict-detail
+            {:key    [["Card" "A"]]
+             :ours   {:path "collections/a.yaml" :content "not-an-entity"}
+             :theirs {:path "collections/a.yaml" :content "also-not"}}))))
+  (testing "a path-fallback key has no model or entity_id"
+    (is (= {:kind "entity" :label "collections/x.yaml" :path "collections/x.yaml"}
+           (remote-sync.merge/conflict-detail
+            {:key    [::remote-sync.merge/by-path "collections/x.yaml"]
+             :ours   {:path "collections/x.yaml" :content "not-an-entity"}
+             :theirs {:path "collections/x.yaml" :content "also-not"}})))))
+
 (deftest ^:parallel force-push-casualties-deleted-test
   (testing "GHY-3917: a force push reports remote content it would discard"
     (testing "remote-only entity (added on remote, absent locally) -> deleted"

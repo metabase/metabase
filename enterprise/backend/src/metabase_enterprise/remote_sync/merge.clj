@@ -84,21 +84,45 @@
   [a b]
   (= a b))
 
-(defn conflict-label
-  "Renders a single conflict from [[three-way-merge]] into a human-readable string for display, e.g.
-  \"Card A (collections/foo/bar.yaml)\". Prefers the entity's name (parsed from the serialized content),
-  falling back to its serdes model + id when there's no name."
+(defn- conflict-parts
+  "The pieces [[conflict-label]] and [[conflict-detail]] render a conflict from: the entity's `:name` (parsed from
+  the serialized content), its `:path`, its serdes `:model` and `:id` (nil for a non-serdes file), and a
+  `:descriptor` to show when there's no name."
   [{:keys [key ours theirs]}]
   (let [content    (or (:content ours) (:content theirs))
         entity     (try (yaml/parse-string content) (catch Exception _ nil))
         path       (or (:path ours) (:path theirs))
         ;; identity keys are [[model id] ...]; the path-fallback key is [::by-path path] for a non-serdes
         ;; file — don't destructure the path string into a "model"/"id" (which yields garbage like "s o").
-        descriptor (if (= ::by-path (first key))
-                     (or path "unknown file")
-                     (let [[model id] (last key)] (str model " " id)))]
-    (cond-> (or (:name entity) descriptor)
+        by-path?   (= ::by-path (first key))
+        [model id] (when-not by-path? (last key))]
+    {:name       (:name entity)
+     :path       path
+     :model      model
+     :id         id
+     :descriptor (if by-path?
+                   (or path "unknown file")
+                   (str model " " id))}))
+
+(defn conflict-label
+  "Renders a single conflict from [[three-way-merge]] into a human-readable string for display, e.g.
+  \"Card A (collections/foo/bar.yaml)\". Prefers the entity's name (parsed from the serialized content),
+  falling back to its serdes model + id when there's no name."
+  [conflict]
+  (let [{entity-name :name, :keys [path descriptor]} (conflict-parts conflict)]
+    (cond-> (or entity-name descriptor)
       (and path (not= descriptor path)) (str " (" path ")"))))
+
+(defn conflict-detail
+  "Renders a single conflict from [[three-way-merge]] as an `\"entity\"` conflict detail (see
+  `:metabase-enterprise.remote-sync.schema/remote-sync-task.conflict-detail`): the entity's name (or serdes
+  model + id) as `:label`, its file `:path`, and, for a serdes file, its `:model` and `:entity_id`."
+  [conflict]
+  (let [{entity-name :name, :keys [path model id descriptor]} (conflict-parts conflict)]
+    (cond-> {:kind  "entity"
+             :label (or entity-name descriptor)
+             :path  path}
+      model (assoc :model model :entity_id id))))
 
 (defn- merge-indexed
   "[[three-way-merge]] over sides already indexed by [[index-by-key]]."

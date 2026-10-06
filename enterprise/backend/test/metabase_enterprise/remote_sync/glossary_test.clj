@@ -178,7 +178,7 @@
               result      (impl/import! (source.p/snapshot mock-source) task-id)]
           (is (= :conflict (:status result)))
           (is (contains? (:conflicts result) "Snippets"))
-          (is (some #(= :snippets-conflict (:type %)) (:conflict-details result))))))))
+          (is (some #(= ["first-import" "Snippets"] ((juxt :kind :category) %)) (:conflict-details result))))))))
 
 ;;; ------------------------------------------- Export Tests -------------------------------------------
 
@@ -322,7 +322,7 @@
                (with-rso! entry "create")
                (let [result (run-import! (source.p/snapshot mock) :force? true :force-deletion? false)]
                  (is (= :conflict (:status result)))
-                 (is (some #(= :glossary-deletion-conflict (:type %)) (:conflict-details result)))
+                 (is (some #(= ["deletion" "Glossary"] ((juxt :kind :category) %)) (:conflict-details result)))
                  (is (t2/exists? :model/Glossary :id (:id entry)))))
              (testing "an already-synced local term absent from the import is deleted"
                (t2/update! :model/RemoteSyncObject :model_type "Glossary" :model_id (:id entry) {:status "synced"})
