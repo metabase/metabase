@@ -26,6 +26,11 @@ const subComponents: InteractiveQuestionComponents = {
       getWindow()?.METABASE_EMBEDDING_SDK_BUNDLE?.InteractiveQuestion
         ?.FilterDropdown,
   ),
+  RefreshButton: createComponent(
+    () =>
+      getWindow()?.METABASE_EMBEDDING_SDK_BUNDLE?.InteractiveQuestion
+        ?.RefreshButton,
+  ),
   ResetButton: createComponent(
     () =>
       getWindow()?.METABASE_EMBEDDING_SDK_BUNDLE?.InteractiveQuestion
