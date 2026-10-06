@@ -3,6 +3,7 @@ import {
   ORDERS_DASHBOARD_DASHCARD_ID,
   ORDERS_DASHBOARD_ID,
 } from "e2e/support/cypress_sample_instance_data";
+import { dayjs } from "metabase/dayjs";
 
 import * as DateFilter from "../native/helpers/e2e-date-filter-helpers";
 
@@ -15,6 +16,7 @@ describe("scenarios > dashboard > filters > date", () => {
   });
 
   it("should work when set through the filter widget", () => {
+    cy.signInAsNormalUser();
     visitOrdersDashboardInEditMode();
 
     // Add and connect every single available date filter type
@@ -50,6 +52,56 @@ describe("scenarios > dashboard > filters > date", () => {
         cy.wait(`@dashcardQuery${ORDERS_DASHBOARD_DASHCARD_ID}`);
       },
     );
+
+    const allOptionsWidget = () => H.filterWidget().eq(4);
+
+    cy.log("Round the relative date range preview (metabase#22482)");
+    allOptionsWidget().click();
+    H.popover().within(() => {
+      cy.findByText("Relative date range…").click();
+      cy.findByLabelText("Interval").clear().type(15);
+      cy.findByRole("textbox", { name: "Unit" }).click();
+    });
+    H.selectDropdown().findByText("months").click();
+
+    const expectedRange = getFormattedRange(
+      dayjs().startOf("month").add(-15, "month"),
+      dayjs().add(-1, "month").endOf("month"),
+    );
+    H.popover().findByText(expectedRange).should("be.visible");
+    cy.realPress("Escape");
+    H.popover({ skipVisibilityCheck: true }).should("not.exist");
+
+    cy.log("Remove the last excluded hour (metabase#27579)");
+    allOptionsWidget().click();
+    H.popover().within(() => {
+      cy.findByText("Exclude…").click();
+      cy.findByText("Hours of the day…").click();
+      cy.findByText("Select all").click();
+      cy.findByLabelText("12 AM").should("be.checked");
+
+      cy.findByText("Select all").click();
+      cy.findByLabelText("12 AM").should("not.be.checked");
+    });
+    cy.realPress("Escape");
+    H.popover({ skipVisibilityCheck: true }).should("not.exist");
+
+    cy.log(
+      "Block an exclude filter with all options selected (metabase#24235)",
+    );
+    allOptionsWidget().click();
+    H.popover().within(() => {
+      cy.findByText("Exclude…").click();
+      cy.findByText("Days of the week…").click();
+      cy.findByText("Select all").click();
+      cy.findByText("Add filter").click();
+    });
+
+    allOptionsWidget().click();
+    H.popover().within(() => {
+      cy.findByText("Select all").click();
+      cy.button("Update filter").should("be.disabled");
+    });
   });
 
   it("should support being required", () => {
@@ -145,6 +197,10 @@ describe("scenarios > dashboard > filters > date", () => {
     cy.url().should("match", /\/dashboard\/\d+\?.*date=exclude-months-Jan/);
   });
 });
+
+function getFormattedRange(start, end) {
+  return `${start.format("MMM D, YYYY")} – ${end.format("MMM D, YYYY")}`;
+}
 
 function visitOrdersDashboardInEditMode() {
   H.visitDashboard(ORDERS_DASHBOARD_ID);

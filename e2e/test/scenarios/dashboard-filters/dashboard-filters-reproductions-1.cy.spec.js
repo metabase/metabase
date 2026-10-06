@@ -8,7 +8,6 @@ import {
   ORDERS_DASHBOARD_ID,
   ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
-import { dayjs } from "metabase/dayjs";
 import {
   createMockDashboardCard,
   createMockParameter,
@@ -857,47 +856,6 @@ describe("issue 21528", () => {
   });
 });
 
-describe("issue 22482", () => {
-  function getFormattedRange(start, end) {
-    return `${start.format("MMM D, YYYY")} – ${end.format("MMM D, YYYY")}`;
-  }
-
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-
-    H.visitDashboard(ORDERS_DASHBOARD_ID);
-
-    H.editDashboard();
-    H.setFilter("Date picker", "All Options");
-
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Select…").click();
-    H.popover().contains("Created At").eq(0).click();
-
-    H.saveDashboard();
-
-    H.filterWidget().click();
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Relative date range…").click();
-  });
-
-  it("should round relative date range (metabase#22482)", () => {
-    cy.findByLabelText("Interval").clear().type(15);
-    cy.findByRole("textbox", { name: "Unit" }).click();
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("months").click();
-
-    const expectedRange = getFormattedRange(
-      dayjs().startOf("month").add(-15, "month"),
-      dayjs().add(-1, "month").endOf("month"),
-    );
-
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText(expectedRange);
-  });
-});
-
 describe("issue 22788", () => {
   const ccName = "Custom Category";
   const ccDisplayName = "Products.Custom Category";
@@ -1003,77 +961,6 @@ describe("issue 22788", () => {
     cy.location("search").should("eq", "?my_filter_text=Gizmo");
     cy.reload();
     assertFilteredByGizmo();
-  });
-});
-
-describe("issue 24235", () => {
-  const questionDetails = {
-    query: { "source-table": PRODUCTS_ID, limit: 5 },
-  };
-
-  const parameter = {
-    id: "727b06c1",
-    name: "Date Filter",
-    sectionId: "date",
-    slug: "date_filter",
-    type: "date/all-options",
-  };
-
-  const parameterTarget = [
-    "dimension",
-    ["field", PRODUCTS.CREATED_AT, { "temporal-unit": "month" }],
-  ];
-
-  const dashboardDetails = { parameters: [parameter] };
-
-  const mapParameterToDashboardCard = ({ id, card_id, dashboard_id }) => {
-    cy.request("PUT", `/api/dashboard/${dashboard_id}`, {
-      dashcards: [
-        {
-          id,
-          card_id,
-          row: 0,
-          col: 0,
-          size_x: 24,
-          size_y: 10,
-          parameter_mappings: [
-            {
-              card_id,
-              parameter_id: parameter.id,
-              target: parameterTarget,
-            },
-          ],
-        },
-      ],
-    });
-  };
-
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-  });
-
-  it("should not allow to add a filter when all exclude options are selected (metabase#24235)", () => {
-    H.createQuestionAndDashboard({ questionDetails, dashboardDetails }).then(
-      ({ body: { id, card_id, dashboard_id } }) => {
-        mapParameterToDashboardCard({ id, card_id, dashboard_id });
-        H.visitDashboard(dashboard_id);
-      },
-    );
-
-    H.filterWidget().contains(parameter.name).click();
-    H.popover().within(() => {
-      cy.findByText("Exclude…").click();
-      cy.findByText("Days of the week…").click();
-      cy.findByText("Select all").click();
-      cy.findByText("Add filter").click();
-    });
-
-    H.filterWidget().click();
-    H.popover().within(() => {
-      cy.findByText("Select all").click();
-      cy.button("Update filter").should("be.disabled");
-    });
   });
 });
 

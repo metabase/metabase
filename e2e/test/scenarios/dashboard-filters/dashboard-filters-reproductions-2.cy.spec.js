@@ -22,31 +22,6 @@ const {
   PEOPLE_ID,
 } = SAMPLE_DATABASE;
 
-describe("issue 27579", () => {
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsNormalUser();
-  });
-
-  it("should be able to remove the last exclude hour option (metabase#27579)", () => {
-    H.visitDashboard(ORDERS_DASHBOARD_ID);
-    H.editDashboard();
-    H.setFilter("Date picker", "All Options");
-    H.selectDashboardFilter(H.getDashboardCard(), "Created At");
-    H.saveDashboard();
-    H.filterWidget().click();
-    H.popover().within(() => {
-      cy.findByText("Exclude…").click();
-      cy.findByText("Hours of the day…").click();
-      cy.findByText("Select all").click();
-      cy.findByLabelText("12 AM").should("be.checked");
-
-      cy.findByText("Select all").click();
-      cy.findByLabelText("12 AM").should("not.be.checked");
-    });
-  });
-});
-
 describe("issue 32804", () => {
   const question1Details = {
     name: "Q1",
