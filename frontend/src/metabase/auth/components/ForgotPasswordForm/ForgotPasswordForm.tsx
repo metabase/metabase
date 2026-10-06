@@ -12,7 +12,7 @@ import {
 } from "metabase/forms";
 import { useSelector } from "metabase/redux";
 import { getApplicationName } from "metabase/selectors/whitelabel";
-import { Box, Flex, Stack } from "metabase/ui";
+import { Flex, Stack, Title } from "metabase/ui";
 import * as Errors from "metabase/utils/errors";
 
 import type { ForgotPasswordData } from "../../types";
@@ -46,14 +46,13 @@ export const ForgotPasswordForm = ({
 
   return (
     <div>
-      <Box
+      <Title
+        order={1}
+        size="h3"
         c="text-primary"
-        fz="xl"
-        fw={700}
-        lh="1.5rem"
         ta="center"
         mb="xl"
-      >{t`Forgot password`}</Box>
+      >{t`Forgot password`}</Title>
       <FormProvider
         initialValues={initialValues}
         validationSchema={FORGOT_PASSWORD_SCHEMA}

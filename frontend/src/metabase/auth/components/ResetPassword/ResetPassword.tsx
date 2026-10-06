@@ -8,7 +8,7 @@ import { useToast } from "metabase/common/hooks/use-toast";
 import { useDispatch } from "metabase/redux";
 import { resetPassword } from "metabase/redux/auth";
 import { useNavigate, useParams, useSearchParams } from "metabase/router";
-import { Box, Button, Flex } from "metabase/ui";
+import { Box, Button, Flex, Title } from "metabase/ui";
 import * as Urls from "metabase/urls";
 
 import type { ResetPasswordData } from "../../types";
@@ -76,14 +76,13 @@ const ResetPasswordExpired = ({
 
   return (
     <Flex direction="column" align="center">
-      <Box
+      <Title
+        order={1}
+        size="h3"
         c="text-primary"
-        fz="xl"
-        fw={700}
-        lh="1.5rem"
         ta="center"
         mb="lg"
-      >{t`Whoops, that's an expired link`}</Box>
+      >{t`Whoops, that's an expired link`}</Title>
       <Box c="text-primary" ta="center" mb="xxxl">
         {t`For security reasons, password reset links expire after a little while. If you still need to reset your password, you can request a new reset email.`}
       </Box>
