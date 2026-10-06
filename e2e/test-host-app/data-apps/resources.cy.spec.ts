@@ -123,7 +123,9 @@ describe("Embedding SDK: data-app resources (queries)", () => {
       });
       H.runDataAppCli("check-resources").then(({ exitCode, stdout }) => {
         expect(exitCode).to.eq(0);
-        expect(stdout).to.contain("resources/ backs every definition.");
+        expect(stdout).to.contain(
+          "The app's collection files back every definition.",
+        );
       });
 
       H.writeDataAppResources(APP_ROOT(), {
@@ -133,7 +135,7 @@ describe("Embedding SDK: data-app resources (queries)", () => {
       H.runDataAppCli("check-resources").then(({ exitCode, stderr }) => {
         expect(exitCode).not.to.eq(0);
         expect(stderr).to.contain(
-          `queries/orders.query.ts:Orders names saved question ${question}, which no file in resources/cards/ holds.`,
+          `queries/orders.query.ts:Orders names saved question ${question}, which no file in collections/data_apps/ holds in the app's collection.`,
         );
         expect(stderr).to.contain(
           "is a resource that is not referenced anywhere.",
@@ -167,7 +169,7 @@ describe("Embedding SDK: data-app resources (queries)", () => {
       H.buildDataAppHostApp().should((result) => {
         const output = `${result.stdout}${result.stderr}`;
         expect(output, "the build is refused").to.contain(
-          `names saved question ${question}, which no file in resources/cards/ holds.`,
+          `names saved question ${question}, which no file in collections/data_apps/ holds in the app's collection.`,
         );
         expect(output).not.to.contain("built in");
       });

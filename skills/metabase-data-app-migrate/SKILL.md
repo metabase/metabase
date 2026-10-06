@@ -31,10 +31,11 @@ Every step below follows from these. Never break them.
    or build. Do not run them earlier and do not "fix" their failures earlier.
 4. **Nothing generated is edited by hand.** `dist/` is written by
    `npm run build` and `src/metabase.data.ts` by the typed-schema export, never
-   by you. The app's `resources/` and the entity IDs its definitions name
-   (`savedQuestionEntityId`, `copiedActionEntityId`) change only where an
-   upgrade guide says so, following the data-app guidance on writing an app's
-   `resources/` (use skill discovery).
+   by you. The files of the app's collection under `collections/data_apps/`
+   and the entity IDs its definitions name (`savedQuestionEntityId`,
+   `copiedActionEntityId`) change only where an upgrade guide says so,
+   following the data-app guidance on writing the files of an app's
+   collection (use skill discovery).
 
 ## Step 0 - Locate the app and read its state
 
@@ -125,7 +126,7 @@ Do not batch steps across upgrades. Do not touch `version` before item 5.
    problem: surface the exact error, say which guide should have covered it, and
    stop. Otherwise, at most three fix rounds, then stop and ask.
 2. `npm run check-resources`, then `npm run build`, which refuses to bundle
-   when `resources/` doesn't back the definitions. Follow their messages;
+   when the app's collection files don't back the definitions. Follow their messages;
    neither calls Metabase.
 3. `npm run dev`, then take the preview URL from the `Local:` line Vite prints.
    The template asks for port 5174, but Vite moves to the next free port when
@@ -137,7 +138,7 @@ Do not batch steps across upgrades. Do not touch `version` before item 5.
    Expect `clients: 1` and no entry with `"alert": true`. `clients: 0` means no
    preview tab is open, so an empty feed proves nothing.
 4. `git status` from the repo root must show only: the upgrade edits,
-   `data_app.yaml`, the built bundle, `resources/` if an upgrade changed it,
+   `data_app.yaml`, the built bundle, the app's collection files if an upgrade changed them,
    and the package lockfile if the SDK was re-pinned. Anything else inside the
    app directory is a user edit; say so before committing.
 5. From the repo root,
@@ -180,7 +181,7 @@ few representative diagnostics rather than pasting it whole.
 - Set or edit `version` before the upgrade's checks pass, or by more than one at a time.
 - Skip an upgrade, or apply two upgrades' steps at once.
 - Run `npm run typecheck` or `npm run build` before the last upgrade, or push before the final gates pass.
-- Hand-edit `dist/` or `src/metabase.data.ts`, or change `resources/` or a definition's entity ID beyond what an upgrade guide says.
+- Hand-edit `dist/` or `src/metabase.data.ts`, or change the app's collection files or a definition's entity ID beyond what an upgrade guide says.
 - Copy a step's outcome from the previous session's chat instead of re-running its **Done when**.
 - Migrate with a checklist of your own when an upgrade guide exists; when one does not exist for an upgrade you need, stop and say so.
 

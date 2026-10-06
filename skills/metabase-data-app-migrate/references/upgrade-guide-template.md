@@ -50,7 +50,7 @@ Every row is a `tsc` error at v<N+1>. List types as well as values.
 
 ## Other contract changes
 
-<Manifest fields, `queries/` and `actions/` layout, entity-ID keys, `resources/` layout, factory
+<Manifest fields, `queries/` and `actions/` layout, entity-ID keys, the layout of the app's collection files, factory
 shape, `providerProps`, sandbox rules, what an app may declare, or "none".>
 
 ## Steps

@@ -55,7 +55,7 @@ async function requestExport(
 }
 
 /**
- * What the app's `resources/` files are written from, as JSON, for the
+ * What the files of the app's collection are written from, as JSON, for the
  * definitions in `file` (relative to the app root, as files are printed) or
  * every definition: the saved question Metabase writes for each `defineQuery`
  * definition, in the collection `data_app.yaml` names and with the

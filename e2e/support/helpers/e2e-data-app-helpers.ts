@@ -311,7 +311,11 @@ export function resetDataAppHostAppSources() {
   const appRoot = dataAppHostAppRoot();
 
   return cy.task("removeDataAppPaths", {
-    paths: [`${appRoot}/queries`, `${appRoot}/actions`, `${appRoot}/resources`],
+    paths: [
+      `${appRoot}/queries`,
+      `${appRoot}/actions`,
+      `${appRoot}/collections`,
+    ],
   });
 }
 
@@ -337,18 +341,19 @@ const serdesMeta = (model: string, entityId: string, name: string) => [
   { id: entityId, label: slugOf(name), model },
 ];
 
-/** The app's `resources/collection.yaml`. */
+/** The app's collection: a root collection of the `data-apps` namespace. */
 const resourceCollection = (
   entityId: string,
   name: string,
 ): ResourceEntity => ({
   name,
+  namespace: "data-apps",
   entity_id: entityId,
-  "serdes/meta": serdesMeta("Collection", entityId, "data_app"),
+  "serdes/meta": serdesMeta("Collection", entityId, name),
 });
 
 /**
- * A card in `resources/cards/`, as an author writes it: a saved question from a
+ * A card in the app's collection, as an author writes it: a saved question from a
  * query definition, or a copy of a model or metric from the repository. `stage`
  * holds the clauses besides the source table.
  */
@@ -384,7 +389,7 @@ const resourceCard = ({
 });
 
 /**
- * The YAML an author writes under an app's `resources/`, in the Metabase
+ * The YAML an author writes for an app's collection, in the Metabase
  * representation format: plain data for `writeDataAppResources`, read from
  * nothing and written nowhere by itself.
  */
@@ -396,9 +401,15 @@ export const dataAppRepresentations = {
 const fileName = (entity: ResourceEntity) =>
   `${slugOf(String(entity.name))}_${String(entity.entity_id)}.yaml`;
 
-/** Writes an app's `resources/` as YAML, replacing what was there. */
+/**
+ * Writes the files of an app's collection as YAML under `collections/data_apps/`
+ * of `root`, as serialization lays them out: the collection's own file beside
+ * a directory of its name that holds the cards and actions. `root` is the
+ * repository the app lives in, or the app itself when it stands alone, as the
+ * CLI reads them. Replaces what was there for that collection.
+ */
 export function writeDataAppResources(
-  appRoot: string,
+  root: string,
   {
     collection,
     cards = [],
@@ -409,23 +420,21 @@ export function writeDataAppResources(
     actions?: ResourceEntity[];
   },
 ) {
-  const resourcesRoot = `${appRoot}/resources`;
+  const collectionsDir = `${root}/collections/data_apps`;
+  const stem = slugOf(String(collection.name));
+  const collectionDir = `${collectionsDir}/${stem}`;
 
-  cy.task("removeDataAppPaths", { paths: [resourcesRoot] });
+  cy.task("removeDataAppPaths", {
+    paths: [`${collectionsDir}/${stem}.yaml`, collectionDir],
+  });
 
   return cy.task("writeDataAppFiles", {
     files: {
-      [`${resourcesRoot}/collection.yaml`]: yaml.dump(collection),
+      [`${collectionsDir}/${stem}.yaml`]: yaml.dump(collection),
       ...Object.fromEntries(
-        cards.map((card) => [
-          `${resourcesRoot}/cards/${fileName(card)}`,
-          yaml.dump(card),
-        ]),
-      ),
-      ...Object.fromEntries(
-        actions.map((action) => [
-          `${resourcesRoot}/actions/${fileName(action)}`,
-          yaml.dump(action),
+        [...cards, ...actions].map((entity) => [
+          `${collectionDir}/${fileName(entity)}`,
+          yaml.dump(entity),
         ]),
       ),
     },

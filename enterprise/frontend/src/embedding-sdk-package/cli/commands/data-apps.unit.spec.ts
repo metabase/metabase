@@ -86,22 +86,25 @@ describe("data app commands", () => {
 
   it("confirms resources that back every definition", async () => {
     const appRoot = appWithQuery();
-    writeResource(appRoot, "cards/orders.yaml", {
+    writeResource(appRoot, "data_app/orders.yaml", {
       name: "Orders",
       type: "question",
       entity_id: QUESTION,
+      "serdes/meta": [{ model: "Card", id: QUESTION }],
     });
 
     await run("check-resources", "--app-root", appRoot);
 
-    expect(printed()).toBe("resources/ backs every definition.\n");
+    expect(printed()).toBe(
+      "The app's collection files back every definition.\n",
+    );
   });
 
   it("fails when a definition's resource is missing", async () => {
     const appRoot = appWithQuery();
 
     await expect(run("check-resources", "--app-root", appRoot)).rejects.toThrow(
-      `queries/orders.query.ts:Orders names saved question ${QUESTION}, which no file in resources/cards/ holds.`,
+      `queries/orders.query.ts:Orders names saved question ${QUESTION}, which no file in collections/data_apps/ holds in the app's collection.`,
     );
     expect(printed()).toBe("");
   });

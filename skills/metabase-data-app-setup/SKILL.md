@@ -7,7 +7,7 @@ description: Scaffold a new Metabase data-app into the connected remote-sync rep
 
 A Metabase **data-app** is a single JS bundle that the host loads inside a Near Membrane sandbox and renders inside its own React tree. The scaffold is a Vite + React + TypeScript project: source under `src/`, a dev server that previews the app against a real Metabase **through the same Near Membrane sandbox + distortion rules Metabase uses in production** — so `npm run dev` behaves like production, including for third-party libraries the app bundles — and `npm run build` producing a single `dist/index.js`. (Because the sandbox runs a built bundle, a change rebuilds it and does a *soft reload* — re-evaluates the bundle in the sandbox and remounts the app, keeping auth/SDK loaded — rather than hot-swapping modules; component state resets, but there's no full browser refresh.) The dev preview also shows a corner **⚠ Diagnostics** toolbar that captures runtime errors — including the sandbox's otherwise-opaque blocked-API messages — so failures surface instead of being swallowed. The same data is served as JSON at `http://localhost:5174/__data-app/diagnostics`, which is how *you* read it (see "Reading the diagnostics feed" below) — you have a shell, not a browser, and these failures are invisible from the terminal otherwise.
 
-**Data apps are served from Git** (they can also be created and updated through `/api/apps`). A single repository is connected to Metabase via remote-sync (Admin → Settings → Remote sync). Each app lives in its own directory `data_apps/<slug>/` inside that repo — its source, a `data_app.yaml` (slug/name/path), its `resources/` (its collection, saved questions, and copies of the metrics and actions it uses, as YAML), and the committed built bundle at the `path` its `data_app.yaml` declares (`dist/index.js` by default). On each remote-sync import Metabase materializes each app and serves it at `/apps/<slug>`, where the slug is the `slug` its `data_app.yaml` declares. So this skill always scaffolds **into the connected repo's `data_apps/<slug>/` directory**, never as a standalone project.
+**Data apps are served from Git** (they can also be created and updated through `/api/apps`). A single repository is connected to Metabase via remote-sync (Admin → Settings → Remote sync). Each app lives in its own directory `data_apps/<slug>/` inside that repo — its source, a `data_app.yaml` (slug/name/path/collection), and the committed built bundle at the `path` its `data_app.yaml` declares (`dist/index.js` by default). Its collection, with its saved questions and the copies of the metrics and actions it uses, is YAML under the repo's `collections/data_apps/`, like every collection of the `data-apps` namespace. On each remote-sync import Metabase materializes each app and serves it at `/apps/<slug>`, where the slug is the `slug` its `data_app.yaml` declares. So this skill always scaffolds **into the connected repo's `data_apps/<slug>/` directory**, never as a standalone project.
 
 **The scaffold ships inside this skill at `./template/`** — a Vite + React + TypeScript project that was installed alongside the skill. Step 3 just copies it into the app directory; the skill then guides you through the customization + first-app-content steps — it never generates project files from scratch. If you find yourself writing `package.json`, `vite.config.ts`, `tsconfig.json`, or `src/index.tsx` by hand, stop — copy the template instead.
 
@@ -150,9 +150,9 @@ Once the template is in `<repo>/data_apps/<slug>/` (run everything below from th
    ```
 
    Commit it alongside the built bundle (the file `path` points at). It also
-   gets a `collection:` line, the entity ID of the app's own collection in
-   `resources/collection.yaml`, written in Step 5. Never copy that line from
-   another app.
+   gets a `collection:` line, the entity ID of the app's own collection, whose
+   file is written under the repo's `collections/data_apps/` in Step 5. Never
+   copy that line from another app.
 
    **`description`** — optional: a single short sentence saying what the app
    does, shown under its name in the admin UI so admins can tell apps apart at a
@@ -195,15 +195,16 @@ project scaffold and proving the starter bundle works.
 
 1. Run `npm run typecheck`.
 2. Write the app's collection: generate an entity ID with
-   `npx representations generate-entity-id`, write
-   `resources/collection.yaml`, and add `collection: <id>` to `data_app.yaml`
-   (use skill discovery to find the data-app guidance on writing an app's
-   `resources/`). Then run `npm run check-resources`, which also validates
-   the repository's YAML against the format. It changes nothing in Metabase.
+   `npx representations generate-entity-id`, write the collection's file under
+   the repo's `collections/data_apps/`, and add `collection: <id>` to
+   `data_app.yaml` (use skill discovery to find the data-app guidance on
+   writing the files of an app's collection). Then run
+   `npm run check-resources`, which also validates the repository's YAML
+   against the format. It changes nothing in Metabase.
 3. Run `npm run build`.
-4. Confirm `git status` shows the app source, lockfile, `data_app.yaml`,
-   `resources/`, and the built bundle (`dist/index.js` by default) as
-   committable files.
+4. Confirm `git status` shows the app source, lockfile, `data_app.yaml`, the
+   collection's file under `collections/data_apps/`, and the built bundle
+   (`dist/index.js` by default) as committable files.
 5. If the user asked for a live preview, run `npm run dev` and confirm the
    starter "Hello, data app" screen renders through the sandbox preview.
 6. With the preview open, check the diagnostics feed once — it is the only place
@@ -347,7 +348,7 @@ src/
     └── customer.ts
 ```
 
-Vite bundles everything reachable from `src/index.tsx` into a single `dist/index.js` IIFE — the `src/` layout is purely for your own readability. `queries/` and `actions/` are not: each definition in those two root-level directories is backed by a file in `resources/`, `npm run build` fails until they match, and the query and action hooks accept only the `defineQuery` / `defineAction` exports declared there. A query object written at a hook call, under `src/`, or spread from a definition does not compile (`Property 'definedWithDefineQuery' is missing`); the fix is to move it into `queries/` and import it, never a cast.
+Vite bundles everything reachable from `src/index.tsx` into a single `dist/index.js` IIFE — the `src/` layout is purely for your own readability. `queries/` and `actions/` are not: each definition in those two root-level directories is backed by a file in the app's collection under the repo's `collections/data_apps/`, `npm run build` fails until they match, and the query and action hooks accept only the `defineQuery` / `defineAction` exports declared there. A query object written at a hook call, under `src/`, or spread from a definition does not compile (`Property 'definedWithDefineQuery' is missing`); the fix is to move it into `queries/` and import it, never a cast.
 
 **If the app has multiple tabs (or any top-level screen switcher), the default — leftmost / first — tab MUST be selected on initial load.** The app should never boot to a blank page, an empty shell, or a "nothing selected" state that waits for the user to click. Agents repeatedly forget this. For local-state tabs, initialize the active tab to the first one so the very first render shows it:
 
@@ -542,11 +543,11 @@ Do not wrap `InteractiveQuestion` or `StaticQuestion` in containers that clip or
 
 Data apps are delivered by Git — you commit the app directory and Metabase pulls it on its next remote-sync import.
 
-1. After any change to `queries/` or `actions/`, update `resources/` to match (regenerating `src/metabase.data.ts` first if it doesn't cover what the definitions use), and run `npm run check-resources`. Nothing reaches Metabase until the pull in step 4 applies it.
-2. `npm run build` produces the bundle at your `data_app.yaml` `path` (the template builds to `dist/index.js`). It fails when `resources/` doesn't match the definitions; fix `resources/` and rebuild.
-3. From the **repo root**, commit the app directory — its `data_app.yaml`, `resources/`, the built bundle (the file `path` points at), the source, and the lockfile — and **push**:
+1. After any change to `queries/` or `actions/`, update the files of the app's collection under `collections/data_apps/` to match (regenerating `src/metabase.data.ts` first if it doesn't cover what the definitions use), and run `npm run check-resources`. Nothing reaches Metabase until the pull in step 4 applies it.
+2. `npm run build` produces the bundle at your `data_app.yaml` `path` (the template builds to `dist/index.js`). It fails when the app's collection files don't match the definitions; fix them and rebuild.
+3. From the **repo root**, commit the app directory — its `data_app.yaml`, the built bundle (the file `path` points at), the source, and the lockfile — together with the app's collection files, and **push**:
    ```bash
-   git add data_apps/<slug>
+   git add data_apps/<slug> collections/data_apps
    git commit -m "Add <slug> data app"
    git push
    ```
@@ -554,8 +555,8 @@ Data apps are delivered by Git — you commit the app directory and Metabase pul
 
 > **Don't offer to "deploy" the app or ask how the bundle reaches a staging environment** — there is no separate deploy step, and the question only confuses users: Metabase imports the committed bundle straight from the connected repo on its next sync. Once the change is on the branch Metabase syncs from — however the user gets it there (a merged PR, or a push straight to that branch) — just tell them to pull it in and open the app in Metabase at `/apps/<slug>`.
 
-- **To update:** update `resources/` if the definitions changed, commit a new build, and pull again.
-- **To remove:** delete the app's directory from the repo and push — the next sync removes it, with its collection, saved questions, metrics and actions.
+- **To update:** update the app's collection files if the definitions changed, commit a new build, and pull again.
+- **To remove:** delete the app's directory `data_apps/<slug>/` **and** its collection's files — `collections/data_apps/<collection>.yaml` and the `collections/data_apps/<collection>/` directory, the collection `data_app.yaml` names — in one commit, and push. The next sync removes the app, and with it its collection, saved questions, metrics and actions. Never delete one without the other: a collection file left behind is loaded back on the next pull as a collection no app owns, and an app whose collection file is gone is refused.
 
 ## Common pitfalls
 

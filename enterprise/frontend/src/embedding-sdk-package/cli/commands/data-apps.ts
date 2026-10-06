@@ -20,7 +20,7 @@ export function addDataAppsCommands(program: Command) {
   addAppCommand(
     dataAppsCommand,
     "print-resources",
-    "print what the data app's resources/ files are written from, exported by Metabase, as JSON",
+    "print what the files of the data app's collection are written from, exported by Metabase, as JSON",
   )
     .argument(
       "[file]",
@@ -33,9 +33,9 @@ export function addDataAppsCommands(program: Command) {
   addAppCommand(
     dataAppsCommand,
     "check-resources",
-    "check that the data app's resources/ directory backs its query and action definitions",
+    "check that the files of the data app's collection, under collections/data_apps/, back its query and action definitions",
   ).action(async ({ appRoot }: AppRootOptions) => {
     await checkResources(appRoot);
-    process.stdout.write("resources/ backs every definition.\n");
+    process.stdout.write("The app's collection files back every definition.\n");
   });
 }

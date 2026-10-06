@@ -1,6 +1,7 @@
 import { isObject } from "metabase-types/guards";
 
 import {
+  COLLECTION,
   makeApp,
   setupResourceTests,
   writeQuery,
@@ -86,7 +87,7 @@ describe("dataAppConfig", () => {
       jest.spyOn(process, "cwd").mockReturnValue(appRoot);
       mockedReadManifest.mockReturnValue({
         manifestPath: `${appRoot}/data_app.yaml`,
-        manifest: {},
+        manifest: { collection: COLLECTION },
       });
 
       const plugin = flatten(dataAppConfig().plugins).find(
@@ -115,10 +116,11 @@ describe("dataAppConfig", () => {
 
     it("lets the build start when the app's resources back its definitions", async () => {
       const appRoot = appWithQuery();
-      writeResource(appRoot, "cards/orders.yaml", {
+      writeResource(appRoot, "data_app/orders.yaml", {
         name: "Orders",
         type: "question",
         entity_id: QUESTION,
+        "serdes/meta": [{ model: "Card", id: QUESTION }],
       });
 
       await expect(
@@ -130,7 +132,7 @@ describe("dataAppConfig", () => {
       await expect(
         resourceCheckPlugin(appWithQuery()).buildStart(),
       ).rejects.toThrow(
-        `queries/orders.query.ts:Orders names saved question ${QUESTION}, which no file in resources/cards/ holds.`,
+        `queries/orders.query.ts:Orders names saved question ${QUESTION}, which no file in collections/data_apps/ holds in the app's collection.`,
       );
     });
   });

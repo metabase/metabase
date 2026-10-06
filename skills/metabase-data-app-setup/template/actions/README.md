@@ -60,11 +60,11 @@ Rules:
   what `npm run print-resources` prints; it never creates actions.
 - Pass the export itself to `useAction`. Never pass
   `schema.actions.<action>` or its `.id`.
-- `copiedActionEntityId` is the entity ID of the action's copy in
-  `resources/actions/`. After adding a definition, copy the action into
-  `resources/`, run `npm run check-resources`, and commit the
-  definitions and `resources/` together. `npm run build` fails until they
-  match.
+- `copiedActionEntityId` is the entity ID of the action's copy in the app's
+  collection, under the repo's `collections/data_apps/`. After adding a
+  definition, write the copy there, run `npm run check-resources`, and commit
+  the definitions and the collection files together. `npm run build` fails
+  until they match.
 - Never copy a `copiedActionEntityId` to another definition, or remove it while
   its copy exists.
 - After `execute` resolves, refresh every query on screen the action could have

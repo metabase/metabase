@@ -68,11 +68,11 @@ Rules:
   helper queries are queries too.
 - Pass the export itself to the hook. Never spread or copy it.
 - Each definition carries `savedQuestionEntityId`, the entity ID of its saved
-  question in `resources/cards/`. After adding or changing a definition, update
-  that card (`npm run print-resources` shows what it must hold). A metric it
-  aggregates is copied into `resources/cards/` too, written from what the same
-  command prints. Then run `npm run check-resources`, and commit the
-  definitions and `resources/` together. `npm run build` fails until they
-  match.
+  question in the app's collection, under the repo's `collections/data_apps/`.
+  After adding or changing a definition, update that card
+  (`npm run print-resources` shows what it must hold). A metric it aggregates
+  is copied into the app's collection too, written from what the same command
+  prints. Then run `npm run check-resources`, and commit the definitions and
+  the collection files together. `npm run build` fails until they match.
 - Never copy a `savedQuestionEntityId` to another definition, or remove it while
   its card exists.

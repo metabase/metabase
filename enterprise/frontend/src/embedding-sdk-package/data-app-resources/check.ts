@@ -1,22 +1,19 @@
 import path from "node:path";
 
+import { readManifest } from "../data-app-dev/config/read-manifest";
+
 import {
   discoverActions,
   discoverQueries,
   getRelativeDefinitionLocation,
 } from "./discover";
 import {
-  MODEL_DIRS,
-  RESOURCES_DIR,
+  type AppResources,
+  COLLECTIONS_DIR,
   type ResourceFile,
   readResources,
 } from "./resources";
 import type { DiscoveredAction, DiscoveredQuery } from "./types";
-
-const CARDS_DIR = `${RESOURCES_DIR}/${MODEL_DIRS.Card}/`;
-const ACTIONS_DIR = `${RESOURCES_DIR}/${MODEL_DIRS.Action}/`;
-
-const resourcePath = (file: ResourceFile) => `${RESOURCES_DIR}/${file.path}`;
 
 const isQuestion = (file: ResourceFile) =>
   file.model === "Card" && file.entity.type === "question";
@@ -44,13 +41,13 @@ function definitionProblems(
 
     if (!file) {
       return [
-        `${location} names saved question ${entityId}, which no file in ${CARDS_DIR} holds.`,
+        `${location} names saved question ${entityId}, which no file in ${COLLECTIONS_DIR}/ holds in the app's collection.`,
       ];
     }
 
     return isQuestion(file)
       ? []
-      : [`${location} names ${resourcePath(file)}, which is not a question.`];
+      : [`${location} names ${file.path}, which is not a question.`];
   });
 
   const actionProblems = actions.flatMap((action) => {
@@ -64,7 +61,7 @@ function definitionProblems(
     return fileOf("Action", entityId)
       ? []
       : [
-          `${location} names action ${entityId}, which no file in ${ACTIONS_DIR} holds.`,
+          `${location} names action ${entityId}, which no file in ${COLLECTIONS_DIR}/ holds in the app's collection.`,
         ];
   });
 
@@ -94,14 +91,49 @@ function leftoverProblems(
       (file) => (isQuestion(file) || file.model === "Action") && !isNamed(file),
     )
     .map(
-      (file) =>
-        `${resourcePath(file)} is a resource that is not referenced anywhere.`,
+      (file) => `${file.path} is a resource that is not referenced anywhere.`,
     );
 }
 
 /**
- * Fails when the app's definitions and its `resources/` disagree in a way a
- * repository pull can't see: the pull validates the resources on their own,
+ * The app's collection files, located through the collection its manifest
+ * names, or the problem that keeps them from being located: a pull refuses a
+ * manifest that names no collection, or one whose collection the repository
+ * doesn't hold, before it loads anything.
+ */
+function locateResources(
+  appRoot: string,
+): { resources: AppResources } | { problems: string[] } {
+  const manifest = readManifest(appRoot);
+
+  if (!manifest) {
+    throw new Error(`No data_app.yaml found in ${appRoot}.`);
+  }
+
+  const collection = manifest.manifest.collection;
+
+  if (collection === undefined) {
+    return {
+      problems: [
+        `data_app.yaml names no collection. Write the app's collection under ${COLLECTIONS_DIR}/ and name its entity ID as \`collection\`.`,
+      ],
+    };
+  }
+
+  const resources = readResources(appRoot, collection);
+
+  return resources.collectionPath === undefined
+    ? {
+        problems: [
+          `data_app.yaml names collection ${collection}, which no file in ${COLLECTIONS_DIR}/ holds.`,
+        ],
+      }
+    : { resources };
+}
+
+/**
+ * Fails when the app's definitions and the files of its collection disagree in
+ * a way a repository pull can't see: the pull validates the files on their own,
  * never against the app's code. Reads nothing from Metabase.
  */
 export async function checkResources(appDirectory: string) {
@@ -110,12 +142,20 @@ export async function checkResources(appDirectory: string) {
     discoverQueries(appRoot),
     discoverActions(appRoot),
   ]);
-  const files = readResources(appRoot);
+  const located = locateResources(appRoot);
 
-  const problems = [
-    ...definitionProblems(appRoot, queries, actions, files),
-    ...leftoverProblems(queries, actions, files),
-  ];
+  const problems =
+    "problems" in located
+      ? located.problems
+      : [
+          ...definitionProblems(
+            appRoot,
+            queries,
+            actions,
+            located.resources.files,
+          ),
+          ...leftoverProblems(queries, actions, located.resources.files),
+        ];
 
   if (problems.length > 0) {
     throw new Error(problems.join("\n"));

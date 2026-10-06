@@ -5,12 +5,13 @@ Metabase through a permission group that can read exactly one collection: the ap
 the app runs, and an action it triggers, have to be reachable **through that collection** or they
 fail on permissions.
 
-The app's `resources/` directory makes that true. It holds serdes YAML for the app's collection, a
-saved question per query, and copies of the actions the app runs and of the metrics its queries use. The author (in
-practice, an agent following the data-app skills) writes that YAML from the app's definitions. Nothing
-changes in Metabase until the repository is pulled: the pull loads the files as serialized content, like
-everything else the repository holds, so a local experiment can't break the running app, and the saved
-questions never get ahead of the app code that is deployed.
+The files of the app's collection make that true. Under the repository's `collections/data_apps/`, the
+folder of the `data-apps` collection namespace, they hold serdes YAML for the app's collection, a saved
+question per query, and copies of the actions the app runs and of the metrics its queries use. The
+author (in practice, an agent following the data-app skills) writes that YAML from the app's
+definitions. Nothing changes in Metabase until the repository is pulled: the pull loads the files as
+serialized content, like everything else the repository holds, so a local experiment can't break the
+running app, and the saved questions never get ahead of the app code that is deployed.
 
 `check-resources` reads nothing from Metabase; `print-resources` asks it for the export.
 
@@ -26,14 +27,19 @@ actions/orders.action.ts    export const CreateOrder = defineAction({ copiedActi
 Nothing else is scanned: definitions under `src/` are invisible to both commands, which is a common
 authoring mistake.
 
-## What `resources/` holds
+## What the app's collection holds
 
 ```
-data_app.yaml                      collection: <entity ID of resources/collection.yaml>
-resources/collection.yaml          the app's resource collection
-resources/cards/*.yaml             a saved question per query, and copies of the metrics they use
-resources/actions/*.yaml           a copy of each action
+data_apps/<slug>/data_app.yaml                    collection: <entity ID of the app's collection>
+collections/data_apps/<collection>.yaml           the app's collection, a root collection of the data-apps namespace
+collections/data_apps/<collection>/*.yaml         a saved question per query, copies of the metrics they use, and a copy of each action
 ```
+
+`<collection>` is the collection's name as serialization slugs it (`data_app__sales` for `Data App: Sales`).
+The commands find the app's files by content, as a pull does: the collection whose `entity_id` the
+manifest's `collection` names, and the cards and actions whose `collection_id` is it, wherever they sit
+under `collections/data_apps/`. The repository is the directory that holds the app's `data_apps/`; an
+app that isn't under `data_apps/` is its own root, so its files sit under its own `collections/`.
 
 A data app runs only query actions that belong to no model, which the typed schema lists under
 `schema.actions`. Such an action's permissions resolve through its own collection, so making it
@@ -60,17 +66,20 @@ be built or copied comes back with its `error`; the rest still come back.
 ## `check-resources`
 
 `embedding-sdk-react data-apps check-resources` (`check.ts`) checks only what a repository pull can't:
-the pull validates `resources/` on its own, never against the app's code. It fails, listing every
+the pull validates the files on their own, never against the app's code. It fails, listing every
 problem, for:
 
-- a definition without its entity ID, or naming one no file holds, or a query naming a card that isn't
-  a question: the pull would load, and the app would fail at runtime in production;
+- a manifest that names no collection, or one whose collection has no file under
+  `collections/data_apps/`: the pull refuses the app before it loads anything;
+- a definition without its entity ID, or naming one no file in the app's collection holds, or a query
+  naming a card that isn't a question: the pull would load, and the app would fail at runtime in
+  production;
 - a question or action no definition names: the pull would load it into the app's collection, and a
   leftover action is one more write the app's viewers can run.
 
 It runs at `buildStart` for production builds, so `npm run build` fails the same way. The YAML's format
 is `validate-schema`'s job (the template's `npm run check-resources` runs it after this check), and the rest of the resource
-rules (the collection, where copies live, duplicate or foreign entity IDs, the layout) are the pull's.
+rules (the collection's namespace, duplicate or foreign entity IDs, what a card or action may hold) are the pull's.
 Nothing checks that a saved question's query matches its definition.
 
 ## Discovery evaluates the definitions
@@ -84,8 +93,8 @@ Anything that isn't a definition is rejected by the export endpoint's schema, no
 
 Discovery refuses what makes a definition unusable on its own or against the others: an action that
 doesn't reference a generated action, two definitions of one source action, two claiming one entity
-ID. Every command needs that, `print-resources` included. What a definition lacks against
-`resources/`, its entity ID first of all, is `check-resources`' to report: `print-resources` is the
+ID. Every command needs that, `print-resources` included. What a definition lacks against the app's
+collection files, its entity ID first of all, is `check-resources`' to report: `print-resources` is the
 command an author runs to get that ID, so it must work without one.
 
 ## Dev preview vs production build

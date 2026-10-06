@@ -6,7 +6,7 @@ import { load as parseYaml } from "js-yaml";
 export type DataAppManifest = {
   slug?: string;
   allowed_hosts?: string[];
-  /** The entity ID of the app's resource collection, in `resources/collection.yaml`. */
+  /** The entity ID of the app's collection, whose file sits under the repository's `collections/data_apps/`. */
   collection?: string;
 };
 
