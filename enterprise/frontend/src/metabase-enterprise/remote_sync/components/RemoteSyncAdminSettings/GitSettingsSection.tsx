@@ -10,7 +10,7 @@ import type { RemoteSyncSettingsFormState } from "../../types";
 import { getEnvSettingProps } from "../../utils";
 
 import { RemoteSyncSettingsSection } from "./RemoteSyncSettingsSection";
-import { TestConnectionButton } from "./TestConnectionButton";
+import { RemoteSyncTestConnectionButton } from "./RemoteSyncTestConnectionButton";
 
 export const GitSettingsSection = () => {
   const { values } = useFormikContext<RemoteSyncSettingsFormState>();
@@ -39,7 +39,7 @@ export const GitSettingsSection = () => {
         })}
       />
       <Box>
-        <TestConnectionButton values={values} />
+        <RemoteSyncTestConnectionButton values={values} />
       </Box>
     </RemoteSyncSettingsSection>
   );

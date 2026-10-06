@@ -2,7 +2,7 @@ import { t } from "ttag";
 
 import { getErrorMessage } from "metabase/api/utils";
 import {
-  TestConnectionButton as BaseTestConnectionButton,
+  TestConnectionButton,
   type TestConnectionResult,
 } from "metabase/common/components/TestConnectionButton";
 import { useTestRemoteSyncConnectionMutation } from "metabase-enterprise/api/remote-sync";
@@ -10,11 +10,13 @@ import type { RemoteSyncConfigurationSettings } from "metabase-types/api";
 
 import { TOKEN_KEY, URL_KEY } from "../../constants";
 
-interface TestConnectionButtonProps {
+interface RemoteSyncTestConnectionButtonProps {
   values: RemoteSyncConfigurationSettings;
 }
 
-export const TestConnectionButton = ({ values }: TestConnectionButtonProps) => {
+export const RemoteSyncTestConnectionButton = ({
+  values,
+}: RemoteSyncTestConnectionButtonProps) => {
   const [testConnection] = useTestRemoteSyncConnectionMutation();
 
   const handleTestConnection = async (): Promise<TestConnectionResult> => {
@@ -33,7 +35,7 @@ export const TestConnectionButton = ({ values }: TestConnectionButtonProps) => {
   };
 
   return (
-    <BaseTestConnectionButton
+    <TestConnectionButton
       data-testid="remote-sync-test-connection-button"
       values={values}
       disabled={!values[URL_KEY]}
