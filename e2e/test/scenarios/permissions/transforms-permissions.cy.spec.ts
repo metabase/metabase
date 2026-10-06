@@ -200,7 +200,7 @@ describe(
         cy.log(
           "Writable Postgres should not be present in mini-picker when user lacks transform permission for it",
         );
-        H.miniPicker().findByText("Sample Database").should("be.visible");
+        H.miniPicker().findByText("Our analytics").should("be.visible");
         H.miniPicker()
           .findByText(/Writable Postgres/)
           .should("not.exist");
