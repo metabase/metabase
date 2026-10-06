@@ -18,6 +18,7 @@ const ERD_ALIAS = "erd";
 // Layout constants mirrored from the SchemaViewer source. Keep in sync.
 const MIN_ZOOM = 0.3;
 const MIN_ZOOM_FOR_TARGET = 0.5;
+const TOP_MARGIN_PX = 50;
 
 const SV_SCHEMA = "sv_test";
 const SV_EXTRA_SCHEMA = "sv_extra";
@@ -108,6 +109,30 @@ function assertNodeInViewport(tableId: TableId) {
   });
 }
 
+// Every camera move onto a table centres it horizontally and puts its top
+// edge TOP_MARGIN_PX below the top of the canvas.
+function assertNodeFocused(tableId: TableId) {
+  cy.get(".react-flow").should(($reactFlowNode) => {
+    const viewportRect = $reactFlowNode[0].getBoundingClientRect();
+    const $tableNode = Cypress.$(`[data-id="table-${tableId}"]`);
+    expect(
+      $tableNode.length,
+      `table-${tableId} should be in the DOM`,
+    ).to.be.greaterThan(0);
+    const tableNodeRect = $tableNode[0].getBoundingClientRect();
+    expect(
+      tableNodeRect.top - viewportRect.top,
+      `table-${tableId} top edge should be ${TOP_MARGIN_PX}px below the canvas top`,
+    ).to.be.closeTo(TOP_MARGIN_PX, 2);
+    const viewportCenterX = (viewportRect.left + viewportRect.right) / 2;
+    expect(
+      tableNodeRect.left < viewportCenterX &&
+        tableNodeRect.right > viewportCenterX,
+      `table-${tableId} should span the horizontal centre of the canvas`,
+    ).to.be.true;
+  });
+}
+
 describe("scenarios > schema-viewer (premium gating)", () => {
   beforeEach(() => {
     H.restore();
@@ -189,7 +214,7 @@ describe("scenarios > schema-viewer (Sample Database happy path)", () => {
         MIN_ZOOM_FOR_TARGET,
       ),
     );
-    assertNodeInViewport(ORDERS_ID);
+    assertNodeFocused(ORDERS_ID);
 
     cy.log(
       "Click an FK link inside the info panel — camera pans to the target",
@@ -197,7 +222,7 @@ describe("scenarios > schema-viewer (Sample Database happy path)", () => {
     infoPanel()
       .findByRole("button", { name: /Products/i })
       .click();
-    assertNodeInViewport(PRODUCTS_ID);
+    assertNodeFocused(PRODUCTS_ID);
     cy.log("Selection stays on Orders after FK link click");
     infoPanel().findByRole("heading", { name: "ORDERS" }).should("be.visible");
 
@@ -222,7 +247,7 @@ describe("scenarios > schema-viewer (Sample Database happy path)", () => {
         MIN_ZOOM_FOR_TARGET,
       ),
     );
-    assertNodeInViewport(ORDERS_ID);
+    assertNodeFocused(ORDERS_ID);
 
     cy.log(
       "Double-click Reviews — camera zooms in onto Reviews and re-enables the focus-node button",
@@ -233,7 +258,7 @@ describe("scenarios > schema-viewer (Sample Database happy path)", () => {
         MIN_ZOOM_FOR_TARGET,
       ),
     );
-    assertNodeInViewport(REVIEWS_ID);
+    assertNodeFocused(REVIEWS_ID);
     cy.contains("button", "Focus node").should("not.be.disabled");
 
     cy.log("Selection moved from Orders to Reviews — prior selection cleared");
@@ -250,28 +275,19 @@ describe("scenarios > schema-viewer (Sample Database happy path)", () => {
     );
 
     tableNode(ORDERS_ID).findByText("USER_ID").click({ force: true });
-    assertNodeInViewport(PEOPLE_ID);
+    assertNodeFocused(PEOPLE_ID);
     cy.findAllByTestId("schema-viewer-edge-path")
       .filter('[data-selected="true"]')
       .should("have.length", 1);
 
     cy.log(
-      "Re-clicking the now-selected edge alternates the camera between source and target endpoints",
+      "Re-clicking the now-selected edge alternates the camera between source (Orders) and target (People)",
     );
     const selectedEdge = () => cy.get(".react-flow__edge.selected");
     selectedEdge().click({ force: true });
-    reactFlowViewport().invoke("attr", "style").as("zoomToSourceEnd");
+    assertNodeFocused(ORDERS_ID);
     selectedEdge().click({ force: true });
-    cy.get<string>("@zoomToSourceEnd").then((sourceTransform) => {
-      reactFlowViewport()
-        .invoke("attr", "style")
-        .should((style) =>
-          expect(
-            style,
-            "next click on the same edge should zoom to the OTHER endpoint",
-          ).to.not.equal(sourceTransform),
-        );
-    });
+    assertNodeFocused(PEOPLE_ID);
 
     cy.log(
       "Search input filters by name; selecting an option triggers the camera",
@@ -279,7 +295,7 @@ describe("scenarios > schema-viewer (Sample Database happy path)", () => {
     searchInput().click().should("be.focused").type("ord");
     cy.findByRole("option", { name: /Orders/i }).should("be.visible");
     searchInput().type("{enter}");
-    assertNodeInViewport(ORDERS_ID);
+    assertNodeFocused(ORDERS_ID);
 
     cy.log("Empty result shows 'No tables found'");
     searchInput().click().clear().type("zzz_nope_zzz");
@@ -441,7 +457,7 @@ describe("scenarios > schema-viewer (writable Postgres: multi-schema, self-ref, 
     cy.wait("@erd");
     cy.get<TableId>("@lookupId").then((id) => {
       tableNode(id).should("be.visible");
-      assertNodeInViewport(id);
+      assertNodeFocused(id);
     });
     cy.log("Edge count grows by one (products → lookup edge added)");
     cy.get(".react-flow__edge").should("have.length", 3);
@@ -528,8 +544,8 @@ describe("scenarios > schema-viewer (entry points + loader/error states)", () =>
       .and("include", `database-id=${SAMPLE_DB_ID}`)
       .and("include", `table-ids=${ORDERS_ID}`);
     tableNode(ORDERS_ID).should("be.visible");
-    cy.log("Focal table is on screen");
-    assertNodeInViewport(ORDERS_ID);
+    cy.log("Camera focuses the focal table");
+    assertNodeFocused(ORDERS_ID);
   });
 
   it("renders the loader during a slow ERD fetch and the error panel when the request fails", () => {
