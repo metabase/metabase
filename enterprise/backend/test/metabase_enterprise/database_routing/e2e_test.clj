@@ -227,11 +227,19 @@
         (with-routing-setup! [router-db [[_destination-db "my database name"]]]
           (mt/with-temp [:model/DatabaseRouter _ {:database_id (u/the-id router-db)
                                                   :user_attribute "db_name"}]
-            (testing "Anonymous access is prohibited"
+            (testing "Anonymous access outside a public link is prohibited"
               (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Anonymous users cannot access a database with routing enabled."
                                     (qp/process-query {:database (u/the-id router-db)
                                                        :type :query
                                                        :query {:source-table (t2/select-one-pk :model/Table :db_id (u/the-id router-db))}}))))
+            (testing "Anonymous access through a public link is decided by the database's grant, which this router does not have"
+              ;; the granted side of this is covered end to end in
+              ;; [[metabase-enterprise.database-routing.public-sharing-test]]
+              (is (thrown-with-msg? clojure.lang.ExceptionInfo #"This database does not allow anonymous access."
+                                    (database-routing/with-database-routing-for-anonymous-access
+                                      (qp/process-query {:database (u/the-id router-db)
+                                                         :type :query
+                                                         :query {:source-table (t2/select-one-pk :model/Table :db_id (u/the-id router-db))}})))))
             (testing "No destination database matches"
               (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Database Routing error: No Destination Database with slug `nonexistent_database_name` found."
                                     (mt/with-test-user :crowberto

@@ -2031,6 +2031,7 @@
            api
            dashboards
            dashboards.rest
+           database-routing
            documents
            events
            lib

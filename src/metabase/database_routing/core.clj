@@ -30,6 +30,21 @@
      (fn []
        ~@body)))
 
+(defenterprise with-database-routing-for-anonymous-access-fn
+  "OSS version, does nothing: without the `:database-routing` feature there is no routing to restrict."
+  metabase-enterprise.database-routing.common
+  [f]
+  (f))
+
+(defmacro with-database-routing-for-anonymous-access
+  "Like [[with-database-routing-off]], but for anonymous traffic: a router database answers from itself only if an
+  admin has granted it anonymous access, and otherwise refuses. The decision is made from the database, never from
+  whoever happens to be visiting, so one public URL serves the same data to everyone."
+  [& body]
+  `(with-database-routing-for-anonymous-access-fn
+     (fn []
+       ~@body)))
+
 (defenterprise check-allowed-access!
   "OSS version, does nothing"
   metabase-enterprise.database-routing.common

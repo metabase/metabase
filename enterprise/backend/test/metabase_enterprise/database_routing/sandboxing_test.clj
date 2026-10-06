@@ -10,6 +10,7 @@
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.test :as mt]
+   [metabase.test.http-client :as client]
    [metabase.util :as u]
    [toucan2.core :as t2]))
 
@@ -42,3 +43,41 @@
                       (testing "the sandboxed user only sees the destination row matching their attribute"
                         (let [response (mt/user-http-request :rasta :post 202 (str "card/" (u/the-id card) "/query"))]
                           (is (= [["keep"]] (mt/rows response))))))))))))))))
+
+(deftest no-sandboxing-is-applied-to-a-public-link-test
+  (testing "a public link on a granted routed database applies no sandboxing -- intended, but surprising"
+    (mt/with-premium-features #{:database-routing :sandboxes :advanced-permissions}
+      (binding [driver.settings/*allow-testing-h2-connections* true]
+        (met/with-user-attributes! :rasta {"db_name" "destination-db" "filter_val" "keep"}
+          (e2e/with-routing-setup! [router-db [[_destination-db "destination-db"]]]
+            (e2e/execute-statement! router-db "INSERT INTO \"my_database_name\" (str) VALUES ('keep')")
+            (e2e/execute-statement! router-db "INSERT INTO \"my_database_name\" (str) VALUES ('drop')")
+            (let [router-table (t2/select-one :model/Table :db_id (u/the-id router-db))
+                  str-field    (t2/select-one :model/Field :table_id (u/the-id router-table))
+                  all-users    (perms/all-users-group)
+                  uuid         (str (random-uuid))]
+              (mt/with-no-data-perms-for-all-users!
+                (mt/with-temp [:model/DatabaseRouter _ {:database_id              (u/the-id router-db)
+                                                        :user_attribute           "db_name"
+                                                        :anonymous_access_granted true}
+                               :model/Sandbox _ {:group_id             (u/the-id all-users)
+                                                 :table_id             (u/the-id router-table)
+                                                 :card_id              nil
+                                                 :attribute_remappings {"filter_val" [:dimension [:field (u/the-id str-field) nil]]}}]
+                  (data-perms/set-database-permission! all-users (u/the-id router-db) :perms/view-data :unrestricted)
+                  (data-perms/set-table-permission! all-users (u/the-id router-table) :perms/create-queries :query-builder)
+                  (let [mp    (lib.metadata.jvm/application-database-metadata-provider (u/the-id router-db))
+                        query (lib/query mp (lib.metadata/table mp (u/the-id router-table)))]
+                    (mt/with-temp [:model/Card _ {:name              "Public router question"
+                                                  :database_id       (u/the-id router-db)
+                                                  :dataset_query     query
+                                                  :public_uuid       uuid
+                                                  :made_public_by_id (mt/user->id :crowberto)}]
+                      (mt/with-temporary-setting-values [enable-public-sharing true]
+                        (let [url (str "public/card/" uuid "/query")]
+                          (testing "an anonymous visitor sees every router row, not the sandboxed subset"
+                            (is (= #{["keep"] ["drop"]}
+                                   (set (mt/rows (client/client :get 202 url))))))
+                          (testing "and so does a signed-in non-admin the sandbox would otherwise filter"
+                            (is (= #{["keep"] ["drop"]}
+                                   (set (mt/rows (mt/user-http-request :rasta :get 202 url)))))))))))))))))))
