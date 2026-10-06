@@ -133,27 +133,6 @@ function assertNodeFocused(tableId: TableId) {
   });
 }
 
-describe("scenarios > schema-viewer (premium gating)", () => {
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-    cy.intercept("GET", "/api/ee/erd*").as(ERD_ALIAS);
-  });
-
-  it("renders the upsell page and never calls the ERD endpoint when :dependencies is not licensed", () => {
-    cy.log("Visit the schema viewer URL without activating a token");
-    cy.visit(BASE_URL);
-
-    cy.log("Upsell page is shown");
-    cy.findByRole("heading", {
-      name: "Visualize your database structure",
-    }).should("be.visible");
-
-    cy.log("ERD endpoint was never called");
-    cy.get(`@${ERD_ALIAS}.all`).should("have.length", 0);
-  });
-});
-
 describe("scenarios > schema-viewer (Sample Database happy path)", () => {
   beforeEach(() => {
     H.restore();
@@ -162,7 +141,7 @@ describe("scenarios > schema-viewer (Sample Database happy path)", () => {
     cy.intercept("GET", "/api/ee/erd*").as(ERD_ALIAS);
   });
 
-  it("walks the full picker → canvas → selection → info panel → search → layout flow on the Sample Database", () => {
+  it("walks the full picker → canvas → selection → info panel → layout → search flow on the Sample Database, then keeps it across a reload and a bare-URL visit", () => {
     cy.log("Bare URL renders the empty state with the picker auto-opened");
     cy.visit(BASE_URL);
     cy.findByTestId("schema-picker-button")
@@ -303,13 +282,6 @@ describe("scenarios > schema-viewer (Sample Database happy path)", () => {
       .findByText("No tables found")
       .should("be.visible");
     searchInput().type("{esc}");
-  });
-
-  it("URL state survives a hard reload, and the bare URL redirects back to the last opened (DB, schema)", () => {
-    cy.log("Deep-link directly to Sample DB → PUBLIC");
-    cy.visit(`${BASE_URL}?database-id=${SAMPLE_DB_ID}&schema=${PUBLIC_SCHEMA}`);
-    cy.wait("@erd");
-    tableNode(ORDERS_ID).should("be.visible");
 
     cy.log("Hard reload reproduces the same canvas state");
     cy.reload();
@@ -324,19 +296,11 @@ describe("scenarios > schema-viewer (Sample Database happy path)", () => {
       .should("include", `database-id=${SAMPLE_DB_ID}`)
       .and("include", `schema=${PUBLIC_SCHEMA}`);
     tableNode(ORDERS_ID).should("be.visible");
-  });
-
-  it("opens the picker with the current selection highlighted, and supports Back navigation between databases and schemas", () => {
-    cy.visit(`${BASE_URL}?database-id=${SAMPLE_DB_ID}&schema=${PUBLIC_SCHEMA}`);
-    cy.wait("@erd");
-    tableNode(ORDERS_ID).should("be.visible");
 
     cy.log("Picker trigger shows the current schema name");
     schemaPickerTrigger().should("contain", PUBLIC_SCHEMA);
 
-    cy.log(
-      "Open the picker — drills directly into the schema list of the current DB",
-    );
+    cy.log("Open the picker — it lists the databases");
     schemaPickerTrigger().click();
     H.miniPicker().findByText("Sample Database").should("be.visible");
 
@@ -509,15 +473,33 @@ describe("scenarios > schema-viewer (writable Postgres: multi-schema, self-ref, 
   });
 });
 
-describe("scenarios > schema-viewer (entry points + loader/error states)", () => {
+describe("scenarios > schema-viewer (upsell, entry points, loader and error states)", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
-    H.activateToken("bleeding-edge");
   });
 
-  it("Data Studio sidebar tab and Data Model 'Schema viewer' button both lead into the schema viewer", () => {
+  it("shows the upsell without :dependencies, then opens from the Data Studio sidebar (with a loader) and the Data Model 'View schema' action, and shows the error panel when the ERD request fails", () => {
     cy.intercept("GET", "/api/ee/erd*").as(ERD_ALIAS);
+
+    cy.log("Visit the schema viewer URL without activating a token");
+    cy.visit(BASE_URL);
+
+    cy.log("Upsell page is shown");
+    cy.findByRole("heading", {
+      name: "Visualize your database structure",
+    }).should("be.visible");
+
+    cy.log("ERD endpoint was never called");
+    cy.get(`@${ERD_ALIAS}.all`).should("have.length", 0);
+
+    H.activateToken("bleeding-edge");
+    cy.intercept("GET", "/api/ee/erd*", (req) => {
+      req.on("response", (res) => {
+        res.setDelay(1500);
+      });
+      req.continue();
+    }).as("slowErd");
 
     cy.log(
       "Click 'Schema viewer' tab in the Data Studio sidebar — opens the bare schema viewer URL",
@@ -529,6 +511,16 @@ describe("scenarios > schema-viewer (entry points + loader/error states)", () =>
       .findByText("Pick a schema to view")
       .should("be.visible");
 
+    cy.log(
+      "Slow ERD response — the centred loader appears, then the canvas renders",
+    );
+    H.miniPicker().findByText("Sample Database").click();
+    H.miniPicker().findByText("PUBLIC").click();
+    cy.findByTestId("schema-viewer-loader").should("be.visible");
+    cy.wait("@slowErd");
+    cy.findByTestId("schema-viewer-loader").should("not.exist");
+    tableNode(ORDERS_ID).should("be.visible");
+
     cy.log("Navigate to the Orders Data Model page via the table picker tree");
     H.DataStudio.nav().findByText("Connected data").click();
     cy.findAllByTestId("tree-item").contains("Orders").click();
@@ -538,7 +530,7 @@ describe("scenarios > schema-viewer (entry points + loader/error states)", () =>
     );
     H.DataModel.TableSection.getActionsMenuButton().click();
     H.menu().findByText("View schema").click();
-    cy.wait("@erd");
+    cy.wait("@slowErd");
     cy.url()
       .should("include", "/data-studio/schema-viewer")
       .and("include", `database-id=${SAMPLE_DB_ID}`)
@@ -546,9 +538,7 @@ describe("scenarios > schema-viewer (entry points + loader/error states)", () =>
     tableNode(ORDERS_ID).should("be.visible");
     cy.log("Camera focuses the focal table");
     assertNodeFocused(ORDERS_ID);
-  });
 
-  it("renders the loader during a slow ERD fetch and the error panel when the request fails", () => {
     cy.log("Force a 500 — error panel renders with the surfaced message");
     cy.intercept("GET", "/api/ee/erd*", { statusCode: 500, body: "boom" }).as(
       "erdError",
@@ -558,23 +548,6 @@ describe("scenarios > schema-viewer (entry points + loader/error states)", () =>
     cy.findByTestId("schema-viewer-error")
       .should("be.visible")
       .should("contain", "boom");
-    cy.log(
-      "Slow the ERD response — the centred loader appears, then the canvas renders",
-    );
-    cy.intercept("GET", "/api/ee/erd*", (req) => {
-      req.on("response", (res) => {
-        res.setDelay(1500);
-      });
-      req.continue();
-    }).as("slowErd");
-    H.DataStudio.nav().findByLabelText("Semantic layer").click();
-    H.DataStudio.nav().findByLabelText("Schema viewer").click();
-    H.miniPicker().findByText("Sample Database").click();
-    H.miniPicker().findByText("PUBLIC").click();
-    cy.findByTestId("schema-viewer-loader").should("be.visible");
-    cy.wait("@slowErd");
-    cy.findByTestId("schema-viewer-loader").should("not.exist");
-    tableNode(ORDERS_ID).should("be.visible");
   });
 });
 
