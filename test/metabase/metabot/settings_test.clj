@@ -553,6 +553,18 @@
           (is (= "openrouter/qwen/qwen3.8-max-0902" (setting/get-value-of-type :string :llm-metabot-provider)))
           (is (= "openrouter/qwen/qwen3.8-max-0902" (setting/get-value-of-type :string :llm-mini-model))))))))
 
+(deftest retired-google-model-is-stored-as-its-successor-test
+  (testing (str "writing the dated Google Haiku id passes Google's model validation, which sees the value before "
+                "it is mapped, and stores the undated id")
+    (with-connections [configured-google]
+      (mt/with-temp-env-var-value! [mb-llm-metabot-provider nil
+                                    mb-llm-mini-model       nil]
+        (mt/discard-setting-changes [llm-metabot-provider llm-mini-model]
+          (metabot.settings/llm-metabot-provider! "google/anthropic/claude-haiku-4-5@20251001")
+          (metabot.settings/llm-mini-model! "google/anthropic/claude-haiku-4-5@20251001")
+          (is (= "google/anthropic/claude-haiku-4-5" (setting/get-value-of-type :string :llm-metabot-provider)))
+          (is (= "google/anthropic/claude-haiku-4-5" (setting/get-value-of-type :string :llm-mini-model))))))))
+
 (deftest retired-model-written-before-its-connection-test
   (testing (str "a retired id written before its connection exists is stored as given, and reads as its successor "
                 "once the connection appears")

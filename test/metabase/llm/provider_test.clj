@@ -645,6 +645,15 @@
       (testing type
         (is (not (contains? retired-models successor)))))))
 
+(deftest ^:parallel retired-models-map-to-an-offered-model-test
+  (testing (str "a retired model's successor is in its type's fixed catalog, so the connection form can show it; "
+                "a type that fetches its models has no catalog to check offline")
+    (doseq [{:keys [type models retired-models]} (llm.provider/provider-types)
+            :when                                models
+            successor                            (vals retired-models)]
+      (testing type
+        (is (contains? (set (map :id models)) successor))))))
+
 (deftest with-field-defaults-normalizes-base-urls-test
   (testing "a base URL keeps no trailing slash, whichever source it comes from, so joining a path cannot double the /"
     (is (= "https://api.mistral.ai/v1"

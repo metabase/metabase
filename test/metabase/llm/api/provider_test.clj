@@ -442,6 +442,32 @@
                                  :model  "google/gemini-3.7-flash"})
           (is (= "google/gemini-3.7-flash" (:model @opts))))))))
 
+(deftest create-and-update-verify-a-retired-client-model-as-its-successor-test
+  (testing "a retired model the client names is verified and recorded as the model now serving it"
+    (let [opts (atom nil)]
+      (mt/with-dynamic-fn-redefs [metabot.self/list-models
+                                  (fn [_provider o]
+                                    (reset! opts o)
+                                    {:models [] :connection-info {:probed-model (:model o)}})]
+        (testing "on create"
+          (mt/with-temporary-setting-values [llm-providers []]
+            (mt/with-temporary-raw-setting-values [llm-metabot-provider nil]
+              (mt/user-http-request :crowberto :post 200 "llm/providers"
+                                    {:type   "google"
+                                     :config {:oauth-access-token "ya29.token" :project-id "my-project"}
+                                     :model  "anthropic/claude-haiku-4-5@20251001"})
+              (is (= "anthropic/claude-haiku-4-5" (:model @opts)))
+              (is (= "anthropic/claude-haiku-4-5" (:probed-model (stored-config "google")))))))
+        (testing "on update"
+          (mt/with-temporary-setting-values [llm-providers [(connection "google" "google"
+                                                                        {:oauth-access-token "ya29.token"
+                                                                         :project-id         "my-project"})]]
+            (mt/with-temporary-raw-setting-values [llm-metabot-provider "anthropic/claude-sonnet-4-6"]
+              (mt/user-http-request :crowberto :put 200 "llm/providers/google"
+                                    {:config {} :model "anthropic/claude-haiku-4-5@20251001"})
+              (is (= "anthropic/claude-haiku-4-5" (:model @opts)))
+              (is (= "anthropic/claude-haiku-4-5" (:probed-model (stored-config "google")))))))))))
+
 (deftest create-selects-a-model-composed-from-the-config-test
   (testing (str "Azure names its deployment in `:config` rather than listing models, and the form leaves a field it "
                 "pre-filled with the registry default out of the payload, so the default has to be filled in before "
@@ -1429,6 +1455,15 @@
                                                                  {:models []})]
             (mt/user-http-request :crowberto :get 200 "llm/models")
             (is (= "anthropic/claude-haiku-4-5" (:proposed-model @listed-with)))))))))
+
+(deftest list-providers-shows-a-retired-probed-model-as-its-successor-test
+  (testing "the edit form gets the model now serving a retired probed model, so it can find it on the catalog"
+    (mt/with-temporary-setting-values [llm-providers [(connection "google" "google"
+                                                                  {:oauth-access-token "ya29.token"
+                                                                   :project-id         "my-project"
+                                                                   :probed-model       "anthropic/claude-haiku-4-5@20251001"})]]
+      (is (= "anthropic/claude-haiku-4-5"
+             (-> (mt/user-http-request :crowberto :get 200 "llm/providers") first :config :probed-model))))))
 
 (deftest models-isolate-per-connection-failures-test
   (mt/with-temporary-setting-values [llm-providers [(connection "failing-anthropic" "anthropic" {:api-key "sk-ant-bad"})
