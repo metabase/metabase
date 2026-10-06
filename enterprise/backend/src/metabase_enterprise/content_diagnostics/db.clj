@@ -267,18 +267,17 @@
   (t2/select (into [model :id :name] extra-cols) (m/assoc-some {} :where where)))
 
 (mu/defn card-summaries-by-id
-  "`{id → {:id :name :entity_type :card_type :display :view_count}}` for the Cards matching `where` - the
+  "`{id → {:id :name :entity_type :card_type :view_count}}` for the Cards matching `where` - the
   columns a `slow` roll-up's culprit list serves: `name`, the `type` enum driving the per-member
-  link/icon, and the live `view_count`. `:card_schema` is required on any Card select - its
+  link, and the live `view_count`. `:card_schema` is required on any Card select - its
   after-select schema-upgrade hook reads it."
   [where :- vector?]
   (t2/select-pk->fn (fn [c] {:id          (:id c)
                              :name        (:name c)
                              :entity_type :card
                              :card_type   (:type c)
-                             :display     (:display c)
                              :view_count  (:view_count c)})
-                    [:model/Card :id :name :type :display :view_count :card_schema]
+                    [:model/Card :id :name :type :view_count :card_schema]
                     {:where where}))
 
 (mu/defn collection-item-card-rows

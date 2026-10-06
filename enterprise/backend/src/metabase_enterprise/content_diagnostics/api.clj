@@ -124,13 +124,12 @@
   Always a card - a container embeds cards (a dashboard via its dashcards, a document via the cards embedded
   in its body) and is flagged slow when one of those cards' queries is slow; it never embeds a transform, and
   a slow transform is its own leaf finding, not a member of another entity.
-  `{id, name, entity_type, card_type?, display?, view_count}`."
+  `{id, name, entity_type, card_type?, view_count}`."
   [:map
    [:id          :int]
    [:name        [:maybe :string]]
    [:entity_type :keyword]
    [:card_type   {:optional true} [:maybe :keyword]]
-   [:display     {:optional true} [:maybe :keyword]]
    [:view_count  :int]])
 
 (def ^:private SlowDetails

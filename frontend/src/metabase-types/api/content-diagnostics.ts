@@ -220,7 +220,6 @@ export type ContentDiagnosticsSlowEntity = {
   name: string | null;
   entity_type: ContentDiagnosticsEntityType;
   card_type?: CardType | null;
-  display?: VisualizationDisplay | null;
   view_count: number;
 };
 

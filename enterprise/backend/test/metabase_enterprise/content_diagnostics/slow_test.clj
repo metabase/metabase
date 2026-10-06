@@ -442,9 +442,9 @@
                   (is (nil? (get-in f [:details :slow_entity_ids])))
                   (let [entities (get-in f [:details :slow_entities])]
                     (is (= 1 (count entities)))
-                    (testing "each culprit carries its own live view_count alongside id/name/type"
+                    (testing "culprits carry identity/type/usage for links, without visualization display"
                       (is (= {:id slow-card :name "Full Orders Export"
-                              :entity_type "card" :card_type "model" :display "table" :view_count 5}
+                              :entity_type "card" :card_type "model" :view_count 5}
                              (first entities))))))))))))))
 
 (deftest slow-api-transform-root-breadcrumb-test
