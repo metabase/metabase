@@ -318,6 +318,11 @@
                                       [:= :t.id :f.table_id]]}
                             :postgres)))))
 
+(deftest ^:parallel empty-join-test
+  (testing "Handle `nil`/empty joins; we still spit out an extra space because of the way things work but that's ok I guess"
+    (is (= ["SELECT 1 AS \"v\" "]
+           (funnysql/format {:select [[1 :v]] :left-join nil} :postgres)))))
+
 (deftest ^:parallel with-test
   (is (= ["WITH \"cte\" AS (SELECT \"id\" FROM \"table\"), \"cte2\" AS (SELECT * FROM \"cte\") SELECT \"id\" FROM \"cte\""]
          (funnysql/format {:with   [[:cte  ^:allow-subquery {:select [:id] :from [:table]}]

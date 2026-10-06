@@ -345,19 +345,21 @@
 
 (defn- join!
   [join-type joins context]
-  (let [join-type-sql (case join-type
-                        :join  "JOIN "
-                        :left  "LEFT JOIN "
-                        :right "RIGHT JOIN "
-                        :inner "INNER JOIN ")]
-    (loop [[thing-to-join condition & more] joins]
-      (append-sql! context join-type-sql)
-      (-table-with-optional-as! thing-to-join context)
-      (append-sql! context " ON ")
-      (compile! condition context)
-      (when (seq more)
-        (append-sql! context \space)
-        (recur more)))))
+  ;; don't spit out anything if `joins` is empty
+  (when (seq joins)
+    (let [join-type-sql (case join-type
+                          :join  "JOIN "
+                          :left  "LEFT JOIN "
+                          :right "RIGHT JOIN "
+                          :inner "INNER JOIN ")]
+      (loop [[thing-to-join condition & more] joins]
+        (append-sql! context join-type-sql)
+        (-table-with-optional-as! thing-to-join context)
+        (append-sql! context " ON ")
+        (compile! condition context)
+        (when (seq more)
+          (append-sql! context \space)
+          (recur more))))))
 
 (defn- -condition!
   "Compile a `WHERE`/`HAVING` condition, dropping the clause entirely when there isn't one. Honey SQL ignores a nil or
