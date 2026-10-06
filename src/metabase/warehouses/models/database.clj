@@ -708,21 +708,23 @@
      :skip      [;; deprecated field
                  :cache_ttl
                  ;; describes a sync on the source instance, and may name its connection details
-                 :initial_sync_error
-                 :is_stub]
+                 :initial_sync_error]
      :transform {:created_at          (serdes/date)
                  :details             details-transform
                  :write_data_details  details-transform
                  :admin_details       details-transform
                  :creator_id          (serdes/fk :model/User)
                  :router_database_id  (serdes/fk :model/Database)
-                 :initial_sync_status {:export identity :import (constantly "complete")}}
+                 :initial_sync_status {:export identity :import (constantly "complete")}
+                 :is_stub             {:export-with-context (fn [_current _ _is-stub] ::serdes/skip)
+                                       :import              (constantly false)}}
      :defaults  {:auto_run_queries true
                  :is_attached_dwh  false
                  :is_audit         false
                  :is_full_sync     true
                  :is_on_demand     false
                  :is_sample        false
+                 :is_stub          false
                  :uploads_enabled  false}}))
 
 #_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
