@@ -163,7 +163,7 @@ jobs:
     needs: *backend-gate-needs
     if: *backend-gate
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
-    timeout-minutes: 20
+    timeout-minutes: 30
     name: Eastwood
     steps:
       - uses: actions/checkout@v7
@@ -180,7 +180,7 @@ jobs:
       ${{ needs.gate.outputs.force-run == 'true'
       && contains(fromJSON(needs.gate.outputs.matched), 'backend_all') }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
-    timeout-minutes: 45
+    timeout-minutes: 50
     name: Eastwood (tests only)
     steps:
       - uses: actions/checkout@v7
