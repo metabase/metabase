@@ -342,3 +342,25 @@
             (mt/user-http-request :crowberto :put 403 (str "card/" card-id) {:description "edited here"})
             (testing "and the instance still pulls"
               (is (= :success (:status (import-at! src "v0" :force? true)))))))))))
+
+(deftest an-apps-collection-holds-only-what-a-pull-accepts-test
+  (testing "what the resource validator would refuse on a pull can't be saved into an app's collection"
+    (with-data-apps-sync
+      (let [src (test-helpers/versioned-source :trees {"v0" (shop-tree (question-resources))} :current "v0")
+            mp  (mt/metadata-provider)
+            q   (lib/->legacy-MBQL (lib/query mp (lib.metadata/table mp (mt/id :venues))))]
+        (is (= :success (:status (import-at! src "v0" :force? true))))
+        (let [collection-id (shop-collection-id)
+              card          (fn [status card-type]
+                              (mt/user-http-request :crowberto :post status "card"
+                                                    {:name "Saved here" :type card-type :display "table"
+                                                     :visualization_settings {} :collection_id collection-id
+                                                     :dataset_query q}))]
+          (mt/user-http-request :crowberto :post 400 "dashboard" {:name "Saved here" :collection_id collection-id})
+          (card 400 "model")
+          (card 200 "question")
+          (testing "with the library feature too, whose check runs in the same place"
+            (mt/with-additional-premium-features #{:library}
+              (card 400 "model")))
+          (mt/with-temp [:model/Dashboard {dashboard-id :id} {:name "Elsewhere"}]
+            (mt/user-http-request :crowberto :put 400 (str "dashboard/" dashboard-id) {:collection_id collection-id})))))))

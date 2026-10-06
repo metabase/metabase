@@ -21,7 +21,7 @@
    {:allowed-content-types #{:metric collection/library-metrics-collection-type}
     :error-message         "Can only add metrics to the 'Metrics' collection"}})
 
-(defenterprise check-allowed-content
+(defenterprise check-library-content
   "Check if the collection's content matches the allowed content.
   Throws an exception if it does not"
   :feature :library
