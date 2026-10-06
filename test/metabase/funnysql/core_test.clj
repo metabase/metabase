@@ -1166,3 +1166,17 @@
       "abc"             :query
       :search_vector    "abc"
       [:to_tsvector :a] :query)))
+
+(deftest ^:parallel unary-plus-minus-test
+  (testing "`:+` or `:-` with a single arg should do what we expect"
+    (are [x expected] (= expected
+                         (funnysql/format x :postgres))
+      [:- 1]        ["-1"]
+      [:+ 1]        ["1"]
+      [:- [:- 1 2]] ["-(1 - 2)"]
+      [:+ [:- 1 2]] ["1 - 2"]))
+  (testing "other operators should error"
+    (is (thrown-with-msg?
+         clojure.lang.ExceptionInfo
+         #"No matching clause: :/"
+         (funnysql/format [:/ 1] :postgres)))))

@@ -797,13 +797,33 @@
       (throw (ex-info "Missing value for :param" {:param k})))
     (object! v context)))
 
+(def ^:private binary-operators
+  #{:+ :- :/ :* :%})
+
+(defn- binary-fn-call? [x]
+  (and (fn-call? x)
+       (binary-operators (first x) )))
+
+(defn- -unary-binary-operator! [f x context]
+  (case f
+    :+ (compile! x context)
+    :- (if (number? x)
+         (compile! (- x) context)
+         (do
+           (append-sql! context "-")
+           ((if (binary-fn-call? x)
+              -parens!
+              compile!) x context)))))
+
 (defn- -binary-operator! [f args context]
-  (let [f-str (case f
-                :like     " LIKE "
-                :ilike    " ILIKE "
-                :not-like " NOT LIKE "
-                (str \space (name f) \space))]
-    (-interpose! f-str args context)))
+  (if (= (count args) 1)
+    (-unary-binary-operator! f (first args) context)
+    (let [f-str (case f
+                  :like     " LIKE "
+                  :ilike    " ILIKE "
+                  :not-like " NOT LIKE "
+                  (str \space (name f) \space))]
+      (-interpose! f-str args context))))
 
 (defn- -simple-fn! [f args context]
   (let [f (name f)]
