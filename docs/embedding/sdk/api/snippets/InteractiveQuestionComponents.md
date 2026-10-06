@@ -615,6 +615,43 @@ The main visualization component that renders the question results as a chart, t
 
 <!-- [<endsnippet returns>] -->
 
+### RefreshButton()
+
+<!-- [<snippet refreshbutton()>] -->
+
+```ts
+RefreshButton: (props?: InteractiveQuestionRefreshButtonProps) =>
+  | Element
+  | null;
+```
+
+**`Function`**
+
+Button to run the current query. Only appears when automatic reruns are turned off for the database.
+
+<!-- [<endsnippet refreshbutton()>] -->
+
+#### Parameters
+
+<!-- [<snippet parameters>] -->
+
+| Parameter | Type                                                                                      | Description |
+| :-------- | :---------------------------------------------------------------------------------------- | :---------- |
+| `props?`  | [`InteractiveQuestionRefreshButtonProps`](./api/InteractiveQuestionRefreshButtonProps.md) |             |
+
+<!-- [<endsnippet parameters>] -->
+
+#### Returns
+
+<!-- [<snippet returns>] -->
+
+\| [`Element`](https://github.com/DefinitelyTyped/DefinitelyTyped/blob/0b728411cd1dfb4bd26992bb35a73cf8edaa22e7/types/react/jsx-runtime.d.ts#L6)
+\| `null`
+
+---
+
+<!-- [<endsnippet returns>] -->
+
 ### ResetButton()
 
 <!-- [<snippet resetbutton()>] -->
