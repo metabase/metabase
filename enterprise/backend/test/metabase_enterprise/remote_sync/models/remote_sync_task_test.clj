@@ -543,8 +543,8 @@
         (let [conflict-task (rst/create-sync-task! "import" (mt/user->id :rasta))]
           (rst/set-version! (:id conflict-task) "version 1.5")
           (rst/conflict-sync-task! (:id conflict-task) {:conflicts        ["some conflict"]
-                                                         :conflict-details [{:kind "first-import" :category "Cards" :message "some conflict"}]
-                                                         :outcome          nil})
+                                                        :conflict-details [{:kind "first-import" :category "Cards" :message "some conflict"}]
+                                                        :outcome          nil})
           (is (= "version 1" (rst/last-version)))))
       (testing "Returns a newer successful task's version"
         (let [new-task (rst/create-sync-task! "import" (mt/user->id :rasta))]
