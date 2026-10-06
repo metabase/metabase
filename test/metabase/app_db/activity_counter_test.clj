@@ -7,12 +7,12 @@
    [metabase.app-db.connection :as mdb.connection]
    [metabase.app-db.core :as mdb]
    [metabase.settings.core :as setting]
+   [metabase.settings.models.setting.cache-test :as setting.cache-test]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [toucan2.core :as t2])
   (:import
    (java.sql Connection)
-   (java.util.concurrent.atomic AtomicLong)
    (javax.sql DataSource)))
 
 (set! *warn-on-reflection* true)
@@ -165,18 +165,13 @@
       (testing "only the statement on the counting connection counts"
         (is (=? {:statements 1 :prepares 1} (this-thread counts)))))))
 
-(defn- make-settings-check-due!
-  "Reset the 60 s throttle of the settings-cache check, so that the next setting read sends the check."
-  []
-  (.set ^AtomicLong @(requiring-resolve 'metabase.settings.models.setting.cache/last-update-check) 0))
-
 (defn- read-cached-setting []
   (setting/get :site-name))
 
 (deftest settings-check-is-outside-the-count-test
   (testing "a setting read in a count sends no settings check, also when the check is due at the start"
     (mt/with-temporary-setting-values [site-name "activity counter"]
-      (make-settings-check-due!)
+      (setting.cache-test/reset-last-update-check!)
       (let [counts (activity/count-db-activity! read-cached-setting)]
         (is (= "activity counter" (:result counts)))
         (is (=? {:statements 0} (this-thread counts)))
@@ -185,7 +180,7 @@
 (deftest settings-check-due-inside-the-thunk-is-counted-test
   (testing "a thunk that makes the settings check due and then reads a setting sends the check inside the count"
     (mt/with-temporary-setting-values [site-name "activity counter"]
-      (let [counts (activity/count-db-activity! #(do (make-settings-check-due!)
+      (let [counts (activity/count-db-activity! #(do (setting.cache-test/reset-last-update-check!)
                                                      (read-cached-setting)))]
         (is (=? {:statements 1} (this-thread counts)))))))
 

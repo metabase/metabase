@@ -151,8 +151,8 @@
 
   Just before the count, and not counted, forces the settings-cache check (`setting/restore-cache-if-needed!`), so a
   setting read in `thunk` sends no check while the check's throttle holds. Limits:
-  - a count whose `:elapsed-ms` exceeds `setting/cache-update-check-interval-ms`, or a `thunk` that resets the
-    throttle, can contain one check;
+  - a count whose `:elapsed-ms` exceeds `setting/cache-update-check-interval-ms` can contain one check for each
+    interval that passes, and a `thunk` that resets the throttle can contain one check for each reset;
   - the forced check can reload the settings cache, and so run `:on-change` hooks (which can write rows) just before
     `thunk`, uncounted.
 
