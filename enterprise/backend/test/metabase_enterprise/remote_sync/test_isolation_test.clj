@@ -1,9 +1,11 @@
 (ns metabase-enterprise.remote-sync.test-isolation-test
-  "Tests that remote-sync tests leave no stored setting value behind."
+  "Tests that remote-sync tests leave no stored setting value and no ledger row behind."
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.remote-sync.api-test :as api-test]
    [metabase-enterprise.remote-sync.content-hash-test :as content-hash-test]
+   [metabase-enterprise.remote-sync.spec-test :as spec-test]
+   [metabase-enterprise.remote-sync.test-helpers :as rs.test]
    [metabase.settings.core :as setting]
    [metabase.test.fixtures :as fixtures]
    [toucan2.core :as t2]))
@@ -75,3 +77,37 @@
        (is (= {:pass 4 :fail 0 :error 0}
               (run-var-quietly #'api-test/settings-preserves-transforms-when-not-specified-test)))
        (is (nil? (stored-value :remote-sync-auto-import)))))))
+
+(deftest transforms-binding-test-leaves-no-ledger-row-test
+  (testing "excluded-model-types-test binds remote-sync-transforms and leaves no ledger row"
+    (let [old-rows (t2/select :model/RemoteSyncObject)]
+      (try
+        (t2/delete! :model/RemoteSyncObject)
+        (is (= {:pass 10 :fail 0 :error 0}
+               (run-var-quietly #'spec-test/excluded-model-types-test)))
+        (is (= [] (t2/select-fn-vec (juxt :model_type :model_id :status) :model/RemoteSyncObject)))
+        (finally
+          (t2/delete! :model/RemoteSyncObject)
+          (when (seq old-rows)
+            (t2/insert! :model/RemoteSyncObject old-rows)))))))
+
+(defn- remote-sync-setting-rows
+  "The raw `setting` rows whose key starts with `remote-sync`."
+  []
+  (set (t2/select :setting :key [:like "remote-sync%"])))
+
+(deftest transform-tag-import-test-leaves-no-setting-or-ledger-row-test
+  (testing "transform-tag-import-then-noop-stays-synced-test binds remote-sync-enabled and leaves no setting row and no
+            ledger row"
+    (rs.test/clean-object
+     (fn []
+       (rs.test/clean-remote-sync-settings
+        (fn []
+          ;; with no stored row, a binding that ends stores the earlier getter value as a new row
+          (t2/delete! :setting :key "remote-sync-enabled")
+          (setting/restore-cache!)
+          (let [rows (remote-sync-setting-rows)]
+            (is (= {:pass 3 :fail 0 :error 0}
+                   (run-var-quietly #'content-hash-test/transform-tag-import-then-noop-stays-synced-test)))
+            (is (= rows (remote-sync-setting-rows)))
+            (is (= [] (t2/select-fn-vec (juxt :model_type :status) :model/RemoteSyncObject))))))))))
