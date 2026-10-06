@@ -2,8 +2,10 @@ import { useState } from "react";
 import { t } from "ttag";
 
 import {
+  skipToken,
   useCreateActionPublicLinkMutation,
   useDeleteActionPublicLinkMutation,
+  useGetDatabaseQuery,
   useUpdateActionMutation,
 } from "metabase/api";
 import { CopyTextInput } from "metabase/common/components/CopyTextInput";
@@ -12,6 +14,7 @@ import { PageContainer } from "metabase/common/data-studio/components/PageContai
 import { TitleSection } from "metabase/common/data-studio/components/TitleSection";
 import { useMetadataToasts } from "metabase/common/hooks";
 import { useConfirmation } from "metabase/common/hooks/use-confirmation";
+import { hasActionsEnabled } from "metabase/common/utils/database";
 import { getUserIsAdmin } from "metabase/current-user";
 import { useSelector } from "metabase/redux";
 import { useSetting } from "metabase/settings";
@@ -29,7 +32,6 @@ import * as Urls from "metabase/urls";
 import type { WritebackQueryAction } from "metabase-types/api";
 
 import { ActionHeader } from "../../components/ActionHeader";
-import { useActionDatabases } from "../../hooks/use-action-databases";
 import { useRouteAction } from "../../hooks/use-route-action";
 
 export function ActionSettingsPage() {
@@ -38,15 +40,16 @@ export function ActionSettingsPage() {
     isLoading: isLoadingAction,
     error: actionError,
   } = useRouteAction();
+  const databaseId = action?.database_id;
   const {
-    databases,
-    isLoading: isLoadingDatabases,
-    error: databasesError,
-  } = useActionDatabases();
+    data: database,
+    isLoading: isLoadingDatabase,
+    error: databaseError,
+  } = useGetDatabaseQuery(databaseId != null ? { id: databaseId } : skipToken);
   const isAdmin = useSelector(getUserIsAdmin);
   const isPublicSharingEnabled = useSetting("enable-public-sharing");
-  const isLoading = isLoadingAction || isLoadingDatabases;
-  const error = actionError ?? databasesError;
+  const isLoading = isLoadingAction || isLoadingDatabase;
+  const error = actionError ?? databaseError;
 
   if (isLoading || error != null || action == null) {
     return (
@@ -65,9 +68,7 @@ export function ActionSettingsPage() {
         {isAdmin && isPublicSharingEnabled && (
           <PublicSharingSection
             action={action}
-            canMakePublic={databases.some(
-              (database) => database.id === action.database_id,
-            )}
+            canMakePublic={database != null && hasActionsEnabled(database)}
           />
         )}
         <SuccessMessageSection
