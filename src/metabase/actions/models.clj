@@ -587,12 +587,8 @@
       [[{:model "Collection" :id collection-id}]])
     (when-let [model-id (:model_id action)]
       [[{:model "Card" :id model-id}]])
-    ;; this method is called on ingested data before transformation, and so here it always will be a string
     (when (= (:type action) "query")
-      (let [{:keys [database_id dataset_query]} (first (:query action))]
-        (concat
-         [[{:model "Database" :id database_id}]]
-         (serdes/mbql-deps false dataset_query)))))))
+      (serdes/mbql-deps false (:dataset_query (first (:query action))))))))
 
 (defmethod serdes/serialization-dependencies "Action" [_model-name {:keys [id collection_id model_id type]}]
   ;; Serialization runs on the raw entity, whose query lives in the `query_action` child table (`:type` is a keyword

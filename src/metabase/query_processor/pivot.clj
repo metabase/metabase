@@ -30,6 +30,7 @@
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.metadata :as qp.metadata]
    [metabase.query-processor.middleware.add-remaps :as qp.add-remaps]
+   [metabase.query-processor.middleware.catch-exceptions :as qp.catch-exceptions]
    [metabase.query-processor.middleware.drop-fields-in-summaries :as qp.drop-fields-in-summaries]
    [metabase.query-processor.middleware.nest-for-pivot :as qp.nest-for-pivot]
    [metabase.query-processor.middleware.normalize-query :as qp.middleware.normalize]
@@ -891,6 +892,27 @@
     (let [{:keys [outcome throwable]} (get outcomes primary-flow)]
       (if throwable (throw throwable) outcome))))
 
+(mu/defn- run-pivot-query*
+  "Impl for [[run-pivot-query]]: pick the pivot implementation for `query` and run it through `rff`."
+  [query :- ::qp.schema/any-query
+   rff   :- ::qp.schema/rff]
+  (let [query (-> query
+                  qp.middleware.normalize/normalize-preprocessing-middleware
+                  lib/prepare-after-deserialization)]
+    ;; Pivot compilation assumes the last stage has both `:breakout` and `:aggregation`; without them
+    ;; there's nothing to group over or aggregate so we fall through to a plain non-pivot run.
+    (if (or (empty? (lib/breakouts query))
+            (empty? (lib/aggregations query)))
+      (qp/process-query query rff)
+      (let [db                (query-database query)
+            sql-driver?       (isa? driver/hierarchy (:engine db) :sql)
+            use-single-query? (and sql-driver? (qp.settings/use-native-pivot-tables))
+            primary           (if use-single-query? run-sql-pivot-query run-pivot-query-multi)]
+        (binding [qp.pipeline/*pivot?* true]
+          (if (and sql-driver? (pivot-parity-enabled?))
+            (run-with-parity-check query rff use-single-query?)
+            (primary query rff)))))))
+
 (mu/defn run-pivot-query
   "Run the pivot `query` through `rff`.
 
@@ -902,6 +924,9 @@
   When [[*check-pivot-parity?*]] is on and the SQL path is applicable, both run (primary via the caller's
   rff, secondary via the default rff for comparison) and disagreement is reported via
   [[on-parity-mismatch]]. Parity checking is on by default in clojure.test tests.
+
+  A query with `:info` is run as a userland query, so any error is
+  caught and returned as a formatted error response rather than thrown.
 
   Wrap this call in [[metabase.query-processor.streaming/streaming-response]] yourself."
   ([query :- ::qp.schema/any-query]
@@ -915,19 +940,12 @@
    ;; run-pivot-query, so binding it here from the query's :info map would be
    ;; redundant and could mis-set it for ad-hoc queries that carry a :card-id in :info.
    (qp.setup/with-qp-setup [query query]
-     (let [query             (-> query
-                                 qp.middleware.normalize/normalize-preprocessing-middleware
-                                 lib/prepare-after-deserialization)]
-       ;; Pivot compilation assumes the last stage has both `:breakout` and `:aggregation`; without them
-       ;; there's nothing to group over or aggregate so we fall through to a plain non-pivot run.
-       (if (or (empty? (lib/breakouts query))
-               (empty? (lib/aggregations query)))
-         (qp/process-query (maybe-userland query) rff)
-         (let [db                (query-database query)
-               sql-driver?       (isa? driver/hierarchy (:engine db) :sql)
-               use-single-query? (and sql-driver? (qp.settings/use-native-pivot-tables))
-               primary           (if use-single-query? run-sql-pivot-query run-pivot-query-multi)]
-           (binding [qp.pipeline/*pivot?* true]
-             (if (and sql-driver? (pivot-parity-enabled?))
-               (run-with-parity-check query rff use-single-query?)
-               (primary query rff)))))))))
+     (let [query (cond-> query
+                   (seq (:info query)) qp/userland-query)
+           rff   (or rff qp.reducible/default-rff)
+           ;; Everything between here and the first `qp/process-query`
+           ;; runs outside the QP's own middleware, so wrap it in the same exception-catching middleware
+           ;; `qp/process-query` applies to userland queries.
+           ;; No-op for non-userland queries.
+           qp    (qp.catch-exceptions/catch-exceptions run-pivot-query*)]
+       (qp query rff)))))

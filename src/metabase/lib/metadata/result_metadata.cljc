@@ -482,22 +482,15 @@
            (add-source-and-desired-aliases query)))))
 
 (defn- add-unit [col]
-  (merge
-   ;; TODO -- we also need to 'flow' the unit from previous stage(s) "so the frontend can use the correct
-   ;; formatting to display values of the column" according
-   ;; to [[metabase.query-processor.nested-queries-test/breakout-year-test]]
-   (when-let [temporal-unit ((some-fn :lib/temporal-unit :inherited-temporal-unit) col)]
-     {:unit temporal-unit})
-   col))
+  ;; TODO -- we also need to 'flow' the unit from previous stage(s) "so the frontend can use the correct formatting to
+  ;; display values of the column" according to [[metabase.query-processor.nested-queries-test/breakout-year-test]]
+  (u/assoc-default col :unit (or (:lib/temporal-unit col)
+                                 (:inherited-temporal-unit col))))
 
 (defn- add-binning-info [col]
-  (merge
-   (when-let [binning-info ((some-fn :lib/binning :lib/original-binning) col)]
-     {:binning-info (merge
-                     (when-let [strategy (:strategy binning-info)]
-                       {:binning-strategy strategy})
-                     binning-info)})
-   col))
+  (if-let [binning-info (or (:lib/binning col) (:lib/original-binning col))]
+    (u/assoc-default col :binning-info (u/assoc-default binning-info :binning-strategy (:strategy binning-info)))
+    col))
 
 ;;; TODO (Cam 6/12/25) -- remove `:lib/uuid` because it causes way to many test failures. Probably would be better to
 ;;; keep it around but I don't have time to update a million tests. Why do columns have `:lib/uuid` anyway? They
