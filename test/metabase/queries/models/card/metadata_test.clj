@@ -109,6 +109,21 @@
         (testing "a model whose metadata still cannot be inferred is not changed"
           (is (= unresolvable (metadata unresolvable-id))))))))
 
+(deftest deserializing-insert-of-model-overrides-infers-types-test
+  (testing "a serdes load that inserts a model with only the overrides of its columns stores the inferred types"
+    (binding [mi/*deserializing?* true]
+      (mt/with-temp [:model/Card {card-id :id} {:type            :model
+                                                :dataset_query   (venues-query)
+                                                :result_metadata [{:name "ID" :display_name "ID"}
+                                                                  {:name "NAME" :display_name "Venue Name"}]}]
+        (is (=? [{:name "ID" :base_type :type/BigInteger :id (mt/id :venues :id)}
+                 {:name "NAME" :base_type :type/Text :id (mt/id :venues :name) :display_name "Venue Name"}
+                 {:name "CATEGORY_ID" :base_type :type/Integer}
+                 {:name "LATITUDE" :base_type :type/Float}
+                 {:name "LONGITUDE" :base_type :type/Float}
+                 {:name "PRICE" :base_type :type/Integer}]
+                (t2/select-one-fn :result_metadata :model/Card :id card-id)))))))
+
 (deftest deserializing-update-with-model-overrides-keeps-types-test
   (testing "a serdes load that updates a model with only the overrides of its metadata keeps the inferred column types"
     ;; An export writes only the overrides of a model's columns (no base_type, no field id), and the query of the
@@ -125,15 +140,34 @@
                {:name "PRICE" :base_type :type/Integer}]
               (t2/select-one-fn :result_metadata :model/Card :id card-id))))))
 
+(deftest deserializing-update-of-semantic-type-override-test
+  (testing "a serdes load that changes only the semantic type of a model column keeps the inferred types and applies the new semantic type"
+    (mt/with-temp [:model/Card {card-id :id} {:type :model :dataset_query (venues-query)}]
+      (let [exported (mapv #(select-keys % [:name :display_name :semantic_type])
+                           (t2/select-one-fn :result_metadata :model/Card :id card-id))]
+        (binding [mi/*deserializing?* true]
+          (t2/update! :model/Card card-id
+                      {:result_metadata (mapv #(cond-> % (= "NAME" (:name %)) (assoc :semantic_type :type/Category))
+                                              exported)}))
+        (is (=? [{:name "ID" :base_type :type/BigInteger :id (mt/id :venues :id)}
+                 {:name "NAME" :base_type :type/Text :id (mt/id :venues :name) :semantic_type :type/Category}
+                 {:name "CATEGORY_ID" :base_type :type/Integer}
+                 {:name "LATITUDE" :base_type :type/Float}
+                 {:name "LONGITUDE" :base_type :type/Float}
+                 {:name "PRICE" :base_type :type/Integer}]
+                (t2/select-one-fn :result_metadata :model/Card :id card-id)))))))
+
 (deftest deserializing-update-without-metadata-does-not-infer-test
   (testing "a serdes load that updates neither the query nor result_metadata of a model does not infer its metadata"
-    ;; The stored columns have no field ids, as a load of overrides stores them when the inference fails.
+    ;; Id-less columns, so that only the guard on `changes` can stop the inference.
     (mt/with-temp [:model/Card {card-id :id} {:type            :model
                                               :dataset_query   (venues-query)
                                               :result_metadata [{:name "ID" :display_name "ID"}
                                                                 {:name "NAME" :display_name "Venue Name"}]}]
       (let [calls    (atom 0)
             original (mt/original-fn #'card.metadata/infer-metadata-with-model-overrides)]
+        (is (not-any? :id (t2/select-one-fn :result_metadata :model/Card :id card-id))
+            "Precondition: the stored columns have no field id")
         (mt/with-dynamic-fn-redefs [card.metadata/infer-metadata-with-model-overrides
                                     (fn [query card]
                                       (swap! calls inc)
@@ -141,14 +175,14 @@
           (binding [mi/*deserializing?* true]
             (t2/update! :model/Card card-id {:name "Renamed model"}))
           (is (= 0 @calls))
-          (testing "control: an update of the query infers the metadata"
+          (testing "control: the spy counts a call when a plain update changes the query"
             (t2/update! :model/Card card-id {:dataset_query (lib/limit (venues-query) 10)})
             (is (= 1 @calls))))))))
 
 (defn- native-venues-query [sql]
   (lib/native-query (mt/metadata-provider) sql))
 
-(defn- column-types
+(defn- columns
   "The `[name base_type display_name]` of each result metadata column of the Card `card-id`."
   [card-id]
   (mapv (juxt :name :base_type :display_name)
@@ -172,7 +206,7 @@
           (t2/update! :model/Card card-id {:dataset_query   (native-venues-query "SELECT ID, NAME FROM VENUES WHERE ID > 0")
                                            :result_metadata stored}))
         (is (= [["ID" :type/BigInteger "ID"] ["NAME" :type/Text "Venue name"]]
-               (column-types card-id)))))))
+               (columns card-id)))))))
 
 (deftest deserializing-update-of-model-query-keeps-overrides-when-inference-fails-test
   (testing "a serdes load that changes the query of an MBQL model with only overrides keeps them when the inference fails"
@@ -188,4 +222,4 @@
             (t2/update! :model/Card card-id {:dataset_query   (lib/limit (venues-query) 10)
                                              :result_metadata stored})))
         (is (= [["ID" :type/* "ID"] ["NAME" :type/* "Venue Name"]]
-               (column-types card-id)))))))
+               (columns card-id)))))))
