@@ -2,6 +2,7 @@
   (:require
    [java-time.api :as t]
    [medley.core :as m]
+   [metabase-enterprise.data-apps.core :as data-apps]
    [metabase-enterprise.remote-sync.db :as remote-sync.db]
    [metabase-enterprise.remote-sync.guards :as guards]
    [metabase-enterprise.remote-sync.settings :as settings]
@@ -36,7 +37,10 @@
   :feature :none
   [collection]
   (or (= (settings/remote-sync-type) :read-write)
-      (not (collections/remote-synced-collection? collection))))
+      (not (or (collections/remote-synced-collection? collection)
+               ;; a data app's collection is synced with the app; without remote sync nothing writes its files
+               (and (settings/remote-sync-enabled)
+                    (some-> collection u/the-id data-apps/resource-collection?))))))
 
 (defenterprise table-editable?
   "Determines if a table's metadata should be editable.
