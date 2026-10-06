@@ -59,7 +59,8 @@
 (defmulti base-type->bigquery-type
   "Return the BigQuery SQL type name for a Metabase `:type/*` base-type as a plain string. Throws
   `IllegalArgumentException` when the type has no BigQuery analogue."
-  {:arglists '([base-type])}
+  {:arglists '([base-type])
+   :changelog-test/ignore true}
   identity)
 
 ;; We can't recover the parameterized types for ARRAY / DICTIONARY — flatten to JSON.
