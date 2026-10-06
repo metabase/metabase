@@ -72,10 +72,11 @@ jest.mock("@floating-ui/dom", () => ({
 }));
 
 // Mock clipboard API for tests
-Object.assign(navigator, {
-  clipboard: {
+Object.defineProperty(navigator, "clipboard", {
+  value: {
     writeText: jest.fn(() => Promise.resolve()),
   },
+  configurable: true,
 });
 
 beforeEach(() => {
