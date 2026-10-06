@@ -4,7 +4,6 @@ import type { ContinuousDomain } from "../../../shared/types/scale";
 import type { ChartLayout } from "../layout/types";
 import type {
   TimeSeriesAxisFormatter,
-  TimeSeriesInterval,
   TimeSeriesXAxisModel,
 } from "../model/types";
 import {
@@ -71,30 +70,72 @@ export const getTicksOptions = (
 
   let canRender: (value: Dayjs) => boolean = (date) => isWithinRange(date);
 
-  // ECharts anchors multi-unit tick grids (every 2 years, every 15 minutes…)
-  // at the axis extent and skips the first boundary inside the range when the
-  // extent's own boundary falls before it. So for every unit we can enumerate,
-  // ECharts is asked for a tick at every single unit and the grid is applied
-  // here, starting from the first boundary inside the (padded) axis.
-  const ticksUnit = getEChartsTicksUnit(largestInterval.unit, isSingleItem);
-  if (ticksUnit != null) {
-    const paddedMinDate = xAxisModel.fromEChartsAxisValue(xDomainPadded[0]);
-    const isGridBoundary = getGridBoundaryPredicate(
-      largestInterval.unit,
-      range[0].day(),
-    );
-    const firstBoundary = findFirstBoundary(
-      paddedMinDate,
-      largestInterval.unit,
-      isGridBoundary,
-    );
+  // HACK: ECharts does not support weekly ticks internally and even by specifying minInterval=*week_duration*
+  // it will not produce correct weekly ticks prioritizing start of months ticks. A workaround to this is to
+  // force ECharts render daily ticks and then in formatter return actual formatted values only for days that
+  // are start of week and an empty string for the rest.
+  if (largestInterval.unit === "week") {
+    const startOfWeek = range[0].day();
     canRender = (date: Dayjs) =>
       isWithinRange(date) &&
-      isGridBoundary(date) &&
-      Math.round(date.diff(firstBoundary, largestInterval.unit, true)) %
-        largestInterval.count ===
-        0;
-    maxInterval = getTimeSeriesIntervalDuration({ count: 1, unit: ticksUnit });
+      date.day() === startOfWeek &&
+      date.week() % largestInterval.count === 0;
+    const effectiveTicksUnit = "day";
+    maxInterval = getTimeSeriesIntervalDuration({
+      count: 1,
+      unit: effectiveTicksUnit,
+    });
+  }
+
+  // HACK: For monthly ticks, we need to handle variable month lengths.
+  // Setting a fixed minInterval causes ECharts to skip months because some months
+  // (like February with 28 days) are shorter than others (31 days).
+  // Instead, we force ECharts to generate daily ticks and filter to month starts.
+  if (largestInterval.unit === "month") {
+    canRender = (date: Dayjs) =>
+      isWithinRange(date) &&
+      date.date() === 1 &&
+      date.month() % largestInterval.count === 0;
+    maxInterval = getTimeSeriesIntervalDuration({
+      count: 1,
+      unit: "day",
+    });
+  }
+
+  // HACK: Similarly to weekly ticks, ECharts does not support quarterly ticks natively.
+  // If we let ECharts select ticks for quarterly data it can pick January and March which
+  // will look like a duplication because both ticks will be formatted as Q1. So we need to
+  // force ECharts to render monthly ticks and then select ones for Jan, Apr, Jul, Oct.
+  if (!isSingleItem && largestInterval.unit === "quarter") {
+    const effectiveTicksUnit = "month";
+    canRender = (date: Dayjs) =>
+      isWithinRange(date) &&
+      date.startOf("quarter").isSame(date, "month") &&
+      (date.quarter() - 1) % largestInterval.count === 0;
+    maxInterval = getTimeSeriesIntervalDuration({
+      count: 1,
+      unit: effectiveTicksUnit,
+    });
+  }
+
+  // ECharts anchors multi-year tick grids at the axis extent's year, so with
+  // data starting in March 2019 and ticks every two years it emits 2019 (hidden,
+  // before the data), 2021, 2023… and the first year inside the range goes
+  // unlabeled. Ask ECharts for every year instead and start the grid at the
+  // first year boundary inside the (padded) axis. Filtering to 1 January also
+  // drops the mid-year ticks ECharts 6.1.0 emits for single-point domains,
+  // which otherwise duplicate the label (metabase#63671).
+  if (largestInterval.unit === "year") {
+    const firstYear = xAxisModel
+      .fromEChartsAxisValue(xDomainPadded[0])
+      .add(1, "year")
+      .year();
+    canRender = (date: Dayjs) =>
+      isWithinRange(date) &&
+      date.month() === 0 &&
+      date.date() === 1 &&
+      (date.year() - firstYear) % largestInterval.count === 0;
+    maxInterval = getTimeSeriesIntervalDuration({ count: 1, unit: "year" });
   }
 
   if (!maxInterval) {
@@ -109,53 +150,3 @@ export const getTicksOptions = (
     xDomainPadded,
   };
 };
-
-// The unit ECharts should emit a tick for. Weeks and months use days because
-// ECharts has no weekly ticks and a fixed month interval in milliseconds skips
-// short months; quarters use months for the same reason. Years and finer units
-// are regular enough to be emitted directly.
-function getEChartsTicksUnit(
-  unit: TimeSeriesInterval["unit"],
-  isSingleItem: boolean,
-): TimeSeriesInterval["unit"] | null {
-  switch (unit) {
-    case "week":
-    case "month":
-    case "day":
-      return "day";
-    case "quarter":
-      // With a single point ECharts picks the quarter tick itself.
-      return isSingleItem ? null : "month";
-    case "year":
-    case "hour":
-    case "minute":
-    case "second":
-      return unit;
-    default:
-      return null;
-  }
-}
-
-function getGridBoundaryPredicate(
-  unit: TimeSeriesInterval["unit"],
-  dataWeekday: number,
-) {
-  if (unit === "week") {
-    return (date: Dayjs) =>
-      date.day() === dataWeekday && date.startOf("day").isSame(date);
-  }
-  return (date: Dayjs) => date.startOf(unit).isSame(date);
-}
-
-function findFirstBoundary(
-  paddedMin: Dayjs,
-  unit: TimeSeriesInterval["unit"],
-  isGridBoundary: (date: Dayjs) => boolean,
-) {
-  const step = unit === "week" ? "day" : unit;
-  let boundary = paddedMin.startOf(step);
-  while (!boundary.isAfter(paddedMin) || !isGridBoundary(boundary)) {
-    boundary = boundary.add(1, step);
-  }
-  return boundary;
-}

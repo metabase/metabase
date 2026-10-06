@@ -182,7 +182,7 @@ describe("timeseries intervals", () => {
         end: "2020-04-05",
         unit: "month",
         count: 2,
-        expected: 2, // 2020-02-01, 2020-04-01
+        expected: 1, // 2020-03-01
       },
       {
         start: "2022-01-01",
@@ -197,6 +197,20 @@ describe("timeseries intervals", () => {
         unit: "year",
         count: 2,
         expected: 2, // 2024-01-01, 2026-01-01
+      },
+      {
+        start: "2021-01-01",
+        end: "2025-06-01",
+        unit: "year",
+        count: 2,
+        expected: 3, // 2021-01-01, 2023-01-01, 2025-01-01: the grid starts at the first year in range
+      },
+      {
+        start: "2021-03-01",
+        end: "2031-06-01",
+        unit: "year",
+        count: 5,
+        expected: 2, // 2022-01-01, 2027-01-01
       },
       {
         start: "2025-01-01",
@@ -224,7 +238,7 @@ describe("timeseries intervals", () => {
         end: "2025-01-22T00:00:00Z", // Wednesday
         unit: "week",
         count: 1,
-        expected: 3, // Jan 8, Jan 15, Jan 22 (weeks start on the first data point's weekday)
+        expected: 2, // Jan 12, Jan 19
       },
       {
         start: "2025-03-15T00:00:00Z",
@@ -252,7 +266,7 @@ describe("timeseries intervals", () => {
         end: "2025-03-15T10:00:00Z",
         unit: "hour",
         count: 3,
-        expected: 4, // 1:00, 4:00, 7:00, 10:00
+        expected: 3, // 3:00, 6:00, 9:00
       },
       {
         start: "2025-03-15T10:00:00Z",
@@ -266,7 +280,7 @@ describe("timeseries intervals", () => {
         end: "2025-03-15T11:05:00Z",
         unit: "minute",
         count: 15,
-        expected: 5, // 10:05, 10:20, 10:35, 10:50, 11:05
+        expected: 4, // 10:15, 10:30, 10:45, 11:00
       },
       {
         start: "2025-03-15T10:00:00Z",
@@ -280,7 +294,7 @@ describe("timeseries intervals", () => {
         end: "2025-03-15T10:02:10Z",
         unit: "second",
         count: 30,
-        expected: 5, // :10, :40, 1:10, 1:40, 2:10
+        expected: 4, // :30, 1:00, 1:30, 2:00
       },
       {
         start: "2025-03-15T10:00:00Z",
