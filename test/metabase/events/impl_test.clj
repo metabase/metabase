@@ -3,9 +3,13 @@
    [clojure.test :refer :all]
    [metabase.events.hierarchy :as events.hierarchy]
    [metabase.events.impl :as events]
-   [methodical.core :as methodical]))
+   [metabase.test.fixtures :as fixtures]
+   [methodical.core :as methodical]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
+
+(use-fixtures :once (fixtures/initialize :db))
 
 #_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic *method-calls* nil)
@@ -66,7 +70,7 @@
       e)))
 
 (deftest every-listener-runs-when-another-throws-test
-  ;; The order of the listeners is not fixed, so make each one the thrower in turn.
+  ;; Make each listener the thrower in turn: the thrower runs first in one case and last in the other.
   (doseq [thrower [::throwing-topic ::throwing-topics]]
     (testing (str "listener " thrower " throws")
       (binding [*method-calls* (atom {})]
@@ -98,3 +102,16 @@
                  (into #{}
                        (map (comp :listener ex-data))
                        (cons cause (.getSuppressed cause))))))))))
+
+(deftest first-error-stops-the-listeners-inside-a-transaction-test
+  ;; The transaction rolls back after the error, so a later listener must not act on rows that never commit.
+  (binding [*method-calls* (atom {})]
+    (let [event {::throw #{::throwing-topic}}
+          e     (t2/with-transaction [_conn]
+                  (publish-and-catch! event))]
+      (testing "the more specific listener runs first and throws, so the other listener does not run"
+        (is (= {::throwing-topic event}
+               @*method-calls*)))
+      (testing "publish-event! throws the error of the listener"
+        (is (= {:listener ::throwing-topic}
+               (ex-data (ex-cause e))))))))

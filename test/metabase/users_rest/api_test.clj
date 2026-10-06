@@ -4,10 +4,12 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.api.response :as api.response]
+   [metabase.audit-app.models.audit-log :as audit-log]
    [metabase.auth-identity.core :as auth-identity]
    [metabase.collections.models.collection :as collection]
    [metabase.config.core :as config]
    [metabase.models.interface :as mi]
+   [metabase.notification.send :as notification.send]
    [metabase.notification.test-util :as notification.tu]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
@@ -2061,3 +2063,36 @@
             (let [body (-> @mt/inbox (get email) first :body first :content)]
               (is (some? body))
               (is (re-find #"/auth/reset_password/" body)))))))))
+
+(defn- invite-notification-count
+  "POST /api/user for a new user with `email`. Return the number of invite notifications sent or queued.
+  When `audit-log-fails?`, the audit log throws while it records the invite."
+  [email audit-log-fails?]
+  (let [record-event! (mt/original-fn #'audit-log/record-event!)
+        invites       (atom 0)]
+    (mt/with-dynamic-fn-redefs [audit-log/record-event!
+                                (fn [topic & more]
+                                  (if (and audit-log-fails? (= topic :event/user-invited))
+                                    (throw (ex-info "audit log down" {}))
+                                    (apply record-event! topic more)))
+                                ;; both the sync and the async send paths start here
+                                notification.send/send-notification!
+                                (fn [notification & _]
+                                  (when (= :event/user-invited (get-in notification [:payload :event_topic]))
+                                    (swap! invites inc))
+                                  nil)]
+      (mt/user-http-request :crowberto :post (if audit-log-fails? 500 200) "user"
+                            {:first_name "Inv" :last_name "Itee" :email email}))
+    @invites))
+
+(deftest invite-sends-nothing-when-the-invite-rolls-back-test
+  (testing "POST /api/user"
+    (mt/with-model-cleanup [:model/User]
+      (testing "sends one invite notification"
+        (let [email (mt/random-email)]
+          (is (= 1 (invite-notification-count email false)))
+          (is (t2/exists? :model/User :email email))))
+      (testing "when a listener of the invite event throws, rolls back the user and sends no invite notification"
+        (let [email (mt/random-email)]
+          (is (= 0 (invite-notification-count email true)))
+          (is (not (t2/exists? :model/User :email email))))))))
