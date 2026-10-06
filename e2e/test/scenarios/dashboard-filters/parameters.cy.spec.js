@@ -2415,6 +2415,11 @@ describe("scenarios > dashboard > parameters", () => {
 
       cy.log("Undo moving the card filter to the header");
       H.moveDashboardFilter("Top of page");
+      H.editingDashboardParametersContainer().within(() => {
+        H.filterWidget({ isEditing: true })
+          .contains("Category")
+          .should("exist");
+      });
       H.undo();
       H.getDashboardCard(0).within(() => {
         H.filterWidget({ isEditing: true })
@@ -2433,6 +2438,9 @@ describe("scenarios > dashboard > parameters", () => {
       });
       H.moveDashboardFilter("test question");
       H.dashboardParameterSidebar().button("Done").click();
+      H.getDashboardCard(0).within(() => {
+        H.filterWidget({ isEditing: true }).contains("Count").should("exist");
+      });
       H.undo();
       H.getDashboardCard(0).within(() => {
         H.filterWidget({ isEditing: true })
