@@ -1,4 +1,4 @@
-(ns metabase-enterprise.remote-sync.isolation-check
+(ns metabase-enterprise.remote-sync.isolation-check-test-util
   "On-demand check that the test namespaces of the remote-sync module leave the app DB as they found it. It runs the
   tests of each namespace with that namespace's fixtures, and compares the stored `remote-sync%` setting rows and the
   RemoteSyncObject rows before and after the namespace.
@@ -6,8 +6,8 @@
   This namespace has no tests, so the test runner does not run it. Run it from a REPL in the worktree; a run of the
   whole module takes about as long as the module's tests (about 100 seconds on H2):
 
-    (require 'metabase-enterprise.remote-sync.isolation-check)
-    (metabase-enterprise.remote-sync.isolation-check/check-module!)
+    (require 'metabase-enterprise.remote-sync.isolation-check-test-util)
+    (metabase-enterprise.remote-sync.isolation-check-test-util/check-module!)
 
   An empty `:leaks` in the result means that no namespace left a difference."
   (:require
@@ -30,7 +30,8 @@
   this check, sorted."
   []
   ;; from the files of the test directory: the source directory of the module has the same resource path
-  (let [module-dir (.getParentFile (io/file (io/resource "metabase_enterprise/remote_sync/isolation_check.clj")))
+  (let [this-file  "metabase_enterprise/remote_sync/isolation_check_test_util.clj"
+        module-dir (.getParentFile (io/file (io/resource this-file)))
         root       (-> module-dir .getParentFile .getParentFile)]
     (sort
      (for [^java.io.File f (file-seq module-dir)
