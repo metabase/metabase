@@ -4,6 +4,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.lib.core :as lib]
+   [metabase.lib.drill-thru.distribution :as lib.drill-thru.distribution]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.mcp.callback-api :as mcp.callback-api]
    [metabase.mcp.session :as mcp.session]
@@ -276,6 +277,16 @@
     (mt/with-model-cleanup [:model/McpQueryHandle]
       (mt/with-dynamic-fn-redefs [lib/available-drill-thrus (fn [& _] (throw (NullPointerException. "boom")))]
         (is (= 500 (:status (derive! (checkins-by-month) {:operations [point-in-january]}))))))))
+
+(deftest bug-inside-lib-drills-is-a-500-test
+  (testing "Lib's `available-drill-thrus` wraps whatever an inner drill throws in an ExceptionInfo with no status. A
+            bug there is still a 500, because the cause chain holds an exception that is not an ExceptionInfo."
+    (mt/with-model-cleanup [:model/McpQueryHandle]
+      (mt/with-dynamic-fn-redefs [lib.drill-thru.distribution/distribution-drill
+                                  (fn [& _] (throw (NullPointerException. "boom")))]
+        (is (= 500 (:status (derive! (venues) {:operations [{:type      "drill-thru" :drill "sort"
+                                                             :direction "asc"
+                                                             :context   {:column "PRICE"}}]}))))))))
 
 (deftest exclude-date-filter-needs-a-unit-test
   (testing "an exclude filter on values names the unit they are in, or it is refused"

@@ -225,6 +225,13 @@
     "temporal-bucket/set" (set-temporal-bucket query operation)
     "drill-thru"          (apply-drill query operation)))
 
+(defn- bug-in-cause-chain?
+  "Whether any cause of `e` is not an ExceptionInfo. Lib wraps whatever a drill throws in an ExceptionInfo, so a bug
+   hides behind one."
+  [^Throwable e]
+  (boolean (some #(not (instance? clojure.lang.ExceptionInfo %))
+                 (take-while some? (iterate #(.getCause ^Throwable %) (.getCause e))))))
+
 (defn derive-query
   "Apply `operations`, each a [[::operation]], in order to the MBQL lib `query`, and return the new query. Throws a
    400 with a short message when `query` has a native stage or an operation does not apply to the query."
@@ -235,7 +242,8 @@
     (reduce apply-operation query operations)
     ;; Only an ExceptionInfo is Lib refusing the input; any other exception is a bug, left to propagate as a 500.
     (catch clojure.lang.ExceptionInfo e
-      (if (:status-code (ex-data e))
+      (if (or (:status-code (ex-data e))
+              (bug-in-cause-chain? e))
         (throw e)
         ;; The caller's input, so a 400 that names no internals.
         (do (log/debug e "Lib refused an MCP derive operation")
