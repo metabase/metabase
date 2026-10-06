@@ -78,3 +78,5 @@ Per-tenant limits are handy for billing scenarios. Say you have a customer, Mega
 - [AI system prompts](./system-prompts.md)
 - [Tenants](../embedding/tenants.md)
 - [Permissions overview](../permissions/start.md)
+
+<!-- [test] Test-gate check: a large docs-only change. Not for merge. -->

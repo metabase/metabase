@@ -55,3 +55,5 @@ There are additional permissions required to run transforms, see [Permissions fo
 
 1. Click the **grid** icon in the upper right.
 2. Select **Data Studio**.
+
+<!-- [test] Test-gate check: a large docs-only change. Not for merge. -->

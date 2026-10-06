@@ -112,3 +112,5 @@ There aren't (yet) any model features for ClickHouse.
 ## Danger zone
 
 See [Danger zone](../danger-zone.md).
+
+<!-- [test] Test-gate check: a large docs-only change. Not for merge. -->

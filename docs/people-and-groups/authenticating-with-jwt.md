@@ -171,3 +171,5 @@ You can find example code that uses JWT authentication in the [SSO examples repo
 
 - [JWT example in a Clojure app](https://github.com/metabase/sso-examples/tree/master/clj-jwt-example)
 - [JWT example in JavaScript (Node) app](https://github.com/metabase/sso-examples/tree/master/nodejs-jwt-example)
+
+<!-- [test] Test-gate check: a large docs-only change. Not for merge. -->

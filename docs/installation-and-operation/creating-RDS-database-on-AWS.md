@@ -74,3 +74,5 @@ On the edit page, you need to delete the IP address that appears as default, the
 ## Add the RDS instance as the application database with environment variables
 
 After having finished all the previous steps, go to your Metabase deployment and add the RDS instance as the Application Database with [Environment variables](../configuring-metabase/environment-variables.md).
+
+<!-- [test] Test-gate check: a large docs-only change. Not for merge. -->

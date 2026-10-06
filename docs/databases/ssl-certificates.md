@@ -94,3 +94,5 @@ If a truststore is provided to verify credentials, the client (your Metabase) ca
 ### Keystores
 
 If a keystore is used to provide credentials, then the server (the database server) can request the client (your Metabase) to authenticate itself using that keystore. Keystores are used less frequently, and in some cases it's impossible to use a keystore (Amazon's RDS forbids keystores, for example). But you may want to use a keystore if you're hosting on prem.
+
+<!-- [test] Test-gate check: a large docs-only change. Not for merge. -->

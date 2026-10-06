@@ -78,3 +78,5 @@ If you click on a column you’re interested in, you’ll see a description of i
 In the data reference sidebar in the native editor, under **Connections**, you can find a list of table relationships (defined by [foreign keys](https://www.metabase.com/glossary/foreign-key)).
 
 If a foreign key relationship exists in your database, but doesn't show up in your Metabase, your admin will need to update your [Metabase table metadata](../data-modeling/metadata/metadata-editing.md).
+
+<!-- [test] Test-gate check: a large docs-only change. Not for merge. -->

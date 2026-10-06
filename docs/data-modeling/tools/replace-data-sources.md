@@ -148,3 +148,5 @@ Because old data sources can be used both in synced and unsynced collections, we
 - The source and target must be on the same database. Cross-database replacement isn't supported.
 - Original and new data source have to satisfy [compatibility requirements](#compatibility-requirements).
 - All uses of the original data source is swapped for the new data source. You can't pick and choose which content to update.
+
+<!-- [test] Test-gate check: a large docs-only change. Not for merge. -->

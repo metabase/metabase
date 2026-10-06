@@ -89,3 +89,5 @@ You can add an image to a dashboard, as long as your admin hasn't [restricted th
 ```
 
 You can't upload an image to Metabase, only link to images hosted elsewhere.
+
+<!-- [test] Test-gate check: a large docs-only change. Not for merge. -->

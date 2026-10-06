@@ -63,3 +63,5 @@ User attributes can't be synced with regular Google Sign-In. To synchronize user
 [saml-docs]: ./authenticating-with-saml.md
 [user-attributes-docs]: ../permissions/row-and-column-security.md#choosing-user-attributes-for-row-and-column-security
 [user-attributes-def]: https://www.metabase.com/glossary/attribute#user-attributes-in-metabase
+
+<!-- [test] Test-gate check: a large docs-only change. Not for merge. -->

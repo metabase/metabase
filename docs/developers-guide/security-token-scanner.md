@@ -40,3 +40,5 @@ echo 'my-token-string' >> mage/resources/token_scanner/token_whitelist.txt && gi
 ```bash
 git commit --no-verify -m "commit message"
 ```
+
+<!-- [test] Test-gate check: a large docs-only change. Not for merge. -->

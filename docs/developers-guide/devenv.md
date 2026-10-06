@@ -484,3 +484,5 @@ It is also possible to execute front-end and back-end checks separately
 $ bun run ci-frontend
 $ bun run ci-backend
 ```
+
+<!-- [test] Test-gate check: a large docs-only change. Not for merge. -->

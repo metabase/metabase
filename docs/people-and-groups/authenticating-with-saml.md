@@ -229,3 +229,5 @@ You can find example code that uses SAML authentication in the [SSO examples rep
 ## Troubleshooting SAML issues
 
 - [Troubleshooting SAML](../troubleshooting-guide/saml.md).
+
+<!-- [test] Test-gate check: a large docs-only change. Not for merge. -->

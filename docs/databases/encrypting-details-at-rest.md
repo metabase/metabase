@@ -71,3 +71,5 @@ To disable an encryption key, follow the steps to [rotate an encryption key](#ro
 ```
 MB_ENCRYPTION_SECRET_KEY="your-current-key" java --add-opens java.base/java.nio=ALL-UNNAMED -jar metabase.jar rotate-encryption-key ""
 ```
+
+<!-- [test] Test-gate check: a large docs-only change. Not for merge. -->

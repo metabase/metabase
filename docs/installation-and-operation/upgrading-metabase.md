@@ -186,3 +186,5 @@ If you're running Metabase in a cluster:
 3. Raise the number of nodes to the same number you had before.
 
 Make sure your container orchestrator or cluster manager doesn't kill the Metabase process while it's performing the migrations, otherwise you may end up with a corrupted application database and you'll need to restore from a backup.
+
+<!-- [test] Test-gate check: a large docs-only change. Not for merge. -->

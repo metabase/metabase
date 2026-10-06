@@ -144,3 +144,5 @@ To remove the Metabot Slack configuration, click **Remove** at the bottom of the
 - [Notification permissions](../permissions/notifications.md)
 - [Setting up email](./email.md)
 - [Usage analytics](../usage-and-performance-tools/usage-analytics.md)
+
+<!-- [test] Test-gate check: a large docs-only change. Not for merge. -->

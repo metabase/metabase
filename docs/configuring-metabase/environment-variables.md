@@ -3539,3 +3539,5 @@ Type: string<br>
 Default: `null`
 
 Base-64 encoded public key for this sites SSL certificate. Specify this to enable HTTP Public Key Pinning. Using HPKP is no longer recommended. See https://developer.mozilla.org/en-US/docs/Web/Security/Defenses/Certificate_Transparency for more information.
+
+<!-- [test] Test-gate check: a large docs-only change. Not for merge. -->

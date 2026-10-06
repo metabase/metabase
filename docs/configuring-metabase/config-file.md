@@ -286,3 +286,5 @@ MB_PREMIUM_EMBEDDING_TOKEN="[your token]" java --add-opens java.base/java.nio=AL
 
 - [Config file template](./config-template.md)
 - [Environment variables](./environment-variables.md)
+
+<!-- [test] Test-gate check: a large docs-only change. Not for merge. -->

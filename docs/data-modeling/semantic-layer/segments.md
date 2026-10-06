@@ -92,3 +92,5 @@ If your instance is in read-only Remote Sync mode, and the Library sync is enabl
 - [Library](./library.md)
 - [Measures](./measures.md)
 - [SQL snippets](../../questions/native-editor/snippets.md)
+
+<!-- [test] Test-gate check: a large docs-only change. Not for merge. -->

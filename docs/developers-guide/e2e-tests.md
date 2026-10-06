@@ -290,3 +290,5 @@ Individual Mocha reports are automatically generated per spec. They are stored i
 When tests run _in CI_ we do some extra steps by merging these individual reports (using `mochawesome-merge`), formatting them, and then generating customized GitHub Actions job summaries.
 
 On an off chance that you need a unified test report _while running tests locally_, you can achieve that by invoking `bun run generate-cypress-html-report`.
+
+<!-- [test] Test-gate check: a large docs-only change. Not for merge. -->

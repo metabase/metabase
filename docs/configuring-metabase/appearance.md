@@ -190,3 +190,5 @@ Metabase will display this illustration when searches don't return any results.
 
 - [Embedding introduction](../embedding/start.md).
 - [Brand your Metabase](https://www.metabase.com/docs/latest/configuring-metabase/appearance).
+
+<!-- [test] Test-gate check: a large docs-only change. Not for merge. -->

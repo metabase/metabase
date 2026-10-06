@@ -27,3 +27,5 @@ Write SQL to create new actions.
 ## [Actions on dashboards](../../../dashboards/actions.md)
 
 Add actions on dashboards as buttons that you can pass filter values to.
+
+<!-- [test] Test-gate check: a large docs-only change. Not for merge. -->

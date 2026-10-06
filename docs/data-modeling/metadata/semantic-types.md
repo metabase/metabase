@@ -185,3 +185,5 @@ With records that include integer entity keys, you can also configure text field
 - [Data reference](../../exploration-and-organization/data-model-reference.md).
 - [The Table Metadata page: editing metadata](./metadata-editing.md).
 - [Field Filters: create smart filter widgets for SQL questions](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/sql-in-metabase/field-filters).
+
+<!-- [test] Test-gate check: a large docs-only change. Not for merge. -->

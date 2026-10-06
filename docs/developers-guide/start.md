@@ -54,3 +54,5 @@ This guide contains detailed information on how to work on the Metabase codebase
 ## Releases
 
 - [Metabase release versioning](./versioning.md)
+
+<!-- [test] Test-gate check: a large docs-only change. Not for merge. -->

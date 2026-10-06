@@ -79,3 +79,5 @@ This is the core file for your driver. We'll talk more about it in [Implementing
 We'll learn more about [plugin manifests](plugins.md).
 
 [env-var]: ../../configuring-metabase/environment-variables.md
+
+<!-- [test] Test-gate check: a large docs-only change. Not for merge. -->

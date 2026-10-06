@@ -172,3 +172,5 @@ DOCKER_BUILDKIT=1 docker build --output container-output/ --build-arg VERSION=vx
 ```
 
 Replace `VERSION=vx.x.x` with `vx.x.x` matching your major and minor release tag like `VERSION=v0.63.18`. Make sure that your Docker Daemon is running before executing the command. After running the command, you'll find the Metabase JAR file at `./container-output/app/metabase.jar`.
+
+<!-- [test] Test-gate check: a large docs-only change. Not for merge. -->

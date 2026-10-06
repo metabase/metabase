@@ -213,3 +213,5 @@ You can then take the supplied SQL script and apply it to your database manually
 ## Troubleshooting migration issues
 
 Check out [this troubleshooting guide](../troubleshooting-guide/loading-from-h2.md).
+
+<!-- [test] Test-gate check: a large docs-only change. Not for merge. -->

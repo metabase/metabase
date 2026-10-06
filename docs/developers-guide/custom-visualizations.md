@@ -457,3 +457,5 @@ Static renders (like charts in alerts or dashboard subscriptions) fall back to a
 - [Custom visualizations](../questions/visualizations/custom.md)
 - [`@metabase/custom-viz` on npm](https://www.npmjs.com/package/@metabase/custom-viz)
 - [Visualization overview](../questions/visualizations/visualizing-results.md)
+
+<!-- [test] Test-gate check: a large docs-only change. Not for merge. -->

@@ -147,3 +147,5 @@ See [Danger zone](../danger-zone.md).
 ## Further reading
 
 See our troubleshooting guide for [troubleshooting your connection](../../troubleshooting-guide/db-connection.md).
+
+<!-- [test] Test-gate check: a large docs-only change. Not for merge. -->

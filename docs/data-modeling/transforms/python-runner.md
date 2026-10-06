@@ -203,3 +203,5 @@ Then bring everything up and try a transform:
 3. You'll need a Pro or Enterprise license with the [Advanced transforms add-on](addons.md). In Metabase, [enable transforms](transforms-overview.md#enable-transforms), then [create a Python transform](python.md#create-a-python-transform) and click **Run**.
 
 4. Open **Data Studio > Jobs > Runs** and find your run. If it failed, the run's logs will usually tell you whether Metabase couldn't reach the runner, or the runner couldn't reach MinIO.
+
+<!-- [test] Test-gate check: a large docs-only change. Not for merge. -->

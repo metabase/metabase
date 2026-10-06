@@ -114,3 +114,5 @@ See [Danger zone](../danger-zone.md).
 - [Metadata editing](../../data-modeling/metadata/metadata-editing.md)
 - [Models](../../data-modeling/models/models.md)
 - [Setting data access permissions](../../permissions/data.md)
+
+<!-- [test] Test-gate check: a large docs-only change. Not for merge. -->

@@ -207,3 +207,5 @@ If the site URL doesn't match an address your MCP client can reach, like if you'
 - [Agent-driven development](./agent-driven-development.md)
 - [Metabase API docs](../api.html)
 - [Model Context Protocol specification](https://modelcontextprotocol.io/)
+
+<!-- [test] Test-gate check: a large docs-only change. Not for merge. -->

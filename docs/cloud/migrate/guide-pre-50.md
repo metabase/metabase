@@ -93,3 +93,5 @@ We'll take care of your Metabase and keep it up to date from here on out. Welcom
 ## Need help?
 
 If you have any questions, just [send us an email](https://www.metabase.com/help).
+
+<!-- [test] Test-gate check: a large docs-only change. Not for merge. -->

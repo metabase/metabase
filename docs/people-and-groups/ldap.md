@@ -113,3 +113,5 @@ You can manage [user attributes][user-attributes-def] such as names, emails, and
 [saml-docs]: ./authenticating-with-saml.md
 [user-attributes-docs]: ../permissions/row-and-column-security.md#choosing-user-attributes-for-row-and-column-security
 [user-attributes-def]: https://www.metabase.com/glossary/attribute#user-attributes-in-metabase
+
+<!-- [test] Test-gate check: a large docs-only change. Not for merge. -->

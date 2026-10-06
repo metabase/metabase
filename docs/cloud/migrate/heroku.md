@@ -57,3 +57,5 @@ curl -s long-metabase-migration-script-url | bash
 ```
 
 That should be all there is to it. See the [migration guide](./guide.md) for details.
+
+<!-- [test] Test-gate check: a large docs-only change. Not for merge. -->

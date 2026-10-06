@@ -87,3 +87,5 @@ To remove Metabase Cloud Storage, use the following steps:
 ## Syncing Google Sheets with Metabase
 
 If you set up Metabase Cloud Storage, you can [sync Google Sheets with your Metabase](./google-sheets.md).
+
+<!-- [test] Test-gate check: a large docs-only change. Not for merge. -->

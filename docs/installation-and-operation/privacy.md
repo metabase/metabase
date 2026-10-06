@@ -21,3 +21,5 @@ If you're a [Metabase Cloud](https://www.metabase.com/pricing) customer, your [T
 - [AI privacy](../ai/privacy.md) — what data Metabase's AI features send, and to whom
 
 [information-collection]: information-collection.md
+
+<!-- [test] Test-gate check: a large docs-only change. Not for merge. -->

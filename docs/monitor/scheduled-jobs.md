@@ -33,3 +33,5 @@ For each trigger, Metabase shows the:
 - **Priority**: The trigger's priority when multiple jobs fire at once.
 - **Last Fired**: The timestamp for when the trigger last fired.
 - **Next Fire Time**: The timestamp for when the trigger will fire next.
+
+<!-- [test] Test-gate check: a large docs-only change. Not for merge. -->

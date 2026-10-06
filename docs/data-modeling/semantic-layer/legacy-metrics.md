@@ -16,3 +16,5 @@ If you're upgrading from Metabase 50 or earlier, all of your existing metrics wi
 - Metrics can be stored (and pinned) to collections.
 - If you have curate access to the collection, you can edit a metric in that collection.
 - You can explore metrics in your Metabase in the data browser.
+
+<!-- [test] Test-gate check: a large docs-only change. Not for merge. -->

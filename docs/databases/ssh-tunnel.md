@@ -94,3 +94,5 @@ If inbound connections aren't allowed to the infrastructure that hosts the datab
 ## Further reading
 
 - [Adding and managing databases](./connecting.md).
+
+<!-- [test] Test-gate check: a large docs-only change. Not for merge. -->

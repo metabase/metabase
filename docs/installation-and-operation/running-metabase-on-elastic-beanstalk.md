@@ -79,3 +79,5 @@ If you want to stay in Elastic Beanstalk, you can keep upgrading it by following
 6. Upgrade your environment.
 
 Remember that if you're using a Pro or Enterprise version of Metabase, you need to use the metabase/metabase-enterprise repository instead of the metabase/metabase one.
+
+<!-- [test] Test-gate check: a large docs-only change. Not for merge. -->

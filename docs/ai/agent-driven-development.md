@@ -151,3 +151,5 @@ Since the agent uses the CLI to create content directly in Metabase, to undo cha
 - [Metabase Representation Format](https://github.com/metabase/representations)
 - [Agent skills](https://github.com/metabase/agent-skills)
 - [MCP server](./mcp.md): for agents that need live metadata lookups outside the agent-driven workflow.
+
+<!-- [test] Test-gate check: a large docs-only change. Not for merge. -->

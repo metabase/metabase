@@ -40,3 +40,5 @@ This toggle controls whether the default decorative illustrations show in the Me
 - [AI usage controls](./usage-controls.md)
 - [AI system prompts](./system-prompts.md)
 - [Metabot](./metabot.md)
+
+<!-- [test] Test-gate check: a large docs-only change. Not for merge. -->

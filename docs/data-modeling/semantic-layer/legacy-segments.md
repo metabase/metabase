@@ -48,3 +48,5 @@ When editing a segment, you’ll be required to leave a note about why you’re 
 Retiring a segment will make it no longer selectable from the query builder. However, **it won’t break existing saved questions that depend on that segment**.
 
 Lastly, you can also view the revision history for each segment from the actions list.
+
+<!-- [test] Test-gate check: a large docs-only change. Not for merge. -->

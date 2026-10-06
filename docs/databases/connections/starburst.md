@@ -108,3 +108,5 @@ See [Database routing](../../permissions/database-routing.md).
 ## Danger zone
 
 See [Danger zone](../danger-zone.md).
+
+<!-- [test] Test-gate check: a large docs-only change. Not for merge. -->

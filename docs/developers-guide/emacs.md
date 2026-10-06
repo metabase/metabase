@@ -15,3 +15,5 @@ You'll probably want to tell Emacs to store customizations in a different file. 
 (ignore-errors                                                ; load customizations from ~/.emacs.d/.custom.el
   (load-file custom-file))
 ```
+
+<!-- [test] Test-gate check: a large docs-only change. Not for merge. -->

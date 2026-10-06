@@ -389,3 +389,5 @@ Some tips:
 - [Dashboard charts with multiple series](./multiple-series.md)
 - [Dashboard subscriptions](./subscriptions.md)
 - [Making dashboards faster](https://www.metabase.com/learn/metabase-basics/administration/administration-and-operation/making-dashboards-faster)
+
+<!-- [test] Test-gate check: a large docs-only change. Not for merge. -->

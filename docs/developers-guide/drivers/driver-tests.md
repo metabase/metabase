@@ -236,3 +236,5 @@ be-tests-postgres-latest-ee:
 ```
 
 For more on what it is you're doing here and how all this works, see [Workflow syntax for GitHub Actions](https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax).
+
+<!-- [test] Test-gate check: a large docs-only change. Not for merge. -->

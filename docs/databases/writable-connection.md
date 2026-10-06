@@ -60,3 +60,5 @@ Your writable connection will need to have the privileges required for these ope
 - Writable connection can't be used with [database routing](../permissions/database-routing.md).
 
 - Writable connection must use the same database engine as the primary connection - so for example, if the primary connection is to a PostgreSQL database, the writable connection must be to a PostgreSQL database as well.
+
+<!-- [test] Test-gate check: a large docs-only change. Not for merge. -->

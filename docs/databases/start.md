@@ -33,3 +33,5 @@ You can connect your Metabase Cloud or self-hosted instance to a database using 
 ## [Uploading data](./uploads.md)
 
 You can set Metabase up so you can upload CSV files to a database.
+
+<!-- [test] Test-gate check: a large docs-only change. Not for merge. -->

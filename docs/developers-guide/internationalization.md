@@ -78,3 +78,5 @@ Every string language needs an escape character. Since `{0}` is an argument to b
 This is an unfortunate side effect of this though. Since the apostrophe is such a common part of speech (especially in french), we often can end up with escape characters used as a regular part of a string rather than the escape character. Format strings need to use double apostrophes like `(deferred-tru "SAML attribute for the user''s email address")` to escape the apostrophe.
 
 There are lots of translated strings in French that use a single apostrophe incorrectly. (eg "l'URL" instead of "l''URL"). We have a manual fix to this in `bin/i18n/src/i18n/create_artifacts/backend.clj` where we try to identify these apostrophes which are not escape characters and replace them with a double apostrophe.
+
+<!-- [test] Test-gate check: a large docs-only change. Not for merge. -->

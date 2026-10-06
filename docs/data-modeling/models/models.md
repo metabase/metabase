@@ -238,3 +238,5 @@ See [Convert existing models to transforms](../transforms/query.md#convert-model
 [question]: ../../questions/start.md
 [learn-models]: https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/models
 [troubleshooting-models]: ../../troubleshooting-guide/models.md
+
+<!-- [test] Test-gate check: a large docs-only change. Not for merge. -->

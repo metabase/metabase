@@ -82,3 +82,5 @@ The token validation request includes:
 ## Further reading
 
 Check out our page on [data privacy and security](https://www.metabase.com/security).
+
+<!-- [test] Test-gate check: a large docs-only change. Not for merge. -->

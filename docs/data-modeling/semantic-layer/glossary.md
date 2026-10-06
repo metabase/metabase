@@ -52,3 +52,5 @@ If you [sync the Library to Git](./library.md#versioning-the-library) with [Remo
 In addition to Data Studio, everyone in your Metabase can browse the glossary if they have access to [Data Reference](../../exploration-and-organization/data-model-reference.md). Admins and Data Analysts can also edit the glossary from Data Reference.
 
 
+
+<!-- [test] Test-gate check: a large docs-only change. Not for merge. -->

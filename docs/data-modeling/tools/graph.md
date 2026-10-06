@@ -86,3 +86,5 @@ You can use the dependency graph to replace query sources in bulk. See [Replace 
 - [Dependency diagnostics](../../monitor/dependency-diagnostics.md)
 - [Replace data sources](./replace-data-sources.md)
 - [Schema viewer](schema-viewer.md)
+
+<!-- [test] Test-gate check: a large docs-only change. Not for merge. -->

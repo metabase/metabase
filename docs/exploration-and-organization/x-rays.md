@@ -65,3 +65,5 @@ If for some reason X-rays aren't a good fit for your team or your data, administ
 If you pin any dashboards in the "Our Analytics" collection, Metabase will hide the X-ray suggestions that appear on the homepage.
 
 Admins can also manually remove these suggestions by clicking on the **Customize** button in the upper right and selecting a dashboard as your homepage. [Changing the home page](../configuring-metabase/settings.md#homepage) won't disable the X-ray features in the rest of Metabase.
+
+<!-- [test] Test-gate check: a large docs-only change. Not for merge. -->

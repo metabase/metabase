@@ -376,3 +376,5 @@ On Metabase Cloud, you can have Metabase manage the AI for you. Metabase selects
 Metabase authenticates this connection with your instance's license token, so there's no API key to enter.
 
 For how to connect and disconnect, see [AI settings](./settings.md#metabase-ai-service).
+
+<!-- [test] Test-gate check: a large docs-only change. Not for merge. -->

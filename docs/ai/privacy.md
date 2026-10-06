@@ -40,3 +40,5 @@ If you [submit feedback](./metabot.md#giving-feedback-on-metabot-responses) on a
 - [Using Metabot](./metabot.md)
 - [MCP server](./mcp.md)
 - [Privacy and GDPR](../installation-and-operation/privacy.md)
+
+<!-- [test] Test-gate check: a large docs-only change. Not for merge. -->

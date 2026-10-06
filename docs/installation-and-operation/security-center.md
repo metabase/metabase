@@ -63,3 +63,5 @@ You'll only get notifications about new issues _affecting your instance_. New is
 
 - [Security](https://www.metabase.com/security)
 - [Upgrading Metabase](upgrading-metabase.md)
+
+<!-- [test] Test-gate check: a large docs-only change. Not for merge. -->

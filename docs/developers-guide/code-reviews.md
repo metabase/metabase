@@ -73,3 +73,5 @@ For a summary of research on code reviews, check out [How code review works (and
 - Start with the file most important to the change, not the first file presented in an alphabetical order in the PR.
 - If you feel like you're lacking the context, ask the author for more details/better description.
 - Unless the change is trivial, check out that branch and give Metabase a spin locally with the changes included. Make sure everything works as expected.
+
+<!-- [test] Test-gate check: a large docs-only change. Not for merge. -->

@@ -263,3 +263,5 @@ for (let i = 0; i < list.length; i++) {
 // do this
 const foo = list.filter((entry) => entry.bar !== false);
 ```
+
+<!-- [test] Test-gate check: a large docs-only change. Not for merge. -->

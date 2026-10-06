@@ -206,3 +206,5 @@ See [Query caching](../../configuring-metabase/caching.md).
 - [Models](../models/models.md)
 - [Segments](./segments.md)
 - [SQL Snippets](../../questions/native-editor/snippets.md)
+
+<!-- [test] Test-gate check: a large docs-only change. Not for merge. -->
