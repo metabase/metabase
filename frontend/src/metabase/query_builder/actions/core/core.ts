@@ -276,7 +276,7 @@ export const apiCreateQuestion = (
             subscribe: false,
           }),
         );
-        // Record an empty collection too; only a failed request leaves the selection unrecorded.
+        // Record an empty collection too, only a failed request leaves the selection unrecorded.
         if (selectListTimelines(getState()).isSuccess) {
           submittableQuestion = submittableQuestion.updateSettings(
             getCollectionTimelinesVisibility(
