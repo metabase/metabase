@@ -21,14 +21,21 @@
   "Hand-written prose appended to a provider type's section, keyed by type, for what an admin needs to know that the
   registry doesn't hold. The managed provider's covers that it's a Metabase Cloud offering, how it's billed, and how it
   authenticates. Bedrock's covers the IAM actions the mantle endpoint needs and why the model picker is region-scoped.
-  Google's covers connecting a Model Garden endpoint, which its fixed catalog cannot list."
-  {"metabase" "metabase/cmd/resources/ai-provider-metabase.md"
-   "bedrock"  "metabase/cmd/resources/ai-provider-bedrock.md"
-   "google"   "metabase/cmd/resources/ai-provider-google.md"})
+  Google's covers connecting a Model Garden endpoint, which its fixed catalog cannot list. The OpenAI-compatible
+  type's covers what connecting checks, what it doesn't promise, the servers it was tried with and example base
+  URLs."
+  {"metabase"          "metabase/cmd/resources/ai-provider-metabase.md"
+   "bedrock"           "metabase/cmd/resources/ai-provider-bedrock.md"
+   "google"            "metabase/cmd/resources/ai-provider-google.md"
+   "openai-compatible" "metabase/cmd/resources/ai-provider-openai-compatible.md"})
 
 (def ^:private dynamic-catalog-types
   "Provider types that serve whatever models the operator loaded, so there is no list to publish."
   #{"vllm"})
+
+(def ^:private named-model-types
+  "Provider types whose connection runs whichever model the admin names, on a server Metabase has no list for."
+  #{"openai-compatible"})
 
 (def ^:private max-enumerated-options
   "Above this many `:options`, a field's choices are pointed at rather than listed. Bedrock's dozens of regions are
@@ -182,6 +189,10 @@
 
       (seq models)
       (fixed-models-table models)
+
+      (contains? named-model-types type)
+      (str "Whichever model your server serves. Metabase runs the one you enter in "
+           (field-labels fields model-fields) ".")
 
       (seq model-fields)
       (str "Whichever model your deployment serves. " provider-label

@@ -366,6 +366,16 @@
       (is (=? [{:type :usage :usage {:promptTokens 120 :completionTokens 2}}]
               (filterv #(= :usage (:type %)) @parts))))))
 
+(deftest ^:parallel count-reasoning-as-output-test
+  (testing "reasoning tokens reported next to completion_tokens count as output, whether or not they're inside it"
+    (are [usage completion-tokens] (= completion-tokens
+                                      (get-in (chat-completions/count-reasoning-as-output {:usage usage})
+                                              [:usage :completion_tokens]))
+      {:prompt_tokens 32 :completion_tokens 9 :total_tokens 135}   103
+      {:prompt_tokens 32 :completion_tokens 103 :total_tokens 135} 103
+      {:prompt_tokens 32 :completion_tokens 103 :total_tokens 100} 103
+      {:prompt_tokens 32 :completion_tokens 9}                     9)))
+
 (deftest ^:parallel chunks-xf-cache-reads-come-from-prompt-tokens-details-test
   (testing "cacheReadTokens is read from prompt_tokens_details, and cached tokens are a subset of promptTokens"
     (is (=? {:type  :usage

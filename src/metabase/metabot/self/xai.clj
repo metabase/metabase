@@ -91,22 +91,12 @@
                      {:path "/chat/completions"
                       :body (xai-request-body opts)})))
 
-(defn- count-reasoning-as-output
-  "Rewrite a chunk's `completion_tokens` as everything `total_tokens` holds beyond the prompt.
-
-  xAI reports reasoning tokens next to `completion_tokens` rather than inside them, unlike OpenAI, and bills them
-  as output: https://docs.x.ai/developers/advanced-api-usage/prompt-caching/usage-and-pricing"
-  [{:keys [usage] :as chunk}]
-  (if-let [total (:total_tokens usage)]
-    (assoc-in chunk [:usage :completion_tokens] (- total (:prompt_tokens usage 0)))
-    chunk))
-
 (defn xai->aisdk-chunks-xf
   "Translates xAI Chat Completions streaming chunks into AI SDK v5 protocol chunks.
 
   Reasoning summaries arrive as `delta.reasoning_content` and are forwarded as reasoning chunks."
   []
-  (comp (map count-reasoning-as-output)
+  (comp (map chat-completions/count-reasoning-as-output)
         (chat-completions/chat-completions->aisdk-chunks-xf chat-completions/stop-reasons
                                                             {:forward-reasoning? true})))
 

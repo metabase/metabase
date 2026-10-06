@@ -413,6 +413,26 @@
   :visibility :settings-manager
   :export?    false)
 
+;;; --------------------------------------------- OpenAI-compatible ---------------------------------------------
+
+(defsetting llm-openai-compatible-api-base-url
+  (deferred-tru "The base URL of a server that implements OpenAI''s Chat Completions API, e.g. `https://api.scaleway.ai/v1`. Set `MB_LLM_METABOT_PROVIDER` to `openai-compatible/` followed by the model ID to choose its model.")
+  :encryption :when-encryption-key-set
+  :visibility :settings-manager
+  :export?    false
+  :getter     (connection-field-getter :llm-openai-compatible-api-base-url)
+  :setter     (connection-field-setter :llm-openai-compatible-api-base-url)
+  :doc        "Backed by the openai-compatible connection in the admin AI settings provider list: reads and writes go through the llm-providers connection list, and a value set by this environment variable shadows this one field of that connection.")
+
+(defsetting llm-openai-compatible-api-key
+  (deferred-tru "The API key for the server that the OpenAI-compatible connection talks to, if it asks for one.")
+  :sensitive? true
+  :visibility :settings-manager
+  :export?    false
+  :getter     (connection-field-getter :llm-openai-compatible-api-key)
+  :setter     (connection-field-setter :llm-openai-compatible-api-key)
+  :doc        "Backed by the openai-compatible connection in the admin AI settings provider list: reads and writes go through the llm-providers connection list, and a value set by this environment variable shadows this one field of that connection.")
+
 ;;; The per-provider credential settings above are read-only at runtime: they configure a connection only when set
 ;;; by an environment variable, which [[metabase.llm.provider/connections]] resolves on every read. Editing one in
 ;;; the app DB would not reach the connection serving requests, so a write is rejected rather than silently ignored.

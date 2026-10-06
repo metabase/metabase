@@ -62,6 +62,17 @@
                        (throw t)))]
         (unreduced (flush acc))))))
 
+(defn count-reasoning-as-output
+  "Raise a chunk's `completion_tokens` to everything its `total_tokens` holds beyond the prompt.
+
+  Some servers, xAI among them, report reasoning tokens next to `completion_tokens` rather than inside them, and bill
+  them as output: https://docs.x.ai/developers/advanced-api-usage/prompt-caching/usage-and-pricing. A chunk whose
+  total holds nothing more, or that has no total, keeps its `completion_tokens`."
+  [{:keys [usage] :as chunk}]
+  (if-let [total (:total_tokens usage)]
+    (update-in chunk [:usage :completion_tokens] (fnil max 0) (- total (:prompt_tokens usage 0)))
+    chunk))
+
 ;;; AISDK parts → Chat Completions messages
 
 (defn- merge-consecutive-assistant-messages

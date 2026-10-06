@@ -27,41 +27,80 @@
   "Smallest `max_model_len` [[preflight!]] will accept. A product floor, not a measurement."
   16384)
 
-(defn- missing-base-url-ex []
-  (ex-info (tru "No vLLM base URL is set")
-           {:api-error  true
-            :error-code :base-url-missing}))
+(defn- base-url-auth
+  "The `:auth` of a server that needs a base URL but not an API key.
 
-(defn- vllm-auth
-  "vLLM's `:auth`. A server needs a base URL but not a key — one started without `--api-key` is a complete
-  configuration — so the map is never nil and [[core/resolve-auth]] cannot reach its `missing-api-key-ex`
-  branch."
-  [{:keys [slug display-name]} {:keys [credentials ai-proxy?]}]
-  (let [base-url (not-empty (:base-url credentials))
-        api-key  (not-empty (:api-key credentials))]
-    (when-not base-url
-      (throw (missing-base-url-ex)))
-    (core/resolve-auth slug display-name
-                       (cond-> {:url base-url}
-                         api-key (assoc :headers {"Authorization" (str "Bearer " api-key)}))
-                       ai-proxy?)))
+  One started without `--api-key` is a complete configuration, so the map is never nil and [[core/resolve-auth]]
+  cannot reach its `missing-api-key-ex` branch. `missing-base-url-msg` returns the message a connection without a
+  base URL fails with."
+  [missing-base-url-msg]
+  (fn [{:keys [slug display-name]} {:keys [credentials ai-proxy?]}]
+    (let [base-url (not-empty (:base-url credentials))
+          api-key  (not-empty (:api-key credentials))]
+      (when-not base-url
+        (throw (ex-info (missing-base-url-msg)
+                        {:api-error  true
+                         :error-code :base-url-missing})))
+      (core/resolve-auth slug display-name
+                         (cond-> {:url base-url}
+                           api-key (assoc :headers {"Authorization" (str "Bearer " api-key)}))
+                         ai-proxy?))))
 
-(def ^:private provider
-  (adapter/provider
-   {:slug              "vllm"
-    :display-name      "vLLM"
-    :auth              vllm-auth
-    :error-fallback    #(tru "vLLM API error (HTTP {0})" %)
-    :errors            {400 #(tru "vLLM rejected the request — usually an unsupported schema, or a model that cannot compile the tool grammar")
-                        401 #(tru "vLLM API key expired or invalid — check the key your server was started with via --api-key")
-                        404 #(tru "vLLM API endpoint was not found — the base URL should end in /v1")
-                        429 #(tru "The vLLM server''s request queue is full — reduce concurrent load, or restart it with a larger --max-num-seqs")
-                        500 #(tru "vLLM returned an internal server error")}}))
+(def ^:private Copy
+  "What a server's errors say, each message a fn of the values it names."
+  [:map {:closed true}
+   [:base-url-missing        [:=> :cat :string]]
+   [:model-missing           [:=> :cat :string]]
+   [:unreachable             [:=> [:cat :string] :string]]
+   [:context-too-small       [:=> [:cat :string :string :string] :string]]
+   [:reasoning-as-text       [:=> [:cat :string] :string]]
+   [:invalid-tool-arguments  [:=> [:cat :string] :string]]
+   [:answered-with-text      [:=> [:cat :string] :string]]
+   [:forced-call-ignored     [:=> :cat :string]]
+   [:connection-test-timeout [:=> [:cat :string] :string]]
+   [:request-timeout         [:=> [:cat :string] :string]]
+   [:stopped-responding      [:=> [:cat :string] :string]]
+   [:interrupted             [:=> :cat :string]]])
 
-(defn- missing-model-ex []
-  (ex-info (tru "No vLLM model is set")
-           {:api-error  true
-            :error-code :model-missing}))
+(def ^:private Server
+  [:map {:closed true}
+   [:provider adapter/Provider]
+   [:copy     Copy]])
+
+(mu/defn server :- Server
+  "Describe a kind of server the code below talks to.
+
+  `spec` builds its adapter descriptor, with an `:auth` that needs a base URL but not a key, and `copy` holds the
+  messages its errors use. vLLM is one kind; [[metabase.metabot.self.openai-compatible]] is another."
+  [spec :- adapter/ProviderSpec
+   copy :- Copy]
+  {:provider (adapter/provider (assoc spec :auth (base-url-auth (:base-url-missing copy))))
+   :copy     copy})
+
+(def ^:private vllm-server
+  (server
+   {:slug           "vllm"
+    :display-name   "vLLM"
+    :error-fallback #(tru "vLLM API error (HTTP {0})" %)
+    :errors         {400 #(tru "vLLM rejected the request — usually an unsupported schema, or a model that cannot compile the tool grammar")
+                     401 #(tru "vLLM API key expired or invalid — check the key your server was started with via --api-key")
+                     404 #(tru "vLLM API endpoint was not found — the base URL should end in /v1")
+                     429 #(tru "The vLLM server''s request queue is full — reduce concurrent load, or restart it with a larger --max-num-seqs")
+                     500 #(tru "vLLM returned an internal server error")}}
+   {:base-url-missing        #(tru "No vLLM base URL is set")
+    :model-missing           #(tru "No vLLM model is set")
+    :unreachable             #(tru "Could not reach the vLLM server at {0}. Check that it is running and that the base URL is correct." %)
+    :context-too-small       #(tru "{0} is served with a {1} token context window, which is too small for Metabot — it needs at least {2}. Restart vLLM with a larger --max-model-len." %1 %2 %3)
+    :reasoning-as-text       #(tru "{0} streamed its reasoning as chat text. Restart vLLM with --reasoning-parser so thinking doesn''t appear inside Metabot''s answers." %)
+    :invalid-tool-arguments  #(tru "The vLLM server returned a tool call whose arguments are not valid JSON. The --tool-call-parser most likely does not match {0}''s output format." %)
+    :answered-with-text      #(tru "The vLLM server answered with text instead of calling a tool. Restart it with --enable-auto-tool-choice and a --tool-call-parser matching {0}''s output format." %)
+    :forced-call-ignored     #(tru "The vLLM server did not honor a forced tool call. Metabot needs structured output support for conversation titles and SQL generation.")
+    :connection-test-timeout #(tru "The vLLM server did not answer the connection test within {0}ms. Check that it is not overloaded — a server this slow to answer a trivial prompt cannot drive Metabot." %)
+    :request-timeout         #(tru "The vLLM server did not respond within {0}ms. Check that it is not overloaded, or raise the vLLM request timeout." %)
+    :stopped-responding      #(tru "The vLLM server stopped responding after {0}ms. Raise the vLLM request timeout, or serve a faster model." %)
+    :interrupted             #(tru "The connection to the vLLM server was interrupted before the response finished.")}))
+
+(def ^:private provider (:provider vllm-server))
 
 (def reasoning-config-key
   "The connection `:config` key [[preflight!]]'s reasoning observation is recorded under. It is not an
@@ -102,10 +141,9 @@
 ;;; ----------------------------------------------- Transport errors ---------------------------------------------
 
 (defn- unreachable-ex
-  "The vLLM error for a non-timeout transport failure. `extra` is the caller's own ex-data tags."
-  [^IOException e base-url extra]
-  (ex-info (tru "Could not reach the vLLM server at {0}. Check that it is running and that the base URL is correct."
-                (str base-url))
+  "The error for a non-timeout transport failure. `extra` is the caller's own ex-data tags."
+  [copy ^IOException e base-url extra]
+  (ex-info ((:unreachable copy) (str base-url))
            (merge {:api-error true :error-code :vllm-unreachable} extra)
            e))
 
@@ -121,7 +159,7 @@
               :status-code 400
               :error-code  :vllm-timeout}
              e)
-    (unreachable-ex e base-url {:status-code 400})))
+    (unreachable-ex (:copy vllm-server) e base-url {:status-code 400})))
 
 ;;; ------------------------------------------------ Model listing -----------------------------------------------
 
@@ -209,7 +247,7 @@
   "Run one non-streaming Chat Completions turn against `model` and return the first choice. The
   `finish_reason` is part of the return value because a generation truncated at
   [[probe-max-tokens]] and a server that will not call tools both produce empty `tool_calls`."
-  [req model tool-choice messages]
+  [provider req model tool-choice messages]
   (let [res (adapter/request! provider
                               (assoc req
                                      :method  :post
@@ -225,11 +263,10 @@
     (get-in res [:body :choices 0])))
 
 (defn- check-context-budget!
-  [{:keys [id max_model_len]}]
+  [copy {:keys [id max_model_len]}]
   (when (and max_model_len (< (long max_model_len) min-context-length))
     (throw (preflight-ex
-            (tru "{0} is served with a {1} token context window, which is too small for Metabot — it needs at least {2}. Restart vLLM with a larger --max-model-len."
-                 (str id) (str max_model_len) (str min-context-length))))))
+            ((:context-too-small copy) (str id) (str max_model_len) (str min-context-length))))))
 
 (defn- check-tool-calling!
   "Check that the server was started with `--enable-auto-tool-choice` and a `--tool-call-parser` whose
@@ -237,8 +274,8 @@
   `content` as prose and Metabot chats without ever acting.
 
   Returns whether the model emitted reasoning, the only signal anywhere that it is a reasoning model."
-  [req model]
-  (let [{:keys [message finish_reason]} (probe-chat! req model "auto" probe-messages)
+  [{:keys [provider copy]} req model]
+  (let [{:keys [message finish_reason]} (probe-chat! provider req model "auto" probe-messages)
         content    (str (:content message))
         ;; `reasoning` since vLLM 0.26; `reasoning_content` is the deprecated spelling older builds
         ;; and other OpenAI-compatible servers still use.
@@ -247,9 +284,7 @@
         truncated? (= "length" finish_reason)]
     (cond
       (str/includes? content "<think>")
-      (throw (preflight-ex
-              (tru "{0} streamed its reasoning as chat text. Restart vLLM with --reasoning-parser so thinking doesn''t appear inside Metabot''s answers."
-                   (str model))))
+      (throw (preflight-ex ((:reasoning-as-text copy) (str model))))
 
       (seq tool-calls)
       (let [arguments (get-in (first tool-calls) [:function :arguments])]
@@ -260,8 +295,7 @@
                   (if truncated?
                     (tru "{0} reached the {1} token connection-test ceiling partway through a tool call. A model that generates this much before calling a tool is too slow to drive Metabot."
                          (str model) (str probe-max-tokens))
-                    (tru "The vLLM server returned a tool call whose arguments are not valid JSON. The --tool-call-parser most likely does not match {0}''s output format."
-                         (str model))))))
+                    ((:invalid-tool-arguments copy) (str model))))))
         (not (str/blank? reasoning)))
 
       (and truncated? (not (str/blank? reasoning)))
@@ -282,21 +316,19 @@
                    (str model) (str probe-max-tokens))))
 
       :else
-      (throw (preflight-ex
-              (tru "The vLLM server answered with text instead of calling a tool. Restart it with --enable-auto-tool-choice and a --tool-call-parser matching {0}''s output format."
-                   (str model)))))))
+      (throw (preflight-ex ((:answered-with-text copy) (str model)))))))
 
 (defn- check-structured-output!
   "Check that guided decoding works. A different failure from [[check-tool-calling!]]: a model whose
   grammar the server cannot compile chats fine but breaks titling and the whole `sql` profile."
-  [req model]
-  (let [{:keys [message finish_reason]} (probe-chat! req model "required" forced-tool-call-messages)]
+  [{:keys [provider copy]} req model]
+  (let [{:keys [message finish_reason]} (probe-chat! provider req model "required" forced-tool-call-messages)]
     (when (empty? (:tool_calls message))
       (throw (preflight-ex
               (if (= "length" finish_reason)
                 (tru "{0} reached the {1} token connection-test ceiling without producing a forced tool call. Metabot needs structured output support for conversation titles and SQL generation."
                      (str model) (str probe-max-tokens))
-                (tru "The vLLM server did not honor a forced tool call. Metabot needs structured output support for conversation titles and SQL generation.")))))))
+                ((:forced-call-ignored copy))))))))
 
 (defn- no-models-ex []
   (preflight-ex (tru "The vLLM server is reachable but is not serving any models.")))
@@ -342,10 +374,10 @@
   They run concurrently; deref order fixes the verdict, tool calling being the more actionable
   diagnosis when a server fails both. The loser is cancelled rather than left generating against the
   operator's server long after anyone is listening."
-  [req model]
+  [{:keys [provider copy] :as server} req model]
   (try
-    (let [tool-calling (future (check-tool-calling! req model))
-          structured   (future (check-structured-output! req model))]
+    (let [tool-calling (future (check-tool-calling! server req model))
+          structured   (future (check-structured-output! server req model))]
       (try
         (let [reasoning? (await-probe! tool-calling)]
           (await-probe! structured)
@@ -354,26 +386,27 @@
           (future-cancel tool-calling)
           (future-cancel structured))))
     (catch SocketTimeoutException _
-      (throw (preflight-ex
-              (tru "The vLLM server did not answer the connection test within {0}ms. Check that it is not overloaded — a server this slow to answer a trivial prompt cannot drive Metabot."
-                   (str (:socket-timeout (probe-timeouts)))))))
+      (throw (preflight-ex ((:connection-test-timeout copy) (str (:socket-timeout (probe-timeouts)))))))
+    (catch IOException e
+      (throw (unreachable-ex copy e (get-in req [:credentials :base-url]) {:status-code 400})))
     (catch Exception e
       (adapter/rethrow! provider e))))
 
-(defn- preflight!
-  "Exercise the contract the agent loop depends on, against the model that will actually be used, and
-  return `{:model id :reasoning? bool}`. The connect path must adopt exactly this model rather than
-  re-deriving it from the listing, which agrees only while nothing reorders the catalog.
+(defn preflight!
+  "Exercise the contract the agent loop depends on against the model that `entry` names.
+
+  `entry` is the model's catalog entry, with its `:id` and, when the server publishes one, its `:max_model_len`;
+  `server` is the kind of server it runs on. Returns `{:model id :reasoning? bool}`. The connect path must adopt
+  exactly this model rather than re-deriving it from the listing, which agrees only while nothing reorders the
+  catalog.
 
   `:reasoning?` reports whether the probed model streamed reasoning. Only the probe can answer that,
   and the answer drives which renderer the frontend picks, so the connection records it (see
   [[reasoning-config-key]])."
-  [req entries requested-model]
-  (let [entry (probe-target entries requested-model)
-        model (:id entry)]
-    (check-context-budget! entry)
-    {:model      model
-     :reasoning? (run-probes! req model)}))
+  [server req {:keys [id] :as entry}]
+  (check-context-budget! (:copy server) entry)
+  {:model      id
+   :reasoning? (run-probes! server req id)})
 
 (mu/defn list-models :- adapter/ModelListing
   "List the models the connection's vLLM server is serving. Pass-through: there is nothing to
@@ -392,7 +425,7 @@
          proposed (when (some #(= proposed-model (:id %)) entries)
                     proposed-model)
          probed   (when probe?
-                    (preflight! req entries (or model proposed)))]
+                    (preflight! vllm-server req (probe-target entries (or model proposed))))]
      (cond-> {:models (mapv (fn [{:keys [id] :as entry}]
                               {:id id :display_name (or (:name entry) id)})
                             entries)}
@@ -419,41 +452,39 @@
                          (reasoning-connection? credentials) (max reasoning-model-token-floor)))))
 
 (defn- stream-io-ex
-  "The vLLM error for a transport failure while *consuming* a response stream. Tagged
+  "The error for a transport failure while *consuming* a response stream. Tagged
   `:retryable? false`: on a self-hosted server a stalled or severed response means \"too slow\" or
   \"it died\", not \"transient\", and a retry replays a full cold prefill at up to
   `llm-vllm-request-timeout-ms` (300s) apiece. The tag is required — `retryable-error?` walks the
   cause chain and would otherwise match the `IOException` below."
-  [^IOException e timeout-ms]
+  [copy ^IOException e timeout-ms]
   (if (instance? SocketTimeoutException e)
-    (ex-info (tru "The vLLM server stopped responding after {0}ms. Raise the vLLM request timeout, or serve a faster model."
-                  (str timeout-ms))
+    (ex-info ((:stopped-responding copy) (str timeout-ms))
              {:api-error  true
               :error-code :vllm-timeout
               :retryable? false}
              e)
-    (ex-info (tru "The connection to the vLLM server was interrupted before the response finished.")
+    (ex-info ((:interrupted copy))
              {:api-error  true
               :error-code :vllm-stream-interrupted
               :retryable? false}
              e)))
 
 (defn- request-io-ex
-  "The vLLM error for a transport failure while *establishing* a request. `core/rethrow-api-error!`
+  "The error for a transport failure while *establishing* a request. `core/rethrow-api-error!`
   would render these as \"vllm API request failed: Read timed out\", naming neither the server's
   slowness nor the setting that governs it.
 
   Tagged `:retryable? false` for the same reason as [[stream-io-ex]], and more importantly: nothing
   has been emitted yet, so `call-llm`'s own \"nothing emitted\" predicate would not stop a replay."
-  [^IOException e base-url timeout-ms]
+  [copy ^IOException e base-url timeout-ms]
   (if (instance? SocketTimeoutException e)
-    (ex-info (tru "The vLLM server did not respond within {0}ms. Check that it is not overloaded, or raise the vLLM request timeout."
-                  (str timeout-ms))
+    (ex-info ((:request-timeout copy) (str timeout-ms))
              {:api-error  true
               :error-code :vllm-timeout
               :retryable? false}
              e)
-    (unreachable-ex e base-url {:retryable? false})))
+    (unreachable-ex copy e base-url {:retryable? false})))
 
 (defn- io-guarded
   "Wrap a stream reducible so a transport failure while consuming it surfaces as [[stream-io-ex]]
@@ -461,34 +492,42 @@
 
   Goes inside `core/reducible-with-api-errors`, never outside: [[stream-io-ex]] tags `:api-error
   true`, which `core/rethrow-api-error!` rethrows unchanged, so this translation wins for IO."
-  [reducible timeout-ms]
+  [copy reducible timeout-ms]
   (reify clojure.lang.IReduceInit
     (reduce [_ rf init]
       (try
         (.reduce ^clojure.lang.IReduceInit reducible rf init)
         (catch IOException e
-          (throw (stream-io-ex e timeout-ms)))))))
+          (throw (stream-io-ex copy e timeout-ms)))))))
 
-(mu/defn vllm-raw
-  "Perform a streaming request to a vLLM server's Chat Completions API.
+(mu/defn server-raw
+  "Perform a streaming request to the Chat Completions API of the kind of server `server` describes.
   Opts map takes `:credentials` (`{:base-url ... :api-key ...}`) from the connection serving this
   request, and throws without a base URL.
-  `:ai-proxy?` is not supported for vLLM and throws when true."
-  [{:keys [model credentials] :as opts} :- core/LLMRequestOpts]
+  `:ai-proxy?` is not supported and throws when true."
+  [{:keys [provider copy]}              :- Server
+   {:keys [model credentials] :as opts} :- core/LLMRequestOpts]
   (when (str/blank? model)
-    (throw (missing-model-ex)))
+    (throw (ex-info ((:model-missing copy))
+                    {:api-error  true
+                     :error-code :model-missing})))
   (let [timeout-ms (llm/llm-vllm-request-timeout-ms)]
     (adapter/stream! provider opts
                      {:path             "/chat/completions"
                       :body             (vllm-request-body opts)
                       :request-options  (inference-timeouts)
-                      :wrap-stream      #(io-guarded % timeout-ms)
+                      :wrap-stream      #(io-guarded copy % timeout-ms)
                       ;; clj-http raises an `IOException` only when there is no response at all, so the
                       ;; IO branch cannot swallow a failure the provider's own messages would have translated.
                       :on-request-error (fn [e]
                                           (if (instance? IOException e)
-                                            (throw (request-io-ex e (:base-url credentials) timeout-ms))
+                                            (throw (request-io-ex copy e (:base-url credentials) timeout-ms))
                                             (adapter/rethrow! provider e)))})))
+
+(mu/defn vllm-raw
+  "Perform a streaming request to a vLLM server's Chat Completions API. See [[server-raw]]."
+  [opts :- core/LLMRequestOpts]
+  (server-raw vllm-server opts))
 
 (defn vllm->aisdk-chunks-xf
   "Translates vLLM Chat Completions streaming chunks into AI SDK v5 protocol chunks.
