@@ -531,7 +531,7 @@
                                part))
         (append-sql! context quote-char)))))
 
-(defn -identifier!
+(defn- -identifier!
   "Emit a (possibly qualified) identifier composed of multiple [[-identifier-part!]]s."
   [s context]
   (interpose-fn (str/split s #"\.") #(-identifier-part! % context) #(append-sql! context ".")))
