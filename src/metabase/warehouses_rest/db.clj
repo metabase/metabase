@@ -336,10 +336,7 @@
 (mu/defn database-usage-counts
   "A single row with the count of Questions (`:question`), Models (`:dataset`), Metrics (`:metric`), Segments
   (`:segment`), Transforms (`:transform`), and public links (`:public_link`) that use the Database with `database-id`.
-
-  `:public_link` counts unarchived Cards with a public link; a Card's `public_uuid` no longer resolves once it is
-  archived. Public Dashboards are not counted: a Dashboard carries no database, and reaching one through its
-  dashboard cards has no single answer in the codebase to trust."
+  `:public_link` counts unarchived Cards with a public link."
   [database-id :- ::lib.schema.id/database]
   (mdb/query
    {:select [:*]
@@ -362,6 +359,7 @@
                                 :from   [:report_card]
                                 :where  [:and
                                          [:= :database_id database-id]
+                                         ;; an archived Card's public link no longer resolves
                                          [:= :archived false]
                                          [:not= :public_uuid nil]]}
               :public_link]]}))

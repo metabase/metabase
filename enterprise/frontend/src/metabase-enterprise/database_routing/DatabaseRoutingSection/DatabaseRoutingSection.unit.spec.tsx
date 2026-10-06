@@ -10,7 +10,7 @@ import {
   setupUserAttributesEndpoint,
 } from "__support__/server-mocks";
 import { createMockSettingsState } from "__support__/state";
-import { renderWithProviders, screen } from "__support__/ui";
+import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import type { Database } from "metabase-types/api";
 import {
   createMockDatabase,
@@ -259,7 +259,13 @@ describe("DatabaseRoutingSection affected public links", () => {
       publicLinkCount: 4,
     });
 
-    expect(await screen.findByText("Database routing")).toBeInTheDocument();
+    // the count has arrived, so the note's absence is the collapsed state and not a pending request
+    await waitFor(async () => {
+      const gets = await findRequests("GET");
+      expect(gets.some(({ url }) => url.includes("usage_info"))).toBe(true);
+    });
+
+    expect(screen.getByText("Database routing")).toBeInTheDocument();
     expect(screen.queryByText(ROUTING_NOTE)).not.toBeInTheDocument();
   });
 });

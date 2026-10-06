@@ -4,6 +4,16 @@ import { msgid, ngettext } from "ttag";
 import { Checkbox, Stack } from "metabase/ui";
 import type { DatabaseUsageInfo } from "metabase-types/api";
 
+// The entity types deleting a database destroys, each rendered as a checkbox below. The usage info also reports
+// public links, which are not themselves content to confirm the removal of.
+export const DELETED_ENTITY_TYPES = [
+  "question",
+  "dataset",
+  "metric",
+  "segment",
+  "transform",
+] as const satisfies readonly (keyof DatabaseUsageInfo)[];
+
 interface ContentRemovalConfirmationProps {
   usageInfo: DatabaseUsageInfo;
   onChange: (isConfirmed: boolean) => void;

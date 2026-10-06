@@ -325,32 +325,36 @@
                (mt/user-http-request :crowberto :get 404
                                      (format "database/%d/usage_info" non-existing-db-id))))))))
 
-(deftest get-database-usage-info-public-link-count-test
-  (testing "the public link count is zero for a database whose cards are not shared"
-    (mt/with-temp
-      [:model/Database {db-id :id}    {}
-       :model/Table    {table-id :id} {:db_id db-id}
-       :model/Card     _              {:database_id db-id, :table_id table-id, :type :question}]
+(deftest get-database-usage-info-unshared-cards-are-not-public-links-test
+  (mt/with-temp
+    [:model/Database {db-id :id}    {}
+     :model/Table    {table-id :id} {:db_id db-id}
+     :model/Card     _              {:database_id db-id, :table_id table-id, :type :question}]
+    (testing "a database whose cards are not shared has no public links"
       (is (= 0 (:public_link (mt/user-http-request :crowberto :get 200
-                                                   (format "database/%d/usage_info" db-id)))))))
-  (testing "public links on another database are not counted"
-    (mt/with-temp
-      [:model/Database {db-id :id}       {}
-       :model/Database {other-db-id :id} {}
-       :model/Table    {table-id :id}    {:db_id other-db-id}
-       :model/Card     _                 {:database_id other-db-id
-                                          :table_id    table-id
-                                          :type        :question
-                                          :public_uuid (str (random-uuid))}]
+                                                   (format "database/%d/usage_info" db-id))))))))
+
+(deftest get-database-usage-info-public-links-on-another-database-test
+  (mt/with-temp
+    [:model/Database {db-id :id}       {}
+     :model/Database {other-db-id :id} {}
+     :model/Table    {table-id :id}    {:db_id other-db-id}
+     :model/Card     _                 {:database_id other-db-id
+                                        :table_id    table-id
+                                        :type        :question
+                                        :public_uuid (str (random-uuid))}]
+    (testing "a public link on another database is not counted"
       (is (= 0 (:public_link (mt/user-http-request :crowberto :get 200
-                                                   (format "database/%d/usage_info" db-id)))))))
-  (testing "a public dashboard of cards on this database is described in the UI but not counted"
-    (mt/with-temp
-      [:model/Database  {db-id :id}        {}
-       :model/Table     {table-id :id}     {:db_id db-id}
-       :model/Card      {card-id :id}      {:database_id db-id, :table_id table-id, :type :question}
-       :model/Dashboard {dashboard-id :id} {:public_uuid (str (random-uuid))}
-       :model/DashboardCard _              {:dashboard_id dashboard-id, :card_id card-id}]
+                                                   (format "database/%d/usage_info" db-id))))))))
+
+(deftest get-database-usage-info-public-dashboards-are-not-counted-test
+  (mt/with-temp
+    [:model/Database      {db-id :id}        {}
+     :model/Table         {table-id :id}     {:db_id db-id}
+     :model/Card          {card-id :id}      {:database_id db-id, :table_id table-id, :type :question}
+     :model/Dashboard     {dashboard-id :id} {:public_uuid (str (random-uuid))}
+     :model/DashboardCard _                  {:dashboard_id dashboard-id, :card_id card-id}]
+    (testing "a public dashboard holding a card on this database is not counted"
       (is (= 0 (:public_link (mt/user-http-request :crowberto :get 200
                                                    (format "database/%d/usage_info" db-id))))))))
 

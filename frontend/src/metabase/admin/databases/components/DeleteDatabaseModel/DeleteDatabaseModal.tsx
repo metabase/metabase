@@ -20,17 +20,9 @@ import {
 import * as Urls from "metabase/urls";
 import type { Database, DatabaseUsageInfo } from "metabase-types/api";
 
-import ContentRemovalConfirmation from "../ContentRemovalConfirmation";
-
-// The entity types deleting the database destroys, which is what the confirmation checkboxes cover. The usage info
-// also reports public links, which are not themselves content to confirm the removal of.
-const DELETED_ENTITY_TYPES = [
-  "question",
-  "dataset",
-  "metric",
-  "segment",
-  "transform",
-] as const satisfies readonly (keyof DatabaseUsageInfo)[];
+import ContentRemovalConfirmation, {
+  DELETED_ENTITY_TYPES,
+} from "../ContentRemovalConfirmation";
 
 const entityTypesCount = (usageInfo: DatabaseUsageInfo) => {
   return DELETED_ENTITY_TYPES.filter((type) => usageInfo[type] > 0).length;
