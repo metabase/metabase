@@ -1482,6 +1482,11 @@
 
       :else base)))
 
+;; A data app's resource collection holds the saved questions and metric copies the app runs.
+(defmethod collection/allowed-namespaces :model/Card
+  [_]
+  (conj collection/default-allowed-namespaces collection/data-apps-ns))
+
 (defmethod serdes/make-spec "Card"
   [_model-name _opts]
   {:copy [:archived :archived_directly :collection_position :collection_preview :description :display

@@ -104,6 +104,11 @@
     (throw (ex-info (tru "Implicit actions are not supported for models with clauses.")
                     {:status-code 400}))))
 
+;; A data app's resource collection holds the copies of the actions the app runs.
+(defmethod collection/allowed-namespaces :model/Action
+  [_]
+  (conj collection/default-allowed-namespaces collection/data-apps-ns))
+
 (defn- check-collection-content
   "Throws unless an Action may go in the Collection with `collection-id`."
   [collection-id]

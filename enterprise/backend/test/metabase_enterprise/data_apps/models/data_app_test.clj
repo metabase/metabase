@@ -40,8 +40,41 @@
 (deftest insert-creates-the-resources-the-app-owns-test
   (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
     (let [{:keys [resource_collection_id permission_group_id]} (t2/select-one :model/DataApp (insert-app!))]
-      (is (t2/exists? :model/Collection :id resource_collection_id))
+      (is (=? {:name "Data App: m" :namespace :data-apps :location "/"}
+              (t2/select-one :model/Collection :id resource_collection_id))
+          "the collection is the app's own, in the data-apps namespace")
       (is (t2/exists? :model/PermissionsGroup :id permission_group_id :is_data_app_group true)))))
+
+(deftest insert-keeps-the-collection-it-is-given-test
+  (testing "an import names the collection its manifest references, so the insert links that one rather than creating"
+    (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
+      (mt/with-temp [:model/Collection {collection-id :id} {:name "Data App: m" :namespace :data-apps}]
+        (let [before (t2/count :model/Collection)
+              app    (t2/select-one :model/DataApp (insert-app! :resource_collection_id collection-id))]
+          (is (= collection-id (:resource_collection_id app)))
+          (is (= before (t2/count :model/Collection)) "no second collection is created"))))))
+
+(deftest the-resource-collection-cannot-change-test
+  (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
+    (mt/with-temp [:model/Collection {other-id :id} {:name "Other" :namespace :data-apps}]
+      (let [id            (insert-app!)
+            collection-id (t2/select-one-fn :resource_collection_id :model/DataApp id)]
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"resource collection cannot be changed"
+                              (t2/update! :model/DataApp id {:resource_collection_id other-id})))
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"resource collection cannot be changed"
+                              (t2/update! :model/DataApp id {:resource_collection_id nil})))
+        (is (= collection-id (t2/select-one-fn :resource_collection_id :model/DataApp id)))
+        (testing "an update that names the same collection is not a change"
+          (t2/update! :model/DataApp id {:resource_collection_id collection-id :display_name "Renamed"})
+          (is (= "Renamed" (t2/select-one-fn :display_name :model/DataApp id))))))))
+
+(deftest delete-removes-the-resources-the-app-owns-test
+  (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
+    (let [id (insert-app!)
+          {:keys [resource_collection_id permission_group_id]} (t2/select-one :model/DataApp id)]
+      (t2/delete! :model/DataApp id)
+      (is (not (t2/exists? :model/Collection :id resource_collection_id)))
+      (is (not (t2/exists? :model/PermissionsGroup :id permission_group_id))))))
 
 (deftest writes-are-normalized-and-validated-against-the-schema-test
   (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]

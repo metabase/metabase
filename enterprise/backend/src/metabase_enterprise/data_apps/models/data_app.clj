@@ -74,11 +74,20 @@
 
 (t2/define-before-insert :model/DataApp
   [data-app]
-  (prepare ::data-apps.schema/data-app.insert data-app))
+  ;; Every app owns a resource collection from its first moment: one it is given (an import names the collection
+  ;; its manifest references) or one created here, so the column is never null.
+  (let [row (prepare ::data-apps.schema/data-app.insert data-app)]
+    (cond-> row
+      (nil? (:resource_collection_id row))
+      (assoc :resource_collection_id (:id (data-app.resources/create-resource-collection! row))))))
 
 (t2/define-before-update :model/DataApp
   [data-app]
-  (merge data-app (some->> (t2/changes data-app) (prepare ::data-apps.schema/data-app.update))))
+  (let [changes (t2/changes data-app)]
+    (when (contains? changes :resource_collection_id)
+      (throw (ex-info (tru "A data app''s resource collection cannot be changed.")
+                      {:status-code 400, :data-app-id (:id data-app)})))
+    (merge data-app (some->> changes (prepare ::data-apps.schema/data-app.update)))))
 
 ;; Reads always see `allowed_hosts` as a vector, never nil — a row synced before
 ;; the column existed has NULL until it's re-synced. Guard on `contains?` so
@@ -109,6 +118,8 @@
   [app]
   (merge app (data-app.resources/ensure-resources! app)))
 
+;; The collection goes first, while the row still references it: the reference is nullable so the database can clear
+;; it, and the collection's own hooks delete what it holds and the grants on it.
 (t2/define-before-delete :model/DataApp
   [app]
   (data-app.resources/delete-resources! app))
@@ -141,8 +152,10 @@
                ;; set by the import itself
                :draft :bundle_hash
                ;; server-managed resources, recreated on import
-               :resource_collection_id :permission_group_id :table_ids]
+               :permission_group_id :table_ids]
    :transform {:created_at   (serdes/date)
+               ;; the app's resource collection, a collection in the `data-apps` namespace that loads before the app
+               :resource_collection_id (assoc (serdes/fk :model/Collection) :as :collection)
                :name         {:as :slug :export identity :import identity}
                :display_name {:as :name :export identity :import identity}
                :bundle_path  {:as :path :export identity :import identity}
@@ -164,6 +177,15 @@
   (eduction (remove :draft)
             (data-apps.db/reducible-data-apps-with-bundles filter-column filter-ids
                                                            (serdes/extract-order-columns model-name opts))))
+
+(defmethod serdes/deserialization-dependencies "DataApp" [{:keys [collection]}]
+  (when collection
+    [[{:model "Collection" :id collection}]]))
+
+(defmethod serdes/descendants "DataApp" [_model-name id _opts]
+  ;; An app's resource collection, and through it what it holds, travel with the app.
+  (when-let [collection-id (data-apps.db/resource-collection-id id)]
+    {["Collection" collection-id] {"DataApp" id}}))
 
 (defmethod serdes/storage-path "DataApp" [app _ctx]
   [{:label data-app.config/apps-dir}
