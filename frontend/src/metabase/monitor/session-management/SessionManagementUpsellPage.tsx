@@ -6,14 +6,14 @@ import { BaseUpsellPage } from "metabase/monitor/upsells";
 export function SessionManagementUpsellPage() {
   usePageTitle(t`Session management`);
 
-  // Placeholder copy and campaign: whether this upsell ships is still undecided.
   return (
     <BaseUpsellPage
       campaign="session-management"
       location="monitor-session-management-page"
       header={t`Session management`}
-      title={t`See who is signed in, and revoke access in one click`}
-      description={t`Review every active session across your instance, then revoke a single session, all of a person's sessions, or everyone's at once.`}
+      title={t`Session management`}
+      // eslint-disable-next-line metabase/no-literal-metabase-strings
+      description={t`See who is signed in to your Metabase. Revoke individual sessions, all sessions for a single person, or all sessions for your Metabase.`}
     />
   );
 }
