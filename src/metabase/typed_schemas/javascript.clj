@@ -10,11 +10,12 @@
     [:arr expr-or-item ...]          ; array literal
     [:obj entry ...]                 ; object literal
 
-  Object entries are `[key expr]` or `[key {:metadata {...}} expr]`; array
-  items are bare expressions or `[:item {:metadata {...}} expr]`. Metadata is a
-  JSON-encodable map, printed as a `/* metadata: {...} */` block inside the
-  entry's object, after its properties, so it never reaches runtime code.
-  Statements:
+  Object entries are `[key expr]` or `[key {:metadata {...}} obj]`; array
+  items are bare expressions or `[:item {:metadata {...}} obj]`, where `obj`
+  is an `[:obj ...]`. Metadata is a JSON-encodable map, printed as a
+  `/* metadata: {...} */` block first inside the entry's object, before its
+  properties, so a reader meets it before the data it describes and it never
+  reaches runtime code. Statements:
 
     [:const \"tables\" expr]           ; const tables = <expr> as const;
     [:raw \"function helper() {...}\"] ; verbatim TypeScript
@@ -34,11 +35,9 @@
 
     const tables = {
       orders: {
+        /* metadata: { \"entityId\": \"abc123\" } */
         type: \"table\",
         ids: [ 1, 2 ]
-        /* metadata: {
-          \"entityId\": \"abc123\"
-        } */
       }
     } as const;
 
@@ -46,8 +45,11 @@
 
   Rendering rules: arrays whose items are all literals print on one line;
   `:call` arguments always print inline; object keys print bare when they are
-  valid JavaScript identifiers and quoted otherwise. [[render-js]] prints a
-  `:module`; [[Module]] is the Malli schema for the whole grammar.
+  valid JavaScript identifiers and quoted otherwise. A metadata block whose
+  values are all scalars prints on one line, so a field costs a reader one line
+  of the file; one with a nested array or object prints as
+  `JSON.stringify(x, null, 2)` would, one array item per line. [[render-js]]
+  prints a `:module`; [[Module]] is the Malli schema for the whole grammar.
 
   The printer is deliberately option-free and policy-free: decisions about
   *what* to emit (runtime keys, metadata, compaction) belong in
@@ -147,21 +149,16 @@
     [nil item]))
 
 (defn- metadata-json
-  "Renders a metadata value as JSON: objects one key per line, arrays on one line."
-  [value indent]
-  (cond
-    (and (map? value) (seq value))
-    (str "{\n"
-         (str/join ",\n" (for [[k v] value]
-                           (str (spaces (+ indent 2)) (json/encode (u/qualified-name k)) ": "
-                                (metadata-json v (+ indent 2)))))
-         "\n" (spaces indent) "}")
-
-    (sequential? value)
-    (str "[" (str/join ", " (map json/encode value)) "]")
-
-    :else
-    (json/encode value)))
+  "Renders `metadata` as JSON: on one line when every value is a scalar, otherwise as `JSON.stringify(x, null, 2)`
+  would, with each line after the first indented by `indent`."
+  [metadata indent]
+  (if (not-any? coll? (vals metadata))
+    (str "{ "
+         (str/join ", " (for [[k v] metadata]
+                          (str (json/encode (u/qualified-name k)) ": " (json/encode v))))
+         " }")
+    (str/replace (json/encode metadata {:pretty {:indent-arrays? true :object-field-value-separator ": "}})
+                 "\n" (str "\n" (spaces indent)))))
 
 (defn- metadata-block
   "Returns a `/* metadata: {...} */` block. A `*/` can only occur inside a JSON string, where it is written as the
@@ -205,14 +202,13 @@
                        (str (spaces inner-indent)
                             (javascript-key entry-key)
                             ": "
-                            (render-expression expr inner-indent (:metadata options))))]
-    (if (and (empty? lines) (empty? metadata))
+                            (render-expression expr inner-indent (:metadata options))))
+        ;; the block comes first, so a reader meets it before the properties it describes
+        body         (str/join "\n" (remove str/blank? [(when (seq metadata) (metadata-block inner-indent metadata))
+                                                        (str/join ",\n" lines)]))]
+    (if (str/blank? body)
       "{ }"
-      (str "{\n"
-           (str/join ",\n" lines)
-           (when (seq metadata)
-             (str (when (seq lines) "\n") (metadata-block inner-indent metadata)))
-           "\n" (spaces indent) "}"))))
+      (str "{\n" body "\n" (spaces indent) "}"))))
 
 (defn- render-array
   [items indent]

@@ -69,13 +69,13 @@
        (= (name entry-key) (str table-name))))
 
 (defn- metadata-value
-  "Returns `value` as written in a metadata block, or nil when there is nothing to write: a nil-valued key says
-  nothing, so a map loses them (a table without a schema has no `schemaName`)."
+  "Returns `value` as written in a metadata block, or nil when there is nothing to write: a nil or blank value says
+  nothing, so a map loses such keys at any depth (a table without a schema has no `schemaName`)."
   [value]
   (cond
     (string? value) (when-not (str/blank? value) value)
-    (map? value)    (not-empty (into {} (remove (comp nil? val)) value))
-    (coll? value)   (not-empty value)
+    (map? value)    (not-empty (into {} (keep (fn [[k v]] (when-some [v (metadata-value v)] [k v]))) value))
+    (coll? value)   (not-empty (into [] (keep metadata-value) value))
     :else           value))
 
 (defn- entity-metadata

@@ -11,9 +11,10 @@
 
   These public functions are compositions of the internal pipeline stages;
   their definitions below show the whole pipeline. The schema is for
-  superusers, so fetching checks nothing against the caller. It still asks
-  which collections are visible, to leave out archived ones and the trash, so
-  callers outside a request must bind a current-user context first.
+  superusers, so fetching no longer filters by what the caller can read. The
+  table and metric details lookups still read-check the current user, so a
+  non-admin calling [[build-semantic-schema]] gets a 403, and callers outside
+  a request must bind a current-user context first.
 
   Keep the separation when extending this module:
 

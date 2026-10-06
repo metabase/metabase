@@ -4,8 +4,7 @@
   [[SchemaSource]] names every read that [[metabase.typed-schemas.core/fetch-items]]
   performs, so the module's data-access surface is one definition instead of
   selects scattered across namespaces. [[app-db-source]] is the production
-  implementation, backed by the application database and filtered by what the
-  current user can read.
+  implementation, backed by the application database.
 
   Tests reify the protocol with literal values instead of redefining selection
   functions:
@@ -40,7 +39,7 @@
   entities. A nil `database-ids`/`collection-ids` argument means unscoped;
   an empty set matches nothing."
   (database-ids [source database-ref]
-    "Readable database ids matching a database reference, or nil without one.")
+    "Database ids matching a database reference, or nil without one.")
   (collection-ids [source collection-refs]
     "Ids of the referenced collections and their descendants, or nil without refs.")
   (library-scope [source scope-options]
