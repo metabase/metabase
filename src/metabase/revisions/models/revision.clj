@@ -3,6 +3,7 @@
    [clojure.data :as data]
    [malli.core :as mc]
    [metabase.config.core :as config]
+   [metabase.events.core :as events]
    [metabase.explorations.schema]
    [metabase.measures.schema]
    [metabase.models.interface :as mi]
@@ -274,28 +275,42 @@
       object)))
 
 (mu/defn revert!
-  "Revert `entity` with `id` to a given Revision."
+  "Revert `entity` with `id` to a given Revision. When the revert writes a reversion revision, publishes the `:update`
+  topic of `entity` in [[revisioned-models]] once, after the commit, with `:reverted-to-revision-id`. Publishes nothing
+  for a model with no entry, or whose hook publishes the update."
   [info :- [:map {:closed true}
             [:id          pos-int?]
             [:user-id     pos-int?]
             [:revision-id pos-int?]
             [:entity      [:fn toucan-model?]]]]
   (let [{:keys [id user-id revision-id entity]} info
+        {update-topic :update :keys [previous-object? hook-publishes-update?]} (get revisioned-models entity)
         model-name (name entity)
-        serialized-instance (revisions.db/revision-object model-name id revision-id)]
-    (t2/with-transaction [_conn]
-      (let [already-in-target-state? (= serialized-instance
-                                        (revisions.db/latest-revision-object model-name id))]
-        ;; Do the reversion of the object
-        (revert-to-revision! entity id user-id serialized-instance)
-        ;; Push a new revision to record this change
-        (let [last-revision (revisions.db/latest-revision model-name id)]
-          (if already-in-target-state?
-            last-revision
-            (let [new-revision (revisions.db/insert-revision-returning! {:model        model-name
-                                                                         :model_id     id
-                                                                         :user_id      user-id
-                                                                         :object       serialized-instance
-                                                                         :is_creation  false
-                                                                         :is_reversion true})]
-              (add-revision-details entity new-revision last-revision))))))))
+        serialized-instance (revisions.db/revision-object model-name id revision-id)
+        ;; read outside the transaction, as `update-card!` does; a concurrent write before the transaction makes it
+        ;; stale
+        previous-object (when previous-object? (revisions.db/entity entity id))
+        [reverted? result]
+        (t2/with-transaction [_conn]
+          (let [already-in-target-state? (= serialized-instance
+                                            (revisions.db/latest-revision-object model-name id))]
+            ;; Do the reversion of the object
+            (revert-to-revision! entity id user-id serialized-instance)
+            ;; Push a new revision to record this change
+            (let [last-revision (revisions.db/latest-revision model-name id)]
+              (if already-in-target-state?
+                [false last-revision]
+                (let [new-revision (revisions.db/insert-revision-returning! {:model        model-name
+                                                                             :model_id     id
+                                                                             :user_id      user-id
+                                                                             :object       serialized-instance
+                                                                             :is_creation  false
+                                                                             :is_reversion true})]
+                  [true (add-revision-details entity new-revision last-revision)])))))]
+    ;; inside an outer transaction this publishes before the outer commit
+    (when (and reverted? update-topic (not hook-publishes-update?))
+      (events/publish-event! update-topic (cond-> {:object                  (revisions.db/entity entity id)
+                                                   :user-id                 user-id
+                                                   :reverted-to-revision-id revision-id}
+                                            previous-object? (assoc :previous-object previous-object))))
+    result))
