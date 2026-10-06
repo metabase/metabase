@@ -229,7 +229,7 @@
       (seq manifest-problems)
       manifest-problems
 
-      (empty? resources)
+      (and (empty? resources) (nil? collection-entity-id))
       (map #(problem (:path %) (tru "{0} is not a data app resource." (:path %))) unknown)
 
       (nil? manifest)
