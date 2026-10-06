@@ -18,10 +18,10 @@
 (def ended-session-retention-days
   "How long an ended session stays on record before [[delete-sessions-ended-long-ago!]] removes its row."
   ;; a constant rather than a setting, and deliberately not `audit-max-retention-days`: that defaults to two years,
-  ;; and the audit tables are a different concern (ADR 0004)
+  ;; and the audit tables are a different concern
   30)
 
-(def ^:dynamic *end-batch-size*
+(def default-end-batch-size
   "How many ids one `UPDATE ... WHERE id IN (...)` may name. Ending sessions by id has no upper bound on how many
   there are, and every id is a bind parameter — pgjdbc refuses a statement with more than 65,535 of them."
   1000)
@@ -47,15 +47,21 @@
                  :key_hashed       nil})))
 
 (mu/defn end-sessions-by-ids! :- ms/IntGreaterThanOrEqualToZero
-  "[[end-sessions!]] for the Sessions with `ids`, in batches of [[*end-batch-size*]], returning the total number ended.
-  An empty `ids` ends nothing."
-  [ids      :- [:sequential :string]
-   reason   :- ::session.schema/end-reason
-   ended-by :- ::session.schema/ended-by]
-  (transduce (map (fn [batch] (end-sessions! {:id batch} reason ended-by)))
-             +
-             0
-             (partition-all *end-batch-size* ids)))
+  "[[end-sessions!]] for the Sessions with `ids`, in batches of `batch-size` ids ([[default-end-batch-size]] by
+  default), returning the total number ended. An empty `ids` ends nothing."
+  ([ids      :- [:sequential :string]
+    reason   :- ::session.schema/end-reason
+    ended-by :- ::session.schema/ended-by]
+   (end-sessions-by-ids! ids reason ended-by default-end-batch-size))
+
+  ([ids        :- [:sequential :string]
+    reason     :- ::session.schema/end-reason
+    ended-by   :- ::session.schema/ended-by
+    batch-size :- ms/PositiveInt]
+   (transduce (map (fn [batch] (end-sessions! {:id batch} reason ended-by)))
+              +
+              0
+              (partition-all batch-size ids))))
 
 (mu/defn sessions-with-unrecorded-ending :- [:sequential [:map {:closed true}
                                                           [:id     :string]

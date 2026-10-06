@@ -14,6 +14,8 @@
    [metabase.util.honey-sql-2 :as h2x]
    [toucan2.core :as t2]))
 
+(set! *warn-on-reflection* true)
+
 (use-fixtures :once (fixtures/initialize :db))
 
 (defn- liveness

@@ -14,7 +14,7 @@
 (set! *warn-on-reflection* true)
 
 (def session-list-from-and-joins
-  "`metabase.session.core/session-from-and-joins` plus the `lh` alias for the device columns. `login_history` has at
+  "[[metabase.session.core/session-from-and-joins]] plus the `lh` alias for the device columns. `login_history` has at
   most one row per session, so this cannot multiply rows."
   ;; kept separate because the per-request auth lookup runs on every API call and must not pay for this join
   (update session/session-from-and-joins :left-join into [[:login_history :lh] [:= :lh.session_id :session.id]]))
@@ -77,7 +77,7 @@
 
 (mu/defn filters->where :- [:sequential :any]
   "The HoneySQL predicates for `filters` (see `::sm.schema/session-filters`) other than `status`, for a query using
-  `metabase.session.core/session-from-and-joins`. Independent of the current request so that listing sessions and
+  [[metabase.session.core/session-from-and-joins]]. Independent of the current request so that listing sessions and
   revoking them by criteria stay in lockstep: whatever a filtered list shows is exactly what the same filters would
   revoke.
 

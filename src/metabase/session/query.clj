@@ -81,13 +81,11 @@
                              (h2x/add-interval-honeysql-form db-type now (- session-timeout-seconds) :second)]))))
 
 (mu/defn live-session-conditions :- [:sequential :any]
-  "The HoneySQL predicates a `core_session` row must satisfy to be *live* — i.e. to still authenticate a request.
-
-  NOTE: This function is called and memoized per distinct combo of arguments in session middleware. Therefore, it is
-  absolutely imperative (heh) that this function must be pure: it must return the same thing given the same arguments
-  every time it's called. For example, `enable-tenants?` cannot be derived from the current setting value, and must be
-  passed in."
+  "The HoneySQL predicates a `core_session` row must satisfy to be *live* — i.e. to still authenticate a request."
   [liveness :- ::session.schema/liveness-params]
+  ;; session middleware calls and memoizes this per distinct combo of arguments, so it must be pure: the same
+  ;; arguments must give the same result every time. `enable-tenants?`, for one, is passed in rather than derived
+  ;; from the current setting value.
   (let [predicates (liveness-predicates liveness)]
     ;; a fixed order, so the compiled SQL is the same for the same inputs
     (into [] (keep predicates) [:not-ended :user-active :tenant-active :not-expired :not-mcp :not-timed-out])))

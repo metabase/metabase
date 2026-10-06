@@ -19,6 +19,8 @@
    [metabase.util.honey-sql-2 :as h2x]
    [toucan2.core :as t2]))
 
+(set! *warn-on-reflection* true)
+
 (use-fixtures :once (fixtures/initialize :db :web-server :test-users))
 
 (use-fixtures :each (fn [f] (mt/with-premium-features #{:session-management}
@@ -530,7 +532,12 @@
                       {:user-id user-id :status "ended"}
                       {:user-id user-id :reason "logout"}
                       {:user-id user-id :ended-before "2030-01-01T00:00:00Z"}
-                      {:user-id user-id :ended-after "2020-01-01T00:00:00Z"}]]
+                      {:user-id user-id :ended-after "2020-01-01T00:00:00Z"}
+                      ;; the key's presence is what is refused, whatever its value: an explicit null must not be
+                      ;; read as "no filter" and drop away, leaving every live session matched
+                      {:user-id user-id :reason nil}
+                      {:user-id user-id :ended-before nil}
+                      {:user-id user-id :ended-after nil}]]
           (testing (pr-str body)
             (is (=? {:errors map?}
                     (mt/user-http-request :crowberto :post 400 "ee/session-management/revoke" body)))))
@@ -538,7 +545,11 @@
         (is (= "logout" (:end_reason (ending ended))) "and nothing was touched")
         (testing "`status: live` is the one value accepted, and means what the default means"
           (is (= 1 (:revoked (mt/user-http-request :crowberto :post 200 "ee/session-management/revoke"
-                                                   {:user-id user-id :status "live"})))))))))
+                                                   {:user-id user-id :status "live"})))))
+        (testing "with none of those keys present the revoke goes ahead as usual"
+          (insert-session! user-id)
+          (is (= 1 (:revoked (mt/user-http-request :crowberto :post 200 "ee/session-management/revoke"
+                                                   {:user-id user-id})))))))))
 
 (deftest revoke-by-ids-and-provider-test
   (testing "every criterion has to hold: `ids` narrows to a set, `provider` narrows within it"
@@ -561,10 +572,12 @@
 (deftest revoke-batches-the-update-test
   (testing "a revoke bigger than one statement can name is still revoked in full, and counted in full"
     (mt/with-temp [:model/User {user-id :id} {}]
-      (let [session-ids (vec (repeatedly 5 #(insert-session! user-id)))]
+      (let [session-ids (vec (repeatedly 5 #(insert-session! user-id)))
+            end!        (mt/original-fn #'session/end-sessions-by-ids!)]
         ;; a real revoke batches at 1000 ids because every id is a bind parameter; two and a half batches of two
         ;; exercises the same code, including the short final batch, without inserting thousands of rows
-        (with-bindings {#'session.db/*end-batch-size* 2}
+        (mt/with-dynamic-fn-redefs [session/end-sessions-by-ids! (fn [ids reason ended-by]
+                                                                   (end! ids reason ended-by 2))]
           (let [response (mt/user-http-request :crowberto :post 200 "ee/session-management/revoke" {:user-id user-id})]
             (is (= 5 (:revoked response))
                 "every batch is counted, not just the last one")

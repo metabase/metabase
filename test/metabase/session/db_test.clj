@@ -54,8 +54,9 @@
 (deftest end-sessions-by-ids-batches-test
   (mt/with-temp [:model/User {user-id :id} {}]
     (let [ids (vec (repeatedly 5 #(first (insert-session! user-id))))]
-      (binding [session.db/*end-batch-size* 2]
-        (is (= 5 (session.db/end-sessions-by-ids! ids "admin" nil))
-            "every batch is counted, including the short final one"))
+      ;; a real revoke batches at `default-end-batch-size`; two and a half batches of two exercises the same code,
+      ;; including the short final batch, without inserting thousands of rows
+      (is (= 5 (session.db/end-sessions-by-ids! ids "admin" nil 2))
+          "every batch is counted, including the short final one")
       (is (every? #(nil? (:key_hashed %)) (t2/select :model/Session :id [:in ids])))
       (is (zero? (session.db/end-sessions-by-ids! [] "admin" nil))))))

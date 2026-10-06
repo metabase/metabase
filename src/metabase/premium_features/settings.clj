@@ -192,7 +192,7 @@
   "Should we enable configuring session timeouts?"
   :session-timeout-config)
 
-(define-premium-feature ^{:added "0.64.0"} enable-session-management?
+(define-premium-feature ^{:added "0.65.0"} enable-session-management?
   "Should we enable listing and revoking users' sessions?"
   :session-management)
 

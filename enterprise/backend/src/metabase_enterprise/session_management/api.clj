@@ -88,9 +88,10 @@
    [:ended_by           [:maybe ms/PositiveInt]]])
 
 (mr/def ::EndedOnlyCriterion
-  ;; declared, so that a value is rejected rather than dropped as an undeclared key of a closed map
-  [:= {:error/message "only live sessions can be revoked, so a filter that only matches ended ones is not allowed"}
-   nil])
+  ;; declared purely to refuse the key: an undeclared key would be stripped rather than rejected, and a schema that
+  ;; only rejects a value would still let an explicit JSON `null` through and drop the filter
+  [:fn {:error/message "only live sessions can be revoked, so a filter that only matches ended ones is not allowed"}
+   (constantly false)])
 
 (mr/def ::RevokeByCriteriaParams
   ;; [[::FilterParams]] rather than [[::ListParams]]: an ended session cannot be revoked, or removed early, so a
@@ -164,11 +165,10 @@
   measured from `created_at`. Nil only if the row has neither.
 
   Not derived from the idle timeout — that is a sliding window which using the session pushes out, so this value does
-  not move when the session is used.
-
-  Computed here rather than as SQL `LEAST(...)` because the cap needs date arithmetic that differs across H2, Postgres
-  and MySQL, and nothing sorts on the result."
+  not move when the session is used."
   [created-at expires-at max-age-minutes]
+  ;; computed here rather than as SQL `LEAST(...)` because the cap needs date arithmetic that differs across H2,
+  ;; Postgres and MySQL, and nothing sorts on the result
   (let [cap (when max-age-minutes (u.date/add created-at :minute max-age-minutes))]
     (cond
       (nil? cap)                       expires-at
