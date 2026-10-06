@@ -266,14 +266,14 @@
             (is (= #{group-id}
                    (advanced-permissions.common/new-table-sandboxed-groups db-id [group-id]))
                 "The sandbox guard does not consult the token")
-            (data-perms/do-with-schema-consistent-new-table-perms
-             (fn []
-               (mt/with-temp [:model/Table {new-table-id :id} {:db_id db-id :schema "PUBLIC"}]
-                 (is (= :blocked
-                        (t2/select-one-fn :perm_value :model/DataPermissions
-                                          :db_id db-id :group_id group-id
-                                          :table_id new-table-id :perm_type :perms/view-data))
-                     "Uploaded table blocks the sandboxed group instead of inheriting the schema's :unrestricted"))))))))))
+            (mt/with-temp [:model/Table {new-table-id :id} {:db_id       db-id
+                                                            :schema      "PUBLIC"
+                                                            :data_source :upload}]
+              (is (= :blocked
+                     (t2/select-one-fn :perm_value :model/DataPermissions
+                                       :db_id db-id :group_id group-id
+                                       :table_id new-table-id :perm_type :perms/view-data))
+                  "Uploaded table blocks the sandboxed group instead of inheriting the schema's :unrestricted"))))))))
 
 (deftest new-table-in-granted-schema-test
   ;; Grant the "public" schema, block the "blocked" schema -- exactly the upload setup. The group
@@ -295,15 +295,15 @@
                  (t2/select-one-fn :perm_value :model/DataPermissions
                                    :db_id db-id :group_id group-id
                                    :table_id table-id-3 :perm_type :perms/view-data)))))
-      (testing "Upload (binding true): an uploaded table in the granted schema inherits :unrestricted (UXW-3217)"
-        (data-perms/do-with-schema-consistent-new-table-perms
-         (fn []
-           (mt/with-temp [:model/Table {table-id-3 :id} {:db_id db-id :schema "public"}]
-             (is (= :unrestricted
-                    (t2/select-one-fn :perm_value :model/DataPermissions
-                                      :db_id db-id :group_id group-id
-                                      :table_id table-id-3 :perm_type :perms/view-data))
-                 "new table in the granted schema must inherit :unrestricted, not :blocked"))))))))
+      (testing "Upload (`:data_source :upload`): an uploaded table in the granted schema inherits :unrestricted (UXW-3217)"
+        (mt/with-temp [:model/Table {table-id-3 :id} {:db_id       db-id
+                                                      :schema      "public"
+                                                      :data_source :upload}]
+          (is (= :unrestricted
+                 (t2/select-one-fn :perm_value :model/DataPermissions
+                                   :db_id db-id :group_id group-id
+                                   :table_id table-id-3 :perm_type :perms/view-data))
+              "new table in the granted schema must inherit :unrestricted, not :blocked"))))))
 
 (deftest new-group-view-data-permission-levels-test
   (mt/with-additional-premium-features #{:sandboxes :advanced-permissions}

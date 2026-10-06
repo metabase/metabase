@@ -1320,12 +1320,14 @@
                                   (fn [_db-id group-ids] (zipmap group-ids (repeat :blocked)))
                                   data-perms/new-table-sandboxed-groups
                                   (fn [_db-id group-ids] (if sandboxed? (set group-ids) #{}))]
-        (let [set-perms! #(data-perms/set-default-table-permissions!
-                           {:id table-id-4 :db_id db-id :schema "public"}
-                           [{:group-id group-id :perm-type :perms/view-data :default-value :unrestricted}])]
-          (if upload?
-            (data-perms/do-with-schema-consistent-new-table-perms set-perms!)
-            (set-perms!))))
+        (data-perms/set-default-table-permissions!
+         {:id          table-id-4
+          :db_id       db-id
+          :schema      "public"
+          :data_source (if upload? :upload :ingested)}
+         [{:group-id      group-id
+           :perm-type     :perms/view-data
+           :default-value :unrestricted}]))
       (t2/select-one-fn :perm_value :model/DataPermissions
                         :group_id group-id :db_id db-id
                         :table_id table-id-4 :perm_type :perms/view-data))))
@@ -1333,9 +1335,9 @@
 (deftest set-default-table-permissions!-view-data-granted-schema-test
   (testing "Sync (default): a new table fails safe to :blocked because the group has only partial DB access"
     (is (= :blocked      (new-table-view-data-perm! {:upload? false :sandboxed? false}))))
-  (testing "Upload (binding true): a new table inherits the granted schema's :unrestricted (UXW-3217)"
+  (testing "Upload (`:data_source :upload`): a new table inherits the granted schema's :unrestricted (UXW-3217)"
     (is (= :unrestricted (new-table-view-data-perm! {:upload? true  :sandboxed? false}))))
-  (testing "Upload (binding true) + sandbox: a sandbox still forces :blocked, schema be damned"
+  (testing "Upload + sandbox: a sandbox still forces :blocked, schema be damned"
     (is (= :blocked      (new-table-view-data-perm! {:upload? true  :sandboxed? true})))))
 
 (defn- distinct-schema-vals-count

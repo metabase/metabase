@@ -45,7 +45,6 @@
   data-app-group-ids
   data-app-view-data-permission-level
   disable-perms-cache
-  do-with-schema-consistent-new-table-perms
   download-perms-level
   full-database-permission-for-user
   full-schema-permission-for-user

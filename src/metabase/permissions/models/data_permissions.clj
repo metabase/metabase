@@ -1495,27 +1495,6 @@
                         groups)]
       (batch-insert-permissions! perm-rows))))
 
-(def ^:dynamic *prefer-schema-consistency-for-new-tables?*
-  "When true, a newly-created table's view-data inherits its schema's unanimous value in preference to the usual
-  rule. (For enterprise, if any table on the DB is `:blocked` then so are new tables discovered by sync.)
-
-  Bind this only around creating a table the current user is explicitly authorized to create in this schema,
-  i.e. CSV uploads. There, the upload itself already requires `:unrestricted` access to the whole schema for at least
-  one group (UXW-3217). Left false for sync, where a newly-discovered table must fail safe to `:blocked` for any
-  group with partial access. See [[compute-actual-value]].
-
-  Use the helper [[do-with-schema-consistent-new-table-perms]] rather than binding this directly."
-  false)
-
-(defn do-with-schema-consistent-new-table-perms
-  "Runs `thunk` with [[*prefer-schema-consistency-for-new-tables?*]] bound true, so that any tables created during
-  `thunk` inherit their schema's unanimous view-data (if any) instead of failing safe to `:blocked`. Bind only around
-  creating a table the current user is authorized to create in its schema (CSV uploads). The binding must wrap the
-  table insert itself, since the `:model/Table` after-insert hook is what assigns the permissions."
-  [thunk]
-  (binding [*prefer-schema-consistency-for-new-tables?* true]
-    (thunk)))
-
 (defn- mk-perm-row [group-id perm-type perm-value db-id table-id schema]
   {:perm_type perm-type :group_id group-id :perm_value perm-value
    :db_id db-id :table_id table-id :schema_name schema})
@@ -1539,8 +1518,7 @@
                                {} table-level)
      :all-db-tables    (permissions.db/active-table-locations-for-database db-id)
      :view-data-levels (new-table-view-data-permission-levels db-id group-ids)
-     :sandboxed-groups (new-table-sandboxed-groups db-id group-ids)
-     :prefer-schema-consistency? *prefer-schema-consistency-for-new-tables?*}))
+     :sandboxed-groups (new-table-sandboxed-groups db-id group-ids)}))
 
 (defn- compute-actual-value
   "Per-entry resolution for a new table's permission value for a given `group-id` and `perm-type`.
@@ -1548,21 +1526,23 @@
   For perms other than `view-data`, the new table inherits its schema's value when all existing tables in that schema
   agree, otherwise the default supplied by the caller.
 
-  For `view-data` the order depends on [[*prefer-schema-consistency-for-new-tables?*]]:
+  For `view-data` the order depends on where the table came from, which we read off its `:data_source`:
 
-  - Default (sync): the enterprise DB-wide override wins. If the group has *any* `:blocked` table (or a sandbox) in
-    the DB, then it has only partial access, so a newly-discovered, unclassified table fails safe to `:blocked`.
-  - Upload (`*prefer-schema-consistency-for-new-tables?*` bound true): if the permissions for all (active) tables in
-    the new table's schema are unanimously `:unrestricted`, then the new table is granted the same permission.
+  - Sync (any other data source): the enterprise DB-wide override wins. If the group has *any* `:blocked` table (or a
+    sandbox) in the DB, then it has only partial access, so a newly-discovered, unclassified table fails safe to
+    `:blocked`.
+  - Upload (`:data_source` is `:upload`): if the permissions for all (active) tables in the new table's schema are
+    unanimously `:unrestricted`, then the new table is granted the same permission.
     - This is a specific override for an uploaded table, since otherwise the user would be both locked out of their
       own freshly uploaded table *and* prevented from making any further uploads! (Since uploads require at least one
       group with unanimous `:unrestricted` access to the target schema. See UXW-3217.)
 
   Note that if the group has a sandbox anywhere on this DB, the uploaded table is still `:blocked`, preventing any
   leak of data to that group which should be sandboxed."
-  [{:keys [prefer-schema-consistency? sandboxed-groups schema-vals-idx view-data-levels]}
+  [{:keys [sandboxed-groups schema-vals-idx view-data-levels]}
    {:keys [group-id perm-type default-value table]}]
   (let [view-data?   (= perm-type :perms/view-data)
+        upload?      (= :upload (some-> table :data_source keyword))
         schema-value (let [sv (get-in schema-vals-idx [group-id perm-type (:schema table)])]
                        (when (and (seq sv) (= (count sv) 1))
                          (first sv)))
@@ -1570,7 +1550,7 @@
                        (get view-data-levels group-id))]
     (or (when (and view-data? (contains? sandboxed-groups group-id))
           :blocked)
-        (if (and view-data? prefer-schema-consistency?)
+        (if (and view-data? upload?)
           (or schema-value override)
           (or override schema-value))
         default-value)))
@@ -1649,7 +1629,10 @@
 
    `group-perm-defaults` is a seq of `{:group-id :perm-type :default-value}`
    triples. Thin wrapper over [[set-default-table-permissions-bulk!]] for
-   the single-table case."
+   the single-table case.
+
+   `table` may be a Table ID or a Table map. A map must carry `:data_source`, since [[compute-actual-value]] branches
+   on whether the table came from an upload; the `:model/Table` after-insert hook passes the full inserted row."
   [table group-perm-defaults]
   (let [table (if (map? table)
                 table
