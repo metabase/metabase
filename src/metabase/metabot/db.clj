@@ -663,6 +663,11 @@
   [field-id :- ::lib.schema.id/field]
   (t2/select-one :model/Field :id field-id {:from [(warehouse-schema-overlay/field-query)]}))
 
+(mu/defn fields
+  "The Fields with `field-ids`."
+  [field-ids :- [:set ::lib.schema.id/field]]
+  (t2/select :model/Field :id [:in field-ids] {:from [(warehouse-schema-overlay/field-query)]}))
+
 (mu/defn field-fingerprint
   "The fingerprint of the Field with `field-id`."
   [field-id :- ::lib.schema.id/field]

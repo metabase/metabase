@@ -21,10 +21,10 @@ function decodeExplorerState(hash, validIds, validTeams) {
   const selected = validIds.has(params.get('m')) ? params.get('m') : null;
   return {
     selected,
-    view: ['hotspots', 'graph'].includes(requestedView) ? requestedView : 'tree',
+    view: ['hotspots', 'cycles', 'graph'].includes(requestedView) ? requestedView : 'tree',
     focus: new Set(ids('focus')),
     focusSpecified: params.has('focus'),
-    degree: Math.min(3, Math.max(1, requestedDegree || 1)),
+    degree: Number.isNaN(requestedDegree) ? 1 : Math.min(3, Math.max(0, requestedDegree)),
     expanded: new Set(ids('exp')),
     hidden: new Set(ids('hide')),
     hideRe: params.get('hre') || '',
