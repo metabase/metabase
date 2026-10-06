@@ -87,9 +87,7 @@ databaseChangeLog:
         - delete:
             tableName: permissions_group
             where: is_data_app_group = true
-      rollback: # Deleted groups and assignments are not restored.
-        - sql:
-            sql: SELECT 1;
+      rollback: [] # Deleted groups and assignments are not restored.
 
   - changeSet:
       id: v65.2026-09-16T00:00:06
