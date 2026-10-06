@@ -573,11 +573,12 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
 
       cy.log("verify that invalid temporal units are ignored");
       H.getDashboardCard(1).findByText("invalid").click();
-      H.filterWidget()
-        .findByText(/invalid/i)
-        .should("not.exist");
       H.getDashboardCard().within(() => {
         H.tableHeaderColumn("Created At: Month");
+      });
+      H.filterWidget().within(() => {
+        cy.findByText(parameterDetails.name).should("be.visible");
+        cy.findByText(/invalid/i).should("not.exist");
       });
 
       cy.log("verify that recovering from an invalid temporal unit works");
