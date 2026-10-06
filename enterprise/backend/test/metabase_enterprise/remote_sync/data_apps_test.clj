@@ -10,6 +10,7 @@
    [metabase-enterprise.remote-sync.source.protocol :as source.p]
    [metabase-enterprise.remote-sync.test-helpers :as test-helpers]
    [metabase.actions.core :as actions]
+   [metabase.driver :as driver]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.search.test-util :as search.tu]
@@ -431,3 +432,27 @@
       (is (str/includes? (:message result) "data_apps/first/resources/cards/"))
       (is (str/includes? (:message result) "data_apps/second/resources/cards/"))
       (is (not (t2/exists? :model/Card :entity_id question-eid)) "nothing loaded"))))
+
+(deftest pull-survives-a-query-whose-tables-cant-be-read-test
+  (testing "a native query on a driver that can't name its tables doesn't fail the pull; the app records the rest"
+    (driver/register! ::no-table-refs)
+    (with-data-apps-sync
+      (mt/with-temp [:model/Database _ {:engine ::no-table-refs :name "no-table-refs"}]
+        (let [resources (data-apps.tu/build-resources
+                         shop-collection-eid
+                         [{:entity_id question-eid :name "VenuesList" :query (venues-query)}
+                          {:entity_id "shopQuestionNative000" :name "Native" :query (venues-query)}]
+                         [])
+              path      (some #(when (str/includes? % "shopQuestionNative000") %) (keys resources))
+              native    (assoc (yaml/parse-string (get resources path))
+                               :database_id "no-table-refs"
+                               :dataset_query {:database "no-table-refs"
+                                               :lib/type "mbql/query"
+                                               :stages   [{:lib/type "mbql.stage/native" :native "{\"find\": \"orders\"}"}]})
+              src       (test-helpers/versioned-source
+                         :trees {"v0" (shop-tree (assoc resources path (yaml/generate-string native)))}
+                         :current "v0")
+              result    (import-at! src "v0" :force? true)]
+          (is (= :success (:status result)) (:message result))
+          (is (= "v0" (remote-sync.task/last-version)))
+          (is (= [(mt/id :venues)] (t2/select-one-fn :table_ids :model/DataApp :name "shop"))))))))
