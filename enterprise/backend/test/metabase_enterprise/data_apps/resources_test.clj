@@ -52,9 +52,11 @@
         ;; can put the copy there.
         (mt/with-test-user :crowberto
           (mt/with-temp [:model/Card {card-id :id} {:collection_id resource_collection_id}]
-            (collection/archive-or-unarchive-collection!
-             (t2/select-one :model/Collection :id resource_collection_id)
-             {:archived true})
+            ;; a data app's collection can no longer be trashed, so trash it as an instance from before that rule did
+            (mt/with-dynamic-fn-redefs [perms/data-app-collection-ids (constantly #{})]
+              (collection/archive-or-unarchive-collection!
+               (t2/select-one :model/Collection :id resource_collection_id)
+               {:archived true}))
             (is (true? (t2/select-one-fn :archived :model/Collection :id resource_collection_id))
                 "precondition: the collection is in the trash")
             (is (true? (t2/select-one-fn :archived :model/Card :id card-id))

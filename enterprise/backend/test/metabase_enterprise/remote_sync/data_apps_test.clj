@@ -594,3 +594,17 @@
             result    (import-at! src "v0" :force? true)]
         (is (= :success (:status result)) (:message result))
         (is (= [(mt/id :venues)] (t2/select-one-fn :table_ids :model/DataApp :name "shop")))))))
+
+(deftest an-apps-collection-cant-be-moved-to-the-trash-test
+  (testing "trashing it would drop the app's resource files on the next export"
+    (with-data-apps-sync
+      (let [mock (test-helpers/create-mock-source :initial-files {"main" (shop-tree (question-resources))})]
+        (is (= :success (:status (import-at! mock "main" :force? true))))
+        (let [before (resource-files mock)]
+          (mt/user-http-request :crowberto :put 400 (str "collection/" (shop-collection-id)) {:archived true})
+          (is (= :success (:status (export! mock))))
+          (is (= before (resource-files mock)))
+          (testing "deleting the app still deletes its collection"
+            (let [collection-id (shop-collection-id)]
+              (mt/user-http-request :crowberto :delete 204 "apps/shop")
+              (is (not (t2/exists? :model/Collection :id collection-id))))))))))

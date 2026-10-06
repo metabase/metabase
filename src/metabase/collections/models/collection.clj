@@ -2026,6 +2026,11 @@
     (api/check
      (not (is-trash? collection-before-updates))
      [400 "You cannot modify the Trash Collection."])
+    ;; an export leaves out a trashed collection, which would delete the app's resource files
+    (api/check
+     (not (and (:archived collection-updates)
+               (contains? (set (perms/data-app-collection-ids)) (:id collection-before-updates))))
+     [400 "You cannot move a data app's collection to the trash."])
     ;; VARIOUS CHECKS BEFORE DOING ANYTHING:
     ;; (1) if this is a personal Collection, check that the 'propsed' changes are allowed
     (when (or (:personal_owner_id collection-before-updates)
