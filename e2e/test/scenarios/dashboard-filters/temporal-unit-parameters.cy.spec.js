@@ -776,8 +776,17 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
 
       H.filterWidget().click();
       H.popover().findByText("Year").click();
-      H.getDashboardCard(1).findByText("Created At: Year").should("exist");
-      H.getDashboardCard(3).findByText("Created At: Year").should("exist");
+      // after save, dashcards are ordered by layout position, not by when they were added
+      [
+        singleBreakoutQuestionDetails.name,
+        multiBreakoutQuestionDetails.name,
+      ].forEach((name) =>
+        cy
+          .findAllByTestId("dashcard")
+          .filter(`:contains("${name}")`)
+          .findByText("Created At: Year")
+          .should("exist"),
+      );
     });
 
     it("should not overwrite parameter mappings for a card when doing auto-wiring", () => {
