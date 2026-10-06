@@ -139,49 +139,8 @@ describe(
       });
     });
 
-    it("should not save unapplied filter state and allow resetting it", () => {
-      createDashboard({ dashboardDetails: { auto_apply_filters: false } });
-      openDashboard();
-
-      H.filterWidget().findByText(FILTER.name).click();
-      H.popover().within(() => {
-        cy.findByText("Gadget").click();
-        cy.button("Add filter").click();
-      });
-
-      H.applyFilterButton().should("be.visible");
-      H.applyFilterToast().findByText("1 filter changed");
-
-      cy.log("verify filter value is not saved");
-
-      H.visitDashboard("@dashboardId");
-      H.filterWidget()
-        .should("contain", FILTER.name)
-        .and("not.contain", "Gadget");
-
-      cy.log("verify unapplied filter value can be reset");
-
-      H.filterWidget().findByText(FILTER.name).click();
-      H.popover().within(() => {
-        cy.findByLabelText("Gadget").click();
-        cy.findByLabelText("Gadget").should("be.checked");
-        cy.button("Add filter").click();
-      });
-
-      H.applyFilterButton().should("be.visible");
-      H.applyFilterToast().findByText("1 filter changed");
-
-      H.cancelFilterButton().click();
-      H.applyFilterToast().should("not.exist");
-
-      H.filterWidget().findByText(FILTER.name).click();
-      H.popover().within(() => {
-        cy.findByLabelText("Gadget").should("not.be.checked");
-      });
-    });
-
     describe("modifying dashboard and dashboard cards", () => {
-      it("should preserve draft parameter values when editing is cancelled but not when the dashboard is saved", () => {
+      it("should not save draft parameter values, allow resetting them, and keep them when editing is cancelled but not when the dashboard is saved", () => {
         createDashboard({ dashboardDetails: { auto_apply_filters: false } });
         openDashboard();
 
@@ -191,11 +150,40 @@ describe(
           cy.button("Add filter").click();
         });
         H.applyFilterButton().should("be.visible");
+        H.applyFilterToast().findByText("1 filter changed");
 
         cy.log("cancel editing");
         H.editDashboard();
         cy.findByTestId("edit-bar").button("Cancel").click();
         H.filterWidget().findByText("Gadget").should("be.visible");
+        H.applyFilterButton().should("be.visible");
+
+        cy.log("verify filter value is not saved");
+        H.visitDashboard("@dashboardId");
+        H.filterWidget()
+          .should("contain", FILTER.name)
+          .and("not.contain", "Gadget");
+
+        cy.log("verify unapplied filter value can be reset");
+        H.filterWidget().findByText(FILTER.name).click();
+        H.popover().within(() => {
+          cy.findByLabelText("Gadget").click();
+          cy.findByLabelText("Gadget").should("be.checked");
+          cy.button("Add filter").click();
+        });
+
+        H.applyFilterButton().should("be.visible");
+        H.applyFilterToast().findByText("1 filter changed");
+
+        H.cancelFilterButton().click();
+        H.applyFilterToast().should("not.exist");
+
+        H.filterWidget().findByText(FILTER.name).click();
+        H.popover().within(() => {
+          cy.findByLabelText("Gadget").should("not.be.checked");
+          cy.findByLabelText("Gadget").click();
+          cy.button("Add filter").click();
+        });
         H.applyFilterButton().should("be.visible");
 
         cy.log("edit and save the dashboard");
