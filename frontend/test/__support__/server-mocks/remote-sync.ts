@@ -177,7 +177,7 @@ export const setupRemoteSyncTestConnectionEndpoint = ({
   } else {
     fetchMock.post(
       "path:/api/ee/remote-sync/test-connection",
-      { status: "success" },
+      { body: { status: "success" } },
       { name: "remote-sync-test-connection" },
     );
   }
