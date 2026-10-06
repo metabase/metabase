@@ -139,7 +139,6 @@ const EventForm = ({
                     value={dayjs.tz(values.timestamp).toDate()}
                     name="date"
                     label={t`Time`}
-                    fw="bold"
                     flex={1}
                     onChange={(time) => {
                       const timePart = dayjs.tz(time);

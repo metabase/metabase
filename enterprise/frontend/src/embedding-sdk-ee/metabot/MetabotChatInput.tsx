@@ -40,6 +40,7 @@ export function MetabotChatInput() {
 
       <Textarea
         id="metabot-chat-input"
+        variant="unstyled"
         data-testid="metabot-chat-input"
         w="100%"
         pb="0.2rem"
