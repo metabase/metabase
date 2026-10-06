@@ -32,7 +32,7 @@ describe("agent-guard.mjs", () => {
     ["Bash", { command: "npx vite build --watch" }],
     ["Bash", { command: "node_modules/.bin/vite build" }],
     ["Bash", { command: "git checkout ." }],
-    ["Bash", { command: "npm run type-check && git diff" }],
+    ["Bash", { command: "npm run type-check && git commit -am fix" }],
     ["Edit", { file_path: "package.json" }],
     ["Write", { file_path: "src/other.tsx" }],
     ["Edit", { file_path: ".claude/build-statement.md" }],
@@ -47,6 +47,8 @@ describe("agent-guard.mjs", () => {
     ["Read", { file_path: ".claude/build-statement.md" }],
     ["Bash", { command: "npm run type-check" }],
     ["Bash", { command: "cat vite.config.ts" }],
+    ["Bash", { command: "git status --short" }],
+    ["Bash", { command: "npm test; git diff --stat" }],
   ])("allows the builder: %s %o", (toolName, toolInput) => {
     expect(runBuilder(toolName, toolInput)).toBe(0);
   });

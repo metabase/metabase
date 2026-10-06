@@ -20,6 +20,8 @@ Rules:
 
 - Edit only `src/index.test.tsx`.
 - Never start the dev server.
+- Run once and return: never wait for `src/index.tsx` to change; the
+  orchestrator fixes the viz and re-runs the tests.
 
 Return: what the tests cover, every failing test with its message, and
 statement parts too vague to test.

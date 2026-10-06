@@ -3,7 +3,8 @@ import { readFileSync, realpathSync } from "node:fs";
 import { basename, dirname, isAbsolute, relative, resolve } from "node:path";
 import process from "node:process";
 
-const GIT_COMMAND = /(^|[\s;&|(`]|\$\()git(\s|$)/;
+const GIT_COMMAND =
+  /(^|[\s;&|(`]|\$\()git(?!\s+(status|diff|log|show)\b)(\s|$)/;
 const SERVER_COMMAND =
   /npm\s+(run\s+)?(dev|build|start)\b|(^|[\s;&|(`/]|\$\()(npx\s+)?vite(\s|$)/;
 const WRITE_TOOLS = ["Write", "Edit", "MultiEdit"];
