@@ -48,6 +48,23 @@ const tree = (
 );
 
 describe("Link", () => {
+  it("skips links with tabIndex -1 during keyboard navigation", async () => {
+    render(
+      <>
+        <input aria-label="Prompt" />
+        <Link to="/" tabIndex={-1}>
+          Mention
+        </Link>
+        <button>Send</button>
+      </>,
+    );
+
+    await userEvent.click(screen.getByRole("textbox", { name: "Prompt" }));
+    await userEvent.tab();
+
+    expect(screen.getByRole("button", { name: "Send" })).toHaveFocus();
+  });
+
   it("should render correctly", () => {
     render(<Link to="/">Home</Link>);
 

@@ -42,7 +42,7 @@
 (defn- persist-full-dimension-set!
   [metric]
   (let [{:keys [dimensions dimension-mappings]}
-        (metrics/compute-full-dimension-set (:dataset_query metric))]
+        (metrics/compute-full-dimension-set (:entity_id metric) (:dataset_query metric))]
     (t2/update! :model/Card (:id metric)
                 {:dimensions dimensions, :dimension_mappings dimension-mappings})))
 

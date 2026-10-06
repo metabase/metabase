@@ -5,9 +5,13 @@
    [java-time.api :as t]
    [metabase-enterprise.sandbox.models.params.field-values :as ee-params.field-values]
    [metabase-enterprise.test :as met]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.parameters.field-values :as params.field-values]
    [metabase.request.core :as request]
    [metabase.test :as mt]
+   [metabase.util :as u]
+   [metabase.warehouse-schema.models.field-values :as field-values]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -23,7 +27,7 @@
                                       :values                (range 10)
                                       :human_readable_values (map #(str "id_" %) (range 10))})
       (let [categories-id (mt/id :categories :id)
-            f             (t2/select-one :model/Field :id (mt/id :categories :id))
+            f             (assoc (t2/select-one :model/Field :id (mt/id :categories :id)) :has_field_values :list)
             card-id       (-> f :table_id (#'ee-params.field-values/table-id->sandbox) :card :id)
             fv            (params.field-values/get-or-create-field-values! f)]
         (is (= [(range 4 6)]
@@ -34,8 +38,7 @@
         (is (= ["id_4" "id_5"] (:human_readable_values fv)))
         (is (some? (:hash_key fv)))
         (testing "call second time shouldn't create a new FieldValues"
-          (params.field-values/get-or-create-field-values!
-           (t2/select-one :model/Field :id (mt/id :categories :id)))
+          (params.field-values/get-or-create-field-values! f)
           (is (= 1 (t2/count :model/FieldValues :field_id categories-id :type :advanced))))
         (testing "after changing the question, should create new FieldValues"
           (let [new-query (mt/mbql-query categories
@@ -44,13 +47,31 @@
             (mt/with-test-user :crowberto
               (t2/update! :model/Card card-id {:dataset_query new-query
                                                :updated_at    (t/local-date-time)})))
-          (params.field-values/get-or-create-field-values!
-           (t2/select-one :model/Field :id (mt/id :categories :id)))
+          (params.field-values/get-or-create-field-values! f)
           (is (= [(range 4 6)
                   (range 2 4)]
                  (t2/select-fn-vec :values :model/FieldValues
                                    :field_id categories-id :type :advanced
                                    {:order-by [:id]}))))))))
+
+(deftest advanced-field-values-only-for-fields-that-should-have-them-test
+  (met/with-gtaps! {:gtaps {:categories
+                            {:query (let [mp (mt/metadata-provider)]
+                                      (lib/filter (lib/query mp (lib.metadata/table mp (mt/id :categories)))
+                                                  (lib/< (lib.metadata/field mp (mt/id :categories :id)) 6)))}}}
+    (mt/with-temp-vals-in-db :model/Field (mt/id :categories :id) {:has_field_values "none"}
+      (mt/with-temp-vals-in-db :model/Field (mt/id :categories :name) {:has_field_values "list"}
+        (let [id->values (params.field-values/field-id->field-values-for-current-user
+                          [(mt/id :categories :id) (mt/id :categories :name)])]
+          (is (= 5 (count (:values (id->values (mt/id :categories :name))))))
+          (is (= {} (id->values (mt/id :categories :id))))
+          (is (nil? (params.field-values/get-or-create-field-values!
+                     (t2/select-one :model/Field (mt/id :categories :id)))))
+          (testing "no warehouse query runs for the field without FieldValues"
+            (is (= #{(mt/id :categories :name)}
+                   (t2/select-fn-set :field_id :model/FieldValues
+                                     :field_id [:in [(mt/id :categories :id) (mt/id :categories :name)]]
+                                     :type :advanced)))))))))
 
 (deftest advanced-field-values-hash-test
   (mt/with-premium-features #{:sandboxes}
@@ -254,6 +275,55 @@
                 (is (not= (hash-input user-id-1 {"state" "CA"})
                           (hash-input user-id-2 {"state" "TX"})))))))))))
 
+(deftest unresolved-sandbox-attributes-test
+  (testing "a sandboxed user whose sandbox can't be resolved gets no values"
+    (met/with-gtaps! {:gtaps {:venues {:remappings {:cat [:variable [:field (mt/id :venues :category_id) nil]]}}}}
+      (let [field (t2/select-one :model/Field :id (mt/id :venues :price))]
+        (is (ee-params.field-values/field-is-sandboxed? field))
+        ;; the request's permissions cache keeps the sandbox, while the attribute lookup reads the app DB
+        (t2/delete! :model/Sandbox :group_id (u/the-id &group))
+        (t2/insert! :model/FieldValues {:field_id (u/the-id field)
+                                        :type     :advanced
+                                        :hash_key (str (hash {:field-id (u/the-id field), :sandbox-attributes nil}))
+                                        :values   [1 2 3 4]})
+        (is (nil? (params.field-values/get-or-create-field-values! field)))
+        (is (= {(u/the-id field) {}}
+               (params.field-values/field-id->field-values-for-current-user [(u/the-id field)])))))))
+
+(deftest batched-field-values-without-sandboxes-feature-test
+  (testing "the batched fetches give a sandboxed user no values while sandboxing is unavailable"
+    (mt/with-temp-copy-of-db
+      (field-values/get-or-create-full-field-values! (t2/select-one :model/Field :id (mt/id :venues :price)))
+      (met/with-gtaps! {:gtaps      {:venues {:remappings {:cat [:variable [:field (mt/id :venues :category_id) nil]]}}}
+                        :attributes {:cat 4}}
+        (mt/with-premium-features #{}
+          (is (= {(mt/id :venues :price) {}}
+                 (params.field-values/field-id->field-values-for-current-user [(mt/id :venues :price)])))
+          (is (= {(mt/id :venues :price) {}}
+                 (params.field-values/get-or-create-field-values-by-field-id!
+                  [(t2/select-one :model/Field :id (mt/id :venues :price))]))))))))
+
+(deftest batched-field-values-without-table-id-test
+  (testing "a field with no :table_id throws"
+    (is (thrown? AssertionError
+                 (params.field-values/get-or-create-field-values-by-field-id!
+                  [(dissoc (t2/select-one :model/Field :id (mt/id :venues :price)) :table_id)])))))
+
+(deftest batched-field-values-query-count-test
+  (testing "the batched fetch resolves a user's restrictions once per table, not once per field"
+    (doseq [features [#{} #{:sandboxes :advanced-permissions :database-routing}]]
+      (mt/with-premium-features features
+        (mt/with-test-user :rasta
+          (let [field-ids   (t2/select-pks-vec :model/Field :table_id (mt/id :venues))
+                query-count (fn [ids]
+                              ;; warms the memoized field and table lookups
+                              (params.field-values/field-id->field-values-for-current-user ids)
+                              (t2/with-call-count [call-count]
+                                (params.field-values/field-id->field-values-for-current-user ids)
+                                (call-count)))]
+            (is (= (query-count (take 1 field-ids))
+                   (query-count field-ids)))))))))
+
 (deftest cross-table-remapping-get-or-create-test
   (testing "two tenants sandboxed via a joined-table remapping must not share one FieldValues row (SEC-874)"
     (met/with-gtaps-for-all-users!
@@ -265,7 +335,7 @@
                         :remappings {"state" [:dimension
                                               [:field (mt/id :people :state)
                                                {:join-alias "People"}]]}}}}
-      (let [field   (t2/select-one :model/Field :id (mt/id :orders :user_id))
+      (let [field   (assoc (t2/select-one :model/Field :id (mt/id :orders :user_id)) :has_field_values :list)
             fv-for  (fn [user-kw state]
                       (met/with-user-attributes! user-kw {"state" state}
                         (mt/with-test-user user-kw

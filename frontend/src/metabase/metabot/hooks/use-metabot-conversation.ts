@@ -1,5 +1,5 @@
 import { isFulfilled } from "@reduxjs/toolkit";
-import { useCallback } from "react";
+import { useCallback, useMemo } from "react";
 
 import { useMetabotContext } from "metabase/metabot";
 import { useDispatch, useSelector } from "metabase/redux";
@@ -16,6 +16,7 @@ import {
   getConversationForkedFrom,
   getConversationTitle,
   getDebugMode,
+  getIncompleteTurn,
   getIsConversationProcessing,
   getLongChatNotice,
   getMessages,
@@ -140,6 +141,17 @@ export const useMetabotConversation = (conversationId: string) => {
     ],
   );
 
+  const incompleteTurn = useSelector((state) =>
+    getIncompleteTurn(state, conversationId),
+  );
+
+  const continueResponse = useMemo(() => {
+    const resumePrompt = incompleteTurn?.resumePrompt;
+    return resumePrompt
+      ? (options?: SubmitInputOptions) => submitInput(resumePrompt, options)
+      : undefined;
+  }, [incompleteTurn, submitInput]);
+
   const cancelRequest = useCallback(() => {
     dispatch(cancelInflightConversationRequests(conversationId));
   }, [dispatch, conversationId]);
@@ -160,6 +172,7 @@ export const useMetabotConversation = (conversationId: string) => {
     setProfileOverride,
     submitInput,
     retryMessage,
+    continueResponse,
     cancelRequest,
     reloadConversation,
     metabotId: useSelector(getMetabotId),
@@ -173,6 +186,7 @@ export const useMetabotConversation = (conversationId: string) => {
       getIsConversationProcessing(state, conversationId),
     ),
     longChatNotice,
+    incompleteTurn,
     isContextWindowFull: longChatNotice === "full",
     contextWindowPercentUsage: useSelector((state) =>
       getContextUsagePercent(state, conversationId),

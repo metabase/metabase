@@ -221,6 +221,7 @@
    search-ctx     :- SearchContext]
   (let [collection-id-col      (case model
                                  "collection"    :collection.id
+                                 "action"        :action.collection_id
                                  "search-index"  :search_index.collection_id
                                  :collection_id)
         permitted-clause       (if (= model "table")
@@ -342,7 +343,7 @@
   [_]
   (conj default-columns :model_id
         :creator_id
-        [:model.collection_id        :collection_id]
+        [:action.collection_id       :collection_id]
         [:model.id                   :model_id]
         [:model.name                 :model_name]
         [:query_action.database_id   :database_id]
