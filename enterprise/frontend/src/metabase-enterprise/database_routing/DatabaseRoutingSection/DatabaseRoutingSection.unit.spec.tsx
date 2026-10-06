@@ -21,18 +21,27 @@ import {
 
 import { DatabaseRoutingSection } from "./DatabaseRoutingSection";
 
+const ROUTER_UPDATE_ERROR = "Could not update database routing";
+
 interface SetupOpts {
   database?: Database;
   isAdmin?: boolean;
+  routerUpdateStatus?: number;
 }
 
 const setup = ({
   database = createMockDatabase(),
   isAdmin = true,
+  routerUpdateStatus = 200,
 }: SetupOpts = {}) => {
   setupUserAttributesEndpoint(["cool_guy", "boss_gal"]);
   setupDatabasesEndpoints([database]);
-  fetchMock.put("express:/api/ee/database-routing/router-database/:id", 200);
+  fetchMock.put(
+    "express:/api/ee/database-routing/router-database/:id",
+    routerUpdateStatus === 200
+      ? 200
+      : { status: routerUpdateStatus, body: { message: ROUTER_UPDATE_ERROR } },
+  );
   setupListTransformsEndpoint([]);
   setupEnginesEndpoint(
     createMockEngines({
@@ -52,6 +61,7 @@ const setup = ({
       currentUser: createMockUser({ is_superuser: isAdmin }),
       settings: createMockSettingsState(createMockSettings()),
     },
+    withUndos: true,
   });
 };
 
@@ -234,6 +244,36 @@ describe("DatabaseRoutingSection anonymous access grant", () => {
       user_attribute: "cool_guy",
       anonymous_access_granted: false,
     });
+  });
+
+  it("should confirm a successful change with a toast", async () => {
+    setup({
+      database: routedDatabase({ router_anonymous_access_granted: false }),
+    });
+
+    await userEvent.click(
+      await screen.findByLabelText("Allow anonymous access"),
+    );
+
+    expect(
+      await screen.findByText("Anonymous access allowed"),
+    ).toBeInTheDocument();
+  });
+
+  it("should not claim success when the request fails", async () => {
+    setup({
+      database: routedDatabase({ router_anonymous_access_granted: false }),
+      routerUpdateStatus: 400,
+    });
+
+    await userEvent.click(
+      await screen.findByLabelText("Allow anonymous access"),
+    );
+
+    expect(await screen.findByText(ROUTER_UPDATE_ERROR)).toBeInTheDocument();
+    expect(
+      screen.queryByText("Anonymous access allowed"),
+    ).not.toBeInTheDocument();
   });
 
   it("should not let a non-admin change the grant", async () => {

@@ -313,21 +313,21 @@
 (defn- grant [db-id]
   (t2/select-one-fn :anonymous_access_granted :model/DatabaseRouter :database_id db-id))
 
-(deftest anonymous-access-grant-defaults-to-ungranted
+(deftest anonymous-access-grant-defaults-to-ungranted-test
   (mt/with-temp [:model/Database {db-id :id} {}]
     (mt/with-model-cleanup [:model/DatabaseRouter]
       (mt/user-http-request :crowberto :put 200 (str "ee/database-routing/router-database/" db-id)
                             {:user_attribute "foo"})
       (is (false? (grant db-id))))))
 
-(deftest anonymous-access-grant-is-set-on-enable
+(deftest anonymous-access-grant-is-set-on-enable-test
   (mt/with-temp [:model/Database {db-id :id} {}]
     (mt/with-model-cleanup [:model/DatabaseRouter]
       (mt/user-http-request :crowberto :put 200 (str "ee/database-routing/router-database/" db-id)
                             {:user_attribute "foo" :anonymous_access_granted true})
       (is (true? (grant db-id))))))
 
-(deftest anonymous-access-grant-can-be-changed-on-an-existing-router
+(deftest anonymous-access-grant-can-be-changed-on-an-existing-router-test
   (mt/with-temp [:model/Database {db-id :id} {}
                  :model/DatabaseRouter _ {:database_id db-id :user_attribute "foo"}]
     (testing "granting"
@@ -339,7 +339,7 @@
                             {:user_attribute "foo" :anonymous_access_granted false})
       (is (false? (grant db-id))))))
 
-(deftest changing-the-user-attribute-alone-leaves-the-anonymous-access-grant-alone
+(deftest changing-the-user-attribute-alone-leaves-the-anonymous-access-grant-alone-test
   (mt/with-temp [:model/Database {db-id :id} {}
                  :model/DatabaseRouter _ {:database_id db-id :user_attribute "foo" :anonymous_access_granted true}]
     (mt/user-http-request :crowberto :put 200 (str "ee/database-routing/router-database/" db-id)
@@ -347,7 +347,7 @@
     (is (= "bar" (t2/select-one-fn :user_attribute :model/DatabaseRouter :database_id db-id)))
     (is (true? (grant db-id)))))
 
-(deftest disabling-routing-discards-the-anonymous-access-grant
+(deftest disabling-routing-discards-the-anonymous-access-grant-test
   (mt/with-temp [:model/Database {db-id :id} {}
                  :model/DatabaseRouter _ {:database_id db-id :user_attribute "foo" :anonymous_access_granted true}]
     (mt/with-model-cleanup [:model/DatabaseRouter]
@@ -358,7 +358,7 @@
                               {:user_attribute "foo"})
         (is (false? (grant db-id)))))))
 
-(deftest router-databases-have-an-anonymous-access-grant-on-the-get-api
+(deftest router-databases-have-an-anonymous-access-grant-on-the-get-api-test
   (mt/with-temp [:model/Database {granted-id :id} {}
                  :model/DatabaseRouter _ {:database_id granted-id :user_attribute "foo" :anonymous_access_granted true}
                  :model/Database {ungranted-id :id} {}

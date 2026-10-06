@@ -117,11 +117,15 @@ export const DatabaseRoutingSection = ({
     if (!userAttribute) {
       return;
     }
-    await updateRouterDatabase({
+    const result = await updateRouterDatabase({
       id: database.id,
       user_attribute: userAttribute,
       anonymous_access_granted: granted,
     });
+    // the trigger resolves rather than rejects on failure; the error is rendered inline
+    if ("error" in result) {
+      return;
+    }
     sendToast({
       message: granted
         ? t`Anonymous access allowed`
@@ -265,7 +269,7 @@ export const DatabaseRoutingSection = ({
                 disabled={hasDbRoutingEnabled(database)}
                 withArrow
               >
-                <Box data-testid="db-routing-anonymous-access-wrapper">
+                <Box>
                   <Switch
                     id="db-routing-anonymous-access"
                     checked={anonymousAccessGranted}
