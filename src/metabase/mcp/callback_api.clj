@@ -270,9 +270,9 @@
         base    (lib/query (lib-be/application-database-metadata-provider (:database query)) query)
         derived (mcp.derive/derive-query base operations)]
     (api/check-403 (group-policy-permits-derive? base derived))
-    ;; A derived query keeps the base query's parameters, which serialization strips.
+    ;; Serialization drops the base query's parameters, which target its columns; a drill to another table would
+    ;; leave them pointing at columns the derived query does not have.
     (let [encoded (-> (lib/prepare-for-serialization derived)
-                      (cond-> (seq (:parameters query)) (assoc :parameters (:parameters query)))
                       json/encode
                       u/encode-base64)]
       {:handle (mcp.session/store-handle! session-id api/*current-user-id* encoded prompt)

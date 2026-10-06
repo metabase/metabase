@@ -11,6 +11,8 @@
    [metabase.mcp.ui-test-util :as ui.tu]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
+   [metabase.util :as u]
+   [metabase.util.json :as json]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -385,6 +387,30 @@
             (let [response (derive! :rasta #{"agent:query:run" "agent:sql:run"} native {:operations [operation]})]
               (is (= 400 (:status response)))
               (is (re-find #"(?i)native" (str (:body response)))))))))))
+
+(deftest derived-queries-drop-parameters-test
+  (testing "A derived query carries no parameters: they target the base query's columns, and a drill to another table
+            would leave them pointing at columns its query does not have"
+    (mt/with-full-data-perms-for-all-users!
+      (mt/with-model-cleanup [:model/McpQueryHandle]
+        (let [{:keys [user-id session-id] :as auth} (ui.tu/ui-auth! :rasta)
+              encoded (-> (lib/prepare-for-serialization (lib/limit (venues) 1))
+                          (assoc :parameters [{:type   "number/="
+                                               :value  [3]
+                                               :target ["dimension" ["field" (mt/id :venues :price) nil]]}])
+                          json/encode
+                          u/encode-base64)
+              handle  (mcp.session/store-handle! session-id user-id encoded)
+              {:keys [status body]} (ui.tu/ui-request! auth :post nil (str "embed-mcp/queries/" handle "/derive")
+                                                       {:operations [{:type    "drill-thru" :drill "fk-details"
+                                                                      :context {:column "CATEGORY_ID" :value 2
+                                                                                :row    [{:column "ID" :value 1}
+                                                                                         {:column "CATEGORY_ID"
+                                                                                          :value  2}]}}]})]
+          (is (= 200 status))
+          (is (not (contains? (ui.tu/decode-query (:query body)) :parameters)))
+          (is (= 202 (:status (ui.tu/ui-request! auth :post nil
+                                                 (str "embed-mcp/queries/" (:handle body) "/run") {})))))))))
 
 (deftest derive-rechecks-data-permissions-test
   (testing "Derive and drills re-check the user's permission on the stored query, and refuse with a 403 before
