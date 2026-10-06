@@ -2,6 +2,7 @@ import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 import * as Yup from "yup";
 
+import { Link } from "metabase/common/components/Link";
 import {
   Form,
   FormErrorMessage,
@@ -11,16 +12,12 @@ import {
 } from "metabase/forms";
 import { useSelector } from "metabase/redux";
 import { getApplicationName } from "metabase/selectors/whitelabel";
-import { Stack } from "metabase/ui";
+import { Box, Flex, Stack } from "metabase/ui";
 import * as Errors from "metabase/utils/errors";
 
 import type { ForgotPasswordData } from "../../types";
 
-import {
-  PasswordFormFooter,
-  PasswordFormLink,
-  PasswordFormTitle,
-} from "./ForgotPasswordForm.styled";
+import S from "./ForgotPasswordForm.module.css";
 
 const FORGOT_PASSWORD_SCHEMA = Yup.object({
   email: Yup.string().required(Errors.required).email(Errors.email),
@@ -49,7 +46,14 @@ export const ForgotPasswordForm = ({
 
   return (
     <div>
-      <PasswordFormTitle>{t`Forgot password`}</PasswordFormTitle>
+      <Box
+        c="text-primary"
+        fz="xl"
+        fw={700}
+        lh="1.5rem"
+        ta="center"
+        mb="xl"
+      >{t`Forgot password`}</Box>
       <FormProvider
         initialValues={initialValues}
         validationSchema={FORGOT_PASSWORD_SCHEMA}
@@ -70,9 +74,12 @@ export const ForgotPasswordForm = ({
           <FormErrorMessage />
         </Form>
       </FormProvider>
-      <PasswordFormFooter>
-        <PasswordFormLink to="/auth/login">{t`Back to sign in`}</PasswordFormLink>
-      </PasswordFormFooter>
+      <Flex direction="column" align="center" mt="xl">
+        <Link
+          className={S.passwordFormLink}
+          to="/auth/login"
+        >{t`Back to sign in`}</Link>
+      </Flex>
     </div>
   );
 };
