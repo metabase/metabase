@@ -1,28 +1,20 @@
-declare module "*.svg" {
+declare module "*.png" {
   const value: string;
 
   // eslint-disable-next-line import/no-default-export
   export default value;
 }
 
-declare module "*.svg?url" {
+declare module "*.png?url" {
   const value: string;
 
   // eslint-disable-next-line import/no-default-export
   export default value;
 }
 
-declare module "*.svg?source" {
+declare module "*.gif" {
   const value: string;
 
   // eslint-disable-next-line import/no-default-export
   export default value;
-}
-
-declare module "*.svg?component" {
-  import type React from "react";
-  const Component: React.VFC<React.SVGProps<SVGSVGElement>>;
-
-  // eslint-disable-next-line import/no-default-export
-  export default Component;
 }
