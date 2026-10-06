@@ -44,7 +44,7 @@
 
 (deftest all-specs-have-valid-eligibility-test
   (testing "Every spec has a valid eligibility type"
-    (let [valid-eligibility-types #{:collection :published-table :parent-table :parent :setting :library-synced}]
+    (let [valid-eligibility-types #{:collection :published-table :parent-table :parent :setting :library-synced :always}]
       (doseq [[model-key spec] spec/remote-sync-specs]
         (testing (str "Spec for " model-key)
           (is (contains? valid-eligibility-types (get-in spec [:eligibility :type]))
@@ -100,10 +100,8 @@
       (is (= 1 (count children)))
       (is (= #{:model/Field}
              (into #{} (map :model-key) children)))))
-  (testing "GHY-4722: children-specs derives Action as a child of Card"
-    (is (= [:model/Action] (map :model-key (spec/children-specs :model/Card)))))
   (testing "children-specs returns empty for models with no children"
-    (is (empty? (spec/children-specs :model/Dashboard)))))
+    (is (empty? (spec/children-specs :model/Card)))))
 
 ;;; ------------------------------------------------ Helper Function Tests ---------------------------------------------
 
@@ -137,7 +135,8 @@
       (is (contains? types "TransformTest"))
       (is (contains? types "Glossary"))
       (is (contains? types "Action"))
-      (is (= 16 (count types))))))
+      (is (contains? types "DataApp"))
+      (is (= 17 (count types))))))
 
 (deftest specs-by-identity-type-test
   (testing "specs-by-identity-type filters correctly"
@@ -343,7 +342,7 @@
     (f {:synced-coll synced-coll :synced-action synced-action :plain-action plain-action})))
 
 (deftest action-eligibility-follows-model-test
-  (testing "GHY-4722: an action is eligible for remote sync exactly when its model is"
+  (testing "an action takes its model's collection, so it is eligible for remote sync exactly when its model is"
     (do-with-synced-and-plain-actions!
      (fn [{:keys [synced-action plain-action]}]
        (let [action-spec (spec/spec-for-model-key :model/Action)]
@@ -351,7 +350,7 @@
          (is (false? (spec/check-eligibility action-spec (t2/select-one :model/Action :id plain-action)))))))))
 
 (deftest action-removal-scoped-to-synced-models-test
-  (testing "GHY-4722: a pull removes absent actions only when their model is in a synced collection"
+  (testing "a pull removes absent actions only when they are in a synced collection"
     (do-with-synced-and-plain-actions!
      (fn [{:keys [synced-coll synced-action plain-action]}]
        (remote-sync.db/delete-removed-instances!
@@ -689,8 +688,8 @@
 
 (deftest git-sync-exports-only-user-settings-test
   (testing "git sync stores what users changed about a Table and its Fields, never the Table or Fields themselves --
-            those belong to sync, which runs against each instance's own warehouse -- as one TableUserSettings
-            entity per Table inlining its Fields' edits, never separate FieldUserSettings entities"
+            those belong to sync, which runs against each instance's own warehouse -- each settings row and Dimension
+            as an entity of its own"
     (mt/with-premium-features #{:library}
       (mt/with-temp [:model/Collection {coll-id :id}  {:is_remote_synced true :name "RS" :type "library-data"}
                      :model/Database   {db-id :id}    {:name "DB"}
@@ -700,17 +699,16 @@
                      :model/Field      {f2 :id}       {:name "F2" :table_id table-id}]
         (t2/insert! :model/FieldUserSettings {:field_id f2 :description "curated" :description_set true})
         (t2/insert! :model/TableUserSettings {:table_id table-id :display_name "Renamed"})
-        (let [exportable (spec/exportable-entities)]
-          (is (contains? (set (get exportable "TableUserSettings")) table-id)
-              "the Table's own edit, plus its edited Field's, are carried by one TableUserSettings entity")
-          (is (nil? (get exportable "FieldUserSettings"))
-              "FieldUserSettings is never exported as its own entity")
+        (let [dimension-id (t2/insert-returning-pk! :model/Dimension {:field_id f1 :name "F1" :type :internal})
+              exportable   (spec/exportable-entities)]
+          (is (= [table-id] (get exportable "TableUserSettings")))
+          (is (= [f2] (get exportable "FieldUserSettings")))
+          (is (= [dimension-id] (get exportable "Dimension")))
           (is (not (contains? (set (get exportable "Table")) table-id)))
           (is (empty? (filter #{f1 f2} (get exportable "Field")))))))))
 
-(deftest git-sync-exports-table-user-settings-for-field-only-edit-test
-  (testing "a Table with no TableUserSettings row of its own, but an edited Field, is still exportable -- the
-            TableUserSettings entity is synthesized to carry the Field's edit"
+(deftest git-sync-exports-no-table-user-settings-for-field-only-edit-test
+  (testing "a Table with no TableUserSettings row of its own exports only its edited Field's settings"
     (mt/with-premium-features #{:library}
       (mt/with-temp [:model/Collection {coll-id :id}  {:is_remote_synced true :name "RS" :type "library-data"}
                      :model/Database   {db-id :id}    {:name "DB"}
@@ -719,10 +717,8 @@
                      :model/Field      {f1 :id}       {:name "F1" :table_id table-id}]
         (t2/insert! :model/FieldUserSettings {:field_id f1 :description "curated" :description_set true})
         (let [exportable (spec/exportable-entities)]
-          (is (not (t2/exists? :model/TableUserSettings :table_id table-id))
-              "the Table has no settings row of its own")
-          (is (contains? (set (get exportable "TableUserSettings")) table-id)
-              "the Table is still exportable, synthesized from its Field's edit"))))))
+          (is (nil? (get exportable "TableUserSettings")))
+          (is (= [f1] (get exportable "FieldUserSettings"))))))))
 
 (deftest ^:parallel exportable-entity-count-test
   (testing "exportable-entity-count sums the ids across every model in the targets map"

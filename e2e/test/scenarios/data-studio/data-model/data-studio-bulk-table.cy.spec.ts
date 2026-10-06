@@ -139,7 +139,7 @@ describe("bulk table operations", { viewportWidth: 1600 }, () => {
 
       cy.log("publish the tables and verify they are published");
       cy.findByRole("button", { name: /Publish/ }).click();
-      H.modal().findByText("Create my Library").click();
+      H.modal().findByText("Create my semantic layer").click();
       H.modal().findByText("Publish these tables").click();
       cy.wait("@publishTables");
       H.undoToastListContainer().within(() => {

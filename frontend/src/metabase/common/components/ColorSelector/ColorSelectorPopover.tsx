@@ -2,8 +2,7 @@ import type { HTMLAttributes, Ref } from "react";
 import { forwardRef, useCallback } from "react";
 
 import { ColorPill } from "metabase/common/components/ColorPill";
-
-import { PopoverRoot } from "./ColorSelectorPopover.styled";
+import { Flex } from "metabase/ui";
 
 /**
  * A picker given named palette colors reports which one was chosen, so the
@@ -44,7 +43,7 @@ export const ColorSelectorPopover = forwardRef(function ColorSelector(
   );
 
   return (
-    <PopoverRoot {...props} ref={ref}>
+    <Flex {...props} ref={ref} wrap="wrap" gap="xxs" p="md" maw="22rem">
       {colors.map(toNamedColor).map((option, index) => (
         <ColorPill
           key={index}
@@ -53,6 +52,6 @@ export const ColorSelectorPopover = forwardRef(function ColorSelector(
           onSelect={(newValue) => handleSelect(newValue, option.name)}
         />
       ))}
-    </PopoverRoot>
+    </Flex>
   );
 });

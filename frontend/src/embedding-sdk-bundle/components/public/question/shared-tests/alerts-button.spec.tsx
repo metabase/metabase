@@ -93,7 +93,9 @@ export function addAlertsButtonTests(
         });
 
         expect(screen.getByText("Custom Layout")).toBeVisible();
-        expect(screen.getByRole("button", { name: "Alerts" })).toBeVisible();
+        expect(
+          await screen.findByRole("button", { name: "Alerts" }),
+        ).toBeVisible();
       });
 
       it("should not show the alert button for custom layouts when withAlerts is false", async () => {

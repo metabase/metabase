@@ -267,6 +267,8 @@
         :type                    dimension-type
         :name                    dimension-name
         :human_readable_field_id human-readable-field-id})))
+  (events/publish-event! :event/field-update {:object  (warehouse-schema-rest.db/field id)
+                                              :user-id api/*current-user-id*})
   (warehouse-schema-rest.db/dimension-for-field id))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
@@ -279,6 +281,8 @@
                     [:id ms/PositiveInt]]]
   (api/write-check :model/Field id)
   (warehouse-schema-rest.db/delete-dimensions-for-field! id)
+  (events/publish-event! :event/field-update {:object  (warehouse-schema-rest.db/field id)
+                                              :user-id api/*current-user-id*})
   api/generic-204-no-content)
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to

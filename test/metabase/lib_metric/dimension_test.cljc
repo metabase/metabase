@@ -65,6 +65,19 @@
            (lib-metric.dimension/field-ref->key
             [:field {:lib/uuid "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb" :base-type :type/BigInteger} 100])))))
 
+(deftest ^:parallel field-ref->key-ignores-transformation-added-base-type-test
+  (testing "the :lib/transformation-added-base-type flag stamped by legacy-MBQL conversion is not part of the key"
+    ;; A pre-curation metric's query is stored as legacy MBQL; converting it tags every field ref with this flag,
+    ;; which a mapping target built from column metadata never carries. The two must still key the same column.
+    (is (= (lib-metric.dimension/field-ref->key
+            [:field {:lib/uuid "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa" :source-field 1} 100])
+           (lib-metric.dimension/field-ref->key
+            [:field {:lib/uuid                           "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"
+                     :source-field                       1
+                     :base-type                          :type/Text
+                     :lib/transformation-added-base-type true}
+             100])))))
+
 (deftest ^:parallel field-ref->key-distinguishes-source-field-test
   (testing "the SAME field id reached via different FKs (:source-field) yields DISTINCT keys"
     ;; This is the bug this function exists to prevent: field ids are not unique within a query when
