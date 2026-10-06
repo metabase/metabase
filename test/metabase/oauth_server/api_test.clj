@@ -2754,6 +2754,26 @@
                      (:error (refresh 400 {:refresh_token (mcp-refresh)
                                            :resource      "https://mb.example.com/api"})))))))))))
 
+(deftest refresh-without-client-credentials-reveals-nothing-test
+  (testing "A refresh request without client credentials for a confidential client gets the same answer whether its
+            refresh token is live or unknown, so the endpoint does not tell a caller which tokens are live. The
+            binding check runs only after the client has authenticated."
+    (mt/with-temporary-setting-values [site-url                                  "http://localhost:3000"
+                                       oauth-server-dynamic-registration-enabled true]
+      (t2/with-transaction [_conn nil {:rollback-only true}]
+        (let [client  (register-app-client! "Claude" claude-redirect)
+              live    (str (random-uuid))
+              _       (oidc.store/save-refresh-token (:token-store (oauth-server/get-provider)) live
+                                                     (str (mt/user->id :crowberto)) (:client_id client)
+                                                     ["agent:content:read"] nil [(mcp-resource-uri)])
+              refresh (fn [token]
+                        (token-request! {:grant_type    "refresh_token"
+                                         :refresh_token token
+                                         :client_id     (:client_id client)
+                                         :resource      "http://localhost:3000/api"}
+                                        :expected-status 400))]
+          (is (= (refresh (str (random-uuid))) (refresh live))))))))
+
 (deftest untick-leaves-other-live-tokens-alone-test
   (testing (str "GHY-4555: a consent decision governs only the token this authorization mints. Unticking a scope the "
                 "same app already holds must not narrow or revoke that app's other live tokens: the authorization code "

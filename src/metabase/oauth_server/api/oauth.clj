@@ -23,6 +23,7 @@
    [oidc-provider.protocol :as proto]
    [oidc-provider.registration :as reg]
    [oidc-provider.store :as oidc.store]
+   [oidc-provider.token-endpoint :as oidc.token]
    [oidc-provider.util :as oidc-util]
    [ring.util.response :as response]
    [throttle.core :as throttle])
@@ -265,10 +266,15 @@
   changes nothing. When the stored binding is the MCP endpoint, a requested resource that is also the MCP endpoint
   (by [[oauth-server/mcp-resource?]], under any host, as after a Site URL change) is accepted, and `:rebind` names it,
   so the new tokens move to it. Any other requested resource throws `invalid_grant`, so a REST refresh token never
-  moves onto the MCP endpoint. Any other grant is returned unchanged."
-  [provider {:keys [grant_type refresh_token resource] :as body}]
+  moves onto the MCP endpoint. Any other grant is returned unchanged.
+
+  The client is authenticated before the refresh token is looked up, and the binding is decided only for a token the
+  client owns, so a caller without the client's credentials learns nothing about which refresh tokens are live."
+  [provider {:keys [grant_type refresh_token resource] :as body} authorization-header]
   (if (= "refresh_token" grant_type)
-    (let [stored   (some->> refresh_token (oidc.store/get-refresh-token (:token-store provider)))
+    (let [client   (oidc.token/authenticate-client body authorization-header (:client-store provider))
+          stored   (some->> refresh_token (oidc.store/get-refresh-token (:token-store provider)))
+          stored   (when (= (:client-id stored) (:client-id client)) stored)
           granted  (:resource stored)
           outside? (and resource stored (not (oauth-server/resources-within? resource granted)))
           rebind?  (and outside? (oauth-server/mcp-resource? granted) (oauth-server/mcp-resource? resource))]
@@ -763,7 +769,7 @@
             (let [authorization-header (get-in request [:headers "authorization"])]
               (try
                 (check-resource-indicators! (:resource body))
-                (let [{:keys [body rebind]} (refresh-binding provider body)
+                (let [{:keys [body rebind]} (refresh-binding provider body authorization-header)
                       response              (-> (oidc/token-request provider body authorization-header)
                                                 (rebind-refreshed-tokens! rebind))]
                   {:status  200
