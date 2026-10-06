@@ -254,6 +254,34 @@
         (is (= "edited" (t2/select-one-fn :description :model/FieldUserSettings :field_id (:id age))))
         (is (not (t2/exists? :model/FieldUserSettings :field_id (:id email))))))))
 
+(deftest field-user-settings-import-clears-unset-values-test
+  (testing "importing a Field's settings over an existing row clears the user values its file leaves out"
+    (mt/with-empty-h2-app-db!
+      (let [db       (ts/create! :model/Database :name "my-db")
+            table    (ts/create! :model/Table :name "customers" :db_id (:id db))
+            email    (ts/create! :model/Field :name "email" :table_id (:id table))
+            _        (t2/insert! :model/FieldUserSettings {:field_id (:id email) :description "edited"})
+            settings (ts/extract-one "FieldUserSettings" (:id email))]
+        (t2/update! :model/FieldUserSettings (:id email) {:display_name "Local"})
+        (serdes.load/load-metabase! (ingestion-in-memory [settings]))
+        (is (=? {:description "edited" :display_name nil}
+                (t2/select-one :model/FieldUserSettings :field_id (:id email))))))))
+
+(deftest nested-field-dimension-import-test
+  (testing "a Dimension of a nested Field in a Table without a schema imports onto that Field"
+    (mt/with-empty-h2-app-db!
+      (let [db        (ts/create! :model/Database :name "my-db")
+            table     (ts/create! :model/Table :name "orders" :db_id (:id db))
+            customer  (ts/create! :model/Field :name "customer" :table_id (:id table))
+            tier      (ts/create! :model/Field :name "tier" :table_id (:id table) :parent_id (:id customer))
+            dimension (ts/create! :model/Dimension :field_id (:id tier) :name "Tier" :type :internal)
+            extracted (ts/extract-one "Dimension" (:entity_id dimension))
+            tables    (t2/count :model/Table)]
+        (t2/delete! :model/Dimension :field_id (:id tier))
+        (serdes.load/load-metabase! (ingestion-in-memory [extracted]))
+        (is (= [(:id tier)] (t2/select-fn-vec :field_id :model/Dimension :entity_id (:entity_id dimension))))
+        (is (= tables (t2/count :model/Table)))))))
+
 (deftest escape-continue-on-error-roundtrip-test
   (testing "archive exported past escape analysis imports under continue-on-error without crashing (#74622)"
     (let [serialized  (atom nil)

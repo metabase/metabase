@@ -2330,12 +2330,58 @@ serdes/meta:
             (is (= :success (:status (import-snapshot! mock-source))))
             (is (= "curated" (t2/select-one-fn :description :model/FieldUserSettings :field_id f1-id)))
             (is (not (t2/exists? :model/Dimension :field_id f2-id))))
+          (testing "a settings file v64 wrote for a Table without Field settings carries an empty `fields`"
+            (swap! (:files-atom mock-source) update "main"
+                   (fn [files]
+                     (into {} (map (fn [[file content]]
+                                     [file (cond-> content
+                                             (str/ends-with? file "test_table.yaml")
+                                             (-> yaml/parse-string (assoc :fields []) yaml/generate-string))]))
+                           files)))
+            (is (= :success (:status (import-snapshot! mock-source))))
+            (is (not (t2/exists? :model/FieldUserSettings :field_id f1-id))))
+          (testing "a Field file an older git sync wrote keeps the Dimensions it carries"
+            (swap! (:files-atom mock-source) update "main"
+                   assoc "databases/test-db/tables/test_table/fields/f2.yaml"
+                   (yaml/generate-string {:name        "F2"
+                                          :table_id    ["test-db" nil "Test Table"]
+                                          :base_type   "type/Text"
+                                          :dimensions  [{:name "Remapped F2" :type "internal" :entity_id (u/generate-nano-id)}]
+                                          :serdes/meta [{:model "Database" :id "test-db"}
+                                                        {:model "Table" :id "Test Table"}
+                                                        {:model "Field" :id "F2"}]}))
+            (is (= :success (:status (import-snapshot! mock-source))))
+            (is (= "Remapped F2" (t2/select-one-fn :name :model/Dimension :field_id f2-id))))
           (testing "deleting the files drops the Table's settings and its Fields'"
             (swap! (:files-atom mock-source) update "main"
                    #(into {} (remove (fn [[file _]] (str/includes? file "test_table"))) %))
             (is (= :success (:status (import-snapshot! mock-source))))
             (is (not (t2/exists? :model/TableUserSettings :table_id table-id)))
             (is (not (t2/exists? :model/FieldUserSettings :field_id f1-id)))))))))
+
+(deftest user-settings-removal-after-import-test
+  (testing "removing a Dimension an import brought is tracked, and pushing the removal leaves nothing pending"
+    (mt/with-temporary-setting-values [remote-sync-type :read-write]
+      (mt/with-temp [:model/Database   {db-id :id}    {:name "test-db"}
+                     :model/Collection {coll-id :id}  {:name "RS" :is_remote_synced true :location "/"}
+                     :model/Table      {table-id :id} {:name "Test Table" :db_id db-id
+                                                       :is_published true :collection_id coll-id}
+                     :model/Field      {field-id :id} {:name "F1" :table_id table-id :base_type :type/Text}]
+        (t2/insert! :model/Dimension {:field_id field-id :name "Remapped" :type :internal})
+        (let [mock-source   (test-helpers/create-mock-source)
+              export!       (fn []
+                              (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "export" :initiated_by (mt/user->id :rasta)})]
+                                (u/prog1 (impl/export! (source.p/snapshot mock-source) task-id "Test export" :force? true)
+                                  (remote-sync.task/complete-sync-task! task-id))))
+              dimension-rso #(t2/select-one :model/RemoteSyncObject :model_type "Dimension" :model_id field-id)]
+          (is (= :success (:status (export!))))
+          (is (= :success (:status (import-snapshot! mock-source))))
+          (mt/user-http-request :crowberto :delete 204 (format "field/%d/dimension" field-id))
+          (is (=? {:status "removed"} (dimension-rso)))
+          (is (= :success (:status (export!))))
+          (is (nil? (dimension-rso)))
+          (mt/user-http-request :crowberto :put 200 (format "field/%d" field-id) {:description "edited"})
+          (is (nil? (dimension-rso))))))))
 
 ;; ---------- run-task-body!: the row is always closed, whatever the worker does ----------------
 

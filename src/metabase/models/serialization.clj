@@ -1015,6 +1015,13 @@
                   {:model "Table" :id table-name}
                   {:model "Field" :id field-name}]))
 
+(defn field-path->field-ref
+  "The `[db-name schema table-name & field-names]` reference of the Field at `field-path`, nested Fields included."
+  [field-path]
+  (let [[table-path fields] (split-with #(not= "Field" (:model %)) field-path)
+        id-of               (fn [model] (some #(when (= model (:model %)) (:id %)) table-path))]
+    (into [(id-of "Database") (id-of "Schema") (id-of "Table")] (map :id) fields)))
+
 ;;; ## MBQL Fields
 
 (mr/def ::mbql-node

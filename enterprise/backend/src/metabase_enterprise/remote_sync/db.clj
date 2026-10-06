@@ -141,10 +141,12 @@
                                         :limit limit}))
 
 (mu/defn instance
-  "The instance of `model` with `id`, or nil."
+  "The instance of `model` with `id`, or nil; a Table is read through the overlay."
   [model :- :keyword
    id    :- ms/PositiveInt]
-  (t2/select-one model :id id))
+  (t2/select-one model :id id (if (= model :model/Table)
+                                {:from [(warehouse-schema-overlay/table-query)]}
+                                {})))
 
 (mu/defn instance-with-columns
   "The `columns` of the instance of `model` with `id`, or nil; a Table is read through the overlay."
@@ -313,44 +315,54 @@
   (set (t2/select-pks-set :model/Table {:from  [(warehouse-schema-overlay/table-query {:alias :t})]
                                         :where [:and [:= :t.is_published true] [:in :t.collection_id collection-ids]]})))
 
-(mu/defn field-ids-with-user-settings :- [:sequential ::lib.schema.id/field]
-  "The ids of the Fields of the Table with `table-id` that have a FieldUserSettings row."
-  [table-id :- ::lib.schema.id/table]
+(mu/defn table-ids-with-user-settings
+  "The ids of the Tables among `table-ids` that have a TableUserSettings row."
+  [table-ids :- [:sequential ::lib.schema.id/table]]
+  (t2/select-fn-vec :table_id :model/TableUserSettings {:select [:table_id] :where [:in :table_id table-ids]}))
+
+(mu/defn field-ids-with-user-settings
+  "The ids of the Fields of the Tables with `table-ids` that have a FieldUserSettings row."
+  [table-ids :- [:sequential ::lib.schema.id/table]]
   (t2/select-fn-vec :field_id :model/FieldUserSettings
-                    {:from  [[(t2/table-name :model/FieldUserSettings) :u]]
-                     :join  [(warehouse-schema-overlay/field-query {:alias :f :user-settings? false}) [:= :f.id :u.field_id]]
-                     :where [:= :f.table_id table-id]}))
+                    {:select [:u.field_id]
+                     :from   [[(t2/table-name :model/FieldUserSettings) :u]]
+                     :join   [(warehouse-schema-overlay/field-query {:alias :f :user-settings? false}) [:= :f.id :u.field_id]]
+                     :where  [:in :f.table_id table-ids]}))
 
-(defn- of-tables
-  "The condition that the row's `field_id` is a Field of the Tables with `table-ids`."
-  [table-ids]
-  [:exists ^:allow-subquery {:select 1
-                             :from   [[(t2/table-name :model/Field) :f]]
-                             :where  [:and [:= :f.id :field_id] [:in :f.table_id table-ids]]}])
+(mu/defn field-ids-with-dimensions
+  "The ids of the Fields of the Tables with `table-ids` that have a Dimension."
+  [table-ids :- [:sequential ::lib.schema.id/table]]
+  (t2/select-fn-vec :field_id :model/Dimension
+                    {:select [:d.field_id]
+                     :from   [[(t2/table-name :model/Dimension) :d]]
+                     :join   [(warehouse-schema-overlay/field-query {:alias :f :user-settings? false}) [:= :f.id :d.field_id]]
+                     :where  [:in :f.table_id table-ids]}))
 
-(mu/defn delete-table-user-settings-except!
-  "Delete the TableUserSettings of the Tables with `table-ids` other than `kept-table-ids`, returning the number
-  deleted."
-  [table-ids      :- [:sequential ::lib.schema.id/table]
-   kept-table-ids :- [:sequential ::lib.schema.id/table]]
-  (t2/delete! :model/TableUserSettings {:where (cond-> [:and [:in :table_id table-ids]]
-                                                 (seq kept-table-ids) (conj [:not-in :table_id kept-table-ids]))}))
+(mu/defn delete-table-user-settings!
+  "Delete the TableUserSettings of the Tables with `table-ids`, returning the number deleted."
+  [table-ids :- [:sequential ::lib.schema.id/table]]
+  (t2/delete! :model/TableUserSettings :table_id [:in table-ids]))
 
-(mu/defn delete-field-user-settings-except!
-  "Delete the FieldUserSettings of the Fields of the Tables with `table-ids` other than `kept-field-ids`, returning
-  the number deleted."
-  [table-ids      :- [:sequential ::lib.schema.id/table]
-   kept-field-ids :- [:sequential ::lib.schema.id/field]]
-  (t2/delete! :model/FieldUserSettings {:where (cond-> [:and (of-tables table-ids)]
-                                                 (seq kept-field-ids) (conj [:not-in :field_id kept-field-ids]))}))
+(mu/defn delete-field-user-settings!
+  "Delete the FieldUserSettings of the Fields with `field-ids`, returning the number deleted."
+  [field-ids :- [:sequential ::lib.schema.id/field]]
+  (t2/delete! :model/FieldUserSettings :field_id [:in field-ids]))
 
-(mu/defn delete-dimensions-except!
-  "Delete the Dimensions of the Fields of the Tables with `table-ids` other than those with `kept-entity-ids`,
-  returning the number deleted."
-  [table-ids       :- [:sequential ::lib.schema.id/table]
-   kept-entity-ids :- [:sequential :string]]
-  (t2/delete! :model/Dimension {:where (cond-> [:and (of-tables table-ids)]
-                                         (seq kept-entity-ids) (conj [:not-in :entity_id kept-entity-ids]))}))
+(mu/defn delete-dimensions!
+  "Delete the Dimensions of the Fields with `field-ids`, returning the number deleted."
+  [field-ids :- [:sequential ::lib.schema.id/field]]
+  (t2/delete! :model/Dimension :field_id [:in field-ids]))
+
+(mu/defn tables-tracking-details
+  "The `:id`, `:name`, and `:collection_id` of the Tables with `table-ids`, read through the overlay."
+  [table-ids :- [:sequential ::lib.schema.id/table]]
+  (t2/select [:model/Table :id :name :collection_id] :id [:in table-ids] {:from [(warehouse-schema-overlay/table-query)]}))
+
+(mu/defn fields-tracking-details
+  "The `:id`, name, table id, collection id, and table name of the Fields with `field-ids`."
+  [field-ids :- [:sequential ::lib.schema.id/field]]
+  (let [{:keys [select from join]} (tracking-select-parts :model/Field)]
+    (t2/query {:select (into [:f.id] select) :from from :join join :where [:in :f.id field-ids]})))
 
 (mu/defn snippets
   "The `:id`, `:name`, and `:collection_id` of every NativeQuerySnippet."

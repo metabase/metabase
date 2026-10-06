@@ -1368,6 +1368,18 @@
                  :model_table_id (:id table)}
                 (first entries)))))))
 
+(deftest field-update-tracks-field-of-table-published-in-its-user-settings-test
+  (testing "field-update on a field of a Table published through its TableUserSettings creates a FieldUserSettings RSO"
+    (mt/with-temp [:model/Collection coll  {:is_remote_synced true :name "Remote-Sync" :type "library-data"}
+                   :model/Table      table {:name "T"}
+                   :model/Field      field {:name "f" :table_id (:id table) :base_type :type/Text}]
+      (t2/insert! :model/TableUserSettings {:table_id (:id table) :is_published true :collection_id (:id coll)})
+      (t2/insert! :model/FieldUserSettings {:field_id (:id field) :description "curated"})
+      (t2/delete! :model/RemoteSyncObject)
+      (events/publish-event! :event/field-update {:object field :user-id (mt/user->id :rasta)})
+      (is (=? [{:model_type "FieldUserSettings" :model_id (:id field) :status "update"}]
+              (t2/select :model/RemoteSyncObject))))))
+
 ;;; ------------------------------------- Concurrent Un-Sync Race Tests -------------------------------------
 ;;;
 ;;; When a card-update event and a collection disable run concurrently, the handler must not resurrect the

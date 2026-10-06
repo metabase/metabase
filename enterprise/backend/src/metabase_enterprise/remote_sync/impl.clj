@@ -77,31 +77,6 @@
      model-key
      (spec/removal-opts model-spec synced-collection-ids entity-ids))))
 
-(defn- imported-ids
-  "The local ids of the `model-name` entities among `seen-paths`, found with `local-id` of each path."
-  [seen-paths model-name local-id]
-  (into [] (keep (fn [path] (when (= model-name (:model (last path))) (local-id path)))) seen-paths))
-
-(defn- remove-unsynced-user-settings!
-  "Deletes the TableUserSettings, FieldUserSettings, and Dimensions of the Tables published in
-  `synced-collection-ids` that were NOT part of the import; a settings file from `ingestable` that still carries its
-  Fields' settings under `fields` keeps them."
-  [synced-collection-ids ingestable seen-paths]
-  (when-let [table-ids (some-> (not-empty synced-collection-ids) remote-sync.db/published-table-ids not-empty vec)]
-    (let [parent-id       #(:id (serdes/load-find-local (pop %)))
-          legacy-fields   (into []
-                                (comp (filter #(= "TableUserSettings" (:model (last %))))
-                                      (filter #(contains? (serialization/ingest-one ingestable %) :fields))
-                                      (keep parent-id)
-                                      (mapcat remote-sync.db/field-ids-with-user-settings))
-                                seen-paths)]
-      (remote-sync.db/delete-table-user-settings-except!
-       table-ids (imported-ids seen-paths "TableUserSettings" parent-id))
-      (remote-sync.db/delete-field-user-settings-except!
-       table-ids (into legacy-fields (imported-ids seen-paths "FieldUserSettings" parent-id)))
-      (remote-sync.db/delete-dimensions-except!
-       table-ids (imported-ids seen-paths "Dimension" #(:id (last %)))))))
-
 (defn- quoted
   "Wraps `s` in backticks so that leading and trailing whitespace is visible to the reader."
   [s]
@@ -322,6 +297,70 @@
     (doseq [chunk (partition-all app-db-batch-size rows)]
       (remote-sync.db/insert-rsos! (merge-content-metadata chunk (import-content-metadata chunk repo-paths))))))
 
+(defn- in-batches
+  "The concatenated results of `f` called on `ids` in batches of [[app-db-batch-size]]."
+  [f ids]
+  (into [] (mapcat #(f (vec %))) (partition-all app-db-batch-size ids)))
+
+(defn- remove-unsynced-user-settings!
+  "Deletes the TableUserSettings, FieldUserSettings, and Dimensions of the Tables published in
+  `synced-collection-ids` that `seen-paths` did not import, returning those Tables' ids."
+  [synced-collection-ids ingestable seen-paths]
+  (when-let [table-ids (some-> (not-empty synced-collection-ids) remote-sync.db/published-table-ids not-empty vec)]
+    (let [paths         (group-by (comp :model last) seen-paths)
+          parent-id     #(:id (serdes/load-find-local (pop %)))
+          imported      #(into #{} (keep parent-id) (get paths %))
+          legacy-tables (into #{}
+                              (comp (filter #(contains? (serialization/ingest-one ingestable %) :fields))
+                                    (keep parent-id))
+                              (get paths "TableUserSettings"))
+          kept-tables   (imported "TableUserSettings")
+          kept-fields   (imported "FieldUserSettings")
+          kept-dims     (into (imported "Dimension") (keep #(:id (serdes/load-find-local %))) (get paths "Field"))]
+      (doseq [batch (->> (in-batches remote-sync.db/table-ids-with-user-settings table-ids)
+                         (remove kept-tables)
+                         (partition-all app-db-batch-size))]
+        (remote-sync.db/delete-table-user-settings! (vec batch)))
+      (doseq [batch (->> (in-batches remote-sync.db/field-ids-with-user-settings (remove legacy-tables table-ids))
+                         (remove kept-fields)
+                         (partition-all app-db-batch-size))]
+        (remote-sync.db/delete-field-user-settings! (vec batch)))
+      (doseq [batch (->> (in-batches remote-sync.db/field-ids-with-dimensions table-ids)
+                         (remove kept-dims)
+                         (partition-all app-db-batch-size))]
+        (remote-sync.db/delete-dimensions! (vec batch)))
+      table-ids)))
+
+(defn- track-user-settings!
+  "Inserts a synced RemoteSyncObject for each TableUserSettings, FieldUserSettings, and Dimension of the Tables with
+  `table-ids` as of `timestamp`."
+  [table-ids timestamp]
+  (let [table-rows (for [{:keys [id name collection_id]}
+                         (in-batches remote-sync.db/tables-tracking-details
+                                     (in-batches remote-sync.db/table-ids-with-user-settings table-ids))]
+                     {:model_type          "TableUserSettings"
+                      :model_id            id
+                      :model_name          name
+                      :model_collection_id collection_id
+                      :model_table_id      id
+                      :model_table_name    name
+                      :status              "synced"
+                      :status_changed_at   timestamp})
+        field-rows (for [[model-type field-ids] {"FieldUserSettings" (in-batches remote-sync.db/field-ids-with-user-settings table-ids)
+                                                 "Dimension"         (in-batches remote-sync.db/field-ids-with-dimensions table-ids)}
+                         {:keys [id name table_id collection_id table_name]}
+                         (in-batches remote-sync.db/fields-tracking-details field-ids)]
+                     {:model_type          model-type
+                      :model_id            id
+                      :model_name          name
+                      :model_collection_id collection_id
+                      :model_table_id      table_id
+                      :model_table_name    table_name
+                      :status              "synced"
+                      :status_changed_at   timestamp})]
+    (doseq [batch (partition-all app-db-batch-size (concat table-rows field-rows))]
+      (remote-sync.db/insert-rsos! (vec batch)))))
+
 (defn- branch-changed-since-scheduling?
   "Returns true if `pre-task-branch` was captured by the async-* function and the
    `remote-sync-branch` setting has since drifted to a different value. Used as a
@@ -377,16 +416,17 @@
     ;; commit, blocking the heartbeat for the whole reconcile and hashing phase.
     (report 0.75 {:force? true})
     (t2/with-transaction [_conn]
-      (let [synced-collection-ids (spec/all-syncable-collection-ids)]
-        (remove-unsynced! synced-collection-ids imported-data)
-        (remove-unsynced-user-settings! synced-collection-ids base-ingestable seen-paths))
-      ;; Replace the RemoteSyncObject table, folding each entity's repo file_path (so later renames/deletes
-      ;; resolve the real file) and serialized-content hash (so a post-pull no-op edit stays synced) into the
-      ;; insert. Chunked so insert/IN params and memory stay bounded.
-      (remote-sync.db/delete-all-rsos!)
-      (insert-with-metadata! (spec/sync-all-entities! sync-timestamp imported-data)
-                             (source.ingestable/cached-file-paths base-ingestable))
-      (when finalize! (finalize!)))
+      (let [synced-collection-ids (spec/all-syncable-collection-ids)
+            _                     (remove-unsynced! synced-collection-ids imported-data)
+            settings-table-ids    (remove-unsynced-user-settings! synced-collection-ids base-ingestable seen-paths)]
+        ;; Replace the RemoteSyncObject table, folding each entity's repo file_path (so later renames/deletes
+        ;; resolve the real file) and serialized-content hash (so a post-pull no-op edit stays synced) into the
+        ;; insert. Chunked so insert/IN params and memory stay bounded.
+        (remote-sync.db/delete-all-rsos!)
+        (insert-with-metadata! (spec/sync-all-entities! sync-timestamp imported-data)
+                               (source.ingestable/cached-file-paths base-ingestable))
+        (track-user-settings! settings-table-ids sync-timestamp)
+        (when finalize! (finalize!))))
     (report 0.9 {:force? true})
     (when (and (not has-transforms?)
                (settings/remote-sync-transforms))
@@ -1106,21 +1146,27 @@
     (source.p/stage-delete! commit delete-path)))
 
 (defn- exportable-write-rows
-  "WriteRows for a full export — every exportable id tagged with its RemoteSyncObject id (untracked deps get :id nil)."
+  "WriteRows for a full export — every exportable id tagged with its RemoteSyncObject id (untracked deps and
+  Dimensions, whose RemoteSyncObject is keyed by their Field, get :id nil)."
   []
   (let [rso-id (u/index-by (juxt :model_type :model_id) :id (remote-sync.db/rso-keys))]
     (for [[model ids] (spec/exportable-entities)
           id          ids]
-      {:model_type model :model_id id :id (rso-id [model id])})))
+      {:model_type model :model_id id :id (when-not (= "Dimension" model) (rso-id [model id]))})))
+
+(def ^:private user-settings-model-types
+  "The model types tracked by the user-settings event handlers rather than a remote-sync spec."
+  #{"TableUserSettings" "FieldUserSettings" "Dimension"})
 
 (defn- find-departed-entities
-  "Find RSO rows for entity-id entities that left the synced set (removed/delete status and not in
-  `targets`), matching the incremental path; path/hybrid and still-exported rows are kept."
+  "Find RSO rows pending removal or deletion of user settings, and of entity-id entities that are not in
+  `exported-rows`; path/hybrid and still-exported rows are kept."
   [exported-rows]
   (let [exported (into #{} (map #(select-keys % [:model_type :model_id])) exported-rows)]
     (->> (remote-sync.db/departed-rso-keys)
-         (filter #(= :entity-id (:identity (spec/spec-for-model-type (:model_type %)))))
-         (remove #(exported (select-keys % [:model_type :model_id])))
+         (filter #(or (user-settings-model-types (:model_type %))
+                      (and (= :entity-id (:identity (spec/spec-for-model-type (:model_type %))))
+                           (not (exported (select-keys % [:model_type :model_id]))))))
          (map :id))))
 
 (defn- mark-rows-synced!

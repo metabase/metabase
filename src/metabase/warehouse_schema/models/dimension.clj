@@ -37,11 +37,8 @@
 (defmethod serdes/deserialization-dependencies "Dimension" [dimension]
   [[(first (serdes/path dimension))]])
 
-(defn- dimension-path->field-ref [dimension-path]
-  (let [[db schema table field :as field-ref] (map :id (pop dimension-path))]
-    (if field
-      field-ref
-      [db nil schema table])))
+(defmethod serdes/load-update! "Dimension" [model-name ingested local]
+  ((get-method serdes/load-update! :default) model-name (merge {:human_readable_field_id nil} ingested) local))
 
 (defmethod serdes/make-spec "Dimension" [_model-name _opts]
   {:copy      [:name :type :entity_id]
@@ -53,7 +50,8 @@
                                          :import-with-context
                                          (fn [current _ field-id]
                                            (or field-id
-                                               (serdes/*import-field-fk* (dimension-path->field-ref (serdes/path current)))))}}})
+                                               (serdes/*import-field-fk*
+                                                (serdes/field-path->field-ref (pop (serdes/path current))))))}}})
 
 (def ^:private dimension-slug "___dimension")
 
