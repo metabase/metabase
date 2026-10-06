@@ -3,17 +3,23 @@ import fetchMock from "fetch-mock";
 import {
   setupDatabaseEndpoints,
   setupDatabaseUsageInfoEndpoint,
+  setupEnginesEndpoint,
 } from "__support__/server-mocks";
 import { createMockState } from "__support__/state";
 import { renderWithProviders, screen } from "__support__/ui";
 import { Route } from "metabase/router";
 import type { Database } from "metabase-types/api";
-import { createMockDatabase, createMockUser } from "metabase-types/api/mocks";
+import {
+  createMockDatabase,
+  createMockEngines,
+  createMockUser,
+} from "metabase-types/api/mocks";
 
 import { DatabaseEditApp } from "./DatabaseEditApp";
 
 const setup = ({ database }: { database: Database }) => {
   setupDatabaseEndpoints(database);
+  setupEnginesEndpoint(createMockEngines());
   setupDatabaseUsageInfoEndpoint(database, {
     question: 0,
     dataset: 0,
