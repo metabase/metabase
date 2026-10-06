@@ -13,7 +13,7 @@
 
 (set! *warn-on-reflection* true)
 
-(use-fixtures :each rs.test/clean-object)
+(use-fixtures :each rs.test/clean-remote-sync-state)
 
 ;;; ------------------------------------------------ Spec Validation Tests ---------------------------------------------
 
