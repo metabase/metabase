@@ -1,9 +1,7 @@
 (ns metabase-enterprise.remote-sync.source.git
   (:require
-   [buddy.core.codecs :as codecs]
-   [buddy.core.hash :as buddy-hash]
-   [clojure.java.io :as io]
    [clojure.string :as str]
+   [metabase-enterprise.remote-sync.source.clone-registry :as clone-registry]
    [metabase-enterprise.remote-sync.source.protocol :as source.p]
    [metabase.analytics-interface.core :as analytics]
    [metabase.settings.core :as setting]
@@ -12,8 +10,6 @@
   (:import
    (java.io File)
    (java.net URI)
-   (java.nio.channels ClosedByInterruptException)
-   (org.apache.commons.io FileUtils)
    (org.eclipse.jgit.api Git GitCommand TransportCommand)
    (org.eclipse.jgit.dircache DirCache DirCacheBuilder DirCacheEditor DirCacheEditor$DeletePath
                               DirCacheEditor$DeleteTree DirCacheEditor$PathEdit DirCacheEntry)
@@ -92,7 +88,7 @@
   "Fetches updates from the remote git repository.
 
   Takes a git-source map containing a :git Git instance and optional :token for authentication. Returns the result
-  of the git fetch operation. Uses the 'origin' remote which is configured by ensure-origin-configured!.
+  of the git fetch operation. Uses the 'origin' remote of the clone.
   Prunes local refs that no longer exist on the remote so deleted branches are reflected locally.
 
   Throws ExceptionInfo if the fetch operation fails."
@@ -102,12 +98,6 @@
     (u/prog1 (call-remote-command (.. git fetch (setRemoveDeletedRefs true))
                                   git-source)
       (log/info "Successfully fetched repository"))))
-
-(defn- repo-path
-  "The local bare clone directory for `remote-url`. Keyed on the URL alone: credentials are passed to each remote
-  command, so rotating the token reuses the existing clone instead of cloning into (and leaking) a new directory."
-  ^File [{:keys [^String remote-url]}]
-  (io/file (System/getProperty "java.io.tmpdir") "metabase-git" (-> remote-url buddy-hash/sha1 codecs/bytes->hex)))
 
 (defn- ref-branch-names
   "Sorted branch names (without 'refs/heads/') among the `refs` returned by an lsRemote."
@@ -123,74 +113,60 @@
   first of its branches. Nil when the remote advertises HEAD, or has no branches.
 
   A remote with branches can advertise no HEAD, for example a bare repository whose HEAD names `master` when only
-  `main` was pushed. A clone of such a remote (see [[clone-branch]]) and its default branch (see [[ref-head-branch]])
-  both use this branch, so they agree."
+  `main` was pushed. A clone of such a remote (see [[clone-repository!]]) and its default branch (see
+  [[ref-head-branch]]) both use this branch, so they agree."
   [refs]
   (when-not (some #(= Constants/HEAD (.getName ^Ref %)) refs)
     (first (ref-branch-names refs))))
 
-(defn- clone-branch
-  "The branch to give a clone of the remote at `remote-url`, or nil to let the clone follow the remote HEAD.
+(defn- ls-remote-refs
+  "The refs of the repository at `remote-url`, from one lsRemote with the optional `token`."
+  [{:keys [^String remote-url] :as remote}]
+  ;; not `setHeads true`: that would filter out the symbolic HEAD ref that [[ref-head-branch]] reads
+  (call-remote-command (-> (Git/lsRemoteRepository)
+                           (.setRemote remote-url))
+                       remote))
 
-  A JGit clone first fetches the branch that it is given (by default HEAD), and fails when the remote does not
-  advertise that ref. For a remote that advertises no HEAD, this returns [[branch-without-head]]. The clone is bare
-  and fetches every branch, and nothing reads the HEAD of the clone, so the choice of branch has no other effect."
-  [{:keys [^String remote-url] :as args}]
-  (branch-without-head (call-remote-command (-> (Git/lsRemoteRepository)
-                                                (.setRemote remote-url))
-                                            args)))
+(defn- clone-failure
+  "The exception for a clone of `remote-url` into `dir` that failed with `e`."
+  [^Exception e remote-url ^File dir]
+  (ex-info (format "Failed to clone git repository: %s" (ex-message e))
+           {:url       remote-url
+            :repo-path dir
+            :error     (.getMessage e)}
+           e))
 
 (defn- clone-repository!
-  "Clones a git repository to a temporary directory using JGit.
+  "Clones the repository at `remote-url` with the optional `token` into the new directory `dir`, as a bare clone, and
+  returns its Git instance.
 
-  Takes a map with :remote-url (the git repository URL) and optional :token (authentication token for private
-  repositories). Returns a Git instance for the cloned repository. If the repository already exists in the temp
-  directory and is valid, returns the existing repository after fetching. A remote that advertises no HEAD is cloned
-  too (see [[clone-branch]]).
+  Asks the remote one time before the clone. A remote with no branch throws \"Cannot connect to uninitialized
+  repository\", and no clone starts. A JGit clone first fetches the branch that it is given (by default HEAD), and
+  fails when the remote does not advertise that ref; so a remote that advertises no HEAD is cloned with its
+  [[branch-without-head]]. The clone is bare and fetches every branch, and nothing reads the HEAD of the clone.
 
-  Throws ExceptionInfo if cloning fails due to network issues, invalid URL, authentication failure, etc."
-  [repo-path {:keys [^String remote-url ^String token]}]
-  (log/info "Cloning repository" {:url remote-url :repo-path repo-path})
-  (io/make-parents repo-path)
-  (try
-    (let [args    {:token token :remote-url remote-url}
-          command (-> (Git/cloneRepository)
-                      (.setDirectory repo-path)
-                      (.setURI remote-url)
-                      (.setBare true))]
-      (when-let [branch (clone-branch args)]
-        (.setBranch command (qualify-branch branch)))
-      (u/prog1 (call-remote-command command args)
-        (log/info "Successfully cloned repository" {:repo-path repo-path})))
-    (catch Exception e
-      (throw (ex-info (format "Failed to clone git repository: %s" (ex-message e))
-                      {:url       remote-url
-                       :repo-path repo-path
-                       :error     (.getMessage e)} e)))))
-
-(defn- ensure-origin-configured!
-  "Ensures the 'origin' remote is configured with the correct URL.
-
-  This fixes issues where the origin remote may be missing or have an incorrect URL
-  (e.g., after repository corruption or configuration changes). If the URL doesn't
-  match, it's updated and saved."
-  [^Git git ^String url]
-  (let [config (.getConfig (.getRepository git))
-        current-url (.getString config "remote" "origin" "url")]
-    (when (not= url current-url)
-      (log/info "Configuring origin remote" {:current current-url :new url})
-      (.setString config "remote" "origin" "url" url)
-      (.setString config "remote" "origin" "fetch" "+refs/heads/*:refs/heads/*")
-      (.save config))))
-
-(defn- open-jgit [^File repo-path {:keys [remote-url] :as args}]
-  (if (.exists repo-path)
-    (let [git (do
-                (log/debugf "Opening existing at %" repo-path)
-                (Git/open repo-path))]
-      (ensure-origin-configured! git remote-url)
-      git)
-    (clone-repository! repo-path args)))
+  Throws ExceptionInfo if the remote or the clone fails, for example on a network error, an invalid URL or a rejected
+  token."
+  [^File dir {:keys [^String remote-url ^String token]}]
+  (log/info "Cloning repository" {:url remote-url :repo-path dir})
+  (let [args {:token token :remote-url remote-url}
+        refs (try
+               (ls-remote-refs args)
+               (catch Exception e
+                 (throw (clone-failure e remote-url dir))))]
+    (when (empty? (ref-branch-names refs))
+      (throw (ex-info "Cannot connect to uninitialized repository" {:url remote-url})))
+    (try
+      (let [command (-> (Git/cloneRepository)
+                        (.setDirectory dir)
+                        (.setURI remote-url)
+                        (.setBare true))]
+        (when-let [branch (branch-without-head refs)]
+          (.setBranch command (qualify-branch branch)))
+        (u/prog1 (call-remote-command command args)
+          (log/info "Successfully cloned repository" {:repo-path dir})))
+      (catch Exception e
+        (throw (clone-failure e remote-url dir))))))
 
 (defn commit-sha
   "Resolves a branch name or commit-ish string to a full commit reference SHA.
@@ -390,7 +366,7 @@
   reports push progress.
 
   Takes a git-source map containing a :git Git instance, :branch, and optional :token for
-  authentication. Uses the 'origin' remote which is configured by ensure-origin-configured!.
+  authentication. Uses the 'origin' remote of the clone.
 
   Returns the push response from JGit. Throws ExceptionInfo if the push operation fails or returns a
   non-OK/UP_TO_DATE status."
@@ -409,14 +385,6 @@
                                       (map #(.getStatus ^RemoteRefUpdate %) push-results)))]
        (throw (ex-info (str "Failed to push branch " branch-name " to remote") {:failures failures})))
      push-response)))
-
-(defn- ls-remote-refs
-  "The refs of the repository at `remote-url`, from one lsRemote with the optional `token`."
-  [{:keys [^String remote-url] :as remote}]
-  ;; not `setHeads true`: that would filter out the symbolic HEAD ref that [[ref-head-branch]] reads
-  (call-remote-command (-> (Git/lsRemoteRepository)
-                           (.setRemote remote-url))
-                       remote))
 
 (defn- remote-refs
   "The refs of `remote`: the answer that a [[git-remote]] holds, else the answer of a new lsRemote."
@@ -555,15 +523,6 @@
   [url token]
   (->GitRemote url token (delay (ls-remote-refs {:remote-url url :token token}))))
 
-(defn has-data?
-  "Checks if the remote git repository has any commits/data.
-
-  Takes a map with the :remote-url and the optional :token of the repository.
-
-  Returns true if the repository has at least one commit, false otherwise."
-  [source]
-  (< 0 (count (branches source))))
-
 (defn- delete-branches-without-remote!
   [{:keys [^Git git] :as source}]
   (let [remote-branch-set (set (branches source))
@@ -631,228 +590,28 @@
   (changed-files* [this from-version]
     (changed-files this from-version)))
 
-(def ^:private jgit
-  "Open Git instances, keyed on the path of their URL's [[repo-path]]. After a stale-cache recovery the instance for a
-  URL lives in a fresh sibling directory instead: see [[replace-stale-clone!]]."
-  (atom {}))
-
-(defonce ^:private ^{:doc "Stale clone directories that a running operation may still hold, so they are not deleted
-  until the process exits. See [[replace-stale-clone!]]."}
-  retired-clones
-  (atom #{}))
-
-(defn- git-dir
-  "The directory of `git`'s repository (the clone directory: clones are bare)."
-  ^File [^Git git]
-  (.getDirectory (.getRepository git)))
-
-(defn- cached-sibling-clones
-  "The directories of the cached Git instances that live in a fresh sibling of their [[repo-path]], not at it."
-  []
-  (for [[k git] @jgit
-        :let [dir (git-dir git)]
-        :when (not= k (.getPath dir))]
-    dir))
-
-(defn- clones-deleted-at-exit
-  "The clone directories that the shutdown hook of [[retired-clones-reaper]] deletes: the [[retired-clones]] and the
-  cached fresh siblings."
-  []
-  (concat @retired-clones (cached-sibling-clones)))
-
-(defn- delete-clone-dir!
-  "Deletes the clone directory `dir`. A failure, for example on a file that a JGit gc removes during the delete, does
-  not throw; a directory that remains is logged."
-  [^File dir]
-  (FileUtils/deleteQuietly dir)
-  (when (.exists dir)
-    (log/warn "Could not delete a git clone directory" {:path (str dir)})))
-
-(defn- delete-clones-at-exit!
-  "Deletes the [[clones-deleted-at-exit]]. The shutdown hook of [[retired-clones-reaper]] runs it."
-  []
-  (run! delete-clone-dir! (clones-deleted-at-exit)))
-
-(defonce ^:private ^{:doc "Deref to install, once, a shutdown hook that runs [[delete-clones-at-exit!]]. The next
-  process clones afresh at [[repo-path]]."}
-  retired-clones-reaper
-  (delay (.addShutdownHook (Runtime/getRuntime)
-                           (Thread. ^Runnable (fn [] (delete-clones-at-exit!))))))
-
-(defonce ^:private ^{:doc "One lock object for each clone path, so that only one thread at a time clones for a URL."}
-  clone-locks
-  (atom {}))
-
-(defn- clone-lock
-  "The lock that guards cloning for the [[repo-path]] `path`."
-  ^Object [^File path]
-  (let [k (.getPath path)]
-    (or (get @clone-locks k)
-        (get (swap! clone-locks update k #(or % (Object.))) k))))
-
 (defn- stale-cache-error?
   "Returns true if the exception indicates a stale git cache (e.g., after a force-push on the remote)."
   [^Exception e]
   (some-> (ex-message e) (str/includes? "Missing commit")))
 
-(defn- open-checked!
-  "Opens (cloning if absent) the repository at `path` and checks that it has data; if it has none, deletes `path` and
-  throws."
-  [^File path {:keys [remote-url token] :as args}]
-  (u/prog1 (open-jgit path {:remote-url remote-url :token token})
-    (when-not (has-data? (assoc args :git <>))
-      (delete-clone-dir! path)
-      (throw (ex-info "Cannot connect to uninitialized repository" {:url remote-url})))))
+(defn- clone-job
+  "The function that clones the repository at `url` with `token` into a new directory, for [[clone-registry/acquire!]]."
+  [url token]
+  (fn [dir]
+    (clone-repository! dir {:remote-url url :token token})))
 
-(defn- usable-cached-jgit
-  "The cached Git instance for the [[repo-path]] key `k`, if its directory still exists."
-  [k]
-  (when-let [cached (get @jgit k)]
-    (when (.exists (git-dir cached))
-      cached)))
+(defn- recover-stale-clone!
+  "Recovers `source` from a stale clone (see [[stale-cache-error?]]). Retires the generation that `source` read, unless
+  a concurrent recovery did, and adds the next generation of its URL to its lease. Returns `source` on that generation.
 
-(defn- canonical-path ^String [^File f]
-  (.getCanonicalPath f))
-
-(defn- retired? [^File dir]
-  (contains? (into #{} (map canonical-path) @retired-clones) (canonical-path dir)))
-
-(defn- delete-leftover-siblings!
-  "Deletes the fresh siblings of `path` on disk that this process does not use, and returns true if there were any.
-
-  In a running process, each fresh sibling is cached or retired. So any other sibling comes from an earlier process
-  that stopped without its shutdown hook, after a stale-cache recovery. The clone at `path` is then the one that
-  recovery found stale. Call this with the [[clone-lock]] of `path` held."
-  [^File path]
-  (let [prefix    (str (.getName path) "-")
-        in-use    (into #{} (map canonical-path) (clones-deleted-at-exit))
-        leftovers (->> (.listFiles (.getParentFile path))
-                       (filter #(str/starts-with? (.getName ^File %) prefix))
-                       (remove #(contains? in-use (canonical-path %))))]
-    (doseq [^File dir leftovers]
-      (log/info "Deleting a git clone that an earlier process left" {:path (str dir)})
-      (delete-clone-dir! dir))
-    (boolean (seq leftovers))))
-
-(defn- clone-into-fresh-sibling!
-  "Clones into a new fresh sibling of the [[repo-path]] `path`, and returns the Git instance. The sibling is deleted
-  when the process exits."
-  [^File path args]
-  (let [fresh (io/file (.getParentFile path) (str (.getName path) "-" (random-uuid)))]
-    (log/info "Cloning into a fresh sibling directory" {:path (str fresh)})
-    @retired-clones-reaper
-    (open-checked! fresh args)))
-
-(defonce ^:private ^{:doc "The first use in progress for each clone path, as a delay that all concurrent first uses of
-  that path deref. See [[get-jgit]]."}
-  first-uses
-  (atom {}))
-
-(defn- first-use!
-  "Opens or clones the repository for the [[repo-path]] `path`, caches the Git instance, and returns it. Runs with the
-  [[clone-lock]] of `path`, so it does not overlap a stale-cache recovery of the same URL.
-
-  If this process retired the clone at `path` (see [[replace-stale-clone!]]), it clones into a fresh sibling, because
-  an operation may still hold the retired clone. If an earlier process left fresh siblings, the clone at `path` is
-  stale, so it deletes both and clones again."
-  [^File path args]
-  (let [k    (.getPath path)
-        lock (clone-lock path)]
-    (locking lock
-      (or (usable-cached-jgit k)
-          (let [leftovers? (delete-leftover-siblings! path)
-                git        (cond
-                             (retired? path)
-                             (clone-into-fresh-sibling! path args)
-
-                             leftovers?
-                             (do (log/info "Deleting a stale git clone that an earlier process left" {:path (str path)})
-                                 (delete-clone-dir! path)
-                                 (open-checked! path args))
-
-                             :else
-                             (open-checked! path args))]
-            (swap! jgit assoc k git)
-            git)))))
-
-(defn- interrupted?
-  "True when the current thread was interrupted while it ran the attempt that threw `e`: its interrupt flag is set, or
-  `e` or one of its causes is an InterruptedException or a ClosedByInterruptException. A timeout of a socket or of JGit
-  (an InterruptedIOException) is not an interrupt."
-  [^Throwable e]
-  (or (.isInterrupted (Thread/currentThread))
-      (boolean (some #(or (instance? InterruptedException %)
-                          (instance? ClosedByInterruptException %))
-                     (take-while some? (iterate #(.getCause ^Throwable %) e))))))
-
-(defn- attempt-first-use!
-  "[[first-use!]], run by the thread that derefs the shared delay of [[get-jgit]] first. If that thread was interrupted,
-  the exception is wrapped with `::interrupted-thread`, so that [[get-jgit]] can tell the interrupted thread from the
-  waiters."
-  [^File path args]
-  (try
-    (first-use! path args)
-    (catch Throwable e
-      (if (interrupted? e)
-        (throw (ex-info "A first use of a git clone was interrupted" {::interrupted-thread (Thread/currentThread)} e))
-        (throw e)))))
-
-(defn- get-jgit
-  "The Git instance for the [[repo-path]] `path`. It opens or clones the repository on first use (see [[first-use!]]).
-
-  Concurrent first uses of a path share one attempt: they deref the same delay in [[first-uses]], so they get the same
-  Git instance, or they all fail with the same exception after one clone attempt. The delay leaves [[first-uses]] when
-  the attempt ends, so a later first use after a failure tries again.
-
-  An attempt that failed because the thread that ran it was interrupted is not shared: the interrupt belongs to that
-  thread alone. That thread gets the original exception. Each other thread removes that attempt and makes its own."
-  [^File path args]
-  (let [k (.getPath path)]
-    (loop []
-      (let [result (or (usable-cached-jgit k)
-                       (let [mine   (delay (attempt-first-use! path args))
-                             shared (get (swap! first-uses update k #(or % mine)) k)
-                             forget #(swap! first-uses (fn [m] (cond-> m (identical? (get m k) shared) (dissoc k))))]
-                         (try
-                           @shared
-                           (catch clojure.lang.ExceptionInfo e
-                             (if-let [interrupted-thread (::interrupted-thread (ex-data e))]
-                               (if (identical? interrupted-thread (Thread/currentThread))
-                                 (throw (ex-cause e))
-                                 (do (forget)
-                                     ::retry))
-                               (throw e)))
-                           (finally
-                             (when (identical? shared mine)
-                               (forget))))))]
-        (if (= ::retry result)
-          (recur)
-          result)))))
-
-(defn- replace-stale-clone!
-  "Recovers from a stale clone (see [[stale-cache-error?]]) of `source`'s URL: clones into a fresh sibling of its
-  [[repo-path]] and caches that, so later operations use it. Returns the fresh Git instance.
-
-  If a concurrent recovery already replaced `source`'s Git instance, this returns the cached instance and does not
-  clone again.
-
-  The stale clone is not deleted, because another operation (an import on another thread, a branch listing) may still
-  be using it. The stale clone and the fresh sibling are deleted when the process exits, and the next process clones
-  afresh at [[repo-path]]."
-  [{:keys [^Git git remote-url token]}]
-  (let [path (repo-path {:remote-url remote-url})
-        k    (.getPath path)
-        lock (clone-lock path)]
-    (locking lock
-      (let [cached (usable-cached-jgit k)]
-        (if (and cached (not (identical? cached git)))
-          (do (log/info "Using the git clone of a concurrent stale-cache recovery" {:path (str (git-dir cached))})
-              cached)
-          (let [_         (log/info "Re-cloning stale git cache" {:stale-path (str (git-dir git))})
-                fresh-git (clone-into-fresh-sibling! path {:remote-url remote-url :token token})]
-            (swap! retired-clones conj (git-dir git))
-            (swap! jgit assoc k fresh-git)
-            fresh-git))))))
+  The retired clone stays while a lease holds it: another operation, or this source object, can still read it."
+  [{:keys [remote-url token lease generation] :as source}]
+  (log/info "Re-cloning stale git cache" {:url remote-url :generation generation})
+  (let [registry         (clone-registry/process-registry)
+        _                (clone-registry/retire! registry remote-url generation)
+        {:keys [id git]} (clone-registry/acquire! registry lease (clone-job remote-url token))]
+    (assoc source :git git :generation id)))
 
 (defn- snapshot*
   "Internal snapshot implementation. Returns a GitSnapshot or throws."
@@ -872,7 +631,7 @@
     (snapshot* source)
     (catch Exception e
       (if (stale-cache-error? e)
-        (let [fresh-source (assoc source :git (replace-stale-clone! source))]
+        (let [fresh-source (recover-stale-clone! source)]
           (log/info "Retrying snapshot after re-cloning stale cache")
           (snapshot* fresh-source))
         (throw e)))))
@@ -885,8 +644,9 @@
     (when-let [sha (commit-sha source version)]
       (->GitSnapshot (:git source) (:remote-url source) (:branch source) sha (:token source) (:managed-dirs source)))))
 
-;; A GitSource also answers the remote questions, from its URL and token, as a GitRemote does.
-(defrecord GitSource [git remote-url branch token managed-dirs]
+;; A GitSource also answers the remote questions, from its URL and token, as a GitRemote does. `lease` is its lease in
+;; the clone registry, and `generation` is the id of the generation whose Git instance is `git`.
+(defrecord GitSource [git remote-url branch token managed-dirs lease generation]
   source.p/Remote
   (branches [this]
     (branches this))
@@ -912,7 +672,9 @@
   and a set of managed top-level directory names. Files in managed directories
   are fully replaced during writes — any existing file not in the write set is removed.
 
-  Returns a GitSource record implementing the Source protocol."
+  Returns a GitSource record implementing the Source protocol. Its lease holds a clone of `url` in the clone registry
+  of this process. The first use of `url` in the process clones the repository."
   [url branch token managed-dirs]
-  (->GitSource (get-jgit (repo-path {:remote-url url}) {:remote-url url :token token})
-               url branch token managed-dirs))
+  (let [lease            (clone-registry/new-lease url)
+        {:keys [id git]} (clone-registry/acquire! (clone-registry/process-registry) lease (clone-job url token))]
+    (->GitSource git url branch token managed-dirs lease id)))

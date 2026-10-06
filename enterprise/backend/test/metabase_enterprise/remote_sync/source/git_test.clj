@@ -5,12 +5,13 @@
    [clojure.java.io :as io]
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase-enterprise.remote-sync.source.clone-registry :as clone-registry]
    [metabase-enterprise.remote-sync.source.git :as git]
    [metabase-enterprise.remote-sync.source.protocol :as source.p]
+   [metabase-enterprise.remote-sync.test-helpers :as test-helpers]
    [metabase-enterprise.serialization.v2.ingest :as ingest]
    [metabase.test :as mt]
-   [metabase.util :as u]
-   [metabase.util.log :as log])
+   [metabase.util :as u])
   (:import (java.io File)
            (java.net SocketTimeoutException)
            (java.nio.file Files FileSystems LinkOption Paths)
@@ -133,9 +134,13 @@
                        (.getDirectory)
                        (.toURI)
                        (.toURL)
-                       (.toExternalForm))
-        local-repo (#'git/get-jgit (#'git/repo-path {:remote-url remote-url}) {:remote-url remote-url})]
-    (git/->GitSource local-repo remote-url branch nil ingest/legal-top-level-paths)))
+                       (.toExternalForm))]
+    (git/git-source remote-url branch nil ingest/legal-top-level-paths)))
+
+(defn- clone-dir
+  "The directory of the clone that `source` (or a snapshot) reads."
+  ^File [{:keys [^Git git]}]
+  (.getDirectory (.getRepository git)))
 
 (defn- init-source!
   [branch dir & config]
@@ -675,69 +680,15 @@
             (is (contains? files (str col-path "cards/eid456_OtherCard.yaml")) "Other card should still exist")
             (is (not (contains? files (str col-path "cards/eid123_OldCardName.yaml"))) "Old card name file should be removed")))))))
 
-(deftest ensure-origin-configured-sets-origin-after-clone-test
-  (mt/with-temp-dir [remote-dir nil]
-    (let [[source _remote] (init-source! "master" remote-dir
-                                         :files {"master.txt" "File in master"})
-          ^Git local-git (:git source)
-          config (.getConfig (.getRepository local-git))
-          origin-url (.getString config "remote" "origin" "url")]
-      (is (some? origin-url) "Origin URL should be set after clone"))))
-
-(deftest ensure-origin-configured-repairs-corrupted-url-test
-  (mt/with-temp-dir [remote-dir nil]
-    (let [[source remote] (init-source! "master" remote-dir
-                                        :files {"master.txt" "File in master"})
-          ^Git local-git (:git source)
-          config (.getConfig (.getRepository local-git))
-          corrupted-url "https://wrong-url.example.com/repo.git"]
-      (.setString config "remote" "origin" "url" corrupted-url)
-      (.save config)
-      (is (= corrupted-url (.getString config "remote" "origin" "url"))
-          "Origin URL should be corrupted")
-      (reset! @#'git/jgit {})
-      (let [repaired-source (->source! "master" remote)
-            ^Git repaired-git (:git repaired-source)
-            repaired-config (.getConfig (.getRepository repaired-git))
-            repaired-url (.getString repaired-config "remote" "origin" "url")]
-        (is (not= corrupted-url repaired-url)
-            "Origin URL should no longer be the corrupted URL")
-        (is (str/includes? repaired-url remote-dir)
-            "Origin URL should point to the remote directory")))))
-
-(deftest ensure-origin-configured-sets-fetch-refspec-test
-  (mt/with-temp-dir [remote-dir nil]
-    (let [[source remote] (init-source! "master" remote-dir
-                                        :files {"master.txt" "File in master"})
-          ^Git local-git (:git source)
-          config (.getConfig (.getRepository local-git))]
-      (.setString config "remote" "origin" "url" "https://wrong-url.example.com/repo.git")
-      (.unset config "remote" "origin" "fetch")
-      (.save config)
-      (reset! @#'git/jgit {})
-      (let [repaired-source (->source! "master" remote)
-            ^Git repaired-git (:git repaired-source)
-            repaired-config (.getConfig (.getRepository repaired-git))]
-        (is (= "+refs/heads/*:refs/heads/*"
-               (.getString repaired-config "remote" "origin" "fetch"))
-            "Origin fetch refspec should be set after repair")))))
-
-(deftest ensure-origin-configured-allows-fetch-after-repair-test
-  (mt/with-temp-dir [remote-dir nil]
-    (let [[source remote] (init-source! "master" remote-dir
-                                        :files {"master.txt" "File in master"})
-          ^Git local-git (:git source)
-          config (.getConfig (.getRepository local-git))]
-      (.setString config "remote" "origin" "url" "https://wrong-url.example.com/repo.git")
-      (.save config)
-      (reset! @#'git/jgit {})
-      (let [repaired-source (->source! "master" remote)]
-        (git-working-add! remote "new-file.txt" "New content")
-        (git-working-commit! remote "Add new file")
-        (git/fetch! repaired-source)
-        (is (= ["Add new file" "Initial commit"]
-               (map :message (git/log repaired-source)))
-            "Should be able to fetch after origin repair")))))
+(deftest clone-origin-is-the-remote-test
+  (testing "the origin of a clone is the URL of the remote, and its fetch refspec updates every branch"
+    (mt/with-temp-dir [remote-dir nil]
+      (let [[source _remote] (init-source! "master" remote-dir
+                                           :files {"master.txt" "File in master"})
+            ^Git local-git   (:git source)
+            config           (.getConfig (.getRepository local-git))]
+        (is (str/includes? (.getString config "remote" "origin" "url") remote-dir))
+        (is (= "+refs/heads/*:refs/heads/*" (.getString config "remote" "origin" "fetch")))))))
 
 (deftest get-jgit-reclones-after-local-repo-deleted-test
   (testing "GHY-3815: if the cached local clone dir is deleted out from under us, the next
@@ -745,20 +696,24 @@
             permanently with 'origin: not found' until an instance restart)"
     (mt/with-temp-dir [remote-dir nil]
       (let [[source remote] (init-source! "master" remote-dir :branches ["branch-1"])
-            remote-url (:remote-url source)
-            ^File local-path (#'git/repo-path {:remote-url remote-url})
+            ^File local-path (clone-dir source)
             ^Git cached-git (:git source)]
-        (is (.exists local-path) "Precondition: local clone dir exists after the initial clone")
-        (is (= ["branch-1" "master"] (source.p/branches source))
-            "Precondition: branches works before the dir is deleted")
-        (FileUtils/deleteDirectory local-path)
-        (is (not (.exists local-path)) "Local clone dir is gone")
-        (let [fresh-source (->source! "master" remote)]
-          (is (.exists local-path) "Local clone dir was re-created (re-cloned)")
-          (is (not (identical? cached-git (:git fresh-source)))
-              "A fresh Git instance is returned, not the stale cached one")
-          (is (= ["branch-1" "master"] (source.p/branches fresh-source))
-              "branches works again after the dir was deleted, without an instance restart"))))))
+        (try
+          (is (.exists local-path) "Precondition: local clone dir exists after the initial clone")
+          (is (= ["branch-1" "master"] (source.p/branches source))
+              "Precondition: branches works before the dir is deleted")
+          (FileUtils/deleteDirectory local-path)
+          (is (not (.exists local-path)) "Local clone dir is gone")
+          (let [fresh-source (->source! "master" remote)]
+            (is (.exists (clone-dir fresh-source)) "The new source has a new clone")
+            (is (not (identical? cached-git (:git fresh-source)))
+                "A fresh Git instance is returned, not the stale cached one")
+            (is (= ["branch-1" "master"] (source.p/branches fresh-source))
+                "branches works again after the dir was deleted, without an instance restart")
+            (is (= "File in branch-1" (source.p/read-file (source.p/snapshot (->source! "branch-1" remote))
+                                                          "file-in-branch-1.txt"))
+                "the new clone reads"))
+          (finally (test-helpers/forget-clones! (:remote-url source))))))))
 
 (deftest stale-cache-recovery-keeps-in-flight-clone-usable-test
   (testing "recovering from a stale cache (a \"Missing commit\" error, e.g. after an upstream force-push) re-clones
@@ -827,41 +782,22 @@
             (is (identical? recovered-git (:git later))
                 "a new source for the same URL and token uses the clone that the recovery made")
             (is (= "File in master" (source.p/read-file (source.p/snapshot later) "master.txt")))
-            (testing "the shutdown hook deletes the stale clone and the fresh clone"
-              (let [deleted (atom [])]
-                (mt/with-dynamic-fn-redefs [git/delete-clone-dir! (fn [^File dir] (swap! deleted conj dir))]
-                  (#'git/delete-clones-at-exit!))
-                (let [deleted-at-exit (into #{} (map #(.getCanonicalPath ^File %)) @deleted)]
-                  ;; This assertion fails when the recovery does not retire the stale clone, in any test order.
-                  (is (contains? deleted-at-exit (.getCanonicalPath (#'git/git-dir (:git source))))
-                      "the stale clone is deleted at exit")
-                  (is (contains? deleted-at-exit (.getCanonicalPath (#'git/git-dir recovered-git)))
-                      "the fresh clone is deleted at exit")))
-              ;; The hook is installed once for each JVM, so an earlier test can make this assertion pass.
-              (is (realized? @#'git/retired-clones-reaper)
-                  "the shutdown hook is installed"))))))))
+            (testing "the stale clone and the fresh clone are in the process root, which the shutdown hook deletes"
+              (let [root (.getCanonicalPath ^File (:dir @(:root (clone-registry/process-registry))))]
+                (is (= root (.getCanonicalPath (.getParentFile (clone-dir source)))))
+                (is (= root (.getCanonicalPath (.getParentFile (clone-dir recovered)))))
+                (is (not= (clone-dir source) (clone-dir recovered)))))))
+        (test-helpers/forget-clones! remote-url)))))
 
 (defn- remote-url
   "The file:// URL of a test 'remote' repo."
   [{:keys [^Git git]}]
   (-> (.getRepository git) .getDirectory .toURI .toURL .toExternalForm))
 
-(defn- clone-siblings
-  "The fresh sibling directories (`<repo-path>-<uuid>`) on disk that stale-cache recoveries made for `url`."
-  [url]
-  (let [^File path (#'git/repo-path {:remote-url url})
-        prefix     (str (.getName path) "-")]
-    (filter #(str/starts-with? (.getName ^File %) prefix) (.listFiles (.getParentFile path)))))
-
 (defn- forget-clones!
-  "Drops `url`'s cached Git instance and retired-clone entries, as a stop that runs no shutdown hook does. Unless
-  `keep-dirs?`, also deletes its clone directory and fresh siblings."
-  [url & {:keys [keep-dirs?]}]
-  (let [^File path (#'git/repo-path {:remote-url url})]
-    (swap! @#'git/jgit dissoc (.getPath path))
-    (swap! @#'git/retired-clones (fn [dirs] (into #{} (remove #(str/starts-with? (str %) (str path))) dirs)))
-    (when-not keep-dirs?
-      (run! #(FileUtils/deleteQuietly ^File %) (cons path (clone-siblings url))))))
+  "Closes and deletes each clone of `url` in the clone registry of this process."
+  [url]
+  (test-helpers/forget-clones! url))
 
 (defn- recover-stale-clone!
   "Takes a snapshot of `source` with one injected \"Missing commit\" error, so that a stale-cache recovery runs.
@@ -875,11 +811,6 @@
                                                   (real-snapshot* s)))]
       (u/prog1 (source.p/snapshot source)
         (is @thrown? "precondition: the stale-cache recovery ran")))))
-
-(defn- clone-dir
-  "The directory of the clone that `source` reads."
-  ^File [{:keys [^Git git]}]
-  (.getDirectory (.getRepository git)))
 
 (defn- metabase-git-dir
   "The directory under the system temp dir that holds the clones of every process."
@@ -1016,7 +947,8 @@
           (finally (forget-clones! url)))))))
 
 (deftest interrupted-first-use-does-not-fail-waiters-test
-  (testing "when the thread of a shared first use is interrupted, a waiter that nobody interrupted makes its own attempt"
+  (testing "when the thread that started a first use is interrupted, its clone goes on, and a waiter that nobody
+            interrupted gets a source from that clone"
     (mt/with-temp-dir [remote-dir nil]
       (let [url      (remote-url (init-remote! remote-dir))
             real     (mt/original-fn #'git/clone-repository!)
@@ -1034,12 +966,10 @@
                   _      (is (true? (deref in-clone 5000 false)) "precondition: the first use is in its clone")
                   waiter (future (use!))]
               (Thread/sleep 200)
-              (future-cancel owner)
+              (is (true? (future-cancel owner)) "precondition: the first use is interrupted while it waits")
               (let [result (deref waiter 15000 ::timeout)]
                 (is (instance? Git (:git result)) (str "the waiter gets a source, not: " (pr-str result))))
-              (is (= 2 @attempts) "the waiter makes its own clone attempt")
-              (is (not (contains? @@#'git/first-uses (.getPath ^File (#'git/repo-path {:remote-url url}))))
-                  "no first-use entry stays")))
+              (is (= 1 @attempts) "the interrupt does not stop the clone, so the waiter needs no clone of its own")))
           (finally (forget-clones! url)))))))
 
 (deftest concurrent-first-uses-share-a-network-timeout-test
@@ -1098,48 +1028,52 @@
                   "both snapshots recover and read")))
           (is (= 2 (count @threw-in)) "precondition: each thread ran a stale-cache recovery")
           (is (= 1 @clones) "the recoveries clone once")
-          (is (= 1 (count (clone-siblings url))) "one fresh sibling exists on disk")
+          (is (= 2 (count (test-helpers/clone-dirs url)))
+              "two clones exist on disk: the clone that the recoveries retired, which the source holds, and one new clone")
           (finally (forget-clones! url)))))))
 
 (deftest first-use-after-hard-stop-following-recovery-test
-  (testing "after a recovery and a stop that runs no shutdown hook, the next first use of the URL removes the fresh
-            sibling and does not open the clone that the recovery found stale"
+  (testing "after a recovery and a stop that runs no shutdown hook, the next process makes its own clone in its own
+            process root, and does not open a clone that the stopped process left"
     (mt/with-temp-dir [remote-dir nil]
-      (let [[source _]  (init-source! "master" remote-dir :files {"master.txt" "File in master"})
-            url         (:remote-url source)
-            ^File path  (#'git/repo-path {:remote-url url})
-            stale-mark  "stale-clone-marker"]
+      (let [[source _]   (init-source! "master" remote-dir :files {"master.txt" "File in master"})
+            url          (:remote-url source)
+            stale-mark   "stale-clone-marker"
+            ;; A second registry under the same directory stands for the next process.
+            next-process (clone-registry/make-registry (metabase-git-dir))
+            path         #(.getCanonicalPath ^File %)]
         (try
-          (recover-stale-clone! source)
-          (spit (io/file path stale-mark) "")
-          (forget-clones! url :keep-dirs? true)
-          (let [later (git/git-source url "master" nil ingest/legal-top-level-paths)]
-            (is (= [] (map #(.getName ^File %) (clone-siblings url)))
-                "no fresh sibling stays on disk")
-            (is (not (.exists (io/file (#'git/git-dir (:git later)) stale-mark)))
-                "the source does not open the stale clone")
-            (is (= "File in master" (source.p/read-file (source.p/snapshot later) "master.txt"))))
-          (finally (forget-clones! url)))))))
+          (let [recovered (recover-stale-clone! source)]
+            (doseq [^File dir [(clone-dir source) (clone-dir recovered)]]
+              (spit (io/file dir stale-mark) "")))
+          (let [{:keys [^File dir git]} (clone-registry/acquire! next-process (clone-registry/new-lease url)
+                                                                 (#'git/clone-job url nil))]
+            (is (not= (path (.getParentFile (clone-dir source))) (path (.getParentFile dir)))
+                "the next process uses its own process root")
+            (is (not (.exists (io/file dir stale-mark)))
+                "the next process does not open a clone that the stopped process left")
+            (is (= "File in master" (git/read-file {:git git :version "master"} "master.txt"))))
+          (finally
+            (clone-registry/shutdown! next-process)
+            (forget-clones! url)))))))
 
 (deftest first-use-after-fresh-clone-deleted-test
-  (testing "if the fresh clone of a recovery is deleted, the next first use does not open a clone that the recovery
-            retired"
+  (testing "if the clone of a recovery is deleted, the next first use clones again, and does not use the clone that the
+            recovery retired"
     (mt/with-temp-dir [remote-dir nil]
       (let [[source _] (init-source! "master" remote-dir :files {"master.txt" "File in master"})
-            url        (:remote-url source)
-            ^File path (#'git/repo-path {:remote-url url})]
+            url        (:remote-url source)]
         (try
-          (recover-stale-clone! source)
-          (let [^File fresh (#'git/git-dir (get @@#'git/jgit (.getPath path)))]
-            (is (not= (str path) (str fresh)) "precondition: the recovery cached a fresh sibling")
+          (let [fresh (clone-dir (recover-stale-clone! source))]
+            (is (not= (clone-dir source) fresh) "precondition: the recovery made a new clone")
             ;; Not FileUtils/deleteDirectory: a JGit gc that the recovery's fetch started can remove gc.log.lock while
             ;; that delete runs, and the delete then throws.
-            (#'git/delete-clone-dir! fresh)
-            (is (not (.exists fresh)) "precondition: the fresh clone is deleted"))
-          (let [later (git/git-source url "master" nil ingest/legal-top-level-paths)]
-            (is (not (contains? (set (map str @@#'git/retired-clones)) (str (#'git/git-dir (:git later)))))
-                "the source does not use a retired clone")
-            (is (= "File in master" (source.p/read-file (source.p/snapshot later) "master.txt"))))
+            (#'clone-registry/delete-dir! fresh)
+            (is (not (.exists fresh)) "precondition: the new clone is deleted")
+            (let [later (git/git-source url "master" nil ingest/legal-top-level-paths)]
+              (is (not= (clone-dir source) (clone-dir later)) "the source does not use the clone that the recovery retired")
+              (is (not= fresh (clone-dir later)) "the source does not use the deleted clone")
+              (is (= "File in master" (source.p/read-file (source.p/snapshot later) "master.txt")))))
           (finally (forget-clones! url)))))))
 
 (deftest ^:parallel credentials-provider-test
@@ -1204,106 +1138,18 @@
 (deftest repo-path-ignores-token-test
   (testing "rotating the token reuses the existing clone instead of cloning into a new directory"
     ;; Credentials are passed per remote command, so the clone does not depend on the token.
-    (is (= (#'git/repo-path {:remote-url "https://example.com/org/repo.git" :token "token-a"})
-           (#'git/repo-path {:remote-url "https://example.com/org/repo.git" :token "token-b"})
-           (#'git/repo-path {:remote-url "https://example.com/org/repo.git" :token nil})))
-    (is (not= (#'git/repo-path {:remote-url "https://example.com/org/repo.git"})
-              (#'git/repo-path {:remote-url "https://example.com/org/other.git"})))))
-
-(deftest uninitialized-clone-is-deleted-with-a-tolerant-delete-test
-  (testing "when a clone has no data, it is deleted with delete-clone-dir!, and the error is the uninitialized-repository
-            error"
-    ;; A fetch can start a JGit gc in the background, which creates and removes gc.log.lock in the clone. A delete that
-    ;; lists the directory first then fails on the file that disappeared. delete-clone-dir! ignores that failure.
     (mt/with-temp-dir [remote-dir nil]
-      (let [[source _] (init-source! "master" remote-dir :files {"master.txt" "File in master"})
-            path       (io/file (System/getProperty "java.io.tmpdir") (str "metabase-git-test-" (random-uuid)))
-            deleted    (atom [])
-            delete!    (mt/original-fn #'git/delete-clone-dir!)]
-        (try
-          (mt/with-dynamic-fn-redefs [git/has-data?        (constantly false)
-                                      git/delete-clone-dir! (fn [^File dir] (swap! deleted conj dir) (delete! dir))]
-            (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Cannot connect to uninitialized repository"
-                                  (#'git/open-checked! path {:remote-url (:remote-url source)}))))
-          (is (= [path] @deleted))
-          (is (not (.exists path)) "the clone directory is gone")
-          (finally (FileUtils/deleteQuietly path)))))))
-
-(defn- chflags!
-  "Runs `chflags` with `flag` on `file` and returns its exit code, or nil when this system has no `chflags` command."
-  [flag ^File file]
-  (try
-    (.waitFor (.start (ProcessBuilder. ^java.util.List ["chflags" flag (str file)])))
-    (catch java.io.IOException _
-      nil)))
-
-(defn- immutable-flag-skip-reason!
-  "Returns nil when `chflags uchg` makes a file in the system temp dir immutable; otherwise the reason it does not."
-  []
-  (let [probe-dir (io/file (System/getProperty "java.io.tmpdir") (str "metabase-git-test-chflags-" (random-uuid)))
-        probe     (io/file probe-dir "probe")]
-    (try
-      (io/make-parents probe)
-      (spit probe "x")
-      (let [exit (chflags! "uchg" probe)]
-        (cond
-          (nil? exit)  "this system has no chflags command"
-          (zero? exit) nil
-          :else        "the file system of the temp dir does not support the uchg flag"))
-      (finally
-        (chflags! "nouchg" probe)
-        (FileUtils/deleteQuietly probe-dir)))))
-
-(deftest uninitialized-clone-with-an-undeletable-file-test
-  (testing "when a clone has no data and the delete cannot remove one of its files, the error is still the
-            uninitialized-repository error"
-    ;; Only an immutable flag stops the delete of commons-io: it makes a read-only directory writable first. The flag
-    ;; needs chflags (macOS and BSD); chattr +i on Linux needs root. So the test runs only where chflags exists and
-    ;; the file system supports the flag.
-    (if-let [skip-reason (immutable-flag-skip-reason!)]
-      (log/infof "Skipping uninitialized-clone-with-an-undeletable-file-test: %s" skip-reason)
-      (mt/with-temp-dir [remote-dir nil]
-        (let [[source _] (init-source! "master" remote-dir :files {"master.txt" "File in master"})
-              path       (io/file (System/getProperty "java.io.tmpdir") (str "metabase-git-test-" (random-uuid)))
-              locked     (io/file path "locked" "f")]
+      (mt/with-temp-dir [other-dir nil]
+        (let [url       (remote-url (init-remote! remote-dir))
+              other-url (remote-url (init-remote! other-dir))
+              source    #(git/git-source %1 "master" %2 ingest/legal-top-level-paths)]
           (try
-            (mt/with-dynamic-fn-redefs [git/has-data? (fn [_]
-                                                        (io/make-parents locked)
-                                                        (spit locked "x")
-                                                        (is (zero? (chflags! "uchg" locked)) "precondition: the file is immutable")
-                                                        false)]
-              (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Cannot connect to uninitialized repository"
-                                    (#'git/open-checked! path {:remote-url (:remote-url source)}))))
+            (let [dirs (map (comp clone-dir #(source url %)) ["token-a" "token-b" nil])]
+              (is (apply = dirs) "the sources of one URL share one clone, whatever their token")
+              (is (str/starts-with? (.getName ^File (first dirs)) (str (-> url buddy-hash/sha1 codecs/bytes->hex) "-"))
+                  "the name of the clone directory depends on the URL alone")
+              (is (not= (first dirs) (clone-dir (source other-url nil)))
+                  "another URL has another clone"))
             (finally
-              (chflags! "nouchg" locked)
-              (FileUtils/deleteQuietly path))))))))
-
-(deftest shutdown-hook-keeps-clones-in-place-test
-  (testing "the shutdown hook does not delete a clone that lives at its repo-path"
-    (mt/with-temp-dir [remote-dir nil]
-      (let [[source _remote] (init-source! "master" remote-dir :files {"master.txt" "File in master"})
-            clone-dir        (.getCanonicalPath (#'git/git-dir (:git source)))
-            deleted          (atom [])]
-        (is (contains? @@#'git/jgit (.getPath ^File (#'git/repo-path source)))
-            "precondition: the clone is cached at its repo-path")
-        (mt/with-dynamic-fn-redefs [git/delete-clone-dir! (fn [^File dir] (swap! deleted conj dir))]
-          (#'git/delete-clones-at-exit!))
-        (is (not (contains? (into #{} (map #(.getCanonicalPath ^File %)) @deleted) clone-dir)))))))
-
-(deftest stale-clone-and-leftover-siblings-are-deleted-with-a-tolerant-delete-test
-  (testing "a first use deletes a leftover sibling and the stale clone at the repo path with delete-clone-dir!"
-    (mt/with-temp-dir [remote-dir nil]
-      (let [[source _] (init-source! "master" remote-dir :files {"master.txt" "File in master"})
-            url        (:remote-url source)
-            ^File path (#'git/repo-path {:remote-url url})
-            leftover   (io/file (.getParentFile path) (str (.getName path) "-leftover"))
-            deleted    (atom [])
-            delete!    (mt/original-fn #'git/delete-clone-dir!)]
-        (try
-          ;; As after a process that stopped with no shutdown hook: a clone at the path, a fresh sibling, no cache.
-          (forget-clones! url :keep-dirs? true)
-          (.mkdirs leftover)
-          (mt/with-dynamic-fn-redefs [git/delete-clone-dir! (fn [^File dir] (swap! deleted conj (str dir)) (delete! dir))]
-            (#'git/first-use! path {:remote-url url}))
-          (is (= #{(str leftover) (str path)} (set @deleted)))
-          (finally (forget-clones! url)))))))
+              (forget-clones! url)
+              (forget-clones! other-url))))))))

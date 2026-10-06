@@ -9,7 +9,6 @@
    [metabase-enterprise.remote-sync.models.remote-sync-task :as remote-sync.task]
    [metabase-enterprise.remote-sync.settings :as remote-sync.settings]
    [metabase-enterprise.remote-sync.source :as source]
-   [metabase-enterprise.remote-sync.source.git :as git]
    [metabase-enterprise.remote-sync.source.protocol :as source.p]
    [metabase-enterprise.remote-sync.spec :as spec]
    [metabase-enterprise.remote-sync.test-helpers :as test-helpers]
@@ -20,9 +19,7 @@
    [metabase.settings.core :as setting]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
-   [toucan2.core :as t2])
-  (:import
-   (java.io File)))
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -708,16 +705,15 @@
 (deftest finish-remote-config!-default-branch-does-not-clone-test
   (testing "filling in a blank branch asks the remote for its HEAD without cloning the repository"
     (mt/with-temp-dir [remote-dir nil]
-      (let [url             (test-helpers/init-local-git-remote! remote-dir :branches ["develop"])
-            ^File clone-dir (#'git/repo-path {:remote-url url})]
+      (let [url (test-helpers/init-local-git-remote! remote-dir :branches ["develop"])]
         (mt/with-temporary-setting-values [remote-sync-url    url
                                            remote-sync-token  nil
                                            remote-sync-type   :read-write
                                            remote-sync-branch ""]
-          (is (not (.exists clone-dir)) "Precondition: no local clone yet")
+          (is (empty? (test-helpers/clone-dirs url)) "Precondition: no local clone yet")
           (is (nil? (impl/finish-remote-config!)))
           (is (= "master" (setting/get :remote-sync-branch)) "the remote's default branch is recorded")
-          (is (not (.exists clone-dir)) "saving settings must not clone the repository"))))))
+          (is (empty? (test-helpers/clone-dirs url)) "saving settings must not clone the repository"))))))
 
 (deftest finish-remote-config!-starts-import-in-read-only-mode-test
   (testing "finish-remote-config! starts import in read-only mode even when collection exists"

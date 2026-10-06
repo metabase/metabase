@@ -130,15 +130,14 @@
 (deftest test-connection-does-not-clone-test
   (testing "POST /api/ee/remote-sync/test-connection lists the remote's branches without cloning it"
     (mt/with-temp-dir [remote-dir nil]
-      (let [url                  (test-helpers/init-local-git-remote! remote-dir :branches ["develop"])
-            ^java.io.File clone  (#'source.git/repo-path {:remote-url url})]
+      (let [url (test-helpers/init-local-git-remote! remote-dir :branches ["develop"])]
         (mt/with-temporary-setting-values [remote-sync-url    nil
                                            remote-sync-token  nil
                                            remote-sync-branch nil]
           (is (= {:status "success"}
                  (mt/user-http-request :crowberto :post 200 "ee/remote-sync/test-connection"
                                        {:remote-sync-url url})))
-          (is (not (.exists clone)) "Test Connection must not clone the repository"))))))
+          (is (empty? (test-helpers/clone-dirs url)) "Test Connection must not clone the repository"))))))
 
 (deftest test-connection-requires-superuser-test
   (testing "POST /api/ee/remote-sync/test-connection requires superuser permissions"
@@ -190,18 +189,17 @@
 (deftest branches-endpoint-does-not-clone-test
   (testing "GET /api/ee/remote-sync/branches lists the remote's branches without cloning it"
     (mt/with-temp-dir [remote-dir nil]
-      (let [url                 (test-helpers/init-local-git-remote! remote-dir :branches ["develop"])
-            ^java.io.File clone (#'source.git/repo-path {:remote-url url})]
+      (let [url (test-helpers/init-local-git-remote! remote-dir :branches ["develop"])]
         (try
           (mt/with-temporary-setting-values [remote-sync-url    url
                                              remote-sync-token  nil
                                              remote-sync-branch "master"]
-            (is (not (.exists clone)) "Precondition: no local clone yet")
+            (is (empty? (test-helpers/clone-dirs url)) "Precondition: no local clone yet")
             (is (= {:items ["develop" "master"]}
                    (mt/user-http-request :crowberto :get 200 "ee/remote-sync/branches")))
-            (is (not (.exists clone)) "Listing the branches must not clone the repository"))
+            (is (empty? (test-helpers/clone-dirs url)) "Listing the branches must not clone the repository"))
           (finally
-            (org.apache.commons.io.FileUtils/deleteQuietly clone)))))))
+            (test-helpers/forget-clones! url)))))))
 
 (deftest branches-endpoint-handles-repository-errors-test
   (testing "GET /api/ee/remote-sync/branches handles git repository errors"
@@ -2445,22 +2443,13 @@
             (is (= tasks-before (t2/count :model/RemoteSyncTask))
                 "no NEW RemoteSyncTask row should be created when the guard fires")))))))
 
-(defn- forget-clone!
-  "Closes and removes the cached Git instance of `url` and deletes its clone directory."
-  [url]
-  (let [^java.io.File path (#'source.git/repo-path {:remote-url url})]
-    (some-> ^org.eclipse.jgit.api.Git (get @@#'source.git/jgit (.getPath path)) .close)
-    (swap! @#'source.git/jgit dissoc (.getPath path))
-    (org.apache.commons.io.FileUtils/deleteQuietly path)))
-
 (deftest create-branch-and-stash-refused-by-the-task-guard-do-not-clone-test
   (testing "POST /api/ee/remote-sync/create-branch and /stash, refused because a task runs, do not clone the repository"
     (doseq [[endpoint body] [["create-branch" {:name "feature-x"}]
                              ["stash"         {:new_branch "stash-branch" :message "stash msg"}]]]
       (testing endpoint
         (mt/with-temp-dir [remote-dir nil]
-          (let [url                 (test-helpers/init-local-git-remote! remote-dir :branches ["develop"])
-                ^java.io.File clone (#'source.git/repo-path {:remote-url url})]
+          (let [url (test-helpers/init-local-git-remote! remote-dir :branches ["develop"])]
             (try
               (mt/with-temp [:model/RemoteSyncTask _ {:sync_task_type "import"
                                                       :initiated_by   (mt/user->id :rasta)
@@ -2470,12 +2459,12 @@
                                                    remote-sync-token  nil
                                                    remote-sync-branch "master"
                                                    remote-sync-type   :read-write]
-                  (is (not (.exists clone)) "Precondition: no local clone yet")
+                  (is (empty? (test-helpers/clone-dirs url)) "Precondition: no local clone yet")
                   (is (re-find #"Remote sync task in progress"
                                (str (mt/user-http-request :crowberto :post 400 (str "ee/remote-sync/" endpoint) body))))
-                  (is (not (.exists clone)) "A refused request must not clone the repository")))
+                  (is (empty? (test-helpers/clone-dirs url)) "A refused request must not clone the repository")))
               (finally
-                (forget-clone! url)))))))))
+                (test-helpers/forget-clones! url)))))))))
 
 (deftest create-branch-and-stash-without-url-test
   (testing "POST /api/ee/remote-sync/create-branch and /stash return 400 when no URL is configured"

@@ -5,14 +5,13 @@
    [metabase-enterprise.remote-sync.guards :as guards]
    [metabase-enterprise.remote-sync.impl :as impl]
    [metabase-enterprise.remote-sync.settings :as settings]
+   [metabase-enterprise.remote-sync.source.clone-registry :as clone-registry]
    [metabase-enterprise.remote-sync.source.git :as git]
    [metabase-enterprise.remote-sync.test-helpers :as test-helpers]
    [metabase.collections.models.collection.root :as collection.root]
    [metabase.settings.core :as setting]
    [metabase.test :as mt])
   (:import
-   (java.io File)
-   (org.apache.commons.io FileUtils)
    (org.eclipse.jgit.api Git)))
 
 (set! *warn-on-reflection* true)
@@ -236,16 +235,15 @@
   (testing "validating git settings lists the remote's branches without cloning it"
     (mt/with-temp-dir [remote-dir nil]
       (let [url                (test-helpers/init-local-git-remote! remote-dir :branches ["develop"])
-            ^File clone-dir    (#'git/repo-path {:remote-url url})
             check!             (fn [branch]
                                  (settings/check-git-settings! {:remote-sync-url    url
                                                                 :remote-sync-token  nil
                                                                 :remote-sync-branch branch
                                                                 :remote-sync-type   :read-only}))]
-        (is (not (.exists clone-dir)) "Precondition: no local clone yet")
+        (is (empty? (test-helpers/clone-dirs url)) "Precondition: no local clone yet")
         (is (some? (check! "develop")))
         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Invalid branch name" (check! "nope")))
-        (is (not (.exists clone-dir)) "Checking settings must not clone the repository")))))
+        (is (empty? (test-helpers/clone-dirs url)) "Checking settings must not clone the repository")))))
 
 (deftest check-git-settings-rejects-empty-repository-test
   (testing "An uninitialized remote (no branches) is still rejected, as it was when the check cloned"
@@ -271,15 +269,6 @@
     (is (= (sort branches) (git/branches {:remote-url url})) "Precondition: the remote has only the given branches")
     url))
 
-(defn- forget-clone!
-  "Closes and removes the cached Git instance of `url` and deletes its clone directory, so that a test leaves no
-  clone."
-  [url]
-  (let [^File path (#'git/repo-path {:remote-url url})]
-    (some-> ^Git (get @@#'git/jgit (.getPath path)) .close)
-    (swap! @#'git/jgit dissoc (.getPath path))
-    (FileUtils/deleteQuietly path)))
-
 (deftest check-git-settings-accepts-only-cloneable-remote-without-head-test
   (testing "a remote whose HEAD names a missing branch is either rejected by the check or can be cloned"
     (mt/with-temp-dir [remote-dir nil]
@@ -299,7 +288,7 @@
                                 (catch Exception e (ex-message e))))]
             (is (nil? clone-error) "A remote that the settings check accepts can be cloned"))
           (finally
-            (forget-clone! url)))))))
+            (test-helpers/forget-clones! url)))))))
 
 (deftest blank-branch-read-only-save-of-remote-without-head-test
   (testing "a read-only save with a blank branch of a remote whose HEAD names a missing branch succeeds, and the setup
@@ -330,7 +319,7 @@
             (is (= "refs/heads/alpha" (.getFullBranch (.getRepository ^Git (:git (git/git-source url "alpha" nil nil)))))
                 "A clone of the remote gets the same branch"))
           (finally
-            (forget-clone! url)))))))
+            (test-helpers/forget-clones! url)))))))
 
 (deftest settings-save-rejects-wrong-token-with-cached-clone-test
   (testing "a read-write settings save with a wrong token fails even when this process already holds a clone of the URL"
@@ -338,7 +327,6 @@
     ;; the new token. A file:// remote checks no credentials, so the remote command seam rejects any other token.
     (mt/with-temp-dir [remote-dir nil]
       (let [url                 (test-helpers/init-local-git-remote! remote-dir)
-            ^File clone-dir     (#'git/repo-path {:remote-url url})
             good-token          "good-token"
             call-remote-command (mt/original-fn #'git/call-remote-command)]
         (mt/with-dynamic-fn-redefs [git/call-remote-command (fn [command {:keys [token] :as args}]
@@ -347,7 +335,7 @@
                                                               (call-remote-command command args))]
           (try
             (git/git-source url "master" good-token nil)
-            (is (contains? @@#'git/jgit (.getPath clone-dir))
+            (is (seq (test-helpers/clone-dirs url))
                 "Precondition: this process holds a clone of the URL")
             (mt/with-temporary-setting-values [:remote-sync-url    nil
                                                :remote-sync-token  nil
@@ -361,10 +349,10 @@
               (is (nil? (settings/remote-sync-url)) "The rejected settings are not saved")
               (is (nil? (settings/remote-sync-token)) "The rejected token is not saved"))
             (finally
-              (forget-clone! url))))
+              (test-helpers/forget-clones! url))))
         (testing "the test leaves no clone directory and no cached Git instance for the URL"
-          (is (not (.exists clone-dir)))
-          (is (not (contains? @@#'git/jgit (.getPath clone-dir)))))))))
+          (is (empty? (test-helpers/clone-dirs url)))
+          (is (empty? (get-in @(:state (clone-registry/process-registry)) [url :generations]))))))))
 
 (deftest blank-branch-save-asks-the-remote-once-test
   (testing "a settings save with a blank branch asks the remote one time, and saves the default branch of the remote"

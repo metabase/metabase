@@ -5,6 +5,7 @@
    [clojure.string :as str]
    [clojure.test :as t]
    [metabase-enterprise.remote-sync.source :as source]
+   [metabase-enterprise.remote-sync.source.clone-registry :as clone-registry]
    [metabase-enterprise.remote-sync.source.protocol :as source.p]
    [metabase-enterprise.serialization.v2.ingest :as ingest]
    [metabase-enterprise.transforms-python.core :as transforms-python]
@@ -12,6 +13,8 @@
    [metabase.util :as u]
    [toucan2.core :as t2])
   (:import
+   (java.io File)
+   (org.apache.commons.io FileUtils)
    (org.eclipse.jgit.api Git)
    (org.eclipse.jgit.lib PersonIdent)))
 
@@ -854,3 +857,28 @@ serdes/meta:
       (doseq [^String b branches]
         (-> (.branchCreate git) (.setName b) (.call))))
     (str "file://" (.getAbsolutePath (io/file dir)))))
+
+(defn clone-dirs
+  "The clone directories of `url` under `metabase-git` in the system temp dir: in each process root, and in the formats
+  of earlier versions (`<sha1 of the URL>`, with or without a suffix)."
+  [url]
+  (let [base   (io/file (System/getProperty "java.io.tmpdir") "metabase-git")
+        prefix (#'clone-registry/url-key url)
+        named? #(str/starts-with? (.getName ^File %) prefix)
+        dirs   (fn [^File dir] (filter #(.isDirectory ^File %) (.listFiles dir)))]
+    (concat (filter named? (dirs base))
+            (for [^File root (dirs base)
+                  :when      (str/starts-with? (.getName root) "p-")
+                  dir        (dirs root)
+                  :when      (named? dir)]
+              dir))))
+
+(defn forget-clones!
+  "Closes and deletes each clone of `url` in the clone registry of this process, and removes them from the registry, so
+  that a test leaves no clone of `url`. The registry keeps the next generation number of `url`, so that no later clone
+  uses the directory of an earlier one."
+  [url]
+  (let [[old _] (swap-vals! (:state (clone-registry/process-registry)) update url select-keys [:next])]
+    (doseq [[_ {:keys [^java.lang.AutoCloseable git dir]}] (get-in old [url :generations])]
+      (.close git)
+      (FileUtils/deleteQuietly dir))))
