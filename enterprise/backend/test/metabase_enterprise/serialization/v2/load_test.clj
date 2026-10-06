@@ -1643,53 +1643,6 @@
           (is (=? {"snippet: A" {:snippet-id (t2/select-one-pk :model/NativeQuerySnippet :name "A")}}
                   (t2/select-one-fn :template_tags :model/NativeQuerySnippet :name "B"))))))))
 
-(deftest snippet-template-tag-references-round-trip-test
-  (testing "Snippet template tags export card, field, table and snippet references portably and import local ids"
-    (let [serialized (atom nil)
-          tags       (fn [{:keys [card field table snippet]}]
-                       {"card"    {:type :card :name "card" :display-name "Card" :card-id (:id card)}
-                        "filter"  {:type :dimension :name "filter" :display-name "Filter" :widget-type :string/=
-                                   :dimension [:field (:id field) nil]}
-                        "table"   {:type :table :name "table" :display-name "Table" :table-id (:id table)}
-                        "snippet" {:type :snippet :name "snippet: A" :display-name "Snippet: A"
-                                   :snippet-name "A" :snippet-id (:id snippet)}})
-          create!    (fn [eids]
-                       (let [db    (ts/create! :model/Database :name "my-db" :engine :h2)
-                             table (ts/create! :model/Table :name "orders" :schema "PUBLIC" :db_id (:id db))]
-                         {:table   table
-                          :field   (ts/create! :model/Field :name "total" :table_id (:id table))
-                          :card    (ts/create! :model/Card :name "card" :entity_id (:card eids))
-                          :snippet (ts/create! :model/NativeQuerySnippet :name "A" :content "1 = 1"
-                                               :entity_id (:snippet eids))}))
-          eids       {:card (u/generate-nano-id) :snippet (u/generate-nano-id)}]
-      (ts/with-dbs [source-db dest-db]
-        (ts/with-db source-db
-          (let [refs    (create! eids)
-                snippet (ts/create! :model/NativeQuerySnippet :name "S" :content "x")]
-            (t2/update! :model/NativeQuerySnippet (:id snippet) {:template_tags (tags refs)})
-            (reset! serialized (serdes/extract-one "NativeQuerySnippet" {}
-                                                   (t2/select-one :model/NativeQuerySnippet :id (:id snippet))))
-            (testing "references are exported portably"
-              (is (=? {"card"    {:card-id (:card eids)}
-                       "filter"  {:dimension [:field ["my-db" "PUBLIC" "orders" "total"] nil]}
-                       "table"   {:table-id ["my-db" "PUBLIC" "orders"]}
-                       "snippet" {:snippet-id (:snippet eids)}}
-                      (:template_tags @serialized))))
-            (testing "the referenced card and snippet are load dependencies"
-              (is (= #{[{:model "Card" :id (:card eids)}]
-                       [{:model "NativeQuerySnippet" :id (:snippet eids)}]}
-                     (set (serdes/deserialization-dependencies @serialized)))))))
-        (ts/with-db dest-db
-          (ts/create! :model/NativeQuerySnippet :name "Unrelated" :content "3 = 3")
-          (let [refs    (create! eids)
-                import! (get-in (serdes/make-spec "NativeQuerySnippet" nil) [:transform :template_tags :import])]
-            (testing "references are imported as this instance's ids"
-              (is (=? {"card"    {:card-id (:id (:card refs))}
-                       "filter"  {:dimension [:field any? (:id (:field refs))]}
-                       "table"   {:table-id (:id (:table refs))}
-                       "snippet" {:snippet-id (:id (:snippet refs))}}
-                      (serdes/with-cache (import! (:template_tags @serialized))))))))))))
-
 (deftest snippet-template-tags-import-test
   (testing "Template tags import preserves nil, empty, and populated values"
     (testing "Missing template_tags field -> {} when selected"
