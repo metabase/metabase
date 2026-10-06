@@ -32,7 +32,7 @@ describe("dashboard filters auto-wiring", () => {
   });
 
   describe("parameter mapping", () => {
-    it("should wire parameters to cards with matching fields", () => {
+    it("should undo auto-wiring, not wire cards that already have a parameter, and wire cards with matching fields", () => {
       createDashboardWithCards({ cards }).then((dashboardId) => {
         H.visitDashboard(dashboardId);
       });
@@ -40,6 +40,46 @@ describe("dashboard filters auto-wiring", () => {
       H.editDashboard();
 
       H.setFilter("Text or Category", "Is");
+
+      H.selectDashboardFilter(H.getDashboardCard(0), "Name");
+
+      H.getDashboardCard(0).within(() => {
+        cy.findByText("User.Name").should("exist");
+      });
+
+      H.undoToast()
+        .should(
+          "contain",
+          "Auto-connect this filter to all questions containing “User.Name”?",
+        )
+        .findByRole("button", { name: "Auto-connect" })
+        .click();
+
+      H.getDashboardCard(0).findByText("User.Name").should("exist");
+      H.getDashboardCard(1).findByText("User.Name").should("exist");
+
+      cy.log("verify undo functionality");
+      H.undoToast().findByRole("button", { name: "Undo" }).click();
+
+      H.getDashboardCard(0).findByText("User.Name").should("exist");
+      H.getDashboardCard(1).findByText("Select…").should("exist");
+
+      H.selectDashboardFilter(H.getDashboardCard(1), "Address");
+
+      H.getDashboardCard(0).within(() => {
+        cy.findByText("User.Name").should("exist");
+      });
+
+      H.getDashboardCard(1).within(() => {
+        cy.findByText("User.Address").should("exist");
+      });
+
+      H.undoToast().should("not.exist");
+
+      cy.log("verify auto-wiring from a state without mappings");
+
+      removeFilterFromDashCard(1);
+      removeFilterFromDashCard(0);
 
       H.selectDashboardFilter(H.getDashboardCard(0), "Name");
 
@@ -103,51 +143,6 @@ describe("dashboard filters auto-wiring", () => {
       goToFilterMapping();
 
       H.getDashboardCard(1).findByText("User.Name").should("exist");
-    });
-
-    it("should undo auto-wiring and not wire parameters to cards that already have a parameter, despite matching fields", () => {
-      createDashboardWithCards({ cards }).then((dashboardId) => {
-        H.visitDashboard(dashboardId);
-      });
-
-      H.editDashboard();
-
-      H.setFilter("Text or Category", "Is");
-
-      H.selectDashboardFilter(H.getDashboardCard(0), "Name");
-
-      H.getDashboardCard(0).within(() => {
-        cy.findByText("User.Name").should("exist");
-      });
-
-      H.undoToast()
-        .should(
-          "contain",
-          "Auto-connect this filter to all questions containing “User.Name”?",
-        )
-        .findByRole("button", { name: "Auto-connect" })
-        .click();
-
-      H.getDashboardCard(0).findByText("User.Name").should("exist");
-      H.getDashboardCard(1).findByText("User.Name").should("exist");
-
-      cy.log("verify undo functionality");
-      H.undoToast().findByRole("button", { name: "Undo" }).click();
-
-      H.getDashboardCard(0).findByText("User.Name").should("exist");
-      H.getDashboardCard(1).findByText("Select…").should("exist");
-
-      H.selectDashboardFilter(H.getDashboardCard(1), "Address");
-
-      H.getDashboardCard(0).within(() => {
-        cy.findByText("User.Name").should("exist");
-      });
-
-      H.getDashboardCard(1).within(() => {
-        cy.findByText("User.Address").should("exist");
-      });
-
-      H.undoToast().should("not.exist");
     });
 
     it("should not suggest to wire parameters to cards that don't have a matching field", () => {
@@ -538,7 +533,7 @@ describe("dashboard filters auto-wiring", () => {
   });
 
   describe("dismiss toasts", () => {
-    it("should dismiss auto-wire toasts on filter removal", () => {
+    it("should dismiss auto-wire toasts on filter removal and on card removal", () => {
       createDashboardWithCards({ cards }).then((dashboardId) => {
         H.visitDashboard(dashboardId);
       });
@@ -559,14 +554,9 @@ describe("dashboard filters auto-wiring", () => {
       removeFilterFromDashboard();
 
       H.undoToast().should("not.exist");
-    });
 
-    it("should dismiss auto-wire toasts on card removal", () => {
-      createDashboardWithCards({ cards }).then((dashboardId) => {
-        H.visitDashboard(dashboardId);
-      });
+      cy.log("verify toasts are dismissed on card removal");
 
-      H.editDashboard();
       H.setFilter("Text or Category", "Is");
 
       H.selectDashboardFilter(H.getDashboardCard(0), "Name");
@@ -579,7 +569,7 @@ describe("dashboard filters auto-wiring", () => {
         .contains("Auto-connect “Orders Model” to “Text”?")
         .should("be.visible");
 
-      H.removeDashboardCard(2);
+      H.removeDashboardCard(3);
 
       H.undoToastList()
         .should("have.length", 1)
