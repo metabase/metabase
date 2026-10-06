@@ -51,7 +51,7 @@ export function ActionSettingsPage() {
   const isLoading = isLoadingAction || isLoadingDatabase;
   const error = actionError ?? databaseError;
 
-  if (isLoading || error != null || action == null) {
+  if (isLoading || error != null || action == null || database == null) {
     return (
       <Center h="100%">
         <LoadingAndErrorWrapper loading={isLoading} error={error} />
@@ -68,7 +68,7 @@ export function ActionSettingsPage() {
         {isAdmin && isPublicSharingEnabled && (
           <PublicSharingSection
             action={action}
-            canMakePublic={database != null && hasActionsEnabled(database)}
+            canMakePublic={hasActionsEnabled(database)}
           />
         )}
         <SuccessMessageSection

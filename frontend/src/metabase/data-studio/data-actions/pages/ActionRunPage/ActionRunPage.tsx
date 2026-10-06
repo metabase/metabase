@@ -29,7 +29,7 @@ export function ActionRunPage() {
   const isLoading = isLoadingAction || isLoadingDatabase;
   const error = actionError ?? databaseError;
 
-  if (isLoading || error != null || action == null) {
+  if (isLoading || error != null || action == null || database == null) {
     return (
       <Center h="100%">
         <LoadingAndErrorWrapper loading={isLoading} error={error} />
@@ -37,7 +37,7 @@ export function ActionRunPage() {
     );
   }
 
-  const canRun = database != null && hasActionsEnabled(database);
+  const canRun = hasActionsEnabled(database);
 
   return (
     <PageContainer data-testid="action-run">
