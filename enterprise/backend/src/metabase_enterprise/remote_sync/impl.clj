@@ -504,10 +504,33 @@
       :else
       {:ingestable ingestable :deleted-rsos deleted-rsos})))
 
+(def ^:private collection-content-model-keys
+  "The models that the ledger tracks by entity id and whose instances a Collection holds by `collection_id`."
+  (into []
+        (keep (fn [[model-key {:keys [identity tracking]}]]
+                (when (and (= :entity-id identity)
+                           (= :collection_id (get-in tracking [:field-mappings :model_collection_id])))
+                  model-key)))
+        spec/remote-sync-specs))
+
+(defn- collection-contents
+  "The Collections `collection-ids` and their descendants, and the instances of [[collection-content-model-keys]] in
+  them, as a map of model key to a set of ids."
+  [collection-ids]
+  (if (empty? collection-ids)
+    {}
+    (let [subtree (vec (remote-sync.db/subtree-collection-ids-of-ids (vec collection-ids)))]
+      (into {:model/Collection (set subtree)}
+            (keep (fn [model-key]
+                    (let [ids (remote-sync.db/ids-in-collections model-key subtree)]
+                      (when (seq ids)
+                        [model-key ids]))))
+            collection-content-model-keys))))
+
 (defn- incremental-load-snapshot!
   "Applies an incremental `plan` from [[incremental-import-plan]] or [[import-merged!]]: loads only its
-  added/modified entities, deletes only those genuinely removed and their delete closure (see
-  [[delete-with-closure!]]), and reconciles just those rows of the RemoteSyncObject table — leaving everything else
+  added/modified entities, deletes only those genuinely removed, the contents of each removed Collection, and their
+  delete closure (see [[delete-with-closure!]]), and reconciles just those rows of the RemoteSyncObject table — leaving everything else
   untouched. Runs `finalize!` inside the reconcile transaction, then logs success and returns [[import!]]'s
   `:success` result map carrying `snapshot-version`. The caller decides whether an incremental load is safe; this
   assumes the plan is valid.
@@ -544,7 +567,11 @@
           (t2/with-transaction [_conn]
             ;; The closure runs after the load. A Card file with no `dashboard_id` does not clear the old value, so
             ;; the closure still holds a Card that the remote moved out of a deleted Dashboard.
-            (let [{:keys [deleted] :as result} (delete-with-closure! deletes (:by-entity-id imported-data))
+            ;; The before-delete hook of a Collection also deletes entities that are not in `deletes` (an archived
+            ;; Card, for example), so the delete set holds the contents of each deleted Collection, and their rows and
+            ;; search entries go too. Read after the load: an entity that the remote moved out is not in the contents.
+            (let [delete-set   (merge-with into deletes (collection-contents (:model/Collection deletes)))
+                  {:keys [deleted] :as result} (delete-with-closure! delete-set (:by-entity-id imported-data))
                   closure-keys (for [[model-key ids] deleted
                                      :let [model-type (:model-type (spec/spec-for-model-key model-key))]
                                      id ids]
@@ -594,29 +621,6 @@
                     (when-let [ids (seq (remote-sync.db/ids-by-entity-ids model-key (set eids)))]
                       [model-key (set ids)])))))
         (u/group-by first second (map last ks))))
-
-(def ^:private collection-content-model-keys
-  "The models that the ledger tracks by entity id and whose instances a Collection holds by `collection_id`."
-  (into []
-        (keep (fn [[model-key {:keys [identity tracking]}]]
-                (when (and (= :entity-id identity)
-                           (= :collection_id (get-in tracking [:field-mappings :model_collection_id])))
-                  model-key)))
-        spec/remote-sync-specs))
-
-(defn- collection-contents
-  "The Collections `collection-ids` and their descendants, and the instances of [[collection-content-model-keys]] in
-  them, as a map of model key to a set of ids."
-  [collection-ids]
-  (if (empty? collection-ids)
-    {}
-    (let [subtree (vec (remote-sync.db/subtree-collection-ids-of-ids (vec collection-ids)))]
-      (into {:model/Collection (set subtree)}
-            (keep (fn [model-key]
-                    (let [ids (remote-sync.db/ids-in-collections model-key subtree)]
-                      (when (seq ids)
-                        [model-key ids]))))
-            collection-content-model-keys))))
 
 (defn- delete-closure-conflicts
   "The conflicts of a merge pull that deletes the local entities `deleted-ids` (a map of model key to a set of ids)
