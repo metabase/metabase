@@ -891,6 +891,8 @@
   (compile! escape-chars context))
 
 (defn- postgres-full-text-search-match [[lhs rhs] context]
+  (check-identifier-form lhs)
+  (check-identifier-form rhs)
   (compile! lhs context)
   (append-sql! context " @@ ")
   (compile! rhs context))

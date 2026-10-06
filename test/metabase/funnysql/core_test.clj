@@ -1156,3 +1156,13 @@
          (funnysql/format {:drop-table [:table]} :postgres)))
   (is (= ["DROP TABLE IF EXISTS \"table\""]
          (funnysql/format {:drop-table [:if-exists :table]} :postgres))))
+
+(deftest ^:parallel postgres-full-text-search-match-test
+  (is (= ["\"search_vector\" @@ \"query\""]
+         (funnysql/format [::funnysql/postgres-full-text-search-match :search_vector :query] :postgres)))
+  (testing "an argument that is not an identifier is rejected"
+    (are [lhs rhs] (thrown? clojure.lang.ExceptionInfo
+                            (funnysql/format [::funnysql/postgres-full-text-search-match lhs rhs] :postgres))
+      "abc"             :query
+      :search_vector    "abc"
+      [:to_tsvector :a] :query)))
