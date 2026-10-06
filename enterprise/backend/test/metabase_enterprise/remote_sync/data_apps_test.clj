@@ -608,3 +608,22 @@
             (let [collection-id (shop-collection-id)]
               (mt/user-http-request :crowberto :delete 204 "apps/shop")
               (is (not (t2/exists? :model/Collection :id collection-id))))))))))
+
+(deftest pull-records-the-table-a-query-action-names-test
+  (testing "the tables an action's SQL names are recorded apart from the tables the questions read"
+    (with-data-apps-sync
+      (let [mp        (mt/metadata-provider)
+            action-id (actions/insert! {:name          "Clear checkins"
+                                        :type          :query
+                                        :database_id   (mt/id)
+                                        :dataset_query (lib/native-query mp "DELETE FROM checkins WHERE id = {{id}}")
+                                        :parameters    [{:id "id" :slug "id" :type :number/=}]})
+            resources (data-apps.tu/build-resources
+                       shop-collection-eid
+                       [{:entity_id question-eid :name "VenuesList" :query (venues-query)}]
+                       [action-id])
+            src       (test-helpers/versioned-source :trees {"v0" (shop-tree resources)} :current "v0")
+            result    (import-at! src "v0" :force? true)]
+        (is (= :success (:status result)) (:message result))
+        (is (= (sort [(mt/id :venues) (mt/id :checkins)])
+               (t2/select-one-fn :table_ids :model/DataApp :name "shop")))))))
