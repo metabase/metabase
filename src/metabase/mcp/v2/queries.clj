@@ -120,7 +120,7 @@
   ([mcp-session-id user-id encoded-query prompt]
    (mcp.session/store-handle! mcp-session-id user-id encoded-query prompt)))
 
-(defn- decode-stored-query
+(defn decode-stored-query
   "Decode a stored handle's base64 query payload to a map, surfacing garbage as a teaching error
    rather than a decode exception."
   [encoded]

@@ -19,6 +19,7 @@
    [metabase.mcp.derive :as mcp.derive]
    [metabase.mcp.scope :as mcp.scope]
    [metabase.mcp.session :as mcp.session]
+   [metabase.mcp.v2.queries :as v2.queries]
    [metabase.mcp.validation :as mcp.validation]
    [metabase.metabot.config :as metabot.config]
    [metabase.metabot.scope :as metabot.scope]
@@ -158,15 +159,17 @@
      :body   {:query encoded_query :prompt prompt}}))
 
 (defn- decode-stored-query
-  "The normalized query stored base64-encoded in `encoded`. Throws a 400 when it does not decode to a query."
+  "The normalized query stored base64-encoded in `encoded`. Throws a 400 with a plain-text message when it does not
+   decode to a query."
   [encoded]
   (let [decoded (try
-                  (-> encoded u/decode-base64 json/decode+kw)
-                  (catch Exception _ nil))
-        query   (when (map? decoded)
-                  (try
-                    (lib-be/normalize-query decoded)
-                    (catch Exception _ nil)))]
+                  (v2.queries/decode-stored-query encoded)
+                  ;; Rethrown with the same message but no MCP message data, so the API answers with plain text.
+                  (catch clojure.lang.ExceptionInfo e
+                    (throw (ex-info (ex-message e) {:status-code 400}))))
+        query   (try
+                  (lib-be/normalize-query decoded)
+                  (catch Exception _ nil))]
     (when-not (and (map? query) (pos-int? (:database query)))
       (throw (ex-info (tru "The stored query is invalid.") {:status-code 400})))
     query))
@@ -244,11 +247,7 @@
   [context request]
   (let [{{parameter-id :id} :parameter value :value} (check-body! remapping-body (:body request))
         query (runnable-handle-query! context)
-        {:keys [parameter field-ids]} (api/check-404 (template-tag-parameter
-                                                      (lib/query (lib-be/application-database-metadata-provider
-                                                                  (:database query))
-                                                                 query)
-                                                      parameter-id))]
+        {:keys [parameter field-ids]} (api/check-404 (template-tag-parameter query parameter-id))]
     {:status 200
      :body   (qp.api/param-remapped-value field-ids parameter value)}))
 
@@ -267,9 +266,8 @@
   (let [{:keys [query prompt]} (resolve-handle! session-id handle)
         ;; Before any column is read, so a user who lost access cannot learn which columns exist.
         _       (query-guards/check-token-query-permissions! query)
-        base    (lib/query (lib-be/application-database-metadata-provider (:database query)) query)
-        derived (mcp.derive/derive-query base operations)]
-    (api/check-403 (group-policy-permits-derive? base derived))
+        derived (mcp.derive/derive-query query operations)]
+    (api/check-403 (group-policy-permits-derive? query derived))
     ;; Serialization drops the base query's parameters, which target its columns; a drill to another table would
     ;; leave them pointing at columns the derived query does not have.
     (let [encoded (-> (lib/prepare-for-serialization derived)
