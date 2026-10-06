@@ -293,9 +293,9 @@ const getPathPrefixSegments = (
 };
 
 /**
- * Find the virtual root with this sentinel collection ID.
+ * Get the virtual root with this sentinel collection ID.
  */
-export const findVirtualRoot = (id: CollectionId): VirtualRoot | undefined =>
+export const getVirtualRoot = (id: CollectionId): VirtualRoot | undefined =>
   displayGroupSpecs.find((spec) => spec.virtualRoot?.id === id)?.virtualRoot;
 
 const getVirtualRootSegment = (
@@ -469,7 +469,7 @@ const buildCollectionGroup = ({
     : Number(collectionId) || undefined;
 
   const virtualRoot =
-    numericCollectionId != null ? findVirtualRoot(numericCollectionId) : null;
+    numericCollectionId != null ? getVirtualRoot(numericCollectionId) : null;
   let pathSegments = virtualRoot
     ? [getVirtualRootSegment(virtualRoot)]
     : getCollectionPathSegments(numericCollectionId, collectionMap);
