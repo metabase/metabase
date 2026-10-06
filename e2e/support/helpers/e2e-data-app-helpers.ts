@@ -178,23 +178,42 @@ export function dataAppIframe(displayName: string) {
   return getIframeBody(`iframe[title="${displayName}"]`);
 }
 
+/**
+ * Sets every non-admin group's access to a collection through the permission graph of
+ * the collection's namespace: an app's own collection lives in `data-apps`, whose graph
+ * is separate from the default one.
+ */
 export function setDataAppCollectionAccess(
   collectionId: CollectionId,
   access: CollectionPermission,
 ) {
   return cy
-    .request<CollectionPermissionsGraph>("GET", "/api/collection/graph")
-    .then(({ body: graph }) => {
-      const groups = Object.fromEntries(
-        Object.entries(graph.groups).map(([groupId, collections]) => [
-          groupId,
-          Number(groupId) === USER_GROUPS.ADMIN_GROUP
-            ? collections
-            : { ...collections, [collectionId]: access },
-        ]),
-      );
+    .request<Collection>("GET", `/api/collection/${collectionId}`)
+    .then(({ body: collection }) => {
+      const namespace = collection.namespace ?? undefined;
+      const graphUrl =
+        namespace === undefined
+          ? "/api/collection/graph"
+          : `/api/collection/graph?namespace=${namespace}`;
 
-      cy.request("PUT", "/api/collection/graph", { ...graph, groups });
+      cy.request<CollectionPermissionsGraph>("GET", graphUrl).then(
+        ({ body: graph }) => {
+          const groups = Object.fromEntries(
+            Object.entries(graph.groups).map(([groupId, collections]) => [
+              groupId,
+              Number(groupId) === USER_GROUPS.ADMIN_GROUP
+                ? collections
+                : { ...collections, [collectionId]: access },
+            ]),
+          );
+
+          cy.request("PUT", "/api/collection/graph", {
+            ...graph,
+            ...(namespace === undefined ? {} : { namespace }),
+            groups,
+          });
+        },
+      );
     });
 }
 
