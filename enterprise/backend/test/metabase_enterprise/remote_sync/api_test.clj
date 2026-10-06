@@ -524,21 +524,21 @@
     (mt/with-temporary-setting-values [remote-sync-url    "https://github.com/test/repo.git"
                                        remote-sync-token  "test-token"
                                        remote-sync-branch "main"]
-      (let [loaded (atom [])
-            src    (test-helpers/versioned-source :current "v2" :trees {"v1" {} "v2" (card-yaml-fixture)})]
+      (let [src (test-helpers/versioned-source
+                 :current "v2"
+                 :trees   {"v1" {}
+                           "v2" (assoc (card-yaml-fixture)
+                                       "collections/c1eidaaaaaaaaaaaaaaaa_coll/c1eidaaaaaaaaaaaaaaaa_coll.yaml"
+                                       (test-helpers/generate-collection-yaml "c1eidaaaaaaaaaaaaaaaa" "Coll"
+                                                                              :is-remote-synced true))})]
         (mt/with-dynamic-fn-redefs [source/source-from-settings  (constantly src)
-                                    remote-sync.task/last-version (constantly "v1") ; != current -> diverged, base resolvable
-                                    ;; simulate load-snapshot!'s contract (run the in-txn finalize: restore-dirty +
-                                    ;; set-version) without the slow app-DB reconcile
-                                    impl/load-snapshot!           (fn [_snap _ _ & {:keys [finalize!]}]
-                                                                    (swap! loaded conj :loaded)
-                                                                    (when finalize! (finalize!))
-                                                                    nil)]
+                                    remote-sync.task/last-version (constantly "v1")] ; != current -> diverged, base resolvable
           (let [{:keys [task_id]} (mt/user-http-request :crowberto :post 200 "ee/remote-sync/import" {:merge true :expected_branch "main"})
                 task (wait-for-task-completion task_id)]
-            (is (remote-sync.task/successful? task))
+            (is (remote-sync.task/successful? task) (pr-str task))
             (is (= "v2" (:version task)) "version advances to the remote tip")
-            (is (seq @loaded) "the real 3-way merge ran and its result was reconciled into the app DB")))))))
+            (is (t2/exists? :model/Card :entity_id "card1eidaaaaaaaaaaaaa")
+                "the real 3-way merge ran and the remote-only card was loaded into the app DB")))))))
 
 (deftest async-import-base-unreachable-test
   (testing "import merge=true when the base commit is unreachable (orphaned) -> conflict, no reconcile load"

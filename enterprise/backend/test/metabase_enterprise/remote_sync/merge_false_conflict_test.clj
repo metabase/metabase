@@ -145,3 +145,60 @@
              (is (= :conflict (:status result)) "the remote edit of the first card conflicts with the local edit")
              (is (= "local edit 1" (t2/select-one-fn :description :model/Card :id card-1))
                  "the local edit is not replaced"))))))))
+
+(defn- repo-tree
+  "The files of `src`'s current snapshot, as a map of path to content."
+  [src]
+  (let [snap (source.p/snapshot src)]
+    (into {} (map (fn [p] [p (source.p/read-file snap p)])) (source.p/list-files snap))))
+
+(defn- merge-pull-leaving-hand-edited-card-alone!
+  "Loads three cards at v0; pulls v1, which edits the `name:` of \"Cost card 001\" in its file (path unchanged); makes
+  a local edit to \"Cost card 002\"; then merge-pulls v2, which edits only \"Cost card 000\". Calls `f` with the
+  trees `{\"v0\" .. \"v2\"}` and the id of the hand-edited card, and returns its result."
+  [f]
+  (search.tu/with-index-disabled
+    (cost/do-with-content!
+     {:cards 3}
+     (fn [v0]
+       (let [path-0 (card-path v0 "Cost card 000")
+             path-1 (card-path v0 "Cost card 001")
+             v1     (update v0 path-1 #(str/replace % #"(?m)^name: .*$" "name: Hand rename 001"))
+             v2     (update v1 path-0 #(str/replace-first % #"(?m)^(name: .*\n)" "$1description: remote edit 0\n"))
+             trees  {"v0" v0 "v1" v1 "v2" v2}
+             src    (rs.test/versioned-source :trees trees :current "v0")
+             card-1 (t2/select-one-pk :model/Card :name "Cost card 001")
+             card-2 (t2/select-one-pk :model/Card :name "Cost card 002")]
+         (is (= :success (:status (run-import! src "v0" :force? true))) "baseline load")
+         (is (= :success (:status (run-import! src "v1"))) "pull of the hand-edited file")
+         (t2/update! :model/Card card-2 {:description "local edit"})
+         (t2/update! :model/RemoteSyncObject {:model_type "Card" :model_id card-2} {:status "update"})
+         (is (= :success (:status (run-import! src "v2" :merge? true :base-snapshot (source.p/snapshot-at src "v1"))))
+             "the merge pull that does not touch the hand-edited card")
+         (is (= path-1 (t2/select-one-fn :file_path :model/RemoteSyncObject :model_type "Card" :model_id card-1))
+             "the row of the hand-edited card keeps the path of its file in the remote tip")
+         (f trees card-1))))))
+
+(deftest hand-edited-name-stays-unchanged-after-a-merge-pull-test
+  (testing "A merge pull that leaves a card with a hand-edited `name:` alone"
+    (testing "does not make a later remote edit of that card conflict"
+      (merge-pull-leaving-hand-edited-card-alone!
+       (fn [trees _card-1]
+         (let [v2     (trees "v2")
+               path-1 (card-path v2 "Hand rename 001")
+               v3     (update v2 path-1 #(str/replace-first % #"(?m)^(name: .*\n)" "$1description: remote edit 1\n"))
+               src    (rs.test/versioned-source :trees (assoc trees "v3" v3) :current "v2")
+               result (run-import! src "v3" :merge? true :base-snapshot (source.p/snapshot-at src "v2"))]
+           (is (= :success (:status result)) (pr-str (:conflicts result)))
+           (is (= "remote edit 1" (t2/select-one-fn :description :model/Card :name "Hand rename 001"))
+               "the remote edit landed")))))
+    (testing "leaves one file for that card after a later local edit and push"
+      (merge-pull-leaving-hand-edited-card-alone!
+       (fn [trees card-1]
+         (let [src (rs.test/versioned-source :trees trees :current "v2")
+               eid (t2/select-one-fn :entity_id :model/Card :id card-1)]
+           (t2/update! :model/Card card-1 {:description "local edit 1"})
+           (t2/update! :model/RemoteSyncObject {:model_type "Card" :model_id card-1} {:status "update"})
+           (is (= :success (:status (run-export! src "push"))))
+           (is (= 1 (count (filter #(str/includes? % (str "entity_id: " eid "\n")) (vals (repo-tree src)))))
+               (pr-str (keys (repo-tree src))))))))))

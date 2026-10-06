@@ -43,17 +43,30 @@
   (let [c (t2/select-one :model/Card card-id)]
     (events/publish-event! :event/card-update {:object c :previous-object c :user-id (mt/user->id :rasta)})))
 
+(defn- archive-and-unarchive!
+  "Archive the card `card-id`, then unarchive it, saving after each step. Its ledger row ends `update` with content
+  equal to the last sync."
+  [card-id]
+  (t2/update! :model/Card card-id {:archived true})
+  (save-card! card-id)
+  (t2/update! :model/Card card-id {:archived false})
+  (save-card! card-id))
+
+(defn- files-with-entity-id
+  "The paths in `tree` whose content holds `entity-id`."
+  [tree entity-id]
+  (vec (keep (fn [[p c]] (when (str/includes? c (str "entity_id: " entity-id)) p)) tree)))
+
 (deftest merge-pull-then-noop-save-keeps-local-edit-test
-  (testing "After a merge pull that takes the full load, a no-op re-save of a locally edited card keeps it dirty, and
-            the next push carries the edit"
+  (testing "After a merge pull, a no-op re-save of a locally edited card keeps it dirty, and the next push carries
+            the edit"
     (mt/with-temporary-setting-values [remote-sync-enabled true remote-sync-type :read-write]
       (mt/with-dynamic-fn-redefs [search/reindex! (constantly nil)]
         (mt/with-temp [:model/Collection {coll-id :id} {:name "Merge Test" :is_remote_synced true :location "/"}
                        :model/Card {local-id :id} {:name "Local Card" :collection_id coll-id}
                        :model/Card {remote-id :id} {:name "Remote Card" :description "original" :collection_id coll-id}
-                       ;; the remote deletes this collection. A merge pull now always takes the full load, where
-                       ;; the bug lives; a remote collection delete keeps it there if merges gain an incremental path
-                       :model/Collection _ {:name "Doomed" :is_remote_synced true :location "/"}]
+                       ;; the remote deletes this collection
+                       :model/Collection {doomed-id :id} {:name "Doomed" :is_remote_synced true :location "/"}]
           (let [status #(t2/select-one-fn :status :model/RemoteSyncObject :model_type "Card" :model_id local-id)
                 save!  #(let [c (t2/select-one :model/Card local-id)]
                           (events/publish-event! :event/card-update
@@ -76,12 +89,13 @@
             (save!)
             (is (= "update" (status)))
             ;; merge pull: the remote edit lands, the local edit stays pending
-            (let [full-loads (atom 0)
-                  real       (mt/original-fn #'impl/load-snapshot!)]
-              (mt/with-dynamic-fn-redefs [impl/load-snapshot! (fn [& args] (swap! full-loads inc) (apply real args))]
-                (sync! "import" #(impl/import! (source.p/snapshot src) %
-                                               :merge? true :base-snapshot (source.p/snapshot-at src base))))
-              (is (= 1 @full-loads) "the merge pull took the full load"))
+            (let [[_ loaded] (test-helpers/loaded-entities
+                              #(sync! "import" (fn [task-id]
+                                                 (impl/import! (source.p/snapshot src) task-id
+                                                               :merge? true :base-snapshot (source.p/snapshot-at src base)))))]
+              (is (= #{["Card" (t2/select-one-fn :entity_id :model/Card remote-id)]} loaded)
+                  "the merge pull loads only the remote-changed card"))
+            (is (not (t2/exists? :model/Collection :id doomed-id)) "the remote delete lands")
             (is (= "remote edit" (t2/select-one-fn :description :model/Card remote-id)))
             (is (= "local edit" (t2/select-one-fn :description :model/Card local-id)))
             (is (= "update" (status)))
@@ -95,8 +109,7 @@
                 "the local edit reaches the remote branch")))))))
 
 (deftest merge-pull-then-push-of-locally-renamed-card-leaves-one-file-test
-  (testing "A card renamed locally, then a merge pull that takes the full load, then a push: the repository has one
-            file for the card"
+  (testing "A card renamed locally, then a merge pull, then a push: the repository has one file for the card"
     (mt/with-temporary-setting-values [remote-sync-enabled true remote-sync-type :read-write]
       (mt/with-dynamic-fn-redefs [search/reindex! (constantly nil)]
         (mt/with-temp [:model/Collection {coll-id :id} {:name "Merge Test" :is_remote_synced true :location "/"}
@@ -124,6 +137,72 @@
                               (tree (source.p/snapshot src)))]
               (is (= 1 (count files))
                   (str "the push deletes the file at the old path: " (pr-str files))))))))))
+
+(deftest merge-pull-taking-remote-rename-of-dirty-card-keeps-file-reused-by-other-card-test
+  (testing "A dirty card with content equal to the last sync, renamed on the remote while another card takes its old
+            file name: after a merge pull and a push, the repository has a file for each card"
+    (mt/with-temporary-setting-values [remote-sync-enabled true remote-sync-type :read-write]
+      (mt/with-dynamic-fn-redefs [search/reindex! (constantly nil)]
+        (mt/with-temp [:model/Collection {coll-id :id} {:name "Merge Test" :is_remote_synced true :location "/"}
+                       :model/Card {foo-id :id} {:name "Foo Card" :collection_id coll-id}
+                       :model/Card {other-id :id} {:name "Other Card" :collection_id coll-id}]
+          (let [foo-eid   (t2/select-one-fn :entity_id :model/Card foo-id)
+                other-eid (t2/select-one-fn :entity_id :model/Card other-id)
+                src0      (test-helpers/versioned-source :trees {"empty" {}} :current "empty")
+                base      (:version (sync! "export" #(impl/export! (source.p/snapshot src0) % "initial" :force? true)))
+                t0        (tree (source.p/snapshot src0))
+                foo-path  (some (fn [[p c]] (when (str/includes? c "name: Foo Card") p)) t0)
+                oth-path  (some (fn [[p c]] (when (str/includes? c "name: Other Card") p)) t0)
+                ;; the remote renames Foo Card to Bar Card, and Other Card to Foo Card, which takes foo_card.yaml
+                t1        (-> t0
+                              (dissoc foo-path oth-path)
+                              (assoc (str/replace foo-path "foo_card" "bar_card")
+                                     (str/replace (get t0 foo-path) "name: Foo Card" "name: Bar Card"))
+                              (assoc foo-path (str/replace (get t0 oth-path) "name: Other Card" "name: Foo Card")))
+                src       (test-helpers/versioned-source :trees {base t0 "v1" t1} :current base)
+                ;; a forced pull of the base records the file paths and hashes in the ledger
+                _         (sync! "import" #(impl/import! (source.p/snapshot src) % :force? true))
+                src       (test-helpers/versioned-source :trees {base t0 "v1" t1} :current "v1")]
+            (is (= #{foo-path (str/replace foo-path "foo_card" "bar_card")}
+                   (set (filter #(str/includes? % "_card.yaml") (keys t1)))))
+            (archive-and-unarchive! foo-id)
+            (sync! "import" #(impl/import! (source.p/snapshot src) %
+                                           :merge? true :base-snapshot (source.p/snapshot-at src base)))
+            (is (= #{"Bar Card" "Foo Card"} (set (t2/select-fn-vec :name :model/Card :collection_id coll-id))))
+            (sync! "export" #(impl/export! (source.p/snapshot src) % "push" :source src))
+            (let [t2* (tree (source.p/snapshot src))]
+              (is (= 1 (count (files-with-entity-id t2* foo-eid)))
+                  (pr-str (keys t2*)))
+              (is (= [foo-path] (files-with-entity-id t2* other-eid))
+                  (str "the push keeps the file the remote gave to the other card: " (pr-str (keys t2*)))))))))))
+
+(deftest merge-pull-taking-remote-edit-of-dirty-card-then-local-revert-pushes-revert-test
+  (testing "A dirty card with content equal to the last sync takes a remote edit in a merge pull; a later local edit
+            back to the old value reaches the remote branch"
+    (mt/with-temporary-setting-values [remote-sync-enabled true remote-sync-type :read-write]
+      (mt/with-dynamic-fn-redefs [search/reindex! (constantly nil)]
+        (mt/with-temp [:model/Collection {coll-id :id} {:name "Merge Test" :is_remote_synced true :location "/"}
+                       :model/Card {card-id :id} {:name "Foo Card" :description "original" :collection_id coll-id}]
+          (let [eid  (t2/select-one-fn :entity_id :model/Card card-id)
+                src0 (test-helpers/versioned-source :trees {"empty" {}} :current "empty")
+                base (:version (sync! "export" #(impl/export! (source.p/snapshot src0) % "initial" :force? true)))
+                t0   (tree (source.p/snapshot src0))
+                path (some (fn [[p c]] (when (str/includes? c "name: Foo Card") p)) t0)
+                t1   (update t0 path str/replace "description: original" "description: remote edit")
+                src  (test-helpers/versioned-source :trees {base t0 "v1" t1} :current base)
+                _    (sync! "import" #(impl/import! (source.p/snapshot src) % :force? true))
+                src  (test-helpers/versioned-source :trees {base t0 "v1" t1} :current "v1")]
+            (archive-and-unarchive! card-id)
+            (sync! "import" #(impl/import! (source.p/snapshot src) %
+                                           :merge? true :base-snapshot (source.p/snapshot-at src base)))
+            (is (= "remote edit" (t2/select-one-fn :description :model/Card card-id)))
+            (t2/update! :model/Card card-id {:description "original"})
+            (save-card! card-id)
+            (sync! "export" #(impl/export! (source.p/snapshot src) % "push" :source src))
+            (let [repo (some (fn [[_ c]] (when (str/includes? c (str "entity_id: " eid)) c))
+                             (tree (source.p/snapshot src)))]
+              (is (= "original" (second (re-find #"(?m)^description: (.*)$" repo)))
+                  "the repository has the description of the app DB"))))))))
 
 (defn- released-dirty-row!
   "Sync card `a-id` (description \"original\") at a base version, edit it locally, and give its dirty ledger row the

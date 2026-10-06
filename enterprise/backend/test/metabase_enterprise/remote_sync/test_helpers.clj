@@ -6,6 +6,7 @@
    [metabase-enterprise.remote-sync.settings :as remote-sync.settings]
    [metabase-enterprise.remote-sync.source :as source]
    [metabase-enterprise.remote-sync.source.protocol :as source.p]
+   [metabase-enterprise.serialization.core :as serialization]
    [metabase-enterprise.serialization.v2.ingest :as ingest]
    [metabase-enterprise.transforms-python.core :as transforms-python]
    [metabase.test :as mt]
@@ -357,6 +358,19 @@ width: fixed
       (default-branch [_] branch)
       (snapshot [_] (mk-snapshot (:current @state)))
       (snapshot-at [_ v] (when (contains? (:trees @state) v) (mk-snapshot v))))))
+
+(defn loaded-entities
+  "Calls `thunk` and returns `[result loaded]`: `result` is the value of `thunk`, and `loaded` is the set of
+  `[model id]` (the last element of the serdes path) of each entity that a serdes load in `thunk` loaded."
+  [thunk]
+  (let [loaded (atom #{})
+        real   (mt/original-fn #'serialization/load-metabase!)]
+    (mt/with-dynamic-fn-redefs [serialization/load-metabase!
+                                (fn [& args]
+                                  (let [result (apply real args)]
+                                    (swap! loaded into (map (comp (juxt :model :id) last)) (:seen result))
+                                    result))]
+      [(thunk) @loaded])))
 
 (defn clean-object
   "Test fixture that resets the RemoteSyncObject table before running tests to prevent existing
