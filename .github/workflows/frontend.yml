@@ -78,11 +78,7 @@ jobs:
       - uses: actions/checkout@v7
       - name: Prepare front-end environment
         uses: ./.github/actions/prepare-frontend
-      - name: Prepare back-end environment
-        uses: ./.github/actions/prepare-backend
-      - run: bun run build-pure:cljs
-        name: Compile CLJS
-      - run: bun run type-check-pure
+      - run: bun run type-check
         name: Check types
 
   fe-tests-unit:
@@ -125,6 +121,8 @@ jobs:
           bun run test-unit --silent --shard=${{ matrix.shard }}/${{ env.SHARDS }} --json --outputFile="$UNIT_TEST_RESULTS_FILE" ${{ steps.unit-selection.outputs.paths-file && '--passWithNoTests' || '' }}
         # Ordinary assertion failures can be quarantined, but runner failures cannot.
         continue-on-error: true
+      - name: Check cljs type declarations match the build
+        run: bun run check:cljs-types
       - name: Check unit test results
         if: ${{ !cancelled() && (steps.fe-tests.outcome == 'failure' || steps.unit-selection.outputs.paths-file) }}
         env:

@@ -200,7 +200,7 @@ prefix; never generic `-shared` / `-feature` suffixes.
    grep -rn "<old path>" frontend enterprise/frontend e2e        # must be empty
    bunx eslint --no-warn-ignored <touched files>
    bun run lint-oxlint-pure                                       # enforce-module-public-api included
-   bun run type-check-pure
+   bun run type-check
    bun run test-unit-keep-cljs <touched folders' specs>
    bun run module-boundaries 2>&1 | tail -1                       # after; no violation may name the new files
    bun run build-release:static-viz                               # only if viz/static-viz/ui/dayjs touched; hard 3.5 MiB budget
@@ -234,9 +234,7 @@ prefix; never generic `-shared` / `-feature` suffixes.
   does.
 - **Environment before diagnosis**: after a dependency-touching merge,
   `bun install` before declaring a failure real; worktrees share staleness
-  through the node_modules symlink, and a stale `target/cljs_dev` makes
-  `type-check-pure` fail on `metabase-lib/metric/core.ts` (rebuild cljs in the
-  worktree).
+  through the node_modules symlink.
 
 ## PR shape
 
