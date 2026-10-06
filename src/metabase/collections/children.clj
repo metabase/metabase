@@ -997,10 +997,10 @@
 
 (defn- official-collections-first-sort-clause [{:keys [official-collections-first?]}]
   (when official-collections-first?
-    [:authority_level :asc :nulls-last]))
+    [:authority_level :asc-nulls-last]))
 
 (def ^:private normal-collections-first-sort-clause
-  [:type :asc :nulls-first])
+  [:type :asc-nulls-first])
 
 (defn children-sort-clause
   "Given the client side sort-info, return sort clause to effect this. `db-type` is necessary due to complications from
@@ -1048,8 +1048,8 @@
                                     [:%lower.name :asc]]
            [:model :asc]           [[:model_ranking :asc]  [:%lower.name :asc]]
            [:model :desc]          [[:model_ranking :desc] [:%lower.name :asc]]
-           [:description :asc]     [[:%lower.description :asc :nulls-last] [:%lower.name :asc]]
-           [:description :desc]    [[:%lower.description :desc :nulls-last] [:%lower.name :asc]])
+           [:description :asc]     [[:%lower.description :asc-nulls-last] [:%lower.name :asc]]
+           [:description :desc]    [[:%lower.description :desc-nulls-last] [:%lower.name :asc]])
          ;; add a fallback sort order so paging is still deterministic even if collection have the same name or
          ;; whatever
          [[:id :asc]]]))

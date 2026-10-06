@@ -398,14 +398,25 @@
   (when-let [subclauses (not-empty (->sequence subclauses))]
     (append-sql! context "ORDER BY ")
     (letfn [(subclause! [subclause]
-              (let [[expr direction] (if (vector? subclause)
-                                       subclause
-                                       [subclause])]
+              (let [[expr direction :as args] (if (vector? subclause)
+                                                subclause
+                                                [subclause])]
+                ;; Honey SQL 1 supported `[:field :asc :nulls-last]`, but in Funny SQL and Honey SQL 2 you should do
+                ;; `[:field :asc-nulls-last]` instead. Interestingly enough HoneySQL doesn't error on these and just
+                ;; silently ignores them 😢. Let's be nicer than that.
+                (when (> (count args) 2)
+                  (throw (ex-info "`:order-by` only supports [<expression> <direction>], but got more than 2 args" {:args args})))
                 (compile! expr context)
                 ;; the direction is optional, e.g. `[:field]` or `:field`, and defaults to `ASC`
                 (append-sql! context (case (or direction :asc)
-                                       :asc  " ASC"
-                                       :desc " DESC"
+                                       :asc              " ASC"
+                                       :desc             " DESC"
+                                       :nulls-last       " NULLS LAST"
+                                       :nulls-first      " NULLS FIRST"
+                                       :asc-nulls-last   " ASC NULLS LAST"
+                                       :desc-nulls-last  " DESC NULLS LAST"
+                                       :asc-nulls-first  " ASC NULLS FIRST"
+                                       :desc-nulls-first " DESC NULLS FIRST"
                                        (throw (ex-info "Invalid order by direction"
                                                        {:direction direction, :subclause subclause}))))))]
       (interpose-fn subclauses subclause! #(append-sql! context ", ")))))

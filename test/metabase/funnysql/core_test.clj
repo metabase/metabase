@@ -275,6 +275,22 @@
        #"Invalid order by direction"
        (funnysql/format {:order-by [[:field :sideways]]} :postgres))))
 
+(deftest ^:parallel order-by-nulls-ordering-test
+  (are [k expected] (= [(str "SELECT \"a\" FROM \"t\" ORDER BY \"a\" " expected)]
+                       (funnysql/format {:select [:a], :from [:t], :order-by [[:a k]]} :postgres))
+    :nulls-last       "NULLS LAST"
+    :nulls-first      "NULLS FIRST"
+    :asc-nulls-last   "ASC NULLS LAST"
+    :desc-nulls-last  "DESC NULLS LAST"
+    :asc-nulls-first  "ASC NULLS FIRST"
+    :desc-nulls-first "DESC NULLS FIRST")
+  (testing (str "Error on Honey SQL 1-style [<field> <direction> <nulls-behavior>] (Honey SQL 2 just silently ignores"
+                " this 😢, but we can be nice)")
+    (is (thrown-with-msg?
+         clojure.lang.ExceptionInfo
+         #"\Q`:order-by` only supports [<expression> <direction>], but got more than 2 args\E"
+         (funnysql/format (funnysql/format {:select [:a], :from [:t], :order-by [[:a :asc :nulls-first]]} :postgres))))))
+
 (deftest ^:parallel limit-test
   (is (= ["LIMIT 10"]
          (funnysql/format {:limit 10} :postgres)))
