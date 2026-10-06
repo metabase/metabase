@@ -361,9 +361,8 @@ describe("scenarios > organization > timelines > question persistence", () => {
     });
     createTimeSeries();
 
-    cy.intercept("GET", "/api/timeline?include=events").as("getTimelines");
     H.visitQuestion("@questionId");
-    cy.wait("@getTimelines");
+    expectTimelineOff("Migration seasons");
     expectEvents([], EVENT_NAMES);
     H.openVizSettingsSidebar();
     H.vizSettingsSidebar().within(() => {
@@ -387,7 +386,7 @@ describe("scenarios > organization > timelines > question persistence", () => {
         });
     });
     cy.reload();
-    cy.wait("@getTimelines");
+    expectTimelineOff("Migration seasons");
     expectEvents([], EVENT_NAMES);
 
     cy.log("the dashboard only shows events saved on the question");
@@ -441,6 +440,13 @@ function createTimeSeriesWithHiddenTimeline() {
 function openQuestionEvents() {
   cy.findByTestId("view-footer").icon("calendar").click();
   H.rightSidebar().should("be.visible");
+}
+
+function expectTimelineOff(timelineName: string) {
+  openQuestionEvents();
+  H.rightSidebar().within(() =>
+    H.timelineVisibility(timelineName).should("not.be.checked"),
+  );
 }
 
 function expectEvents(visible: string[], hidden: string[] = []) {
