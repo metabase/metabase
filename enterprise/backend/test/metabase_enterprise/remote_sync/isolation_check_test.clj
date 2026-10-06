@@ -1,7 +1,7 @@
 (ns metabase-enterprise.remote-sync.isolation-check-test
   (:require
    [clojure.test :refer :all]
-   [metabase-enterprise.remote-sync.isolation-check :as isolation-check]
+   [metabase-enterprise.remote-sync.isolation-check-test-util :as isolation-check]
    [metabase-enterprise.remote-sync.test-helpers :as rs.test]
    [metabase.test.fixtures :as fixtures]
    [toucan2.core :as t2]))
