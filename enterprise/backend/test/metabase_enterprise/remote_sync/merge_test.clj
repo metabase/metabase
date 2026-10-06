@@ -284,6 +284,14 @@
       (is (= {app-s-key "data_apps/sales/data_app.yaml" card-a-key "collections/a.yaml"}
              (:theirs-paths result))))))
 
+(deftest ^:parallel merge-returns-each-unit-in-ours-test
+  (testing "the result maps each entity key to its unit in ours: the YAML file, and its resource files when it has any"
+    (let [[app-yaml bundle] (data-app "S" "sales" "v1")
+          result            (remote-sync.merge/three-way-merge [] (conj (data-app "S" "sales" "v1") (card "A" "a")) [])]
+      (is (= {app-s-key  (assoc app-yaml :resources [bundle])
+              card-a-key (card "A" "a")}
+             (:ours-units result))))))
+
 (deftest ^:parallel unchanged-locally-unit-with-a-hand-written-yaml-takes-a-remote-resource-change-test
   (testing "the repo data_app.yaml is hand-written, the ledger hash of the last sync matches the local app and its
             bundle, and the remote changes the bundle -> :theirs, not a conflict"

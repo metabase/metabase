@@ -4,8 +4,11 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.remote-sync.impl :as impl]
+   [metabase-enterprise.remote-sync.merge :as remote-sync.merge]
    [metabase-enterprise.remote-sync.models.remote-sync-task :as remote-sync.task]
+   [metabase-enterprise.remote-sync.source :as source]
    [metabase-enterprise.remote-sync.source.protocol :as source.p]
+   [metabase-enterprise.remote-sync.spec :as spec]
    [metabase-enterprise.remote-sync.test-helpers :as test-helpers]
    [metabase.search.test-util :as search.tu]
    [metabase.test :as mt]
@@ -21,15 +24,17 @@
 (def ^:private sales-eid "w8YkMQBwU4kOD0-pZ1nJk")
 
 (defn- app-tree
-  "Repo files for the data app `slug` with entity id `eid`: its `data_app.yaml` and its bundle at `dist/index.js`."
-  [eid slug bundle]
-  {(str "data_apps/" slug "/data_app.yaml")
-   (yaml/generate-string {:serdes/meta [{:model "DataApp" :id eid :label slug}]
-                          :entity_id   eid
-                          :slug        slug
-                          :name        "Sales"
-                          :path        "dist/index.js"})
-   (str "data_apps/" slug "/dist/index.js") bundle})
+  "Repo files for the data app `slug` with entity id `eid`: its `data_app.yaml` and its bundle at `dist/index.js`.
+   The `data_app.yaml` is hand-written: its text is not the text that Metabase serializes for the app."
+  ([eid slug bundle] (app-tree eid slug bundle "Sales"))
+  ([eid slug bundle display-name]
+   {(str "data_apps/" slug "/data_app.yaml")
+    (yaml/generate-string {:serdes/meta [{:model "DataApp" :id eid :label slug}]
+                           :entity_id   eid
+                           :slug        slug
+                           :name        display-name
+                           :path        "dist/index.js"})
+    (str "data_apps/" slug "/dist/index.js") bundle}))
 
 (defn- new-task! [sync-task-type]
   (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type sync-task-type :initiated_by (mt/user->id :rasta)}))
@@ -40,6 +45,16 @@
   [src version & {:keys [force?] :or {force? false}}]
   (let [task   (new-task! "import")
         result (impl/import! (source.p/snapshot-at src version) task :force? force?)]
+    (impl/handle-task-result! result task)
+    result))
+
+(defn- merge-pull-at!
+  "Run a merge `import!` against the source's snapshot at `version`, with the snapshot at `base-version` as the merge
+   base, complete the task, and return the result."
+  [src version base-version]
+  (let [task   (new-task! "import")
+        result (impl/import! (source.p/snapshot-at src version) task
+                             :merge? true :base-snapshot (source.p/snapshot-at src base-version))]
     (impl/handle-task-result! result task)
     result))
 
@@ -152,3 +167,44 @@
                                                            :bundle       "OPS"})
         (is (=? {:status :conflict} (import-at! src "v1")))
         (is (t2/exists? :model/DataApp :name "ops"))))))
+
+(deftest merge-pull-of-a-remote-bundle-change-to-an-app-with-a-hand-written-yaml-test
+  (testing "the remote changes only the bundle of a synced app whose data_app.yaml is hand-written -> a clean merge pull"
+    (with-data-apps-sync
+      (let [src (test-helpers/versioned-source :trees {"v0" (app-tree sales-eid "sales" "BUNDLE-V1")
+                                                       "v1" (app-tree sales-eid "sales" "BUNDLE-V2")}
+                                               :current "v0")]
+        (is (= :success (:status (import-at! src "v0" :force? true))))
+        (let [app-id (t2/select-one-pk :model/DataApp :name "sales")]
+          (testing "precondition: the ledger row is synced, with the hash of the app and its bundle"
+            (is (=? {:status       "synced"
+                     :file_path    "data_apps/sales/data_app.yaml"
+                     :content_hash (source/row->content-hash {:model_type "DataApp" :model_id app-id})}
+                    (t2/select-one :model/RemoteSyncObject :model_type "DataApp" :model_id app-id)))))
+        (let [result (merge-pull-at! src "v1" "v0")]
+          (is (= :success (:status result)) (pr-str (:conflicts result)))
+          (is (= "BUNDLE-V2" (bundle-text "sales"))))))))
+
+(deftest merge-pull-of-a-remote-yaml-and-bundle-change-to-an-unchanged-app-test
+  (testing "the remote changes the data_app.yaml and the bundle of an app that nobody changed locally -> a clean merge pull"
+    (with-data-apps-sync
+      (let [src (test-helpers/versioned-source :trees {"v0" (app-tree sales-eid "sales" "BUNDLE-V1")
+                                                       "v1" (app-tree sales-eid "sales" "BUNDLE-V2" "Sales Remote")}
+                                               :current "v0")]
+        (is (= :success (:status (import-at! src "v0" :force? true))))
+        (let [result (merge-pull-at! src "v1" "v0")]
+          (is (= :success (:status result)) (pr-str (:conflicts result)))
+          (is (= "Sales Remote" (t2/select-one-fn :display_name :model/DataApp :name "sales")))
+          (is (= "BUNDLE-V2" (bundle-text "sales"))))))))
+
+(deftest merge-unit-of-a-local-app-hashes-as-the-ledger-does-test
+  (testing "the file-spec hash of the ours unit of an unchanged synced app equals its ledger hash"
+    (with-data-apps-sync
+      (let [src (test-helpers/versioned-source :trees {"v0" (app-tree sales-eid "sales" "BUNDLE-V1")} :current "v0")]
+        (is (= :success (:status (import-at! src "v0" :force? true))))
+        (let [app-id (t2/select-one-pk :model/DataApp :name "sales")
+              ours   (source/serialize-specs (spec/extract-entities-for-rows [{:model_type "DataApp" :model_id app-id}])
+                                             nil)
+              unit   (get-in (remote-sync.merge/three-way-merge [] ours []) [:ours-units [["DataApp" sales-eid]]])]
+          (is (= (t2/select-one-fn :content_hash :model/RemoteSyncObject :model_type "DataApp" :model_id app-id)
+                 (source/file-spec-hash unit))))))))
