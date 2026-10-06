@@ -28,9 +28,9 @@ For general information about Metabase transforms, see [Transforms](transforms-o
 On Metabase Cloud, you need the [**Basic transforms** add-on](addons.md) to create query-based transforms.
 
 1. [Enable transforms](transforms-overview.md#enable-transforms).
-2. Go to **Data studio > Transforms**.
+2. Go to **Data Studio > Data transformation**.
 
-3. Click **+ New** and pick "Query builder", "SQL", or "Copy of existing question".
+3. Click **+ New** and pick **Query builder**, **SQL query**, or **Copy of a saved question**.
 
    Currently, you can't convert between different transform types (like converting a query builder transform to a SQL-based transform, or a SQL transform into a Python transform). If you want to change your transform built with the query builder into a SQL transform, you'll need to create a new transform with the same target and tags, and delete the old transform.
 
@@ -154,10 +154,11 @@ Once your query has table aliases, you can mark the transform as incremental usi
 
 To make a query transform incremental:
 
-1. Go to the transform's page in **Data studio > Transforms**.
+1. Go to the transform's page in **Data Studio > Data transformation**.
 2. Switch to **Settings** tab.
 3. In **Field to check for new values**, select the field in one of the source tables that Metabase should scan to determine which records are new or changed. Only some fields are eligible. See [prerequisites for incremental transforms](./transforms-overview.md#prerequisites-for-incremental-transforms).
-4. (Optional) To update matching rows instead of appending new ones, [add a merge key](./transforms-overview.md#add-merge-keys-to-upsert-rows).
+4. (Optional) To catch late-arriving rows, [set a lookback window](./transforms-overview.md#catch-late-arriving-rows-with-a-lookback-window).
+5. (Optional) To update matching rows instead of appending new ones, [add a merge key](./transforms-overview.md#add-merge-keys-to-upsert-rows).
 
 ## Convert models to transforms
 
@@ -175,7 +176,7 @@ You must be an admin to convert models, and the model's database must [support t
 To convert a model into a transform:
 
 1. Review [Replacing data sources](../tools/replace-data-sources.md) docs for overview and limitations of the process.
-2. Open **Data Studio** and select **Transforms** in the sidebar.
+2. Go to **Data Studio > Data transformation**.
 3. Click **Tools > Migrate models**.
 4. Find the model you want to convert and click it to open its details panel. The panel shows the model's name, database, and collection, and a list of items that depend on it.
 5. Click **Convert to a transform**.
