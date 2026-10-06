@@ -9,8 +9,8 @@ import { TOKEN_KEY, URL_KEY } from "../../constants";
 import type { RemoteSyncSettingsFormState } from "../../types";
 import { getEnvSettingProps } from "../../utils";
 
-import { RemoteSyncSettingsSection } from "./RemoteSyncSettingsSection";
 import { GitTestConnectionButton } from "./GitTestConnectionButton";
+import { RemoteSyncSettingsSection } from "./RemoteSyncSettingsSection";
 
 export const GitSettingsSection = () => {
   const { values } = useFormikContext<RemoteSyncSettingsFormState>();
