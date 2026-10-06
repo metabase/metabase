@@ -6,8 +6,9 @@ import type {
   SubmitMcpAppsFeedbackRequest,
 } from "metabase-types/api";
 
-import { refreshMcpCredential } from "./auth/credentialRefresh";
+import { type McpUiAuth, getMcpUiAuthHeaders } from "./auth/mcpUiAuth";
 import type { McpDeriveOperation, McpDrillOperation } from "./derive";
+import { renewCredentialForRefusedRequest } from "./requests";
 
 type McpRequestAuth = {
   uiCredential: string;
@@ -15,44 +16,40 @@ type McpRequestAuth = {
 };
 
 /**
- * Sends `init` to the iframe route at `url` with the UI credential in `auth`.
- * On a 401 it gets a fresh credential and retries once; the retry's response
- * is returned whatever it is. A credential stops working as soon as the access
- * token behind it does, which can happen well before the next scheduled
- * refresh.
+ * Sends `init` to the iframe route at `path` on `instanceUrl` with the UI
+ * credential in `auth`. On a 401 it gets a fresh credential and retries once;
+ * the retry's response is returned whatever it is. A credential stops working
+ * as soon as the access token behind it does, which can happen well before the
+ * next scheduled refresh.
  */
 async function fetchEmbedMcp(
-  url: string,
+  instanceUrl: string,
+  path: string,
   init: { method: "GET" | "POST"; body?: string },
-  auth: McpRequestAuth,
+  { uiCredential, mcpSessionId }: McpRequestAuth,
 ): Promise<Response> {
-  const send = ({ uiCredential, mcpSessionId }: McpRequestAuth) =>
-    fetch(url, {
+  const send = (auth: McpUiAuth) =>
+    fetch(`${instanceUrl}${path}`, {
       ...init,
       headers: {
         ...(init.body !== undefined && { "Content-Type": "application/json" }),
         "X-Metabase-Client": EMBEDDING_SDK_CONFIG.metabaseClientRequestHeader,
-        "X-Metabase-Mcp-Ui-Auth": uiCredential,
-        "Mcp-Session-Id": mcpSessionId,
+        ...getMcpUiAuthHeaders(auth),
       },
     });
 
-  const response = await send(auth);
+  const response = await send({
+    credential: uiCredential,
+    sessionId: mcpSessionId,
+  });
 
   if (response.status !== 401) {
     return response;
   }
 
-  try {
-    const fresh = await refreshMcpCredential();
+  const fresh = await renewCredentialForRefusedRequest(path);
 
-    return await send({
-      uiCredential: fresh.credential,
-      mcpSessionId: fresh.sessionId,
-    });
-  } catch {
-    return response;
-  }
+  return fresh ? send(fresh) : response;
 }
 
 type StoreDrillQueryRequest = {
@@ -91,7 +88,8 @@ export async function fetchMcpBootstrap({
   mcpSessionId,
 }: McpBootstrapRequest): Promise<McpAppsBootstrapResponse> {
   const response = await fetchEmbedMcp(
-    `${instanceUrl}/api/embed-mcp/bootstrap`,
+    instanceUrl,
+    "/api/embed-mcp/bootstrap",
     { method: "GET" },
     { uiCredential, mcpSessionId },
   );
@@ -124,7 +122,8 @@ export async function storeDrillQuery({
   operation,
 }: StoreDrillQueryRequest): Promise<StoreDrillQueryResponse> {
   const response = await fetchEmbedMcp(
-    `${instanceUrl}/api/embed-mcp/drills`,
+    instanceUrl,
+    "/api/embed-mcp/drills",
     {
       method: "POST",
       body: JSON.stringify({ handle: queryHandle, operation }),
@@ -169,7 +168,8 @@ export async function deriveMcpQuery({
   operations,
 }: DeriveQueryRequest): Promise<DerivedQuery> {
   const response = await fetchEmbedMcp(
-    `${instanceUrl}/api/embed-mcp/queries/${encodeURIComponent(queryHandle)}/derive`,
+    instanceUrl,
+    `/api/embed-mcp/queries/${encodeURIComponent(queryHandle)}/derive`,
     { method: "POST", body: JSON.stringify({ operations }) },
     { uiCredential, mcpSessionId },
   );
@@ -225,7 +225,8 @@ export async function fetchQueryByHandle({
   queryHandle,
 }: FetchQueryByHandleRequest): Promise<FetchQueryByHandleResponse> {
   const response = await fetchEmbedMcp(
-    `${instanceUrl}/api/embed-mcp/queries/${encodeURIComponent(queryHandle)}`,
+    instanceUrl,
+    `/api/embed-mcp/queries/${encodeURIComponent(queryHandle)}`,
     { method: "GET" },
     { uiCredential, mcpSessionId },
   );
@@ -251,7 +252,8 @@ export async function submitMcpFeedback({
   payload,
 }: SubmitMcpFeedbackPayload): Promise<void> {
   const response = await fetchEmbedMcp(
-    `${instanceUrl}/api/embed-mcp/feedback`,
+    instanceUrl,
+    "/api/embed-mcp/feedback",
     { method: "POST", body: JSON.stringify(payload) },
     { uiCredential, mcpSessionId },
   );

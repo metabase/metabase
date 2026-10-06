@@ -6,6 +6,7 @@ import {
 } from "metabase/api/client";
 
 import { refreshMcpCredential } from "./auth/credentialRefresh";
+import type { McpUiAuth } from "./auth/mcpUiAuth";
 
 /**
  * The ad-hoc query routes the SDK question calls, and the handle-keyed iframe
@@ -62,23 +63,32 @@ export async function overrideRequestForMcpApps({
 }
 
 /**
+ * A new UI credential to resend a refused request to `path` with, or null when
+ * `path` is not an iframe route or no new credential could be had.
+ */
+export async function renewCredentialForRefusedRequest(
+  path: string,
+): Promise<McpUiAuth | null> {
+  if (!path.startsWith("/api/embed-mcp/")) {
+    return null;
+  }
+
+  try {
+    return await refreshMcpCredential();
+  } catch (error) {
+    console.error("Error refreshing the MCP UI credential", error);
+    return null;
+  }
+}
+
+/**
  * Whether to resend a request the server refused: true for an iframe route,
  * after getting a new UI credential, which the resent request carries.
  */
 async function resendRefusedIframeRequest({
   url,
 }: RefusedRequest): Promise<boolean> {
-  if (!url.startsWith("/api/embed-mcp/")) {
-    return false;
-  }
-
-  try {
-    await refreshMcpCredential();
-    return true;
-  } catch (error) {
-    console.error("Error refreshing the MCP UI credential", error);
-    return false;
-  }
+  return (await renewCredentialForRefusedRequest(url)) !== null;
 }
 
 export function installMcpAppsRequestOverride() {
