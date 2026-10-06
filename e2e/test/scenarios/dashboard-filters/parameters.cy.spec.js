@@ -82,6 +82,17 @@ describe("scenarios > dashboard > parameters", () => {
       parameters: [startsWith, endsWith],
     };
 
+    cy.intercept(
+      "GET",
+      "/api/dashboard/*/params/*/values",
+      cy.spy().as("paramValues"),
+    );
+    cy.intercept(
+      "GET",
+      "/api/dashboard/*/params/*/search/*",
+      cy.spy().as("paramSearch"),
+    );
+
     H.createQuestionAndDashboard({ questionDetails, dashboardDetails }).then(
       ({ body: { id, card_id, dashboard_id } }) => {
         cy.request("PUT", `/api/dashboard/${dashboard_id}`, {
@@ -139,14 +150,6 @@ describe("scenarios > dashboard > parameters", () => {
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText(startsWith.name).click();
     cy.findByPlaceholderText("Enter some text").type("G");
-    // Make sure the dropdown list with values is not populated,
-    // because it makes no sense for non-exact parameter string operators.
-    // See: https://github.com/metabase/metabase/pull/15477
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Gizmo").should("not.exist");
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Gadget").should("not.exist");
-
     cy.button("Add filter").click();
 
     expectSearchParams({ [endsWith.slug]: "", [startsWith.slug]: "G" });
@@ -154,20 +157,22 @@ describe("scenarios > dashboard > parameters", () => {
     H.tableInteractiveBody().findByText("52.72").should("be.visible");
     H.tableInteractiveBody().findByText("37.65").should("not.exist");
 
+    // Non-exact string operators do not load or search the field values.
+    // See: https://github.com/metabase/metabase/pull/15477
+    cy.get("@paramValues").should("not.have.been.called");
+    cy.get("@paramSearch").should("not.have.been.called");
+
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText(endsWith.name).click();
     cy.findByPlaceholderText("Enter some text").type("zmo");
-    // Make sure the dropdown list with values is not populated,
-    // because it makes no sense for non-exact parameter string operators.
-    // See: https://github.com/metabase/metabase/pull/15477
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Gizmo").should("not.exist");
-
     cy.button("Add filter").click();
 
     expectSearchParams({ [endsWith.slug]: "zmo", [startsWith.slug]: "G" });
     H.tableInteractiveBody().findByText("110.93").should("be.visible");
     H.tableInteractiveBody().findByText("52.72").should("not.exist");
+
+    cy.get("@paramValues").should("not.have.been.called");
+    cy.get("@paramSearch").should("not.have.been.called");
 
     // Remove filter (metabase#17933)
     cy.icon("pencil").click();
