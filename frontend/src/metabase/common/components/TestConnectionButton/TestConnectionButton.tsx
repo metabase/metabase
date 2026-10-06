@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { match } from "ts-pattern";
 import { t } from "ttag";
 
@@ -12,8 +11,6 @@ const isLoadingStarting = (_lastValue: boolean, newValue: boolean) => newValue;
 export type TestConnectionResult =
   | { status: "success" }
   | { status: "error"; message: string };
-
-type TestResultAtValues = TestConnectionResult & { valuesAtTest: unknown };
 
 const TestResultIcon = ({ result }: { result: TestConnectionResult }) =>
   match(result)
@@ -36,45 +33,31 @@ const TestResultIcon = ({ result }: { result: TestConnectionResult }) =>
     .exhaustive();
 
 interface TestConnectionButtonProps {
-  values: unknown;
+  result: TestConnectionResult | null;
+  isLoading: boolean;
   disabled?: boolean;
   "data-testid"?: string;
-  onTest: () => Promise<TestConnectionResult | null>;
+  onClick: () => void;
 }
 
-/** Runs `onTest` and shows its result next to the label until `values` changes. */
+/** Renders a "Test connection" button with a delayed loader and the `result` icon. */
 export const TestConnectionButton = ({
-  values,
+  result,
+  isLoading,
   disabled,
   "data-testid": dataTestId,
-  onTest,
+  onClick,
 }: TestConnectionButtonProps) => {
-  const [isTesting, setIsTesting] = useState(false);
   const showLoading = useDebouncedValue(
-    isTesting,
+    isLoading,
     LOADING_INDICATOR_DELAY_MS,
     isLoadingStarting,
   );
-  const [lastResult, setLastResult] = useState<TestResultAtValues | null>(null);
 
-  // Formik replaces `values` on every edit, so a new reference means the result is stale
-  const result = lastResult?.valuesAtTest === values ? lastResult : null;
-
-  const handleClick = async () => {
+  const handleClick = () => {
     // the button stays clickable until the delayed loader appears
-    if (isTesting) {
-      return;
-    }
-
-    const valuesAtTest = values;
-    setIsTesting(true);
-    try {
-      const testResult = await onTest();
-      if (testResult) {
-        setLastResult({ ...testResult, valuesAtTest });
-      }
-    } finally {
-      setIsTesting(false);
+    if (!isLoading) {
+      onClick();
     }
   };
 
