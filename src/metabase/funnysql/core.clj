@@ -1035,6 +1035,7 @@
   ([honeysql-form engine]
    (format honeysql-form engine nil))
   ([honeysql-form engine options]
+   {:pre [(#{:postgres :h2 :mysql} engine)]}
    (try
      (let [context (default-context engine options)]
        ;; [[compile!]] doesn't support compiling maps recursively unless marked `^:allow-subquery`
