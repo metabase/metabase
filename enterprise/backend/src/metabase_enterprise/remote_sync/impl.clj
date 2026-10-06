@@ -122,23 +122,13 @@
        (remove nil?)
        (str/join " ")))
 
-(defn- cause-with-error
-  "Returns the first exception in `e`'s cause chain whose ex-data `:error` is `error-type`, or nil."
-  [e error-type]
-  (->> (iterate ex-cause e)
-       (take-while some?)
-       (some (fn [ex]
-               (when (= error-type (:error (ex-data ex)))
-                 ex)))))
-
 (defn source-error-message
   "Constructs user-friendly error messages from remote sync source exceptions.
 
   Takes a throwable exception and returns a string message that categorizes the error (network, authentication,
   repository not found, branch, or generic) based on the exception type and message content."
   [e]
-  (let [missing-db (cause-with-error e :metabase.models.serialization.resolve.db/database-not-found)
-        message    (or (ex-message e) "")]
+  (let [message (or (ex-message e) "")]
     (cond
       (or (instance? java.net.UnknownHostException e)
           (instance? java.net.UnknownHostException (ex-cause e)))
@@ -163,11 +153,6 @@
       (let [{:keys [model id referrer]} (ex-data e)]
         (missing-reference-message {:missing  {:model model :id id}
                                     :referrer referrer}))
-
-      ;; the entity that failed to load is the one holding the reference to the absent database
-      missing-db
-      (missing-reference-message {:missing  {:model "Database" :id (:db-name (ex-data missing-db))}
-                                  :referrer (:entity (ex-data e))})
 
       (= (:error (ex-data e)) :metabase-enterprise.serialization.v2.load/load-failure)
       (let [{:keys [entity stripped-keys]} (ex-data e)]
