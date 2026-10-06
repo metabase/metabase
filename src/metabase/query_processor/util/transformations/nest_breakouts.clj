@@ -13,7 +13,6 @@
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.schema.util :as lib.schema.util]
    [metabase.lib.walk :as lib.walk]
-   ^{:clj-kondo/ignore [:metabase/modules]}
    [metabase.query-processor.middleware.add-remaps :as-alias add-remaps]
    [metabase.util.malli :as mu]
    [metabase.util.match :as match]

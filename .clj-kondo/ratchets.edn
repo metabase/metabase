@@ -27,7 +27,7 @@
                                 :main-without-gen-class                                    1
                                 :metabase/discourage-dynamic-vars                          323
                                 :metabase/discourage-millis-duration                       1
-                                :metabase/modules                                          24
+                                :metabase/modules                                          23
                                 :metabase/namespace-name                                   3
                                 :metabase/validate-defendpoint-has-response-schema         427
                                 :metabase/validate-defendpoint-query-params-use-kebab-case 48
