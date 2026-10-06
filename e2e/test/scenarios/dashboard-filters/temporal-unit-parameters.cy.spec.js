@@ -964,8 +964,17 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
   });
 
   describe("query string parameters", () => {
-    it("should parse valid and ignore invalid temporal unit values from the url", () => {
-      createDashboardWithMappedQuestion().then((dashboard) => {
+    it("should ignore invalid temporal unit values from the url and accept valid ones outside of the allowlist", () => {
+      createDashboardWithMappedQuestion({
+        dashboardDetails: {
+          parameters: [
+            {
+              ...parameterDetails,
+              temporal_units: ["month", "quarter"],
+            },
+          ],
+        },
+      }).then((dashboard) => {
         cy.wrap(dashboard.id).as("dashboardId");
         H.visitDashboard(dashboard.id, { params: { unit_of_time: "invalid" } });
       });
@@ -979,22 +988,6 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
       cy.get("@dashboardId").then((dashboardId) =>
         H.visitDashboard(dashboardId, { params: { unit_of_time: "year" } }),
       );
-      H.getDashboardCard().findByText("Created At: Year").should("be.visible");
-    });
-
-    it("should accept temporal units outside of the allowlist if they are otherwise valid values from the url", () => {
-      createDashboardWithMappedQuestion({
-        dashboardDetails: {
-          parameters: [
-            {
-              ...parameterDetails,
-              temporal_units: ["month", "quarter"],
-            },
-          ],
-        },
-      }).then((dashboard) => {
-        H.visitDashboard(dashboard.id, { params: { unit_of_time: "year" } });
-      });
       H.filterWidget().findByText("Year").should("be.visible");
       H.getDashboardCard().findByText("Created At: Year").should("be.visible");
     });
