@@ -234,19 +234,24 @@
             obfuscated?    (= remote-sync-token (setting/obfuscate-value current-token))
             token-to-check (if env-set-token
                              (setting/get :remote-sync-token)
-                             (if obfuscated? current-token remote-sync-token))]
-        (let [remote (when updating-git-settings?
-                       (check-git-settings! (assoc settings :remote-sync-token token-to-check)))]
-          (t2/with-transaction [_conn]
-            (doseq [k [:remote-sync-url :remote-sync-token :remote-sync-type :remote-sync-branch :remote-sync-auto-import :remote-sync-transforms]]
-              (when (and (not= :env (setting/get-raw-value-source k)) (contains? settings k)
-                         (not (and (= k :remote-sync-token) obfuscated?)))
-                (setting/set! k (k settings))))
-            ;; `remote` answers from the lsRemote of the check, so the default branch costs no second call
-            (when (and remote
-                       (remote-sync-enabled)
-                       (str/blank? (setting/get :remote-sync-branch)))
-              (setting/set! :remote-sync-branch (source.p/default-branch remote)))))))))
+                             (if obfuscated? current-token remote-sync-token))
+            remote         (when updating-git-settings?
+                             (check-git-settings! (assoc settings :remote-sync-token token-to-check)))
+            branch-after   (if (and (contains? settings :remote-sync-branch) (not env-set-branch))
+                             (:remote-sync-branch settings)
+                             (setting/get :remote-sync-branch))
+            enabled-after? (or (contains? settings :remote-sync-url) (remote-sync-enabled))
+            ;; `remote` answers from the lsRemote of the check, so the default branch costs no second call. It is
+            ;; read before the transaction, so that a remote with no default branch fails the save before any write.
+            default-branch (when (and remote enabled-after? (str/blank? branch-after))
+                             (source.p/default-branch remote))]
+        (t2/with-transaction [_conn]
+          (doseq [k [:remote-sync-url :remote-sync-token :remote-sync-type :remote-sync-branch :remote-sync-auto-import :remote-sync-transforms]]
+            (when (and (not= :env (setting/get-raw-value-source k)) (contains? settings k)
+                       (not (and (= k :remote-sync-token) obfuscated?)))
+              (setting/set! k (k settings))))
+          (when default-branch
+            (setting/set! :remote-sync-branch default-branch)))))))
 
 (defn library-is-remote-synced?
   "Returns true if the Library collection exists and is remote-synced.
