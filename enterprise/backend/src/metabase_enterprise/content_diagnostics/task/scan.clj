@@ -6,6 +6,7 @@
    [clojurewerkz.quartzite.triggers :as triggers]
    [metabase-enterprise.content-diagnostics.scan :as scan]
    [metabase.premium-features.core :as premium-features]
+   [metabase.task-history.core :as task-history]
    [metabase.task.core :as task])
   (:import
    (org.quartz DisallowConcurrentExecution)))
@@ -20,11 +21,19 @@
   (triggers/key "metabase.task.content-diagnostics-scan.trigger"))
 
 (defn- scan-when-enabled!
-  "Run the scan iff the `:content-diagnostics` premium feature is present — the job is scheduled on
-  every EE instance regardless of token features."
+  "Run the scan iff the `:content-diagnostics` premium feature is present, recording the firing in
+  `task_history` either way - the job is scheduled on every EE instance regardless of token features."
   []
-  (when (premium-features/has-feature? :content-diagnostics)
-    (scan/scan!)))
+  (let [enabled? (premium-features/has-feature? :content-diagnostics)]
+    (task-history/with-task-history
+      {:task            "content-diagnostics-scan"
+       :task_details    (when-not enabled? {:skipped-reason "content-diagnostics-disabled"})
+       :on-success-info (fn [info result]
+                          (if-let [scan-id (:scan_id result)]
+                            (assoc-in info [:task_details :scan-id] scan-id)
+                            info))}
+      (when enabled?
+        (scan/scan!)))))
 
 (task/defjob ^{DisallowConcurrentExecution true
                :doc                         "Content Diagnostics — scan for problematic content."}

@@ -3713,6 +3713,7 @@
            request
            settings
            task
+           task.history
            tracing
            util
            enterprise/staleness}
