@@ -9,13 +9,13 @@ import {
 } from "metabase/ui";
 import type { IconName, TableFieldOrder } from "metabase-types/api";
 
-interface Props extends Omit<
+type Props = Omit<
   SegmentedControlProps<TableFieldOrder>,
   "data" | "value" | "onChange"
-> {
+> & {
   value: TableFieldOrder;
   onChange: (value: TableFieldOrder) => void;
-}
+};
 
 export const FieldOrderPicker = ({ value, onChange, ...props }: Props) => {
   const data = useMemo(() => getData(), []);
@@ -68,11 +68,11 @@ function getData(): SegmentedControlItem<TableFieldOrder>[] {
   ];
 }
 
-interface IconOnlyItemOpts {
+type IconOnlyItemOpts = {
   value: TableFieldOrder;
   iconName: IconName;
   label: string;
-}
+};
 
 function getIconOnlyItem({
   value,

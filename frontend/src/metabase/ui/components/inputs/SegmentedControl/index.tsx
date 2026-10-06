@@ -24,7 +24,7 @@ export type SegmentedControlItem<Value extends string> = {
   disabled?: boolean;
 } & SegmentedControlItemContent;
 
-export interface SegmentedControlProps<Value extends string> extends Omit<
+export type SegmentedControlProps<Value extends string> = Omit<
   MantineSegmentedControlProps,
   | "data"
   | "value"
@@ -36,11 +36,11 @@ export interface SegmentedControlProps<Value extends string> extends Omit<
   | "bg"
   | "variant"
   | "autoContrast"
-> {
+> & {
   data: readonly SegmentedControlItem<Value>[];
   value?: Value;
   onChange?: (value: Value) => void;
-}
+};
 
 export function SegmentedControl<Value extends string = string>({
   data,
@@ -67,9 +67,9 @@ export function SegmentedControl<Value extends string = string>({
   );
 }
 
-interface SegmentedControlItemLabelProps {
+type SegmentedControlItemLabelProps = {
   content: SegmentedControlItemContent;
-}
+};
 
 function SegmentedControlItemLabel({
   content,
@@ -97,11 +97,11 @@ function SegmentedControlItemLabel({
   );
 }
 
-interface SegmentedControlItemIconProps {
+type SegmentedControlItemIconProps = {
   icon: SegmentedControlIcon;
   size: number;
   ariaLabel?: string;
-}
+};
 
 function SegmentedControlItemIcon({
   icon,
