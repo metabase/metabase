@@ -161,9 +161,16 @@
 
 (deftest ^:parallel exists-test
   (are [op sql] (= [(str "WHERE " sql " (SELECT 1 FROM \"table\")")]
-                   (funnysql/format {:where [op {:select [1] :from [:table]}]} :postgres))
+                   (funnysql/format {:where [op ^:allow-subquery {:select [1] :from [:table]}]} :postgres))
     :exists     "EXISTS"
     :not-exists "NOT EXISTS"))
+
+(deftest ^:parallel exists-unmarked-map-is-not-a-subquery-test
+  (testing "an unmarked map under `:exists`/`:not-exists` is never compiled as a subquery"
+    (are [op expected] (= [expected {:from [:table], :select [1]}]
+                          (funnysql/format {:where [op {:from [:table], :select [1]}]} :postgres))
+      :exists     "WHERE EXISTS ?"
+      :not-exists "WHERE NOT EXISTS ?")))
 
 (deftest ^:parallel cast-test
   (is (= ["WHERE CAST(\"field\" AS integer) = 1"]

@@ -745,9 +745,8 @@
 
 (defn- -exists! [sql subquery context]
   (append-sql! context sql)
-  (append-sql! context "(")
-  (map! subquery context)
-  (append-sql! context ")"))
+  ;; presumably always a map, but still don't compile it as such unless marked `^:allow-subquery`
+  (compile! subquery context))
 
 (defn- inline! [x context]
   (letfn [(inlineable-atomic-value? [x]
