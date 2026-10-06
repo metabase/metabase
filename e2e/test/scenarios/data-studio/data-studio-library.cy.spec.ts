@@ -298,6 +298,10 @@ describe("scenarios > data studio > library", () => {
       H.createLibrary();
       H.DataStudio.Library.visit();
 
+      H.DataStudio.Library.collectionItem("Data").should("be.visible");
+      H.DataStudio.Library.collectionItem("Metrics").should("be.visible");
+      H.DataStudio.Library.collectionItem("SQL snippets").should("be.visible");
+
       cy.log("Verify Data section empty state");
       H.DataStudio.Library.libraryPage()
         .findByText("Cleaned, pre-transformed data sources ready for exploring")

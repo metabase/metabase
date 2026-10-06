@@ -370,6 +370,14 @@ describe(
           },
         );
 
+        cy.log("non-admin users cannot open the data model in data studio");
+        cy.signInAsNormalUser();
+        cy.visit("/data-studio/data");
+        H.main()
+          .findByText("Sorry, you don\u2019t have permission to see that.")
+          .should("be.visible");
+        cy.signInAsAdmin();
+
         cy.log("blocks replacement when the source table has a sandbox policy");
         // The question above now uses the extra-columns table. Without a
         // dependent, the modal shows "Nothing uses this data source" instead.
@@ -403,13 +411,6 @@ describe(
           )
           .should("be.visible");
         SourceReplacement.getReplaceButton().should("be.disabled");
-
-        cy.log("non-admin users cannot open the data model in data studio");
-        cy.signInAsNormalUser();
-        cy.visit("/data-studio/data");
-        H.main()
-          .findByText("Sorry, you don\u2019t have permission to see that.")
-          .should("be.visible");
       });
     });
 

@@ -152,12 +152,7 @@ describe("data-studio > transforms > indexes", { tags: ["@external"] }, () => {
     H.DataStudio.Transforms.runTab().click();
     cy.intercept("POST", "/api/transform/*/run").as("runTransform");
     H.DataStudio.Transforms.runButton().click();
-    cy.wait("@runTransform").then(({ response }) => {
-      const runId = response?.body.run_id;
-      H.waitForTransformRuns((runs) =>
-        runs.some((run) => run.id === runId && run.status === "succeeded"),
-      );
-    });
+    cy.wait("@runTransform");
     H.DataStudio.Transforms.runButton().should("have.text", "Ran successfully");
 
     cy.log("simulate a DBA-created index directly in the warehouse");

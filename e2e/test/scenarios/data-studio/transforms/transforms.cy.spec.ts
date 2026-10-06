@@ -1539,10 +1539,7 @@ LIMIT
         getTableLink().click();
         H.queryBuilderHeader().findByText(DB_NAME).should("be.visible");
         H.assertQueryBuilderRowCount(1);
-        H.assertTableData({
-          columns: ["Foo"],
-          firstRows: [["52"]],
-        });
+        cy.findByTestId("scalar-value").should("have.text", "52");
       },
     );
   });

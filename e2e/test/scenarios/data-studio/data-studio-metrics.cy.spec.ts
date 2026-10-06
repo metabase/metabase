@@ -233,10 +233,8 @@ describe("scenarios > data studio > library > metrics", () => {
 
     cy.wait("@updateCard");
 
-    cy.log("Verify redirected to the library");
-    cy.url().should("include", "/data-studio/library");
-
     cy.log("Verify the metric is archived");
+    cy.findByTestId("archive-banner").should("be.visible");
     cy.get<number>("@trustedMetricId").then((id) =>
       cy
         .request("GET", `/api/card/${id}`)

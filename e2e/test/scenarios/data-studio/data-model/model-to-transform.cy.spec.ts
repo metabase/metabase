@@ -140,7 +140,8 @@ describe(
         H.openNotebook();
         H.getNotebookStep("join")
           .findByLabelText("Right table")
-          .should("have.text", OUTPUT_TABLE_LABEL);
+          .findByText(OUTPUT_TABLE_LABEL)
+          .should("be.visible");
       });
 
       cy.log("new transform appears on the transform list and opens cleanly");

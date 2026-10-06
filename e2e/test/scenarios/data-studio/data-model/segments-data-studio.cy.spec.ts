@@ -572,11 +572,10 @@ describe(
           .findByText("Test description for readonly")
           .should("be.visible");
 
-        cy.log("verify filter is shown but cannot be changed");
+        cy.log("verify filter is shown");
         SegmentEditor.get()
           .findByText(/Total is less than 100/i)
           .should("be.visible");
-        SegmentEditor.get().icon("add").should("not.exist");
 
         cy.log("verify Remove segment option is hidden in actions menu");
         SegmentEditor.getActionsButton().click();

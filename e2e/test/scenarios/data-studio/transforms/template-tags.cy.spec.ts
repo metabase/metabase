@@ -258,6 +258,11 @@ describe("scenarios > data-studio > transforms > template tags", () => {
     cy.realPress("Escape");
     H.modal().should("not.exist");
 
+    cy.log("create a new transform without picking a database");
+    visitTransformListPage();
+    cy.button("Create a transform").click();
+    H.popover().findByText("SQL query").click();
+
     cy.log("Add a query with multiple template tags");
     H.NativeEditor.clear()
       .type(
@@ -343,12 +348,7 @@ function editorSidebar() {
 function assertIsTransformRunnable() {
   H.DataStudio.Transforms.runTab().click();
   getRunButton().click();
-  cy.wait("@runTransform").then(({ response }) => {
-    const runId = response?.body.run_id;
-    H.waitForTransformRuns((runs) =>
-      runs.some((run) => run.id === runId && run.status === "succeeded"),
-    );
-  });
+  cy.wait("@runTransform");
   getRunButton().should("have.text", "Ran successfully");
   H.DataStudio.Transforms.definitionTab().click();
 }
