@@ -25,8 +25,10 @@ jobs:
   static-viz-files-changed:
     name: Check whether static-viz files changed
     needs: gate
+    # An auto-pass empties `matched`, so it has to rule this out by name.
     if: >-
       ${{ needs.gate.outputs.verdict == 'defer'
+      && needs.gate.outputs.auto-pass != 'true'
       && !contains(fromJSON(needs.gate.outputs.matched), 'backend_all') }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 10
@@ -143,10 +145,12 @@ jobs:
   be-linter-clj-kondo:
     needs: &backend-gate-needs [gate, static-viz-files-changed]
     # `!cancelled()` so a skipped static-viz probe -- the suite was already decided -- does not skip
-    # this job; its failure still does.
+    # this job; its failure still does. A re-run keeps the probe's first-attempt answer, so an
+    # auto-pass has to override it here.
     if: &backend-gate >-
       ${{ !cancelled() && needs.gate.result == 'success'
       && needs.static-viz-files-changed.result != 'failure'
+      && needs.gate.outputs.auto-pass != 'true'
       && (contains(fromJSON(needs.gate.outputs.matched), 'backend_all')
       || needs.static-viz-files-changed.outputs.static_viz == 'true') }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
@@ -195,6 +199,7 @@ jobs:
     if: >-
       ${{ !cancelled() && needs.gate.result == 'success'
       && needs.static-viz-files-changed.result != 'failure'
+      && needs.gate.outputs.auto-pass != 'true'
       && needs.gate.outputs.force-run != 'true' && github.event_name == 'pull_request'
       && (contains(fromJSON(needs.gate.outputs.matched), 'backend_all')
       || needs.static-viz-files-changed.outputs.static_viz == 'true') }}

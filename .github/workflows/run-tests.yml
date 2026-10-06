@@ -19,10 +19,15 @@ permissions:
 jobs:
   # Force-cancel is the only decision left here. The jobs below read `matched`;
   # each suite that owns its gating calls the gate itself with the filters it cares about.
+  #
+  # This gate is also the one that decides a flaky re-run's auto-pass (see test-gate.yml); every
+  # suite needs it, so their own gates find the answer in place.
   gate:
     uses: ./.github/workflows/test-gate.yml
+    secrets: inherit
     with:
       filters: build_embedding_sdk_package build_uberjar e2e_all
+      decide-flaky-rerun: true
 
   # The plan only ever narrows a PR's suites; every other run skips this and they run in full. A
   # planner failure does the same, so it must not fail the run either.

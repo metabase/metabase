@@ -20,27 +20,45 @@ on:
           Leave empty to decide on the overrides alone and skip the paths filter.
         type: string
         default: ''
+      decide-flaky-rerun:
+        description: >-
+          Ask ci-conductor whether a PR re-run's failures are confirmed flakes, and report an
+          auto-pass on the PR. Set by exactly one gate per run (run-tests.yml's, which needs
+          `secrets: inherit`); every other gate follows its answer, so a re-run makes one billed
+          call and every suite agrees.
+        type: boolean
+        default: false
     outputs:
       run:
         description: Whether the calling suite should run.
         value: >-
-          ${{ jobs.should-run.outputs.verdict != 'force-skip'
+          ${{ jobs.flaky-rerun.outputs.auto-pass != 'true'
+          && jobs.should-run.outputs.verdict != 'force-skip'
           && (inputs.filters == ''
           || jobs.should-run.outputs.verdict == 'force-run'
           || jobs.files-changed.outputs.any == 'true') }}
       matched:
         description: >-
           Which of the requested filters the diff touched, as a JSON array, for suites whose jobs
-          map to different filters. A force-run reports every requested filter.
+          map to different filters. A force-run reports every requested filter; an auto-pass none.
         value: >-
-          ${{ (jobs.should-run.outputs.verdict == 'force-run' && jobs.should-run.outputs.filters)
+          ${{ (jobs.flaky-rerun.outputs.auto-pass == 'true' && '[]')
+          || (jobs.should-run.outputs.verdict == 'force-run' && jobs.should-run.outputs.filters)
           || jobs.files-changed.outputs.matched || '[]' }}
       force-run:
         description: Whether the suite should run in full, ignoring the diff.
-        value: ${{ jobs.should-run.outputs.verdict == 'force-run' }}
+        value: >-
+          ${{ jobs.should-run.outputs.verdict == 'force-run'
+          && jobs.flaky-rerun.outputs.auto-pass != 'true' }}
       verdict:
         description: force-run, force-skip, or defer.
         value: ${{ jobs.should-run.outputs.verdict }}
+      auto-pass:
+        description: >-
+          Whether this is a PR re-run whose failures are all confirmed flakes. It already turns
+          `run`, `matched` and `force-run` off; a job gated on anything decided on the first attempt
+          (another job's outputs) has to check it too, since a re-run keeps those.
+        value: ${{ jobs.flaky-rerun.outputs.auto-pass == 'true' }}
 
 jobs:
   should-run:
@@ -53,21 +71,120 @@ jobs:
     steps:
       - name: Decide
         id: decide
-        # Precedence matters for the conditions below.
         env:
           FILTERS: ${{ inputs.filters }}
-          VERDICT: >-
-            ${{ (github.ref_name == 'master' || startsWith(github.ref_name, 'release-x.')) && 'force-run'
-            || contains(github.event.pull_request.labels.*.name, 'ci:run-all') && 'force-run'
-            || contains(github.event.pull_request.labels.*.name, 'ci:skip') && 'force-skip'
-            || (github.event.pull_request.stack != null
-            && github.event.pull_request.stack.base.ref != github.event.pull_request.base.ref
-            && github.event.pull_request.stack.position != github.event.pull_request.stack.size) && 'force-skip'
-            || 'defer' }}
-        run: |
-          echo "verdict=$VERDICT" | tee -a "$GITHUB_OUTPUT"
+        # Reads only what every runner already sets: GITHUB_REF_NAME, and the event payload at
+        # GITHUB_EVENT_PATH. A push has no `pull_request` in its payload, so no PR rule matches it.
+        run: | # bash
+          # True when the PR carries the label $1. A non-PR event has no labels, so it never does.
+          has_label() {
+            jq -e --arg label "$1" \
+              'any(.pull_request.labels[]?; .name == $label)' "$GITHUB_EVENT_PATH" > /dev/null
+          }
+
+          # The rules are checked in order and the first match wins, so precedence is their order.
+          #
+          # 1. master and the release branches are what we ship, so they always run everything.
+          if [[ "$GITHUB_REF_NAME" == "master" || "$GITHUB_REF_NAME" == release-x.* ]]; then
+            verdict=force-run
+          # 2. `ci:run-all` asks for a full run on a PR, as if it were master. It beats `ci:skip`,
+          #    so a PR carrying both still gets tested.
+          elif has_label "ci:run-all"; then
+            verdict=force-run
+          # 3. `ci:skip` opts a PR out of CI entirely.
+          elif has_label "ci:skip"; then
+            verdict=force-skip
+          # 4. Only the ends of a stack run CI: the bottom PR (the one whose base is the stack's
+          #    base) and the top PR (the one at the last position). Every PR in between is skipped
+          #    until it reaches the bottom, unless it carries `ci:run-all` (rule 2). A PR outside a
+          #    stack has no `stack`, which reads as null and never matches.
+          elif jq -e '.pull_request.stack != null
+                      and .pull_request.stack.base.ref != .pull_request.base.ref
+                      and .pull_request.stack.position != .pull_request.stack.size' \
+                 "$GITHUB_EVENT_PATH" > /dev/null; then
+            verdict=force-skip
+          # 5. Everything else: each suite runs what the diff touched.
+          else
+            verdict=defer
+          fi
+
+          echo "verdict=$verdict" | tee -a "$GITHUB_OUTPUT"
           # Echoed back as JSON so a force-run can report every requested filter as matched.
           echo "filters=$(jq -Rc 'split("[,\\s]+";"") | map(select(length > 0))' <<< "$FILTERS")" | tee -a "$GITHUB_OUTPUT"
+
+  # On a PR re-run whose failures ci-conductor calls likely flaky, and a person has confirmed, the
+  # outputs above turn the suite off, so the re-run's failed jobs skip and its result check passes.
+  #
+  # Skipped on the first attempt on purpose. "Re-run failed jobs" keeps the jobs that succeeded but
+  # re-evaluates the skipped ones, so this is the one gate job that runs again on a re-run. Once it
+  # has run, a later re-run keeps its answer rather than asking again.
+  flaky-rerun:
+    name: Check for a confirmed-flaky re-run
+    if: >-
+      ${{ github.event_name == 'pull_request'
+      && github.run_attempt != '1'
+      && github.event.pull_request.head.repo.full_name == 'metabase/metabase' }}
+    runs-on: ${{ vars.SLIM_RUNNER_KEY }}
+    timeout-minutes: 5
+    outputs:
+      auto-pass: ${{ steps.decide.outputs.auto-pass || steps.follow.outputs.auto-pass }}
+    env:
+      # Per attempt, so an answer never outlives the re-run it was given for.
+      ARTIFACT: flaky-rerun-auto-pass-attempt-${{ github.run_attempt }}
+    steps:
+      - uses: actions/checkout@v7
+        if: ${{ inputs.decide-flaky-rerun }}
+        with:
+          sparse-checkout: .github
+      - uses: ./.github/actions/prepare-node-bun
+        if: ${{ inputs.decide-flaky-rerun }}
+      - name: Ask ci-conductor whether the failures are flaky
+        id: decide
+        if: ${{ inputs.decide-flaky-rerun }}
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          PR_AUTHOR: ${{ github.event.pull_request.user.login }}
+          CI_CONDUCTOR_BASE_URL: ${{ vars.CI_CONDUCTOR_BASE_URL }}
+          CI_CONDUCTOR_WEBHOOK_SECRET: ${{ secrets.CI_CONDUCTOR_WEBHOOK_SECRET }}
+          ENG_STATS_URL: ${{ secrets.ENG_STATS_URL }}
+          API_KEY: ${{ secrets.ENG_STATS_API_KEY }}
+          GITHUB_TOKEN: ${{ github.token }}
+        run: bun .github/scripts/flaky-rerun-auto-pass.ts
+
+      # The other gates follow through an artifact: run-tests.yml's suites all need its gate, so the
+      # answer is in place before theirs look. One that looks too early finds nothing and re-runs.
+      - name: Record the auto-pass for the other gates
+        if: ${{ steps.decide.outputs.auto-pass == 'true' }}
+        run: mkdir -p flaky-rerun && echo true > flaky-rerun/auto-pass
+      - name: Share the auto-pass with the other gates
+        if: ${{ steps.decide.outputs.auto-pass == 'true' }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: ${{ env.ARTIFACT }}
+          path: flaky-rerun/auto-pass
+          retention-days: 1
+          overwrite: true
+
+      # `pattern` (not `name`): the artifact is absent whenever there's no auto-pass, which `name`
+      # treats as an error and `pattern` as nothing to download.
+      - name: Look for the run's auto-pass
+        if: ${{ !inputs.decide-flaky-rerun }}
+        uses: actions/download-artifact@v8
+        continue-on-error: true
+        with:
+          pattern: ${{ env.ARTIFACT }}
+          path: flaky-rerun
+      - name: Follow the run's auto-pass
+        id: follow
+        if: ${{ !inputs.decide-flaky-rerun }}
+        run: |
+          if [ -n "$(find flaky-rerun -type f 2>/dev/null)" ]; then
+            echo "Every failure on this PR is a confirmed flake; skipping the suite on this re-run."
+            echo "auto-pass=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "No auto-pass for this re-run; the suite runs as usual."
+          fi
 
   files-changed:
     name: Detect changed files
