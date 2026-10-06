@@ -1128,10 +1128,18 @@ describe("scenarios > dashboard > parameters", () => {
     });
 
     it("should duplicate filters when duplicating a dashboard", () => {
+      const cardCategoryParameter = createMockParameter({
+        id: "c4a7e5d2",
+        name: "Card Category",
+        type: "string/=",
+        slug: "category_2",
+        sectionId: "string",
+      });
+
       H.createQuestionAndDashboard({
         questionDetails: ordersCountByCategory,
         dashboardDetails: {
-          parameters: [categoryParameter],
+          parameters: [categoryParameter, cardCategoryParameter],
         },
       }).then(({ body: dashcard }) => {
         H.updateDashboardCards({
@@ -1147,9 +1155,19 @@ describe("scenarios > dashboard > parameters", () => {
               row: 1,
               size_x: 12,
               size_y: 6,
+              inline_parameters: [cardCategoryParameter.id],
               parameter_mappings: [
                 {
                   parameter_id: categoryParameter.id,
+                  card_id: dashcard.card_id,
+                  target: [
+                    "dimension",
+                    categoryFieldRef,
+                    { "stage-number": 0 },
+                  ],
+                },
+                {
+                  parameter_id: cardCategoryParameter.id,
                   card_id: dashcard.card_id,
                   target: [
                     "dimension",
@@ -1172,12 +1190,15 @@ describe("scenarios > dashboard > parameters", () => {
         .should("exist");
 
       H.getDashboardCard(1).within(() => {
-        cy.findByText("Doohickey").should("be.visible");
-        cy.findByText("Gizmo").should("be.visible");
-        cy.findByText("Gadget").should("be.visible");
-        cy.findByText("Widget").should("be.visible");
+        H.echartsContainer().within(() => {
+          cy.findByText("Doohickey").should("be.visible");
+          cy.findByText("Gizmo").should("be.visible");
+          cy.findByText("Gadget").should("be.visible");
+          cy.findByText("Widget").should("be.visible");
+        });
       });
 
+      cy.log("Heading filter");
       H.getDashboardCard(0).within(() => {
         H.filterWidget().contains("Category").click();
       });
@@ -1187,15 +1208,44 @@ describe("scenarios > dashboard > parameters", () => {
       });
 
       H.getDashboardCard(1).within(() => {
-        cy.findByText("Gadget").should("be.visible");
-        cy.findByText("Doohickey").should("not.exist");
-        cy.findByText("Gizmo").should("not.exist");
-        cy.findByText("Widget").should("not.exist");
+        H.echartsContainer().within(() => {
+          cy.findByText("Gadget").should("be.visible");
+          cy.findByText("Doohickey").should("not.exist");
+          cy.findByText("Gizmo").should("not.exist");
+          cy.findByText("Widget").should("not.exist");
+        });
       });
 
-      cy.location().should(({ search }) => {
-        expect(search).to.eq("?category=Gadget");
+      expectSearchParams({ category: "Gadget", category_2: "" });
+
+      cy.log("Question dashcard filter");
+      H.getDashboardCard(0).within(() => H.clearFilterWidget());
+
+      H.getDashboardCard(1).within(() => {
+        H.echartsContainer().within(() => {
+          cy.findByText("Doohickey").should("be.visible");
+          cy.findByText("Gizmo").should("be.visible");
+          cy.findByText("Gadget").should("be.visible");
+          cy.findByText("Widget").should("be.visible");
+        });
+
+        H.filterWidget().contains("Card Category").click();
       });
+      H.popover().within(() => {
+        cy.findByText("Gadget").click();
+        cy.button("Add filter").click();
+      });
+
+      H.getDashboardCard(1).within(() => {
+        H.echartsContainer().within(() => {
+          cy.findByText("Gadget").should("be.visible");
+          cy.findByText("Doohickey").should("not.exist");
+          cy.findByText("Gizmo").should("not.exist");
+          cy.findByText("Widget").should("not.exist");
+        });
+      });
+
+      expectSearchParams({ category: "", category_2: "Gadget" });
     });
 
     it("should not display a parameter widget if there are no linked with it cards after a text card variable is removed (UXW-751)", () => {
@@ -2209,70 +2259,6 @@ describe("scenarios > dashboard > parameters", () => {
         category: "Widget",
         category_1: "Doohickey",
         count: "5000",
-      });
-    });
-
-    it("should duplicate filters when duplicating a dashboard", () => {
-      H.createQuestionAndDashboard({
-        questionDetails: ordersCountByCategory,
-        dashboardDetails: {
-          parameters: [categoryParameter],
-        },
-      }).then(({ body: dashcard }) => {
-        H.updateDashboardCards({
-          dashboard_id: dashcard.dashboard_id,
-          cards: [
-            {
-              id: dashcard.id,
-              inline_parameters: [categoryParameter.id],
-              parameter_mappings: [
-                {
-                  parameter_id: categoryParameter.id,
-                  card_id: dashcard.card_id,
-                  target: [
-                    "dimension",
-                    categoryFieldRef,
-                    { "stage-number": 0 },
-                  ],
-                },
-              ],
-            },
-          ],
-        });
-
-        H.visitDashboard(dashcard.dashboard_id);
-      });
-
-      H.openDashboardMenu("Duplicate");
-      H.modal().button("Duplicate").click();
-      H.dashboardHeader()
-        .findByText("Test Dashboard - Duplicate")
-        .should("exist");
-
-      H.getDashboardCard(0).within(() => {
-        cy.findByText("Doohickey").should("be.visible");
-        cy.findByText("Gizmo").should("be.visible");
-        cy.findByText("Gadget").should("be.visible");
-        cy.findByText("Widget").should("be.visible");
-
-        H.filterWidget().contains("Category").click();
-      });
-      H.popover().within(() => {
-        cy.findByText("Gadget").click();
-        cy.button("Add filter").click();
-      });
-
-      H.getDashboardCard(0).within(() => {
-        H.echartsContainer().within(() => {
-          cy.findByText("Gadget").should("be.visible");
-          cy.findByText("Doohickey").should("not.exist");
-          cy.findByText("Gizmo").should("not.exist");
-          cy.findByText("Widget").should("not.exist");
-        });
-      });
-
-      cy.location().should(({ search }) => {
-        expect(search).to.eq("?category=Gadget");
       });
     });
 
