@@ -25,12 +25,6 @@ const QUESTION_DETAILS = {
   query: { "source-table": PRODUCTS_ID },
 };
 
-function createDashboardDetails({ parameters }) {
-  return {
-    parameters,
-  };
-}
-
 const filterToggleLabel = "Auto-apply filters";
 
 describe(
@@ -343,7 +337,7 @@ const createDashboard = ({
   H.createQuestionAndDashboard({
     questionDetails: QUESTION_DETAILS,
     dashboardDetails: {
-      ...createDashboardDetails({ parameters }),
+      parameters,
       ...dashboardOpts,
     },
   }).then(({ body: card }) => {
@@ -362,12 +356,12 @@ const getParameterMapping = ({ card_id }, parameters) => ({
   }),
 });
 
-const openDashboard = (params = {}) => {
+const openDashboard = () => {
   cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query").as(
     "cardQuery",
   );
 
-  H.visitDashboard("@dashboardId", { params });
+  H.visitDashboard("@dashboardId");
 };
 
 const visitFullAppEmbeddingUrl = ({ url, qs }) => {
