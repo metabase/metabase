@@ -3090,8 +3090,8 @@
           (is (not (revoked? :oauth_refresh_token v2-refresh))))))))
 
 (deftest move-data-app-resource-collections-to-their-namespace-test
-  (testing "v65.2026-10-06T00:00:00: every data app's resource collection is in the data-apps namespace"
-    (impl/test-migrations ["v65.2026-10-06T00:00:00"] [migrate!]
+  (testing "v65.2026-10-06T00:00:01: every data app's resource collection is in the data-apps namespace"
+    (impl/test-migrations ["v65.2026-10-06T00:00:01"] [migrate!]
       (let [insert-app! (fn [slug collection-id]
                           (t2/insert-returning-pk! :data_app {:name                   slug
                                                               :display_name           slug

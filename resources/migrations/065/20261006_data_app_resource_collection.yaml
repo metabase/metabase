@@ -6,6 +6,22 @@ databaseChangeLog:
   - changeSet:
       id: v65.2026-10-06T00:00:00
       author: timofei
+      comment: Index data apps by their resource collection
+      changes:
+        - createIndex:
+            tableName: data_app
+            indexName: idx_data_app_resource_collection_id
+            columns:
+              - column:
+                  name: resource_collection_id
+      rollback:
+        - dropIndex:
+            tableName: data_app
+            indexName: idx_data_app_resource_collection_id
+
+  - changeSet:
+      id: v65.2026-10-06T00:00:01
+      author: timofei
       comment: Put every data app's resource collection in the data-apps namespace, creating the missing ones
       changes:
         - customChange:

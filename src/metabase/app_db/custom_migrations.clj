@@ -2319,9 +2319,9 @@
   ;; in the default namespace; an app whose collection was deleted has none. Both are brought to the invariant here.
   (t2/query {:update :collection
              :set    {:namespace "data-apps"}
-             :where  [:in :id ^:allow-subquery {:select [:resource_collection_id]
+             :where  [:exists ^:allow-subquery {:select [1]
                                                 :from   [:data_app]
-                                                :where  [:not= :resource_collection_id nil]}]})
+                                                :where  [:= :data_app.resource_collection_id :collection.id]}]})
   (run! (fn [{:keys [id name]}]
           (let [collection-name (str "Data App: " name)
                 ;; slugified as the Collection model does (`collection-slug-max-length`), so a later rename changes nothing
