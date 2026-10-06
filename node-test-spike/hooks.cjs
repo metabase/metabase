@@ -110,7 +110,9 @@ const sourceRoots = ["frontend/src", "frontend/test", "enterprise/frontend/src"]
 const topLevel = new Set(sourceRoots.flatMap((dir) => fs.readdirSync(dir)));
 const processDir = path.join(cacheDir, `process-${process.pid}`);
 fs.mkdirSync(processDir, { recursive: true });
-process.on("exit", () => fs.rmSync(processDir, { recursive: true, force: true }));
+// A spec can emit "exit" on a live process, and the stubs must outlive that.
+// Under the pool the parent removes this directory once the worker is gone.
+if (process.env.NT_QUEUE !== "1") process.on("exit", () => fs.rmSync(processDir, { recursive: true, force: true }));
 const stub = (name, source) => { const file = path.join(processDir, name); fs.writeFileSync(file, source); return file; };
 const styleStub = stub("style-stub.cjs", "module.exports = {};");
 const fileStub = stub("file-stub.cjs", 'module.exports = "test-file-stub";');
