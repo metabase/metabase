@@ -5,17 +5,22 @@ import { BulkActionButton } from "metabase/common/components/BulkActionBar";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { useDispatch } from "metabase/redux";
 import { addUndo } from "metabase/redux/undo";
-import { Box, Card, Flex, Text } from "metabase/ui";
+import { Box, Card, Flex, Text, Tooltip } from "metabase/ui";
 import type { ContentDiagnosticsBaseFinding } from "metabase-types/api";
 
 import type { ContentDiagnosticsTab } from "../types";
 
+import { ContentDiagnosticsBulkDismissButton } from "./ContentDiagnosticsBulkDismissButton";
 import { useBulkTrashFindings } from "./use-bulk-trash-findings";
 
-type ContentDiagnosticsBulkTrashBarProps = {
+type ContentDiagnosticsBulkActionsBarProps = {
   selectedFindings: ContentDiagnosticsBaseFinding[];
   tab: ContentDiagnosticsTab;
-  onSettled: (failedFindingIds: number[]) => void;
+  enableTrash?: boolean;
+  onSettled: (
+    failedFindingIds: number[],
+    dismissedFindingIds?: number[],
+  ) => void;
 };
 
 type TrashCopy = {
@@ -92,15 +97,17 @@ function getResultMessage(count: number, transformCount: number): string {
   );
 }
 
-export function ContentDiagnosticsBulkTrashBar({
+export function ContentDiagnosticsBulkActionsBar({
   selectedFindings,
   tab,
   onSettled,
-}: ContentDiagnosticsBulkTrashBarProps) {
+  enableTrash = true,
+}: ContentDiagnosticsBulkActionsBarProps) {
   const dispatch = useDispatch();
   const trashFindings = useBulkTrashFindings();
   const [isConfirmOpen, { open, close }] = useDisclosure();
 
+  const canTrash = selectedFindings.every((finding) => finding.can_write);
   const count = selectedFindings.length;
   const transformCount = selectedFindings.filter(
     (finding) => finding.entity_type === "transform",
@@ -109,7 +116,7 @@ export function ContentDiagnosticsBulkTrashBar({
   const trashCopy = getTrashCopy(archivableCount, transformCount);
 
   const handleConfirm = async () => {
-    if (selectedFindings.length === 0) {
+    if (selectedFindings.length === 0 || !enableTrash || !canTrash) {
       close();
       return;
     }
@@ -139,41 +146,58 @@ export function ContentDiagnosticsBulkTrashBar({
 
   return (
     <>
-      {count > 0 && (
-        <Box
-          pos="absolute"
-          left="50%"
-          style={{
-            bottom: "var(--mantine-spacing-lg)",
-            transform: "translateX(-50%)",
-            zIndex: 150,
-          }}
-          data-testid="content-diagnostics-bulk-actions"
+      {/* Keep dialogs mounted when selected rows disappear. */}
+      <Box
+        display={count > 0 ? undefined : "none"}
+        pos="absolute"
+        left="50%"
+        style={{
+          bottom: "var(--mantine-spacing-lg)",
+          transform: "translateX(-50%)",
+          zIndex: 150,
+        }}
+        data-testid="content-diagnostics-bulk-actions"
+      >
+        <Card
+          bg="tooltip-background"
+          c="tooltip-text"
+          py="md"
+          px="lg"
+          data-testid="toast-card"
         >
-          <Card
-            bg="tooltip-background"
-            c="tooltip-text"
-            py="md"
-            px="lg"
-            data-testid="toast-card"
-          >
-            <Flex align="center" justify="space-between" gap="2.5rem">
-              <Text c="tooltip-text">
-                {ngettext(
-                  msgid`${count} item selected`,
-                  `${count} items selected`,
-                  count,
-                )}
-              </Text>
-              <Flex gap="sm" align="center">
-                <BulkActionButton danger onClick={open}>
-                  {trashCopy.actionLabel}
-                </BulkActionButton>
-              </Flex>
+          <Flex align="center" justify="space-between" gap="2.5rem">
+            <Text c="tooltip-text">
+              {ngettext(
+                msgid`${count} item selected`,
+                `${count} items selected`,
+                count,
+              )}
+            </Text>
+            <Flex gap="sm" align="center">
+              <ContentDiagnosticsBulkDismissButton
+                findingIds={selectedFindings.map((finding) => finding.id)}
+                onDismiss={(ids) => onSettled([], ids)}
+              />
+              {enableTrash && (
+                <Tooltip
+                  label={t`You don't have permission to delete some selected items.`}
+                  disabled={canTrash}
+                >
+                  <span>
+                    <BulkActionButton
+                      danger
+                      disabled={!canTrash}
+                      onClick={open}
+                    >
+                      {trashCopy.actionLabel}
+                    </BulkActionButton>
+                  </span>
+                </Tooltip>
+              )}
             </Flex>
-          </Card>
-        </Box>
-      )}
+          </Flex>
+        </Card>
+      </Box>
       <ConfirmModal
         opened={isConfirmOpen}
         title={trashCopy.title}

@@ -344,3 +344,12 @@ export type ListImbalancedFindingsResponse = {
   offset: number | null;
   last_scan_at: string | null;
 };
+
+export type InvalidateFindingsRequest = {
+  ids: ContentDiagnosticsBaseFinding["id"][];
+};
+
+export type InvalidateFindingsResponse = {
+  invalidated: ContentDiagnosticsBaseFinding["id"][];
+  skipped: ContentDiagnosticsBaseFinding["id"][];
+};

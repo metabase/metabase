@@ -179,7 +179,7 @@ describe("StaleContentPage", () => {
     ).toBeInTheDocument();
   });
 
-  it("allows to select only findings the user can trash", async () => {
+  it("allows read-only findings to be dismissed but not trashed", async () => {
     setup({
       findings: [
         createMockContentDiagnosticsStaleFinding({
@@ -210,7 +210,97 @@ describe("StaleContentPage", () => {
     }
 
     expect(within(writableRow).getByRole("checkbox")).toBeEnabled();
-    expect(within(readonlyRow).getByRole("checkbox")).toBeDisabled();
+    expect(within(readonlyRow).getByRole("checkbox")).toBeEnabled();
+    await userEvent.click(within(readonlyRow).getByRole("checkbox"));
+    expect(
+      screen.getByRole("button", { name: "Move to trash" }),
+    ).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Dismiss" })).toBeEnabled();
+  });
+
+  it("dismisses findings, refetches the list, and clears selection", async () => {
+    let findings = [
+      createMockContentDiagnosticsStaleFinding({
+        id: 11,
+        entity_id: 101,
+        entity_display_name: "Dismiss me",
+        can_write: false,
+      }),
+    ];
+    fetchMock.post("path:/api/ee/content-diagnostics/invalidate", () => {
+      findings = [];
+      return { invalidated: [11], skipped: [] };
+    });
+    setup({
+      getResponse: () =>
+        createMockListStaleFindingsResponse({
+          data: findings,
+          total: findings.length,
+        }),
+    });
+    await screen.findByRole("treegrid");
+    await userEvent.click(screen.getByLabelText("Select all"));
+    await userEvent.click(screen.getByRole("button", { name: "Dismiss" }));
+    await userEvent.click(
+      within(await screen.findByRole("dialog")).getByRole("button", {
+        name: "Dismiss",
+      }),
+    );
+    expect(
+      await screen.findByText("No stale content found"),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("Dismiss me")).not.toBeInTheDocument();
+    expect(
+      screen.getByTestId("content-diagnostics-bulk-actions"),
+    ).not.toBeVisible();
+    expect(
+      fetchMock.callHistory.calls("path:/api/ee/content-diagnostics/stale")
+        .length,
+    ).toBeGreaterThan(1);
+    const [call] = fetchMock.callHistory.calls(
+      "path:/api/ee/content-diagnostics/invalidate",
+    );
+    expect(JSON.parse(String(call.options.body))).toEqual({ ids: [11] });
+  });
+
+  it("returns to the first page when dismissal removes the last page", async () => {
+    const finding = createMockContentDiagnosticsStaleFinding({
+      id: 26,
+      entity_display_name: "Last page finding",
+    });
+    let dismissed = false;
+    fetchMock.post("path:/api/ee/content-diagnostics/invalidate", () => {
+      dismissed = true;
+      return { invalidated: [26], skipped: [] };
+    });
+    const { router } = setup({
+      urlParams: { page: "1" },
+      getResponse: (url) =>
+        createMockListStaleFindingsResponse({
+          data: url.includes("offset=25")
+            ? dismissed
+              ? []
+              : [finding]
+            : FINDINGS,
+          total: dismissed ? 25 : 26,
+        }),
+    });
+    await screen.findByText("Last page finding");
+    await userEvent.click(screen.getByLabelText("Select all"));
+    await userEvent.click(screen.getByRole("button", { name: "Dismiss" }));
+    await userEvent.click(
+      within(await screen.findByRole("dialog")).getByRole("button", {
+        name: "Dismiss",
+      }),
+    );
+    expect(await screen.findByText("Sales overview")).toBeInTheDocument();
+    await waitFor(() =>
+      expect(getLastRequestUrl().searchParams.get("offset")).toBe("0"),
+    );
+    expect(getUrlQuery(router)).toEqual({});
+    expect(
+      screen.getByTestId("content-diagnostics-bulk-actions"),
+    ).not.toBeVisible();
   });
 
   it("archives the selected findings and refetches the list", async () => {

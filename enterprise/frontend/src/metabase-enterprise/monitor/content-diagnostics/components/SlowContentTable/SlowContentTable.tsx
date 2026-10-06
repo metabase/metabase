@@ -68,7 +68,7 @@ export function SlowContentTable({
       sorting: sortingState,
       manualSorting: true,
       getNodeId: (finding) => String(finding.id),
-      enableRowSelection: (row) => row.original.can_write,
+      enableRowSelection: true,
       rowSelection,
       onRowActivate: handleRowActivate,
       onRowSelectionChange,

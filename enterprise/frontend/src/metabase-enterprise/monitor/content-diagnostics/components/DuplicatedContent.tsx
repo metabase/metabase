@@ -29,19 +29,21 @@ export function DuplicatedContent({
   const config = duplicatedContentConfig;
   const { page = 0, query } = params;
   const filterOptions = config.getFilterOptions(params);
-  const { data, isFetching, isLoading, error } = useListDuplicatedFindingsQuery(
-    {
-      query,
-      "entity-types": config.getEntityTypesParam(filterOptions.entityTypes),
-      "include-personal-collections": filterOptions.includePersonalCollections,
-      "min-duplicate-count": filterOptions.minDuplicateCount,
-      "sort-column": params.sortColumn,
-      "sort-direction": params.sortDirection,
-      limit: PAGE_SIZE,
-      offset: page * PAGE_SIZE,
-    },
-    { skip: isLoadingParams },
-  );
+  const { data, currentData, isFetching, isLoading, error } =
+    useListDuplicatedFindingsQuery(
+      {
+        query,
+        "entity-types": config.getEntityTypesParam(filterOptions.entityTypes),
+        "include-personal-collections":
+          filterOptions.includePersonalCollections,
+        "min-duplicate-count": filterOptions.minDuplicateCount,
+        "sort-column": params.sortColumn,
+        "sort-direction": params.sortDirection,
+        limit: PAGE_SIZE,
+        offset: page * PAGE_SIZE,
+      },
+      { skip: isLoadingParams },
+    );
 
   return (
     <ContentDiagnosticsContent
@@ -53,6 +55,7 @@ export function DuplicatedContent({
       onParamsChange={onParamsChange}
       data={data}
       isFetchingFindings={isFetching}
+      hasCurrentData={currentData !== undefined}
       isLoadingFindings={isLoading}
       error={error}
       renderFilterBar={(props) => <DuplicatedContentFilterBar {...props} />}

@@ -28,7 +28,7 @@ import {
   trackContentDiagnosticsTabViewed,
 } from "../analytics";
 
-import { ContentDiagnosticsBulkTrashBar } from "./ContentDiagnosticsBulkTrashBar";
+import { ContentDiagnosticsBulkActionsBar } from "./ContentDiagnosticsBulkActionsBar";
 import { DiagnosticsHeader } from "./DiagnosticsHeader";
 import { DiagnosticsPagination } from "./DiagnosticsPagination";
 import type {
@@ -96,6 +96,7 @@ type ContentDiagnosticsContentProps<
   ) => void;
   data?: { data: TFinding[]; total: number };
   isFetchingFindings: boolean;
+  hasCurrentData: boolean;
   isLoadingFindings: boolean;
   error: ComponentProps<typeof DelayedLoadingAndErrorWrapper>["error"];
   renderFilterBar: (props: FilterBarProps<TFilterOptions>) => ReactNode;
@@ -119,6 +120,7 @@ export function ContentDiagnosticsContent<
   onParamsChange,
   data,
   isFetchingFindings,
+  hasCurrentData,
   isLoadingFindings,
   error,
   renderFilterBar,
@@ -265,7 +267,7 @@ export function ContentDiagnosticsContent<
               findings,
               params,
               sortOptions,
-              isFetching,
+              isFetching: isFetching && !hasCurrentData,
               isLoading,
               rowSelection,
               onSelect: handleSelect,
@@ -281,17 +283,25 @@ export function ContentDiagnosticsContent<
               onPageChange={handlePageChange}
             />
           )}
-          {enableBulkTrash && (
-            <ContentDiagnosticsBulkTrashBar
-              tab={tab}
-              selectedFindings={selectedFindings}
-              onSettled={(failedIds) =>
+          <ContentDiagnosticsBulkActionsBar
+            enableTrash={enableBulkTrash}
+            tab={tab}
+            selectedFindings={selectedFindings}
+            onSettled={(failedIds, dismissedIds) => {
+              if (dismissedIds) {
+                // Keep rows selected after dismissal started.
+                setRowSelection((selection) => {
+                  const next = { ...selection };
+                  dismissedIds.forEach((id) => delete next[id]);
+                  return next;
+                });
+              } else {
                 setRowSelection(
                   Object.fromEntries(failedIds.map((id) => [id, true])),
-                )
+                );
               }
-            />
-          )}
+            }}
+          />
         </MonitorMain>
         {selectedFinding != null && (
           <Sidebar containerWidth={containerWidth}>
