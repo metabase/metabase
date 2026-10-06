@@ -216,7 +216,7 @@
 
 (deftest clean-remote-sync-state-restores-every-remote-sync-setting-row-test
   (testing "the raw remote-sync setting rows after clean-remote-sync-state equal the rows before it, also when the test
-            binds settings that had no row"
+            binds settings that had no row, and changes or deletes rows with no binding"
     (mt/with-dynamic-fn-redefs [search/reindex! (constantly nil)]
       (do-with-remote-sync-state-restored!
        (fn []
@@ -235,7 +235,30 @@
                 (is (= [:read-only true 5]
                        [(remote-sync.settings/remote-sync-type)
                         (remote-sync.settings/remote-sync-auto-import)
-                        (remote-sync.settings/remote-sync-git-timeout-seconds)])))))
+                        (remote-sync.settings/remote-sync-git-timeout-seconds)])))
+              ;; change and delete rows that existed before the test, with no binding to undo them
+              (remote-sync.settings/remote-sync-type! :read-only)
+              (t2/delete! :setting :key "remote-sync-branch")))
+           (is (= before (remote-sync-setting-rows)))))))))
+
+(deftest clean-remote-sync-state-keeps-setting-rows-when-the-write-back-fails-test
+  (testing "when the insert of the saved remote-sync setting rows fails, the rows stay and the exception propagates"
+    (mt/with-dynamic-fn-redefs [search/reindex! (constantly nil)]
+      (do-with-remote-sync-state-restored!
+       (fn []
+         (t2/delete! :setting :key [:in ["remote-sync-type" "remote-sync-branch" "remote-sync-transforms"]])
+         (t2/insert! :setting [{:key "remote-sync-type" :value "read-write" :value_with_aad "read-write"}
+                               {:key "remote-sync-branch" :value "legacy" :value_with_aad nil}])
+         (setting/restore-cache!)
+         (let [before  (remote-sync-setting-rows)
+               insert! (mt/original-fn #'t2/insert!)]
+           (is (thrown-with-msg?
+                clojure.lang.ExceptionInfo #"insert failed"
+                (mt/with-dynamic-fn-redefs [t2/insert! (fn [model & args]
+                                                         (if (= :setting model)
+                                                           (throw (ex-info "insert failed" {}))
+                                                           (apply insert! model args)))]
+                  (th/clean-remote-sync-state (fn [])))))
            (is (= before (remote-sync-setting-rows)))))))))
 
 (deftest stored-transforms-setting-test-keeps-existing-transforms-state-test
