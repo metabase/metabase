@@ -60,18 +60,18 @@
         nil))))
 
 (defn- resource-owners
-  "Map of resource path -> identity key of the entity that owns it, for `entries` of `{:key :spec :entity}`. A resource
-  file belongs to the entity YAML file that declares it, the nearest ancestor directory first, which is the rule of
-  [[metabase-enterprise.remote-sync.source/owned-paths]]."
+  "Map of resource path -> identity key of the entity that owns it, for `entries` of `{:key :spec :resource-paths}`. A
+  resource file belongs to the entity YAML file that declares it; when YAML files in several ancestor directories
+  declare it, the one in the nearest directory owns it."
   [entries]
-  (let [claims (reduce (fn [acc {k :key {:keys [path]} :spec entity :entity}]
+  (let [claims (reduce (fn [acc {k :key {:keys [path]} :spec resource-paths :resource-paths}]
                          (reduce (fn [acc resource-path]
                                    (let [depth (count (parent-dir path))]
                                      (if (some-> (get acc resource-path) :depth (>= depth))
                                        acc
                                        (assoc acc resource-path {:depth depth :key k}))))
                                  acc
-                                 (declared-resource-paths path entity)))
+                                 resource-paths))
                        {}
                        (filter :key entries))]
     (update-vals claims :key)))
@@ -93,9 +93,14 @@
   is surfaced as an error. A duplicate path (two files at the same path, which a real tree shouldn't contain) only
   warns and keeps the last."
   [specs]
-  (let [entries   (mapv (fn [{:keys [^String path content] :as spec}]
-                          (let [entity (when (str/ends-with? path ".yaml") (parse-entity content))]
-                            {:key (entity-identity entity) :spec (select-keys spec [:path :content]) :entity entity}))
+  (let [;; keep only what the index needs of each parsed entity, so that the parsed maps of a side are not all live
+        ;; at once
+        entries   (mapv (fn [{:keys [^String path content] :as spec}]
+                          (let [entity (when (str/ends-with? path ".yaml") (parse-entity content))
+                                k      (entity-identity entity)]
+                            {:key            k
+                             :spec           (select-keys spec [:path :content])
+                             :resource-paths (when k (declared-resource-paths path entity))}))
                         specs)
         owners    (resource-owners entries)
         units     (reduce (fn [acc {k :key {:keys [path] :as spec} :spec}]
@@ -152,7 +157,7 @@
 (defn- merge-indexed
   "[[three-way-merge]] over sides already indexed by [[index-by-key]].
 
-  `unchanged-locally?` is called with the base and ours specs of an entity present on both sides whose texts
+  `unchanged-locally?` is called with the base and ours load units of an entity present on both sides whose texts
   differ, and returns true when the local entity has not changed since the sync the base records (see
   [[three-way-merge]]). Such an entity is not a local change: the remote's edit to it merges cleanly, and when the
   remote left it alone the fresh serialization is kept, as before."
@@ -199,7 +204,8 @@
       :theirs-paths  (update-vals t :path)
       :theirs-unit-paths (update-vals t #(mapv :path (unit-specs %)))
       :ours-contents (update-vals o :content)
-      :ours-paths    (update-vals o :path)}
+      :ours-paths    (update-vals o :path)
+      :ours-units    o}
      all-keys)))
 
 (defn three-way-merge
@@ -224,14 +230,20 @@
   - `:theirs-paths`  - identity key -> path, for each entity in `theirs`
   - `:theirs-unit-paths` - identity key -> the paths of every file of its unit (the YAML file first), for each
                            entity in `theirs`
-  - `:ours-contents` - identity key -> content, for each entity in `ours`
+  - `:ours-contents` - identity key -> the content of the entity's YAML file, for each entity in `ours`
   - `:ours-paths`    - identity key -> path, for each entity in `ours`
+  - `:ours-units`    - identity key -> load unit, for each entity in `ours`: the `{:path :content}` of its YAML file,
+                       with `:resources`, the specs of its resource files sorted by path, when it has any. A unit has
+                       the shape of a file spec, so [[metabase-enterprise.remote-sync.source/file-spec-hash]] hashes it
+                       as the ledger hash does.
 
   `ours` is a fresh serialization, so it can differ from `base` for an entity nobody changed locally: the repo file
   may not be byte-identical to what Metabase writes (hand-written YAML, or a `name:` edited without renaming the
-  file, since the path is derived from the name). `:unchanged-locally?`, called as `(unchanged-locally? base-spec
-  ours-spec)` for such an entity, says whether the local entity is the one the base records; when it returns true
-  the entity is not a local change. The default treats every textual difference as a local change."
+  file, since the path is derived from the name). `:unchanged-locally?`, called as `(unchanged-locally? base-unit
+  ours-unit)` for such an entity, says whether the local entity is the one the base records; when it returns true
+  the entity is not a local change. Each argument is a load unit, as in `:ours-units`; a predicate must take the
+  `:resources` into account, or it misses a change to a resource file. The default treats every textual difference
+  as a local change."
   [base ours theirs & {:keys [unchanged-locally?] :or {unchanged-locally? (constantly false)}}]
   (merge-indexed (index-by-key base) (index-by-key ours) (index-by-key theirs) unchanged-locally?))
 

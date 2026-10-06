@@ -237,7 +237,8 @@
 
 (defn compute-merge
   "Runs the entity-identity 3-way merge of local state against the remote tip, without writing. Returns
-  the raw merge result `{:merged :conflicts :summary :decisions :theirs-paths :ours-contents :ours-paths}` from
+  the raw merge result `{:merged :conflicts :summary :decisions :theirs-paths :theirs-unit-paths :ours-contents
+  :ours-paths :ours-units}` from
   [[remote-sync.merge/three-way-merge]], plus
   `:force-push-casualties` (remote content a force push would discard; see
   [[remote-sync.merge/force-push-casualties]]), via [[remote-sync.merge/merge-with-casualties]]:
