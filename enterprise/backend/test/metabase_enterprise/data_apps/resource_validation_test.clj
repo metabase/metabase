@@ -271,3 +271,34 @@
                                 #(assoc % :parameters [{:id "name" :slug "name" :type "string/="
                                                         :values_source_config {:card_id question-eid}}]))]
        (is (some #(str/includes? % "must not take parameter values from a card") (messages tree)))))))
+
+(deftest refuses-a-reference-by-numeric-id-test
+  (testing "a numeric ID names a row on one instance, and slips past the checks that read entity IDs"
+    (mt/with-temp [:model/Card {other-id :id} {:dataset_query {:database (mt/id)
+                                                               :type     :query
+                                                               :query    {:source-table (mt/id :venues)}}}]
+      (let [refused (fn [f]
+                      (is (some #(str/includes? % "numeric ID")
+                                (messages (edit-file (shop (question-resources)) question-path f)))))
+            native  (fn [tag]
+                      #(assoc % :dataset_query {:database (:database (:dataset_query %))
+                                                :lib/type "mbql/query"
+                                                :stages   [{:lib/type      "mbql.stage/native"
+                                                            :native        "SELECT * FROM {{t}}"
+                                                            :template-tags {"t" (merge {:name "t" :display-name "T"
+                                                                                        :id   "7f2c2a0e-6c1e-4b53-9d0a-0d5a3a1d1c12"}
+                                                                                       tag)}}]}))]
+        (testing "a card"
+          (refused #(update % :dataset_query assoc :stages [{:lib/type "mbql.stage/mbql" :source-card other-id}])))
+        (testing "a table"
+          (refused #(assoc-in % [:dataset_query :stages 0 :source-table] (mt/id :venues))))
+        (testing "a field"
+          (refused #(assoc-in % [:dataset_query :stages 0 :filters] [["=" {} ["field" {} (mt/id :venues :id)] 1]])))
+        (testing "a field in the older form"
+          (refused #(assoc-in % [:dataset_query :stages 0 :filters] [["=" {} ["field" (mt/id :venues :id) nil] 1]])))
+        (testing "a card template tag"
+          (refused (native {:type "card" :card-id other-id})))
+        (testing "a snippet template tag"
+          (refused (native {:type "snippet" :snippet-name "s" :snippet-id 1})))
+        (testing "a table template tag"
+          (refused (native {:type "table" :table-id (mt/id :venues)})))))))
