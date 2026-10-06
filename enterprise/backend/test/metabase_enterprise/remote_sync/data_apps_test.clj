@@ -603,3 +603,15 @@
         (is (= :success (:status result)) (:message result))
         (is (= (sort [(mt/id :venues) (mt/id :checkins)])
                (t2/select-one-fn :table_ids :model/DataApp :name "shop")))))))
+
+(deftest an-apps-own-yaml-under-resources-is-left-alone-test
+  (testing "a YAML file under resources/ that isn't in the resource layout is the app's own: not loaded, not removed"
+    (with-data-apps-sync
+      (let [own  "data_apps/shop/resources/i18n/en.yaml"
+            mock (test-helpers/create-mock-source
+                  :initial-files {"main" (assoc (shop-tree (question-resources)) own "greeting: hello\n")})]
+        (let [result (import-at! mock "main" :force? true)]
+          (is (= :success (:status result)) (:message result)))
+        (mt/user-http-request :crowberto :put 200 "apps/shop" {:bundle "B2"})
+        (is (= :success (:status (export! mock))))
+        (is (= "greeting: hello\n" (get-in @(:files-atom mock) ["main" own])))))))

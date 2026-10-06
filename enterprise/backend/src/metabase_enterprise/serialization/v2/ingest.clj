@@ -129,7 +129,11 @@
                   (contains? legal-top-level-paths top)
                   (if-let [{:keys [entity-file entity-dir]} (get shared-top-level-paths top)]
                     (or (= entity-file file-name)
-                        (= entity-dir subdir))
+                        ;; only the resource layout holds entity files; other YAML under the directory is the app's own
+                        (let [[_ _ _ a b c] (str/split path #"/")]
+                          (and (= entity-dir subdir)
+                               (or (and (= a "collection.yaml") (nil? b))
+                                   (and (contains? #{"cards" "actions"} a) (some? b) (nil? c))))))
                     true)))))
 
 (defn- path-interner
