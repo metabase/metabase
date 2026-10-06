@@ -16,7 +16,8 @@
    {:keys [is-creation?]
     :or   {is-creation? false}
     :as   _options}]
-  (when event
+  ;; `revision/revert!` wrote the reversion revision of this event
+  (when (and event (not (:reverted-to-revision-id event)))
     (try
       (when-not (t2/instance-of? model object)
         (throw (ex-info "object must be a model instance" {:object object :model model})))
