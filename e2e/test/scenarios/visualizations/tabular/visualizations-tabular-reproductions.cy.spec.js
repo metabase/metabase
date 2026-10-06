@@ -159,8 +159,8 @@ describe("issue 18976, 18817", () => {
   it("should display a pivot table as regular one when pivot columns are missing (metabase#18976)", () => {
     H.visitQuestionAdhoc(questionDetails);
 
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Showing 1 row");
+    H.tableInteractiveHeader().should("contain", "'a'").and("contain", "'b'");
+    H.tableInteractive().findByText("a").should("be.visible");
   });
 
   it("should not keep orphan columns rendered after switching from pivot to regular table (metabase#18817)", () => {
@@ -225,8 +225,8 @@ describe("issue 21392", () => {
 
   it("should render a chart with many columns without freezing (metabase#21392)", () => {
     H.visitQuestionAdhoc({ dataset_query: TEST_QUERY, display: "line" });
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Visualization").should("be.visible");
+    H.echartsContainer().should("be.visible");
+    H.ensureEchartsContainerHasSvg();
   });
 });
 
@@ -335,7 +335,7 @@ describe("issue 28304", () => {
   });
 });
 
-describe("issue 25250", () => {
+describe("issue 28311", () => {
   const questionDetails = {
     name: "28311",
     dataset_query: {
@@ -383,7 +383,7 @@ describe("issue 25250", () => {
     H.visitQuestionAdhoc(questionDetails);
   });
 
-  it("pivot table should show standalone values when collapsed to the sub-level grouping (metabase#25250)", () => {
+  it("should move a column to a new position on the first drag (metabase#28311)", () => {
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Product ID").should("be.visible");
 
@@ -503,6 +503,17 @@ describe("issue 42049", () => {
       });
     }).as("cardQuery");
 
+    // A dirty question runs through /api/dataset, so give it the same named field ref.
+    cy.intercept("POST", "/api/dataset", (req) => {
+      req.on("response", (res) => {
+        const createdAt = res.body.data.cols[1];
+
+        createdAt.field_ref[1] = "created_at"; // simulate named field ref
+
+        res.send();
+      });
+    }).as("dataset");
+
     H.createQuestion(
       {
         query: {
@@ -556,8 +567,10 @@ describe("issue 42049", () => {
       cy.button("Previous month").click();
     });
 
-    cy.wait("@cardQuery");
-    cy.get("@cardQuery.all").should("have.length", 2);
+    cy.wait("@dataset");
+    H.queryBuilderFiltersPanel()
+      .findByTestId("filter-pill")
+      .should("contain", "Created At");
 
     cy.log("verify columns order after applying the filter");
 
@@ -1071,12 +1084,9 @@ describe("issue 56771", () => {
     H.joinTable("Products");
     H.visualize();
 
-    cy.wait(100); // wait for the column to be resized
-
     cy.findAllByTestId("header-cell")
       .filter(":contains(Products → Category)")
-      .as("headerCell")
-      .then(($cell) => {
+      .should(($cell) => {
         const width = $cell[0].getBoundingClientRect().width;
         expect(width).to.be.greaterThan(160);
       });
@@ -1247,14 +1257,18 @@ describe("issue 63745", () => {
       const cellsFlat = $cells.toArray().map((el) => el.textContent);
       const map = new Map(chunk(cellsFlat, 2));
       expect(map.get("User ID")).to.eq("1");
+      expect(map.get("Product ID")).to.eq("14");
     });
 
     cy.findByTestId("orders-table-columns").findByLabelText("ID").click();
 
+    // A stale mapping shifts each value one label down: "Product ID" then shows the User ID value.
     cy.findAllByTestId("object-details-table-cell").should(($cells) => {
       const cellsFlat = $cells.toArray().map((el) => el.textContent);
       const map = new Map(chunk(cellsFlat, 2));
+      expect(map.has("ID")).to.be.false;
       expect(map.get("User ID")).to.eq("1");
+      expect(map.get("Product ID")).to.eq("14");
     });
   });
 });
@@ -1298,13 +1312,21 @@ describe("issue 56094", () => {
       },
     });
 
+    H.tableInteractiveHeader().should("contain", "Doohickey");
+
     H.queryBuilderFooter().findByLabelText("Switch to data").click();
 
     H.queryBuilderFooterDisplayToggle().should("exist");
+    H.tableInteractiveHeader()
+      .should("contain", "Count")
+      .and("not.contain", "Doohickey");
 
     H.queryBuilderFooter().findByLabelText("Switch to visualization").click();
 
     H.queryBuilderFooterDisplayToggle().should("exist");
+    H.tableInteractiveHeader()
+      .should("contain", "Doohickey")
+      .and("not.contain", "Count");
   });
 });
 
@@ -1324,6 +1346,7 @@ describe("issue 57685", () => {
   });
 
   it("should handle empty column names without error (metabase#57685)", () => {
+    H.tableInteractive().should("be.visible");
     cy.findByTestId("visualization-root").icon("warning").should("not.exist");
 
     cy.findByTestId("qb-header-action-panel")

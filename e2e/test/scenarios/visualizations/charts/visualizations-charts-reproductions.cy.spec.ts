@@ -27,10 +27,11 @@ describe("issue 43075", () => {
     cy.findAllByTestId("cell-data").contains("54").click();
     H.popover().findByText("Break out by…").click();
     H.popover().findByText("Category").click();
+    H.popover().findByText("Vendor").should("exist");
 
-    cy.window().then((win) => {
-      expect(win.document.documentElement.scrollHeight).to.be.lte(
-        win.document.documentElement.offsetHeight,
+    cy.document().should((doc) => {
+      expect(doc.documentElement.scrollHeight).to.be.lte(
+        doc.documentElement.offsetHeight,
       );
     });
   });
@@ -53,10 +54,16 @@ describe("issue 41133", () => {
   it("object detail view should be scrollable on narrow screens (metabase#41133)", () => {
     H.openObjectDetail(0);
 
-    H.modal().within(() => {
-      cy.findByText("Created At").scrollIntoView().should("be.visible");
-      cy.findByText("is connected to:").scrollIntoView().should("be.visible");
-    });
+    // scrollTo fails when the container does not have a scrollable overflow
+    H.modal()
+      .findByText("is connected to:")
+      .parents()
+      .filter((_, el) =>
+        ["auto", "scroll"].includes(getComputedStyle(el).overflowY),
+      )
+      .first()
+      .scrollTo("bottom");
+    H.modal().findByText("is connected to:").should("be.visible");
   });
 });
 
@@ -413,6 +420,9 @@ describe("issue 59671", () => {
       index: 0,
     });
     H.visualize();
+
+    cy.log("A 1x1 result changes the display to a scalar");
+    cy.findByTestId("scalar-value").should("have.text", "18,760");
   });
 });
 
@@ -601,42 +611,31 @@ describe("issue 55853", () => {
 
     cy.log("Verify that the chart renders successfully");
     H.echartsContainer().should("be.visible");
-    H.echartsContainer().get("text").should("contain", "%");
+    H.echartsContainer().find("text").should("contain", "%");
     H.chartPathWithFillColor("#88BF4D").should("have.length", 4);
 
     cy.log("Check that axis labels and title don't overlap");
     H.echartsContainer()
-      .get("text")
+      .find("text")
       .then(($texts) => {
-        const percentTexts: Array<{ text: string; element: HTMLElement }> = [];
-        const axisTitle: Array<{ text: string; element: HTMLElement }> = [];
+        const texts = $texts.toArray();
+        const axisTitle = texts.find(
+          (el) => el.textContent?.trim() === "value",
+        );
+        const percentLabels = texts.filter((el) =>
+          el.textContent?.includes("%"),
+        );
 
-        $texts.each((i, el) => {
-          const text = el.textContent?.trim() || "";
-          if (text.includes("%") && text !== "value") {
-            percentTexts.push({ text, element: el });
-          }
-          if (text === "value") {
-            axisTitle.push({ text, element: el });
-          }
+        expect(axisTitle, "y-axis title").to.exist;
+        expect(percentLabels).to.have.length.greaterThan(0);
+
+        const titleRight = axisTitle!.getBoundingClientRect().right;
+        percentLabels.forEach((el) => {
+          expect(
+            el.getBoundingClientRect().left - titleRight,
+            `Label "${el.textContent}" should not overlap with the axis title`,
+          ).to.be.greaterThan(5);
         });
-
-        cy.log("Verify we have percentage labels");
-        expect(percentTexts.length).to.be.greaterThan(0);
-
-        cy.log("Check that axis labels and title don't overlap");
-        if (axisTitle.length > 0 && percentTexts.length > 0) {
-          const titleRect = axisTitle[0].element.getBoundingClientRect();
-
-          percentTexts.forEach(({ text, element }) => {
-            const labelRect = element.getBoundingClientRect();
-
-            expect(
-              labelRect.left - titleRect.right,
-              `Label "${text}" should not overlap with axis title "${axisTitle[0].text}"`,
-            ).to.be.greaterThan(5);
-          });
-        }
       });
 
     cy.log(
@@ -675,6 +674,7 @@ describe("issue 10493", () => {
     cy.log("Click on Quantity column header and select Distribution");
     H.tableHeaderClick("Quantity");
     H.popover().findByText("Distribution").click();
+    cy.wait("@dataset");
 
     cy.log("Verify bar chart is displayed with binned quantity as dimension");
     cy.findByTestId("visualization-root").should(
@@ -682,8 +682,7 @@ describe("issue 10493", () => {
       "data-viz-ui-name",
       "Bar",
     );
-    H.echartsContainer().should("be.visible");
-    H.chartPathWithFillColor("#509EE3").should("exist");
+    H.chartPathWithFillColor("#509EE3").should("have.length", 9);
 
     cy.log("Apply filter: count >= 20");
     cy.findByTestId("qb-header-action-panel").findByText("Filter").click();
@@ -702,23 +701,20 @@ describe("issue 10493", () => {
     cy.log(
       "Verify bar chart is still displayed (binned column should still be treated as dimension)",
     );
-    cy.findByTestId("query-builder-main")
-      .findByText(/^Doing science/)
-      .should("not.exist");
+    H.assertQueryBuilderRowCount(5);
     cy.findByTestId("visualization-placeholder").should("not.exist");
     cy.findByTestId("visualization-root").should(
       "have.attr",
       "data-viz-ui-name",
       "Bar",
     );
-    H.echartsContainer().should("be.visible");
-    H.chartPathWithFillColor("#509EE3").should("exist");
+    H.chartPathWithFillColor("#509EE3").should("have.length", 5);
   });
 });
 
 describe("UXW-2696", () => {
   const getChartPoints = () =>
-    H.echartsContainer().get("path[fill='hsla(0, 0%, 100%, 1.00)']");
+    H.echartsContainer().find("path[fill='hsla(0, 0%, 100%, 1.00)']");
   const getNoPointsMessage = () =>
     cy.findByRole("dialog", { name: /data points are off screen/i });
 
@@ -864,6 +860,7 @@ describe("UXW-2696", () => {
           "false",
         );
 
+        H.echartsContainer().find("svg").should("exist");
         assertNoPoints(false);
         getNoPointsMessage().should("not.exist");
 

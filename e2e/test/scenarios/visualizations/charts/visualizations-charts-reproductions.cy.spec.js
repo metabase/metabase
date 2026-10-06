@@ -23,9 +23,9 @@ describe("issue 16170", { tags: "@mongo" }, () => {
   }
 
   function assertOnTheYAxis() {
-    H.echartsContainer().get("text").contains("Count");
+    H.echartsContainer().find("text").contains("Count");
 
-    H.echartsContainer().get("text").contains("6,000");
+    H.echartsContainer().find("text").contains("6,000");
   }
 
   beforeEach(() => {
@@ -122,16 +122,16 @@ describe("issue 17524", () => {
     });
 
     it("should not alter visualization type when applying filter on a native question (metabase#17524-1)", () => {
-      H.filterWidget().type("1");
+      cy.intercept("POST", "/api/card/*/query").as("cardQuery");
 
-      cy.get("polygon");
+      H.filterWidget().type("20");
 
       // eslint-disable-next-line metabase/no-unsafe-element-filtering
       cy.icon("play").last().click();
+      cy.wait("@cardQuery");
 
-      cy.get("polygon");
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Save").should("not.exist");
+      cy.findAllByTestId("funnel-chart-header").should("have.length", 3);
+      H.queryBuilderHeader().button("Save").should("not.exist");
     });
   });
 
@@ -141,16 +141,19 @@ describe("issue 17524", () => {
     });
 
     it("should not alter visualization type when applying filter on a QB question (metabase#17524-2)", () => {
-      cy.get("polygon");
+      cy.intercept("POST", "/api/dataset").as("dataset");
+      cy.findAllByTestId("funnel-chart-header").should("have.length", 4);
 
       H.filter();
-      H.popover().findByText("ID").click();
-      H.selectFilterOperator("Greater than");
+      H.popover().findByText("Category").click();
+      H.selectFilterOperator("Is not");
       H.popover().within(() => {
-        cy.findByLabelText("Filter value").type("1");
+        cy.findByText("Gadget").click();
         cy.button("Apply filter").click();
       });
-      cy.get("polygon");
+      cy.wait("@dataset");
+
+      cy.findAllByTestId("funnel-chart-header").should("have.length", 3);
     });
   });
 });
@@ -251,6 +254,7 @@ describe("issue 18061", () => {
       cy.wait("@getCard");
       cy.wait("@cardQuery");
 
+      cy.intercept("POST", "/api/dataset").as("dataset");
       cy.window().then((w) => (w.beforeReload = true));
 
       H.queryBuilderHeader().findByTestId("filters-visibility-control").click();
@@ -261,7 +265,9 @@ describe("issue 18061", () => {
         cy.findByDisplayValue("3").type("{backspace}2");
         cy.button("Update filter").click();
       });
+      cy.wait("@dataset");
 
+      H.assertQueryBuilderRowCount(1);
       H.queryBuilderMain()
         .findByText("Something went wrong")
         .should("not.exist");
@@ -280,14 +286,19 @@ describe("issue 18061", () => {
       H.visitAlias("@dashboardUrl");
 
       cy.wait("@dashCardQuery");
+      cy.window().then((w) => (w.beforeReload = true));
 
       addFilter("Twitter");
 
       cy.wait("@dashCardQuery");
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Something went wrong").should("not.exist");
-
       cy.location("search").should("eq", "?category=Twitter");
+
+      // The only matching row has null coordinates, so the dashcard shows no results.
+      H.getDashboardCard(0).findByTestId("no-results-image").should("exist");
+      H.getDashboardCard(0)
+        .findByText("Something went wrong")
+        .should("not.exist");
+      cy.window().should("have.prop", "beforeReload", true);
     });
   });
 
@@ -395,8 +406,7 @@ describe("issue 18776", () => {
 
   it("should not freeze when opening a timeseries chart with sparse data and without the X-axis", () => {
     H.visitQuestionAdhoc(questionDetails);
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Visualization").should("be.visible");
+    H.chartPathWithFillColor("#509EE3").should("have.length", 3);
   });
 });
 
@@ -438,7 +448,7 @@ describe("issue 20548", () => {
    */
   function assertOnLegendItemFrequency(item, frequency) {
     cy.findAllByTestId("legend-item")
-      .contains(item)
+      .filter(`:contains("${item}")`)
       .should("have.length", frequency);
   }
 
@@ -665,7 +675,6 @@ describe("issue 25156", () => {
     H.echartsContainer()
       .should("contain", "2025")
       .and("contain", "2026")
-      .and("contain", "2026")
       .and("contain", "2027")
       .and("contain", "2028");
   });
@@ -726,17 +735,17 @@ describe("issue 27279", () => {
     const legendItems = ["-3", "-2", "-1", "0"];
     compareValuesInOrder(cy.findAllByTestId("legend-item"), legendItems);
 
-    // need to add a single space on either side of the text as it is used as padding
-    // in ECharts
-    const xAxisTicks = ["F2021", "V2021", "S2022", "F2022"].map(
-      (str) => ` ${str} `,
-    );
-    compareValuesInOrder(
-      H.echartsContainer()
-        .get("text")
-        .contains(/F2021|V2021|S2022|F2022/),
-      xAxisTicks,
-    );
+    // ECharts pads the tick labels with spaces, so trim them before the comparison
+    H.echartsContainer()
+      .find("text")
+      .filter((_, el) =>
+        /^(F2021|V2021|S2022|F2022)$/.test(el.textContent.trim()),
+      )
+      .should(($ticks) => {
+        expect(
+          $ticks.toArray().map((el) => el.textContent.trim()),
+        ).to.deep.equal(["F2021", "V2021", "S2022", "F2022"]);
+      });
 
     // Extra step, just to be overly cautious
     H.chartPathWithFillColor("#98D9D9").realHover();
@@ -847,6 +856,7 @@ describe("issue 32075", () => {
     addCountGreaterThan2Filter();
     H.visualize();
 
+    H.assertQueryBuilderRowCount(21);
     H.tableInteractive().should("not.exist");
     cy.get("[data-element-id=pin-map]").should("exist");
   });
@@ -859,6 +869,7 @@ describe("issue 32075", () => {
     H.addSummaryGroupingField({ field: "Birth Date" });
     H.visualize();
 
+    H.assertQueryBuilderRowCount(1965);
     H.tableInteractive().should("not.exist");
     cy.get("[data-element-id=pin-map]").should("exist");
   });
@@ -871,6 +882,10 @@ describe("issue 32075", () => {
     H.addSummaryField({ metric: "Average of ...", field: "Longitude" });
     H.visualize();
 
+    // The row count does not change, so wait until the query stops running
+    H.queryBuilderMain()
+      .findByText(/^Doing science/)
+      .should("not.exist");
     H.tableInteractive().should("not.exist");
     cy.get("[data-element-id=pin-map]").should("exist");
   });
@@ -927,6 +942,8 @@ describe("issue 30058", () => {
     addCountGreaterThan2Filter();
     H.visualize();
 
+    H.assertQueryBuilderRowCount(21);
+    cy.get("[data-element-id=pin-map]").should("exist");
     cy.get(".Icon-warning").should("not.exist");
   });
 });
@@ -966,11 +983,20 @@ describe("issue 33208", () => {
   });
 
   it("should not auto-select chart type when saving a native question with parameters that have default values", () => {
+    cy.intercept("POST", "/api/card/*/query").as("cardQuery");
+
     cy.findByTestId("query-builder-main").findByText("Open Editor").click();
     H.NativeEditor.focus().type(" ");
-    H.saveSavedQuestion("top category");
+    H.saveSavedQuestion();
     H.runNativeQuery({ wait: false });
+    cy.wait("@cardQuery");
+
+    // The run button shows the refresh icon when the query completes
+    cy.findByTestId("native-query-editor-container")
+      .icon("refresh")
+      .should("be.visible");
     cy.findByTestId("scalar-value").should("be.visible");
+    H.tableInteractive().should("not.exist");
   });
 });
 
@@ -1003,9 +1029,15 @@ describe("issue 43077", () => {
 
     H.visitQuestionAdhoc(cartesianQuestionDetails);
 
-    cy.findAllByTestId("legend-item").first().click();
+    // Click the title, because a click on the dot toggles the series visibility
+    cy.findAllByTestId("legend-item")
+      .first()
+      .findByText(/^Sum of/)
+      .click();
 
-    cy.wait(100).then(() => expect(cardRequestSpy).not.to.have.been.called);
+    cy.wait(500);
+    cy.location("pathname").should("eq", "/question");
+    cy.then(() => expect(cardRequestSpy).not.to.have.been.called);
   });
 
   it("should not fire an invalid API request when clicking a legend item on a row chart with multiple aggregations", () => {
@@ -1031,9 +1063,15 @@ describe("issue 43077", () => {
 
     H.visitQuestionAdhoc(rowQuestionDetails);
 
-    cy.findAllByTestId("legend-item").first().click();
+    // Click the title, because a click on the dot toggles the series visibility
+    cy.findAllByTestId("legend-item")
+      .first()
+      .findByText(/^Sum of/)
+      .click();
 
-    cy.wait(100).then(() => expect(cardRequestSpy).not.to.have.been.called);
+    cy.wait(500);
+    cy.location("pathname").should("eq", "/question");
+    cy.then(() => expect(cardRequestSpy).not.to.have.been.called);
   });
 });
 
@@ -1155,8 +1193,6 @@ describe("issue 63671", () => {
   });
 
   it("should not show an extra value on bar charts when there is only value on the x axis (metabase#63671)", () => {
-    cy.findByTestId("query-visualization-root")
-      .findByText("2028")
-      .should("have.length", 1);
+    cy.findByTestId("query-visualization-root").findByText("2028");
   });
 });
