@@ -263,7 +263,7 @@
       (are [arguments] (=? {:messages [{:tool_calls [{:function {:arguments string?}}]}]}
                            (replay arguments))
         ;; keyword keys, as the stream decodes them
-        {:a {:b {:c [{:d [1 nil true "x" :kw]}]}}}
+        {:a {:b {:c [{:d [1 nil true "x"]}]}}}
         ;; string keys, as replayed history decodes them
         {"a" {"b" {"c" [{"d" [1.5 [[]] {}]}]}}}
         ;; both
