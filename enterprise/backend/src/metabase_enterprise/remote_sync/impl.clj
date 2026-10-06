@@ -636,9 +636,9 @@
   (let [sync-timestamp (t/instant)]
     (try
       (let [snapshot-version      (source.p/version snapshot)
-            ;; Before anything is read for loading: an app's resource files are confined to its own collection.
             last-imported-version (remote-sync.task/last-version)
-            ;; a pull of the commit already imported loads nothing, so there is nothing to check
+            ;; before anything is read for loading, the files of each data app's collection are checked; a pull of
+            ;; the commit already imported loads nothing, so there is nothing to check
             _                     (when (or force? merge? (not= last-imported-version snapshot-version))
                                     (source.ingestable/check-data-app-files! snapshot))
             first-import?         (nil? last-imported-version)

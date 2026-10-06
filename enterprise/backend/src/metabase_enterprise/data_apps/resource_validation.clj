@@ -208,8 +208,8 @@
 
 (defn- ownership-problems
   "Serdes would update any row carrying an entity ID a file names, so a file may only name what this app owns:
-  the collection its manifest names, if it exists, must be this app's, and existing cards and actions must be in
-  it."
+  the collection its manifest names, if it exists, must be a data app's collection that no other app owns, and
+  existing cards and actions must be in it."
   [app-entity-id manifest-path collection-entity-id resources]
   (let [app               (data-apps.db/data-app-by-entity-id app-entity-id)
         app-collection-id (:resource_collection_id app)
@@ -223,11 +223,17 @@
                             (some #(when (and (= model (:model %)) (= entity-id (:entity_id (:entity %)))) (:path %))
                                   resources))]
     (concat
-     (for [{:keys [id entity_id]} (data-apps.db/collections-by-entity-ids [collection-entity-id])
-           :when (not (owned? id))]
-       (problem (or (file-of "Collection" entity_id) manifest-path)
-                (tru "Collection {0} already exists and is another data app''s collection. Give the app a collection of its own: a new entity ID in data_app.yaml and in the collection''s file."
-                     entity_id)))
+     (for [{:keys [id entity_id] collection-namespace :namespace} (data-apps.db/collections-by-entity-ids [collection-entity-id])
+           :let  [message (cond
+                            (not= :data-apps (keyword collection-namespace))
+                            (tru "Collection {0} already exists outside the data-apps namespace, so it can''t become a data app''s collection. Give the app a collection of its own: a new entity ID in data_app.yaml and in the collection''s file."
+                                 entity_id)
+
+                            (not (owned? id))
+                            (tru "Collection {0} already exists and is another data app''s collection. Give the app a collection of its own: a new entity ID in data_app.yaml and in the collection''s file."
+                                 entity_id))]
+           :when message]
+       (problem (or (file-of "Collection" entity_id) manifest-path) message))
      (for [[model rows] [["Card"   (data-apps.db/cards-by-entity-ids (entity-ids-of "Card"))]
                          ["Action" (data-apps.db/actions-by-entity-ids (entity-ids-of "Action"))]]
            {:keys [entity_id collection_id]} rows

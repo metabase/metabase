@@ -735,7 +735,7 @@
 
 (defn should-sync-collection?
   "Check if a collection should be synced - either remote-synced, transforms-namespace with setting enabled,
-   snippets-namespace with Library synced, or a data app's resource collection, whose files sit beside the app's."
+   snippets-namespace with Library synced, or data-apps-namespace, a data app's collection, synced with the app."
   [collection]
   (or (collections/remote-synced-collection? collection)
       (and (rs-settings/remote-sync-transforms)

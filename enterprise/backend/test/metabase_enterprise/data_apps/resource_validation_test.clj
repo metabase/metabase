@@ -33,22 +33,21 @@
 
 (def ^:private collection-dir (str "collections/data_apps/" (data-apps.tu/collection-dir collection-name) "/"))
 
-(def ^:private collection-path (data-apps.tu/resource-path collection-name "collection.yaml"))
+(def ^:private collection-path (data-apps.tu/collection-path collection-name))
 
 (def ^:private question-path (str collection-dir "venueslist_"))
 
 (def ^:private action-path (str collection-dir "rename_venue_"))
 
 (defn- shop
-  "The repo files of the `shop` app with `resources`, a map of paths relative to the old `resources/` layout to YAML
-  text (see `data-apps.tu/app-files`)."
+  "The repo files of the `shop` app with `resources`, a map of repo paths to YAML text (see `data-apps.tu/app-files`)."
   [resources & {:as options}]
   (data-apps.tu/app-files "shop" (merge {:name "Shop" :path "index.js" :bundle "B"
                                          :collection collection-eid :resources resources}
                                         options)))
 
 (defn- question-resources []
-  (data-apps.tu/build-resources collection-eid [{:entity_id question-eid :name "VenuesList" :query (venues-query)}] []))
+  (data-apps.tu/build-resources collection-name collection-eid [{:entity_id question-eid :name "VenuesList" :query (venues-query)}] []))
 
 (defn- edit-file
   "`tree` with the YAML of the first file whose path starts with `prefix` changed by `f`."
@@ -66,7 +65,7 @@
   (data-apps.tu/do-with-sources!
    (fn [{:keys [metric-id action-id]}]
      (let [resources (data-apps.tu/build-resources
-                      collection-eid
+                      collection-name collection-eid
                       [{:entity_id question-eid :name "VenuesList" :query (venues-query)}
                        {:entity_id "shopQuestionMetricVen" :name "VenueCount"
                         :query {:stages [{:source       {:type "table" :id (mt/id :venues)}
@@ -122,14 +121,14 @@
       (refused (shop (question-resources) :collection nil) "must name the app's resource collection")
       (refused (shop nil :collection nil) "must name the app's resource collection"))
     (testing "a manifest naming a collection the repository doesn't hold"
-      (refused (shop (dissoc (question-resources) "collection.yaml")) "is not in the repository")
+      (refused (shop (dissoc (question-resources) collection-path)) "is not in the repository")
       (refused (shop nil) "is not in the repository"))))
 
 (deftest refuses-an-action-the-app-cannot-run-test
   (data-apps.tu/do-with-sources!
    (fn [{:keys [model-id action-id]}]
      (let [model-eid   (t2/select-one-fn :entity_id :model/Card :id model-id)
-           resources   (data-apps.tu/build-resources collection-eid
+           resources   (data-apps.tu/build-resources collection-name collection-eid
                                                      [{:entity_id question-eid :name "VenuesList" :query (venues-query)}]
                                                      [action-id])]
        (is (= [] (messages (shop resources))) "a query action that belongs to no model is fine")
@@ -156,12 +155,15 @@
       (mt/with-temp [:model/Card _ {:name "Someone else's" :entity_id question-eid}]
         (is (some #(str/includes? % (str "Card " question-eid " already exists outside")) (messages (shop (question-resources)))))))
     (testing "a collection that is another app's"
-      (mt/with-temp [:model/Collection {collection-id :id} {:entity_id collection-eid :name "Theirs"}
+      (mt/with-temp [:model/Collection {collection-id :id} {:entity_id collection-eid :name "Theirs" :namespace :data-apps}
                      :model/DataApp    _ {:name "theirs" :display_name "Theirs" :bundle_path "index.js"
                                           :resource_collection_id collection-id}]
         (is (some #(str/includes? % "already exists and is another data app's collection") (messages (shop (question-resources)))))))
+    (testing "a collection outside the data-apps namespace, which a load would move into it"
+      (mt/with-temp [:model/Collection _ {:entity_id collection-eid :name "Finance"}]
+        (is (some #(str/includes? % "already exists outside the data-apps namespace") (messages (shop (question-resources)))))))
     (testing "the app's own collection and card"
-      (mt/with-temp [:model/Collection {collection-id :id} {:entity_id collection-eid :name "Mine"}
+      (mt/with-temp [:model/Collection {collection-id :id} {:entity_id collection-eid :name "Mine" :namespace :data-apps}
                      :model/DataApp    _ {:name "shop" :display_name "Shop" :bundle_path "index.js"
                                           :entity_id (data-apps.tu/app-entity-id "shop")
                                           :resource_collection_id collection-id}
@@ -256,15 +258,15 @@
                "references NativeQuerySnippet nowhereSnippetEid0000, which does not exist on this instance"))
     (testing "one card defined by two files"
       (let [resources (question-resources)
-            path      (some #(when (str/starts-with? % "cards/") %) (keys resources))]
-        (refused (shop (assoc resources "cards/copy.yaml" (get resources path)))
+            path      (some #(when (str/includes? % question-eid) %) (keys resources))]
+        (refused (shop (assoc resources (str collection-dir "copy.yaml") (get resources path)))
                  "is defined by more than one file")))))
 
 (deftest refuses-an-action-that-takes-its-parameter-values-from-a-card-test
   (data-apps.tu/do-with-sources!
    (fn [{:keys [action-id]}]
      (let [resources (data-apps.tu/build-resources
-                      collection-eid
+                      collection-name collection-eid
                       [{:entity_id question-eid :name "VenuesList" :query (venues-query)}]
                       [action-id])
            tree      (edit-file (shop resources) action-path

@@ -131,7 +131,7 @@ Exporting an app's resources also needs a superuser.
 | Namespace             | Responsibility                                                                                      |
 | --------------------- | --------------------------------------------------------------------------------------------------- |
 | `apps.clj`            | Creating apps; the connected repository's URL.                                                      |
-| `core.clj`            | What other modules ask: the apps' collection IDs, resource file problems, table dependencies.      |
+| `core.clj`            | What other modules ask: resource file problems and table dependencies.                             |
 | `config.clj`          | The serialized layout and data app contract version constants.                                     |
 | `schema.clj`          | Column schemas, with the normalization and validation every write goes through.                     |
 | `api.clj`             | The `/api/apps` endpoints, bundle serving, ETag handling.                                           |

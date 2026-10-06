@@ -1,7 +1,6 @@
 (ns metabase-enterprise.data-apps.test-util
   (:require
    [clojure.string :as str]
-   [metabase-enterprise.remote-sync.source :as source]
    [metabase-enterprise.serialization.core :as serialization]
    [metabase-enterprise.serialization.dump :as serialization.dump]
    [metabase.actions.core :as actions]
@@ -18,18 +17,6 @@
    (java.security MessageDigest)))
 
 (set! *warn-on-reflection* true)
-
-(def fake-sha
-  "A commit SHA for snapshots that don't care which commit they are."
-  "0123456789abcdef0123456789abcdef01234567")
-
-(defn snapshot
-  "Build a snapshot (as the remote-sync import passes one) from a path->content map. `read-file` returns file text or
-  nil; `list-dir` reuses the derivation the real non-git snapshots use, so the fake can't drift from it."
-  [path->content & {:keys [sha] :or {sha fake-sha}}]
-  {:sha       sha
-   :list-dir  (fn [dir] (source/paths->children (keys path->content) dir))
-   :read-file (fn [p] (get path->content p))})
 
 (defn collection-entity-id
   "A stable resource collection entity ID for the app in `data_apps/<slug>`."
@@ -55,22 +42,16 @@
   [collection-name]
   (serialization/slugify-name collection-name))
 
-(defn resource-path
-  "The repo path of a resource of the app whose collection is named `collection-name`, from its path relative to the
-  old `resources/` layout: `collection.yaml` is the collection's file, `cards/x.yaml` and `actions/y.yaml` sit in
-  the collection's directory."
-  [collection-name relative-path]
-  (let [dir (collection-dir collection-name)]
-    (if (= relative-path "collection.yaml")
-      (format "collections/data_apps/%s.yaml" dir)
-      (format "collections/data_apps/%s/%s" dir (last (str/split relative-path #"/"))))))
+(defn collection-path
+  "The repo path of the file of the collection named `collection-name`, as serialization writes it."
+  [collection-name]
+  (format "collections/data_apps/%s.yaml" (collection-dir collection-name)))
 
 (defn app-files
   "Repo files for one data app, as serialization writes them: its `data_app.yaml` under `data_apps/<dir>/` (slug and
-  entity ID from `dir` unless given), a bundle at `path` with `bundle` content, and its resources under
-  `collections/data_apps/`. `resources` maps paths relative to the old `resources/` layout (`collection.yaml`,
-  `cards/*.yaml`, `actions/*.yaml`) to file text and defaults to just the collection; `:resources nil` with
-  `:collection nil` makes an app without resources."
+  entity ID from `dir` unless given), a bundle at `path` with `bundle` content, and its `resources`, repo paths to
+  file text (see [[build-resources]]), which default to the file of its collection under `collections/data_apps/`;
+  `:resources nil` makes an app whose collection has no file."
   [dir {:keys [name path bundle description version allowed_hosts slug entity_id collection resources]
         :or   {slug dir}
         :as   options}]
@@ -79,7 +60,7 @@
         collection-name (str "Data App: " slug)
         resources       (if (contains? options :resources)
                           resources
-                          (when collection {"collection.yaml" (collection-file collection collection-name)}))]
+                          (when collection {(collection-path collection-name) (collection-file collection collection-name)}))]
     (merge
      {(format "data_apps/%s/data_app.yaml" dir)
       (yaml/generate-string
@@ -93,7 +74,7 @@
          version             (assoc :version version)
          (seq allowed_hosts) (assoc :allowed_hosts allowed_hosts)))
       (format "data_apps/%s/%s" dir path) bundle}
-     (update-keys resources (partial resource-path collection-name)))))
+     resources)))
 
 (defn copy-entity-id
   "A stable entity ID for the copy of the `kind` entity `source-entity-id` in the app whose collection is
@@ -141,17 +122,21 @@
     (export-table-fk [_ id] (resolve/export-table-fk base id))
     (export-field-fk [_ id] (resolve/export-field-fk base id))))
 
-(defn- file-path [entity]
+(defn- file-path
+  "The repo path of an entity of the collection named `collection-name`: the collection's own file, or a file in the
+  collection's directory named after the entity, with its entity ID so a test can find it."
+  [collection-name entity]
   (let [{:keys [model id label]} (last (:serdes/meta entity))]
     (if (= model "Collection")
-      "collection.yaml"
-      (str ({"Card" "cards" "Action" "actions"} model) "/" (serialization/slugify-name label) "_" id ".yaml"))))
+      (collection-path collection-name)
+      (format "collections/data_apps/%s/%s_%s.yaml" (collection-dir collection-name) (serialization/slugify-name label) id))))
 
 (defn build-resources
-  "The resource files an author commits for the app whose collection has `collection-entity-id`, keyed by their path
-  relative to `resources/`: a saved question per `{:entity_id :name :query}` in `queries`, and copies of the metrics
-  those use and of the actions with `action-ids`, which belong to no model. Copies get [[copy-entity-id]]s."
-  [collection-entity-id queries action-ids & {:keys [collection-name] :or {collection-name "Data App"}}]
+  "The files an author commits for the collection named `collection-name` with `collection-entity-id`, keyed by their
+  repo path under `collections/data_apps/`: the collection, a saved question per `{:entity_id :name :query}` in
+  `queries`, and copies of the metrics those use and of the actions with `action-ids`, which belong to no model.
+  Copies get [[copy-entity-id]]s."
+  [collection-name collection-entity-id queries action-ids]
   (let [resolved  (for [{:keys [query] :as spec} queries
                         :let [table-id (get-in query [:stages 0 :source :id])
                               mp       (lib-be/application-database-metadata-provider
@@ -175,7 +160,7 @@
                                                                        :creator_id (mt/user->id :crowberto)})))
                         (for [action actions]
                           (extract "Action" (action-copy action (copy-id "action" action))))))))]
-    (into (sorted-map) (map (juxt file-path serialization.dump/yaml-content)) entities)))
+    (into (sorted-map) (map (juxt (partial file-path collection-name) serialization.dump/yaml-content)) entities)))
 
 (defn do-with-sources!
   "Call `f` with the sources a data app copies, a venues metric and a query action that belongs to no model, and with

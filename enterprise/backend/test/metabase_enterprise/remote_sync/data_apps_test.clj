@@ -196,7 +196,7 @@
       (data-apps.tu/do-with-sources!
        (fn [{:keys [metric-id action-id]}]
          (let [resources (data-apps.tu/build-resources
-                          shop-collection-eid
+                          shop-collection-name shop-collection-eid
                           [{:entity_id question-eid :name "VenuesList" :query (venues-query)}
                            {:entity_id "shopQuestionMetricVen" :name "VenueCount"
                             :query {:stages [{:source       {:type "table" :id (mt/id :venues)}
@@ -226,7 +226,7 @@
 
 (deftest pull-updates-and-removes-resources-with-their-files-test
   (with-data-apps-sync
-    (let [resources (data-apps.tu/build-resources shop-collection-eid
+    (let [resources (data-apps.tu/build-resources shop-collection-name shop-collection-eid
                                                   [{:entity_id question-eid :name "VenuesList" :query (venues-query)}
                                                    {:entity_id "shopQuestionOther0001" :name "Other" :query (venues-query)}]
                                                   [])
@@ -250,15 +250,15 @@
 (deftest pull-refuses-resources-an-app-may-not-hold-test
   (testing "a resource file a load can't take as meant fails the pull, naming the file, before anything loads"
     (with-data-apps-sync
-      (let [resources (data-apps.tu/build-resources shop-collection-eid
+      (let [resources (data-apps.tu/build-resources shop-collection-name shop-collection-eid
                                                     [{:entity_id question-eid :name "VenuesList" :query (venues-query)}]
                                                     [])
-            card-file (some #(when (str/starts-with? % "cards/") %) (keys resources))
+            card-file (some #(when (str/includes? % question-eid) %) (keys resources))
             archived  (update resources card-file #(yaml/generate-string (assoc (yaml/parse-string %) :archived true)))
             src       (test-helpers/versioned-source :trees {"v0" (shop-tree archived)} :current "v0")
             result    (import-at! src "v0" :force? true)]
         (is (= :error (:status result)))
-        (is (str/includes? (:message result) (data-apps.tu/resource-path shop-collection-name card-file)))
+        (is (str/includes? (:message result) card-file))
         (is (not (t2/exists? :model/DataApp :name "shop")) "nothing loaded")))))
 
 (deftest pull-refuses-to-take-over-a-card-elsewhere-test
@@ -266,7 +266,7 @@
     (with-data-apps-sync
       (mt/with-temp [:model/Card {foreign-id :id} {:name "Someone else's" :entity_id question-eid}]
         (let [src    (test-helpers/versioned-source
-                      :trees {"v0" (shop-tree (data-apps.tu/build-resources shop-collection-eid
+                      :trees {"v0" (shop-tree (data-apps.tu/build-resources shop-collection-name shop-collection-eid
                                                                             [{:entity_id question-eid :name "VenuesList" :query (venues-query)}]
                                                                             []))}
                       :current "v0")
@@ -306,7 +306,7 @@
                 "nothing of the app's lands in the default namespace's directories")))))))
 
 (defn- question-resources []
-  (data-apps.tu/build-resources shop-collection-eid
+  (data-apps.tu/build-resources shop-collection-name shop-collection-eid
                                 [{:entity_id question-eid :name "VenuesList" :query (venues-query)}]
                                 []))
 
@@ -326,7 +326,7 @@
       (data-apps.tu/do-with-sources!
        (fn [{:keys [action-id]}]
          (let [resources (data-apps.tu/build-resources
-                          shop-collection-eid
+                          shop-collection-name shop-collection-eid
                           [{:entity_id question-eid :name "VenuesList" :query (venues-query)}]
                           [action-id])
                mock      (test-helpers/create-mock-source :initial-files {"main" (shop-tree resources)})]
@@ -373,8 +373,12 @@
                                                      :visualization_settings {} :collection_id collection-id
                                                      :dataset_query q}))]
           (mt/user-http-request :crowberto :post 400 "dashboard" {:name "Saved here" :collection_id collection-id})
+          (is (= "A data app's collection can hold only questions, metrics, and query actions"
+                 (mt/user-http-request :crowberto :post 400 "collection" {:name "Inside" :parent_id collection-id :namespace "data-apps"})))
           (card 400 "model")
           (card 200 "question")
+          (testing "a bookmark is not content"
+            (mt/user-http-request :crowberto :post 200 (str "bookmark/collection/" collection-id)))
           (testing "with the library feature too, whose check runs in the same place"
             (mt/with-additional-premium-features #{:library}
               (card 400 "model")))
@@ -438,7 +442,7 @@
                    (let [collection (data-apps.tu/collection-entity-id slug)]
                      (data-apps.tu/app-files slug {:name slug :path "index.js" :bundle "B" :collection collection
                                                    :resources (data-apps.tu/build-resources
-                                                               collection
+                                                               (str "Data App: " slug) collection
                                                                [{:entity_id question-eid :name "VenuesList" :query (venues-query)}]
                                                                [])})))
           src    (test-helpers/versioned-source :trees {"v0" (merge (app "first") (app "second"))} :current "v0")
@@ -454,7 +458,7 @@
     (with-data-apps-sync
       (mt/with-temp [:model/Database _ {:engine ::no-table-refs :name "no-table-refs"}]
         (let [resources (data-apps.tu/build-resources
-                         shop-collection-eid
+                         shop-collection-name shop-collection-eid
                          [{:entity_id question-eid :name "VenuesList" :query (venues-query)}
                           {:entity_id "shopQuestionNative000" :name "Native" :query (venues-query)}]
                          [])
@@ -504,7 +508,7 @@
                      :model/Card       {foreign-id :id} {:name "Someone else's" :entity_id "foreignCardEntityId00"
                                                          :collection_id elsewhere}]
         (let [remote (data-apps.tu/build-resources
-                      shop-collection-eid
+                      shop-collection-name shop-collection-eid
                       [{:entity_id question-eid :name "VenuesList" :query (venues-query)}
                        {:entity_id "foreignCardEntityId00" :name "Taken" :query (venues-query)}]
                       [])
@@ -519,7 +523,7 @@
 (deftest an-export-that-merges-records-the-tables-test
   (with-data-apps-sync
     (let [remote (data-apps.tu/build-resources
-                  shop-collection-eid
+                  shop-collection-name shop-collection-eid
                   [{:entity_id question-eid :name "VenuesList" :query (venues-query)}
                    {:entity_id "shopQuestionCheckins0" :name "Checkins"
                     :query {:stages [{:source {:type "table" :id (mt/id :checkins)} :limit 5}]}}]
@@ -538,7 +542,7 @@
       (mt/with-model-cleanup [:model/NativeQuerySnippet]
         (let [snippet-eid "appSnippetEntityId000"
               resources   (question-resources)
-              path        (some #(when (str/starts-with? % "cards/") %) (keys resources))
+              path        (some #(when (str/includes? % question-eid) %) (keys resources))
               parsed      (yaml/parse-string (get resources path))
               native      (assoc parsed :dataset_query
                                  {:database (:database (:dataset_query parsed))
@@ -574,7 +578,7 @@
   (testing "a native query's table is matched by name whatever its case"
     (with-data-apps-sync
       (let [resources (question-resources)
-            path      (some #(when (str/starts-with? % "cards/") %) (keys resources))
+            path      (some #(when (str/includes? % question-eid) %) (keys resources))
             parsed    (yaml/parse-string (get resources path))
             native    (assoc parsed :dataset_query {:database (:database (:dataset_query parsed))
                                                     :lib/type "mbql/query"
@@ -611,7 +615,7 @@
                                         :dataset_query (lib/native-query mp "DELETE FROM checkins WHERE id = {{id}}")
                                         :parameters    [{:id "id" :slug "id" :type :number/=}]})
             resources (data-apps.tu/build-resources
-                       shop-collection-eid
+                       shop-collection-name shop-collection-eid
                        [{:entity_id question-eid :name "VenuesList" :query (venues-query)}]
                        [action-id])
             src       (test-helpers/versioned-source :trees {"v0" (shop-tree resources)} :current "v0")
@@ -635,7 +639,7 @@
 (deftest deleting-an-apps-files-deletes-the-app-and-its-collection-test
   (testing "an author deletes an app by deleting its directory and its collection's files under collections/data_apps/"
     (with-data-apps-sync
-      (let [resources (data-apps.tu/build-resources shop-collection-eid
+      (let [resources (data-apps.tu/build-resources shop-collection-name shop-collection-eid
                                                     [{:entity_id question-eid :name "VenuesList" :query (venues-query)}]
                                                     [])
             src       (test-helpers/versioned-source :trees {"v0" (shop-tree resources) "v1" {"README.md" "x"}}

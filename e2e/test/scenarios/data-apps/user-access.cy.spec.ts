@@ -354,6 +354,7 @@ describe("scenarios > data apps > user access (EMB-2328)", () => {
             "name: Good App",
             `slug: ${SYNCED_APP_SLUG}`,
             "path: ./index.js",
+            "collection: goodAppCollection0000",
             "allowed_hosts:",
             `  - ${ALLOWED_HOST}`,
             "entity_id: Ioxf30LzIQCGwbCNtaG62",

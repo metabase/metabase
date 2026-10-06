@@ -152,10 +152,10 @@
   (t2/select [:model/DataApp :id :resource_collection_id] :resource_collection_id [:not= nil]))
 
 (defn collections-by-entity-ids
-  "The `:id` and `:entity_id` of the collections with `entity-ids`."
+  "The `:id`, `:entity_id` and `:namespace` of the collections with `entity-ids`."
   [entity-ids]
   (if (seq entity-ids)
-    (t2/query {:select [:id :entity_id] :from [:collection] :where [:in :entity_id entity-ids]})
+    (t2/query {:select [:id :entity_id :namespace] :from [:collection] :where [:in :entity_id entity-ids]})
     []))
 
 (defn cards-by-entity-ids

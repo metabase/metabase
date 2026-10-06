@@ -607,9 +607,10 @@
   "Checks the content of a collection before saving it. Throws when the collection with `collection-id` can't hold
   content of `model-type`."
   [model-type collection-id]
-  ;; a data app's collection holds only what a pull of the app accepts
+  ;; a data app's collection holds only what a pull of the app accepts; a bookmark is a user's pointer, not content
   (when (and collection-id
              (some? model-type)
+             (not= :model/CollectionBookmark model-type)
              (not (contains? #{:question :metric :action} (keyword model-type)))
              (contains? (set (perms/data-app-collection-ids)) collection-id))
     (throw (ex-info "A data app's collection can hold only questions, metrics, and query actions" {:status-code 400})))
@@ -1889,7 +1890,8 @@
   (assert-valid-location collection)
   (assert-not-personal-collection-for-api-key collection)
   (assert-valid-namespace (merge {:namespace nil} collection))
-  (check-allowed-content (:type collection) (when-let [location (:location (t2/changes collection))] (location-path->parent-id location)))
+  ;; a collection without a type is a plain child collection, which a parent may refuse like any other content
+  (check-allowed-content (or (:type collection) :collection) (when-let [location (:location (t2/changes collection))] (location-path->parent-id location)))
   (u/prog1 (-> collection
                (assoc :slug (slugify collection-name))
                (cond->
@@ -2097,7 +2099,7 @@
           (throw (ex-info msg {:status-code 400, :errors {:namespace msg}})))))
     (assert-valid-namespace (merge (select-keys collection-before-updates [:namespace]) collection-updates))
     ;; (3.6) Check that the parent collection allows this collection to be there
-    (check-allowed-content (:type collection) (when-let [location (:location collection)] (location-path->parent-id location)))
+    (check-allowed-content (or (:type collection) :collection) (when-let [location (:location collection)] (location-path->parent-id location)))
     ;; (3.7) Check if it's a semantic-library collection that can't be updated
     (check-library-update collection)
     ;; (4) If we're moving a Collection from a location on a Personal Collection hierarchy to a location not on one,

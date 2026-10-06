@@ -643,8 +643,7 @@ function commitDataApp(
 
 /**
  * Publishes the app with a pull and yields it once its resources loaded: with
- * its collection and its permission group. The app comes from the admin list,
- * since `/api/apps/:slug` answers 409 for an app without a collection.
+ * its collection and its permission group, which the admin list carries.
  */
 export function publishDataApp(
   appRoot: string,
@@ -725,7 +724,6 @@ export function buildDataAppHostApp() {
   });
 }
 
-/** The app's own permission group — the one its viewers are given. */
 const DATA_APP_DEV_HOST_APP_DIR =
   "e2e/embedding-sdk-host-apps/vite-6-data-app-host-app";
 
