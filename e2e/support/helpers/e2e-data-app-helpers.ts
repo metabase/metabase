@@ -6,6 +6,7 @@ import type {
   CollectionPermission,
   CollectionPermissionsGraph,
   DataApp,
+  Group,
   WritebackAction,
 } from "metabase-types/api";
 
@@ -181,7 +182,8 @@ export function dataAppIframe(displayName: string) {
 /**
  * Sets every non-admin group's access to a collection through the permission graph of
  * the collection's namespace: an app's own collection lives in `data-apps`, whose graph
- * is separate from the default one.
+ * is separate from the default one. A namespace graph lists only the groups holding a
+ * grant in it, so the groups come from the groups API, not from the graph.
  */
 export function setDataAppCollectionAccess(
   collectionId: CollectionId,
@@ -196,22 +198,26 @@ export function setDataAppCollectionAccess(
           ? "/api/collection/graph"
           : `/api/collection/graph?namespace=${namespace}`;
 
-      cy.request<CollectionPermissionsGraph>("GET", graphUrl).then(
-        ({ body: graph }) => {
-          const groups = Object.fromEntries(
-            Object.entries(graph.groups).map(([groupId, collections]) => [
-              groupId,
-              Number(groupId) === USER_GROUPS.ADMIN_GROUP
-                ? collections
-                : { ...collections, [collectionId]: access },
-            ]),
-          );
+      cy.request<Group[]>("GET", "/api/permissions/group").then(
+        ({ body: allGroups }) => {
+          cy.request<CollectionPermissionsGraph>("GET", graphUrl).then(
+            ({ body: graph }) => {
+              const groups = Object.fromEntries(
+                allGroups
+                  .filter((group) => group.id !== USER_GROUPS.ADMIN_GROUP)
+                  .map((group) => [
+                    group.id,
+                    { ...graph.groups[group.id], [collectionId]: access },
+                  ]),
+              );
 
-          cy.request("PUT", "/api/collection/graph", {
-            ...graph,
-            ...(namespace === undefined ? {} : { namespace }),
-            groups,
-          });
+              cy.request("PUT", "/api/collection/graph", {
+                ...graph,
+                ...(namespace === undefined ? {} : { namespace }),
+                groups,
+              });
+            },
+          );
         },
       );
     });
