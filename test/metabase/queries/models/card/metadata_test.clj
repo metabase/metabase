@@ -144,3 +144,48 @@
           (testing "control: an update of the query infers the metadata"
             (t2/update! :model/Card card-id {:dataset_query (lib/limit (venues-query) 10)})
             (is (= 1 @calls))))))))
+
+(defn- native-venues-query [sql]
+  (lib/native-query (mt/metadata-provider) sql))
+
+(defn- column-types
+  "The `[name base_type display_name]` of each result metadata column of the Card `card-id`."
+  [card-id]
+  (mapv (juxt :name :base_type :display_name)
+        (t2/select-one-fn :result_metadata :model/Card :id card-id)))
+
+(deftest deserializing-update-of-native-model-query-keeps-columns-test
+  (testing "a serdes load that changes the query of a native model, and not its columns, keeps the columns"
+    (mt/with-temp [:model/Card {card-id :id} {:type            :model
+                                              :dataset_query   (native-venues-query "SELECT ID, NAME FROM VENUES")
+                                              :result_metadata [{:name         "ID"
+                                                                 :display_name "ID"
+                                                                 :base_type    :type/BigInteger
+                                                                 :field_ref    [:field "ID" {:base-type :type/BigInteger}]}
+                                                                {:name         "NAME"
+                                                                 :display_name "Venue name"
+                                                                 :base_type    :type/Text
+                                                                 :field_ref    [:field "NAME" {:base-type :type/Text}]}]}]
+      (let [stored (t2/select-one-fn :result_metadata :model/Card :id card-id)]
+        ;; The load gives the stored columns again, so the update changes only dataset_query.
+        (binding [mi/*deserializing?* true]
+          (t2/update! :model/Card card-id {:dataset_query   (native-venues-query "SELECT ID, NAME FROM VENUES WHERE ID > 0")
+                                           :result_metadata stored}))
+        (is (= [["ID" :type/BigInteger "ID"] ["NAME" :type/Text "Venue name"]]
+               (column-types card-id)))))))
+
+(deftest deserializing-update-of-model-query-keeps-overrides-when-inference-fails-test
+  (testing "a serdes load that changes the query of an MBQL model with only overrides keeps them when the inference fails"
+    (mt/with-temp [:model/Card {card-id :id} {:type            :model
+                                              :dataset_query   (venues-query)
+                                              :result_metadata [{:name "ID" :display_name "ID"}
+                                                                {:name "NAME" :display_name "Venue Name"}]}]
+      (let [stored (t2/select-one-fn :result_metadata :model/Card :id card-id)]
+        (is (= ["ID" "NAME"] (mapv :name stored))
+            "Precondition: the model stores only its overrides")
+        (mt/with-dynamic-fn-redefs [card.metadata/infer-metadata-with-model-overrides (constantly nil)]
+          (binding [mi/*deserializing?* true]
+            (t2/update! :model/Card card-id {:dataset_query   (lib/limit (venues-query) 10)
+                                             :result_metadata stored})))
+        (is (= [["ID" :type/* "ID"] ["NAME" :type/* "Venue Name"]]
+               (column-types card-id)))))))

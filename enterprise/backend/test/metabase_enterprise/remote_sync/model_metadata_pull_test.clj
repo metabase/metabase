@@ -2,6 +2,7 @@
   "A remote-sync export writes only the overrides of an MBQL model's result metadata. A pull of that file must keep
   the column types that the model's query gives."
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase-enterprise.remote-sync.impl :as impl]
    [metabase-enterprise.remote-sync.source.protocol :as source.p]
@@ -95,3 +96,42 @@
                 (is (= "Local name" (get-in (columns card-id) [1 2])))
                 (forced-pull! source)
                 (is (= before (columns card-id)))))))))))
+
+(defn- replace-in-files!
+  "Replace `match` with `replacement` in each file of the main branch of the mock `source`. Return the changed paths."
+  [source match replacement]
+  (let [files-atom (:files-atom source)
+        paths      (vec (for [[path content] (get @files-atom "main")
+                              :when (and (string? content) (str/includes? content match))]
+                          path))]
+    (doseq [path paths]
+      (swap! files-atom update-in ["main" path] str/replace match replacement))
+    paths))
+
+(deftest forced-pull-of-native-model-query-change-keeps-columns-test
+  (testing "a forced pull that changes only the SQL of a native model keeps the columns of the model"
+    (mt/with-premium-features #{:remote-sync}
+      (mt/with-temporary-setting-values [remote-sync-type :read-write]
+        (mt/with-model-cleanup [:model/RemoteSyncTask]
+          (mt/with-temp [:model/Collection {coll-id :id} {:name "Models" :is_remote_synced true :location "/"}
+                         :model/Card       {card-id :id} {:name            "Native venues model"
+                                                          :type            :model
+                                                          :collection_id   coll-id
+                                                          :dataset_query   (lib/native-query (mt/metadata-provider)
+                                                                                             "SELECT ID, NAME FROM VENUES")
+                                                          :result_metadata [{:name         "ID"
+                                                                             :display_name "ID"
+                                                                             :base_type    :type/BigInteger
+                                                                             :field_ref    [:field "ID" {:base-type :type/BigInteger}]}
+                                                                            {:name         "NAME"
+                                                                             :display_name "Venue name"
+                                                                             :base_type    :type/Text
+                                                                             :field_ref    [:field "NAME" {:base-type :type/Text}]}]}]
+            (let [before (columns card-id)
+                  source (export!)]
+              (is (= 1 (count (replace-in-files! source "SELECT ID, NAME FROM VENUES" "SELECT ID, NAME FROM VENUES WHERE ID > 0")))
+                  "Precondition: one exported file has the SQL of the model")
+              (forced-pull! source)
+              (is (= "SELECT ID, NAME FROM VENUES WHERE ID > 0"
+                     (lib/raw-native-query (t2/select-one-fn :dataset_query :model/Card :id card-id))))
+              (is (= before (columns card-id))))))))))
