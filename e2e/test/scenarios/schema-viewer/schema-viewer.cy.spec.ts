@@ -300,13 +300,20 @@ describe("scenarios > schema-viewer (Sample Database happy path)", () => {
     cy.log("Picker trigger shows the current schema name");
     schemaPickerTrigger().should("contain", PUBLIC_SCHEMA);
 
-    cy.log("Open the picker — it lists the databases");
-    schemaPickerTrigger().click();
+    cy.log(
+      "The picker opened on the bare URL stays open at the database list after the redirect",
+    );
     H.miniPicker().findByText("Sample Database").should("be.visible");
+    H.miniPicker().findByTestId("mini-picker-header").should("not.exist");
 
     cy.log("Click outside the popover closes it");
     cy.get("body").click(0, 0);
     H.miniPicker().should("not.exist");
+
+    cy.log("The trigger re-opens the picker at the database list");
+    schemaPickerTrigger().click();
+    H.miniPicker().findByText("Sample Database").should("be.visible");
+    H.miniPicker().findByTestId("mini-picker-header").should("not.exist");
   });
 });
 
