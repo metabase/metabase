@@ -269,7 +269,7 @@
 (mu/defn card-summaries-by-id
   "`{id → {:id :name :entity_type :card_type :view_count}}` for the Cards matching `where` - the
   columns a `slow` roll-up's culprit list serves: `name`, the `type` enum driving the per-member
-  link/icon, and the live `view_count`. `:card_schema` is required on any Card select - its
+  link, and the live `view_count`. `:card_schema` is required on any Card select - its
   after-select schema-upgrade hook reads it."
   [where :- vector?]
   (t2/select-pk->fn (fn [c] {:id          (:id c)

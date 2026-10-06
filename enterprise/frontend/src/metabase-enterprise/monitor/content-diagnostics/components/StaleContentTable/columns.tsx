@@ -1,15 +1,18 @@
 import { t } from "ttag";
 
 import { DateTime } from "metabase/common/components/DateTime";
+import type { useGetIcon } from "metabase/hooks/use-icon";
 import { Ellipsified, Text, type TreeTableColumnDef } from "metabase/ui";
 import type { ContentDiagnosticsStaleFinding } from "metabase-types/api";
 
 import { getCommonColumns } from "../common-columns";
 import { TOOLTIP_OPEN_DELAY_MS } from "../constants";
 
-export function getColumns(): TreeTableColumnDef<ContentDiagnosticsStaleFinding>[] {
+export function getColumns(
+  getIcon: ReturnType<typeof useGetIcon>,
+): TreeTableColumnDef<ContentDiagnosticsStaleFinding>[] {
   const { name, entityType, collectionName, createdBy, createdAt } =
-    getCommonColumns<ContentDiagnosticsStaleFinding>();
+    getCommonColumns<ContentDiagnosticsStaleFinding>(getIcon);
   const lastActiveAt: TreeTableColumnDef<ContentDiagnosticsStaleFinding> = {
     id: "last-active-at",
     header: t`Last active`,
@@ -31,7 +34,7 @@ export function getColumns(): TreeTableColumnDef<ContentDiagnosticsStaleFinding>
     },
   };
 
-  return [name, entityType, collectionName, createdBy, createdAt, lastActiveAt];
+  return [entityType, name, collectionName, createdBy, createdAt, lastActiveAt];
 }
 
-export const SKELETON_COLUMN_WIDTHS = [0.28, 0.12, 0.24, 0.13, 0.12, 0.11];
+export const SKELETON_COLUMN_WIDTHS = [0.06, 0.34, 0.24, 0.13, 0.12, 0.11];

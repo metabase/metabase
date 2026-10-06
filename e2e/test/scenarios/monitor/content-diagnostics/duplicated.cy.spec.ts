@@ -111,11 +111,11 @@ describe("scenarios > monitor > content diagnostics > duplicated", () => {
     visitContentDiagnosticsTab("duplicated");
     searchFindings(SEARCH_TERM);
 
-    cy.log("both sub-kinds are reported, under their own type labels");
+    cy.log("both sub-kinds are reported, with their own type icons");
     cy.findByTestId("duplicated-content-list").within(() => {
       cy.findAllByText(CROSS_KIND_NAME).should("have.length", 2);
-      cy.findByText("Question").should("be.visible");
-      cy.findByText("Model").should("be.visible");
+      cy.findByRole("img", { name: "Question" }).should("be.visible");
+      cy.findByRole("img", { name: "Model" }).should("be.visible");
     });
 
     cy.log("the question counts the model as its duplicate");

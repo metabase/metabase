@@ -3,6 +3,7 @@ import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
 import { useScrollToTop } from "metabase/common/hooks";
+import { useGetIcon } from "metabase/hooks/use-icon";
 import { MonitorEmptyState } from "metabase/monitor/components/MonitorEmptyState";
 import {
   Card,
@@ -57,7 +58,8 @@ export function ImbalancedContentTable({
   onSortOptionsChange,
   onRowSelectionChange,
 }: ImbalancedContentTableProps) {
-  const columns = useMemo(() => getColumns(mode), [mode]);
+  const getIcon = useGetIcon();
+  const columns = useMemo(() => getColumns(mode, getIcon), [mode, getIcon]);
   const { sortingState, onSortingChange } = useOptionalSortingState({
     sortOptions,
     columns: getImbalancedContentConfig(mode).sortColumns,

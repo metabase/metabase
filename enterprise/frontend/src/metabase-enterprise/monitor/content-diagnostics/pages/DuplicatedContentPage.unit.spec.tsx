@@ -234,7 +234,9 @@ describe("DuplicatedContentPage", () => {
     expect(within(cardDuplicates).getByText("1 view")).toBeInTheDocument();
 
     const collectionRow = within(list).getByRole("row", { name: /Reporting/ });
-    expect(within(collectionRow).getByText("Collection")).toBeInTheDocument();
+    expect(
+      within(collectionRow).getByLabelText("Collection"),
+    ).toBeInTheDocument();
     await userEvent.click(within(collectionRow).getByText("Reporting"));
 
     const collectionDuplicates = within(sidebarRegion).getByRole("region", {

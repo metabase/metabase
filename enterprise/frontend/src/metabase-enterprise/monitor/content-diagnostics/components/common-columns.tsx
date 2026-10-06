@@ -1,6 +1,7 @@
 import { t } from "ttag";
 
 import { DateTime } from "metabase/common/components/DateTime";
+import type { useGetIcon } from "metabase/hooks/use-icon";
 import {
   Ellipsified,
   FixedSizeIcon,
@@ -11,10 +12,10 @@ import {
 import { EMPTY_CELL_PLACEHOLDER } from "metabase/utils/constants";
 import type { ContentDiagnosticsBaseFinding } from "metabase-types/api";
 
+import { DiagnosticsEntityIcon } from "./DiagnosticsEntityIcon";
 import { TOOLTIP_OPEN_DELAY_MS } from "./constants";
 import {
   getCollectionName,
-  getEntityIcon,
   getEntityName,
   getEntityTypeLabel,
   getUserName,
@@ -25,9 +26,9 @@ type CommonColumns<T extends ContentDiagnosticsBaseFinding> = Record<
   TreeTableColumnDef<T>
 >;
 
-export function getCommonColumns<
-  T extends ContentDiagnosticsBaseFinding,
->(): CommonColumns<T> {
+export function getCommonColumns<T extends ContentDiagnosticsBaseFinding>(
+  getIcon: ReturnType<typeof useGetIcon>,
+): CommonColumns<T> {
   return {
     name: {
       id: "name",
@@ -37,17 +38,11 @@ export function getCommonColumns<
       minWidth: "auto",
       maxAutoWidth: 520,
       accessorFn: getEntityName,
-      cell: ({ row }) => {
-        const finding = row.original;
-        return (
-          <Group align="center" gap="sm" miw={0} wrap="nowrap">
-            <FixedSizeIcon name={getEntityIcon(finding)} />
-            <Ellipsified tooltipProps={{ openDelay: TOOLTIP_OPEN_DELAY_MS }}>
-              {getEntityName(finding)}
-            </Ellipsified>
-          </Group>
-        );
-      },
+      cell: ({ row }) => (
+        <Ellipsified tooltipProps={{ openDelay: TOOLTIP_OPEN_DELAY_MS }}>
+          {getEntityName(row.original)}
+        </Ellipsified>
+      ),
     },
     entityType: {
       id: "entity-type",
@@ -55,8 +50,14 @@ export function getCommonColumns<
       enableSorting: true,
       sortDescFirst: false,
       width: "auto",
-      minWidth: 100,
       accessorFn: (finding) => getEntityTypeLabel(finding),
+      cell: ({ row }) => (
+        <DiagnosticsEntityIcon
+          entity={row.original}
+          getIcon={getIcon}
+          mx="auto"
+        />
+      ),
     },
     collectionName: {
       id: "collection-name",

@@ -51,18 +51,6 @@ type ContentDiagnosticsEntityTarget = ContentDiagnosticsEntityKind & {
   namespace?: CollectionNamespace;
 };
 
-export function getEntityIcon(entity: ContentDiagnosticsEntityKind): IconName {
-  return match(entity)
-    .with({ entity_type: "card", card_type: "model" }, () => "model" as const)
-    .with({ entity_type: "card", card_type: "metric" }, () => "metric" as const)
-    .with({ entity_type: "card" }, () => "table2" as const)
-    .with({ entity_type: "dashboard" }, () => "dashboard" as const)
-    .with({ entity_type: "document" }, () => "document" as const)
-    .with({ entity_type: "transform" }, () => "transform" as const)
-    .with({ entity_type: "collection" }, () => "folder" as const)
-    .exhaustive();
-}
-
 export function getEntityTypeLabel(
   entity: ContentDiagnosticsEntityKind,
 ): string {

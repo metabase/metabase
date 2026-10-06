@@ -57,6 +57,8 @@
    ;; on when given a card sub-kind (question/model/metric);
    ;; nullable (rows can predate the column, and a card deleted mid-scan stamps nil)
    [:card_type           {:optional true} [:maybe :keyword]]
+   ;; Live visualization display, only for card findings.
+   [:display             {:optional true} [:maybe :keyword]]
    [:entity_kind         :keyword]
    [:entity_id           :int]
    [:detected_at         ms/TemporalInstant]
@@ -151,8 +153,8 @@
 
 (def ^:private DuplicatedEntity
   "A hydrated peer of a duplicated finding: another entity **of the same type** sharing the flagged
-  entity's normalized name. `{id, name, entity_type, card_type?, namespace?, view_count?}` - `card_type`
-  (question/model/metric) only on card peers, `namespace` only on collection peers.
+  entity's normalized name. `{id, name, entity_type, card_type?, display?, namespace?, view_count?}` -
+  `card_type` (question/model/metric) and `display` only on card peers, `namespace` only on collection peers.
   Card/dashboard/document peers carry their live
   `view_count` for judging which duplicate is the abandoned one; transforms have no view concept, so
   transform peers carry no usage signal."
@@ -161,6 +163,7 @@
    [:name        [:maybe :string]]
    [:entity_type :keyword]
    [:card_type   {:optional true} [:maybe :keyword]]
+   [:display     {:optional true} [:maybe :keyword]]
    [:namespace   {:optional true} [:maybe :keyword]]
    [:view_count  {:optional true} :int]])
 

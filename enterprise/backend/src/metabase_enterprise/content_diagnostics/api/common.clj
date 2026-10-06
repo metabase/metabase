@@ -315,7 +315,7 @@
   "Card-id set → `{card-id → {:id :name :entity_type :card :card_type <kw> :view_count <int>}}`. The
   read-time hydration of a `slow` roll-up's stored culprit ids (`slow_entity_ids`) into objects.
   `card_type` is the `report_card.type` enum (question/model/metric) that drives the FE per-member
-  link/icon; `view_count` is the card's live usage counter. Batched.
+  link; `view_count` is the card's live usage counter. Batched.
 
   Culprit cards can live outside their container's collection, so the per-caller read-time filters are
   re-applied here via [[readable-entities-where]]: caller visibility always, and the personal-collection
@@ -364,9 +364,11 @@
 
 (defn- hydrate-duplicate-entities
   "The findings' stored `duplicate_entity_ids` → `{[entity-type id] → {:id :name :entity_type <etype>
-  :card_type <kw> :view_count <int> :namespace <kw>}}`. `card_type` and `view_count` are present only on
-  card/dashboard/document peers; `namespace` is present only on collection peers. Peers share the
-  finding's own entity type, so each type's ids resolve from that type's own model via [[read-entity-rows]]
+  :card_type <kw> :display <kw> :view_count <int> :namespace <kw>}}`. `card_type` and `display` are present
+  only on card peers; `view_count` is present on card/dashboard/document peers; `namespace` is present
+  only on collection peers. `display` is the card's live visualization type (e.g. table/bar/line), used
+  to choose the question icon in the duplicates sidebar. Peers share the finding's own entity type,
+  so each type's ids resolve from that type's own model via [[read-entity-rows]]
   (which applies the per-type read gate); a filtered-out peer drops out of `duplicate_entities` like a
   deleted one."
   [findings exclude-personal?]
@@ -380,8 +382,9 @@
            (cond-> {:id (:id row) :name (:name row) :entity_type etype}
              ;; served only where the peer select fetched it (transform + collection have none)
              (some #{:view_count} (common/peer-select-cols etype)) (assoc :view_count (:view_count row))
-             (= etype :card)                                       (assoc :card_type (:type row))
-             (= etype :collection)                                 (assoc :namespace (:namespace row)))])))
+             (= etype :card)                                    (assoc :card_type (:type row)
+                                                                       :display (:display row))
+             (= etype :collection)                              (assoc :namespace (:namespace row)))])))
 
 (defn- normalized-owner
   "Normalized `owner` from the transform `:owner` hydrate or a personal collection's owning user:
@@ -472,7 +475,9 @@
   nested `details` = stored verdict + {collection, description, owner, creator, view_count?}. `view_count`
   is the entity's live usage counter, present only for types that have the column (all but transform).
   A card finding also carries a top-level `card_type` (question/model/metric) - served from the stored
-  column, not hydrated live. Batched, page-size-independent.
+  column, not hydrated live. Its `display` is the live visualization type (e.g. table/bar/line), used to
+  choose the question icon in the table and sidebar header without waiting for a new scan.
+  Batched, page-size-independent.
 
   The finding-type-specific tail - the hoisted native column(s) and any `details` rewrite (slow culprits /
   duplicated peers) - is dispatched per row on each finding's `finding_type` via [[finalize-finding]], so a
@@ -531,7 +536,7 @@
                                                              entity_collection_name)}
                                ;; keyed on entity type so a card row with NULL card_type still serves
                                ;; the key, as null
-                               (= entity_type :card) (assoc :card_type card_type))]
+                               (= entity_type :card) (assoc :card_type card_type :display (:display entity)))]
               (finalize-finding finding_type base row ctx)))
           findings)))
 

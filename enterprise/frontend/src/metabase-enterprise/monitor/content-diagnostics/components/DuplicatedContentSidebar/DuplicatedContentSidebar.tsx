@@ -1,27 +1,20 @@
 import { c, msgid, ngettext, t } from "ttag";
 
+import { useGetIcon } from "metabase/hooks/use-icon";
 import { Link } from "metabase/router";
-import {
-  Anchor,
-  Card,
-  FixedSizeIcon,
-  Group,
-  Stack,
-  Text,
-  Tooltip,
-} from "metabase/ui";
+import { Anchor, Card, Group, Stack, Text, Tooltip } from "metabase/ui";
 import type {
   ContentDiagnosticsDuplicateEntity,
   ContentDiagnosticsDuplicatedFinding,
 } from "metabase-types/api";
 
 import { trackContentDiagnosticsDuplicateOpened } from "../../analytics";
+import { DiagnosticsEntityIcon } from "../DiagnosticsEntityIcon";
 import { DiagnosticsSidebar } from "../DiagnosticsSidebar";
 import { TOOLTIP_OPEN_DELAY_MS } from "../constants";
 import {
   getDuplicateEntityName,
   getDuplicateEntityUrl,
-  getEntityIcon,
   getEntityTypeLabel,
 } from "../utils";
 
@@ -96,6 +89,7 @@ type DuplicateEntityRowProps = {
 };
 
 function DuplicateEntityRow({ entity }: DuplicateEntityRowProps) {
+  const getIcon = useGetIcon();
   const name = getDuplicateEntityName(entity);
   const typeLabel = getEntityTypeLabel(entity);
 
@@ -115,21 +109,26 @@ function DuplicateEntityRow({ entity }: DuplicateEntityRowProps) {
       wrap="nowrap"
       justify="space-between"
     >
-      <Group gap="sm" wrap="nowrap" miw={0}>
-        <Tooltip label={typeLabel} openDelay={TOOLTIP_OPEN_DELAY_MS}>
-          <FixedSizeIcon name={getEntityIcon(entity)} />
-        </Tooltip>
-        <Anchor
-          className={S.wrap}
-          component={Link}
-          to={getDuplicateEntityUrl(entity)}
-          target="_blank"
-          aria-label={linkLabel}
-          onClick={trackEntityOpened}
-        >
-          {name}
-        </Anchor>
-      </Group>
+      <Anchor
+        className={S.wrap}
+        component={Link}
+        miw={0}
+        to={getDuplicateEntityUrl(entity)}
+        target="_blank"
+        aria-label={linkLabel}
+        onClick={trackEntityOpened}
+      >
+        <Group component="span" gap="sm" wrap="nowrap" miw={0}>
+          <Tooltip label={typeLabel} openDelay={TOOLTIP_OPEN_DELAY_MS}>
+            <DiagnosticsEntityIcon
+              entity={entity}
+              getIcon={getIcon}
+              aria-hidden
+            />
+          </Tooltip>
+          <span className={S.wrap}>{name}</span>
+        </Group>
+      </Anchor>
       {entity.view_count != null && (
         <Text className={S.nowrap} c="text-secondary">
           {ngettext(

@@ -6,6 +6,7 @@ import type { PaginationRequest } from "./pagination";
 import type { SortDirection } from "./sorting";
 import type { TransformId } from "./transform";
 import type { UserId } from "./user";
+import type { VisualizationDisplay } from "./visualization";
 
 export const CONTENT_DIAGNOSTICS_IMBALANCED_FINDING_TYPES = [
   "empty",
@@ -168,6 +169,7 @@ export type ContentDiagnosticsBaseFinding = {
   finding_type: ContentDiagnosticsFindingType;
   entity_type: ContentDiagnosticsEntityType;
   card_type?: CardType | null;
+  display?: VisualizationDisplay | null;
   entity_id: ContentDiagnosticsEntityId;
   detected_at: string;
   entity_display_name: string | null;
@@ -268,6 +270,7 @@ export type ContentDiagnosticsDuplicateEntity = {
   name: string | null;
   entity_type: ContentDiagnosticsEntityType;
   card_type?: CardType | null;
+  display?: VisualizationDisplay | null;
   namespace?: CollectionNamespace;
   view_count?: number;
 };

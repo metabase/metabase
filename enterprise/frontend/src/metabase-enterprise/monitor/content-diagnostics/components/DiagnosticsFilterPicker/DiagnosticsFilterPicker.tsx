@@ -83,6 +83,7 @@ export function DiagnosticsFilterPicker<
           }}
         >
           <Button
+            size="lg"
             leftSection={<FixedSizeIcon name="filter" aria-hidden />}
             disabled={isDisabled}
             data-testid="content-diagnostics-filter-button"
