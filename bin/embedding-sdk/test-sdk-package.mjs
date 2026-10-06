@@ -56,7 +56,7 @@ try {
     fs.readFileSync(path.join(installedPackage, "package.json"), "utf8"),
   );
 
-  // Check that both esbuild and typescript modules are installed and can be used
+  // Check that the esbuild module the CLI bundles definition files with is installed and can be used
   execFileSync(
     process.execPath,
     [
@@ -66,7 +66,6 @@ try {
         const sdkRequire = createRequire(${JSON.stringify(path.join(installedPackage, "package.json"))});
 
         sdkRequire("esbuild").transformSync("const value: number = 1", { loader: "ts" });
-        sdkRequire("typescript").transpileModule("const value: number = 1", {});
       `,
     ],
     NPM_COMMAND_OPTIONS,
