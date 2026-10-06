@@ -29,7 +29,7 @@
     (mt/with-dynamic-fn-redefs [settings/check-git-settings! (fn [{:keys [remote-sync-token]}]
                                                                ;; git should always be checked with a nil or full token
                                                                (is (or (nil? remote-sync-token) (#{full-token other-token} remote-sync-token)))
-                                                               true)]
+                                                               nil)]
       (mt/with-temporary-setting-values [:remote-sync-token nil
                                          :remote-sync-url nil
                                          :remote-sync-type nil
@@ -59,7 +59,7 @@
     (let [git-check-called? (atom false)]
       (mt/with-dynamic-fn-redefs [settings/check-git-settings! (fn [_]
                                                                  (reset! git-check-called? true)
-                                                                 true)]
+                                                                 nil)]
         (mt/with-temporary-setting-values [:remote-sync-transforms false
                                            :remote-sync-auto-import false]
           (testing "Updating only remote-sync-transforms does not check git settings"
@@ -83,7 +83,7 @@
     (let [git-check-called? (atom false)]
       (mt/with-dynamic-fn-redefs [settings/check-git-settings! (fn [_]
                                                                  (reset! git-check-called? true)
-                                                                 true)]
+                                                                 nil)]
         (mt/with-temporary-setting-values [:remote-sync-url "file://my/url.git"
                                            :remote-sync-type :read-only
                                            :remote-sync-branch "main"]
@@ -115,20 +115,20 @@
                                                          :remote-sync-type  :read-only}))))
   (testing "Non-GitHub HTTPS URLs are accepted"
     (mt/with-dynamic-fn-redefs [git/branches (fn [_] ["main"])]
-      (is (nil? (settings/check-git-settings! {:remote-sync-url   "https://gitlab.com/foo/bar.git"
-                                               :remote-sync-token nil
-                                               :remote-sync-branch "main"
-                                               :remote-sync-type  :read-only}))
+      (is (some? (settings/check-git-settings! {:remote-sync-url   "https://gitlab.com/foo/bar.git"
+                                                :remote-sync-token nil
+                                                :remote-sync-branch "main"
+                                                :remote-sync-type  :read-only}))
           "GitLab HTTPS URLs should be accepted")
-      (is (nil? (settings/check-git-settings! {:remote-sync-url   "https://bitbucket.org/foo/bar.git"
-                                               :remote-sync-token nil
-                                               :remote-sync-branch "main"
-                                               :remote-sync-type  :read-only}))
+      (is (some? (settings/check-git-settings! {:remote-sync-url   "https://bitbucket.org/foo/bar.git"
+                                                :remote-sync-token nil
+                                                :remote-sync-branch "main"
+                                                :remote-sync-type  :read-only}))
           "Bitbucket HTTPS URLs should be accepted")
-      (is (nil? (settings/check-git-settings! {:remote-sync-url   "https://dev.azure.com/org/project/_git/repo"
-                                               :remote-sync-token nil
-                                               :remote-sync-branch "main"
-                                               :remote-sync-type  :read-only}))
+      (is (some? (settings/check-git-settings! {:remote-sync-url   "https://dev.azure.com/org/project/_git/repo"
+                                                :remote-sync-token nil
+                                                :remote-sync-branch "main"
+                                                :remote-sync-type  :read-only}))
           "Azure DevOps HTTPS URLs should be accepted"))))
 
 (deftest cannot-set-remote-sync-type-to-invalid-value
@@ -144,7 +144,7 @@
 
 (deftest deactivate-clears-remote-sync-with-blank-url-test
   (testing "Setting a blank remote-sync-url clears all git settings and disables remote sync"
-    (mt/with-dynamic-fn-redefs [settings/check-git-settings! (constantly true)]
+    (mt/with-dynamic-fn-redefs [settings/check-git-settings! (constantly nil)]
       (mt/with-temporary-setting-values [:remote-sync-url    "file://my/repo.git"
                                          :remote-sync-token  "secret-token"
                                          :remote-sync-branch "main"
@@ -160,7 +160,7 @@
 
 (deftest check-and-update-remote-settings-env-var-aware-test
   (testing "Settings sourced from env vars are not overwritten by check-and-update-remote-settings!"
-    (mt/with-dynamic-fn-redefs [settings/check-git-settings! (constantly true)]
+    (mt/with-dynamic-fn-redefs [settings/check-git-settings! (constantly nil)]
       (mt/with-temp-env-var-value! [mb-remote-sync-url "file://env/url.git"
                                     mb-remote-sync-token "env-token"
                                     mb-remote-sync-branch "env-branch"]
@@ -179,7 +179,7 @@
           (is (= "env-token" (settings/remote-sync-token)))
           (is (= "env-branch" (settings/remote-sync-branch)))))))
   (testing "Non-env-sourced settings are still updated normally"
-    (mt/with-dynamic-fn-redefs [settings/check-git-settings! (constantly true)]
+    (mt/with-dynamic-fn-redefs [settings/check-git-settings! (constantly nil)]
       (mt/with-temporary-setting-values [:remote-sync-url nil
                                          :remote-sync-token nil
                                          :remote-sync-branch nil
@@ -214,7 +214,7 @@
             without changing any settings or calling git"
     (let [check-git-call-count (atom 0)]
       (mt/with-dynamic-fn-redefs [guards/task-running?         (constantly true)
-                                  settings/check-git-settings! (fn [_] (swap! check-git-call-count inc) true)]
+                                  settings/check-git-settings! (fn [_] (swap! check-git-call-count inc) nil)]
         (mt/with-temporary-setting-values [:remote-sync-url    "file://my/repo.git"
                                            :remote-sync-token  nil
                                            :remote-sync-type   :read-only
@@ -243,7 +243,7 @@
                                                                 :remote-sync-branch branch
                                                                 :remote-sync-type   :read-only}))]
         (is (not (.exists clone-dir)) "Precondition: no local clone yet")
-        (is (nil? (check! "develop")))
+        (is (some? (check! "develop")))
         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Invalid branch name" (check! "nope")))
         (is (not (.exists clone-dir)) "Checking settings must not clone the repository")))))
 
@@ -365,3 +365,79 @@
         (testing "the test leaves no clone directory and no cached Git instance for the URL"
           (is (not (.exists clone-dir)))
           (is (not (contains? @@#'git/jgit (.getPath clone-dir)))))))))
+
+(deftest blank-branch-save-asks-the-remote-once-test
+  (testing "a settings save with a blank branch asks the remote one time, and saves the default branch of the remote"
+    (mt/with-premium-features #{:remote-sync}
+      (mt/with-temp-dir [remote-dir nil]
+        ;; The default branch (HEAD, master) is not the first branch, so the test shows that the save reads HEAD.
+        (let [url                 (test-helpers/init-local-git-remote! remote-dir :branches ["alpha" "develop"])
+              commands            (atom [])
+              call-remote-command (mt/original-fn #'git/call-remote-command)]
+          (mt/with-temporary-setting-values [remote-sync-url    nil
+                                             remote-sync-token  nil
+                                             remote-sync-type   nil
+                                             remote-sync-branch nil]
+            (mt/with-dynamic-fn-redefs [git/call-remote-command (fn [command args]
+                                                                  (swap! commands conj (.getSimpleName (class command)))
+                                                                  (call-remote-command command args))]
+              (is (= {:success true}
+                     (mt/user-http-request :crowberto :put 200 "ee/remote-sync/settings"
+                                           {:remote-sync-url    url
+                                            :remote-sync-token  nil
+                                            :remote-sync-type   :read-write
+                                            :remote-sync-branch ""}))))
+            (is (= {"LsRemoteCommand" 1} (frequencies @commands))
+                "One lsRemote answers both the settings check and the default branch")
+            (is (= "master" (settings/remote-sync-branch)) "The save stores the default branch of the remote")))))))
+
+(deftest blank-branch-save-of-remote-without-default-branch-saves-nothing-test
+  (testing "a save with a blank branch of a remote whose HEAD is detached (so it has no default branch) fails, and
+            saves no setting"
+    (mt/with-temp-dir [remote-dir nil]
+      (let [url (test-helpers/init-local-git-remote! remote-dir :branches ["alpha"])]
+        (with-open [remote-git (Git/open (io/file remote-dir))]
+          (let [remote-repo (.getRepository remote-git)]
+            (doto (.updateRef remote-repo "HEAD" true)
+              (.setNewObjectId (.resolve remote-repo "master"))
+              (.forceUpdate))))
+        (mt/with-temporary-setting-values [remote-sync-url    nil
+                                           remote-sync-token  nil
+                                           remote-sync-type   nil
+                                           remote-sync-branch nil]
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Failed to get a default branch"
+                                (settings/check-and-update-remote-settings! {:remote-sync-url    url
+                                                                             :remote-sync-token  nil
+                                                                             :remote-sync-type   :read-write
+                                                                             :remote-sync-branch ""})))
+          (is (nil? (settings/remote-sync-url)) "The rejected settings are not saved")
+          (is (nil? (settings/remote-sync-branch))))))))
+
+(defn- link-head!
+  "Points the HEAD of the git repo in `dir` at the ref `target`, e.g. `refs/heads/main`."
+  [dir ^String target]
+  (with-open [remote-git (Git/open (io/file dir))]
+    (.link (.updateRef (.getRepository remote-git) "HEAD") target)))
+
+(deftest blank-branch-save-with-env-url-stores-the-default-branch-of-the-env-url-test
+  (testing "when the URL comes from the environment, a blank-branch save stores the default branch of that URL"
+    (mt/with-temp-dir [env-dir nil]
+      (mt/with-temp-dir [api-dir nil]
+        (let [env-url (test-helpers/init-local-git-remote! env-dir :branches ["alpha"])
+              api-url (test-helpers/init-local-git-remote! api-dir :branches ["beta"])]
+          (link-head! env-dir "refs/heads/alpha")
+          (link-head! api-dir "refs/heads/beta")
+          (mt/with-temporary-setting-values [remote-sync-url    nil
+                                             remote-sync-token  nil
+                                             remote-sync-type   nil
+                                             remote-sync-branch nil]
+            (mt/with-temp-env-var-value! [mb-remote-sync-url env-url]
+              (settings/check-and-update-remote-settings! {:remote-sync-url    api-url
+                                                           :remote-sync-token  nil
+                                                           :remote-sync-type   :read-write
+                                                           :remote-sync-branch ""})
+              (mt/with-dynamic-fn-redefs [impl/async-import! (constantly {:id 1})]
+                (impl/finish-remote-config!))
+              (is (= env-url (settings/remote-sync-url)) "Precondition: the URL from the environment is in effect")
+              (is (= "alpha" (settings/remote-sync-branch))
+                  "The save stores the default branch of the URL in effect, not of the URL in the request"))))))))

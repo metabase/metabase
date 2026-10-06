@@ -410,6 +410,21 @@
        (throw (ex-info (str "Failed to push branch " branch-name " to remote") {:failures failures})))
      push-response)))
 
+(defn- ls-remote-refs
+  "The refs of the repository at `remote-url`, from one lsRemote with the optional `token`."
+  [{:keys [^String remote-url] :as remote}]
+  ;; not `setHeads true`: that would filter out the symbolic HEAD ref that [[ref-head-branch]] reads
+  (call-remote-command (-> (Git/lsRemoteRepository)
+                           (.setRemote remote-url))
+                       remote))
+
+(defn- remote-refs
+  "The refs of `remote`: the answer that a [[git-remote]] holds, else the answer of a new lsRemote."
+  [{:keys [refs] :as remote}]
+  (if refs
+    @refs
+    (ls-remote-refs remote)))
+
 (defn- ref-head-branch
   "The branch (without 'refs/heads/') that the symbolic HEAD among the `refs` returned by an lsRemote points at. For a
   remote that advertises no HEAD, the branch that a clone of it gets (see [[branch-without-head]]). Throws
@@ -425,12 +440,10 @@
 
 (defn default-branch
   "The default branch name (without 'refs/heads/') of the repository at `remote-url`, read from the remote with the
-  optional `token`. Needs no local clone. Throws ExceptionInfo if no default branch is found."
-  [{:keys [^String remote-url] :as remote}]
-  ;; not `setHeads true`: that would filter out the symbolic HEAD ref this reads
-  (ref-head-branch (call-remote-command (-> (Git/lsRemoteRepository)
-                                            (.setRemote remote-url))
-                                        remote)))
+  optional `token`, or from the answer that a [[git-remote]] holds. Needs no local clone. Throws ExceptionInfo if no
+  default branch is found."
+  [remote]
+  (ref-head-branch (remote-refs remote)))
 
 (defn- close-commit-resources! [inserter reader rev-walk]
   (.close ^ObjectInserter inserter)
@@ -522,14 +535,12 @@
 
 (defn branches
   "The branch names (without 'refs/heads/') of the repository at `remote-url`, read from the remote with the optional
-  `token`, sorted. Needs no local clone."
-  [{:keys [^String remote-url] :as remote}]
-  (ref-branch-names (call-remote-command (-> (Git/lsRemoteRepository)
-                                             (.setRemote remote-url)
-                                             (.setHeads true))
-                                         remote)))
+  `token`, or from the answer that a [[git-remote]] holds, sorted. Needs no local clone."
+  [remote]
+  (ref-branch-names (remote-refs remote)))
 
-(defrecord GitRemote [remote-url token]
+;; `refs` is a delay of the one lsRemote that answers every question of this remote.
+(defrecord GitRemote [remote-url token refs]
   source.p/Remote
   (branches [this]
     (branches this))
@@ -539,9 +550,10 @@
 
 (defn git-remote
   "The [[source.p/Remote]] for the git repository at `url`, authenticated with the optional `token`. Makes no network
-  call and no clone."
+  call and no clone. Its first question asks the remote with one lsRemote; it answers every question from that one
+  answer."
   [url token]
-  (->GitRemote url token))
+  (->GitRemote url token (delay (ls-remote-refs {:remote-url url :token token}))))
 
 (defn has-data?
   "Checks if the remote git repository has any commits/data.

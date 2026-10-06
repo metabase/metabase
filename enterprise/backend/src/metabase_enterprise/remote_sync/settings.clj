@@ -170,6 +170,9 @@
 
   If no args are passed, it validates the current settings.
 
+  Returns the [[source.p/Remote]] that it asked, which answers later questions (such as the default branch) with no
+  further call to the remote; nil when no args are passed and remote sync is disabled.
+
   Throws ExceptionInfo if unable to connect to the repository with the provided settings."
   ([] (when (setting/get :remote-sync-enabled) (check-git-settings! {:remote-sync-url    (setting/get :remote-sync-url)
                                                                      :remote-sync-token  (setting/get :remote-sync-token)
@@ -184,11 +187,13 @@
      (throw (ex-info "Invalid repository URL: only HTTPS URLs are supported (e.g., https://git-host.example.com/yourcompany/repo.git)"
                      {:url remote-sync-url})))
    ;; Ask a remote, not a `git/git-source`: a source clones the whole repository when no clone exists yet.
-   (let [branches (source.p/branches (git/git-remote remote-sync-url remote-sync-token))]
+   (let [remote   (git/git-remote remote-sync-url remote-sync-token)
+         branches (source.p/branches remote)]
      (when (empty? branches)
        (throw (ex-info "Cannot connect to uninitialized repository" {:url remote-sync-url})))
      (when (and (= :read-only remote-sync-type) (not (str/blank? remote-sync-branch)) (not (some #{remote-sync-branch} branches)))
-       (throw (ex-info "Invalid branch name" {:url remote-sync-url :branch remote-sync-branch}))))))
+       (throw (ex-info "Invalid branch name" {:url remote-sync-url :branch remote-sync-branch})))
+     remote)))
 
 (defsetting remote-sync-allow
   (deferred-tru "Allow specific remote sync behaviors. Set to overwrite-unpublished to allow overwriting unpublished changes on startup.")
@@ -229,14 +234,27 @@
             obfuscated?    (= remote-sync-token (setting/obfuscate-value current-token))
             token-to-check (if env-set-token
                              (setting/get :remote-sync-token)
-                             (if obfuscated? current-token remote-sync-token))]
-        (when updating-git-settings?
-          (check-git-settings! (assoc settings :remote-sync-token token-to-check)))
+                             (if obfuscated? current-token remote-sync-token))
+            remote         (when updating-git-settings?
+                             (check-git-settings! (assoc settings :remote-sync-token token-to-check)))
+            branch-after   (if (and (contains? settings :remote-sync-branch) (not env-set-branch))
+                             (:remote-sync-branch settings)
+                             (setting/get :remote-sync-branch))
+            enabled-after? (or (contains? settings :remote-sync-url) (remote-sync-enabled))
+            ;; The save does not change an env-set URL, so `remote` can be a remote other than the one in effect.
+            ;; Then `finish-remote-config!` reads the default branch of the URL in effect.
+            keeps-url?     (or (not env-set-url) (= remote-sync-url (setting/get :remote-sync-url)))
+            ;; `remote` answers from the lsRemote of the check, so the default branch costs no second call. It is
+            ;; read before the transaction, so that a remote with no default branch fails the save before any write.
+            default-branch (when (and remote keeps-url? enabled-after? (str/blank? branch-after))
+                             (source.p/default-branch remote))]
         (t2/with-transaction [_conn]
           (doseq [k [:remote-sync-url :remote-sync-token :remote-sync-type :remote-sync-branch :remote-sync-auto-import :remote-sync-transforms]]
             (when (and (not= :env (setting/get-raw-value-source k)) (contains? settings k)
                        (not (and (= k :remote-sync-token) obfuscated?)))
-              (setting/set! k (k settings)))))))))
+              (setting/set! k (k settings))))
+          (when default-branch
+            (setting/set! :remote-sync-branch default-branch)))))))
 
 (defn library-is-remote-synced?
   "Returns true if the Library collection exists and is remote-synced.
