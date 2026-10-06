@@ -2,6 +2,7 @@ import { useDisclosure } from "@mantine/hooks";
 import { t } from "ttag";
 
 import { isInstanceAnalyticsCollection } from "metabase/common/collections/utils";
+import { getDashboardDatabaseIds } from "metabase/common/utils/database";
 import { getUserIsAdmin } from "metabase/current-user";
 import {
   getIsDashCardsRunning,
@@ -112,6 +113,7 @@ function AdminDashboardSharingMenu({ dashboard }: { dashboard: Dashboard }) {
         {canShare && isPublicSharingEnabled && (hasPublicLink || canWrite) && (
           <PublicLinkMenuItem
             hasPublicLink={hasPublicLink}
+            databaseIds={getDashboardDatabaseIds(dashboard)}
             onClick={() => setModalType("dashboard-public-link")}
           />
         )}

@@ -123,6 +123,23 @@
                                                :from   [(t2/table-name :model/DashboardCard)]
                                                :where  [:= :dashboard_id dashboard-id]}]}))
 
+(mu/defn dashboard-card-database-ids
+  "The ids of the Databases queried by the Cards of the Dashboard with `dashboard-id`, including the Cards added to its
+  DashboardCards as series. One entry per Card, so ids repeat."
+  [dashboard-id :- ::lib.schema.id/dashboard]
+  (t2/select-fn-vec :database_id :model/Card
+                    {:where [:or
+                             [:in :id ^:allow-subquery {:select [:card_id]
+                                                        :from   [(t2/table-name :model/DashboardCard)]
+                                                        :where  [:= :dashboard_id dashboard-id]}]
+                             [:in :id ^:allow-subquery {:select [:card_id]
+                                                        :from   [(t2/table-name :model/DashboardCardSeries)]
+                                                        :where  [:in :dashboardcard_id
+                                                                 ^:allow-subquery
+                                                                 {:select [:id]
+                                                                  :from   [(t2/table-name :model/DashboardCard)]
+                                                                  :where  [:= :dashboard_id dashboard-id]}]}]]}))
+
 (mu/defn dashboard-action-ids
   "The Action ids of the DashboardCards of the Dashboard with `dashboard-id`."
   [dashboard-id :- ::lib.schema.id/dashboard]

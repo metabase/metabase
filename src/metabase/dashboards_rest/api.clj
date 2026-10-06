@@ -1203,6 +1203,8 @@
   (api/check-superuser)
   (public-sharing.validation/check-public-sharing-enabled)
   (api/check-not-archived (api/read-check :model/Dashboard dashboard-id))
+  (public-sharing.validation/check-public-link-allowed!
+   (dashboards-rest.db/dashboard-card-database-ids dashboard-id))
   (let [existing-public-uuid (dashboards-rest.db/dashboard-public-uuid dashboard-id)
         uuid (or existing-public-uuid
                  (u/prog1 (str (random-uuid))

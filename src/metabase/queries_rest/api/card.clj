@@ -885,7 +885,8 @@
                          [:card-id ms/PositiveInt]]]
   (api/check-superuser)
   (public-sharing.validation/check-public-sharing-enabled)
-  (api/check-not-archived (api/read-check :model/Card card-id))
+  (let [{:keys [database_id]} (api/check-not-archived (api/read-check :model/Card card-id))]
+    (public-sharing.validation/check-public-link-allowed! [database_id]))
   (let [{existing-public-uuid :public_uuid} (queries-rest.db/card-public-uuid-columns card-id)
         uuid (or existing-public-uuid
                  (u/prog1 (str (random-uuid))

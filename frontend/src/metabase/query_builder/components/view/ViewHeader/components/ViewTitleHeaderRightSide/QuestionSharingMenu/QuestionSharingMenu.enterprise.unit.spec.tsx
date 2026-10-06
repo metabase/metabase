@@ -1,7 +1,10 @@
 import userEvent from "@testing-library/user-event";
 
 import { screen, waitFor } from "__support__/ui";
-import { createMockCollection } from "metabase-types/api/mocks";
+import {
+  createMockCollection,
+  createMockDatabase,
+} from "metabase-types/api/mocks";
 
 import { openMenu, setupQuestionSharingMenu } from "./tests/setup";
 
@@ -89,6 +92,90 @@ describe("QuestionSharingMenu > Enterprise", () => {
   });
 
   describe("admins", () => {
+    const ROUTED_DATABASE = createMockDatabase({
+      id: 10,
+      name: "Tenant warehouse",
+      router_user_attribute: "tenant",
+      router_anonymous_access_granted: false,
+    });
+    const GRANTED_DATABASE = createMockDatabase({
+      ...ROUTED_DATABASE,
+      router_anonymous_access_granted: true,
+    });
+    const PLAIN_DATABASE = createMockDatabase({ id: 10, name: "Warehouse" });
+
+    const routingExplanation =
+      /Tenant warehouse has database routing turned on and does not allow anonymous access/;
+
+    it("disables creating a public link on a routed database that refuses anonymous access", async () => {
+      await setupQuestionSharingMenu({
+        isAdmin: true,
+        isPublicSharingEnabled: true,
+        isEnterprise: true,
+        question: { database_id: ROUTED_DATABASE.id },
+        databases: [ROUTED_DATABASE],
+      });
+      await openMenu();
+
+      expect(await screen.findByText(routingExplanation)).toBeInTheDocument();
+      expect(
+        screen.getByRole("menuitem", { name: /Create a public link/ }),
+      ).toHaveAttribute("data-disabled", "true");
+      expect(
+        screen.getByRole("link", { name: "Allow anonymous access" }),
+      ).toHaveAttribute("href", "/admin/databases/10");
+
+      await userEvent.click(screen.getByText("Create a public link"));
+      expect(
+        screen.queryByTestId("public-link-popover-content"),
+      ).not.toBeInTheDocument();
+    });
+
+    it("creates a public link once an admin allows anonymous access", async () => {
+      await setupQuestionSharingMenu({
+        isAdmin: true,
+        isPublicSharingEnabled: true,
+        isEnterprise: true,
+        question: { database_id: GRANTED_DATABASE.id },
+        databases: [GRANTED_DATABASE],
+      });
+      await openMenu();
+
+      expect(screen.getByText("Create a public link")).toBeInTheDocument();
+      expect(screen.queryByText(routingExplanation)).not.toBeInTheDocument();
+    });
+
+    it("creates a public link on a database that is not routed", async () => {
+      await setupQuestionSharingMenu({
+        isAdmin: true,
+        isPublicSharingEnabled: true,
+        isEnterprise: true,
+        question: { database_id: PLAIN_DATABASE.id },
+        databases: [PLAIN_DATABASE],
+      });
+      await openMenu();
+
+      expect(screen.getByText("Create a public link")).toBeInTheDocument();
+      expect(screen.queryByText(routingExplanation)).not.toBeInTheDocument();
+    });
+
+    // A link minted before routing was turned on is dead, and the popover is
+    // where it gets removed, so the item has to stay reachable.
+    it("leaves an existing public link reachable on a routed database", async () => {
+      await setupQuestionSharingMenu({
+        isAdmin: true,
+        isPublicSharingEnabled: true,
+        isEnterprise: true,
+        hasPublicLink: true,
+        question: { database_id: ROUTED_DATABASE.id },
+        databases: [ROUTED_DATABASE],
+      });
+      await openMenu();
+
+      expect(screen.getByText("Public link")).toBeInTheDocument();
+      expect(screen.queryByText(routingExplanation)).not.toBeInTheDocument();
+    });
+
     it("should not allow sharing instance analytics question", async () => {
       setupQuestionSharingMenu({
         isAdmin: true,

@@ -2015,11 +2015,13 @@
            metabase.public-sharing.init
            metabase.public-sharing.validation}
    :uses #{api
+           database-routing
            settings
            util}
    :model-imports #{:model/Action
                     :model/Card
                     :model/Dashboard
+                    :model/Database
                     :model/Document}}
 
   public-sharing.rest
