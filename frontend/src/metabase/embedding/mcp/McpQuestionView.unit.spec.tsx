@@ -135,7 +135,8 @@ function setup() {
     embed: createMockEmbedState(),
   });
 
-  renderWithSDKProviders(
+  const applyOperationsRef = { current: null };
+  const view = (queryKey: string) => (
     <SdkQuestion
       questionId={TEST_CARD.id}
       isSaveEnabled={false}
@@ -143,20 +144,24 @@ function setup() {
       withChartTypeSelector={false}
     >
       <McpQuestionView
-        queryKey="test-query"
+        queryKey={queryKey}
         safeAreaPaddingTop={0}
         deriveQuery={deriveQuery}
-        applyOperationsRef={{ current: null }}
+        applyOperationsRef={applyOperationsRef}
         isQueryRunningRef={isQueryRunningRef}
       />
-    </SdkQuestion>,
-    {
-      componentProviderProps: { authConfig: createMockSdkConfig() },
-      storeInitialState: state,
-    },
+    </SdkQuestion>
   );
 
-  return { deriveQuery };
+  const { rerender } = renderWithSDKProviders(view("test-query"), {
+    componentProviderProps: { authConfig: createMockSdkConfig() },
+    storeInitialState: state,
+  });
+
+  return {
+    deriveQuery,
+    showQuery: (queryKey: string) => rerender(view(queryKey)),
+  };
 }
 
 describe("McpQuestionView with the MCP Apps bootstrap projection (GHY-4400)", () => {
@@ -238,6 +243,27 @@ describe("McpQuestionView with the MCP Apps bootstrap projection (GHY-4400)", ()
 
     await userEvent.click(await screen.findByText("by quarter"));
     await userEvent.click(await screen.findByRole("option", { name: "Week" }));
+
+    await waitFor(() => {
+      expect(
+        screen.queryByText("This change could not be applied."),
+      ).not.toBeInTheDocument();
+    });
+  });
+
+  it("clears a failed change's message when a new query loads", async () => {
+    const { deriveQuery, showQuery } = setup();
+    jest.spyOn(console, "error").mockImplementation(() => {});
+    deriveQuery.mockRejectedValueOnce(new TypeError("Failed to fetch"));
+
+    await userEvent.click(await screen.findByText("by quarter"));
+    await userEvent.click(await screen.findByRole("option", { name: "Month" }));
+
+    expect(
+      await screen.findByText("This change could not be applied."),
+    ).toBeInTheDocument();
+
+    showQuery("next-query");
 
     await waitFor(() => {
       expect(
