@@ -597,11 +597,23 @@
                     (tru "A Collection placed in a remote-synced Collection must also be remote-synced."))]
           (throw (ex-info msg {:status-code 400, :errors {:location msg}})))))))
 
-(defenterprise check-allowed-content
-  "Checks contents of a collection before saving it. The OSS implementation is a no-op."
+(defenterprise check-library-content
+  "Checks contents of a library collection before saving it. The OSS implementation is a no-op."
   metabase-enterprise.library.validation
   [_model-type _collection-id]
   true)
+
+(defn check-allowed-content
+  "Checks the content of a collection before saving it. Throws when the collection with `collection-id` can't hold
+  content of `model-type`."
+  [model-type collection-id]
+  ;; a data app's collection holds only what a pull of the app accepts
+  (when (and collection-id
+             (some? model-type)
+             (not (contains? #{:question :metric :action} (keyword model-type)))
+             (contains? (set (perms/data-app-collection-ids)) collection-id))
+    (throw (ex-info "A data app's collection can hold only questions, metrics, and query actions" {:status-code 400})))
+  (check-library-content model-type collection-id))
 
 (defenterprise check-library-update
   "Checks that a collection of type `:library` only contains allowed changes."
