@@ -114,6 +114,20 @@ const setupWithTimelines = async (visibility?: TimelineEventsVisibility) => {
   return store;
 };
 
+const setupAdHocWithTimelines = async () => {
+  const { store } = await setup({
+    card: createMockUnsavedCard({
+      dataset_query: CARD.dataset_query,
+      display: "line",
+    }),
+    timelines: [createMockTimeline({ ...TIMELINE, collection_id: null })],
+  });
+  await waitFor(() => {
+    expect(getVisibleEventIds(store)).toEqual([RC1.id, RC2.id]);
+  });
+  return store;
+};
+
 const DESTINATION_COLLECTION = createMockCollection({ id: 123 });
 
 const setupNewQuestion = async (
@@ -179,6 +193,22 @@ describe("QueryBuilder > timeline events", () => {
 
   it("saving a copy of a saved question without recorded events keeps them off", async () => {
     const store = await setupWithTimelines();
+    const question = checkNotNull(getQuestion(store.getState()));
+
+    await act(async () => {
+      await store.dispatch(apiCreateQuestion(question));
+    });
+
+    expect(getCreatedCard().visualization_settings).toMatchObject(EVENTS_OFF);
+  });
+
+  it("saving an edited copy of a saved question without recorded events keeps them off", async () => {
+    const store = await setupWithTimelines();
+
+    await triggerVisualizationQueryChange();
+    await waitFor(() => {
+      expect(getIsDirty(store.getState())).toBe(true);
+    });
     const question = checkNotNull(getQuestion(store.getState()));
 
     await act(async () => {
@@ -455,6 +485,39 @@ describe("QueryBuilder > timeline events", () => {
     const store = await setupWithTimelines({
       "timeline.selected_timeline_ids": [TIMELINE.id],
     });
+    const firstEvent = createMockTimelineEvent({
+      id: 97,
+      timeline_id: 2,
+      timestamp: "2025-06-03T00:00:00Z",
+    });
+
+    await updateVisibility(store, (visibility, timelines) =>
+      showTimelineEvents(visibility, [firstEvent], timelines),
+    );
+
+    expect(checkNotNull(getQuestion(store.getState())).settings()).toEqual(
+      expect.objectContaining({
+        "timeline.selected_timeline_ids": [TIMELINE.id, 2],
+        "timeline.excluded_timeline_event_ids": [],
+      }),
+    );
+  });
+
+  it("creating an event on a timeline an ad-hoc question already shows records nothing", async () => {
+    const store = await setupAdHocWithTimelines();
+
+    await updateVisibility(store, (visibility, timelines) =>
+      showTimelineEvents(visibility, [RC1], timelines),
+    );
+
+    expect(getVisibleEventIds(store)).toEqual([RC1.id, RC2.id]);
+    expect(
+      checkNotNull(getQuestion(store.getState())).settings(),
+    ).not.toHaveProperty(["timeline.selected_timeline_ids"]);
+  });
+
+  it("shows an event created on a timeline that has not been fetched yet for an ad-hoc question", async () => {
+    const store = await setupAdHocWithTimelines();
     const firstEvent = createMockTimelineEvent({
       id: 97,
       timeline_id: 2,
