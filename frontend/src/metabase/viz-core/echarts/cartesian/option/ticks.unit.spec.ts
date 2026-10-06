@@ -143,3 +143,63 @@ describe("year tick grids", () => {
     ).toEqual(["2026-03-01", "2026-05-01"]);
   });
 });
+
+describe("waterfall Total tick", () => {
+  const utc = (value: string) => dayjs.utc(value);
+  const layout = (outerWidth: number) =>
+    createMockChartLayout({
+      outerWidth,
+      ticksDimensions: { getXTickWidth: () => 60 },
+    });
+  const rendered = (
+    options: ReturnType<typeof getTicksOptions>,
+    dates: string[],
+  ) => dates.filter((date) => options.canRender(utc(date)));
+  const waterfallModel = (
+    unit: TimeSeriesXAxisModel["interval"]["unit"],
+    first: string,
+    total: string,
+  ): TimeSeriesXAxisModel & { totalXValue: string } => ({
+    axisType: "time",
+    interval: { unit, count: 1 },
+    intervalsCount: utc(total).diff(utc(first), unit),
+    range: [utc(first), utc(total)],
+    formatter: String,
+    toEChartsAxisValue: (value: unknown) =>
+      utc(String(value)).format("YYYY-MM-DDTHH:mm:ss[Z]"),
+    fromEChartsAxisValue: (value: number) => dayjs.utc(value),
+    totalXValue: utc(total).toISOString(),
+  });
+
+  it("anchors a multi-year grid at the Total so it is always labeled", () => {
+    // Yearly data 2024–2034 with Total at 2035: five-year ticks count back
+    // from the Total instead of forward from 2024.
+    const options = getTicksOptions(
+      waterfallModel("year", "2024-01-01", "2035-01-01"),
+      layout(300),
+    );
+
+    expect(
+      rendered(options, [
+        "2024-01-01",
+        "2025-01-01",
+        "2030-01-01",
+        "2034-01-01",
+        "2035-01-01",
+      ]),
+    ).toEqual(["2025-01-01", "2030-01-01", "2035-01-01"]);
+  });
+
+  it("labels the Total even when a finer grid skips it", () => {
+    // Monthly data January–July with Total in August: two-month ticks stay on
+    // odd months, and the Total is labeled on top of them.
+    const options = getTicksOptions(
+      waterfallModel("month", "2025-01-01", "2025-08-01"),
+      layout(300),
+    );
+
+    expect(
+      rendered(options, ["2025-06-01", "2025-07-01", "2025-08-01"]),
+    ).toEqual(["2025-07-01", "2025-08-01"]);
+  });
+});

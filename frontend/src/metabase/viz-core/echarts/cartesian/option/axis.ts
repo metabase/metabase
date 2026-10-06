@@ -20,6 +20,7 @@ import type {
   NumericAxisScaleTransforms,
   NumericXAxisModel,
   TimeSeriesXAxisModel,
+  WaterfallXAxisModel,
   YAxisModel,
 } from "../model/types";
 
@@ -286,7 +287,7 @@ export const buildNumericDimensionAxis = (
 };
 
 export const buildTimeSeriesDimensionAxis = (
-  xAxisModel: TimeSeriesXAxisModel,
+  xAxisModel: TimeSeriesXAxisModel & Pick<WaterfallXAxisModel, "totalXValue">,
   hasTimelineEvents: boolean,
   settings: ComputedVisualizationSettings,
   chartLayout: ChartLayout,

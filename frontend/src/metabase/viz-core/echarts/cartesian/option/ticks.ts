@@ -5,6 +5,7 @@ import type { ChartLayout } from "../layout/types";
 import type {
   TimeSeriesAxisFormatter,
   TimeSeriesXAxisModel,
+  WaterfallXAxisModel,
 } from "../model/types";
 import {
   computeTimeseriesTicksInterval,
@@ -26,10 +27,16 @@ export const getPadding = (intervalsCount: number) => {
 };
 
 export const getTicksOptions = (
-  xAxisModel: TimeSeriesXAxisModel,
+  xAxisModel: TimeSeriesXAxisModel & Pick<WaterfallXAxisModel, "totalXValue">,
   chartLayout: ChartLayout,
 ) => {
-  const { range, toEChartsAxisValue, interval, intervalsCount } = xAxisModel;
+  const { range, toEChartsAxisValue, interval, intervalsCount, totalXValue } =
+    xAxisModel;
+  // A waterfall's Total bar sits one interval after the last data point.
+  const totalEChartsValue =
+    totalXValue == null ? null : toEChartsAxisValue(totalXValue);
+  const totalDate =
+    totalEChartsValue == null ? null : dayjs.utc(totalEChartsValue);
 
   let formatter: TimeSeriesAxisFormatter = xAxisModel.formatter;
   let minInterval: number | undefined;
@@ -122,20 +129,28 @@ export const getTicksOptions = (
   // data starting in March 2019 and ticks every two years it emits 2019 (hidden,
   // before the data), 2021, 2023… and the first year inside the range goes
   // unlabeled. Ask ECharts for every year instead and start the grid at the
-  // first year boundary inside the (padded) axis. Filtering to 1 January also
-  // drops the mid-year ticks ECharts 6.1.0 emits for single-point domains,
-  // which otherwise duplicate the label (metabase#63671).
+  // first year boundary inside the (padded) axis, or at the Total of a
+  // waterfall so that label always lands on the grid. Filtering to 1 January
+  // also drops the mid-year ticks ECharts 6.1.0 emits for single-point
+  // domains, which otherwise duplicate the label (metabase#63671).
   if (largestInterval.unit === "year") {
-    const firstYear = xAxisModel
-      .fromEChartsAxisValue(xDomainPadded[0])
-      .add(1, "year")
-      .year();
+    const anchorYear = (
+      totalDate ??
+      xAxisModel.fromEChartsAxisValue(xDomainPadded[0]).add(1, "year")
+    ).year();
     canRender = (date: Dayjs) =>
       isWithinRange(date) &&
       date.month() === 0 &&
       date.date() === 1 &&
-      (date.year() - firstYear) % largestInterval.count === 0;
+      (date.year() - anchorYear) % largestInterval.count === 0;
     maxInterval = getTimeSeriesIntervalDuration({ count: 1, unit: "year" });
+  }
+
+  if (totalDate != null) {
+    const isOnGrid = canRender;
+    canRender = (date: Dayjs) =>
+      isOnGrid(date) ||
+      (isWithinRange(date) && date.isSame(totalDate, interval.unit));
   }
 
   if (!maxInterval) {

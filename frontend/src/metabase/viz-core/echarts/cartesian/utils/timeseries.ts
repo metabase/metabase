@@ -321,7 +321,7 @@ function maxTicksForChartWidth(
     chartLayout.outerWidth -
     chartLayout.padding.left -
     chartLayout.padding.right;
-  const TICK_BUFFER_PIXELS = 10;
+  const TICK_BUFFER_PIXELS = 4;
   const representativeDates = getRepresentativeDates(unit).map((date) =>
     getPaddedAxisLabel(formatter(date)),
   );
