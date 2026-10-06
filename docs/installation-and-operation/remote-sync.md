@@ -198,8 +198,8 @@ In your production Metabase instance:
    - Click "Save changes". Metabase will verify it can reach your repository. If the connection fails, verify your token has the appropriate permissions and hasn't expired.
 
 6. Sync your content:
-   - Click "Pull changes" to immediately sync content from your repository.
-   - To keep your production instance automatically updated, toggle on "Auto-sync with Git". Metabase will pull changes from your main branch every five minutes.
+   - Click "Pull changes now" to immediately sync content from your repository.
+   - To keep your production instance automatically updated, toggle on "Auto-sync with git". Metabase will pull changes from your main branch every five minutes.
 
 In Read-only mode, synced collections appear in the regular collections list with a special icon to indicate that they're versioned and read-only.
 
@@ -450,7 +450,7 @@ When in doubt, create a new branch and push changes to that branch. That way you
 In Read-only mode, you can set Metabase to auto-sync changes from your main branch.
 
 1. Navigate to **Admin** > **Settings** > **Remote sync**.
-2. Enable Auto-sync with Git.
+2. Enable **Auto-sync with git**.
 
 By default, Metabase will check for and pull changes from the branch you specify every five minutes. You can also manually sync as needed.
 

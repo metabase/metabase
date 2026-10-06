@@ -54,7 +54,7 @@ Permission configuration for transform depends on your plan.
 - **Metabase Pro/Enterprise** comes with additional permission controls for transforms: a special [Data Analysts](../../people-and-groups/managing.md) group for non-Admins with potential transform access, and granular transform permissions for each database:
 
   - To **see** the list of transforms on your instance, people need to be able to access Data Studio, so they need to be either an Admin or a member of the special [Data Analyst group](../../people-and-groups/managing.md).
-  - To **execute** transforms on a database, people need to be either Admins or belong to the [Data Analyst group](../../people-and-groups/managing.md). People need to have the [Transform permissions](../../permissions/data.md) for that database.
+  - To **execute** transforms on a database, people need to be either Admins or belong to the [Data Analyst group](../../people-and-groups/managing.md). Data Analysts also need [Transform permissions](../../permissions/data.md) for that database.
 
 ## Set up transforms on a self-hosted Metabase
 
@@ -197,7 +197,7 @@ To add an index:
 
 Index edits and deletions take effect on the next run. On an incremental transform, the next run after _any_ index change _rebuilds the whole table_.
 
-If Metabase can't create an index, the index shows as **Failed** and the run usually fails too. Until you edit or delete the index, every run retries it, so the failures repeat.
+If Metabase can't create an index, the index shows as **Failed** and the run usually fails too. Every run retries the index until it succeeds, or until you edit or delete it. On an incremental transform, each of these runs rebuilds the whole table.
 
 ## Inspect a transform
 
