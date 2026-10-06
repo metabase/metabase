@@ -31,7 +31,7 @@ const CreateOrder = defineAction({
 
 const _sourceActionId: 51 = CreateOrder.action.id;
 
-// A definition is authored without a generated ID; synchronization writes one.
+// A definition may be authored before its copy has an entity ID.
 const UpdateOrder = defineAction({
   action: TEST_SCHEMA.actions.updateOrder,
 });

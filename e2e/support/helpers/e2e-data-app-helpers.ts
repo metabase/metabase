@@ -299,8 +299,8 @@ export const copySyncedDataAppsFixture = () =>
 
 /**
  * Pulls `example_synced_data_apps` through a real remote-sync import, so a spec
- * gets real app rows, each with its resource collection and permission group.
- * `good` is served; `broken-bundle` fails to sync.
+ * gets real app rows, each with its resource collection and permission group:
+ * `good` and `second-app`.
  */
 export function pullExampleDataApps() {
   setupGitSync();

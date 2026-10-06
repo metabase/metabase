@@ -96,8 +96,6 @@ describe("scenarios > data apps > user access (EMB-2328)", () => {
     userRow(USERS.nodata.email).should("have.length", 1).and("be.visible");
   });
 
-  // SQLite does not have a schema.
-  // The visible hierarchy should be "[Database] > [Table]" in table warnings.
   describe("signed-out visitors", () => {
     beforeEach(() => {
       H.setupGitSync();
@@ -110,7 +108,6 @@ describe("scenarios > data apps > user access (EMB-2328)", () => {
             "name: Good App",
             `slug: ${SYNCED_APP_SLUG}`,
             "path: ./index.js",
-            "collection: goodAppCollection0000",
             "allowed_hosts:",
             `  - ${ALLOWED_HOST}`,
             "entity_id: Ioxf30LzIQCGwbCNtaG62",
