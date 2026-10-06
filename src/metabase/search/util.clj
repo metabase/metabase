@@ -165,7 +165,7 @@
    ;; tsvector has a max value size of 1048575 bytes, limit to less than that because the multiple values get
    ;; concatenated together
    ;; `lang` is a `regconfig` and `weight` is a `"char"`; both have to be real SQL literals, since Postgres cannot
-   ;; resolve either overload from an untyped `?` parameter
+   ;; resolve either overload from an `?` parameter bound as `varchar`
    [:setweight
     [:to_tsvector (h2x/literal lang)
      [:cast (u.str/limit-bytes text search.ingestion.query/max-searchable-value-length) :text]]

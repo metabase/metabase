@@ -1,4 +1,8 @@
 (ns metabase.funnysql.core
+  "Compiles Honey SQL-shaped app-DB queries to `[sql & args]` for `:h2`, `:postgres` or `:mysql.` Closed: a clause or
+  function absent from [[clause-fns]]/[[-fn-call!]] throws. Values bind as `?`; only numbers, booleans, validated
+  tokens and [[h2x/literal]] are spliced. A map compiles as a query only at top level or when marked
+  `^:allow-subquery`. No support at all for `:raw`."
   (:refer-clojure :exclude [format])
   (:require
    [clojure.string :as str]
@@ -636,7 +640,8 @@
   (-parens! x context))
 
 (defn- param-value
-  "The value `context`'s options bind to `k`, for a `[:param k]` form."
+  "The value `context`'s options bind to `k`, for a `[:param k]` form. Throws if param named by `k` is missing from
+  `:params` in the options map."
   [k context]
   {:pre [(keyword? k)]}
   (let [v (or (get-in (options context) [:params k])
@@ -1062,8 +1067,11 @@
 (mr/def ::engine
   [:enum :h2 :postgres :mysql])
 
-(mu/defn format :- [:cat :string [:* :any]]
-  "Compile `honeysql-form` (either a top-level map or an individual clause) to SQL for `engine`."
+(mu/defn format :- [:cat #_sql :string #_args [:* :any]]
+  "Compile `honeysql-form` (either a top-level map or an individual clause) to SQL for `engine`.
+
+  Returns the standard `[sql & args]` shape if able to compile successfully; throws and exception on unsupported or
+  invalid forms."
   ([honeysql-form :- ::honeysql-form
     engine        :- ::engine]
    (format honeysql-form engine nil))
