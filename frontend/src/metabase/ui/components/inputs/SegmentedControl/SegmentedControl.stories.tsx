@@ -3,7 +3,6 @@ import { Fragment } from "react";
 
 import {
   Box,
-  Group,
   Icon,
   SegmentedControl,
   type SegmentedControlItem,
@@ -21,33 +20,22 @@ import S from "./SegmentedControl.module.css";
 const TEXT_DATA = [
   { label: "Code", value: "code" },
   { label: "Preview", value: "preview" },
-];
+] satisfies SegmentedControlItem<string>[];
 
 const TEXT_AND_ICON_DATA = [
-  {
-    label: (
-      <Group gap="xs" wrap="nowrap">
-        <Icon name="embed" />
-        Code
-      </Group>
-    ),
-    value: "code",
-  },
-  {
-    label: (
-      <Group gap="xs" wrap="nowrap">
-        <Icon name="eye_filled" />
-        Preview
-      </Group>
-    ),
-    value: "preview",
-  },
-];
+  { label: "Code", icon: "embed", value: "code" },
+  { label: "Preview", icon: "eye_filled", value: "preview" },
+] satisfies SegmentedControlItem<string>[];
 
 const ICON_DATA = [
-  { label: <Icon name="embed" aria-label="Code" />, value: "code" },
-  { label: <Icon name="eye_filled" aria-label="Preview" />, value: "preview" },
-];
+  { ariaLabel: "Code", icon: "embed", value: "code" },
+  { ariaLabel: "Preview", icon: "eye_filled", value: "preview" },
+] satisfies SegmentedControlItem<string>[];
+
+const ICON_ELEMENT_DATA = [
+  { ariaLabel: "Code", icon: <Icon name="embed" />, value: "code" },
+  { ariaLabel: "Preview", icon: <Icon name="eye_filled" />, value: "preview" },
+] satisfies SegmentedControlItem<string>[];
 
 export default {
   title: "Components/Inputs/SegmentedControl",
@@ -87,6 +75,7 @@ const CONTENT_KINDS: {
   { id: "text", label: "Text only", data: TEXT_DATA },
   { id: "text-and-icon", label: "Text + icon", data: TEXT_AND_ICON_DATA },
   { id: "icon", label: "Icon only", data: ICON_DATA },
+  { id: "icon-element", label: "Icon element", data: ICON_ELEMENT_DATA },
 ];
 
 type OverviewState = {
