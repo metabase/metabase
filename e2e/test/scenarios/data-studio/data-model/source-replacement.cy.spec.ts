@@ -44,6 +44,8 @@ describe(
   { tags: ["@external"] },
   () => {
     beforeEach(() => {
+      dropAllTestTables();
+
       H.restore("postgres-writable");
       cy.signInAsAdmin();
       H.activateToken("bleeding-edge");

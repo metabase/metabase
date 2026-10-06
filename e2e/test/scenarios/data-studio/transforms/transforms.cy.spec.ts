@@ -94,7 +94,8 @@ describe("scenarios > admin > transforms", { tags: ["@external"] }, () => {
         );
         cy.findByLabelText("Table name").clear().type(TARGET_TABLE);
 
-        cy.button("Save").click();
+        // The submit button shows "Failed" for a few seconds after the rejected save.
+        cy.get("button[type=submit]").click();
         cy.wait("@createTransform");
       });
 
@@ -727,7 +728,7 @@ LIMIT
 
       getTagsInput().click();
       H.popover().within(() => {
-        cy.findByText("hourly").should("be.visible");
+        cy.findByText("weekly").should("be.visible");
         cy.findByText("daily").should("not.exist");
       });
 
@@ -3054,7 +3055,7 @@ describe("scenarios > admin > transforms > runs", () => {
           cy.log("the failed run shows its error message");
           getRunErrorInfoButton().click();
           H.modal().should("contain.text", 'relation "abc" does not exist');
-          H.modal().button("Close").click();
+          cy.realPress("Escape");
           H.modal().should("not.exist");
         });
       });
