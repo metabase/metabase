@@ -102,8 +102,7 @@ data from it — their own groups' permissions and sandboxes apply unchanged. Be
 nothing, it can never lift another group's sandbox, so sandboxing needs no data-app special-casing.
 
 **Managing is superuser-only** — enabling, disabling, deleting, and repo status.
-Exporting what an app's resources are written from needs only read access to the sources, as generating
-the typed schema does.
+Exporting an app's resources also needs a superuser.
 
 ## Namespace map
 

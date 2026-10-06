@@ -109,8 +109,14 @@
          ::sdk-metadata [:columns]}
    [:type [:= {:decode/normalize lib.schema.common/normalize-keyword} :operator]]
    [:operator ::operator]
-   [:args {:default []} [:sequential [:ref ::expression]]]
-   [:name {:optional true} string?]])
+   [:args {:default []} [:sequential [:ref ::expression]]]])
+
+(mr/def ::aggregation-operator-expression
+  "An aggregation can be named; a filter or a nested argument can't, so `name` is refused there rather than dropped."
+  [:merge
+   ::operator-expression
+   [:map {:closed true :decode/normalize {:compile query-map-decoder}}
+    [:name {:optional true} string?]]])
 
 (mr/def ::expression
   [:multi {:decode/normalize lib.schema.common/normalize-map-no-kebab-case
@@ -137,9 +143,16 @@
    [:type [:= {:decode/normalize lib.schema.common/normalize-keyword} :metric]]
    [:id [:ref ::lib.schema.id/metric]]])
 
+(mr/def ::aggregation-expression
+  [:multi {:decode/normalize lib.schema.common/normalize-map-no-kebab-case
+           :dispatch         (comp keyword :type)}
+   [:column [:ref ::column]]
+   [:literal [:ref ::literal-expression]]
+   [:operator [:ref ::aggregation-operator-expression]]])
+
 (mr/def ::aggregation
   [:or
-   [:ref ::expression]
+   [:ref ::aggregation-expression]
    [:ref ::measure]
    [:ref ::metric]])
 

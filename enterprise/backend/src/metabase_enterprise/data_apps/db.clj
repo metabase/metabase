@@ -172,9 +172,9 @@
              :group_id [:not= group-id]))
 
 (defn table
-  "The Table with `table-id`, or nil."
+  "The active Table with `table-id`, or nil. The typed schema lists only active tables."
   [table-id]
-  (t2/select-one :model/Table :id table-id {:from [(warehouse-schema-overlay/table-query)]}))
+  (t2/select-one :model/Table :id table-id :active true {:from [(warehouse-schema-overlay/table-query)]}))
 
 (defn destination-database-ids
   "The IDs among `database-ids` of the databases that are routing destinations."
