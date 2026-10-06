@@ -138,6 +138,19 @@
     (let [model (t2.model/resolve-model (symbol model-name))]
       (serdes/has-entity-id? model))))
 
+(defn- wrapped-load-one!
+  "Loads `ingested` through the `:wrap-load-one` function of [[load-metabase!]]. Throws when `wrap-load-one` returns
+  without a call to its `load!`."
+  [wrap-load-one path ingested local-or-nil]
+  (let [loaded? (volatile! false)]
+    (wrap-load-one ingested local-or-nil (fn []
+                                           (vreset! loaded? true)
+                                           (serdes/load-one! ingested local-or-nil)))
+    (when-not @loaded?
+      (throw (ex-info (format "The :wrap-load-one function returned without loading %s" (serdes/log-path-str path))
+                      {:path  (serdes/log-path-str path)
+                       :error ::load-not-called})))))
+
 (defn- load-one!
   "Loads a single entity, specified by its `:serdes/meta` abstract path, into the appdb, doing some bookkeeping to
   avoid cycles.
@@ -220,7 +233,7 @@
               (fn []
                 (t2/with-transaction [_tx]
                   (if-let [wrap-load-one (:wrap-load-one ctx)]
-                    (wrap-load-one ingested local-or-nil #(serdes/load-one! ingested local-or-nil))
+                    (wrapped-load-one! wrap-load-one path ingested local-or-nil)
                     (serdes/load-one! ingested local-or-nil)))))
             ctx
             (catch Exception e
@@ -259,9 +272,11 @@
   "Loads in a database export from an ingestion source, which is any Ingestable instance.
 
   `:wrap-load-one`, when given, is `(fn [ingested local-or-nil load!])`. It replaces the load of each entity, inside
-  that entity's transaction, and must call `(load!)` to load it. An exception from it rolls back the entity's
-  transaction; only a transient DB error is retried. It can run more than once for one entity: on a retry, and for
-  an entity of a circular dependency, which loads first without the keys that close the cycle."
+  that entity's transaction, and must call `(load!)`: if it returns without that call, the entity fails to load.
+  `local-or-nil` is read before the transaction, with no lock, and is the same value on a retry. An exception from
+  the wrapper rolls back the entity's transaction; only a transient DB error is retried, and `:continue-on-error`
+  records any other one in `:errors`. It can run more than once for one entity: on a retry, and for an entity of a
+  circular dependency, which loads first with `::serdes/strip` naming the keys that close the cycle."
   [ingestion & {:keys [continue-on-error reindex? wrap-load-one]
                 :or   {continue-on-error false
                        reindex?          true}}]
