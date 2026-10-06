@@ -7,7 +7,8 @@
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]))
 
 (set! *warn-on-reflection* true)
 
@@ -559,11 +560,28 @@
   of a comparison these have to be parenthesized; everything else ([[-simple-fn!]] calls, `:cast`, the `h2x/` forms,
   arithmetic) either brings its own delimiters or binds tighter than a comparison already, and wrapping those would
   just add noise."
-  #{:= :is :<> :!= :not= :is-not
-    :< :<= :> :>= :like :ilike :not-like
-    :and :or :not
-    :in :not-in :between :exists :not-exists
+  #{:!=
+    :<
+    :<=
+    :<>
+    :=
+    :>
+    :>=
+    :and
+    :between
     :escape
+    :exists
+    :ilike
+    :in
+    :is
+    :is-not
+    :like
+    :not
+    :not-exists
+    :not-in
+    :not-like
+    :not=
+    :or
     :metabase.funnysql.core/postgres-full-text-search-match})
 
 (defn- predicate-call?
@@ -988,20 +1006,23 @@
   clojure.lang.IPersistentSet (compile! [this context] (sequence! this context))
   clojure.lang.Sequential     (compile! [this context] (sequence! this context)))
 
+(mr/def ::honeysql-form
+  "A map, `[:fn-call & args]` vector, keyword, etc."
+  :any)
+
+(mr/def ::engine
+  [:enum :h2 :postgres :mysql])
+
 (mu/defn format :- [:cat :string [:* :any]]
   "Compile `honeysql-form` (either a top-level map or an individual clause) to SQL for `engine`."
-  ([honeysql-form :- [:or
-                      [:map {:metabase.util.malli.registry/deliberately-open true}]
-                      vector?]
-    engine        :- [:enum :h2 :postgres :mysql]]
+  ([honeysql-form :- ::honeysql-form
+    engine        :- ::engine]
    (format honeysql-form engine nil))
-  ([honeysql-form :- [:or
-                      [:map {:metabase.util.malli.registry/deliberately-open true}]
-                      vector?]
-    engine  :- [:enum :h2 :postgres :mysql]
-    options :- [:maybe [:map
-                        {:metabase.util.malli.registry/deliberately-open true} ; other HoneySQL-specific options are ignored.
-                        [:params {:optional true} [:maybe [:map-of {:metabase.util.malli.registry/deliberately-open true} :keyword :any]]]]]]
+  ([honeysql-form :- ::honeysql-form
+    engine        :- ::engine
+    options       :- [:maybe [:map
+                              {:metabase.util.malli.registry/deliberately-open true} ; other HoneySQL-specific options are ignored.
+                              [:params {:optional true} [:maybe [:map-of {:metabase.util.malli.registry/deliberately-open true} :keyword :any]]]]]]
    (try
      (let [context (default-context engine options)]
        ;; [[compile!]] doesn't support compiling maps recursively unless marked `^:allow-subquery`
