@@ -119,15 +119,16 @@
            ;; neither side changed -> keep base (if present); an entity whose text differs from the base but that
            ;; is unchanged locally keeps its fresh serialization
            (and (not ours-changed?) (not theirs-changed?))
-           (let [v (or ov bv)] (cond-> acc v (update :merged conj v)))
+           (let [v (or ov bv)] (-> (cond-> acc v (update :merged conj v)) (assoc-in [:decisions k] :keep)))
 
            ;; only ours changed -> take ours
            (and ours-changed? (not theirs-changed?))
-           (cond-> acc ov (update :merged conj ov))
+           (-> (cond-> acc ov (update :merged conj ov)) (assoc-in [:decisions k] :ours))
 
            ;; only theirs changed -> take theirs, and record it as folded-in remote change
            (and theirs-changed? (not ours-changed?))
            (-> (cond-> acc tv (update :merged conj tv))
+               (assoc-in [:decisions k] :theirs)
                (update-in [:summary (cond (nil? bv) :added
                                           (nil? tv) :removed
                                           :else     :updated)]
@@ -135,12 +136,18 @@
 
            ;; both changed the same way -> take it (no conflict)
            (same? ov tv)
-           (cond-> acc ov (update :merged conj ov))
+           (-> (cond-> acc ov (update :merged conj ov)) (assoc-in [:decisions k] :same))
 
            ;; both changed differently -> conflict
            :else
            (update acc :conflicts conj {:key k :base bv :ours ov :theirs tv}))))
-     {:merged [] :conflicts [] :summary {:added 0 :updated 0 :removed 0}}
+     {:merged        []
+      :conflicts     []
+      :summary       {:added 0 :updated 0 :removed 0}
+      :decisions     {}
+      :theirs-paths  (update-vals t :path)
+      :ours-contents (update-vals o :content)
+      :ours-paths    (update-vals o :path)}
      all-keys)))
 
 (defn three-way-merge
@@ -154,6 +161,12 @@
   - `:conflicts` - sequence of `{:key :ours :theirs :base}` for entities changed differently on both sides
   - `:summary`   - `{:added :updated :removed}` counts of remote-originated changes folded into the result
                    (i.e. changes coming from `theirs` that `ours` did not already have)
+  - `:decisions` - identity key -> decision, for each entity not in `:conflicts`: `:keep` (neither side changed
+                   it), `:ours` (only ours changed it), `:theirs` (only theirs changed it) or `:same` (both sides
+                   made the same change)
+  - `:theirs-paths`  - identity key -> path, for each entity in `theirs`
+  - `:ours-contents` - identity key -> content, for each entity in `ours`
+  - `:ours-paths`    - identity key -> path, for each entity in `ours`
 
   `ours` is a fresh serialization, so it can differ from `base` for an entity nobody changed locally: the repo file
   may not be byte-identical to what Metabase writes (hand-written YAML, or a `name:` edited without renaming the
