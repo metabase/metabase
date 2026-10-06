@@ -5,6 +5,8 @@ import {
   AdminNavItem,
   type AdminNavItemProps,
 } from "metabase/admin/components/AdminNav";
+import { getUserIsAdmin, isSettingsManagerPath } from "metabase/current-user";
+import { useSelector } from "metabase/redux";
 import { useLocation } from "metabase/router";
 
 /**
@@ -36,6 +38,14 @@ const findBestMatchingChild = (
   return best;
 };
 
+function getNavChildPath(child: ReactElement): string | undefined {
+  const props = child.props;
+  if (typeof props !== "object" || props === null || !("path" in props)) {
+    return undefined;
+  }
+  return typeof props.path === "string" ? props.path : undefined;
+}
+
 export function SettingsNavItem({
   path,
   folderPattern,
@@ -43,12 +53,24 @@ export function SettingsNavItem({
   children: childrenProp,
   ...navItemProps
 }: AdminNavItemProps & { active?: boolean }) {
+  const isAdmin = useSelector(getUserIsAdmin);
   // Unjustified type cast. FIXME
-  const children = React.Children.toArray(childrenProp) as ReactElement[];
+  const allChildren = React.Children.toArray(childrenProp) as ReactElement[];
+  const children = isAdmin
+    ? allChildren
+    : allChildren.filter((child) =>
+        isSettingsManagerPath(getNavChildPath(child)),
+      );
   const currentPath = useLocation().pathname;
   const [isOpen, { toggle: toggleOpen }] = useDisclosure(
     folderPattern ? currentPath.includes(folderPattern) : false,
   );
+
+  const isVisible =
+    isAdmin || isSettingsManagerPath(path) || children.length > 0;
+  if (!isVisible) {
+    return null;
+  }
 
   const bestChild = findBestMatchingChild(children, currentPath);
   const hasActiveDescendant = bestChild != null;
