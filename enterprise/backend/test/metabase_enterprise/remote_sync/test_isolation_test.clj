@@ -78,23 +78,22 @@
               (run-var-quietly #'api-test/settings-preserves-transforms-when-not-specified-test)))
        (is (nil? (stored-value :remote-sync-auto-import)))))))
 
-(deftest transforms-binding-test-leaves-no-ledger-row-test
-  (testing "excluded-model-types-test binds remote-sync-transforms and leaves no ledger row"
-    (let [old-rows (t2/select :model/RemoteSyncObject)]
-      (try
-        (t2/delete! :model/RemoteSyncObject)
-        (is (= {:pass 10 :fail 0 :error 0}
-               (run-var-quietly #'spec-test/excluded-model-types-test)))
-        (is (empty? (t2/select-fn-vec (juxt :model_type :model_id :status) :model/RemoteSyncObject)))
-        (finally
-          (t2/delete! :model/RemoteSyncObject)
-          (when (seq old-rows)
-            (t2/insert! :model/RemoteSyncObject old-rows)))))))
-
 (defn- remote-sync-setting-rows
   "The raw `setting` rows whose key starts with `remote-sync`."
   []
   (set (t2/select :setting :key [:like "remote-sync%"])))
+
+(deftest transforms-binding-test-leaves-no-setting-or-ledger-row-test
+  (testing "excluded-model-types-test binds remote-sync-transforms and leaves no setting row and no ledger row"
+    (rs.test/clean-object
+     (fn []
+       (rs.test/clean-remote-sync-settings
+        (fn []
+          (let [rows (remote-sync-setting-rows)]
+            (is (= {:pass 10 :fail 0 :error 0}
+                   (run-var-quietly #'spec-test/excluded-model-types-test)))
+            (is (= rows (remote-sync-setting-rows)))
+            (is (empty? (t2/select-fn-vec (juxt :model_type :model_id :status) :model/RemoteSyncObject))))))))))
 
 (deftest transform-tag-import-test-leaves-no-setting-or-ledger-row-test
   (testing "transform-tag-import-then-noop-stays-synced-test binds remote-sync-enabled and leaves no setting row and no
