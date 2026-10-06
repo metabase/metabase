@@ -275,14 +275,11 @@ describe("DataModelV1", () => {
 
   describe("no schema database", () => {
     it("should select the first database and skip schema selection by default", async () => {
-      setup({ databases: [SAMPLE_DB_NO_SCHEMA] });
+      await setup({ databases: [SAMPLE_DB_NO_SCHEMA] });
 
-      await waitFor(async () => {
-        expect(
-          await findTablePickerDatabase(SAMPLE_DB_NO_SCHEMA.name),
-        ).toBeInTheDocument();
-      });
-
+      expect(
+        await findTablePickerDatabase(SAMPLE_DB_NO_SCHEMA.name),
+      ).toBeInTheDocument();
       expect(
         await findTablePickerTable(ORDERS_TABLE_NO_SCHEMA.display_name),
       ).toBeInTheDocument();
