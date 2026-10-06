@@ -12,8 +12,9 @@ import type { ExpressionClause } from "metabase-types/api";
  * If the original name is already unique, the fn just returns it
  */
 export function getUniqueExpressionName(
-  expressions: ExpressionClause,
-  originalName: string,
+  query: Lib.Query,
+  stageIndex: number,
+  name: string,
 ): string {
-  return unique_expression_name(expressions, originalName);
+  return unique_expression_name(query, stageIndex, name);
 }

@@ -2822,6 +2822,5 @@
 
 (defn ^:export unique-expression-name
   "Generates an expression name that's unique in the query."
-  [mp the-query stage-number expression-number suggested-name]
-  (lib.expression/unique-expression-name (from-js-query mp the-query)
-                                         stage-number expression-number suggested-name))
+  [the-query stage-number suggested-name]
+  (lib.expression/unique-expression-name the-query stage-number suggested-name))

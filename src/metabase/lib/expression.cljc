@@ -816,13 +816,12 @@
       indexed-name)))
 
 (defn unique-expression-name
-  "Generates an expression name that's unique in the query."
-  [the-query stage-number expression-number suggested-name]
-  (let [stage (lib.util/query-stage the-query stage-number)
-        columns (lib.metadata.calculation/visible-columns the-query stage-number)
-        existing (and expression-number (nth (:expressions stage) expression-number))
-        other-names (cond-> (set (map :display-name columns))
-                      expression-number (disj (expression->name existing)))]
+  "Generates an expression name that's unique in the query.
+  The current clause for the expression whose name has been suggested (if
+  applicable) has already been removed from the query here."
+  [query stage-number suggested-name]
+  (let [columns (lib.metadata.calculation/visible-columns query stage-number)
+        other-names (set (map :display-name columns))]
     (if (not (other-names suggested-name))
       suggested-name
       (let [re-duplicates (re-pattern (str "^" suggested-name " \\([0-9]+\\)$"))

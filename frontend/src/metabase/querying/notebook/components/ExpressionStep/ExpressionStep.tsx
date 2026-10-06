@@ -171,6 +171,6 @@ const getUniqueClauseName = (
       Lib.displayInfo(query, stageIndex, expression).displayName,
     ]),
   );
-  const uniqueName = getUniqueExpressionName(expressionsObject, name);
+  const uniqueName = getUniqueExpressionName(queryWithoutCurrentClause, stageIndex, name);
   return uniqueName;
 };
