@@ -6,7 +6,7 @@ import {
   FilterSection,
   ListFilterPopover,
 } from "metabase/common/components/ListFilterPopover";
-import { Select } from "metabase/ui";
+import { type ComboboxProps, Select } from "metabase/ui";
 import {
   SESSION_END_REASONS,
   SESSION_PROVIDERS,
@@ -59,10 +59,10 @@ export const hasActiveFilters = (state: SessionsUrlState): boolean =>
     ? state.ended !== null || state.reason !== null
     : state.last_active !== null);
 
-const FILTER_SELECT_COMBOBOX = {
+const FILTER_SELECT_COMBOBOX: Partial<ComboboxProps> = {
   withinPortal: false,
-  floatingStrategy: "fixed" as const,
-  position: "bottom-start" as const,
+  floatingStrategy: "fixed",
+  position: "bottom-start",
 };
 
 export const SessionsFilters = ({ state, onChange }: SessionsFiltersProps) => {

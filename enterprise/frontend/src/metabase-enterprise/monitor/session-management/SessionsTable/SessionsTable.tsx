@@ -35,10 +35,9 @@ import {
 } from "../utils";
 
 type SessionsTableProps = {
-  sessions: Session[];
+  sessions: Session[] | undefined;
   error: unknown;
   isFetching: boolean;
-  isLoading: boolean;
   isEndedTab: boolean;
   page: number;
   rowSelection: RowSelectionState;
@@ -49,6 +48,8 @@ type SessionsTableProps = {
   onRowSelectionChange: OnChangeFn<RowSelectionState>;
   onRowClick: (sessionId: SessionId) => void;
 };
+
+const NO_SESSIONS: Session[] = [];
 
 const getNodeId = (session: Session) => session.id;
 
@@ -70,7 +71,6 @@ export const SessionsTable = ({
   sessions,
   error,
   isFetching,
-  isLoading,
   isEndedTab,
   page,
   rowSelection,
@@ -201,7 +201,7 @@ export const SessionsTable = ({
   );
 
   const instance = useTreeTableInstance<Session>({
-    data: sessions,
+    data: sessions ?? NO_SESSIONS,
     columns,
     getNodeId,
     sorting,
@@ -250,7 +250,7 @@ export const SessionsTable = ({
 
   return (
     <MonitorTableCard aria-busy={isFetching} data-testid="sessions-table">
-      {isLoading ? (
+      {sessions === undefined ? (
         <TreeTableSkeleton
           showCheckboxes={showCheckboxes}
           columnWidths={isEndedTab ? ENDED_COLUMN_WIDTHS : ACTIVE_COLUMN_WIDTHS}

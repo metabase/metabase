@@ -1,4 +1,4 @@
-import type { Session, SessionId } from "metabase-types/api";
+import type { Session, SessionId, SessionUser } from "metabase-types/api";
 
 export type SessionDetailSidebarProps = {
   sessionId: SessionId;
@@ -14,7 +14,6 @@ export type SessionDetailSidebarProps = {
 
 export type SidebarHeaderProps = {
   sessionId: SessionId;
-  session: Session | undefined;
   prevSessionId: SessionId | undefined;
   nextSessionId: SessionId | undefined;
   onNavigate: (sessionId: SessionId) => void;
@@ -28,6 +27,10 @@ export type SidebarFooterProps = {
   canRevokeUserSessions: boolean;
   onRevokeSession: (session: Session) => void;
   onRevokeUserSessions: (session: Session) => void;
+};
+
+export type SessionTitleProps = {
+  user: SessionUser;
 };
 
 export type SessionDetailsProps = {

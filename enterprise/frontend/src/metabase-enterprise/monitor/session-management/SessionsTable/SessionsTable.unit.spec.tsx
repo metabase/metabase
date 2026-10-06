@@ -23,7 +23,6 @@ const setup = ({ sessions, isEndedTab = false }: SetupOpts) => {
       sessions={sessions}
       error={undefined}
       isFetching={false}
-      isLoading={false}
       isEndedTab={isEndedTab}
       page={0}
       rowSelection={{}}

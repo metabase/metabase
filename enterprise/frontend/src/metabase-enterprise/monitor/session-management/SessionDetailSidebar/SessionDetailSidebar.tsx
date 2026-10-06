@@ -6,6 +6,7 @@ import { useSelector } from "metabase/redux";
 import { Flex, Stack, Text } from "metabase/ui";
 
 import { SessionDetails } from "./SessionDetails";
+import { SessionTitle } from "./SessionTitle";
 import { SidebarFooter } from "./SidebarFooter";
 import { SidebarHeader } from "./SidebarHeader";
 import type { SessionDetailSidebarProps } from "./types";
@@ -54,7 +55,6 @@ export const SessionDetailSidebar = ({
       >
         <SidebarHeader
           sessionId={sessionId}
-          session={session}
           prevSessionId={prevSessionId}
           nextSessionId={nextSessionId}
           onNavigate={onNavigate}
@@ -62,7 +62,10 @@ export const SessionDetailSidebar = ({
         />
         <LoadingAndErrorWrapper loading={isLoading} error={error} noWrapper>
           {session ? (
-            <SessionDetails session={session} />
+            <>
+              <SessionTitle user={session.user} />
+              <SessionDetails session={session} />
+            </>
           ) : (
             <Text c="text-secondary">{t`This session is no longer active.`}</Text>
           )}

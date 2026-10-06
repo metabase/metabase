@@ -67,11 +67,11 @@ export const SessionsPage = () => {
     useLazyListSessionsQuery,
     buildListParams(urlState, PAGE_SIZE, lastActiveAfter, endedAfter),
   );
-  const sessions = useMemo(() => data?.data ?? [], [data?.data]);
+  const sessions = data?.data;
   const total = data?.total ?? 0;
   const isEndedTab = urlState.tab === "ended";
   const selectedSessions = useMemo(
-    () => sessions.filter((session) => rowSelection[session.id]),
+    () => sessions?.filter((session) => rowSelection[session.id]) ?? [],
     [sessions, rowSelection],
   );
   const selectedCount = selectedSessions.length;
@@ -150,10 +150,10 @@ export const SessionsPage = () => {
 
   const { prevSessionId, nextSessionId, sessionFromPage } = useMemo(() => {
     const index =
-      sessionId === undefined
+      sessionId === undefined || sessions === undefined
         ? -1
         : sessions.findIndex((session) => session.id === sessionId);
-    if (index === -1) {
+    if (sessions === undefined || index === -1) {
       return {
         prevSessionId: undefined,
         nextSessionId: undefined,
@@ -228,7 +228,6 @@ export const SessionsPage = () => {
             sessions={sessions}
             error={error}
             isFetching={isFetching}
-            isLoading={isLoading}
             isEndedTab={isEndedTab}
             page={urlState.page}
             rowSelection={rowSelection}
@@ -249,7 +248,7 @@ export const SessionsPage = () => {
               <PaginationControls
                 page={urlState.page}
                 pageSize={PAGE_SIZE}
-                itemsLength={sessions.length}
+                itemsLength={sessions?.length ?? 0}
                 total={total}
                 showTotal
                 onPreviousPage={() =>
