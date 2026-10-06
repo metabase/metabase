@@ -3,9 +3,43 @@
    [clojure.set :as set]
    [clojure.test :refer :all]
    [metabase.events.core :as events]
+   [metabase.revisions.events :as revisions.events]
    [metabase.revisions.impl.dashboard :as impl.dashboard]
+   [metabase.revisions.models.revision :as revision]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
+
+(def ^:private followed-topics
+  #{:event/card-create          :event/card-update
+    :event/dashboard-create     :event/dashboard-update
+    :event/document-create      :event/document-update      :event/document-delete
+    :event/exploration-create   :event/exploration-update
+    :event/measure-create       :event/measure-update       :event/measure-delete
+    :event/segment-create       :event/segment-update       :event/segment-delete
+    :event/transform-create     :event/transform-update
+    :event/transform-test-create :event/transform-test-update})
+
+(defn- table-topics [entry]
+  (vals (select-keys entry [:create :update :delete])))
+
+(deftest revisions-listener-topics-test
+  (testing "the revisions listener follows exactly these topics"
+    (is (= followed-topics
+           (into #{}
+                 (filter #(= "event" (namespace %)))
+                 (events/descendants ::revisions.events/event)))))
+  (testing "the revisioned-model table names exactly the followed topics"
+    (is (= followed-topics
+           (into #{} (mapcat table-topics) (vals revision/revisioned-models)))))
+  (testing "each topic of the table derives from the listener dispatch value of its model"
+    (doseq [[model entry] revision/revisioned-models
+            topic         (table-topics entry)]
+      (testing (str model " " topic)
+        (is (events/isa? topic (#'revisions.events/model-dispatch-value model)))
+        (is (= #{model}
+               (into #{}
+                     (filter #(events/isa? topic (#'revisions.events/model-dispatch-value %)))
+                     (keys revision/revisioned-models))))))))
 
 (defn- card-properties
   "Some default properties for `Cards` for use in tests in this namespace."
