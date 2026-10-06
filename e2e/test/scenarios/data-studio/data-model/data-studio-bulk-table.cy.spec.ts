@@ -117,6 +117,7 @@ describe("bulk table operations", { viewportWidth: 1600 }, () => {
         result: "success",
       });
 
+      H.modal().should("be.visible");
       cy.realPress("Escape");
       H.modal().should("not.exist");
 

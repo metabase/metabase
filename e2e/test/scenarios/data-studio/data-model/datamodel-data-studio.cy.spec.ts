@@ -247,7 +247,9 @@ describe("scenarios > data studio > datamodel", () => {
           values: ["39.72", "117.03", "49.21", "115.23", "134.91"],
         });
         PreviewSection.get().findByTestId("header-cell").realHover();
-        H.hovercard().should("not.contain.text", "The total billed amount.");
+        H.hovercard()
+          .should("contain.text", "No description")
+          .and("not.contain.text", "The total billed amount.");
 
         cy.visit(
           `/reference/databases/${SAMPLE_DB_ID}/tables/${ORDERS_ID}/fields/${ORDERS.TOTAL}`,

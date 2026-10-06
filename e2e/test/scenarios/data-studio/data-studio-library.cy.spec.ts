@@ -664,6 +664,11 @@ describe("scenarios > data studio > library", () => {
     it("offers no bulk selection on remote-sync read-only instances", () => {
       H.createLibrary();
       H.publishTables({ table_ids: [ORDERS_ID] });
+
+      cy.log("A writable instance shows a checkbox on the table row");
+      H.DataStudio.Library.visit();
+      H.DataStudio.Library.rowCheckbox("Orders").should("exist");
+
       H.updateEnterpriseSettings({
         "remote-sync-url": "file:///tmp/library-read-only",
         "remote-sync-type": "read-only",

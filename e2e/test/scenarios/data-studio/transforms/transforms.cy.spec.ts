@@ -1577,7 +1577,12 @@ LIMIT
   describe("deletion", () => {
     it("should be able to delete a transform before and after creating the table", () => {
       cy.log("create a transform without running");
-      createMbqlTransform({ visitTransform: true });
+      createMbqlTransform();
+      visitTransformListPage();
+      getTransformsList()
+        .findByText("MBQL transform")
+        .should("be.visible")
+        .click();
 
       cy.log("delete the transform");
       H.DataStudio.Transforms.header().icon("ellipsis").click();
@@ -3549,6 +3554,7 @@ describe("scenarios > admin > transforms", () => {
     cy.findByRole("link", { name: "View your database connections" }).should(
       "exist",
     );
+    H.DataStudio.Transforms.sectionHeader().should("be.visible");
     H.DataStudio.Transforms.sectionHeader()
       .findByRole("link", { name: "Transforms" })
       .should("not.exist");

@@ -221,7 +221,9 @@ describe(
           H.main().findByText(ANOTHER_TARGET_ROW_VALUE).should("be.visible");
 
           cy.log("filter widget still works after replacement");
+          interceptDashcardQuery();
           H.toggleFilterWidgetValues(["C"]);
+          cy.wait("@dashcardQuery");
           H.main().findByText(COMPATIBLE_TARGET_ROW_VALUE).should("be.visible");
           H.main().findByText(ANOTHER_TARGET_ROW_VALUE).should("not.exist");
 
@@ -1256,7 +1258,9 @@ function assertParameterTargetStillWorks(dashboardAlias: string) {
       visible: [COMPATIBLE_TARGET_ROW_VALUE, ANOTHER_TARGET_ROW_VALUE],
       hidden: [],
     });
+    interceptDashcardQuery();
     H.toggleFilterWidgetValues(["D"]);
+    cy.wait("@dashcardQuery");
     assertDashcardHasRows({
       visible: [ANOTHER_TARGET_ROW_VALUE],
       hidden: [COMPATIBLE_TARGET_ROW_VALUE],
@@ -1271,8 +1275,10 @@ function assertClickBehaviorStillWorks(dashboardAlias: string) {
       visible: [COMPATIBLE_TARGET_ROW_VALUE, ANOTHER_TARGET_ROW_VALUE],
       hidden: [],
     });
+    interceptDashcardQuery();
     cy.findByTestId("dashcard").findAllByText("D").first().click();
     H.filterWidget().should("contain.text", "D");
+    cy.wait("@dashcardQuery");
     assertDashcardHasRows({
       visible: [ANOTHER_TARGET_ROW_VALUE],
       hidden: [COMPATIBLE_TARGET_ROW_VALUE],
@@ -1290,10 +1296,12 @@ function assertCardSourcedValuesStillWork(dashboardAlias: string) {
     H.filterWidget().click();
     H.popover().findByText("C").should("be.visible");
     H.popover().findByText("D").should("be.visible");
+    interceptDashcardQuery();
     H.popover().within(() => {
       cy.findByText("D").click();
       cy.button("Add filter").click();
     });
+    cy.wait("@dashcardQuery");
     assertDashcardHasRows({
       visible: [ANOTHER_TARGET_ROW_VALUE],
       hidden: [COMPATIBLE_TARGET_ROW_VALUE],
@@ -1358,6 +1366,12 @@ function assertTargetRowVisible() {
 
 function assertDataSourceIs(tableLabel: string) {
   cy.findByTestId("data-step-cell").should("have.text", tableLabel);
+}
+
+function interceptDashcardQuery() {
+  cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query").as(
+    "dashcardQuery",
+  );
 }
 
 function assertDashcardHasRows({
