@@ -28,14 +28,16 @@
       (make-namespace-with-test! (fn []
                                    (t2/insert! :setting {:key "remote-sync-auto-import" :value "true"})
                                    (is true)))
-      (is (=? {:namespaces 1
-               :counts     {:pass 1 :fail 0 :error 0}
-               :leaks      [{:namespace run-time-ns
-                             :settings  {"remote-sync-auto-import" {:before nil
-                                                                    :after  {:key   "remote-sync-auto-import"
-                                                                             :value "true"}}}
-                             :ledger    nil}]}
-              (isolation-check/check-module! [run-time-ns]))))
+      (let [result (isolation-check/check-module! [run-time-ns])]
+        (is (=? {:namespaces 1
+                 :counts     {:pass 1 :fail 0 :error 0}
+                 :leaks      [{:namespace run-time-ns
+                               :settings  {"remote-sync-auto-import" {:before nil
+                                                                      :after  {:key   "remote-sync-auto-import"
+                                                                               :value "true"}}}}]}
+                result))
+        (testing "and no ledger difference"
+          (is (not (contains? (first (:leaks result)) :ledger))))))
     (remove-ns run-time-ns)
     (t2/delete! :setting :key "remote-sync-auto-import")
     (testing "a namespace whose test stores nothing"
