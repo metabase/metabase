@@ -10,9 +10,7 @@
    [flatland.ordered.set :as ordered-set]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
-   [metabase.util.log :as log]
-   [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
 
@@ -1029,25 +1027,14 @@
   clojure.lang.IPersistentSet (compile! [this context] (sequence! this context))
   clojure.lang.Sequential     (compile! [this context] (sequence! this context)))
 
-(mr/def ::honeysql-form
-  "A map, `[:fn-call & args]` vector, keyword, etc."
-  :any)
-
-(mr/def ::engine [:enum :h2 :postgres :mysql])
-
-(mu/defn format :- [:cat #_sql :string #_args [:* :any]]
+(defn format
   "Compile `honeysql-form` (either a top-level map or an individual clause) to SQL for `engine`.
 
   Returns the standard `[sql & args]` shape if able to compile successfully; throws and exception on unsupported or
   invalid forms."
-  ([honeysql-form :- ::honeysql-form
-    engine        :- ::engine]
+  ([honeysql-form engine]
    (format honeysql-form engine nil))
-  ([honeysql-form :- ::honeysql-form
-    engine        :- ::engine
-    options       :- [:maybe [:map
-                              {:metabase.util.malli.registry/deliberately-open true} ; other HoneySQL-specific options are ignored.
-                              [:params {:optional true} [:maybe [:map-of {:metabase.util.malli.registry/deliberately-open true} :keyword :any]]]]]]
+  ([honeysql-form engine options]
    (try
      (let [context (default-context engine options)]
        ;; [[compile!]] doesn't support compiling maps recursively unless marked `^:allow-subquery`
