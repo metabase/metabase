@@ -136,9 +136,9 @@
     (log/errorf "Async context already completed, cannot write error to client: %s"
                 (if (map? obj) (or (:message obj) (:error obj) (:status obj)) obj))))
 
-(defn- sanitize-error-obj [obj export-format error-response-fn]
+(defn- sanitize-error-obj [obj export-format response-fn]
   (let [obj (cond-> obj
-              error-response-fn error-response-fn)]
+              response-fn response-fn)]
     (-> (if (not= :api export-format)
           (walk/prewalk (fn [x]
                           (if (map? x)
