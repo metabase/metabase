@@ -54,17 +54,13 @@ jobs:
       - uses: actions/checkout@v7
       - name: Prepare front-end environment
         uses: ./.github/actions/prepare-frontend
-      - name: Prepare back-end environment
-        uses: ./.github/actions/prepare-backend
 
-      - name: Compile CLJS
-        run: bun run build-pure:cljs
       - name: Find CSS variables that are used but never defined
         run: bun run find-never-defined-css-variables
       - name: Run oxfmt formatting linter
         run: bun run lint-format-pure
       - name: Run oxlint linter (including module boundaries)
-        run: bun run lint-oxlint-pure
+        run: bun run lint-oxlint
       - name: Verify lint configuration and behavior
         run: bun run test-oxlint
       - name: Run CSS linter
