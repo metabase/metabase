@@ -1,29 +1,9 @@
 /* eslint-disable import/no-default-export */
-import { cpSync, readFileSync, writeFileSync } from "node:fs";
+import { cpSync } from "node:fs";
 import { resolve } from "path";
 
-import ts from "typescript";
 import { defineConfig } from "vite";
 import dts from "vite-plugin-dts";
-
-const readSandboxFile = (file: string) =>
-  readFileSync(
-    resolve(
-      __dirname,
-      "../../../../frontend/src/metabase/utils/scripts-sandbox",
-      file,
-    ),
-    "utf-8",
-  );
-
-const transpileSandboxModule = (file: string) =>
-  ts.transpileModule(readSandboxFile(file), {
-    compilerOptions: {
-      module: ts.ModuleKind.ESNext,
-      target: ts.ScriptTarget.ES2022,
-      removeComments: true,
-    },
-  }).outputText;
 
 const copyStaticFiles = () => ({
   name: "copy-static-files",
@@ -38,10 +18,6 @@ const copyStaticFiles = () => ({
     cpSync(resolve(__dirname, "src/skill"), resolve(__dirname, "dist/skill"), {
       recursive: true,
     });
-    writeFileSync(
-      resolve(__dirname, "dist/skill/references/blocklists.mjs"),
-      transpileSandboxModule("blocklists.ts"),
-    );
   },
 });
 

@@ -5,10 +5,7 @@ const HIDDEN_FILES = /fix-log\.md|accepted-findings\.md/;
 const GIT_COMMAND = /(^|[\s;&|(`]|\$\()git(\s|$)/;
 const SERVER_COMMAND =
   /npm\s+(run\s+)?(dev|build|start)\b|(^|[\s;&|(`/]|\$\()(npx\s+)?vite(\s|$)/;
-const CHECK_COMMANDS = [
-  /^npm run type-check$/,
-  /^node (\S*\/)?verify-tokens\.mjs src\/index\.tsx$/,
-];
+const CHECK_COMMANDS = [/^npm run type-check$/];
 const SHELL_ESCAPES = /[|>`<]|\$\(/;
 const WRITE_TOOLS = ["Write", "Edit", "MultiEdit"];
 const WRITABLE_FILES = {
@@ -61,7 +58,7 @@ const findVerifierViolation = ({ tool_name, tool_input = {}, cwd = "." }) => {
     return "the verifier must Grep a path outside .claude/, e.g. src/";
   }
   if (tool_name === "Bash" && !isCheckCommand(tool_input.command ?? "")) {
-    return "the verifier runs only the Checks commands from project.md";
+    return "the verifier runs only the Checks command from project.md";
   }
   return null;
 };

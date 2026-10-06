@@ -16,7 +16,8 @@ Read on demand, before the edit that needs it:
 - edit touches the root element, hooks, hover or click handlers, popovers
   or colors → the matching `skill/references/known-mistakes.md` entries
   (Contents at the top)
-- verify-tokens hit, or the request needs a browser API →
+- the request needs a browser API, tag or global listener →
+  `skill/references/sandbox-restrictions.md`, then
   `skill/references/sandbox-substitutes.md`
 
 1. Dev server: Ensure running. First start in this session → give the

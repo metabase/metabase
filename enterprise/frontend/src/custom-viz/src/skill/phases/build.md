@@ -23,8 +23,7 @@ Steps:
    with user-readable errors; settings via `defineSetting`; the
    `project.md` Defaults on every data mark, minus what the statement
    opted out; everything in Notes.
-2. Run Checks (`project.md`); resolve verify-tokens hits via
-   `sandbox-substitutes.md`.
+2. Run Checks (`project.md`).
 
 Rules:
 

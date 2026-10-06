@@ -37,6 +37,7 @@ describe("agent-guard.mjs", () => {
     ["Bash", { command: "npm run type-check | tee out.txt" }],
     ["Bash", { command: "npm run type-check > out.txt" }],
     ["Bash", { command: "ls src" }],
+    ["Bash", { command: "node verify-tokens.mjs src/index.tsx" }],
   ])("blocks the verifier: %s %o", (toolName, toolInput) => {
     expect(run("verifier", toolName, toolInput)).toBe(2);
   });
@@ -45,20 +46,7 @@ describe("agent-guard.mjs", () => {
     ["Read", { file_path: "src/index.tsx" }],
     ["Read", { file_path: ".claude/build-statement.md" }],
     ["Bash", { command: "npm run type-check" }],
-    [
-      "Bash",
-      {
-        command:
-          "node node_modules/@metabase/custom-viz/dist/skill/verify-tokens.mjs src/index.tsx",
-      },
-    ],
-    [
-      "Bash",
-      {
-        command:
-          "npm run type-check 2>&1 && node verify-tokens.mjs src/index.tsx 2>&1",
-      },
-    ],
+    ["Bash", { command: "npm run type-check 2>&1" }],
     ["Grep", { pattern: "onHover", path: "src" }],
     ["Grep", { pattern: "onHover", path: "/project/src/index.tsx" }],
   ])("allows the verifier: %s %o", (toolName, toolInput) => {

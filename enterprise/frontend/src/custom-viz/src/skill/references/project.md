@@ -39,12 +39,8 @@ statement opts out.
 
 ## Checks
 
-- `npm run type-check` — TypeScript, no emit.
-- `node node_modules/@metabase/custom-viz/dist/skill/verify-tokens.mjs src/index.tsx`
-  (verify-tokens) — scans for sandbox-blocked APIs, tags and global
-  listeners; exit 1 with `file:line blocked in sandbox: <what>` per hit.
-  Clean output is not proof of safety: `any`-typed values, computed
-  property names and dependency code are not checked.
+`npm run type-check` — TypeScript, no emit. It does not see sandbox
+restrictions: those fail only at runtime (`sandbox-restrictions.md`).
 
-"Run Checks" means both commands. Same error after two fix attempts →
+"Run Checks" means this command. Same error after two fix attempts →
 stop and report it.

@@ -21,9 +21,9 @@ Read: `.claude/build-statement.md`, `skill/references/project.md`,
    practice". Only exemptions written in a detector count, read
    literally. Parts marked "Needs judgment" are the exception: decide
    them on the merits of the code.
-3. Needs judgment: code verify-tokens cannot see (`any`-typed values,
-   computed property names) that reaches a restriction in
-   `sandbox-restrictions.md` → `blocker`.
+3. Code that renders a blocked tag, calls a blocked API or listens for a
+   blocked global event (`sandbox-restrictions.md`) → `blocker`. Needs
+   judgment for `any`-typed values and computed property names.
 
 Return, under 300 words: each finding as `blocker` or `warning`,
 `src/index.tsx:<line>`, one sentence, suggested fix. No findings → say

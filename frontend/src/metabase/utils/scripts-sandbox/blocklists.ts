@@ -1,7 +1,7 @@
 // Shared blocklist data for the sandbox distortions in this directory.
-// Also transpiled into the @metabase/custom-viz skill at build time as an
-// importable .mjs that runs in Node (see that package's vite.config.ts) -
-// keep this file free of imports, DOM access, and module side effects.
+// The @metabase/custom-viz skill documents every entry in
+// skill/references/sandbox-restrictions.md; sandbox-docs.unit.spec.ts in
+// that package fails when an entry here is missing from the docs.
 
 // Event types that, when listened for on `document` or `window`, give the
 // sandboxed script a global keylogger / clipboard sniffer. There's no
