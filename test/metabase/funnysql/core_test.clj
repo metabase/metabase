@@ -804,6 +804,17 @@
          #"Missing value for :param"
          (funnysql/format [:in :id [:param :p]] :postgres)))))
 
+(deftest ^:parallel in-param-collection-binds-elements-test
+  (testing "the elements of a collection bound to a `:param` are bound as values, never compiled as SQL"
+    (are [xs expected] (= expected
+                          (funnysql/format [:in :email [:param :xs]] :postgres {:params {:xs xs}}))
+      ["a@x" :email]          ["\"email\" IN (?, ?)" "a@x" :email]
+      ["a@x" [:lower :email]] ["\"email\" IN (?, ?)" "a@x" [:lower :email]]
+      ;; this SQL is wrong but we always want to parameterize a `:param`, and
+      ;; never let you inject an identifier or function call
+      :email                  ["\"email\" IN ?" :email]
+      [:lower :email]         ["\"email\" IN ?" [:lower :email]])))
+
 (deftest ^:parallel in-subquery-test
   (is (= ["WHERE \"dp\".\"group_id\" IN (SELECT \"group_id\" FROM \"permissions_group_membership\" WHERE \"user_id\" = 1)"]
          (funnysql/format {:where [:in :dp.group_id ^:allow-subquery {:select [:group_id]

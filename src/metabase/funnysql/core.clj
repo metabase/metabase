@@ -635,8 +635,21 @@
   "The value `context`'s options bind to `k`, for a `[:param k]` form."
   [k context]
   {:pre [(keyword? k)]}
-  (or (get-in (options context) [:params k])
-      (throw (ex-info "Missing value for :param" {:param k}))))
+  (let [v (or (get-in (options context) [:params k])
+              (throw (ex-info "Missing value for :param" {:param k})))]
+    ;; anything that looks like an identifier or function call needs to get lifted, do not allow injecting these with
+    ;; `:param`
+    (letfn [(lift [x]
+              (cond
+                ((some-fn fn-call? keyword?) x)
+                [:lift x]
+
+                ((some-fn sequential? set?) x)
+                (into (empty x) (map lift) x)
+
+                :else
+                x))]
+      (lift v))))
 
 (defn- in-values
   "The values side of an `:in`/`:not-in` form, with a `[:param k]` naming a collection resolved to
