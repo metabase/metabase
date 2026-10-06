@@ -25,6 +25,7 @@
    [metabase.metabot.scope :as metabot.scope]
    [metabase.oauth-server.core :as oauth-server]
    [metabase.permissions.core :as perms]
+   [metabase.query-permissions.core :as query-perms]
    [metabase.query-processor.api :as qp.api]
    [metabase.request.core :as request]
    [metabase.server.middleware.session :as mw.session]
@@ -259,13 +260,24 @@
   [_base-query _derived-query]
   true)
 
+(defn- check-run-permissions!
+  "Throw a 403 unless the current user may run `query`: every table, saved question and stage it reads."
+  [query]
+  (try
+    (query-perms/check-run-permissions-for-query query)
+    (catch clojure.lang.ExceptionInfo e
+      (if (= 403 (:status-code (ex-data e)))
+        ;; A plain refusal: the original carries the query and the user's permissions in its data.
+        (throw (ex-info (tru "You do not have permission to run this query.") {:status-code 403}))
+        (throw e)))))
+
 (defn- derive-handle!
   "Derive a new query from the query stored under `handle` by `operations`, store it under a new handle owned by the
    current user, and return `{:handle :query}` where `:query` is the new query base64-encoded."
   [session-id handle operations]
   (let [{:keys [query prompt]} (resolve-handle! session-id handle)
         ;; Before any column is read, so a user who lost access cannot learn which columns exist.
-        _       (query-guards/check-token-query-permissions! query)
+        _       (check-run-permissions! query)
         derived (mcp.derive/derive-query query operations)]
     (api/check-403 (group-policy-permits-derive? query derived))
     ;; Serialization drops the base query's parameters, which target its columns; a drill to another table would
