@@ -187,7 +187,8 @@
   (if (seq refs)
     (let [lower  #(some-> % u/lower-case-en)
           tables (t2/select [:model/Table :id :schema :name] :db_id database-id :active true
-                            {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]})]
+                            {:from  [(warehouse-schema-overlay/table-query {:user-settings? false})]
+                             :where [:in [:lower :name] (into [] (keep (comp lower :table)) refs)]})]
       (into (sorted-set)
             (for [{:keys [schema table]} refs
                   {:keys [id] :as named} tables
