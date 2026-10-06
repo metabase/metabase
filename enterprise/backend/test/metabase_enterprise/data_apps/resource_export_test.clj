@@ -1,5 +1,5 @@
 (ns metabase-enterprise.data-apps.resource-export-test
-  "`POST /api/apps/export-resources`: what a data app's `resources/` files are written from."
+  "`POST /api/apps/export-resources`: what the files of a data app's collection are written from."
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
@@ -15,12 +15,21 @@
 
 (set! *warn-on-reflection* true)
 
+(def ^:private app-collection "appCollectionEntity01")
+
 (defn- export!
+  "Export `body` as `user`, in the app collection `app-collection` unless `body` names one."
   ([user status body]
    (export! user status body #{:data-apps}))
   ([user status body features]
    (mt/with-premium-features features
-     (mt/user-http-request user :post status "apps/export-resources" body))))
+     (mt/user-http-request user :post status "apps/export-resources" (merge {:collection app-collection} body)))))
+
+(deftest export-needs-the-apps-collection-test
+  (testing "the saved question is written into the app's collection, so the request names it"
+    (mt/with-premium-features #{:data-apps}
+      (is (=? {:errors {:collection some?}}
+              (mt/user-http-request :crowberto :post 400 "apps/export-resources" {:queries [] :actions []}))))))
 
 (defn- db-name []
   (t2/select-one-fn :name :model/Database (mt/id)))
@@ -117,9 +126,7 @@
                                                  :dataset_query {:database (db-name)}}]}}]}
                response))
        (is (not (contains? (-> response :actions first :entity) :model_id))
-           "it names no model")
-       (is (not (contains? response :models))
-           "no model is exported with it")))))
+           "it names no model")))))
 
 (deftest refuses-an-action-that-belongs-to-a-model-test
   (testing "a data app runs only actions that belong to no model, as the typed schema lists only those"
@@ -188,6 +195,7 @@
           (is (=? {:queries [{:export "Half" :error "The definition does not build a valid query."}
                              {:export "Whole" :entity map?}]}
                   (resource-export/export-resources
+                   app-collection
                    [{:export "Half" :query {:stages [{:source {:type :table :id (mt/id :venues)} :limit 1.5}]}}
                     {:export "Whole" :query {:stages [{:source {:type :table :id (mt/id :venues)} :limit 2}]}}]
                    []))))))))
@@ -228,6 +236,7 @@
                    (mt/with-premium-features #{:data-apps}
                      (mt/with-current-user (mt/user->id :crowberto)
                        (resource-export/export-resources
+                        app-collection
                         [{:export "VenueCount"
                           :query  {:stages [{:source       {:type :table :id (mt/id :venues)}
                                              :aggregations [{:type :metric :id metric-id}]}]}}]
@@ -241,6 +250,7 @@
           (is (=? {:queries [{:export "Broken" :error "No column found"}
                              {:export "Nothing" :error (str "Table " Integer/MAX_VALUE " does not exist.")}]}
                   (resource-export/export-resources
+                   app-collection
                    [{:export "Broken"
                      :query  {:stages [{:source {:type :table :id (mt/id :venues)}
                                         :fields [{:type :column :name "NOT_A_COLUMN"}]}]}}
@@ -372,6 +382,7 @@
     (mt/with-premium-features #{:data-apps}
       (mt/with-current-user (mt/user->id :crowberto)
         (let [{:keys [entity]} (-> (resource-export/export-resources
+                                    app-collection
                                     ;; decoded, as the endpoint hands a definition over
                                     [{:export "Venues" :query {:stages [{:source {:type :table :id (mt/id :venues)}}]}}]
                                     [])

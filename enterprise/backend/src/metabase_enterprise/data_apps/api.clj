@@ -152,7 +152,7 @@
 
 (def ^:private ExportResourcesRequest
   [:map {:closed true}
-   [:collection {:optional true} [:maybe ms/NanoIdString]]
+   [:collection ms/NanoIdString]
    [:queries {:default []} [:sequential [:map {:closed true}
                                          [:export ms/NonBlankString]
                                          [:entity_id {:optional true} [:maybe ms/NanoIdString]]
@@ -355,7 +355,7 @@
     (data-app.user-access/permission-warnings (:table_ids app) users)))
 
 (api.macros/defendpoint :post "/export-resources" :- ExportResourcesResponse
-  "Export what a data app's `resources/` files are written from, as serialization writes it: the saved question
+  "Export what the files of a data app's collection are written from, as serialization writes it: the saved question
   holding the query Metabase builds from each `defineQuery` definition in `queries`, in the app's `collection`,
   the actions in `actions`, which must belong to no model, and the metrics the queries aggregate. Each item answers
   on its own, with its export or the error that stops it. For superusers: the files are written into the app's
@@ -364,7 +364,7 @@
    _query-params
    {:keys [queries actions collection]} :- ExportResourcesRequest]
   (api/check-superuser)
-  (data-app.resource-export/export-resources queries actions :collection-entity-id collection))
+  (data-app.resource-export/export-resources collection queries actions))
 
 ;; Not tagged `data-apps:base`, though the bundle route below is — which looks backwards until
 ;; you place the two callers. `DataAppView` fetches this metadata on the *host* page to decide

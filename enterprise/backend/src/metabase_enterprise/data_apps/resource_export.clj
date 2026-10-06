@@ -1,7 +1,7 @@
 (ns metabase-enterprise.data-apps.resource-export
-  "What a data app's `resources/` files are written from, as serialization writes it: the saved question that holds
+  "What the files of a data app's collection are written from, as serialization writes it: the saved question that holds
   the query Metabase builds from each `defineQuery` definition, each action the app runs, and the metrics its queries
-  aggregate. Nothing here references an entity by numeric ID, so the author copies it into the app's resources as it
+  aggregate. Nothing here references an entity by numeric ID, so the author copies it into the app's collection as it
   is, apart from what makes it a copy.
 
   The endpoint is for superusers, who write an app's repository, so nothing here is checked against the caller.
@@ -155,8 +155,8 @@
 
 (mu/defn- export-query
   "A `defineQuery` definition as `{:export :entity :metric_ids}`, the entity being the saved question that holds the
-  query Metabase builds from it, in the collection with `collection-entity-id`, or `{:export :error}`."
-  [collection-entity-id        :- [:maybe ms/NanoIdString]
+  query Metabase builds from it, in the app's collection with `collection-entity-id`, or `{:export :error}`."
+  [collection-entity-id        :- ms/NanoIdString
    {:keys [export query] :as definition} :- [:map {:closed true}
                                              [:export ms/NonBlankString]
                                              [:entity_id {:optional true} [:maybe ms/NanoIdString]]
@@ -166,8 +166,8 @@
     (fn []
       (let [built (built-query query)]
         {:export     export
-         :entity     (as-written (cond-> (serdes/extract-one "Card" {} (question-card definition built))
-                                   collection-entity-id (assoc :collection_id collection-entity-id)))
+         :entity     (as-written (assoc (serdes/extract-one "Card" {} (question-card definition built))
+                                        :collection_id collection-entity-id))
          :metric_ids (vec (sort (lib/all-source-card-ids built)))}))))
 
 (defn- export-metric
@@ -205,7 +205,7 @@
   aggregate. Each item comes back on its own, with what it exports or the error that stops it, so one item that
   can't be exported doesn't hide the rest. A query lists the entity IDs of the metrics it references, which the
   author points at the app's copies."
-  [queries action-ids & {:keys [collection-entity-id]}]
+  [collection-entity-id queries action-ids]
   (serdes/with-cache
     (let [queries       (mapv (partial export-query collection-entity-id) queries)
           actions-by-id (into {} (map (juxt :id identity)) (actions/select-actions-for-ids nil action-ids))

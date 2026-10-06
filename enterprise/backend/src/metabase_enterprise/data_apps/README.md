@@ -77,7 +77,7 @@ assets (`metabase.server.routes/static-files-handler`).
 - `PUT /api/apps/:slug` — update manifest fields or the bundle, or toggle `enabled` (superuser).
 - `DELETE /api/apps/:slug` — drop a row, its bundle, and its owned resources (superuser).
 - `GET /api/apps/repo-status` — whether a repo is connected (superuser).
-- `POST /api/apps/export-resources` — what an app's `resources/` are written from: the query Metabase builds
+- `POST /api/apps/export-resources` — what the files of an app's collection are written from: the query Metabase builds
   from each `defineQuery` definition, and the actions and metrics it copies, all as serialization exports
   them (`resource_export.clj`). An action must belong to no model (superuser).
 
