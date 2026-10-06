@@ -112,6 +112,8 @@ describe("scenarios > data studio > library", () => {
       });
     });
 
+    // `startNewQuestion` only changes the hash on the same path, so leave the page first to load it fresh.
+    cy.visit("/");
     H.startNewQuestion();
     H.miniPickerBrowseAll().click();
 

@@ -195,9 +195,13 @@ describe(
             "include",
             `${getSegmentsBaseUrl(ORDERS_ID)}/${segmentId}`,
           );
-        });
+          SegmentEditor.get()
+            .findByDisplayValue("Segment to Delete")
+            .should("be.visible");
 
-        cy.log("delete via more menu");
+          cy.log("delete via more menu after a direct visit");
+          visitDataModelSegment(ORDERS_ID, segmentId);
+        });
         SegmentEditor.getActionsButton().click();
         H.popover().findByText("Remove segment").click();
         H.modal().button("Remove").click();
@@ -277,7 +281,7 @@ describe(
           cy.findByText("Doohickey").should("be.visible");
         });
         cy.realPress("Escape");
-        H.popover().should("not.exist");
+        H.popover({ skipVisibilityCheck: true }).should("not.exist");
 
         cy.log("add Price filter");
         SegmentEditor.getFilterPlaceholder().click();

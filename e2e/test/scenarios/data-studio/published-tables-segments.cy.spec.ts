@@ -98,6 +98,12 @@ describe("scenarios > data studio > library > published tables > segments", () =
           "include",
           `/data-studio/library/tables/${ORDERS_ID}/segments/${segmentId}`,
         );
+        SegmentEditor.get()
+          .findByDisplayValue("Segment to Delete")
+          .should("be.visible");
+
+        cy.log("delete after a direct visit");
+        H.DataStudio.Tables.visitSegmentPage(ORDERS_ID, segmentId);
       });
 
       SegmentEditor.getActionsButton().click();

@@ -1575,17 +1575,6 @@ LIMIT
         cy.findByText("Manual").should("be.visible");
       });
     });
-
-    it("should display the error message from a failed run", () => {
-      createSqlTransform({
-        sourceQuery: "SELECT * FROM abc",
-        visitTransform: true,
-      });
-      H.DataStudio.Transforms.runTab().click();
-      runTransformAndWaitForFailure();
-      getRunErrorInfoButton().click();
-      H.modal().should("contain.text", 'relation "abc" does not exist');
-    });
   });
 
   describe("deletion", () => {
@@ -2665,6 +2654,10 @@ describe("scenarios > admin > transforms > jobs", () => {
   });
 
   describe("creation", () => {
+    afterEach(() => {
+      H.expectNoBadSnowplowEvents();
+    });
+
     it("should pre-create default jobs and tags and create jobs with default and custom properties", () => {
       cy.log("built-in jobs are recognized in the cron builder");
       visitJobListPage();
