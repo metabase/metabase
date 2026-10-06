@@ -407,16 +407,6 @@ describe("scenarios > data studio > table collection permissions", () => {
   });
 
   describe("sandboxing", () => {
-    it("should be able to access a published sandboxed table", () => {
-      H.blockUserGroupPermissions(USER_GROUPS.ALL_USERS_GROUP);
-      sandboxProductsOnCategory();
-      H.publishTables({ table_ids: [PRODUCTS_ID] });
-
-      cy.signIn("sandboxed");
-      H.visitQuestionAdhoc(productsQuestionDetails);
-      H.assertQueryBuilderRowCount(54);
-    });
-
     it("should be able to use list field values with sandboxing", () => {
       H.blockUserGroupPermissions(USER_GROUPS.ALL_USERS_GROUP);
       sandboxProductsOnCategory();
@@ -424,6 +414,7 @@ describe("scenarios > data studio > table collection permissions", () => {
 
       cy.signIn("sandboxed");
       H.visitQuestionAdhoc(productsQuestionDetails);
+      H.assertQueryBuilderRowCount(54);
       H.tableHeaderClick("Category");
       H.popover().within(() => {
         cy.findByText("Filter by this column").click();

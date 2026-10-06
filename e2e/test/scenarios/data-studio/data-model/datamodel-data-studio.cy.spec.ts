@@ -181,6 +181,7 @@ describe("scenarios > data studio > datamodel", () => {
         cy.wait("@updateField");
         verifyAndCloseToast("Name of Tax updated");
         TableSection.getFieldNameInput("Analyst Tax").should("be.visible");
+        TableSection.getField("Analyst Tax").should("be.visible");
 
         cy.log("change field description");
         TableSection.getFieldDescriptionInput("Total")
@@ -189,6 +190,34 @@ describe("scenarios > data studio > datamodel", () => {
           .blur();
         cy.wait("@updateField");
         verifyAndCloseToast("Description of Total updated");
+        TableSection.getFieldDescriptionInput("Total").should(
+          "have.value",
+          "Total edited by analyst",
+        );
+
+        cy.log("navigate to field detail and change semantic type");
+        TableSection.clickField("Discount");
+        FieldSection.getSemanticTypeInput()
+          .should("have.value", "Discount")
+          .click();
+        H.popover().findByText("Currency").click();
+        cy.wait("@updateField");
+        verifyAndCloseToast("Semantic type of Discount updated");
+        FieldSection.getSemanticTypeInput().should("have.value", "Currency");
+
+        cy.log("verify table preview is blocked without data permissions");
+        FieldSection.getPreviewButton().click();
+        cy.wait("@dataset");
+        PreviewSection.get()
+          .findByText("Sorry, you don’t have permission to see that.")
+          .should("be.visible");
+
+        cy.log("verify detail preview is also blocked");
+        PreviewSection.getPreviewTypeInput().findByText("Detail").click();
+        cy.wait("@dataset");
+        PreviewSection.get()
+          .findByText("Sorry, you don’t have permission to see that.")
+          .should("be.visible");
 
         cy.log("verify changes in data reference as admin");
         cy.signInAsAdmin();
@@ -212,6 +241,14 @@ describe("scenarios > data studio > datamodel", () => {
           cy.findByText("Description by analyst").should("be.visible");
         });
 
+        cy.visit(
+          `/reference/databases/${SAMPLE_DB_ID}/tables/${ORDERS_ID}/fields/${ORDERS.TOTAL}`,
+        );
+        cy.get("main").within(() => {
+          cy.findByText("Total").should("be.visible");
+          cy.findByText("Total edited by analyst").should("be.visible");
+        });
+
         cy.log("verify changes in question picker as normal user");
         cy.signInAsNormalUser();
         H.startNewQuestion();
@@ -227,6 +264,7 @@ describe("scenarios > data studio > datamodel", () => {
         H.tableHeaderColumn("Tax", { scrollIntoView: false }).should(
           "not.exist",
         );
+        H.tableHeaderColumn("Discount ($)").should("be.visible");
       });
     });
 
@@ -261,84 +299,6 @@ describe("scenarios > data studio > datamodel", () => {
         cy.findByText("Total").should("be.visible");
         // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
         cy.findByText("No description yet").should("be.visible");
-      });
-
-      it("should allow analysts to edit field metadata but not preview data without data access", () => {
-        H.setUserAsAnalyst(NODATA_USER_ID);
-        cy.signIn("nodata");
-        H.DataModel.visitDataStudio({
-          databaseId: SAMPLE_DB_ID,
-          schemaId: SAMPLE_DB_SCHEMA_ID,
-          tableId: ORDERS_ID,
-        });
-
-        TableSection.clickFieldsTab();
-        cy.log("change field name from table section");
-        TableSection.getFieldNameInput("Tax")
-          .clear()
-          .type("Analyst Tax Field")
-          .blur();
-        cy.wait("@updateField");
-        verifyAndCloseToast("Name of Tax updated");
-        TableSection.getFieldNameInput("Analyst Tax Field").should(
-          "be.visible",
-        );
-        TableSection.getField("Analyst Tax Field").should("be.visible");
-
-        cy.log("change field description from table section");
-        TableSection.getFieldDescriptionInput("Total")
-          .clear()
-          .type("Analyst total description")
-          .blur();
-        cy.wait("@updateField");
-        verifyAndCloseToast("Description of Total updated");
-        TableSection.getFieldDescriptionInput("Total").should(
-          "have.value",
-          "Analyst total description",
-        );
-
-        cy.log("navigate to field detail and change semantic type");
-        TableSection.clickField("Discount");
-        FieldSection.getSemanticTypeInput()
-          .should("have.value", "Discount")
-          .click();
-        H.popover().findByText("Currency").click();
-        cy.wait("@updateField");
-        verifyAndCloseToast("Semantic type of Discount updated");
-        FieldSection.getSemanticTypeInput().should("have.value", "Currency");
-
-        cy.log("verify table preview is blocked without data permissions");
-        FieldSection.getPreviewButton().click();
-        cy.wait("@dataset");
-        PreviewSection.get()
-          .findByText("Sorry, you don’t have permission to see that.")
-          .should("be.visible");
-
-        cy.log("verify detail preview is also blocked");
-        PreviewSection.getPreviewTypeInput().findByText("Detail").click();
-        cy.wait("@dataset");
-        PreviewSection.get()
-          .findByText("Sorry, you don’t have permission to see that.")
-          .should("be.visible");
-
-        cy.log("verify field changes in data reference as admin");
-        cy.signInAsAdmin();
-        cy.visit(
-          `/reference/databases/${SAMPLE_DB_ID}/tables/${ORDERS_ID}/fields/${ORDERS.TOTAL}`,
-        );
-        cy.get("main").within(() => {
-          cy.findByText("Total").should("be.visible");
-          cy.findByText("Analyst total description").should("be.visible");
-        });
-
-        cy.log("verify field changes in table visualization as normal user");
-        cy.signInAsNormalUser();
-        H.openOrdersTable();
-        H.tableHeaderColumn("Analyst Tax Field").should("be.visible");
-        H.tableHeaderColumn("Tax", { scrollIntoView: false }).should(
-          "not.exist",
-        );
-        H.tableHeaderColumn("Discount ($)").should("be.visible");
       });
     });
 
@@ -435,52 +395,6 @@ describe("scenarios > data studio > datamodel", () => {
         });
       });
 
-      it("should allow sorting fields in the custom order", () => {
-        H.DataModel.visitDataStudio({
-          databaseId: SAMPLE_DB_ID,
-          schemaId: SAMPLE_DB_SCHEMA_ID,
-          tableId: PRODUCTS_ID,
-        });
-
-        TableSection.clickFieldsTab();
-        TableSection.getSortButton().click();
-        TableSection.getSortOrderInput()
-          .findByDisplayValue("database")
-          .should("be.checked");
-
-        TableSection.getSortableField("ID").as("dragElement");
-        H.moveDnDKitElementByAlias("@dragElement", {
-          vertical: 50,
-        });
-        cy.wait("@updateFieldOrder");
-        verifyAndCloseToast("Field order updated");
-
-        cy.log(
-          "should not show loading state after an update (metabase#56482)",
-        );
-        cy.findByTestId("loading-indicator", { timeout: 0 }).should(
-          "not.exist",
-        );
-
-        TableSection.getSortOrderInput()
-          .findByDisplayValue("custom")
-          .should("be.checked");
-
-        H.openProductsTable();
-        H.assertTableData({
-          columns: [
-            "Ean",
-            "ID",
-            "Title",
-            "Category",
-            "Vendor",
-            "Price",
-            "Rating",
-            "Created At",
-          ],
-        });
-      });
-
       it("should allow switching to predefined order after drag & drop (metabase#56482)", () => {
         H.DataModel.visitDataStudio({
           databaseId: SAMPLE_DB_ID,
@@ -550,6 +464,21 @@ describe("scenarios > data studio > datamodel", () => {
         TableSection.getSortableFields().should(($items) => {
           expect($items[0].textContent).to.equal("Ean");
           expect($items[1].textContent).to.equal("ID");
+        });
+
+        cy.log("should use the custom order in the query builder");
+        H.openProductsTable();
+        H.assertTableData({
+          columns: [
+            "Ean",
+            "ID",
+            "Title",
+            "Category",
+            "Vendor",
+            "Price",
+            "Rating",
+            "Created At",
+          ],
         });
       });
     });
@@ -903,29 +832,6 @@ describe("scenarios > data studio > datamodel", () => {
         .should("be.visible")
         .and("not.be.focused");
     });
-
-    it("should not crash when viewing filtering preview of a hidden table", () => {
-      H.DataModel.visitDataStudio({
-        databaseId: SAMPLE_DB_ID,
-        schemaId: SAMPLE_DB_SCHEMA_ID,
-        tableId: ORDERS_ID,
-      });
-
-      TableSection.clickDetailsTab();
-      H.DataModel.TableSection.getVisibilityTypeInput().click();
-      H.popover().findByText("Hidden").click();
-      cy.wait("@updateTable");
-
-      H.DataModel.TableSection.clickFieldsTab();
-      H.DataModel.TableSection.clickField("Product ID");
-
-      FieldSection.getPreviewButton().click();
-      PreviewSection.getPreviewTypeInput().findByText("Filtering").click();
-      PreviewSection.get()
-        .findByPlaceholderText("Enter an ID")
-        .should("be.visible");
-      H.main().findByText("Something’s gone wrong").should("not.exist");
-    });
   });
 
   it("should allow you to close table and field details", () => {
@@ -958,6 +864,28 @@ describe("scenarios > data studio > datamodel", () => {
     PreviewSection.get().should("not.exist");
     FieldSection.get().should("exist");
     TableSection.get().should("exist");
+
+    cy.log("should not crash when viewing filtering preview of a hidden table");
+    H.DataModel.visitDataStudio({
+      databaseId: SAMPLE_DB_ID,
+      schemaId: SAMPLE_DB_SCHEMA_ID,
+      tableId: ORDERS_ID,
+    });
+
+    TableSection.clickDetailsTab();
+    TableSection.getVisibilityTypeInput().click();
+    H.popover().findByText("Hidden").click();
+    cy.wait("@updateTable");
+
+    TableSection.clickFieldsTab();
+    TableSection.clickField("Product ID");
+
+    FieldSection.getPreviewButton().click();
+    PreviewSection.getPreviewTypeInput().findByText("Filtering").click();
+    PreviewSection.get()
+      .findByPlaceholderText("Enter an ID")
+      .should("be.visible");
+    H.main().findByText("Something’s gone wrong").should("not.exist");
   });
 });
 

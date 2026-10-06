@@ -19,30 +19,6 @@ describe("scenarios > data studio > data model > measures", () => {
   });
 
   describe("Measure list", () => {
-    it("should show empty state and navigation when no measures exist", () => {
-      visitDataStudioMeasures(ORDERS_ID);
-
-      cy.log("verify empty state");
-      MeasureList.getEmptyState().scrollIntoView().should("be.visible");
-      MeasureList.get()
-        .findByText(
-          "Create a measure to define a reusable aggregation for this table.",
-        )
-        .should("be.visible");
-
-      cy.log("verify new measure link and navigation");
-      MeasureList.getNewMeasureLink().scrollIntoView().click();
-
-      cy.log("verify measure_create_started event");
-      H.expectUnstructuredSnowplowEvent({
-        event: "measure_create_started",
-        triggered_from: "data_studio_measures_list",
-        target_id: ORDERS_ID,
-      });
-
-      cy.url().should("include", `${getMeasuresBaseUrl(ORDERS_ID)}/new`);
-    });
-
     it("should display measures and allow navigation to edit page", () => {
       createTestMeasure({
         name: "Total Revenue",
@@ -100,6 +76,14 @@ describe("scenarios > data studio > data model > measures", () => {
     it("should create a measure with aggregation and verify across features", () => {
       visitDataStudioMeasures(ORDERS_ID);
 
+      cy.log("verify empty state");
+      MeasureList.getEmptyState().scrollIntoView().should("be.visible");
+      MeasureList.get()
+        .findByText(
+          "Create a measure to define a reusable aggregation for this table.",
+        )
+        .should("be.visible");
+
       cy.log("navigate to new measure page");
       MeasureList.getNewMeasureLink().scrollIntoView().click();
 
@@ -109,6 +93,7 @@ describe("scenarios > data studio > data model > measures", () => {
         triggered_from: "data_studio_measures_list",
         target_id: ORDERS_ID,
       });
+      cy.url().should("include", `${getMeasuresBaseUrl(ORDERS_ID)}/new`);
 
       cy.log("fill in measure name");
       MeasureEditor.getNameInput().type("Total Revenue");

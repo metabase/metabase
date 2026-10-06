@@ -20,18 +20,6 @@ describe("scenarios > data studio > library > published tables > measures", () =
   });
 
   describe("Measure list", () => {
-    it("should show empty state and navigate to new measure page", () => {
-      H.DataStudio.Tables.visitMeasuresPage(ORDERS_ID);
-
-      MeasureList.getEmptyState().scrollIntoView().should("be.visible");
-      MeasureList.getNewMeasureLink().scrollIntoView().click();
-
-      cy.url().should(
-        "include",
-        `/data-studio/library/tables/${ORDERS_ID}/measures/new`,
-      );
-    });
-
     it("should display measures and navigate to edit page", () => {
       createTestMeasure({ name: "Total Revenue" });
       H.DataStudio.Tables.visitMeasuresPage(ORDERS_ID);
@@ -68,7 +56,12 @@ describe("scenarios > data studio > library > published tables > measures", () =
   describe("Measure creation", () => {
     it("should create a measure and redirect to edit page", () => {
       H.DataStudio.Tables.visitMeasuresPage(ORDERS_ID);
-      MeasureList.getNewMeasureLink().click();
+      MeasureList.getEmptyState().scrollIntoView().should("be.visible");
+      MeasureList.getNewMeasureLink().scrollIntoView().click();
+      cy.url().should(
+        "include",
+        `/data-studio/library/tables/${ORDERS_ID}/measures/new`,
+      );
 
       MeasureEditor.getNameInput().type("Total Revenue");
       MeasureEditor.getAggregationPlaceholder().click();
@@ -87,21 +80,13 @@ describe("scenarios > data studio > library > published tables > measures", () =
   });
 
   describe("Breadcrumbs", () => {
-    it("should display collection-based breadcrumbs", () => {
-      createTestMeasure({ name: "Breadcrumb Test Measure" });
-      cy.get<number>("@measureId").then((measureId) => {
-        H.DataStudio.Tables.visitMeasurePage(ORDERS_ID, measureId);
-      });
-
-      MeasureEditor.get().findByText("Data").should("be.visible");
-    });
-
-    it("should navigate back to published table measures via breadcrumb", () => {
+    it("should display collection-based breadcrumbs and navigate back to published table measures", () => {
       createTestMeasure({ name: "Breadcrumb Nav Test" });
       cy.get<number>("@measureId").then((measureId) => {
         H.DataStudio.Tables.visitMeasurePage(ORDERS_ID, measureId);
       });
 
+      MeasureEditor.get().findByText("Data").should("be.visible");
       MeasureEditor.getBreadcrumb("Orders").click();
 
       cy.url().should(

@@ -66,7 +66,7 @@ describe("scenarios > data-studio > transforms > inspect", () => {
   });
 
   describe("generic-summary lens", () => {
-    it("should show Summary tab after running an MBQL transform", () => {
+    it("should show Summary and Column Distributions lenses after running an MBQL transform", () => {
       H.createAndRunMbqlTransform({
         sourceTable: SOURCE_TABLE,
         targetTable: "inspect_mbql_table",
@@ -148,23 +148,24 @@ describe("scenarios > data-studio > transforms > inspect", () => {
         event: "transform_inspect_lens_loaded",
         event_detail: "generic-summary",
       });
+
+      cy.findByRole("tab", { name: /Column Distributions/ }).click();
+
+      cy.findByRole("heading", { name: /2 matched columns/i }).should(
+        "be.visible",
+      );
+
+      cy.findAllByTestId("visualization-root")
+        .should("have.length", 4)
+        .each((visualization) => {
+          cy.wrap(visualization).within(() => {
+            cy.findByRole("link").should("exist");
+          });
+        });
     });
   });
 
   describe("join-analysis lens", () => {
-    it("should show Join Analysis tab when transform has joins", () => {
-      createAndRunMbqlJoinTransform({
-        name: "Join MBQL inspect transform",
-        sourceSchema: TARGET_SCHEMA,
-        targetTable: "inspect_join_table",
-      });
-
-      cy.wait("@inspectorDiscovery");
-
-      cy.findByRole("tab", { name: /Summary/ }).should("be.visible");
-      cy.findByRole("tab", { name: /Join Analysis/ }).should("be.visible");
-    });
-
     it("should display join step data in tree table", () => {
       createAndRunMbqlJoinTransform({
         name: "Join tree inspect transform",
@@ -176,6 +177,8 @@ describe("scenarios > data-studio > transforms > inspect", () => {
 
       cy.wait("@inspectorDiscovery");
       cy.wait("@inspectorLens");
+
+      cy.findByRole("tab", { name: /Summary/ }).should("be.visible");
 
       cy.findByRole("tab", { name: tabName }).within(() => {
         cy.findByLabelText(/clock icon/i).should("be.visible");
@@ -297,35 +300,6 @@ describe("scenarios > data-studio > transforms > inspect", () => {
       H.expectUnstructuredSnowplowEvent({
         event: "transform_inspect_drill_lens_closed",
       });
-    });
-  });
-
-  describe("column-comparison lens", () => {
-    it("should show Column Distributions lens", () => {
-      H.createAndRunMbqlTransform({
-        sourceTable: SOURCE_TABLE,
-        targetTable: "inspect_coldist_table",
-        targetSchema: TARGET_SCHEMA,
-        name: "ColDist inspect transform",
-      }).then(({ transformId }) => {
-        H.DataStudio.Transforms.visitInspect(transformId);
-      });
-
-      cy.wait("@inspectorDiscovery");
-
-      cy.findByRole("tab", { name: /Column Distributions/ }).click();
-
-      cy.findByRole("heading", { name: /2 matched columns/i }).should(
-        "be.visible",
-      );
-
-      cy.findAllByTestId("visualization-root")
-        .should("have.length", 4)
-        .each((visualization) => {
-          cy.wrap(visualization).within(() => {
-            cy.findByRole("link").should("exist");
-          });
-        });
     });
   });
 

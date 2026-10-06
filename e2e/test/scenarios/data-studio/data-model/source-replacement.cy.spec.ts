@@ -365,21 +365,6 @@ describe(
         SourceReplacement.getReplaceButton().should("be.disabled");
       });
 
-      it("blocks replacement when source table has foreign keys", () => {
-        createTestTablesWithForeignKey();
-        createSourceQuestion("Question on source");
-
-        openReplacementModal(SOURCE_TABLE_LABEL);
-        pickTarget(COMPATIBLE_TARGET_LABEL);
-
-        SourceReplacement.getModal()
-          .findByText(
-            "The original table can't be referenced by a foreign key by another table.",
-          )
-          .should("be.visible");
-        SourceReplacement.getReplaceButton().should("be.disabled");
-      });
-
       it("blocks replacement when target would create a cycle", () => {
         createTestTables();
         createSourceQuestion("Question on source");
@@ -417,7 +402,7 @@ describe(
     });
 
     describe("Entry points", () => {
-      it("opens replacement from the dependency graph and replaces successfully", () => {
+      it("replaces from the dependency graph, then blocks replacement when the source table has foreign keys", () => {
         createTestTables();
         createSourceQuestion("Graph question").as("question");
 
@@ -454,6 +439,24 @@ describe(
             assertDataSourceIs(COMPATIBLE_TARGET_LABEL);
           },
         );
+
+        cy.log("blocks replacement when source table has foreign keys");
+        createChildTableWithForeignKey();
+        createSourceQuestion("Question on source");
+        // Ignore the dependents requests that the graph page sent.
+        cy.intercept("GET", "/api/ee/dependencies/graph/dependents*").as(
+          "dependents",
+        );
+
+        openReplacementModal(SOURCE_TABLE_LABEL);
+        pickTarget(COMPATIBLE_TARGET_LABEL);
+
+        SourceReplacement.getModal()
+          .findByText(
+            "The original table can't be referenced by a foreign key by another table.",
+          )
+          .should("be.visible");
+        SourceReplacement.getReplaceButton().should("be.disabled");
       });
     });
 
@@ -801,29 +804,9 @@ function createTestTables() {
   H.resyncDatabase({ dbId: WRITABLE_DB_ID });
 }
 
-function createTestTablesWithForeignKey() {
-  dropAllTestTables();
-
+function createChildTableWithForeignKey() {
   H.queryWritableDB(
     `
-    CREATE TABLE ${SOURCE_TABLE} (
-      id INTEGER PRIMARY KEY,
-      name VARCHAR(255),
-      amount NUMERIC(10,2),
-      category VARCHAR(100)
-    );
-    INSERT INTO ${SOURCE_TABLE} VALUES
-      (1, 'Source Value 1', 100.50, 'A');
-
-    CREATE TABLE ${COMPATIBLE_TARGET} (
-      id INTEGER PRIMARY KEY,
-      name VARCHAR(255),
-      amount NUMERIC(10,2),
-      category VARCHAR(100)
-    );
-    INSERT INTO ${COMPATIBLE_TARGET} VALUES
-      (10, 'Compatible Target Value', 300.00, 'C');
-
     CREATE TABLE ${CHILD_TABLE} (
       id INTEGER PRIMARY KEY,
       source_id INTEGER REFERENCES ${SOURCE_TABLE}(id),
@@ -835,7 +818,7 @@ function createTestTablesWithForeignKey() {
     "postgres",
   );
 
-  H.resyncDatabase({ dbId: WRITABLE_DB_ID });
+  H.resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: CHILD_TABLE });
 }
 
 function getTableId(tableName: string) {
