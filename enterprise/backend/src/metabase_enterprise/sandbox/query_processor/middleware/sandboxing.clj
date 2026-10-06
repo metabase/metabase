@@ -413,8 +413,11 @@
   returned to the client or saved to the application database."
   [:and
    ::lib.schema/query
+   ;; `:malli.core/default` because this conjunct constrains only the one key -- every other key of the query is
+   ;; validated by `::lib.schema/query` above, which is where `::details` is declared and closed over
    [:map
-    [::details {:optional true} ::lib.schema/sandboxing.details]]])
+    [::details {:optional true} ::lib.schema/sandboxing.details]
+    [:malli.core/default :any]]])
 
 (mu/defn- sandbox->details-entry :- ::lib.schema/sandboxing.details.entry
   "Build the [[metabase.lib.schema/sandboxing.details.entry]] for one applied Sandbox. The user's actual attribute
