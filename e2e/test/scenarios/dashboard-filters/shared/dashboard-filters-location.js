@@ -4,16 +4,16 @@ export const DASHBOARD_LOCATION_FILTERS = {
     representativeResult: "1510",
   },
   "Is not": {
-    value: "Abbeville",
-    representativeResult: "37.65",
+    value: "Wood River",
+    representativeResult: "148.23",
   },
   Contains: {
     value: "Abb",
     representativeResult: "1510",
   },
   "Does not contain": {
-    value: "Abb",
-    representativeResult: "37.65",
+    value: "Wood",
+    representativeResult: "148.23",
   },
   "Starts with": {
     value: "Abb",
