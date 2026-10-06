@@ -120,7 +120,7 @@
       {:node/type :aggregation/distinct
        :column    {:node/type :ast/column :id 1}}
       {:node/type :aggregation/mbql
-       :clause    [:sum {} [:field {} 1]]}))
+       :clause    [:sum {:lib/uuid "00000000-0000-0000-0000-000000000001"} [:field {:lib/uuid "00000000-0000-0000-0000-000000000002"} 1]]}))
   (testing "invalid aggregation nodes"
     (testing "sum without column"
       (is (some? (me/humanize (mr/explain ::ast.schema/aggregation-node

@@ -93,10 +93,20 @@
         (doseq [t [:invalid-message-format :skipped-arg-index :arg-count-mismatch]]
           (u/announce "  %s: %d" (name t) (get by-type t 0)))))))
 
+(defn- delete-json-files!
+  "Delete the `.json` files in `directory` but keep the directory itself.
+  `resources/frontend_client/app/locales` is tracked through a `.gitkeep` so the
+  frontend build can resolve `locales/<locale>.json` against it, and deleting
+  the directory takes that file with it."
+  [directory]
+  (doseq [^java.io.File file (some-> ^java.io.File (io/file directory) .listFiles)
+          :when              (str/ends-with? (.getName file) ".json")]
+    (u/delete-file-if-exists! (.getAbsolutePath file))))
+
 (defn- create-artifacts-for-all-locales! []
-  ;; Empty directory in case some locales were removed
+  ;; Empty the targets in case some locales were removed
   (u/delete-file-if-exists! backend/target-directory)
-  (u/delete-file-if-exists! frontend/target-directory)
+  (delete-json-files! frontend/target-directory)
   (let [per-locale-violations (doall (pmap create-artifacts-for-locale! (i18n/locales)))
         all-violations        (->> per-locale-violations
                                    (apply concat)

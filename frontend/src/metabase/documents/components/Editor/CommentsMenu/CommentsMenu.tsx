@@ -36,13 +36,13 @@ export const CommentsMenu = forwardRef<HTMLDivElement, Props>(
         contentEditable={false}
         data-testid="comments-menu"
         draggable={false}
-        mt={rem(-2)}
+        mt={rem(active ? 0 : 2)}
         pl="xl"
         ref={ref}
         style={style}
       >
         <CommentsButton<typeof ForwardRefLink>
-          variant={active ? "filled" : "default"}
+          active={active}
           unresolvedCommentsCount={unresolvedCommentsCount}
           component={ForwardRefLink}
           to={commentUrl}

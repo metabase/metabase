@@ -2,7 +2,7 @@
 id: construct-notebook-query-operators
 title: Construct notebook query — operator catalogs
 description: The full catalog of aggregation, filter, expression, and temporal-unit operators for construct_notebook_query — load when you need the exact name/arity of a specific operator or the list of temporal units.
-tools: [construct_notebook_query]
+tools: [construct_notebook_query, document_construct_model_chart]
 priority: 40
 ---
 # Construct Query Reference — Operator catalogs

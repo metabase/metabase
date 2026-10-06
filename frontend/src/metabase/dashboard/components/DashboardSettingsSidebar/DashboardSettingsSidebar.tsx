@@ -2,7 +2,7 @@ import { useCallback } from "react";
 import { useMount } from "react-use";
 import { t } from "ttag";
 
-import ErrorBoundary from "metabase/ErrorBoundary";
+import ErrorBoundary from "metabase/common/components/ErrorBoundary";
 import { Sidesheet, SidesheetCard } from "metabase/common/components/Sidesheet";
 import { useUniqueId } from "metabase/common/hooks/use-unique-id";
 import { toggleAutoApplyFilters } from "metabase/dashboard/actions/parameters";

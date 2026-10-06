@@ -44,10 +44,12 @@
       (is (= [["clojure" "-M:test"]
               ["clojure" "-X:dev:dev/test:ee:ee-dev:drivers:drivers-dev:test:ci" ":only"
                (str '[dev.modules-config-test
+                      metabase.core.module-cycles-test
                       metabase.core.modules-test
                       metabase.core.kondo-ratchet-test
                       metabase.core.kondo-ratchet-check-test
-                      metabase.core.namespace-uniqueness-test])]]
+                      metabase.core.namespace-uniqueness-test
+                      metabase.core.table-or-field-raw-usage-test])]]
              calls)))
     (testing "the failed suite is reported"
       (is (= ["migrations"] failed))
@@ -91,7 +93,7 @@
 (deftest targeted-suites-test
   (testing "modules runs only its own namespaces"
     (is (= [["clojure" "-X:dev:dev/test:ee:ee-dev:drivers:drivers-dev:test:ci" ":only"
-             "[dev.modules-config-test metabase.core.modules-test]"]]
+             "[dev.modules-config-test metabase.core.module-cycles-test metabase.core.modules-test]"]]
            (:calls (run-suites! [] ["modules"])))))
   (testing "ratchets checks the repository's policy file"
     (is (= [["./bin/mage" "kondo-ratchets"]]

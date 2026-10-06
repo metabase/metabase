@@ -18,7 +18,7 @@
   [[resolve-model-ref]] turns one into the provider type, model, and credentials an adapter needs."
   (:require
    [clojure.string :as str]
-   [metabase.llm.settings :as llm.settings]
+   [metabase.llm.provider.settings :as llm.provider.settings]
    [metabase.premium-features.core :as premium-features]
    [metabase.request.current :as request.current]
    [metabase.settings.core :as setting]
@@ -38,7 +38,7 @@
 
 (def ^:private aws-region-options
   (mapv (fn [region] {:value region :label region})
-        (sort llm.settings/known-aws-regions)))
+        (sort llm.provider.settings/known-aws-regions)))
 
 (def ^:private provider-type-registry
   "Every provider type Metabase can connect to, in the order the admin UI offers them.
@@ -58,7 +58,7 @@
                      :docs-url    "https://platform.claude.com/settings/keys"}
                     {:key       :base-url
                      :normalize strip-trailing-slashes
-                     :validate  llm.settings/llm-url-problem
+                     :validate  llm.provider.settings/llm-url-problem
                      :label     (deferred-tru "API base URL")
                      :type      :text
                      :advanced? true
@@ -76,7 +76,7 @@
                      :docs-url    "https://platform.openai.com/api-keys"}
                     {:key       :base-url
                      :normalize strip-trailing-slashes
-                     :validate  llm.settings/llm-url-problem
+                     :validate  llm.provider.settings/llm-url-problem
                      :label     (deferred-tru "API base URL")
                      :type      :text
                      :advanced? true
@@ -85,6 +85,11 @@
     :label         (deferred-tru "OpenRouter")
     :default-model "anthropic/claude-sonnet-4.6"
     :mini-model    "anthropic/claude-haiku-4.5"
+    ;; Ids of retired models, each mapped to the model that now serves it. OpenRouter lists only the dated
+    ;; `qwen/qwen3.8-max-0902` (https://openrouter.ai/api/v1/models). Saved selections may still name a retired id,
+    ;; and they read as the successor. Treat an entry as permanent: nothing rewrites a value pinned by an environment
+    ;; variable, and a stored value converges only when the setting is next written.
+    :retired-models {"qwen/qwen3.8-max" "qwen/qwen3.8-max-0902"}
     :fields        [{:key         :api-key
                      :label       (deferred-tru "API key")
                      :type        :password
@@ -94,7 +99,7 @@
                      :docs-url    "https://openrouter.ai/keys"}
                     {:key       :base-url
                      :normalize strip-trailing-slashes
-                     :validate  llm.settings/llm-url-problem
+                     :validate  llm.provider.settings/llm-url-problem
                      :label     (deferred-tru "API base URL")
                      :type      :text
                      :advanced? true
@@ -112,7 +117,7 @@
                      :docs-url    "https://console.mistral.ai/api-keys"}
                     {:key       :base-url
                      :normalize strip-trailing-slashes
-                     :validate  llm.settings/llm-url-problem
+                     :validate  llm.provider.settings/llm-url-problem
                      :label     (deferred-tru "API base URL")
                      :type      :text
                      :advanced? true
@@ -130,7 +135,7 @@
                      :docs-url    "https://z.ai/manage-apikey/apikey-list"}
                     {:key       :base-url
                      :normalize strip-trailing-slashes
-                     :validate  llm.settings/llm-url-problem
+                     :validate  llm.provider.settings/llm-url-problem
                      :label     (deferred-tru "API base URL")
                      :type      :text
                      :advanced? true
@@ -147,7 +152,7 @@
                      :docs-url    "https://platform.kimi.ai/console/api-keys"}
                     {:key       :base-url
                      :normalize strip-trailing-slashes
-                     :validate  llm.settings/llm-url-problem
+                     :validate  llm.provider.settings/llm-url-problem
                      :label     (deferred-tru "API base URL")
                      :type      :text
                      :advanced? true
@@ -156,7 +161,12 @@
    {:type          "deepseek"
     :label         (deferred-tru "DeepSeek")
     :default-model "deepseek-v4-pro"
-    :mini-model    "deepseek-v4-flash"
+    :mini-model    "deepseek-flash"
+    ;; Ids of retired models, each mapped to the model that now serves it
+    ;; (https://api-docs.deepseek.com/quick_start/pricing). Saved selections may still name them, and they read as
+    ;; the successor. Treat an entry as permanent: nothing rewrites a value pinned by an environment variable, and a
+    ;; stored value converges only when the setting is next written.
+    :retired-models {"deepseek-v4-flash" "deepseek-flash"}
     :fields        [{:key         :api-key
                      :label       (deferred-tru "API key")
                      :type        :password
@@ -167,12 +177,30 @@
                      :docs-url    "https://platform.deepseek.com/api_keys"}
                     {:key       :base-url
                      :normalize strip-trailing-slashes
-                     :validate  llm.settings/llm-url-problem
+                     :validate  llm.provider.settings/llm-url-problem
                      :label     (deferred-tru "API base URL")
                      :type      :text
                      :advanced? true
                      :default   "https://api.deepseek.com"
                      :help      (deferred-tru "The root both surfaces hang off; leave off any /anthropic or /v1 path.")}]}
+   {:type          "xai"
+    :label         (deferred-tru "xAI")
+    :default-model "grok-4.7"
+    :mini-model    "grok-4.3"
+    :fields        [{:key         :api-key
+                     :label       (deferred-tru "API key")
+                     :type        :password
+                     :required?   true
+                     :placeholder "xai-..."
+                     :prefix      "xai-"
+                     :docs-url    "https://console.x.ai/team/default/api-keys"}
+                    {:key       :base-url
+                     :normalize strip-trailing-slashes
+                     :validate  llm.provider.settings/llm-url-problem
+                     :label     (deferred-tru "API base URL")
+                     :type      :text
+                     :advanced? true
+                     :default   "https://api.x.ai/v1"}]}
    {:type          "google"
     ;; "Google Gemini Enterprise" (nearly the official "Gemini Enterprise Agent Platform" name), not "Google
     ;; Gemini": the Gemini API is a separate surface with its own credentials, and may become a provider type of
@@ -187,11 +215,15 @@
                     {:id "google/gemini-3.6-flash"             :display_name "Gemini 3.6 Flash"}
                     {:id "google/gemini-3.7-flash"             :display_name "Gemini 3.7 Flash"}
                     {:id "anthropic/claude-fable-5"            :display_name "Claude Fable 5"}
+                    {:id "anthropic/claude-opus-5-5"           :display_name "Claude Opus 5.5"}
                     {:id "anthropic/claude-opus-5"             :display_name "Claude Opus 5"}
                     {:id "anthropic/claude-opus-4-6"           :display_name "Claude Opus 4.6"}
+                    {:id "anthropic/claude-sonnet-5-5"         :display_name "Claude Sonnet 5.5"}
                     {:id "anthropic/claude-sonnet-5"           :display_name "Claude Sonnet 5"}
                     {:id "anthropic/claude-sonnet-4-6"         :display_name "Claude Sonnet 4.6"}
                     {:id "anthropic/claude-haiku-4-5@20251001" :display_name "Claude Haiku 4.5"}]
+    ;; A connection with an endpoint ID serves that Model Garden endpoint instead of the catalog.
+    :model-fields  ["endpoints" :endpoint-id]
     ;; A service account key authenticates on its own (it can carry the project); an OAuth token needs the project
     ;; named beside it.
     :required-any  [[:service-account-key] [:oauth-access-token :project-id]]
@@ -200,7 +232,7 @@
                      :type        :text
                      :placeholder (deferred-tru "my-project")
                      :validate    (fn [value]
-                                    (when-not (llm.settings/valid-google-project-id? value)
+                                    (when-not (llm.provider.settings/valid-google-project-id? value)
                                       (tru "\"{0}\" is not a valid Google Cloud project ID. Use the project ID — 6 to 30 lowercase letters, digits and hyphens — rather than the project name or number." value)))
                      :help        (deferred-tru "The Google Cloud project to use. Optional if the service account key provides it.")
                      :docs-url    "https://docs.cloud.google.com/resource-manager/docs/creating-managing-projects"}
@@ -209,7 +241,7 @@
                      :type      :text
                      :placeholder "global"
                      :validate  (fn [value]
-                                  (when-not (llm.settings/valid-google-location? value)
+                                  (when-not (llm.provider.settings/valid-google-location? value)
                                     (tru "\"{0}\" is not a valid Google Cloud location." value)))
                      :help      (deferred-tru "Optional. Defaults to global.")}
                     {:key       :auth-method
@@ -236,13 +268,18 @@
                      :show-when   {:field :auth-method :value "oauth-token"}
                      :placeholder "ya29..."
                      :help        (deferred-tru "A short-lived token, e.g. the output of gcloud auth print-access-token. Useful for testing.")}
+                    {:key         :endpoint-id
+                     :label       (deferred-tru "Model Garden endpoint ID")
+                     :type        :text
+                     :placeholder "1234567890123456789"
+                     :help        (deferred-tru "Optional. Use an open model you deployed from Model Garden instead of one Google hosts. Set the location to the region you deployed it to.")}
                     {:key       :base-url
                      :normalize strip-trailing-slashes
-                     :validate  llm.settings/llm-url-problem
+                     :validate  llm.provider.settings/llm-url-problem
                      :label     (deferred-tru "API base URL")
                      :type      :text
                      :advanced? true
-                     :default   llm.settings/google-global-api-base-url
+                     :default   llm.provider.settings/google-global-api-base-url
                      :help      (deferred-tru "Derived from the location when left at the global host.")}]}
    {:type          "azure"
     :label         (deferred-tru "Microsoft Azure")
@@ -259,7 +296,7 @@
                      :docs-url    "https://ai.azure.com"}
                     {:key         :base-url
                      :normalize   strip-trailing-slashes
-                     :validate    llm.settings/llm-url-problem
+                     :validate    llm.provider.settings/llm-url-problem
                      :label       (deferred-tru "API base URL")
                      :type        :text
                      :required?   true
@@ -282,6 +319,8 @@
     :label         (deferred-tru "Amazon Bedrock")
     :default-model "anthropic.claude-opus-4-8"
     :mini-model    "anthropic.claude-haiku-4-5"
+    ;; A connection with a model ID serves that model instead of the catalog.
+    :model-fields  [:model-id]
     ;; Both keys together select explicit credentials, neither selects the AWS default credentials chain, and one
     ;; without the other authenticates nothing. A session token only extends the pair.
     :requires      {:access-key-id     [:secret-access-key]
@@ -306,6 +345,11 @@
                      :type    :select
                      :options aws-region-options
                      :default "us-east-1"}
+                    {:key         :model-id
+                     :label       (deferred-tru "Model ID")
+                     :type        :text
+                     :placeholder "global.anthropic.claude-sonnet-4-6"
+                     :help        (deferred-tru "Optional. Use an inference profile, or a model that isn''t listed for this region, by its ID or ARN.")}
                     {:key       :session-token
                      :label     (deferred-tru "Session token")
                      :type      :password
@@ -322,7 +366,7 @@
     :default-model nil
     :fields        [{:key         :base-url
                      :normalize   strip-trailing-slashes
-                     :validate    llm.settings/llm-url-problem
+                     :validate    llm.provider.settings/llm-url-problem
                      :label       (deferred-tru "API base URL")
                      :type        :text
                      :required?   true
@@ -396,7 +440,7 @@
   everything else is always available."
   [type-name]
   (if (managed-type? type-name)
-    (some? (llm.settings/llm-proxy-base-url))
+    (some? (llm.provider.settings/llm-proxy-base-url))
     (some? (provider-type type-name))))
 
 (defn secret-field-keys
@@ -422,8 +466,9 @@
   (:models (provider-type type-name)))
 
 (defn model-fields
-  "The `:config` keys whose values compose the model a connection of `type-name` serves, for types whose models
-  cannot be listed from the provider. Returns nil for types whose catalog is fetched or fixed."
+  "The parts that compose the model a connection names in its own `:config`, for models the provider cannot list.
+  Each part is a `:config` key, or a string that stands for itself like the `endpoints` in Google's `endpoints/{id}`.
+  Returns nil for types whose connections only serve a fetched or fixed catalog."
   [type-name]
   (:model-fields (provider-type type-name)))
 
@@ -444,12 +489,12 @@
 ;;; -------------------------------------------------- Validation --------------------------------------------------
 
 (defn connection-model
-  "The model `config` names, composed from its type's [[model-fields]] — Azure's `{family}/{deployment}` comes from
-  two inputs so the admin picks the family rather than typing it as a prefix. Returns nil for types that list their
-  models, and for a connection that has not filled every part in yet."
+  "The model `config` names, composed from its type's [[model-fields]], or nil when it names none.
+  Azure's `{family}/{deployment}` comes from two inputs so the admin picks the family rather than typing it as a
+  prefix. A connection that leaves a part blank names no model, which for Google means it serves the catalog."
   [type-name config]
   (when-let [field-keys (seq (model-fields type-name))]
-    (let [parts (map #(u/trimmed-string (get config %)) field-keys)]
+    (let [parts (map #(if (string? %) % (u/trimmed-string (get config %))) field-keys)]
       (when (every? some? parts)
         (str/join "/" parts)))))
 
@@ -561,7 +606,7 @@
   proxy is configured."
   [type-name config]
   (if (managed-type? type-name)
-    (some? (llm.settings/llm-proxy-base-url))
+    (some? (llm.provider.settings/llm-proxy-base-url))
     (credentials-complete? type-name config)))
 
 ;;; ---------------------------------------- Connections configured by env var ------------------------------------
@@ -599,6 +644,9 @@
    "deepseek"   {:type     "deepseek"
                  :settings {:api-key  {:setting :llm-deepseek-api-key :credential? true}
                             :base-url {:setting :llm-deepseek-api-base-url}}}
+   "xai"        {:type     "xai"
+                 :settings {:api-key  {:setting :llm-xai-api-key :credential? true}
+                            :base-url {:setting :llm-xai-api-base-url}}}
    "google"     {:type     "google"
                  :settings {:service-account-key {:setting :llm-google-service-account-key :credential? true}
                             :oauth-access-token  {:setting :llm-google-oauth-access-token :credential? true}
@@ -630,7 +678,7 @@
 
   Returns nil for a type no per-provider variable configures — the managed provider, which holds no credentials of
   its own, is the only one today. Setting these is the supported way to configure a single connection without writing
-  JSON into [[metabase.llm.settings/llm-providers]]."
+  JSON into [[metabase.llm.provider.settings/llm-providers]]."
   [type-name]
   (when-let [{:keys [settings]} (get single-provider-settings type-name)]
     (not-empty
@@ -689,7 +737,7 @@
   from [[connections]], so rebuilding the list from there would drop it from the setting the next time an admin
   saved anything — the credentials would be gone for good once the env var came back off."
   []
-  (vec (llm.settings/llm-providers)))
+  (vec (llm.provider.settings/llm-providers)))
 
 (defn- annotated-stored-connections
   []
@@ -821,7 +869,7 @@
 (defn set-connections!
   "Persist `conns` as the stored connection list, dropping the derived annotation keys."
   [conns]
-  (llm.settings/set-llm-providers! (mapv #(dissoc % :source :env-vars :env-fields) conns)))
+  (llm.provider.settings/set-llm-providers! (mapv #(dissoc % :source :env-vars :env-fields) conns)))
 
 ;;; --------------------------------------------------- Slugs ------------------------------------------------------
 
@@ -866,6 +914,33 @@
   (when model-ref
     (second (str/split model-ref #"/" 2))))
 
+(def ^:private retired-model-ids
+  "Every model id some provider type has retired, so a reference naming none of them needs no connection lookup."
+  (into #{} (mapcat (comp keys :retired-models)) provider-type-registry))
+
+(defn- current-model
+  "The model now serving `model` on provider type `type-name`.
+
+  Its successor when the type retired it, otherwise `model` itself. Read from the raw registry, like
+  [[retired-model-ids]]: retirement is not hosted policy, so it needs no [[provider-type]] lookup.
+
+    \"openrouter\" \"qwen/qwen3.8-max\" => \"qwen/qwen3.8-max-0902\""
+  [type-name model]
+  (get-in provider-type-by-name [type-name :retired-models model] model))
+
+(defn canonical-model-ref
+  "`model-ref` with any retired model id replaced by its successor.
+
+  A selection saved before a rename reads as the current model. Returns any other `model-ref` unchanged.
+
+    \"openrouter/qwen/qwen3.8-max\" => \"openrouter/qwen/qwen3.8-max-0902\""
+  [model-ref]
+  (let [model (model-ref->model model-ref)]
+    (if-let [{:keys [key type]} (when (contains? retired-model-ids model)
+                                  (connection (model-ref->connection-key model-ref)))]
+      (str key "/" (current-model type model))
+      model-ref)))
+
 (defn strip-managed-prefix
   "Drop the `metabase/` routing prefix from a model reference, leaving the `provider/model` pair the proxy forwards.
   Returns `model-ref` unchanged when it has no such prefix."
@@ -897,7 +972,8 @@
   Returns `{:connection-key :type :model :credentials :ai-proxy?}`, or nil when no such connection exists. `:type`
   is the provider type whose adapter should serve the request: for the managed connection that is the wire family
   named by the model's own first segment (`metabase/anthropic/claude-...` is served by the Anthropic adapter over
-  the proxy), and `:model` is what remains."
+  the proxy), and `:model` is what remains. A retired model id resolves to the model that now serves it, as
+  in [[canonical-model-ref]]."
   [model-ref]
   (let [conn-key (model-ref->connection-key model-ref)
         model    (model-ref->model model-ref)]
@@ -910,7 +986,7 @@
          :ai-proxy?      true}
         {:connection-key conn-key
          :type           type
-         :model          model
+         :model          (current-model type model)
          :credentials    (with-field-defaults type config)
          :ai-proxy?      false}))))
 

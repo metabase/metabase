@@ -4,10 +4,20 @@
    ;; because the QP still returns legacy-style metadata (for now)
    ^{:clj-kondo/ignore [:discouraged-namespace]}
    [metabase.legacy-mbql.schema :as mbql.s]
+   [metabase.lib-be.schema :as lib-be.schema]
+   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util :as u]
    [metabase.util.malli.registry :as mr]
    [metabase.util.regex :as u.regex]))
+
+(mr/def ::unnormalized-query
+  "A legacy, MBQL 5, or internal query that has not been normalized yet, so its `:type` or `:lib/type` is still a string, e.g. as decoded from JSON."
+  [:and
+   [:map {:closed false, ::mr/deliberately-open true, :description "a query whose type key is still a string"}
+    [:type     {:optional true} [:enum "query" "native" "internal"]]
+    [:lib/type {:optional true} [:= "mbql/query"]]]
+   [:fn {:error/message "Query with a :type or :lib/type key"} (some-fn :type :lib/type)]])
 
 (mr/def ::any-query
   "Schema for a map that is in the general shape of either a legacy MBQL or MBQL 5 query. Query may not be normalized
@@ -15,22 +25,83 @@
 
   This schema is not very strict because we need to handle different types of queries (legacy MBQL, MBQL 5,
   super-legacy MBQL, internal audit app queries, etc.) and it might not be normalized yet."
-  [:and
-   [:map
-    [:database {:optional true} [:or
-                                 ::lib.schema.id/database
-                                 ::lib.schema.id/saved-questions-virtual-database]]]
-   [:fn
-    {:error/message "Query with a :type or :lib/type key"}
-    (some-fn :type :lib/type)]
-   [:fn
-    {:error/message "Query should have :database unless it is :type :internal"}
-    #(or
-      (:database %)
-      (= (keyword (:type %)) :internal))]])
+  [:or
+   :metabase.lib.util/legacy-query
+   :metabase.lib.util/mbql5-query
+   ::lib-be.schema/internal-query
+   ::unnormalized-query])
 
-;; TODO -- fill this out a bit.
-(mr/def ::metadata :any)
+(mr/def ::internal-query.column
+  "A column of an internal (audit app) query's results, as the query's function declares it."
+  [:map {:closed true}
+   [:name          :string]
+   [:display_name  :string]
+   [:base_type     ::lib.schema.common/base-type]
+   [:remapped_to   {:optional true} :string]
+   [:remapped_from {:optional true} :string]
+   [:code          {:optional true} :boolean]])
+
+(mr/def ::insight.best-fit
+  "A trendline formula fitted to a query's results, one of the curve shapes the insights calculation can fit."
+  [:or
+   [:tuple [:= :+] number? [:tuple [:= :*] number? [:= :x]]]
+   [:tuple [:= :*] number? [:tuple [:= :exp] [:tuple [:= :*] number? [:= :x]]]]
+   [:tuple [:= :+] number? [:tuple [:= :*] number? [:tuple [:= :log] [:= :x]]]]
+   [:tuple [:= :*] number? [:tuple [:= :pow] [:= :x] number?]]])
+
+(mr/def ::insight
+  "One entry of the `:insights` calculated for a query's results."
+  [:map {:closed true}
+   [:last-value     {:optional true} [:maybe number?]]
+   [:previous-value {:optional true} [:maybe number?]]
+   [:last-change    {:optional true} [:maybe number?]]
+   [:slope          {:optional true} [:maybe number?]]
+   [:offset         {:optional true} [:maybe number?]]
+   [:best-fit       {:optional true} [:maybe ::insight.best-fit]]
+   [:col            {:optional true} [:maybe :string]]
+   [:unit           {:optional true} [:maybe :keyword]]])
+
+(mr/def ::metadata
+  "The map threaded through the post-processing `rff`/`rf` chain: an accumulator of query result metadata that grows
+  as it passes through QP middleware, and is eventually merged into the final result's `:data` key. See
+  [[metabase.query-processor.postprocess/middleware]] and [[metabase.query-processor.execute/middleware]] for the
+  middleware that add to it."
+  [:map {:closed true}
+   [:cols                    {:optional true} [:sequential [:or
+                                                            ::result-metadata.column
+                                                            ::mbql.s/driver-column
+                                                            ::internal-query.column]]]
+   [:native_form             {:optional true} :metabase.query-processor.compile/compiled]
+   [:dataset                 {:optional true} :boolean]
+   [:model                   {:optional true} :boolean]
+   [:viz-settings            {:optional true} :metabase.lib.schema.common/visualization-settings]
+   [:format-rows?            {:optional true} :boolean]
+   [:csv-include-bom?        {:optional true} :boolean]
+   [:results_timezone        {:optional true} [:maybe :string]]
+   [:requested_timezone      {:optional true} [:maybe :string]]
+   [:cache-version           {:optional true} :int]
+   [:last-ran                {:optional true} (lib.schema.common/instance-of-class java.time.temporal.Temporal)]
+   [:pivot-export-options    {:optional true} [:map {:closed true}
+                                               [:pivot-rows         {:optional true} [:maybe [:sequential [:int {:min 0}]]]]
+                                               [:pivot-cols         {:optional true} [:maybe [:sequential [:int {:min 0}]]]]
+                                               [:pivot-measures     {:optional true} [:maybe [:sequential [:int {:min 0}]]]]
+                                               [:show-row-totals    {:optional true} :boolean]
+                                               [:show-column-totals {:optional true} :boolean]
+                                               [:column-sort-order  {:optional true} [:maybe [:multi {:dispatch map?}
+                                                                                              [true  [:map-of [:maybe [:int {:min 0}]] [:maybe :keyword]]]
+                                                                                              [false [:fn {:error/message "map"} map?]]]]]]]
+   [:pivot?                  {:optional true} :boolean]
+   [:is_sandboxed            {:optional true} :boolean]
+   [:download_perms          {:optional true} [:or :keyword :string]]
+   [:results_metadata        {:optional true} [:map {:closed true}
+                                               [:columns ::result-metadata.columns]]]
+   [:insights                {:optional true} [:maybe [:sequential ::insight]]]
+   [:rows_truncated          {:optional true} :int]
+   [:pivot_rows_truncated    {:optional true} :int]])
+
+(mr/def ::accumulator
+  "The running accumulator of a QP reducing function, whose shape is whatever that (possibly caller-supplied) reducing function accumulates."
+  [:schema {::mr/deliberately-open true, :description "a reducing function's running accumulator"} :any])
 
 (mr/def ::rf
   "Schema for a reducing function."

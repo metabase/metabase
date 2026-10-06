@@ -7,6 +7,7 @@ import type {
   Database,
   DatabaseId,
   DatabaseUsageInfo,
+  Engine,
   Field,
   GetDatabaseHealthRequest,
   GetDatabaseHealthResponse,
@@ -22,6 +23,8 @@ import type {
   SchemaName,
   Table,
   UpdateDatabaseRequest,
+  ValidateDatabaseRequest,
+  ValidateDatabaseResponse,
 } from "metabase-types/api";
 
 import { Api } from "./api";
@@ -46,6 +49,14 @@ export const shouldSchemaBePassedAsQueryParam = (schema: SchemaName) =>
 
 export const databaseApi = Api.injectEndpoints({
   endpoints: (builder) => ({
+    listEngines: builder.query<Record<string, Engine>, void>({
+      query: () => ({
+        method: "GET",
+        url: "/api/setting/engines",
+      }),
+      // Driver metadata only changes when the instance is upgraded.
+      keepUnusedDataFor: Infinity,
+    }),
     listDatabases: builder.query<
       ListDatabasesResponse,
       ListDatabasesRequest | void
@@ -170,6 +181,16 @@ export const databaseApi = Api.injectEndpoints({
       }),
       providesTags: [listTag("field")],
     }),
+    validateDatabase: builder.mutation<
+      ValidateDatabaseResponse,
+      ValidateDatabaseRequest
+    >({
+      query: (body) => ({
+        method: "POST",
+        url: "/api/database/validate",
+        body,
+      }),
+    }),
     createDatabase: builder.mutation<Database, CreateDatabaseRequest>({
       query: (body) => ({
         method: "POST",
@@ -179,7 +200,7 @@ export const databaseApi = Api.injectEndpoints({
       invalidatesTags: (_, error) =>
         invalidateTags(error, [
           listTag("database"),
-          listTag("embedding-hub-checklist"),
+          listTag("setup-guide-checklist"),
         ]),
     }),
     updateDatabase: builder.mutation<Database, UpdateDatabaseRequest>({
@@ -305,6 +326,7 @@ export const databaseApi = Api.injectEndpoints({
 
 export const {
   useListDatabasesQuery,
+  useListEnginesQuery,
   useLazyListDatabasesQuery,
   useGetDatabaseQuery,
   useGetDatabaseHealthQuery,
@@ -319,6 +341,7 @@ export const {
   useLazyListDatabaseSchemaTablesQuery,
   useListVirtualDatabaseTablesQuery,
   useListDatabaseIdFieldsQuery,
+  useValidateDatabaseMutation,
   useCreateDatabaseMutation,
   useUpdateDatabaseMutation,
   useDeleteDatabaseMutation,

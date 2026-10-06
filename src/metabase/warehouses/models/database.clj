@@ -16,11 +16,12 @@
    [metabase.models.serialization :as serdes]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
-   ;; Trying to use metabase.search would cause a circular reference ;_;
+   [metabase.search.core :as search]
    [metabase.search.spec :as search.spec]
    [metabase.secrets.core :as secret]
    [metabase.settings.core :as setting]
    [metabase.sync.schedules :as sync.schedules]
+   [metabase.sync.task.sync-databases-trigger :as sync-databases-trigger]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [trs tru]]
@@ -29,6 +30,7 @@
    [metabase.util.quick-task :as quick-task]
    [metabase.warehouses.db :as warehouses.db]
    [metabase.warehouses.provider-detection :as provider-detection]
+   [metabase.warehouses.schema]
    [metabase.warehouses.settings :as warehouses.settings]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
@@ -238,9 +240,8 @@
   "(Re)schedule sync operation tasks for `database`. (Existing scheduled tasks will be deleted first.)"
   [database]
   (try
-    ;; this is done this way to avoid circular dependencies
     (when (should-auto-sync? database)
-      ((requiring-resolve 'metabase.sync.task.sync-databases/check-and-schedule-tasks-for-db!) database))
+      (sync-databases-trigger/check-and-schedule-tasks-for-db! database))
     (catch Throwable e
       (log/errorf "Error scheduling tasks for DB: %s" (ex-message e)))))
 
@@ -362,7 +363,7 @@
   "Unschedule any currently pending sync operation tasks for `database`."
   [database]
   (try
-    ((requiring-resolve 'metabase.sync.task.sync-databases/unschedule-tasks-for-db!) database)
+    (sync-databases-trigger/unschedule-tasks-for-db! database)
     (catch Throwable e
       (log/errorf "Error unscheduling tasks for DB: %s" (ex-message e)))))
 
@@ -387,6 +388,7 @@
     ;; self-heal.
     (check-and-schedule-tasks-for-db! (t2.realize/realize database))))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic *normalizing-details*
   "Track whether we're calling [[driver/normalize-db-details]] already to prevent infinite
   recursion. [[driver/normalize-db-details]] is actually done for side effects!"
@@ -405,6 +407,7 @@
     (cond-> database
       ;; TODO - this is only really needed for API responses. This should be a `hydrate` thing instead!
       (and driver
+           (:id database)
            (driver.impl/registered? driver))
       (assoc :features (driver.u/features driver (t2.realize/realize database)))
 
@@ -438,6 +441,7 @@
   (unschedule-tasks! database)
   (secret/delete-orphaned-secrets! database)
   (delete-database-fields! id)
+  (warehouses.db/delete-query-actions-for-database! id)
   (->> (eduction
         (map t2.realize/realize)
         (partition-all 1000)
@@ -447,8 +451,7 @@
           (warehouses.db/delete-cards-for-database-returning-ids-reducible id)
           (warehouses.db/card-ids-for-database-reducible id)))
        (run! (fn [batch]
-               ;; damn circular deps
-               ((requiring-resolve 'metabase.search.core/delete!) :model/Card (map (comp str :id) batch)))))
+               (search/delete! :model/Card (map (comp str :id) batch)))))
   (when (not= :postgres (mdb/db-type))
     (warehouses.db/delete-cards-for-database! id))
   (try
@@ -632,15 +635,17 @@
   driver can't be clearly determined, this simply returns the default set (driver.u/default-sensitive-fields)."
   [database]
   (if (and (some? database) (not-empty database))
-    (let [driver (driver.u/database->driver database)]
+    (let [driver (if-let [engine (:engine database)]
+                   (keyword engine)
+                   (driver.u/database->driver (:id database)))]
       (if (some? driver)
-        (driver.u/sensitive-fields (driver.u/database->driver database))
+        (driver.u/sensitive-fields driver)
         driver.u/default-sensitive-fields))
     driver.u/default-sensitive-fields))
 
 (methodical/defmethod mi/to-json :model/Database
-  "When encoding a Database as JSON remove the `details`, `write_data_details`, and `admin_details` for any User
-  without write perms for the DB. Users with write perms can see the details but remove anything resembling a
+  "When encoding a Database as JSON remove the `details`, `write_data_details`, `admin_details`, and
+  `initial_sync_error` for any User without write perms for the DB. Users with write perms can see the details but remove anything resembling a
   password. No one gets to see this in an API response!
 
   Also remove settings that the User doesn't have read perms for."
@@ -653,7 +658,7 @@
     (next-method
      (let [db (if (not (mi/can-write? db))
                 (do (log/debug "Fully redacting database details during json encoding.")
-                    (dissoc db :details :write_data_details :admin_details))
+                    (dissoc db :details :write_data_details :admin_details :initial_sync_error))
                 (do (log/debug "Redacting sensitive fields within database details during json encoding.")
                     (-> db
                         (secret/to-json-hydrate-redacted-secrets)
@@ -691,10 +696,12 @@
                            :import              identity}]
     {:copy      [:auto_run_queries :cache_field_values_schedule :caveats :dbms_version
                  :description :engine :is_audit :is_attached_dwh :is_full_sync :is_on_demand :is_sample :is_stub
-                 :metadata_sync_schedule :name :points_of_interest :provider_name :refingerprint :settings :timezone :uploads_enabled
+                 :default_schema :metadata_sync_schedule :name :points_of_interest :provider_name :refingerprint :settings :timezone :uploads_enabled
                  :uploads_schema_name :uploads_table_prefix]
      :skip      [;; deprecated field
-                 :cache_ttl]
+                 :cache_ttl
+                 ;; describes a sync on the source instance, and may name its connection details
+                 :initial_sync_error]
      :transform {:created_at          (serdes/date)
                  :details             details-transform
                  :write_data_details  details-transform
@@ -711,6 +718,7 @@
                  :is_stub          false
                  :uploads_enabled  false}}))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *include-h2-in-extract?*
   "When false (the default), [[serdes/extract-query]] skips H2 databases because they are rejected at import time
   by [[assert-not-h2!]]. Round-trip tests that exercise H2 throughout — and rebind `assert-not-h2!` accordingly —

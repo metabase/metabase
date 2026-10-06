@@ -114,7 +114,7 @@
 (mu/defn available-measures :- [:maybe [:sequential {:min 1} ::lib.schema.metadata/measure]]
   "Get a list of Measures usable as aggregation in `query`. Only Measures with the same
   `table-id` as the `source-table` of `query` are returned. Measures for joined tables are NOT returned."
-  ([query]
+  ([query :- ::lib.schema/query]
    (available-measures query -1))
   ([query :- ::lib.schema/query
     stage-number :- :int]

@@ -21,20 +21,20 @@ import {
   PasswordFormTitle,
 } from "./ResetPasswordForm.styled";
 
-const RESET_PASSWORD_SCHEMA = Yup.object({
-  password: Yup.string()
-    .default("")
-    .required(Errors.required)
-    .test(async (value = "", context) => {
-      const error = await context.options.context?.onValidatePassword(value);
-      return error ? context.createError({ message: error }) : true;
-    }),
-  password_confirm: Yup.string()
-    .default("")
-    .required(Errors.required)
-    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-    .oneOf([Yup.ref("password")], t`passwords do not match`),
-});
+const getResetPasswordSchema = () =>
+  Yup.object({
+    password: Yup.string()
+      .default("")
+      .required(Errors.required)
+      .test(async (value = "", context) => {
+        const error = await context.options.context?.onValidatePassword(value);
+        return error ? context.createError({ message: error }) : true;
+      }),
+    password_confirm: Yup.string()
+      .default("")
+      .required(Errors.required)
+      .oneOf([Yup.ref("password")], t`passwords do not match`),
+  });
 
 interface ResetPasswordFormProps {
   onValidatePassword: (password: string) => Promise<string | undefined>;
@@ -46,7 +46,7 @@ export const ResetPasswordForm = ({
   onSubmit,
 }: ResetPasswordFormProps): JSX.Element => {
   const initialValues = useMemo(() => {
-    return RESET_PASSWORD_SCHEMA.getDefault();
+    return getResetPasswordSchema().getDefault();
   }, []);
 
   const passwordDescription = useMemo(() => {
@@ -66,7 +66,7 @@ export const ResetPasswordForm = ({
       </PasswordFormMessage>
       <FormProvider
         initialValues={initialValues}
-        validationSchema={RESET_PASSWORD_SCHEMA}
+        validationSchema={getResetPasswordSchema()}
         validationContext={validationContext}
         onSubmit={onSubmit}
       >

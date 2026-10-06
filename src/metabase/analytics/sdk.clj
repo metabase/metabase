@@ -16,12 +16,14 @@
    [metabase.request.current :as request.current]
    [metabase.request.user-agent :as request.user-agent]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu])
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms])
   (:import
    (java.net URI)))
 
 (set! *warn-on-reflection* true)
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *version* "Used to track information about the metabase embedding client version." nil)
 
 (defmacro with-version! "Used to track information about the metabase embedding client version."
@@ -31,6 +33,7 @@
 
 (defn get-version "Returns [[*version*]]." [] *version*)
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *client* "Used to track information about the metabase embedding client." nil)
 
 (defmacro with-client! "Used to track information about the metabase embedding client client."
@@ -40,16 +43,19 @@
 
 (defn get-client "Returns [[*client*]] dynamic var" [] *client*)
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *client-identifier*
   "Used to track the identifier of the concrete embedding client, e.g. the data-app name."
   nil)
 
 (defn get-client-identifier "Returns [[*client-identifier*]]." [] *client-identifier*)
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *route* "Used to track the API route for the current request (e.g. \"public\", \"guest-embed\")." nil)
 
 (defn get-route "Returns [[*route*]]." [] *route*)
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *auth-method* "Used to track the authentication method for the current request (e.g. \"password\", \"jwt\", \"api-key\")." nil)
 
 (defmacro with-auth-method! "Binds [[*auth-method*]] for the duration of `body`."
@@ -119,10 +125,55 @@
        :sanitized_user_agent (request.user-agent/describe-user-agent (get-in request [:headers "user-agent"]))
        :ip_address           (request.current/ip-address request)})))
 
+(def ^:private sdk-info-row
+  [:map {:closed true}
+   [:user_id                     {:optional true} [:maybe :int]]
+   [:model                       {:optional true} [:maybe [:or :keyword :string]]]
+   [:model_id                    {:optional true} [:maybe :int]]
+   [:timestamp                   {:optional true} [:maybe [:or ms/TemporalInstant :keyword]]]
+   [:metadata                    {:optional true} [:maybe [:map {:closed true}]]]
+   [:has_access                  {:optional true} [:maybe :boolean]]
+   [:hash                        {:optional true} [:maybe [:or bytes? :string]]]
+   [:started_at                  {:optional true} [:maybe ms/TemporalInstant]]
+   [:running_time                {:optional true} [:maybe :int]]
+   [:result_rows                 {:optional true} [:maybe :int]]
+   [:native                      {:optional true} [:maybe :boolean]]
+   [:context                     {:optional true} [:maybe [:or :keyword :string]]]
+   [:error                       {:optional true} [:maybe :string]]
+   [:executor_id                 {:optional true} [:maybe :int]]
+   [:card_id                     {:optional true} [:maybe :int]]
+   [:dashboard_id                {:optional true} [:maybe :int]]
+   [:pulse_id                    {:optional true} [:maybe :int]]
+   [:database_id                 {:optional true} [:maybe :int]]
+   [:cache_hit                   {:optional true} [:maybe :boolean]]
+   [:action_id                   {:optional true} [:maybe :int]]
+   [:is_sandboxed                {:optional true} [:maybe :boolean]]
+   [:cache_hash                  {:optional true} [:maybe [:or bytes? :string]]]
+   [:embedding_client            {:optional true} [:maybe :string]]
+   [:embedding_sdk_version       {:optional true} [:maybe :string]]
+   [:parameterized               {:optional true} [:maybe :boolean]]
+   [:transform_id                {:optional true} [:maybe :int]]
+   [:lens_id                     {:optional true} [:maybe :string]]
+   [:lens_params                 {:optional true} [:maybe [:map {:closed true} [:join_step {:optional true} [:maybe :int]]]]]
+   [:auth_method                 {:optional true} [:maybe [:or :keyword :string]]]
+   [:tenant_id                   {:optional true} [:maybe :int]]
+   [:is_impersonated             {:optional true} [:maybe :boolean]]
+   [:is_db_routed                {:optional true} [:maybe :boolean]]
+   [:parameters                  {:optional true} [:maybe :string]]
+   [:embedding_hostname          {:optional true} [:maybe :string]]
+   [:embedding_path              {:optional true} [:maybe :string]]
+   [:user_agent                  {:optional true} [:maybe :string]]
+   [:ip_address                  {:optional true} [:maybe :string]]
+   [:sanitized_user_agent        {:optional true} [:maybe :string]]
+   [:embedding_route             {:optional true} [:maybe :string]]
+   [:metabase_version            {:optional true} [:maybe :string]]
+   [:embedding_client_identifier {:optional true} [:maybe :string]]
+   [:start_time_millis           {:optional true} [:maybe :int]]])
+
 (mu/defn include-sdk-info :- :map
   "Adds the currently bound, or existing `*client*` and `*version*` to the given map, which is usually a row going
    into the `view_log` or `query_execution` table. Falls back to the original value."
-  [m :- :map]
+  [m :- sdk-info-row]
   (-> m
       (update :embedding_client (fn [client] (or *client* client)))
       (update :embedding_client_identifier (fn [identifier] (or *client-identifier* identifier)))

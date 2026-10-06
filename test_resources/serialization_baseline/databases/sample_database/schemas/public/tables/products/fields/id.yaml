@@ -11,9 +11,7 @@ base_type: type/BigInteger
 effective_type: type/BigInteger
 semantic_type: type/PK
 database_is_auto_increment: true
-dimensions: []
 position: 0
-custom_position: 0
 database_position: 0
 serdes/meta:
 - id: Sample Database

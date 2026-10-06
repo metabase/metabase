@@ -11,7 +11,9 @@ import { getSortedTimelines } from "metabase/common/utils/timelines";
 import { dayjs } from "metabase/dayjs";
 import { getEmbedOptions } from "metabase/embedding/interactive-embedding";
 import {
-  getMetadata,
+  getShallowTableFieldIds,
+  getShallowTableForeignKeys,
+  getShallowTables,
   selectQuestionFromCardBuilder,
 } from "metabase/metadata-store";
 import {
@@ -36,7 +38,6 @@ import {
 } from "metabase/viz-core";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
-import type Table from "metabase-lib/v1/metadata/Table";
 import {
   normalizeParameterValue,
   normalizeParameters,
@@ -312,21 +313,23 @@ export const getTableId = createSelector([getQuestion], (question) => {
 });
 
 export const getTableMetadata = createSelector(
-  [getTableId, getMetadata],
-  (tableId, metadata) => metadata.table(tableId),
+  [getTableId, getShallowTables],
+  (tableId, tables) => (tableId != null ? tables[tableId] : undefined),
 );
 
-export const getTableForeignKeys = createSelector(
-  [getTableMetadata],
-  (table) => {
-    const tableForeignKeys = table?.fks ?? [];
-    const tableForeignKeysWithoutHiddenTables = tableForeignKeys.filter(
-      (tableForeignKey) => tableForeignKey.origin != null,
-    );
+const NO_FIELD_IDS: Field["id"][] = [];
 
-    return tableForeignKeysWithoutHiddenTables;
-  },
-);
+const getTableFieldIds = (state: QueryBuilderStoreState) => {
+  const tableId = getTableId(state);
+  return tableId != null
+    ? getShallowTableFieldIds(state, tableId)
+    : NO_FIELD_IDS;
+};
+
+export const getTableForeignKeys = (state: QueryBuilderStoreState) => {
+  const tableId = getTableId(state);
+  return (tableId != null && getShallowTableForeignKeys(state, tableId)) || [];
+};
 
 export const getPKColumnIndex = createSelector(
   [getFirstQueryResult, getTableId],
@@ -397,7 +400,7 @@ export const getRowIndexToPKMap = createSelector(
 function areLegacyQueriesEqual(
   queryA: DatasetQuery | undefined,
   queryB: DatasetQuery | undefined,
-  tableMetadata?: Table | null,
+  tableFieldIds: Field["id"][],
 ) {
   if (queryA == null || queryB == null) {
     return false;
@@ -405,9 +408,7 @@ function areLegacyQueriesEqual(
   return Lib.areLegacyQueriesEqual(
     queryA,
     queryB,
-    tableMetadata?.fields
-      ?.map(({ id }) => id)
-      ?.filter((id): id is number => typeof id === "number") ?? [],
+    tableFieldIds.filter((id): id is number => typeof id === "number"),
   );
 }
 
@@ -419,12 +420,12 @@ function areComposedEntitiesEquivalent({
   originalQuestion,
   lastRunQuestion,
   currentQuestion,
-  tableMetadata,
+  tableFieldIds,
 }: {
   originalQuestion?: Question | null;
   lastRunQuestion?: Question | null;
   currentQuestion?: Question | null;
-  tableMetadata?: Table | null;
+  tableFieldIds: Field["id"][];
 }) {
   const isQuestion = originalQuestion?.type() === "question";
   if (!originalQuestion || !lastRunQuestion || !currentQuestion || isQuestion) {
@@ -436,12 +437,12 @@ function areComposedEntitiesEquivalent({
   const isLastRunComposed = areLegacyQueriesEqual(
     lastRunQuestion.datasetQuery(),
     composedOriginal.datasetQuery(),
-    tableMetadata,
+    tableFieldIds,
   );
   const isCurrentComposed = areLegacyQueriesEqual(
     currentQuestion.datasetQuery(),
     composedOriginal.datasetQuery(),
-    tableMetadata,
+    tableFieldIds,
   );
 
   const isLastRunEquivalentToCurrent =
@@ -449,7 +450,7 @@ function areComposedEntitiesEquivalent({
     areLegacyQueriesEqual(
       currentQuestion.datasetQuery(),
       originalQuestion.datasetQuery(),
-      tableMetadata,
+      tableFieldIds,
     );
 
   const isCurrentEquivalentToLastRun =
@@ -457,7 +458,7 @@ function areComposedEntitiesEquivalent({
     areLegacyQueriesEqual(
       lastRunQuestion.datasetQuery(),
       originalQuestion.datasetQuery(),
-      tableMetadata,
+      tableFieldIds,
     );
 
   return isLastRunEquivalentToCurrent || isCurrentEquivalentToLastRun;
@@ -467,24 +468,24 @@ export function areQueriesEquivalent({
   originalQuestion,
   lastRunQuestion,
   currentQuestion,
-  tableMetadata,
+  tableFieldIds,
 }: {
   originalQuestion?: Question | null;
   lastRunQuestion?: Question | null;
   currentQuestion?: Question | null;
-  tableMetadata?: Table | null;
+  tableFieldIds: Field["id"][];
 }) {
   return (
     areLegacyQueriesEqual(
       lastRunQuestion?.datasetQuery(),
       currentQuestion?.datasetQuery(),
-      tableMetadata,
+      tableFieldIds,
     ) ||
     areComposedEntitiesEquivalent({
       originalQuestion,
       lastRunQuestion,
       currentQuestion,
-      tableMetadata,
+      tableFieldIds,
     })
   );
 }
@@ -496,7 +497,7 @@ export const getIsResultDirty = createSelector(
     getLastRunQuestion,
     getLastRunParameterValues,
     getNextRunParameterValues,
-    getTableMetadata,
+    getTableFieldIds,
   ],
   (
     currentQuestion,
@@ -504,7 +505,7 @@ export const getIsResultDirty = createSelector(
     lastRunQuestion,
     lastParameters,
     nextParameters,
-    tableMetadata,
+    tableFieldIds,
   ) => {
     const haveParametersChanged = !_.isEqual(lastParameters, nextParameters);
     const isEditable =
@@ -517,7 +518,7 @@ export const getIsResultDirty = createSelector(
           originalQuestion,
           lastRunQuestion,
           currentQuestion,
-          tableMetadata,
+          tableFieldIds,
         })),
     );
   },

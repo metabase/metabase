@@ -3,6 +3,7 @@
    [clojure.string :as str]
    [java-time.api :as t]
    [metabase.analytics-interface.core :as analytics]
+   [metabase.api-scope.data-app :as api-scope]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.open-api :as open-api]
@@ -143,7 +144,7 @@
 
 (mu/defn- set-weights!
   [context   :- :keyword
-   overrides :- [:map-of keyword? double?]]
+   overrides :- [:map-of ::search.config/scorer-key double?]]
   (api/check-superuser)
   (when (= context :all)
     (throw (ex-info "Cannot set weights for all context"
@@ -332,6 +333,7 @@
   - The `verified` filter supports models and cards.
 
   A search query that has both filters applied will only return models and cards."
+  {:scope api-scope/data-app}
   [_route-params
    query-params :- search-request-schema]
   (api/check-valid-page-params (request/limit) (request/offset))

@@ -24,7 +24,7 @@
   [generate-metric?]
   {:type "object"
    :additionalProperties false
-   :properties (cond-> {:chart_description
+   :properties (cond-> {"chart_description"
                         {:type        "string"
                          :description (str "One short sentence (≤ 25 words) describing WHAT THE CHART IS — the metric and the dimension it's broken out by, in the terms the user would use. "
                                            "If a Slicing line is present (segment filter, top-N + Other rollup, specific-values subset, per-value over-time view), name it — it's part of what the chart is. "
@@ -32,17 +32,17 @@
                                            "Ground filters, joins, and aggregation in the COMPILED SQL block when one is provided — do not restate the title. "
                                            "Write this FIRST so the rest of the response is grounded in it.")}}
                  generate-metric?
-                 (assoc :metric_description
+                 (assoc "metric_description"
                         {:type        "string"
                          :description (str "One short sentence (≤ 25 words) describing the metric in business terms (what it measures, what's included/excluded). "
                                            "Read the aggregation, joins, and WHERE clause in the COMPILED SQL block (when provided) to identify what's being summed/counted/averaged and which subset of rows. "
                                            "Do not restate the chart name.")})
 
                  :always
-                 (assoc :reasoning
+                 (assoc "reasoning"
                         {:type        "string"
                          :description "One short sentence justifying the score, retained for debugging only."}
-                        :score
+                        "score"
                         {:type        "number"
                          :minimum     0
                          :maximum     1

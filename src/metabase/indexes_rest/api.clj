@@ -13,6 +13,7 @@
    [metabase.indexes.schema :as schema]
    [metabase.transforms-base.interface :as transforms-base.i]
    [metabase.util.i18n :refer [tru]]
+   [metabase.util.log :as log]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
@@ -62,19 +63,26 @@
   [{:keys [transform_id]}]
   (api/write-check :model/Transform transform_id))
 
-(api.macros/defendpoint :get "/" :- [:map [:data [:sequential Index]]]
+(api.macros/defendpoint :get "/" :- [:map
+                                     [:data [:sequential Index]]
+                                     [:warehouse_error {:optional true} [:maybe :string]]]
   "A transform's indexes: those physically in the warehouse, merged with its managed requests. Each entry is flagged
-  `:metabase_managed`; managed ones also carry `:request` (status + definition)."
+  `:metabase_managed`; managed ones also carry `:request` (status + definition). If the warehouse can't be read, the
+  managed requests are still listed (as absent) and `:warehouse_error` carries the reason."
   [_route-params
    {:keys [transform-id]} :- [:map {:closed true} [:transform-id ms/PositiveInt]]]
   (let [transform   (api/read-check :model/Transform transform-id)
-        database-id (transforms-base.i/target-db-id transform)
+        database    (api/check-404 (indexes-rest.db/database (transforms-base.i/target-db-id transform)))
         {:keys [schema] table-name :name} (:target transform)
         managed     (table-index/select-for-transform transform-id)
-        warehouse   (or (reconcile/fetch-warehouse-indexes (indexes-rest.db/database database-id)
-                                                           schema table-name)
-                        [])]
-    {:data (reconcile/merge-indexes managed warehouse)}))
+        [warehouse warehouse-error]
+        (try
+          [(reconcile/fetch-warehouse-indexes database schema table-name)]
+          (catch Exception e
+            (log/warnf "fetch-table-indexes failed for %s.%s: %s" schema table-name (ex-message e))
+            [[] (reconcile/driver-error-message (:engine database) e)]))]
+    (cond-> {:data (reconcile/merge-indexes managed warehouse)}
+      warehouse-error (assoc :warehouse_error warehouse-error))))
 
 (api.macros/defendpoint :get "/request/:id" :- RequestIndex
   "Fetch a single index request (e.g. to poll its status)."

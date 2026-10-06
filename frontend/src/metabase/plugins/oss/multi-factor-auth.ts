@@ -13,8 +13,17 @@ export type AuthChallengeFormProps = {
   onCancel: () => void;
 };
 
+export type AuthEnrollmentFormProps = {
+  enrollmentToken: string;
+  secret: string;
+  otpauthUri: string;
+  remember?: boolean;
+  onCancel: () => void;
+};
+
 const getDefaultPluginMultiFactorAuth = () => ({
   AuthChallengeForm: PluginPlaceholder<AuthChallengeFormProps>,
+  AuthEnrollmentForm: PluginPlaceholder<AuthEnrollmentFormProps>,
   AccountSecurityPanel: PluginPlaceholder,
   AdminAuthCard: PluginPlaceholder,
   enrolledUsersPage: pluginPlaceholderRoute,

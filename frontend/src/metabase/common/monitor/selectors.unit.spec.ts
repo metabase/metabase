@@ -1,5 +1,9 @@
+import { mockSettings } from "__support__/settings";
 import { createMockState } from "__support__/state";
-import { createMockUser } from "metabase-types/api/mocks";
+import {
+  createMockTokenFeatures,
+  createMockUser,
+} from "metabase-types/api/mocks";
 
 import {
   canAccessAiAuditing,
@@ -14,6 +18,21 @@ jest.mock("metabase/utils/iframe", () => ({
 }));
 
 const { isWithinIframe } = jest.requireMock("metabase/utils/iframe");
+
+const createAnalystState = ({
+  hasAdvancedPermissions = true,
+}: { hasAdvancedPermissions?: boolean } = {}) =>
+  createMockState({
+    currentUser: createMockUser({
+      is_superuser: false,
+      is_data_analyst: true,
+    }),
+    settings: mockSettings({
+      "token-features": createMockTokenFeatures({
+        advanced_permissions: hasAdvancedPermissions,
+      }),
+    }),
+  });
 
 describe("canAccessMonitor", () => {
   beforeEach(() => {
@@ -42,14 +61,13 @@ describe("canAccessMonitor", () => {
   });
 
   it("returns true when user is analyst", () => {
-    const state = createMockState({
-      currentUser: createMockUser({
-        is_superuser: false,
-        is_data_analyst: true,
-      }),
-    });
+    expect(canAccessMonitor(createAnalystState())).toBe(true);
+  });
 
-    expect(canAccessMonitor(state)).toBe(true);
+  it("returns false for an analyst whose plan lost the feature", () => {
+    const state = createAnalystState({ hasAdvancedPermissions: false });
+
+    expect(canAccessMonitor(state)).toBe(false);
   });
 
   it("returns true for a monitoring-only user (tools access)", () => {
@@ -101,14 +119,13 @@ describe("canAccessMonitorDiagnostics", () => {
   });
 
   it("returns true when user is analyst", () => {
-    const state = createMockState({
-      currentUser: createMockUser({
-        is_superuser: false,
-        is_data_analyst: true,
-      }),
-    });
+    expect(canAccessMonitorDiagnostics(createAnalystState())).toBe(true);
+  });
 
-    expect(canAccessMonitorDiagnostics(state)).toBe(true);
+  it("returns false for an analyst whose plan lost the feature", () => {
+    const state = createAnalystState({ hasAdvancedPermissions: false });
+
+    expect(canAccessMonitorDiagnostics(state)).toBe(false);
   });
 
   it("returns false for a monitoring-only user (no diagnostics access)", () => {

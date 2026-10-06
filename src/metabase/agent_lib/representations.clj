@@ -28,9 +28,12 @@
    [malli.core :as mc]
    [malli.transform :as mtx]
    [metabase.lib.schema :as lib.schema]
+   [metabase.models.serialization.resolve :as serdes.resolve]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli.humanize :as mu.humanize]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.match :as match]
+   [metabase.util.performance :as perf]))
 
 (set! *warn-on-reflection* true)
 
@@ -56,20 +59,7 @@
   so the post-decode shape matches the all-strings invariant the repair pipeline relies on. FK
   path segments and option values that already arrive as strings pass through unchanged."
   [x]
-  (cond
-    (map? x)
-    (reduce-kv
-     (fn [m k v]
-       (assoc m
-              (cond-> k (keyword? k) keyword->repr-string)
-              (external-query->portable v)))
-     {}
-     x)
-
-    (vector? x)     (mapv external-query->portable x)
-    (sequential? x) (mapv external-query->portable x)
-    (keyword? x)    (keyword->repr-string x)
-    :else           x))
+  (perf/postwalk #(if (keyword? %) (keyword->repr-string %) %) x))
 
 ;;; ============================================================
 ;;; Up-front validation against ::lib.schema/external-query
@@ -148,36 +138,32 @@
   [x]
   (and (string? x) (not= "" x)))
 
-(defn- options-map?
-  [x]
-  (map? x))
-
 (defn- table-fk?
   "Portable table FK: [db-name, schema-or-null, table-name]."
   [x]
-  (and (vector? x)
-       (= 3 (count x))
-       (non-blank-string? (nth x 0))
-       (or (nil? (nth x 1)) (string? (nth x 1)))
-       (non-blank-string? (nth x 2))))
+  (match/matches? x
+                  [(_ :guard non-blank-string?) (s :guard (or (nil? s) (string? s))) (_ :guard non-blank-string?)]))
 
 (defn- field-fk?
   "Portable field FK: [db-name, schema-or-null, table-name, field-name, ...json-path-segments]."
   [x]
-  (and (vector? x)
-       (>= (count x) 4)
-       (non-blank-string? (nth x 0))
-       (or (nil? (nth x 1)) (string? (nth x 1)))
-       (non-blank-string? (nth x 2))
-       (every? non-blank-string? (drop 3 x))))
+  (match/matches? x
+                  [(_ :guard non-blank-string?)
+                   (s :guard (or (nil? s) (string? s)))
+                   (_ :guard non-blank-string?)
+                   & (args :guard (every? non-blank-string? args))]))
 
 (defn- clause-shape?
   [x]
-  (and (vector? x)
-       (>= (count x) 2)
-       (string? (nth x 0))
-       (non-blank-string? (nth x 0))
-       (options-map? (nth x 1))))
+  (match/matches? x
+                  [(_ :guard non-blank-string?) (_ :guard map?) & _]))
+
+(defn- numeric-id-when-allowed?
+  "A numeric id in a source slot, valid only on a surface that accepts numeric ids (checked at
+  validation time via [[metabase.models.serialization.resolve/*numeric-ids-allowed?*]], so the
+  same schema serves both surfaces)."
+  [x]
+  (and (pos-int? x) serdes.resolve/*numeric-ids-allowed?*))
 
 (def ^:private registry
   {::table-fk [:and vector?
@@ -188,7 +174,7 @@
                 field-fk?]]
    ::options  [:and map?
                [:fn {:error/message "options must always be a map (use `{}` if empty)"}
-                options-map?]]
+                map?]]
    ::clause   [:and vector?
                [:fn {:error/message "clause must be [operator-string, options-map, …args]"}
                 clause-shape?]]
@@ -207,8 +193,14 @@
    ::stage    [:map
                {:closed false}
                ["lib/type"     [:= "mbql.stage/mbql"]]
-               ["source-table" {:optional true} [:ref ::table-fk]]
-               ["source-card"  {:optional true} :string]
+               ["source-table" {:optional true}
+                [:or [:ref ::table-fk]
+                 [:fn {:error/message "numeric table ids are accepted on numeric-id surfaces only"}
+                  numeric-id-when-allowed?]]]
+               ["source-card"  {:optional true}
+                [:or :string
+                 [:fn {:error/message "numeric card ids are accepted on numeric-id surfaces only"}
+                  numeric-id-when-allowed?]]]
                ["joins"        {:optional true} [:sequential [:ref ::join]]]
                ["filters"      {:optional true} [:sequential [:ref ::clause]]]
                ["aggregation"  {:optional true} [:sequential [:ref ::clause]]]

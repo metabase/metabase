@@ -3,7 +3,7 @@ import {
   createContext,
   useCallback,
   useContext,
-  useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -181,7 +181,10 @@ export function useGuardedBlocker(
   const context = useContext(RouteLeaveGuardsContext);
   const registerGuard = context?.registerGuard;
 
-  useEffect(
+  // useLayoutEffect so that, when unmounting, the guard is unregistered
+  // synchronously before any use(Layout)Effect in new components runs, as they
+  // can navigate themselves and would otherwise be blocked by this guard.
+  useLayoutEffect(
     () => registerGuard?.(id, { shouldBlock, basePath }),
     [registerGuard, id, shouldBlock, basePath],
   );

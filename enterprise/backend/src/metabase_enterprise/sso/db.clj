@@ -7,9 +7,14 @@
    [toucan2.core :as t2]))
 
 (mu/defn session-user-email-and-source
-  "The email and SSO source of the User owning the Session with `session-key-hashed`, or nil."
+  "The email and SSO source of the Session with `session-key-hashed`, plus the identifiers the IdP
+  used for it, or nil.
+
+  The `saml_*` columns are NULL for non-SAML sessions and for SAML sessions created before we
+  started recording them."
   [session-key-hashed :- :string]
-  (t2/query-one {:select [:u.email :u.sso_source]
+  (t2/query-one {:select [:u.email :u.sso_source :session.saml_session_index
+                          :session.saml_name_id :session.saml_name_id_format]
                  :from   [[:core_user :u]]
                  :join   [[:core_session :session] [:= :u.id :session.user_id]]
                  :where  [:= :key_hashed session-key-hashed]}))

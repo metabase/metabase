@@ -8,7 +8,6 @@ base_type: type/Boolean
 effective_type: type/Boolean
 dimensions: []
 position: 9
-custom_position: 0
 database_position: 9
 has_field_values: auto-list
 serdes/meta:

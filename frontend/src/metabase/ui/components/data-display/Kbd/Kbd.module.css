@@ -5,7 +5,7 @@
   border-radius: var(--mantine-radius-xxs);
   background-color: var(--mb-color-background_surface-secondary);
   box-shadow: none;
-  color: var(--mb-color-text-primary);
+  color: inherit;
   font-family: inherit;
   font-weight: 500;
   line-height: 1rem;

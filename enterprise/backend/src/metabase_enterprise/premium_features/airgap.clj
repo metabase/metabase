@@ -27,7 +27,7 @@
 
 (mu/defn- decode-token :- :map
   "Given an encrypted airgap token, decrypts it and returns a TokenStatus"
-  [token]
+  [token :- :string]
   (when-not (token? token)
     (throw (ex-info "Malformed airgap token" {:token token})))
   (let [token         (str/replace token #"^airgap_" "")

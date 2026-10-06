@@ -28,8 +28,8 @@
       :value))
 
 (deftest cmd-remove-encryption-errors-when-failed-test
-  (with-redefs [remove-encryption! #(throw (Exception. "err"))
-                cmd/system-exit! identity]
+  (mt/with-dynamic-fn-redefs [remove-encryption! #(throw (Exception. "err"))
+                              cmd/system-exit! identity]
     (is (= 1 (cmd/remove-encryption)))))
 
 (deftest remove-encryption!-test

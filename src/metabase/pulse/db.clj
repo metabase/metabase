@@ -17,13 +17,24 @@
 (mu/defn card-query
   "The query of the Card with `card-id`, or nil."
   [card-id :- ::lib.schema.id/card]
-  (t2/select-one-fn :dataset_query [:model/Card :dataset_query] card-id))
+  ;; Written out by hand rather than using `metabase.queries.core/card-query-info`: `queries` already uses
+  ;; `pulse`, so requiring it back would add a module cycle for one query. Keep in sync with
+  ;; `metabase.queries.card-schema/schema-upgrade-triggers`.
+  (t2/select-one-fn :dataset_query
+                    [:model/Card :id :dataset_query :card_schema :type :entity_id
+                     :result_metadata :dimensions :dimension_mappings]
+                    card-id))
 
 (mu/defn dashboard
   "The Dashboard with `dashboard-id`, or nil. `dashboard-id` may be nil (e.g. a legacy Pulse with no Dashboard), in
   which case the result is nil."
   [dashboard-id :- [:maybe ::lib.schema.id/dashboard]]
   (t2/select-one :model/Dashboard :id dashboard-id))
+
+(mu/defn dashboard-archived? :- :boolean
+  "Whether the Dashboard with `dashboard-id` exists and is archived."
+  [dashboard-id :- [:maybe ::lib.schema.id/dashboard]]
+  (t2/exists? :model/Dashboard :id dashboard-id :archived true))
 
 (mu/defn dashboard-collection-id
   "The Collection id of the Dashboard with `dashboard-id`, or nil."
@@ -398,3 +409,38 @@
   "A map of User ID to `:tenant_id` for `user-ids`."
   [user-ids :- [:set ::lib.schema.id/user]]
   (t2/select-pk->fn :tenant_id :model/User :id [:in user-ids]))
+
+(defn user-name-and-email
+  "The first name, last name, and email of the User with `user-id`, or nil."
+  [user-id]
+  (t2/select-one [:model/User :first_name :last_name :email] user-id))
+
+(defn users-names-and-emails
+  "The first names, last names, and emails of the Users with `user-ids`."
+  [user-ids]
+  (t2/select [:model/User :first_name :last_name :email] :id [:in user-ids]))
+
+(defn pulse-channel-kinds-for-pulse
+  "The id, channel type, and details of the PulseChannels of the Pulse with `pulse-id`."
+  [pulse-id]
+  (t2/select [:model/PulseChannel :id :channel_type :details] :pulse_id [:= pulse-id]))
+
+(defn pulse-channel-recipient-rows
+  "The `:user_id` rows of the PulseChannelRecipients of the PulseChannel with `channel-id`."
+  [channel-id]
+  (t2/select [:model/PulseChannelRecipient :user_id] :pulse_channel_id channel-id))
+
+(defn dashboard-parameters
+  "The id and parameters of the Dashboard with `dashboard-id`, or nil."
+  [dashboard-id]
+  (t2/select-one [:model/Dashboard :id :parameters] dashboard-id))
+
+(defn dashboard-name-description-creator
+  "The name, description, and creator id of the Dashboard with `dashboard-id`, or nil."
+  [dashboard-id]
+  (t2/select-one [:model/Dashboard :name :description :creator_id] dashboard-id))
+
+(defn unarchived-pulses-for-dashboard
+  "The unarchived Pulses of the Dashboard with `dashboard-id`, in id order."
+  [dashboard-id]
+  (t2/select :model/Pulse :dashboard_id dashboard-id :archived false {:order-by [[:id :asc]]}))

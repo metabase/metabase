@@ -6,6 +6,7 @@
    [metabase-enterprise.dependencies.async :as dependencies.async]
    [metabase-enterprise.dependencies.events]
    [metabase-enterprise.dependencies.findings :as dependencies.findings]
+   [metabase-enterprise.dependencies.task.entity-check :as task.entity-check]
    [metabase-enterprise.dependencies.test-util :as deps.test]
    [metabase.collections.models.collection :as collection]
    [metabase.collections.test-utils :refer [personal-collection-id]]
@@ -508,6 +509,33 @@
                 (let [response2 (mt/user-http-request :crowberto :get 200 (str "ee/dependencies/graph/dependents?broken=false&type=card&id=" (:id model-card)))]
                   (is (= #{(:id dependent-card) (:id next-card)} (set (map :id response2)))
                       "There should two dependents total"))))))))))
+
+(deftest ^:synchronized python-transform-not-broken-after-entity-check-test
+  (testing "GHY-3584: a Python transform has no query to validate, so the entity-check task must not record it as broken"
+    (mt/with-premium-features #{:dependencies}
+      (mt/with-model-cleanup [:model/Dependency :model/DependencyStatus :model/AnalysisFinding :model/AnalysisFindingError]
+        (mt/with-temp [:model/Transform {transform-id :id}
+                       {:name   "Python transform - ghy3584"
+                        :source {:type            :python
+                                 :source-database (mt/id)
+                                 :source-tables   [{:alias       "orders"
+                                                    :database_id (mt/id)
+                                                    :schema      "PUBLIC"
+                                                    :table       "ORDERS"
+                                                    :table_id    (mt/id :orders)}]
+                                 :body            "def transform(orders):\n    return orders"}}]
+          (deps.test/synchronously-run-backfill!)
+          (#'task.entity-check/check-entities!)
+          (let [dependent-ids (fn [broken?]
+                                (set (map :id (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/dependents"
+                                                                    :type "table"
+                                                                    :id (mt/id :orders)
+                                                                    :dependent-types "transform"
+                                                                    :broken broken?))))]
+            (is (contains? (dependent-ids false) transform-id)
+                "the Python transform is a dependent of the table it reads")
+            (is (not (contains? (dependent-ids true) transform-id))
+                "the Python transform is not listed as broken")))))))
 
 (deftest graph-permissions-test
   (testing "GET /api/ee/dependencies/graph requires read permissions on the starting entity"
@@ -2748,7 +2776,7 @@
                       response)))))))))
 
 (deftest data-analyst-can-access-dependency-graph-test
-  (mt/with-premium-features #{:data-studio :dependencies :transforms-basic :hosting}
+  (mt/with-premium-features #{:advanced-permissions :data-studio :dependencies :transforms-basic :hosting}
     (testing "Data analysts can access dependency diagnostics endpoints"
       (let [data-analyst-group-id (:id (perms-group/data-analyst))]
         (mt/with-temp [:model/User {analyst-id :id} {:first_name "Data"
@@ -2757,16 +2785,23 @@
                                                      :is_data_analyst true}
                        :model/PermissionsGroupMembership _ {:user_id analyst-id
                                                             :group_id data-analyst-group-id}
-                       :model/Database {db-id :id} {}
-                       :model/Table {_table-id :id} {:db_id db-id}
-                       :model/Transform {transform-id :id} {:source_database_id db-id
-                                                            :name "Test Transform"}]
-          (testing "graph/unreferenced"
-            (is (map? (mt/user-http-request analyst-id :get 200
-                                            "ee/dependencies/graph/unreferenced"))))
-          (testing "graph/breaking"
-            (is (map? (mt/user-http-request analyst-id :get 200
-                                            "ee/dependencies/graph/breaking"))))
-          (testing "graph with transform"
-            (is (map? (mt/user-http-request analyst-id :get 200
-                                            (str "ee/dependencies/graph?type=transform&id=" transform-id))))))))))
+                       ;; the sample database: All Users may query it, so analyst-wide transform visibility applies
+                       :model/Transform {transform-id :id} {:source_database_id (mt/id)
+                                                            :name "Analyst Grace Transform - gracetest"}]
+          (letfn [(unreferenced-transform-ids []
+                    (->> (mt/user-http-request analyst-id :get 200
+                                               "ee/dependencies/graph/unreferenced?types=transform&query=gracetest")
+                         :data
+                         (map :id)
+                         set))]
+            (testing "graph/unreferenced"
+              (is (contains? (unreferenced-transform-ids) transform-id)))
+            (testing "graph/breaking"
+              (is (map? (mt/user-http-request analyst-id :get 200
+                                              "ee/dependencies/graph/breaking"))))
+            (testing "graph with transform"
+              (is (map? (mt/user-http-request analyst-id :get 200
+                                              (str "ee/dependencies/graph?type=transform&id=" transform-id)))))
+            (testing "analyst-wide visibility pauses while advanced-permissions is unavailable"
+              (mt/with-premium-features #{:data-studio :dependencies :transforms-basic :hosting}
+                (is (not (contains? (unreferenced-transform-ids) transform-id)))))))))))

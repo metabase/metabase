@@ -27,11 +27,8 @@ export type QueryEditorProps = {
   query: Lib.Query;
   uiState: QueryEditorUiState;
   uiOptions?: QueryEditorUiOptions;
-  proposedQuery?: Lib.Query;
   onChangeQuery: (newQuery: Lib.Query) => void;
   onChangeUiState: (newUiState: QueryEditorUiState) => void;
-  onAcceptProposed?: () => void;
-  onRejectProposed?: () => void;
   onRunQueryStart?: (query: DatasetQuery) => boolean | void;
   onBlur?: () => void;
   topBarInnerContent?: ReactNode;
@@ -46,11 +43,8 @@ export function QueryEditor({
   query,
   uiState,
   uiOptions,
-  proposedQuery,
   onChangeQuery,
   onChangeUiState,
-  onAcceptProposed,
-  onRejectProposed,
   onRunQueryStart,
   onBlur,
   topBarInnerContent,
@@ -62,7 +56,6 @@ export function QueryEditor({
 }: QueryEditorProps) {
   const {
     question,
-    proposedQuestion,
     error,
     result,
     rawSeries,
@@ -92,7 +85,6 @@ export function QueryEditor({
     query,
     uiState,
     uiOptions,
-    proposedQuery,
     onChangeQuery,
     onChangeUiState,
     onRunQueryStart,
@@ -116,7 +108,6 @@ export function QueryEditor({
             availableHeight={availableHeight}
             parametersList={parametersList}
             question={question}
-            proposedQuestion={proposedQuestion}
             modalSnippet={uiState.modalSnippet}
             nativeEditorSelectedText={selectedText}
             readOnly={uiOptions?.readOnly}
@@ -145,8 +136,6 @@ export function QueryEditor({
             onChangeModalSnippet={setModalSnippet}
             onInsertSnippet={insertSnippet}
             onChangeNativeEditorSelection={setSelectionRange}
-            onAcceptProposed={onAcceptProposed}
-            onRejectProposed={onRejectProposed}
             editorHeight={uiOptions?.editorHeight}
             hideRunButton={uiOptions?.hideRunButton}
             onBlur={onBlur}

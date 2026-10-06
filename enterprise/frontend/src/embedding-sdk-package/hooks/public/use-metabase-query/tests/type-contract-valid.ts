@@ -1,12 +1,6 @@
-/* eslint-disable import/order */
-
-import { TEST_SCHEMA } from "./fixtures";
-
-import type { RowValue } from "../../data-schema";
-
 import type { MetabaseCard } from "metabase/embedding-sdk/types/question";
 
-import type { MetabaseQueryOptions, UseMetabaseQueryObjectResult } from "..";
+import type { UseMetabaseQueryObjectResult } from "..";
 import {
   breakout,
   count,
@@ -16,9 +10,35 @@ import {
   useMetabaseQuery,
   useMetabaseQueryObject,
 } from "..";
+import { defineAction, defineQuery } from "../../../../data-app";
+import type { RowValue } from "../../data-schema";
+import { useAction, useDataAppAction } from "../../use-action";
+
+import { TEST_SCHEMA } from "./fixtures";
 
 type OrdersTable = (typeof TEST_SCHEMA)["tables"]["orders"];
-type OrdersQuestion = (typeof TEST_SCHEMA)["questions"]["ordersQuestion"];
+
+const revenueQuery = defineQuery({
+  savedQuestionSourceId: 54,
+  source: TEST_SCHEMA.tables.orders,
+  limit: 10,
+});
+
+const _savedQuestionSourceId: 54 = revenueQuery.savedQuestionSourceId;
+const _queryLimit: 10 = revenueQuery.limit;
+
+const CreateOrder = defineAction({
+  copiedActionId: 91,
+  action: TEST_SCHEMA.actions.createOrder,
+});
+
+const _copiedActionId: 91 = CreateOrder.copiedActionId;
+const _sourceActionId: 51 = CreateOrder.action.id;
+
+// A definition is authored without a generated ID; synchronization writes one.
+const UpdateOrder = defineAction({
+  action: TEST_SCHEMA.actions.updateOrder,
+});
 
 // --------
 // Compile-time contracts that must pass type-checking.
@@ -45,23 +65,57 @@ const _validHookResultCard = {
 } satisfies MetabaseCard;
 
 function ValidTypeFixtures() {
-  const selectedFieldsResult = useMetabaseQuery({
-    source: TEST_SCHEMA.tables.orders,
-    fields: [TEST_SCHEMA.tables.orders.fields.id],
+  // A definition types `execute` and `result` on its own, no generics written.
+  const createOrder = useDataAppAction(CreateOrder);
+
+  void createOrder.execute({ status: "shipped" });
+
+  const createdCount: number | undefined =
+    createOrder.result?.["rows-affected"];
+
+  void createdCount;
+
+  const updateOrder = useDataAppAction(UpdateOrder);
+
+  void updateOrder.execute({ id: 1 });
+
+  // The SDK hook takes a plain definition object, and a `defineAction` export too.
+  const sdkCreateOrder = useAction({
+    action: TEST_SCHEMA.actions.createOrder,
   });
+
+  void sdkCreateOrder.execute({ status: "shipped" });
+  void useAction(CreateOrder).execute({ status: "shipped" });
+
+  const updatedCount: number | undefined =
+    updateOrder.result?.["rows-affected"];
+
+  void updatedCount;
+
+  // A raw id types nothing, so the generics still stand in for a definition.
+  const rawAction = useAction<{ status: string }, "create">(51);
+
+  void rawAction.execute({ status: "shipped" });
+
+  const selectedFieldsResult = useMetabaseQuery(
+    defineQuery({
+      source: TEST_SCHEMA.tables.orders,
+      fields: [TEST_SCHEMA.tables.orders.fields.id],
+    }),
+  );
 
   const selectedFieldValue: number | null | undefined =
     selectedFieldsResult.data?.rows[0]?.ID;
 
   void selectedFieldValue;
 
-  const selectedFieldsQuery = {
+  const selectedFieldsQuery = defineQuery({
     source: TEST_SCHEMA.tables.orders,
     fields: [
       TEST_SCHEMA.tables.orders.fields.id,
       TEST_SCHEMA.tables.orders.fields.status,
     ],
-  } satisfies MetabaseQueryOptions<OrdersTable>;
+  });
 
   const selectedFieldsQueryResult = useMetabaseQuery(selectedFieldsQuery);
 
@@ -70,25 +124,47 @@ function ValidTypeFixtures() {
 
   void selectedQueryFieldValue;
 
-  const scalarAggregationResult = useMetabaseQuery({
-    source: TEST_SCHEMA.tables.orders,
-    aggregations: [sum(TEST_SCHEMA.tables.orders.fields.amount)],
-  });
+  const scalarAggregationResult = useMetabaseQuery(
+    defineQuery({
+      source: TEST_SCHEMA.tables.orders,
+      aggregations: [sum(TEST_SCHEMA.tables.orders.fields.amount)],
+    }),
+  );
 
   const scalarAggregationValue: RowValue | undefined =
     scalarAggregationResult.data?.rows[0]?.sum;
 
   void scalarAggregationValue;
 
-  const groupedMetricResult = useMetabaseQuery<OrdersTable>({
-    source: TEST_SCHEMA.tables.orders,
-    aggregations: [TEST_SCHEMA.metrics.revenue],
-    breakouts: [
-      breakout(TEST_SCHEMA.metrics.revenue.dimensions.orders.createdAt, {
-        unit: "month",
-      }),
-    ],
-  });
+  const namedAggregationResult = useMetabaseQuery(
+    defineQuery({
+      source: TEST_SCHEMA.tables.orders,
+      aggregations: [
+        count({ name: "orders" }),
+        sum(TEST_SCHEMA.tables.orders.fields.amount, { name: "total amount" }),
+      ],
+    }),
+  );
+
+  const namedCountValue: number | null | undefined =
+    namedAggregationResult.data?.rows[0]?.orders;
+  const namedSumValue: RowValue | undefined =
+    namedAggregationResult.data?.rows[0]?.["total amount"];
+
+  void namedCountValue;
+  void namedSumValue;
+
+  const groupedMetricResult = useMetabaseQuery(
+    defineQuery<OrdersTable>({
+      source: TEST_SCHEMA.tables.orders,
+      aggregations: [TEST_SCHEMA.metrics.revenue],
+      breakouts: [
+        breakout(TEST_SCHEMA.metrics.revenue.dimensions.orders.createdAt, {
+          unit: "month",
+        }),
+      ],
+    }),
+  );
 
   const groupedMetricBreakoutValue: string | Date | null | undefined =
     groupedMetricResult.data?.rows[0]?.CREATED_AT;
@@ -105,59 +181,42 @@ function ValidTypeFixtures() {
     createdAt: TEST_SCHEMA.tables.orders.fields.createdAt,
   } satisfies Record<string, OrdersField>;
 
-  useMetabaseQuery({
+  useMetabaseQuery(
+    defineQuery({
+      source: TEST_SCHEMA.tables.orders,
+      orderBys: [orderBy(sortFields[sortKey], "desc")],
+    }),
+  );
+
+  // A static query published as a card, with dynamic clauses layered on top.
+  const staticQuery = defineQuery({
     source: TEST_SCHEMA.tables.orders,
-    orderBys: [orderBy(sortFields[sortKey], "desc")],
+    savedQuestionSourceId: 41,
   });
 
-  const groupedQuestionQuery = {
-    source: TEST_SCHEMA.questions.ordersQuestion,
-    filters: [
-      filter(TEST_SCHEMA.questions.ordersQuestion.columns[0], "=", "paid"),
-    ],
+  const dynamicResult = useMetabaseQuery(staticQuery, {
+    filters: [filter(TEST_SCHEMA.tables.orders.fields.status, "=", "paid")],
     aggregations: [count()],
-    breakouts: [TEST_SCHEMA.questions.ordersQuestion.columns[0]],
-    limit: 10,
-  } satisfies MetabaseQueryOptions<OrdersQuestion>;
-
-  const groupedQuestionResult = useMetabaseQuery(groupedQuestionQuery);
-
-  // Grouping replaces the question's result columns with the query's own.
-  const groupedQuestionCount: number | null | undefined =
-    groupedQuestionResult.data?.rows[0]?.count;
-
-  void groupedQuestionCount;
-
-  // `useMetabaseQueryObject` takes no generic, so it must accept both sources.
-  useMetabaseQueryObject({
-    source: TEST_SCHEMA.questions.ordersQuestion,
-    filters: [
-      filter(TEST_SCHEMA.questions.ordersQuestion.columns[1], ">", 100),
-    ],
+    breakouts: [TEST_SCHEMA.tables.orders.fields.status],
   });
 
-  // Apps without a generated schema name the question's result column by hand.
-  useMetabaseQueryObject({
-    source: { type: "card", id: 41 },
-    filters: [filter({ type: "column", name: "STATUS" }, "=", "paid")],
+  // Grouping in the dynamic stage re-keys the result rows.
+  const dynamicCount: number | null | undefined =
+    dynamicResult.data?.rows[0]?.count;
+
+  void dynamicCount;
+
+  // Filtering alone leaves the static query's rows in place.
+  const filteredResult = useMetabaseQuery(staticQuery, {
+    filters: [filter(TEST_SCHEMA.tables.orders.fields.status, "=", "paid")],
   });
 
-  useMetabaseQuery({
-    source: { type: "card", id: 41 },
-    filters: [filter({ type: "column", name: "STATUS" }, "=", "paid")],
-    aggregations: [count()],
-    breakouts: [
-      breakout(
-        { type: "column", name: "CREATED_AT", jsType: "Date" },
-        { unit: "month" },
-      ),
-    ],
-    orderBys: [
-      orderBy({ type: "column", name: "CREATED_AT", jsType: "Date" }, "desc", {
-        unit: "month",
-      }),
-    ],
-  });
+  const filteredStatus: string | null | undefined =
+    filteredResult.data?.rows[0]?.STATUS;
+
+  void filteredStatus;
+
+  useMetabaseQueryObject(staticQuery, { limit: 10 });
 
   return null;
 }

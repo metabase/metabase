@@ -1,15 +1,39 @@
 (ns metabase-enterprise.dependencies.calculation
   (:require
+   [metabase-enterprise.dependencies.dependency-types :as deps.dependency-types]
    [metabase-enterprise.dependencies.native-validation :as deps.native]
    [metabase-enterprise.dependencies.schema :as deps.schema]
+   [metabase-enterprise.sandbox.schema]
    [metabase.documents.prose-mirror :as prose-mirror]
+   [metabase.documents.schema :as documents.schema]
+   [metabase.lib-be.core :as lib-be]
+   [metabase.lib-metric.schema :as lib-metric.schema]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema :as lib.schema]
+   [metabase.measures.schema]
+   [metabase.native-query-snippets.schema]
+   [metabase.queries.schema :as queries.schema]
+   [metabase.segments.schema]
    [metabase.transforms-base.util :as transforms-base.u]
+   [metabase.transforms.schema :as transforms.schema]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]))
+
+(def ^:private Entity
+  "Any dependency-tracked entity `calculate-deps` accepts. A `:dashboard` entity arrives hydrated with `:dashcards`,
+  each of those in turn hydrated with `:series`; every other entity is a plain row of its model."
+  [:or
+   ::queries.schema/card
+   :metabase.warehouse-schema.schema/table
+   :metabase.native-query-snippets.schema/native-query-snippet
+   ::transforms.schema/transform
+   :metabase.dashboards.schema/dashboard
+   ::documents.schema/document
+   :metabase-enterprise.sandbox.schema/sandbox
+   :metabase.segments.schema/segment
+   :metabase.measures.schema/measure])
 
 (defmulti calculate-deps*
   "Implementation multimethod for [[calculate-deps]]. Dispatches on entity-type keyword.
@@ -20,8 +44,8 @@
 (mu/defn calculate-deps :- ::deps.schema/upstream-deps
   "Calculate upstream dependencies for a single entity.
   Returns a map of dependency-type -> set of entity IDs."
-  [entity-type :- keyword?
-   entity]
+  [entity-type :- ::deps.dependency-types/dependency-types
+   entity      :- Entity]
   (calculate-deps* entity-type entity))
 
 ;;; ------------------------------------------------ Helpers ------------------------------------------------
@@ -50,12 +74,11 @@
 
 (mu/defn- upstream-deps:dimension-mappings :- ::deps.schema/upstream-deps
   "Table dependencies of `dimension-mappings`, gathered from their `:table-id`s."
-  [dimension-mappings]
+  [dimension-mappings :- [:maybe [:sequential ::lib-metric.schema/dimension-mapping]]]
   {:table (into #{} (keep :table-id) dimension-mappings)})
 
 (mu/defn- upstream-deps:python-transform :- ::deps.schema/upstream-deps
-  [{{tables :source-tables} :source :as _py-transform}
-   :- [:map [:source-tables {:optional true} [:sequential ::transforms-base.u/source-table-entry]]]]
+  [{{tables :source-tables} :source :as _py-transform} :- ::transforms.schema/transform]
   {:table (into #{} (keep :table_id) tables)})
 
 ;; Modified implementation of documents.models.document/document-deps
@@ -81,7 +104,8 @@
 (defmethod calculate-deps* :card
   [_ {query :dataset_query, dimension-mappings :dimension_mappings :as card}]
   {:pre [(some? query)]}
-  (let [base-deps      (merge-with into
+  (let [query          (lib-be/normalize-query query)
+        base-deps      (merge-with into
                                    (upstream-deps:query query)
                                    (upstream-deps:dimension-mappings dimension-mappings))
         param-card-ids (keep #(-> % :values_source_config :card_id) (:parameters card))]
@@ -91,10 +115,14 @@
             param-card-ids)))
 
 (defmethod calculate-deps* :transform
-  [_ {{:keys [query]} :source :as transform}]
+  [_ transform]
   (cond
-    (transforms-base.u/query-transform? transform)  (upstream-deps:query query)
-    (transforms-base.u/python-transform? transform) (upstream-deps:python-transform transform)
+    (transforms-base.u/query-transform? transform)
+    (upstream-deps:query (lib-be/normalize-query (-> transform :source :query)))
+
+    (transforms-base.u/python-transform? transform)
+    (upstream-deps:python-transform transform)
+
     :else (do (log/warnf "Don't know how to analyze the deps of Transform %d with source type '%s'"
                          (:id transform) (-> transform :source :type))
               {})))

@@ -88,6 +88,12 @@ SESSION_COOKIE=$(bun frontend/test/bench/sign-in.ts http://localhost:4000) \
 a later run, so it is safe to run again while the backend is up. It seeds no
 content, because `index.html` is built from settings and the user alone.
 
+It sets the site locale to German, so the document carries a translation
+catalogue. The user sets no locale of their own and falls back to the site's,
+so `index.html` inlines the catalogue twice: once for the user and once for the
+site. A change to how locales load shows up in the numbers, where an English
+site would hide it.
+
 ## Running it against a built tree
 
 Use this to compare two chunk layouts without booting a backend. It understates

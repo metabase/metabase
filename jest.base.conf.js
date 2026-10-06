@@ -28,6 +28,10 @@ const swcJestTransform = [
     },
     module: {
       type: "commonjs",
+      // A test file loads only the modules its tests touch, not its full import
+      // graph. Modules that must run before the tests start are listed in
+      // frontend/test/jest-setup-eager.js.
+      lazy: true,
     },
     sourceMaps: "inline",
     minify: false,
@@ -49,6 +53,9 @@ const baseConfig = {
     "\\.(jpg|jpeg|png|gif|eot|otf|webp|svg|ttf|woff|woff2|mp4|webm|wav|mp3|m4a|aac|oga)$":
       "<rootDir>/frontend/test/__mocks__/fileMock.js",
     "^cljs/(.*)$": "<rootDir>/target/cljs_dev/$1",
+    // The real catalogues are a build artifact, so tests resolve a small fixture
+    // per locale instead.
+    "^locales/(.*)\\.json$": "<rootDir>/frontend/test/__mocks__/locales/$1.json",
     "\\.svg\\?(component|source)":
       "<rootDir>/frontend/test/__mocks__/svgMock.tsx",
     "csv-parse/browser/esm/sync":
@@ -107,7 +114,10 @@ const baseConfig = {
     "<rootDir>/frontend/test/metabase-bootstrap.js",
     "<rootDir>/frontend/test/register-visualizations.js",
   ],
-  setupFilesAfterEnv: ["<rootDir>/frontend/test/jest-setup-env.js"],
+  setupFilesAfterEnv: [
+    "<rootDir>/frontend/test/jest-setup-eager.js",
+    "<rootDir>/frontend/test/jest-setup-env.js",
+  ],
   globals: {
     ga: {},
   },
@@ -127,6 +137,7 @@ const baseConfig = {
     "/frontend/test/",
   ],
   testEnvironment: "jest-environment-jsdom",
+  testRunner: "<rootDir>/frontend/test/jest-test-runner.js",
 };
 
 // eslint-disable-next-line import/no-commonjs

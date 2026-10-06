@@ -6,6 +6,7 @@
    [metabase-enterprise.dependencies.models.analysis-finding-error :as analysis-finding-error]
    [metabase-enterprise.dependencies.models.dependency :as dependency]
    [metabase-enterprise.dependencies.models.dependency-status :as deps.dependency-status]
+   [metabase-enterprise.sandbox.schema]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
@@ -15,8 +16,14 @@
    [metabase.graph.core :as graph]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
+   [metabase.lib.schema.validate :as lib.schema.validate]
+   [metabase.measures.schema]
+   [metabase.native-query-snippets.schema]
+   [metabase.queries.schema :as queries.schema]
    [metabase.request.core :as request]
    [metabase.revisions.core :as revisions]
+   [metabase.segments.schema]
+   [metabase.transforms.schema :as transforms.schema]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
@@ -56,13 +63,23 @@
    [:enum :table :snippet :transform :dashboard :document :sandbox :segment :question :model :metric :measure]
    ::deps.dependency-types/entity-id])
 
+(mr/def ::dependent-error
+  "One entry of `::base-entity`'s `:dependents_errors`: either the slim `{:type :detail}` shape
+  [[normalize-finding-error]] produces for an entity's own errors (`node-errors`), or the raw AnalysisFindingError row
+  `node-downstream-errors` keeps so callers can tell which downstream entity each error belongs to."
+  [:or
+   [:map {:closed true}
+    [:type ::lib.schema.validate/validate-error-type]
+    [:detail {:optional true} [:maybe :string]]]
+   ::analysis-finding-error/analysis-finding-error])
+
 (mr/def ::base-entity
   [:map
    [:id                pos-int?]
    [:type              :keyword]
    [:data              [:map]]
    [:dependents_count  [:maybe [:ref ::usages]]]
-   [:dependents_errors {:optional true} [:set [:ref ::analysis-finding-error/analysis-finding-error]]]])
+   [:dependents_errors {:optional true} [:set [:ref ::dependent-error]]]])
 
 (defn- fields-for [entity-key]
   ;; these specs should really use something like
@@ -147,8 +164,28 @@
    [:segment   [:ref ::segment-entity]]
    [:measure   [:ref ::measure-entity]]])
 
+(def ^:private Entity
+  "Any dependency-tracked entity `entity-value` accepts, hydrated the way `hydrate-entities` hydrates it."
+  [:or
+   ::queries.schema/card
+   :metabase.dashboards.schema/dashboard
+   ::documents.schema/document
+   :metabase.warehouse-schema.schema/table
+   ::transforms.schema/transform
+   :metabase.native-query-snippets.schema/native-query-snippet
+   :metabase-enterprise.sandbox.schema/sandbox
+   :metabase.segments.schema/segment
+   :metabase.measures.schema/measure])
+
 (mu/defn- entity-value :- ::entity
-  [entity-type {:keys [id] :as entity} usages errors]
+  [entity-type :- ::deps.dependency-types/dependency-types
+   {:keys [id] :as entity} :- Entity
+   usages :- [:maybe [:map-of
+                      [:tuple ::deps.dependency-types/dependency-types ::deps.dependency-types/entity-id]
+                      ::usages]]
+   errors :- [:maybe [:map-of
+                      [:tuple ::deps.dependency-types/dependency-types ::deps.dependency-types/entity-id]
+                      [:set ::dependent-error]]]]
   (cond-> {:id id
            :type entity-type
            :data (-> (select-keys entity (entity-keys entity-type))
@@ -167,8 +204,10 @@
 (def ^:private entity-select-fields
   {:card      [:id :name :description :type :display :database_id :query_type :collection_id :dashboard_id :document_id :result_metadata
                :created_at :creator_id :view_count
-               ;; :card_schema always has to be selected
-               :card_schema]
+               ;; :card_schema always has to be selected, and every column the Card schema upgrade
+               ;; reads has to come with it. The last four are not part of the response — `entity-keys`
+               ;; decides that — they are here only to make the upgrade runnable.
+               :card_schema :entity_id :dataset_query :dimensions :dimension_mappings]
    :dashboard [:id :name :description :created_at :creator_id :collection_id :view_count]
    :document  [:id :name :created_at :creator_id :collection_id :view_count]
    :table     [:id :name :description :display_name :db_id :schema
@@ -183,9 +222,14 @@
    :measure   [:id :name :description :created_at :creator_id :table_id]})
 
 (defn- current-user-visibility
-  "The current user, as the `:visible` filter-spec opts consumed by `metabase-enterprise.dependencies.db`."
+  "The current user, as the `:visible` filter-spec opts consumed by `metabase-enterprise.dependencies.db`.
+
+  Analyst-wide visibility comes with the role rather than a permissions graph, so it pauses while the
+  `advanced-permissions` feature is unavailable (see [[api/entitled-data-analyst?]])."
   [{:keys [include-archived-items]}]
-  (cond-> {:user-id api/*current-user-id* :is-superuser? api/*is-superuser?* :is-data-analyst? api/*is-data-analyst?*}
+  (cond-> {:user-id          api/*current-user-id*
+           :is-superuser?    api/*is-superuser?*
+           :is-data-analyst? (api/entitled-data-analyst?)}
     include-archived-items (assoc :include-archived-items include-archived-items)))
 
 (defn- readable-graph-dependencies
@@ -223,11 +267,17 @@
                                  {dependency-type 1})))
                         (apply merge-with +))))))
 
+(defn- normalize-finding-error
+  [{:keys [error_type error_detail]}]
+  (cond-> {:type error_type}
+    error_detail (assoc :detail error_detail)))
+
 (defn- node-downstream-errors
   "Fetches errors caused by the given source entities (what downstream entities they're breaking).
    Filters out errors where the analyzed entity is not visible to the current user.
    Unlike `node-errors` which fetches errors on an entity, this fetches errors that
-   the entity is causing in other entities that depend on it."
+   the entity is causing in other entities that depend on it. Keeps the raw AnalysisFindingError shape (unlike
+   `node-errors`'s normalized one) so callers can tell which downstream entity each error belongs to."
   [nodes-by-type]
   (letfn [(errors-by-source-type-and-id [[source-type ids]]
             (when (seq ids)
@@ -244,11 +294,7 @@
    Filters out errors where the source entity is not visible to the current user.
    Returns {[entity-type entity-id] #{error-maps...}}, or nil if none."
   [nodes-by-type]
-  (letfn [(normalize-finding-error
-            [{:keys [error_type error_detail]}]
-            (cond-> {:type error_type}
-              error_detail (assoc :detail error_detail)))
-          (errors-by-entity-type-and-id [[type ids]]
+  (letfn [(errors-by-entity-type-and-id [[type ids]]
             (when (seq ids)
               (let [finding-errors (dependencies.db/finding-errors-for-entities-with-visible-sources
                                     type ids (current-user-visibility nil))]

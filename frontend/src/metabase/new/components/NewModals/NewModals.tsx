@@ -1,4 +1,4 @@
-import { Suspense, lazy, useCallback, useEffect } from "react";
+import { useCallback, useEffect } from "react";
 
 import { CreateDashboardModal } from "metabase/common/CreateDashboard/CreateDashboardModal";
 import CreateCollectionModal, {
@@ -6,13 +6,8 @@ import CreateCollectionModal, {
 } from "metabase/common/collections/containers/CreateCollectionModal";
 import { useInitialCollectionId } from "metabase/common/collections/hooks";
 import { UpgradeModal } from "metabase/common/components/upsells/components/UpgradeModal";
-import { STATIC_LEGACY_EMBEDDING_TYPE } from "metabase/embedding/constants";
 import { PaletteShortcutsModal } from "metabase/palette/components/PaletteShortcutsModal/PaletteShortcutsModal";
 import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
-import type {
-  LegacyStaticEmbeddingModalProps,
-  SdkIframeEmbedSetupModalProps,
-} from "metabase/plugins";
 import { ActionCreator } from "metabase/querying/action-creator";
 import { useDispatch, useSelector } from "metabase/redux";
 import type { State } from "metabase/redux/store";
@@ -22,30 +17,6 @@ import { useLocation, useNavigate, useParams } from "metabase/router";
 import { Modal, PREVENT_AUTOCOMPLETE_CLIPPING_MODAL_PROPS } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type { WritebackAction } from "metabase-types/api";
-
-/**
- * The embed setup modals, fetched when one is opened.
- *
- * `NewModals` is mounted for the whole session, so importing these directly put
- * them in the initial bundle. They reach the dashboard actions and selectors,
- * which is most of the dashboard feature. Nothing renders while they load: a
- * modal that has just been asked for has no earlier state to preserve.
- */
-const LegacyStaticEmbeddingModal = lazy(() =>
-  import("metabase/embedding/embedding-iframe-sdk-setup/components/LegacyStaticEmbeddingModal").then(
-    ({ LegacyStaticEmbeddingModal }) => ({
-      default: LegacyStaticEmbeddingModal,
-    }),
-  ),
-);
-
-const SdkIframeEmbedSetupModal = lazy(() =>
-  import("metabase/embedding/embedding-iframe-sdk-setup/components/SdkIframeEmbedSetupModal").then(
-    ({ SdkIframeEmbedSetupModal }) => ({
-      default: SdkIframeEmbedSetupModal,
-    }),
-  ),
-);
 
 const getCurrentOpenModalState = <TProps,>(state: State) =>
   // Unjustified type cast. FIXME
@@ -133,35 +104,6 @@ export const NewModals = () => {
           />
         </Modal>
       );
-    case "embed": {
-      // Unjustified type cast. FIXME
-      const props = currentNewModalProps as SdkIframeEmbedSetupModalProps;
-      return (
-        <Suspense fallback={null}>
-          <SdkIframeEmbedSetupModal
-            opened
-            initialState={props?.initialState}
-            onClose={handleModalClose}
-          />
-        </Suspense>
-      );
-    }
-    case STATIC_LEGACY_EMBEDDING_TYPE: {
-      // Unjustified type cast. FIXME
-      const props = currentNewModalProps as LegacyStaticEmbeddingModalProps;
-
-      return (
-        <Suspense fallback={null}>
-          <LegacyStaticEmbeddingModal
-            experience={props?.experience}
-            dashboardId={props?.dashboardId}
-            questionId={props?.questionId}
-            parentInitialState={props?.parentInitialState}
-            onClose={handleModalClose}
-          />
-        </Suspense>
-      );
-    }
     case "upgrade":
       return <UpgradeModal opened onClose={handleModalClose} />;
     default:

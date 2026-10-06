@@ -139,12 +139,12 @@ function ModalBody({
         )}
       </Stack>
       <Group mt="xxl" gap="sm" wrap="nowrap" justify="flex-end">
-        <Button variant="subtle" onClick={onClose}>{t`Cancel`}</Button>
         <Button
-          onClick={handleSubmit}
-          variant="filled"
-          color="feedback-negative"
-        >
+          variant="subtle"
+          color="neutral"
+          onClick={onClose}
+        >{t`Cancel`}</Button>
+        <Button onClick={handleSubmit} variant="filled" color="negative">
           {getSubmitButtonLabel(selected_table, published_downstream_tables)}
         </Button>
       </Group>
@@ -172,8 +172,8 @@ function getInfoMessage(
   publishedRemappedTables: BulkTableInfo[],
 ) {
   return selectedTable != null && publishedRemappedTables.length === 0
-    ? t`This will remove this table from the Library.`
-    : t`This will remove these tables from the Library.`;
+    ? t`This will remove this table from the semantic layer.`
+    : t`This will remove these tables from the semantic layer.`;
 }
 
 function getForeignKeyMessage(selectedTable: BulkTableInfo | null) {

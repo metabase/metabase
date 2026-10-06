@@ -28,9 +28,9 @@
    [metabase.app-db.custom-migrations.pulse-to-notification :as pulse-to-notification]
    [metabase.app-db.custom-migrations.reserve-at-symbol-user-attributes :as reserve-at-symbol-user-attributes]
    [metabase.app-db.custom-migrations.util :as custom-migrations.util]
+   [metabase.app-db.quartz]
    [metabase.app-db.setting :as mdb.setting]
    [metabase.config.core :as config]
-   [metabase.task.bootstrap]
    [metabase.util.date-2 :as u.date]
    [metabase.util.encryption :as encryption]
    [metabase.util.honey-sql-2 :as h2x]
@@ -1173,6 +1173,7 @@
   []
   (nil? (t2/query-one {:select [:*] :from :metabase_database})))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *create-sample-content*
   "If true, we create sample content in the `CreateSampleContent` migration. This is bound to false sometimes in
    load-from-h2, during serialization load, and in some tests because the sample content makes tests slow enough to
@@ -1760,7 +1761,7 @@
 ;; on migrate up:
 ;; - migrate alerts from pulse table to notification table
 ;; - And then on startup new send notification triggers are created by running
-;; [[metabase.notification.task.send/init-send-notification-triggers!]]
+;; [[metabase.notification.task.send-trigger/init-send-notification-triggers!]]
 (define-migration MigrateAlertToNotification
   (pulse-to-notification/migrate-alerts!))
 
@@ -2259,3 +2260,54 @@
       (t2/query {:update :setting
                  :set    {:value_with_aad (encryption/maybe-encrypt plain {:aad (mdb.setting/setting-aad "example-dashboard-id")})}
                  :where  [:= :key "example-dashboard-id"]}))))
+
+;;; MCP v1 retirement: `/api/metabase-mcp` serves the v2 tool surface, which gates every tool on one of six
+;;; coarse scopes. Clients connected to v0.60–v0.63 hold OAuth tokens carrying the per-entity agent scopes
+;;; instead, and no legacy scope satisfies any v2 scope. A call short of scope gets a 403 `insufficient_scope`
+;;; challenge that names the v2 scopes, so the client re-authorizes; that re-authorization only validates if
+;;; the client's registered scope snapshot includes the v2 scopes.
+;;;
+;;; The scope strings are literals rather than a read of `metabase.mcp.paths/v2-surface-scopes`: a
+;;; migration's behaviour must be frozen against later edits to that vector.
+
+(def ^:private ^:no-doc mcp-v2-scopes
+  ["agent:content:read"
+   "agent:content:write"
+   "agent:query:run"
+   "agent:sql:run"
+   "agent:delivery:write"
+   "agent:resource:read"])
+
+(defn- json-array-out
+  "Parse a JSON-array column into a vector, tolerating a row that is already a collection. Returns nil
+   for anything that isn't an array — including unparseable JSON — so a malformed row is skipped
+   rather than rewritten."
+  [v]
+  (let [parsed (cond
+                 (string? v) (try (json/decode v) (catch Exception _ nil))
+                 (coll? v)   v)]
+    (when (sequential? parsed)
+      (vec parsed))))
+
+(define-migration WidenDynamicOAuthClientScopesForMcpV2
+  ;; Raise the ceiling. Dynamically registered clients snapshot the scope set that
+  ;; existed when they registered, and `validate-scope` rejects any requested scope absent from that
+  ;; snapshot. Without this a user who re-authorizes is answered `400 invalid_request`, rendered raw
+  ;; in the browser tab, because `/oauth/authorize` validates before narrowing. Widening the snapshot
+  ;; grants nothing on its own: consent still happens per-authorization.
+  (run! (fn [{:keys [id scopes]}]
+          (when-let [existing (json-array-out scopes)]
+            (let [widened (into existing (remove (set existing)) mcp-v2-scopes)]
+              (when-not (= widened existing)
+                (t2/query {:update :oauth_client
+                           :set    {:scopes (json/encode widened)}
+                           :where  [:= :id id]})))))
+        (t2/reducible-query {:select [:id :scopes]
+                             :from   [:oauth_client]
+                             :where  [:= :registration_type "dynamic"]})))
+
+(define-migration RevokeLegacyMcpOAuthTokens
+  ;; Kept as a no-op. Legacy-scoped clients re-authorize on their own through the 403 step-up, and
+  ;; revoking their tokens would instead force them through the refresh-failure path. The changeset
+  ;; stays so that instances which already ran it can still roll back past it.
+  nil)

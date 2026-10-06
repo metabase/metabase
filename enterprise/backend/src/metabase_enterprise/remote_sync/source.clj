@@ -79,78 +79,159 @@
 (defn entity->content
   "The serialized YAML string for an extracted `entity`."
   [entity]
-  (yaml/generate-string (serialization/serialization-deep-sort entity)
+  (yaml/generate-string (serialization/serialization-deep-sort (serialization/without-resources entity))
                         {:dumper-options {:flow-style :block :split-lines false}}))
 
+(defn- resource-specs
+  "The `{:path :content}` file specs of `entity`'s resource files, next to its YAML file at `path`."
+  [path entity]
+  (let [dir (subs path 0 (inc (or (str/last-index-of path "/") -1)))]
+    (for [[resource content] (sort-by key (:serdes/resources entity))]
+      {:path (str dir resource) :content content})))
+
+(defn entity->file-spec-at
+  "Serializes a single extracted entity at the YAML `path` into a `{:path :content :resources}` file spec;
+  `:resources` holds the `{:path :content}` specs of its resource files."
+  [path entity]
+  {:path      path
+   :content   (entity->content entity)
+   :resources (vec (resource-specs path entity))})
+
 (defn entity->file-spec
-  "Serializes a single extracted entity into a `{:path :content}` file spec, using storage context
-  `opts` (from `serdes/storage-base-context`)."
+  "[[entity->file-spec-at]] the path storage context `opts` (from [[serdes/storage-base-context]]) gives `entity`."
   [opts entity]
-  {:path    (entity->path opts entity)
-   :content (entity->content entity)})
+  (entity->file-spec-at (entity->path opts entity) entity))
+
+(defn file-specs
+  "The `{:path :content}` specs of every file a `file-spec` from [[entity->file-spec]] writes."
+  [file-spec]
+  (cons (select-keys file-spec [:path :content]) (:resources file-spec)))
 
 (defn content-hash
   "SHA-256 (hex) of a serialized YAML `content` string."
   [^String content]
   (codecs/bytes->hex (buddy-hash/sha256 content)))
 
+(defn file-spec-hash
+  "SHA-256 (hex) of the content of a `file-spec` from [[entity->file-spec]], including its resource files."
+  [{:keys [content resources]}]
+  (content-hash (apply str content (mapcat (juxt :path :content) resources))))
+
+(defn row->file-info
+  "The repo `:path` and the SHA-256 (hex) `:content-hash` of the serialized YAML for the entity named by `row`
+  ({:model_type :model_id}), or nil if it can't be extracted."
+  [row]
+  (when-let [entity (first (spec/extract-entities-for-rows [row]))]
+    (let [fspec (entity->file-spec (serdes/storage-base-context) entity)]
+      {:path (:path fspec), :content-hash (file-spec-hash fspec)})))
+
 (defn row->content-hash
   "SHA-256 (hex) of the serialized YAML for the entity named by `row` ({:model_type :model_id}), or nil if it
   can't be extracted. Hashes the live DB serialization (never on-disk bytes), so it's stable across sync points."
   [row]
-  (when-let [entity (first (spec/extract-entities-for-rows [row]))]
-    (content-hash (:content (entity->file-spec (serdes/storage-base-context) entity)))))
+  (:content-hash (row->file-info row)))
 
 (defn serialize-specs
   "Serializes a stream of entities into an eager vector of `{:path :content}` file specs. Reports progress
   via `task-id` as specs are produced; pass nil for `task-id` to serialize without progress reporting
   (e.g. for a dry-run merge preview).
 
+  `stream` is traversed exactly once. Progress needs a denominator: pass `:total` (see
+  [[metabase-enterprise.remote-sync.spec/exportable-entity-count]]) to keep an uncounted stream such as the
+  extraction eduction streaming; without it an uncounted stream is realized first.
+
   Throws Exception if any entity in the stream is an Exception instance."
-  [stream task-id]
-  (let [opts (serdes/storage-base-context)
-        stream-count (bounded-count 10000 stream)]
+  [stream task-id & {:keys [total]}]
+  (let [opts   (serdes/storage-base-context)
+        stream (if (or (nil? task-id) total (counted? stream)) stream (vec stream))
+        total  (or total (when task-id (count stream)))
+        report (if (and task-id (pos? total))
+                 (fn [n]
+                   (remote-sync.task/update-progress! task-id (-> n (/ total) (min 1) (* 0.65) (+ 0.3))))
+                 (constantly nil))]
     (into []
-          (map-indexed (fn [idx entity]
-                         (when (instance? Exception entity)
-                           (throw entity))
-                         (let [spec (entity->file-spec opts entity)]
-                           (when task-id
-                             (remote-sync.task/update-progress!
-                              task-id (-> (inc idx) (/ stream-count) (* 0.65) (+ 0.3))))
-                           spec)))
+          (comp (map-indexed (fn [idx entity]
+                               (when (instance? Exception entity)
+                                 (throw entity))
+                               (let [spec (entity->file-spec opts entity)]
+                                 (report (inc idx))
+                                 (file-specs spec))))
+                cat)
           stream)))
 
+(defn- managed-path? [^String path]
+  (when-let [idx (str/index-of path "/")]
+    (contains? serialization/legal-top-level-paths (subs path 0 idx))))
+
+(defn- shared-path? [^String path]
+  (when-let [idx (str/index-of path "/")]
+    (contains? serialization/shared-top-level-paths (subs path 0 idx))))
+
+(defn- parent-dir [^String path]
+  (when-let [idx (str/last-index-of path "/")]
+    (subs path 0 idx)))
+
+(defn- declared-resources
+  "The paths of the resource files that the entity YAML files directly in directory `dir` of `snapshot` declare."
+  [snapshot dir]
+  (into #{}
+        (comp (filter serialization/entity-file-path?)
+              (mapcat (fn [path]
+                        (try
+                          (let [entity (yaml/parse-string (source.p/read-file snapshot path)
+                                                          {:key-fn serialization/parse-key})]
+                            (map #(str dir "/" %) (serdes/resource-paths entity)))
+                          (catch Exception _
+                            nil)))))
+        (source.p/list-dir snapshot dir)))
+
+(defn owned-paths
+  "The managed paths among `paths` that serialization owns in `snapshot`: entity YAML files, and the resource files
+  that a YAML file in one of their ancestor directories declares."
+  [snapshot paths]
+  (let [resources (memoize #(declared-resources snapshot %))]
+    (filterv (fn [path]
+               (and (managed-path? path)
+                    (or (serialization/entity-file-path? path)
+                        (some #(contains? (resources %) path)
+                              (take-while some? (iterate parent-dir (parent-dir path)))))))
+             paths)))
+
+(defn replace-managed-files!
+  "Stage the removal of every file serialization owns in `snapshot` into `commit`, so the files staged next replace
+  them wholesale; files in [[serialization/shared-top-level-paths]] that serialization does not own are kept."
+  [commit snapshot]
+  (source.p/replace-all! commit)
+  (run! #(source.p/stage-delete! commit %)
+        (owned-paths snapshot (filter shared-path? (source.p/list-files snapshot)))))
+
 (defn- snapshot->specs
-  "Reads a snapshot's managed-directory files into a sequence of `{:path :content}` specs, matching the
+  "Reads the files serialization owns in a snapshot into a sequence of `{:path :content}` specs, matching the
   shape produced by [[serialize-specs]]. Used to read the merge base and remote-tip trees for merging."
   [snapshot]
   (into []
         (keep (fn [path]
-                (when (contains? serialization/legal-top-level-paths
-                                 (when-let [idx (str/index-of path "/")]
-                                   (subs path 0 idx)))
-                  (when-let [content (source.p/read-file snapshot path)]
-                    {:path path :content content}))))
-        (source.p/list-files snapshot)))
+                (when-let [content (source.p/read-file snapshot path)]
+                  {:path path :content content})))
+        (owned-paths snapshot (source.p/list-files snapshot))))
 
 (defn compute-merge
   "Runs the entity-identity 3-way merge of local state against the remote tip, without writing. Returns
   the raw merge result `{:merged :conflicts :summary}` from [[remote-sync.merge/three-way-merge]], plus
   `:force-push-casualties` (remote content a force push would discard; see
-  [[remote-sync.merge/force-push-casualties]]):
+  [[remote-sync.merge/force-push-casualties]]), via [[remote-sync.merge/merge-with-casualties]]:
   - `base-snapshot` - the last successfully synced state (the merge base)
   - `stream`        - the local state to serialize (ours)
   - `snapshot`      - the current remote tip (theirs)
 
   `:merged` is the full reconciled set of `{:path :content}` specs. The export path writes it to the
-  remote; the local-only pull merge loads it into the app DB via [[specs->snapshot]]."
-  [stream snapshot base-snapshot task-id]
-  (let [ours   (serialize-specs stream task-id)
+  remote; the local-only pull merge loads it into the app DB via [[specs->snapshot]]. `:total` is passed
+  through to [[serialize-specs]]."
+  [stream snapshot base-snapshot task-id & {:keys [total]}]
+  (let [ours   (serialize-specs stream task-id :total total)
         base   (snapshot->specs base-snapshot)
         theirs (snapshot->specs snapshot)]
-    (assoc (remote-sync.merge/three-way-merge base ours theirs)
-           :force-push-casualties (remote-sync.merge/force-push-casualties base ours theirs))))
+    (remote-sync.merge/merge-with-casualties base ours theirs)))
 
 (defn specs->snapshot
   "Builds an in-memory read-only SourceSnapshot backed by `specs` (a seq of `{:path :content}`), so merged
@@ -199,6 +280,6 @@
     (setting/get :remote-sync-url)
     (or branch (setting/get :remote-sync-branch))
     (setting/get :remote-sync-token)
-    serialization/legal-top-level-paths))
+    serialization/replaced-top-level-paths))
   ([]
    (source-from-settings (setting/get :remote-sync-branch))))

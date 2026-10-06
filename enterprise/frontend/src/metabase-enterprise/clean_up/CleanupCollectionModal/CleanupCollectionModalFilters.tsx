@@ -2,7 +2,7 @@ import { c, t } from "ttag";
 
 import { Flex, Icon, Select, Switch, Text } from "metabase/ui";
 
-import { type DateFilter, dateFilterOptions, isDateFilter } from "./utils";
+import { type DateFilter, getDateFilterOptions, isDateFilter } from "./utils";
 
 interface CleanupCollectionModalFiltersProps {
   dateFilter: DateFilter;
@@ -31,7 +31,7 @@ export const CleanupCollectionModalFilters = ({
         <Select
           key="select"
           leftSection={<Icon name="calendar" />}
-          data={dateFilterOptions}
+          data={getDateFilterOptions()}
           value={dateFilter}
           onChange={(option) => {
             if (option && isDateFilter(option)) {

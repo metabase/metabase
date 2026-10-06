@@ -13,44 +13,42 @@
   color: var(--mb-color-text-primary);
   background-color: var(--mb-color-background_page-secondary);
 
-  :global {
-    /* merge view styles */
-    .cm-collapsedLines {
-      background: var(--mb-color-background_page-secondary) !important;
+  /* merge view styles */
+  :global(.cm-collapsedLines) {
+    background: var(--mb-color-background_page-secondary) !important;
+    color: var(--mb-color-text-disabled);
+
+    &:before,
+    &:after {
+      content: "-";
       color: var(--mb-color-text-disabled);
+    }
+  }
 
-      &:before,
-      &:after {
-        content: "-";
-        color: var(--mb-color-text-disabled);
-      }
+  :global(.cm-merge-b .cm-changedLineGutter) {
+    background: var(--change);
+  }
+
+  :global(.cm-deletedLineGutter) {
+    background: var(--remove);
+  }
+
+  :global(.cm-deletedChunk) {
+    background: var(--remove-light);
+  }
+
+  :global(.cm-deletedText) {
+    background: var(--remove-mid);
+  }
+
+  :global(.cm-merge-b) {
+    :global(.cm-changedText) {
+      background: linear-gradient(var(--change), var(--change)) bottom / 100%
+        2px no-repeat;
     }
 
-    .cm-merge-b .cm-changedLineGutter {
-      background: var(--change);
-    }
-
-    .cm-deletedLineGutter {
-      background: var(--remove);
-    }
-
-    .cm-deletedChunk {
-      background: var(--remove-light);
-    }
-
-    .cm-deletedText {
-      background: var(--remove-mid);
-    }
-
-    .cm-merge-b {
-      .cm-changedText {
-        background: linear-gradient(var(--change), var(--change)) bottom / 100%
-          2px no-repeat;
-      }
-
-      .cm-changedLine {
-        background: var(--change-light);
-      }
+    :global(.cm-changedLine) {
+      background: var(--change-light);
     }
   }
 }

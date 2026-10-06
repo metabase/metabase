@@ -4,6 +4,7 @@
    [metabase.channel.db :as channel.db]
    [metabase.channel.render.body :as body]
    [metabase.channel.render.image-bundle :as image-bundle]
+   [metabase.channel.render.markdown :as markdown]
    [metabase.channel.render.png :as png]
    [metabase.channel.render.style :as style]
    [metabase.channel.render.util :as render.util]
@@ -15,28 +16,7 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]
-   [metabase.util.markdown :as markdown]))
-
-;;; I gave these keys below namespaces to make them easier to find usages for but didn't use `metabase.channel.render` so
-;;; we can keep this as an internal namespace you don't need to know about outside of the module.
-(mr/def ::options
-  "Options for Pulse (i.e. Alert/Dashboard Subscription) rendering."
-  [:map
-   [:channel.render/include-buttons?           {:description "default: false", :optional true} :boolean]
-   [:channel.render/include-title?             {:description "default: false", :optional true} :boolean]
-   [:channel.render/include-description?       {:description "default: false", :optional true} :boolean]
-   [:channel.render/disable-links?             {:description "default: false", :optional true} :boolean]
-   [:channel.render/include-inline-parameters? {:description "default: false", :optional true} :boolean]
-   [:channel.render/padding-x                  {:description "default: 0, horizontal pixels around image", :optional true} [:maybe :int]]
-   [:channel.render/padding-y                  {:description "default: 0, vertical pixels around image", :optional true} [:maybe :int]]])
-
-(mr/def ::adhoc-card
-  "Schema for an ad-hoc (unsaved) card."
-  [:map
-   [:display :keyword]
-   [:visualization_settings {:optional true} [:maybe :map]]
-   [:name {:optional true} [:maybe :string]]])
+   [metabase.util.malli.registry :as mr]))
 
 (defn- card-href
   [card]
@@ -44,7 +24,10 @@
     (h (urls/card-url card-id))))
 
 (mu/defn- make-title-if-needed :- [:maybe ::body/RenderedPartCard]
-  [render-type card dashcard options :- [:maybe ::options]]
+  [render-type :- ::body/render-type
+   card        :- [:maybe ::body/card]
+   dashcard    :- [:maybe ::body/dashcard]
+   options     :- [:maybe ::body/options]]
   (when (:channel.render/include-title? options)
     (let [card-name    (render.util/dashcard-title card dashcard)
           image-bundle (when (:channel.render/include-buttons? options)
@@ -74,7 +57,9 @@
                                  :src   (:image-src image-bundle)}])]]]]})))
 
 (mu/defn- make-description-if-needed :- [:maybe ::body/RenderedPartCard]
-  [dashcard card options :- [:maybe ::options]]
+  [dashcard :- [:maybe ::body/dashcard]
+   card     :- [:maybe ::body/card]
+   options  :- [:maybe ::body/options]]
   (when (:channel.render/include-description? options)
     (when-let [description (or (get-in dashcard [:visualization_settings :card.description])
                                (:description card))]
@@ -205,11 +190,11 @@
   ((some-fn :include_csv :include_xls) card))
 
 (mu/defn- render-pulse-card-body :- ::body/RenderedPartCard
-  [render-type
+  [render-type :- ::body/render-type
    timezone-id :- [:maybe :string]
-   card
-   dashcard
-   {:keys [data error] :as results}]
+   card        :- [:maybe ::body/card]
+   dashcard    :- [:maybe ::body/dashcard]
+   {:keys [data error] :as results} :- [:maybe ::body/QPResult]]
   (try
     (when error
       (throw (ex-info (tru "Card has errors: {0}" error) (assoc results :card-error true))))
@@ -249,70 +234,77 @@
   - content (a hiccup form suitable for rendering on rich clients or rendering into an image)
   - render/text : raw text suitable for substituting on clients when text is preferable. (Currently slack uses this for
     scalar results where text is preferable to an image of a div of a single result."
-  ([render-type timezone-id card dashcard results]
+  ([render-type :- ::body/render-type
+    timezone-id :- [:maybe :string]
+    card        :- [:maybe ::body/card]
+    dashcard    :- [:maybe ::body/dashcard]
+    results     :- [:maybe ::body/QPResult]]
    (render-pulse-card render-type timezone-id card dashcard results nil))
 
-  ([render-type
+  ([render-type :- ::body/render-type
     timezone-id :- [:maybe :string]
-    card
-    dashcard
-    results
-    options     :- [:maybe ::options]]
+    card        :- [:maybe ::body/card]
+    dashcard    :- [:maybe ::body/dashcard]
+    results     :- [:maybe ::body/QPResult]
+    options     :- [:maybe ::body/options]]
    (let [{title             :content
           title-attachments :attachments} (make-title-if-needed render-type card dashcard options)
          {description :content}           (make-description-if-needed dashcard card options)
          {pulse-body       :content
           body-attachments :attachments
           text             :render/text}  (render-pulse-card-body render-type timezone-id card dashcard results)
-         attachment-href                  (if dashcard
-                                            (urls/dashcard-url dashcard)
-                                            (card-href card))
          inline-parameters                (when (:channel.render/include-inline-parameters? options)
                                             (-> dashcard :visualization_settings :inline_parameters))]
      (cond-> {:attachments (merge title-attachments body-attachments)
               :content [:p
                         ;; Provide a horizontal scrollbar for tables that overflow container width.
                         ;; Surrounding <p> element prevents buggy behavior when dragging scrollbar.
-                        [:div
-                         [:a (cond-> {:target      "_blank"
-                                      :rel         "noopener noreferrer"
-                                      :style       (style/style
-                                                    (style/section-style)
-                                                    {:display         :block
-                                                     :text-decoration :none})}
-                               (not (:channel.render/disable-links? options))
-                               (assoc :href attachment-href))
-                          title
-                          description
-                          (when (seq inline-parameters)
-                            [:div {:style (style/style {:padding-bottom :16px})}
-                             (render.util/render-parameters inline-parameters)])
-                          [:div {:class "pulse-body"
-                                 :style (style/style {:overflow-x :auto ;; when content is wide enough, automatically show a horizontal scrollbar
-                                                      :display :block
-                                                      :margin  :16px})}
-                           (if-let [more-results-message (body/attached-results-text render-type card)]
-                             (conj more-results-message (list pulse-body))
-                             pulse-body)]]]]}
+                        [:div {:style (style/style (style/section-style))}
+                         title
+                         description
+                         (when (seq inline-parameters)
+                           [:div {:style (style/style {:padding-bottom :16px})}
+                            (render.util/render-parameters inline-parameters)])
+                         [:div {:class "pulse-body"
+                                :style (style/style {:overflow-x :auto ;; when content is wide enough, automatically show a horizontal scrollbar
+                                                     :display :block
+                                                     :margin  :16px})}
+                          (if-let [more-results-message (body/attached-results-text render-type card)]
+                            (conj more-results-message (list pulse-body))
+                            pulse-body)]]]}
        text (assoc :render/text text)))))
 
 (mu/defn render-pulse-card-for-display
   "Same as `render-pulse-card` but isn't intended for an email, rather for previewing so there is no need for
   attachments"
-  ([timezone-id card results]
+  ([timezone-id :- [:maybe :string]
+    card        :- [:maybe ::body/card]
+    results     :- [:maybe ::body/QPResult]]
    (render-pulse-card-for-display timezone-id card results nil))
 
-  ([timezone-id card results options :- [:maybe ::options]]
+  ([timezone-id :- [:maybe :string]
+    card        :- [:maybe ::body/card]
+    results     :- [:maybe ::body/QPResult]
+    options     :- [:maybe ::body/options]]
    (:content (render-pulse-card :inline timezone-id card nil results options))))
+
+(mr/def ::part
+  "The `{:card :dashcard :result}` shape a Pulse/Dashboard Subscription section carries."
+  [:map {:closed true}
+   [:type     {:optional true} [:= :card]]
+   [:card     {:optional true} [:maybe ::body/card]]
+   [:dashcard {:optional true} [:maybe ::body/dashcard]]
+   [:result   {:optional true} [:maybe ::body/QPResult]]])
 
 (mu/defn render-pulse-section :- ::body/RenderedPartCard
   "Render a single Card section of a Pulse to a Hiccup form (representing HTML)."
-  ([timezone-id part]
+  ([timezone-id :- [:maybe :string]
+    part        :- ::part]
    (render-pulse-section timezone-id part {}))
 
-  ([timezone-id
-    {card :card, dashcard :dashcard, result :result, :as _part}
-    options :- [:maybe ::options]]
+  ([timezone-id :- [:maybe :string]
+    {card :card, dashcard :dashcard, result :result, :as _part} :- ::part
+    options :- [:maybe ::body/options]]
    (log/with-context {:card_id (:id card)}
      (let [options                       (merge {:channel.render/include-title?       true
                                                  :channel.render/include-description? true
@@ -326,25 +318,30 @@
 
 (mu/defn render-pulse-card-to-png :- bytes?
   "Render a `pulse-card` as a PNG. `data` is the `:data` from a QP result."
-  (^bytes [timezone-id pulse-card result width]
+  (^bytes [timezone-id :- [:maybe :string]
+           pulse-card  :- [:maybe ::body/card]
+           result      :- ::body/QPResult
+           width       :- pos-int?]
    (render-pulse-card-to-png timezone-id pulse-card result width nil))
 
   (^bytes [timezone-id :- [:maybe :string]
-           pulse-card
-           result
-           width
-           options :- [:maybe ::options]]
+           pulse-card  :- [:maybe ::body/card]
+           result      :- ::body/QPResult
+           width       :- pos-int?
+           options     :- [:maybe ::body/options]]
    (png/render-html-to-png (render-pulse-card :inline timezone-id pulse-card nil result options) width options)))
 
 (mu/defn render-adhoc-card-to-png :- bytes?
   "Render an ad-hoc (unsaved) card to PNG."
-  (^bytes [adhoc-card results width]
+  (^bytes [adhoc-card :- ::body/adhoc-card
+           results    :- ::body/QPResult
+           width      :- pos-int?]
    (render-adhoc-card-to-png adhoc-card results width nil))
 
-  (^bytes [adhoc-card :- ::adhoc-card
-           results    :- [:map [:data :map]]
-           width
-           options    :- [:maybe ::options]]
+  (^bytes [adhoc-card :- ::body/adhoc-card
+           results    :- ::body/QPResult
+           width      :- pos-int?
+           options    :- [:maybe ::body/options]]
    (let [timezone-id (qp.timezone/system-timezone-id)]
      (png/render-html-to-png
       (render-pulse-card :inline timezone-id adhoc-card nil results options)
@@ -353,19 +350,29 @@
 
 (mu/defn render-pulse-card-to-base64 :- string?
   "Render a `pulse-card` as a PNG and return it as a base64 encoded string."
-  ^String [timezone-id card dashcard result width]
+  ^String [timezone-id :- [:maybe :string]
+           card        :- [:maybe ::body/card]
+           dashcard    :- [:maybe ::body/dashcard]
+           result      :- ::body/QPResult
+           width       :- pos-int?]
   (-> (render-pulse-card :inline timezone-id card dashcard result)
       (png/render-html-to-png width)
       image-bundle/render-img-data-uri))
 
 (mu/defn png-from-render-info :- bytes?
-  "Create a PNG file (as a byte array) from rendering info."
-  ^bytes [rendered-info :- ::body/RenderedPartCard width]
-  ;; TODO huh? why do we need this indirection?
-  (png/render-html-to-png rendered-info width))
+  "Create a PNG file (as a byte array) from rendering info. `options` takes the keys
+  [[metabase.channel.render.png/render-html-to-png]] reads, e.g. `:channel.render/scale`."
+  (^bytes [rendered-info :- ::body/RenderedPartCard
+           width         :- pos-int?]
+   ;; TODO huh? why do we need this indirection?
+   (png/render-html-to-png rendered-info width))
+  (^bytes [rendered-info :- ::body/RenderedPartCard
+           width         :- pos-int?
+           options       :- [:maybe ::body/options]]
+   (png/render-html-to-png rendered-info width options)))
 
 (mu/defn defaulted-timezone :- :string
   "Returns the timezone ID for the given `card`. Either the report timezone (if applicable) or the JVM timezone."
-  [card]
+  [card :- [:maybe ::body/card]]
   (or (some->> card :database_id channel.db/database qp.timezone/results-timezone-id)
       (qp.timezone/system-timezone-id)))

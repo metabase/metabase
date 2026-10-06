@@ -22,6 +22,8 @@ import { use } from "echarts/core";
 import { LabelLayout } from "echarts/features";
 import { SVGRenderer } from "echarts/renderers";
 
+import { DataVisibilityExtension } from "./data-visibility";
+
 export const registerEChartsModules = () => {
   // eslint-disable-next-line react-hooks/rules-of-hooks
   use([
@@ -44,5 +46,6 @@ export const registerEChartsModules = () => {
     TreemapChart,
     LabelLayout,
     TooltipComponent,
+    DataVisibilityExtension,
   ]);
 };

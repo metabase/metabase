@@ -684,9 +684,7 @@
          (-> (lib.tu.macros/mbql-query venues
                {:source-table $$venues
                 :joins        [{:alias        "cat"
-                                :source-query {:source-table $$categories
-                                               ;; this will prevent the nesting from getting collapsed
-                                               ::whatever true}
+                                :source-query {:source-table $$categories}
                                 :condition    [:= $category-id &cat.*categories.id]}]
                 :order-by     [[:asc $name]]
                 :limit        3})

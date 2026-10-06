@@ -169,8 +169,8 @@
   [:description :display_name :semantic_type :fk_target_field_id :settings :visibility_type])
 
 (defn- copy-model-metadata-overrides!
-  "Copy user-edited metadata from a model's result_metadata onto the Fields of the
-   output table. Writes to both Field and FieldUserSettings so overrides survive sync."
+  "Copy user-edited metadata from a model's result_metadata onto the FieldUserSettings of the
+   output table's Fields, so the overrides keep showing on the new Fields after the swap."
   [card-id table-id]
   (let [card            (replacement.db/card card-id)
         result-metadata (:result_metadata card)
@@ -180,7 +180,6 @@
             :let [field     (field-by-name (source-swap.util/column-match-key col-meta))
                   overrides (u/select-keys-when col-meta :non-nil metadata-override-keys)]
             :when (and field (seq overrides))]
-      (replacement.db/update-field! (:id field) overrides)
       (field-user-settings/upsert-user-settings field overrides))))
 
 (defn run-swap-model-with-transform!

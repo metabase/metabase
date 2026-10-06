@@ -127,27 +127,31 @@ describe("AIProviderList", () => {
     );
   });
 
-  it.each([
-    ["anthropic", "SQL generation also runs on this connection"],
-    ["openai", "Semantic search also runs on this connection"],
-  ])(
-    "warns that removing the %s connection also turns off the feature reading it",
-    async (key, warning) => {
-      setup();
+  it("warns that removing the openai connection also turns off semantic search", async () => {
+    setup();
 
-      const row = await screen.findByTestId(`provider-${key}`);
-      await userEvent.click(within(row).getByLabelText("Provider options"));
-      await userEvent.click(await screen.findByText("Remove"));
+    const modal = await openRemoveDialog("openai");
 
-      const modal = await screen.findByRole("dialog", {
-        name: "Remove this provider?",
-      });
-      expect(within(modal).getByText(new RegExp(warning))).toBeInTheDocument();
-      expect(
-        within(modal).getByText(/saved credentials will be deleted/),
-      ).toBeInTheDocument();
-    },
-  );
+    expect(
+      within(modal).getByText(/Semantic search also runs on this connection/),
+    ).toBeInTheDocument();
+    expect(
+      within(modal).getByText(/saved credentials will be deleted/),
+    ).toBeInTheDocument();
+  });
+
+  it("does not warn about dependent features when removing the anthropic connection", async () => {
+    setup();
+
+    const modal = await openRemoveDialog("anthropic");
+
+    expect(
+      within(modal).getByText(/saved credentials will be deleted/),
+    ).toBeInTheDocument();
+    expect(
+      within(modal).queryByText(/also runs on this connection/),
+    ).not.toBeInTheDocument();
+  });
 
   it("shows the skeleton until the connections have loaded", async () => {
     setup();
@@ -160,3 +164,10 @@ describe("AIProviderList", () => {
     ).not.toBeInTheDocument();
   });
 });
+
+async function openRemoveDialog(key: string) {
+  const row = await screen.findByTestId(`provider-${key}`);
+  await userEvent.click(within(row).getByLabelText("Provider options"));
+  await userEvent.click(await screen.findByText("Remove"));
+  return screen.findByRole("dialog", { name: "Remove this provider?" });
+}

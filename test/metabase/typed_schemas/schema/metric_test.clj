@@ -1,13 +1,16 @@
 (ns metabase.typed-schemas.schema.metric-test
   (:require
    [clojure.test :refer :all]
+   [metabase.lib.core :as lib]
    [metabase.metabot.core :as metabot]
    [metabase.models.interface :as mi]
+   [metabase.permissions.core :as perms]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
+   [metabase.typed-schemas.db :as typed-schemas.db]
+   [metabase.typed-schemas.schema.common :as schema.common]
    [metabase.typed-schemas.schema.metric :as schema.metric]
-   [metabase.typed-schemas.schema.table :as schema.table]
-   [toucan2.core :as t2]))
+   [metabase.typed-schemas.schema.table :as schema.table]))
 
 (use-fixtures :once (fixtures/initialize :db))
 
@@ -53,6 +56,37 @@
     (is (= 42 (#'schema.metric/source-card-id
                {:dataset_query {:stages [{:source-card 42}]}})))))
 
+(defn- orders-metric-query
+  [filters]
+  (lib/test-query
+   (mt/metadata-provider)
+   {:stages [{:source       {:type :table :id (mt/id :orders)}
+              :filters      filters
+              :aggregations [{:type :operator :operator :sum
+                              :args [{:type :column :name "TOTAL" :table-id (mt/id :orders)}]}]}]}))
+
+(deftest metric-filters-test
+  (testing "a metric's filters are described the way the query builder names them"
+    (mt/with-temp [:model/Card card {:type          :metric
+                                     :database_id   (mt/id)
+                                     :dataset_query (orders-metric-query
+                                                     [{:type :operator :operator :>=
+                                                       :args [{:type :column :name "CREATED_AT" :table-id (mt/id :orders)}
+                                                              {:type :literal :value "2025-01-01"}]}
+                                                      {:type :operator :operator :=
+                                                       :args [{:type :column :name "CATEGORY"
+                                                               :source-field-id (mt/id :orders :product_id)}
+                                                              {:type :literal :value "Widget"}]}])}]
+      (is (= ["Created At is greater than or equal to \"2025-01-01\"" "Category is Widget"]
+             (#'schema.metric/metric-filters card)))))
+  (testing "a metric without filters has none"
+    (mt/with-temp [:model/Card card {:type          :metric
+                                     :database_id   (mt/id)
+                                     :dataset_query (orders-metric-query [])}]
+      (is (nil? (#'schema.metric/metric-filters card)))))
+  (testing "a card without a query has none"
+    (is (nil? (#'schema.metric/metric-filters {:id 247 :dataset_query {}})))))
+
 (deftest metric-details-skips-default-temporal-breakout-test
   (let [requested (atom nil)]
     (mt/with-dynamic-fn-redefs [metabot/get-metric-details
@@ -79,9 +113,77 @@
                :error-message "Not found."}
               (ex-data exception))))))
 
+(deftest metric-schemas-excludes-card-sourced-metrics-test
+  (mt/with-dynamic-fn-redefs [schema.common/select-schema-cards
+                              (constantly [{:id 247
+                                            :dataset_query {:lib/type :mbql/query
+                                                            :database 1
+                                                            :stages [{:lib/type :mbql.stage/mbql
+                                                                      :source-table 10}]}}
+                                           {:id 258
+                                            :dataset_query {:query {:source-table "card__42"}}}
+                                           {:id 259
+                                            :dataset_query {:stages [{:source-card 42}]}}])
+                              schema.metric/metric-details identity
+                              schema.metric/metric-schema (fn [details _card] (:id details))]
+    (is (= [247]
+           (vec (schema.metric/metric-schemas nil nil))))))
+
+(deftest metric-schemas-excludes-metrics-that-reference-other-metrics-test
+  (mt/with-dynamic-fn-redefs [schema.common/select-schema-cards
+                              (constantly [{:id 247
+                                            :dataset_query {:lib/type :mbql/query
+                                                            :database 1
+                                                            :stages [{:lib/type :mbql.stage/mbql
+                                                                      :source-table 10}]}}
+                                           {:id 258
+                                            :dataset_query {:lib/type :mbql/query
+                                                            :database 1
+                                                            :stages [{:lib/type :mbql.stage/mbql
+                                                                      :source-table 10
+                                                                      :aggregation [[:metric
+                                                                                     {:lib/uuid
+                                                                                      "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"}
+                                                                                     247]]}]}}])
+                              schema.metric/metric-details identity
+                              schema.metric/metric-schema (fn [details _card] (:id details))]
+    (is (= [247]
+           (vec (schema.metric/metric-schemas nil nil))))))
+
+(deftest metric-schemas-excludes-metrics-that-join-a-saved-question-test
+  ;; Metric 258 is table-sourced and joins a saved question, so `source-card-id` — which only reads
+  ;; stage 0's source — passes it. The CLI checks the whole query and rejects it, aborting
+  ;; `sync-resources` for any app that uses it, so codegen has to drop it here as well.
+  (mt/with-dynamic-fn-redefs [schema.common/select-schema-cards
+                              (constantly [{:id 247
+                                            :dataset_query {:lib/type :mbql/query
+                                                            :database 1
+                                                            :stages [{:lib/type :mbql.stage/mbql
+                                                                      :source-table 10}]}}
+                                           {:id 258
+                                            :dataset_query {:lib/type :mbql/query
+                                                            :database 1
+                                                            :stages [{:lib/type :mbql.stage/mbql
+                                                                      :source-table 10
+                                                                      :joins [{:lib/type :mbql/join
+                                                                               :alias "Question"
+                                                                               :stages [{:lib/type :mbql.stage/mbql
+                                                                                         :source-card 42}]
+                                                                               :conditions
+                                                                               [[:=
+                                                                                 {:lib/uuid "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"}
+                                                                                 [:field {:lib/uuid "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"} 11]
+                                                                                 [:field {:lib/uuid "cccccccc-cccc-cccc-cccc-cccccccccccc"} 12]]]}]}]}}])
+                              schema.metric/metric-details identity
+                              schema.metric/metric-schema (fn [details _card] (:id details))]
+    (is (= [247]
+           (vec (schema.metric/metric-schemas nil nil))))))
+
 (deftest table-source-names-filters-unreadable-tables-test
-  (with-redefs [t2/select (constantly [{:id 10 :name "orders" :display_name "Orders"}
-                                       {:id 20 :name "franchises" :display_name "Franchises"}])
+  (with-redefs [perms/prime-table-perms-cache (constantly nil)
+                typed-schemas.db/table-names
+                (constantly [{:id 10 :name "orders" :display_name "Orders"}
+                             {:id 20 :name "franchises" :display_name "Franchises"}])
                 mi/can-read? (fn [{:keys [id]}] (= id 10))]
     (is (= {10 "orders"}
            (#'schema.metric/table-source-names [10 20])))
@@ -132,10 +234,11 @@
                                 :name     "orders"
                                 :table-id 10}])
                   mi/can-read? (constantly true)
-                  t2/select (fn [columns & _args]
-                              (when (= columns [:model/Table :id :name :display_name])
-                                (swap! table-select-count inc)
-                                [{:id 10 :name "orders" :display_name "Orders"}]))]
+                  perms/prime-table-perms-cache (constantly nil)
+                  typed-schemas.db/table-names
+                  (fn [_table-ids]
+                    (swap! table-select-count inc)
+                    [{:id 10 :name "orders" :display_name "Orders"}])]
       (#'schema.metric/metric-schema
        {:id   247
         :name "Customer Lifetime Value"}
@@ -153,11 +256,11 @@
                                 schema.table/table-by-field-id (fn [field-id]
                                                                  (swap! field-lookup-attempts conj field-id)
                                                                  ({42 10, 84 20} field-id))
-                                t2/select (fn [columns & _args]
-                                            (when (= columns [:model/Field :id :table_id])
-                                              (swap! field-select-count inc)
-                                              [{:id 42 :table_id 10}
-                                               {:id 84 :table_id 20}]))]
+                                typed-schemas.db/field-ids-and-table-ids
+                                (fn [_field-ids]
+                                  (swap! field-select-count inc)
+                                  [{:id 42 :table_id 10}
+                                   {:id 84 :table_id 20}])]
       (is (= (mapv vector dimensions [10 20])
              (#'schema.metric/metric-dimensions-with-table-ids {:id 247} nil)))
       (is (= 1 @field-select-count))

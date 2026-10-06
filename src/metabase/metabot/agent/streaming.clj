@@ -16,7 +16,6 @@
 (def state-type "AI-SDK data type for state updates." "state")
 (def todo-list-type "AI-SDK data type for todo lists." "todo_list")
 (def code-edit-type "AI-SDK data type for code edits." "code_edit")
-(def transform-suggestion-type "AI-SDK data type for transform suggestions." "transform_suggestion")
 (def generated-entity-type "AI-SDK data type for generated entities." "generated_entity")
 (def entity-saved-type "AI-SDK data type for saved-entity annotations." "entity_saved")
 (def adhoc-viz-type "AI-SDK data type for ad-hoc visualizations." "adhoc_viz")
@@ -97,17 +96,6 @@
   {:type :data
    :data-type code-edit-type
    :data edit-data})
-
-(defn transform-suggestion-part
-  "Create a TRANSFORM_SUGGESTION data part for streaming.
-  Suggestion should be a map containing the suggested transform definition.
-
-  This matches Python AI Service's:
-  ai_sdk.create_data_part(data_type=AISDKDataTypes.TRANSFORM_SUGGESTION, version=1, value=suggestion)"
-  [suggestion]
-  {:type :data
-   :data-type transform-suggestion-type
-   :data suggestion})
 
 (defn adhoc-viz-part
   "Create an ADHOC_VIZ data part for streaming.

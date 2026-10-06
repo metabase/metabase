@@ -1,14 +1,15 @@
 import { useDisclosure } from "@mantine/hooks";
 import { t } from "ttag";
 
-import { SetByEnvVarWrapper } from "metabase/admin/settings/components/widgets/AdminSettingInput";
 import { useLazyGenerateRandomTokenQuery } from "metabase/api/util";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { CopyButton } from "metabase/common/components/CopyButton";
 import { useAdminSetting } from "metabase/settings";
+import {
+  SetByEnvVarWrapper,
+  SettingHeader,
+} from "metabase/settings-components";
 import { Box, Button, Flex, TextInputBlurChange } from "metabase/ui";
-
-import { SettingHeader } from "../SettingHeader";
 
 export const EmbeddingSecretKeyWidget = () => {
   const [modalOpened, { open: openModal, close: closeModal }] =
@@ -53,7 +54,7 @@ export const EmbeddingSecretKeyWidget = () => {
           {value ? (
             <>
               <Button
-                variant="outline"
+                size="lg"
                 onClick={openModal}
                 style={{ flexShrink: 0 }}
               >{t`Regenerate key`}</Button>
@@ -71,6 +72,7 @@ export const EmbeddingSecretKeyWidget = () => {
           ) : (
             <Button
               variant="filled"
+              size="lg"
               onClick={generateToken}
               style={{ flexShrink: 0 }}
             >{t`Generate key`}</Button>

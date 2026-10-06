@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 
 import { useLocale } from "metabase/common/hooks";
 import { useTranslateContent } from "metabase/content-translation/hooks";
-import { PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
+import { PLUGIN_CONTENT_TRANSLATION } from "metabase/content-translation/plugins";
 import { Flex, PopoverBackButton } from "metabase/ui";
 
 interface FilterPickerHeaderProps {

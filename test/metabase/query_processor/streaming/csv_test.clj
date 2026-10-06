@@ -134,9 +134,9 @@
 (defn- csv-export
   "Given a seq of result rows, write it as a CSV, then read the CSV and return the resulting data."
   [rows]
-  (rest (csv-export-with-cols [{:base_type :type/*}
-                               {:base_type :type/*}
-                               {:base_type :type/*}]
+  (rest (csv-export-with-cols [{:name "A", :display_name "A", :base_type :type/*}
+                               {:name "B", :display_name "B", :base_type :type/*}
+                               {:name "C", :display_name "C", :base_type :type/*}]
                               rows)))
 
 (deftest csv-export-includes-utf8-bom-test
@@ -146,7 +146,7 @@
         (with-open [bos (ByteArrayOutputStream.)
                     os  (BufferedOutputStream. bos)]
           (let [results-writer (qp.si/streaming-results-writer :csv os)]
-            (qp.si/begin! results-writer {:data {:ordered-cols [{:base_type :type/*}]}} {})
+            (qp.si/begin! results-writer {:data {:ordered-cols [{:name "A", :display_name "A", :base_type :type/*}]}} {})
             (qp.si/write-row! results-writer ["£37.65"] 0 [] {})
             (qp.si/finish! results-writer {:row_count 1}))
           (is (= [(unchecked-byte 0xEF) (unchecked-byte 0xBB) (unchecked-byte 0xBF)]
@@ -159,7 +159,7 @@
         (with-open [bos (ByteArrayOutputStream.)
                     os  (BufferedOutputStream. bos)]
           (let [results-writer (qp.si/streaming-results-writer :csv os)]
-            (qp.si/begin! results-writer {:data {:ordered-cols [{:base_type :type/*}] :csv-include-bom? false}} {})
+            (qp.si/begin! results-writer {:data {:ordered-cols [{:name "A", :display_name "A", :base_type :type/*}] :csv-include-bom? false}} {})
             (qp.si/write-row! results-writer ["£37.65"] 0 [] {})
             (qp.si/finish! results-writer {:row_count 1}))
           (let [bytes (seq (.toByteArray bos))]

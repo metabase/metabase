@@ -9,7 +9,6 @@
    [metabase.metabot.tools.sql.create :as create-sql-query-tools]
    [metabase.metabot.tools.util :as metabot.tools.u]
    [metabase.query-processor.core :as qp]
-   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.warehouses.core :as warehouses]))
 
@@ -124,8 +123,7 @@
            :structured-output {:database_id database-id
                                :sql_engine  (:engine db)}})))
     (catch Exception e
-      (log/errorf "Error collecting document schema: %s" (ex-message e))
-      {:output (str "Failed to collect schema: " (or (ex-message e) "Unknown error"))})))
+      (metabot.tools.u/handle-agent-or-api-error e))))
 
 (def ^:private sql-chart-schema
   [:map {:closed true}
@@ -175,22 +173,13 @@
             {:output "Draft chart payload generated from SQL query."
              :structured-output structured}))))
     (catch Exception e
-      (log/errorf "Error constructing SQL chart draft: %s" (ex-message e))
-      (if (:agent-error? (ex-data e))
-        (metabot.tools.u/handle-agent-error e)
-        {:output (str "Failed to construct SQL chart draft: " (or (ex-message e) "Unknown error"))}))))
+      (metabot.tools.u/handle-agent-error e))))
 
 (def ^:private model-chart-schema
-  "Schema for `document_construct_model_chart`. Mirrors `construct_notebook_query`'s
-  representations format: `:query` is a YAML string in MBQL 5 representations format.
-
-  Per `repr-plan.md` step 13, `:source_entity` is no longer part of the contract — the YAML
-  query is self-describing (carries `database:` at the top level and full portable FK paths
-  everywhere else)."
   [:map {:closed true}
    [:name :string]
    [:description :string]
-   [:query :string]
+   [:query construct-tools/LLMQueryArgument]
    [:viz_settings [:map {:closed true}
                    [:chart_type chart-type-enum]]]])
 
@@ -203,6 +192,8 @@
     (let [chart-type (get viz_settings :chart_type)
           result     (construct-tools/construct-notebook-query-tool
                       {:query query
+                       :title name
+                       :description description
                        :visualization {:chart_type chart-type}})
           structured (or (:structured-output result) (:structured_output result))
           query-id   (:query-id structured)
@@ -222,7 +213,4 @@
         (or result
             {:output "Failed to construct model chart draft."})))
     (catch Exception e
-      (log/errorf "Error constructing model chart draft: %s" (ex-message e))
-      (if (:agent-error? (ex-data e))
-        (metabot.tools.u/handle-agent-error e)
-        {:output (str "Failed to construct model chart draft: " (or (ex-message e) "Unknown error"))}))))
+      (metabot.tools.u/handle-agent-error e))))

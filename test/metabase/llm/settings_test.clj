@@ -4,6 +4,7 @@
    [metabase.config.core :as config]
    [metabase.llm.settings :as llm.settings]
    [metabase.settings.core :as setting]
+   [metabase.startup.core :as startup]
    [metabase.test :as mt]
    [metabase.util.http :as u.http])
   (:import
@@ -60,16 +61,6 @@
     (mt/with-temporary-setting-values [llm-providers []]
       (mt/with-temp-env-var-value! [mb-llm-anthropic-api-base-url "https://env-only.example"]
         (is (= "https://env-only.example" (llm.settings/llm-anthropic-api-base-url)))))))
-
-;;; ------------------------------------------- llm-anthropic-api-key Tests -------------------------------------------
-
-(deftest llm-anthropic-api-key-configured?-test
-  (testing "returns false when no API key is set"
-    (mt/with-dynamic-fn-redefs [llm.settings/llm-anthropic-api-key (constantly nil)]
-      (is (false? (llm.settings/llm-anthropic-api-key-configured?)))))
-  (testing "returns true when API key is set"
-    (mt/with-temporary-setting-values [llm-anthropic-api-key "sk-ant-test"]
-      (is (true? (llm.settings/llm-anthropic-api-key-configured?))))))
 
 ;;; ------------------------------------------- Google credential validation -------------------------------------------
 
@@ -215,9 +206,12 @@
         (is (= :allow-all (llm.settings/llm-allowed-networks))))
       (mt/with-temp-env-var-value! [mb-llm-allowed-networks "allow-private"]
         (is (= :allow-private (llm.settings/llm-allowed-networks)))))
-    (testing "a value that is not one of the policies fails closed"
+    (testing "a value that is not one of the policies is refused outright: startup reads this Setting, so the
+             instance does not come up on a policy nobody chose"
       (mt/with-temp-env-var-value! [mb-llm-allowed-networks "allow_all"]
-        (is (= :external-only (llm.settings/llm-allowed-networks)))))
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                              #"Invalid MB_LLM_ALLOWED_NETWORKS"
+                              (llm.settings/llm-allowed-networks)))))
     (testing "it is not settable: nobody loosens it through the API"
       (is (thrown? Exception (setting/set! :llm-allowed-networks :allow-all)))))
   (testing "a value that reached the application database some other way is ignored"
@@ -427,18 +421,14 @@
     (mt/with-temporary-setting-values [llm-connection-timeout-ms 3000]
       (is (= 3000 (llm.settings/llm-connection-timeout-ms))))))
 
-(deftest llm-rate-limit-per-user-test
-  (testing "default value is 20 requests per minute"
-    (mt/with-temporary-setting-values [llm-rate-limit-per-user nil]
-      (is (= 20 (llm.settings/llm-rate-limit-per-user)))))
-  (testing "can be overridden"
-    (mt/with-temporary-setting-values [llm-rate-limit-per-user 50]
-      (is (= 50 (llm.settings/llm-rate-limit-per-user))))))
-
-(deftest llm-rate-limit-per-ip-test
-  (testing "default value is 100 requests per minute"
-    (mt/with-temporary-setting-values [llm-rate-limit-per-ip nil]
-      (is (= 100 (llm.settings/llm-rate-limit-per-ip)))))
-  (testing "can be overridden"
-    (mt/with-temporary-setting-values [llm-rate-limit-per-ip 200]
-      (is (= 200 (llm.settings/llm-rate-limit-per-ip))))))
+(deftest llm-allowed-networks-startup-validation-test
+  (testing "a policy the environment names but Metabase does not recognize stops the boot, rather than waiting
+           for the first LLM request to discover it"
+    (mt/with-temp-env-var-value! [mb-llm-allowed-networks "allow-everything"]
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                            #"Invalid MB_LLM_ALLOWED_NETWORKS"
+                            (startup/def-startup-validation! :metabase.llm.provider.settings/llm-allowed-networks)))))
+  (testing "a policy it does recognize lets the boot continue"
+    (mt/with-temp-env-var-value! [mb-llm-allowed-networks "allow-private"]
+      (is (= :allow-private
+             (startup/def-startup-validation! :metabase.llm.provider.settings/llm-allowed-networks))))))

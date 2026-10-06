@@ -2,8 +2,10 @@
   (:require
    [clojure.test :refer :all]
    [metabase.lib.core :as lib]
+   [metabase.lib.normalize :as lib.normalize]
    [metabase.lib.test-metadata :as meta]
-   [metabase.models.serialization :as serdes]))
+   [metabase.models.serialization :as serdes]
+   [metabase.util.malli.registry :as mr]))
 
 (defn- fake-uuid
   "Deterministic placeholder `:lib/uuid` for tests, e.g. `(fake-uuid 1)` => \"00000000-0000-0000-0000-000000000001\"."
@@ -155,6 +157,38 @@
                                             (fake-uuid 0)]]]}]}
               (serdes/import-mbql query))))))
 
+(deftest ^:parallel import-mbql-legacy-query-test
+  (binding [serdes/*import-database-fk* (constantly 1)
+            serdes/*import-table-fk*    (constantly 2)
+            serdes/*import-field-fk*    (constantly 3)]
+    (testing "a legacy MBQL query is converted to MBQL 5, keeping integer literals in comparisons and aggregations as literals"
+      (is (=? {:lib/type :mbql/query
+               :database 1
+               :stages   [{:source-table 2
+                           :filters      [[:= {} [:field {} 3] 1]
+                                          [:= {} 1 1]
+                                          [:< {} 4 5]]
+                           :aggregation  [[:sum-where {} [:field {} 3] [:= {} 6 6]]]
+                           :joins        [{:alias      "J"
+                                           :conditions [[:= {} 1 1]]}]}]}
+              (serdes/import-mbql
+               {:database "DB"
+                :type     "query"
+                :query    {:source-table ["DB" "SCHEMA" "TABLE"]
+                           :filter       ["and"
+                                          ["=" ["field" ["DB" "SCHEMA" "TABLE" "FIELD"] nil] 1]
+                                          ["=" 1 1]
+                                          ["<" 4 5]]
+                           :aggregation  [["sum-where" ["field" ["DB" "SCHEMA" "TABLE" "FIELD"] nil] ["=" 6 6]]]
+                           :joins        [{:source-table ["DB" "SCHEMA" "TABLE"]
+                                           :alias        "J"
+                                           :condition    ["=" 1 1]}]}}))))
+    (testing "a legacy native query is not converted"
+      (is (=? {:database 1
+               :type     "native"
+               :native   {:query "SELECT 1"}}
+              (serdes/import-mbql {:database "DB", :type "native", :native {:query "SELECT 1"}}))))))
+
 (deftest ^:parallel hydrate-mbql-5-uuids-on-import-test-2
   (binding [serdes/*import-field-fk* (constantly 3)]
     (are [x expected] (=? expected
@@ -182,6 +216,17 @@
 
         ["fk->" ["field-id" 1] ["field-id" 2]]
         ["fk->" [:field-id ["A" "B" "C" "D"]] [:field-id ["A" "B" "C" "D"]]]))))
+
+(deftest ^:parallel normalize-field-ref-reuses-cached-coercer-test
+  (testing "normalizing :field refs hits the registry coercer cache after the first call"
+    (let [misses (atom 0)]
+      (binding [mr/*cache-miss-hook* (fn [k _schema _value]
+                                       (when (= k ::lib.normalize/coercer)
+                                         (swap! misses inc)))]
+        (dotimes [_ 3]
+          (#'serdes/normalize-mbql-ref [:field 1 nil])
+          (#'serdes/normalize-mbql-ref [:field {:lib/uuid (fake-uuid 1)} 1])))
+      (is (<= @misses 1)))))
 
 (deftest ^:parallel export-visualization-settings-test
   (binding [serdes/*export-field-fk* (constantly ["A" "B" "C" "D"])
@@ -350,3 +395,16 @@
            clojure.lang.ExceptionInfo
            #"Invalid input.*:template-tags"
            (serdes/import-mbql query-with-unknown-tag-type))))))
+
+(deftest ^:parallel field-path->field-ref-test
+  (testing "a Field path turns into the reference `*import-field-fk*` takes, with or without a schema"
+    (is (= ["db" "PUBLIC" "orders" "id"]
+           (serdes/field-path->field-ref [{:model "Database" :id "db"} {:model "Schema" :id "PUBLIC"}
+                                          {:model "Table" :id "orders"} {:model "Field" :id "id"}])))
+    (is (= ["db" nil "orders" "id"]
+           (serdes/field-path->field-ref [{:model "Database" :id "db"} {:model "Table" :id "orders"}
+                                          {:model "Field" :id "id"}]))))
+  (testing "a nested Field of a Table without a schema keeps the Table and every parent Field in place"
+    (is (= ["db" nil "orders" "customer" "tier"]
+           (serdes/field-path->field-ref [{:model "Database" :id "db"} {:model "Table" :id "orders"}
+                                          {:model "Field" :id "customer"} {:model "Field" :id "tier"}])))))

@@ -28,25 +28,30 @@
     [:maybe {:description (str "Comma-separated library collection ids or entity ids. "
                                "Limits tables and metrics to those library collections.")}
      ms/NonBlankString]]
-   [:question-collections {:optional true}
-    [:maybe {:description (str "Comma-separated collection ids or entity ids. "
-                               "Includes saved questions from those collections.")}
-     ms/NonBlankString]]
    [:include-data-library {:optional true}
     [:maybe {:description "Whether to include the entire data library."}
      :boolean]]
    [:include-metric-library {:optional true}
     [:maybe {:description "Whether to include the entire metric library."}
      :boolean]]
-   [:include-models {:optional true}
-    [:maybe {:description (str "Whether to include all readable models with executable actions. "
-                               "Database scope applies when provided.")}
+   [:include-actions {:optional true}
+    [:maybe {:description (str "Include query actions that belong to no model. Database scope filters them; "
+                               "library scope does not. Without a scope, returns actions only.")}
      :boolean]]])
 
 (api.macros/defendpoint :get "/v1/typescript" :- :any
   "Generate a TypeScript semantic schema module."
   [_route-params
-   query-params :- TypedSchemaQueryParams]
+   query-params :- TypedSchemaQueryParams
+   _body-params
+   {{question-collections "question-collections"
+     include-models       "include-models"} :query-params}]
+  (when (some? question-collections)
+    (throw (ex-info "The question-collections query parameter is not supported."
+                    {:status-code 400})))
+  (when (some? include-models)
+    (throw (ex-info "The include-models query parameter is not supported; use include-actions."
+                    {:status-code 400})))
   {:status  200
    :headers typescript-response-headers
    :body    (-> query-params

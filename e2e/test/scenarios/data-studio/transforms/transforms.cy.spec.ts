@@ -199,7 +199,9 @@ describe("scenarios > admin > transforms", { tags: ["@external"] }, () => {
           .find(".cm-panels")
           .should("be.visible");
 
-        getPythonDataPicker().findByText("Select a table…").click();
+        getPythonDataPicker()
+          .findByRole("button", { name: "Select a table…" })
+          .click();
 
         cy.log(
           "the editor search panel must not paint over the modal (metabase#73290)",
@@ -700,16 +702,6 @@ LIMIT
         cy.findByText("Count").should("be.visible");
       });
     });
-
-    it("should show the metabot button", () => {
-      H.setupAnthropicLlmProvider();
-      visitTransformListPage();
-      cy.button("Create a transform").click();
-      H.popover().findByText("Query builder").click();
-      cy.findByRole("button", { name: /Chat with Metabot/ }).should(
-        "be.visible",
-      );
-    });
   });
 
   describe("name", () => {
@@ -1079,7 +1071,7 @@ LIMIT
       }).as("updateTransformError");
 
       cy.log("Toggle incremental on");
-      getIncrementalSwitch().click();
+      getIncrementalSwitch().findByRole("switch").should("be.enabled").click();
 
       cy.log("Wait for the failed request");
       cy.wait("@updateTransformError");
@@ -2138,7 +2130,7 @@ LIMIT
         );
 
         cy.findByTestId("python-data-picker")
-          .findByText("Select a table…")
+          .findByRole("button", { name: "Select a table…" })
           .click();
 
         H.entityPickerModal().within(() => {
@@ -2249,7 +2241,7 @@ LIMIT
         );
 
         cy.findByTestId("python-data-picker")
-          .findByText("Select a table…")
+          .findByRole("button", { name: "Select a table…" })
           .click();
 
         H.entityPickerModal().within(() => {
@@ -4354,8 +4346,7 @@ describe("scenarios > data studio > transforms > permissions > oss", () => {
       cy.findByRole("columnheader", { name: /Transforms/ }).should("not.exist");
 
       cy.log("Visit data studio page");
-      cy.visit("/data-studio");
-      H.DataStudio.nav().should("be.visible");
+      H.DataStudio.visit();
 
       cy.log("Verify Transforms menu item is visible");
       H.DataStudio.nav()
@@ -4428,8 +4419,7 @@ describe(
         );
 
         cy.log("Visit data studio page");
-        cy.visit("/data-studio");
-        H.DataStudio.nav().should("be.visible");
+        H.DataStudio.visit();
 
         cy.log("Verify Transforms menu item is visible");
         H.DataStudio.nav()

@@ -57,6 +57,16 @@ export const settingsApi = Api.injectEndpoints({
           }
         }),
     }),
+    // The timezones this instance can use as a report timezone. Fetched by key
+    // rather than read from the settings payload: the list is large, one admin
+    // page reads it, and it only changes when the instance is upgraded.
+    listTimezones: builder.query<string[], void>({
+      query: () => ({
+        method: "GET",
+        url: "/api/setting/available-timezones",
+      }),
+      keepUnusedDataFor: Infinity,
+    }),
     // admin-only endpoint that returns all settings with lots of extra metadata
     getAdminSettingsDetails: builder.query<SettingDefinitionMap, void>({
       query: () => ({
@@ -107,7 +117,7 @@ export const settingsApi = Api.injectEndpoints({
       invalidatesTags: (_, error, settings) =>
         invalidateTags(error, [
           tag("session-properties"),
-          listTag("embedding-hub-checklist"),
+          listTag("setup-guide-checklist"),
           // Saving a custom homepage also changes the current user server-side
           ...("custom-homepage" in settings ||
           "custom-homepage-dashboard" in settings
@@ -177,6 +187,7 @@ export const settingsApi = Api.injectEndpoints({
 
 export const {
   useGetSettingQuery,
+  useListTimezonesQuery,
   useGetVersionInfoQuery,
   useGetAdminSettingsDetailsQuery,
   useGetSessionPropertiesQuery,
@@ -189,6 +200,13 @@ export const {
 // aliases for easier use
 export const useGetSettingsQuery = useGetSessionPropertiesQuery;
 export const useLazyGetSettingsQuery = useLazyGetSessionPropertiesQuery;
+
+/**
+ * The session properties (settings) request in flight, if there is one.
+ * Await `dispatch(joinSiteSettingsRequest())` to wait for it without sending one.
+ */
+export const joinSiteSettingsRequest = () =>
+  settingsApi.util.getRunningQueryThunk("getSessionProperties", undefined);
 
 /**
  * Force a refetch of the session properties (settings) from non-React code.

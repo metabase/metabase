@@ -7,12 +7,10 @@
 
 (mr/def ::bookmark-ordering
   "A BookmarkOrdering as selected from the app DB: every column of `:bookmark_ordering`."
-  [:map {:closed true}
-   [:id       ms/PositiveInt]
-   [:user_id  ::lib.schema.id/user]
-   [:type     [:or :keyword :string]]
-   [:item_id  ms/PositiveInt]
-   [:ordering :int]])
+  [:merge
+   ::bookmark-ordering.update
+   [:map {:closed true}
+    [:id       ms/PositiveInt]]])
 
 (mr/def ::bookmark-ordering.update
   "What an update (or insert) of a BookmarkOrdering accepts: every column of `:bookmark_ordering` except `id`, all optional."
@@ -24,11 +22,10 @@
 
 (mr/def ::card-bookmark
   "A CardBookmark as selected from the app DB: every column of `:card_bookmark`."
-  [:map {:closed true}
-   [:id         ms/PositiveInt]
-   [:user_id    ::lib.schema.id/user]
-   [:card_id    ::lib.schema.id/card]
-   [:created_at ms/TemporalInstant]])
+  [:merge
+   ::card-bookmark.update
+   [:map {:closed true}
+    [:id         ms/PositiveInt]]])
 
 (mr/def ::card-bookmark.update
   "What an update (or insert) of a CardBookmark accepts: every column of `:card_bookmark` except `id`, all optional."
@@ -39,11 +36,10 @@
 
 (mr/def ::collection-bookmark
   "A CollectionBookmark as selected from the app DB: every column of `:collection_bookmark`."
-  [:map {:closed true}
-   [:id            ms/PositiveInt]
-   [:user_id       ::lib.schema.id/user]
-   [:collection_id ::lib.schema.id/collection]
-   [:created_at    ms/TemporalInstant]])
+  [:merge
+   ::collection-bookmark.update
+   [:map {:closed true}
+    [:id            ms/PositiveInt]]])
 
 (mr/def ::collection-bookmark.update
   "What an update (or insert) of a CollectionBookmark accepts: every column of `:collection_bookmark` except `id`, all optional."
@@ -54,11 +50,10 @@
 
 (mr/def ::dashboard-bookmark
   "A DashboardBookmark as selected from the app DB: every column of `:dashboard_bookmark`."
-  [:map {:closed true}
-   [:id           ms/PositiveInt]
-   [:user_id      ::lib.schema.id/user]
-   [:dashboard_id ::lib.schema.id/dashboard]
-   [:created_at   ms/TemporalInstant]])
+  [:merge
+   ::dashboard-bookmark.update
+   [:map {:closed true}
+    [:id           ms/PositiveInt]]])
 
 (mr/def ::dashboard-bookmark.update
   "What an update (or insert) of a DashboardBookmark accepts: every column of `:dashboard_bookmark` except `id`, all optional."
@@ -69,11 +64,10 @@
 
 (mr/def ::document-bookmark
   "A DocumentBookmark as selected from the app DB: every column of `:document_bookmark`."
-  [:map {:closed true}
-   [:id          ms/PositiveInt]
-   [:user_id     ::lib.schema.id/user]
-   [:document_id ms/PositiveInt]
-   [:created_at  ms/TemporalInstant]])
+  [:merge
+   ::document-bookmark.update
+   [:map {:closed true}
+    [:id          ms/PositiveInt]]])
 
 (mr/def ::document-bookmark.update
   "What an update (or insert) of a DocumentBookmark accepts: every column of `:document_bookmark` except `id`, all optional."
@@ -84,11 +78,10 @@
 
 (mr/def ::exploration-bookmark
   "A ExplorationBookmark as selected from the app DB: every column of `:exploration_bookmark`."
-  [:map {:closed true}
-   [:id             ms/PositiveInt]
-   [:user_id        ::lib.schema.id/user]
-   [:exploration_id ms/PositiveInt]
-   [:created_at     ms/TemporalInstant]])
+  [:merge
+   ::exploration-bookmark.update
+   [:map {:closed true}
+    [:id             ms/PositiveInt]]])
 
 (mr/def ::exploration-bookmark.update
   "What an update (or insert) of a ExplorationBookmark accepts: every column of `:exploration_bookmark` except `id`, all optional."

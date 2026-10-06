@@ -4,11 +4,23 @@
   (:require
    [clojure.string :as str]
    [metabase.api.macros :as api.macros]
-   [metabase.mcp.resources :as mcp.resources]
+   [metabase.mcp.paths :as mcp.paths]
    [metabase.mcp.session :as mcp.session]
-   [metabase.mcp.settings :as mcp.settings]))
+   [metabase.mcp.settings :as mcp.settings]
+   [metabase.mcp.ui-surface :as mcp.ui-surface]))
 
 (set! *warn-on-reflection* true)
+
+(defn mcp-canonical-path
+  "The advertised MCP URL path, relative to site-url (see [[metabase.mcp.paths/canonical-path]])."
+  []
+  mcp.paths/canonical-path)
+
+(defn mcp-endpoint-paths
+  "Every path serving MCP, canonical plus back-compat aliases
+   (see [[metabase.mcp.paths/endpoint-paths]])."
+  []
+  mcp.paths/endpoint-paths)
 
 (defn cors-origins
   "Returns space-separated CORS origins from both common and custom MCP client settings."
@@ -25,6 +37,16 @@
   [credential]
   (mcp.session/resolve-ui-credential credential))
 
+(defn ui-credential-on-surface?
+  "Whether an MCP Apps UI credential may authenticate `method` + `uri` at all."
+  [method uri]
+  (mcp.ui-surface/on-surface? method uri))
+
+(defn ui-credential-scope-satisfied?
+  "Whether a UI credential with `claims` holds what `method` + `uri` costs."
+  [method uri claims]
+  (mcp.ui-surface/scope-satisfied? method uri claims))
+
 (defn vscode-webview-enabled?
   "Returns true if vscode/cursor is enabled in common MCP apps."
   []
@@ -40,10 +62,30 @@
       false)))
 
 (defn all-scopes
-  "All supported OAuth scopes: those declared on agent-api endpoints via
-   defendpoint metadata, plus scopes from MCP UI resources (e.g. visualize_query)."
+  "All supported OAuth scopes, as a sorted set: those declared on agent-api endpoints via defendpoint metadata, plus
+   every scope the v2 MCP surface accepts ([[v2-scopes]])."
   []
-  (into (mcp.resources/resource-scopes)
-        (comp (keep #(get-in % [:form :metadata :scope]))
-              (filter string?))
-        (vals (api.macros/ns-routes 'metabase.agent-api.api))))
+  (-> (sorted-set)
+      ;; agent-api scopes from defendpoint metadata
+      (into (comp (keep #(get-in % [:form :metadata :scope]))
+                  (filter string?))
+            (vals (api.macros/ns-routes 'metabase.agent-api.api)))
+      ;; The v2 surface's scopes, read from the require-free leaf rather than the registry (see [[v2-scopes]]).
+      (into mcp.paths/v2-surface-scopes)))
+
+(defn v2-scopes
+  "The scopes the v2 MCP surface itself gates on. Excludes the agent-API endpoint scopes
+   [[all-scopes]] also gathers — those belong to a different resource, and advertising them for v2 is
+   what puts per-entity scopes the v2 tools don't use on a v2 client's consent screen.
+
+   Read from the require-free literal in [[metabase.mcp.paths/v2-surface-scopes]], not the registries.
+   The registries report only the tools whose namespaces happen to be loaded.
+   Reaching them from here would also pull `metabot.scope` in wherever this namespace loads (see [[metabase.mcp.paths]]).
+   `v2-surface-scopes-match-metabot-scope-test` keeps the literal in step with what the tools gate on."
+  []
+  mcp.paths/v2-surface-scopes)
+
+(defn v2-baseline-scopes
+  "The subset of [[v2-scopes]] a client is told to request when it first connects."
+  []
+  mcp.paths/v2-baseline-scopes)

@@ -11,12 +11,3 @@
 .filterPillsSection {
   border-radius: 0 0 1rem 1rem;
 }
-
-.filterButtonWithCount {
-  border-top-right-radius: 0;
-  border-bottom-right-radius: 0;
-}
-
-.filterButtonAttachment {
-  border-left: 1px solid var(--mb-color-border-filter);
-}

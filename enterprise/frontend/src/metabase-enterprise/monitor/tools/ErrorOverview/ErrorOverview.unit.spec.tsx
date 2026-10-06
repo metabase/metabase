@@ -12,6 +12,7 @@ import {
 } from "__support__/ui";
 import { URL_UPDATE_DEBOUNCE_DELAY } from "metabase/common/hooks/use-url-state";
 import { Route } from "metabase/router";
+import { SEARCH_DEBOUNCE_DURATION } from "metabase/utils/constants";
 import type { RowValue } from "metabase-types/api";
 import {
   createMockColumn,
@@ -187,28 +188,41 @@ describe("ErrorOverview", () => {
   });
 
   it("recovers from an error when the search changes and the retry succeeds", async () => {
-    mockGetBoundingClientRect({ width: 100, height: 100 });
+    jest.useFakeTimers({ advanceTimers: true });
+    try {
+      mockGetBoundingClientRect({ width: 100, height: 100 });
 
-    let shouldFail = true;
-    fetchMock.post("path:/api/dataset", () =>
-      shouldFail
-        ? { status: 500, body: { message: "Audit query failed" } }
-        : createDatasetResponse([{ id: 1, card_name: "Recovered question" }]),
-    );
+      let shouldFail = true;
+      fetchMock.post("path:/api/dataset", () =>
+        shouldFail
+          ? { status: 500, body: { message: "Audit query failed" } }
+          : createDatasetResponse([{ id: 1, card_name: "Recovered question" }]),
+      );
 
-    renderWithProviders(<Route path="/" element={<ErrorOverview />} />, {
-      withRouter: true,
-    });
+      renderWithProviders(<Route path="/" element={<ErrorOverview />} />, {
+        withRouter: true,
+      });
 
-    expect(await screen.findByText("Audit query failed")).toBeInTheDocument();
-    const search = screen.getByPlaceholderText(SEARCH_PLACEHOLDER);
+      expect(await screen.findByText("Audit query failed")).toBeInTheDocument();
+      const search = screen.getByPlaceholderText(SEARCH_PLACEHOLDER);
 
-    // changing the query is the only way to clear RTK's error and refire
-    shouldFail = false;
-    await userEvent.type(search, "recovered");
+      // changing the query is the only way to clear RTK's error and refire
+      shouldFail = false;
+      await userEvent
+        .setup({ advanceTimers: jest.advanceTimersByTime })
+        .type(search, "recovered");
+      act(() => {
+        jest.advanceTimersByTime(SEARCH_DEBOUNCE_DURATION);
+      });
 
-    expect(await screen.findByText("Recovered question")).toBeInTheDocument();
-    expect(screen.queryByText("Audit query failed")).not.toBeInTheDocument();
+      // scoped to the row: TreeTable briefly renders a hidden copy of each
+      // cell into document.body to measure auto-width columns
+      const row = await screen.findByTestId("erroring-question");
+      expect(within(row).getByText("Recovered question")).toBeInTheDocument();
+      expect(screen.queryByText("Audit query failed")).not.toBeInTheDocument();
+    } finally {
+      jest.useRealTimers();
+    }
   });
 
   it("surfaces an internal-query error returned in the dataset body", async () => {

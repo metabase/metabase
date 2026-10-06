@@ -1,7 +1,11 @@
 import _ from "underscore";
 
+import { color } from "metabase/ui/colors";
 import { getColorsForValues } from "metabase/ui/colors/charts";
-import { NULL_DISPLAY_VALUE } from "metabase/utils/constants";
+import {
+  NULL_DIMENSION_KEY,
+  getNullDisplayValue,
+} from "metabase/utils/constants";
 import { checkNotNull, checkNumber, isNumber } from "metabase/utils/types";
 import {
   type DatasetColumn,
@@ -59,7 +63,7 @@ export const getDefaultSliceThreshold = () => SLICE_THRESHOLD * 100;
 
 export function getKeyFromDimensionValue(dimensionValue: RowValue) {
   if (dimensionValue == null) {
-    return NULL_DISPLAY_VALUE;
+    return NULL_DIMENSION_KEY;
   } else if (typeof dimensionValue === "object") {
     return JSON.stringify(dimensionValue);
   }
@@ -67,7 +71,7 @@ export function getKeyFromDimensionValue(dimensionValue: RowValue) {
 }
 
 export function getValueFromDimensionKey(key: string) {
-  return key === NULL_DISPLAY_VALUE ? null : key;
+  return key === NULL_DIMENSION_KEY ? null : key;
 }
 
 export function getAggregatedRows(
@@ -174,8 +178,8 @@ export function getColors(
     existingColorMapping = Object.fromEntries(
       Object.entries(currentSettings["pie.colors"]).map(([key, value]) => [
         // Historically we used String(dimensionValue) in the `pie.colors` setting instead of `getKeyFromDimensionValue`
-        // For compatibility with old charts, we'll transform the strings "null" and "undefined" into NULL_DISPLAY_VALUE
-        key === "null" || key === "undefined" ? NULL_DISPLAY_VALUE : key,
+        // For compatibility with old charts, we'll transform the strings "null" and "undefined" into NULL_DIMENSION_KEY
+        key === "null" || key === "undefined" ? NULL_DIMENSION_KEY : key,
         getHexColor(value),
       ]),
     );
@@ -192,26 +196,36 @@ export function getColors(
     }
   }
 
-  // historically we used "null" rather than NULL_DISPLAY_VALUE in `getColorsForValues`
-  // to avoid changing existing charts, we'll convert NULL_DISPLAY_VALUE to "null"
+  // historically we used "null" rather than NULL_DIMENSION_KEY in `getColorsForValues`
+  // to avoid changing existing charts, we'll convert NULL_DIMENSION_KEY to "null".
+  // When the string "null" is itself a dimension value the conversion can't be
+  // reversed, so we skip it (metabase#81868)
+  const useLegacyNullKey = !dimensionValues.includes("null");
+  const toColorKey = (key: string) =>
+    useLegacyNullKey && key === NULL_DIMENSION_KEY ? "null" : key;
+  const fromColorKey = (key: string) =>
+    useLegacyNullKey && key === "null" ? NULL_DIMENSION_KEY : key;
+
   const colors = getColorsForValues(
-    dimensionValues.map((value) =>
-      value === NULL_DISPLAY_VALUE ? "null" : value,
-    ),
+    dimensionValues.map(toColorKey),
     Object.fromEntries(
       Object.entries(existingColorMapping).map(([key, value]) => [
-        key === NULL_DISPLAY_VALUE ? "null" : key,
+        toColorKey(key),
         value,
       ]),
     ),
   );
-  // then flip it back
   return Object.fromEntries(
     Object.entries(colors).map(([key, value]) => [
-      key === "null" ? NULL_DISPLAY_VALUE : key,
+      fromColorKey(key),
       getHexColor(value),
     ]),
   );
+}
+
+function getColor(colors: Record<string, string>, key: string) {
+  // fallback in case a key isn't present so the viz doesn't crash (metabase#81868)
+  return colors[key] ?? getHexColor(color("text-secondary"));
 }
 
 export function getPieRows(
@@ -244,10 +258,10 @@ export function getPieRows(
 
   const formatDimensionValue = (value: RowValue) => {
     if (value == null) {
-      return NULL_DISPLAY_VALUE;
+      return getNullDisplayValue();
     }
 
-    return formatter(value, dimensionColSettings) ?? NULL_DISPLAY_VALUE;
+    return formatter(value, dimensionColSettings) ?? getNullDisplayValue();
   };
 
   const colors = getColors(rawSeries, settings);
@@ -308,7 +322,7 @@ export function getPieRows(
     newPieRows = sortedCurrentDataRows.map((dataRow) => {
       const dimensionValue = dataRow[dimensionDesc.index];
       const key = getKeyFromDimensionValue(dimensionValue);
-      const color = colors[key];
+      const color = getColor(colors, key);
 
       const savedRow = keyToSavedPieRow.get(key);
       if (savedRow != null) {
@@ -345,7 +359,7 @@ export function getPieRows(
       }
       const newRow = { ...savedPieRow, hidden: false };
       if (savedPieRow.defaultColor) {
-        newRow.color = colors[keptKey];
+        newRow.color = getColor(colors, keptKey);
       }
       return newRow;
     });
@@ -365,7 +379,7 @@ export function getPieRows(
         const dimensionValue = addedDataRow[dimensionDesc.index];
 
         const key = getKeyFromDimensionValue(dimensionValue);
-        const color = colors[key];
+        const color = getColor(colors, key);
         const displayValue = getDisplayValue(dimensionValue);
         const name = formatDimensionValue(displayValue);
 

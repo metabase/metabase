@@ -39,14 +39,15 @@ export const AnchorLinkButton = <C extends ElementType = "button">({
       label={<Text fw={700} c="inherit">{t`Copied!`}</Text>}
       opened={clipboard.copied}
     >
+      {/* TODO: replace with ActionIcon (GDGT-2457) */}
       <Button
         // Unjustified type cast. FIXME
         {...(props as ButtonProps)}
         aria-label={t`Copy link`}
-        bd={0}
+        variant="subtle"
+        color="neutral"
+        size="sm"
         leftSection={<Icon name="link" />}
-        px="sm"
-        size="xs"
         onClick={handleCopy}
         onKeyDown={handleKeyDown}
       />

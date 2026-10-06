@@ -1,12 +1,12 @@
 import _ from "underscore";
 
 import { tag_names } from "cljs/metabase.parameters.shared";
+import type { CardQuestionBuilder } from "metabase/metadata-store";
 import { generateParameterId } from "metabase/parameters/utils/parameter-id";
 import { isQuestionCard, isQuestionDashCard } from "metabase/utils/dashboard";
 import { slugify } from "metabase/utils/formatting";
 import { isNotNull } from "metabase/utils/types";
-import Question from "metabase-lib/v1/Question";
-import type Metadata from "metabase-lib/v1/metadata/Metadata";
+import type Question from "metabase-lib/v1/Question";
 import type {
   FieldFilterUiParameter,
   UiParameter,
@@ -153,7 +153,7 @@ export function getSavedDashboardUiParameters(
 export function getUnsavedDashboardUiParameters(
   dashcards: Dashboard["dashcards"],
   parameters: Dashboard["parameters"],
-  metadata: Metadata,
+  buildQuestion: CardQuestionBuilder,
   questions: Record<CardId, Question>,
 ): UiParameter[] {
   const mappableDashcards = dashcards.filter(isQuestionDashCard);
@@ -163,7 +163,7 @@ export function getUnsavedDashboardUiParameters(
       return buildUnsavedDashboardParameter(
         parameter,
         mappings,
-        metadata,
+        buildQuestion,
         questions,
       );
     }
@@ -178,16 +178,14 @@ export function getUnsavedDashboardUiParameters(
 
 export function getDashboardQuestions(
   dashcards: DashboardCard[],
-  metadata: Metadata,
+  buildQuestion: CardQuestionBuilder,
 ) {
   return dashcards.reduce<Record<CardId, Question>>((acc, dashcard) => {
     if (isQuestionDashCard(dashcard)) {
       const cards = [dashcard.card, ...(dashcard.series ?? [])];
 
       for (const card of cards) {
-        const question = isQuestionCard(card)
-          ? new Question(card, metadata)
-          : undefined;
+        const question = isQuestionCard(card) ? buildQuestion(card) : undefined;
         if (question) {
           acc[card.id] = question;
         }
@@ -224,7 +222,7 @@ function buildSavedDashboardParameter(
 function buildUnsavedDashboardParameter(
   parameter: Parameter,
   mappings: ExtendedMapping[],
-  metadata: Metadata,
+  buildQuestion: CardQuestionBuilder,
   questions: Record<CardId, Question>,
 ): FieldFilterUiParameter {
   const mappingsForParameter = mappings.filter(
@@ -249,7 +247,7 @@ function buildUnsavedDashboardParameter(
       return null;
     }
 
-    const question = questions[card.id] ?? new Question(card, metadata);
+    const question = questions[card.id] ?? buildQuestion(card);
     try {
       return getParameterTargetField(question, parameter, target);
     } catch (e) {

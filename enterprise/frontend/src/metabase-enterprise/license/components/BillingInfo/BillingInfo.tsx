@@ -1,8 +1,8 @@
 import { t } from "ttag";
 
-import { SettingHeader } from "metabase/admin/settings/components/SettingHeader";
 import { ButtonLink } from "metabase/common/components/ExternalLink";
 import { useStoreUrl } from "metabase/common/hooks";
+import { SettingHeader } from "metabase/settings-components";
 import { Alert, Anchor, Box, Icon } from "metabase/ui";
 import type { BillingInfo as IBillingInfo } from "metabase-types/api";
 
@@ -51,10 +51,11 @@ const BillingInfoError = () => {
           <br />
           <strong>{t`Need help?`}</strong> {t`You can ask for billing help at `}
           <strong>
-            {/* eslint-disable-next-line i18next/no-literal-string */}
+            {/* eslint-disable i18next/no-literal-string -- untranslated billing address */}
             <Anchor href="mailto:billing@metabase.com">
               billing@metabase.com
             </Anchor>
+            {/* eslint-enable i18next/no-literal-string */}
           </strong>
         </Alert>
       </Box>
@@ -90,10 +91,11 @@ const BillingInfoNotStoreManaged = () => {
       description={
         <>
           {t`To manage your billing preferences, please email `}
-          {/* eslint-disable-next-line i18next/no-literal-string */}
+          {/* eslint-disable i18next/no-literal-string -- untranslated billing address */}
           <Anchor href="mailto:billing@metabase.com">
             billing@metabase.com
           </Anchor>
+          {/* eslint-enable i18next/no-literal-string */}
         </>
       }
     />

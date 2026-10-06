@@ -8,6 +8,7 @@
    [metabase.dashboards.schema :as dashboards.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.serialization :as serdes]
+   [metabase.queries.core :as queries]
    [metabase.queries.schema :as queries.schema]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
@@ -25,9 +26,14 @@
   (t2/insert-returning-instance! :model/Dashboard row))
 
 (mu/defn update-dashboard!
-  "Apply `changes` to the Dashboard with `dashboard-id`, returning the number updated."
+  "Apply `changes` to the Dashboard with `dashboard-id`, returning the number updated.
+
+  Takes the whole `::dashboard.update` — \"what an update (or insert) of a Dashboard accepts\" — the same
+  schema [[insert-dashboard!]] takes. It was narrowed to `[:parameters]` when the only caller wrote nothing
+  else; `metabase.dashboards.write/update-dashboard!` writes the full attribute set (`:name`, `:description`,
+  `:archived`, `:collection_id`, `:cache_ttl`, ...), and a narrowed schema refuses every one of them."
   [dashboard-id :- ::lib.schema.id/dashboard
-   changes      :- (mut/select-keys ::dashboards.schema/dashboard.update [:parameters])]
+   changes      :- ::dashboards.schema/dashboard.update]
   (t2/update! :model/Dashboard dashboard-id changes))
 
 (mu/defn delete-dashboard-revisions!
@@ -113,9 +119,9 @@
   (t2/select-one :model/Card :id card-id))
 
 (mu/defn card-query-columns
-  "The query and schema of the Card with `card-id`, or nil."
+  "The query-relevant columns of the Card with `card-id`, or nil."
   [card-id :- ::lib.schema.id/card]
-  (t2/select-one [:model/Card :dataset_query :card_schema] :id card-id))
+  (queries/card-query-info card-id))
 
 (mu/defn card-queries
   "A map of Card id to query for the Cards with `card-ids`."
@@ -131,6 +137,25 @@
   "Insert the Card `row` and return the inserted instance."
   [row :- ::queries.schema/card.update]
   (t2/insert-returning-instance! :model/Card row))
+
+(defn dashboard-question-exists?
+  "Does the Dashboard with `dashboard-id` hold an unarchived Card saved inside it?"
+  [dashboard-id]
+  (t2/exists? :model/Card :dashboard_id dashboard-id :archived false))
+
+(defn card-internal-to-other-dashboard?
+  "Is any Card among `card-ids` saved inside a dashboard other than the one with `dashboard-id`?"
+  [dashboard-id card-ids]
+  (t2/exists? :model/Card
+              {:where [:and
+                       [:not= :dashboard_id dashboard-id]
+                       [:not= :dashboard_id nil]
+                       [:in :id card-ids]]}))
+
+(mu/defn action-entity-ids-in
+  "The entity ids among `entity-ids` that name an existing Action."
+  [entity-ids :- [:set :string]]
+  (t2/select-fn-set :entity_id [:model/Action :entity_id] :entity_id [:in entity-ids]))
 
 (mu/defn dashcard-serdes-columns
   "The id, Card, Action, parameter mappings, and visualization settings of the DashboardCards of the Dashboard with
@@ -148,7 +173,8 @@
   "The series Cards of the DashboardCards with `dashcard-ids`, each with its `:dashboardcard_id`, in series order."
   [dashcard-ids :- [:sequential ::lib.schema.id/dashcard]]
   (t2/select [:model/Card :id :name :description :display :dataset_query :type :database_id
-              :visualization_settings :collection_id :card_schema :series.dashboardcard_id]
+              :visualization_settings :collection_id :card_schema :entity_id :result_metadata
+              :dimensions :dimension_mappings :series.dashboardcard_id]
              {:left-join [[:dashboardcard_series :series] [:= :report_card.id :series.card_id]]
               :where     [:in :series.dashboardcard_id dashcard-ids]
               :order-by  [[:series.position :asc]]}))
@@ -215,11 +241,50 @@
             (mut/select-keys ::dashboards.schema/dashboard-card-series.update [:dashboardcard_id :card_id :position])]]
   (t2/insert! :model/DashboardCardSeries rows))
 
+(defn parameter-card-card-ids
+  "The Card ids referenced by the ParameterCards of the Dashboard with `dashboard-id`."
+  [dashboard-id]
+  (t2/select-fn-vec :card_id :model/ParameterCard
+                    :parameterized_object_type "dashboard"
+                    :parameterized_object_id   dashboard-id))
+
+(defn dashcard-card-ids
+  "The Card ids of the DashboardCards of the Dashboard with `dashboard-id`."
+  [dashboard-id]
+  (t2/select-fn-vec :card_id :model/DashboardCard :dashboard_id dashboard-id))
+
+(defn dashcard-series-card-ids
+  "The Card ids of the DashboardCardSeries of the Dashboard with `dashboard-id`."
+  [dashboard-id]
+  (t2/select-fn-vec :card_id :model/DashboardCardSeries
+                    {:where [:in :dashboardcard_id
+                             ^:allow-subquery {:select [:id]
+                                               :from   [(t2/table-name :model/DashboardCard)]
+                                               :where  [:= :dashboard_id dashboard-id]}]}))
+
+(defn dashcard-action-ids
+  "The Action ids of the DashboardCards of the Dashboard with `dashboard-id`."
+  [dashboard-id]
+  (t2/select-fn-vec :action_id :model/DashboardCard :dashboard_id dashboard-id))
+
+(defn dashcard-parameter-mappings
+  "A map of DashboardCard id to parameter mappings for the DashboardCards of the Dashboard with `dashboard-id`."
+  [dashboard-id]
+  (t2/select-pk->fn :parameter_mappings :model/DashboardCard :dashboard_id dashboard-id))
+
+(defn dashcard-card-ids-by-dashcard-id
+  "A map of DashboardCard id to Card id for the DashboardCards with `dashcard-ids` on the Dashboard with
+  `dashboard-id`."
+  [dashboard-id dashcard-ids]
+  (t2/select-pk->fn :card_id :model/DashboardCard
+                    :dashboard_id dashboard-id
+                    :id           [:in dashcard-ids]))
+
 ;;; ----------------------------------------------- Link cards ----------------------------------------------------
 
 (mu/defn ensure-integer-link-card-id
   "Return `id` if it is an integer, else throw a 400."
-  [id :- :some]
+  [id :- ms/VisualizationSettingsValue]
   (when-not (integer? id)
     (throw (ex-info "Link card entity id must be an integer"
                     {:status-code 400, :id id})))

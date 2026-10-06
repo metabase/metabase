@@ -1,78 +1,154 @@
 (ns metabase-enterprise.remote-sync.data-apps-test
-  "Integration coverage for the data-apps hook in the remote-sync import pipeline:
-   importing a repo materializes data apps from its `data_apps/` directory."
+  "Data apps are serdes entities: remote sync imports and exports them like any other, with each app's bundle as a
+   resource file next to its `data_app.yaml`."
   (:require
    [clojure.test :refer :all]
-   [metabase-enterprise.data-apps.models.data-app]
    [metabase-enterprise.remote-sync.impl :as impl]
+   [metabase-enterprise.remote-sync.models.remote-sync-task :as remote-sync.task]
    [metabase-enterprise.remote-sync.source.protocol :as source.p]
    [metabase-enterprise.remote-sync.test-helpers :as test-helpers]
+   [metabase.search.test-util :as search.tu]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
+   [metabase.util.yaml :as yaml]
    [toucan2.core :as t2]))
 
+(set! *warn-on-reflection* true)
+
 (use-fixtures :once (fixtures/initialize :db))
-(use-fixtures :each (fn [f] (test-helpers/clean-remote-sync-state f)))
+(use-fixtures :each test-helpers/clean-remote-sync-state test-helpers/commit-with-temp)
 
-(comment metabase-enterprise.data-apps.models.data-app/keep-me)
+(def ^:private sales-eid "w8YkMQBwU4kOD0-pZ1nJk")
 
-(defn- import! [files]
-  ;; the import's data-app materialization is gated on :data-apps-preview; enable it so apps sync.
-  (mt/with-premium-features #{:data-apps-preview}
-    (let [source  (test-helpers/create-mock-source :initial-files files)
-          task-id (t2/insert-returning-pk! :model/RemoteSyncTask
-                                           {:sync_task_type "import" :initiated_by (mt/user->id :rasta)})
-          ;; force: the mock source reports a constant version, so without this the
-          ;; second import in a test would hit the "version unchanged" skip branch
-          result  (impl/import! (source.p/snapshot source) task-id :force? true)]
-      ;; calling import! directly leaves the task "running"; mark it ended so a
-      ;; subsequent import in the same test isn't blocked by the running-task guard
-      (t2/update! :model/RemoteSyncTask task-id {:ended_at :%now})
-      result)))
+(defn- app-tree
+  "Repo files for the data app `slug` with entity id `eid`: its `data_app.yaml` and its bundle at `dist/index.js`."
+  [eid slug bundle]
+  {(str "data_apps/" slug "/data_app.yaml")
+   (yaml/generate-string {:serdes/meta [{:model "DataApp" :id eid :label slug}]
+                          :entity_id   eid
+                          :slug        slug
+                          :name        "Sales"
+                          :path        "dist/index.js"})
+   (str "data_apps/" slug "/dist/index.js") bundle})
 
-(deftest import-materializes-data-apps-test
-  (testing "a remote-sync import materializes data apps from data_apps/ alongside serdes content"
-    (mt/with-model-cleanup [:model/DataApp]
-      (let [files  {"main" {"collections/c/c.yaml"
-                            (test-helpers/generate-collection-yaml "data-apps-test-collx" "DA Coll")
-                            "data_apps/sales/data_app.yaml"  "name: Sales\npath: ./dist/index.js\n"
-                            "data_apps/sales/dist/index.js" "SALESBUNDLE"}}
-            result (import! files)]
-        (is (= :success (:status result)))
-        (let [app (t2/select-one :model/DataApp :name "sales")]
-          (is (some? app) "the data app from the repo was materialized by the import")
-          (is (= "Sales" (:display_name app)))
-          (is (= "data_apps/sales/dist/index.js" (:bundle_path app)))
-          (is (true? (:enabled app)))
-          (is (= "SALESBUNDLE" (String. ^bytes (:bundle app) "UTF-8"))))))))
+(defn- new-task! [sync-task-type]
+  (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type sync-task-type :initiated_by (mt/user->id :rasta)}))
 
-(deftest import-prunes-data-apps-absent-from-repo-test
-  (testing "an import whose repo no longer has an app dir prunes that app (the repo is the source of truth)"
-    (mt/with-model-cleanup [:model/DataApp]
-      (import! {"main" {"data_apps/gone/data_app.yaml" "name: Gone\npath: ./i.js\n"
-                        "data_apps/gone/i.js"         "X"
-                        "data_apps/kept/data_app.yaml" "name: Kept\npath: ./i.js\n"
-                        "data_apps/kept/i.js"         "K"}})
-      (is (= #{"gone" "kept"} (t2/select-fn-set :name :model/DataApp)))
-      (import! {"main" {"data_apps/kept/data_app.yaml" "name: Kept\npath: ./i.js\n"
-                        "data_apps/kept/i.js"         "K"}})
-      (is (nil? (t2/select-one :model/DataApp :name "gone"))
-          "the app absent from the later import is pruned")
-      (is (some? (t2/select-one :model/DataApp :name "kept"))
-          "the still-present app is kept"))))
+(defn- import-at!
+  "Run `import!` against the source's snapshot at `version`, complete the task (so `last-version` advances for the
+   next pull), and return the result."
+  [src version & {:keys [force?] :or {force? false}}]
+  (let [task   (new-task! "import")
+        result (impl/import! (source.p/snapshot-at src version) task :force? force?)]
+    (impl/handle-task-result! result task)
+    result))
 
-(deftest deletion-only-pull-counts-the-removal-test
-  (testing "a pull whose only change is removing an app still reports as a pull — the removal is counted, not a no-op"
-    (mt/with-model-cleanup [:model/DataApp]
-      ;; No serdes content, so the outcome's count comes purely from data apps.
-      (import! {"main" {"README.md"                    "x"
-                        "data_apps/gone/data_app.yaml" "name: Gone\npath: ./i.js\n"
-                        "data_apps/gone/i.js"          "X"}})
-      (is (= #{"gone"} (t2/select-fn-set :name :model/DataApp)))
-      ;; Same repo minus the app dir: nothing is upserted (`:changed` 0), one app removed.
-      (let [result (import! {"main" {"README.md" "x"}})]
-        (is (= :success (:status result)))
-        (is (empty? (t2/select-fn-set :name :model/DataApp))
-            "the app is pruned")
-        (is (pos? (:count (:outcome result)))
-            "the removal is folded into the pull outcome, so it isn't reported as pull-skipped/0")))))
+(defn- export!
+  "Export to `mock` under a fresh task, complete it, and return the result."
+  [mock]
+  (t2/delete! :model/RemoteSyncTask)
+  (let [task   (new-task! "export")
+        result (impl/export! (source.p/snapshot mock) task "export")]
+    (impl/handle-task-result! result task)
+    result))
+
+(defn- bundle-text [slug]
+  (when-let [^bytes bundle (t2/select-one-fn :bundle [:model/DataApp :bundle] :name slug)]
+    (String. bundle "UTF-8")))
+
+(defmacro ^:private with-data-apps-sync [& body]
+  `(search.tu/with-index-disabled
+     (mt/with-premium-features #{:data-apps}
+       (mt/with-temporary-setting-values [remote-sync-type :read-write remote-sync-enabled true remote-sync-transforms false]
+         (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
+           ~@body)))))
+
+(deftest pull-imports-and-prunes-data-apps-test
+  (with-data-apps-sync
+    (let [src (test-helpers/versioned-source :trees {"v0" (app-tree sales-eid "sales" "BUNDLE-V1")
+                                                     "v1" {"README.md" "x"}}
+                                             :current "v0")]
+      (testing "a pull imports the app and its bundle"
+        (is (=? {:status :success :outcome {:kind "pulled" :count 1}} (import-at! src "v0" :force? true)))
+        (is (=? {:entity_id sales-eid :display_name "Sales" :draft false :resource_collection_id pos-int?}
+                (t2/select-one :model/DataApp :name "sales")))
+        (is (= "BUNDLE-V1" (bundle-text "sales"))))
+      (testing "a pull whose repo no longer has the app removes it"
+        (is (= :success (:status (import-at! src "v1"))))
+        (is (not (t2/exists? :model/DataApp :name "sales")))))))
+
+(deftest bundle-only-pull-updates-the-bundle-test
+  (testing "a pull that changes only an app's bundle file falls back to a full import, so the new bundle lands"
+    (with-data-apps-sync
+      (let [src (test-helpers/versioned-source :trees {"v0" (app-tree sales-eid "sales" "BUNDLE-V1")
+                                                       "v1" (app-tree sales-eid "sales" "BUNDLE-V2")}
+                                               :current "v0")]
+        (is (= :success (:status (import-at! src "v0" :force? true))))
+        (is (=? {:status :success :outcome {:kind "pulled"}} (import-at! src "v1")))
+        (is (= "v1" (remote-sync.task/last-version)))
+        (is (= "BUNDLE-V2" (bundle-text "sales")))))))
+
+(deftest export-writes-and-removes-data-app-files-test
+  (with-data-apps-sync
+    (let [mock (test-helpers/create-mock-source :initial-files {"main" {}})
+          repo #(get @(:files-atom mock) "main")]
+      (mt/user-http-request :crowberto :post 200 "apps" {:name         "sales"
+                                                         :display_name "Sales"
+                                                         :bundle_path  "dist/index.js"
+                                                         :bundle       "BUNDLE"})
+      (testing "a created app is exported as its manifest and its bundle file"
+        (is (= :success (:status (export! mock))))
+        (is (=? {:slug "sales" :name "Sales" :path "dist/index.js"}
+                (yaml/parse-string (get (repo) "data_apps/sales/data_app.yaml"))))
+        (is (= "BUNDLE" (get (repo) "data_apps/sales/dist/index.js"))))
+      (testing "an updated bundle is exported"
+        (mt/user-http-request :crowberto :put 200 "apps/sales" {:bundle "BUNDLE-V2"})
+        (is (= :success (:status (export! mock))))
+        (is (= "BUNDLE-V2" (get (repo) "data_apps/sales/dist/index.js"))))
+      (testing "a deleted app's files are removed from the repo, and the other apps' files stay"
+        (mt/user-http-request :crowberto :post 200 "apps" {:name         "ops"
+                                                           :display_name "Ops"
+                                                           :bundle_path  "app.js"
+                                                           :bundle       "OPS"})
+        (mt/user-http-request :crowberto :delete 204 "apps/sales")
+        (is (= :success (:status (export! mock))))
+        (is (= #{"data_apps/ops/data_app.yaml" "data_apps/ops/app.js"}
+               (into #{} (filter #(re-find #"^data_apps/" %)) (keys (repo)))))))))
+
+(deftest export-keeps-files-serialization-does-not-own-test
+  (testing "an export rewrites an app's manifest and bundle but leaves the app's source next to them alone"
+    (with-data-apps-sync
+      (let [source {"data_apps/sales/src/App.tsx"    "export const App = () => null;"
+                    "data_apps/sales/package.json"   "{}"
+                    "data_apps/sales/pnpm-lock.yaml" "lockfileVersion: '9.0'\n"
+                    "data_apps/sales/deploy/k8s.yaml" "a: 1\n---\nb: [unterminated\n"}
+            mock   (test-helpers/create-mock-source
+                    :initial-files {"main" (merge (app-tree sales-eid "sales" "BUNDLE-V1") source)})
+            repo   #(get @(:files-atom mock) "main")]
+        (is (= :success (:status (import-at! mock "main" :force? true))))
+        (mt/user-http-request :crowberto :put 200 "apps/sales" {:bundle "BUNDLE-V2"})
+        (mt/user-http-request :crowberto :post 200 "apps" {:name         "ops"
+                                                           :display_name "Ops"
+                                                           :bundle_path  "app.js"
+                                                           :bundle       "OPS"})
+        (is (= :success (:status (export! mock))))
+        (is (= "BUNDLE-V2" (get (repo) "data_apps/sales/dist/index.js")))
+        (is (= source (select-keys (repo) (keys source))))
+        (testing "deleting the app removes only the files serialization owns"
+          (mt/user-http-request :crowberto :delete 204 "apps/sales")
+          (is (= :success (:status (export! mock))))
+          (is (= (into #{"data_apps/ops/data_app.yaml" "data_apps/ops/app.js"} (keys source))
+                 (into #{} (filter #(re-find #"^data_apps/" %)) (keys (repo))))))))))
+
+(deftest pull-refuses-to-delete-an-unpushed-app-test
+  (testing "a pull whose repo lacks an app created here but not pushed yet is a conflict, not a silent delete"
+    (with-data-apps-sync
+      (let [app (app-tree sales-eid "sales" "BUNDLE")
+            src (test-helpers/versioned-source :trees {"v0" app "v1" (assoc app "README.md" "x")} :current "v0")]
+        (is (= :success (:status (import-at! src "v0" :force? true))))
+        (mt/user-http-request :crowberto :post 200 "apps" {:name         "ops"
+                                                           :display_name "Ops"
+                                                           :bundle_path  "app.js"
+                                                           :bundle       "OPS"})
+        (is (=? {:status :conflict} (import-at! src "v1")))
+        (is (t2/exists? :model/DataApp :name "ops"))))))

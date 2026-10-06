@@ -25,9 +25,15 @@
                  now]
       :mysql    [:- now [::h2x/mysql-interval amount unit]])))
 
-(def ^:private ^{:arglists '([db-type max-age-minutes session-type enable-advanced-permissions? enable-tenants? session-timeout-seconds])} session-with-id-query
+;; Hard-coded rather than `(descendants :metabase.auth-identity.provider/supports-mfa)` so the session query below is
+;; compiled once rather than depending on load order of the provider namespaces.
+;; [[metabase.server.middleware.session-test/mfa-providers-list-test]] keeps this in sync with the hierarchy.
+(def ^:private mfa-supported-methods
+  #{:provider/password :provider/ldap})
+
+(def ^:private ^{:arglists '([db-type max-age-minutes session-type enable-advanced-permissions? enable-tenants? session-timeout-seconds mfa-required])} session-with-id-query
   (mdb/memoize-for-application-db
-   (fn [db-type max-age-minutes session-type enable-advanced-permissions? enable-tenants? session-timeout-seconds]
+   (fn [db-type max-age-minutes session-type enable-advanced-permissions? enable-tenants? session-timeout-seconds mfa-required]
      (first
       (t2.pipeline/compile*
        (cond-> {:select    [[:session.user_id :metabase-user-id]
@@ -51,9 +57,19 @@
                                   [:= :session.anti_csrf_token (case session-type
                                                                  :normal         nil
                                                                  :full-app-embed ^:allow-raw-sql [:raw "?"])]]
-                                 (when session-timeout-seconds
-                                   [[:> [:coalesce :session.last_active_at :session.created_at]
-                                     (oldest-allowed-expr db-type session-timeout-seconds :second)]]))
+                                 cat
+                                 [(when mfa-required
+                                    [[:or
+                                      [:not= :session.mfa_auth_identity_id nil]
+                                      (into [:and]
+                                            (map (fn [mfa-supporting-provider]
+                                                   [:not= :auth_identity.provider
+                                                    ^:allow-raw-sql
+                                                    [:raw (str "'" (name mfa-supporting-provider) "'")]])
+                                                 mfa-supported-methods))]])
+                                  (when session-timeout-seconds
+                                    [[:> [:coalesce :session.last_active_at :session.created_at]
+                                      (oldest-allowed-expr db-type session-timeout-seconds :second)]])])
                 :limit     [:inline 1]}
          enable-advanced-permissions?
          (->
@@ -122,13 +138,15 @@
    max-age-minutes             :- [:maybe :int]
    enable-advanced-permissions? :- :boolean
    enable-tenants?              :- :boolean
-   session-timeout-seconds      :- [:maybe :int]]
+   session-timeout-seconds      :- [:maybe :int]
+   mfa-required                 :- :boolean]
   (let [sql    (session-with-id-query (mdb/db-type)
                                       max-age-minutes
                                       (if (seq anti-csrf-token) :full-app-embed :normal)
                                       enable-advanced-permissions?
                                       enable-tenants?
-                                      session-timeout-seconds)
+                                      session-timeout-seconds
+                                      mfa-required)
         params (concat [session-key-hash] (when (seq anti-csrf-token) [anti-csrf-token]))]
     (t2/query-one (cons sql params))))
 

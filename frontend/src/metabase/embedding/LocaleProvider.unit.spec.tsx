@@ -1,8 +1,9 @@
 import { DatePicker } from "@mantine/dates";
-import fetchMock from "fetch-mock";
+import { t } from "ttag";
 
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { useLocale } from "metabase/common/hooks";
+import * as localization from "metabase/utils/localization";
 
 import { LocaleProvider, getLocaleToUse } from "./LocaleProvider";
 
@@ -105,21 +106,61 @@ describe("getLocaleToUse", () => {
 });
 
 describe("LocaleProvider", () => {
-  it("should make Mantine components use correct locale", async () => {
-    mockLocaleJsonResponse("de");
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
 
+  it("should make Mantine components use correct locale", async () => {
     renderWithProviders(
       <LocaleProvider locale="de">
         <DatePicker defaultDate={new Date(2020, 0, 1)} onChange={() => {}} />
       </LocaleProvider>,
     );
 
-    await waitForLocaleJson("de");
-
-    // `waitFor` to ensure the component has time to re-render
     await waitFor(() => {
       expect(screen.getByText("Januar 2020")).toBeInTheDocument();
     });
+  });
+
+  it("should still render its children when the catalogue fails to load", async () => {
+    jest
+      .spyOn(localization, "loadLocalization")
+      .mockRejectedValue(new Error("ChunkLoadError"));
+
+    renderWithProviders(
+      <LocaleProvider locale="de" shouldWaitForLocale>
+        <div>content</div>
+      </LocaleProvider>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText("content")).toBeInTheDocument();
+    });
+  });
+
+  it("should apply the new catalogue to its children when the locale changes", async () => {
+    // Reads the locale the way a translated component does, so it re-renders
+    // when the provider announces a new one.
+    const TestComponent = () => {
+      useLocale();
+      return <div>{t`Filter`}</div>;
+    };
+
+    const { rerender } = renderWithProviders(
+      <LocaleProvider locale="en">
+        <TestComponent />
+      </LocaleProvider>,
+    );
+
+    expect(await screen.findByText("Filter")).toBeInTheDocument();
+
+    rerender(
+      <LocaleProvider locale="ko">
+        <TestComponent />
+      </LocaleProvider>,
+    );
+
+    expect(await screen.findByText("[ko] Filter")).toBeInTheDocument();
   });
 
   it("should make useLocale return the correct locale", async () => {
@@ -128,44 +169,14 @@ describe("LocaleProvider", () => {
       return <div>{locale}</div>;
     };
 
-    mockLocaleJsonResponse("de");
-
     renderWithProviders(
       <LocaleProvider locale="de">
         <TestComponent />
       </LocaleProvider>,
     );
 
-    await waitForLocaleJson("de");
-
-    // `waitFor` to ensure the component has time to re-render
     await waitFor(() => {
       expect(screen.getByText("de")).toBeInTheDocument();
     });
   });
 });
-
-const mockLocaleJsonResponse = (locale: string) => {
-  fetchMock.get(`/app/locales/${locale}.json`, {
-    charset: "utf-8",
-    headers: {
-      language: locale,
-      // `plural-forms` is required otherwise the loading fails
-      "plural-forms": "nplurals=2; plural=(n != 1);",
-    },
-    translations: {
-      // at least a key is required otherwise the loading fails
-      "": {
-        "": {},
-      },
-    },
-  });
-};
-
-async function waitForLocaleJson(locale: string) {
-  await waitFor(() => {
-    expect(fetchMock.callHistory.done(`/app/locales/${locale}.json`)).toBe(
-      true,
-    );
-  });
-}

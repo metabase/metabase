@@ -66,7 +66,15 @@
 
 (mu/defn- cron-string :- CronScheduleString
   "Build a cron string from key-value pair parts."
-  [{:keys [seconds minutes hours day-of-month month day-of-week year]}]
+  [{:keys [seconds minutes hours day-of-month month day-of-week year]}
+   :- [:map {:closed true}
+       [:seconds      {:optional true} [:maybe [:or :string :int]]]
+       [:minutes      {:optional true} [:maybe [:or :string :int]]]
+       [:hours        {:optional true} [:maybe [:or :string :int]]]
+       [:day-of-month {:optional true} [:maybe [:or :string :int]]]
+       [:month        {:optional true} [:maybe [:or :string :int]]]
+       [:day-of-week  {:optional true} [:maybe [:or :string :int]]]
+       [:year         {:optional true} [:maybe [:or :string :int]]]]]
   (str/join " " [(or seconds      "0")
                  (or minutes      "0")
                  (or hours        "*")

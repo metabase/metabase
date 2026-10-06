@@ -19,7 +19,7 @@
 
 (mu/defn- update-used-cards!*
   [card-id-timestamps :- [:sequential
-                          [:map
+                          [:map {:closed true}
                            [:id ::lib.schema.id/card]
                            [:timestamp (lib.schema.common/instance-of-class java.time.OffsetDateTime)]]]]
   (let [card-id->timestamp (update-vals (group-by :id card-id-timestamps)

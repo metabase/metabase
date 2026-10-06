@@ -14,6 +14,7 @@
    [metabase.appearance.settings :as appearance.settings]
    [metabase.auth-identity.provider :as auth-identity.provider]
    [metabase.test :as mt]
+   [metabase.test.data.users :as test.users]
    [metabase.test.fixtures :as fixtures]
    [metabase.test.http-client :as client]
    [metabase.util :as u]
@@ -238,6 +239,22 @@
           (is
            (= {"extra" "keypairs", "are" "also present"}
               (t2/select-one-fn :jwt_attributes :model/User :email "rasta@metabase.com"))))))))
+
+(deftest login-with-existing-session-test
+  (testing "a JWT login from a client that already carries a Metabase session succeeds"
+    (with-jwt-default-setup!
+      (let [response (client/client-real-response (test.users/username->token :rasta)
+                                                  :get 302 "/auth/sso" {:request-options {:redirect-strategy :none}}
+                                                  :return_to default-redirect-uri
+                                                  :jwt
+                                                  (jwt/sign
+                                                   {:email      "rasta@metabase.com"
+                                                    :first_name "Rasta"
+                                                    :last_name  "Toucan"}
+                                                   default-jwt-secret))]
+        (is (sso.test-setup/successful-login? response))
+        (is (= default-redirect-uri
+               (get-in response [:headers "Location"])))))))
 
 (deftest request-jwt-test
   (let [token "some.jwt.token"]

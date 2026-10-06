@@ -14,7 +14,10 @@
    [clojure.spec.alpha :as s]
    [clojure.string :as str]
    [clojure.walk :as walk]
+   [malli.core :as mc]
+   [malli.transform :as mtx]
    [medley.core :as m]
+   [metabase.app-db.core :as mdb]
    ;; Toucan out-transforms normalize stored legacy MBQL on read; needed until the app db is MBQL 5
    ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.normalize :as mbql.normalize]
    ;; stored card queries/refs are still legacy MBQL; validated against the legacy schema on read/write
@@ -58,6 +61,7 @@
   model
   instance])
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *deserializing?*
   "This is dynamically bound to true when deserializing. A few pieces of the Toucan magic are undesirable for
   deserialization and are skipped based on this var. (Entity ids are not one of them: the insert hook generates an
@@ -235,6 +239,11 @@
   {:in  u/qualified-name
    :out keyword})
 
+(def transform-boolean
+  "Transform for booleans; a boolean computed in SQL comes back as a number from MySQL and MariaDB."
+  {:in  identity
+   :out (fn [v] (if (number? v) (pos? v) v))})
+
 (def transform-trim
   "Transform that trims whitespace on input and output. Useful for fixed-width char columns that pad with spaces."
   {:in  str/trim
@@ -255,23 +264,23 @@
 
 (mu/defn assert-enum
   "Assert that a value is one of the values in `enum`."
-  [enum :- [:set :any]
-   value]
+  [enum  :- [:set [:maybe [:or :keyword :string]]]
+   value :- [:maybe [:or :keyword :string]]]
   (when-not (contains? enum value)
     (throw (ex-info (format "Invalid value %s. Must be one of %s" value (str/join ", " enum)) {:status-code 400
                                                                                                :value       value}))))
 
 (mu/defn assert-optional-enum
   "Assert that a value is one of the values in `enum` or `nil`."
-  [enum :- [:set :any]
-   value :- :any]
+  [enum :- [:set [:or :keyword :string]]
+   value :- [:maybe [:or :keyword :string]]]
   (when (some? value)
     (assert-enum enum value)))
 
 (mu/defn assert-namespaced
   "Assert that a value is a namespaced keyword under `qualified-ns`."
   [qualified-ns :- string?
-   value]
+   value        :- [:or :keyword :string]]
   (when-not (= qualified-ns (-> value keyword namespace))
     (throw (ex-info (format "Must be a namespaced keyword under :%s, got: %s" qualified-ns value) {:status-code 400
                                                                                                    :value       value}))))
@@ -346,6 +355,59 @@
   [source]
   {:in  encrypted-json-in
    :out (decrypt-error-context source cached-encrypted-json-out)})
+
+(def ^:private json-schema-transformer
+  "The same [[malli.transform/json-transformer]] [[metabase.api.macros]] decodes request bodies with, so a
+  value has one JSON shape rather than one for the wire and another for the app DB."
+  (mtx/json-transformer))
+
+(defn- json-schema-encoder [schema]
+  (mr/cached ::json-schema-encoder schema #(mc/encoder schema json-schema-transformer)))
+
+(defn- json-schema-decoder [schema]
+  (mr/cached ::json-schema-decoder schema #(mc/decoder schema json-schema-transformer)))
+
+(defn transform-json-with-schema
+  "Like [[transform-json]], but runs the value through `schema`'s malli JSON encoder and decoder, so a column
+  can hold keywords and anything else JSON cannot carry on its own. `source` is a \"table.column\" string,
+  named in the log message when a blob cannot be read.
+
+  Values always go through `schema`; there is no string passthrough, since an already-encoded string would
+  skip the decode this transform exists to do.
+
+  An unreadable blob reads as `nil` rather than throwing, so one bad row cannot break a whole `t2/select`. It
+  is logged at `:log-level` (`:warn` by default); pass `:error` when a failure carries a security
+  consequence."
+  ([source schema]
+   (transform-json-with-schema source schema nil))
+
+  ([source schema {:keys [log-level] :or {log-level :warn}}]
+   {:in  (fn [v]
+           (when (some? v)
+             (json/encode ((json-schema-encoder schema) v))))
+    :out (fn [s]
+           (when (string? s)
+             (try
+               ((json-schema-decoder schema) (json/decode+kw s))
+               (catch Throwable e
+                 (if (= log-level :error)
+                   (log/errorf e "Failed to parse %s; returning nil" source)
+                   (log/warnf e "Failed to parse %s; returning nil" source))
+                 nil))))}))
+
+(defn transform-encrypted-json-with-schema
+  "[[transform-json-with-schema]] for a column that is also encrypted at rest. [[decrypt-error-context]] names
+  the column when a decrypt fails, instead of a bare \"Expected an encrypted value\".
+
+  Unlike [[transform-encrypted-json]], the decrypt is not memoized: that cache holds both ciphertext and
+  decoded value for an hour, which is the wrong trade for the unbounded blobs these columns tend to hold."
+  ([source schema]
+   (transform-encrypted-json-with-schema source schema nil))
+
+  ([source schema opts]
+   (let [{:keys [in out]} (transform-json-with-schema source schema opts)]
+     {:in  (comp encryption/maybe-encrypt in)
+      :out (comp out (decrypt-error-context source encryption/maybe-decrypt))})))
 
 (defn transform-encrypted-text
   "Whole-column encrypted text transform for the column named by `source` (a \"table.column\" string, used in decrypt
@@ -552,7 +614,7 @@
   and H2 and `now(6)` for MySQL/MariaDB (`now()` for MySQL only return second resolution; `now(6)` uses the
   max (nanosecond) resolution)."
   []
-  (h2x/current-datetime-honeysql-form ((requiring-resolve 'metabase.app-db.core/db-type))))
+  (h2x/current-datetime-honeysql-form (mdb/db-type)))
 
 (defn- add-created-at-timestamp [obj & _]
   (cond-> obj
@@ -621,7 +683,7 @@
   {:pre [(map? row-map)]}
   (let [model (t2/resolve-model modelable)]
     (try
-      (models.db/after-select-via-identity-query model row-map)
+      (models.db/after-select-via-identity-query {:model model :row row-map})
       (catch Throwable e
         (throw (ex-info (format "Error doing after-select for model %s: %s" model (ex-message e))
                         {:model model}
@@ -777,7 +839,8 @@
 
   ([fn-symb       :- qualified-symbol?
     read-or-write :- [:enum :read :write]
-    object        :- :map]
+    object        :- [:maybe [:fn {:error/message "a Toucan instance or model-like record"}
+                              #(some? (t2.protocols/model %))]]]
    (and object
         (check-perms-with-fn fn-symb (perms-objects-set object read-or-write))))
 
@@ -868,6 +931,11 @@
   [_original-model dest-key _hydrated-key]
   [(u/->snake_case_en (keyword (str (name dest-key) "_id")))])
 
+(mr/def ::hydratable-item
+  "An item to hydrate: usually a Toucan instance, but callers may pass a plain map (or nil, for a sparse position)
+  since this helper only assocs a hydration key onto it."
+  [:maybe [:map {:closed false, ::mr/deliberately-open true, :description "a Toucan instance or a plain map"}]])
+
 (mu/defn instances-with-hydrated-data
   ;; TODO: this example is wrong, we don't get a vector of tables
   "Helper function to write batched hydrations.
@@ -882,11 +950,13 @@
            {:id 2 :tables [...tables-from-db-2]}]
 
   - key->hydrated-items-fn: is a function that returns a map with key is `instance-key` and value is the hydrated data of that instance."
-  [instances                      :- [:sequential :any]
+  [instances                      :- [:sequential ::hydratable-item]
    hydration-key                  :- :keyword
    instance-key->hydrated-data-fn :- fn?
    instance-key                   :- :keyword
-   & [{:keys [default] :as _options}]]
+   & [{:keys [default] :as _options}] :- [:* [:map {:closed true}
+                                              [:default {:optional true}
+                                               [:maybe [:or :boolean number? [:map {:closed true}] [:= []]]]]]]]
   (when (seq instances)
     (let [key->hydrated-items (instance-key->hydrated-data-fn)]
       (for [item instances]

@@ -482,6 +482,10 @@
   [_driver _database]
   "UTC")
 
+(defmethod driver.sql/default-schema :sqlite
+  [_driver _database]
+  nil)
+
 (defmethod sql-jdbc.sync/active-tables :sqlite
   [& args]
   (apply sql-jdbc.sync/post-filtered-active-tables args))

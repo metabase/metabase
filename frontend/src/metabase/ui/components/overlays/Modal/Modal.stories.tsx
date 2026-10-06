@@ -74,12 +74,7 @@ const ConfirmationTemplate = (args: ModalProps) => {
           <Button type="submit" ml="sm">
             Cancel
           </Button>
-          <Button
-            type="submit"
-            variant="filled"
-            color="feedback-negative"
-            ml="sm"
-          >
+          <Button type="submit" variant="filled" color="negative" ml="sm">
             Delete
           </Button>
         </Flex>

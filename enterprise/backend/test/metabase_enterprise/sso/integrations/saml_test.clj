@@ -348,6 +348,25 @@
                (is (= (some-saml-attributes "rasta")
                       (saml-login-attributes "rasta@metabase.com")))))))))))
 
+(deftest login-records-session-index-test
+  (testing "the SessionIndex from the IdP's assertion is stored on the session it creates"
+    ;; Single logout sends this back so the IdP knows which session to end (#77837).
+    (with-other-sso-types-disabled!
+      (with-saml-default-setup!
+        (do-with-some-validators-disabled!
+         (fn []
+           (let [req-options (saml-post-request-options (saml-test-response)
+                                                        default-redirect-uri)
+                 response    (client/client-real-response :post 302 "/auth/sso" req-options)]
+             (is (successful-login? response))
+             ;; `rasta` may already own sessions from other fixtures, so look up the one this
+             ;; login just created via its session cookie.
+             (let [session-key (get-in response [:cookies request/metabase-session-cookie :value])]
+               (is (= "_8vKjURdHz4jghbYbj48khvBkLaEeyEqc"
+                      (t2/select-one-fn :saml_session_index :model/Session
+                                        :key_hashed (session/hash-session-key session-key)))
+                   "the SessionIndex in test_resources/saml-test-response.xml")))))))))
+
 (deftest validate-signatures-test
   ;; they were edited by hand I think, so the signatures are now incorrect (?)
   (testing "The sample responses should normally fail because the <Assertion> signatures don't match"

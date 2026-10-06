@@ -4,7 +4,9 @@
    [metabase.config.core :as config]
    [metabase.premium-features.core :as premium-features]
    [metabase.settings.core :as setting :refer [defsetting define-multi-setting define-multi-setting-impl]]
+   [metabase.startup.core :as startup]
    [metabase.util :as u]
+   [metabase.util.http :as u.http]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.json :as json]
    [metabase.util.string :as u.str])
@@ -72,7 +74,8 @@
 
 (defsetting ldap-attribute-firstname
   (deferred-tru "Attribute to use for the user''s first name. (usually ''givenName'')")
-  :default    "givenName"
+  ;; kept in the getter's lower case, so an untouched value reads as the default it is
+  :default    "givenname"
   :getter     (fn [] (u/lower-case-en (setting/get-value-of-type :string :ldap-attribute-firstname)))
   :encryption :when-encryption-key-set
   :audit      :getter)
@@ -116,7 +119,10 @@
                     (doseq [k (keys new-value)]
                       (when-not (instance? DN k) ; handle DN-encoded keys like we get from the `:getter`
                         (when-not (DN/isValidDN (u/qualified-name k))
-                          (throw (IllegalArgumentException. (tru "{0} is not a valid DN." (u/qualified-name k)))))))
+                          (throw (ex-info (tru "{0} is not a valid DN. Example: {1}"
+                                               (u/qualified-name k)
+                                               "cn=people,ou=groups,dc=example,dc=org")
+                                          {:status-code 400})))))
                     (setting/set-value-of-type! :json :ldap-group-mappings new-value)))))
 
 (defsetting ldap-configured?
@@ -127,22 +133,6 @@
   :getter     (fn [] (boolean (and (ldap-host)
                                    (ldap-user-base))))
   :doc        false)
-
-(defsetting ldap-enabled
-  (deferred-tru "Is LDAP currently enabled?")
-  :type       :boolean
-  :visibility :public
-  :setter     (fn [new-value]
-                (let [new-value (boolean new-value)]
-                  (when new-value
-                    ;; Test the LDAP settings before enabling
-                    (let [result ((requiring-resolve 'metabase.sso.ldap/test-current-ldap-details))]
-                      (when-not (= :SUCCESS (:status result))
-                        (throw (ex-info (tru "Unable to connect to LDAP server with current settings")
-                                        ((requiring-resolve 'metabase.sso.ldap/humanize-error-messages) result))))))
-                  (setting/set-value-of-type! :boolean :ldap-enabled new-value)))
-  :default    false
-  :audit      :getter)
 
 (defsetting ldap-timeout-seconds
   (deferred-tru "Maximum time, in seconds, to wait for LDAP server before falling back to local authentication")
@@ -280,12 +270,21 @@
 (defsetting oidc-allowed-networks
   (deferred-tru "What networks are OIDC requests allowed to? Possible values: ''allow-all'' (default), ''allow-private'', or ''external-only''.")
   :type :keyword
+  :visibility :internal
   :default :allow-all
   :export? false
-  :setter (fn [new-value]
-            (when (some? new-value)
-              (assert (#{:allow-all :allow-private :external-only} (keyword new-value))))
-            (setting/set-value-of-type! :keyword :oidc-allowed-networks new-value)))
+  :setter :none
+  :doc (str "Set this to tighten which networks OIDC discovery and token requests may reach; it defaults to "
+            "allow-all. Other values: external-only and allow-private")
+  :getter (fn []
+            (let [[env-var-name raw-value] (setting/env-var-source :oidc-allowed-networks)]
+              (or (u.http/env-network-policy env-var-name raw-value)
+                  :allow-all))))
+
+;; Reading it throws when the environment names a policy that does not exist: a typo stops the boot rather than
+;; surfacing at the first login.
+(defmethod startup/def-startup-validation! ::oidc-allowed-networks [_]
+  (oidc-allowed-networks))
 
 (defn- ee-sso-configured? []
   (when config/ee-available?
@@ -296,7 +295,9 @@
   "Any SSO provider is configured and enabled"
   []
   (or (google-auth-enabled)
-      (ldap-enabled)
+      ;; read by keyword the way `ee-sso-configured?` above does: `ldap-enabled` is defined in
+      ;; [[metabase.sso.ldap.settings]], which this namespace cannot require
+      (setting/get :ldap-enabled)
       (ee-sso-configured?)))
 
 (defn sso-source-enabled?
@@ -307,7 +308,7 @@
   (boolean
    (case (keyword sso-source)
      :google (google-auth-enabled)
-     :ldap   (ldap-enabled)
+     :ldap   (setting/get :ldap-enabled)
      ;; Enterprise SSO providers: setting/get respects the :feature flag on each
      ;; setting — returning the default (false) when the feature is unlicensed (e.g.,
      ;; after license downgrade), so users aren't locked out of password reset.

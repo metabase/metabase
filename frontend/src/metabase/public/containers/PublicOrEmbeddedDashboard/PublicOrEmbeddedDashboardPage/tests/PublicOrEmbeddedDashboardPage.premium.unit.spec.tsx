@@ -1,12 +1,14 @@
 import userEvent from "@testing-library/user-event";
-import fetchMock from "fetch-mock";
 
 import { setupLastDownloadFormatEndpoints } from "__support__/server-mocks";
 import { screen, waitFor } from "__support__/ui";
+import * as localization from "metabase/utils/localization";
 import { DASHBOARD_PDF_EXPORT_ROOT_ID } from "metabase/visualizations/lib/save-dashboard-pdf";
 import { createMockTokenFeatures } from "metabase-types/api/mocks";
 
 import { type SetupOpts, setup } from "./setup";
+
+const loadLocalizationSpy = jest.spyOn(localization, "loadLocalization");
 
 const DASHBOARD_TITLE = '"My test dash"';
 
@@ -24,6 +26,7 @@ const setupPremium = async (opts?: Partial<SetupOpts>) => {
 
 describe("PublicOrEmbeddedDashboardPage", () => {
   beforeEach(() => {
+    loadLocalizationSpy.mockClear();
     setupLastDownloadFormatEndpoints();
   });
 
@@ -98,9 +101,7 @@ describe("PublicOrEmbeddedDashboardPage", () => {
       const expectedLocale = "ko";
       await setupPremium({ hash: { locale: expectedLocale } });
 
-      expect(
-        fetchMock.callHistory.calls(`path:/app/locales/${expectedLocale}.json`),
-      ).toHaveLength(1);
+      expect(loadLocalizationSpy).toHaveBeenCalledWith(expectedLocale);
     });
   });
 });

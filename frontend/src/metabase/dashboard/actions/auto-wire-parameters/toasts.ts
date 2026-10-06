@@ -21,7 +21,7 @@ import {
   AUTO_WIRE_UNDO_TOAST_TIMEOUT,
 } from "./constants";
 
-export const AUTO_WIRE_TOAST_ID = _.uniqueId();
+const SHOW_AUTO_WIRE_PARAMETERS_TOAST_TYPE = "SHOW_AUTO_WIRE_PARAMETERS_TOAST";
 
 export const showAutoWireParametersToast =
   ({
@@ -41,20 +41,6 @@ export const showAutoWireParametersToast =
     const message = hasMultipleTabs
       ? t`Auto-connect this filter to all questions containing “${columnName}”, in the current tab?`
       : t`Auto-connect this filter to all questions containing “${columnName}”?`;
-
-    dispatch(
-      addUndo({
-        icon: null,
-        message,
-        actionLabel: t`Auto-connect`,
-        showProgress: true,
-        timeout: AUTO_WIRE_TOAST_TIMEOUT,
-        action: () => {
-          connectAll();
-          showUndoToast();
-        },
-      }),
-    );
 
     function connectAll() {
       dispatch(
@@ -88,6 +74,21 @@ export const showAutoWireParametersToast =
         }),
       );
     }
+
+    return dispatch(
+      addUndo({
+        icon: null,
+        type: SHOW_AUTO_WIRE_PARAMETERS_TOAST_TYPE,
+        message,
+        actionLabel: t`Auto-connect`,
+        showProgress: true,
+        timeout: AUTO_WIRE_TOAST_TIMEOUT,
+        action: () => {
+          connectAll();
+          showUndoToast();
+        },
+      }),
+    );
   };
 
 export const showAddedCardAutoWireParametersToast =
@@ -120,7 +121,7 @@ export const showAddedCardAutoWireParametersToast =
         showProgress: true,
         timeout: AUTO_WIRE_TOAST_TIMEOUT,
         action: () => {
-          closeAutoWireParameterToast(toastId);
+          dispatch(dismissUndo({ undoId: toastId }));
           autoWireParametersToNewCard();
           showUndoToast();
         },
@@ -167,9 +168,14 @@ export const showAddedCardAutoWireParametersToast =
   };
 
 export const closeAutoWireParameterToast =
-  (toastId: string = AUTO_WIRE_TOAST_ID) =>
-  (dispatch: Dispatch) => {
-    dispatch(dismissUndo({ undoId: toastId }));
+  () => (dispatch: Dispatch, getState: GetState) => {
+    const undos = getState().undo;
+
+    for (const undo of undos) {
+      if (undo.type === SHOW_AUTO_WIRE_PARAMETERS_TOAST_TYPE) {
+        dispatch(dismissUndo({ undoId: undo.id }));
+      }
+    }
   };
 
 const autoWireToastTypes = ["filterAutoConnect", "filterAutoConnectDone"];

@@ -132,3 +132,39 @@
                        (when (pos-int? entity-id)
                          entity-id))))
         (tree-seq :content :content content)))
+
+(defn comments-for-document
+  "A document's comments, oldest first, with `:creator` hydrated. Deleted comments are dropped —
+  except one that still has replies, which stays with its `:content` scrubbed to `{}` so the
+  replies' `:parent_comment_id` keeps something to anchor to, the same deleted-comment rule
+  `GET /api/comment` applies. Read access to the document is the caller's job to check first —
+  the same check-the-target-once pattern the comments REST endpoint uses.
+
+  Matches the endpoint on that scrub rule only; it is not the endpoint's whole response. Reactions
+  are not hydrated (they read `api/*current-user-id*`, which a non-request caller has not bound),
+  and the ordering breaks ties on `:id` where the endpoint leaves them undetermined."
+  [document-id]
+  (let [comments     (comments.db/document-comments document-id)
+        has-replies? (into #{} (map :parent_comment_id) comments)]
+    (-> (into []
+              ;; `content_html` is the deprecated pre-render of `:content`. Nothing clears it on
+              ;; delete, so scrubbing `:content` alone would leave a deleted comment's body
+              ;; readable in the column beside it, and nothing rewrites it on edit, so even a live
+              ;; comment's copy can contradict `:content`. The endpoint drops it from every comment
+              ;; (`render-comments`); so do we.
+              (comp (keep (fn [comment]
+                            (cond
+                              (not (:deleted_at comment))  comment
+                              (has-replies? (:id comment)) (assoc comment :content {})
+                              :else                        nil)))
+                    (map #(dissoc % :content_html)))
+              comments)
+        (t2/hydrate :creator))))
+
+(defn child-target-ids-for-document
+  "Distinct non-nil `child_target_id` values (with a live comment count each) for a document's
+  comment threads. Read access to the document is the caller's job to check first — the same
+  check-the-target-once pattern the comments REST endpoint uses."
+  [document-id]
+  (->> (comments.db/document-child-target-counts document-id)
+       (mapv #(select-keys % [:child_target_id :comment_count]))))

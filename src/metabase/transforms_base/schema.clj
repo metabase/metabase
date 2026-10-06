@@ -5,6 +5,7 @@
    The full transforms module (metabase.transforms.schema) extends these with
    additional fields like :id (required for scheduled execution)."
   (:require
+   [metabase.indexes.schema :as indexes.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.util.malli.registry :as mr]
@@ -23,35 +24,81 @@
 
 ;;; ------------------------------------------------- Transform -------------------------------------------------
 
+(mr/def ::source-incremental-strategy
+  "An incremental strategy on a transform's source, as `get-source-range-params` reads it. The full,
+  `:type`-dispatched shape (checkpoint/append/merge variants) is owned by `metabase.transforms.schema`;
+  this module only reads the checkpoint fields."
+  [:map {:closed true}
+   [:type {:optional true} [:or :string :keyword]]
+   [:checkpoint-filter-field-id {:optional true} ::lib.schema.id/field]
+   [:lookback {:optional true} [:maybe [:map {:closed true}
+                                        [:value pos-int?]
+                                        [:unit [:or :string :keyword]]]]]])
+
+(mr/def ::target-incremental-strategy
+  "An incremental strategy on a transform's target: append the new rows, or merge them on a unique key."
+  [:map {:closed true}
+   [:type       [:or :string :keyword]]
+   [:unique-key {:optional true} [:sequential [:map {:closed true}
+                                               [:name     {:optional true} :string]
+                                               [:field-id {:optional true} [:maybe ::lib.schema.id/field]]]]]])
+
 (mr/def ::transform-target
   "Target specification for a transform. Must include at least :type and :name."
-  [:map
+  [:map {:closed true}
    [:type :string]
    [:database {:optional true} :int]
    [:schema {:optional true} [:maybe :string]]
    [:name :string]
-   [:indexes {:optional true} [:sequential :map]]])
+   [:indexes {:optional true} [:sequential ::indexes.schema/index-structured]]
+   [:target-incremental-strategy {:optional true} ::target-incremental-strategy]
+   [:index-request-ids {:optional true} [:sequential pos-int?]]])
 
 (mr/def ::transform
-  "A transform map as expected by execute-base! implementations."
-  [:map
+  "A transform map as expected by execute-base! implementations. The full transforms module
+  (metabase.transforms.schema) hydrates and stores more columns on this same map; they're declared here,
+  optional, so that richer value can be threaded through the shared execute-base! machinery unchanged."
+  [:map {:closed true}
    [:id {:optional true} pos-int?]
-   [:source [:map [:type [:or :string :keyword]]]]
-   [:target ::transform-target]
+   [:source [:map {:closed true}
+             [:type                        [:or :string :keyword]]
+             [:query                       {:optional true} [:maybe :metabase.lib-be.schema/maybe-legacy-query]]
+             [:body                        {:optional true} :string]
+             [:source-tables               {:optional true} [:sequential :metabase.transforms-base.util/source-table-entry]]
+             [:source-database             {:optional true} :int]
+             [:source-incremental-strategy {:optional true} [:maybe ::source-incremental-strategy]]]]
+   [:target {:optional true} [:maybe ::transform-target]]
    [:name {:optional true} :string]
-   [:description {:optional true} [:maybe :string]]])
+   [:description {:optional true} [:maybe :string]]
+   [:full-incremental-run? {:optional true} :boolean]
+   [:entity_id             {:optional true} [:maybe :string]]
+   [:created_at            {:optional true} [:maybe ms/TemporalInstant]]
+   [:updated_at            {:optional true} [:maybe ms/TemporalInstant]]
+   [:source_type           {:optional true} [:maybe [:or :keyword :string]]]
+   [:creator_id            {:optional true} [:maybe ::lib.schema.id/user]]
+   [:source_database_id    {:optional true} [:maybe ::lib.schema.id/database]]
+   [:collection_id         {:optional true} [:maybe ::lib.schema.id/collection]]
+   [:owner_user_id         {:optional true} [:maybe ::lib.schema.id/user]]
+   [:owner_email           {:optional true} [:maybe :string]]
+   [:target_db_id          {:optional true} [:maybe ::lib.schema.id/database]]
+   [:last_checkpoint_value {:optional true} [:maybe :string]]
+   [:target_table_id       {:optional true} [:maybe ::lib.schema.id/table]]
+   [:table_dependencies    {:optional true} [:maybe [:sequential [:or
+                                                                  [:map {:closed true} [:table ::lib.schema.id/table]]
+                                                                  [:map {:closed true} [:transform ::lib.schema.id/transform]]]]]]
+   [:tag_ids               {:optional true} [:maybe [:sequential pos-int?]]]])
 
 ;;; ----------------------------------------- Source Range Params -----------------------------------------------
 
 (mr/def ::checkpoint-bound
   "A bound (lo or hi) for incremental checkpoint filtering."
-  [:map
-   [:value :any]])
+  [:map {:closed true}
+   [:value [:or number? ms/TemporalInstant]]])
 
 (mr/def ::source-range-params
   "Parameters for incremental range filtering on a source query.
    Returned by get-source-range-params."
-  [:map
+  [:map {:closed true}
    [:column ::lib.schema.metadata/column]
    [:checkpoint-filter-field-id ::lib.schema.id/field]
    [:lo {:optional true} [:maybe ::checkpoint-bound]]
@@ -63,10 +110,10 @@
 
 (mr/def ::execute-base-options
   "Options map for execute-base! and its implementations."
-  [:map
+  [:map {:closed true}
    [:cancelled? {:optional true} ifn?]
    [:run-id {:optional true} [:maybe pos-int?]]
-   [:with-stage-timing-fn {:optional true} ifn?]
+   [:with-stage-timing-fn {:optional true} [:maybe ifn?]]
    [:publish-events? {:optional true} :boolean]
    [:message-log {:optional true} [:maybe ::atom]]
    [:cancel-chan {:optional true} [:maybe ::chan]]

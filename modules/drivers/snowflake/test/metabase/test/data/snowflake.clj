@@ -15,7 +15,8 @@
    [metabase.test.data.sql-jdbc.load-data :as load-data]
    [metabase.test.data.sql.ddl :as ddl]
    [metabase.util :as u]
-   [metabase.util.log :as log])
+   [metabase.util.log :as log]
+   [toucan2.core :as t2])
   (:import
    (java.sql PreparedStatement ResultSet)))
 
@@ -466,3 +467,24 @@
     "TIME"         :type/Time
     ;; Default: unknown types get :type/*
     :type/*))
+
+;; a very common failure for snowflake is for tests to accidentally create tables
+;; in static datasets; let's see if we can prevent that from happening.
+(defmethod driver/create-table! :snowflake
+  [driver database-id table-name & args]
+  (let [dataset-name (data.impl/database-source-dataset-name
+                      (t2/select-one [:model/Database :settings] :id database-id))
+        dataset (try
+                  (tx/get-dataset-definition
+                   (data.impl/resolve-dataset-definition
+                    'metabase.test.data.dataset-definitions
+                    (symbol dataset-name)))
+                  ;; dynamic datasets won't always resolve this way
+                  (catch Exception _))]
+    (if (or (not (:static (:options dataset)))
+            (get (:table-definitions dataset) table-name))
+      (apply (get-method driver/create-table! :sql-jdbc) driver database-id table-name args)
+      (throw (ex-info "tried to create table in static dataset"
+                      {:database-id database-id
+                       :database-name (:database-name dataset)
+                       :table-name table-name})))))

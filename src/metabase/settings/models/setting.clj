@@ -10,10 +10,12 @@
    [malli.core :as mc]
    [medley.core :as m]
    [metabase.api.common :as api]
+   [metabase.app-db.core :as app-db]
    [metabase.app-db.setting :as mdb.setting]
    [metabase.config.core :as config]
    [metabase.events.core :as events]
    [metabase.models.serialization :as serdes]
+   [metabase.premium-features.defenterprise :refer [defenterprise]]
    [metabase.settings.db :as settings.db]
    [metabase.settings.models.setting.cache :as setting.cache]
    [metabase.util :as u]
@@ -23,6 +25,7 @@
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.util.time :as u.time]
    [methodical.core :as methodical]
    [toucan2.core :as t2])
   (:import
@@ -34,6 +37,7 @@
    (java.util.concurrent TimeUnit)
    (java.util.concurrent.locks ReentrantLock)))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *database*
   "The database upon which we are operating, from which [[*database-local-values*]] are taken.
   This is used to do a just-in-time check whether a given setting is enabled for the given database, so that we can
@@ -43,6 +47,7 @@
   You may need to manually bind it in other places where you want to use Database-local values."
   nil)
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *database-local-values*
   "Database-local Settings values (as a map of Setting name -> already-deserialized value). This comes from the value of
   `Database.settings` in the application DB. When bound, any Setting that *can* be Database-local will have a value
@@ -52,6 +57,7 @@
   You may need to manually bind it in other places where you want to use Database-local values."
   nil)
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *user-local-values*
   "User-local Settings values (as a delay to a atom containing a map of Setting name -> already-deserialized value). This
   comes from the value of `User.settings` in the application DB. When bound, any Setting that *can* be User-local will
@@ -73,6 +79,7 @@
     "user-recent-views"
     "most-recently-viewed-dashboard"})
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *allow-retired-setting-names*
   "A dynamic val that controls whether it's allowed to use retired settings.
   Primarily used in test to disable retired setting check."
@@ -101,7 +108,7 @@
   (get-value-of-type :string (keyword id)))
 
 (defmethod serdes/load-one! "Setting" [{:keys [key value]} _]
-  (set-value-of-type! :string key value))
+  (set-value-of-type! :string key (some-> value str)))
 
 (def ^:private Type
   [:fn
@@ -408,6 +415,7 @@
     (swap! @*user-local-values* u/assoc-dissoc setting-name value)
     (settings.db/update-user-settings! api/*current-user-id* (json/encode @@*user-local-values*))))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *enforce-setting-access-checks*
   "A dynamic var that controls whether we should enforce checks on setting access. Defaults to false; should be
   set to true when settings are being written directly via /api/setting endpoints."
@@ -417,16 +425,12 @@
   [feature]
   ((requiring-resolve 'metabase.premium-features.core/has-feature?) feature))
 
-(defn has-advanced-setting-access?
+(defenterprise has-advanced-setting-access?
   "If `advanced-permissions` is enabled, check if current user has permissions to edit `setting`.
   Return `false` for all non-admins when `advanced-permissions` is disabled. Return `true` for all admins."
+  metabase-enterprise.advanced-permissions.common
   []
-  (or api/*is-superuser?*
-      (when (and config/ee-available?
-                 (has-feature? :advanced-permissions))
-        ((requiring-resolve 'metabase-enterprise.advanced-permissions.common/current-user-has-application-permissions?)
-         :setting))
-      false))
+  (boolean api/*is-superuser?*))
 
 (defn- current-user-can-access-setting?
   "This checks whether the current user should have the ability to read or write the provided setting.
@@ -472,26 +476,39 @@
     (or (@env-var-translation-cache sname)
         ((swap! env-var-translation-cache assoc sname (keyword (str "mb-" (munge-setting-name sname)))) sname))))
 
-(defn env-var-value
-  "Get the value of `setting-definition-or-name` from the corresponding env var, if any.
-   The name of the Setting is converted to uppercase and dashes to underscores; for example, a setting named
+(defn env-var-source
+  "Which env var supplies `setting-definition-or-name`'s value and what it holds, as `[env-var-name value]`, or nil
+  when no env var supplies one.
+
+  The name of the Setting is converted to uppercase and dashes to underscores; for example, a setting named
   `default-domain` can be set with the env var `MB_DEFAULT_DOMAIN`. Note that this strips out characters that are not
   legal for shells. Setting `foo-bar?` will expect to find the key `:mb-foo-bar` which will be sourced from the
   environment variable `MB_FOO_BAR`.
 
   When the primary env var is truly absent (nil from environ) and the setting has a `:deprecated-name`, the env var
-  derived from that name is checked as a fallback. An empty string for the primary env var means \"explicitly unset\"
-  and blocks the fallback."
-  ^String [setting-definition-or-name]
+  derived from that name is checked as a fallback, and is the one named -- so a message about the value points at
+  the variable the operator actually set. An empty string for the primary env var means \"explicitly unset\" and
+  blocks the fallback.
+
+  Prefer [[env-var-value]] unless the name is needed too."
+  [setting-definition-or-name]
   (let [setting (resolve-setting setting-definition-or-name)]
     (when (and (allows-site-wide-values? setting)
                (allows-setting-via-env? setting))
       (if-let [v (env/env (setting-env-map-name setting))]
-        ;; primary env var is set — return it only if non-empty
-        (not-empty v)
+        ;; primary env var is set — use it only if non-empty
+        (when-let [v (not-empty v)]
+          [(env-var-name setting) v])
         ;; primary env var is absent — try deprecated name
         (when-let [deprecated-name (:deprecated-name setting)]
-          (not-empty (env/env (setting-env-map-name deprecated-name))))))))
+          (when-let [v (not-empty (env/env (setting-env-map-name deprecated-name)))]
+            [(env-var-name deprecated-name) v]))))))
+
+(defn env-var-value
+  "Get the value of `setting-definition-or-name` from the corresponding env var, if any.
+  See [[env-var-source]], which this reads the value half of."
+  ^String [setting-definition-or-name]
+  (second (env-var-source setting-definition-or-name)))
 
 (defn log-deprecated-env-var-usage!
   "Log warnings for any settings currently using a deprecated env var name.
@@ -519,6 +536,7 @@
         (log/warnf "Deprecated %s is set; rename it to %s."
                    legacy-env primary-env)))))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic *disable-init* false)
 
 (declare get)
@@ -534,14 +552,6 @@
   (binding [*disable-init* true]
     (get setting-definition-or-name)))
 
-(def ^:private db-is-set-up-var (atom nil))
-
-(defn- db-is-set-up? []
-  ;; this should never be hit. it is just overly cautious against a NPE here. But no way this cannot resolve
-  (let [f (or @db-is-set-up-var
-              (reset! db-is-set-up-var (requiring-resolve 'metabase.app-db.core/db-is-set-up?)))]
-    (if f (f) false)))
-
 (defn- db-or-cache-value*
   "Look up a single setting key in the DB or cache. Returns the raw (possibly empty) string, or nil."
   ^String [setting-name-str]
@@ -556,6 +566,7 @@
           (settings.db/setting-value setting-name-str)
           (core/get cache setting-name-str))))))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *deprecated-db-key-warned*
   "Set of deprecated DB keys that have already triggered a warning. Dynamic so tests can rebind it."
   (atom #{}))
@@ -566,7 +577,7 @@
   ^String [setting-definition-or-name]
   (let [setting (resolve-setting setting-definition-or-name)]
     ;; cannot use db (and cache populated from db) if db is not set up
-    (when (and (db-is-set-up?) (allows-site-wide-values? setting))
+    (when (and (app-db/db-is-set-up?) (allows-site-wide-values? setting))
       (or (not-empty (db-or-cache-value* (setting-name setting)))
           (when-let [deprecated-name (:deprecated-name setting)]
             (when-let [v (not-empty (db-or-cache-value* (setting-name deprecated-name)))]
@@ -590,7 +601,7 @@
 (defn- init! [setting-definition-or-name]
   (let [{:keys [init] :as setting} (resolve-setting setting-definition-or-name)]
     (when init
-      (when (not (db-is-set-up?))
+      (when (not (app-db/db-is-set-up?))
         (throw (ex-info "Cannot initialize setting before the db is set up" {:setting setting})))
       ;; We do not need to interact with the restore-cache-lock as it is OK to race with it.
       (if-not (.tryLock init-lock 30 TimeUnit/SECONDS)
@@ -959,8 +970,13 @@
 (defmethod set-value-of-type! :timestamp
   [_setting-type setting-definition-or-name new-value]
   (set-value-of-type!
-   :string setting-definition-or-name
-   (some-> new-value u.date/format)))
+   :string
+   setting-definition-or-name
+   (when (some? new-value) ; nils are written through directly
+     ;; But if there is a value, then it must be one we can coerce to a timestamp.
+     (if-let [timestamp (u.time/coerce-to-timestamp new-value)]
+       (u.date/format timestamp)
+       (throw (ex-info "Malformed value for :timestamp setting" {:value new-value}))))))
 
 (defn- serialize-csv [value]
   (cond
@@ -974,8 +990,11 @@
               (str writer))]
       (first (str/split-lines s)))
 
+    (nil? value)
+    nil
+
     :else
-    value))
+    (str value)))
 
 (defmethod set-value-of-type! :csv
   [_setting-type setting-definition-or-name new-value]

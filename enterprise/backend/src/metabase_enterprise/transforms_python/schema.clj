@@ -6,13 +6,10 @@
 
 (mr/def ::python-library
   "A PythonLibrary as selected from the app DB: every column of `:python_library`."
-  [:map {:closed true}
-   [:id         ms/PositiveInt]
-   [:path       :string]
-   [:source     [:maybe [:or :keyword :string]]]
-   [:created_at ms/TemporalInstant]
-   [:updated_at ms/TemporalInstant]
-   [:entity_id  :string]])
+  [:merge
+   ::python-library.update
+   [:map {:closed true}
+    [:id         ms/PositiveInt]]])
 
 (mr/def ::python-library.update
   "What an update (or insert) of a PythonLibrary accepts: every column of `:python_library` except `id`, all optional."

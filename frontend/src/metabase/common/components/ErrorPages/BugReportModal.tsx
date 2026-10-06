@@ -91,9 +91,8 @@ export const BugReportModal = ({
                   </Text>
                 </Stack>
                 <Button
-                  variant="subtle"
-                  p="0"
-                  fz="lg"
+                  variant="transparent"
+                  size="compact-md"
                   miw="fit-content"
                   onClick={() => setIsDetailsVisible(!isDetailsVisible)}
                 >
@@ -123,12 +122,8 @@ export const BugReportModal = ({
                 <Text>{t`Diagnostic info may contain sensitive data.`}</Text>
               </Box>
               <FormSubmitButton
-                variant="outline"
                 label={c("This is a verb, not a noun").t`Download`}
-                color="text-primary"
                 my="sm"
-                px="xl"
-                radius="sm"
               />
             </Flex>
           </Form>

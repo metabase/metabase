@@ -6,6 +6,7 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [toucan2.core :as t2]))
 
 (mu/defn cards
@@ -31,12 +32,12 @@
 (mu/defn card-name-and-description
   "The name and description of the Card with `card-id`, or nil."
   [card-id :- ::lib.schema.id/card]
-  (t2/select-one [:model/Card :name :description :card_schema], :id card-id))
+  (t2/select-one [:model/Card :name :description], :id card-id))
 
 (mu/defn table-database-id
   "The Database id of the Table with `table-id`, or nil."
   [table-id :- ::lib.schema.id/table]
-  (t2/select-one-fn :db_id :model/Table, :id table-id))
+  (t2/select-one-fn :db_id :model/Table, :id table-id {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]}))
 
 (mu/defn insert-audit-log!
   "Insert an AuditLog entry."

@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [clojure.walk :as walk]
+   [metabase.lib.core :as lib]
    [metabase.lib.test-metadata :as meta]
    [metabase.query-processor.middleware.annotate.legacy-helper-fns :as annotate.legacy-helper-fns]
    ;; binds mock metadata providers via the ambient store, which the code under test reads
@@ -14,7 +15,8 @@
                                         (fn [form]
                                           (cond-> form
                                             (keyword? form) u/qualified-name))
-                                        (meta/field-metadata :venues :name))]
+                                        (lib/lib-metadata-column->legacy-metadata-column
+                                         (meta/field-metadata :venues :name)))]
                      :aggregation     [[:count]]}]
     (qp.store/with-metadata-provider meta/metadata-provider
       (is (= "count"

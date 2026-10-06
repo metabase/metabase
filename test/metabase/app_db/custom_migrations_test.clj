@@ -1,4 +1,4 @@
-(ns metabase.app-db.custom-migrations-test
+(ns ^:mb/app-db-migrations-test metabase.app-db.custom-migrations-test
   "Tests to make sure the custom migrations work as expected.
 
   As of #52254, any tests marked `^:mb/old-migrations-test` are only run on pushes to `master` or `release-`
@@ -31,6 +31,7 @@
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.pulse.models.pulse-channel-test :as pulse-channel-test]
    [metabase.pulse.task.send-pulses :as task.send-pulses]
+   [metabase.pulse.task.send-pulses-trigger :as task.send-pulses-trigger]
    [metabase.search.ingestion :as search.ingestion]
    [metabase.settings.models.setting :as setting]
    [metabase.sync.task.sync-databases-test :as task.sync-databases-test]
@@ -1809,7 +1810,7 @@
               pulse-id (:id (new-instance-with-default :pulse {:creator_id user-id}))
               pc       (new-instance-with-default :pulse_channel {:pulse_id pulse-id})]
           ;; trigger this so we schedule a trigger for send-pulse
-          (task.send-pulses/update-send-pulse-trigger-if-needed! pulse-id pc :add-pc-ids #{(:id pc)})
+          (task.send-pulses-trigger/update-send-pulse-trigger-if-needed! pulse-id pc :add-pc-ids #{(:id pc)})
           (testing "sanity check that we have a send pulse trigger and 2 jobs"
             (is (= 1 (count (pulse-channel-test/send-pulse-triggers pulse-id))))
             (is (= #{"metabase.task.send-pulses.send-pulse.job"
@@ -2956,34 +2957,6 @@
         (testing "Native transform strategy is stripped (can't resolve source table)"
           (is (not (contains? (get-source native-id) :source-incremental-strategy))))))))
 
-(deftest backfill-mfa-confirmed-at-test
-  (testing "v59.2026-07-10T22:29:17: confirmed_at is lifted out of the credentials JSON into the column"
-    (encryption-test/with-secret-key "backfill-mfa-test-key-1234"
-      (impl/test-migrations ["v59.2026-07-10T22:29:17"] [migrate!]
-        (let [confirmed-at "2026-07-01T12:00:00Z"
-              insert-identity!
-              (fn [user-id credentials-str]
-                (t2/insert-returning-pk! :auth_identity {:user_id     user-id
-                                                         :provider    "totp"
-                                                         :credentials credentials-str
-                                                         :created_at  :%now
-                                                         :updated_at  :%now}))
-              enc-confirmed   (insert-identity! (:id (new-instance-with-default :core_user))
-                                                (encryption/maybe-encrypt
-                                                 (json/encode {:secret "s1" :confirmed_at confirmed-at})))
-              plain-confirmed (insert-identity! (:id (new-instance-with-default :core_user))
-                                                (json/encode {:secret "s2" :confirmed_at confirmed-at}))
-              pending         (insert-identity! (:id (new-instance-with-default :core_user))
-                                                (encryption/maybe-encrypt
-                                                 (json/encode {:secret "s3"})))]
-          (migrate!)
-          (testing "encrypted confirmed row gets the column"
-            (is (some? (t2/select-one-fn :confirmed_at :auth_identity :id enc-confirmed))))
-          (testing "legacy plaintext confirmed row gets the column"
-            (is (some? (t2/select-one-fn :confirmed_at :auth_identity :id plain-confirmed))))
-          (testing "pending (unconfirmed) enrollment stays null"
-            (is (nil? (t2/select-one-fn :confirmed_at :auth_identity :id pending)))))))))
-
 (deftest backfill-transform-target-tables-test
   (testing "v60.2026-03-07T00:00:04 : backfill transform target tables"
     (impl/test-migrations ["v60.2026-03-07T00:00:04"] [migrate!]
@@ -3013,3 +2986,105 @@
             (is (= "metabase-transform" (:data_source provisional)))
             (is (= "computed" (:data_authority provisional)))
             (is (= "New Target Table" (:display_name provisional)))))))))
+
+(deftest backfill-mfa-confirmed-at-test
+  (testing "v63.2026-07-10T22:29:17: confirmed_at is lifted out of the credentials JSON into the column"
+    (encryption-test/with-secret-key "backfill-mfa-test-key-1234"
+      (impl/test-migrations ["v63.2026-07-10T22:29:17"] [migrate!]
+        (let [confirmed-at "2026-07-01T12:00:00Z"
+              insert-identity!
+              (fn [user-id credentials-str]
+                (t2/insert-returning-pk! :auth_identity {:user_id     user-id
+                                                         :provider    "totp"
+                                                         :credentials credentials-str
+                                                         :created_at  :%now
+                                                         :updated_at  :%now}))
+              enc-confirmed   (insert-identity! (:id (new-instance-with-default :core_user))
+                                                (encryption/maybe-encrypt
+                                                 (json/encode {:secret "s1" :confirmed_at confirmed-at})))
+              plain-confirmed (insert-identity! (:id (new-instance-with-default :core_user))
+                                                (json/encode {:secret "s2" :confirmed_at confirmed-at}))
+              pending         (insert-identity! (:id (new-instance-with-default :core_user))
+                                                (encryption/maybe-encrypt
+                                                 (json/encode {:secret "s3"})))]
+          (migrate!)
+          (testing "encrypted confirmed row gets the column"
+            (is (some? (t2/select-one-fn :confirmed_at :auth_identity :id enc-confirmed))))
+          (testing "legacy plaintext confirmed row gets the column"
+            (is (some? (t2/select-one-fn :confirmed_at :auth_identity :id plain-confirmed))))
+          (testing "pending (unconfirmed) enrollment stays null"
+            (is (nil? (t2/select-one-fn :confirmed_at :auth_identity :id pending)))))))))
+
+(deftest retire-mcp-v1-oauth-scopes-test
+  (testing (str "v64.2026-09-09T12:00:00/01: a client connected to a shipped v0.60–v0.63 release holds a 17-scope "
+                "registration snapshot and tokens scoped to it. The v2 surface gates on six coarse scopes that no "
+                "legacy scope satisfies, so without this migration the client gets HTTP 200 with an empty tools list "
+                "and never recovers — the refresh grant can only narrow. The migration widens the ceiling so a "
+                "re-authorization validates. GHY-4491: the second changeset is a no-op. tools/list now lists every "
+                "tool and a call short of scope gets a 403 insufficient_scope step-up, so a legacy client "
+                "re-authorizes on its own; revoking its tokens would only force it through the refresh-failure path.")
+    (impl/test-migrations ["v64.2026-09-09T12:00:00" "v64.2026-09-09T12:00:01"] [migrate!]
+      (let [;; The 17 scopes DCR snapshots on v0.63: 15 per-entity agent scopes + 2 mcp-ui resource scopes.
+            legacy-scopes   ["agent:sql:construct" "agent:sql:create" "agent:sql:edit" "agent:sql:read"
+                             "agent:notebook:create" "agent:query:construct" "agent:query:execute"
+                             "agent:question:create" "agent:question:update" "agent:question:execute"
+                             "agent:metric:create" "agent:metric:update"
+                             "agent:dashboard:create" "agent:dashboard:update" "agent:collection:create"
+                             "agent:viz:mcp-ui:query" "agent:viz:mcp-ui:drill-through"]
+            v2-scopes       ["agent:content:read" "agent:content:write" "agent:query:run"
+                             "agent:sql:run" "agent:delivery:write" "agent:resource:read"]
+            ;; `oauth_access_token.user_id` is a real FK, so the row must exist. Inserted directly rather
+            ;; than via `new-instance-with-default` because this release makes `entity_id` NOT NULL.
+            user-id         (t2/insert-returning-pk!
+                             :core_user {:first_name  "MCP"
+                                         :last_name   "Migration"
+                                         :email       (str (random-uuid) "@metabase.com")
+                                         :password    "irrelevant"
+                                         :entity_id   (subs (str/replace (str (random-uuid)) "-" "") 0 21)
+                                         :date_joined :%now})
+            insert-client!  (fn [client-id registration-type scopes]
+                              (t2/insert-returning-pk!
+                               :oauth_client {:client_id         client-id
+                                              :client_name       "Legacy MCP Client"
+                                              :redirect_uris     (json/encode ["http://localhost/callback"])
+                                              :grant_types       (json/encode ["authorization_code"])
+                                              :response_types    (json/encode ["code"])
+                                              :scopes            (json/encode scopes)
+                                              :registration_type registration-type
+                                              :client_type       "public"
+                                              :created_at        :%now
+                                              :updated_at        :%now}))
+            insert-token!   (fn [table client-id scopes]
+                              (t2/insert-returning-pk!
+                               table {:token      (str (random-uuid))
+                                      :user_id    user-id
+                                      :client_id  client-id
+                                      :scope      (json/encode scopes)
+                                      :expiry     (+ (System/currentTimeMillis) 3600000)
+                                      :created_at :%now}))
+            dynamic-id      (insert-client! "dynamic-legacy" "dynamic" legacy-scopes)
+            static-id       (insert-client! "static-legacy" "static" legacy-scopes)
+            legacy-access   (insert-token! :oauth_access_token "dynamic-legacy" legacy-scopes)
+            legacy-refresh  (insert-token! :oauth_refresh_token "dynamic-legacy" legacy-scopes)
+            ;; A token already minted against the v2 surface — the migration must leave it alone, or upgrading
+            ;; would log out clients that were working.
+            v2-access       (insert-token! :oauth_access_token "dynamic-legacy" ["agent:content:read"])
+            v2-refresh      (insert-token! :oauth_refresh_token "dynamic-legacy" v2-scopes)
+            scopes-of       (fn [table id col]
+                              (set (json/decode (get (t2/query-one {:select [col] :from [table] :where [:= :id id]}) col))))
+            revoked?        (fn [table id]
+                              (some? (:revoked_at (t2/query-one {:select [:revoked_at] :from [table] :where [:= :id id]}))))]
+        (migrate!)
+        (testing "the dynamic client's snapshot gains the six v2 scopes, so a re-authorization validates"
+          (let [scopes (scopes-of :oauth_client dynamic-id :scopes)]
+            (is (every? scopes v2-scopes))
+            (testing "and keeps its legacy scopes — issued tokens carry literal strings, so none may be dropped"
+              (is (every? scopes legacy-scopes)))))
+        (testing "a statically registered client is left alone — it did not snapshot via DCR"
+          (is (= (set legacy-scopes) (scopes-of :oauth_client static-id :scopes))))
+        (testing "GHY-4491: legacy-scoped tokens are NOT revoked; the client self-heals through the 403 step-up"
+          (is (not (revoked? :oauth_access_token legacy-access)))
+          (is (not (revoked? :oauth_refresh_token legacy-refresh))))
+        (testing "tokens already carrying a v2 tool scope keep working"
+          (is (not (revoked? :oauth_access_token v2-access)))
+          (is (not (revoked? :oauth_refresh_token v2-refresh))))))))

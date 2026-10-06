@@ -1,6 +1,11 @@
 import type { EChartsType } from "echarts/core";
-import { type MouseEvent, useCallback, useMemo, useRef, useState } from "react";
-import React from "react";
+import React, {
+  type MouseEvent,
+  useCallback,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { useSet } from "react-use";
 
 import { isWebkit } from "metabase/utils/browser";
@@ -13,7 +18,7 @@ import type { VisualizationProps } from "metabase/visualizations/types";
 import {
   CartesianChartLegendLayout,
   CartesianChartRoot,
-} from "metabase/visualizations/visualizations/CartesianChart/CartesianChartLayout";
+} from "metabase/visualizations/visualizations/CartesianChart/CartesianChart.styled";
 import type { CartesianHoveredObject } from "metabase/visualizations/visualizations/CartesianChart/types";
 import { useChartEvents } from "metabase/visualizations/visualizations/CartesianChart/use-chart-events";
 import {
@@ -24,7 +29,6 @@ import {
 } from "metabase/viz-core";
 
 import { TimelineEventsBand } from "./TimelineEventsBand";
-import { useCartesianSizeTier } from "./use-cartesian-size-tier";
 import { useChartDebug } from "./use-chart-debug";
 import { useModelsAndOption } from "./use-models-and-option";
 import { useTimelineEventsHover } from "./use-timeline-events-hover";
@@ -56,7 +60,6 @@ function CartesianChartInner(props: VisualizationProps) {
     showTitle,
     headerIcon,
     actionButtons,
-    dashcard,
     isDashboard,
     isEditing,
     isVisualizer,
@@ -212,18 +215,9 @@ function CartesianChartInner(props: VisualizationProps) {
 
   useCloseTooltipOnScroll(chartRef);
 
-  const sizeTier = useCartesianSizeTier({
-    width: outerWidth,
-    height: outerHeight,
-    isDashboard,
-    isQueryBuilder,
-    dashcard,
-  });
-
   return (
     <CartesianChartRoot
       isQueryBuilder={isQueryBuilder}
-      sizeTier={sizeTier}
       className="CardVisualization"
     >
       {showTitle && (
@@ -239,7 +233,6 @@ function CartesianChartInner(props: VisualizationProps) {
           }
           width={outerWidth}
           titleMenuItems={titleMenuItems}
-          titleSize={sizeTier?.titleFontSize}
         />
       )}
       <CartesianChartLegendLayout
@@ -268,8 +261,7 @@ function CartesianChartInner(props: VisualizationProps) {
           <DataPointsVisiblePopover
             isDashboard={isDashboard}
             isVisualizer={isVisualizer}
-            chartModel={chartModel}
-            settings={settings}
+            chartInstance={chartInstance}
           />
           <TimelineEventsBand
             chartInstance={chartInstance}

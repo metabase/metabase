@@ -6,10 +6,13 @@
    [metabase-enterprise.sandbox.schema :as sandbox.schema]
    [metabase.app-db.core :as mdb]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.queries.core :as queries]
    [metabase.queries.schema :as queries.schema]
    [metabase.users.schema :as users.schema]
+   [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [toucan2.core :as t2]))
 
 (mu/defn sandbox
@@ -60,7 +63,8 @@
   (t2/select :model/Sandbox
              {:select [:s.group_id :s.table_id :t.db_id :t.schema]
               :from   [[:sandboxes :s]]
-              :join   [[:metabase_table :t] [:= :s.table_id :t.id]]
+              :join   [(warehouse-schema-overlay/table-query {:alias :t, :user-settings? false})
+                       [:= :s.table_id :t.id]]
               :where  [:and
                        (when group-id [:= :s.group_id group-id])
                        (when group-ids [:in :s.group_id group-ids])
@@ -79,7 +83,7 @@
                 [:table.db_id :db_id]
                 [:table.schema :schema]]
     :from      [[:sandboxes]]
-    :left-join [[:metabase_table :table]
+    :left-join [(warehouse-schema-overlay/table-query {:alias :table, :user-settings? false})
                 [:= :sandboxes.table_id :table.id]]
     :where     [:and
                 [:in :sandboxes.group_id group-ids]
@@ -92,7 +96,7 @@
                [:table_id             ::lib.schema.id/table]
                [:card_id              {:optional true} [:maybe ::lib.schema.id/card]]
                [:group_id             ms/PositiveInt]
-               [:attribute_remappings {:optional true} [:maybe :map]]]]
+               [:attribute_remappings {:optional true} [:maybe ::sandbox.schema/attribute-remappings]]]]
   (first (t2/insert-returning-instances! :model/Sandbox sandbox)))
 
 (mu/defn update-sandbox!
@@ -148,8 +152,8 @@
 
 (mu/defn table
   "The Table with `table-id`, or nil."
-  [table-id :- ::lib.schema.id/table]
-  (t2/select-one :model/Table :id table-id))
+  [table-id :- [:maybe ::lib.schema.id/table]]
+  (t2/select-one :model/Table :id table-id {:from [(warehouse-schema-overlay/table-query)]}))
 
 (mu/defn tables-of-database
   "The `:id`, `:db_id`, and `:schema` of the Tables of the Database with `db-id`, restricted to `schema` when
@@ -158,7 +162,8 @@
    schema-only? :- :boolean
    schema       :- [:maybe :string]]
   (t2/select [:model/Table :id :db_id :schema]
-             {:where [:and
+             {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]
+              :where [:and
                       [:= :db_id db-id]
                       (when schema-only?
                         [:= :schema schema])]}))
@@ -168,24 +173,24 @@
   [table-id :- ::lib.schema.id/table]
   (t2/select-one :model/Database
                  :id ^:allow-subquery {:select [:t.db_id]
-                                       :from   [[(t2/table-name :model/Table) :t]]
+                                       :from      [(warehouse-schema-overlay/table-query {:alias :t, :user-settings? false})]
                                        :where  [:= :t.id table-id]}))
 
 (mu/defn fields-of-table-named
   "The `:id` and `:name` of the Fields of the Table with `table-id` named one of `field-names`."
   [table-id    :- ::lib.schema.id/table
    field-names :- [:set :string]]
-  (t2/select [:model/Field :id :name] :table_id table-id :name [:in field-names]))
+  (t2/select [:model/Field :id :name] :table_id table-id :name [:in field-names] {:from [(warehouse-schema-overlay/field-query {:user-settings? false})]}))
 
 (mu/defn cards-by-id
-  "A map of Card ID to the query, result metadata, and schema of the Cards with `card-ids`."
+  "A map of Card ID to the query-related columns of the Cards with `card-ids`."
   [card-ids :- [:set ::lib.schema.id/card]]
-  (t2/select-pk->fn identity [:model/Card :id :dataset_query :result_metadata :card_schema] :id [:in card-ids]))
+  (u/index-by :id (queries/cards-queries-info card-ids)))
 
 (mu/defn cards-result-metadata
-  "The `:id`, `:result_metadata`, and `:card_schema` of the Cards with `card-ids`."
+  "The query-related columns of the Cards with `card-ids`."
   [card-ids :- [:set ::lib.schema.id/card]]
-  (t2/select [:model/Card :id :result_metadata :card_schema] :id [:in card-ids]))
+  (queries/cards-queries-info card-ids))
 
 (mu/defn card-result-metadata
   "The result metadata of the Card with `card-id`."
@@ -193,10 +198,12 @@
   (t2/select-one-fn :result_metadata :model/Card :id card-id))
 
 (mu/defn sandboxing-cards
-  "The `:id`, `:dataset_query`, `:database_id`, and `:card_schema` of the Cards Sandboxes are built on."
+  "The `:id`, `:dataset_query`, and `:database_id` of the Cards Sandboxes are built on."
   []
   (t2/select :model/Card
-             {:select [:c.id :c.dataset_query :c.database_id :c.card_schema]
+             {:select [:c.id :c.dataset_query :c.database_id :c.card_schema
+                       ;; required alongside :card_schema for the Card schema upgrade
+                       :c.type :c.entity_id :c.result_metadata :c.dimensions :c.dimension_mappings]
               :from   [[(t2/table-name :model/Card) :c]]
               :where  [:exists ^:allow-subquery {:select [[[:inline 1]]]
                                                  :from   [[(t2/table-name :model/Sandbox) :s]]

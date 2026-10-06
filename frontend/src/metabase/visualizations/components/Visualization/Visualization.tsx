@@ -13,7 +13,7 @@ import React, {
 import { t } from "ttag";
 import _ from "underscore";
 
-import ErrorBoundary from "metabase/ErrorBoundary";
+import ErrorBoundary from "metabase/common/components/ErrorBoundary";
 import { SmallGenericError } from "metabase/common/components/ErrorPages";
 import { ExplicitSize } from "metabase/common/components/ExplicitSize";
 import type { ContentTranslationFunction } from "metabase/content-translation/types";
@@ -28,7 +28,7 @@ import type { Dispatch, State } from "metabase/redux/store";
 import type { Path } from "metabase/router";
 import { getTokenFeature } from "metabase/settings";
 import { getFont } from "metabase/styled-components/selectors";
-import { Box, Flex, type IconProps } from "metabase/ui";
+import { Box, Flex, type IconProps, Stack } from "metabase/ui";
 import { isQuestionCard } from "metabase/utils/dashboard";
 import { formatNumber } from "metabase/utils/formatting";
 import { memoize } from "metabase/utils/memoize";
@@ -83,7 +83,6 @@ import { ErrorView } from "./ErrorView";
 import LoadingView, { type LoadingViewProps } from "./LoadingView";
 import { DashCardLoadingView } from "./LoadingView/DashCardLoadingView";
 import NoResultsView from "./NoResultsView";
-import S from "./Visualization.module.css";
 import { VisualizationRenderedWrapper } from "./VisualizationRenderedWrapper";
 import { VisualizationRunningState } from "./VisualizationRunningState";
 import { Watermark } from "./Watermark";
@@ -835,9 +834,11 @@ class Visualization extends PureComponent<
         onError={this.onErrorBoundaryError}
         ref={this.props.forwardedRef}
       >
-        <Box
-          className={cx(S.root, className)}
+        <Stack
+          // A class, not h="100%": callers override the height through style
+          className={cx(CS.fullHeight, className)}
           style={style}
+          gap={0}
           data-testid="visualization-root"
           // `getUiName` should be defined (and is a required field on the TS type), but because we have javascript
           // files about visualizations, it's best if we don't risk crashing the app, hence the `?.()`
@@ -845,7 +846,7 @@ class Visualization extends PureComponent<
           ref={this.props.forwardedRef}
         >
           {!!hasHeader && (
-            <Box className={S.header} flex="0 0 auto">
+            <Box pt="0.625rem" px="sm" pb="xs" flex="0 0 auto">
               <ChartCaption
                 series={series}
                 visualizerRawSeries={visualizerRawSeries}
@@ -1019,7 +1020,7 @@ class Visualization extends PureComponent<
               onUpdateVisualizationSettings={onUpdateVisualizationSettings}
             />
           )}
-        </Box>
+        </Stack>
       </ErrorBoundary>
     );
   }

@@ -36,7 +36,6 @@
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.permissions.test-util :as perms.test-util]
    [metabase.pulse.dashboard-subscription-test :as dashboard-subscription-test]
-   [metabase.pulse.models.pulse :as models.pulse]
    [metabase.queries-rest.api.card-test :as api.card-test]
    [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.query-processor.pivot.test-util :as api.pivots]
@@ -1637,6 +1636,7 @@
               (is (= (map #(dissoc % :id) original-tabs)
                      (map #(dissoc % :id) new-tabs))))))))))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic ^:private
   ^{:doc "Set of ids that will report [[mi/can-write]] as true."}
   *readable-card-ids* #{})
@@ -1658,10 +1658,10 @@
 
 (deftest cards-to-copy-test
   (testing "Identifies all cards to be copied"
-    (let [dashcards [{:card_id 1 :card (card-model {:id 1}) :series [(card-model {:id 2})]}
-                     {:card_id 3 :card (card-model {:id 3})}
+    (let [dashcards [{:id 11, :card_id 1 :card (card-model {:id 1}) :series [(card-model {:id 2})]}
+                     {:id 13, :card_id 3 :card (card-model {:id 3})}
                      ;; this guy does not even reach the discard pile
-                     {:action_id 123}]]
+                     {:id 14, :action_id 123}]]
       (binding [*readable-card-ids* #{1 2 3}]
         (is (= {:copy {1 {:id 1} 2 {:id 2} 3 {:id 3}}
                 :reference {}
@@ -1669,24 +1669,24 @@
                (#'api.dashboard/cards-to-copy true dashcards))))))
   (testing "Identifies cards which cannot be copied"
     (testing "If they are in a series"
-      (let [dashcards [{:card_id 1 :card (card-model {:id 1}) :series [(card-model {:id 2})]}
-                       {:card_id 3 :card (card-model {:id 3})}]]
+      (let [dashcards [{:id 11, :card_id 1 :card (card-model {:id 1}) :series [(card-model {:id 2})]}
+                       {:id 13, :card_id 3 :card (card-model {:id 3})}]]
         (binding [*readable-card-ids* #{1 3}]
           (is (= {:copy {1 {:id 1} 3 {:id 3}}
                   :reference {}
                   :discard [{:id 2}]}
                  (#'api.dashboard/cards-to-copy true dashcards))))))
     (testing "When the base of a series lacks permissions"
-      (let [dashcards [{:card_id 1 :card (card-model {:id 1}) :series [(card-model {:id 2})]}
-                       {:card_id 3 :card (card-model {:id 3})}]]
+      (let [dashcards [{:id 11, :card_id 1 :card (card-model {:id 1}) :series [(card-model {:id 2})]}
+                       {:id 13, :card_id 3 :card (card-model {:id 3})}]]
         (binding [*readable-card-ids* #{3}]
           (is (= {:copy {3 {:id 3}}
                   :reference {}
                   :discard [{:id 1} {:id 2}]}
                  (#'api.dashboard/cards-to-copy true dashcards)))))))
   (testing "Identifies cards to be referenced"
-    (let [dashcards [{:card_id 1 :card (card-model {:id 1}) :series [(card-model {:id 2})]}
-                     {:card_id 3 :card (card-model {:id 3})}]]
+    (let [dashcards [{:id 11, :card_id 1 :card (card-model {:id 1}) :series [(card-model {:id 2})]}
+                     {:id 13, :card_id 3 :card (card-model {:id 3})}]]
       (binding [*readable-card-ids* #{1 2 3}]
         (is (= {:reference {1 {:id 1}
                             2 {:id 2}
@@ -1695,8 +1695,8 @@
                 :discard []}
                (#'api.dashboard/cards-to-copy false dashcards))))))
   (testing "Identifies cards that cannot be referenced"
-    (let [dashcards [{:card_id 1 :card (card-model {:id 1}) :series [(card-model {:id 2})]}
-                     {:card_id 3 :card (card-model {:id 3})}]]
+    (let [dashcards [{:id 11, :card_id 1 :card (card-model {:id 1}) :series [(card-model {:id 2})]}
+                     {:id 13, :card_id 3 :card (card-model {:id 3})}]]
       (binding [*readable-card-ids* #{1 3}]
         (is (= {:reference {1 {:id 1}
                             3 {:id 3}}
@@ -2370,7 +2370,7 @@
 (deftest dashcard-action-create-update-test
   (mt/test-drivers (mt/normal-drivers-with-feature :actions)
     (mt/with-actions-test-data-and-actions-enabled
-      (doseq [action-type [:http :implicit :query]]
+      (doseq [action-type [:implicit :query]]
         (mt/with-actions [{:keys [action-id]} {:type action-type :visualization_settings {:hello true}}]
           (testing (str "Creating dashcard with action: " action-type)
             (mt/with-temp [:model/Dashboard {dashboard-id :id} {}]
@@ -2387,12 +2387,11 @@
                                                                             :action_id              action-id
                                                                             :visualization_settings {:label "Update"}}]
                                                                :tabs      []}))))
-              (is (partial= {:dashcards [{:action (cond-> {:visualization_settings {:hello true}
-                                                           :type (name action-type)
-                                                           :parameters [{:id "id"}]
-                                                           :database_enabled_actions true}
-                                                    (#{:query :implicit} action-type)
-                                                    (assoc :database_id (mt/id)))}]}
+              (is (partial= {:dashcards [{:action {:visualization_settings   {:hello true}
+                                                   :type                     (name action-type)
+                                                   :parameters               [{:id "id"}]
+                                                   :database_enabled_actions true
+                                                   :database_id              (mt/id)}}]}
                             (mt/user-http-request :crowberto :get 200 (format "dashboard/%s" dashboard-id)))))))))))
 
 (deftest dashcard-action-database-enabled-actions-test
@@ -3090,7 +3089,6 @@
                                          :table_id      (mt/id :orders)
                                          :dataset_query (mt/mbql-query orders)}
        :model/Card {card-id :id}        {:database_id   (mt/id)
-                                         :table_id      (str "card__" saved-query-id)
                                          :dataset_query {:database (mt/id)
                                                          :type     :query
                                                          :query    {:source-table (str "card__" saved-query-id)
@@ -3587,6 +3585,44 @@
         (testing "success if has read permission to the source card's collection"
           (is (some? (mt/user-http-request :rasta :get 200 (chain-filter-values-url dashboard-id "abc"))))
           (is (some? (mt/user-http-request :rasta :get 200 (chain-filter-search-url dashboard-id "abc" "red")))))))))
+
+(deftest parameter-values-from-card-nested-source-card-test
+  (testing "users must have permissions to read every card the source card's query nests, not just the source card (SEC-1158)"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-temp
+        [:model/Collection private-coll {:name "Private nested card collection"}
+         :model/Card       {nested-card-id :id} {:collection_id (:id private-coll)
+                                                 :database_id   (mt/id)
+                                                 :table_id      (mt/id :venues)
+                                                 :dataset_query (mt/mbql-query venues {:limit 5})}
+         :model/Collection wrapper-coll {:name "Readable wrapper card collection"}
+         :model/Card       {wrapper-card-id :id} {:collection_id (:id wrapper-coll)
+                                                  :database_id   (mt/id)
+                                                  :dataset_query {:database (mt/id)
+                                                                  :type     :query
+                                                                  :query    {:source-table (str "card__" nested-card-id)}}}
+         :model/Collection dash-coll {:name "Dashboard collection"}
+         :model/Dashboard  {dashboard-id :id} {:collection_id (:id dash-coll)
+                                               :parameters    [{:id                   "abc"
+                                                                :type                 "category"
+                                                                :name                 "CATEGORY"
+                                                                :values_source_type   "card"
+                                                                :values_source_config {:card_id     wrapper-card-id
+                                                                                       :value_field (mt/$ids $venues.name)}}]}]
+        (perms/grant-collection-read-permissions! (perms-group/all-users) dash-coll)
+        (perms/grant-collection-read-permissions! (perms-group/all-users) wrapper-coll)
+        (testing "read permission on the wrapper card is not enough when its query nests a card the user cannot read"
+          (is (= (format "You do not have permissions to view Card %d." nested-card-id)
+                 (mt/user-http-request :rasta :get 403 (chain-filter-values-url dashboard-id "abc"))))
+          (is (= (format "You do not have permissions to view Card %d." nested-card-id)
+                 (mt/user-http-request :rasta :get 403 (chain-filter-search-url dashboard-id "abc" "red")))))
+        ;; grant permission to read the collection containing the nested card
+        (perms/grant-collection-read-permissions! (perms-group/all-users) private-coll)
+        (testing "success once the user can read the nested card too"
+          (is (=? {:values seq}
+                  (mt/user-http-request :rasta :get 200 (chain-filter-values-url dashboard-id "abc"))))
+          (is (=? {:values seq}
+                  (mt/user-http-request :rasta :get 200 (chain-filter-search-url dashboard-id "abc" "red")))))))))
 
 (deftest parameter-values-from-card-test-4
   ;; TODO: Re-enable this test, or delete it. Now that mapping dashboard filters to fields on cards is powered by Lib,
@@ -4568,124 +4604,6 @@
                (mt/user-http-request :crowberto :get 200 (url id-param-id Integer/MAX_VALUE))))
         (is (= ["A   sian" "As"]
                (mt/user-http-request :crowberto :get 200 (url list-param-id "A   sian"))))))))
-
-(deftest broken-subscription-data-logic-test
-  (testing "Ensure underlying logic of fixing broken pulses works (#30100)"
-    (let [{param-id :id :as param} {:name "Source"
-                                    :slug "source"
-                                    :id   "_SOURCE_PARAM_ID_"
-                                    :type :string/=}]
-      (mt/dataset test-data
-        (mt/with-temp
-          [:model/Card {card-id :id} {:name          "Native card"
-                                      :database_id   (mt/id)
-                                      :dataset_query {:database (mt/id)
-                                                      :type     :query
-                                                      :query    {:source-table (mt/id :people)}}
-                                      :type          :model}
-           :model/Dashboard {dash-id :id} {:name "My Awesome Dashboard"}
-           :model/DashboardCard {dash-card-id :id} {:dashboard_id dash-id
-                                                    :card_id      card-id}
-           ;; Broken pulse
-           :model/Pulse {bad-pulse-id :id
-                         :as          bad-pulse} {:name         "Bad Pulse"
-                                                  :dashboard_id dash-id
-                                                  :creator_id   (mt/user->id :trashbird)
-                                                  :parameters   [(assoc param :value ["Twitter", "Facebook"])]}
-           :model/PulseCard _ {:pulse_id          bad-pulse-id
-                               :card_id           card-id
-                               :dashboard_card_id dash-card-id}
-           :model/PulseChannel {pulse-channel-id :id} {:channel_type :email
-                                                       :pulse_id     bad-pulse-id
-                                                       :enabled      true}
-           :model/PulseChannelRecipient _ {:pulse_channel_id pulse-channel-id
-                                           :user_id          (mt/user->id :rasta)}
-           :model/PulseChannelRecipient _ {:pulse_channel_id pulse-channel-id
-                                           :user_id          (mt/user->id :crowberto)}
-           ;; Broken slack pulse
-           :model/Pulse {bad-slack-pulse-id :id} {:name         "Bad Slack Pulse"
-                                                  :dashboard_id dash-id
-                                                  :creator_id   (mt/user->id :trashbird)
-                                                  :parameters   [(assoc param :value ["LinkedIn"])]}
-           :model/PulseCard _ {:pulse_id          bad-slack-pulse-id
-                               :card_id           card-id
-                               :dashboard_card_id dash-card-id}
-           :model/PulseChannel _ {:channel_type :slack
-                                  :pulse_id     bad-slack-pulse-id
-                                  :details      {:channel "#my-channel"}
-                                  :enabled      true}
-           ;; Non broken pulse
-           :model/Pulse {good-pulse-id :id} {:name         "Good Pulse"
-                                             :dashboard_id dash-id
-                                             :creator_id   (mt/user->id :trashbird)}
-           :model/PulseCard _ {:pulse_id          good-pulse-id
-                               :card_id           card-id
-                               :dashboard_card_id dash-card-id}
-           :model/PulseChannel {good-pulse-channel-id :id} {:channel_type :email
-                                                            :pulse_id     good-pulse-id
-                                                            :enabled      true}
-           :model/PulseChannelRecipient _ {:pulse_channel_id good-pulse-channel-id
-                                           :user_id          (mt/user->id :rasta)}
-           :model/PulseChannelRecipient _ {:pulse_channel_id good-pulse-channel-id
-                                           :user_id          (mt/user->id :crowberto)}]
-          (testing "We can identify the broken parameter ids"
-            (is (=? [{:archived     false
-                      :name         "Bad Pulse"
-                      :creator_id   (mt/user->id :trashbird)
-                      :id           bad-pulse-id
-                      :parameters
-                      [{:name "Source" :slug "source" :id "_SOURCE_PARAM_ID_" :type "string/=" :value ["Twitter" "Facebook"]}]
-                      :dashboard_id dash-id}
-                     {:archived     false
-                      :name         "Bad Slack Pulse"
-                      :creator_id   (mt/user->id :trashbird)
-                      :id           bad-slack-pulse-id
-                      :parameters   [{:name  "Source"
-                                      :slug  "source"
-                                      :id    "_SOURCE_PARAM_ID_"
-                                      :type  "string/="
-                                      :value ["LinkedIn"]}],
-                      :dashboard_id dash-id}]
-                    ;; `broken-pulses` doesn't order its results, so sort them for a stable comparison
-                    (sort-by :id (#'api.dashboard/broken-pulses dash-id {param-id param})))))
-          (testing "We can gather all needed data regarding broken params"
-            (let [bad-pulses    (mapv
-                                 #(update % :affected-users (partial sort-by :email))
-                                 (sort-by :pulse-id (#'api.dashboard/broken-subscription-data dash-id {param-id param})))
-                  bad-pulse-ids (set (map :pulse-id bad-pulses))]
-              (testing "We only detect the bad pulse and not the good one"
-                (is (true? (contains? bad-pulse-ids bad-pulse-id)))
-                (is (false? (contains? bad-pulse-ids good-pulse-id))))
-              (is (=? [{:pulse-creator     {:email "trashbird@metabase.com"}
-                        :dashboard-creator {:email "rasta@metabase.com"}
-                        :pulse-id          bad-pulse-id
-                        :pulse-name        "Bad Pulse"
-                        :dashboard-id      dash-id
-                        :bad-parameters    [{:name "Source" :value ["Twitter" "Facebook"]}]
-                        :dashboard-name    "My Awesome Dashboard"
-                        :affected-users    [{:notification-type :email
-                                             :recipient         "Crowberto Corv"}
-                                            {:notification-type :email
-                                             :recipient         "Rasta Toucan"}]}
-                       {:pulse-creator     {:email "trashbird@metabase.com"}
-                        :affected-users    [{:notification-type :slack
-                                             :recipient         "#my-channel"}]
-                        :dashboard-creator {:email "rasta@metabase.com"}
-                        :pulse-id          bad-slack-pulse-id
-                        :pulse-name        "Bad Slack Pulse"
-                        :dashboard-id      dash-id
-                        :bad-parameters    [{:name  "Source"
-                                             :slug  "source"
-                                             :id    "_SOURCE_PARAM_ID_"
-                                             :type  "string/="
-                                             :value ["LinkedIn"]}]
-                        :dashboard-name    "My Awesome Dashboard"}]
-                      bad-pulses))))
-          (testing "Pulse can be archived"
-            (testing "Pulse starts as unarchived"
-              (is (false? (:archived bad-pulse))))
-            (testing "Pulse is now archived"
-              (is (true? (:archived (models.pulse/update-pulse! {:id bad-pulse-id :archived true})))))))))))
 
 (deftest handle-broken-subscriptions-due-to-bad-parameters-test
   (defn- test-handle-broken-subscription-notification!
@@ -5895,6 +5813,37 @@
                                :tabs []})
         (is (every? #(= 1 (count %)) (t2/select-fn-vec :parameter_mappings :model/DashboardCard :dashboard_id dash-id)))))))
 
+(deftest param-values-no-field-ids-unreadable-card-test
+  (testing "a field-ref-only param mapped to a card the user cannot read is a 403"
+    (let [mp        (mt/metadata-provider)
+          target    [:dimension [:field "SOURCE" {:base-type :type/Text}]]
+          no-perms  #(format "You do not have permissions to view Card %d." %)
+          all-users (perms-group/all-users)]
+      (mt/with-non-admin-groups-no-root-collection-perms
+        (mt/with-temp [:model/Collection private-coll {:name "Private native card collection"}
+                       :model/Card {native-id :id} (assoc (qp.test-util/card-with-source-metadata-for-query
+                                                           (lib/native-query mp "select * from people"))
+                                                          :collection_id (:id private-coll))
+                       :model/Collection dash-coll {:name "Readable dashboard collection"}
+                       :model/Dashboard {dashboard-id :id}
+                       {:collection_id (:id dash-coll)
+                        :parameters    [{:name "User Source" :slug "user_source" :id "_US_" :type :string/=}]}
+                       :model/DashboardCard _ {:dashboard_id dashboard-id
+                                               :card_id      native-id
+                                               :parameter_mappings [{:card_id      native-id
+                                                                     :parameter_id "_US_"
+                                                                     :target       target}]}]
+          (perms/grant-collection-read-permissions! all-users dash-coll)
+          (let [values-url (str "dashboard/" dashboard-id "/params/_US_/values")]
+            (testing "read on the dashboard does not grant read on the mapped card"
+              (is (= (no-perms native-id)
+                     (mt/user-http-request :rasta :get 403 values-url))))
+            (testing "the values come back once the user can read the mapped card"
+              (perms/grant-collection-read-permissions! all-users private-coll)
+              (is (= {:values          [["Affiliate"] ["Facebook"] ["Google"] ["Organic"] ["Twitter"]]
+                      :has_more_values false}
+                     (mt/user-http-request :rasta :get 200 values-url))))))))))
+
 (deftest param-search-no-field-ids-test
   (testing "GET .../params/:param-key/search/:query for field-ref-only (nested-native) params currently returns the same unfiltered set as /values"
     (let [mp (mt/metadata-provider)]
@@ -5942,6 +5891,7 @@
       (mt/with-temp [:model/Card {source-id :id} {:dataset_query (lib/query mp (lib.metadata/table mp (mt/id :orders)))}
                      :model/Dashboard {id :id}
                      {:parameters [{:name "Number" :slug "number" :id "_NUM_" :type :number/<=
+                                    :values_query_type "list"
                                     :values_source_type "card"
                                     :values_source_config
                                     {:card_id     source-id
@@ -6070,10 +6020,13 @@
             "backend does not clean up dashcard parameter_mappings that reference a removed parameter_id")))))
 
 (deftest values-endpoint-does-not-gate-by-operator-type-test
-  (testing "GET /api/dashboard/:id/params/:param-key/values has no operator-type gating"
+  (testing "GET /api/dashboard/:id/params/:param-key/values has no operator-type gating once the widget is a dropdown"
     (with-chain-filter-fixtures [{:keys [dashboard param-keys]}]
       (mt/user-http-request :rasta :put 200 (str "dashboard/" (:id dashboard))
-                            {:parameters (mapv (fn [p] (cond-> p (= (:id p) (:category-name param-keys)) (assoc :type :string/starts-with)))
+                            {:parameters (mapv (fn [p]
+                                                 (cond-> p
+                                                   (= (:id p) (:category-name param-keys))
+                                                   (assoc :type :string/starts-with, :values_query_type "list")))
                                                (:parameters dashboard))})
       (is (seq (:values (mt/user-http-request :rasta :get 200
                                               (chain-filter-values-url (:id dashboard) (:category-name param-keys)))))))))
@@ -6140,6 +6093,55 @@
       (mt/user-http-request :crowberto :put 200 (str "dashboard/" dashboard-id) {:archived false})
       (is (=? {:archived false :collection_id collection-id}
               (t2/select-one :model/Dashboard :id dashboard-id))))))
+
+;; Subscription setup and listing go through these helpers, so the round trip below outlives a move of Dashboard
+;; subscriptions off Pulse: swap the helpers, keep the assertions.
+(defn- create-dashboard-subscription!
+  [dashboard-id card-id dashcard-id recipient-id]
+  (mt/user-http-request :crowberto :post 200 "pulse"
+                        {:name         "Subscription"
+                         :dashboard_id dashboard-id
+                         :cards        [{:id card-id :include_csv false :include_xls false :dashboard_card_id dashcard-id}]
+                         :channels     [{:enabled       true
+                                         :channel_type  "email"
+                                         :schedule_type "daily"
+                                         :schedule_hour 12
+                                         :schedule_day  nil
+                                         :recipients    [{:id recipient-id}]}]}))
+
+(defn- dashboard-subscriptions
+  "The Dashboard's subscriptions, each as its card ids and its channels' type, schedule and recipients."
+  [dashboard-id]
+  (for [subscription (mt/user-http-request :crowberto :get 200 "pulse" :dashboard_id dashboard-id)]
+    {:cards    (map :id (:cards subscription))
+     :channels (for [channel (:channels subscription)]
+                 {:channel_type  (:channel_type channel)
+                  :schedule_type (:schedule_type channel)
+                  :schedule_hour (:schedule_hour channel)
+                  :recipients    (map :id (:recipients channel))})}))
+
+(deftest trash-and-restore-dashboard-keeps-subscriptions-test
+  (testing "trashing then restoring a Dashboard brings its subscriptions back unchanged"
+    (mt/with-fake-inbox
+      (mt/with-temp [:model/Collection    {collection-id :id} {}
+                     :model/Card          {card-id :id}       {:collection_id collection-id}
+                     :model/Dashboard     {dashboard-id :id}  {:collection_id collection-id}
+                     :model/DashboardCard {dashcard-id :id}   {:dashboard_id dashboard-id :card_id card-id}]
+        (mt/with-model-cleanup [:model/Pulse]
+          (let [recipient-id          (mt/user->id :rasta)
+                {subscription-id :id} (create-dashboard-subscription! dashboard-id card-id dashcard-id recipient-id)
+                before                (dashboard-subscriptions dashboard-id)]
+            (is (=? [{:cards [card-id] :channels [{:recipients [recipient-id]}]}]
+                    before))
+            (mt/user-http-request :crowberto :put 200 (str "dashboard/" dashboard-id) {:archived true})
+            (testing "a trashed Dashboard lists no subscriptions"
+              (is (empty? (dashboard-subscriptions dashboard-id))))
+            (mt/user-http-request :crowberto :put 200 (str "dashboard/" dashboard-id) {:archived false})
+            (is (= before (dashboard-subscriptions dashboard-id)))
+            (testing "permanently deleting the Dashboard deletes its subscriptions"
+              (mt/user-http-request :crowberto :put 200 (str "dashboard/" dashboard-id) {:archived true})
+              (mt/user-http-request :crowberto :delete 204 (str "dashboard/" dashboard-id))
+              (mt/user-http-request :crowberto :get 404 (str "pulse/" subscription-id)))))))))
 
 (deftest copy-dashboard-permission-model-test
   (testing "POST /api/dashboard/:id/copy needs only read-on-source + create-on-destination"

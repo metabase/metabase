@@ -104,6 +104,7 @@
         (merge new-col (select-keys old-col preserved-keys))
         new-col))))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *execute-async?*
   "Whether to save QueryExecutions (and other post-execution side effects) asynchronously via the batch-processing
   queue. Bind (or redef, when the query runs on another thread) to `false` in tests to save synchronously on the
@@ -117,5 +118,5 @@
 
 (mu/defn internal-query? :- :boolean
   "Returns `true` if query is an internal query."
-  [{query-type :type} :- :map]
+  [{query-type :type} :- ::qp.schema/any-query]
   (= :internal (keyword query-type)))

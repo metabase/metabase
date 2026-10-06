@@ -30,7 +30,7 @@
 (mu/defn- maybe-infer-semantic-type :- ResultColumnMetadata
   "Infer the semantic type and add it to the result metadata. If the inferred semantic type is nil, don't override the
   semantic type with a nil semantic type"
-  [col]
+  [col :- ResultColumnMetadata]
   (update
    col
    :semantic_type
@@ -44,7 +44,7 @@
 (mu/defn- col->ResultColumnMetadata :- ResultColumnMetadata
   "Make sure a `column` as it comes back from a driver's initial results metadata matches the schema for valid results
   column metadata, adding placeholder values and removing nil keys."
-  [column]
+  [column :- ResultColumnMetadata]
   ;; HACK - not sure why we don't have display_name yet in some cases
   (merge
    {:base_type    :type/*
@@ -55,7 +55,7 @@
   "A reducing function that calculates what is ultimately returned as `[:data :results_metadata]` in userland QP
   results. `metadata` is the usual QP results metadata e.g. as received by an `rff`."
   {:arglists '([metadata])}
-  [{:keys [cols]}]
+  [{:keys [cols]} :- ::query-processor.schema/metadata]
   (let [cols (for [col cols]
                (try
                  (maybe-infer-semantic-type (col->ResultColumnMetadata col))

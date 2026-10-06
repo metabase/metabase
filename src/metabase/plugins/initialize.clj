@@ -10,7 +10,8 @@
    [metabase.plugins.lazy-loaded-driver :as lazy-loaded-driver]
    [metabase.util :as u]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu])
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr])
   (:import
    (java.util.concurrent.locks ReentrantLock)))
 
@@ -178,14 +179,117 @@
 (defn- info-registered? [{{plugin-name :name} :info}]
   (registered? plugin-name))
 
+(mr/def ::init-step
+  "One step under `init:` in a plugin manifest, whose keys are the plugin author's."
+  [:multi {:dispatch :step}
+   ["load-namespace"       [:map {:closed false, ::mr/deliberately-open true, :description "plugin init step"}
+                            [:step [:= "load-namespace"]] [:namespace :string]]]
+   ["register-jdbc-driver" [:map {:closed false, ::mr/deliberately-open true, :description "plugin init step"}
+                            [:step [:= "register-jdbc-driver"]] [:class :string]]]])
+
+(mr/def ::dependency
+  "One entry under `dependencies:` in a plugin manifest, whose keys are the plugin author's."
+  [:or
+   [:map {:closed false, ::mr/deliberately-open true, :description "plugin class dependency"}
+    [:class :string] [:message {:optional true} :string]]
+   [:map {:closed false, ::mr/deliberately-open true, :description "plugin dependency on another plugin"}
+    [:plugin :string]]
+   [:map {:closed false, ::mr/deliberately-open true, :description "plugin env var dependency"}
+    [:env-var :string]]])
+
+(mr/def ::connection-property
+  "One entry under `driver: connection-properties:` in a plugin manifest, whose keys are the plugin author's: a preset
+  name, a full property map, a `merge:` override list, or a `group:` of properties."
+  [:or
+   :string
+   [:map {:closed false, ::mr/deliberately-open true, :description "plugin connection property group"}
+    [:group [:map {:closed false, ::mr/deliberately-open true, :description "plugin connection property group"}
+             [:container-style {:optional true} [:sequential :string]]
+             [:fields [:sequential [:ref ::connection-property]]]]]]
+   [:map {:closed false, ::mr/deliberately-open true, :description "plugin connection property merge"}
+    [:merge [:sequential [:ref ::connection-property]]]]
+   [:map {:closed false, ::mr/deliberately-open true, :description "plugin connection property"}
+    [:name                 {:optional true} :string]
+    [:display-name         {:optional true} :string]
+    [:helper-text          {:optional true} :string]
+    [:description          {:optional true} :string]
+    [:type                 {:optional true} :string]
+    [:secret-kind          {:optional true} :string]
+    [:required             {:optional true} :boolean]
+    [:default              {:optional true} [:or :string :int :boolean]]
+    [:placeholder          {:optional true} [:or :string :int :boolean]]
+    [:treat-before-posting {:optional true} :string]
+    [:visible-if           {:optional true} [:map-of :string [:or :string :boolean [:sequential :string]]]]]])
+
+(mr/def ::driver-info
+  "The `driver:` section of a plugin manifest, whose keys are the plugin author's."
+  [:map {:closed false, ::mr/deliberately-open true, :description "plugin driver info"}
+   [:name                                         :string]
+   [:display-name                                 {:optional true} :string]
+   [:lazy-load                                    {:optional true} :boolean]
+   [:abstract                                     {:optional true} :boolean]
+   [:parent                                       {:optional true} [:or :string [:sequential :string]]]
+   [:connection-properties                        {:optional true} [:sequential ::connection-property]]
+   [:connection-properties-include-tunnel-config  {:optional true} :boolean]])
+
+(mr/def ::extra-info
+  "The `extra:` section of a plugin manifest, whose keys are the plugin author's."
+  [:map {:closed false, ::mr/deliberately-open true, :description "plugin extra info"}
+   [:db-routing-info {:optional true} [:map {:closed false, ::mr/deliberately-open true, :description "plugin db routing info"}
+                                       [:text :string]]]])
+
+(mr/def ::contact-info
+  "The `contact-info:` section of a plugin manifest, whose keys are the plugin author's."
+  [:map {:closed false, ::mr/deliberately-open true, :description "plugin contact info"}
+   [:name    {:optional true} :string]
+   [:address {:optional true} :string]])
+
+(mr/def ::manifest
+  "A parsed `metabase-plugin.yaml` manifest as handed to [[register-plugin-with-info!]], whose keys are the plugin
+  author's."
+  [:map {:closed false, ::mr/deliberately-open true, :description "plugin manifest"}
+   [:metabase-plugin-api-version {:optional true} :int]
+   [:info [:map {:closed false, ::mr/deliberately-open true, :description "plugin info"}
+           [:name        :string]
+           [:version     :string]
+           [:description {:optional true} :string]]]
+   [:contact-info       {:optional true} ::contact-info]
+   [:driver             {:optional true} [:maybe [:or ::driver-info [:sequential ::driver-info]]]]
+   [:init               {:optional true} [:sequential ::init-step]]
+   [:dependencies       {:optional true} [:sequential ::dependency]]
+   [:extra              {:optional true} ::extra-info]
+   [:superseded-by      {:optional true} :string]
+   [:add-to-classpath!  {:optional true} ifn?]])
+
+(defn- normalize-connection-property
+  "Stringifies a YAML-parsed `:visible-if` map's keys (clj-yaml keywordizes them), matching the string keys
+  `driver.u/connection-props-server->client` writes for its own generated properties."
+  [prop]
+  (cond
+    (map? (:group prop))        (update-in prop [:group :fields] (partial mapv normalize-connection-property))
+    (sequential? (:merge prop)) (update prop :merge (partial mapv normalize-connection-property))
+    (and (map? prop) (map? (:visible-if prop))) (update prop :visible-if update-keys u/qualified-name)
+    :else prop))
+
+(defn- normalize-driver-info [driver-info]
+  (cond-> driver-info
+    (some? (:connection-properties driver-info))
+    (update :connection-properties (partial mapv normalize-connection-property))))
+
+(defn normalize-manifest
+  "Normalizes a freshly YAML-parsed plugin manifest so it matches [[::manifest]] before it is registered."
+  [manifest]
+  (cond-> manifest
+    (some? (:driver manifest))
+    (update :driver (fn [driver-or-drivers]
+                      (if (sequential? driver-or-drivers)
+                        (mapv normalize-driver-info driver-or-drivers)
+                        (normalize-driver-info driver-or-drivers))))))
+
 (mu/defn register-plugin-with-info!
   "Register a plugin using parsed info from its manifest. Returns truthy if the plugin was successfully registered;
   falsey otherwise."
-  [info :- [:map
-            [:metabase-plugin-api-version {:optional true} :int]
-            [:info [:map
-                    [:name    :string]
-                    [:version :string]]]]]
+  [info :- ::manifest]
   (validate-plugin-api-version! info)
   (or (info-registered? info)
       (do

@@ -67,13 +67,6 @@ export interface ParameterSettingsProps {
   editingParameterInlineDashcard?: DashboardCard;
 }
 
-const parameterSections = getDashboardParameterSections();
-const dataTypeSectionsData = parameterSections.map((section) => ({
-  label: section.name,
-  value: section.id,
-}));
-const defaultOptionForSection = getDefaultOptionForParameterSectionMap();
-
 export const ParameterSettings = ({
   parameter,
   editingParameterInlineDashcard,
@@ -90,6 +83,13 @@ export const ParameterSettings = ({
   embeddedParameterVisibility,
   hasMapping,
 }: ParameterSettingsProps): JSX.Element => {
+  const parameterSections = getDashboardParameterSections();
+  const dataTypeSectionsData = parameterSections.map((section) => ({
+    label: section.name,
+    value: section.id,
+  }));
+  const defaultOptionForSection = getDefaultOptionForParameterSectionMap();
+
   const dispatch = useDispatch();
   const [tempLabelValue, setTempLabelValue] = useState(parameter.name);
   // TODO: sectionId should always be present, but current type definition presumes it's optional in the parameter.
@@ -162,7 +162,7 @@ export const ParameterSettings = ({
       label: option.menuName ?? option.name,
       value: option.type,
     }));
-  }, [sectionId]);
+  }, [sectionId, parameterSections]);
 
   return (
     <Box p="1.5rem 1rem 0.5rem">

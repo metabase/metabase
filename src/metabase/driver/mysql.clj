@@ -36,6 +36,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.memoize :as memoize]
    [metabase.util.performance :as perf :refer [get-in mapv not-empty some]]
+   [metabase.warehouses.schema :as warehouses.schema]
    [next.jdbc :as next.jdbc])
   (:import
    (java.io File)
@@ -100,6 +101,7 @@
                               :metadata/table-existence-check         true
                               :transforms/python                      true
                               :transforms/table                       true
+                              :transforms/testing                     true
                               :transforms/index-ddl                   true
                               :describe-default-expr                  true
                               :describe-is-nullable                   true
@@ -135,7 +137,7 @@
     (= driver :mysql)))
 
 (mu/defn- database-flavor :- [:maybe :string]
-  ^String [database :- [:maybe :map]]
+  ^String [database :- [:maybe [:or driver-api/schema.metadata.database ::warehouses.schema/database ::warehouses.schema/database.update]]]
   ;; avoid trying `:dbms_version` if `:dbms-version` is present but `nil`; this will cause snake-hating-map warnings
   (when-let [k (some #(when (contains? database %)
                         %)
@@ -225,6 +227,7 @@
 
 (defmethod driver/validate-db-details! :mysql
   [_driver details]
+  (sql-jdbc/reject-dangerous-additional-options! details)
   (when-let [match (some->> (:additional-options details) (re-find disallowed-additional-opts))]
     (throw (ex-info "Potentially dangerous keys in additional options" {:disallowed-key match}))))
 
@@ -1321,7 +1324,7 @@
   (= (sql-jdbc/get-sql-state e) "42S02"))
 
 (defmethod driver.sql/default-schema :mysql
-  [_]
+  [_driver _database]
   nil)
 
 ;; Override db-type-name to handle tinyint(1) as boolean
@@ -1445,6 +1448,11 @@
          (not-empty schema) table])
        (partition-by :index_name)
        (mapv mysql-index-rows->index)))
+
+(defmethod driver/compile-drop-temp-table :mysql
+  [driver table]
+  [(first (sql.qp/format-honeysql driver [:raw ["DROP TEMPORARY TABLE IF EXISTS " [:inline (keyword table)]]]))
+   []])
 
 (defmethod driver/llm-sql-dialect-resource :mysql [_]
   "metabot/prompts/dialects/mysql.md")

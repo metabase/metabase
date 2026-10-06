@@ -1,13 +1,13 @@
 import { jt, t } from "ttag";
 
-import {
-  SettingsPageWrapper,
-  SettingsSection,
-} from "metabase/admin/components/SettingsSection";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { useDocsUrl } from "metabase/common/hooks";
+import {
+  AdminSettingInput,
+  SettingsPageWrapper,
+  SettingsSection,
+} from "metabase/settings-components";
 
-import { AdminSettingInput } from "../widgets/AdminSettingInput";
 import { CustomGeoJSONWidget } from "../widgets/CustomGeoJSONWidget";
 
 export function MapsSettingsPage() {

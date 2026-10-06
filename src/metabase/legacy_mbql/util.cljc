@@ -75,7 +75,7 @@
 
   Prefer [[metabase.lib.core/primary-source-table-id]] going forward."
   {:arglists '([outer-query]), :deprecated "0.57.0"}
-  [{{source-table-id :source-table, source-query :source-query} :query, query-type :type, :as query} :- [:maybe :map]]
+  [{{source-table-id :source-table, source-query :source-query} :query, query-type :type, :as query} :- [:maybe ::mbql.s/Query]]
   (cond
     ;; for native queries, there's no source table to resolve
     (not= query-type :query)
@@ -104,7 +104,8 @@
 (mu/defn expression-with-name :- ::mbql.s/FieldOrExpressionDef
   "Return the expression referenced by a given `expression-name`."
   {:deprecated "0.57.0"}
-  [inner-query expression-name :- ::lib.schema.common/non-blank-string]
+  [inner-query      :- ::mbql.s/MBQLInnerQuery
+   expression-name  :- ::lib.schema.common/non-blank-string]
   (loop [{:keys [expressions source-query]} inner-query, found #{}]
     (when (seq expressions)
       (assert (every? string? (keys expressions))
@@ -130,7 +131,8 @@
    support nested queries, you'll need to keep tract of how many `:source-query`s deep you've traveled; pass in this
    number to as optional arg `nesting-level` to make sure you reference aggregations at the right level of nesting."
   {:deprecated "0.57.0"}
-  ([query index]
+  ([query :- ::mbql.s/Query
+    index :- nat-int?]
    (aggregation-at-index query index 0))
 
   ([query         :- ::mbql.s/Query
@@ -200,7 +202,9 @@
 
   DEPRECATED: Use MBQL 5 + [[metabase.lib.core/update-options]] going forward."
   {:arglists '([field-or-ag-ref-or-expression-ref f & args]), :deprecated "0.57.0"}
-  [[clause-type id-or-name opts] :- ::mbql.s/Reference f & args]
+  [[clause-type id-or-name opts] :- ::mbql.s/Reference
+   f                             :- ifn?
+   & args                        :- [:* [:or ::lib.schema.common/clause-arg fn?]]]
   (let [opts (not-empty (remove-empty (apply f opts args)))]
     ;; `:field` clauses should have a `nil` options map if there are no options. `:aggregation` and `:expression`
     ;; should get the arg removed if it's `nil` or empty. (For now. In the future we may change this if we make the

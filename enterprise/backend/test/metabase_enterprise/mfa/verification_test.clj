@@ -29,9 +29,9 @@
                                           :confirmed_at (t/instant)
                                           :credentials  {:secret secret}}]
       (let [code (totp/generate-code secret)]
-        (is (true? (verification/verify-attempt! user-id code (fresh-jti))))
+        (is (true? (boolean (verification/verify-attempt! user-id code (fresh-jti)))))
         (testing "the same code is rejected on replay, even with a fresh challenge token (RFC 6238 SS5.2)"
-          (is (false? (verification/verify-attempt! user-id code (fresh-jti)))))))))
+          (is (false? (boolean (verification/verify-attempt! user-id code (fresh-jti))))))))))
 
 (deftest verify-rejects-used-jti-test
   (let [secret (totp/generate-secret)
@@ -44,7 +44,7 @@
                                           :credentials {:secret       secret
                                                         :used_jtis    [{:jti jti :exp (+ now 600)}]}}]
       (testing "a consumed challenge token cannot mint a second session, even with a fresh valid code"
-        (is (false? (verification/verify-attempt! user-id (totp/generate-code secret) jti)))))))
+        (is (false? (boolean (verification/verify-attempt! user-id (totp/generate-code secret) jti))))))))
 
 (deftest verify-rejects-stale-step-test
   (let [secret (totp/generate-secret)]
@@ -56,7 +56,7 @@
                                                         ;; pretend a code one step ahead was already accepted
                                                         :last_used_step (inc (totp/current-time-step))}}]
       (testing "codes at or before the last accepted step are rejected"
-        (is (false? (verification/verify-attempt! user-id (totp/generate-code secret) (fresh-jti))))))))
+        (is (false? (boolean (verification/verify-attempt! user-id (totp/generate-code secret) (fresh-jti)))))))))
 
 (deftest verify-rejects-unconfirmed-test
   (let [secret (totp/generate-secret)]
@@ -64,7 +64,7 @@
                    :model/AuthIdentity _ {:user_id     user-id
                                           :provider    "totp"
                                           :credentials {:secret secret}}]
-      (is (false? (verification/verify-attempt! user-id (totp/generate-code secret) (fresh-jti)))))))
+      (is (false? (boolean (verification/verify-attempt! user-id (totp/generate-code secret) (fresh-jti))))))))
 
 (deftest expired-jtis-are-pruned-test
   (let [secret (totp/generate-secret)
@@ -75,7 +75,7 @@
                                                     :confirmed_at (t/instant)
                                                     :credentials {:secret       secret
                                                                   :used_jtis    [{:jti "stale" :exp (- now 10)}]}}]
-      (is (true? (verification/verify-attempt! user-id (totp/generate-code secret) (fresh-jti))))
+      (is (true? (boolean (verification/verify-attempt! user-id (totp/generate-code secret) (fresh-jti)))))
       (let [jtis (get-in (t2/select-one :model/AuthIdentity :id ai-id) [:credentials :used_jtis])]
         (testing "the expired jti is gone; the fresh one is recorded"
           (is (= 1 (count jtis)))
@@ -117,7 +117,7 @@
                                        (future
                                          (.await latch)
                                          (binding [t2.conn/*current-connectable* nil]
-                                           (verification/verify-attempt! user-id code (fresh-jti)))))))]
+                                           (boolean (verification/verify-attempt! user-id code (fresh-jti))))))))]
             ;; release the gate -- all threads race
             (.countDown latch)
             (let [results (mapv #(deref % 10000 :timeout) futures)]
@@ -152,7 +152,7 @@
                                        (future
                                          (.await latch)
                                          (binding [t2.conn/*current-connectable* nil]
-                                           (verification/verify-attempt! user-id code (fresh-jti)))))))]
+                                           (boolean (verification/verify-attempt! user-id code (fresh-jti))))))))]
             (.countDown latch)
             (let [results (mapv #(deref % 10000 :timeout) futures)]
               (testing "no timeouts"
@@ -190,7 +190,7 @@
             (is (encryption/possibly-encrypted-string? raw) "sanity: stored under key A as ciphertext")
             (t2/update! :auth_identity ai-id {:credentials rotated}))
           (encryption-test/with-secret-key k2
-            (is (true? (verification/verify-attempt! user-id (totp/generate-code secret) (fresh-jti)))
+            (is (true? (boolean (verification/verify-attempt! user-id (totp/generate-code secret) (fresh-jti))))
                 "the rotated enrollment verifies under the new key"))
           (encryption-test/with-secret-key k1
             ;; encrypted-json-out falls back to the raw ciphertext string, on which the

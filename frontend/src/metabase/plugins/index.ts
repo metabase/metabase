@@ -38,7 +38,6 @@ export {
   type CollectionAuthorityLevelDisplayProps,
   type CollectionAuthorityLevelIcon,
 } from "./oss/collections";
-export { PLUGIN_CONTENT_TRANSLATION } from "./oss/content-translation";
 export {
   type LoadCustomVizPluginForDisplayResult,
   PLUGIN_CUSTOM_VIZ,
@@ -75,13 +74,7 @@ export {
 export { PLUGIN_DATA_APPS } from "./oss/data-apps";
 export { PLUGIN_EMBEDDING, type SimpleDataPickerProps } from "./oss/embedding";
 export { PLUGIN_EMBEDDING_IFRAME_SDK } from "./oss/embedding-iframe-sdk";
-export {
-  PLUGIN_EMBEDDING_IFRAME_SDK_SETUP,
-  type SdkIframeEmbedSetupModalProps,
-  type SdkIframeEmbedSetupModalInitialState,
-  type SdkIframeEmbedSetupExperience,
-  type LegacyStaticEmbeddingModalProps,
-} from "./oss/embedding-iframe-sdk-setup";
+export { PLUGIN_EMBEDDING_IFRAME_SDK_SETUP } from "./oss/embedding-iframe-sdk-setup";
 export { PLUGIN_EMBEDDING_SDK } from "./oss/embedding-sdk";
 export {
   PLUGIN_NOTIFICATIONS_SDK,
@@ -103,6 +96,7 @@ export { PLUGIN_MODEL_PERSISTENCE } from "./oss/model-persistence";
 export {
   PLUGIN_MULTI_FACTOR_AUTH,
   type AuthChallengeFormProps,
+  type AuthEnrollmentFormProps,
 } from "./oss/multi-factor-auth";
 export {
   PLUGIN_MODERATION,

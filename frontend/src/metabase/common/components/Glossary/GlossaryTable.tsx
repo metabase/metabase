@@ -94,8 +94,6 @@ export function GlossaryTable({
         </Text>
         {!readOnly && (
           <Button
-            variant="default"
-            size="sm"
             leftSection={<Icon name="add" />}
             onClick={() => {
               if (editingId) {

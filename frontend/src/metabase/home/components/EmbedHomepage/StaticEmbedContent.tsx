@@ -1,4 +1,4 @@
-// eslint-disable-next-line no-restricted-imports
+// eslint-disable-next-line eslint-js/no-restricted-imports
 import styled from "@emotion/styled";
 import { t } from "ttag";
 
@@ -43,7 +43,7 @@ export const StaticEmbedContent = ({
           to={exampleDashboardLink}
           onClick={trackEmbeddingHomepageExampleDashboardClick}
         >
-          <Button variant="outline">{t`Embed an example dashboard`}</Button>
+          <Button>{t`Embed an example dashboard`}</Button>
         </Link>
       )}
       <ExternalLink href={learnMoreStaticEmbedUrl}>

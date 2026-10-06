@@ -13,10 +13,12 @@
    [metabase.premium-features.core :as premium-features]
    [metabase.settings.core :as setting]
    [metabase.util :as u]
+   [metabase.util.http :as u.http]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli.registry :as mr]
+   [metabase.util.malli.schema :as ms]
    [metabase.util.o11y :refer [with-span]])
   (:import
    (java.io BufferedReader Closeable InputStream)
@@ -31,13 +33,200 @@
 ;; "required" → {:type "any"} for Claude, system-message placement, tool wire
 ;; format) happens inside each adapter, but the **input contract is identical**.
 
+(def ^:private MalliSchema
+  "A malli schema, in schema-form or as a compiled instance."
+  [:and :any [:fn {:error/message "a malli schema"} mc/schema]])
+
+(def ^:private AnthropicProviderMetadata
+  "Anthropic-specific data carried on a reasoning part: a redacted-thinking block's opaque
+  payload, or a signed-thinking block's signature."
+  [:map {:closed true}
+   [:redactedData {:optional true} [:maybe :string]]
+   [:signature    {:optional true} [:maybe :string]]])
+
+(def ^:private OpenAIProviderMetadata
+  "OpenAI-specific data carried on a reasoning part, needed to replay it across tool-call
+  round-trips despite `store:false`."
+  [:map {:closed true}
+   [:encryptedContent {:optional true} [:maybe :string]]
+   [:itemId           {:optional true} [:maybe :string]]])
+
+(def ^:private MistralProviderMetadata
+  "Mistral-specific data carried on a reasoning part: a think chunk's captured signature."
+  [:map {:closed true}
+   [:signature {:optional true} [:maybe :string]]])
+
+(def ^:private GoogleProviderMetadata
+  "Google-specific data carried on a tool-input part: the thought signature Gemini 3.x requires
+  when a functionCall is replayed in the current turn."
+  [:map {:closed true}
+   [:thoughtSignature {:optional true} [:maybe :string]]])
+
+(def ^:private ProviderMetadata
+  "Vendor-specific data carried verbatim on a reasoning/tool-input part, namespaced by provider."
+  [:map {:closed true}
+   [:anthropic {:optional true} [:maybe AnthropicProviderMetadata]]
+   [:openai    {:optional true} [:maybe OpenAIProviderMetadata]]
+   [:google    {:optional true} [:maybe GoogleProviderMetadata]]
+   [:mistral   {:optional true} [:maybe MistralProviderMetadata]]])
+
 (def ToolEntry
   "A tool definition map with :tool-name, :doc, :schema, :fn, and optionally :decode/:prompt."
-  [:map
+  [:map {:closed true}
    [:tool-name :string]
    [:doc {:optional true} [:maybe :string]]
-   [:schema :any]
-   [:fn [:fn fn?]]])
+   [:schema MalliSchema]
+   [:declaration {:optional true} [:maybe [:fn delay?]]]
+   [:fn [:fn fn?]]
+   [:decode {:optional true} [:maybe [:fn fn?]]]
+   [:prompt {:optional true} [:maybe :string]]
+   [:title-fn {:optional true} [:maybe [:fn fn?]]]
+   [:system-instructions {:optional true} [:maybe :string]]
+   [:capabilities {:optional true} [:maybe [:set :keyword]]]
+   [:scope {:optional true} [:maybe :string]]])
+
+(def ^:private DataPart
+  "One entry of a tool's `:data-parts`: `metabase.metabot.agent.streaming`'s `{:type :data, ...}`
+  constructors."
+  [:map {:closed true}
+   [:type      [:= :data]]
+   [:data-type :string]
+   [:data      {:optional true} [:maybe ::schema.v2/tool-io]]])
+
+(def ^:private ToolResult
+  "The raw return value of a tool's `:fn`, before it is trimmed for persistence or forwarded to
+  a provider (see [[collect-tool-result]])."
+  [:or
+   :string
+   :keyword
+   number?
+   :boolean
+   :nil
+   [:map {:closed true}
+    [:output            {:optional true} [:maybe :string]]
+    [:structured-output {:optional true} [:maybe ::schema.v2/tool-io]]
+    [:structured_output {:optional true} [:maybe ::schema.v2/tool-io]]
+    [:terminal-error?   {:optional true} :boolean]
+    [:data-parts        {:optional true} [:sequential DataPart]]
+    [:resources         {:optional true} [:sequential ::schema.v2/tool-io]]
+    [:instructions      {:optional true} [:maybe :string]]
+    [:status-code       {:optional true} [:maybe :int]]
+    [:error             {:optional true} [:maybe [:map {:closed true}
+                                                  [:message {:optional true} [:maybe :string]]
+                                                  [:type    {:optional true} [:maybe :string]]]]]]])
+
+(mr/def ::decoded-json
+  "A value decoded from JSON.
+  Object keys are strings from `json/decode` (replayed history) or keywords from `json/decode+kw` (the stream)."
+  [:or
+   :string
+   :keyword
+   number?
+   :boolean
+   :nil
+   [:sequential [:ref ::decoded-json]]
+   [:map-of [:or :string :keyword] [:ref ::decoded-json]]])
+
+(def ^:private ToolCallArguments
+  "A tool call's arguments as the LLM wrote them against the tool's own schema, keyed by that tool's argument names:
+  string keys off the wire, keyword keys when built in Clojure."
+  [:map-of {::mr/deliberately-open true, :description "tool call arguments"}
+   [:or :string :keyword] ::decoded-json])
+
+(def ^:private AISDKPart
+  "One element of the `:input` sequence passed to a provider adapter: an AISDK part keyed by
+  `:type` (`:text`, `:reasoning`, `:tool-input`, `:tool-output`), or a plain role message keyed
+  by `:role` instead."
+  [:map {:closed true}
+   [:type              {:optional true} [:maybe :keyword]]
+   [:role              {:optional true} [:maybe (ms/enum-keywords-and-strings :user :system :assistant :tool)]]
+   [:id                {:optional true} [:maybe :string]]
+   [:text              {:optional true} [:maybe :string]]
+   [:content           {:optional true} [:maybe :string]]
+   [:function          {:optional true} [:maybe :string]]
+   [:title             {:optional true} [:maybe :string]]
+   [:arguments         {:optional true} [:maybe ToolCallArguments]]
+   [:result            {:optional true} [:maybe ToolResult]]
+   [:duration-ms       {:optional true} [:maybe number?]]
+   [:error             {:optional true} [:maybe [:map {:closed true}
+                                                 [:message {:optional true} [:maybe :string]]
+                                                 [:type    {:optional true} [:maybe :string]]]]]
+   [:provider-metadata {:optional true} [:maybe ProviderMetadata]]])
+
+(def ^:private ApiKeyCredentials
+  "The `{:api-key ... :base-url ...}` connection shape shared by most providers. `:model-reasoning` and
+  `:probed-model` are not admin-entered: a connect-time probe records them on the connection (vLLM)."
+  [:map {:closed true}
+   [:api-key         {:optional true} [:maybe :string]]
+   [:base-url        {:optional true} [:maybe :string]]
+   [:model-reasoning {:optional true} [:maybe [:or :boolean :string]]]
+   [:probed-model    {:optional true} [:maybe :string]]])
+
+(def ^:private AzureCredentials
+  "An Azure connection's config: the API-key pair plus the model family and deployment name its model is composed from."
+  [:map {:closed true}
+   [:api-key         {:optional true} [:maybe :string]]
+   [:base-url        {:optional true} [:maybe :string]]
+   [:model-family    {:optional true} [:maybe :string]]
+   [:deployment-name {:optional true} [:maybe :string]]])
+
+(def ^:private BedrockCredentials
+  [:map {:closed true}
+   [:access-key-id     {:optional true} [:maybe :string]]
+   [:secret-access-key {:optional true} [:maybe :string]]
+   [:session-token     {:optional true} [:maybe :string]]
+   [:region            {:optional true} [:maybe :string]]
+   [:model-id          {:optional true} [:maybe :string]]])
+
+(def ^:private GoogleCredentials
+  [:map {:closed true}
+   [:service-account-key {:optional true} [:maybe :string]]
+   [:oauth-access-token  {:optional true} [:maybe :string]]
+   [:project-id          {:optional true} [:maybe :string]]
+   [:location            {:optional true} [:maybe :string]]
+   [:auth-method         {:optional true} [:maybe :string]]
+   [:base-url            {:optional true} [:maybe :string]]
+   [:endpoint-id         {:optional true} [:maybe :string]]
+   ;; recorded by the connect-time probe, not entered by the admin
+   [:probed-model        {:optional true} [:maybe :string]]])
+
+(def LLMCredentials
+  "A connection's credentials, in whichever provider shape it carries. Public so the adapter layer can say
+  `:credentials` once rather than restating an open map at each schema that carries one."
+  [:or ApiKeyCredentials AzureCredentials BedrockCredentials GoogleCredentials])
+
+(def ^:private ReasoningConfig
+  "A dialect-shaped reasoning/thinking directive, sent verbatim to the provider."
+  [:map {:closed true}
+   [:type    :string]
+   [:display {:optional true} [:maybe :string]]])
+
+(def ^:private JSONSchemaLeaf
+  "A leaf JSON Schema node: no `:properties` of its own, one further leaf level of `:items` for
+  an array-typed leaf."
+  [:map {:closed true}
+   [:type        {:optional true} [:maybe :string]]
+   [:description {:optional true} [:maybe :string]]
+   [:items       {:optional true} [:map {:closed true}
+                                   [:type        {:optional true} [:maybe :string]]
+                                   [:description {:optional true} [:maybe :string]]]]
+   [:minimum     {:optional true} number?]
+   [:maximum     {:optional true} number?]])
+
+(def ^:private JSONSchemaProperties
+  "The `:properties` of a JSON Schema node, keyed by the field names the caller's structured-output schema declares:
+  string keys off the wire, keyword keys when built in Clojure."
+  [:map-of {::mr/deliberately-open true, :description "JSON Schema properties"}
+   [:or :string :keyword] JSONSchemaLeaf])
+
+(def ^:private JSONSchemaNode
+  "A JSON Schema node, sent verbatim to an LLM provider as the structured-output schema.
+  `:properties` keys are the field names the schema itself declares, not ours to enumerate."
+  [:map {:closed true}
+   [:type                 {:optional true} [:maybe :string]]
+   [:properties           {:optional true} JSONSchemaProperties]
+   [:required             {:optional true} [:vector :string]]
+   [:additionalProperties {:optional true} :boolean]])
 
 (def LLMRequestOpts
   "Canonical schema for the opts map passed to every LLM provider adapter.
@@ -69,19 +258,19 @@
                         ignore it
     :prompt-cache-key - prompt-cache affinity hint (the conversation id); adapters whose
                         provider caches opt-in per key forward it (Mistral), others ignore it"
-  [:map
+  [:map {:closed true}
    [:model            {:optional true} :string]
    [:system           {:optional true} [:maybe :string]]
-   [:input            {:optional true} [:sequential :map]]
+   [:input            {:optional true} [:sequential AISDKPart]]
    [:tools            {:optional true} [:maybe [:sequential ToolEntry]]]
    [:tool_choice      {:optional true} [:maybe [:enum "auto" "required"]]]
    [:temperature      {:optional true} [:maybe number?]]
    [:max-tokens       {:optional true} [:maybe :int]]
-   [:schema           {:optional true} :any]
-   [:credentials      {:optional true} [:maybe :map]]
+   [:schema           {:optional true} [:maybe JSONSchemaNode]]
+   [:credentials      {:optional true} [:maybe LLMCredentials]]
    [:ai-proxy?        {:optional true} [:maybe :boolean]]
    [:reasoning?       {:optional true} [:maybe :boolean]]
-   [:reasoning-config {:optional true} [:maybe :map]]
+   [:reasoning-config {:optional true} [:maybe ReasoningConfig]]
    [:fast?            {:optional true} [:maybe :boolean]]
    [:prompt-cache-key {:optional true} [:maybe :string]]])
 
@@ -329,7 +518,7 @@
                                            (get tools (:function part)))]
            (if title-fn
              (let [title (try
-                           (title-fn (cond-> (coerce-stringified-json (:arguments part))
+                           (title-fn (cond-> (walk/keywordize-keys (coerce-stringified-json (:arguments part)))
                                        decode decode))
                            (catch Throwable e
                              (log/debug e "tool title-fn failed" {:tool (:function part)})
@@ -762,59 +951,76 @@
   environment — `mu/defn` only instruments dev and test namespaces — and a
   mismatch is returned to the model as a repair-oriented error.
 
+  A call to a tool outside `tools` gets an error listing the ones it can call. Its name is model output,
+  so logs and span data record it as \"unknown\".
+
   Chunks have a ::duration-ms key added for internal use which is not part of the aisdk spec."
-  [tool-call-id tool-name tool chunks]
-  (ait/with-tool-call {:ai/tool-name    tool-name
-                       :ai/tool-call-id tool-call-id}
-    (with-span :info {:name         :metabot.agent/run-tool
-                      :tool-name    tool-name
-                      :tool-call-id tool-call-id}
-      (let [start-ms (u/start-timer)
-            assoc-ms (fn [duration-ms]
-                       (fn [chunk]
-                         (cond-> chunk
-                           (= (:type chunk) :tool-output-available) (assoc ::duration-ms duration-ms))))
-            results  (try
-                       (let [{:keys [arguments]} (into {} (aisdk-xf) chunks)
-                             arguments (or (coerce-stringified-json arguments) {})
-                             arguments (coerce-stringified-scalars tool arguments)
-                             decode    (tool-decode-fn tool)
-                             arguments (cond-> arguments decode decode)
-                             _         (validate-tool-arguments! tool arguments)]
-                         (log/debug "Executing tool" {:tool-name tool-name})
-                         (when (ait/capture-active?)
-                           (ait/record! {:ai/tool-args arguments}))
-                         (let [tool-fn (tool-call-fn tool)
-                               result  (tool-fn arguments)]
-                           (log/debug "Tool returned" {:tool-name tool-name :result-type (type result)})
-                           (collect-tool-result tool-call-id tool-name result)))
-                       (catch Exception e
-                         (if (:agent-error? (ex-data e))
-                           (log/debugf "Tool %s: agent validation error: %s" tool-name (ex-message e))
-                           (log/warn "Tool execution failed" {:tool-name tool-name :error (ex-message e)}))
-                         [{:type         :tool-output-available
-                           :toolCallId   tool-call-id
-                           :toolName     tool-name
-                           :error        {:message (concise-tool-error e)
-                                          :type    (str (type e))}}]))]
-        (when (ait/capture-active?)
-          (ait/record! {:ai/tool-output results}))
-        (mapv (assoc-ms (u/since-ms start-ms))
-              results)))))
+  [tool-call-id tool-name tools chunks]
+  (let [tool      (get tools tool-name)
+        safe-name (if tool tool-name "unknown")]
+    (ait/with-tool-call {:ai/tool-name    tool-name
+                         :ai/tool-call-id tool-call-id}
+      (with-span :info {:name         :metabot.agent/run-tool
+                        :tool-name    safe-name
+                        :tool-call-id tool-call-id}
+        (let [start-ms (u/start-timer)
+              assoc-ms (fn [duration-ms]
+                         (fn [chunk]
+                           (cond-> chunk
+                             (= (:type chunk) :tool-output-available) (assoc ::duration-ms duration-ms))))
+              results  (try
+                         (when-not tool
+                           (throw (ex-info (str "Tool `" tool-name "` does not exist. Available tools: "
+                                                (str/join ", " (sort (keys tools))) ".")
+                                           {:agent-error? true})))
+                         (let [{:keys [arguments]} (into {} (aisdk-xf) chunks)
+                               arguments (walk/keywordize-keys (or (coerce-stringified-json arguments) {}))
+                               arguments (coerce-stringified-scalars tool arguments)
+                               decode    (tool-decode-fn tool)
+                               arguments (cond-> arguments decode decode)
+                               _         (validate-tool-arguments! tool arguments)]
+                           (log/debug "Executing tool" {:tool-name safe-name})
+                           (when (ait/capture-active?)
+                             (ait/record! {:ai/tool-args arguments}))
+                           (let [tool-fn (tool-call-fn tool)
+                                 result  (tool-fn arguments)]
+                             (log/debug "Tool returned" {:tool-name safe-name :result-type (type result)})
+                             (collect-tool-result tool-call-id tool-name result)))
+                         (catch Exception e
+                           (cond
+                             (nil? tool)
+                             (log/debugf "Tool call %s: unknown tool" tool-call-id)
+
+                             (:agent-error? (ex-data e))
+                             (log/debugf "Tool %s: agent validation error: %s" safe-name (ex-message e))
+
+                             :else
+                             (log/error e "Tool execution failed" {:tool-name safe-name}))
+                           [{:type         :tool-output-available
+                             :toolCallId   tool-call-id
+                             :toolName     tool-name
+                             :error        {:message (concise-tool-error e)
+                                            :type    (str (type e))}}]))]
+          (when (ait/capture-active?)
+            (ait/record! {:ai/tool-output results}))
+          (mapv (assoc-ms (u/since-ms start-ms))
+                results))))))
 
 (defn tool-executor-xf
   "Transducer that executes tool calls in parallel on virtual threads.
 
   Behavior:
-  - Passes all chunks through unchanged as they arrive
+  - Passes chunks through unchanged as they arrive
   - Tracks tool calls from :tool-input-start through :tool-input-available
   - Spawns virtual thread for each tool when input is complete
+  - Once an :error chunk comes through, starts no more tools and drops the tool-input chunks after it
   - At completion, waits for all tools and appends results
 
   Tools can return: plain values, IReduceInit (reducible), or channels (legacy)."
   [tools]
   (fn [rf]
-    (let [active (volatile! {})] ;; tool-call-id -> {:chunks [...]} or {:task derefable}
+    (let [active   (volatile! {}) ;; tool-call-id -> {:chunks [...]} or {:task derefable}
+          errored? (volatile! false)]
       (fn
         ([result]
          (let [{tasks  true
@@ -827,24 +1033,32 @@
              (rf result))))
 
         ([result {:keys [type toolCallId toolName] :as chunk}]
-         (case type
-           :tool-input-start
-           (when (contains? tools toolName)
-             (vswap! active assoc toolCallId {:chunks [chunk]}))
+         (if (and @errored? (#{:tool-input-start :tool-input-delta :tool-input-available} type))
+           result
+           (do
+             (case type
+               :tool-input-start
+               (vswap! active assoc toolCallId {:chunks [chunk]})
 
-           :tool-input-delta
-           (when (contains? @active toolCallId)
-             (vswap! active update-in [toolCallId :chunks] conj chunk))
+               :tool-input-delta
+               (when (contains? @active toolCallId)
+                 (vswap! active update-in [toolCallId :chunks] conj chunk))
 
-           :tool-input-available
-           (when-let [{:keys [chunks]} (get @active toolCallId)]
-             (let [tool (get tools toolName)
-                   task (submit-virtual (bound-fn* #(run-tool toolCallId toolName tool chunks)))]
-               (vswap! active assoc toolCallId {:task task})))
+               :tool-input-available
+               (when-let [{:keys [chunks]} (get @active toolCallId)]
+                 (let [task (submit-virtual (bound-fn* #(run-tool toolCallId toolName tools chunks)))]
+                   (vswap! active assoc toolCallId {:task task})))
 
-           ;; otherwise: do nothing
-           nil)
-         (rf result chunk))))))
+               :error
+               (let [cut-off (for [[id {:keys [task]}] @active :when (not task)] id)]
+                 (vreset! errored? true)
+                 (when (seq cut-off)
+                   (log/warn "Dropping tool calls that a stream error cut off" {:tool-calls cut-off})
+                   (vswap! active #(apply dissoc % cut-off))))
+
+               ;; otherwise: do nothing
+               nil)
+             (rf result chunk))))))))
 
 (def ^:private max-body-preview-chars
   "Cap on the body snippet spliced into provider error messages."
@@ -1058,6 +1272,12 @@
            {:api-error  true
             :error-code :api-key-missing}))
 
+(def NetworkPolicyFloor
+  "The `:network-policy-floor` [[resolve-auth]] may put on an auth map, as the set of policies
+  [[metabase.llm.settings/network-policy]] ranks. Derived from that list rather than spelled out again, so
+  a policy added there cannot leave this behind."
+  (into [:enum] u.http/configurable-network-policies))
+
 (defn resolve-auth
   "Pick the right auth map for an LLM request.
 
@@ -1088,7 +1308,7 @@
   never block the caller forever. The timeouts default to the operator-tunable
   [[metabase.llm.settings/llm-connection-timeout-ms]] and
   [[metabase.llm.settings/llm-request-timeout-ms]] settings (read
-  at call time), the same knobs `metabase.llm.anthropic` uses. Callers can
+  at call time). Callers can
   override either timeout per request by passing `:connection-timeout` /
   `:socket-timeout` in `req`.
 

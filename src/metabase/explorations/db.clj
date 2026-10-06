@@ -8,9 +8,11 @@
    [metabase.collections.models.collection :as collection]
    [metabase.documents.schema :as documents.schema]
    [metabase.explorations.schema :as explorations.schema]
+   [metabase.interestingness.chart.types :as chart.types]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.queries.core :as queries]
    [metabase.queries.schema :as queries.schema]
+   [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -304,8 +306,8 @@
   [blocks :- (let [row [:map {:closed true}
                         [:id                    {:optional true} ms/PositiveInt]
                         [:exploration_thread_id {:optional true} [:maybe ms/PositiveInt]]
-                        [:metrics               {:optional true} [:maybe [:sequential :map]]]
-                        [:dimensions            {:optional true} [:maybe [:sequential :map]]]
+                        [:metrics               {:optional true} [:maybe [:sequential ::explorations.schema/exploration-block.metric]]]
+                        [:dimensions            {:optional true} [:maybe [:sequential ::explorations.schema/exploration-block.dimension]]]
                         [:position              {:optional true} [:maybe :int]]
                         [:created_at            {:optional true} [:maybe ms/TemporalInstant]]
                         [:updated_at            {:optional true} [:maybe ms/TemporalInstant]]]]
@@ -573,7 +575,7 @@
                     [:created_at                         {:optional true} [:maybe ms/TemporalInstant]]
                     [:interestingness_score               {:optional true} [:maybe number?]]
                     [:contextual_interestingness_score    {:optional true} [:maybe number?]]
-                    [:chart_stats                         {:optional true} [:maybe :map]]
+                    [:chart_stats                         {:optional true} [:maybe ::chart.types/chart-stats]]
                     [:metric_description                  {:optional true} [:maybe :string]]
                     [:chart_description                   {:optional true} [:maybe :string]]]]
   (t2/insert! :model/ExplorationQueryResult query-result))
@@ -769,17 +771,14 @@
   (t2/select-one [:model/Card :name :description :display :visualization_settings] :id card-id))
 
 (mu/defn card-queries
-  "The ID, schema, Database, and query of the Cards with `card-ids`."
+  "The query-relevant columns of the Cards with `card-ids`."
   [card-ids :- [:sequential ::lib.schema.id/card]]
-  (t2/select [:model/Card :id :card_schema :database_id :dataset_query] :id [:in card-ids]))
+  (queries/cards-queries-info card-ids :include [:database_id]))
 
 (mu/defn metric-cards-by-id
   "A map of ID to the planner columns of the Cards with `card-ids`."
   [card-ids :- [:sequential ::lib.schema.id/card]]
-  (t2/select-pk->fn identity
-                    [:model/Card :id :name :description :database_id :dataset_query :card_schema :dimensions
-                     :dimension_mappings]
-                    :id [:in card-ids]))
+  (u/index-by :id (queries/cards-queries-info card-ids :include [:name :description :database_id])))
 
 (mu/defn metric-card-ids
   "The `:id`s of the Cards visible to the current user as metrics, restricted to `metric-ids` when
@@ -799,7 +798,7 @@
 ;;; the response stays small and JSON encoding is fast.
 (def ^:private exploration-card-columns
   [:id :name :description :collection_id :database_id :table_id :type :entity_id
-   :card_schema :dataset_query :dimensions :dimension_mappings])
+   :card_schema :dataset_query :result_metadata :dimensions :dimension_mappings])
 
 (mu/defn metric-cards-for-explorations
   "The exploration-relevant columns of the metric Cards with `card-ids`."

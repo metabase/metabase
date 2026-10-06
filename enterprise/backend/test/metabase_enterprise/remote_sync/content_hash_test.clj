@@ -81,6 +81,12 @@
                      :model/NativeQuerySnippet snip {:name "Snip" :content "SELECT 1" :collection_id (:id sc)}]
         (is (= "synced" (noop-update-status! "NativeQuerySnippet" (:id snip) :event/snippet-update snip)))))))
 
+(deftest glossary-noop-update-stays-synced-test
+  (testing "A no-op Glossary update keeps it synced when the Library is synced"
+    (with-library-synced
+      (mt/with-temp [:model/Glossary entry {:term "ARR" :definition "Annual recurring revenue"}]
+        (is (= "synced" (noop-update-status! "Glossary" (:id entry) :event/glossary-update entry)))))))
+
 (deftest collection-noop-update-stays-synced-test
   (testing "A no-op Collection update keeps it synced (GHY-3933)"
     (mt/with-temp [:model/Collection coll {:is_remote_synced true :name "RS"}]
@@ -155,51 +161,54 @@
 
 (deftest null-baseline-update-marks-dirty-test
   (testing "An update with no recorded baseline hash still marks dirty — exports the first time (GHY-3933)"
-    (mt/with-temp [:model/Collection coll {:is_remote_synced true :name "RS"}
-                   :model/Card card {:name "C" :dataset_query (mt/mbql-query venues) :collection_id (:id coll)}]
-      (t2/delete! :model/RemoteSyncObject)
-      (t2/insert! :model/RemoteSyncObject {:model_type "Card" :model_id (:id card) :model_name "C"
-                                           :status "synced" :status_changed_at (t/offset-date-time)})
-      (events/publish-event! :event/card-update {:object card :previous-object card :user-id (mt/user->id :rasta)})
-      (is (= "update" (:status (t2/select-one :model/RemoteSyncObject :model_type "Card" :model_id (:id card))))
-          "A null content_hash baseline must be treated as dirty"))))
+    (mt/with-temporary-setting-values [remote-sync-type :read-write]
+      (mt/with-temp [:model/Collection coll {:is_remote_synced true :name "RS"}
+                     :model/Card card {:name "C" :dataset_query (mt/mbql-query venues) :collection_id (:id coll)}]
+        (t2/delete! :model/RemoteSyncObject)
+        (t2/insert! :model/RemoteSyncObject {:model_type "Card" :model_id (:id card) :model_name "C"
+                                             :status "synced" :status_changed_at (t/offset-date-time)})
+        (events/publish-event! :event/card-update {:object card :previous-object card :user-id (mt/user->id :rasta)})
+        (is (= "update" (:status (t2/select-one :model/RemoteSyncObject :model_type "Card" :model_id (:id card))))
+            "A null content_hash baseline must be treated as dirty")))))
 
 (deftest changed-content-marks-dirty-test
   (testing "A real change to serialized content marks dirty (GHY-3933)"
-    (mt/with-temp [:model/Collection coll {:is_remote_synced true :name "RS"}
-                   :model/Card card {:name "Original" :dataset_query (mt/mbql-query venues) :collection_id (:id coll)}]
-      (t2/delete! :model/RemoteSyncObject)
-      (t2/insert! :model/RemoteSyncObject {:model_type "Card" :model_id (:id card) :model_name "Original"
-                                           :status "synced"
-                                           :content_hash (source/row->content-hash {:model_type "Card" :model_id (:id card)})
-                                           :status_changed_at (t/offset-date-time)})
-      (t2/update! :model/Card (:id card) {:name "Renamed"})
-      (events/publish-event! :event/card-update {:object (t2/select-one :model/Card :id (:id card))
-                                                 :previous-object card
-                                                 :user-id (mt/user->id :rasta)})
-      (is (= "update" (:status (t2/select-one :model/RemoteSyncObject :model_type "Card" :model_id (:id card))))
-          "A changed serialization must mark the row dirty"))))
+    (mt/with-temporary-setting-values [remote-sync-type :read-write]
+      (mt/with-temp [:model/Collection coll {:is_remote_synced true :name "RS"}
+                     :model/Card card {:name "Original" :dataset_query (mt/mbql-query venues) :collection_id (:id coll)}]
+        (t2/delete! :model/RemoteSyncObject)
+        (t2/insert! :model/RemoteSyncObject {:model_type "Card" :model_id (:id card) :model_name "Original"
+                                             :status "synced"
+                                             :content_hash (source/row->content-hash {:model_type "Card" :model_id (:id card)})
+                                             :status_changed_at (t/offset-date-time)})
+        (t2/update! :model/Card (:id card) {:name "Renamed"})
+        (events/publish-event! :event/card-update {:object (t2/select-one :model/Card :id (:id card))
+                                                   :previous-object card
+                                                   :user-id (mt/user->id :rasta)})
+        (is (= "update" (:status (t2/select-one :model/RemoteSyncObject :model_type "Card" :model_id (:id card))))
+            "A changed serialization must mark the row dirty")))))
 
 (deftest revert-to-baseline-resyncs-test
   (testing "An update whose content matches the synced baseline clears a stale dirty flag (GHY-3933)"
-    (mt/with-temp [:model/Collection coll {:is_remote_synced true :name "RS"}
-                   :model/Card card {:name "C" :dataset_query (mt/mbql-query venues) :collection_id (:id coll)}]
-      (t2/delete! :model/RemoteSyncObject)
-      (t2/insert! :model/RemoteSyncObject {:model_type "Card" :model_id (:id card) :model_name "C"
-                                           :status "update"
-                                           :content_hash (source/row->content-hash {:model_type "Card" :model_id (:id card)})
-                                           :status_changed_at (t/offset-date-time)})
-      (events/publish-event! :event/card-update {:object card :previous-object card :user-id (mt/user->id :rasta)})
-      (is (= "synced" (:status (t2/select-one :model/RemoteSyncObject :model_type "Card" :model_id (:id card))))
-          "Content matching the baseline must clear a stale dirty flag")
-      (is (not (sync-object/dirty?))))))
+    (mt/with-temporary-setting-values [remote-sync-type :read-write]
+      (mt/with-temp [:model/Collection coll {:is_remote_synced true :name "RS"}
+                     :model/Card card {:name "C" :dataset_query (mt/mbql-query venues) :collection_id (:id coll)}]
+        (t2/delete! :model/RemoteSyncObject)
+        (t2/insert! :model/RemoteSyncObject {:model_type "Card" :model_id (:id card) :model_name "C"
+                                             :status "update"
+                                             :content_hash (source/row->content-hash {:model_type "Card" :model_id (:id card)})
+                                             :status_changed_at (t/offset-date-time)})
+        (events/publish-event! :event/card-update {:object card :previous-object card :user-id (mt/user->id :rasta)})
+        (is (= "synced" (:status (t2/select-one :model/RemoteSyncObject :model_type "Card" :model_id (:id card))))
+            "Content matching the baseline must clear a stale dirty flag")
+        (is (not (sync-object/dirty?)))))))
 
 ;;; ------------------------------------------- mark-rows-synced! -------------------------------------------
 
 (deftest content-metadata-matches-row-hash-test
   (testing "a full export writes a content_hash matching per-row row->content-hash for every identity flavor —
             including the extract-query overrides (Collection, NativeQuerySnippet), hybrids (Measure), and path
-            models (Field) that have no entity_id (GHY-3933)"
+            models (TableUserSettings, keyed by table_id) that have no entity_id (GHY-3933)"
     (with-library-synced
       (mt/with-temporary-setting-values [remote-sync-type :read-write]
         (mt/with-temp [:model/Database db {:name "DB"}
@@ -209,14 +218,14 @@
                        :model/Card card {:name "Card" :dataset_query (mt/mbql-query venues) :collection_id (:id rs)}
                        :model/NativeQuerySnippet snip {:name "Snip" :content "SELECT 1" :collection_id (:id snips)}
                        :model/Table table {:name "T" :schema "PUBLIC" :db_id (:id db) :is_published true :collection_id (:id data)}
-                       :model/Field field {:name "F" :table_id (:id table) :base_type :type/Integer}
-                       :model/FieldUserSettings _ {:field_id (:id field) :description "curated"}
+                       :model/Field _field {:name "F" :table_id (:id table) :base_type :type/Integer}
+                       :model/TableUserSettings _ {:table_id (:id table) :display_name "curated"}
                        :model/Measure measure {:name "M" :table_id (:id table)}]
           (mt/with-model-cleanup [:model/RemoteSyncTask]
             (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "export" :initiated_by (mt/user->id :rasta)})
                   rows    (mapv (fn [[mt id]] {:model_type mt :model_id id})
                                 [["Card" (:id card)] ["Collection" (:id rs)] ["NativeQuerySnippet" (:id snip)]
-                                 ["FieldUserSettings" (:id field)] ["Measure" (:id measure)]])]
+                                 ["TableUserSettings" (:id table)] ["Measure" (:id measure)]])]
               (t2/delete! :model/RemoteSyncObject)
               (doseq [row rows]
                 (t2/insert! :model/RemoteSyncObject (merge row {:model_name "x" :status "synced"
@@ -414,6 +423,27 @@
         (events/publish-event! topic (merge {:object entity :user-id (mt/user->id :rasta)}
                                             (when payload-fn (payload-fn entity))))
         (:status (t2/select-one :model/RemoteSyncObject :model_type model-type :model_id model-id))))))
+
+(deftest glossary-import-then-noop-stays-synced-test
+  (testing "After a real import, a no-op Glossary update stays synced"
+    (mt/with-temporary-setting-values [remote-sync-enabled true]
+      (mt/with-model-cleanup [:model/Glossary :model/Collection]
+        ;; The snapshot carries the Library as a read-write instance exports it, so the Library stays synced
+        ;; through the import and the Glossary spec is enabled when the ledger is rebuilt.
+        (t2/delete! :model/Collection :entity_id collection/library-entity-id)
+        (let [eid   "test-glossary-xxxxxxx"
+              files {"main" {"collections/library/library.yaml"
+                             (test-helpers/generate-collection-yaml collection/library-entity-id "Library"
+                                                                    :type "library" :is-remote-synced true)
+                             "collections/main/test_coll/test_coll.yaml"
+                             (test-helpers/generate-collection-yaml "test-collection-1xxxx" "Test Collection")
+                             "glossary/arr.yaml"
+                             (test-helpers/generate-glossary-yaml eid "ARR" "Annual recurring revenue")}}]
+          (is (= "synced"
+                 (import-then-noop-status!
+                  files "Glossary"
+                  #(t2/select-one :model/Glossary :entity_id eid)
+                  :event/glossary-update))))))))
 
 (deftest transform-import-then-noop-stays-synced-test
   (testing "After a real import, a no-op Transform update stays synced (GHY-3933)"

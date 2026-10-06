@@ -90,7 +90,8 @@
           (testing "Nested models should declare `parent-ref`\n"
             (doseq [[_nested transform] (filter #(::serdes/nested (second %)) spec')
                     :let                [{:keys [model backward-fk]} transform
-                                         inner-spec (serdes/make-spec (name model) nil)]]
+                                         inner-spec (serdes/make-spec (name model) nil)]
+                    :when               (not (:delete-children! (:opts transform)))]
               (testing (format "%s has %s declared as `parent-ref`" model backward-fk)
                 (is (= (serdes/parent-ref)
                        (get-in inner-spec [:transform backward-fk]))))))
@@ -158,7 +159,7 @@
               ;; check applies to the parent's `dependencies`, not theirs. Skipped either
               ;; via the explicit list in `serdes.models/inlined-models` or by detecting a
               ;; nil `generate-path` (the convention for nested-only models like
-              ;; QueryAction / HTTPAction / ImplicitAction).
+              ;; QueryAction / ImplicitAction).
               :when (not (or (inlined? m) (inlined-via-nested? m)))
               :let [fks (->> (:transform (serdes/make-spec m nil))
                              direct-fks

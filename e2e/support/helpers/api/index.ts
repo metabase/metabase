@@ -39,6 +39,7 @@ export { createTransformTag } from "./createTransformTag";
 export * from "./customVizPlugin";
 export { deleteComment } from "./deleteComment";
 export { editDashboardCard } from "./editDashboardCard";
+export { addUserToGroup } from "./groupPermissions";
 export { getCurrentUser } from "./getCurrentUser";
 export { publishTables } from "./publishTables";
 export { remapDisplayValueToFK } from "./remapDisplayValueToFK";

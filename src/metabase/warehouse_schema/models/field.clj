@@ -5,7 +5,6 @@
    [metabase.app-db.core :as mdb]
    [metabase.lib.core :as lib]
    [metabase.lib.schema.metadata]
-   [metabase.models.humanization :as humanization]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.permissions.core :as perms]
@@ -16,20 +15,21 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [metabase.warehouse-schema.db :as warehouse-schema.db]
+   [metabase.warehouse-schema.humanization :as humanization]
    [metabase.warehouse-schema.models.field-values :as field-values]
+   [metabase.warehouse-schema.schema]
    [metabase.warehouses.models.database :as database]
    [methodical.core :as methodical]
    [potemkin :as p]
    [toucan2.core :as t2]
-   [toucan2.protocols :as t2.protocols]
    [toucan2.tools.hydrate :as t2.hydrate]))
 
 (set! *warn-on-reflection* true)
 
 (comment metabase.lib.schema.metadata/keep-me)
 
-#_{:clj-kondo/ignore [:missing-docstring]} ; false positive
 (p/import-def metabase.lib.schema.metadata/column-visibility-types visibility-types)
 
 (def data-sensitivity-types
@@ -106,7 +106,7 @@
   {:in  mi/json-in
    :out (comp update-semantic-numeric-values mi/json-out-with-keywordization)})
 
-(t2/deftransforms :model/Field
+(def ^:private field-transforms
   {:base_type         transform-field-base-type
    :effective_type    transform-field-effective-type
    :coercion_strategy transform-field-coercion-strategy
@@ -116,7 +116,10 @@
    :data_sensitivity  mi/transform-keyword
    :fingerprint       transform-json-fingerprints
    :settings          mi/transform-json
-   :nfc_path          mi/transform-json})
+   :nfc_path          mi/transform-json
+   :json_unfolding    mi/transform-boolean})
+
+(t2/deftransforms :model/Field field-transforms)
 
 (doto :model/Field
   (derive :metabase/model)
@@ -163,32 +166,15 @@
         enforce-effective-type-invariant)))
 
 (def field-user-settings
-  "Set of user-settable values for a Field"
-  #{:semantic_type :description :display_name :visibility_type :has_field_values :effective_type :coercion_strategy :fk_target_field_id
-    :caveats :points_of_interest :nfc_path :json_unfolding :settings :data_sensitivity})
-
-(defn- ensure-field-user-settings-exist-for-fk-target-field [field]
-  (warehouse-schema.db/insert-field-user-settings!
-   (map (fn [{:keys [id]}] {:field_id id})
-        (warehouse-schema.db/fk-source-field-ids-without-user-settings (:id field)))))
-
-(defn- sync-user-settings [field]
-  ;; we transparently prevent updates that would override user-set values
-  (let [user-settings (warehouse-schema.db/field-user-settings (:id field))
-        updated-field (-> (merge field (u/select-keys-when user-settings :non-nil field-user-settings))
-                          ;; GHY-3388 invariant: enforce coercion_strategy=nil ⇒ effective_type=base_type
-                          ;; AFTER the user-settings merge, since the overlay can introduce stale effective_type
-                          enforce-effective-type-invariant)]
-    (t2.protocols/with-current field updated-field)))
+  "Set of user-settable values for a Field; see [[warehouse-schema-overlay/user-settable-field-columns]]."
+  warehouse-schema-overlay/user-settable-field-columns)
 
 (t2/define-before-update :model/Field
   [field]
   (when (false? (:active (t2/changes field)))
-    (ensure-field-user-settings-exist-for-fk-target-field field)
     (warehouse-schema.db/clear-fk-targets-to-field! (:id field))
-    ;; we must explicitly clear user-set fks in this case
     (warehouse-schema.db/clear-user-settings-fk-targets-to-field! (:id field)))
-  (sync-user-settings field))
+  (enforce-effective-type-invariant field))
 
 (t2/define-before-delete :model/Field
   [field]
@@ -469,25 +455,35 @@
   [path]
   (let [[table-path fields] (split-with #(not= "Field" (:model %)) path)
         table               (serdes/load-find-local table-path)]
-    (warehouse-schema.db/field-in-path (:id table) (map :id (reverse fields)))))
+    (when table
+      (warehouse-schema.db/field-in-path (:id table) (map :id (reverse fields))))))
+
+(def ^:private legacy-dimensions
+  "The Dimensions a Field file carried before they got files of their own."
+  (serdes/nested :model/Dimension :field_id {}))
+
+(defmethod serdes/load-one! "Field" [ingested maybe-local]
+  (let [field (serdes/default-load-one! ingested maybe-local)]
+    (when (contains? ingested :dimensions)
+      ((:import-with-context legacy-dimensions) field :dimensions (:dimensions ingested)))
+    field))
 
 (defmethod serdes/deserialization-dependencies "Field" [field]
   (let [db-path (first (serdes/path field))]
     #{[db-path]}))
 
-(defmethod serdes/make-spec "Field" [_model-name opts]
-  {:copy      [:active :base_type :caveats :coercion_strategy :custom_position :data_sensitivity :database_default :database_indexed
+(defmethod serdes/make-spec "Field" [_model-name _opts]
+  {:copy      [:active :base_type :caveats :coercion_strategy :data_sensitivity :database_default :database_indexed
                :database_is_auto_increment :database_is_generated :database_is_nullable :database_is_pk
                :database_partitioned :database_position :database_required :database_type
                :description :display_name :effective_type :has_field_values :is_defective_duplicate
                :json_unfolding :name :nfc_path :points_of_interest :position :preview_display :semantic_type :settings
                :unique_field_helper :visibility_type]
-   :skip      [:dimension_interestingness :fingerprint :fingerprint_version :last_analyzed]
+   :skip      [:custom_position :dimension_interestingness :fingerprint :fingerprint_version :last_analyzed]
    :transform {:created_at         (serdes/date)
                :table_id           (serdes/fk :model/Table)
                :fk_target_field_id (serdes/fk :model/Field)
-               :parent_id          (serdes/fk :model/Field)
-               :dimensions         (serdes/nested :model/Dimension :field_id (merge {:sort-by (juxt :name :created_at)} opts))}
+               :parent_id          (serdes/fk :model/Field)}
    :defaults  {:active                     true
                :database_is_auto_increment false
                :database_required          false

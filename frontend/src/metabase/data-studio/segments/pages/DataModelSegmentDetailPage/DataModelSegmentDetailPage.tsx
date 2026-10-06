@@ -29,6 +29,7 @@ export function DataModelSegmentDetailPage() {
   return (
     <SegmentDetailPage
       segment={segment}
+      table={table}
       tabUrls={tabUrls}
       breadcrumbs={
         <DataModelSegmentBreadcrumbs table={table} segment={segment} />

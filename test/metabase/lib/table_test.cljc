@@ -71,14 +71,14 @@
   ;; the database that ran the query and we need to use the original name to refer back to it in subsequent stages.
   (let [mp    (lib.tu/mock-metadata-provider
                {:database (assoc meta/database :id 1)
-                :tables   [(assoc (meta/table-metadata :venues) :id 1, :database_id 1)]
+                :tables   [(assoc (meta/table-metadata :venues) :id 1, :db-id 1)]
                 :fields   [(assoc (meta/field-metadata :venues :id)
                                   :id 1
-                                  :table_id 1
+                                  :table-id 1
                                   :name "Total_number_of_people_from_each_state_separated_by_state_and_then_we_do_a_count")
                            (assoc (meta/field-metadata :venues :id)
                                   :id 2
-                                  :table_id 1
+                                  :table-id 1
                                   :name "Total_number_of_people_from_each_state_separated_by_state_and_then_we_do_a_count")]})
         query (lib/query mp (lib.metadata/table mp 1))]
     (is (=? [{:lib/source-column-alias  "Total_number_of_people_from_each_state_separated_by_state_and_then_we_do_a_count"

@@ -2,6 +2,7 @@ import type { CodeLanguage } from "metabase/common/components/CodeEditor";
 import type {
   Card,
   Dashboard,
+  DashboardId,
   EmbedResourceDownloadOptions,
   EmbeddingParameters,
   ParameterValueOrArray,
@@ -85,3 +86,24 @@ export type ServerCodeSampleConfig = {
 };
 
 export type CodeSampleOption = ClientCodeSampleConfig | ServerCodeSampleConfig;
+
+export type SdkIframeEmbedSetupModalInitialState = {
+  resourceType?: string | null;
+  resourceId?: string | number | null;
+  isGuest?: boolean;
+  useExistingUserSession?: boolean;
+};
+
+export type SdkIframeEmbedSetupExperience =
+  | "dashboard"
+  | "chart"
+  | "exploration"
+  | "browser"
+  | "metabot";
+
+export type LegacyStaticEmbeddingModalProps = {
+  experience: SdkIframeEmbedSetupExperience;
+  dashboardId?: DashboardId | null;
+  questionId?: string | number | null;
+  parentInitialState: SdkIframeEmbedSetupModalInitialState;
+};

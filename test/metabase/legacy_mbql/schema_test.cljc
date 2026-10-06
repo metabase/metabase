@@ -145,8 +145,8 @@
                                                                   "[[WHERE {{date_range}}]]"
                                                                   "ORDER BY \"TIMESTAMP\" ASC"
                                                                   " LIMIT 1"])
-                              :template-tags {"date_range" template-tag}
-                              :parameters    [parameter]}}]
+                              :template-tags {"date_range" template-tag}}
+                   :parameters [parameter]}]
         (is (nil? (me/humanize (mr/explain ::mbql.s/Query query))))))))
 
 (deftest ^:parallel value-test

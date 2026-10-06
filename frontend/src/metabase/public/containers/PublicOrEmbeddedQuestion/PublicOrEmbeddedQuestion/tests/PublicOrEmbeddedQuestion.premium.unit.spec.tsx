@@ -1,11 +1,13 @@
 import userEvent from "@testing-library/user-event";
-import fetchMock from "fetch-mock";
 
 import { setupLastDownloadFormatEndpoints } from "__support__/server-mocks";
 import { getIcon, queryIcon, screen, within } from "__support__/ui";
+import * as localization from "metabase/utils/localization";
 import { createMockTokenFeatures } from "metabase-types/api/mocks";
 
 import { type SetupOpts, setup } from "./setup";
+
+const loadLocalizationSpy = jest.spyOn(localization, "loadLocalization");
 
 const FAKE_UUID = "123456";
 
@@ -23,6 +25,7 @@ function setupPremium(opts?: Partial<SetupOpts>) {
 
 describe("PublicOrEmbeddedQuestion", () => {
   beforeEach(() => {
+    loadLocalizationSpy.mockClear();
     setupLastDownloadFormatEndpoints();
   });
 
@@ -64,9 +67,7 @@ describe("PublicOrEmbeddedQuestion", () => {
 
       await userEvent.hover(getIcon("download"));
 
-      expect(
-        fetchMock.callHistory.calls(`path:/app/locales/${expectedLocale}.json`),
-      ).toHaveLength(1);
+      expect(loadLocalizationSpy).toHaveBeenCalledWith(expectedLocale);
     });
   });
 });

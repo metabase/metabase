@@ -80,7 +80,9 @@ export function seriesSetting({
     },
     display: {
       widget: "segmentedControl",
-      title: t`Display type`,
+      get title() {
+        return t`Display type`;
+      },
       getProps: () => ({
         options: [
           { value: "line", icon: "line" },
@@ -116,7 +118,9 @@ export function seriesSetting({
       },
     },
     "line.interpolate": {
-      title: t`Line shape`,
+      get title() {
+        return t`Line shape`;
+      },
       widget: "segmentedControl",
       getProps: () => ({
         options: [
@@ -134,7 +138,9 @@ export function seriesSetting({
       readDependencies: ["display"],
     },
     "line.style": {
-      title: t`Line style`,
+      get title() {
+        return t`Line style`;
+      },
       widget: "segmentedControl",
       getProps: () => ({
         options: [
@@ -149,7 +155,9 @@ export function seriesSetting({
       readDependencies: ["display"],
     },
     "line.size": {
-      title: t`Line size`,
+      get title() {
+        return t`Line size`;
+      },
       widget: "segmentedControl",
       getProps: () => ({
         options: [
@@ -164,7 +172,9 @@ export function seriesSetting({
       readDependencies: ["display"],
     },
     "line.marker_enabled": {
-      title: t`Show dots on lines`,
+      get title() {
+        return t`Show dots on lines`;
+      },
       widget: "segmentedControl",
       getProps: () => ({
         options: [
@@ -182,7 +192,9 @@ export function seriesSetting({
       readDependencies: ["display"],
     },
     "line.missing": {
-      title: t`Replace missing values with`,
+      get title() {
+        return t`Replace missing values with`;
+      },
       widget: "select",
       getProps: () => ({
         options: [
@@ -200,7 +212,9 @@ export function seriesSetting({
       readDependencies: ["display"],
     },
     axis: {
-      title: t`Y-axis position`,
+      get title() {
+        return t`Y-axis position`;
+      },
       widget: "segmentedControl",
       getHidden: (single, _seriesSettings, extra) =>
         single.card.display === "row" ||
@@ -217,7 +231,9 @@ export function seriesSetting({
       readDependencies: ["display"],
     },
     show_series_trendline: {
-      title: t`Show trend line for this series`,
+      get title() {
+        return t`Show trend line for this series`;
+      },
       widget: "toggle",
       inline: true,
       getHidden: (_single, _seriesSettings, extra) => {
@@ -232,7 +248,9 @@ export function seriesSetting({
       readDependencies: ["graph.show_trendline"],
     },
     show_series_values: {
-      title: t`Show values for this series`,
+      get title() {
+        return t`Show values for this series`;
+      },
       widget: "toggle",
       inline: true,
       getHidden: (_single, _seriesSettings, extra) => {

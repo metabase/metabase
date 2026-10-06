@@ -79,7 +79,7 @@
   (testing "under external-only (what Metabase Cloud gets) an internal tile URL is never requested —
            map-tile-server-url is admin-settable, so a raw GET here would be a blind SSRF sink reachable
            from any subscription render"
-    (mt/with-temporary-setting-values [map-tile-server-allowed-networks :external-only]
+    (mt/with-temp-env-var-value! [mb-map-tile-server-allowed-networks "external-only"]
       (let [requested (atom [])]
         (fake/with-fake-routes {#".*" (fn [req]
                                         (swap! requested conj (:url req))
@@ -99,7 +99,7 @@
 (deftest fetch-tile-honors-allow-private-test
   (testing "under allow-private (the self-hosted default) a tile server on the deployment's own network is
            fetched, so a URL an admin is allowed to save is one subscription renders can actually reach"
-    (mt/with-temporary-setting-values [map-tile-server-allowed-networks :allow-private]
+    (mt/with-temp-env-var-value! [mb-map-tile-server-allowed-networks "allow-private"]
       (fake/with-fake-routes (render.tu/fake-tile-routes #"http://tiles\.internal/.*")
         (is (some? (#'maps/fetch-tile "http://tiles.internal/{z}/{x}/{y}.png" 3 4 2))))))
   (testing "loopback and cloud metadata are still refused — by the policy's DNS resolver at connect time,

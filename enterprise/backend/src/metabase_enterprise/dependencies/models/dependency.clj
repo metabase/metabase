@@ -3,9 +3,17 @@
    [clojure.set :as set]
    [metabase-enterprise.dependencies.db :as dependencies.db]
    [metabase-enterprise.dependencies.dependency-types :as deps.dependency-types]
+   [metabase-enterprise.sandbox.schema]
+   [metabase.documents.schema :as documents.schema]
    [metabase.graph.core :as graph]
    [metabase.lib.core :as lib]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
+   [metabase.measures.schema]
    [metabase.models.interface :as mi]
+   [metabase.native-query-snippets.schema]
+   [metabase.queries.schema :as queries.schema]
+   [metabase.segments.schema]
+   [metabase.transforms.schema :as transforms.schema]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [methodical.core :as methodical]
@@ -178,7 +186,22 @@
 (mu/defn is-native-entity? :- :boolean
   "Checks whether an entity involves native sql.  `entity` can either be a toucan object or a metadata object."
   [entity-type :- ::deps.dependency-types/dependency-types
-   entity]
+   entity      :- [:multi {:dispatch (fn [x] (if (:lib/type x) :lib-metadata :row))}
+                   [:lib-metadata [:multi {:dispatch :lib/type}
+                                   [:metadata/card                 ::lib.schema.metadata/card]
+                                   [:metadata/transform            ::lib.schema.metadata/transform]
+                                   [:metadata/native-query-snippet ::lib.schema.metadata/native-query-snippet]
+                                   [:metadata/table                ::lib.schema.metadata/table]]]
+                   [:row [:or
+                          ::queries.schema/card
+                          :metabase.warehouse-schema.schema/table
+                          :metabase.native-query-snippets.schema/native-query-snippet
+                          ::transforms.schema/transform
+                          :metabase.dashboards.schema/dashboard
+                          ::documents.schema/document
+                          :metabase-enterprise.sandbox.schema/sandbox
+                          :metabase.segments.schema/segment
+                          :metabase.measures.schema/measure]]]]
   (boolean
    (case entity-type
      :card (some-> entity

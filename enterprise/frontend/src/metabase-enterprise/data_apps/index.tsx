@@ -1,9 +1,10 @@
 import { PLUGIN_DATA_APPS } from "metabase/plugins";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 
+import { ManageDataAppUsersPage } from "./admin/ManageDataAppUsersPage";
 import { ManageDataAppsPage } from "./admin/ManageDataAppsPage";
 import { DataAppsNavbarSection } from "./navbar/DataAppsNavbarSection";
-import { getRoutes } from "./routes";
+import { getRoutes, registerDataAppsPagePrefetch } from "./routes";
 
 /**
  * Initialize data-apps plugin features.
@@ -17,6 +18,8 @@ export function initializePlugin() {
     PLUGIN_DATA_APPS.isEnabled = true;
     PLUGIN_DATA_APPS.getRoutes = getRoutes;
     PLUGIN_DATA_APPS.ManageDataAppsPage = ManageDataAppsPage;
+    PLUGIN_DATA_APPS.ManageDataAppUsersPage = ManageDataAppUsersPage;
     PLUGIN_DATA_APPS.MainNavbarSection = DataAppsNavbarSection;
+    registerDataAppsPagePrefetch();
   }
 }

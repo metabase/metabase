@@ -1,7 +1,8 @@
 (ns metabase.actions.schema
   (:require
+   [metabase.actions.types :as actions.types]
    [metabase.lib-be.schema :as lib-be.schema]
-   [metabase.lib.core :as lib]
+   [metabase.lib.schema.actions :as lib.schema.actions]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
@@ -83,35 +84,8 @@
   [:enum
    {:decode/normalize keyword
     :description      (deferred-tru "Unsupported action type")}
-   :http
    :implicit
    :query])
-
-(mr/def ::http-action.json-query
-  [:and
-   {:description (deferred-tru "must be a valid json-query, something like ''.item.title''")}
-   string?
-   [:fn
-    {:error/fn (fn [_ _]
-                 (deferred-tru "must be a valid json-query, something like ''.item.title''"))}
-    #((requiring-resolve 'metabase.actions.http-action/apply-json-query) {} %)]])
-
-(mr/def ::http-action.template
-  [:map {:closed true}
-   [:method                              [:enum "GET" "POST" "PUT" "DELETE" "PATCH"]]
-   [:url                                 [string? {:min 1}]]
-   [:body               {:optional true} [:maybe string?]]
-   [:headers            {:optional true} [:maybe string?]]
-   [:parameters         {:optional true} [:maybe ::parameters.schema/parameters]]])
-
-(def ^:private http-action-entries
-  [[:template        {:optional true} [:maybe ::http-action.template]]
-   [:response_handle {:optional true} [:maybe ::http-action.json-query]]
-   [:error_handle    {:optional true} [:maybe ::http-action.json-query]]
-   [:disabled        {:optional true} :boolean]])
-
-(mr/def ::http-action
-  (into [:map {:closed true}] http-action-entries))
 
 (mr/def ::implicit-action.kind
   [:enum
@@ -151,13 +125,6 @@
 (mr/def ::action.parameters
   [:sequential [:ref ::action.parameter]])
 
-(mu/defn normalize-parameters :- ::action.parameters
-  "Normalize an Action's `:parameters` coming out of the application database or in via an API request. Like
-  [[metabase.parameters.schema/normalize-parameters]], but keeps the annotations an implicit action's parameters
-  carry."
-  [parameters]
-  (lib/normalize ::action.parameters parameters))
-
 (mu/defn- action-schema [schema-type :- [:enum :select :update :insert]]
   ;; `required-for-insert` = you have to specify this when you insert a row
   ;;
@@ -176,8 +143,10 @@
                                 :insert nil)
                               [[:name                   required-for-insert :string]
                                [:type                   required-for-insert ::type]
-                               [:model_id               required-for-insert ::lib.schema.id/card]
+                               [:model_id               {:optional true}    [:maybe ::lib.schema.id/card]]
+                               [:collection_id          {:optional true}    [:maybe ::lib.schema.id/collection]]
                                [:archived               {:optional true}    :boolean]
+                               [:archived_directly      {:optional true}    :boolean]
                                [:description            {:optional true}    [:maybe :string]]
                                [:parameters             {:optional true}    [:maybe [:sequential ::action.parameter]]]
                                [:database_id            {:optional true}    [:maybe ::lib.schema.id/database]]
@@ -194,12 +163,11 @@
     [:merge
      (into [:map {:closed true}] common)
      [:multi {:decode/normalize lib.schema.common/normalize-map-no-kebab-case
-              :dispatch         (comp keyword :type)}
-      [:http     (into [:map {:closed true}] http-action-entries)]
-      [:implicit (into [:map {:closed true}] implicit-action-entries)]
+              :dispatch         (comp #{:implicit :query} keyword :type)}
+      [:implicit (into [:map {:closed true} [:model_id required-for-insert ::lib.schema.id/card]] implicit-action-entries)]
       [:query    (into [:map {:closed true}] query-action-entries)]
       ;; a partial update need not repeat `:type`; accept every type's keys rather than dropping them
-      [nil       (into [:map {:closed true}] cat [http-action-entries implicit-action-entries query-action-entries])]]]))
+      [nil       (into [:map {:closed true}] cat [implicit-action-entries query-action-entries])]]]))
 
 (mr/def ::action
   "An Action as it should appear when we `SELECT` it from the app DB."
@@ -212,22 +180,6 @@
 (mr/def ::action.for-update
   "Schema for updating an Action (REST API or internally)."
   (action-schema :update))
-
-(mr/def ::httpaction
-  "A HTTPAction as selected from the app DB: every column of `:http_action`."
-  [:map {:closed true}
-   [:action_id       ::lib.schema.id/action]
-   [:template        ::http-action.template]
-   [:response_handle [:maybe :string]]
-   [:error_handle    [:maybe :string]]])
-
-(mr/def ::httpaction.update
-  "What an update (or insert) of a HTTPAction accepts: every column of `:http_action` except `id`, all optional."
-  [:map {:closed true}
-   [:action_id       {:optional true} [:maybe ::lib.schema.id/action]]
-   [:template        {:optional true} [:maybe ::http-action.template]]
-   [:response_handle {:optional true} [:maybe :string]]
-   [:error_handle    {:optional true} [:maybe :string]]])
 
 (mr/def ::implicit-action.row
   "A ImplicitAction as selected from the app DB: every column of `:implicit_action`."
@@ -243,7 +195,7 @@
 
 (mr/def ::query-action.dataset-query
   "The `:dataset_query` column of a QueryAction, decoded."
-  :map)
+  ::lib-be.schema/maybe-legacy-or-empty-query)
 
 (mr/def ::query-action.row
   "A QueryAction as selected from the app DB: every column of `:query_action`."
@@ -260,3 +212,22 @@
    [:database_id   {:optional true} [:maybe ::lib.schema.id/database]]
    [:dataset_query {:optional true} [:maybe ::query-action.dataset-query]]
    [:legacy_query  {:optional true} [:maybe :string]]])
+
+(mr/def ::execution.row-diff
+  "One effect recorded against the `:effects` key of [[::execution-context]]: the before/after state of a row a
+  perform-action!* method modified."
+  [:map {:closed true}
+   [:table-id ::lib.schema.id/table]
+   [:db-id    ::lib.schema.id/database]
+   [:before   [:maybe ::lib.schema.actions/row]]
+   [:after    [:maybe ::lib.schema.actions/row]]])
+
+(mr/def ::execution-context
+  "The `context` map threaded through `metabase.actions.actions/perform-action!*` and its driver implementations."
+  [:map {:closed true}
+   [:user-id          {:optional true} [:maybe ms/PositiveInt]]
+   [:scope            {:optional true} [:maybe ::actions.types/scope.hydrated]]
+   [:driver           {:optional true} [:maybe :keyword]]
+   [:invocation-id    {:optional true} [:maybe :string]]
+   [:invocation-stack {:optional true} [:maybe [:sequential [:tuple qualified-keyword? :string]]]]
+   [:effects          {:optional true} [:maybe [:sequential [:tuple qualified-keyword? ::execution.row-diff]]]]])

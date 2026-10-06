@@ -188,7 +188,7 @@
   "DEPRECATED: Use Lib to generate MBQL queries instead of hand-rolling legacy MBQL queries in new tests.
 
   Like `mbql-query`, but for native queries."
-  [inner-native-query :- :map]
+  [inner-native-query :- :metabase.lib.util/query-like]
   {:deprecated "0.61.0"}
   {:database (id)
    :type     :native
@@ -337,8 +337,8 @@
    [:+conn-props {:optional true} [:sequential :string]]
    [:-conn-props {:optional true} [:sequential :string]]
    [:+parent {:optional true} :keyword]
-   [:+fns {:optional true} [:sequential [:function [:=> [:cat :keyword] :any]]]]
-   [:-fns {:optional true} [:sequential [:function [:=> [:cat :keyword] :any]]]]])
+   [:+fns {:optional true} [:sequential [:function [:=> [:cat :keyword] [:or :boolean [:maybe :keyword]]]]]]
+   [:-fns {:optional true} [:sequential [:function [:=> [:cat :keyword] [:or :boolean [:maybe :keyword]]]]]]])
 
 (mu/defn driver-select :- [:set :keyword]
   "Select drivers to be tested.
