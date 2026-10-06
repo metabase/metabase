@@ -8,9 +8,9 @@
 
 ;;; TODO -- move these into appropriate modules.
 
+;; The optional key of an update event that a revision revert caused: the id of the Revision that the entity was
+;; reverted to. No docstring: `:merge` would make it the `:description` of each update schema that merges this one.
 (mr/def ::revert
-  "The optional key of an update event that a revision revert caused: the id of the Revision that the entity was
-  reverted to."
   [:map {:closed true}
    [:reverted-to-revision-id {:optional true} pos-int?]])
 
