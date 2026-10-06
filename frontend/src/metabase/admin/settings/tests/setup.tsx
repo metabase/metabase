@@ -16,6 +16,7 @@ import {
   setupSettingsEndpoints,
   setupSlackAppInfoEndpoint,
   setupSlackManifestEndpoint,
+  setupTimezonesEndpoint,
   setupTokenStatusEndpoint,
   setupUploadManagementEndpoint,
   setupUserKeyValueEndpoints,
@@ -89,7 +90,7 @@ export const enterpriseRoutes: RouteMap = {
 export const premiumRoutes: RouteMap = {
   saml: {
     path: "/authentication/saml",
-    testPattern: /Configure your identity provider/i,
+    testPattern: /Identity provider \(IdP\) configuration/i,
   },
   jwt: { path: "/authentication/jwt", testPattern: /Server Settings/i },
 };
@@ -151,6 +152,7 @@ export const setup = async ({
   setupApiKeyEndpoints([]);
   setupGroupsEndpoint([]);
   setupDatabasesEndpoints([]);
+  setupTimezonesEndpoint(["Europe/Paris", "US/Mountain", "UTC"]);
   setupSlackManifestEndpoint();
   setupSlackAppInfoEndpoint();
   setupUploadManagementEndpoint([]);

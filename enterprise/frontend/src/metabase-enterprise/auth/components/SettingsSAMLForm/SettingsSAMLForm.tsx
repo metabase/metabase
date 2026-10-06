@@ -1,18 +1,22 @@
+import type { FormikHelpers } from "formik";
 import { useCallback } from "react";
-import { jt, t } from "ttag";
+import { t } from "ttag";
 import _ from "underscore";
 import * as Yup from "yup";
 
-import { GroupMappingsWidget } from "metabase/admin/settings/components/widgets/GroupMappingsWidget";
+import { SettingsGroupMappingSection } from "metabase/admin/settings/auth/components/GroupMappings";
 import {
   SETTINGS_FIELD_DESCRIPTION_PROPS,
+  getDefaultPlaceholder,
+  getEnvNoticeProps,
   getExtraFormFieldProps,
+  getStoredFieldValue,
+  resetFieldsToInitial,
 } from "metabase/admin/settings/utils";
 import { CopyTextInput } from "metabase/common/components/CopyTextInput";
-import { ExternalLink } from "metabase/common/components/ExternalLink";
+import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { Markdown } from "metabase/common/components/Markdown";
-import { useDocsUrl } from "metabase/common/hooks";
 import {
   Form,
   FormErrorMessage,
@@ -36,10 +40,13 @@ import {
   SettingsPageWrapper,
   SettingsSection,
 } from "metabase/settings-components";
-import { Flex, Stack, Text, Title } from "metabase/ui";
+import { Box, Flex, Stack, Text, Title } from "metabase/ui";
 import { useUpdateSamlMutation } from "metabase-enterprise/api";
 import { UserProvisioningSection } from "metabase-enterprise/auth/components/UserProvisioningSection";
-import type { EnterpriseSettings } from "metabase-types/api";
+import type {
+  EnterpriseSettings,
+  SettingDefinitionMap,
+} from "metabase-types/api";
 
 export type SAMLFormSettings = Pick<
   EnterpriseSettings,
@@ -55,7 +62,6 @@ export type SAMLFormSettings = Pick<
   | "saml-keystore-alias"
   | "saml-keystore-path"
   | "saml-attribute-group"
-  | "saml-group-sync"
 >;
 
 const SAML_FORM_SCHEMA = Yup.object({
@@ -71,17 +77,18 @@ export function SettingsSAMLForm() {
   const applicationName = useSelector(getApplicationName);
 
   const isEnabled = Boolean(settingValues?.["saml-enabled"]);
+  const isConfigured = settingValues?.["saml-configured"] ?? false;
 
   const handleSubmit = useCallback(
-    (values: SAMLFormSettings) => {
-      return updateSamlSettings({ ...values, "saml-enabled": true }).unwrap();
+    async (
+      values: SAMLFormSettings,
+      helpers: FormikHelpers<SAMLFormSettings>,
+    ) => {
+      await updateSamlSettings({ ...values, "saml-enabled": true }).unwrap();
+      // the form ignores refetches, so the saved values become its baseline
+      helpers.resetForm({ values });
     },
     [updateSamlSettings],
-  );
-
-  // eslint-disable-next-line metabase/no-unconditional-metabase-links-render -- Admin settings
-  const { url: docsUrl } = useDocsUrl(
-    "people-and-groups/authenticating-with-saml",
   );
 
   const siteUrl = useSetting("site-url");
@@ -112,29 +119,25 @@ export function SettingsSAMLForm() {
   );
 
   return (
-    <SettingsPageWrapper
-      title={t`SAML`}
-      description={jt`Use the settings below to configure your SSO via SAML. If you have any questions, check out our ${(
-        <ExternalLink
-          key="link"
-          href={docsUrl}
-        >{t`documentation`}</ExternalLink>
-      )}.`}
-    >
+    <SettingsPageWrapper title={t`SAML`}>
       <FormProvider
-        initialValues={getFormValues(settingValues ?? {})}
+        initialValues={getFormValues(settingDetails, settingValues)}
         onSubmit={handleSubmit}
         validationSchema={SAML_FORM_SCHEMA}
-        enableReinitialize
       >
-        {({ dirty }) => (
+        {({ dirty, initialValues, isSubmitting, setFieldValue }) => (
           <Form>
-            <Stack gap="lg">
+            <Stack gap="xl">
+              <UserProvisioningSection
+                settingKey="saml-user-provisioning-enabled?"
+                providerName="SAML"
+                reactivatesAccounts
+                lockedNote={scimNote}
+              />
+
               <SettingsSection
-                title={t`Configure your identity provider (IdP)`}
+                title={t`Identity provider (IdP) configuration`}
                 titleProps={SETTINGS_CARD_TITLE_PROPS}
-                description={t`Your identity provider will need the following info about ${applicationName}.`}
-                descriptionProps={SETTINGS_CARD_DESCRIPTION_PROPS}
                 stackProps={SETTINGS_CARD_STACK_PROPS}
               >
                 <CopyTextInput
@@ -145,17 +148,19 @@ export function SettingsSAMLForm() {
                   readOnly
                 />
 
-                <Title order={3} size="h5" mt="xxl">{t`SAML attributes`}</Title>
-                <Text c="text-secondary" mb="lg">
-                  {t`In most IdPs, you'll need to put each of these in an input box labeled "Name" in the attribute statements section.`}
-                </Text>
+                <Box mt="xxl">
+                  <Title order={3} size="h5">{t`SAML attributes`}</Title>
+                  <Text c="text-secondary" {...SETTINGS_CARD_DESCRIPTION_PROPS}>
+                    {t`In most IdPs, you'll need to put each of these in an input box labeled "Name" in the attribute statements section.`}
+                  </Text>
+                </Box>
 
                 <Stack gap="lg">
                   <FormTextInput
                     name="saml-attribute-email"
                     label={t`User's email attribute`}
                     hasCopyButton
-                    {...getExtraFormFieldProps(
+                    {...getEnvNoticeProps(
                       settingDetails?.["saml-attribute-email"],
                     )}
                   />
@@ -163,7 +168,7 @@ export function SettingsSAMLForm() {
                     name="saml-attribute-firstname"
                     label={t`User's first name attribute`}
                     hasCopyButton
-                    {...getExtraFormFieldProps(
+                    {...getEnvNoticeProps(
                       settingDetails?.["saml-attribute-firstname"],
                     )}
                   />
@@ -171,7 +176,7 @@ export function SettingsSAMLForm() {
                     name="saml-attribute-lastname"
                     label={t`User's last name attribute`}
                     hasCopyButton
-                    {...getExtraFormFieldProps(
+                    {...getEnvNoticeProps(
                       settingDetails?.["saml-attribute-lastname"],
                     )}
                   />
@@ -180,7 +185,7 @@ export function SettingsSAMLForm() {
                       name="saml-attribute-tenant"
                       label={t`Tenant assignment attribute`}
                       hasCopyButton
-                      {...getExtraFormFieldProps(
+                      {...getEnvNoticeProps(
                         settingDetails?.["saml-attribute-tenant"],
                       )}
                     />
@@ -189,25 +194,26 @@ export function SettingsSAMLForm() {
               </SettingsSection>
 
               <SettingsSection
-                title={t`Tell ${applicationName} about your identity provider`}
+                title={t`Identity provider info`}
                 titleProps={SETTINGS_CARD_TITLE_PROPS}
-                description={t`${applicationName} will need the following info about your provider.`}
-                descriptionProps={SETTINGS_CARD_DESCRIPTION_PROPS}
                 stackProps={SETTINGS_CARD_STACK_PROPS}
               >
                 <Stack gap="lg">
                   <FormTextInput
                     name="saml-identity-provider-uri"
                     label={t`SAML identity provider URL`}
-                    placeholder="https://your-org-name.yourIDP.com"
+                    description={t`This is the URL where your users go to log in to your identity provider.`}
+                    descriptionProps={SETTINGS_FIELD_DESCRIPTION_PROPS}
+                    placeholder="https://your-org-name.example.com"
                     required
-                    {...getExtraFormFieldProps(
+                    {...getEnvNoticeProps(
                       settingDetails?.["saml-identity-provider-uri"],
                     )}
                   />
                   <FormTextarea
                     name="saml-identity-provider-certificate"
                     label={t`SAML identity provider certificate`}
+                    placeholder="-----BEGIN CERTIFICATE-----...-----END CERTIFICATE-----"
                     {...getExtraFormFieldProps(
                       settingDetails?.["saml-identity-provider-certificate"],
                     )}
@@ -216,6 +222,9 @@ export function SettingsSAMLForm() {
                   <FormTextInput
                     name="saml-application-name"
                     label={t`SAML application name`}
+                    placeholder={getDefaultPlaceholder(
+                      settingDetails["saml-application-name"],
+                    )}
                     nullable
                     {...getExtraFormFieldProps(
                       settingDetails?.["saml-application-name"],
@@ -224,29 +233,27 @@ export function SettingsSAMLForm() {
                   <FormTextInput
                     name="saml-identity-provider-issuer"
                     label={t`SAML identity provider issuer`}
+                    description={t`This is a unique identifier for the IdP. Often referred to as Entity ID or simply 'Issuer'.`}
+                    descriptionProps={SETTINGS_FIELD_DESCRIPTION_PROPS}
+                    placeholder="http://www.example.com/141xkex604w0Q5PN724v"
                     required
-                    {...getExtraFormFieldProps(
+                    {...getEnvNoticeProps(
                       settingDetails?.["saml-identity-provider-issuer"],
                     )}
                   />
                 </Stack>
               </SettingsSection>
 
-              {/* the card saves on its own, so it stays out of the form's values */}
-              <UserProvisioningSection
-                settingKey="saml-user-provisioning-enabled?"
-                providerName="SAML"
-                lockedNote={scimNote}
-              />
-
               <CollapsibleSettingsSection
-                title={t`Sign SSO requests (optional)`}
+                title={t`Sign SSO requests`}
+                description={t`Use a keystore to sign authentication requests sent to your identity provider`}
                 defaultOpened={hasKeystoreSettings}
               >
                 <Stack gap="lg">
                   <FormTextInput
                     name="saml-keystore-path"
                     label={t`SAML keystore path`}
+                    placeholder="/path/to/keystore.jks"
                     nullable
                     {...getExtraFormFieldProps(
                       settingDetails?.["saml-keystore-path"],
@@ -258,13 +265,14 @@ export function SettingsSAMLForm() {
                     type="password"
                     placeholder={t`Shh...`}
                     nullable
-                    {...getExtraFormFieldProps(
+                    {...getEnvNoticeProps(
                       settingDetails?.["saml-keystore-password"],
                     )}
                   />
                   <FormTextInput
                     name="saml-keystore-alias"
                     label={t`SAML keystore alias`}
+                    placeholder="saml"
                     nullable
                     {...getExtraFormFieldProps(
                       settingDetails?.["saml-keystore-alias"],
@@ -273,35 +281,33 @@ export function SettingsSAMLForm() {
                 </Stack>
               </CollapsibleSettingsSection>
 
-              <SettingsSection
-                title={t`Group mapping`}
-                titleProps={SETTINGS_CARD_TITLE_PROPS}
-                description={t`To enable this, you'll need to create mappings to tell ${applicationName} which group(s) your users should be added to based on the SSO group they're in.`}
-                descriptionProps={SETTINGS_CARD_DESCRIPTION_PROPS}
-                stackProps={SETTINGS_CARD_STACK_PROPS}
+              <SettingsGroupMappingSection
+                syncSettingKey="saml-group-sync"
+                mappingsSettingKey="saml-group-mappings"
+                description={t`Automatically assign people to ${applicationName} groups based on groups from your SAML identity provider`}
+                nameLabel={t`SAML group name`}
+                namePlaceholder={t`Enter SAML group...`}
+                data-testid="saml-group-mapping-section"
+                disabled={!isConfigured}
+                onToggle={(enabled) => {
+                  if (!enabled) {
+                    resetFieldsToInitial(setFieldValue, initialValues, [
+                      "saml-attribute-group",
+                    ]);
+                  }
+                }}
               >
-                <Stack gap="lg">
-                  <GroupMappingsWidget
-                    isFormik
-                    // map to legacy setting props
-                    setting={{ key: "saml-group-sync" }}
-                    onChange={handleSubmit}
-                    settingValues={settingValues}
-                    mappingSetting="saml-group-mappings"
-                    groupHeading={t`Group name`}
-                    groupPlaceholder={t`Group name`}
-                  />
-                  <FormTextInput
-                    name="saml-attribute-group"
-                    label={t`Group attribute name`}
-                    placeholder="member_of"
-                    nullable
-                    {...getExtraFormFieldProps(
-                      settingDetails?.["saml-attribute-group"],
-                    )}
-                  />
-                </Stack>
-              </SettingsSection>
+                <FormTextInput
+                  name="saml-attribute-group"
+                  label={t`Group attribute name`}
+                  description={t`The SAML attribute that lists a user's groups. Group mapping assigns no groups until it's set.`}
+                  descriptionProps={SETTINGS_FIELD_DESCRIPTION_PROPS}
+                  placeholder="member_of"
+                  required
+                  nullable
+                  {...getEnvNoticeProps(settingDetails["saml-attribute-group"])}
+                />
+              </SettingsGroupMappingSection>
 
               <FormErrorMessage />
               <Flex justify="end">
@@ -312,6 +318,7 @@ export function SettingsSAMLForm() {
                 />
               </Flex>
             </Stack>
+            <LeaveRouteConfirmModal isEnabled={dirty && !isSubmitting} />
           </Form>
         )}
       </FormProvider>
@@ -320,9 +327,10 @@ export function SettingsSAMLForm() {
 }
 
 const getFormValues = (
-  allSettings: Partial<EnterpriseSettings>,
+  settingDetails: SettingDefinitionMap,
+  settingValues: Partial<EnterpriseSettings>,
 ): SAMLFormSettings => {
-  const samlSettings = _.pick(allSettings, [
+  const samlSettings = _.pick(settingValues, [
     "saml-attribute-email",
     "saml-attribute-firstname",
     "saml-attribute-lastname",
@@ -330,14 +338,18 @@ const getFormValues = (
     "saml-identity-provider-uri",
     "saml-identity-provider-issuer",
     "saml-identity-provider-certificate",
-    "saml-application-name",
     "saml-keystore-password",
     "saml-keystore-alias",
     "saml-keystore-path",
     "saml-attribute-group",
-    "saml-group-sync",
   ]);
 
-  // cast undefined to null
-  return _.mapObject(samlSettings, (val) => val ?? null) as SAMLFormSettings;
+  // mapObject widens every value to one union
+  return {
+    ..._.mapObject(samlSettings, (val) => val ?? null),
+    "saml-application-name": getStoredFieldValue(
+      settingDetails["saml-application-name"],
+      settingValues["saml-application-name"],
+    ),
+  } as SAMLFormSettings;
 };

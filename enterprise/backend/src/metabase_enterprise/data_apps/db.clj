@@ -140,6 +140,11 @@
   []
   (t2/select-pks-set :model/PermissionsGroup :is_data_app_group true))
 
+(defn resource-collection-ids
+  "The IDs of the resource collections owned by data apps."
+  []
+  (t2/select-fn-set :resource_collection_id :model/DataApp :resource_collection_id [:not= nil]))
+
 (defn databases-with-legacy-permissions
   "Database IDs with legacy View Data permissions from groups not owned by apps."
   [database-ids]

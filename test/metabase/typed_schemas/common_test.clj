@@ -84,3 +84,10 @@
         (let [card-ids (into #{} (map :id) (schema.common/select-schema-cards :metric nil nil))]
           (is (contains? card-ids open-card-id))
           (is (not (contains? card-ids destination-card-id))))))))
+
+(deftest ^:parallel keyed-map-never-drops-an-entity-test
+  (testing "a disambiguated key that equals another entity's own key is disambiguated again rather than overwriting it"
+    (let [entities [{:key "step", :id 1} {:key "step", :id 23} {:key "step1", :id 7} {:key "step11", :id 40}]
+          result   (typed-schemas.common/keyed-map entities)]
+      (is (= 4 (count result)))
+      (is (= #{1 23 7 40} (into #{} (map :id) (vals result)))))))

@@ -307,23 +307,23 @@
                (get-in (#'serdes/import-mbql* exported) ["table" :table-id])))))))
 
 (deftest ^:parallel template-tag-table-id-deps-test
-  (testing "template tag :table-id contributes only its Database dependency — the referenced Table itself is not a
-            dependency (it's synthesized on import if missing)"
-    (is (= #{[{:model "Database" :id "DB"}]}
+  (testing "template tag :table-id is not a dependency — the referenced Database and Table are synthesized on import if
+            missing"
+    (is (= #{}
            (#'serdes/mbql-deps-map false {:table-id ["DB" "SCHEMA" "TABLE"]})))))
 
 (deftest ^:parallel mbql-deps-format-parity-test
   (testing "mbql-deps finds each reference on both the serialized (portable) and the raw (numeric) form of a query.
             serialization-dependencies runs on raw entities and existence-checks the referenced Table/Field;
-            deserialization-dependencies runs on the serialized form, where Table/Field are synthesized on import, so
-            it reports only their Database. Every other ref type resolves to the same model in both forms. This is the
-            parity guard for the two dependency codepaths sharing mbql-deps."
+            deserialization-dependencies runs on the serialized form, where Database/Table/Field are synthesized on
+            import, so it reports none of them. Every other ref type resolves to the same model in both forms. This is
+            the parity guard for the two dependency codepaths sharing mbql-deps."
     (let [models (fn [deps] (into #{} (map (comp :model last)) deps))
           eid    (fn [c] (apply str (repeat 21 c)))]
       (testing "MBQL ref clauses"
         (doseq [[label serialized raw ser-models raw-models]
-                [["field (MBQL 5)"  [:field {} ["DB" "S" "T" "F"]] [:field {} 53]  #{"Database"} #{"Field"}]
-                 ["field (legacy)" [:field ["DB" "S" "T" "F"] {}] [:field 53 {}]  #{"Database"} #{"Field"}]
+                [["field (MBQL 5)"  [:field {} ["DB" "S" "T" "F"]] [:field {} 53]  #{}           #{"Field"}]
+                 ["field (legacy)" [:field ["DB" "S" "T" "F"] {}] [:field 53 {}]  #{}           #{"Field"}]
                  ["metric"         [:metric {} (eid \a)]          [:metric {} 99] #{"Card"}     #{"Card"}]
                  ["segment"        [:segment {} (eid \b)]         [:segment {} 5]  #{"Segment"}  #{"Segment"}]
                  ["measure"        [:measure {} (eid \c)]         [:measure {} 3]  #{"Measure"}  #{"Measure"}]]]
@@ -333,7 +333,7 @@
                 "raw (numeric) form"))))
       (testing "MBQL map keys"
         (doseq [[label serialized raw ser-models raw-models]
-                [["source-table" {:source-table ["DB" "S" "T"]} {:source-table 9} #{"Database"}           #{"Table"}]
+                [["source-table" {:source-table ["DB" "S" "T"]} {:source-table 9} #{}                     #{"Table"}]
                  ["source-card"  {:source-card (eid \d)}         {:source-card 7}  #{"Card"}               #{"Card"}]
                  ["snippet-id"   {:snippet-id (eid \e)}          {:snippet-id 2}   #{"NativeQuerySnippet"} #{"NativeQuerySnippet"}]]]
           (testing label
@@ -395,3 +395,16 @@
            clojure.lang.ExceptionInfo
            #"Invalid input.*:template-tags"
            (serdes/import-mbql query-with-unknown-tag-type))))))
+
+(deftest ^:parallel field-path->field-ref-test
+  (testing "a Field path turns into the reference `*import-field-fk*` takes, with or without a schema"
+    (is (= ["db" "PUBLIC" "orders" "id"]
+           (serdes/field-path->field-ref [{:model "Database" :id "db"} {:model "Schema" :id "PUBLIC"}
+                                          {:model "Table" :id "orders"} {:model "Field" :id "id"}])))
+    (is (= ["db" nil "orders" "id"]
+           (serdes/field-path->field-ref [{:model "Database" :id "db"} {:model "Table" :id "orders"}
+                                          {:model "Field" :id "id"}]))))
+  (testing "a nested Field of a Table without a schema keeps the Table and every parent Field in place"
+    (is (= ["db" nil "orders" "customer" "tier"]
+           (serdes/field-path->field-ref [{:model "Database" :id "db"} {:model "Table" :id "orders"}
+                                          {:model "Field" :id "customer"} {:model "Field" :id "tier"}])))))

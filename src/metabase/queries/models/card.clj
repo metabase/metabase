@@ -676,12 +676,20 @@
 ;; Curated metric dimensions. New metrics seed their own-table columns only, with joined/FK
 ;; columns available to add on demand. But metrics created before curated dimensions shipped implicitly
 ;; exposed EVERY breakoutable column (own-table + implicitly-joined), and existing dashboard filters may
-;; be mapped to those joined columns. The default dimension was also expressed as a breakout on the metric's
-;; query, rather than the `:default` flag in the `:dimensions`.
-;; This upgrade modernizes a metric card to have properly constructed `:dimensions`, preserving the legacy
-;; behaviour of including all breakoutable columns, and setting the `:default` accordingly.
+;; be mapped to those joined columns. This schema upgrade modernizes a pre-curation metric in one of two ways.
+;;
+;; `:dimensions` which were set before schema 24 do not have the correct `:default` set, and the representation differs
+;; slightly from the current form. The `:default` is inferred from the single breakout on the metric's query, or left
+;; unset if there's no breakout.
+;;
+;; When the metric's `:dimensions` have never been set, we backfill the complete implicitly-joined dimension set,
+;; preserving the pre-curation behavior for those metrics.
+;;
+;; This runs on every read of an un-curated metric and persists nothing, so the dimension ids it hands out have to
+;; be the same every time — hence the `:entity_id` seed and `:entity_id`'s place in
+;; [[card-schema/schema-upgrade-triggers]]. See `metabase.lib-metric.dimension.jvm/dimension-id`.
 (defmethod upgrade-card-schema-to 24
-  [{:keys [dataset_query dimensions] :as card} _schema-version]
+  [{:keys [dataset_query dimensions entity_id] :as card} _schema-version]
   (cond
     (not= :metric (keyword (:type card))) card   ; Ignore non-:metric cards
     (empty? dataset_query)                card   ; And those without real queries
@@ -690,7 +698,7 @@
     ;; We generate the legacy, "full" dimensions, selecting all breakoutable columns as a dimension.
     ;; (In contrast, a newly created metric starts with only its *own* table's columns as dimensions.)
     (nil? dimensions)
-    (let [{:keys [dimensions dimension-mappings]} (metrics/compute-full-dimension-set dataset_query)]
+    (let [{:keys [dimensions dimension-mappings]} (metrics/compute-full-dimension-set entity_id dataset_query)]
       (assoc card :dimensions dimensions :dimension_mappings dimension-mappings))
 
     ;; Metric with legacy `:dimensions` already set.
@@ -1543,7 +1551,7 @@
     (mapcat #(serdes/mbql-deps allow-int-ids? %) parameter_mappings)
     (metrics/dimension-mappings-deps allow-int-ids? dimension_mappings)
     (serdes/parameters-deps allow-int-ids? parameters)
-    (when database_id [[{:model "Database" :id database_id}]])
+    (when (and allow-int-ids? database_id) [[{:model "Database" :id database_id}]])
     (when source_card_id #{[{:model "Card" :id source_card_id}]})
     (when collection_id #{[{:model "Collection" :id collection_id}]})
     (when dashboard_id #{[{:model "Dashboard" :id dashboard_id}]})

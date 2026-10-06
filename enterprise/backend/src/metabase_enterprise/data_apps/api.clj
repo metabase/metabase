@@ -417,7 +417,7 @@
   :- QueryTableDependenciesResponse
   "Return the tables read by already-saved queries, including ones reached only through an implicit join.
 
-   Sync copies models, actions and metrics whose queries it never resolves through `/query`, and only
+   Sync copies actions and metrics whose queries it never resolves through `/query`, and only
    this metadata-based lookup sees an implicit join: the id of a table reached through a foreign key
    appears nowhere in the query itself."
   [{:keys [slug]} :- [:map {:closed true} [:slug ms/NonBlankString]]
