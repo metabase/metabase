@@ -431,13 +431,18 @@
   (-kvs-map! kvs context))
 
 (defn- for!
-  [what context]
+  [options context]
   (append-sql! context "FOR ")
-  (let [what (if (vector? what)
-               (first what)
-               what)]
-    (append-sql! context (case what
-                           :update "UPDATE"))))
+  (let [options (if (vector? options)
+                  options
+                  [options])
+        ;; other options like `:key-share`, `:no-key-update`, `:share`, `:nowait`, and `:of` exist, but we're not
+        ;; currently using them; implement them if you need them.
+        option! (fn [option]
+                  (append-sql! context (case option
+                                         :update      "UPDATE"
+                                         :skip-locked "SKIP LOCKED")))]
+    (interpose-fn options option! #(append-sql! context \space))))
 
 (defn- returning! [cols context]
   (append-sql! context "RETURNING ")

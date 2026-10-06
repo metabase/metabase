@@ -514,6 +514,19 @@
                            :where  [:= :model "Card"]
                            :for    :update} :postgres))))
 
+(deftest ^:parallel for-lock-options-test
+  (are [engine expected] (= expected
+                            (funnysql/format {:select [:id] :from [:t] :for [:update :skip-locked]} engine))
+    :postgres ["SELECT \"id\" FROM \"t\" FOR UPDATE SKIP LOCKED"]
+    :mysql    ["SELECT `id` FROM `t` FOR UPDATE SKIP LOCKED"]))
+
+(deftest ^:parallel for-throws-on-unknown-options-test
+  (testing "other `:for` options compile or throw; they are never dropped"
+    (is (thrown-with-msg?
+         clojure.lang.ExceptionInfo
+         #"\QError compiling Honey SQL: No matching clause: :nowait\E"
+         (funnysql/format {:select [:id], :from [:t], :for [:update :nowait]} :postgres)))))
+
 (deftest ^:parallel percent-keyword-niladic-function-test
   (are [k sql] (= [(str "WHERE \"field\" = " sql)]
                   (funnysql/format {:where [:= :field k]} :postgres))
