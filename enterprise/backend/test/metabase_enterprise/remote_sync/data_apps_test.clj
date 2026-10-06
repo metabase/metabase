@@ -293,3 +293,13 @@
                    (into #{} (filter #(re-find #"^data_apps/" %)) (keys (repo)))))
             (is (empty? (filter #(re-find #"^(collections|actions)/" %) (keys (repo))))
                 "nothing of the app's lands in the shared directories")))))))
+
+(defn- question-resources []
+  (data-apps.tu/build-resources shop-collection-eid
+                                [{:entity_id question-eid :name "VenuesList" :query (venues-query)}]
+                                []))
+
+(defn- resource-files
+  "The resource files of the `shop` app in `mock`'s repository."
+  [mock]
+  (into #{} (filter #(re-find #"^data_apps/shop/resources/" %)) (keys (get @(:files-atom mock) "main"))))
