@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.remote-sync.merge :as remote-sync.merge]
+   [metabase-enterprise.remote-sync.source :as source]
    [metabase.test :as mt]
    [metabase.util.yaml :as yaml]))
 
@@ -282,6 +283,18 @@
              (:theirs-unit-paths result)))
       (is (= {app-s-key "data_apps/sales/data_app.yaml" card-a-key "collections/a.yaml"}
              (:theirs-paths result))))))
+
+(deftest ^:parallel unchanged-locally-unit-with-a-hand-written-yaml-takes-a-remote-resource-change-test
+  (testing "the repo data_app.yaml is hand-written, the ledger hash of the last sync matches the local app and its
+            bundle, and the remote changes the bundle -> :theirs, not a conflict"
+    (let [ours      (data-app "S" "sales" "v1")
+          synced    {"data_apps/sales/data_app.yaml" (source/file-spec-hash {:content   (:content (first ours))
+                                                                             :resources [(second ours)]})}
+          hand      (fn [bundle] (update (data-app "S" "sales" bundle) 0 update :content str "# hand-written\n"))
+          result    (remote-sync.merge/three-way-merge (hand "v1") ours (hand "v2")
+                                                       :unchanged-locally? (#'source/unchanged-since-sync-fn synced))]
+      (is (empty? (:conflicts result)))
+      (is (= {app-s-key :theirs} (:decisions result))))))
 
 (deftest ^:parallel undeclared-non-yaml-file-merges-by-its-path-test
   (testing "a non-YAML file that no YAML file declares keeps its own path key"
