@@ -59,7 +59,7 @@
 (defmacro ^:private with-data-apps-sync [& body]
   `(search.tu/with-index-disabled
      (mt/with-premium-features #{:data-apps}
-       (mt/with-temporary-setting-values [remote-sync-type :read-write remote-sync-enabled true remote-sync-transforms false]
+       (mt/with-temporary-setting-values [remote-sync-type :read-write remote-sync-url "https://github.com/test/repo.git" remote-sync-transforms false]
          (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
            ~@body)))))
 

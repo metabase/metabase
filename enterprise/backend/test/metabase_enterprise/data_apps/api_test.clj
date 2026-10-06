@@ -106,6 +106,29 @@
           (is (not (t2/exists? :model/Collection :id resource_collection_id))
               "and so is its resource collection"))))))
 
+(deftest read-only-remote-sync-blocks-data-app-changes-test
+  (mt/with-premium-features #{:data-apps}
+    (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup :model/RemoteSyncObject]
+      (create-app!)
+      (mt/with-temporary-setting-values [remote-sync-url  "https://github.com/test/repo.git"
+                                         remote-sync-type :read-only]
+        (testing "a read-only instance refuses to create, change, or delete an app"
+          (mt/user-http-request :crowberto :post 403 "apps" (assoc app-request :name "other"))
+          (mt/user-http-request :crowberto :put 403 "apps/demo" {:display_name "Renamed"})
+          (mt/user-http-request :crowberto :delete 403 "apps/demo")
+          (is (=? {:display_name "Demo"} (t2/select-one :model/DataApp :name "demo"))))
+        (testing "enabling and disabling stays allowed"
+          (is (=? {:enabled false}
+                  (mt/user-http-request :crowberto :put 200 "apps/demo" {:enabled false}))))
+        (testing "drafts are outside sync, so they can still be created and deleted"
+          (mt/user-http-request :crowberto :post 200 "apps/draft-app/draft")
+          (mt/user-http-request :crowberto :delete 204 "apps/draft-app")))
+      (mt/with-temporary-setting-values [remote-sync-url  "https://github.com/test/repo.git"
+                                         remote-sync-type :read-write]
+        (testing "a read-write instance allows changes"
+          (is (=? {:display_name "Renamed"}
+                  (mt/user-http-request :crowberto :put 200 "apps/demo" {:display_name "Renamed"}))))))))
+
 (deftest ^:parallel query-definition-request-schema-is-closed-test
   (is (empty? (closed-schemas/findings ::query-definition/query-definition))))
 
