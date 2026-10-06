@@ -3,9 +3,72 @@
    [clojure.set :as set]
    [clojure.test :refer :all]
    [metabase.events.core :as events]
+   [metabase.revisions.events :as revisions.events]
    [metabase.revisions.impl.dashboard :as impl.dashboard]
+   [metabase.revisions.models.revision :as revision]
    [metabase.test :as mt]
+   [methodical.core :as methodical]
    [toucan2.core :as t2]))
+
+(def ^:private topic->listener-call
+  "Topic that the revisions listener follows -> the model and `:is-creation?` that reach `revision/push-revision!`."
+  {:event/card-create           [:model/Card true]
+   :event/card-update           [:model/Card false]
+   :event/dashboard-create      [:model/Dashboard true]
+   :event/dashboard-update      [:model/Dashboard false]
+   :event/document-create       [:model/Document true]
+   :event/document-update       [:model/Document false]
+   :event/document-delete       [:model/Document false]
+   :event/exploration-create    [:model/Exploration true]
+   :event/exploration-update    [:model/Exploration false]
+   :event/measure-create        [:model/Measure true]
+   :event/measure-update        [:model/Measure false]
+   :event/measure-delete        [:model/Measure false]
+   :event/segment-create        [:model/Segment true]
+   :event/segment-update        [:model/Segment false]
+   :event/segment-delete        [:model/Segment false]
+   :event/transform-create      [:model/Transform true]
+   :event/transform-update      [:model/Transform false]
+   :event/transform-test-create [:model/TransformTest true]
+   :event/transform-test-update [:model/TransformTest false]})
+
+(defn- table-topics [entry]
+  (vals (select-keys entry [:create :update :delete])))
+
+(defn- listener-calls!
+  "The `[model is-creation?]` of each `revision/push-revision!` call when the revisions listener handles `topic`."
+  [topic model]
+  (let [calls (atom [])]
+    (mt/with-dynamic-fn-redefs [revision/push-revision! (fn [{:keys [entity is-creation?]}]
+                                                          (swap! calls conj [entity is-creation?]))]
+      (doseq [[dispatch-value method] (methodical/primary-methods (mt/original-fn #'events/publish-event!))
+              :when (and (events/isa? dispatch-value ::revisions.events/event)
+                         (events/isa? topic dispatch-value))]
+        (method topic {:object (t2/instance model {:id 1}) :user-id 1})))
+    @calls))
+
+(deftest revisions-listener-topics-test
+  (testing "the revisions listener follows exactly these topics"
+    (is (= (set (keys topic->listener-call))
+           (into #{}
+                 (filter #(= "event" (namespace %)))
+                 (events/descendants ::revisions.events/event)))))
+  (testing "the revisioned-model table names exactly the followed topics"
+    (is (= (set (keys topic->listener-call))
+           (into #{} (mapcat table-topics) (vals revision/revisioned-models)))))
+  (testing "each topic of the table derives from the listener dispatch value of its model"
+    (doseq [[model entry] revision/revisioned-models
+            topic         (table-topics entry)]
+      (testing (str model " " topic)
+        (is (events/isa? topic (#'revisions.events/model-dispatch-value model)))
+        (is (= #{model}
+               (into #{}
+                     (filter #(events/isa? topic (#'revisions.events/model-dispatch-value %)))
+                     (keys revision/revisioned-models)))))))
+  (testing "the listener pushes one revision for each topic, with the model and :is-creation? of the topic"
+    (doseq [[topic [model :as call]] topic->listener-call]
+      (testing topic
+        (is (= [call] (listener-calls! topic model)))))))
 
 (defn- card-properties
   "Some default properties for `Cards` for use in tests in this namespace."

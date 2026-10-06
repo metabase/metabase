@@ -3,6 +3,7 @@
    [metabase.api.common :as api]
    [metabase.events.core :as events]
    [metabase.revisions.models.revision :as revision]
+   [metabase.util :as u]
    [metabase.util.log :as log]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -29,69 +30,16 @@
       (catch Throwable e
         (log/warnf "Failed to process revision event for model %s: %s" model (ex-message e))))))
 
-(events/derive! ::card-event ::event)
-(events/derive! :event/card-create ::card-event)
-(events/derive! :event/card-update ::card-event)
+(defn- model-dispatch-value
+  "The [[events/publish-event!]] dispatch value of the revisions listener for `model`, e.g. `::transform-test-event`."
+  [model]
+  (keyword (namespace ::event) (str (u/->kebab-case-en (name model)) "-event")))
 
-(methodical/defmethod events/publish-event! ::card-event
-  [topic event]
-  (push-revision! :model/Card event {:is-creation? (= topic :event/card-create)}))
-
-(events/derive! ::dashboard-event ::event)
-(events/derive! :event/dashboard-create ::dashboard-event)
-(events/derive! :event/dashboard-update ::dashboard-event)
-
-(methodical/defmethod events/publish-event! ::dashboard-event
-  [topic event]
-  (push-revision! :model/Dashboard event {:is-creation? (= topic :event/dashboard-create)}))
-
-(events/derive! ::transform-event ::event)
-(events/derive! :event/transform-create ::transform-event)
-(events/derive! :event/transform-update ::transform-event)
-
-(methodical/defmethod events/publish-event! ::transform-event
-  [topic event]
-  (push-revision! :model/Transform event {:is-creation? (= topic :event/transform-create)}))
-
-(events/derive! ::transform-test-event ::event)
-(events/derive! :event/transform-test-create ::transform-test-event)
-(events/derive! :event/transform-test-update ::transform-test-event)
-
-(methodical/defmethod events/publish-event! ::transform-test-event
-  [topic event]
-  (push-revision! :model/TransformTest event {:is-creation? (= topic :event/transform-test-create)}))
-
-(events/derive! ::segment-event ::event)
-(events/derive! :event/segment-create ::segment-event)
-(events/derive! :event/segment-update ::segment-event)
-(events/derive! :event/segment-delete ::segment-event)
-
-(methodical/defmethod events/publish-event! ::segment-event
-  [topic event]
-  (push-revision! :model/Segment event {:is-creation? (= topic :event/segment-create)}))
-
-(events/derive! ::measure-event ::event)
-(events/derive! :event/measure-create ::measure-event)
-(events/derive! :event/measure-update ::measure-event)
-(events/derive! :event/measure-delete ::measure-event)
-
-(methodical/defmethod events/publish-event! ::measure-event
-  [topic event]
-  (push-revision! :model/Measure event {:is-creation? (= topic :event/measure-create)}))
-
-(events/derive! ::document-event ::event)
-(events/derive! :event/document-create ::document-event)
-(events/derive! :event/document-update ::document-event)
-(events/derive! :event/document-delete ::document-event)
-
-(methodical/defmethod events/publish-event! ::document-event
-  [topic event]
-  (push-revision! :model/Document event {:is-creation? (= topic :event/document-create)}))
-
-(events/derive! ::exploration-event ::event)
-(events/derive! :event/exploration-create ::exploration-event)
-(events/derive! :event/exploration-update ::exploration-event)
-
-(methodical/defmethod events/publish-event! ::exploration-event
-  [topic event]
-  (push-revision! :model/Exploration event {:is-creation? (= topic :event/exploration-create)}))
+(doseq [[model {create-topic :create :as topics}] revision/revisioned-models
+        :let [dispatch-value (model-dispatch-value model)]]
+  (events/derive! dispatch-value ::event)
+  (doseq [topic (vals (select-keys topics [:create :update :delete]))]
+    (events/derive! topic dispatch-value))
+  (methodical/add-primary-method! #'events/publish-event! dispatch-value
+                                  (fn [topic event]
+                                    (push-revision! model event {:is-creation? (= topic create-topic)}))))

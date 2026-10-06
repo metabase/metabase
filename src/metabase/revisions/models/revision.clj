@@ -29,6 +29,34 @@
   will be deleted."
   15)
 
+(def revisioned-models
+  "Model -> its revision event topics: `:create`, `:update` and optional `:delete`. The revisions listener records a
+  revision for each topic. Flags:
+  - `:previous-object?`: an `:update` event requires `:previous-object`.
+  - `:hook-publishes-update?`: each update of a model row publishes `:update`; a caller must not publish it again."
+  {:model/Card          {:create           :event/card-create
+                         :update           :event/card-update
+                         :previous-object? true}
+   :model/Dashboard     {:create :event/dashboard-create
+                         :update :event/dashboard-update}
+   :model/Document      {:create                 :event/document-create
+                         :update                 :event/document-update
+                         :delete                 :event/document-delete
+                         :hook-publishes-update? true}
+   :model/Segment       {:create :event/segment-create
+                         :update :event/segment-update
+                         :delete :event/segment-delete}
+   :model/Measure       {:create :event/measure-create
+                         :update :event/measure-update
+                         :delete :event/measure-delete}
+   :model/Transform     {:create :event/transform-create
+                         :update :event/transform-update}
+   :model/TransformTest {:create                 :event/transform-test-create
+                         :update                 :event/transform-test-update
+                         :hook-publishes-update? true}
+   :model/Exploration   {:create :event/exploration-create
+                         :update :event/exploration-update}})
+
 (defmulti serialize-instance
   "Prepare an instance for serialization in a Revision."
   {:arglists '([model id instance])}
