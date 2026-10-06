@@ -13,6 +13,7 @@
    [java-time.api :as t]
    [metabase-enterprise.content-diagnostics.api.common :as api.common]
    [metabase-enterprise.content-diagnostics.db :as cd.db]
+   [metabase-enterprise.content-diagnostics.models.finding :as finding]
    [metabase-enterprise.content-diagnostics.schema :as cd.schema]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
@@ -497,6 +498,23 @@
                                                  :query               query})
                        duplicated-sort-column->field sort-column sort-direction
                        exclude-personal?)))
+
+(api.macros/defendpoint :post "/invalidate"
+  :- [:map {:closed true}
+      [:invalidated [:sequential :int]]
+      [:skipped     [:sequential :int]]]
+  "Dismiss the findings with `ids`. Invalidation is soft and global: the row is kept, but the finding leaves
+  every caller's lists. `invalidated` lists the ids this call found active and dismissed (a racing call may
+  list the same id); `skipped` lists every other requested id - nonexistent, already invalidated, or not
+  visible to the caller - without saying which. Both keep the request order, de-duplicated."
+  [_route-params
+   _query-params
+   {:keys [ids]} :- [:map {:closed true}
+                     [:ids [:sequential {:min 1} ms/PositiveInt]]]]
+  (let [invalidated (finding/invalidate-by-ids! ids (api.common/visible-findings-clause))
+        ids         (distinct ids)]
+    {:invalidated (filterv invalidated ids)
+     :skipped     (filterv (complement invalidated) ids)}))
 
 (def ^{:arglists '([request respond raise])} routes
   "Ring routes for the Content Diagnostics API."

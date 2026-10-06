@@ -63,3 +63,23 @@
         (into [:or] (common/entity-collection-clauses
                      archived-types
                      (fn [_etype coll-col] [:in coll-col collection-ids])))]))))
+
+(def ^:private invalidate-batch-size
+  "Ids per statement, keeping an `IN` list under the Postgres 65,535 bind-parameter cap."
+  1000)
+
+(defn invalidate-by-ids!
+  "Soft-invalidate the still-active findings among `ids` that match `visible-clause`; returns the set of
+  ids found active. Each chunk commits on its own, so a later failure leaves earlier chunks invalidated.
+  Two racing calls can both report an id; the `invalidated_at` NULL guard still stamps it once."
+  [ids visible-clause]
+  (into #{}
+        (mapcat (fn [chunk]
+                  (t2/with-transaction [_conn]
+                    (let [eligible (cd.db/active-finding-ids chunk visible-clause)]
+                      (when (seq eligible)
+                        (cd.db/invalidate-findings-where! [:and
+                                                           [:in :id (vec eligible)]
+                                                           [:= :invalidated_at nil]]))
+                      eligible))))
+        (partition-all invalidate-batch-size (distinct ids))))

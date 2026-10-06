@@ -24,14 +24,56 @@
     (testing endpoint
       (mt/user-http-request user :get status endpoint))))
 
+(def ^:private write-endpoints
+  ["ee/content-diagnostics/invalidate"])
+
+(defn- check-writes
+  "Assert `status` on every POST endpoint. The body names an id no finding has, so a 200 changes nothing."
+  [user status]
+  (doseq [endpoint write-endpoints]
+    (testing endpoint
+      (mt/user-http-request user :post status endpoint {:ids [Integer/MAX_VALUE]}))))
+
+(defn- routes-for
+  [method]
+  (set (map #(str "ee/content-diagnostics" %)
+            (keep (fn [[m route]] (when (= method m) route))
+                  (keys (:api/endpoints (meta (the-ns 'metabase-enterprise.content-diagnostics.api))))))))
+
 (deftest read-endpoints-are-all-covered-test
   (testing "every GET the namespace defines is exercised by this suite's matrix"
     ;; The gate is namespace-wide middleware, so a new endpoint is gated automatically - but it would go
     ;; uncovered here. Fail loudly instead, so whoever adds one classifies it.
-    (is (= (set (map #(str "ee/content-diagnostics" %)
-                     (keep (fn [[method route]] (when (= :get method) route))
-                           (keys (:api/endpoints (meta (the-ns 'metabase-enterprise.content-diagnostics.api)))))))
+    (is (= (routes-for :get)
            (set read-endpoints)))))
+
+(deftest write-endpoints-are-all-covered-test
+  (testing "every POST the namespace defines is exercised by this suite's matrix"
+    (is (= (routes-for :post)
+           (set write-endpoints)))))
+
+(deftest writes-access-matrix-test
+  (testing "POST writes take the same audience gate as the reads"
+    (mt/with-premium-features #{:content-diagnostics :advanced-permissions}
+      (testing "superuser"
+        (check-writes :crowberto 200))
+      (testing "plain authed user"
+        (check-writes :rasta 403))
+      (testing "unauthenticated"
+        (doseq [endpoint write-endpoints]
+          (testing endpoint
+            (mt/client :post 401 endpoint {:ids [Integer/MAX_VALUE]}))))
+      (testing "non-admin data analyst"
+        (mt/with-data-analyst-role! (mt/user->id :rasta)
+          (check-writes :rasta 200)))
+      (testing "non-admin `:monitoring` grantee"
+        (mt/with-user-in-groups [group {:name "Content Diagnostics Monitoring"}
+                                 user  [group]]
+          (perms/grant-application-permissions! group :monitoring)
+          (check-writes user 200))))
+    (testing "an unlicensed instance answers 402"
+      (mt/with-premium-features #{}
+        (check-writes :rasta 402)))))
 
 (deftest reads-allow-superuser-test
   (testing "GET reads serve a superuser"
