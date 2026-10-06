@@ -183,17 +183,35 @@
    filter-column
    filter-ids))
 
+(defn- import-template-tags
+  "The imported `template-tags` of a snippet, and the renames of the card tags whose `#<id>-slug` name embeds the
+  exporting instance's card id."
+  [template-tags]
+  (when-let [tags (some->> template-tags
+                           serdes/import-mbql
+                           (lib/normalize :metabase.lib.schema.template-tag/template-tag-map))]
+    {:tags    tags
+     :renames (into {}
+                    (keep (fn [[tag-name tag]]
+                            (some->> (serdes/card-template-tag-rename tag) (vector tag-name))))
+                    tags)}))
+
 (defmethod serdes/make-spec "NativeQuerySnippet" [_model-name _opts]
-  {:copy      [:archived :content :description :entity_id :name]
+  {:copy      [:archived :description :entity_id :name]
    :skip      []
    :transform {:created_at    (serdes/date)
                :collection_id (serdes/fk :model/Collection)
                :creator_id    (serdes/fk :model/User)
-               ;; Normalize on import so template-tag name keys come back as strings (YAML ingest keywordizes
-               ;; them).
+               :content       {:export identity
+                               :import-with-context
+                               (fn [current _ content]
+                                 (let [{:keys [renames]} (import-template-tags (:template_tags current))]
+                                   (cond-> content
+                                     (and (string? content) (seq renames)) (lib/rename-template-tags-in-text renames))))}
                :template_tags {:export serdes/export-mbql
-                               :import #(some->> % serdes/import-mbql
-                                                 (lib/normalize :metabase.lib.schema.template-tag/template-tag-map))}}
+                               :import (fn [template-tags]
+                                         (let [{:keys [tags renames]} (import-template-tags template-tags)]
+                                           (some-> tags (lib/rename-template-tags renames))))}}
    :defaults {:archived false}})
 
 (defmethod serdes/required "NativeQuerySnippet"

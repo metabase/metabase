@@ -1302,7 +1302,7 @@
       import-mbql-update-refs
       import-mbql-update-maps))
 
-(defn- stale-card-tag-rename
+(defn card-template-tag-rename
   "New name for a card template tag whose `#<id>-slug` name embeds a different id than its (already
   remapped) `:card-id`: the id is swapped, the slug is kept verbatim. Nil when they already agree or
   the name doesn't embed an id."
@@ -1322,7 +1322,7 @@
      x
      (into {}
            (keep (fn [{tag-name :name, :as tag}]
-                   (when-let [new-name (stale-card-tag-rename tag)]
+                   (when-let [new-name (card-template-tag-rename tag)]
                      [tag-name new-name])))
            (lib/all-template-tags x)))
     x))
