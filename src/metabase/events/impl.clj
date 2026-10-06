@@ -9,6 +9,7 @@
   by [[initialize-events!]]."
   (:require
    [clojure.spec.alpha :as s]
+   [metabase.app-db.core :as mdb]
    [metabase.events.hierarchy :as events.hierarchy]
    [metabase.events.schema :as events.schema]
    [metabase.models.interface :as mi]
@@ -16,10 +17,10 @@
    [metabase.util.i18n :as i18n]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.methodical.do-all-combination :as u.methodical.do-all-combination]
    [metabase.util.methodical.null-cache :as u.methodical.null-cache]
    [metabase.util.methodical.unsorted-dispatcher :as u.methodical.unsorted-dispatcher]
    [methodical.core :as methodical]
+   [methodical.impl.combo.operator :as combo.operator]
    [potemkin :as p]))
 
 (p/import-vars
@@ -36,6 +37,30 @@
     {:error/message "Events should derive from :metabase/event"}
     #(events.hierarchy/isa? % :metabase/event)]])
 
+(defn- invoke-all!
+  "Call `invoke` on each of `methods`. If calls throw, throw the first exception after all calls ran, with the others
+  added to it as suppressed."
+  [methods invoke]
+  (let [errors (into [] (keep (fn [method]
+                                (try
+                                  (invoke method)
+                                  nil
+                                  (catch Exception e
+                                    e))))
+                     methods)]
+    (when-let [[^Throwable e & more] (seq errors)]
+      (doseq [^Throwable other more
+              :when (not (identical? e other))]
+        (.addSuppressed e other))
+      (throw e))))
+
+;; Inside an open app-DB transaction, the first exception stops the listeners after it, as with `:do`: the transaction
+;; rolls back, and a later listener must not act on rows that never commit (e.g. send the invite email of a user).
+(combo.operator/defoperator ::publish-event [methods invoke]
+  (if (mdb/in-transaction?)
+    (run! invoke methods)
+    (invoke-all! methods invoke)))
+
 (s/def ::publish-event-dispatch-value
   (s/and
    (some-fn qualified-keyword? #(= % :default))
@@ -48,9 +73,10 @@
     (events/publish-event! :event/database-create {:object database :user-id api/*current-user-id*})
 
   'Subscribe' to an event by add a Methodical method implementation. Every method implementation that matches the
-  topic is called for a single invocation, also when another one throws. The order is indeterminate, and return values
-  are ignored. If methods throw, this throws after all of them ran: an `ex-info` whose cause is the first error, with
-  the other errors added to it as suppressed.
+  topic is called for a single invocation, from the most specific dispatch value to the least specific; return values
+  are ignored. Outside an app-DB transaction, a method that throws does not stop the others: this throws after all of
+  them ran, an `ex-info` whose cause is the first exception, with the others added to it as suppressed. Inside an
+  app-DB transaction, the first exception stops the methods after it.
 
   Don't write method implementations for the event names themselves, e.g. `:event/database-create`, because these will
   stomp on other methods with the same key:
@@ -74,7 +100,7 @@
    :defmethod-arities   #{2}
    :dispatch-value-spec ::publish-event-dispatch-value}
   :combo
-  (u.methodical.do-all-combination/do-all-method-combination)
+  (combo.operator/operator-method-combination ::publish-event)
   ;; work around https://github.com/camsaul/methodical/issues/97
   :dispatcher
   (u.methodical.unsorted-dispatcher/unsorted-dispatcher
