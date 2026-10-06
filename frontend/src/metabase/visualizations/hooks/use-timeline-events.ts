@@ -1,11 +1,11 @@
 import { useEffect, useMemo } from "react";
 
 import { skipToken, useListTimelinesQuery } from "metabase/api";
+import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import {
   isPublicEmbedding,
   isStaticEmbedding,
 } from "metabase/embedding/config";
-import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import {
   getRecordedTimelineEventsVisibility,
   isTimelineEventsEnabled,

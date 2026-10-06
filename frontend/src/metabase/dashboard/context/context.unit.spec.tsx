@@ -8,8 +8,8 @@ import {
   setupPublicDashboardEndpoint,
 } from "__support__/server-mocks";
 import { getTestStoreAndWrapper, waitFor } from "__support__/ui";
-import { EmbeddingEntityContextProvider } from "metabase/embedding/context";
 import * as embeddingSdkConfig from "metabase/embedding-sdk/config";
+import { EmbeddingEntityContextProvider } from "metabase/embedding/context";
 import * as iframeUtils from "metabase/utils/iframe";
 import type { EntityToken, EntityUuid } from "metabase-types/api/entity";
 import {
