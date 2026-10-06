@@ -341,6 +341,26 @@
                                {:column "count" :value 5 :dimensions [{:column "TOTAL" :value 40.0}]}
                                {})))))))
 
+(deftest zoom-in-geographic-on-binned-lat-lon-test
+  (testing "the binned lat/lon zoom acts on both coordinates and names no column, so it applies with no dimension"
+    (mt/with-model-cleanup [:model/McpQueryHandle]
+      (let [mp    (mt/metadata-provider)
+            base  (lib/aggregate (lib/query mp (lib.metadata/table mp (mt/id :people))) (lib/count))
+            bin   (fn [q n]
+                    (let [col (some #(when (= n (:name %)) %) (lib/breakoutable-columns q))]
+                      (lib/breakout q (lib/with-binning col (first (lib/available-binning-strategies q col))))))
+            query (-> base (bin "LATITUDE") (bin "LONGITUDE"))
+            point {:column "count" :value 3 :dimensions [{:column "LATITUDE" :value 30.0}
+                                                         {:column "LONGITUDE" :value -100.0}]}
+            {:keys [status body]} (derive! query {:operations [{:type    "drill-thru" :drill "zoom-in.geographic"
+                                                                :context point}]})]
+        (is (= 200 status))
+        (is (=? [[:>= {} [:field {} (mt/id :people :latitude)] 30.0]
+                 [:< {} [:field {} (mt/id :people :latitude)] number?]
+                 [:>= {} [:field {} (mt/id :people :longitude)] -100.0]
+                 [:< {} [:field {} (mt/id :people :longitude)] number?]]
+                (some->> (:handle body) (stored-query :rasta) lib/filters)))))))
+
 (deftest zoom-in-geographic-zooms-the-dimension-clicked-test
   (testing "a point with a state and a city dimension offers one geographic zoom per dimension"
     (mt/with-model-cleanup [:model/McpQueryHandle]

@@ -286,4 +286,76 @@ describe("getDrillDimensions", () => {
       }),
     ).toEqual({ "zoom-in.geographic": ["STATE", "CITY"] });
   });
+
+  it("names no dimension for the binned lat/lon zoom, which acts on both coordinates", () => {
+    const base = Lib.aggregateByCount(
+      Lib.queryFromTableOrCardMetadata(
+        SAMPLE_PROVIDER,
+        checkNotNull(Lib.tableOrCardMetadata(SAMPLE_PROVIDER, PEOPLE_ID)),
+      ),
+      -1,
+    );
+    const binnedBreakout = (query: Lib.Query, columnName: string) => {
+      const column = columnFinder(query, Lib.breakoutableColumns(query, -1))(
+        "PEOPLE",
+        columnName,
+      );
+      const [strategy] = Lib.availableBinningStrategies(query, -1, column);
+      return Lib.breakout(query, -1, Lib.withBinning(column, strategy));
+    };
+    const query = binnedBreakout(binnedBreakout(base, "LATITUDE"), "LONGITUDE");
+    const question = new Question(
+      createMockCard({ id: undefined, dataset_query: Lib.toJsQuery(query) }),
+      SAMPLE_METADATA,
+    );
+    const coordinate = (name: string, id: number, semantic_type: string) =>
+      createMockColumn({
+        name,
+        display_name: name,
+        source: "breakout",
+        base_type: "type/Float",
+        semantic_type,
+        id,
+        table_id: PEOPLE_ID,
+        binning_info: { binning_strategy: "bin-width", bin_width: 10 },
+        field_ref: [
+          "field",
+          id,
+          { binning: { strategy: "bin-width", "bin-width": 10 } },
+        ],
+      });
+    const clicked = {
+      column: createMockNumericColumn({
+        name: "count",
+        source: "aggregation",
+        field_ref: ["aggregation", 0],
+      }),
+      value: 3,
+      dimensions: [
+        {
+          column: coordinate("LATITUDE", PEOPLE.LATITUDE, "type/Latitude"),
+          value: 30,
+        },
+        {
+          column: coordinate("LONGITUDE", PEOPLE.LONGITUDE, "type/Longitude"),
+          value: -100,
+        },
+      ],
+    };
+
+    const offered = Lib.availableDrillThrus(
+      question.query(),
+      -1,
+      undefined,
+      clicked.column,
+      clicked.value,
+      undefined,
+      clicked.dimensions,
+    ).map((drill) => Lib.displayInfo(question.query(), -1, drill).type);
+    expect(offered).toContain("drill-thru/zoom-in.geographic");
+
+    expect(getDrillDimensions(question, clicked)).toEqual({
+      "zoom-in.geographic": [null],
+    });
+  });
 });
