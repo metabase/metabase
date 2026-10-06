@@ -23,10 +23,10 @@
   (t2/query-one ["SELECT 1 AS one"]))
 
 (defn- this-thread
-  "Counts made by the calling thread only. The totals are JVM-wide and can pick up background app-DB work, so exact
-  assertions use the per-thread counts."
+  "Counts made by the calling thread only, all zero when it made no app-DB call. The totals are JVM-wide and can pick
+  up background app-DB work, so exact assertions use the per-thread counts."
   [counts]
-  (get-in counts [:by-thread (.threadId (Thread/currentThread))]))
+  (get-in counts [:by-thread (.threadId (Thread/currentThread))] (zipmap activity/count-keys (repeat 0))))
 
 ;; Metabase's transaction implementation (metabase.app-db.connection/do-transaction) sets a savepoint at the start
 ;; of EVERY transaction scope, top-level included, and a failed transaction rolls back to that savepoint and then
@@ -168,7 +168,7 @@
 (defn- make-settings-check-due!
   "Reset the 60 s throttle of the settings-cache check, so that the next setting read sends the check."
   []
-  (.set ^AtomicLong (var-get #'metabase.settings.models.setting.cache/last-update-check) 0))
+  (.set ^AtomicLong @(requiring-resolve 'metabase.settings.models.setting.cache/last-update-check) 0))
 
 (defn- read-cached-setting []
   (setting/get :site-name))

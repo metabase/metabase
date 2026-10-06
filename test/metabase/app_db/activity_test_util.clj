@@ -22,9 +22,10 @@
     from.
 
   The result holds the total of each key of [[count-keys]] across threads, the same counts for each thread under
-  `:by-thread {thread-id counts}`, and the thunk's value under `:result`."
+  `:by-thread {thread-id counts}`, the thunk's value under `:result`, and its wall time under `:elapsed-ms`."
   (:require
    [metabase.app-db.connection :as mdb.connection]
+   [metabase.settings.core :as setting]
    [toucan2.connection :as t2.conn])
   (:import
    (java.lang.reflect InvocationHandler InvocationTargetException Method Proxy)
@@ -145,8 +146,15 @@
 
 (defn count-db-activity!
   "Run `thunk` with app-DB activity counted JVM-wide (see the ns docstring). Returns the counts map with the
-  thunk's return value under `:result`. Not for `^:parallel` tests. Throws when the calling thread holds an app-DB
-  connection already, or when another count runs.
+  thunk's return value under `:result` and its wall time under `:elapsed-ms`. Not for `^:parallel` tests. Throws,
+  having sent nothing, when the calling thread holds an app-DB connection already, or when another count runs.
+
+  Just before the count, and not counted, forces the settings-cache check (`setting/restore-cache-if-needed!`), so a
+  setting read in `thunk` sends no check while the check's throttle holds. Limits:
+  - a count whose `:elapsed-ms` exceeds `setting/cache-update-check-interval-ms`, or a `thunk` that resets the
+    throttle, can contain one check;
+  - the forced check can reload the settings cache, and so run `:on-change` hooks (which can write rows) just before
+    `thunk`, uncounted.
 
   If the calling thread has bound `*application-db*` (for example inside `mt/with-empty-h2-app-db!`), that bound
   value is counted too, for the calling thread and for threads that convey its bindings. Then the totals can add two
@@ -165,15 +173,20 @@
         counts     (atom {})
         original   (.getRawRoot app-db-var)]
     (try
-      (alter-var-root app-db-var (constantly (counting-app-db counts original)))
-      (let [result    (if (thread-bound? app-db-var)
+      ;; inside the `try`, so that a check that throws still resets `counting?`
+      (setting/restore-cache-if-needed! :force-check? true)
+      (let [start-ns  (System/nanoTime)
+            _         (alter-var-root app-db-var (constantly (counting-app-db counts original)))
+            result    (if (thread-bound? app-db-var)
                         (with-bindings {app-db-var (counting-app-db counts mdb.connection/*application-db*)}
                           (thunk))
                         (thunk))
+            elapsed   (quot (- (System/nanoTime) start-ns) 1000000)
             by-thread (update-vals @counts #(merge zero-counts %))]
         (assoc (apply merge-with + zero-counts (vals by-thread))
-               :by-thread by-thread
-               :result    result))
+               :by-thread  by-thread
+               :result     result
+               :elapsed-ms elapsed))
       (finally
         (alter-var-root app-db-var (constantly original))
         (reset! counting? false)))))
