@@ -13,6 +13,8 @@ const MIGRATE_MODELS_PATH = "/data-studio/transforms/tools/migrate-models";
 
 const SOURCE_ROW_NAME = "Source Row Alpha";
 const SOURCE_ROW_NAME_2 = "Source Row Beta";
+// The transform output does not get this row, because it is inserted after the conversion.
+const SOURCE_ROW_NAME_NEW = "Source Row Gamma";
 
 const CATEGORY_FILTER_ID = "mtt-category-filter";
 
@@ -38,32 +40,39 @@ describe(
         createTestTables();
         createSourceModel("Target model").then(({ body: model }) => {
           createQuestionOnModel("Direct dependent", model.id).as("direct");
-          createQuestionOnCard("Nested dependent", model.id).then(
-            ({ body: parent }) => {
+          createQuestionOnCard("Nested dependent", model.id)
+            .as("nested")
+            .then(({ body: parent }) => {
               H.createQuestion({
                 name: "Second level nested",
                 database: WRITABLE_DB_ID,
                 query: { "source-table": `card__${parent.id}` },
               }).as("secondLevel");
-            },
-          );
+            });
         });
 
         convertModelToTransform("Target model");
+        insertNewSourceRow();
 
         cy.log("direct dependent now reads from the transform's output table");
         cy.get<Cypress.Response<{ id: CardId }>>("@direct").then(({ body }) => {
           H.visitQuestion(body.id);
-          assertSourceRowsVisible();
+          assertOutputRowsVisible();
           H.openNotebook();
           assertDataSourceIs(OUTPUT_TABLE_LABEL);
         });
 
-        cy.log("two-level nested question still runs after the swap");
+        cy.log("nested dependent now reads from the transform's output table");
+        cy.get<Cypress.Response<{ id: CardId }>>("@nested").then(({ body }) => {
+          H.visitQuestion(body.id);
+          assertOutputRowsVisible();
+        });
+
+        cy.log("two-level nested question reads the transform's output table");
         cy.get<Cypress.Response<{ id: CardId }>>("@secondLevel").then(
           ({ body }) => {
             H.visitQuestion(body.id);
-            assertSourceRowsVisible();
+            assertOutputRowsVisible();
           },
         );
       });
@@ -87,6 +96,7 @@ describe(
         });
 
         convertModelToTransform("Dashboard model");
+        insertNewSourceRow();
 
         cy.get<{ dashboard_id: number; card_id: CardId }>(
           "@dashboardInfo",
@@ -95,6 +105,7 @@ describe(
           H.visitDashboard(dashboard_id);
           H.main().findByText(SOURCE_ROW_NAME).should("be.visible");
           H.main().findByText(SOURCE_ROW_NAME_2).should("be.visible");
+          H.main().findByText(SOURCE_ROW_NAME_NEW).should("not.exist");
 
           cy.log("filter widget still narrows the results");
           H.toggleFilterWidgetValues(["A"]);
@@ -125,8 +136,10 @@ describe(
         });
 
         convertModelToTransform("Metric base model");
+        insertNewSourceRow();
 
         cy.get<Cypress.Response<{ id: CardId }>>("@metric").then(({ body }) => {
+          cy.log("the sum does not include the row added to the source table");
           H.visitMetric(body.id);
           H.main().findByText("301.25").should("be.visible");
         });
@@ -143,6 +156,12 @@ describe(
         cy.get<Cypress.Response<{ id: CardId }>>("@joined").then(({ body }) => {
           H.visitQuestion(body.id);
           assertSourceRowsVisible();
+
+          cy.log("the join now reads from the transform's output table");
+          H.openNotebook();
+          H.getNotebookStep("join")
+            .findByLabelText("Right table")
+            .should("have.text", OUTPUT_TABLE_LABEL);
         });
       });
     });
@@ -384,7 +403,7 @@ function waitForReplacementToComplete() {
     return pollStatus();
   });
 
-  H.resyncDatabase({ dbId: WRITABLE_DB_ID });
+  H.resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: OUTPUT_TABLE_SLUG });
 }
 
 function convertModelToTransform(modelName: string) {
@@ -398,6 +417,18 @@ function convertModelToTransform(modelName: string) {
 function assertSourceRowsVisible() {
   H.main().findAllByText(SOURCE_ROW_NAME).first().should("be.visible");
   H.main().findAllByText(SOURCE_ROW_NAME_2).first().should("be.visible");
+}
+
+function insertNewSourceRow() {
+  H.queryWritableDB(
+    `INSERT INTO ${SOURCE_TABLE} VALUES (3, '${SOURCE_ROW_NAME_NEW}', 999.00, 'C');`,
+    "postgres",
+  );
+}
+
+function assertOutputRowsVisible() {
+  assertSourceRowsVisible();
+  H.main().findByText(SOURCE_ROW_NAME_NEW).should("not.exist");
 }
 
 function assertDataSourceIs(tableLabel: string) {

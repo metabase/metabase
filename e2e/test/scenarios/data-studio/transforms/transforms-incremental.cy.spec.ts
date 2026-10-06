@@ -31,6 +31,7 @@ describe("scenarios > admin > transforms incremental", () => {
     cy.intercept("POST", "/api/transform/*/reset-checkpoint").as(
       "resetCheckpoint",
     );
+    cy.intercept("POST", "/api/transform/*/run").as("runTransform");
   });
 
   afterEach(() => {
@@ -119,6 +120,9 @@ describe("scenarios > admin > transforms incremental", () => {
           .click();
       });
       cy.findByRole("region", { name: "Info" }).within(() => {
+        cy.findByRole("group", { name: "Checkpoint from" }).within(() => {
+          cy.findByText(/30/).should("be.visible");
+        });
         cy.findByRole("group", { name: "Checkpoint to" }).within(() => {
           cy.findByText(/31/).should("be.visible");
         });
@@ -135,6 +139,7 @@ describe("scenarios > admin > transforms incremental", () => {
         cy.button("Reprocess on next run").click();
       });
       cy.wait("@resetCheckpoint");
+      H.undoToast().should("contain.text", "Checkpoint has been reset");
 
       cy.log(
         "go to Runs tab, run transform again and check new run has checkpoint to 31",
@@ -151,6 +156,7 @@ describe("scenarios > admin > transforms incremental", () => {
         cy.findByRole("group", { name: "Checkpoint to" }).within(() => {
           cy.findByText(/31/).should("be.visible");
         });
+        cy.findByRole("group", { name: "Checkpoint from" }).should("not.exist");
       });
     });
 
@@ -250,6 +256,9 @@ def transform(animals):
             .click();
         });
         cy.findByRole("region", { name: "Info" }).within(() => {
+          cy.findByRole("group", { name: "Checkpoint from" }).within(() => {
+            cy.findByText(/30/).should("be.visible");
+          });
           cy.findByRole("group", { name: "Checkpoint to" }).within(() => {
             cy.findByText(/31/).should("be.visible");
           });
@@ -266,6 +275,7 @@ def transform(animals):
           cy.button("Reprocess on next run").click();
         });
         cy.wait("@resetCheckpoint");
+        H.undoToast().should("contain.text", "Checkpoint has been reset");
 
         cy.log(
           "go to Runs tab, run transform again and check new run has checkpoint to 31",
@@ -282,6 +292,9 @@ def transform(animals):
           cy.findByRole("group", { name: "Checkpoint to" }).within(() => {
             cy.findByText(/31/).should("be.visible");
           });
+          cy.findByRole("group", { name: "Checkpoint from" }).should(
+            "not.exist",
+          );
         });
       },
     );
@@ -363,6 +376,9 @@ def transform(animals):
           .click();
       });
       cy.findByRole("region", { name: "Info" }).within(() => {
+        cy.findByRole("group", { name: "Checkpoint from" }).within(() => {
+          cy.findByText(/30/).should("be.visible");
+        });
         cy.findByRole("group", { name: "Checkpoint to" }).within(() => {
           cy.findByText(/31/).should("be.visible");
         });
@@ -379,6 +395,7 @@ def transform(animals):
         cy.button("Reprocess on next run").click();
       });
       cy.wait("@resetCheckpoint");
+      H.undoToast().should("contain.text", "Checkpoint has been reset");
 
       cy.log(
         "go to Runs tab, run transform again and check new run has checkpoint to 31",
@@ -395,6 +412,7 @@ def transform(animals):
         cy.findByRole("group", { name: "Checkpoint to" }).within(() => {
           cy.findByText(/31/).should("be.visible");
         });
+        cy.findByRole("group", { name: "Checkpoint from" }).should("not.exist");
       });
     });
   });
@@ -408,6 +426,7 @@ function runTransformAndWaitForSuccess(
   options: { timeout?: number } = { timeout: PYTHON_TRANSFORM_RUN_TIMEOUT },
 ) {
   getRunButton().click();
+  cy.wait("@runTransform").its("response.statusCode").should("eq", 202);
   getRunButton(options).should("have.text", "Ran successfully");
 }
 

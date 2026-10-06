@@ -293,9 +293,7 @@ describe("scenarios > data-studio > transforms > inspect", () => {
         cy.findByRole("button", { name: /Close tab/i }).click();
       });
 
-      cy.findByRole("link", {
-        name: tabName,
-      }).should("not.exist");
+      cy.findByRole("tab", { name: tabName }).should("not.exist");
 
       H.expectUnstructuredSnowplowEvent({
         event: "transform_inspect_drill_lens_closed",

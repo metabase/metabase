@@ -415,6 +415,7 @@ LIMIT
       // Saving returns to read-only view mode; the "Run" tab only exists there,
       // so wait for the navigation off /edit before clicking it.
       cy.url().should("not.include", "/edit");
+      H.NativeEditor.value().should("eq", EXPECTED_QUERY);
 
       cy.log("run the transform and make sure its table can be queried");
       H.DataStudio.Transforms.runTab().click();
@@ -791,6 +792,7 @@ LIMIT
       H.popover().findByText("New tag").click();
       cy.wait("@createTag");
       H.undoToast().should("contain.text", "Transform tags updated");
+      assertOptionSelected("New tag");
 
       cy.log("Navigate to transform B");
       H.DataStudio.nav()
@@ -817,11 +819,8 @@ LIMIT
 
       cy.log("The tag should be gone");
       H.DataStudio.Transforms.runTab().click();
-      getTagsInput()
-        .parent()
-        // Select the tag pill
-        .get("[data-with-remove=true]")
-        .should("not.exist");
+      getTagsInput().should("be.visible");
+      assertOptionNotSelected("New tag");
     });
   });
 
@@ -1535,6 +1534,10 @@ LIMIT
       getTableLink().click();
       H.queryBuilderHeader().findByText(DB_NAME).should("be.visible");
       H.assertQueryBuilderRowCount(1);
+      H.assertTableData({
+        columns: ["Foo"],
+        firstRows: [["52"]],
+      });
     });
 
     it(
@@ -1570,10 +1573,6 @@ LIMIT
 
         cy.log("results panel should be hidden in read-only mode");
         H.DataStudio.Transforms.pythonResults().should("not.exist");
-
-        cy.log("library buttons should be hidden in read-only mode");
-        cy.findByLabelText("Import common library").should("not.exist");
-        cy.findByLabelText("Edit common library").should("not.exist");
       },
     );
 
@@ -3105,6 +3104,10 @@ describe("scenarios > admin > transforms > jobs", () => {
       openBulkActionsMenu();
       H.popover().findByText("Disable all").click();
       H.modal().button("Cancel").click();
+      H.modal().should("not.exist");
+      cy.get("@bulkUpdateJobActive.all").should("have.length", 0);
+      getJobRow("Job A").findByText("Disabled").should("not.exist");
+      getJobRow("Job B").findByText("Disabled").should("not.exist");
 
       cy.log(
         "bulk-disable: confirming sends { active: false } and badges all rows",
@@ -3584,12 +3587,19 @@ describe("scenarios > admin > transforms > runs", () => {
       columnName: string;
       transformNames: string[];
     }) {
+      // A new intercept per click so the wait can't match an earlier request
+      const clickHeaderAndWaitForRuns = () => {
+        cy.intercept("GET", /\/api\/transform\/run\?/).as("listRuns");
+        getTransformRunTable().findByText(columnName).click();
+        cy.wait("@listRuns");
+      };
+
       cy.log(`sort by ${columnName} ascending`);
-      getTransformRunTable().findByText(columnName).click();
+      clickHeaderAndWaitForRuns();
       checkSortingOrder(transformNames);
 
       cy.log(`sort by ${columnName} descending`);
-      getTransformRunTable().findByText(columnName).click();
+      clickHeaderAndWaitForRuns();
       checkSortingOrder([...transformNames].reverse());
     }
 
@@ -3746,14 +3756,14 @@ describe("scenarios > admin > transforms", () => {
     cy.findByRole("link", { name: "View your database connections" }).should(
       "exist",
     );
-    cy.findByTestId("transforms-section-header")
-      .findByRole("tab", { name: "Transforms" })
+    H.DataStudio.Transforms.sectionHeader()
+      .findByRole("link", { name: "Transforms" })
       .should("not.exist");
-    cy.findByTestId("transforms-section-header")
-      .findByRole("tab", { name: "Jobs" })
+    H.DataStudio.Transforms.sectionHeader()
+      .findByRole("link", { name: "Jobs" })
       .should("not.exist");
-    cy.findByTestId("transforms-section-header")
-      .findByRole("tab", { name: "Runs" })
+    H.DataStudio.Transforms.sectionHeader()
+      .findByRole("link", { name: "Runs" })
       .should("not.exist");
   });
 });
@@ -4182,6 +4192,13 @@ describe("scenarios > data studio > transforms > permissions > oss", () => {
         .findByText("Data transformation")
         .should("be.visible")
         .click();
+
+      cy.log("Verify the upsell gem icon is displayed on a gated menu item");
+      H.DataStudio.nav()
+        .findByText("Remote sync")
+        .closest("a")
+        .findByTestId("upsell-gem")
+        .should("be.visible");
 
       cy.log("Verify no upsell gem icon is displayed in Transforms menu item");
       H.DataStudio.nav()

@@ -421,6 +421,9 @@ describe(
         H.popover().findByText("High Value Recent Orders").click();
         H.visualize();
         H.tableInteractive().should("be.visible");
+        H.queryBuilderFiltersPanel()
+          .findByText("High Value Recent Orders")
+          .should("be.visible");
       });
     });
 
@@ -498,6 +501,12 @@ describe(
           cy.findByText(/created this segment/i)
             .scrollIntoView()
             .should("be.visible");
+          cy.findByText(/renamed the segment/i)
+            .scrollIntoView()
+            .should("be.visible");
+          cy.findByText(/changed the filter definition/i)
+            .scrollIntoView()
+            .should("be.visible");
           cy.findByText("Total is greater than 100")
             .scrollIntoView()
             .should("be.visible");
@@ -571,10 +580,11 @@ describe(
             .findByText("Test description for readonly")
             .should("be.visible");
 
-          cy.log("verify Save button is not visible");
+          cy.log("verify filter is shown but cannot be changed");
           SegmentEditor.get()
-            .findByRole("button", { name: /Save/i })
-            .should("not.exist");
+            .findByText(/Total is less than 100/i)
+            .should("be.visible");
+          SegmentEditor.get().icon("add").should("not.exist");
 
           cy.log("verify Remove segment option is hidden in actions menu");
           SegmentEditor.getActionsButton().click();
@@ -661,6 +671,7 @@ function verifySegmentInQueryBuilder(
 
   H.visualize();
   H.tableInteractive().should("be.visible");
+  H.queryBuilderFiltersPanel().findByText(segmentName).should("be.visible");
 }
 
 function verifySegmentNotInQueryBuilder(

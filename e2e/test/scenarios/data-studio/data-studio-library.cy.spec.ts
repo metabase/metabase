@@ -107,6 +107,7 @@ describe("scenarios > data studio > library", () => {
   });
 
   it("should let you move metrics into the library, even when empty", () => {
+    cy.intercept("POST", "/api/card").as("createCard");
     H.createLibrary();
     H.createQuestion(TRUSTED_ORDERS_METRIC, { visitQuestion: true });
     H.DataStudio.Metrics.moreMenu().click();
@@ -117,6 +118,12 @@ describe("scenarios > data studio > library", () => {
     H.entityPickerModalItem(1, "Metrics").click();
     H.entityPickerModal().button("Select this collection").click();
     H.modal().button("Duplicate").click();
+    cy.wait("@createCard").its("response.statusCode").should("eq", 200);
+
+    H.DataStudio.Library.visit();
+    H.DataStudio.Library.libraryPage()
+      .findByText("Trusted Orders Metric - Duplicate")
+      .should("be.visible");
   });
 
   it("should show the library collection even if only 1 child collection has items", () => {

@@ -423,6 +423,9 @@ describe("scenarios > data studio > table collection permissions", () => {
         cy.findByText("Widget").click();
         cy.button("Add filter").click();
       });
+      H.queryBuilderFiltersPanel()
+        .findByText("Category is Widget")
+        .should("be.visible");
       H.assertQueryBuilderRowCount(54);
     });
 
@@ -445,6 +448,9 @@ describe("scenarios > data studio > table collection permissions", () => {
         cy.findByText("Widget").click();
         cy.button("Add filter").click();
       });
+      H.queryBuilderFiltersPanel()
+        .findByText("Category is Widget")
+        .should("be.visible");
       H.assertQueryBuilderRowCount(54);
     });
   });

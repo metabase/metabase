@@ -17,6 +17,8 @@ describe("issue #68378", () => {
   });
 
   it("should show empty schemas when picking a target schema (metabase#68378)", () => {
+    cy.intercept("POST", "/api/transform").as("createTransform");
+
     visitTransformListPage();
     cy.button("Create a transform").click();
     H.popover().findByText("SQL query").click();
@@ -33,6 +35,10 @@ describe("issue #68378", () => {
     H.popover().findByText("empty_schema").should("be.visible").click();
 
     H.modal().button("Save").click();
+    cy.wait("@createTransform").its("response.statusCode").should("eq", 200);
+
+    H.DataStudio.Transforms.settingsTab().click();
+    cy.findByTestId("schema-link").should("have.text", "empty_schema");
   });
 });
 

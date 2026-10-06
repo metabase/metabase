@@ -120,6 +120,9 @@ describe("scenarios > data studio > snippets", () => {
       });
 
       H.DataStudio.Snippets.editPage().should("be.visible");
+      H.DataStudio.Snippets.editor
+        .value()
+        .should("eq", "SELECT * FROM orders WHERE id = 1");
     });
 
     it("should preserve unsaved content changes when description or name is edited", () => {

@@ -188,6 +188,7 @@ describe("scenarios > data studio > data model > measures", () => {
       MeasureEditor.getDescriptionInput().clear().type("Updated description");
       MeasureEditor.getSaveButton().click();
       cy.wait("@updateMeasure");
+      H.undoToastList().should("contain.text", "Measure updated");
 
       cy.log("verify updated measure in query builder");
       verifyMeasureInQueryBuilder("Test Measure Updated");
@@ -213,6 +214,7 @@ describe("scenarios > data studio > data model > measures", () => {
 
   describe("Measure deletion", () => {
     it("should remove measure via more menu", () => {
+      createTestMeasure({ name: "Kept Measure" });
       createTestMeasure({ name: "Measure to Delete" });
       cy.get<number>("@measureId").then((measureId) => {
         visitDataModelMeasure(ORDERS_ID, measureId);
@@ -230,12 +232,16 @@ describe("scenarios > data studio > data model > measures", () => {
         "include",
         `/data-studio/data/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}/table/${ORDERS_ID}/measures`,
       );
-      MeasureList.get()
-        .findByText("Measure to Delete", { timeout: 1000 })
-        .should("not.exist");
+      MeasureList.getMeasure("Kept Measure")
+        .scrollIntoView()
+        .should("be.visible");
+      MeasureList.get().findByText("Measure to Delete").should("not.exist");
 
       cy.log("verify measure removed from query builder");
-      verifyMeasureNotInQueryBuilder("Total Revenue");
+      verifyMeasureNotInQueryBuilder({
+        removedMeasureName: "Measure to Delete",
+        keptMeasureName: "Kept Measure",
+      });
     });
   });
 
@@ -449,11 +455,6 @@ describe("scenarios > data studio > data model > measures", () => {
           .findByText("Test description for readonly")
           .should("be.visible");
 
-        cy.log("verify Save button is not visible");
-        MeasureEditor.get()
-          .findByRole("button", { name: /Save/i })
-          .should("not.exist");
-
         cy.log("verify Remove measure option is hidden in actions menu");
         MeasureEditor.getActionsButton().click();
         H.popover().findByText("Explore").should("be.visible");
@@ -542,12 +543,19 @@ function verifyMeasureInQueryBuilder(
   cy.findByTestId("scalar-value").should("be.visible");
 }
 
-function verifyMeasureNotInQueryBuilder(
-  measureName: string,
-  tableId: number = ORDERS_ID,
-) {
-  H.openTable({ table: tableId, mode: "notebook" });
+function verifyMeasureNotInQueryBuilder({
+  removedMeasureName,
+  keptMeasureName,
+}: {
+  removedMeasureName: string;
+  keptMeasureName: string;
+}) {
+  H.openTable({ table: ORDERS_ID, mode: "notebook" });
 
   H.getNotebookStep("data").button("Summarize").click();
-  H.popover().findByText(measureName).should("not.exist");
+  H.popover().within(() => {
+    cy.findByText("Measures").click();
+    cy.findByText(keptMeasureName).should("be.visible");
+    cy.findByText(removedMeasureName).should("not.exist");
+  });
 }

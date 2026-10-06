@@ -25,6 +25,7 @@ describe("scenarios > admin > transforms", () => {
     cy.intercept("POST", "/api/transform-tag").as("createTag");
     cy.intercept("PUT", "/api/transform-tag/*").as("updateTag");
     cy.intercept("DELETE", "/api/transform-tag/*").as("deleteTag");
+    cy.intercept("POST", "/api/transform/*/run").as("runTransform");
   });
 
   it("should be able to use the data reference and snippets when writing a SQL transform", () => {
@@ -97,7 +98,7 @@ describe("scenarios > admin > transforms", () => {
     })
       .then((query) =>
         H.createTransform({
-          name: "MBQL",
+          name: "SQL transform",
           source: {
             type: "query",
             query,
@@ -360,6 +361,12 @@ function editorSidebar() {
 function assertIsTransformRunnable() {
   H.DataStudio.Transforms.runTab().click();
   getRunButton().click();
+  cy.wait("@runTransform").then(({ response }) => {
+    const runId = response?.body.run_id;
+    H.waitForTransformRuns((runs) =>
+      runs.some((run) => run.id === runId && run.status === "succeeded"),
+    );
+  });
   getRunButton().should("have.text", "Ran successfully");
   H.DataStudio.Transforms.definitionTab().click();
 }

@@ -183,8 +183,11 @@ describe("scenarios > data studio > library > metrics", () => {
       cy.button("Cancel").click();
     });
 
-    cy.log("Verify we're still on the definition tab");
+    cy.log("Verify we're still on the definition tab with the unsaved change");
     H.DataStudio.Metrics.queryEditor().should("be.visible");
+    H.getNotebookStep("summarize")
+      .findByText("Sum of Total")
+      .should("be.visible");
   });
 
   it("should archive and restore a metric", () => {

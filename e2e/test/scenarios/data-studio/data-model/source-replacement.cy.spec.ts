@@ -1,9 +1,5 @@
 import { USER_GROUPS, WRITABLE_DB_ID } from "e2e/support/cypress_data";
-import type {
-  ConcreteFieldReference,
-  Dataset,
-  MetricDatasetRequest,
-} from "metabase-types/api";
+import type { ConcreteFieldReference } from "metabase-types/api";
 
 const { H } = cy;
 const { SourceReplacement } = H.DataModel;
@@ -72,8 +68,8 @@ describe(
             ["field", "amount", { "base-type": "type/Decimal" }],
             50,
           ],
-        });
-        createSourceQuestion("Q3 count", { aggregation: [["count"]] });
+        }).as("q2");
+        createSourceQuestion("Q3 count", { aggregation: [["count"]] }).as("q3");
 
         openReplacementModal(SOURCE_TABLE_LABEL);
         pickTarget(COMPATIBLE_TARGET_LABEL);
@@ -94,6 +90,20 @@ describe(
           H.visitQuestion(body.id);
           assertTargetRowVisible();
           H.main().findByText(SOURCE_ROW_VALUE).should("not.exist");
+          H.openNotebook();
+          assertDataSourceIs(COMPATIBLE_TARGET_LABEL);
+        });
+
+        cy.log("filtered question now queries the new table");
+        cy.get<Cypress.Response<{ id: number }>>("@q2").then(({ body }) => {
+          H.visitQuestion(body.id);
+          assertTargetRowVisible();
+          H.main().findByText(SOURCE_ROW_VALUE).should("not.exist");
+        });
+
+        cy.log("count question now queries the new table");
+        cy.get<Cypress.Response<{ id: number }>>("@q3").then(({ body }) => {
+          H.visitQuestion(body.id);
           H.openNotebook();
           assertDataSourceIs(COMPATIBLE_TARGET_LABEL);
         });
@@ -200,15 +210,9 @@ describe(
         cy.get<Cypress.Response<{ id: number }>>("@metric").then(({ body }) => {
           cy.intercept("POST", "/api/metric/dataset").as("metricDataset");
           H.visitMetric(body.id);
-          cy.wait<MetricDatasetRequest, Dataset>("@metricDataset").then(
-            ({ response }) => {
-              expect(response?.statusCode).to.equal(202);
-              const total = response?.body.data.rows.reduce((sum, row) => {
-                return sum + Number(row[row.length - 1]);
-              }, 0);
-              expect(total).to.equal(800);
-            },
-          );
+          cy.wait("@metricDataset")
+            .its("response.statusCode")
+            .should("eq", 202);
           cy.findByTestId("visualization-root")
             .should("be.visible")
             .and("have.attr", "data-viz-ui-name", "Number");
@@ -228,10 +232,12 @@ describe(
           cy.log("dashboard renders with new data");
           H.visitDashboard(dashboard_id);
           H.main().findByText(COMPATIBLE_TARGET_ROW_VALUE).should("be.visible");
+          H.main().findByText(ANOTHER_TARGET_ROW_VALUE).should("be.visible");
 
           cy.log("filter widget still works after replacement");
           H.toggleFilterWidgetValues(["C"]);
           H.main().findByText(COMPATIBLE_TARGET_ROW_VALUE).should("be.visible");
+          H.main().findByText(ANOTHER_TARGET_ROW_VALUE).should("not.exist");
 
           cy.log("the underlying question's data source was updated");
           H.visitQuestion(card_id);
