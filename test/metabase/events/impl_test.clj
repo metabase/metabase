@@ -5,6 +5,8 @@
    [metabase.events.impl :as events]
    [methodical.core :as methodical]))
 
+(set! *warn-on-reflection* true)
+
 #_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic *method-calls* nil)
 
@@ -54,7 +56,7 @@
   [_topic event]
   (record-call-and-maybe-throw! ::throwing-topic event))
 
-(defn- publish-and-catch
+(defn- publish-and-catch!
   "Publish `event` to `::throwing-topic`; return the thrown exception, or nil."
   [event]
   (try
@@ -69,7 +71,7 @@
     (testing (str "listener " thrower " throws")
       (binding [*method-calls* (atom {})]
         (let [event {::throw #{thrower}}
-              e     (publish-and-catch event)
+              e     (publish-and-catch! event)
               cause (ex-cause e)]
           (testing "every listener ran"
             (is (= {::throwing-topic  event
@@ -84,7 +86,7 @@
   (testing "both listeners throw"
     (binding [*method-calls* (atom {})]
       (let [event {::throw #{::throwing-topic ::throwing-topics}}
-            e     (publish-and-catch event)
+            e     (publish-and-catch! event)
             cause ^Throwable (ex-cause e)]
         (testing "every listener ran"
           (is (= {::throwing-topic  event

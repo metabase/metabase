@@ -16,6 +16,7 @@
    [metabase.util.i18n :as i18n]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.util.methodical.do-all-combination :as u.methodical.do-all-combination]
    [metabase.util.methodical.null-cache :as u.methodical.null-cache]
    [metabase.util.methodical.unsorted-dispatcher :as u.methodical.unsorted-dispatcher]
    [methodical.core :as methodical]
@@ -46,9 +47,10 @@
 
     (events/publish-event! :event/database-create {:object database :user-id api/*current-user-id*})
 
-  'Subscribe' to an event by add a Methodical method implementation. Since this uses
-  the [[methodical/do-method-combination]], all multiple method implementations can be called for a single invocation.
-  The order is indeterminate, but return value is ignored.
+  'Subscribe' to an event by add a Methodical method implementation. Every method implementation that matches the
+  topic is called for a single invocation, also when another one throws. The order is indeterminate, and return values
+  are ignored. If methods throw, this throws after all of them ran: an `ex-info` whose cause is the first error, with
+  the other errors added to it as suppressed.
 
   Don't write method implementations for the event names themselves, e.g. `:event/database-create`, because these will
   stomp on other methods with the same key:
@@ -72,7 +74,7 @@
    :defmethod-arities   #{2}
    :dispatch-value-spec ::publish-event-dispatch-value}
   :combo
-  (methodical/do-method-combination)
+  (u.methodical.do-all-combination/do-all-method-combination)
   ;; work around https://github.com/camsaul/methodical/issues/97
   :dispatcher
   (u.methodical.unsorted-dispatcher/unsorted-dispatcher
