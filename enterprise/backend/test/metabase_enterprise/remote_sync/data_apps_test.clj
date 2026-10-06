@@ -1,6 +1,7 @@
 (ns metabase-enterprise.remote-sync.data-apps-test
   "Data apps are serdes entities: remote sync imports and exports them like any other, with each app's bundle as a
-   resource file next to its `data_app.yaml`."
+   resource file next to its `data_app.yaml`, and its collection under `collections/data_apps/` like any collection
+   of a namespace."
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
@@ -27,15 +28,15 @@
 (def ^:private sales-eid "w8YkMQBwU4kOD0-pZ1nJk")
 
 (defn- app-tree
-  "Repo files for the data app `slug` with entity id `eid`: its `data_app.yaml` and its bundle at `dist/index.js`."
+  "Repo files for the data app `slug` with entity id `eid`: its `data_app.yaml`, its bundle at `dist/index.js`, and
+  its collection's file under `collections/data_apps/`."
   [eid slug bundle]
-  {(str "data_apps/" slug "/data_app.yaml")
-   (yaml/generate-string {:serdes/meta [{:model "DataApp" :id eid :label slug}]
-                          :entity_id   eid
-                          :slug        slug
-                          :name        "Sales"
-                          :path        "dist/index.js"})
-   (str "data_apps/" slug "/dist/index.js") bundle})
+  (data-apps.tu/app-files slug {:name "Sales" :path "dist/index.js" :bundle bundle :entity_id eid}))
+
+(defn- app-files-in
+  "The files of `repo` that serialization writes for data apps: under `data_apps/` and `collections/data_apps/`."
+  [repo]
+  (into #{} (filter #(re-find #"^(data_apps|collections/data_apps)/" %)) (keys repo)))
 
 (defn- new-task! [sync-task-type]
   (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type sync-task-type :initiated_by (mt/user->id :rasta)}))
@@ -75,14 +76,16 @@
     (let [src (test-helpers/versioned-source :trees {"v0" (app-tree sales-eid "sales" "BUNDLE-V1")
                                                      "v1" {"README.md" "x"}}
                                              :current "v0")]
-      (testing "a pull imports the app and its bundle"
-        (is (=? {:status :success :outcome {:kind "pulled" :count 1}} (import-at! src "v0" :force? true)))
+      (testing "a pull imports the app, its collection and its bundle"
+        (is (=? {:status :success :outcome {:kind "pulled" :count 2}} (import-at! src "v0" :force? true)))
         (is (=? {:entity_id sales-eid :display_name "Sales" :resource_collection_id pos-int?}
                 (t2/select-one :model/DataApp :name "sales")))
         (is (= "BUNDLE-V1" (bundle-text "sales"))))
-      (testing "a pull whose repo no longer has the app removes it"
-        (is (= :success (:status (import-at! src "v1"))))
-        (is (not (t2/exists? :model/DataApp :name "sales")))))))
+      (testing "a pull whose repo no longer has the app's files removes it, and the hook removes its collection"
+        (let [collection-id (t2/select-one-fn :resource_collection_id :model/DataApp :name "sales")]
+          (is (= :success (:status (import-at! src "v1"))))
+          (is (not (t2/exists? :model/DataApp :name "sales")))
+          (is (not (t2/exists? :model/Collection :id collection-id))))))))
 
 (deftest bundle-only-pull-updates-the-bundle-test
   (testing "a pull that changes only an app's bundle file falls back to a full import, so the new bundle lands"
@@ -103,11 +106,13 @@
                                                          :display_name "Sales"
                                                          :bundle_path  "dist/index.js"
                                                          :bundle       "BUNDLE"})
-      (testing "a created app is exported as its manifest and its bundle file"
+      (testing "a created app is exported as its manifest, its bundle file, and its collection's file"
         (is (= :success (:status (export! mock))))
-        (is (=? {:slug "sales" :name "Sales" :path "dist/index.js"}
+        (is (=? {:slug "sales" :name "Sales" :path "dist/index.js" :collection string?}
                 (yaml/parse-string (get (repo) "data_apps/sales/data_app.yaml"))))
-        (is (= "BUNDLE" (get (repo) "data_apps/sales/dist/index.js"))))
+        (is (= "BUNDLE" (get (repo) "data_apps/sales/dist/index.js")))
+        (is (=? {:name "Data App: sales" :namespace "data-apps"}
+                (yaml/parse-string (get (repo) "collections/data_apps/data_app__sales.yaml")))))
       (testing "an updated bundle is exported"
         (mt/user-http-request :crowberto :put 200 "apps/sales" {:bundle "BUNDLE-V2"})
         (is (= :success (:status (export! mock))))
@@ -119,8 +124,8 @@
                                                            :bundle       "OPS"})
         (mt/user-http-request :crowberto :delete 204 "apps/sales")
         (is (= :success (:status (export! mock))))
-        (is (= #{"data_apps/ops/data_app.yaml" "data_apps/ops/app.js" "data_apps/ops/resources/collection.yaml"}
-               (into #{} (filter #(re-find #"^data_apps/" %)) (keys (repo)))))))))
+        (is (= #{"data_apps/ops/data_app.yaml" "data_apps/ops/app.js" "collections/data_apps/data_app__ops.yaml"}
+               (app-files-in (repo))))))))
 
 (deftest export-keeps-files-serialization-does-not-own-test
   (testing "an export rewrites an app's manifest and bundle but leaves the app's source next to them alone"
@@ -144,9 +149,9 @@
         (testing "deleting the app removes only the files serialization owns"
           (mt/user-http-request :crowberto :delete 204 "apps/sales")
           (is (= :success (:status (export! mock))))
-          (is (= (into #{"data_apps/ops/data_app.yaml" "data_apps/ops/app.js" "data_apps/ops/resources/collection.yaml"}
+          (is (= (into #{"data_apps/ops/data_app.yaml" "data_apps/ops/app.js" "collections/data_apps/data_app__ops.yaml"}
                        (keys source))
-                 (into #{} (filter #(re-find #"^data_apps/" %)) (keys (repo))))))))))
+                 (app-files-in (repo)))))))))
 
 (deftest pull-refuses-to-delete-an-unpushed-app-test
   (testing "a pull whose repo lacks an app created here but not pushed yet is a conflict, not a silent delete"
@@ -170,8 +175,14 @@
 (defn- venues-query []
   {:stages [{:source {:type "table" :id (mt/id :venues)} :limit 5}]})
 
+(def ^:private shop-collection-name "Data App: shop")
+
+(def ^:private shop-collection-dir
+  (str "collections/data_apps/" (data-apps.tu/collection-dir shop-collection-name) "/"))
+
 (defn- shop-tree
-  "The repo files of the `shop` app with `resources` (see `data-apps.tu/build-resources`)."
+  "The repo files of the `shop` app with `resources` (see `data-apps.tu/build-resources`), the resources under
+  `collections/data_apps/data_app__shop/`."
   [resources]
   (data-apps.tu/app-files "shop" {:name "Shop" :path "index.js" :bundle "B"
                                   :collection shop-collection-eid :resources resources}))
@@ -247,7 +258,7 @@
             src       (test-helpers/versioned-source :trees {"v0" (shop-tree archived)} :current "v0")
             result    (import-at! src "v0" :force? true)]
         (is (= :error (:status result)))
-        (is (str/includes? (:message result) (str "data_apps/shop/resources/" card-file)))
+        (is (str/includes? (:message result) (data-apps.tu/resource-path shop-collection-name card-file)))
         (is (not (t2/exists? :model/DataApp :name "shop")) "nothing loaded")))))
 
 (deftest pull-refuses-to-take-over-a-card-elsewhere-test
@@ -261,11 +272,11 @@
                       :current "v0")
               result (import-at! src "v0" :force? true)]
           (is (= :error (:status result)))
-          (is (str/includes? (:message result) "data_apps/shop/resources/cards/"))
+          (is (str/includes? (:message result) shop-collection-dir))
           (is (= "Someone else's" (t2/select-one-fn :name :model/Card :id foreign-id))))))))
 
-(deftest export-writes-an-apps-resources-beside-it-test
-  (testing "what an app's collection holds is exported under data_apps/<slug>/resources/, not under collections/"
+(deftest export-writes-an-apps-resources-under-its-collection-test
+  (testing "what an app's collection holds is exported under collections/data_apps/, like any namespace's content"
     (with-data-apps-sync
       (let [mock (test-helpers/create-mock-source :initial-files {"main" {}})
             repo #(get @(:files-atom mock) "main")]
@@ -287,12 +298,12 @@
             (is (= :success (:status (export! mock))))
             (is (= #{"data_apps/sales/data_app.yaml"
                      "data_apps/sales/dist/index.js"
-                     "data_apps/sales/resources/collection.yaml"
-                     "data_apps/sales/resources/cards/venues_list.yaml"
-                     "data_apps/sales/resources/actions/rename_venue.yaml"}
-                   (into #{} (filter #(re-find #"^data_apps/" %)) (keys (repo)))))
-            (is (empty? (filter #(re-find #"^(collections|actions)/" %) (keys (repo))))
-                "nothing of the app's lands in the shared directories")))))))
+                     "collections/data_apps/data_app__sales.yaml"
+                     "collections/data_apps/data_app__sales/venues_list.yaml"
+                     "collections/data_apps/data_app__sales/rename_venue.yaml"}
+                   (app-files-in (repo))))
+            (is (empty? (filter #(re-find #"^(collections/main|actions)/" %) (keys (repo))))
+                "nothing of the app's lands in the default namespace's directories")))))))
 
 (defn- question-resources []
   (data-apps.tu/build-resources shop-collection-eid
@@ -300,9 +311,14 @@
                                 []))
 
 (defn- resource-files
-  "The resource files of the `shop` app in `mock`'s repository."
+  "The files of data apps' collections in `mock`'s repository."
   [mock]
-  (into #{} (filter #(re-find #"^data_apps/shop/resources/" %)) (keys (get @(:files-atom mock) "main"))))
+  (into #{} (filter #(re-find #"^collections/data_apps/" %)) (keys (get @(:files-atom mock) "main"))))
+
+(defn- file-named
+  "Whether a file of `mock`'s repository under `collections/data_apps/` has a name starting with `stem`."
+  [mock stem]
+  (some #(str/starts-with? (last (str/split % #"/")) stem) (resource-files mock)))
 
 (deftest export-keeps-the-file-of-a-resource-edited-here-test
   (testing "a card and an action edited in Metabase are exported as changed, not removed from the repository"
@@ -321,8 +337,8 @@
              (mt/with-actions-enabled
                (mt/user-http-request :crowberto :put 200 (str "action/" copy-id) {:name "Renamed venue"}))
              (is (= :success (:status (export! mock))))
-             (is (some #(str/includes? % "/resources/cards/") (resource-files mock)))
-             (is (some #(str/includes? % "/resources/actions/") (resource-files mock)))
+             (is (file-named mock "venueslist"))
+             (is (file-named mock "renamed_venue"))
              (is (some #(str/includes? (get-in @(:files-atom mock) ["main" %]) "edited here") (resource-files mock)))
              (testing "and a pull of what was exported keeps both"
                (is (= :success (:status (import-at! mock "main" :force? true))))
@@ -389,7 +405,7 @@
           (testing "it can still be edited, and the export keeps its file"
             (mt/user-http-request :crowberto :put 200 (str "card/" card-id) {:description "still editable"})
             (is (= :success (:status (export! mock))))
-            (is (some #(str/includes? % "/resources/cards/") (resource-files mock)))
+            (is (file-named mock "venueslist"))
             (is (= :success (:status (import-at! mock "main" :force? true)))))
           (testing "a card anywhere else still can be archived"
             (mt/with-temp [:model/Card {other-id :id} {:name "Elsewhere"}]
@@ -428,8 +444,8 @@
           src    (test-helpers/versioned-source :trees {"v0" (merge (app "first") (app "second"))} :current "v0")
           result (import-at! src "v0" :force? true)]
       (is (= :error (:status result)))
-      (is (str/includes? (:message result) "data_apps/first/resources/cards/"))
-      (is (str/includes? (:message result) "data_apps/second/resources/cards/"))
+      (is (str/includes? (:message result) "collections/data_apps/data_app__first/"))
+      (is (str/includes? (:message result) "collections/data_apps/data_app__second/"))
       (is (not (t2/exists? :model/Card :entity_id question-eid)) "nothing loaded"))))
 
 (deftest pull-survives-a-query-whose-tables-cant-be-read-test
@@ -604,10 +620,10 @@
         (is (= (sort [(mt/id :venues) (mt/id :checkins)])
                (t2/select-one-fn :table_ids :model/DataApp :name "shop")))))))
 
-(deftest an-apps-own-yaml-under-resources-is-left-alone-test
-  (testing "a YAML file under resources/ that isn't in the resource layout is the app's own: not loaded, not removed"
+(deftest an-apps-own-yaml-is-left-alone-test
+  (testing "a YAML file in the app's directory that isn't its manifest is the app's own: not loaded, not removed"
     (with-data-apps-sync
-      (let [own  "data_apps/shop/resources/i18n/en.yaml"
+      (let [own  "data_apps/shop/i18n/en.yaml"
             mock (test-helpers/create-mock-source
                   :initial-files {"main" (assoc (shop-tree (question-resources)) own "greeting: hello\n")})]
         (let [result (import-at! mock "main" :force? true)]
@@ -615,3 +631,20 @@
         (mt/user-http-request :crowberto :put 200 "apps/shop" {:bundle "B2"})
         (is (= :success (:status (export! mock))))
         (is (= "greeting: hello\n" (get-in @(:files-atom mock) ["main" own])))))))
+
+(deftest deleting-an-apps-files-deletes-the-app-and-its-collection-test
+  (testing "an author deletes an app by deleting its directory and its collection's files under collections/data_apps/"
+    (with-data-apps-sync
+      (let [resources (data-apps.tu/build-resources shop-collection-eid
+                                                    [{:entity_id question-eid :name "VenuesList" :query (venues-query)}]
+                                                    [])
+            src       (test-helpers/versioned-source :trees {"v0" (shop-tree resources) "v1" {"README.md" "x"}}
+                                                     :current "v0")]
+        (is (= :success (:status (import-at! src "v0" :force? true))))
+        (let [collection-id (shop-collection-id)]
+          (is (t2/exists? :model/Card :entity_id question-eid :collection_id collection-id))
+          (is (= :success (:status (import-at! src "v1"))))
+          (is (not (t2/exists? :model/DataApp :name "shop")))
+          (testing "the hook deletes the collection and what it held"
+            (is (not (t2/exists? :model/Collection :id collection-id)))
+            (is (not (t2/exists? :model/Card :entity_id question-eid)))))))))

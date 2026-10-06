@@ -1,9 +1,10 @@
 (ns metabase-enterprise.data-apps.resource-validation
-  "What a data app's resource files may hold. Serialization loads them like any other entity files (see
-  `metabase-enterprise.serialization.v2.ingest/shared-top-level-paths`), and a load trusts what it reads: it updates
-  whatever row carries an entity ID and resolves references to any local entity. These checks run on the ingested
-  files first, so an app's `resources/` can only define its own collection and, in it, questions, metrics, and query
-  actions that belong to no model, referencing nothing else of Metabase's but what already exists."
+  "What a data app's resources may hold. An app's resources are its collection, the one its `data_app.yaml` names as
+  `collection`, and the cards and actions in it, all ordinary entity files under `collections/`. A load trusts what it
+  reads: it updates whatever row carries an entity ID and resolves references to any local entity. These checks run
+  on the ingested files first, so an app's resources can only be its own collection, in the `data-apps` namespace,
+  and, in it, questions, metrics, and query actions that belong to no model, referencing nothing else of Metabase's
+  but what already exists."
   (:require
    [clojure.string :as str]
    [clojure.walk :as walk]
@@ -19,10 +20,6 @@
   #{"Database" "Table" "Field" "NativeQuerySnippet" "Segment" "Measure"})
 
 (def ^:private card-types #{"question" "metric"})
-
-(def ^:private resource-models
-  "The model a resource file holds, by its path relative to `resources/`."
-  {"collection.yaml" "Collection", "cards" "Card", "actions" "Action"})
 
 (defn- leaf [path]
   (last path))
@@ -69,22 +66,20 @@
   (when (some (comp :card_id :values_source_config) (:parameters entity))
     [(problem path (tru "{0} must not take parameter values from a card." path))]))
 
-(defn- model-problems [collection-entity-id {:keys [path model entity] :as file}]
+(defn- model-problems [{:keys [path model entity] :as file}]
   (case model
     "Collection"
     (concat
-     (when (not= collection-entity-id (:entity_id entity))
-       [(problem path (tru "{0} must hold the collection {1} named in data_app.yaml." path collection-entity-id))])
-     (when (or (some entity [:parent_id :personal_owner_id :namespace :authority_level :type :archive_operation_id])
+     (when (not= "data-apps" (some-> (:namespace entity) name))
+       [(problem path (tru "{0} must be in the data-apps collection namespace." path))])
+     (when (or (some entity [:parent_id :personal_owner_id :authority_level :type :archive_operation_id])
                (:is_remote_synced entity)
                (:is_sample entity)
                (:archived entity))
-       [(problem path (tru "{0} must be a plain root collection that is not remote-synced or archived." path))]))
+       [(problem path (tru "{0} must be a root collection that is not remote-synced or archived." path))]))
 
     "Card"
     (concat
-     (when (not= collection-entity-id (:collection_id entity))
-       [(problem path (tru "{0} must be in the collection {1}." path collection-entity-id))])
      (when-not (card-types (type-name entity))
        [(problem path (tru "{0} must be a question or metric." path))])
      (when-not (and (map? (:dataset_query entity)) (some? (:database (:dataset_query entity))))
@@ -98,8 +93,6 @@
 
     "Action"
     (concat
-     (when (not= collection-entity-id (:collection_id entity))
-       [(problem path (tru "{0} must be in the collection {1}." path collection-entity-id))])
      ;; a data app runs only query actions that belong to no model, the ones the typed schema lists
      (when (not= "query" (type-name entity))
        [(problem path (tru "{0} must be a query action." path))])
@@ -217,10 +210,13 @@
   "Serdes would update any row carrying an entity ID a file names, so a file may only name what this app owns:
   the collection its manifest names, if it exists, must be this app's, and existing cards and actions must be in
   it."
-  [app-entity-id collection-entity-id resources]
+  [app-entity-id manifest-path collection-entity-id resources]
   (let [app               (data-apps.db/data-app-by-entity-id app-entity-id)
         app-collection-id (:resource_collection_id app)
-        owned?            (fn [collection-id] (and (some? app-collection-id) (= app-collection-id collection-id)))
+        ;; a collection on the instance that no app owns, or this app owns, may be the app's; another app's may not
+        owned?            (fn [collection-id]
+                            (or (= app-collection-id collection-id)
+                                (not (data-apps.db/resource-collection-owned? collection-id))))
         entity-ids-of     (fn [model]
                             (into [] (comp (filter (comp #{model} :model)) (map (comp :entity_id :entity))) resources))
         file-of           (fn [model entity-id]
@@ -229,104 +225,101 @@
     (concat
      (for [{:keys [id entity_id]} (data-apps.db/collections-by-entity-ids [collection-entity-id])
            :when (not (owned? id))]
-       (problem (or (file-of "Collection" entity_id) (str "data_apps/" app-entity-id))
-                (tru "Collection {0} already exists and isn''t this data app''s collection. Give the app a new collection: a new entity ID in data_app.yaml and resources/collection.yaml."
+       (problem (or (file-of "Collection" entity_id) manifest-path)
+                (tru "Collection {0} already exists and is another data app''s collection. Give the app a collection of its own: a new entity ID in data_app.yaml and in the collection''s file."
                      entity_id)))
      (for [[model rows] [["Card"   (data-apps.db/cards-by-entity-ids (entity-ids-of "Card"))]
                          ["Action" (data-apps.db/actions-by-entity-ids (entity-ids-of "Action"))]]
            {:keys [entity_id collection_id]} rows
-           :when (not (owned? collection_id))]
+           :when (not (and (some? app-collection-id) (= app-collection-id collection_id)))]
        (problem (file-of model entity_id)
                 (tru "{0} {1} already exists outside this data app''s collection, so the app can''t load it. Move it back if it belongs to this app."
                      model entity_id))))))
 
-(defn- resource-model
-  "The model the resource at `relative-path` (to `resources/`) holds, or nil when the path isn't one of the layout's."
-  [relative-path]
-  (let [[first-segment second-segment & more] (str/split relative-path #"/")]
-    (cond
-      (and (= first-segment "collection.yaml") (nil? second-segment)) "Collection"
-      (and (contains? #{"cards" "actions"} first-segment) second-segment (nil? more)) (resource-models first-segment)
-      :else nil)))
+(defn- model-of [entity]
+  (:model (last (:serdes/meta entity))))
+
+(defn- app-resources
+  "Among `files`, the collection with `collection-entity-id` and the cards and actions in it, each with its `:model`."
+  [collection-entity-id files]
+  (for [{:keys [entity] :as file} files
+        :let  [model (model-of entity)]
+        :when (or (and (= "Collection" model) (= collection-entity-id (:entity_id entity)))
+                  (and (contains? #{"Card" "Action"} model)
+                       (= collection-entity-id (:collection_id entity))))]
+    (assoc file :model model)))
 
 (defn- app-problems
-  "The problems of one app directory: its manifest `{:path :entity}` (or nil) and the `{:path :entity}` of the
-  resource files under it, with their paths relative to `resources/`."
-  [defined dir manifest resources]
-  (let [resources (for [{:keys [relative-path] :as file} resources]
-                    (assoc file :model (resource-model relative-path)))
-        unknown   (filter (comp nil? :model) resources)
-        resources (remove (comp nil? :model) resources)
+  "The problems of one app: its manifest file, and among `files` its collection and the cards and actions in it."
+  [defined manifest files]
+  (let [manifest-problems    (identity-problems (assoc manifest :model "DataApp"))
         collection-entity-id (-> manifest :entity :collection)
-        ;; ingestion passes over a file that doesn't identify its entity, which for a manifest means no app
-        manifest-problems (when manifest (identity-problems (assoc manifest :model "DataApp")))]
+        app-entity-id        (-> manifest :entity :entity_id)
+        resources            (app-resources collection-entity-id files)
+        collection-files     (filter (comp #{"Collection"} :model) resources)]
     (cond
       (seq manifest-problems)
       manifest-problems
 
-      (and (empty? resources) (nil? collection-entity-id))
-      (map #(problem (:path %) (tru "{0} is not a data app resource." (:path %))) unknown)
-
-      (nil? manifest)
-      [(problem (:path (first resources)) (tru "data_apps/{0}/resources needs a data_app.yaml beside it." dir))]
-
       (nil? collection-entity-id)
       [(problem (:path manifest) (tru "{0} must name the app''s resource collection as `collection`." (:path manifest)))]
 
+      (empty? collection-files)
+      [(problem (:path manifest)
+                (tru "The collection {0} that {1} names is not in the repository. Write it under collections/data_apps/ and commit it."
+                     collection-entity-id (:path manifest)))]
+
       :else
-      (let [cards            (filter (comp #{"Card"} :model) resources)
-            card-entity-ids  (into #{} (map (comp :entity_id :entity)) cards)
-            structural       (concat
-                              (map #(problem (:path %) (tru "{0} is not a data app resource." (:path %))) unknown)
-                              (when (empty? (filter (comp #{"Collection"} :model) resources))
-                                [(problem (:path manifest)
-                                          (tru "The app''s resource collection is missing. Write it to resources/collection.yaml and commit it."))])
-                              (duplicate-problems resources)
-                              (mapcat identity-problems resources))]
+      (let [cards           (filter (comp #{"Card"} :model) resources)
+            card-entity-ids (into #{} (map (comp :entity_id :entity)) cards)
+            structural      (concat (duplicate-problems resources)
+                                    (mapcat identity-problems resources))]
         (if (seq structural)
           structural
           (concat
-           (mapcat (partial model-problems collection-entity-id) resources)
+           (mapcat model-problems resources)
            (mapcat numeric-reference-problems resources)
            (mapcat (partial dependency-problems collection-entity-id card-entity-ids) resources)
-           (ownership-problems (-> manifest :entity :entity_id) collection-entity-id resources)
+           (ownership-problems app-entity-id (:path manifest) collection-entity-id resources)
            (external-dependency-problems defined resources)
            (mapcat missing-table-and-field-problems resources)))))))
 
 (defn- shared-collection-problems
   "Two apps can't name one collection: only one of them would own it."
-  [files]
-  (for [[collection-entity-id manifests] (group-by (comp :collection :entity)
-                                                   (filter #(re-matches #"data_apps/[^/]+/data_app\.yaml" (:path %)) files))
-        :when (and collection-entity-id (< 1 (count manifests)))
-        {:keys [path]} manifests]
+  [manifests]
+  (for [[collection-entity-id named-by] (group-by (comp :collection :entity) manifests)
+        :when (and collection-entity-id (< 1 (count named-by)))
+        {:keys [path]} named-by]
     (problem path (tru "{0} names collection {1}, which another data app also names." path collection-entity-id))))
 
-(defn- cross-app-duplicate-problems
-  "Two apps can't define one card or action: the second file loaded would take it from the first app."
+(defn- shared-resource-problems
+  "Two apps can't define one card or action: a load would give it to whichever file loads last."
+  [manifests files]
+  (let [resources (for [{:keys [entity path]} manifests
+                        resource (app-resources (:collection entity) files)]
+                    (assoc resource :manifest path))]
+    (for [[[model entity-id] defined-by] (group-by (juxt :model (comp :entity_id :entity)) resources)
+          :when (< 1 (count (into #{} (map :manifest) defined-by)))
+          {:keys [path]} defined-by]
+      (problem path (tru "{0} {1} is defined by more than one data app: {2}." model entity-id (str/join ", " (map :path defined-by)))))))
+
+(defn- defined-dependencies
+  "The `[model entity-id]` of each snippet, segment and measure that `files` load: a resource that names one counts
+  it as present, since the same pull brings it."
   [files]
-  (for [[[model entity-id] dups] (group-by (fn [{:keys [entity]}] ((juxt :model :id) (last (:serdes/meta entity))))
-                                           (filter #(re-find #"^data_apps/[^/]+/resources/" (:path %)) files))
-        :when (and entity-id (< 1 (count (distinct (map #(second (str/split (:path %) #"/")) dups)))))]
-    (problem (:path (first dups))
-             (tru "{0} {1} is defined by more than one data app: {2}." model entity-id (str/join ", " (sort (map :path dups)))))))
+  (into #{}
+        (comp (map (comp (juxt :model :id) last :serdes/meta :entity))
+              (filter (comp #{"NativeQuerySnippet" "Segment" "Measure"} first)))
+        files))
 
 (defn problems
-  "The problems with the data app entity files `files` (`{:path :entity}`, every entity file under `data_apps/`:
-  manifests and resources), each as `{:file :message}`. An app whose resource files have a problem can't be loaded
-  as the author meant it, so an import that sees one fails naming the file. `defined` holds the `[model entity-id]`
-  of each snippet, segment and measure that the same import loads from outside `data_apps/`."
-  [files & [defined]]
-  (let [defined (or defined #{})
-        by-dir  (group-by (fn [{:keys [path]}] (second (str/split path #"/"))) files)]
+  "The problems with the data apps among the entity files `files` (`{:path :entity}`, every entity file of the
+  snapshot), each as `{:file :message}`. An app whose resources have a problem can't be loaded as the author meant
+  it, so an import that sees one fails naming the file."
+  [files]
+  (let [manifests (filter (comp #{"DataApp"} model-of :entity) files)
+        defined   (defined-dependencies files)]
     (concat
-     (shared-collection-problems files)
-     (cross-app-duplicate-problems files)
-     (mapcat (fn [[dir dir-files]]
-               (let [prefix    (str "data_apps/" dir "/")
-                     manifest  (some #(when (= (:path %) (str prefix "data_app.yaml")) %) dir-files)
-                     resources (for [{:keys [path] :as file} dir-files
-                                     :when (str/starts-with? path (str prefix "resources/"))]
-                                 (assoc file :relative-path (subs path (count (str prefix "resources/")))))]
-                 (app-problems defined dir manifest resources)))
-             by-dir))))
+     (shared-collection-problems manifests)
+     (shared-resource-problems manifests files)
+     (mapcat #(app-problems defined % files) manifests))))

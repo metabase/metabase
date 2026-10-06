@@ -42,25 +42,44 @@
   (subs (str slug "-" (apply str (repeat 21 "a"))) 0 21))
 
 (defn collection-file
-  "The text of a `resources/collection.yaml` for the collection with `entity-id`."
+  "The text of the collection file for a data app's collection with `entity-id`, in the data-apps namespace."
   [entity-id collection-name]
   (yaml/generate-string {:name        collection-name
+                         :namespace   "data-apps"
                          :entity_id   entity-id
-                         :serdes/meta [{:model "Collection" :id entity-id :label "data_app"}]}))
+                         :serdes/meta [{:model "Collection" :id entity-id :label (serialization/slugify-name collection-name)}]}))
+
+(defn collection-dir
+  "The directory under `collections/data_apps/` that holds what the collection named `collection-name` holds, and the
+  stem of the collection's own file, as serialization writes them."
+  [collection-name]
+  (serialization/slugify-name collection-name))
+
+(defn resource-path
+  "The repo path of a resource of the app whose collection is named `collection-name`, from its path relative to the
+  old `resources/` layout: `collection.yaml` is the collection's file, `cards/x.yaml` and `actions/y.yaml` sit in
+  the collection's directory."
+  [collection-name relative-path]
+  (let [dir (collection-dir collection-name)]
+    (if (= relative-path "collection.yaml")
+      (format "collections/data_apps/%s.yaml" dir)
+      (format "collections/data_apps/%s/%s" dir (last (str/split relative-path #"/"))))))
 
 (defn app-files
-  "Repo files for one data app under `data_apps/<dir>/`, as serialization writes them: its `data_app.yaml` (slug and
-  entity ID from `dir` unless given), a bundle at `path` with `bundle` content, and its resource files. `resources`
-  maps paths relative to `resources/` to file text and defaults to just the collection; `:resources nil` with
+  "Repo files for one data app, as serialization writes them: its `data_app.yaml` under `data_apps/<dir>/` (slug and
+  entity ID from `dir` unless given), a bundle at `path` with `bundle` content, and its resources under
+  `collections/data_apps/`. `resources` maps paths relative to the old `resources/` layout (`collection.yaml`,
+  `cards/*.yaml`, `actions/*.yaml`) to file text and defaults to just the collection; `:resources nil` with
   `:collection nil` makes an app without resources."
   [dir {:keys [name path bundle description version allowed_hosts slug entity_id collection resources]
         :or   {slug dir}
         :as   options}]
-  (let [entity-id  (or entity_id (app-entity-id dir))
-        collection (if (contains? options :collection) collection (collection-entity-id dir))
-        resources  (if (contains? options :resources)
-                     resources
-                     (when collection {"collection.yaml" (collection-file collection (str "Data App: " name))}))]
+  (let [entity-id       (or entity_id (app-entity-id dir))
+        collection      (if (contains? options :collection) collection (collection-entity-id dir))
+        collection-name (str "Data App: " slug)
+        resources       (if (contains? options :resources)
+                          resources
+                          (when collection {"collection.yaml" (collection-file collection collection-name)}))]
     (merge
      {(format "data_apps/%s/data_app.yaml" dir)
       (yaml/generate-string
@@ -74,7 +93,7 @@
          version             (assoc :version version)
          (seq allowed_hosts) (assoc :allowed_hosts allowed_hosts)))
       (format "data_apps/%s/%s" dir path) bundle}
-     (update-keys resources #(format "data_apps/%s/resources/%s" dir %)))))
+     (update-keys resources (partial resource-path collection-name)))))
 
 (defn copy-entity-id
   "A stable entity ID for the copy of the `kind` entity `source-entity-id` in the app whose collection is
@@ -107,8 +126,8 @@
           :implicit (t2/select :model/ImplicitAction :action_id (:id action))}
          {:entity_id entity-id :model_id nil}))
 
-(defn- collection [entity-id]
-  {:entity_id entity-id :name "Data App" :slug nil :description nil :location "/" :namespace nil :type nil
+(defn- collection [entity-id collection-name]
+  {:entity_id entity-id :name collection-name :slug nil :description nil :location "/" :namespace :data-apps :type nil
    :authority_level nil :archived false :archived_directly false :archive_operation_id nil
    :is_remote_synced false :is_sample false :personal_owner_id nil :created_at nil})
 
@@ -132,7 +151,7 @@
   "The resource files an author commits for the app whose collection has `collection-entity-id`, keyed by their path
   relative to `resources/`: a saved question per `{:entity_id :name :query}` in `queries`, and copies of the metrics
   those use and of the actions with `action-ids`, which belong to no model. Copies get [[copy-entity-id]]s."
-  [collection-entity-id queries action-ids]
+  [collection-entity-id queries action-ids & {:keys [collection-name] :or {collection-name "Data App"}}]
   (let [resolved  (for [{:keys [query] :as spec} queries
                         :let [table-id (get-in query [:stages 0 :source :id])
                               mp       (lib-be/application-database-metadata-provider
@@ -148,7 +167,7 @@
                     (binding [resolve/*export-resolver* (copy-overriding-resolver resolve/*export-resolver* copy-ids)]
                       (doall
                        (concat
-                        [(extract "Collection" (collection collection-entity-id))]
+                        [(extract "Collection" (collection collection-entity-id collection-name))]
                         (for [{:keys [spec query]} resolved]
                           (extract "Card" (question spec query)))
                         (for [card metrics]

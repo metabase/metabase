@@ -1,5 +1,5 @@
 (ns metabase-enterprise.data-apps.resource-validation-test
-  "What a data app's resource files may hold, checked on the ingested files before anything loads."
+  "What the files of a data app's collection may hold, checked on the ingested files before anything loads."
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
@@ -29,8 +29,19 @@
         :when (str/ends-with? path ".yaml")]
     {:path path :entity (ingest content)}))
 
+(def ^:private collection-name "Data App: shop")
+
+(def ^:private collection-dir (str "collections/data_apps/" (data-apps.tu/collection-dir collection-name) "/"))
+
+(def ^:private collection-path (data-apps.tu/resource-path collection-name "collection.yaml"))
+
+(def ^:private question-path (str collection-dir "venueslist_"))
+
+(def ^:private action-path (str collection-dir "rename_venue_"))
+
 (defn- shop
-  "The repo files of the `shop` app with `resources`, a map of paths relative to `resources/` to YAML text."
+  "The repo files of the `shop` app with `resources`, a map of paths relative to the old `resources/` layout to YAML
+  text (see `data-apps.tu/app-files`)."
   [resources & {:as options}]
   (data-apps.tu/app-files "shop" (merge {:name "Shop" :path "index.js" :bundle "B"
                                          :collection collection-eid :resources resources}
@@ -44,8 +55,6 @@
   [tree prefix f]
   (let [path (some #(when (str/starts-with? % prefix) %) (sort (keys tree)))]
     (update tree path #(yaml/generate-string (f (yaml/parse-string %))))))
-
-(def ^:private question-path "data_apps/shop/resources/cards/")
 
 (defn- messages [tree]
   (mapv :message (data-apps/problems (files tree))))
@@ -65,23 +74,20 @@
                       [action-id])]
        (is (= [] (messages (shop resources))))))))
 
-(deftest an-app-without-resources-has-no-problems-test
-  (is (= [] (messages (shop nil :collection nil)))))
+(deftest an-app-with-only-its-collection-has-no-problems-test
+  (is (= [] (messages (data-apps.tu/app-files "shop" {:name "Shop" :path "index.js" :bundle "B" :collection collection-eid})))))
 
 (deftest a-file-is-named-with-its-problem-test
   (let [tree (edit-file (shop (question-resources)) question-path #(assoc % :archived true))]
-    (is (=? {:file #"data_apps/shop/resources/cards/.*\.yaml" :message #".*must not be archived\."}
+    (is (=? {:file #"collections/data_apps/data_app__shop/.*\.yaml" :message #".*must not be archived\."}
             (first-problem tree)))))
 
 (deftest refuses-what-a-resource-may-not-hold-test
   (let [refused (fn [tree message]
                   (is (some #(str/includes? % message) (messages tree)) message))]
-    (testing "a collection other than the one data_app.yaml names"
+    (testing "a manifest naming a collection whose file isn't in the repository"
       (refused (shop (question-resources) :collection (data-apps.tu/collection-entity-id "other"))
-               "must hold the collection"))
-    (testing "a card outside the app's collection"
-      (refused (edit-file (shop (question-resources)) question-path #(assoc % :collection_id "someOtherCollection01"))
-               "must be in the collection"))
+               "is not in the repository"))
     (testing "a card that isn't a question or metric: a model has no place, now that no action hangs off one"
       (doseq [card-type ["dashboard" "model"]]
         (refused (edit-file (shop (question-resources)) question-path #(assoc % :type card-type))
@@ -100,31 +106,24 @@
           (refused (edit-file (shop (question-resources)) question-path
                               #(update % :dataset_query assoc :stages [{:lib/type "mbql.stage/mbql" :source-card other-eid}]))
                    (str "references Card " other-eid)))))
-    (testing "a file whose model doesn't match its directory"
-      (refused (edit-file (shop (question-resources)) question-path #(assoc % :serdes/meta [{:model "Dashboard" :id question-eid}]))
-               "must hold a single Card"))
-    (testing "a setting smuggled in as a resource"
-      (refused (shop (assoc (question-resources) "cards/setting.yaml"
-                            (yaml/generate-string {:key "site-name" :value "Pwned"
-                                                   :serdes/meta [{:model "Setting" :id "site-name"}]})))
-               "cards/setting.yaml must hold a single Card"))
-    (testing "a file outside the resource layout"
-      (refused (shop (assoc (question-resources) "extra.yaml" "name: x")) "extra.yaml is not a data app resource."))
+    (testing "a file whose serdes/meta doesn't identify what it holds"
+      (refused (edit-file (shop (question-resources)) question-path #(assoc % :serdes/meta [{:model "Card" :id "someOtherEntityId0001"}]))
+               "must hold a single Card whose serdes/meta ID is its entity_id"))
     (testing "a table that doesn't exist"
       (refused (edit-file (shop (question-resources)) question-path
                           #(assoc-in % [:dataset_query :stages 0 :source-table] [(:name (mt/db)) "PUBLIC" "NO_SUCH_TABLE"]))
                "NO_SUCH_TABLE"))
-    (testing "resources without a manifest"
-      (refused (dissoc (shop (question-resources)) "data_apps/shop/data_app.yaml") "needs a data_app.yaml"))
-    (testing "a manifest that doesn't identify the app, which ingestion would pass over"
-      (refused (edit-file (shop (question-resources)) "data_apps/shop/data_app.yaml" #(dissoc % :serdes/meta))
+    (testing "a manifest that doesn't identify the app, which a load would refuse"
+      (refused (edit-file (shop nil) "data_apps/shop/data_app.yaml" #(dissoc % :entity_id))
                "must hold a single DataApp whose serdes/meta ID is its entity_id")
-      (refused (edit-file (shop nil :collection nil) "data_apps/shop/data_app.yaml" #(dissoc % :entity_id))
+      (refused (edit-file (shop nil) "data_apps/shop/data_app.yaml" #(assoc % :entity_id "someOtherEntityId0001"))
                "must hold a single DataApp whose serdes/meta ID is its entity_id"))
-    (testing "a manifest naming no collection beside resources"
-      (refused (shop (question-resources) :collection nil) "must name the app's resource collection"))
-    (testing "resources without the collection file"
-      (refused (shop (dissoc (question-resources) "collection.yaml")) "resource collection is missing"))))
+    (testing "a manifest naming no collection"
+      (refused (shop (question-resources) :collection nil) "must name the app's resource collection")
+      (refused (shop nil :collection nil) "must name the app's resource collection"))
+    (testing "a manifest naming a collection the repository doesn't hold"
+      (refused (shop (dissoc (question-resources) "collection.yaml")) "is not in the repository")
+      (refused (shop nil) "is not in the repository"))))
 
 (deftest refuses-an-action-the-app-cannot-run-test
   (data-apps.tu/do-with-sources!
@@ -132,8 +131,7 @@
      (let [model-eid   (t2/select-one-fn :entity_id :model/Card :id model-id)
            resources   (data-apps.tu/build-resources collection-eid
                                                      [{:entity_id question-eid :name "VenuesList" :query (venues-query)}]
-                                                     [action-id])
-           action-path "data_apps/shop/resources/actions/"]
+                                                     [action-id])]
        (is (= [] (messages (shop resources))) "a query action that belongs to no model is fine")
        (testing "a data app runs only actions that belong to no model, the ones the typed schema lists"
          (is (some #(str/includes? % "must belong to no model")
@@ -149,9 +147,8 @@
                    (messages (edit-file (shop resources) action-path #(dissoc % :creator_id)))))
          (is (some #(str/includes? % "must name its creator in creator_id")
                    (messages (edit-file (shop resources) question-path #(dissoc % :creator_id))))))
-       (testing "an action is in the app's collection, like a card"
-         (is (some #(str/includes? % (str "must be in the collection " collection-eid))
-                   (messages (edit-file (shop resources) action-path #(assoc % :collection_id "elsewhere0000000000a"))))))))))
+       (testing "an action outside the app's collection isn't the app's, so it isn't checked as its resource"
+         (is (= [] (messages (edit-file (shop resources) action-path #(assoc % :collection_id "elsewhere0000000000a" :model_id model-eid))))))))))
 
 (deftest refuses-what-this-app-does-not-own-test
   (testing "serialization would update any row carrying an entity ID a file names, so a file may only name the app's own"
@@ -162,7 +159,7 @@
       (mt/with-temp [:model/Collection {collection-id :id} {:entity_id collection-eid :name "Theirs"}
                      :model/DataApp    _ {:name "theirs" :display_name "Theirs" :bundle_path "index.js"
                                           :resource_collection_id collection-id}]
-        (is (some #(str/includes? % "already exists and isn't this data app's collection") (messages (shop (question-resources)))))))
+        (is (some #(str/includes? % "already exists and is another data app's collection") (messages (shop (question-resources)))))))
     (testing "the app's own collection and card"
       (mt/with-temp [:model/Collection {collection-id :id} {:entity_id collection-eid :name "Mine"}
                      :model/DataApp    _ {:name "shop" :display_name "Shop" :bundle_path "index.js"
@@ -227,11 +224,14 @@
   (let [refused (fn [tree message]
                   (is (some #(str/includes? % message) (messages tree)) message))
         tree    (fn [] (shop (question-resources)))]
-    (testing "a collection file that isn't a plain root collection"
-      (doseq [change [{:parent_id "someOtherCollection01"} {:namespace "snippets"} {:archived true}
-                      {:is_remote_synced true} {:authority_level "official"}]]
-        (refused (edit-file (tree) "data_apps/shop/resources/collection.yaml" #(merge % change))
-                 "must be a plain root collection")))
+    (testing "a collection file that isn't a root collection of the data-apps namespace"
+      (doseq [change [{:parent_id "someOtherCollection01"} {:archived true} {:is_remote_synced true}
+                      {:authority_level "official"} {:type "instance-analytics"}]]
+        (refused (edit-file (tree) collection-path #(merge % change))
+                 "must be a root collection that is not remote-synced or archived"))
+      (doseq [change [{:namespace "snippets"} {:namespace nil}]]
+        (refused (edit-file (tree) collection-path #(merge % change))
+                 "must be in the data-apps collection namespace")))
     (testing "a card that belongs to a dashboard or a document"
       (refused (edit-file (tree) question-path #(assoc % :dashboard_id "someDashboardEntity01"))
                "must not belong to a dashboard or document")
@@ -267,7 +267,7 @@
                       collection-eid
                       [{:entity_id question-eid :name "VenuesList" :query (venues-query)}]
                       [action-id])
-           tree      (edit-file (shop resources) "data_apps/shop/resources/actions/"
+           tree      (edit-file (shop resources) action-path
                                 #(assoc % :parameters [{:id "name" :slug "name" :type "string/="
                                                         :values_source_config {:card_id question-eid}}]))]
        (is (some #(str/includes? % "must not take parameter values from a card") (messages tree)))))))

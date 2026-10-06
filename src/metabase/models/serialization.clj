@@ -784,26 +784,28 @@
   [id-str]
   (resolve/entity-id? id-str))
 
-(defn data-app-resource-path
-  "The storage path of a data app's `resources/` directory: `data_apps/<slug>/resources`. The app's own files are
-  there, so what its collection holds is written beside them rather than under `collections/`."
-  [slug app-entity-id]
-  [{:label "data_apps"} {:label slug :key app-entity-id :style :slug} {:label "resources"}])
+(defn collection-namespace-folder
+  "The folder under `collections/` that holds the collections of `collection-namespace`, `main` for the default one.
+  The `data-apps` namespace is the `data_apps` folder, spelled like the top-level directory of the apps themselves."
+  [collection-namespace]
+  (case (some-> collection-namespace keyword)
+    :snippets     "snippets"
+    :transforms   "transforms"
+    :data-actions "data-actions"
+    :data-apps    "data_apps"
+    "main"))
 
 (defn storage-default-collection-path
   "Implements the most common structure for [[storage-path]].
   Returns a vector of maps with `:label` and `:key` for each path segment.
-  Result: `[{:label \"collections\"} {:label ns-folder} <collection-hierarchy> {:label entity-name :key entity_id}]`,
-  or, in a data app's resource collection, `data_apps/<slug>/resources/cards/<entity-name>` (see
-  [[data-app-resource-path]])."
+  Result: `[{:label \"collections\"} {:label ns-folder} <collection-hierarchy> {:label entity-name :key entity_id}]`.
+  The folder is the one of the entity's collection's namespace when it has a collection, `ns-folder` otherwise."
   ([entity ctx]
    (storage-default-collection-path entity ctx "main"))
-  ([entity {:keys [collections data-app-collections]} ns-folder]
-   (if-let [resources (get data-app-collections (:collection_id entity))]
-     (into resources [{:label "cards"} {:label (:name entity) :key (:entity_id entity)}])
-     (into [{:label "collections"} {:label ns-folder}]
-           cat [(get collections (:collection_id entity))
-                [{:label (:name entity) :key (:entity_id entity)}]]))))
+  ([entity {:keys [collections collection-namespace-folders]} ns-folder]
+   (into [{:label "collections"} {:label (get collection-namespace-folders (:collection_id entity) ns-folder)}]
+         cat [(get collections (:collection_id entity))
+              [{:label (:name entity) :key (:entity_id entity)}]])))
 
 (defmulti storage-path
   "Returns a vector of maps with `:label` and optional `:key`, `:style` and `:suffix` for each path segment.
@@ -823,15 +825,12 @@
     the collection hierarchy.
   - `:dashboards` maps dashboard entity_id to `{:label ... :key ...}` for use as virtual subcollections.
   - `:documents` maps document entity_id to `{:label ... :key ...}` for use as virtual subcollections.
-  - `:data-app-collections` maps the entity_id of a data app's resource collection to the app's
-    [[data-app-resource-path]].
+  - `:collection-namespace-folders` maps collection entity_id to the folder under `collections/` its namespace
+    is written to (see [[collection-namespace-folder]]).
   - `:unique-name-fns` is an atom of `{parent-key -> unique-name-fn}` where each `unique-name-fn` is a
     `lib/non-truncating-unique-name-generator`, used to deduplicate names within the same folder during export."
   []
   (let [colls     (models.db/collection-paths-columns)
-        app-colls (into {}
-                        (for [{:keys [slug app_entity_id collection_entity_id]} (models.db/data-app-resource-collections)]
-                          [collection_entity_id (data-app-resource-path slug app_entity_id)]))
         id->coll  (into {} (for [{:keys [id] :as coll} colls] [(str id) coll]))
         coll->path (into {}
                          (for [{:keys [entity_id id location]} colls
@@ -848,11 +847,13 @@
         documents  (into {}
                          (for [{:keys [entity_id name]} (models.db/document-entity-ids-and-names)]
                            [entity_id {:label name :key entity_id}]))]
-    {:collections          coll->path
-     :dashboards           dashboards
-     :documents            documents
-     :data-app-collections app-colls
-     :unique-name-fns      (atom {})}))
+    {:collections coll->path
+     :collection-namespace-folders (into {}
+                                         (for [{:keys [entity_id namespace]} colls]
+                                           [entity_id (collection-namespace-folder namespace)]))
+     :dashboards  dashboards
+     :documents   documents
+     :unique-name-fns (atom {})}))
 
 ;;; # Utilities for implementing serdes
 ;;; These wrapper functions delegate to the current resolver (set by [[with-cache]]).

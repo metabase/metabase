@@ -485,6 +485,12 @@
   [namespace-name :- :string]
   (t2/select-pks-vec :model/Collection :namespace namespace-name))
 
+(mu/defn collection-namespace
+  "The namespace of the Collection with `collection-id`, nil for the default namespace or no such Collection."
+  [collection-id :- [:maybe ms/PositiveInt]]
+  (when collection-id
+    (t2/select-one-fn :namespace :model/Collection :id collection-id)))
+
 (mu/defn remote-synced-collection-ids
   "The IDs of the remote-synced Collections."
   []

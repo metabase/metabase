@@ -2,7 +2,6 @@
   (:require
    [clojure.java.io :as io]
    [clojure.test :refer :all]
-   [metabase-enterprise.data-apps.resources :as data-app.resources]
    [metabase-enterprise.serialization.core :as serialization]
    [metabase-enterprise.serialization.test-util :as ts]
    [metabase-enterprise.serialization.v2.extract :as extract]
@@ -203,7 +202,7 @@
                 (into [] (extract/extract {:no-collections true :no-data-model true :no-settings true})))))))
 
 (deftest round-trip-with-resources-test
-  (testing "an app travels with its collection and what that holds, written beside it under resources/"
+  (testing "an app travels with its collection and what that holds, written under collections/data_apps/"
     (mt/with-premium-features #{:data-apps}
       (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup :model/Card :model/Action]
         (ts/with-random-dump-dir [dump-dir "data-app-resources-"]
@@ -219,11 +218,11 @@
                                                  :database_id   (mt/id)
                                                  :dataset_query (lib/native-query mp "UPDATE venues SET name = 'x'")})
                     action-eid (t2/select-one-fn :entity_id :model/Action :id action-id)]
-                (export! dump-dir)
-                (testing "the files sit beside the app"
-                  (doseq [path ["resources/collection.yaml" "resources/cards/venues_list.yaml"
-                                "resources/actions/rename_venue.yaml"]]
-                    (is (.exists (io/file dump-dir "data_apps" "sales-ops" path)) path)))
+                (export! dump-dir :with-collections? true)
+                (testing "the files sit under the collection's directory of the data-apps namespace"
+                  (doseq [path ["data_app__sales_ops.yaml" "data_app__sales_ops/venues_list.yaml"
+                                "data_app__sales_ops/rename_venue.yaml"]]
+                    (is (.exists (io/file dump-dir "collections" "data_apps" path)) path)))
                 (t2/delete! :model/DataApp (:id app))
                 (is (not (t2/exists? :model/Card :entity_id question-eid)) "deleting the app deletes its collection's cards")
                 (import! dump-dir)

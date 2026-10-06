@@ -13,7 +13,6 @@
   (:require
    [clojure.set :as set]
    [clojure.string :as str]
-   [metabase-enterprise.data-apps.core :as data-apps]
    [metabase-enterprise.remote-sync.db :as remote-sync.db]
    [metabase-enterprise.remote-sync.settings :as rs-settings]
    [metabase-enterprise.transforms-python.core :as transforms-python]
@@ -724,6 +723,11 @@
   (or (snippets-namespace-collection? object)
       (data-actions-namespace-collection? object)))
 
+(defn data-apps-namespace-collection?
+  "Check if this is a data-apps-namespace collection: a data app's resource collection, synced with the app."
+  [object]
+  (= (keyword (:namespace object)) collections/data-apps-ns))
+
 (defn library-collection?
   "Check if this is the Library collection."
   [collection]
@@ -738,7 +742,7 @@
            (transforms-namespace-collection? collection))
       (and (rs-settings/library-is-remote-synced?)
            (library-namespace-collection? collection))
-      (data-apps/resource-collection? (:id collection))))
+      (data-apps-namespace-collection? collection)))
 
 (defn all-syncable-collection-ids
   "Returns a vector of all collection IDs that are eligible for remote sync.
@@ -746,7 +750,7 @@
    - Collections with is_remote_synced=true
    - Transforms-namespace collections (when remote-sync-transforms setting is enabled)
    - Snippets- and data-actions-namespace collections (when Library is remote-synced)
-   - Data apps' resource collections
+   - Data-apps-namespace collections (data apps are synced globally)
 
    Used by import cleanup to determine which collections to scope deletions to."
   []
@@ -759,7 +763,7 @@
            (remote-sync.db/collection-ids-in-namespace "snippets"))
          (when (rs-settings/library-is-remote-synced?)
            (remote-sync.db/collection-ids-in-namespace (name collections/data-actions-ns)))
-         (data-apps/resource-collection-ids)]))
+         (remote-sync.db/collection-ids-in-namespace (name collections/data-apps-ns))]))
 
 (def ^:private max-conflict-names
   "Cap on how many entity names a collection deletion conflict carries, so the payload stays bounded when
@@ -851,7 +855,7 @@
                (some-> (remote-sync.db/collection-namespace collection-id) keyword))))))
 
 (defmethod check-eligibility-by-type :collection
-  [{:keys [eligibility model-key] :as spec} object]
+  [{:keys [eligibility] :as spec} object]
   (let [collection-type (:collection eligibility)
         collection-id   (:collection_id object)]
     (if (library-synced-object? spec object)
@@ -860,10 +864,8 @@
       (case collection-type
         :remote-synced
         (or (collections/remote-synced-collection? collection-id)
-            ;; a card or action in a data app's collection is synced with the app
-            (and (some? collection-id)
-                 (contains? #{:model/Card :model/Action} model-key)
-                 (data-apps/resource-collection? collection-id)))
+            ;; what sits in a data app's collection is synced with the app
+            (data-apps-namespace-collection? {:namespace (remote-sync.db/collection-namespace collection-id)}))
 
         :transforms-namespace
         (and (rs-settings/remote-sync-transforms)
@@ -878,7 +880,8 @@
             (and (rs-settings/remote-sync-transforms)
                  (transforms-namespace-collection? object))
             (and (rs-settings/library-is-remote-synced?)
-                 (library-namespace-collection? object)))
+                 (library-namespace-collection? object))
+            (data-apps-namespace-collection? object))
 
         false))))
 
@@ -1283,7 +1286,7 @@
        (when (rs-settings/library-is-remote-synced?)
          (collection-keys (remote-sync.db/unarchived-root-collection-ids-in-namespace
                            (name collections/data-actions-ns))))
-       (collection-keys (data-apps/unarchived-resource-collection-ids))))
+       (collection-keys (remote-sync.db/unarchived-root-collection-ids-in-namespace (name collections/data-apps-ns)))))
     :derived
     (library-synced-root-export-roots spec)))
 

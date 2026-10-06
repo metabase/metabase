@@ -114,7 +114,7 @@
 (defn resource-collection-ids
   "The IDs of the resource collections owned by data apps."
   []
-  (t2/select-fn-set :resource_collection_id :model/DataApp))
+  (t2/select-fn-set :resource_collection_id :model/DataApp :resource_collection_id [:not= nil]))
 
 (mu/defn resource-collection-id
   "The ID of the resource collection owned by the DataApp with `data-app-id`."
@@ -136,16 +136,8 @@
                                [:= :g.is_data_app_group false]]})
     #{}))
 
-(defn unarchived-resource-collection-ids
-  "The IDs of every data app's resource collection that isn't archived."
-  []
-  (mapv :id (t2/query {:select [:c.id]
-                       :from   [[:collection :c]]
-                       :join   [[:data_app :d] [:= :d.resource_collection_id :c.id]]
-                       :where  [:= :c.archived false]})))
-
-(defn resource-collection?
-  "Whether the collection with `collection-id` is a data app's resource collection."
+(defn resource-collection-owned?
+  "Whether a data app owns the collection with `collection-id`."
   [collection-id]
   (t2/exists? :model/DataApp :resource_collection_id collection-id))
 

@@ -2239,18 +2239,9 @@
                                  {["Transform" transform-id] {"Collection" id}})))]
     (merge child-colls dashboards cards documents timelines actions tables transforms)))
 
-(defmethod serdes/storage-path "Collection" [coll {:keys [collections data-app-collections]}]
-  (if-let [resources (get data-app-collections (:entity_id coll))]
-    ;; a data app's resource collection is `data_apps/<slug>/resources/collection.yaml`, beside the app's files
-    (conj resources {:label "collection"})
-    (let [path      (get collections (:entity_id coll))
-          ns-folder (case (:namespace coll)
-                      :snippets     "snippets"
-                      :transforms   "transforms"
-                      :data-actions "data-actions"
-                      nil           "main"
-                      "main")]
-      (into [{:label "collections"} {:label ns-folder}] path))))
+(defmethod serdes/storage-path "Collection" [coll {:keys [collections]}]
+  (into [{:label "collections"} {:label (serdes/collection-namespace-folder (:namespace coll))}]
+        (get collections (:entity_id coll))))
 
 (defn- parent-id->location-path [parent-id]
   (if-not parent-id
