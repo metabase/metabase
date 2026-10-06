@@ -365,3 +365,28 @@
         (testing "the test leaves no clone directory and no cached Git instance for the URL"
           (is (not (.exists clone-dir)))
           (is (not (contains? @@#'git/jgit (.getPath clone-dir)))))))))
+
+(deftest blank-branch-save-asks-the-remote-once-test
+  (testing "a settings save with a blank branch asks the remote one time, and saves the default branch of the remote"
+    (mt/with-premium-features #{:remote-sync}
+      (mt/with-temp-dir [remote-dir nil]
+        ;; The default branch (HEAD, master) is not the first branch, so the test shows that the save reads HEAD.
+        (let [url                 (test-helpers/init-local-git-remote! remote-dir :branches ["alpha" "develop"])
+              commands            (atom [])
+              call-remote-command (mt/original-fn #'git/call-remote-command)]
+          (mt/with-temporary-setting-values [remote-sync-url    nil
+                                             remote-sync-token  nil
+                                             remote-sync-type   nil
+                                             remote-sync-branch nil]
+            (mt/with-dynamic-fn-redefs [git/call-remote-command (fn [command args]
+                                                                  (swap! commands conj (.getSimpleName (class command)))
+                                                                  (call-remote-command command args))]
+              (is (= {:success true}
+                     (mt/user-http-request :crowberto :put 200 "ee/remote-sync/settings"
+                                           {:remote-sync-url    url
+                                            :remote-sync-token  nil
+                                            :remote-sync-type   :read-write
+                                            :remote-sync-branch ""}))))
+            (is (= {"LsRemoteCommand" 1} (frequencies @commands))
+                "One lsRemote answers both the settings check and the default branch")
+            (is (= "master" (settings/remote-sync-branch)) "The save stores the default branch of the remote")))))))
