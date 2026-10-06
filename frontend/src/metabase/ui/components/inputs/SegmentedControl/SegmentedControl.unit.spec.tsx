@@ -113,6 +113,7 @@ describe("SegmentedControl", () => {
     });
 
     await userEvent.click(screen.getByLabelText("Preview"));
+    await userEvent.click(screen.getByLabelText("Preview"));
 
     expect(onChange).toHaveBeenCalledTimes(1);
     expect(onChange).toHaveBeenCalledWith("preview");
