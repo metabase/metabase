@@ -12,6 +12,7 @@ import type { Database } from "metabase-types/api";
 import {
   COMMON_DATABASE_FEATURES,
   createMockDatabase,
+  createMockDatabaseUsageInfo,
 } from "metabase-types/api/mocks";
 
 import { DatabaseModelFeaturesSection } from "./DatabaseModelFeaturesSection";
@@ -31,13 +32,7 @@ function setup({
     }),
   });
   setupDatabaseEndpoints(database);
-  setupDatabaseUsageInfoEndpoint(database, {
-    question: 0,
-    dataset: 0,
-    metric: 0,
-    segment: 0,
-    transform: 0,
-  });
+  setupDatabaseUsageInfoEndpoint(database, createMockDatabaseUsageInfo());
 
   // Using mockResolvedValue since `ActionButton` component
   // the Sidebar is using is expecting these callbacks to be async

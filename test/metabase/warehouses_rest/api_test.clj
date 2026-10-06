@@ -263,10 +263,11 @@
     [:model/Database {db-id :id}      {}
      :model/Table    {table-id-1 :id} {:db_id db-id}
      :model/Table    {table-id-2 :id} {:db_id db-id}
-     ;; question
+     ;; question, shared with a public link
      :model/Card     _                {:database_id db-id
                                        :table_id    table-id-1
-                                       :type        :question}
+                                       :type        :question
+                                       :public_uuid (str (random-uuid))}
      ;; dataset
      :model/Card     _                {:database_id db-id
                                        :table_id    table-id-1
@@ -276,11 +277,12 @@
                                        :type        :model
                                        :archived    true}
 
-     ;; metric
+     ;; metric, archived with a public link that therefore no longer resolves
      :model/Card     _                {:database_id db-id
                                        :table_id    table-id-1
                                        :type        :metric
-                                       :archived    true}
+                                       :archived    true
+                                       :public_uuid (str (random-uuid))}
      :model/Card     _                {:database_id db-id
                                        :table_id    table-id-1
                                        :type        :metric}
@@ -310,17 +312,47 @@
       (is (= "You don't have permissions to do that."
              (mt/user-http-request :rasta :get 403 (format "database/%d/usage_info" db-id)))))
     (testing "return the correct usage info"
-      (is (= {:question  1
-              :dataset   2
-              :metric    3
-              :segment   1
-              :transform 2}
+      (is (= {:question    1
+              :dataset     2
+              :metric      3
+              :segment     1
+              :transform   2
+              :public_link 1}
              (mt/user-http-request :crowberto :get 200 (format "database/%d/usage_info" db-id)))))
     (testing "404 if db does not exist"
       (let [non-existing-db-id (inc (t2/select-one-pk :model/Database {:order-by [[:id :desc]]}))]
         (is (= "Not found."
                (mt/user-http-request :crowberto :get 404
                                      (format "database/%d/usage_info" non-existing-db-id))))))))
+
+(deftest get-database-usage-info-public-link-count-test
+  (testing "the public link count is zero for a database whose cards are not shared"
+    (mt/with-temp
+      [:model/Database {db-id :id}    {}
+       :model/Table    {table-id :id} {:db_id db-id}
+       :model/Card     _              {:database_id db-id, :table_id table-id, :type :question}]
+      (is (= 0 (:public_link (mt/user-http-request :crowberto :get 200
+                                                   (format "database/%d/usage_info" db-id)))))))
+  (testing "public links on another database are not counted"
+    (mt/with-temp
+      [:model/Database {db-id :id}       {}
+       :model/Database {other-db-id :id} {}
+       :model/Table    {table-id :id}    {:db_id other-db-id}
+       :model/Card     _                 {:database_id other-db-id
+                                          :table_id    table-id
+                                          :type        :question
+                                          :public_uuid (str (random-uuid))}]
+      (is (= 0 (:public_link (mt/user-http-request :crowberto :get 200
+                                                   (format "database/%d/usage_info" db-id)))))))
+  (testing "a public dashboard of cards on this database is described in the UI but not counted"
+    (mt/with-temp
+      [:model/Database  {db-id :id}        {}
+       :model/Table     {table-id :id}     {:db_id db-id}
+       :model/Card      {card-id :id}      {:database_id db-id, :table_id table-id, :type :question}
+       :model/Dashboard {dashboard-id :id} {:public_uuid (str (random-uuid))}
+       :model/DashboardCard _              {:dashboard_id dashboard-id, :card_id card-id}]
+      (is (= 0 (:public_link (mt/user-http-request :crowberto :get 200
+                                                   (format "database/%d/usage_info" db-id))))))))
 
 (defn- find-in-clauses
   "Walk a HoneySQL map and return any [:in ...] clauses where the value is a collection."
@@ -359,11 +391,12 @@
   (mt/with-temp
     [:model/Database {db-id :id} {}]
     (testing "should work with DB that has no tables"
-      (is (= {:question  0
-              :dataset   0
-              :metric    0
-              :segment   0
-              :transform 0}
+      (is (= {:question    0
+              :dataset     0
+              :metric      0
+              :segment     0
+              :transform   0
+              :public_link 0}
              (mt/user-http-request :crowberto :get 200 (format "database/%d/usage_info" db-id)))))))
 
 (defn- create-db-via-api! [& [m]]

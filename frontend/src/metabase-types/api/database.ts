@@ -128,6 +128,11 @@ export interface DatabaseUsageInfo {
   metric: number;
   segment: number;
   transform: number;
+  /**
+   * Unarchived cards on this database that have a public link. Public
+   * dashboards are not counted: a dashboard carries no database.
+   */
+  public_link: number;
 }
 
 export interface GetDatabaseRequest {

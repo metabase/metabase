@@ -3,6 +3,7 @@ import fetchMock from "fetch-mock";
 
 import {
   findRequests,
+  setupDatabaseUsageInfoEndpoint,
   setupDatabasesEndpoints,
   setupEnginesEndpoint,
   setupListTransformsEndpoint,
@@ -13,6 +14,7 @@ import { renderWithProviders, screen } from "__support__/ui";
 import type { Database } from "metabase-types/api";
 import {
   createMockDatabase,
+  createMockDatabaseUsageInfo,
   createMockEngine,
   createMockEngines,
   createMockSettings,
@@ -27,15 +29,21 @@ interface SetupOpts {
   database?: Database;
   isAdmin?: boolean;
   routerUpdateStatus?: number;
+  publicLinkCount?: number;
 }
 
 const setup = ({
   database = createMockDatabase(),
   isAdmin = true,
   routerUpdateStatus = 200,
+  publicLinkCount = 0,
 }: SetupOpts = {}) => {
   setupUserAttributesEndpoint(["cool_guy", "boss_gal"]);
   setupDatabasesEndpoints([database]);
+  setupDatabaseUsageInfoEndpoint(
+    database,
+    createMockDatabaseUsageInfo({ public_link: publicLinkCount }),
+  );
   fetchMock.put(
     "express:/api/ee/database-routing/router-database/:id",
     routerUpdateStatus === 200
@@ -179,6 +187,80 @@ describe("DatabaseRoutingSection", () => {
         "Database routing can't be enabled when a Writable Connection is enabled.",
       ),
     ).toBeInTheDocument();
+  });
+});
+
+describe("DatabaseRoutingSection affected public links", () => {
+  const ROUTING_NOTE =
+    "In guest embeds and public links, database queries will always be routed to the router database.";
+
+  it("should count the affected public questions while routing is being enabled", async () => {
+    setup({
+      database: createMockDatabase({
+        engine: "postgres",
+        features: ["database-routing"],
+        router_user_attribute: null,
+      }),
+      publicLinkCount: 4,
+    });
+
+    await userEvent.click(screen.getByLabelText("Enable database routing"));
+
+    expect(await screen.findByText(ROUTING_NOTE)).toBeInTheDocument();
+    expect(
+      await screen.findByText(
+        "This affects 4 public questions on this database, and any public dashboard that uses it.",
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("should count a single affected public question in the singular", async () => {
+    setup({
+      database: createMockDatabase({
+        engine: "postgres",
+        features: ["database-routing"],
+        router_user_attribute: "cool_guy",
+      }),
+      publicLinkCount: 1,
+    });
+
+    expect(
+      await screen.findByText(
+        "This affects 1 public question on this database, and any public dashboard that uses it.",
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("should still describe public dashboards when no public question is affected", async () => {
+    setup({
+      database: createMockDatabase({
+        engine: "postgres",
+        features: ["database-routing"],
+        router_user_attribute: "cool_guy",
+      }),
+      publicLinkCount: 0,
+    });
+
+    expect(await screen.findByText(ROUTING_NOTE)).toBeInTheDocument();
+    expect(
+      await screen.findByText(
+        "This affects any public dashboard that uses this database.",
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("should not mention public links while the section is collapsed", async () => {
+    setup({
+      database: createMockDatabase({
+        engine: "postgres",
+        features: ["database-routing"],
+        router_user_attribute: null,
+      }),
+      publicLinkCount: 4,
+    });
+
+    expect(await screen.findByText("Database routing")).toBeInTheDocument();
+    expect(screen.queryByText(ROUTING_NOTE)).not.toBeInTheDocument();
   });
 });
 

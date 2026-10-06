@@ -6,18 +6,20 @@ import {
   screen,
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
-import type { Database } from "metabase-types/api";
+import type { Database, DatabaseUsageInfo } from "metabase-types/api";
+import { createMockDatabaseUsageInfo } from "metabase-types/api/mocks";
 
 import type { DeleteDatabaseModalProps } from "./DeleteDatabaseModal";
 import { DeleteDatabaseModal } from "./DeleteDatabaseModal";
 
-const getUsageInfo = (hasContent: boolean) => ({
-  question: hasContent ? 10 : 0,
-  dataset: hasContent ? 20 : 0,
-  metric: hasContent ? 30 : 0,
-  segment: hasContent ? 40 : 0,
-  transform: hasContent ? 50 : 0,
-});
+const getUsageInfo = (hasContent: boolean) =>
+  createMockDatabaseUsageInfo({
+    question: hasContent ? 10 : 0,
+    dataset: hasContent ? 20 : 0,
+    metric: hasContent ? 30 : 0,
+    segment: hasContent ? 40 : 0,
+    transform: hasContent ? 50 : 0,
+  });
 
 // Unjustified type cast. FIXME
 const database = { name: "database name", id: 1 } as Database;
@@ -25,11 +27,13 @@ const database = { name: "database name", id: 1 } as Database;
 const setup = async ({
   onDelete = jest.fn(),
   hasContent = true,
+  usageInfo = getUsageInfo(hasContent),
 }: {
   onDelete?: DeleteDatabaseModalProps["onDelete"];
   hasContent?: boolean;
+  usageInfo?: DatabaseUsageInfo;
 } = {}) => {
-  fetchMock.get("path:/api/database/1/usage_info", getUsageInfo(hasContent));
+  fetchMock.get("path:/api/database/1/usage_info", usageInfo);
   renderWithProviders(
     <DeleteDatabaseModal
       opened
@@ -96,6 +100,27 @@ describe("DeleteDatabaseModal", () => {
     await userEvent.click(screen.getByText("50 transforms will stop working"));
 
     expect(deleteButton).toBeDisabled();
+
+    await userEvent.type(
+      screen.getByTestId("database-name-confirmation-input"),
+      "database name",
+    );
+
+    expect(deleteButton).toBeEnabled();
+
+    await userEvent.click(deleteButton);
+
+    expect(onDelete).toHaveBeenCalled();
+  });
+
+  it("should not ask for content removal when the only usage is public links", async () => {
+    const { onDelete } = await setup({
+      usageInfo: createMockDatabaseUsageInfo({ public_link: 3 }),
+    });
+
+    const deleteButton = screen.getByRole("button", {
+      name: "Delete this DB connection",
+    });
 
     await userEvent.type(
       screen.getByTestId("database-name-confirmation-input"),

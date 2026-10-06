@@ -2,6 +2,7 @@ import type {
   Database,
   DatabaseData,
   DatabaseFeature,
+  DatabaseUsageInfo,
   SavedQuestionDatabase,
 } from "metabase-types/api";
 
@@ -24,6 +25,18 @@ export const COMMON_DATABASE_FEATURES: DatabaseFeature[] = [
   "full-join",
   "saved-question-sandboxing",
 ];
+
+export const createMockDatabaseUsageInfo = (
+  opts?: Partial<DatabaseUsageInfo>,
+): DatabaseUsageInfo => ({
+  question: 0,
+  dataset: 0,
+  metric: 0,
+  segment: 0,
+  transform: 0,
+  public_link: 0,
+  ...opts,
+});
 
 export const createMockDatabase = (opts?: Partial<Database>): Database => ({
   ...createMockDatabaseData(opts),

@@ -504,14 +504,32 @@
     :include-editable-data-model? include_editable_data_model
     :exclude-uneditable-details? exclude_uneditable_details}))
 
+(mr/def ::usage-info
+  [:map {:closed true}
+   [:question
+    {:description "Saved questions on this database."}
+    ms/IntGreaterThanOrEqualToZero]
+   [:dataset
+    {:description "Models on this database."}
+    ms/IntGreaterThanOrEqualToZero]
+   [:metric
+    {:description "Metrics on this database."}
+    ms/IntGreaterThanOrEqualToZero]
+   [:segment
+    {:description "Segments on this database's tables."}
+    ms/IntGreaterThanOrEqualToZero]
+   [:transform
+    {:description "Transforms reading from or writing to this database."}
+    ms/IntGreaterThanOrEqualToZero]
+   [:public_link
+    {:description (str "Unarchived cards on this database that have a public link. Public dashboards are not counted:"
+                       " a dashboard carries no database.")}
+    ms/IntGreaterThanOrEqualToZero]])
+
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
 ;;
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case
-                      :metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :get "/:id/usage_info"
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case]}
+(api.macros/defendpoint :get "/:id/usage_info" :- ::usage-info
   "Get usage info for a database.
   Returns a map with keys are models and values are the number of entities that use this database."
   [{:keys [id]} :- [:map {:closed true}

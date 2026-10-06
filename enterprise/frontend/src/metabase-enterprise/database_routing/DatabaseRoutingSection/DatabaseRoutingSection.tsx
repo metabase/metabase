@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { t } from "ttag";
+import { msgid, ngettext, t } from "ttag";
 
 import {
   Error,
@@ -11,6 +11,7 @@ import {
 } from "metabase/admin/databases/components/DatabaseInfoSection";
 import {
   skipToken,
+  useGetDatabaseUsageInfoQuery,
   useListEnginesQuery,
   useListTransformsQuery,
   useListUserAttributesQuery,
@@ -92,6 +93,12 @@ export const DatabaseRoutingSection = ({
   );
   const transforms = transformsQuery.data ?? [];
   const hasTransforms = transforms.length > 0;
+
+  // usage info is admin-only, and the count is only there to inform the admin making the decision
+  const usageInfoQuery = useGetDatabaseUsageInfoQuery(
+    shouldHideSection || !isAdmin ? skipToken : database.id,
+  );
+  const publicQuestionCount = usageInfoQuery.data?.public_link ?? 0;
 
   const disabledFeatMsg = getDisabledFeatureMessage(database, {
     hasTransforms,
@@ -203,14 +210,27 @@ export const DatabaseRoutingSection = ({
         <>
           <DatabaseInfoSectionDivider />
 
-          {hasDbRoutingEnabled(database) && (
+          {enabled && (
             <Alert
               size="compact"
               variant="light"
               icon={<Icon name="info" />}
               mb="lg"
             >
-              {t`In guest embeds, database queries will always be routed to the router database.`}
+              <Stack gap="xs">
+                <Text
+                  inherit
+                >{t`In guest embeds and public links, database queries will always be routed to the router database.`}</Text>
+                <Text inherit>
+                  {publicQuestionCount > 0
+                    ? ngettext(
+                        msgid`This affects ${publicQuestionCount} public question on this database, and any public dashboard that uses it.`,
+                        `This affects ${publicQuestionCount} public questions on this database, and any public dashboard that uses it.`,
+                        publicQuestionCount,
+                      )
+                    : t`This affects any public dashboard that uses this database.`}
+                </Text>
+              </Stack>
             </Alert>
           )}
           <Stack mb="xxl" gap="sm">
