@@ -412,3 +412,32 @@
                                                                              :remote-sync-branch ""})))
           (is (nil? (settings/remote-sync-url)) "The rejected settings are not saved")
           (is (nil? (settings/remote-sync-branch))))))))
+
+(defn- link-head!
+  "Points the HEAD of the git repo in `dir` at the ref `target`, e.g. `refs/heads/main`."
+  [dir ^String target]
+  (with-open [remote-git (Git/open (io/file dir))]
+    (.link (.updateRef (.getRepository remote-git) "HEAD") target)))
+
+(deftest blank-branch-save-with-env-url-stores-the-default-branch-of-the-env-url-test
+  (testing "when the URL comes from the environment, a blank-branch save stores the default branch of that URL"
+    (mt/with-temp-dir [env-dir nil]
+      (mt/with-temp-dir [api-dir nil]
+        (let [env-url (test-helpers/init-local-git-remote! env-dir :branches ["alpha"])
+              api-url (test-helpers/init-local-git-remote! api-dir :branches ["beta"])]
+          (link-head! env-dir "refs/heads/alpha")
+          (link-head! api-dir "refs/heads/beta")
+          (mt/with-temporary-setting-values [remote-sync-url    nil
+                                             remote-sync-token  nil
+                                             remote-sync-type   nil
+                                             remote-sync-branch nil]
+            (mt/with-temp-env-var-value! [mb-remote-sync-url env-url]
+              (settings/check-and-update-remote-settings! {:remote-sync-url    api-url
+                                                           :remote-sync-token  nil
+                                                           :remote-sync-type   :read-write
+                                                           :remote-sync-branch ""})
+              (mt/with-dynamic-fn-redefs [impl/async-import! (constantly {:id 1})]
+                (impl/finish-remote-config!))
+              (is (= env-url (settings/remote-sync-url)) "Precondition: the URL from the environment is in effect")
+              (is (= "alpha" (settings/remote-sync-branch))
+                  "The save stores the default branch of the URL in effect, not of the URL in the request"))))))))
