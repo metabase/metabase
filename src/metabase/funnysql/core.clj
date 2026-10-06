@@ -177,7 +177,7 @@
 
 (defn- with! [sql ctes context]
   (append-sql! context sql)
-  (letfn [(-cte [[identifier subquery]]
+  (letfn [(-cte [[identifier subquery & options]]
             (let [[identifier {:keys [columns]}] (if (sequential? identifier)
                                                    identifier
                                                    [identifier])]
@@ -187,6 +187,9 @@
                 (append-sql! context \space)
                 (-identifier-list! columns context)))
             (append-sql! context " AS ")
+            (doseq [option options]
+              (case option
+                :materialized (append-sql! context "MATERIALIZED ")))
             (-parens! subquery context))]
     (interpose-fn ctes -cte #(append-sql! context ", "))))
 

@@ -369,6 +369,13 @@
                            :from           [:parents]}
                           :postgres))))
 
+(deftest ^:parallel with-materialized-test
+  (is (= ["WITH \"cte\" AS MATERIALIZED (SELECT \"id\" FROM \"t\") SELECT \"id\" FROM \"cte\""]
+         (funnysql/format {:with   [[:cte ^:allow-subquery {:select [:id] :from [:t]} :materialized]]
+                           :select [:id]
+                           :from   [:cte]}
+                          :postgres))))
+
 (deftest ^:parallel union-test
   (is (= ["SELECT \"id\" FROM \"a\" UNION SELECT \"id\" FROM \"b\""]
          (funnysql/format {:union [^:allow-subquery {:select [:id] :from [:a]}
