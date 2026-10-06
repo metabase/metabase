@@ -7,8 +7,12 @@
    [clojure.test.check.properties :as prop]
    [metabase.agent-lib.representations :as repr]
    [metabase.agent-lib.representations.repair :as repair]
+   [metabase.agent-lib.representations.resolve :as repr.resolve]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.test-util :as lib.tu]
+   [metabase.models.serialization.resolve :as serdes.resolve]
+   [metabase.models.serialization.resolve.mp :as resolve.mp]
+   [metabase.test :as mt]
    [metabase.util.date-2 :as u.date]))
 
 (set! *warn-on-reflection* true)
@@ -3491,3 +3495,257 @@
     (let [bug  ["contains" {} ["field" {} ["S" "P" "T" "C"]] "x" {"case-sensitive" false}]
           once (repair/repair trivial-mp bug)]
       (is (= once (repair/repair trivial-mp once))))))
+
+;;; ============================================================
+;;; Pass 4.7 - join-alias field refs (BOT-2222)
+;;; ============================================================
+
+(def ^:private first-orders-card-eid "aBc123_456DefGhI789_K")
+(def ^:private native-orders-card-eid "nAt123_456DefGhI789_K")
+
+(def ^:private mp-orders-with-cards
+  "ORDERS, an MBQL card returning each user's first order date (`USER_ID`, `min`), and a native card
+  returning `USER_ID` and `CREATED_AT` without field ids."
+  (lib.tu/mock-metadata-provider
+   {:database {:id 1 :name "Sample"}
+    :tables   [{:id 10 :name "ORDERS" :schema "PUBLIC" :db-id 1}]
+    :fields   [{:id 100 :name "ID"         :table-id 10 :base-type :type/Integer}
+               {:id 101 :name "TOTAL"      :table-id 10 :base-type :type/Float}
+               {:id 102 :name "USER_ID"    :table-id 10 :base-type :type/Integer}
+               {:id 103 :name "CREATED_AT" :table-id 10 :base-type :type/Date}]
+    :cards    [{:id              500
+                :name            "First orders"
+                :database-id     1
+                :type            :question
+                :entity-id       first-orders-card-eid
+                :dataset-query   {:lib/type :mbql/query
+                                  :database 1
+                                  :stages   [{:lib/type :mbql.stage/mbql :source-table 10}]}
+                :result-metadata [{:name "USER_ID" :id 102 :base-type :type/Integer}
+                                  {:name "min" :base-type :type/Date}]}
+               {:id              501
+                :name            "Native first orders"
+                :database-id     1
+                :type            :question
+                :entity-id       native-orders-card-eid
+                :dataset-query   {:lib/type :mbql/query
+                                  :database 1
+                                  :stages   [{:lib/type :mbql.stage/native :native "SELECT 1"}]}
+                :result-metadata [{:name "USER_ID" :base-type :type/Integer}
+                                  {:name "CREATED_AT" :base-type :type/Date}]}]}))
+
+(def ^:private card-content-store
+  (let [cards [{:id 500 :database_id 1 :entity_id first-orders-card-eid}
+               {:id 501 :database_id 1 :entity_id native-orders-card-eid}]]
+    (reify resolve.mp/ContentStore
+      (card-by-entity-id    [_ eid] (some #(when (= eid (:entity_id %)) %) cards))
+      (measure-by-entity-id [_ _] nil)
+      (segment-by-entity-id [_ _] nil)
+      (card-by-id           [_ id] (some #(when (= id (:id %)) %) cards))
+      (measure-by-id        [_ _] nil)
+      (segment-by-id        [_ _] nil))))
+
+(def ^:private orders ["Sample" "PUBLIC" "ORDERS"])
+
+(defn- orders-col [column] ["field" {} (conj orders column)])
+
+(defn- join-ref [alias target] ["field" {"join-alias" alias} target])
+
+(defn- typed [field-ref type-name] (assoc-in field-ref [1 "base-type"] type-name))
+
+(defn- stage [m] (merge {"lib/type" "mbql.stage/mbql"} m))
+
+(defn- orders-stage [m] (stage (merge {"source-table" orders} m)))
+
+(def ^:private first-orders-stage
+  "Each user's first order date: returns `USER_ID` and `min`."
+  (orders-stage {"aggregation" [["min" {} (orders-col "CREATED_AT")]]
+                 "breakout"    [(orders-col "USER_ID")]}))
+
+(defn- join
+  "A left join over `stages`, on `lhs` (default ORDERS.USER_ID) = the join's `USER_ID` by path."
+  [alias stages & {:keys [lhs] :or {lhs (orders-col "USER_ID")}}]
+  {"alias"      alias
+   "strategy"   "left-join"
+   "stages"     stages
+   "conditions" [["=" {} lhs (join-ref alias (conj orders "USER_ID"))]]})
+
+(defn- query [& stages] {"lib/type" "mbql/query" "database" "Sample" "stages" (vec stages)})
+
+(defn- repair* [q] (repair/repair mp-orders-with-cards q card-content-store))
+
+(defn- repair-error
+  "The ex-data of the error `q`'s repair raises, plus its `:message`; nil when repair succeeds."
+  [q]
+  (try (repair* q) nil
+       (catch clojure.lang.ExceptionInfo e (assoc (ex-data e) :message (ex-message e)))))
+
+(defn- join-problems
+  "`[stage join-alias columns]` per problem in the join-alias error `q`'s repair raises, or nil."
+  [q]
+  (let [e (repair-error q)]
+    (when (= :unresolved-join-alias-field (:error e))
+      (mapv (juxt :stage :join-alias :columns) (:problems e)))))
+
+(defn- base-type [field-ref] (get-in field-ref [1 "base-type"]))
+
+(def ^:private first-order-query
+  "Refs `First`'s `min` by name from every clause that can carry one."
+  (let [min-ref (join-ref "First" "min")]
+    (query (orders-stage {"joins"       [(join "First" [first-orders-stage])]
+                          "expressions" [["=" {"lib/expression-name" "First order?"} (orders-col "CREATED_AT") min-ref]]
+                          "breakout"    [min-ref]
+                          "aggregation" [["max" {} min-ref]]
+                          "filters"     [["not-null" {} min-ref]]
+                          "order-by"    [["asc" {} min-ref]]}))))
+
+(deftest ^:parallel join-alias-field-type-happy-path-test
+  (let [decoy-stages [(orders-stage {"filters" [["not-null" {} (join-ref "First" "min")]]})]
+        q            (-> first-order-query
+                         (assoc-in ["stages" 0 "joins" 0 "conditions" 0 3] (join-ref "First" "USER_ID"))
+                         (update-in ["stages" 0 "joins"] conj (join "Decoy" decoy-stages)))
+        out          (get-in (repair* q) ["stages" 0])]
+    (doseq [path [["expressions" 0 3] ["breakout" 0] ["aggregation" 0 2] ["filters" 0 2] ["order-by" 0 2]]]
+      (testing (str "the ref in " (first path) " is typed from the join")
+        (is (= ["field" {"join-alias" "First" "base-type" "type/Date" "effective-type" "type/Date"} "min"]
+               (get-in out path)))))
+    (testing "a by-name ref in the join's conditions is typed"
+      (is (= "type/Integer" (base-type (get-in out ["joins" 0 "conditions" 0 3])))))
+    (testing "a ref with the same alias inside a join's own stages is left alone"
+      (is (= decoy-stages (get-in out ["joins" 1 "stages"]))))))
+
+(deftest ^:parallel join-alias-field-type-recovers-display-name-test
+  (let [q (query (orders-stage {"joins"   [(join "First" [first-orders-stage])]
+                                "filters" [["not-null" {} (join-ref "First" "Min of Created At")]]}))]
+    (is (= ["field" {"join-alias" "First" "base-type" "type/Date" "effective-type" "type/Date"} "min"]
+           (get-in (repair* q) ["stages" 0 "filters" 0 2])))))
+
+(deftest ^:parallel join-alias-field-type-source-card-join-test
+  (let [q (query (orders-stage {"joins"   [(join "Card" [(stage {"source-card" first-orders-card-eid})])]
+                                "filters" [["not-null" {} (join-ref "Card" "min")]]}))]
+    (is (= "type/Date" (base-type (get-in (repair* q) ["stages" 0 "filters" 0 2]))))))
+
+(def ^:private min-total-by-user-stage
+  "Returns `USER_ID` and a Float `min`, which a Date `min` from a join must not be confused with."
+  (orders-stage {"aggregation" [["min" {} (orders-col "TOTAL")]]
+                 "breakout"    [(orders-col "USER_ID")]}))
+
+(def ^:private user-id-by-name (typed ["field" {} "USER_ID"] "type/Integer"))
+
+(deftest ^:parallel join-alias-field-type-scoped-to-the-stage-with-the-join-test
+  (let [joined-here (query min-total-by-user-stage
+                           (stage {"joins"   [(join "First" [first-orders-stage] :lhs user-id-by-name)]
+                                   "filters" [["not-null" {} (join-ref "First" "min")]]}))
+        joined-before (fn [column]
+                        (query (orders-stage {"joins" [(assoc (join "First" [first-orders-stage]) "fields" "all")]})
+                               (stage {"filters" [["not-null" {} (join-ref "First" column)]]})))]
+    (testing "a ref through a join on its own stage is typed from that join, not the previous stage's same-named column"
+      (is (= "type/Date" (base-type (get-in (repair* joined-here) ["stages" 1 "filters" 0 2])))))
+    (testing "a ref through an alias no join on its stage has is typed from the previous stage"
+      (is (= "type/Date" (base-type (get-in (repair* (joined-before "min")) ["stages" 1 "filters" 0 2])))))
+    (testing "a bad name through an alias no join on its stage has raises the cross-stage error, not the join error"
+      (is (= :unresolved-cross-stage-field (:error (repair-error (joined-before "nope"))))))))
+
+(deftest ^:parallel join-alias-field-type-unresolvable-join-is-skipped-test
+  (let [min-ref (join-ref "Broken" "min")
+        q       (query min-total-by-user-stage
+                       (stage {"joins"   [(join "Broken" [(stage {"source-table" ["Sample" "PUBLIC" "NOPE"]})]
+                                                :lhs user-id-by-name)]
+                               "filters" [["not-null" {} min-ref]]}))]
+    (testing "the ref isn't typed from the previous stage's same-named column, and nothing is raised"
+      (is (= min-ref (get-in (repair* q) ["stages" 1 "filters" 0 2]))))))
+
+(deftest ^:parallel join-alias-field-type-runs-before-cross-stage-inference-test
+  (testing "a stage carrying a join-alias ref still resolves as the next stage's prefix"
+    (let [out (repair* (query (orders-stage {"joins"       [(join "First" [first-orders-stage])]
+                                             "aggregation" [["count" {}]]
+                                             "breakout"    [(join-ref "First" "min")]})
+                              (stage {"filters" [[">" {} ["field" {} "count"] 1]]})))]
+      (is (= "type/Date" (base-type (get-in out ["stages" 0 "breakout" 0]))))
+      (is (= "type/Integer" (base-type (get-in out ["stages" 1 "filters" 0 2])))))))
+
+(deftest join-alias-field-type-resolves-each-join-at-most-once-test
+  (let [resolutions (fn [join-stages q]
+                      (let [calls   (atom 0)
+                            resolve (mt/original-fn #'repr.resolve/resolve-query)]
+                        (mt/with-dynamic-fn-redefs [repr.resolve/resolve-query (fn [mp query store]
+                                                                                 (when (= join-stages (get query "stages"))
+                                                                                   (swap! calls inc))
+                                                                                 (resolve mp query store))]
+                          (repair* q))
+                        @calls))]
+    (testing "a join named only by already-typed refs is never resolved"
+      (is (zero? (resolutions [first-orders-stage]
+                              (query (orders-stage {"joins"   [(-> (join "First" [first-orders-stage])
+                                                                   (assoc-in ["conditions" 0 3] (typed (join-ref "First" "USER_ID") "type/Integer")))]
+                                                    "filters" [["not-null" {} (typed (join-ref "First" "min") "type/Date")]]}))))))
+    (testing "a grouped join named by both by-name and path refs is resolved once"
+      (is (= 1 (resolutions [first-orders-stage] first-order-query))))
+    (testing "a path ref into a plain table join doesn't resolve it"
+      (is (zero? (resolutions [(orders-stage {})]
+                              (query (orders-stage {"joins"   [(join "Plain" [(orders-stage {})])]
+                                                    "filters" [["not-null" {} (join-ref "Plain" (conj orders "TOTAL"))]]}))))))))
+
+(deftest ^:parallel join-alias-field-type-idempotent-test
+  (let [once (repair* first-order-query)]
+    (is (= once (repair* once)))))
+
+(defn- first-orders-filtering [& refs]
+  (query (orders-stage {"joins"   [(join "First" [first-orders-stage])]
+                        "filters" (mapv #(vector "not-null" {} %) refs)})))
+
+(deftest ^:parallel join-alias-field-type-unknown-column-raises-test
+  (testing "a source column the grouped join doesn't return, referenced by name, raises"
+    (let [total-ref (join-ref "First" "TOTAL")
+          e         (repair-error (first-orders-filtering total-ref))]
+      (is (=? {:agent-error? true
+               :error        :unresolved-join-alias-field
+               :problems     [{:stage 0 :join-alias "First" :clauses [total-ref] :columns ["TOTAL"] :available ["USER_ID" "min"]}]}
+              e))
+      (is (re-find #"join \"First\" doesn't return \"TOTAL\" \(available: USER_ID, min\)" (:message e)))))
+  (testing "every bad ref is reported in one error, across refs, joins, and stages"
+    (is (= [[0 "First" ["nope" "TOTAL"]] [0 "Second" ["nada"]] [1 "First" ["zilch"]]]
+           (join-problems
+            (query (orders-stage {"joins"   [(join "First" [first-orders-stage]) (join "Second" [first-orders-stage])]
+                                  "filters" [["not-null" {} (join-ref "First" "nope")]
+                                             ["not-null" {} (join-ref "First" (conj orders "TOTAL"))]
+                                             ["not-null" {} (join-ref "Second" "nada")]]})
+                   (stage {"joins"   [(join "First" [first-orders-stage] :lhs user-id-by-name)]
+                           "filters" [["not-null" {} (join-ref "First" "zilch")]]}))))))
+  (testing "a bad ref repeated in several clauses is listed once"
+    (is (= [[0 "First" ["nope"]]]
+           (join-problems (first-orders-filtering (join-ref "First" "nope") (join-ref "First" "nope"))))))
+  (testing "a by-name ref the LLM typed itself isn't checked"
+    (is (nil? (repair-error (first-orders-filtering (typed (join-ref "First" "nope") "type/Text")))))))
+
+(defn- filtering-through [alias stages column]
+  (query (orders-stage {"joins"   [(join alias stages)]
+                        "filters" [["not-null" {} (join-ref alias (conj orders column))]]})))
+
+(deftest ^:parallel join-alias-path-ref-must-be-returned-by-the-join-test
+  (testing "a path ref to a column the grouped join drops raises"
+    (is (= [[0 "First" ["TOTAL"]]] (join-problems (filtering-through "First" [first-orders-stage] "TOTAL")))))
+  (testing "a path ref to the grouped join's breakout column is accepted"
+    (is (nil? (repair-error (filtering-through "First" [first-orders-stage] "USER_ID")))))
+  (testing "a join narrowed with `fields:` is checked"
+    (is (= [[0 "Narrow" ["TOTAL"]]]
+           (join-problems (filtering-through "Narrow" [(orders-stage {"fields" [(orders-col "USER_ID")]})] "TOTAL")))))
+  (testing "a two-stage join is checked"
+    (is (= [[0 "Two" ["TOTAL"]]]
+           (join-problems (filtering-through "Two" [(orders-stage {}) (stage {"fields" [user-id-by-name]})] "TOTAL")))))
+  (testing "through a native card, whose columns carry no field ids, a path ref matches by name"
+    (let [native [(stage {"source-card" native-orders-card-eid})]]
+      (is (nil? (repair-error (filtering-through "Native" native "CREATED_AT"))))
+      (is (= [[0 "Native" ["TOTAL"]]] (join-problems (filtering-through "Native" native "TOTAL"))))))
+  (testing "a numeric field id target is reported by the field's name"
+    (binding [serdes.resolve/*numeric-ids-allowed?* true]
+      (is (= [[0 "First" ["TOTAL"]]] (join-problems (first-orders-filtering (join-ref "First" 101))))))))
+
+(deftest ^:parallel join-alias-path-ref-with-source-field-is-skipped-test
+  (testing "a path ref with source-field (an implicit hop from the joined table) isn't checked"
+    (is (nil? (repair-error (first-orders-filtering
+                             (assoc-in (join-ref "First" (conj orders "TOTAL")) [1 "source-field"] (conj orders "USER_ID"))))))))
+
+(deftest ^:parallel join-alias-path-ref-unresolvable-field-is-skipped-test
+  (testing "a path to no real field is left for the resolver to report"
+    (is (nil? (repair-error (filtering-through "First" [first-orders-stage] "NOPE"))))))

@@ -8,8 +8,9 @@
   unknown name, ambiguous name, missing name, mismatched DB component in source-table)."
   (:require
    [clojure.string :as str]
-   [clojure.test :refer [deftest is testing]]
+   [clojure.test :refer [are deftest is testing]]
    [clojure.walk :as walk]
+   [malli.core :as mc]
    [metabase.agent-lib.representations.repair :as repr.repair]
    [metabase.api.common :as api]
    [metabase.lib-be.core :as lib-be]
@@ -28,7 +29,8 @@
    [metabase.models.serialization.resolve :as serdes.resolve]
    [metabase.models.serialization.resolve.mp :as resolve.mp]
    [metabase.test :as mt]
-   [metabase.util.json :as json]))
+   [metabase.util.json :as json]
+   [metabase.util.malli.registry :as mr]))
 
 (set! *warn-on-reflection* true)
 
@@ -633,7 +635,7 @@
             (is (some? e))
             (is (true? (:agent-error? (ex-data e))))
             (is (= :query-not-runnable (:error (ex-data e))))
-            (is (re-find #"`offset`" (ex-message e)))
+            (is (re-find #"`offset` cannot be custom columns" (ex-message e)))
             (is (re-find #"non-aggregation expression" (ex-message e)))))))))
 
 (deftest editor-gate-offset-in-filter-surfaces-error-end-to-end-test
@@ -751,7 +753,8 @@
               ;; exact shape that resolves structurally yet makes Lib.canRun false.
               bad  (assoc-in good [:stages 0 :breakout 0] [:field {} "PRODUCT_ID"])]
           (is (nil? (#'construct/query-not-runnable-explanation good)))
-          (is (some? (#'construct/query-not-runnable-explanation bad))))))))
+          (is (str/includes? (#'construct/query-not-runnable-explanation bad)
+                             "[:stages 0 :breakout 0 1 :base-type]: a field reference by name is missing `base-type`")))))))
 
 ;;; ============================================================
 ;;; Step-9 contract: expressions (custom columns)
@@ -2047,3 +2050,68 @@
                 (is (true? (:agent-error? d)))
                 (is (= :temporal-unit-on-non-temporal-column (:error d)))
                 (is (str/includes? (ex-message e) (str "is a " type-name " column")))))))))))
+
+;;; ============================================================
+;;; BOT-2222: refs to a grouped join's columns
+;;; ============================================================
+
+(defn- smallest-order-query
+  "Compares each order's TOTAL with `target` through `First`, a self-join returning each product's
+  smallest TOTAL as `min`."
+  [target]
+  (let [orders-col (fn [column] ["field" {} ["Sample" "PUBLIC" "ORDERS" column]])]
+    {"lib/type" "mbql/query"
+     "database" "Sample"
+     "stages"   [{"lib/type"     "mbql.stage/mbql"
+                  "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                  "joins"        [{"alias"      "First"
+                                   "strategy"   "left-join"
+                                   "stages"     [{"lib/type"     "mbql.stage/mbql"
+                                                  "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                                                  "aggregation"  [["min" {} (orders-col "TOTAL")]]
+                                                  "breakout"     [(orders-col "PRODUCT_ID")]}]
+                                   "conditions" [["=" {}
+                                                  (orders-col "PRODUCT_ID")
+                                                  ["field" {"join-alias" "First"} ["Sample" "PUBLIC" "ORDERS" "PRODUCT_ID"]]]]}]
+                  "expressions"  {"Smallest?" ["=" {} (orders-col "TOTAL") ["field" {"join-alias" "First"} target]]}}]}))
+
+(deftest grouped-join-aggregation-by-name-test
+  (with-mp-and-stubs!
+    (fn []
+      (testing "a ref to the grouped join's aggregation by name builds a query with the ref typed"
+        (let [result (construct/execute-representations-query (query-data (smallest-order-query "min")))]
+          (is (=? [:field {:join-alias "First" :base-type :type/Float} "min"]
+                  (get-in result [:structured-output :query :stages 0 :expressions 0 3])))))
+      (testing "an unknown name is a retryable agent error"
+        (let [e (editor-rejection (smallest-order-query "nope"))]
+          (is (=? {:agent-error? true :status-code 400} (ex-data e)))
+          (is (str/includes? (ex-message e) "join \"First\" doesn't return \"nope\"")))))))
+
+(deftest path-ref-to-dropped-join-column-rejected-before-sql-test
+  (testing "a path ref to a column the grouped join drops fails in repair, not in the database"
+    (with-mp-and-stubs!
+      (fn []
+        (is (= :unresolved-join-alias-field
+               (:error (ex-data (editor-rejection (smallest-order-query ["Sample" "PUBLIC" "ORDERS" "ID"]))))))))))
+
+(deftest ^:parallel not-runnable-problem-test
+  (let [missing (fn [k] {:type :malli.core/missing-key :in [:stages 0 :breakout 0 1 k]})
+        invalid (fn [schema value] {:schema (mc/schema schema) :value value})]
+    (are [error re] (re-find re (#'construct/not-runnable-problem error))
+      (missing :lib/uuid)                                                   #"could not be resolved"
+      (missing :base-type)                                                  #"missing `base-type`"
+      (missing :alias)                                                      #"^missing `alias`$"
+      (invalid [:fn {:error/message "non-aggregation expression"} any?] 1)  #"cannot be custom columns"
+      (invalid :int "x")                                                    #"^should be an integer$")))
+
+(deftest query-not-runnable-explanation-test
+  (let [explain (fn [& errors]
+                  (mt/with-dynamic-fn-redefs [mr/explain (constantly {:errors errors})]
+                    (#'construct/query-not-runnable-explanation {})))
+        missing (fn [k] {:type :malli.core/missing-key :in [:stages 0 k]})]
+    (testing "identical problems are listed once"
+      (is (= "[:stages 0 :alias]: missing `alias`" (explain (missing :alias) (missing :alias)))))
+    (testing "at most three problems are listed"
+      (is (= 3 (count (str/split (apply explain (map missing [:a :b :c :d])) #"; ")))))
+    (testing "an explanation with no errors falls back to a generic sentence"
+      (is (= "the query does not match the query builder's schema" (explain))))))
