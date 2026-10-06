@@ -151,9 +151,10 @@
     (try
       (thunk)
       (finally
-        (t2/delete! :setting :key [:like "remote-sync%"])
-        (when (seq settings)
-          (t2/insert! :setting settings))
+        (t2/with-transaction [_conn]
+          (t2/delete! :setting :key [:like "remote-sync%"])
+          (when (seq settings)
+            (t2/insert! :setting settings)))
         (setting/restore-cache!)
         (t2/delete! :model/RemoteSyncObject)
         (when (seq ledger)

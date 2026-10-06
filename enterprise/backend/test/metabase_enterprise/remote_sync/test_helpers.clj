@@ -474,13 +474,15 @@ width: fixed
               :model_id   remote-sync.settings/transforms-root-id))
 
 (defn- write-remote-sync-setting-rows!
-  "Replace every `remote-sync%` row of the `setting` table with the raw `rows`, restore the settings cache from the
-  app DB, then delete the Transforms RemoteSyncObject rows."
+  "Replace every `remote-sync%` row of the `setting` table with the raw `rows` in one transaction, restore the settings
+  cache from the app DB, then delete the Transforms RemoteSyncObject rows. If the insert fails, the delete rolls back
+  and the exception propagates."
   [rows]
   ;; raw rows: no `:on-change` hook runs during the write; the cache restore runs the hooks of the changed values
-  (t2/delete! :setting :key [:like "remote-sync%"])
-  (when (seq rows)
-    (t2/insert! :setting rows))
+  (t2/with-transaction [_conn]
+    (t2/delete! :setting :key [:like "remote-sync%"])
+    (when (seq rows)
+      (t2/insert! :setting rows)))
   (setting/restore-cache!)
   (delete-transforms-ledger-rows!))
 
