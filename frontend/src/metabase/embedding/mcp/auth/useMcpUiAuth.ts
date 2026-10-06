@@ -6,7 +6,12 @@ import {
   UI_CREDENTIAL_REFRESH_RETRY_MS,
 } from "../constants";
 
-import { installMcpUiCredential, refreshMcpUiAuth } from "./mcpUiAuth";
+import { setMcpCredentialRefresher } from "./credentialRefresh";
+import {
+  type McpUiAuth,
+  installMcpUiCredential,
+  refreshMcpUiAuth,
+} from "./mcpUiAuth";
 
 type UseMcpUiAuthOptions = {
   app: App | null;
@@ -76,32 +81,39 @@ export function useMcpUiAuth({
     }
 
     function scheduleRefresh(delay: number) {
+      window.clearTimeout(refreshTimeout);
       refreshTimeout = window.setTimeout(() => refreshAuth(), delay);
+    }
+
+    async function authenticate(): Promise<McpUiAuth> {
+      const { auth, expiresAt } = await refreshMcpUiAuth(
+        connectedApp,
+        abortController,
+      );
+
+      installMcpUiCredential(auth);
+
+      setUiCredential(auth.credential);
+      setMcpSessionId(auth.sessionId);
+      setError(null);
+
+      authenticatedUntilRef.current = expiresAt;
+      // Passed through rather than read from state: the consumer resolves a
+      // query handle here, and the state setters above have not committed yet.
+      onAuthenticated({
+        uiCredential: auth.credential,
+        mcpSessionId: auth.sessionId,
+      });
+
+      scheduleCredentialExpiry();
+      scheduleRefresh(UI_CREDENTIAL_REFRESH_INTERVAL_MS);
+
+      return auth;
     }
 
     async function refreshAuth() {
       try {
-        const { auth, expiresAt } = await refreshMcpUiAuth(
-          connectedApp,
-          abortController,
-        );
-
-        installMcpUiCredential(auth);
-
-        setUiCredential(auth.credential);
-        setMcpSessionId(auth.sessionId);
-        setError(null);
-
-        authenticatedUntilRef.current = expiresAt;
-        // Passed through rather than read from state: the consumer resolves a
-        // query handle here, and the state setters above have not committed yet.
-        onAuthenticated({
-          uiCredential: auth.credential,
-          mcpSessionId: auth.sessionId,
-        });
-
-        scheduleCredentialExpiry();
-        scheduleRefresh(UI_CREDENTIAL_REFRESH_INTERVAL_MS);
+        await authenticate();
       } catch {
         if (abortController.signal.aborted) {
           return;
@@ -125,7 +137,12 @@ export function useMcpUiAuth({
     scheduleCredentialExpiry();
     refreshAuth();
 
+    // An iframe route refused the credential, so get a new one now rather than
+    // at the next scheduled refresh.
+    setMcpCredentialRefresher(authenticate);
+
     return () => {
+      setMcpCredentialRefresher(null);
       abortController.abort();
 
       window.clearTimeout(credentialExpiryTimeout);

@@ -1,6 +1,7 @@
 import fetchMock from "fetch-mock";
 
 import { deriveMcpQuery, fetchMcpBootstrap, storeDrillQuery } from "./api";
+import { setMcpCredentialRefresher } from "./auth/credentialRefresh";
 
 const INSTANCE_URL = "http://localhost:3000";
 const BOOTSTRAP_URL = `${INSTANCE_URL}/api/embed-mcp/bootstrap`;
@@ -131,5 +132,71 @@ describe("storeDrillQuery", () => {
     ).resolves.toEqual({ handle: "drill-handle" });
 
     expect(sentBody()).toEqual({ handle: "handle-1", operation });
+  });
+});
+
+describe("refreshing the credential on a 401", () => {
+  const DERIVE_URL = `${INSTANCE_URL}/api/embed-mcp/queries/handle-1/derive`;
+  const DERIVED = { handle: "handle-2", query: "q2" };
+  const derive = () =>
+    deriveMcpQuery({
+      ...OPTIONS,
+      queryHandle: "handle-1",
+      operations: [{ type: "date-filter/clear" }],
+    });
+  const credentialsSent = () =>
+    fetchMock.callHistory
+      .calls()
+      .map((call) =>
+        new Headers(call.options.headers).get("x-metabase-mcp-ui-auth"),
+      );
+
+  let refresher: jest.Mock;
+
+  beforeEach(() => {
+    refresher = jest.fn(async () => ({
+      credential: "credential-2",
+      sessionId: "session-1",
+    }));
+    setMcpCredentialRefresher(refresher);
+  });
+
+  afterEach(() => {
+    setMcpCredentialRefresher(null);
+  });
+
+  it("gets a new credential and retries the request once", async () => {
+    let calls = 0;
+    fetchMock.post(DERIVE_URL, () => (++calls === 1 ? 401 : DERIVED));
+
+    await expect(derive()).resolves.toEqual(DERIVED);
+
+    expect(refresher).toHaveBeenCalledTimes(1);
+    expect(credentialsSent()).toEqual(["credential-1", "credential-2"]);
+  });
+
+  it("does not retry a second 401", async () => {
+    fetchMock.post(DERIVE_URL, 401);
+
+    await expect(derive()).rejects.toMatchObject({ status: 401 });
+
+    expect(refresher).toHaveBeenCalledTimes(1);
+    expect(fetchMock.callHistory.calls()).toHaveLength(2);
+  });
+
+  it("coalesces concurrent 401s into one refresh", async () => {
+    fetchMock.post(DERIVE_URL, ({ options }) =>
+      new Headers(options.headers).get("x-metabase-mcp-ui-auth") ===
+      "credential-1"
+        ? 401
+        : DERIVED,
+    );
+
+    await expect(Promise.all([derive(), derive()])).resolves.toEqual([
+      DERIVED,
+      DERIVED,
+    ]);
+
+    expect(refresher).toHaveBeenCalledTimes(1);
   });
 });

@@ -1,5 +1,7 @@
+import { setMcpCredentialRefresher } from "./auth/credentialRefresh";
 import {
   overrideRequestForMcpApps,
+  refreshOnRefusedIframeRequest,
   setCurrentMcpQueryHandle,
 } from "./requests";
 
@@ -36,5 +38,26 @@ describe("overrideRequestForMcpApps", () => {
     await expect(
       overrideRequestForMcpApps({ method: "POST", url: "/api/dataset" }),
     ).resolves.toBeUndefined();
+  });
+});
+
+describe("refreshOnRefusedIframeRequest", () => {
+  afterEach(() => {
+    setMcpCredentialRefresher(null);
+  });
+
+  it("gets a new credential when an iframe route refuses one, and only then", async () => {
+    const refresher = jest.fn(async () => ({
+      credential: "credential-2",
+      sessionId: "session-1",
+    }));
+    setMcpCredentialRefresher(refresher);
+
+    refreshOnRefusedIframeRequest("/api/user/current");
+    expect(refresher).not.toHaveBeenCalled();
+
+    refreshOnRefusedIframeRequest("/api/embed-mcp/queries/handle-1/run");
+    refreshOnRefusedIframeRequest("/api/embed-mcp/queries/handle-1/pivot");
+    expect(refresher).toHaveBeenCalledTimes(1);
   });
 });
