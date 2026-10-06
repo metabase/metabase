@@ -117,6 +117,11 @@ export function McpQuestionView({
   }, [isQueryRunning, isQueryRunningRef]);
 
   const [deriveError, setDeriveError] = useState<string | null>(null);
+
+  // A new tool result replaces the chart the error was about.
+  useEffect(() => {
+    setDeriveError(null);
+  }, [queryKey]);
   const applyOperations = useApplyMcpOperations(deriveQuery, setDeriveError);
 
   useEffect(() => {
