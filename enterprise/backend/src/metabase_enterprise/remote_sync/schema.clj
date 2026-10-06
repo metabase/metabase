@@ -250,7 +250,12 @@
                     [:kind   [:= "merged"]]
                     [:pulled :int]
                     [:pushed :int]
-                    [:branch [:maybe :string]]]]])
+                    [:branch [:maybe :string]]]]
+   ;; Conflict outcomes: why a task stopped when the cause is not a collision (its `:conflicts` say what collided).
+   ["remote-changed"    [:map {:closed true}
+                         [:kind [:= "remote-changed"]]]]
+   ["history-rewritten" [:map {:closed true}
+                         [:kind [:= "history-rewritten"]]]]])
 
 (mr/def ::remote-sync-task
   "A RemoteSyncTask as selected from the app DB: every column of `:remote_sync_task`."

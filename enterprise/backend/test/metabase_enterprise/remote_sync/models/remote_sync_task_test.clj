@@ -116,7 +116,7 @@
                    {:kind "deletion" :category "Card" :model "Card" :count 2 :names ["A" "B"] :message "Import would delete 2"}]
           task    (rst/create-sync-task! "export" (mt/user->id :rasta))]
       (is (every? #(mr/validate ::remote-sync.schema/remote-sync-task.conflict-detail %) details))
-      (rst/conflict-sync-task! (:id task) ["some conflict"] details)
+      (rst/conflict-sync-task! (:id task) ["some conflict"] details nil)
       (is (= {:conflicts ["some conflict"] :conflict_details details}
              (into {} (t2/select-one [:model/RemoteSyncTask :conflicts :conflict_details] :id (:id task)))))))
   (testing "the schema rejects an unknown kind and a payload field a kind does not carry"
@@ -541,7 +541,7 @@
       (testing "Ignores a conflict task even though it records the version it conflicted against"
         (let [conflict-task (rst/create-sync-task! "import" (mt/user->id :rasta))]
           (rst/set-version! (:id conflict-task) "version 1.5")
-          (rst/conflict-sync-task! (:id conflict-task) ["remote-changed"] [{:kind "remote-changed"}])
+          (rst/conflict-sync-task! (:id conflict-task) ["some conflict"] [{:kind "first-import" :category "Cards" :message "some conflict"}] nil)
           (is (= "version 1" (rst/last-version)))))
       (testing "Returns a newer successful task's version"
         (let [new-task (rst/create-sync-task! "import" (mt/user->id :rasta))]

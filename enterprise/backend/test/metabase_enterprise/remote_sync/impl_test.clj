@@ -1977,6 +1977,7 @@ serdes/meta:
                                    :source (export-test-source)
                                    :base-snapshot nil)]
           (is (= :conflict (:status result)))
+          (is (= {:kind "history-rewritten"} (:outcome result)))
           (is (str/includes? (:message result) "rewritten")))))))
 
 (deftest export!-refuses-when-diverged-without-merge-flag-test
@@ -1990,9 +1991,9 @@ serdes/meta:
                                      :source (export-test-source)
                                      :base-snapshot (export-test-snapshot "base-B"))]
             (is (= :conflict (:status result)))
-            (is (= ["remote-changed"]
-                   (:conflicts result))
-                "the conflict names its cause, since the task row stores only the conflicts")
+            (is (= {:conflicts [] :outcome {:kind "remote-changed"}}
+                   (select-keys result [:conflicts :outcome]))
+                "nothing collided; the outcome names why it stopped")
             (is (false? @merged?) "no merge without the merge flag")
             ;; :conflict short-circuits before any write — the version is never advanced
             (is (nil? (:version (t2/select-one :model/RemoteSyncTask :id task-id))))))))))
@@ -2005,9 +2006,9 @@ serdes/meta:
                                  :source (export-test-source)
                                  :base-snapshot (export-test-snapshot "base-B"))]
         (impl/handle-task-result! result task-id)
-        (is (= {:version "remote-R" :conflicts ["remote-changed"]}
-               (t2/select-one [:model/RemoteSyncTask :version :conflicts] :id task-id))
-            "the task row records the remote version it conflicted against and the cause")
+        (is (= {:version "remote-R" :conflicts [] :outcome {:kind "remote-changed"}}
+               (t2/select-one [:model/RemoteSyncTask :version :conflicts :outcome] :id task-id))
+            "the task row records the remote version it conflicted against and why it stopped")
         (is (= "base-B" (remote-sync.task/last-version)))))))
 
 ;;; ------------------------------- conflict_details on the task row (GHY-4817) -------------------------------
@@ -2024,14 +2025,14 @@ serdes/meta:
    :theirs {:path "collections/a.yaml" :content "name: Card A\nentity_id: abc\ndescription: remote\n"}})
 
 (deftest conflict-details-remote-changed-test
-  (testing "a diverged plain export stores a remote-changed detail next to its token"
+  (testing "a diverged plain export stores a remote-changed detail"
     (mt/with-temp [:model/RemoteSyncTask {task-id :id} {:sync_task_type "export"}]
       (mt/with-dynamic-fn-redefs [remote-sync.task/last-version (constantly "base-B")]
         (impl/handle-task-result! (impl/export! (export-test-snapshot "remote-R") task-id "msg"
                                                 :source (export-test-source)
                                                 :base-snapshot (export-test-snapshot "base-B"))
                                   task-id))
-      (is (= {:conflicts        ["remote-changed"]
+      (is (= {:conflicts        []
               :conflict_details [{:kind "remote-changed"}]}
              (stored-conflicts task-id))))))
 
@@ -2350,6 +2351,7 @@ serdes/meta:
                                  :merge? true
                                  :base-snapshot nil)]
         (is (= :conflict (:status result)))
+        (is (= {:kind "history-rewritten"} (:outcome result)))
         (is (str/includes? (:message result) "rewritten"))))))
 
 ;;; ------------------------------- merging pull and push extract the library once -------------------------------

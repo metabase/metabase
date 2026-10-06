@@ -216,7 +216,10 @@ export type RemoteSyncOutcome =
   | { kind: "pull-skipped" }
   | { kind: "pushed"; count: number; branch: string }
   | { kind: "push-skipped" }
-  | { kind: "merged"; pulled: number; pushed: number; branch: string };
+  | { kind: "merged"; pulled: number; pushed: number; branch: string }
+  // Conflict outcomes: why a task stopped when the cause is not a collision.
+  | { kind: "remote-changed" }
+  | { kind: "history-rewritten" };
 
 /**
  * Why a sync task ended in conflict, tagged by `kind`. Stored next to the `conflicts` strings, which

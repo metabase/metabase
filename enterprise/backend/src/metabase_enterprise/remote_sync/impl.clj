@@ -620,6 +620,7 @@
                  :version          snapshot-version
                  :conflicts        ["Remote history was rewritten (force-push or rebase); cannot merge automatically."]
                  :conflict-details [{:kind "history-rewritten"}]
+                 :outcome          {:kind "history-rewritten"}
                  :message          "Cannot merge: the remote branch history was rewritten. Discard local changes and pull, or push to a new branch."}
 
                 ;; Remote hasn't advanced past the merge base — nothing to fold in; keep local changes dirty.
@@ -1231,6 +1232,7 @@
                :version          remote-version
                :conflicts        ["Remote history was rewritten (force-push or rebase); cannot merge automatically."]
                :conflict-details [{:kind "history-rewritten"}]
+               :outcome          {:kind "history-rewritten"}
                :message          "Cannot merge: the remote branch history was rewritten. Re-import then export, or force the export to overwrite."}
 
               :else
@@ -1242,9 +1244,10 @@
             diverged? ;; and not merge? option
             {:status           :conflict
              :version          remote-version
-             ;; A stable token rather than a sentence, so a caller learns why it stopped; clients own the wording.
-             :conflicts        ["remote-changed"]
+             ;; Nothing collided: the divergence itself is why it stopped, so the cause rides in `:outcome`.
+             :conflicts        []
              :conflict-details [{:kind "remote-changed"}]
+             :outcome          {:kind "remote-changed"}
              :message          "The remote branch has changed since your last sync. Choose how to proceed."}
 
             ;; There's nothing to export: no dirty rows and no stale files.
@@ -1429,7 +1432,7 @@
                              (remote-sync.task/complete-sync-task! task-id (:outcome result)))
                   :conflict (do
                               (remote-sync.task/set-version! task-id (:version result))
-                              (remote-sync.task/conflict-sync-task! task-id (:conflicts result) (:conflict-details result)))
+                              (remote-sync.task/conflict-sync-task! task-id (:conflicts result) (:conflict-details result) (:outcome result)))
                   :error (remote-sync.task/fail-sync-task! task-id (:message result))
                   (remote-sync.task/fail-sync-task! task-id "Unexpected Error"))
                 true))))]
