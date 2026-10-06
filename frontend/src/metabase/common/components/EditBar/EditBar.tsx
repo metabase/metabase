@@ -1,10 +1,9 @@
 import type { ReactNode } from "react";
 
-import { Flex, Group } from "metabase/ui";
+import { FullWidthContainer } from "metabase/styled-components/layout/FullWidthContainer";
+import { Box, Flex, Group, Icon } from "metabase/ui";
 
-import { EditIcon, Root, Title } from "./EditBar.styled";
-
-type Props = {
+type EditBarProps = {
   title: string;
   center?: ReactNode;
   buttons: ReactNode;
@@ -20,19 +19,26 @@ export function EditBar({
   admin = false,
   className,
   "data-testid": dataTestId,
-}: Props) {
+}: EditBarProps) {
   return (
-    <Root
+    <Flex
+      component={FullWidthContainer}
       className={className}
-      admin={admin}
+      align="center"
+      justify="space-between"
+      pos="relative"
+      py="sm"
+      bg={admin ? "accent7" : "core-brand"}
       data-testid={dataTestId ?? "edit-bar"}
     >
       <Group gap="sm" align="center" wrap="nowrap">
-        <EditIcon name="pencil" size={12} />
-        <Title>{title}</Title>
+        <Icon name="pencil" size={12} c="text-primary-inverse" />
+        <Box component="span" c="text-primary-inverse" fw="bold">
+          {title}
+        </Box>
       </Group>
       {center && <div>{center}</div>}
       <Flex gap="md">{buttons}</Flex>
-    </Root>
+    </Flex>
   );
 }
