@@ -1,25 +1,19 @@
-import type { HTMLAttributes, MouseEventHandler } from "react";
+import type { MouseEvent } from "react";
 import { t } from "ttag";
 
 import { useSdkSelector } from "embedding-sdk-bundle/store";
 import { getIsGuestEmbed } from "embedding-sdk-bundle/store/selectors";
-import type { ActionIconProps } from "metabase/ui";
+import type { ButtonProps } from "embedding-sdk-bundle/types/ui";
+import { Button, Icon, Tooltip } from "metabase/ui";
 
 import { useSdkQuestionContext } from "../../context";
-import { SdkActionIcon } from "../util/SdkActionIcon";
 
 /**
  * @interface
  * @expand
  * @category InteractiveQuestion
  */
-export type RefreshButtonProps = {
-  /**
-   * Callback function to be called when the button is clicked
-   */
-  onClick?: MouseEventHandler<HTMLButtonElement>;
-} & ActionIconProps &
-  HTMLAttributes<HTMLButtonElement>;
+export type RefreshButtonProps = ButtonProps;
 
 /**
  * Button to run the current query. Only appears when automatic reruns are turned off for the database.
@@ -30,7 +24,7 @@ export type RefreshButtonProps = {
  */
 export const RefreshButton = ({
   onClick,
-  ...actionIconProps
+  ...buttonProps
 }: RefreshButtonProps = {}) => {
   const { question, queryQuestion, isQueryRunning } = useSdkQuestionContext();
   const isGuestEmbed = useSdkSelector(getIsGuestEmbed);
@@ -39,19 +33,21 @@ export const RefreshButton = ({
     return null;
   }
 
-  const handleClick: MouseEventHandler<HTMLButtonElement> = (e) => {
+  const handleClick = (e: MouseEvent<HTMLButtonElement>) => {
     queryQuestion();
     onClick?.(e);
   };
 
   return (
-    <SdkActionIcon
-      tooltip={t`Refresh`}
-      icon="refresh"
-      data-testid="refresh-button"
-      disabled={isQueryRunning}
-      onClick={handleClick}
-      {...actionIconProps}
-    />
+    <Tooltip label={t`Refresh`}>
+      <Button
+        leftSection={<Icon name="refresh" />}
+        aria-label={t`Refresh`}
+        data-testid="refresh-button"
+        disabled={isQueryRunning}
+        onClick={handleClick}
+        {...buttonProps}
+      />
+    </Tooltip>
   );
 };

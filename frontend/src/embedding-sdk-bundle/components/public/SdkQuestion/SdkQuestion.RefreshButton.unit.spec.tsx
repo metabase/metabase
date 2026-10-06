@@ -11,7 +11,6 @@ import {
   setupTableEndpoints,
 } from "__support__/server-mocks";
 import { screen, waitFor } from "__support__/ui";
-import { RefreshButton } from "embedding-sdk-bundle/components/private/SdkQuestion/components/RefreshButton";
 import { renderWithSDKProviders } from "embedding-sdk-bundle/test/__support__/ui";
 import { createMockSdkConfig } from "embedding-sdk-bundle/test/mocks/config";
 import { setupSdkState } from "embedding-sdk-bundle/test/server-mocks/sdk-init";
@@ -79,7 +78,7 @@ const setup = ({ autoRunQueries }: { autoRunQueries: boolean }) => {
   renderWithSDKProviders(
     <SdkQuestion questionId={card.id}>
       <SdkQuestion.Title />
-      <RefreshButton />
+      <SdkQuestion.RefreshButton />
     </SdkQuestion>,
     {
       componentProviderProps: {
