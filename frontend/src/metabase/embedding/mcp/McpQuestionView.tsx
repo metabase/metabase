@@ -37,11 +37,6 @@ export interface McpQuestionViewProps {
   isQueryRunningRef: MutableRefObject<boolean>;
 }
 
-/**
- * Applies operations by asking the server to derive a new query handle, which
- * becomes the current one, then shows that handle's query. Runs of the question then go through the new
- * handle, so the question never runs a query the iframe built.
- */
 function getDeriveErrorMessage(error: unknown): string {
   if (
     typeof error === "object" &&
@@ -65,6 +60,12 @@ function isStaleDerive(error: unknown): boolean {
   );
 }
 
+/**
+ * Applies operations by asking the server to derive a new query handle, which
+ * becomes the current one, then shows that handle's query. Runs of the question
+ * then go through the new handle, so the question never runs a query the iframe
+ * built.
+ */
 function useApplyMcpOperations(
   deriveQuery: McpQuestionViewProps["deriveQuery"],
   onError: (message: string | null) => void,
