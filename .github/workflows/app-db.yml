@@ -130,7 +130,9 @@ jobs:
             core.setOutput('shards', JSON.stringify(shards));
 
   be-tests-mariadb:
-    needs: app-db-matrix
+    needs: [gate, app-db-matrix]
+    # A re-run keeps app-db-matrix's first-attempt answer, so the gate's auto-pass is checked here.
+    if: ${{ needs.gate.outputs.auto-pass != 'true' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 40
     strategy:
@@ -190,7 +192,8 @@ jobs:
           test-args: ${{ matrix.job.test-args }}
 
   be-tests-mysql:
-    needs: app-db-matrix
+    needs: [gate, app-db-matrix]
+    if: ${{ needs.gate.outputs.auto-pass != 'true' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 40
     strategy:
@@ -248,7 +251,8 @@ jobs:
     steps: *app-db-test-steps
 
   be-tests-postgres:
-    needs: app-db-matrix
+    needs: [gate, app-db-matrix]
+    if: ${{ needs.gate.outputs.auto-pass != 'true' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 40
     strategy:

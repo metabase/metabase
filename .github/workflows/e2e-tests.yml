@@ -62,10 +62,14 @@ jobs:
     name: ${{ matrix.name }}-${{ matrix.edition }}
     uses: ./.github/workflows/e2e-test.yml
     needs:
+      - gate
       - e2e-matrix-builder
     # No status function, so a skipped or failed matrix builder keeps this out: the strategy below
-    # cannot parse a matrix it never produced. The builder itself only runs when the gate says so.
-    if: ${{ needs.e2e-matrix-builder.outputs.hasTests == 'true' }}
+    # cannot parse a matrix it never produced. The builder itself only runs when the gate says so,
+    # but a re-run keeps its first-attempt matrix, so an auto-pass is checked here too.
+    if: >-
+      ${{ needs.gate.outputs.auto-pass != 'true'
+      && needs.e2e-matrix-builder.outputs.hasTests == 'true' }}
     strategy:
       fail-fast: false
       matrix: ${{ fromJson(needs.e2e-matrix-builder.outputs.matrix) }}

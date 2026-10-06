@@ -1,8 +1,8 @@
 // On a re-run of a PR's tests, asks ci-conductor whether every failure on the
 // PR's head commit is a flake. When it is sure, and a person has confirmed it,
-// writes `auto-pass=true` to GITHUB_OUTPUT (run-tests.yml turns that into a
-// skip for every test workflow), records the auto-pass in eng-stats, and says so
-// on the PR.
+// writes `auto-pass=true` to GITHUB_OUTPUT (test-gate.yml turns that into a
+// skip for every test suite), records the auto-pass in eng-stats, and says so
+// on the PR. Run by one gate per run; the rest follow its answer.
 //
 // Anything short of a clear yes — a missing secret, an unreachable server, an
 // answer about another commit — leaves the output unset, so the re-run goes

@@ -25,6 +25,9 @@ jobs:
 
   # This job determines which driver tests should run based on PR context.
   # All decision logic is consolidated in mage driver-decisions.
+  #
+  # A re-run keeps these first-attempt decisions, so every driver job also checks the gate's
+  # auto-pass itself (see test-gate.yml).
   determine-driver-skips:
     needs: gate
     if: ${{ needs.gate.outputs.run == 'true' }}
@@ -88,8 +91,8 @@ jobs:
         shell: bash
 
   be-tests-athena-ee:
-    needs: determine-driver-skips
-    if: ${{ needs.determine-driver-skips.outputs.athena-should-run == 'true' }}
+    needs: [gate, determine-driver-skips]
+    if: ${{ needs.gate.outputs.auto-pass != 'true' && needs.determine-driver-skips.outputs.athena-should-run == 'true' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 40
     strategy:
@@ -126,8 +129,8 @@ jobs:
         artifact-suffix: runner-${{ matrix.runner-index }}
 
   be-tests-bigquery-cloud-sdk-ee:
-    needs: determine-driver-skips
-    if: ${{ needs.determine-driver-skips.outputs.bigquery-should-run == 'true' }}
+    needs: [gate, determine-driver-skips]
+    if: ${{ needs.gate.outputs.auto-pass != 'true' && needs.determine-driver-skips.outputs.bigquery-should-run == 'true' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 40
     strategy:
@@ -163,8 +166,8 @@ jobs:
         artifact-suffix: runner-${{ matrix.runner-index }}
 
   be-tests-bigquery-transforms-python-ee:
-    needs: determine-driver-skips
-    if: ${{ needs.determine-driver-skips.outputs.bigquery-should-run == 'true' }}
+    needs: [gate, determine-driver-skips]
+    if: ${{ needs.gate.outputs.auto-pass != 'true' && needs.determine-driver-skips.outputs.bigquery-should-run == 'true' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 30
     env:
@@ -201,8 +204,8 @@ jobs:
         logs-artifact-suffix: transforms-python
 
   be-tests-clickhouse-ee:
-    needs: determine-driver-skips
-    if: ${{ needs.determine-driver-skips.outputs.clickhouse-should-run == 'true' }}
+    needs: [gate, determine-driver-skips]
+    if: ${{ needs.gate.outputs.auto-pass != 'true' && needs.determine-driver-skips.outputs.clickhouse-should-run == 'true' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 40
     strategy:
@@ -263,8 +266,8 @@ jobs:
         logs-artifact-suffix: ${{ matrix.job.name }}
 
   be-tests-druid-jdbc-ee:
-    needs: determine-driver-skips
-    if: ${{ needs.determine-driver-skips.outputs.druid-jdbc-should-run == 'true' }}
+    needs: [gate, determine-driver-skips]
+    if: ${{ needs.gate.outputs.auto-pass != 'true' && needs.determine-driver-skips.outputs.druid-jdbc-should-run == 'true' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 40
     env:
@@ -290,8 +293,8 @@ jobs:
           :exclude-tags [:mb/transforms-python-test]
 
   be-tests-databricks-ee:
-    needs: determine-driver-skips
-    if: ${{ needs.determine-driver-skips.outputs.databricks-should-run == 'true' }}
+    needs: [gate, determine-driver-skips]
+    if: ${{ needs.gate.outputs.auto-pass != 'true' && needs.determine-driver-skips.outputs.databricks-should-run == 'true' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 50
     strategy:
@@ -352,8 +355,8 @@ jobs:
         test-args: ${{ matrix.job.test-args }}
 
   be-tests-h2:
-    needs: determine-driver-skips
-    if: ${{ needs.determine-driver-skips.outputs.h2-should-run == 'true' }}
+    needs: [gate, determine-driver-skips]
+    if: ${{ needs.gate.outputs.auto-pass != 'true' && needs.determine-driver-skips.outputs.h2-should-run == 'true' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 40
     env:
@@ -371,8 +374,8 @@ jobs:
           :exclude-tags [:mb/transforms-python-test]
 
   be-tests-h2-oss:
-    needs: determine-driver-skips
-    if: ${{ needs.determine-driver-skips.outputs.h2-should-run == 'true' }}
+    needs: [gate, determine-driver-skips]
+    if: ${{ needs.gate.outputs.auto-pass != 'true' && needs.determine-driver-skips.outputs.h2-should-run == 'true' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 40
     env:
@@ -391,8 +394,8 @@ jobs:
           :exclude-tags [:mb/transforms-python-test]
 
   be-tests-mysql-mariadb:
-    needs: determine-driver-skips
-    if: ${{ needs.determine-driver-skips.outputs.mysql-mariadb-should-run == 'true' }}
+    needs: [gate, determine-driver-skips]
+    if: ${{ needs.gate.outputs.auto-pass != 'true' && needs.determine-driver-skips.outputs.mysql-mariadb-should-run == 'true' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 40
     strategy:
@@ -515,8 +518,8 @@ jobs:
           logs-artifact-suffix: ${{ matrix.job.name }} ${{ matrix.version.name }}
 
   be-tests-mongo:
-    needs: determine-driver-skips
-    if: ${{ needs.determine-driver-skips.outputs.mongo-should-run == 'true' }}
+    needs: [gate, determine-driver-skips]
+    if: ${{ needs.gate.outputs.auto-pass != 'true' && needs.determine-driver-skips.outputs.mongo-should-run == 'true' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 40
     strategy:
@@ -574,8 +577,8 @@ jobs:
         logs-artifact-suffix: ${{ matrix.job.name }} ${{ matrix.version.name }}
 
   be-tests-mongo-ssl:
-    needs: determine-driver-skips
-    if: ${{ needs.determine-driver-skips.outputs.mongo-ssl-should-run == 'true' }}
+    needs: [gate, determine-driver-skips]
+    if: ${{ needs.gate.outputs.auto-pass != 'true' && needs.determine-driver-skips.outputs.mongo-ssl-should-run == 'true' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 40
     strategy:
@@ -629,8 +632,8 @@ jobs:
             :only-tags [:mb/driver-tests]
 
   be-tests-mongo-sharded-cluster-ee:
-    needs: determine-driver-skips
-    if: ${{ needs.determine-driver-skips.outputs.mongo-sharded-cluster-should-run == 'true' }}
+    needs: [gate, determine-driver-skips]
+    if: ${{ needs.gate.outputs.auto-pass != 'true' && needs.determine-driver-skips.outputs.mongo-sharded-cluster-should-run == 'true' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 40
     env:
@@ -653,8 +656,8 @@ jobs:
           :only metabase.driver.mongo.sharded-cluster-test
 
   be-tests-oracle:
-    needs: determine-driver-skips
-    if: ${{ needs.determine-driver-skips.outputs.oracle-should-run == 'true' }}
+    needs: [gate, determine-driver-skips]
+    if: ${{ needs.gate.outputs.auto-pass != 'true' && needs.determine-driver-skips.outputs.oracle-should-run == 'true' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 40
     strategy:
@@ -717,8 +720,8 @@ jobs:
           :exclude-tags [:mb/transforms-python-test]
 
   be-tests-postgres:
-    needs: determine-driver-skips
-    if: ${{ needs.determine-driver-skips.outputs.postgres-should-run == 'true' }}
+    needs: [gate, determine-driver-skips]
+    if: ${{ needs.gate.outputs.auto-pass != 'true' && needs.determine-driver-skips.outputs.postgres-should-run == 'true' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 50
     strategy:
@@ -815,8 +818,8 @@ jobs:
           logs-artifact-suffix: ${{ matrix.job.name }} ${{ matrix.version.name }}
 
   be-tests-presto-jdbc-ee:
-    needs: determine-driver-skips
-    if: ${{ needs.determine-driver-skips.outputs.presto-jdbc-should-run == 'true' }}
+    needs: [gate, determine-driver-skips]
+    if: ${{ needs.gate.outputs.auto-pass != 'true' && needs.determine-driver-skips.outputs.presto-jdbc-should-run == 'true' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 40
     env:
@@ -875,8 +878,8 @@ jobs:
           :exclude-tags [:mb/transforms-python-test]
 
   be-tests-redshift-ee:
-    needs: determine-driver-skips
-    if: ${{ needs.determine-driver-skips.outputs.redshift-should-run == 'true' }}
+    needs: [gate, determine-driver-skips]
+    if: ${{ needs.gate.outputs.auto-pass != 'true' && needs.determine-driver-skips.outputs.redshift-should-run == 'true' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 50
     strategy:
@@ -971,8 +974,8 @@ jobs:
         logs-artifact-suffix: ${{ matrix.job.name }}
 
   be-tests-snowflake-ee:
-    needs: determine-driver-skips
-    if: ${{ needs.determine-driver-skips.outputs.snowflake-should-run == 'true' }}
+    needs: [gate, determine-driver-skips]
+    if: ${{ needs.gate.outputs.auto-pass != 'true' && needs.determine-driver-skips.outputs.snowflake-should-run == 'true' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 70
     permissions:
@@ -1047,8 +1050,8 @@ jobs:
         logs-artifact-suffix: ${{ matrix.job.name }}
 
   be-tests-sparksql-ee:
-    needs: determine-driver-skips
-    if: ${{ needs.determine-driver-skips.outputs.sparksql-should-run == 'true' }}
+    needs: [gate, determine-driver-skips]
+    if: ${{ needs.gate.outputs.auto-pass != 'true' && needs.determine-driver-skips.outputs.sparksql-should-run == 'true' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 40
     env:
@@ -1072,8 +1075,8 @@ jobs:
           :exclude-tags [:mb/transforms-python-test]
 
   be-tests-sqlite-ee:
-    needs: determine-driver-skips
-    if: ${{ needs.determine-driver-skips.outputs.sqlite-should-run == 'true' }}
+    needs: [gate, determine-driver-skips]
+    if: ${{ needs.gate.outputs.auto-pass != 'true' && needs.determine-driver-skips.outputs.sqlite-should-run == 'true' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 40
     env:
@@ -1092,8 +1095,8 @@ jobs:
           :exclude-tags [:mb/transforms-python-test]
 
   be-tests-sqlserver:
-    needs: determine-driver-skips
-    if: ${{ needs.determine-driver-skips.outputs.sqlserver-should-run == 'true' }}
+    needs: [gate, determine-driver-skips]
+    if: ${{ needs.gate.outputs.auto-pass != 'true' && needs.determine-driver-skips.outputs.sqlserver-should-run == 'true' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 30
     strategy:
@@ -1181,8 +1184,8 @@ jobs:
   #         :only-tags [:mb/driver-tests]
 
   login-to-ecr:
-    needs: determine-driver-skips
-    if: ${{ needs.determine-driver-skips.outputs.vertica-should-run == 'true' }}
+    needs: [gate, determine-driver-skips]
+    if: ${{ needs.gate.outputs.auto-pass != 'true' && needs.determine-driver-skips.outputs.vertica-should-run == 'true' }}
     runs-on: ${{ vars.SLIM_RUNNER_KEY }}
     timeout-minutes: 15
     permissions:
@@ -1213,8 +1216,8 @@ jobs:
       docker_password: ${{ steps.login-ecr.outputs.docker_password }}
 
   be-tests-vertica-ee:
-    needs: [determine-driver-skips, login-to-ecr]
-    if: ${{ needs.determine-driver-skips.outputs.vertica-should-run == 'true' }}
+    needs: [gate, determine-driver-skips, login-to-ecr]
+    if: ${{ needs.gate.outputs.auto-pass != 'true' && needs.determine-driver-skips.outputs.vertica-should-run == 'true' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 40
     env:
