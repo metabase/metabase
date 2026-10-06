@@ -756,7 +756,8 @@
          :conflicts     labels
          :merge-summary summary
          :message       "Export blocked: the same content was changed both locally and on the remote branch."})
-      (let [[_ version] (commit-staged! snapshot message
+      (let [_           (source.ingestable/check-data-app-files! (source/specs->snapshot merged))
+            [_ version] (commit-staged! snapshot message
                                         (fn [commit]
                                           (source/replace-managed-files! commit snapshot) ; merged set replaces the managed files wholesale
                                           (run! #(source.p/stage-upsert! commit %) merged)))
@@ -779,6 +780,7 @@
                               (apply report (+ export-progress-serialize (* fraction (- 1.0 export-progress-serialize))) opts))
                             sync-timestamp
                             :finalize! (fn []
+                                         (data-apps/record-table-dependencies!)
                                          (remote-sync.db/mark-all-rsos-synced! sync-timestamp)
                                          (remote-sync.task/set-version! task-id version)))
             (log/infof "Exported with merge: folded in %d remote change(s) (added %d, updated %d, removed %d); pushed %d"
