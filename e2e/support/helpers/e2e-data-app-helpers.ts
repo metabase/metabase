@@ -393,8 +393,8 @@ const resourceCard = ({
 });
 
 /**
- * The copies of the actions `copies` name, as an author writes them into
- * `resources/actions/`: what Metabase exports for each source action, with the
+ * The copies of the actions `copies` name, as an author writes them into the
+ * app's collection: what Metabase exports for each source action, with the
  * copy's entity ID and in the app's `collection`.
  */
 export function exportDataAppActionCopies(
@@ -572,7 +572,7 @@ export function pullExampleDataApps({
   copySyncedCollectionFixture();
   copySyncedDataAppsFixture();
   if (goodAppCards) {
-    writeDataAppResources(`${LOCAL_GIT_PATH}/data_apps/good`, {
+    writeDataAppResources(LOCAL_GIT_PATH, {
       collection: resourceCollection(
         "goodAppCollection0000",
         "Data App: Good App",
@@ -609,10 +609,11 @@ const isSyncedDataApp = (app: DataApp): app is SyncedDataApp =>
   typeof app.permission_group_id === "number";
 
 /**
- * Writes the app's manifest and `resources/` into the sync repository as
- * `data_apps/<slug>` and commits them, as an author does. The bundle is a
- * placeholder, since specs serve the built one through `mockDataApp`. Pass
- * `initializeRepo: false` to write into the repository an earlier call set up.
+ * Writes the app's manifest into the sync repository as `data_apps/<slug>`, and
+ * its collection files under the repository's `collections/data_apps/`, and
+ * commits them, as an author does. The bundle is a placeholder, since specs
+ * serve the built one through `mockDataApp`. Pass `initializeRepo: false` to
+ * write into the repository an earlier call set up.
  */
 function commitDataApp(
   appRoot: string,
@@ -625,10 +626,9 @@ function commitDataApp(
     setupGitSync();
     copySyncedCollectionFixture();
   }
-  cy.task("removeDataAppPaths", { paths: [`${appDir}/resources`] });
   cy.task("copyDirectory", {
-    source: `${appRoot}/resources`,
-    destination: `${appDir}/resources`,
+    source: `${appRoot}/collections/data_apps`,
+    destination: `${LOCAL_GIT_PATH}/collections/data_apps`,
   });
   cy.readFile(`${appRoot}/data_app.yaml`).then((manifest: string) =>
     cy.task("writeDataAppFiles", {

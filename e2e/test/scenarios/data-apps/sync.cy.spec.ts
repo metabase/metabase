@@ -46,8 +46,8 @@ describe("scenarios > data apps > repo sync", () => {
 
     cy.request("/api/apps/good/bundle").its("status").should("eq", 200);
 
-    // The good app's resources/ were loaded with it: its collection, and the
-    // saved question in it, addressed by the entity IDs the files carry.
+    // The good app's collection files were loaded with it: its collection, and
+    // the saved question in it, addressed by the entity IDs the files carry.
     cy.request<DataApp>("/api/apps/good").then(({ body: app }) => {
       cy.request("/api/collection/goodAppCollection0000")
         .its("body.id")
@@ -59,13 +59,22 @@ describe("scenarios > data apps > repo sync", () => {
     });
   });
 
-  it("removes an app whose directory is removed from the repo on the next sync", () => {
+  it("removes an app whose directory and collection files are removed from the repo on the next sync", () => {
     H.copySyncedCollectionFixture();
     H.copySyncedDataAppsFixture();
     H.commitToRepo("Add data apps");
     H.configureGitAndPullChanges("read-write");
 
-    cy.exec(`rm -rf -- "${H.LOCAL_GIT_PATH}/data_apps/good"`);
+    // An author deletes an app by deleting its directory and its collection's
+    // files in one commit; the pull deletes the app, and the app deletes its
+    // collection with what it holds.
+    cy.task("removeDataAppPaths", {
+      paths: [
+        `${H.LOCAL_GIT_PATH}/data_apps/good`,
+        `${H.LOCAL_GIT_PATH}/collections/data_apps/data_app__good_app.yaml`,
+        `${H.LOCAL_GIT_PATH}/collections/data_apps/data_app__good_app`,
+      ],
+    });
     H.commitToRepo("Remove the good app from the repo");
     H.configureGitAndPullChanges("read-write");
 
@@ -79,6 +88,12 @@ describe("scenarios > data apps > repo sync", () => {
       .should("eq", 404);
     cy.request({
       url: "/api/card/goodAppOrdersQuestion",
+      failOnStatusCode: false,
+    })
+      .its("status")
+      .should("eq", 404);
+    cy.request({
+      url: "/api/collection/goodAppCollection0000",
       failOnStatusCode: false,
     })
       .its("status")

@@ -72,12 +72,12 @@ const ORDERS_COUNT_QUESTION = H.dataAppRepresentations.card({
  * `isDataAppDev()` is false, so the SDK runs the saved question the definition
  * names, the only resource an app's viewers are permitted to read, rather than
  * the authored source. The question reaches Metabase the way it does for an
- * author: written into `resources/`, committed, and loaded by a repository pull.
+ * author: written into the app's collection files, committed, and loaded by a repository pull.
  */
 describe("scenarios > data apps > resources in production", () => {
   const removeTestFiles = () =>
     cy.task("removeDataAppPaths", {
-      paths: [`${APP_ROOT()}/queries`, `${APP_ROOT()}/resources`],
+      paths: [`${APP_ROOT()}/queries`, `${APP_ROOT()}/collections`],
     });
 
   beforeEach(() => {

@@ -57,7 +57,7 @@ export type DataAppTestEnv = {
   actionId?: number;
   /**
    * `/actions` page: the entity ID of that action. A deployed app runs the copy
-   * its definition names by entity ID; this fixture has no `resources/`, so the
+   * its definition names by entity ID; this fixture has no collection files, so the
    * "copy" is the action itself.
    */
   actionEntityId?: string;

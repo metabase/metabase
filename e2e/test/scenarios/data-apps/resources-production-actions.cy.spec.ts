@@ -17,7 +17,7 @@ const APP_ROOT = () =>
  * The action half of the production path. Outside the dev preview
  * `toExecutableActionId` runs `copiedActionEntityId`, the copy in the app's
  * collection, because that is the only action an app's viewers may execute.
- * The copy reaches Metabase through `resources/` and a repository pull.
+ * The copy reaches Metabase through the app's collection files and a repository pull.
  */
 describe(
   "scenarios > data apps > resources in production (actions)",
@@ -25,7 +25,7 @@ describe(
   () => {
     const removeTestFiles = () =>
       cy.task("removeDataAppPaths", {
-        paths: [`${APP_ROOT()}/actions`, `${APP_ROOT()}/resources`],
+        paths: [`${APP_ROOT()}/actions`, `${APP_ROOT()}/collections`],
       });
 
     beforeEach(() => {

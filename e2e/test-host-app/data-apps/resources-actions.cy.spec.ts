@@ -20,7 +20,7 @@ type Copy = { source: WritebackAction; entityId: string; exportName: string };
 /**
  * Loads actions into an app the way an author does: the source actions exist
  * in Metabase, belonging to no model, and the author copies what Metabase
- * exports for them into the app's `resources/` with new entity IDs. A
+ * exports for them into the app's collection with new entity IDs. A
  * repository pull is what creates the copies.
  */
 describe(
@@ -50,7 +50,7 @@ describe(
       cy.writeFile(MANIFEST_FILE(), H.DATA_APP_HOST_APP_MANIFEST);
     });
 
-    /** Declares `copies` and writes them, changed by `edit`, into `resources/`. */
+    /** Declares `copies` and writes them, changed by `edit`, into the app's collection. */
     const writeCopies = (
       copies: Copy[],
       edit: (copy: Record<string, unknown>) => Record<string, unknown> = (
