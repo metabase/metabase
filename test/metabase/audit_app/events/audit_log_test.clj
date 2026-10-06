@@ -829,3 +829,72 @@
             :model_id (:id table)
             :details  {:name "My Cool Table", :id (:id table), :db_id (:db_id table)}}
            (mt/latest-audit-log-entry "table-unpublish" (:id table)))))))
+
+(deftest card-segment-and-measure-update-events-record-reverted-to-revision-id-test
+  (testing "an update event with :reverted-to-revision-id records the key in the audit details"
+    (mt/with-test-user :rasta
+      (mt/with-temp [:model/Card    card    {:name "Reverted Card"}
+                     :model/Segment segment {}
+                     :model/Measure measure {}]
+        (testing :event/card-update
+          (events/publish-event! :event/card-update {:object                  card
+                                                     :previous-object         (assoc card :name "Newer Name")
+                                                     :user-id                 (mt/user->id :rasta)
+                                                     :reverted-to-revision-id 42})
+          (is (=? {:topic    :card-update
+                   :user_id  (mt/user->id :rasta)
+                   :model_id (:id card)
+                   :details  {:reverted-to-revision-id 42
+                              :previous                {:name "Newer Name"}
+                              :new                     {:name "Reverted Card"}}}
+                  (mt/latest-audit-log-entry "card-update" (:id card)))))
+        (testing :event/segment-update
+          (events/publish-event! :event/segment-update {:object                  segment
+                                                        :user-id                 (mt/user->id :rasta)
+                                                        :revision-message        "reverted"
+                                                        :reverted-to-revision-id 43})
+          (is (=? {:topic    :segment-update
+                   :model_id (:id segment)
+                   :details  {:reverted-to-revision-id 43
+                              :revision-message        "reverted"
+                              :name                    (:name segment)}}
+                  (mt/latest-audit-log-entry "segment-update" (:id segment)))))
+        (testing :event/measure-update
+          (events/publish-event! :event/measure-update {:object                  measure
+                                                        :user-id                 (mt/user->id :rasta)
+                                                        :revision-message        "reverted"
+                                                        :reverted-to-revision-id 44})
+          (is (=? {:topic    :measure-update
+                   :model_id (:id measure)
+                   :details  {:reverted-to-revision-id 44
+                              :revision-message        "reverted"}}
+                  (mt/latest-audit-log-entry "measure-update" (:id measure)))))))))
+
+(deftest document-update-event-records-reverted-to-revision-id-test
+  (mt/when-ee-evailable
+   (mt/with-test-user :rasta
+     (mt/with-temp [:model/Document document {:name "Reverted Document" :collection_id nil}]
+       (testing "a document update event with :reverted-to-revision-id records the key in the audit details"
+         (events/publish-event! :event/document-update {:object                  document
+                                                        :user-id                 (mt/user->id :rasta)
+                                                        :reverted-to-revision-id 45})
+         (is (=? {:topic    :document-update
+                  :model_id (:id document)
+                  :details  {:reverted-to-revision-id 45
+                             :name                    "Reverted Document"}}
+                 (mt/latest-audit-log-entry :document-update (:id document)))))))))
+
+(deftest segment-and-measure-update-events-keep-revision-message-test
+  (testing "segment and measure update events with only a :revision-message record it in the audit details"
+    (mt/with-test-user :rasta
+      (mt/with-temp [:model/Segment segment {}
+                     :model/Measure measure {}]
+        (doseq [[topic entity] [[:event/segment-update segment]
+                                [:event/measure-update measure]]]
+          (testing topic
+            (events/publish-event! topic {:object           entity
+                                          :user-id          (mt/user->id :rasta)
+                                          :revision-message "changed"})
+            (let [details (:details (mt/latest-audit-log-entry (name topic) (:id entity)))]
+              (is (= "changed" (:revision-message details)))
+              (is (not (contains? details :reverted-to-revision-id))))))))))

@@ -8,6 +8,12 @@
 
 ;;; TODO -- move these into appropriate modules.
 
+;; The optional key of an update event that a revision revert caused: the id of the Revision that the entity was
+;; reverted to. No docstring: `:merge` would make it the `:description` of each update schema that merges this one.
+(mr/def ::revert
+  [:map {:closed true}
+   [:reverted-to-revision-id {:optional true} pos-int?]])
+
 (mu/defn event-schema
   "Get the Malli schema we should use for events of `topic`. By default, this looks in our registry for a schema
   matching the event topic name; if it fails to find one, it falls back to `:map`."
@@ -61,7 +67,7 @@
    [:object [:fn #(t2/instance-of? :model/Dashboard %)]]])
 
 (mr/def :event/dashboard-create ::dashboard)
-(mr/def :event/dashboard-update ::dashboard)
+(mr/def :event/dashboard-update [:merge ::dashboard ::revert])
 (mr/def :event/dashboard-delete ::dashboard)
 
 (mr/def ::dashboard-with-dashcards
@@ -154,7 +160,7 @@
    [:map {:closed true}
     [:revision-message {:optional true} :string]]])
 
-(mr/def :event/segment-update ::segment-with-message)
+(mr/def :event/segment-update [:merge ::segment-with-message ::revert])
 (mr/def :event/segment-delete ::segment-with-message)
 
 ;; measure events
@@ -172,7 +178,7 @@
    [:map {:closed true}
     [:revision-message {:optional true} :string]]])
 
-(mr/def :event/measure-update ::measure-with-message)
+(mr/def :event/measure-update [:merge ::measure-with-message ::revert])
 (mr/def :event/measure-delete ::measure-with-message)
 
 ;; database events

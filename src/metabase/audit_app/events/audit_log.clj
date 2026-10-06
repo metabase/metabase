@@ -9,6 +9,15 @@
 
 (events/derive! ::event :metabase/event)
 
+(defn- entity-event->params
+  "The [[audit-log/record-event!]] params of an entity `event`: its object, previous object and user, with its
+  `:revision-message` and `:reverted-to-revision-id`, when present, in `:details`."
+  [{:keys [object previous-object user-id] :as event}]
+  (let [details (not-empty (select-keys event [:revision-message :reverted-to-revision-id]))]
+    (cond-> {:object object :user-id user-id}
+      previous-object (assoc :previous-object previous-object)
+      details         (assoc :details details))))
+
 (events/derive! ::card-event ::event)
 (events/derive! :event/card-create ::card-event)
 (events/derive! :event/card-update ::card-event)
@@ -16,7 +25,7 @@
 
 (methodical/defmethod events/publish-event! ::card-event
   [topic event]
-  (audit-log/record-event! topic event))
+  (audit-log/record-event! topic (entity-event->params event)))
 
 (events/derive! ::dashboard-event ::event)
 (events/derive! :event/dashboard-create ::dashboard-event)
@@ -160,10 +169,8 @@
 (events/derive! :event/segment-delete ::segment-event)
 
 (methodical/defmethod events/publish-event! ::segment-event
-  [topic {:keys [object user-id revision-message] :as _event}]
-  (audit-log/record-event! topic {:object  object
-                                  :user-id user-id
-                                  :details (when revision-message {:revision-message revision-message})}))
+  [topic event]
+  (audit-log/record-event! topic (entity-event->params event)))
 
 (events/derive! ::measure-event ::event)
 (events/derive! :event/measure-create ::measure-event)
@@ -171,10 +178,8 @@
 (events/derive! :event/measure-delete ::measure-event)
 
 (methodical/defmethod events/publish-event! ::measure-event
-  [topic {:keys [object user-id revision-message] :as _event}]
-  (audit-log/record-event! topic {:object  object
-                                  :user-id user-id
-                                  :details (when revision-message {:revision-message revision-message})}))
+  [topic event]
+  (audit-log/record-event! topic (entity-event->params event)))
 
 (events/derive! ::user-event ::event)
 (events/derive! :event/user-invited ::user-event)
@@ -316,7 +321,7 @@
 
 (methodical/defmethod events/publish-event! ::document-event
   [topic event]
-  (audit-log/record-event! topic event))
+  (audit-log/record-event! topic (entity-event->params event)))
 
 (events/derive! ::comment-event ::event)
 (events/derive! :event/comment-create ::comment-event)
