@@ -1,7 +1,7 @@
 (ns metabase.typed-schemas.source
   "Data access for typed schemas, reified as a protocol.
 
-  [[SchemaSource]] names every read that [[metabase.typed-schemas.core/fetch-items]]
+  [[SchemaSource]] names every read that [[metabase.typed-schemas.build/fetch-items]]
   performs, so the module's data-access surface is one definition instead of
   selects scattered across namespaces. [[app-db-source]] is the production
   implementation, backed by the application database.
