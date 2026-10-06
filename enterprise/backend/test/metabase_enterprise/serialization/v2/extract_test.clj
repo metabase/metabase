@@ -569,6 +569,20 @@
       (testing "Fields carry no dimensions"
         (is (not (contains? (ts/extract-one "Field" fk-id) :dimensions)))))))
 
+(deftest snippet-descendants-test
+  (testing "Exporting a snippet also exports the snippets and cards its template tags reference"
+    (mt/with-empty-h2-app-db!
+      (mt/with-temp [:model/NativeQuerySnippet {b-eid :entity_id} {:name "B" :content "1 = 1"}
+                     :model/Card               {d-id :id d-eid :entity_id} {:name "D"}
+                     :model/NativeQuerySnippet {a-id :id a-eid :entity_id}
+                     {:name "A" :content (format "{{snippet: B}} AND id IN ({{#%d-d}})" d-id)}]
+        (let [extraction (into [] (extract/extract {:targets       [["NativeQuerySnippet" a-id]]
+                                                    :no-settings   true
+                                                    :no-data-model true
+                                                    :no-transforms true}))]
+          (is (= #{a-eid b-eid} (ids-by-model "NativeQuerySnippet" extraction)))
+          (is (= #{d-eid} (ids-by-model "Card" extraction))))))))
+
 (deftest native-query-snippets-test
   (mt/with-empty-h2-app-db!
     (ts/with-temp-dpc [:model/User               {ann-id :id}           {:first_name "Ann"

@@ -236,6 +236,13 @@
       [[{:model "Collection" :id collection_id}]])
     (serdes/mbql-deps true template_tags))))
 
+(defmethod serdes/descendants "NativeQuerySnippet" [_model-name id _opts]
+  (into {}
+        (for [path                   (serdes/mbql-deps true (:template_tags (native-query-snippets.db/snippet id)))
+              :let                   [{:keys [model] ref-id :id} (last path)]
+              :when                  (#{"Card" "NativeQuerySnippet"} model)]
+          [[model ref-id] {"NativeQuerySnippet" id}])))
+
 (defmethod serdes/storage-path "NativeQuerySnippet" [snippet ctx]
   (serdes/storage-default-collection-path snippet ctx "snippets"))
 
