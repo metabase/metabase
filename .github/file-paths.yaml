@@ -39,6 +39,8 @@ frontend_configs: &frontend_configs
   - "package.json"
   - "babel.config.json"
   - "eslint.config.mjs"
+  - "oxlint.config.mts"
+  - ".oxfmtrc.json"
   - "postcss.config.js"
   - "rspack.config.js"
   - "rspack.main.config.js"
@@ -75,6 +77,7 @@ frontend_all: &frontend_all
   - *frontend_ci
   - *frontend_sources
   - *frontend_specs
+  - "frontend/lint/**/!(*.md)"
 
 frontend_loki_ci: &frontend_loki_ci
   - ".github/workflows/loki.yml"
