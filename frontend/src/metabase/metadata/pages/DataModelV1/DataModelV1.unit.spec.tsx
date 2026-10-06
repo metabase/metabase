@@ -12,6 +12,7 @@ import {
   setupUnauthorizedFieldValuesEndpoints,
 } from "__support__/server-mocks";
 import {
+  act,
   mockGetBoundingClientRect,
   renderWithProviders,
   screen,
@@ -685,7 +686,9 @@ describe("DataModelV1", () => {
         await waitForLoaderToBeRemoved();
         expect(screen.getByText("Sample Database")).toBeInTheDocument();
 
-        router?.back();
+        act(() => {
+          router?.back();
+        });
 
         await waitFor(() => {
           expect(
