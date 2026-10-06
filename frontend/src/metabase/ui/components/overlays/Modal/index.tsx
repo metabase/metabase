@@ -98,7 +98,6 @@ function ModalRoot({ layout = "default", ...props }: ModalRootProps) {
 
 export interface ModalFooterProps extends BoxProps, ElementProps<"div"> {}
 
-/** The modal's action buttons. Place it last inside the modal body. */
 function ModalFooter({ className, ...props }: ModalFooterProps) {
   return <Box className={cx(S.footer, className)} {...props} />;
 }

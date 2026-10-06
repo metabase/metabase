@@ -74,7 +74,6 @@
 
   .body {
     padding-inline: var(--mantine-spacing-xxl);
-    /* Figma spec: 64px, which has no step in the spacing scale */
     padding-bottom: rem(64px);
     text-align: center;
   }
@@ -82,7 +81,6 @@
   .footer {
     flex-direction: column-reverse;
     align-items: stretch;
-    /* Figma spec: fixed-width button column */
     width: rem(256px);
     max-width: 100%;
     margin-top: var(--mantine-spacing-xl);
