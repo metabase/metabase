@@ -129,3 +129,47 @@
             (is (= "SELECT ID, NAME FROM VENUES WHERE ID > 0"
                    (lib/raw-native-query (t2/select-one-fn :dataset_query :model/Card :id card-id))))
             (is (= before (columns card-id)))))))))
+
+(deftest forced-pull-of-native-model-with-mapped-column-query-change-keeps-columns-test
+  (testing "a forced pull that changes only the SQL of a native model with a column mapped to a field keeps the columns of the model"
+    (mt/with-premium-features #{:remote-sync}
+      (mt/with-temporary-setting-values [remote-sync-type :read-write]
+        (mt/with-temp [:model/Collection {coll-id :id} {:name "Models" :is_remote_synced true :location "/"}
+                       :model/Card       {card-id :id} {:name            "Native venues model"
+                                                        :type            :model
+                                                        :collection_id   coll-id
+                                                        :dataset_query   (lib/native-query (mt/metadata-provider)
+                                                                                           "SELECT ID, NAME FROM VENUES")
+                                                        :result_metadata (assoc-in native-venues-columns [1 :id] (mt/id :venues :name))}]
+          (let [before (columns card-id)
+                source (export!)]
+            (is (= [["ID" :type/BigInteger "ID" nil] ["NAME" :type/Text "Venue name" (mt/id :venues :name)]] before)
+                "Precondition: the native model stores the given columns, and its NAME column is mapped to a field")
+            (is (= 1 (count (replace-in-files! source "SELECT ID, NAME FROM VENUES" "SELECT ID, NAME FROM VENUES WHERE ID > 0")))
+                "Precondition: one exported file has the SQL of the model")
+            (forced-pull! source)
+            (is (= "SELECT ID, NAME FROM VENUES WHERE ID > 0"
+                   (lib/raw-native-query (t2/select-one-fn :dataset_query :model/Card :id card-id))))
+            (is (= before (columns card-id)))))))))
+
+(deftest forced-pull-of-native-question-query-change-keeps-columns-test
+  (testing "a forced pull that changes only the SQL of a native question keeps the columns of the question"
+    (mt/with-premium-features #{:remote-sync}
+      (mt/with-temporary-setting-values [remote-sync-type :read-write]
+        (mt/with-temp [:model/Collection {coll-id :id} {:name "Questions" :is_remote_synced true :location "/"}
+                       :model/Card       {card-id :id} {:name            "Native venues question"
+                                                        :type            :question
+                                                        :collection_id   coll-id
+                                                        :dataset_query   (lib/native-query (mt/metadata-provider)
+                                                                                           "SELECT ID, NAME FROM VENUES")
+                                                        :result_metadata native-venues-columns}]
+          (let [before (columns card-id)
+                source (export!)]
+            (is (= [["ID" :type/BigInteger "ID" nil] ["NAME" :type/Text "Venue name" nil]] before)
+                "Precondition: the native question stores the given columns")
+            (is (= 1 (count (replace-in-files! source "SELECT ID, NAME FROM VENUES" "SELECT ID, NAME FROM VENUES WHERE ID > 0")))
+                "Precondition: one exported file has the SQL of the question")
+            (forced-pull! source)
+            (is (= "SELECT ID, NAME FROM VENUES WHERE ID > 0"
+                   (lib/raw-native-query (t2/select-one-fn :dataset_query :model/Card :id card-id))))
+            (is (= before (columns card-id)))))))))

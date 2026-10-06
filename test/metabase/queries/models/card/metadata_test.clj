@@ -223,3 +223,24 @@
                                              :result_metadata stored})))
         (is (= [["ID" :type/* "ID"] ["NAME" :type/* "Venue Name"]]
                (columns card-id)))))))
+
+(deftest deserializing-update-of-mbql-question-query-infers-columns-test
+  (testing "a serdes load that changes the query of an MBQL question infers its columns, as an update outside a load does"
+    ;; An MBQL question's export has no result_metadata, so the load changes only dataset_query, and the hook sees the
+    ;; stored columns.
+    (mt/with-temp [:model/Card {card-id :id} {:type :question :dataset_query (venues-query)}]
+      (is (= ["ID" "NAME" "CATEGORY_ID" "LATITUDE" "LONGITUDE" "PRICE"]
+             (mapv :name (t2/select-one-fn :result_metadata :model/Card :id card-id)))
+          "Precondition: the question stores the inferred columns")
+      (testing "the load stores the columns of the new query"
+        (binding [mi/*deserializing?* true]
+          (t2/update! :model/Card card-id {:dataset_query (let [mp (mt/metadata-provider)]
+                                                            (lib/query mp (lib.metadata/table mp (mt/id :categories))))}))
+        (is (=? [{:name "ID" :id (mt/id :categories :id)}
+                 {:name "NAME" :id (mt/id :categories :name)}]
+                (t2/select-one-fn :result_metadata :model/Card :id card-id))))
+      (testing "the load stores no columns when the inference fails"
+        (mt/with-dynamic-fn-redefs [card.metadata/infer-metadata-with-model-overrides (constantly nil)]
+          (binding [mi/*deserializing?* true]
+            (t2/update! :model/Card card-id {:dataset_query (venues-query)})))
+        (is (nil? (t2/select-one-fn :result_metadata :model/Card :id card-id)))))))
