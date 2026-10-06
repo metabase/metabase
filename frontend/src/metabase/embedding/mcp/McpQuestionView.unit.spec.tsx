@@ -96,9 +96,11 @@ function derivedWithUnit(unit: string): DerivedQuery {
     handle: `handle-${unit}`,
     query: utf8_to_b64(
       JSON.stringify({
-        ...TEST_CARD.dataset_query,
+        type: "query",
+        database: SAMPLE_DB_ID,
         query: {
-          ...TEST_CARD.dataset_query.query,
+          "source-table": ORDERS_ID,
+          aggregation: [["count"]],
           breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": unit }]],
         },
       }),
