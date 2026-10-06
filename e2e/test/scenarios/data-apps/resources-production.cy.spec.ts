@@ -49,7 +49,7 @@ const DECLARATION = [
 ].join("\n");
 
 /** The saved question an author writes for `OrdersCount`. */
-const ORDERS_COUNT_QUESTION = H.resourceCard({
+const ORDERS_COUNT_QUESTION = H.dataAppRepresentations.card({
   entityId: QUESTION,
   name: "OrdersCount",
   type: "question",
@@ -90,7 +90,10 @@ describe("scenarios > data apps > resources in production", () => {
       files: { [`${APP_ROOT()}/queries/orders.query.ts`]: DECLARATION },
     });
     H.writeDataAppResources(APP_ROOT(), {
-      collection: H.resourceCollection(COLLECTION, "Data App: Synced App"),
+      collection: H.dataAppRepresentations.collection(
+        COLLECTION,
+        "Data App: Synced App",
+      ),
       cards: [ORDERS_COUNT_QUESTION],
     });
   });

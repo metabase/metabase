@@ -454,7 +454,7 @@ const userRow = (email: string) => H.main().findByText(email).closest("tr");
 function pullAppReading(tables: PortableTable[]) {
   H.pullExampleDataApps({
     goodAppCards: tables.map((table, index) =>
-      H.resourceCard({
+      H.dataAppRepresentations.card({
         entityId: `goodAppReads${String(index).padStart(9, "0")}`,
         name: table[2],
         type: "question",

@@ -74,7 +74,7 @@ describe(
         COLLECTION,
       ).then((actions) =>
         H.writeDataAppResources(APP_ROOT(), {
-          collection: H.resourceCollection(
+          collection: H.dataAppRepresentations.collection(
             COLLECTION,
             "Data App: Vite 6 Data App",
           ),

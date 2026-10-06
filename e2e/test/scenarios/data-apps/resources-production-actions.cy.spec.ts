@@ -67,7 +67,7 @@ describe(
         )
           .then((actions) =>
             H.writeDataAppResources(APP_ROOT(), {
-              collection: H.resourceCollection(
+              collection: H.dataAppRepresentations.collection(
                 COLLECTION,
                 "Data App: Synced Actions App",
               ),

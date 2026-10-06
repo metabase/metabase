@@ -191,7 +191,7 @@ describe("Embedding SDK: data-app resources (queries)", () => {
         collection: collection(),
         cards: [
           ordersQuestion(question, metricAggregation(metricCopy)),
-          H.resourceCard({
+          H.dataAppRepresentations.card({
             entityId: metricCopy,
             name: "Orders count",
             type: "metric",
