@@ -262,8 +262,8 @@
                 "Response should not contain :trace key")
             (is (not (contains? error-response :via))
                 "Response should not contain :via key")
-            (is (= "test-value" (get-in error-response [:data :custom-data]))
-                "Response should include custom data from ex-info")
+            (is (not (contains? error-response :data))
+                "Response should not contain the ex-data either, like the regular exception middleware")
             (is (contains? error-response :_status)
                 "Response should include :_status")))))))
 
@@ -334,6 +334,65 @@
                 "Response should not contain :via key")
             (is (= "preserve-me" (:custom-data error-response))
                 "Response should still include custom data")))))))
+
+(defn- error-response-fn-for-test [error]
+  {:status :failed, :error "generic message", :original-keys (sort (keys error))})
+
+(defn- error-carrying-output-stream
+  "An output stream like the one a streaming response body is handed, carrying `error-response-fn`, that writes to
+  `os`."
+  ^java.io.OutputStream [os error-response-fn]
+  (#'streaming-response/delay-output-stream (delay os) error-response-fn))
+
+(deftest write-error-applies-error-response-fn-test
+  (testing "when the output stream carries an :error-response-fn, write-error! writes what it returns instead of the error itself"
+    (mt/with-temporary-setting-values [hide-stacktraces false]
+      (testing "for a raw exception (formatted to a map first, so the fn always sees a map)"
+        (let [baos (java.io.ByteArrayOutputStream.)]
+          (#'streaming-response/write-error! (error-carrying-output-stream baos error-response-fn-for-test)
+                                             (ex-info "SENSITIVE MESSAGE" {:query "SENSITIVE QUERY"})
+                                             :api)
+          (let [output (String. (.toByteArray baos) "UTF-8")]
+            (is (= {:status        "failed"
+                    :error         "generic message"
+                    :original-keys ["_status" "cause" "data" "trace" "via"]}
+                   (json/decode output true)))
+            (is (not (re-find #"SENSITIVE" output))))))
+      (testing "for an already-formatted error map"
+        (let [baos (java.io.ByteArrayOutputStream.)]
+          (#'streaming-response/write-error! (error-carrying-output-stream baos error-response-fn-for-test)
+                                             {:status :failed, :error "SENSITIVE", :json_query "SENSITIVE"}
+                                             :api)
+          (let [output (String. (.toByteArray baos) "UTF-8")]
+            (is (= {:status        "failed"
+                    :error         "generic message"
+                    :original-keys ["error" "json_query" "status"]}
+                   (json/decode output true)))
+            (is (not (re-find #"SENSITIVE" output))))))
+      (testing "an output stream without one writes the error unchanged"
+        (let [baos (java.io.ByteArrayOutputStream.)]
+          (#'streaming-response/write-error! (error-carrying-output-stream baos nil)
+                                             {:status :failed, :error "visible"}
+                                             :api)
+          (is (= {:status "failed", :error "visible"}
+                 (json/decode (String. (.toByteArray baos) "UTF-8") true))))))))
+
+(deftest with-error-response-fn-response-shapes-test
+  (let [sr (streaming-response/streaming-response {:content-type "application/json"} [_os _])]
+    (testing "a streaming response gets the fn added to its options, which are otherwise kept"
+      (let [sr' (streaming-response/with-error-response-fn sr error-response-fn-for-test)]
+        (is (instance? metabase.server.streaming_response.StreamingResponse sr'))
+        (is (= {:content-type "application/json", :error-response-fn error-response-fn-for-test}
+               (.options ^metabase.server.streaming_response.StreamingResponse sr')))))
+    (testing "a Ring response map whose body is a streaming response gets its body updated"
+      (let [response (streaming-response/with-error-response-fn {:status 202, :body sr} error-response-fn-for-test)]
+        (is (= 202 (:status response)))
+        (is (= error-response-fn-for-test
+               (:error-response-fn (.options ^metabase.server.streaming_response.StreamingResponse (:body response)))))))
+    (testing "any other response is returned unchanged"
+      (is (= {:status 200, :body {:a 1}}
+             (streaming-response/with-error-response-fn {:status 200, :body {:a 1}} error-response-fn-for-test)))
+      (is (nil? (streaming-response/with-error-response-fn nil error-response-fn-for-test))))))
 
 (deftest start-interrupt-escalation-cancels-future-test
   (testing ".cancel is called when the task is still running after the interruption timeout"

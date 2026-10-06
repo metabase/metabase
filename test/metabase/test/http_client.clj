@@ -12,6 +12,7 @@
    [medley.core :as m]
    [metabase.config.core :as config]
    [metabase.server.middleware.session :as mw.session]
+   [metabase.server.streaming-response :as streaming-response]
    [metabase.server.test-handler :as server.test-handler]
    [metabase.test-runner.assert-exprs :as test-runner.assert-exprs]
    [metabase.test.initialize :as initialize]
@@ -318,7 +319,12 @@
   (with-open [os (java.io.ByteArrayOutputStream.)]
     (let [f             (.f ^StreamingResponse streaming-response)
           canceled-chan (a/promise-chan)]
-      (f os canceled-chan)
+      ;; hand `f` the same kind of output stream the Jetty path does, so it carries the response's
+      ;; `:error-response-fn` to `write-error!`
+      (f (#'streaming-response/delay-output-stream
+          (delay os)
+          (:error-response-fn (.options ^StreamingResponse streaming-response)))
+         canceled-chan)
       (cond-> (.toByteArray os)
         (some #(re-find % content-type) [#"json" #"text"])
         (String. "UTF-8")))))

@@ -19,6 +19,7 @@
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.metadata :as qp.metadata]
    [metabase.query-processor.middleware.add-remaps :as qp.add-remaps]
+   [metabase.query-processor.middleware.catch-exceptions :as qp.catch-exceptions]
    [metabase.query-processor.middleware.drop-fields-in-summaries :as qp.drop-fields-in-summaries]
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.query-processor.reducible :as qp.reducible]
@@ -619,9 +620,27 @@
             full-breakout-combination (splice-in-remap breakout-combination remap)]
         (column-mapping-for-subquery num-canonical-cols num-canonical-breakouts full-breakout-combination)))))
 
+(mu/defn- run-pivot-query*
+  "Impl for [[run-pivot-query]]: generate and run the pivot sub-queries for `query` through `rff`."
+  [query :- ::qp.schema/any-query
+   rff   :- ::qp.schema/rff]
+  (let [query             (-> (lib/query (qp.store/metadata-provider) query)
+                              lib/prepare-after-deserialization)
+        pivot-opts        (or
+                           (pivot-options query (get query :viz-settings))
+                           (pivot-options query (get-in query [:info :visualization-settings]))
+                           (not-empty (select-keys query [:pivot-rows :pivot-cols :pivot-measures :show-row-totals :show-column-totals])))
+        query             (-> query
+                              (assoc-in [:middleware :pivot-options] pivot-opts))
+        all-queries       (generate-queries query pivot-opts)
+        column-mapping-fn (make-column-mapping-fn query)]
+    (binding [qp.pipeline/*pivot?* true]
+      (process-multiple-queries all-queries rff column-mapping-fn))))
+
 (mu/defn run-pivot-query
-  "Run the pivot query. You are expected to wrap this call in [[metabase.query-processor.streaming/streaming-response]]
-  yourself."
+  "Run the pivot query. A query with `:info` is run as a userland query, so any error is caught and returned as a
+  formatted error response rather than thrown. You are expected to wrap this call in
+  [[metabase.query-processor.streaming/streaming-response]] yourself."
   ([query]
    (run-pivot-query query nil))
 
@@ -633,16 +652,11 @@
    ;; run-pivot-query, so binding it here from the query's :info map would be
    ;; redundant and could mis-set it for ad-hoc queries that carry a :card-id in :info.
    (qp.setup/with-qp-setup [query query]
-     (let [rff               (or rff qp.reducible/default-rff)
-           query             (-> (lib/query (qp.store/metadata-provider) query)
-                                 lib/prepare-after-deserialization)
-           pivot-opts        (or
-                              (pivot-options query (get query :viz-settings))
-                              (pivot-options query (get-in query [:info :visualization-settings]))
-                              (not-empty (select-keys query [:pivot-rows :pivot-cols :pivot-measures :show-row-totals :show-column-totals])))
-           query             (-> query
-                                 (assoc-in [:middleware :pivot-options] pivot-opts))
-           all-queries       (generate-queries query pivot-opts)
-           column-mapping-fn (make-column-mapping-fn query)]
-       (binding [qp.pipeline/*pivot?* true]
-         (process-multiple-queries all-queries rff column-mapping-fn))))))
+     (let [query (cond-> query
+                   (seq (:info query)) qp/userland-query)
+           rff   (or rff qp.reducible/default-rff)
+           ;; Everything between here and the first `qp/process-query` runs outside the QP's own middleware, so wrap
+           ;; it in the same exception-catching middleware `qp/process-query` applies to userland queries.
+           ;; No-op for non-userland queries.
+           qp    (qp.catch-exceptions/catch-exceptions run-pivot-query*)]
+       (qp query rff)))))
