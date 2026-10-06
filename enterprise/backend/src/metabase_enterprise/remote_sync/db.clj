@@ -1,6 +1,7 @@
 (ns metabase-enterprise.remote-sync.db
-  "Application database queries for the remote-sync module. Every function here is a direct Toucan 2 call with no
-  additional logic, so no other namespace in the module runs a query itself."
+  "Application database queries for the remote-sync module, so no other namespace in the module runs a query itself.
+  A function here adds no logic to its Toucan 2 calls beyond chunks of long id lists and the fixed point of
+  [[delete-closure]]."
   (:require
    [metabase-enterprise.remote-sync.schema :as remote-sync.schema]
    [metabase.collections.schema :as collections.schema]
@@ -94,15 +95,16 @@
       (seq entity-ids) (conj [:not-in :entity_id entity-ids])
       :always          (into (removal-condition-exprs removal-conditions)))))
 
-(mu/defn delete-removed-instances!
-  "Deletes the `model-key` rows an import removes (see [[removal-exprs]]); a no-op for a scoped model with no
-  synced collections, and a delete of every row when nothing restricts it."
+(mu/defn removed-instance-ids :- [:set ms/PositiveInt]
+  "The ids of the `model-key` rows an import removes (see [[removal-exprs]]): none for a scoped model with no
+  synced collections, and every row when nothing restricts them."
   [model-key    :- :keyword
    removal-opts :- RemovalOpts]
-  (when-let [exprs (removal-exprs removal-opts)]
-    (if (seq exprs)
-      (t2/delete! model-key {:where (if (= 1 (count exprs)) (first exprs) (into [:and] exprs))})
-      (t2/delete! model-key))))
+  ;; `set`, because `select-pks-set` returns nil when no row matches
+  (set (when-let [exprs (removal-exprs removal-opts)]
+         (if (seq exprs)
+           (t2/select-pks-set model-key {:where (if (= 1 (count exprs)) (first exprs) (into [:and] exprs))})
+           (t2/select-pks-set model-key)))))
 
 (defn- unsynced-anti-join-expr
   "A `[:not [:exists ...]]` fragment keeping only rows with no RemoteSyncObject of `model-type` in 'synced'
@@ -122,9 +124,8 @@
     (into [:and (unsynced-anti-join-expr model-type id-column)] (removal-exprs removal-opts))))
 
 (mu/defn unsynced-instance-count
-  "The number of `model-key` rows [[delete-removed-instances!]] would remove (see [[removal-exprs]]) that also
-  have no RemoteSyncObject of `model-type` in synced status — unsynced local work an import would otherwise wipe
-  out."
+  "The number of `model-key` rows that an import removes (see [[removed-instance-ids]]) and that have no
+  RemoteSyncObject of `model-type` in synced status — unsynced local work an import would otherwise wipe out."
   [model-key    :- :keyword
    model-type   :- :string
    removal-opts :- RemovalOpts]
@@ -186,41 +187,84 @@
    entity-ids :- [:set :string]]
   (t2/select (into [model] columns) :entity_id [:in entity-ids]))
 
+(def ^:private ids-per-query
+  "The most ids, or ledger keys, that one statement of a chunked function here binds. It keeps each statement far
+  below the bind-parameter limit of every app DB (65,535 on Postgres)."
+  500)
+
 (mu/defn cascaded-action-and-index-ids :- [:map
                                            [:action-ids [:sequential ms/PositiveInt]]
                                            [:index-ids  [:sequential ms/PositiveInt]]]
   "The ids of the Actions and the ModelIndexes of the model Cards with `card-ids`. A delete of those Cards deletes
   these rows, and the ModelIndexValues of the ModelIndexes, by foreign-key cascade."
   [card-ids :- [:sequential ms/PositiveInt]]
-  {:action-ids (vec (t2/select-pks-vec :model/Action :model_id [:in card-ids]))
-   :index-ids  (vec (t2/select-pks-vec :model/ModelIndex :model_id [:in card-ids]))})
+  (transduce (map (fn [chunk]
+                    {:action-ids (t2/select-pks-vec :model/Action :model_id [:in chunk])
+                     :index-ids  (t2/select-pks-vec :model/ModelIndex :model_id [:in chunk])}))
+             ;; `into`, because `select-pks-vec` returns nil when no row matches
+             (partial merge-with into)
+             {:action-ids [] :index-ids []}
+             (partition-all ids-per-query card-ids)))
 
 (mu/defn model-index-value-search-ids :- [:sequential :string]
   "The search-index ids (`<model_index_id>:<model_pk>`) of the ModelIndexValues of the ModelIndexes with
   `index-ids`."
   [index-ids :- [:sequential ms/PositiveInt]]
-  (vec (t2/select-fn-vec (fn [{:keys [model_index_id model_pk]}] (str model_index_id ":" model_pk))
-                         [:model/ModelIndexValue :model_index_id :model_pk]
-                         :model_index_id [:in index-ids])))
+  (into []
+        (mapcat #(t2/select-fn-vec (fn [{:keys [model_index_id model_pk]}] (str model_index_id ":" model_pk))
+                                   [:model/ModelIndexValue :model_index_id :model_pk]
+                                   :model_index_id [:in %]))
+        (partition-all ids-per-query index-ids)))
 
 (mu/defn child-card-ids :- [:sequential ms/PositiveInt]
   "The ids of the Cards that belong to the Dashboards `dashboard-ids` or the Documents `document-ids` (dashboard
   questions and document cards). A delete of those parents removes these Cards by foreign-key cascade."
   [dashboard-ids :- [:sequential ms/PositiveInt]
    document-ids  :- [:sequential ms/PositiveInt]]
-  (let [clauses (cond-> []
-                  (seq dashboard-ids) (conj [:in :dashboard_id dashboard-ids])
-                  (seq document-ids)  (conj [:in :document_id document-ids]))]
-    (if (seq clauses)
-      ;; `vec`, because `select-pks-vec` returns nil when no Card matches
-      (vec (t2/select-pks-vec :model/Card {:where (into [:or] clauses)}))
-      [])))
+  (into []
+        (mapcat (fn [[column chunk]]
+                  (t2/select-pks-vec :model/Card column [:in chunk])))
+        (concat (map (partial vector :dashboard_id) (partition-all ids-per-query dashboard-ids))
+                (map (partial vector :document_id) (partition-all ids-per-query document-ids)))))
 
-(mu/defn delete-instances!
-  "Delete the instances of `model` with `ids`."
+(def ^:private IdsByModel
+  "A map of Toucan 2 model key (such as `:model/Card`) to ids of its instances."
+  [:map-of
+   [:fn {:error/message "a Toucan 2 model key"} #(and (qualified-keyword? %) (= "model" (namespace %)))]
+   [:set ms/PositiveInt]])
+
+(mu/defn delete-closure :- [:map
+                            [:ids-by-model    IdsByModel]
+                            [:model-index-ids [:set ms/PositiveInt]]]
+  "The delete closure of the entities `ids-by-model`: those entities, plus every entity that a delete of them removes
+  by foreign-key cascade and that the ledger can track (the Cards of each Dashboard and Document, and the Actions of
+  each Card), until no new entity comes. Also returns the ids of the ModelIndexes of the closure's Cards, which the
+  delete removes by cascade with their values. Takes no lock."
+  [ids-by-model :- IdsByModel]
+  (loop [closure   ids-by-model
+         frontier  ids-by-model
+         index-ids #{}]
+    (let [{:keys [action-ids] new-index-ids :index-ids} (cascaded-action-and-index-ids
+                                                         (vec (:model/Card frontier)))
+          children  {:model/Card   (set (child-card-ids (vec (:model/Dashboard frontier))
+                                                        (vec (:model/Document frontier))))
+                     :model/Action (set action-ids)}
+          fresh     (into {}
+                          (keep (fn [[model-key ids]]
+                                  (let [new-ids (into #{} (remove (get closure model-key #{})) ids)]
+                                    (when (seq new-ids)
+                                      [model-key new-ids]))))
+                          children)
+          index-ids (into index-ids new-index-ids)]
+      (if (empty? fresh)
+        {:ids-by-model closure :model-index-ids index-ids}
+        (recur (merge-with into closure fresh) fresh index-ids)))))
+
+(mu/defn delete-instances! :- :int
+  "Delete the instances of `model` with `ids`. Returns the number deleted."
   [model :- :keyword
    ids   :- [:sequential ms/PositiveInt]]
-  (t2/delete! model :id [:in ids]))
+  (transduce (map #(t2/delete! model :id [:in %])) + 0 (partition-all ids-per-query ids)))
 
 (defn- tracking-select-parts
   "The SELECT/FROM/JOIN joining a `model-key` instance (Field, Segment, or Measure) to its Table for sync tracking,
@@ -271,7 +315,9 @@
   "A map of ID to entity ID for the instances of `model` with `ids`."
   [model :- :keyword
    ids   :- [:sequential ms/PositiveInt]]
-  (t2/select-pk->fn :entity_id model :id [:in ids]))
+  (into {}
+        (mapcat #(t2/select-pk->fn :entity_id model :id [:in %]))
+        (partition-all ids-per-query ids)))
 
 (mu/defn existing-entity-ids
   "The subset of `entity-ids` that instances of `model` have."
@@ -677,10 +723,12 @@
    model-ids  :- [:set ms/PositiveInt]]
   (t2/delete! :model/RemoteSyncObject :model_type model-type :model_id [:in model-ids]))
 
-(mu/defn delete-rsos-of-keys!
-  "Delete the RemoteSyncObjects keyed by the `:model_type`/`:model_id` of `rows`."
+(mu/defn delete-rsos-of-keys! :- :int
+  "Delete the RemoteSyncObjects keyed by the `:model_type`/`:model_id` of `rows`. Returns the number deleted."
   [rows :- [:sequential ::remote-sync.schema/remote-sync-object.update]]
-  (t2/delete! :model/RemoteSyncObject {:where (rso-keys-expr rows)}))
+  (transduce (map #(t2/delete! :model/RemoteSyncObject {:where (rso-keys-expr %)}))
+             + 0
+             (partition-all ids-per-query rows)))
 
 (mu/defn delete-all-rsos!
   "Delete every RemoteSyncObject."

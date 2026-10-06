@@ -353,11 +353,11 @@
   (testing "a pull removes absent actions only when they are in a synced collection"
     (do-with-synced-and-plain-actions!
      (fn [{:keys [synced-coll synced-action plain-action]}]
-       (remote-sync.db/delete-removed-instances!
-        :model/Action
-        (spec/removal-opts (spec/spec-for-model-key :model/Action) [synced-coll] #{}))
-       (is (not (t2/exists? :model/Action :id synced-action)))
-       (is (t2/exists? :model/Action :id plain-action))))))
+       (let [removed (remote-sync.db/removed-instance-ids
+                      :model/Action
+                      (spec/removal-opts (spec/spec-for-model-key :model/Action) [synced-coll] #{}))]
+         (is (contains? removed synced-action))
+         (is (not (contains? removed plain-action))))))))
 
 (deftest action-sync-rows-carry-model-collection-test
   (testing "GHY-4722: the ledger rows rebuilt after a pull give an action its model's collection"
