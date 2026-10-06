@@ -33,12 +33,18 @@
       (driver/describe-database driver database))))
 
 (defn include-nested-fields-for-table
-  "Add nested-field-columns for table to set of fields."
+  "Add nested-field-columns for table to set of fields. If describing them fails (e.g. the JSON sample query errors),
+  log a warning and return `fields` as-is, so the table's other Fields still sync."
   [fields database table]
   (let [driver (driver.u/database->driver database)]
-    (cond-> fields
-      (driver.u/supports? driver :nested-field-columns database)
-      (set/union (sql-jdbc.sync/describe-nested-field-columns driver database table)))))
+    (if (driver.u/supports? driver :nested-field-columns database)
+      (try
+        (set/union fields (sql-jdbc.sync/describe-nested-field-columns driver database table))
+        (catch Exception e
+          (log/warnf e "Error describing nested field columns for %s; syncing its other Fields without them"
+                     (sync-util/name-for-logging table))
+          fields))
+      fields)))
 
 (mu/defn table-fields-metadata :- [:set i/TableMetadataField]
   "Fetch metadata about Fields belonging to a given `table` directly from an external database by calling its driver's

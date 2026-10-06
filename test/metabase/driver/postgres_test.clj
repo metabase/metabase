@@ -1662,6 +1662,43 @@
           (is (= #{"table_with_perms"}
                  (t2/select-fn-set :name :model/Table :db_id (:id database)))))))))
 
+(deftest json-unfolding-skips-columns-without-select-privilege-test
+  (testing "JSON unfolding only samples JSON columns the connection user can read, so column-level grants don't break field sync (#83790)"
+    (mt/test-driver :postgres
+      (tx/drop-if-exists-and-create-db! driver/*driver* "json-column-grants-test")
+      (let [role          (str "mb_restricted_" (u/lower-case-en (mt/random-name)))
+            details       (mt/dbdef->connection-details :postgres :db {:database-name  "json-column-grants-test"
+                                                                       :json-unfolding true})
+            spec          (sql-jdbc.conn/connection-details->spec :postgres details)
+            active-fields (fn [database]
+                            (t2/select-fn-set :name :model/Field
+                                              :table_id (t2/select-one-pk :model/Table :db_id (:id database) :name "table_a")
+                                              :active true))]
+        (doseq [statement ["CREATE TABLE public.table_a (id INTEGER PRIMARY KEY, col_visible TEXT, col_json JSONB, col_json_hidden JSONB, col_hidden TEXT);"
+                           "INSERT INTO public.table_a VALUES (1, 'a', '{\"key_a\": 1}', '{\"key_b\": 2}', 'b');"
+                           (format "CREATE ROLE %s LOGIN PASSWORD 'password';" role)
+                           (format "GRANT SELECT (id, col_visible, col_json) ON public.table_a TO %s;" role)]]
+          (jdbc/execute! spec [statement]))
+        (try
+          (mt/with-temp [:model/Database database {:engine :postgres, :details details}]
+            (testing "sanity check: a user that can read every column syncs all of them"
+              (sync/sync-database! database {:scan :schema})
+              (is (= #{"id" "col_visible" "col_json" "col_json → key_a" "col_json_hidden" "col_json_hidden → key_b" "col_hidden"}
+                     (active-fields database))))
+            (t2/update! :model/Database (:id database) {:details (assoc details :user role :password "password")})
+            (let [database (t2/select-one :model/Database (:id database))]
+              (binding [sync-util/*log-exceptions-and-continue?* false]
+                (sync/sync-database! database {:scan :schema}))
+              (testing "after switching to a user with column-level grants, unreadable columns are retired and readable JSON is still unfolded"
+                (is (= #{"id" "col_visible" "col_json" "col_json → key_a"}
+                       (active-fields database))))
+              (testing "a raw query on the table runs"
+                (mt/with-db database
+                  (is (= 1 (count (mt/rows (mt/run-mbql-query table_a)))))))))
+          (finally
+            (jdbc/execute! spec [(format "DROP OWNED BY %s;" role)])
+            (jdbc/execute! spec [(format "DROP ROLE %s;" role)])))))))
+
 (deftest json-operator-?-works
   (testing "Make sure the Postgres ? operators (for JSON types) work in native queries"
     (mt/test-driver :postgres
