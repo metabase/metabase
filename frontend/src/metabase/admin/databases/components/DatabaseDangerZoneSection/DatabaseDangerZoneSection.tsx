@@ -34,12 +34,11 @@ export const DatabaseDangerZoneSection = ({
     return deleteDatabase(database.id).then(() => deleteDbModal.close());
   };
 
-  const hasCompletedSync = isSyncCompleted(database);
-  const shouldHideSection =
-    database.is_attached_dwh ||
-    [hasCompletedSync, isAdmin].every((bool) => bool === false);
+  const canDiscardFieldValues =
+    !database.is_attached_dwh && isSyncCompleted(database) && !database.is_stub;
+  const canDelete = !database.is_attached_dwh && isAdmin;
 
-  if (shouldHideSection) {
+  if (!canDiscardFieldValues && !canDelete) {
     return null;
   }
 
@@ -50,7 +49,7 @@ export const DatabaseDangerZoneSection = ({
       data-testid="database-danger-zone-section"
     >
       <Flex gap="sm" wrap="wrap">
-        {isSyncCompleted(database) && (
+        {canDiscardFieldValues && (
           <>
             <Button
               variant="filled"
@@ -67,7 +66,7 @@ export const DatabaseDangerZoneSection = ({
             />
           </>
         )}
-        {isAdmin && (
+        {canDelete && (
           <>
             <Button
               variant="filled"

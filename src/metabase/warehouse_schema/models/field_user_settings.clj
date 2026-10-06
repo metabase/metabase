@@ -110,9 +110,6 @@
   (conj (serdes/generate-path "Field" {:id field_id})
         {:model "FieldUserSettings" :id "1"}))
 
-(defmethod serdes/deserialization-dependencies "FieldUserSettings" [field-user-settings]
-  [[(first (serdes/path field-user-settings))]])
-
 (defmethod serdes/load-find-local "FieldUserSettings" [path]
   (when-let [field (serdes/load-find-local (pop path))]
     (warehouse-schema.db/field-user-settings (:id field))))

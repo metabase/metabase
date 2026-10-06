@@ -217,6 +217,18 @@ describe("DatabaseConnectionInfoSection", () => {
     });
   });
 
+  describe("Stub databases", () => {
+    it("should hide the sync actions but allow editing the connection details", async () => {
+      setup({ database: createMockDatabase({ is_stub: true }) });
+      expect(
+        screen.queryByText(/Sync database schema/i),
+      ).not.toBeInTheDocument();
+      expect(
+        await screen.findByRole("button", { name: /Edit connection details/i }),
+      ).toBeEnabled();
+    });
+  });
+
   describe("Sample database", () => {
     it("should disable editing the connection details", async () => {
       setup({ database: createMockDatabase({ is_sample: true }) });

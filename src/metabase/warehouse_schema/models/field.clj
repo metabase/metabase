@@ -468,10 +468,6 @@
       ((:import-with-context legacy-dimensions) field :dimensions (:dimensions ingested)))
     field))
 
-(defmethod serdes/deserialization-dependencies "Field" [field]
-  (let [db-path (first (serdes/path field))]
-    #{[db-path]}))
-
 (defmethod serdes/make-spec "Field" [_model-name _opts]
   {:copy      [:active :base_type :caveats :coercion_strategy :data_sensitivity :database_default :database_indexed
                :database_is_auto_increment :database_is_generated :database_is_nullable :database_is_pk
