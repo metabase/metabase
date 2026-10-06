@@ -3,6 +3,7 @@ import {
   type MutableRefObject,
   useCallback,
   useEffect,
+  useRef,
   useState,
 } from "react";
 import { t } from "ttag";
@@ -70,6 +71,13 @@ function useApplyMcpOperations(
 ): ApplyMcpOperations {
   const { question, updateQuestion } = useSdkQuestionContext();
 
+  // `apply` runs once the derive returns, so it reads the question as it is then,
+  // keeping changes made while the derive was in flight, such as a new display.
+  const questionRef = useRef(question);
+  useEffect(() => {
+    questionRef.current = question;
+  }, [question]);
+
   return useCallback(
     (operations) => {
       if (!question) {
@@ -83,7 +91,8 @@ function useApplyMcpOperations(
           throw new Error("The derived query could not be read.");
         }
 
-        updateQuestion(question.setDatasetQuery(derived.card.dataset_query), {
+        const latest = questionRef.current ?? question;
+        updateQuestion(latest.setDatasetQuery(derived.card.dataset_query), {
           run: true,
         });
       };
