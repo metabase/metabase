@@ -108,6 +108,9 @@ is never swapped for another; `resources.clj` keeps its name and permissions in 
 Administrators assign existing internal permission groups through `/api/apps/:slug/groups`. Assignments live in
 `data_app_group_assignment` and stay local to the instance. Repository sync preserves them while the app row exists.
 
+Admins reuse existing permission groups through `/api/apps/:slug/groups`. Assignments are stored in
+`data_app_group_assignment`: an app can have multiple groups, and a group can be assigned to multiple apps.
+
 Membership in any assigned group grants app access. Administrators can access every app. The list API hides
 unassigned apps from other users, and metadata, bundle, and HTML entry-point requests check the same assignment.
 Collection access alone does not grant app access.
