@@ -21,15 +21,9 @@
       url)))
 
 (defn create-app!
-  "Create the data app `row`, filling the draft with its slug if there is one, and return its ID. Throws a 409
-   when a data app that isn't a draft already has the slug."
+  "Create the data app `row` and return its ID. Throws a 409 when a data app already has the slug."
   [{slug :name :as row}]
   (t2/with-transaction [_conn]
-    (let [existing (data-apps.db/data-app-by-slug slug)
-          row      (assoc row :draft false)]
-      (api/check (or (nil? existing) (:draft existing))
-                 [409 (tru "A data app with this slug already exists.")])
-      (if existing
-        (do (data-apps.db/update-data-app! (:id existing) (dissoc row :name))
-            (:id existing))
-        (data-apps.db/insert-data-app-returning-pk! row)))))
+    (api/check (not (data-apps.db/data-app-exists? slug))
+               [409 (tru "A data app with this slug already exists.")])
+    (data-apps.db/insert-data-app-returning-pk! row)))

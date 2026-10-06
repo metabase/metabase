@@ -374,7 +374,6 @@
     :archived-key   nil
     :tracking       {:select-fields  [:name]
                      :field-mappings {:model_name :name}}
-    :conditions     {:draft false}
     :removal        {:statuses #{"removed" "delete"}}
     :resources?     true
     :export-scope   :all

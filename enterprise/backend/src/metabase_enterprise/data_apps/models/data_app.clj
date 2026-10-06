@@ -153,7 +153,7 @@
    :skip      [;; admin-owned state of this instance
                :enabled
                ;; set by the import itself
-               :draft :bundle_hash
+               :bundle_hash
                ;; server-managed resources, recreated on import
                :permission_group_id :table_ids]
    :transform {:created_at   (serdes/date)
@@ -177,9 +177,8 @@
 
 (defmethod serdes/extract-query "DataApp"
   [model-name {:keys [filter-column filter-ids] :as opts}]
-  (eduction (remove :draft)
-            (data-apps.db/reducible-data-apps-with-bundles filter-column filter-ids
-                                                           (serdes/extract-order-columns model-name opts))))
+  (data-apps.db/reducible-data-apps-with-bundles filter-column filter-ids
+                                                 (serdes/extract-order-columns model-name opts)))
 
 (defmethod serdes/deserialization-dependencies "DataApp" [{:keys [collection resource_collection_id]}]
   ;; A manifest names the collection as `collection`; serialization's own checks ask by the column.
@@ -201,10 +200,8 @@
 
 (defmethod serdes/load-one! "DataApp"
   [ingested maybe-local]
-  (let [local (or maybe-local (data-apps.db/draft-by-slug (:slug ingested)))
-        app   (serdes/default-load-one! ingested local)]
-    (data-apps.db/update-data-app! (:id app) {:draft false})
-    (when local
+  (let [app (serdes/default-load-one! ingested maybe-local)]
+    (when maybe-local
       (data-app.resources/ensure-resources! app))
     app))
 

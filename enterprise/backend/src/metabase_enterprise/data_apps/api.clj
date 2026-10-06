@@ -232,7 +232,7 @@
   app)
 
 (api.macros/defendpoint :get "/" :- [:sequential [:or DataAppResponse PublicDataAppResponse]]
-  "List the data apps. Pass `available=true` to return only enabled apps that aren't drafts. An outdated app is never
+  "List the data apps. Pass `available=true` to return only enabled apps. An outdated app is never
    available, and otherwise listed only to superusers, who see it badged."
   [_route-params
    {:keys [available]} :- [:map {:closed true} [:available {:optional true} [:maybe :boolean]]]]
@@ -264,7 +264,7 @@
   (api/check-403 (remote-sync/model-editable? :model/DataApp app)))
 
 (api.macros/defendpoint :post "/" :- DataAppResponse
-  "Create a data app from its manifest fields and bundle. A draft with the same slug becomes the app."
+  "Create a data app from its manifest fields and bundle."
   [_route-params
    _query-params
    body :- CreateDataAppRequest]

@@ -47,11 +47,11 @@ the YAML, and ingestion reads the paths `serdes/resource-paths` returns back in.
 must stay inside the entity's directory.
 
 `enabled` is admin-owned and never leaves the instance; the permission group and `table_ids` are
-server-managed; `bundle_hash` is recomputed from the bundle on import. Drafts are not exported.
+server-managed; `bundle_hash` is recomputed from the bundle on import.
 A targeted export of an app brings its collection and what it holds along (`serdes/descendants`).
 
-An import matches an app by `entity_id`, falling back to its slug so it takes over a draft, and
-reasserts the app's resources. A manifest that names a collection the repository lacks, or one
+An import matches an app by `entity_id` and reasserts the app's resources; a manifest whose slug an app
+made on the instance holds is refused. A manifest that names a collection the repository lacks, or one
 other than the collection the app already owns, fails to load. It is a no-op without the
 `:data-apps` feature.
 
@@ -66,15 +66,14 @@ the YAML and resource files in `data_apps/`.
 Routes are mounted at `/api/apps` (`api.clj`). Not `/app/*` — the server reserves that for static
 assets (`metabase.server.routes/static-files-handler`).
 
-- `GET /api/apps` — list; `?available=true` filters to enabled apps that aren't drafts.
+- `GET /api/apps` — list; `?available=true` filters to enabled apps.
 - `GET /api/apps/:slug` — metadata for one enabled app.
 - `GET /api/apps/:slug/bundle` — the cached bytes, with a content-hash ETag and `If-None-Match`
   → 304. Carries `X-Metabase-Data-App-Allowed-Hosts`, which the iframe reads to configure its
   sandbox fetch allowlist.
 - `GET /api/apps/sandbox-host` — the empty document loaded as the Near-Membrane realm iframe,
   carrying the CSP that confines `'unsafe-eval'` to that realm.
-- `POST /api/apps` — create an app from its manifest fields and bundle text, filling a draft with
-  the same slug (superuser).
+- `POST /api/apps` — create an app from its manifest fields and bundle text (superuser).
 - `PUT /api/apps/:slug` — update manifest fields or the bundle, or toggle `enabled` (superuser).
 - `DELETE /api/apps/:slug` — drop a row, its bundle, and its owned resources (superuser).
 - `GET /api/apps/repo-status` — whether a repo is connected (superuser).
@@ -89,7 +88,7 @@ middleware's lookup doesn't pull in route code.
 
 ## Permissions
 
-Each app owns two server-managed resources, created with the app (or its draft) and reasserted on
+Each app owns two server-managed resources, created with the app and reasserted on
 every import: a **collection** holding the copies the app is served from (saved questions, actions,
 table-sourced metrics) and a **permissions group** its users belong to. The collection is a root
 collection of the `data-apps` namespace, created as the app's row is inserted unless an import names
@@ -116,7 +115,7 @@ nothing, it can never lift another group's sandbox, so sandboxing needs no data-
 
 | Namespace             | Responsibility                                                                                      |
 | --------------------- | --------------------------------------------------------------------------------------------------- |
-| `apps.clj`            | Creating apps and drafts; the connected repository's URL.                                           |
+| `apps.clj`            | Creating apps; the connected repository's URL.                                                      |
 | `config.clj`          | The serialized layout and data app contract version constants.                                     |
 | `schema.clj`          | Column schemas, with the normalization and validation every write goes through.                     |
 | `api.clj`             | The `/api/apps` endpoints, bundle serving, ETag handling.                                           |
