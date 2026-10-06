@@ -666,28 +666,37 @@
             The credential now authenticates only the /api/embed-mcp handlers, which check it themselves.
             Everywhere else it is no credential at all."
     (mcp.ui-resource/with-fallback-template
-      (let [session-id (initialize-ui-client!)
-            credential (-> (mcp-request! (jsonrpc-request "tools/call"
-                                                          {:name "refresh_ui_credential" :arguments {}})
-                                         {"mcp-session-id" session-id})
-                           (get-in [:body :result :_meta :com.metabase/mcp-apps :credential]))
-            headers    {"x-metabase-mcp-ui-auth" credential}]
-        (is (some? credential) "the tool must hand back a credential, or this proves nothing")
-        (testing "the profile the escalation exposed is no longer reachable"
-          (is (= 401 (:status (client/client-full-response :get 401 "user/current"
-                                                           {:request-options {:headers headers}})))))
-        (testing "a route off the surface is refused, as before"
-          (is (= 401 (:status (client/client-full-response :get 401 "collection"
-                                                           {:request-options {:headers headers}})))))
-        (testing "and the iframe still boots, on the endpoint built for it"
-          (is (= 200 (:status (ui.tu/ui-request! {:credential credential :session-id session-id}
-                                                 :get 200 "embed-mcp/bootstrap")))))
-        (testing "a dataset route is refused: the credential is not a query credential outside the iframe routes"
-          (is (= 401 (:status (client/client-full-response :post 401 "dataset"
-                                                           {:request-options {:headers headers}}
-                                                           {:database (mt/id)
-                                                            :type     :native
-                                                            :native   {:query "SELECT 1"}})))))))))
+      ;; One bearer token for the whole test: the credential is bound to the token it was minted from, and the
+      ;; iframe routes refuse it once that token is gone.
+      (mcp.tu/do-with-bearer-headers!
+       :crowberto mcp.tu/all-scopes
+       (fn [bearer]
+         (let [mcp!       (fn [body extra-headers]
+                            (client/client-full-response :post endpoint
+                                                         {:request-options {:headers (merge bearer extra-headers)}}
+                                                         body))
+               session-id (-> (mcp! (jsonrpc-request "initialize" mcp-app-ui-capabilities) {})
+                              (get-in [:headers "Mcp-Session-Id"]))
+               credential (-> (mcp! (jsonrpc-request "tools/call" {:name "refresh_ui_credential" :arguments {}})
+                                    {"mcp-session-id" session-id})
+                              (get-in [:body :result :_meta :com.metabase/mcp-apps :credential]))
+               headers    {"x-metabase-mcp-ui-auth" credential}]
+           (is (some? credential) "the tool must hand back a credential, or this proves nothing")
+           (testing "the profile the escalation exposed is no longer reachable"
+             (is (= 401 (:status (client/client-full-response :get 401 "user/current"
+                                                              {:request-options {:headers headers}})))))
+           (testing "a route off the surface is refused, as before"
+             (is (= 401 (:status (client/client-full-response :get 401 "collection"
+                                                              {:request-options {:headers headers}})))))
+           (testing "and the iframe still boots, on the endpoint built for it"
+             (is (= 200 (:status (ui.tu/ui-request! {:credential credential :session-id session-id}
+                                                    :get 200 "embed-mcp/bootstrap")))))
+           (testing "a dataset route is refused: the credential is not a query credential outside the iframe routes"
+             (is (= 401 (:status (client/client-full-response :post 401 "dataset"
+                                                              {:request-options {:headers headers}}
+                                                              {:database (mt/id)
+                                                               :type     :native
+                                                               :native   {:query "SELECT 1"}})))))))))))
 
 (deftest unauthenticated-discovery-test
   (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
