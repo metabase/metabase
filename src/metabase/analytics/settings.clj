@@ -111,7 +111,7 @@
   :setter     #'-non-table-chart-generated!)
 
 (defsetting analytics-pii-retention-enabled
-  (deferred-tru (str "Enable logging of embed path, query parameters, sandbox attribute values, user agent, "
+  (deferred-tru (str "Enable logging of embed path, query parameters, user attribute values, user agent, "
                      "IP address, and Metabot conversation metadata for users of your internal data and embeds. "
                      "This information will be shown in your usage analytics."))
   :type       :boolean
