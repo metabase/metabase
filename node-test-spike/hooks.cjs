@@ -39,10 +39,35 @@ const TRANSFORM_VERSION = "1";
 // memory: isolated mode re-requires modules constantly and would otherwise
 // re-read and re-hash every source each time.
 const transformMemo = new Map();
+// A module-level `let` is state that a shared registry carries from one spec
+// file into the next: a basename a test set, a lazily built singleton. Each
+// module reports its own bindings once its body has run, and the harness puts
+// those values back between files. Containers are left alone, because other
+// modules fill them at import time and would not run again to refill them.
+const TOP_LEVEL_LET = /^(?:export )?let ([A-Za-z_$][\w$]*)\s*(?::[^=;,]*)?(?:=[^,]*)?;?$/gm;
+// The SDK fills these four through `_.once(registerVisualizations)`. That flag
+// lives in a closure and cannot be reset, so the registration never runs twice
+// in a process, and what it wrote has to stay.
+const REGISTERED_ONCE = /\/(viz-core\/lib\/(registry|settings)|viz-core\/echarts\/tooltip\/index|value-formatting\/registry)\.tsx?$/;
+const letTracker = (file, source) => {
+  if (process.env.NT_NO_LET_RESET || /\.(spec|test)\./.test(file) || REGISTERED_ONCE.test(file)) return "";
+  const names = [...source.matchAll(TOP_LEVEL_LET)].map((match) => match[1]);
+  if (names.length === 0) return "";
+  const list = names.join(", ");
+  return `\n;globalThis.__nodeTestSpike?.trackLets?.(__filename, () => [${list}], (__values) => { [${list}] = __values; });\n`;
+};
+const transformCached = (file) => {
+  const source = fs.readFileSync(file, "utf8");
+  return transformSource(file, source) + letTracker(file, source);
+};
 const transform = (file) => {
   const memoized = transformMemo.get(file);
   if (memoized !== undefined) return memoized;
-  const source = fs.readFileSync(file, "utf8");
+  const code = transformCached(file);
+  transformMemo.set(file, code);
+  return code;
+};
+const transformSource = (file, source) => {
   const key =
     crypto
       .createHash("sha1")
@@ -53,11 +78,7 @@ const transform = (file) => {
       .update(source)
       .digest("hex") + ".js";
   const cached = path.join(cacheDir, key);
-  if (fs.existsSync(cached)) {
-    const code = fs.readFileSync(cached, "utf8");
-    transformMemo.set(file, code);
-    return code;
-  }
+  if (fs.existsSync(cached)) return fs.readFileSync(cached, "utf8");
   const { code } = swc.transformSync(source, {
     filename: file,
     sourceMaps: false,
@@ -74,7 +95,6 @@ const transform = (file) => {
   const temporary = `${cached}.${process.pid}.tmp`;
   fs.writeFileSync(temporary, code);
   fs.renameSync(temporary, cached);
-  transformMemo.set(file, code);
   return code;
 };
 
@@ -368,6 +388,11 @@ const runSuite = async (suite, t, outer) => {
     await ctx.test(child.name, { skip: poisoned || child.mode === "skip", todo: child.mode === "todo", timeout: child.timeout ?? TIMEOUT }, async () => {
       let failure;
       const testStarted = Date.now();
+      if (process.env.NT_DEBUG_CLIP) {
+        const descriptor = Object.getOwnPropertyDescriptor(globalThis.navigator, "clipboard");
+        const clip = globalThis.navigator.clipboard;
+        process.stderr.write(`[clip] ${currentFile.slice(-36)} own=${Boolean(descriptor)} getter=${Boolean(descriptor?.get)} ctor=${clip?.constructor?.name} writeText=${typeof clip?.writeText} mock=${Boolean(clip?.writeText?._isMockFunction)} impl=${String(clip?.writeText?.getMockImplementation?.()).slice(0, 30)} winNavSame=${globalThis.window.navigator === globalThis.navigator}\n`);
+      }
       ownRan += 1;
       currentTest = child.name;
       // jest joins the describe path and the test name with single spaces.
@@ -738,6 +763,11 @@ const fileCleanup = async (isolated) => {
   resetNavigator();
   globalThis.__nodeTestSpike.resetVisualizations?.();
   if (!process.env.NT_NO_REALM_RESTORE) globalThis.__nodeTestSpike.restoreRealm?.();
+  if (process.env.NT_DEBUG_STATE_DIFF) { console.error(`[state] === after ${currentFile}`); stateDiff(); }
+  globalThis.__nodeTestSpike.resetLets?.();
+  restoreSetupMocks();
+  resetDayjsLocale();
+  resetSettings();
   timerShape("after-realm");
   if (isolated) {
     mocks.clear();
@@ -749,7 +779,7 @@ const fileCleanup = async (isolated) => {
     evictProjectModules();
     globalThis.window.MetabaseBootstrap = { ...initialBootstrap };
     resetNavigator();
-    for (const setupFile of SETUP_CHAIN) require(abs(setupFile));
+    runSetupChain();
   }
   require("metabase/plugins").reinitialize();
 };
@@ -771,10 +801,11 @@ globalThis.__nodeTestSpike.runFile = async (t, file) => {
     circus.resetState();
   }
   mockedThisFile = false;
+  if (process.env.NT_DEBUG_STATE_DUMP && currentFile.includes(process.env.NT_DEBUG_STATE_AT ?? "\0")) globalThis.__nodeTestSpike.dumpState(process.env.NT_DEBUG_STATE_DUMP);
   if (isolated) {
     evictProjectModules();
     globalThis.window.MetabaseBootstrap = { ...initialBootstrap };
-    for (const file of SETUP_CHAIN) require(abs(file));
+    runSetupChain();
   }
   if (USE_CIRCUS) {
     try {
@@ -800,9 +831,21 @@ globalThis.__nodeTestSpike.runFile = async (t, file) => {
       await fileCleanup(isolated || (mockedThisFile && !process.env.NT_NO_MOCK_ISOLATE));
     }
   }
-  const fileSuite = newSuite(file);
+  let fileSuite = newSuite(file);
   suiteStack.push(fileSuite);
   try { require(file); } finally { suiteStack.pop(); }
+  // A file whose jest.mock calls sit in an imported helper was not isolated at
+  // its start, so modules from earlier files have their real dependencies
+  // resolved already and would never see these mocks. The file starts again
+  // on a fresh registry, with its mocks now known, before any test body runs.
+  if (mockedThisFile && !isolated && !process.env.NT_NO_LATE_ISOLATE) {
+    evictProjectModules();
+    globalThis.window.MetabaseBootstrap = { ...initialBootstrap };
+    runSetupChain();
+    fileSuite = newSuite(file);
+    suiteStack.push(fileSuite);
+    try { require(file); } finally { suiteStack.pop(); }
+  }
   try {
     await runSuite(fileSuite, t, { beforeEach: rootSuite.beforeEach, afterEach: rootSuite.afterEach });
   } finally {
@@ -899,8 +942,37 @@ const jestMock = (id, factory) => {
   if (stubFile) delete require.cache[stubFile];
   return globalThis.jest;
 };
+// A spec's resetAllMocks also strips the implementations of the mocks the setup
+// files install, such as the clipboard. jest builds those again for each file.
+// Here the harness remembers what each one did and puts it back between files.
+let setupMocksOpen = false;
+let setupMocksPending = [];
+const setupMocks = [];
+const runSetupChain = () => {
+  setupMocksOpen = true;
+  try {
+    for (const setupFile of SETUP_CHAIN) require(abs(setupFile));
+  } finally {
+    setupMocksOpen = false;
+    for (const mock of setupMocksPending) {
+      const implementation = mock.getMockImplementation();
+      if (implementation) setupMocks.push([mock, implementation]);
+    }
+    setupMocksPending = [];
+  }
+};
+const restoreSetupMocks = () => {
+  if (process.env.NT_NO_SETUP_MOCK_RESTORE) return;
+  for (const [mock, implementation] of setupMocks) {
+    if (!mock.getMockImplementation()) mock.mockImplementation(implementation);
+  }
+};
 globalThis.jest = {
-  fn: moduleMocker.fn.bind(moduleMocker),
+  fn: (implementation) => {
+    const mock = moduleMocker.fn(implementation);
+    if (setupMocksOpen) setupMocksPending.push(mock);
+    return mock;
+  },
   spyOn: moduleMocker.spyOn.bind(moduleMocker),
   mocked: (value) => value,
   isMockFunction: moduleMocker.isMockFunction.bind(moduleMocker),
@@ -949,16 +1021,58 @@ globalThis.jest = {
 globalThis.ga = {};
 
 // --- setupFiles + setupFilesAfterEnv, in jest order ---------------------------------
-for (const file of [
-  "frontend/test/jest-setup.js",
-  "frontend/test/metabase-bootstrap.js",
-  "frontend/test/register-visualizations.js",
-  "frontend/test/jest-setup-eager.js",
-  "frontend/test/jest-setup-env.js",
-  "frontend/test/jest-setup-env-core.js",
-]) {
-  require(abs(file));
+const trackedLets = new Map();
+globalThis.__nodeTestSpike.trackLets = (file, read, write) => { trackedLets.set(file, { baseline: read(), read, write }); };
+// Other modules write into these bindings while they load: a registry gets its
+// default, a renderer gets installed. Those modules will not load again, so a
+// value written during a load is part of the baseline. Only what test code
+// writes, outside any load, is undone between files.
+{
+  const NodeModule = require("node:module");
+  const loadModule = NodeModule._load;
+  let loadDepth = 0;
+  let valuesBeforeLoad = null;
+  const readAll = () => {
+    const values = new Map();
+    for (const [file, tracked] of trackedLets) {
+      try { values.set(file, tracked.read()); } catch {}
+    }
+    return values;
+  };
+  NodeModule._load = function (...args) {
+    if (loadDepth === 0 && trackedLets.size > 0) valuesBeforeLoad = readAll();
+    loadDepth += 1;
+    try {
+      return loadModule.apply(this, args);
+    } finally {
+      loadDepth -= 1;
+      if (loadDepth === 0 && valuesBeforeLoad) {
+        for (const [file, tracked] of trackedLets) {
+          const before = valuesBeforeLoad.get(file);
+          let now;
+          try { now = tracked.read(); } catch { continue; }
+          if (!before) { tracked.baseline = now; continue; }
+          for (let index = 0; index < now.length; index += 1) {
+            if (now[index] !== before[index]) tracked.baseline[index] = now[index];
+          }
+        }
+        valuesBeforeLoad = null;
+      }
+    }
+  };
 }
+globalThis.__nodeTestSpike.resetLets = () => {
+  for (const [file, { baseline, read, write }] of trackedLets) {
+    if (process.env.NT_DEBUG_LETS) {
+      try {
+        const now = read();
+        now.forEach((value, index) => { if (value !== baseline[index]) console.error(`[let] ${file.replace(root, "")} #${index}: ${String(value).replace(/\s+/g, " ").slice(0, 60)} -> ${String(baseline[index]).replace(/\s+/g, " ").slice(0, 60)}`); });
+      } catch {}
+    }
+    try { write(baseline); } catch {}
+  }
+};
+runSetupChain();
 initialBootstrap = { ...globalThis.window.MetabaseBootstrap };
 
 // --- shared-realm baseline ----------------------------------------------------
@@ -1022,9 +1136,104 @@ globalThis.__nodeTestSpike.getPhase = () => phase;
 // dayjs is one instance for the whole process, and the order its plugins are
 // installed in changes what format() returns. Loading the app's own entry first
 // gives every file the order the app has, whichever spec ran before it.
+let resetDayjsLocale = () => {};
 if (!process.env.NT_NO_DAYJS_PRELOAD) {
-  try { require("metabase/dayjs"); } catch {}
+  try {
+    // The locale table is on that one instance too. A spec that switches the
+    // language or edits a locale would otherwise change date text for every
+    // later file, so the table is put back to what the app's entry left.
+    const { dayjs } = require("metabase/dayjs");
+    const baselineLocale = dayjs.locale();
+    const baselineTable = new Map(Object.entries(dayjs.Ls).map(([name, definition]) => [name, { ...definition }]));
+    resetDayjsLocale = () => {
+      if (process.env.NT_NO_DAYJS_LOCALE_RESET) return;
+      for (const [name, definition] of baselineTable) {
+        const live = dayjs.Ls[name];
+        if (!live) { dayjs.Ls[name] = { ...definition }; continue; }
+        for (const key of Object.keys(live)) if (!(key in definition)) delete live[key];
+        Object.assign(live, definition);
+      }
+      if (dayjs.locale() !== baselineLocale) dayjs.locale(baselineLocale);
+    };
+  } catch {}
 }
+// The settings singleton is filled from the bootstrap object when its module
+// loads, and specs then write into it. jest reloads it for each file. Here its
+// contents go back to what a fresh load would hold.
+const resetSettings = () => {
+  if (process.env.NT_NO_SETTINGS_RESET) return;
+  try {
+    const settingsFile = resolveProject("metabase/utils/settings", abs("frontend/test/__support__/ui.tsx"));
+    const settings = require.cache[settingsFile]?.exports?.default;
+    if (!settings?._settings) return;
+    for (const key of Object.keys(settings._settings)) delete settings._settings[key];
+    Object.assign(settings._settings, initialBootstrap);
+  } catch {}
+};
+// Debug probe: prints which exported objects of project modules a file changed.
+const identityIds = new WeakMap();
+let nextIdentityId = 0;
+const identityOf = (value) => {
+  if (value === null || (typeof value !== "object" && typeof value !== "function")) return String(value).slice(0, 40);
+  if (process.env.NT_DEBUG_STATE_DUMP) {
+    if (typeof value === "function") return `fn:${value.name}:${String(value).replace(/\s+/g, " ").slice(0, 50)}`;
+    let size = "";
+    try { size = value instanceof Map || value instanceof Set ? value.size : Object.keys(value).length; } catch {}
+    return `obj:${value.constructor?.name}:${size}`;
+  }
+  if (!identityIds.has(value)) identityIds.set(value, (nextIdentityId += 1));
+  return `#${identityIds.get(value)}`;
+};
+const fingerprint = (value, depth) => {
+  if (value === null || typeof value !== "object" || value.$$typeof) return null;
+  const entries = new Map();
+  let keys = [];
+  try { keys = value instanceof Map ? [...value.keys()].map(String) : value instanceof Set ? [...value].map(identityOf) : Object.keys(value); } catch { return null; }
+  if (keys.length > 400) return new Map([["<size>", String(keys.length)]]);
+  for (const key of keys) {
+    let item;
+    try { item = value instanceof Map ? value.get(key) : value instanceof Set ? true : value[key]; } catch { continue; }
+    entries.set(key, identityOf(item));
+    if (depth > 0 && item && typeof item === "object" && !item.$$typeof && (Array.isArray(item) || Object.getPrototypeOf(item) === Object.prototype)) {
+      const inner = fingerprint(item, depth - 1);
+      if (inner) for (const [innerKey, innerValue] of inner) entries.set(`${key}.${innerKey}`, innerValue);
+    }
+  }
+  return entries;
+};
+let previousState = null;
+const stateDiff = () => {
+  const state = new Map();
+  for (const [file, cached] of Object.entries(require.cache)) {
+    if (!isProjectSource(file) || /\.(spec|test)\.|\/test\/|__support__|\/mocks\//.test(file) || !cached?.loaded) continue;
+    let names = [];
+    try { names = Object.keys(cached.exports ?? {}); } catch { continue; }
+    for (const name of names) {
+      let exported;
+      try { exported = cached.exports[name]; } catch { continue; }
+      const print = fingerprint(exported, 1);
+      if (print) state.set(`${file.replace(root, "")}:${name}`, print);
+    }
+  }
+  if (previousState) {
+    for (const [key, print] of state) {
+      const before = previousState.get(key);
+      if (!before) continue;
+      const changes = [];
+      for (const [prop, value] of print) if (before.get(prop) !== value) changes.push(`${prop}: ${before.get(prop)} -> ${value}`);
+      for (const prop of before.keys()) if (!print.has(prop)) changes.push(`${prop}: removed`);
+      if (changes.length) console.error(`[state] ${key}\n    ${changes.slice(0, 6).join("\n    ")}${changes.length > 6 ? `\n    (+${changes.length - 6} more)` : ""}`);
+    }
+  }
+  previousState = state;
+  return state;
+};
+globalThis.__nodeTestSpike.dumpState = (file) => {
+  previousState = null;
+  const state = stateDiff();
+  previousState = null;
+  fs.writeFileSync(file, JSON.stringify(Object.fromEntries([...state].map(([key, print]) => [key, Object.fromEntries(print)])), null, 1));
+};
 let baselineVisualizations = null;
 try {
   baselineVisualizations = new Set(require("metabase/viz-core/lib/registry").visualizations.keys());
