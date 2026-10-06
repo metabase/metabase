@@ -1,0 +1,107 @@
+.preview {
+  flex: 1;
+  min-width: 0;
+  padding: 2rem;
+  overflow: auto;
+  background-color: var(--mb-color-background_page-primary);
+  border: 1px solid var(--mb-color-border-neutral);
+  border-right: none;
+  border-top-left-radius: var(--default-border-radius);
+  border-bottom-left-radius: var(--default-border-radius);
+}
+
+.sidePanel {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  background-color: var(--mb-color-background_page-primary);
+  border: 1px solid var(--mb-color-border-neutral);
+  border-top-right-radius: var(--default-border-radius);
+  border-bottom-right-radius: var(--default-border-radius);
+}
+
+.sidePanelContent {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+
+/* A wide, invisible hit area centered on the panel's left border */
+.resizeHandle {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: -5px;
+  width: 9px;
+  z-index: 1;
+  cursor: col-resize;
+
+  /* Drawn over the panel's left border, highlighted while hovering or dragging */
+  &::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 4px;
+    width: 1px;
+    background-color: transparent;
+  }
+
+  &:hover::after,
+  &[data-resizing]::after {
+    background-color: var(--mb-color-border-strong);
+  }
+}
+
+.noSelect {
+  user-select: none;
+}
+
+.statisticLink {
+  :hover {
+    color: var(--mb-color-core-brand);
+  }
+}
+
+/* The owner picker reads as plain text until clicked, like on the table page */
+.ownerInputRoot {
+  flex-grow: 1;
+}
+
+.ownerInput {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  height: 1rem;
+  min-height: 1rem;
+  cursor: pointer;
+
+  &[data-expanded="true"] {
+    cursor: text;
+  }
+
+  &[data-disabled] {
+    background: transparent;
+    cursor: not-allowed;
+  }
+}
+
+.ownerInputSelected {
+  font-weight: bold;
+}
+
+.ownerInputSection {
+  width: 1rem;
+  height: 1rem;
+  cursor: pointer;
+
+  &[data-position="left"] {
+    display: none;
+  }
+
+  svg {
+    width: 0.75rem !important;
+    height: 0.75rem !important;
+  }
+}

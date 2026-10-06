@@ -3,12 +3,17 @@ import { c, t } from "ttag";
 
 import { Link, type LinkProps } from "metabase/common/components/Link";
 import { ToolbarButton } from "metabase/common/components/ToolbarButton";
+import {
+  useCanUseLibraryDashboards,
+  useIsInLibraryDashboards,
+} from "metabase/common/data-studio/library-dashboards";
 import { useDashboardContext } from "metabase/dashboard/context/context";
 import { useRefreshDashboard } from "metabase/dashboard/hooks";
 import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
 import { PLUGIN_CACHING, PLUGIN_MODERATION } from "metabase/plugins";
 import { useLocation } from "metabase/router";
 import { Icon, Menu } from "metabase/ui";
+import * as Urls from "metabase/urls";
 import { parseSearchQuery } from "metabase/utils/browser";
 
 import {
@@ -62,6 +67,13 @@ const DashboardActionMenuInner = ({
     parameterQueryParams,
   });
 
+  // PROTOTYPE: link Library dashboards back to Data Studio
+  const canUseLibraryDashboards = useCanUseLibraryDashboards();
+  const isInLibrary = useIsInLibraryDashboards(dashboard?.collection, {
+    skip: !canUseLibraryDashboards,
+  });
+  const isLibraryDashboard = canUseLibraryDashboards && isInLibrary;
+
   const moderationItems = PLUGIN_MODERATION.useDashboardMenuItems(
     dashboard ?? undefined,
     refreshDashboard,
@@ -106,6 +118,17 @@ const DashboardActionMenuInner = ({
           <AutoRefreshMenuOptions onSelect={() => handleOpenChange(false)} />
         ) : (
           <>
+            {isLibraryDashboard && (
+              <>
+                <Menu.Item
+                  leftSection={<Icon name="table" />}
+                  component={ForwardRefLink}
+                  to={Urls.dataStudioLibraryDashboard(dashboard.id)}
+                >{t`View in Data Studio`}</Menu.Item>
+                <Menu.Divider />
+              </>
+            )}
+
             {canResetFilters && (
               <Menu.Item
                 leftSection={<Icon name="revert" />}

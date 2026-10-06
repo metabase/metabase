@@ -1,6 +1,7 @@
 import { useCallback } from "react";
 
 import { PERSONAL_COLLECTIONS } from "metabase/common/collections/constants";
+import { isLibraryDashboardsCollection } from "metabase/common/data-studio/library-dashboards-utils";
 import type { IconData, ObjectWithModel } from "metabase/common/utils/icon";
 import { modelIconMap } from "metabase/common/utils/icon";
 import { PLUGIN_CUSTOM_VIZ } from "metabase/plugins";
@@ -51,6 +52,14 @@ export const useGetIconBase = () => {
 
       if (item.model === "collection" && item.id === "databases") {
         return { name: "database" };
+      }
+
+      if (
+        item.model === "collection" &&
+        (item.type === "library-dashboards" ||
+          isLibraryDashboardsCollection(item))
+      ) {
+        return { name: "dashboard" };
       }
 
       if (item.model === "collection" && item.is_library_root === true) {

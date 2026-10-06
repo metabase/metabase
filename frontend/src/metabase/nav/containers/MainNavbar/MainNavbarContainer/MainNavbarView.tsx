@@ -13,6 +13,7 @@ import {
 import { CollapseSection } from "metabase/common/components/CollapseSection";
 import ErrorBoundary from "metabase/common/components/ErrorBoundary";
 import { Tree } from "metabase/common/components/tree";
+import { isLibraryDashboardsCollection } from "metabase/common/data-studio/library-dashboards";
 import { useIsAtHomepageDashboard } from "metabase/common/hooks/use-is-at-homepage-dashboard";
 import { useShowOtherUsersCollections } from "metabase/common/hooks/use-show-other-users-collections";
 import {
@@ -143,7 +144,11 @@ export function MainNavbarView({
       const regularCollections = collections.filter((c) => {
         const isNormalCollection =
           !isRootTrashCollection(c) && !isExamplesCollection(c);
-        return isNormalCollection && !isLibraryCollection(c);
+        return (
+          isNormalCollection &&
+          !isLibraryCollection(c) &&
+          !isLibraryDashboardsCollection(c)
+        );
       });
 
       const collectionsByCategory = {

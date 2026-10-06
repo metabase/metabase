@@ -1,6 +1,7 @@
 import type {
   CardId,
   CollectionId,
+  DashboardId,
   DatabaseId,
   ErdParams,
   FieldId,
@@ -103,6 +104,28 @@ export function dataStudioLibrary({
     query = `?${params.toString()}`;
   }
   return `${ROOT_URL}/library${query}`;
+}
+
+export function dataStudioLibraryDashboards() {
+  return `${ROOT_URL}/library/dashboards`;
+}
+
+export function dataStudioLibraryDashboard(dashboardId: DashboardId) {
+  return `${dataStudioLibraryDashboards()}/${dashboardId}`;
+}
+
+export function dataStudioLibraryDashboardContents(dashboardId: DashboardId) {
+  return `${dataStudioLibraryDashboard(dashboardId)}/contents`;
+}
+
+export function dataStudioLibraryDashboardUsageStats(dashboardId: DashboardId) {
+  return `${dataStudioLibraryDashboard(dashboardId)}/usage`;
+}
+
+export function dataStudioLibraryDashboardDependencies(
+  dashboardId: DashboardId,
+) {
+  return `${dataStudioLibraryDashboard(dashboardId)}/dependencies`;
 }
 
 export function dataStudioTable(tableId: TableId) {

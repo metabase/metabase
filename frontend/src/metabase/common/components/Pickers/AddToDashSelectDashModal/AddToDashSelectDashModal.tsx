@@ -4,6 +4,7 @@ import { t } from "ttag";
 import { useGetMostRecentlyViewedDashboardQuery } from "metabase/api";
 import { ROOT_COLLECTION } from "metabase/common/collections/constants";
 import { canPlaceEntityInCollectionOrDescendants } from "metabase/common/data-studio/collection-utils";
+import { useCanUseLibraryDashboards } from "metabase/common/data-studio/library-dashboards";
 import { getUserPersonalCollectionId } from "metabase/current-user";
 import { useSelector } from "metabase/redux";
 import * as Urls from "metabase/urls";
@@ -43,6 +44,7 @@ export const AddToDashSelectDashModal = ({
   onChangeLocation,
 }: AddToDashSelectDashModalProps) => {
   const personalCollectionId = useSelector(getUserPersonalCollectionId);
+  const canUseLibraryDashboards = useCanUseLibraryDashboards();
   const { data: mostRecentlyViewedDashboard } =
     useGetMostRecentlyViewedDashboardQuery();
 
@@ -112,6 +114,7 @@ export const AddToDashSelectDashModal = ({
         !canPlaceEntityInCollectionOrDescendants(
           "dashboard",
           getCollectionType(item),
+          { canUseLibraryDashboards },
         )
       ) {
         return true;
@@ -119,7 +122,11 @@ export const AddToDashSelectDashModal = ({
 
       return false;
     },
-    [isQuestionInPersonalCollection, personalCollectionId],
+    [
+      isQuestionInPersonalCollection,
+      personalCollectionId,
+      canUseLibraryDashboards,
+    ],
   );
 
   return (

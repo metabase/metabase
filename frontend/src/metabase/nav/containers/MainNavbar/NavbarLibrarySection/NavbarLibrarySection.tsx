@@ -10,6 +10,7 @@ import {
 import { CollapseSection } from "metabase/common/components/CollapseSection";
 import ErrorBoundary from "metabase/common/components/ErrorBoundary";
 import { Tree } from "metabase/common/components/tree";
+import { isLibraryDashboardsCollection } from "metabase/common/data-studio/library-dashboards";
 import {
   SidebarHeading,
   SidebarSection,
@@ -117,7 +118,20 @@ export function NavbarLibrarySection({
       t`Metrics`,
     );
 
-    return [dataTree, metricsTree].filter(
+    // PROTOTYPE: Library › Dashboards is a top-level collection shown here
+    const dashboardsCollection = collections.find(
+      isLibraryDashboardsCollection,
+    );
+    const dashboardsTree: CollectionTreeItem | null = dashboardsCollection
+      ? {
+          ...dashboardsCollection,
+          ...buildCollectionTree([dashboardsCollection])[0],
+          name: t`Dashboards`,
+          icon: { name: "dashboard" },
+        }
+      : null;
+
+    return [dashboardsTree, dataTree, metricsTree].filter(
       (node): node is CollectionTreeItem => node != null,
     );
   }, [collections]);

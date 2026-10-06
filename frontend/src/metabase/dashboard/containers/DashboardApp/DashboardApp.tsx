@@ -1,5 +1,6 @@
 import cx from "classnames";
 import { useEffect, useMemo, useState } from "react";
+import { usePrevious } from "react-use";
 
 import ErrorBoundary from "metabase/common/components/ErrorBoundary";
 import { isRouteInSync } from "metabase/common/hooks/is-route-in-sync";
@@ -47,8 +48,40 @@ import { getDocumentTitle, getFavicon } from "../../selectors";
 import { useDashboardLocationSync } from "./use-dashboard-location-sync";
 import { useSlowCardNotification } from "./use-slow-card-notification";
 
+/**
+ * PROTOTYPE: Data Studio opens Library dashboards here in edit mode, passing
+ * `returnTo` in the location state. Once editing ends (save or cancel), send
+ * the user back.
+ */
+function useReturnAfterEditing(location: Location) {
+  const navigate = useNavigate();
+  const { isEditing } = useDashboardContext();
+  const wasEditing = usePrevious(isEditing);
+  // captured on mount, since later URL syncs replace the location state
+  const [returnTo] = useState(() => getReturnTo(location.state));
+
+  useEffect(() => {
+    if (returnTo && wasEditing && !isEditing) {
+      navigate(returnTo);
+    }
+  }, [returnTo, wasEditing, isEditing, navigate]);
+}
+
+function getReturnTo(state: unknown): string | undefined {
+  if (
+    typeof state === "object" &&
+    state != null &&
+    "returnTo" in state &&
+    typeof state.returnTo === "string"
+  ) {
+    return state.returnTo;
+  }
+  return undefined;
+}
+
 function DashboardAppInner({ location }: { location: Location }) {
   useDashboardLocationSync({ location });
+  useReturnAfterEditing(location);
   const pageFavicon = useSelector(getFavicon);
   useFavicon({ favicon: pageFavicon });
   useSlowCardNotification();

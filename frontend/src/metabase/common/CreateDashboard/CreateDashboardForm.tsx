@@ -6,6 +6,7 @@ import { useCreateDashboardMutation } from "metabase/api";
 import FormCollectionPicker from "metabase/common/collections/containers/FormCollectionPicker/FormCollectionPicker";
 import { useInitialCollectionId } from "metabase/common/collections/hooks";
 import { FormFooter } from "metabase/common/components/FormFooter";
+import type { EntityPickerModalProps } from "metabase/common/components/Pickers";
 import {
   DASHBOARD_DESCRIPTION_MAX_LENGTH,
   DASHBOARD_NAME_MAX_LENGTH,
@@ -54,6 +55,7 @@ export interface CreateDashboardProperties {
 export interface CreateDashboardFormOwnProps {
   collectionId?: CollectionId | null; // can be used by `getInitialCollectionId`
   targetCollection?: CollectionId | null;
+  collectionPickerModalProps?: Partial<EntityPickerModalProps>;
   onCreate?: (dashboard: Dashboard) => void;
   onCancel?: () => void;
 }
@@ -61,6 +63,7 @@ export interface CreateDashboardFormOwnProps {
 export function CreateDashboardForm({
   collectionId,
   targetCollection,
+  collectionPickerModalProps,
   onCreate,
   onCancel,
 }: CreateDashboardFormOwnProps) {
@@ -121,6 +124,7 @@ export function CreateDashboardForm({
               name="collection_id"
               title={t`Which collection should this go in?`}
               entityType="dashboard"
+              collectionPickerModalProps={collectionPickerModalProps}
             />
           )}
           <FormFooter mt="lg">

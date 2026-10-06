@@ -17,6 +17,7 @@ import {
   isInDbTree,
 } from "metabase/common/components/Pickers";
 import { isItemInCollectionOrItsDescendants } from "metabase/common/components/Pickers/utils";
+import { useCanUseLibraryDashboards } from "metabase/common/data-studio/library-dashboards";
 import { PLUGIN_LIBRARY, PLUGIN_TENANTS } from "metabase/plugins";
 import type { CollectionId, CollectionItem } from "metabase-types/api";
 
@@ -52,6 +53,7 @@ export const MoveModal = ({
   canMoveToDashboard,
   isDisabledItem,
 }: MoveModalProps) => {
+  const canUseLibraryDashboards = useCanUseLibraryDashboards();
   const shouldDisableItem = useCallback(
     (item: OmniPickerItem): boolean => {
       if (!movingItem) {
@@ -70,13 +72,18 @@ export const MoveModal = ({
       }
 
       if (item.model === "collection") {
-        if (!canMoveCollectionToLibraryDestination(movingItem, item)) {
+        if (
+          !canMoveCollectionToLibraryDestination(movingItem, item, {
+            canUseLibraryDashboards,
+          })
+        ) {
           return true;
         }
 
         return !canPlaceEntityInCollectionOrDescendants(
           movingItem.model,
           getCollectionType(item),
+          { canUseLibraryDashboards },
         );
       }
 
@@ -96,7 +103,7 @@ export const MoveModal = ({
 
       return false;
     },
-    [movingItem, isDisabledItem],
+    [movingItem, isDisabledItem, canUseLibraryDashboards],
   );
 
   const canSelectItem = useCallback(
@@ -208,6 +215,9 @@ export const MoveModal = ({
 export function canMoveCollectionToLibraryDestination(
   movingItem: OmniPickerCollectionItem,
   destination: OmniPickerCollectionItem,
+  {
+    canUseLibraryDashboards = false,
+  }: { canUseLibraryDashboards?: boolean } = {},
 ) {
   if (movingItem.model !== "collection") {
     return true;
@@ -215,12 +225,21 @@ export function canMoveCollectionToLibraryDestination(
 
   const destinationType = getCollectionType(destination);
 
+  // PROTOTYPE: regular folders can live in Library › Dashboards
+  if (destinationType === "library-dashboards") {
+    return !PLUGIN_LIBRARY.isLibraryCollectionType(movingItem.type);
+  }
+
   if (!PLUGIN_LIBRARY.isLibraryCollectionType(destinationType)) {
     return true;
   }
 
   if (destinationType === "library") {
-    return PLUGIN_LIBRARY.isLibrarySubCollectionType(movingItem.type);
+    return (
+      PLUGIN_LIBRARY.isLibrarySubCollectionType(movingItem.type) ||
+      (canUseLibraryDashboards &&
+        !PLUGIN_LIBRARY.isLibraryCollectionType(movingItem.type))
+    );
   }
 
   return movingItem.type === destinationType;
