@@ -2745,7 +2745,7 @@
                     token  (str (random-uuid))]
                 (oidc.store/save-refresh-token (:token-store (oauth-server/get-provider)) token
                                                (str (mt/user->id :crowberto)) (:client_id client)
-                                               ["agent:content:read" "agent:resource:read"] nil legacy)
+                                               ["agent:content:read"] nil legacy)
                 (let [refreshed (access-token-resource (refresh 200 {:refresh_token token}))]
                   (is (= legacy refreshed))
                   (is (oauth-server/mcp-resource? refreshed)))))

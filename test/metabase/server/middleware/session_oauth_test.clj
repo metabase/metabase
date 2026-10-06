@@ -447,14 +447,14 @@
                  (is (nil? (user-id-at token "/api/user/current"))))))))))))
 
 (deftest migrated-legacy-mcp-token-is-confined-to-the-mcp-endpoint-test
-  (testing "A token shaped like one `BindLegacyMcpOAuthTokens` rebinds (pre-binding MCP scopes, including
-            agent:resource:read, and the migration's localhost MCP resource) is refused by the agent API's
+  (testing "A token shaped like one `BindLegacyMcpOAuthTokens` rebinds from the old baseline (its MCP scopes, with
+            agent:resource:read dropped, and the migration's localhost MCP resource) is refused by the agent API's
             read-resource endpoint and accepted at the MCP endpoint, whatever the Site URL"
     (mt/with-temporary-setting-values [site-url "https://mb.example.com"]
       (do-with-committed-oauth-client!
        (fn [client-id]
          (let [token (oauth-server.tu/insert-access-token! (mt/user->id :rasta) client-id
-                                                           ["agent:content:read" "agent:query:run" "agent:resource:read"]
+                                                           ["agent:content:read" "agent:query:run"]
                                                            :resource ["http://localhost/api/metabase-mcp"])]
            (is (= 401 (bearer-status token :post "agent/v1/read-resource" {:uris ["metabase://databases"]}
                                      :expected-status 401)))

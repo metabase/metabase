@@ -2307,50 +2307,99 @@
                              :where  [:= :registration_type "dynamic"]})))
 
 ;;; MCP audience binding: an access token's stored RFC 8707 `resource` decides where it works, and a token bound to
-;;; no resource is a REST token, refused at the MCP endpoint. MCP clients that sent no `resource` before binding hold
-;;; such tokens, scoped with the MCP v2 scopes of that time. Bind them to the MCP endpoint, so they keep working there
-;;; and stop working anywhere else.
+;;; no resource is a REST token, refused at the MCP endpoint. Tokens minted before binding are brought in line with
+;;; what `/oauth/authorize` grants as of this release. This mirrors that narrowing
+;;; (`metabase.oauth-server.api.oauth/classify-scopes`), frozen here against later edits.
 ;;;
-;;; A token is bound when every scope it holds is one of the six pre-binding MCP v2 scopes, AND at least one of them
-;;; is not `agent:resource:read`. That scope alone is also the declared scope of the agent API's read-resource
-;;; endpoint, so a token holding only it may be a legitimate agent API REST token.
+;;; The MCP scopes are the five below. `agent:resource:read` is not an MCP scope: it is dropped only from a token whose
+;;; other scopes are all MCP scopes, the shape of the old MCP baseline. For a token with no resource:
+;;; - MCP scopes only (besides `agent:resource:read`): bound to the MCP endpoint, keeping only the MCP scopes.
+;;; - A mix of MCP and other scopes: the MCP scopes are dropped, keeping `agent:resource:read` and every other scope.
+;;; - Anything else, including `agent:resource:read` alone: unchanged.
+;;; A token bound to the MCP endpoint keeps only its MCP scopes. A token bound to any other resource loses its MCP
+;;; scopes. Either is deleted when no scope is left. A token with an empty or unparsable scope or an unparsable
+;;; resource is unchanged. No table references these tokens, so a row can be deleted on its own.
 ;;;
-;;; This rule is frozen, and differs from the one `/oauth/authorize` applies to new requests
-;;; (`metabase.oauth-server.api.oauth/classify-scopes`), which matches the current five MCP scopes and treats
-;;; `agent:resource:read` as a non-MCP scope.
-;;;
-;;; The resource is always `http://localhost/api/metabase-mcp`. Binding is decided by the resource's path, not its
-;;; host, and reading `site-url` here would mean handling an encrypted setting row and an environment override.
+;;; The resource written is always `http://localhost/api/metabase-mcp`. Binding is decided by the resource's path, not
+;;; its host, and reading `site-url` here would mean handling an encrypted setting row and an environment override.
 
 (def ^:private ^:no-doc legacy-mcp-token-resource
   ["http://localhost/api/metabase-mcp"])
 
-(defn- legacy-mcp-token?
-  "Whether the `scope` column value holds an array of scopes that are all MCP v2 scopes as they were before audience
-  binding, at least one of which is not `agent:resource:read`. A token holding only `agent:resource:read` may be an
-  agent API token for the read-resource endpoint, which declares that scope, so it is left alone."
-  [scope]
-  (let [scopes (json-array-out scope)]
-    (boolean (and (every? (set mcp-v2-scopes) scopes)
-                  (some (disj (set mcp-v2-scopes) "agent:resource:read") scopes)))))
+(def ^:private ^:no-doc binding-mcp-scopes
+  "The MCP scopes as of audience binding."
+  #{"agent:content:read" "agent:content:write" "agent:query:run" "agent:sql:run" "agent:delivery:write"})
+
+(def ^:private ^:no-doc binding-mcp-endpoint-paths
+  "The MCP endpoint paths as of audience binding."
+  ["/api/metabase-mcp" "/api/mcp"])
+
+(defn- binding-resource
+  "`:mcp` when the `resource` column value names an MCP endpoint path under any host and subpath, `:other` when it names
+  anything else, nil when it is NULL, and `:unparsable` when it is not a JSON array of absolute URIs."
+  [resource]
+  (if (nil? resource)
+    nil
+    (let [uris  (json-array-out resource)
+          paths (when (and uris (every? string? uris))
+                  (try (mapv #(let [uri (java.net.URI. ^String %)]
+                                (when (.isAbsolute uri)
+                                  (str/replace (or (.getPath uri) "") #"/+$" "")))
+                             uris)
+                       (catch java.net.URISyntaxException _ nil)))]
+      (cond
+        (or (empty? paths) (some nil? paths)) :unparsable
+        (some (fn [path] (some #(str/ends-with? path %) binding-mcp-endpoint-paths)) paths) :mcp
+        :else :other))))
+
+(defn- narrowed-legacy-token
+  "The new `{:scope ... :resource ...}` column values of an OAuth token row with `scope` and `resource` column values,
+  `:delete` when the row is to be deleted, or nil when it is unchanged."
+  [{:keys [scope resource]}]
+  (let [scopes (json-array-out scope)
+        bound  (binding-resource resource)]
+    (when (and (seq scopes) (every? string? scopes) (not= :unparsable bound))
+      (let [others (remove #{"agent:resource:read"} scopes)
+            mcp    (filterv binding-mcp-scopes scopes)
+            non    (filterv (complement binding-mcp-scopes) scopes)
+            [kept new-resource]
+            (case bound
+              nil    (cond
+                       (and (seq others) (every? binding-mcp-scopes others))
+                       [mcp legacy-mcp-token-resource]
+
+                       (and (some binding-mcp-scopes others) (some (complement binding-mcp-scopes) others))
+                       [non nil]
+
+                       :else
+                       [scopes nil])
+              :mcp   [mcp (json-array-out resource)]
+              :other [non (json-array-out resource)])]
+        (cond
+          (empty? kept)                                                  :delete
+          (and (= kept scopes) (= new-resource (json-array-out resource))) nil
+          :else                                                          {:scope    (json/encode kept)
+                                                                          :resource (some-> new-resource json/encode)})))))
 
 (defn- bind-legacy-mcp-oauth-tokens!
-  "Bind every OAuth access and refresh token that has no resource and passes [[legacy-mcp-token?]] to the MCP
-  endpoint. Idempotent: a bound token is never selected again."
+  "Narrow every OAuth access and refresh token to what `/oauth/authorize` grants as of audience binding, binding MCP
+  tokens with no resource to the MCP endpoint, per the rule above. A row is written only when its values change, so
+  running this again changes nothing."
   []
   (doseq [table [:oauth_access_token :oauth_refresh_token]]
-    ;; Collect the ids first: updating rows while a reducible query over the same table is open is not safe on every
-    ;; app DB.
-    (let [ids (into []
-                    (comp (filter (comp legacy-mcp-token? :scope))
-                          (map :id))
-                    (t2/reducible-query {:select [:id :scope]
-                                         :from   [table]
-                                         :where  [:= :resource nil]}))]
-      (doseq [batch (partition-all 1000 ids)]
-        (t2/query {:update table
-                   :set    {:resource (json/encode legacy-mcp-token-resource)}
-                   :where  [:and [:in :id batch] [:= :resource nil]]})))))
+    ;; Collect the changes first: writing rows while a reducible query over the same table is open is not safe on
+    ;; every app DB.
+    (let [changes (into []
+                        (keep (fn [row]
+                                (when-let [change (narrowed-legacy-token row)]
+                                  [(:id row) change])))
+                        (t2/reducible-query {:select [:id :scope :resource] :from [table]}))]
+      (doseq [batch (partition-all 1000 (keep (fn [[id change]] (when (= :delete change) id)) changes))]
+        (t2/query {:delete-from table :where [:in :id batch]}))
+      ;; Each row gets its own values, so updates go one row at a time.
+      (doseq [[id change] changes
+              :when (not= :delete change)]
+        (t2/query {:update table :set change :where [:= :id id]})))))
 
 (define-migration BindLegacyMcpOAuthTokens
   (bind-legacy-mcp-oauth-tokens!))

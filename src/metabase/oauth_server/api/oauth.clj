@@ -499,8 +499,8 @@
     is `scopes` without the MCP scopes, keeping `agent:resource:read` and every other non-MCP scope.
   - `:non-mcp` otherwise, including `agent:resource:read` alone. `scopes'` is `scopes`.
 
-  This is the current MCP rule, not the frozen one `BindLegacyMcpOAuthTokens` applies to tokens minted before binding:
-  that migration matches the six MCP scopes of that time, `agent:resource:read` among them."
+  `BindLegacyMcpOAuthTokens` applies a frozen copy of this rule to tokens minted before binding. This one reads the
+  live MCP scopes, so the two can drift apart if the MCP scopes change."
   [scopes]
   (let [mcp    (set (mcp/v2-scopes))
         others (remove #{agent-resource-read} scopes)]

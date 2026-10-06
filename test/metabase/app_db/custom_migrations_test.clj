@@ -3114,8 +3114,9 @@
                                                      :client_type       "public"
                                                      :created_at        :%now
                                                      :updated_at        :%now})
-            mcp-resource  ["http://localhost/api/metabase-mcp"]
-            other         ["https://elsewhere.example.com/api"]
+            mcp           ["http://localhost/api/metabase-mcp"]
+            other         ["http://localhost/api"]
+            enc           json/encode
             insert-token! (fn [table scope resource]
                             (t2/insert-returning-pk!
                              table (cond-> {:token      (str (random-uuid))
@@ -3124,40 +3125,61 @@
                                             :scope      scope
                                             :expiry     (+ (System/currentTimeMillis) 3600000)
                                             :created_at :%now}
-                                     resource (assoc :resource (json/encode resource)))))
-            ;; label -> [scope column value, stored resource, expected resource after the migration]
-            cases         {"(a) MCP scopes with agent:resource:read"
-                           [(json/encode ["agent:content:read" "agent:query:run" "agent:resource:read"]) nil
-                            mcp-resource]
-                           "(b) MCP scopes without agent:resource:read"
-                           [(json/encode ["agent:content:read" "agent:sql:run"]) nil mcp-resource]
-                           "(c) MCP scopes plus an agent API scope"
-                           [(json/encode ["agent:content:read" "agent:search"]) nil nil]
-                           "(d) mb:full"
-                           [(json/encode ["mb:full"]) nil nil]
-                           "(e) already MCP-bound"
-                           [(json/encode ["agent:content:read"]) ["https://mb.example.com/api/mcp"]
-                            ["https://mb.example.com/api/mcp"]]
-                           "(f) bound to another resource"
-                           [(json/encode ["agent:content:read"]) other other]
-                           "(g) empty scope"
-                           [(json/encode []) nil nil]
-                           "(g) malformed scope"
-                           ["not json" nil nil]
-                           "(h) only agent:resource:read, the scope of the agent API's read-resource endpoint"
-                           [(json/encode ["agent:resource:read"]) nil nil]
-                           "(i) agent:resource:read plus agent:content:read"
-                           [(json/encode ["agent:resource:read" "agent:content:read"]) nil mcp-resource]}
+                                     resource (assoc :resource (enc resource)))))
+            ;; label -> [scope column value, stored resource, expected row after the migration]. The expected row is
+            ;; `{:scope <decoded scope or the raw value> :resource <decoded resource>}`, or `:deleted`.
+            cases         {"(1) NULL, the old baseline: bound, agent:resource:read dropped"
+                           [(enc ["agent:content:read" "agent:query:run" "agent:resource:read"]) nil
+                            {:scope ["agent:content:read" "agent:query:run"] :resource mcp}]
+                           "(2) NULL, a mix: MCP scopes stripped, unbound"
+                           [(enc ["agent:content:read" "agent:search"]) nil
+                            {:scope ["agent:search"] :resource nil}]
+                           "(3) NULL, a mix with agent:resource:read: only MCP scopes stripped"
+                           [(enc ["agent:content:read" "agent:search" "agent:resource:read"]) nil
+                            {:scope ["agent:search" "agent:resource:read"] :resource nil}]
+                           "(4) NULL, agent:resource:read alone: unchanged"
+                           [(enc ["agent:resource:read"]) nil {:scope ["agent:resource:read"] :resource nil}]
+                           "(5) NULL, mb:full: unchanged"
+                           [(enc ["mb:full"]) nil {:scope ["mb:full"] :resource nil}]
+                           "(6) NULL, v1 scopes: unchanged"
+                           [(enc ["agent:sql:execute" "agent:question:create"]) nil
+                            {:scope ["agent:sql:execute" "agent:question:create"] :resource nil}]
+                           "(7) MCP resource, MCP scopes only: unchanged"
+                           [(enc ["agent:content:read" "agent:query:run"]) mcp
+                            {:scope ["agent:content:read" "agent:query:run"] :resource mcp}]
+                           "(8) MCP resource, a mix: only MCP scopes kept"
+                           [(enc ["agent:content:read" "agent:search" "mb:full"]) mcp
+                            {:scope ["agent:content:read"] :resource mcp}]
+                           "(9) MCP resource, no MCP scope: deleted"
+                           [(enc ["agent:search"]) mcp :deleted]
+                           "(10) the MCP alias under another host: only MCP scopes kept"
+                           [(enc ["agent:query:run" "agent:search"]) ["https://other.example/api/mcp"]
+                            {:scope ["agent:query:run"] :resource ["https://other.example/api/mcp"]}]
+                           "(11) another resource, a mix: MCP scopes stripped"
+                           [(enc ["agent:content:read" "agent:search"]) other
+                            {:scope ["agent:search"] :resource other}]
+                           "(12) another resource, MCP scopes only: deleted"
+                           [(enc ["agent:content:read" "agent:query:run"]) other :deleted]
+                           "(13) empty scope: unchanged"
+                           [(enc []) nil {:scope [] :resource nil}]
+                           "(13) malformed scope: unchanged"
+                           ["not json" nil {:scope "not json" :resource nil}]
+                           "(14) NULL, agent:resource:read with one MCP scope: bound"
+                           [(enc ["agent:content:read" "agent:resource:read"]) nil
+                            {:scope ["agent:content:read"] :resource mcp}]}
             rows          (into {} (for [table           [:oauth_access_token :oauth_refresh_token]
                                          [label [scope resource]] cases]
                                      [[table label] (insert-token! table scope resource)]))
-            resource-of   (fn [table id]
-                            (some-> (:resource (t2/query-one {:select [:resource] :from [table] :where [:= :id id]}))
-                                    json/decode))
+            decode        (fn [v] (try (json/decode v) (catch Exception _ v)))
+            row-of        (fn [table id]
+                            (if-let [row (t2/query-one {:select [:scope :resource] :from [table] :where [:= :id id]})]
+                              {:scope    (decode (:scope row))
+                               :resource (some-> (:resource row) json/decode)}
+                              :deleted))
             check!        (fn []
                             (doseq [[[table label] id] rows]
                               (testing (str (name table) " " label)
-                                (is (= (last (cases label)) (resource-of table id))))))]
+                                (is (= (last (cases label)) (row-of table id))))))]
         (migrate!)
         (check!)
         (testing "running it again changes nothing more"
