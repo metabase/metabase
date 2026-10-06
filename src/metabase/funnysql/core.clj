@@ -822,8 +822,12 @@
                   :like     " LIKE "
                   :ilike    " ILIKE "
                   :not-like " NOT LIKE "
-                  (str \space (name f) \space))]
-      (-interpose! f-str args context))))
+                  (str \space (name f) \space))
+          ;; wrap nested binary function calls in parens to avoid order-of-operation ambiguity
+          arg!  #((if (binary-fn-call? %)
+                    -parens!
+                    compile!) % context)]
+      (interpose-fn args arg! #(append-sql! context f-str)))))
 
 (defn- -simple-fn! [f args context]
   (let [f (name f)]

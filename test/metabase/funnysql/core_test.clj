@@ -1129,7 +1129,7 @@
                                                   (h2x/round (h2x/+ (h2x/* 2 :average_execution_time) 1)
                                                              [:inline 0]))}
        :where  [:= :id [:inline 1]]}
-      ["UPDATE \"query\" SET \"average_execution_time\" = CAST(round(2 * \"average_execution_time\" + 1, 0) AS integer) WHERE \"id\" = 1"]
+      ["UPDATE \"query\" SET \"average_execution_time\" = CAST(round((2 * \"average_execution_time\") + 1, 0) AS integer) WHERE \"id\" = 1"]
 
       {:select [[(h2x/abs :x)]] :from [:t]}   ["SELECT abs(\"x\") FROM \"t\""]
       {:select [[(h2x/ceil :x)]] :from [:t]}  ["SELECT ceil(\"x\") FROM \"t\""]
@@ -1180,3 +1180,8 @@
          clojure.lang.ExceptionInfo
          #"No matching clause: :/"
          (funnysql/format [:/ 1] :postgres)))))
+
+(deftest ^:parallel nested-arithmetic-test
+  (testing "Wrap nested arithmetic expressions in parens"
+    (is (= ["1 * (2 + 3)"]
+           (funnysql/format [:* 1 [:+ 2 3]] :postgres)))))
