@@ -2435,3 +2435,13 @@ serdes/meta:
       (is (= "main" (remote-sync.settings/remote-sync-branch)))
       (impl/run-task-body! (new-task-id) "feature" (fn [_] {:status :success}))
       (is (= "feature" (remote-sync.settings/remote-sync-branch))))))
+
+(deftest keep-library-dashboards-test
+  (testing "An import with the Library keeps its Dashboards collection, even from a repo that predates it"
+    (is (= #{collection/library-entity-id collection/library-dashboards-entity-id "other-collection-xxxxx"}
+           (get-in (#'impl/keep-library-dashboards
+                    {:by-entity-id {"Collection" #{collection/library-entity-id "other-collection-xxxxx"}}})
+                   [:by-entity-id "Collection"]))))
+  (testing "An import without the Library leaves it to be removed with the Library"
+    (is (= {:by-entity-id {"Collection" #{"other-collection-xxxxx"}}}
+           (#'impl/keep-library-dashboards {:by-entity-id {"Collection" #{"other-collection-xxxxx"}}})))))

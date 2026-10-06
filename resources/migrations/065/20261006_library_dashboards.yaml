@@ -1,5 +1,5 @@
 ## The Library gets a Dashboards section next to Data and Metrics. New Libraries create it with the other sections;
-## existing Libraries get it here, with the Library's own collection permissions.
+## existing Libraries get it here, with the Library's own collection permissions and Data Analysts' read-write access.
 
 databaseChangeLog:
   - changeSet:
@@ -34,7 +34,26 @@ databaseChangeLog:
               FROM permissions p
               JOIN collection lib ON lib.id = p.collection_id
               JOIN collection d ON d.entity_id = 'librarylibrarydashbrd'
+              JOIN permissions_group pg ON pg.id = p.group_id
               WHERE lib.entity_id = 'librarylibrarylibrary'
                 AND p.perm_type = 'perms/collection-access'
+                AND (pg.magic_group_type IS NULL OR pg.magic_group_type <> 'data-analyst')
+                AND NOT EXISTS (SELECT 1 FROM permissions x WHERE x.group_id = p.group_id AND x.collection_id = d.id)
+      rollback:
+        - empty: {}
+
+  - changeSet:
+      id: v65.2026-10-06T16:00:02
+      author: ranquild
+      comment: Give Data Analysts read-write access to the Library's Dashboards section
+      changes:
+        - sql:
+            sql: >-
+              INSERT INTO permissions (object, group_id, perm_type, perm_value, collection_id)
+              SELECT CONCAT('/collection/', d.id, '/'), pg.id, 'perms/collection-access', 'read-and-write', d.id
+              FROM permissions_group pg
+              JOIN collection d ON d.entity_id = 'librarylibrarydashbrd'
+              WHERE pg.magic_group_type = 'data-analyst'
+                AND NOT EXISTS (SELECT 1 FROM permissions x WHERE x.group_id = pg.id AND x.collection_id = d.id)
       rollback:
         - empty: {}

@@ -23,7 +23,11 @@
     :error-message         "Can only add metrics to the 'Metrics' collection"}
 
    collection/library-dashboards-collection-type
-   {:allowed-content-types #{:model/Dashboard :dashboard-question collection/library-dashboards-collection-type}
+   {:allowed-content-types #{:model/Dashboard
+                             :dashboard-question
+                             :model/Pulse
+                             :model/Timeline
+                             collection/library-dashboards-collection-type}
     :error-message         "Can only add dashboards to the 'Dashboards' collection"}})
 
 (defenterprise check-allowed-content

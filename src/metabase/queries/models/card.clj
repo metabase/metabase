@@ -862,9 +862,10 @@
     (mu.fn/instrument-ns? *ns*) (mu.fn/validate-output {:fn-name `normalize-card} [:maybe ::queries.schema/card])))
 
 (defn- library-content-type
-  "The content type a Library collection checks `card` against."
+  "The content type a Library collection checks `card` against; serdes loads dashboard questions before their dashboard."
   [card]
-  (if (:dashboard_id card)
+  (if (and (= :question (keyword (:type card)))
+           (or (:dashboard_id card) mi/*deserializing?*))
     :dashboard-question
     (:type card)))
 

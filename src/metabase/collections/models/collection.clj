@@ -247,7 +247,8 @@
 (def ^:private library-metrics-entity-id
   "librarylibrarymetrics")
 
-(def ^:private library-dashboards-entity-id
+(def library-dashboards-entity-id
+  "The entity_id for the Library's Dashboards collection."
   "librarylibrarydashbrd")
 
 (def ^:private library-entity-id?
@@ -256,6 +257,30 @@
     library-data-entity-id
     library-metrics-entity-id
     library-dashboards-entity-id})
+
+(defn- grant-library-collection-permissions!
+  "Gives All Users read and Data Analysts read-write access to the Library `collection`."
+  [collection]
+  (collections.db/delete-permissions-for-collection! (:id collection))
+  (perms/grant-collection-read-permissions! (perms/all-users-group) collection)
+  (perms/grant-collection-readwrite-permissions! (perms/data-analyst-group) collection))
+
+(defn- insert-library-dashboards-collection!
+  "Inserts the Dashboards collection under `library` and returns it."
+  [library]
+  (u/prog1 (collections.db/insert-collection! {:name             "Dashboards"
+                                               :type             library-dashboards-collection-type
+                                               :location         (str "/" (:id library) "/")
+                                               :entity_id        library-dashboards-entity-id
+                                               :is_remote_synced (boolean (:is_remote_synced library))})
+    (grant-library-collection-permissions! <>)))
+
+(defn ensure-library-dashboards-collection!
+  "Creates the Library's Dashboards collection when the Library exists without one, returning the created collection."
+  []
+  (when-let [library (collections.db/collection-with-entity-id library-entity-id)]
+    (when-not (collections.db/collection-with-entity-id library-dashboards-entity-id)
+      (insert-library-dashboards-collection! library))))
 
 (defn create-library-collection!
   "Create the Library collection. Returns Created collection. Throws if it already exists."
@@ -274,15 +299,9 @@
         metrics       (collections.db/insert-collection! {:name      "Metrics"
                                                           :type      library-metrics-collection-type
                                                           :location  base-location
-                                                          :entity_id library-metrics-entity-id})
-        dashboards    (collections.db/insert-collection! {:name      "Dashboards"
-                                                          :type      library-dashboards-collection-type
-                                                          :location  base-location
-                                                          :entity_id library-dashboards-entity-id})]
-    (doseq [col [library data metrics dashboards]]
-      (collections.db/delete-permissions-for-collection! (:id col))
-      (perms/grant-collection-read-permissions! (perms/all-users-group) col)
-      (perms/grant-collection-readwrite-permissions! (perms/data-analyst-group) col))
+                                                          :entity_id library-metrics-entity-id})]
+    (run! grant-library-collection-permissions! [library data metrics])
+    (insert-library-dashboards-collection! library)
     library))
 
 (methodical/defmethod t2/table-name :model/Collection [_model] :collection)
@@ -2521,6 +2540,12 @@
   [collection-id]
   (when collection-id
     (pos-int? (collections.db/collection-count-of-types collection-id (vec library-collection-types)))))
+
+(defn library-dashboards-collection?
+  "Return true if the collection with `collection-id` only holds dashboards and their questions."
+  [collection-id]
+  (when collection-id
+    (pos-int? (collections.db/collection-count-of-types collection-id [library-dashboards-collection-type]))))
 
 (defn collections-in-namespace
   "Return all collections in the given namespace."

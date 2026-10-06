@@ -2,6 +2,9 @@
   (:require
    [clojure.test :refer :all]
    [metabase.collections.models.collection :as collection]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.models.interface :as mi]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -94,6 +97,53 @@
               "basic new collection is rejected")
           (is (= 1 (t2/insert! :model/Collection (assoc new-coll :type collection/library-dashboards-collection-type)))
               "new collection with :type set is allowed"))))))
+
+(deftest library-dashboards-allow-dashboard-companions-test
+  (mt/with-premium-features #{:library}
+    (mt/with-temp [:model/Collection allow-dashboards {:name "Test Base Library" :type collection/library-dashboards-collection-type}
+                   :model/Dashboard  dashboard        {:collection_id (:id allow-dashboards)}]
+      (testing "Dashboards can have subscriptions"
+        (mt/with-temp [:model/Pulse pulse {:dashboard_id (:id dashboard) :collection_id (:id allow-dashboards)}]
+          (is (some? pulse))))
+      (testing "Dashboard questions can have timelines"
+        (mt/with-temp [:model/Timeline timeline {:collection_id (:id allow-dashboards)}]
+          (is (some? timeline)))))))
+
+(deftest library-dashboards-dashboard-questions-are-questions-test
+  (mt/with-premium-features #{:library}
+    (mt/with-temp [:model/Collection allow-dashboards {:name "Test Base Library" :type collection/library-dashboards-collection-type}
+                   :model/Collection allow-metrics    {:name "Test Metrics" :type collection/library-metrics-collection-type}
+                   :model/Dashboard  dashboard        {:collection_id (:id allow-dashboards)}
+                   :model/Card       metric           {:collection_id (:id allow-metrics) :type :metric}]
+      (testing "A metric can't be moved into the Dashboards collection by giving it a dashboard"
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Can only add dashboards to the 'Dashboards' collection"
+                              (t2/update! :model/Card (:id metric) {:dashboard_id (:id dashboard)}))))
+      (testing "Serdes loads dashboard questions before their dashboard"
+        (binding [mi/*deserializing?* true]
+          (is (some? (t2/insert! :model/Card (merge (mt/with-temp-defaults :model/Card)
+                                                    {:type :question :collection_id (:id allow-dashboards)}))))
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Can only add dashboards to the 'Dashboards' collection"
+                                (t2/insert! :model/Card (merge (mt/with-temp-defaults :model/Card)
+                                                               {:type :metric :collection_id (:id allow-dashboards)})))))))))
+
+(deftest deep-copy-dashboard-into-library-dashboards-test
+  (mt/with-premium-features #{:library}
+    (let [mp    (mt/metadata-provider)
+          query (lib/query mp (lib.metadata/table mp (mt/id :venues)))]
+      (mt/with-temp [:model/Collection    allow-dashboards {:name "Test Base Library" :type collection/library-dashboards-collection-type}
+                     :model/Collection    regular          {:name "Regular Collection"}
+                     :model/Card          question         {:collection_id (:id regular) :type :question :dataset_query query}
+                     :model/Card          metric           {:collection_id (:id regular) :type :metric :dataset_query query}
+                     :model/Dashboard     dashboard        {:collection_id (:id regular)}
+                     :model/DashboardCard _                {:dashboard_id (:id dashboard) :card_id (:id question)}
+                     :model/DashboardCard _                {:dashboard_id (:id dashboard) :card_id (:id metric)}]
+        (testing "Copied questions become dashboard questions and metrics stay referenced"
+          (let [copy-id (:id (mt/user-http-request :crowberto :post 200 (str "dashboard/" (:id dashboard) "/copy")
+                                                   {:collection_id (:id allow-dashboards) :is_deep_copy true}))
+                cards   (t2/select :model/Card :id [:in (t2/select-fn-set :card_id :model/DashboardCard :dashboard_id copy-id)])]
+            (is (=? [{:type :metric :id (:id metric) :dashboard_id nil}
+                     {:type :question :dashboard_id copy-id :collection_id (:id allow-dashboards)}]
+                    (sort-by (comp name :type) cards)))))))))
 
 (deftest move-dashboard-into-library-dashboards-test
   (mt/with-premium-features #{:library}

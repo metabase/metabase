@@ -37,11 +37,16 @@ export function canPlaceEntityInCollectionOrDescendants(
     return true;
   }
 
+  // Questions can be saved into the dashboards inside the Dashboards section
+  if (collectionType === "library-dashboards") {
+    return entityType === "card";
+  }
+
   if (collectionType === "library") {
     return (
       canPlaceEntityInCollection(entityType, "library-data") ||
       canPlaceEntityInCollection(entityType, "library-metrics") ||
-      canPlaceEntityInCollection(entityType, "library-dashboards")
+      canPlaceEntityInCollectionOrDescendants(entityType, "library-dashboards")
     );
   }
 

@@ -84,10 +84,12 @@ export const useGetResolvedLibraryCollection = ({
       libraryCollection && hasStuff ? { id: libraryCollection.id } : skipToken,
     );
 
+  // The Dashboards section never holds data sources
   const subcollectionsWithStuff =
     libraryItems?.data.filter(
       (item) =>
         item.model === "collection" &&
+        item.type !== "library-dashboards" &&
         (item.here?.length || item.below?.length),
     ) ?? [];
 
@@ -97,7 +99,10 @@ export const useGetResolvedLibraryCollection = ({
       ({ subcollectionsWithStuff }) => subcollectionsWithStuff?.length === 1,
       () => subcollectionsWithStuff[0],
     )
-    .with({ hasStuff: true }, () => libraryCollection)
+    .when(
+      ({ subcollectionsWithStuff }) => subcollectionsWithStuff.length > 1,
+      () => libraryCollection,
+    )
     .otherwise(() => undefined);
 
   return {
