@@ -189,7 +189,11 @@
       (ts/with-random-dump-dir [dump-dir "data-app-takeover-"]
         (let [app (insert-app!)]
           (write-app-files! dump-dir "sales-ops" (app-yaml "Ld3cXiYs9n8HP3q3FvC7R" "sales-ops") {"dist/index.js" "B"})
-          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Failed to load" (import! dump-dir)))
+          (let [e (try (import! dump-dir) nil (catch clojure.lang.ExceptionInfo e e))]
+            (is (re-find #"Failed to load" (ex-message e)))
+            (testing "the pull says what to do, rather than failing on the slug's unique index"
+              (is (re-find #"named \"sales-ops\" already exists on this instance"
+                           (ex-message (ex-cause e))))))
           (is (=? {:entity_id (:entity_id app)} (t2/select-one :model/DataApp :id (:id app)))))))))
 
 (deftest export-includes-data-apps-test
