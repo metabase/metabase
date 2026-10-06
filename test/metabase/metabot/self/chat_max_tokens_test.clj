@@ -19,6 +19,7 @@
    [metabase.metabot.self.openai :as openai]
    [metabase.metabot.self.openrouter :as openrouter]
    [metabase.metabot.self.vllm :as vllm]
+   [metabase.metabot.self.xai :as xai]
    [metabase.metabot.self.zai :as zai]
    [metabase.test.fixtures :as fixtures]))
 
@@ -69,6 +70,8 @@
        :moonshot   (get (moonshot/moonshot-request-body opts) :max_tokens omitted)
        :mistral    (get (mistral/mistral-request-body opts) :max_tokens omitted)
        :vllm       (get (vllm/vllm-request-body opts) :max_tokens omitted)
+       ;; xAI sends the cap as max_completion_tokens
+       :xai        (get (xai/xai-request-body opts) :max_completion_tokens omitted)
        :gemini     (get-in (stream-generate-content/request-body opts)
                            [:generationConfig :maxOutputTokens] omitted)))))
 
@@ -199,6 +202,8 @@
                        "kimi-k2.7-code"               32000}
    :mistral           {"mistral-medium-3-5"           32000
                        "mistral-medium-latest"        32000}
+   :xai               {"grok-4.7"                     32000
+                       "grok-4.3"                     32000}
    ;; no default cap without a known context window, which the pure builder is not given
    ;; (see vllm/vllm-request-body)
    :vllm              {"Qwen/Qwen3-32B"              omitted}})
@@ -247,6 +252,7 @@
    (for [id (concat (keys mistral/supported-models) (registry-models "mistral"))] [:mistral id])
    (for [id (concat (keys zai/supported-models) (registry-models "zai"))] [:zai id])
    (for [id (concat (keys openrouter/supported-models) (registry-models "openrouter"))] [:openrouter id])
+   (for [id (concat (keys xai/supported-models) (registry-models "xai"))] [:xai id])
    (for [id (concat (keys bedrock/supported-models) (registry-models "bedrock"))]
      [(if (str/starts-with? id "anthropic.") :bedrock-anthropic :bedrock-openai) id])
    ;; Azure lists no models; its context map is the closest thing to a catalog, and its keys are spelled the way
