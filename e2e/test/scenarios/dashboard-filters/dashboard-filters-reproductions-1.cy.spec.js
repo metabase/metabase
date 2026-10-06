@@ -301,8 +301,7 @@ describe("issue 12985 > dashboard filter dropdown/search", () => {
     cy.button("Add filter").click();
 
     cy.location("search").should("eq", "?category=Gadget");
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Ergonomic Silk Coat");
+    H.getDashboardCard().within(() => H.assertTableRowsCount(53));
   });
 });
 
@@ -396,7 +395,10 @@ describe("issues 15119 and 16112", () => {
     H.popover().contains("adam").click();
     cy.button("Add filter").click();
 
-    cy.findByTestId("dashcard-container").should("contain", "adam");
+    H.getDashboardCard().within(() => {
+      H.assertTableRowsCount(1);
+      cy.findAllByTestId("cell-data").should("contain", "adam");
+    });
     cy.location("search").should("eq", "?rating=&reviewer=adam");
 
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
@@ -405,8 +407,12 @@ describe("issues 15119 and 16112", () => {
     H.popover().contains("5").click();
     cy.button("Add filter").click();
 
-    cy.findByTestId("dashcard-container").should("contain", "adam");
-    cy.findByTestId("dashcard-container").should("contain", "5");
+    H.getDashboardCard().within(() => {
+      H.assertTableRowsCount(1);
+      cy.findAllByTestId("cell-data")
+        .should("contain", "adam")
+        .and("contain", "5");
+    });
     cy.location("search").should("eq", "?rating=5&reviewer=adam");
   });
 });
