@@ -3,6 +3,7 @@
   (:require
    [clojure.test :refer :all]
    [java-time.api :as t]
+   [metabase-enterprise.remote-sync.db :as remote-sync.db]
    [metabase-enterprise.remote-sync.models.remote-sync-task :as rst]
    [metabase-enterprise.remote-sync.test-helpers :as th]
    [metabase.models.interface :as mi]
@@ -365,6 +366,129 @@
         (finally
           (rst/complete-sync-task! (:id task)))))))
 
+(deftest timed-out?-uses-heartbeat-over-progress-test
+  (testing "timed-out? is false when the heartbeat is fresh even though progress is stale"
+    (let [task     (rst/create-sync-task! "import" (mt/user->id :rasta))
+          old-time (t/minus (t/offset-date-time) (t/hours 2))]
+      (try
+        (t2/update! :model/RemoteSyncTask (:id task) {:last_progress_report_at old-time
+                                                      :last_heartbeat_at       (t/offset-date-time)})
+        (is (false? (rst/timed-out? (t2/select-one :model/RemoteSyncTask :id (:id task)))))
+        (finally
+          (rst/complete-sync-task! (:id task))))))
+  (testing "timed-out? is true when the heartbeat is stale even though progress is fresh"
+    (let [task     (rst/create-sync-task! "import" (mt/user->id :rasta))
+          old-time (t/minus (t/offset-date-time) (t/hours 2))]
+      (try
+        (t2/update! :model/RemoteSyncTask (:id task) {:last_progress_report_at (t/offset-date-time)
+                                                      :last_heartbeat_at       old-time})
+        (is (true? (rst/timed-out? (t2/select-one :model/RemoteSyncTask :id (:id task)))))
+        (finally
+          (rst/complete-sync-task! (:id task))))))
+  (testing "timed-out? falls back to progress when no heartbeat was ever written"
+    (let [task     (rst/create-sync-task! "import" (mt/user->id :rasta))
+          old-time (t/minus (t/offset-date-time) (t/hours 2))]
+      (try
+        (t2/update! :model/RemoteSyncTask (:id task) {:last_progress_report_at old-time
+                                                      :last_heartbeat_at       nil})
+        (is (true? (rst/timed-out? (t2/select-one :model/RemoteSyncTask :id (:id task)))))
+        (finally
+          (rst/complete-sync-task! (:id task)))))))
+
+(deftest current-task-uses-heartbeat-over-progress-test
+  (testing "current-task returns a task whose heartbeat is fresh and progress stale"
+    (let [task     (rst/create-sync-task! "import" (mt/user->id :rasta))
+          old-time (t/minus (t/offset-date-time) (t/hours 2))]
+      (try
+        (t2/update! :model/RemoteSyncTask (:id task) {:last_progress_report_at old-time
+                                                      :last_heartbeat_at       (t/offset-date-time)})
+        (is (= (:id task) (:id (rst/current-task))))
+        (finally
+          (rst/complete-sync-task! (:id task))))))
+  (testing "current-task ignores a task whose heartbeat is stale and progress fresh"
+    (let [task     (rst/create-sync-task! "import" (mt/user->id :rasta))
+          old-time (t/minus (t/offset-date-time) (t/hours 2))]
+      (try
+        (t2/update! :model/RemoteSyncTask (:id task) {:last_progress_report_at (t/offset-date-time)
+                                                      :last_heartbeat_at       old-time})
+        (is (nil? (rst/current-task)))
+        (finally
+          (rst/complete-sync-task! (:id task)))))))
+
+;;; ------------------------------------------------------------------------------------------------
+;;; Tests for touch-task! and start-heartbeat!
+;;; ------------------------------------------------------------------------------------------------
+
+(defn- wait-until
+  "True once `pred` returns truthy, polling every 10 ms for up to `timeout-ms`; false otherwise."
+  [pred timeout-ms]
+  (let [deadline (+ (System/currentTimeMillis) timeout-ms)]
+    (loop []
+      (cond
+        (pred)                                    true
+        (> (System/currentTimeMillis) deadline)   false
+        :else                                     (do (Thread/sleep 10) (recur))))))
+
+(deftest touch-task!-stamps-heartbeat-only-test
+  (testing "touch-task! sets last_heartbeat_at and leaves last_progress_report_at alone on a running task"
+    (let [task     (rst/create-sync-task! "import" (mt/user->id :rasta))
+          old-time (t/minus (t/offset-date-time) (t/hours 2))]
+      (try
+        (t2/update! :model/RemoteSyncTask (:id task) {:last_progress_report_at old-time})
+        (let [before (t2/select-one :model/RemoteSyncTask :id (:id task))]
+          (is (nil? (:last_heartbeat_at before)))
+          (is (= 1 (remote-sync.db/touch-task! (:id task))))
+          (let [after (t2/select-one :model/RemoteSyncTask :id (:id task))]
+            (is (some? (:last_heartbeat_at after)))
+            (is (= (:last_progress_report_at before) (:last_progress_report_at after)))))
+        (finally
+          (rst/complete-sync-task! (:id task)))))))
+
+(deftest touch-task!-ignores-ended-task-test
+  (testing "touch-task! updates nothing on a cancelled task, so a late beat cannot revive it"
+    (let [task (rst/create-sync-task! "import" (mt/user->id :rasta))]
+      (rst/cancel-sync-task! (:id task))
+      (let [before (t2/select-one :model/RemoteSyncTask :id (:id task))]
+        (is (= 0 (remote-sync.db/touch-task! (:id task))))
+        (is (= before (t2/select-one :model/RemoteSyncTask :id (:id task))))))))
+
+(deftest start-heartbeat!-beats-until-stopped-test
+  (testing "the heartbeat writes on every interval and stops writing once the stop fn is called"
+    (let [writes (atom 0)]
+      (mt/with-dynamic-fn-redefs [remote-sync.db/touch-task! (fn [_task-id] (swap! writes inc) 1)]
+        (let [stop! (rst/start-heartbeat! 1 20)]
+          (try
+            (is (true? (wait-until #(>= @writes 3) 2000)))
+            (finally
+              (stop!)))
+          (let [after-stop @writes]
+            (Thread/sleep 100)
+            (is (= after-stop @writes))))))))
+
+(deftest start-heartbeat!-survives-write-failure-test
+  (testing "a failing write does not end the heartbeat loop"
+    (let [calls (atom 0)]
+      (mt/with-dynamic-fn-redefs [remote-sync.db/touch-task! (fn [_task-id]
+                                                               (when (= 1 (swap! calls inc))
+                                                                 (throw (ex-info "db down" {})))
+                                                               1)]
+        (let [stop! (rst/start-heartbeat! 1 20)]
+          (try
+            (is (true? (wait-until #(>= @calls 3) 2000)))
+            (finally
+              (stop!))))))))
+
+(deftest start-heartbeat!-writes-the-row-test
+  (testing "the heartbeat advances last_heartbeat_at on the real row"
+    (let [task  (rst/create-sync-task! "import" (mt/user->id :rasta))
+          stop! (rst/start-heartbeat! (:id task) 20)]
+      (try
+        (is (true? (wait-until #(some? (t2/select-one-fn :last_heartbeat_at :model/RemoteSyncTask :id (:id task)))
+                               2000)))
+        (finally
+          (stop!)
+          (rst/complete-sync-task! (:id task)))))))
+
 (deftest update-progress-throws-on-cancelled-task-test
   (testing "update-progress! throws exception when updating a cancelled task"
     (let [task (rst/create-sync-task! "import" (mt/user->id :rasta))]
@@ -375,35 +499,52 @@
 (deftest last-version-test
   (testing "When there are no tasks, last-version returns nil"
     (is (nil? (rst/last-version))))
-  (testing "When there are no successful tasks, last-version returns nil"
+  (testing "When no task has recorded a version, last-version returns nil"
     (let [task (rst/create-sync-task! "import" (mt/user->id :rasta))]
       (rst/fail-sync-task! (:id task) "Test failure")
       (is (nil? (rst/last-version)))))
-  (testing "Returns last successful version"
+  (testing "Returns the version of the newest task whose commit landed"
     (let [successful-task (rst/create-sync-task! "import" (mt/user->id :rasta))]
       (rst/complete-sync-task! (:id successful-task))
       (rst/set-version! (:id successful-task) "version 1")
       (is (= "version 1" (rst/last-version)))
-      (testing "Ignores cancelled tasks"
+      (testing "Ignores a cancelled task with no version"
         (rst/cancel-sync-task! (:id (rst/create-sync-task! "import" (mt/user->id :rasta))))
         (is (= "version 1" (rst/last-version))))
-      (testing "Ignores failed tasks"
+      (testing "Ignores a failed task with no version"
         (rst/fail-sync-task! (:id (rst/create-sync-task! "import" (mt/user->id :rasta))) "Error")
         (is (= "version 1" (rst/last-version))))
-      (testing "Ignores incomplete tasks"
-        (is (= "version 1" (rst/last-version))))
-      (testing "Returns newer successful tasks"
+      (testing "Ignores an open task with no version"
+        (let [open-task (rst/create-sync-task! "import" (mt/user->id :rasta))]
+          (is (= "version 1" (rst/last-version)))
+          (rst/complete-sync-task! (:id open-task))))
+      (testing "Ignores a conflict task even though it records the version it conflicted against"
+        (let [conflict-task (rst/create-sync-task! "import" (mt/user->id :rasta))]
+          (rst/set-version! (:id conflict-task) "version 1.5")
+          (rst/conflict-sync-task! (:id conflict-task) ["some conflict"])
+          (is (= "version 1" (rst/last-version)))))
+      (testing "Returns a newer successful task's version"
         (let [new-task (rst/create-sync-task! "import" (mt/user->id :rasta))]
           (rst/complete-sync-task! (:id new-task))
           (rst/set-version! (:id new-task) "version 2")
-          (is (= "version 2" (rst/last-version))))))))
+          (is (= "version 2" (rst/last-version)))))
+      (testing "A task cancelled after its commit landed is still the sync base"
+        (let [cancelled-task (rst/create-sync-task! "import" (mt/user->id :rasta))]
+          (rst/set-version! (:id cancelled-task) "version 3")
+          (rst/cancel-sync-task! (:id cancelled-task))
+          (is (= "version 3" (rst/last-version)))))
+      (testing "A task that failed after its commit landed is still the sync base"
+        (let [failed-task (rst/create-sync-task! "export" (mt/user->id :rasta))]
+          (rst/set-version! (:id failed-task) "version 4")
+          (rst/fail-sync-task! (:id failed-task) "bookkeeping failed")
+          (is (= "version 4" (rst/last-version))))))))
 
 ;;; ------------------------------------------------------------------------------------------------
 ;;; Tests for supersede-stale-tasks!
 ;;; ------------------------------------------------------------------------------------------------
 ;;;
-;;; Used by `create-task-with-lock!` (auto-import path) to clean up rows whose owning JVM/thread
-;;; is gone or hung. Must NOT supersede brand-new tasks that haven't reported progress yet.
+;;; Called at boot, by `GET /current-task`, and before a new task is created, to close rows whose owning
+;;; JVM/thread is gone or hung. Must NOT supersede brand-new tasks that haven't reported progress yet.
 
 (defn- insert-task!
   "Helper: insert a RemoteSyncTask row with the given fields, bypassing the create-sync-task!
@@ -422,11 +563,22 @@
           stale-task (insert-task! {:started_at old-time
                                     :last_progress_report_at old-time
                                     :progress 0.5})]
-      (rst/supersede-stale-tasks!)
+      (mt/with-temporary-setting-values [:remote-sync-task-time-limit-ms 120000]
+        (rst/supersede-stale-tasks!))
       (let [after (t2/select-one :model/RemoteSyncTask :id (:id stale-task))]
         (is (true? (:cancelled after)))
         (is (some? (:ended_at after)))
-        (is (= "Superseded after staleness timeout" (:error_message after)))))))
+        (is (= "Sync was interrupted: the server stopped responding for 2 minutes (it may have restarted)"
+               (:error_message after)))))))
+
+(deftest supersede-stale-tasks!-message-uses-singular-for-one-minute-test
+  (testing "the interruption message reads '1 minute' when the window is one minute"
+    (let [old-time   (t/minus (t/offset-date-time) (t/hours 1))
+          stale-task (insert-task! {:started_at old-time :last_progress_report_at old-time})]
+      (mt/with-temporary-setting-values [:remote-sync-task-time-limit-ms 60000]
+        (rst/supersede-stale-tasks!))
+      (is (= "Sync was interrupted: the server stopped responding for 1 minute (it may have restarted)"
+             (t2/select-one-fn :error_message :model/RemoteSyncTask :id (:id stale-task)))))))
 
 (deftest supersede-stale-tasks!-leaves-brand-new-tasks-alone-test
   (testing "supersede-stale-tasks! must NOT mark a brand-new task that just inserted —
@@ -458,6 +610,29 @@
             "task with recent progress must not be terminated"))
       (rst/complete-sync-task! (:id active-task)))))
 
+(deftest supersede-stale-tasks!-uses-heartbeat-over-progress-test
+  (testing "supersede-stale-tasks! leaves a task with a fresh heartbeat alone even when its progress is stale"
+    (let [old-time (t/minus (t/offset-date-time) (t/hours 1))
+          task     (insert-task! {:started_at              old-time
+                                  :last_progress_report_at old-time
+                                  :last_heartbeat_at       (t/offset-date-time)
+                                  :progress                0.5})]
+      (rst/supersede-stale-tasks!)
+      (let [after (t2/select-one :model/RemoteSyncTask :id (:id task))]
+        (is (false? (:cancelled after)))
+        (is (nil? (:ended_at after))))
+      (rst/complete-sync-task! (:id task))))
+  (testing "supersede-stale-tasks! reaps a task with a stale heartbeat even when its progress is fresh"
+    (let [old-time (t/minus (t/offset-date-time) (t/hours 1))
+          task     (insert-task! {:started_at              old-time
+                                  :last_progress_report_at (t/offset-date-time)
+                                  :last_heartbeat_at       old-time
+                                  :progress                0.5})]
+      (rst/supersede-stale-tasks!)
+      (let [after (t2/select-one :model/RemoteSyncTask :id (:id task))]
+        (is (true? (:cancelled after)))
+        (is (some? (:ended_at after)))))))
+
 (deftest supersede-stale-tasks!-leaves-terminated-tasks-alone-test
   (testing "supersede-stale-tasks! must NOT touch tasks that already have ended_at set"
     (let [old-time   (t/minus (t/offset-date-time) (t/hours 1))
@@ -472,6 +647,24 @@
         (is (false? (:cancelled after)))
         (is (= (:ended_at before) (:ended_at after))
             "ended_at must not be overwritten")))))
+
+(deftest supersede-stale-tasks!-returns-and-logs-reaped-ids-test
+  (testing "superseding returns the ids of the rows it ended and logs one warning naming them"
+    (let [now      (t/offset-date-time)
+          old-time (t/minus now (t/hours 1))
+          stale    (insert-task! {:started_at old-time :last_progress_report_at old-time})
+          fresh    (insert-task! {:started_at now :last_progress_report_at now})]
+      (mt/with-log-messages-for-level [messages [metabase-enterprise.remote-sync.models.remote-sync-task :warn]]
+        (is (= [(:id stale)] (rst/supersede-stale-tasks!)))
+        (is (=? [{:level   :warn
+                  :message (re-pattern (str "Superseded stale remote sync tasks \\[" (:id stale) "\\]: .*"))}]
+                (messages))))
+      (is (nil? (:ended_at (t2/select-one :model/RemoteSyncTask :id (:id fresh)))))
+      (testing "a second pass finds nothing and logs nothing"
+        (mt/with-log-messages-for-level [messages [metabase-enterprise.remote-sync.models.remote-sync-task :warn]]
+          (is (= [] (rst/supersede-stale-tasks!)))
+          (is (= [] (messages)))))
+      (rst/complete-sync-task! (:id fresh)))))
 
 ;;; ------------------------------------------------------------------------------------------------
 ;;; Tests for make-progress-reporter

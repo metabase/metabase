@@ -191,7 +191,11 @@
                                            :creator_id (mt/user->id :rasta)
                                            :definition (measure-definition (lib/count))}]
       (mt/with-test-user :crowberto
-        (is (true? (mi/can-write? measure)))))))
+        (mt/with-premium-features #{:advanced-permissions}
+          (is (true? (mi/can-write? measure))))
+        (testing "including without the advanced-permissions feature"
+          (mt/with-premium-features #{}
+            (is (true? (mi/can-write? measure)))))))))
 
 (deftest can-write?-analyst-unrestricted-test
   (testing "Data analysts with unrestricted view-data can write measures"
@@ -205,7 +209,12 @@
         (perms/add-user-to-group! analyst-id group-id)
         (data-perms/set-table-permission! group-id (mt/id :venues) :perms/view-data :unrestricted)
         (session/with-current-user analyst-id
-          (is (mi/can-write? measure)))))))
+          (mt/when-ee-evailable
+           (mt/with-premium-features #{:advanced-permissions}
+             (is (mi/can-write? measure))))
+          (testing "but not once the advanced-permissions feature is gone"
+            (mt/with-premium-features #{}
+              (is (not (mi/can-write? measure))))))))))
 
 (deftest can-write?-analyst-restricted-test
   (testing "Data analysts without unrestricted view-data cannot write measures"
@@ -305,9 +314,16 @@
         (perms/add-user-to-group! analyst-id group-id)
         (data-perms/set-table-permission! group-id (mt/id :venues) :perms/view-data :unrestricted)
         (session/with-current-user analyst-id
-          (is (true? (mi/can-create? :model/Measure {:name "Test Measure"
-                                                     :table_id (mt/id :venues)
-                                                     :definition (measure-definition (lib/count))}))))))))
+          (mt/when-ee-evailable
+           (mt/with-premium-features #{:advanced-permissions}
+             (is (true? (mi/can-create? :model/Measure {:name "Test Measure"
+                                                        :table_id (mt/id :venues)
+                                                        :definition (measure-definition (lib/count))})))))
+          (testing "but not once the advanced-permissions feature is gone"
+            (mt/with-premium-features #{}
+              (is (false? (mi/can-create? :model/Measure {:name "Test Measure"
+                                                          :table_id (mt/id :venues)
+                                                          :definition (measure-definition (lib/count))}))))))))))
 
 (deftest can-create?-analyst-restricted-test
   (testing "Data analysts without unrestricted view-data cannot create measures"

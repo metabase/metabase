@@ -44,6 +44,7 @@
 ;;; |                                                 Current Driver                                                 |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *driver*
   "Current driver (a keyword such as `:postgres`) in use by the Query Processor/tests/etc. Bind this with `with-driver`
   below. The QP binds the driver this way in the `bind-driver` middleware."
@@ -1184,6 +1185,7 @@
   [_ native-form]
   native-form)
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic ^{:added "0.51.0"} *compile-with-inline-parameters*
   "Whether to compile an MBQL query to native with parameters spliced inline (as opposed to using placeholders like `?`
   and passing the parameters separately.) Normally we want to pass parameters separately to protect against SQL
@@ -1683,6 +1685,7 @@
 ;;; |                                                    Upload                                                      |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *insert-chunk-rows*
   "The number of rows to insert at a time when uploading data to a database. This can be bound for testing purposes."
   nil)
@@ -1840,6 +1843,17 @@
   [driver _database _schema _table]
   (throw (ex-info (format "fetch-table-indexes is not implemented for driver %s" driver)
                   {:driver driver})))
+
+(defmulti humanize-index-error-message
+  "Trim `message`, from an exception an index operation raised ([[fetch-table-indexes]] or the DDL from
+  [[compile-create-index]]), for display to the user. The default returns it unchanged."
+  {:added "0.64.0", :arglists '([driver message])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmethod humanize-index-error-message :default
+  [_driver message]
+  message)
 
 (defmulti drop-table!
   "Drop a table named `table-name`. If the table doesn't exist it will not be dropped. `table-name` may be qualified

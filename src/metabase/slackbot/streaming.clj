@@ -71,7 +71,7 @@
   A message with no other text names its attachments instead, or contributes nothing."
   [{:keys [text files]} bot-user-id]
   ;; The model rejects an empty user message, and a file shared on its own arrives with empty text.
-  (let [content (slackbot.events/strip-bot-mention text bot-user-id)]
+  (let [content (slackbot.events/strip-bot-mention (or text "") bot-user-id)]
     (if-not (str/blank? content)
       content
       (when-let [names (seq (keep :name files))]
@@ -95,7 +95,6 @@
         msg-history (slackbot.persistence/message-history conversation-id bot-msg-ids)
         deleted-ids (slackbot.persistence/deleted-message-ids conversation-id bot-msg-ids)]
     (->> (:messages thread)
-         (filter :text)
          (remove ignore-msg?)
          (remove (fn [{:keys [ts] :as msg}]
                    (and (slackbot.events/bot-message? msg)
@@ -221,8 +220,9 @@
    `:type :metabot/permission-denied` tag. `error` is a streamed `:error` part's
    payload or a thrown exception's ex-data; errors the agent loop caught nest their
    ex-data under `:data`. Only whitelisted markers get copy, and only the usage-limit
-   codes pass their server-authored message through: everything else, raw provider
-   errors and permission keywords included, must stay out of shared Slack channels."
+   and actionable provider-failure codes pass their server-authored message through:
+   everything else, raw provider errors and permission keywords included, must stay out
+   of shared Slack channels."
   [error]
   (let [code (some-> (or (:error-code error) (get-in error [:data :error-code])) name)]
     (cond
@@ -231,7 +231,8 @@
           (= :metabot/permission-denied (get-in error [:data :type])))
       "You do not have permission to use the AI assistant."
 
-      (#{"metabase_ai_managed_locked" "ai_usage_limit_reached"} code)
+      (#{"metabase_ai_managed_locked" "ai_usage_limit_reached"
+         "ai_provider_billing" "ai_provider_rate_limit" "ai_provider_auth"} code)
       (:message error)
 
       (provider-config-error-codes code)

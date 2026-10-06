@@ -6,7 +6,10 @@ import { SourceReplacementButton } from "./components/SourceReplacementButton";
 import { SourceReplacementModal } from "./components/SourceReplacementModal";
 import { SourceReplacementStatus } from "./components/SourceReplacementStatus";
 import { TransformToolsMenu } from "./components/TransformToolsMenu";
-import { getTransformToolsRoutes } from "./routes";
+import {
+  getTransformToolsRoutes,
+  registerReplacementPagePrefetch,
+} from "./routes";
 
 export function initializePlugin() {
   if (hasPremiumFeature("dependencies")) {
@@ -17,5 +20,6 @@ export function initializePlugin() {
     PLUGIN_REPLACEMENT.SourceReplacementModal = SourceReplacementModal;
     PLUGIN_REPLACEMENT.SourceReplacementStatus = SourceReplacementStatus;
     PLUGIN_REPLACEMENT.TransformToolsMenu = TransformToolsMenu;
+    registerReplacementPagePrefetch();
   }
 }

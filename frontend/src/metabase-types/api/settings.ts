@@ -5,7 +5,7 @@ import type { DashboardId } from "./dashboard";
 import type { DatabaseId } from "./database";
 import type { SdkIframeEmbedSetupTheme } from "./embedding-theme";
 import type { CurrencyStyle } from "./formatting";
-import type { GroupId } from "./group";
+import type { GroupMappings } from "./group";
 import type { MetabotLimitPeriod, MetabotLimitType } from "./metabot";
 import type { NotificationRecipient } from "./notification";
 import type { UserId } from "./user";
@@ -250,7 +250,6 @@ export type GdrivePayload = {
   error?: string;
 };
 
-/* eslint-disable-next-line @typescript-eslint/no-unused-vars -- used for types */
 const tokenStatusFeatures = [
   "advanced-config",
   "advanced-permissions",
@@ -474,7 +473,6 @@ interface InstanceSettings {
   "example-dashboard-id": number | null;
   "has-sample-database?"?: boolean; // Careful! This can be undefined during setup!
   "instance-creation": string;
-  "llm-anthropic-api-key-configured?": boolean;
   "read-only-mode": boolean;
   "search-typeahead-enabled": boolean;
   "show-homepage-data": boolean;
@@ -545,6 +543,7 @@ interface SettingsManagerSettings {
   "llm-mistral-api-key"?: string | null;
   "llm-moonshot-api-key"?: string | null;
   "llm-deepseek-api-key"?: string | null;
+  "llm-xai-api-key"?: string | null;
   "llm-azure-api-key"?: string | null;
   "llm-azure-api-base-url"?: string | null;
   "llm-google-service-account-key"?: string | null;
@@ -587,7 +586,6 @@ interface PublicSettings {
   // Non-null: :public visibility and a total getter (computed from the jar's
   // bundled translation resources), so every viewer always receives a list.
   "available-locales": LocaleData[];
-  "available-timezones": string[] | null;
   "bug-reporting-enabled": boolean;
   "check-for-updates": boolean;
   "cloud-gateway-ips": string[] | null;
@@ -607,7 +605,6 @@ interface PublicSettings {
   "enable-password-login": boolean;
   "enable-pivoted-exports": boolean;
   "enable-sandboxes?": boolean;
-  engines: Record<EngineKey, Engine>;
   "google-auth-client-id": string | null;
   "google-auth-enabled": boolean;
   "has-user-setup": boolean;
@@ -631,7 +628,7 @@ interface PublicSettings {
   "ldap-attribute-lastname": string | null;
   "ldap-group-sync": boolean;
   "ldap-group-base": string | null;
-  "ldap-group-mappings": Record<string /*ldap group name */, GroupId[]> | null;
+  "ldap-group-mappings": GroupMappings | null;
   "ldap-group-membership-filter"?: string | null;
   "ldap-user-provisioning-enabled?": boolean;
   "oidc-user-provisioning-enabled?": boolean;
@@ -793,6 +790,7 @@ export interface EnterpriseSettings extends Settings {
   "llm-mistral-api-key"?: string | null;
   "llm-moonshot-api-key"?: string | null;
   "llm-deepseek-api-key"?: string | null;
+  "llm-xai-api-key"?: string | null;
   "session-timeout": TimeoutValue | null;
   "search-engine": SearchEngineSettingValue | null;
   "scim-enabled"?: boolean | null;
@@ -812,6 +810,8 @@ export interface EnterpriseSettings extends Settings {
   "jwt-group-sync": boolean | null;
   "oidc-enabled": boolean;
   "oidc-configured": boolean;
+  // sensitive, so only the admin settings list carries it; pages use /api/ee/sso/oidc
+  "oidc-providers"?: string | null;
   "saml-enabled": boolean;
   "saml-configured": boolean;
   "saml-user-provisioning-enabled?": boolean;
@@ -828,9 +828,8 @@ export interface EnterpriseSettings extends Settings {
   "saml-attribute-tenant": string | null;
   "saml-attribute-group": string | null;
   "saml-group-sync": boolean | null;
-  "saml-group-mappings": Record<string, GroupId[]> | null;
-  "jwt-group-mappings": Record<string, GroupId[]> | null;
-  "oidc-group-mappings": Record<string, GroupId[]> | null;
+  "saml-group-mappings": GroupMappings | null;
+  "jwt-group-mappings": GroupMappings | null;
   "database-replication-enabled": boolean | null;
   "database-replication-connections"?: DatabaseReplicationConnections | null;
   "embedding-hub-test-embed-snippet-created": boolean;
@@ -851,9 +850,9 @@ export interface EnterpriseSettings extends Settings {
   "python-runner-test-run-timeout-seconds"?: number | null;
   "llm-metabot-provider"?: string | null;
   "llm-mini-model"?: string | null;
+  "ee-embedding-provider"?: string | null;
   "llm-fast-mode"?: boolean | null;
   "llm-anthropic-api-key"?: string | null;
-  "llm-anthropic-model": string;
   "llm-proxy-configured?"?: boolean | null;
   "metabot-slack-signing-secret"?: string | null;
   "slack-connect-enabled"?: boolean | null;

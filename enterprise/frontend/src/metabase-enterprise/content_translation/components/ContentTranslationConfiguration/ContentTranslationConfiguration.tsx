@@ -161,7 +161,6 @@ export const ContentTranslationConfiguration = () => {
                 )
               }
               miw="calc(50% - 0.5rem)"
-              fw="normal"
               style={{ flexGrow: 1 }}
               disabled={isDownloadInProgress}
             >
@@ -337,15 +336,11 @@ const UploadForm = ({
       {confirmationModal}
       <FormSubmitButton
         flex="1 1 0"
-        w="auto"
         disabled={status === "pending"}
         label={
           <Group gap="sm">
             <Icon name="upload" c="core-brand" />
-            <Text
-              c="inherit"
-              fw="normal"
-            >{t`Upload edited translation dictionary`}</Text>
+            <Text c="inherit">{t`Upload edited translation dictionary`}</Text>
           </Group>
         }
         successLabel={

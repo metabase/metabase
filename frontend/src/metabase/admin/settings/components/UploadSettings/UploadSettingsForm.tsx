@@ -268,7 +268,7 @@ export function UploadSettingsFormView({
               actionFn={handleDisableUploads}
               type="button"
               variant="filled"
-              color="feedback-negative"
+              color="negative"
               useLoadingSpinner
             />
           )

@@ -34,10 +34,6 @@
   "The largest page a caller may ask for, matching the other v2 listings' ceiling."
   500)
 
-(defn- entry-message
-  [{:keys [term definition]}]
-  (message/msg ["%s: %s"] term definition))
-
 (defn- find-entries
   "Every entry of `entries` whose term matches `term` compared case-insensitively, in term order: a model echoes a
    term as it read it in a question or a column name, not as it happens to be stored."
@@ -69,7 +65,7 @@
     (if term
       (common/success-content
        (if-let [matches (seq (find-entries entries term))]
-         (common/lines-message (map entry-message matches))
+         (common/list-envelope (mapv #(select-keys % [:term :definition]) matches))
          (common/throw-teaching-error
           (message/msg ["No glossary entry for %s."] term))))
       ;; The page is cut in memory because the module reads the table whole. That bounds the response, which is

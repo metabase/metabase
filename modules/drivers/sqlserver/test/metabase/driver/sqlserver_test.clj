@@ -2,6 +2,7 @@
   {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.driver.sqlserver-test]}
                                                             metabase.test.data/run-mbql-query {:namespaces [metabase.driver.sqlserver-test]}}}}}}
   (:require
+   [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
    [clojure.test :refer :all]
    [colorize.core :as colorize]
@@ -28,7 +29,9 @@
    [metabase.query-processor.test :as qp]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.query-processor.timezone :as qp.timezone]
+   [metabase.sync.core :as sync]
    [metabase.test :as mt]
+   [metabase.test.data.interface :as tx]
    [metabase.test.util.timezone :as test.tz]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
@@ -37,6 +40,11 @@
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
+
+(deftest default-schema-test
+  (mt/test-driver :sqlserver
+    (is (= "dbo"
+           (driver.sql/default-schema :sqlserver (mt/db))))))
 
 (deftest ^:parallel hour-bucketing-time-without-database-type-test
   (testing (str "Hour bucketing on a TIME-typed expression without `:database-type` (as happens for "
@@ -219,6 +227,83 @@
                                                                   {:user "cam", :password "toucans", :db "birddb",
                                                                    :host "localhost", :instance "MYINSTANCE"}))))))
 
+(deftest ^:parallel connection-spec-sql-auth-mode-test
+  (testing "auth-mode 'sql' (explicit or missing) → traditional user/password login, no :authentication key"
+    (doseq [details [{:auth-mode "sql", :user "cam", :password "toucans", :db "birddb", :host "localhost"}
+                     ;; missing :auth-mode simulates legacy connections saved before the auth-mode field existed
+                     {:user "cam", :password "toucans", :db "birddb", :host "localhost"}]]
+      (testing (str "details = " (pr-str details))
+        (let [spec (sql-jdbc.conn/connection-details->spec :sqlserver details)]
+          (is (= "cam" (:user spec)))
+          (is (= "toucans" (:password spec)))
+          (is (not (contains? spec :authentication))))))))
+
+(deftest ^:parallel connection-spec-ad-service-principal-test
+  (testing "auth-mode 'ad-service-principal' → ActiveDirectoryServicePrincipal, principal id in :user, secret in :password"
+    (let [spec (sql-jdbc.conn/connection-details->spec :sqlserver
+                                                       {:auth-mode        "ad-service-principal"
+                                                        :ad-client-id     "4e027ad8-5e10-4e05-b5a6-c071b9b61b37"
+                                                        :ad-client-secret "the-secret"
+                                                        :host             "sql.example.com"
+                                                        :db               "metabase_test"})]
+      (is (= "ActiveDirectoryServicePrincipal"      (:authentication spec)))
+      (is (= "4e027ad8-5e10-4e05-b5a6-c071b9b61b37" (:user spec)))
+      (is (= "the-secret"                           (:password spec))))))
+
+(deftest ^:parallel connection-spec-ad-service-principal-certificate-embedded-key-test
+  (testing "auth-mode 'ad-service-principal-certificate': cert with embedded key, cert password goes in :password"
+    (let [spec (sql-jdbc.conn/connection-details->spec :sqlserver
+                                                       {:auth-mode                             "ad-service-principal-certificate"
+                                                        :ad-client-id                          "4e027ad8-5e10-4e05-b5a6-c071b9b61b37"
+                                                        :ad-client-certificate-value           "cert-bytes"
+                                                        :ad-client-certificate-password-value  "cert-pw"
+                                                        :host                                  "sql.example.com"
+                                                        :db                                    "metabase_test"})]
+      (is (= "ActiveDirectoryServicePrincipalCertificate" (:authentication spec)))
+      (is (= "4e027ad8-5e10-4e05-b5a6-c071b9b61b37"       (:user spec)))
+      (is (instance? java.io.File (:clientCertificate spec)))
+      (is (= "cert-pw" (:password spec)))
+      (is (not (contains? spec :clientKey)))
+      (is (not (contains? spec :clientKeyPassword))))))
+
+(deftest ^:parallel connection-spec-ad-service-principal-certificate-separate-key-test
+  (testing "auth-mode 'ad-service-principal-certificate': cert + separate encrypted key file → :clientKey + :clientKeyPassword"
+    (let [spec (sql-jdbc.conn/connection-details->spec :sqlserver
+                                                       {:auth-mode                             "ad-service-principal-certificate"
+                                                        :ad-client-id                          "4e027ad8-5e10-4e05-b5a6-c071b9b61b37"
+                                                        :ad-client-certificate-value           "cert-bytes"
+                                                        :ad-client-certificate-password-value  "cert-pw"
+                                                        :ad-client-key-value                   "key-bytes"
+                                                        :ad-client-key-password-value          "key-pw"
+                                                        :host                                  "sql.example.com"
+                                                        :db                                    "metabase_test"})]
+      (is (instance? java.io.File (:clientCertificate spec)))
+      (is (= "cert-pw" (:password spec)))
+      (is (instance? java.io.File (:clientKey spec)))
+      (is (= "key-pw"  (:clientKeyPassword spec))))))
+
+(deftest ^:parallel connection-spec-ad-managed-identity-user-assigned-test
+  (testing "auth-mode 'ad-managed-identity' with :ad-managed-identity-client-id → ActiveDirectoryManagedIdentity, MI id in :user"
+    (let [spec (sql-jdbc.conn/connection-details->spec :sqlserver
+                                                       {:auth-mode                     "ad-managed-identity"
+                                                        :ad-managed-identity-client-id "4e027ad8-5e10-4e05-b5a6-c071b9b61b37"
+                                                        :host                          "sql.example.com"
+                                                        :db                            "metabase_test"})]
+      (is (= "ActiveDirectoryManagedIdentity"       (:authentication spec)))
+      (is (= "4e027ad8-5e10-4e05-b5a6-c071b9b61b37" (:user spec))))))
+
+(deftest ^:parallel connection-spec-ad-managed-identity-default-test
+  (testing "auth-mode 'ad-managed-identity' with blank/missing :ad-managed-identity-client-id → default identity, no :user"
+    (doseq [mi-client-id [nil "" "   "]]
+      (testing (str ":ad-managed-identity-client-id = " (pr-str mi-client-id))
+        (let [spec (sql-jdbc.conn/connection-details->spec :sqlserver
+                                                           {:auth-mode                     "ad-managed-identity"
+                                                            :ad-managed-identity-client-id mi-client-id
+                                                            :host                          "sql.example.com"
+                                                            :db                            "metabase_test"})]
+          (is (= "ActiveDirectoryManagedIdentity" (:authentication spec)))
+          (is (not (contains? spec :user))))))))
+
 (deftest ^:parallel reject-details-with-dangerous-additional-options-test
   (mt/test-driver :sqlserver
     (let [details (:details (mt/db))]
@@ -249,6 +334,24 @@
           " "
           "trustServerCertificate=false"
           "trustStore=/path/to/store;trustStorePassword=password;trustStoreType=pkcs12")))))
+
+(deftest ^:parallel validate-db-details-inherits-shared-denylist-test
+  (testing "SQL Server also inherits the shared SQL-JDBC denylist, not just its own keys"
+    (doseq [opt ["socketFactory=evil.Factory"   ; shared list, distinct from sqlserver's socketFactoryClass
+                 "sslfactory=evil.Factory"
+                 "dnsResolver=evil.Resolver"
+                 "queryInterceptors=evil.Interceptor"]]
+      (testing opt
+        (is (thrown-with-msg?
+             java.lang.Exception #"[Dd]angerous keys"
+             (driver/validate-db-details! :sqlserver {:additional-options opt}))))))
+  (testing "sqlserver's own denylist keys are still rejected"
+    (doseq [opt ["socketFactoryClass=evil.Factory"
+                 "accessTokenCallbackClass=evil.Callback"]]
+      (testing opt
+        (is (thrown-with-msg?
+             java.lang.Exception #"[Dd]angerous keys"
+             (driver/validate-db-details! :sqlserver {:additional-options opt})))))))
 
 (deftest ^:parallel add-max-results-limit-test
   (mt/test-driver :sqlserver
@@ -1034,6 +1137,39 @@
       (mt/dataset bigint-identity-data
         (is (= :type/BigInteger
                (t2/select-one-fn :base_type :model/Field (mt/id :bigint_identity_test :id))))))))
+
+(def ^:private udt-alias-db-details
+  (delay (mt/dbdef->connection-details :sqlserver :db {:database-name "udt_alias_test"})))
+
+(def ^:private udt-alias-db-ddl
+  ["CREATE TYPE dbo.Key10 FROM varchar(10);"
+   "CREATE TYPE dbo.Importe FROM numeric(19,2);"
+   (str "CREATE TABLE dbo.udt_alias_test ("
+        "  id int NOT NULL PRIMARY KEY,"
+        "  customer dbo.Key10 NOT NULL,"
+        "  amount   dbo.Importe NULL,"
+        "  plain    varchar(10) NULL);")])
+
+(defn- create-udt-alias-db! []
+  (tx/drop-if-exists-and-create-db! :sqlserver "udt_alias_test")
+  (let [spec (sql-jdbc.conn/connection-details->spec :sqlserver @udt-alias-db-details)]
+    (doseq [stmt udt-alias-db-ddl]
+      (jdbc/execute! spec [stmt] {:transaction? false}))))
+
+(deftest user-defined-type-alias-sync-test
+  (testing "UDT aliases (like `CREATE TYPE Key10 FROM varchar(10)`) sync to their underlying base type (#62335)"
+    (mt/test-driver :sqlserver
+      (create-udt-alias-db!)
+      (mt/with-temp [:model/Database database {:engine :sqlserver, :details @udt-alias-db-details}]
+        (sync/sync-database! database)
+        (let [table-id (t2/select-one-pk :model/Table :db_id (:id database) :name "udt_alias_test")
+              fields   (into {} (map (juxt :name identity))
+                             (t2/select :model/Field :table_id table-id))]
+          (is (=? {:database_type "Key10"   :base_type :type/Text}    (get fields "customer")))
+          (is (=? {:database_type "Importe" :base_type :type/Decimal} (get fields "amount")))
+          (testing "known base types are untouched"
+            (is (=? {:database_type "int"     :base_type :type/Integer} (get fields "id")))
+            (is (=? {:database_type "varchar" :base_type :type/Text}    (get fields "plain")))))))))
 
 (deftest ^:parallel type->database-type-test
   (testing "type->database-type multimethod returns correct SQL Server types"

@@ -42,7 +42,6 @@
     :model/AnalysisFindingError
     :model/ApiKey
     :model/AuthIdentity
-    :model/HTTPAction
     :model/ImplicitAction
     :model/QueryAction
     :model/ApplicationPermissionsRevision
@@ -54,7 +53,6 @@
     :model/CollectionBookmark
     :model/ContentTranslation
     :model/DashboardBookmark
-    :model/DataApp
     :model/DataComplexityScore
     :model/DataPermissions
     :model/DatabaseRouter
@@ -137,6 +135,8 @@
     :model/TaskRun
     :model/Tenant
     :model/TimelineEvent
+    ;; Run history is intentionally not serialized.
+    :model/TransformTestRun
     ;; TODO we should remove these models from here once serialization is supported
     :model/TransformRun
     :model/TransformRunCancelation

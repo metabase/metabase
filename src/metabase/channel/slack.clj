@@ -25,6 +25,7 @@
   ;; received. This would happen if access to the Slack workspace is manually revoked via the Slack UI.
   #{"invalid_auth", "account_inactive", "token_revoked", "token_expired"})
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic *send-token-error-emails?*
   "Whether to send an email to all admins when an invalid or revoked token error is received in response to a Slack
   API call. Should be set to false when checking if an unsaved token is valid. (Default: `true`)"

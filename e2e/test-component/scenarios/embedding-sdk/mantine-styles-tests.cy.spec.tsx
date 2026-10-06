@@ -1,11 +1,9 @@
 // To apply cypress-level mantine styles
 import "@mantine/core/styles.css";
 import "@mantine/dates/styles.css";
-
 // Mimics behavior when an app adds its own styles
 // We need to do it before importing the SDK
 import "e2e/support/helpers/embedding-sdk-helpers/host-app-styles.css";
-
 import { Button, MantineProvider, Title } from "@mantine/core";
 import {
   InteractiveQuestion,
@@ -70,14 +68,14 @@ describe("scenarios > embedding-sdk > mantine styles leakage", () => {
     getSdkRoot().within(() => {
       cy.get("button")
         .contains("Filter")
-        .should("have.css", "color", "rgb(255, 0, 0)");
+        .should("have.css", "color", "color(srgb 0.72 0 0)");
 
       cy.findByTestId("notebook-button").click();
 
       cy.findByRole("button", { name: "Visualize" }).should(
         "have.css",
         "background-color",
-        "rgb(255, 0, 0)",
+        "color(srgb 0.72 0 0)",
       );
     });
   });

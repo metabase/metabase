@@ -98,6 +98,7 @@ const TimelineDetailsModal = ({
           />
           {canWrite && !isArchive && (
             <Button
+              size="lg"
               component={ForwardRefLink}
               to={Urls.newEventInCollection(timeline)}
               role="button"

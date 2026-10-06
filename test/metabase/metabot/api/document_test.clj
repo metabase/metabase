@@ -1,7 +1,10 @@
 (ns metabase.metabot.api.document-test
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.analytics.snowplow-test :as snowplow-test]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.llm.test-util :as llm.tu]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.self.openrouter :as openrouter]
@@ -117,6 +120,51 @@
             (is (=? {:error      nil
                      :draft_card {:name "Orders by day"}}
                     response))))))))
+
+(deftest generate-content-model-chart-round-trip-test
+  (testing "the model loads the query skills, then charts a model by its column names"
+    (let [mp (mt/metadata-provider)]
+      (mt/with-temp [:model/Card model {:type          :model
+                                        :dataset_query (lib/query mp (lib.metadata/table mp (mt/id :orders)))}]
+        (mt/with-temporary-setting-values [llm-providers        llm.tu/default-connections
+                                           llm-metabot-provider test-provider]
+          (let [requests  (atom [])
+                responses [[{:type      :tool-input
+                             :id        "t1"
+                             :function  "load_skill"
+                             :arguments {:ids ["construct-notebook-query-core" "construct-notebook-query-advanced"]}}]
+                           [{:type      :tool-input
+                             :id        "t2"
+                             :function  "document_construct_model_chart"
+                             :arguments {:name         "Orders by month"
+                                         :description  "Count of orders per month."
+                                         :query        {"lib/type" "mbql/query"
+                                                        "stages"   [{"lib/type"    "mbql.stage/mbql"
+                                                                     "source-card" (:entity_id model)
+                                                                     "aggregation" [["count" {}]]
+                                                                     "breakout"    [["field" {"temporal-unit" "month"}
+                                                                                     "CREATED_AT"]]}]}
+                                         :viz_settings {:chart_type "line"}}}]]]
+            (mt/with-dynamic-fn-redefs [openrouter/openrouter
+                                        (fn [request]
+                                          (let [n (count (swap! requests conj request))]
+                                            (mut/mock-llm-response
+                                             (get responses (dec n) [{:type :text :text "Chart created"}]))))]
+              (let [response (mt/user-http-request :crowberto
+                                                   :post 200 "metabot/document/generate-content"
+                                                   {:instructions "Chart orders by month"})
+                    [first-request second-request] @requests]
+                (is (some #{"load_skill"} (map :tool-name (:tools first-request))))
+                (is (some #(and (string? %)
+                                (str/includes? % "<skill id=\"construct-notebook-query-advanced\">"))
+                          (tree-seq coll? seq (:input second-request)))
+                    "the skill body reaches the model before it writes the query")
+                (is (=? {:error      nil
+                         :draft_card {:name          "Orders by month"
+                                      :display       "line"
+                                      :database_id   (mt/id)
+                                      :dataset_query {:stages [{:source-card (:id model)}]}}}
+                        response))))))))))
 
 (deftest generate-content-snowplow-test
   (mt/with-temporary-setting-values [llm-providers        llm.tu/default-connections

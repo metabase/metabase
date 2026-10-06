@@ -1,4 +1,4 @@
-// eslint-disable-next-line no-restricted-imports
+// eslint-disable-next-line eslint-js/no-restricted-imports
 import styled from "@emotion/styled";
 import cx from "classnames";
 import type { HTMLAttributes } from "react";
@@ -19,7 +19,6 @@ export const AddComparisonButton = styled((props: ButtonProps) => (
   <Button {...props} variant={props.variant ?? "subtle"} />
 ))`
   align-self: flex-start;
-  padding: 0;
 `;
 
 type ComparisonPickerSecondaryTextProps = TextProps &
@@ -35,8 +34,6 @@ export const ComparisonPickerSecondaryText = styled(
 
 // Unjustified type cast. FIXME
 export const ComparisonPickerButton = styled(Button)<ButtonProps>`
-  height: 40px;
-
   &:hover {
     ${ComparisonPickerSecondaryText} {
       color: var(--mb-color-core-brand);

@@ -169,6 +169,22 @@
    [:inputs       {:optional true} ::inputs]
    [:expectations {:optional true} ::expectations]])
 
+(mr/def ::run-status
+  "The persisted lifecycle state of a transform test run."
+  [:enum {:decode/normalize lib.schema.common/normalize-keyword}
+   :started :passed :failed :error :timeout])
+
+(mr/def ::transform-test-run
+  "A persisted execution of a transform test."
+  [:map {:closed true}
+   [:id                ms/PositiveInt]
+   [:transform_test_id [:maybe ms/PositiveInt]]
+   [:initiated_by      [:maybe ::lib.schema.id/user]]
+   [:start_time        ms/TemporalInstant]
+   [:end_time          [:maybe ms/TemporalInstant]]
+   [:status            ::run-status]
+   [:last_heartbeat    ms/TemporalInstant]])
+
 (mr/def ::status
   "The outcome of a transform test run, or of one of its expectations.
 

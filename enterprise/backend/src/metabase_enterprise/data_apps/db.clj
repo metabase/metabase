@@ -9,47 +9,59 @@
    [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [toucan2.core :as t2]))
 
-(def ^:private non-blob-columns
-  "Columns to select for normal data-app metadata reads, excluding the raw bundle blob."
-  [:model/DataApp :id :name :display_name :description :version :bundle_path :enabled :allowed_hosts
-   :resource_collection_id :permission_group_id :table_ids :draft
-   :bundle_hash :last_synced_sha :last_synced_at :sync_error
-   :created_at :updated_at])
+(def non-blob-columns
+  "Every DataApp column except the raw bundle blob."
+  [:id :entity_id :name :display_name :description :version :bundle_path :enabled :allowed_hosts
+   :resource_collection_id :permission_group_id :table_ids :draft :bundle_hash :created_at :updated_at])
 
-(mu/defn non-blob-data-app
+(def ^:private non-blob-model
+  (into [:model/DataApp] non-blob-columns))
+
+(mu/defn data-app
   "The DataApp with `data-app-id` without its bundle, or nil."
   [data-app-id :- ms/PositiveInt]
-  (t2/select-one non-blob-columns :id data-app-id))
+  (t2/select-one non-blob-model :id data-app-id))
 
-(mu/defn non-blob-data-app-by-slug
+(mu/defn data-app-by-slug
   "The DataApp named `slug` without its bundle, or nil."
   [slug :- :string]
-  (t2/select-one non-blob-columns :name slug))
+  (t2/select-one non-blob-model :name slug))
 
-(mu/defn enabled-non-blob-data-app-by-slug
+(mu/defn draft-by-slug
+  "The draft DataApp named `slug` without its bundle, or nil."
+  [slug :- :string]
+  (t2/select-one non-blob-model :name slug :draft true))
+
+(mu/defn enabled-data-app-by-slug
   "The enabled DataApp named `slug` without its bundle, or nil."
   [slug :- :string]
-  (t2/select-one non-blob-columns :name slug :enabled true))
+  (t2/select-one non-blob-model :name slug :enabled true))
 
-(mu/defn non-blob-data-apps
-  "Every DataApp without its bundle, ordered by display name; only the enabled, error-free ones when `available?`."
+(mu/defn data-apps
+  "Every DataApp without its bundle, ordered by display name; only the enabled ones that aren't drafts when
+  `available?`."
   [available? :- [:maybe :boolean]]
-  (t2/select non-blob-columns
+  (t2/select non-blob-model
              (cond-> {:order-by [[:display_name :asc]]}
                available? (assoc :where [:and
                                          [:= :enabled true]
-                                         [:= :sync_error nil]]))))
+                                         [:= :draft false]]))))
 
 (mu/defn data-app-bundle
   "The bundle bytes of the DataApp with `data-app-id`."
   [data-app-id :- ms/PositiveInt]
-  (t2/select-one-fn :bundle :model/DataApp :id data-app-id))
+  (t2/select-one-fn :bundle [:model/DataApp :bundle] :id data-app-id))
 
-(mu/defn data-apps-sync-info
-  "The sync-relevant columns of every DataApp."
-  []
-  (t2/select [:model/DataApp :name :display_name :description :version :allowed_hosts :bundle_path
-              :bundle_hash :sync_error]))
+(mu/defn reducible-data-apps-with-bundles
+  "A reducible of the DataApp rows, bundles included, whose `filter-column` is one of `filter-ids` (every row when
+  `filter-column` is nil), ordered ascending by `order-columns`."
+  [filter-column :- [:maybe :keyword]
+   filter-ids    :- [:maybe [:sequential [:maybe [:or :int :string]]]]
+   order-columns :- [:maybe [:sequential :keyword]]]
+  (t2/reducible-select [:model/DataApp :*]
+                       (cond-> {}
+                         filter-column       (assoc :where [:in filter-column filter-ids])
+                         (seq order-columns) (assoc :order-by (mapv (fn [column] [column :asc]) order-columns)))))
 
 (defn table-database-id
   "The database ID for the Table with `table-id`, or nil."
@@ -87,37 +99,21 @@
   [row :- ::data-apps.schema/data-app.update]
   (t2/insert! :model/DataApp row))
 
+(mu/defn insert-data-app-returning-pk! :- ms/PositiveInt
+  "Insert the DataApp `row`, returning its ID."
+  [row :- ::data-apps.schema/data-app.update]
+  (t2/insert-returning-pk! :model/DataApp row))
+
 (mu/defn update-data-app!
   "Apply `changes` to the DataApp with `data-app-id`."
   [data-app-id :- ms/PositiveInt
    changes     :- ::data-apps.schema/data-app.update]
   (t2/update! :model/DataApp :id data-app-id changes))
 
-(mu/defn update-data-app-by-slug!
-  "Apply `changes` to the DataApp named `slug`."
-  [slug    :- :string
-   changes :- ::data-apps.schema/data-app.update]
-  (t2/update! :model/DataApp :name slug changes))
-
-(mu/defn delete-data-app-by-slug!
-  "Delete the DataApp named `slug`, returning the number deleted."
-  [slug :- :string]
-  (t2/delete! :model/DataApp :name slug))
-
-(mu/defn delete-data-apps-not-named!
-  "Delete non-draft DataApps whose name is not one of `slugs`, returning the number deleted."
-  [slugs :- [:set :string]]
-  (t2/delete! :model/DataApp :name [:not-in slugs] :draft false))
-
-(mu/defn delete-all-data-apps!
-  "Delete every non-draft DataApp, returning the number deleted."
-  []
-  (t2/delete! :model/DataApp :draft false))
-
-(defn publish-data-app-drafts!
-  "Mark drafts named by `slugs` as published."
-  [slugs]
-  (t2/update! :model/DataApp :name [:in slugs] :draft true {:draft false}))
+(mu/defn delete-data-app!
+  "Delete the DataApp with `data-app-id`."
+  [data-app-id :- ms/PositiveInt]
+  (t2/delete! :model/DataApp :id data-app-id))
 
 (defn permission-group
   "The permission group with `group-id`, or nil."
@@ -143,6 +139,11 @@
   "The IDs of permission groups owned by data apps."
   []
   (t2/select-pks-set :model/PermissionsGroup :is_data_app_group true))
+
+(defn resource-collection-ids
+  "The IDs of the resource collections owned by data apps."
+  []
+  (t2/select-fn-set :resource_collection_id :model/DataApp :resource_collection_id [:not= nil]))
 
 (defn databases-with-legacy-permissions
   "Database IDs with legacy View Data permissions from groups not owned by apps."

@@ -7,8 +7,8 @@
    [java-time.api :as t]
    [medley.core :as m]
    [metabase.api.response :as api.response]
-   [metabase.channel.api.channel-test :as api.channel-test]
    [metabase.channel.impl.http-test :as channel.http-test]
+   [metabase.channel.rest.api.channel-test :as api.channel-test]
    [metabase.channel.settings :as channel.settings]
    [metabase.driver :as driver]
    [metabase.lib.core :as lib]
@@ -1080,7 +1080,7 @@
 (deftest send-test-alert-with-http-channel-test
   (testing "POST /api/pulse/test send test alert to a http channel"
     (notification.tu/with-send-notification-sync
-      (mt/with-temporary-setting-values [http-channel-allowed-networks :allow-all]
+      (mt/with-temp-env-var-value! [mb-http-channel-allowed-networks "allow-all"]
         (let [requests (atom [])
               endpoint (channel.http-test/make-route
                         :post "/test"

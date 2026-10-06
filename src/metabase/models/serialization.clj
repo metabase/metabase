@@ -64,6 +64,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
+   [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.models.db :as models.db]
@@ -299,6 +300,7 @@
 
 (defmethod make-spec :default [_ _] nil)
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (defn ^:dynamic *make-spec*
   "Cachable wrapper around [[make-spec]] that is memoized inside [[with-cache]]."
   [model-name opts]
@@ -585,6 +587,14 @@
   [entity]
   (:serdes/meta entity))
 
+(defmulti resource-paths
+  "Paths of the `:serdes/resources` stored next to an ingested entity's YAML file, relative to its directory."
+  {:arglists '([ingested])}
+  ingested-model)
+
+(defmethod resource-paths :default [_]
+  nil)
+
 (defmulti load-find-local
   "Given a path, tries to look up any corresponding local entity.
 
@@ -621,7 +631,8 @@
   dependency is represented by its abstract path (its `:serdes/meta` value).
 
   NOTE: This is called during **LOAD**. Its export-time counterpart is [[serialization-dependencies]], which runs on a
-  raw entity and additionally reports tables/fields (which import synthesizes on the fly, so they aren't load deps).
+  raw entity and additionally reports databases/tables/fields (which import synthesizes on the fly, so they aren't load
+  deps).
 
   Keyed on the model name for this entity.
   Default implementation returns `nil`, so only models that have dependencies need to implement this."
@@ -762,8 +773,10 @@
               [{:label (:name entity) :key (:entity_id entity)}]])))
 
 (defmulti storage-path
-  "Returns a vector of maps with `:label` and optional `:key` for each path segment.
-  `:label` is the human-readable name; `:key` is a deduplication identity (entity_id, name, or nil).
+  "Returns a vector of maps with `:label` and optional `:key`, `:style` and `:suffix` for each path segment.
+  `:label` is the human-readable name; `:key` is a deduplication identity (entity_id, name, or nil); `:style` is
+  `:name` (the default) for a label that is slugified into a file name, or `:slug` for a label that is already a slug
+  safe to use as a file name as is; `:suffix` is appended to the file name after the label is slugified and truncated.
   Dispatches on model name."
   {:arglists '([entity ctx])}
   (fn [entity _] (ingested-model entity)))
@@ -816,6 +829,7 @@
 
 ;;; ## General foreign keys
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (mu/defn ^:dynamic *export-fk*
   "Given a numeric foreign key and its model (symbol, name or IModel), looks up the entity by ID and gets its entity ID
   or identity hash.
@@ -838,6 +852,7 @@
          (throw e#))
        nil)))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (mu/defn ^:dynamic *import-fk*
   "Given an identifier, and the model it represents (symbol, name or IModel), looks up the corresponding
   entity and gets its primary key.
@@ -853,6 +868,7 @@
    model :- :metabase.models.serialization.path/model-keyword-or-symbol]
   (resolve/import-fk (import-resolver) eid model))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (mu/defn ^:dynamic *export-fk-keyed*
   "Given a numeric ID, look up a different identifying field for that entity, and return it as a portable ID.
   Eg. `Database.name`.
@@ -865,6 +881,7 @@
    field :- :keyword]
   (resolve/export-fk-keyed (export-resolver) id model field))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (defn ^:dynamic *import-fk-keyed*
   "Given a single, portable, identifying field and the model it refers to, this resolves the entity and returns its
   numeric `:id`.
@@ -876,6 +893,7 @@
   (resolve/import-fk-keyed (import-resolver) portable model field))
 
 ;;; ## Users
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (mu/defn ^:dynamic *export-user*
   "Exports a user as the email address.
   This just calls [[*export-fk-keyed*]], but the counterpart [[*import-user*]] is more involved. This is a unique function
@@ -883,6 +901,7 @@
   [id :- [:maybe ::lib.schema.id/user]]
   (resolve/export-user (export-resolver) id))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (mu/defn ^:dynamic *import-user*
   "Imports a user by their email address.
   If a user with that email address exists, returns its primary key.
@@ -893,6 +912,7 @@
 
 ;;; ## Databases
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (defn ^:dynamic *export-database-fk*
   "Given a numeric database ID, return its name as a portable reference.
   [[*import-database-fk*]] is the inverse."
@@ -900,14 +920,17 @@
   (when id
     (resolve/export-fk-keyed (export-resolver) id :model/Database :name)))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (defn ^:dynamic *import-database-fk*
   "Given a portable database name, resolve it back to a numeric ID.
   [[*export-database-fk*]] is the inverse."
   [db-name]
-  (*import-fk-keyed* db-name :model/Database :name))
+  (when db-name
+    (resolve/import-database-fk (import-resolver) db-name)))
 
 ;;; ## Tables
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (mu/defn ^:dynamic *export-table-fk*
   "Given a numeric `table_id`, return a portable table reference.
   If the `table_id` is `nil`, return `nil`. This is legal for a native question.
@@ -917,6 +940,7 @@
   (when table-id
     (resolve/export-table-fk (export-resolver) table-id)))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (mu/defn ^:dynamic *import-table-fk*
   "Given a `table_id` as exported by [[*export-table-fk*]], resolve it back into a numeric `table_id`.
   The input might be nil, in which case so is the output. This is legal for a native question."
@@ -967,6 +991,7 @@
 ;; the export. Export order can't be arranged around field-fk reuse either, so even a bounded
 ;; cache has no reliable hit rate. If caching is ever added here (e.g. for the reuse-heavy
 ;; FK-target refs), it MUST be bounded so no O(field-count) structure can blow up memory.
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (mu/defn ^:dynamic *export-field-fk*
   "Given a numeric `field_id`, return a portable field reference.
   That has the form `[db-name schema table-name field-name]`, where the `schema` might be nil.
@@ -977,6 +1002,7 @@
           [db-name schema table-name] (*export-table-fk* (:table_id (first fields)))]
       (into [db-name schema table-name] (map :name fields)))))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (mu/defn ^:dynamic *import-field-fk*
   "Given a `field_id` as exported by [[*export-field-fk*]], resolve it back into a numeric `field_id`."
   [[_db-name _schema _table-name & _fields :as field-id] :- [:maybe [:cat string? [:maybe string?] string? #_fields [:+ string?]]]]
@@ -990,6 +1016,13 @@
                   (when schema {:model "Schema" :id schema})
                   {:model "Table" :id table-name}
                   {:model "Field" :id field-name}]))
+
+(defn field-path->field-ref
+  "The `[db-name schema table-name & field-names]` reference of the Field at `field-path`, nested Fields included."
+  [field-path]
+  (let [[table-path fields] (split-with #(not= "Field" (:model %)) field-path)
+        id-of               (fn [model] (some #(when (= model (:model %)) (:id %)) table-path))]
+    (into [(id-of "Database") (id-of "Schema") (id-of "Table")] (map :id) fields)))
 
 ;;; ## MBQL Fields
 
@@ -1027,6 +1060,7 @@
     (cond->> mbql
       schema (lib/normalize schema mbql))))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic *required-lib-uuids-for-export* nil)
 
 (mu/defn- collect-required-lib-uuids :- [:set ::lib.schema.common/uuid]
@@ -1201,6 +1235,7 @@
     (import-mbql-map m)))
 
 ;; Unfortunately, settings depend on serdes, so we can't read settings directly in serdes (circular dep)
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *skip-schema-validation?*
   "When true, [[import-mbql]] stores a normalized query without checking it against this instance's query schema."
   false)
@@ -1269,9 +1304,25 @@
            (lib/all-template-tags x)))
     x))
 
+(defn- legacy-mbql-query->mbql5
+  "Converts an imported legacy MBQL query to MBQL 5, returning `x` unchanged if it isn't one or conversion fails.
+
+  Export writes every Field ID as a portable path, so a raw integer left in an imported query is a literal. Converting
+  here with `{:legacy-int-field-ids? false}` keeps it one; the legacy normalization models apply on save would treat
+  it as an MBQL 2 Field ID."
+  [x]
+  (if (and (map? x) (= (lib/normalized-query-type x) :query))
+    (try
+      (binding [lib.schema.expression/*suppress-expression-type-check?* true]
+        (lib/->mbql5 (lib/normalize :metabase.legacy-mbql.schema/Query x {:legacy-int-field-ids? false})))
+      (catch Throwable e
+        (log/warnf "Error converting imported legacy MBQL query: %s" (ex-message e))
+        x))
+    x))
+
 (defn import-mbql
   "Given an MBQL expression (or any structure that may contain portable references) as an EDN structure with portable
-  IDs embedded, convert the IDs back to raw numeric IDs.
+  IDs embedded, convert the IDs back to raw numeric IDs. Legacy MBQL queries are converted to MBQL 5.
 
   Throws if an MBQL 5 expression doesn't match the schema."
   [x]
@@ -1279,7 +1330,8 @@
           import-mbql*
           normalize-imported
           (cond-> (not *skip-schema-validation?*) validate-imported-query!)
-          repair-card-template-tag-names))
+          repair-card-template-tag-names
+          legacy-mbql-query->mbql5))
 
 (declare ^:private mbql-deps-map)
 
@@ -1291,16 +1343,6 @@
   [allow-int-ids? x]
   (and allow-int-ids? (pos-int? x)))
 
-(defn- ref->db-dep
-  "Given a portable table or field reference (a vector like `[db-name schema table-name ...]`), return a set with
-  its Database dependency, or nil. Table and Field references are intentionally *not* dependencies — missing ones
-  are synthesized as inactive rows on import — but their Database is, since it can't be synthesized. We can't rely
-  on the query's top-level `:database` for this because some references (e.g. dashboard parameter mappings) are
-  bare field refs with no surrounding query."
-  [ref]
-  (when-let [db-name (first ref)]
-    #{[{:model "Database" :id db-name}]}))
-
 (def ^:private mbql-ref-tag->model
   "The serdes model that a `:metric`/`:segment`/`:measure` MBQL reference clause depends on."
   {:metric "Card",    "metric"  "Card"
@@ -1310,11 +1352,10 @@
 (defn- mbql-deps-vector [allow-int-ids? entity]
   (match/match-one entity
     ;; --- serialized (portable) refs, walked at load time ---
-    ;; A serialized `:field` clause's only dependency is the Database of its referenced field; the Field/Table
-    ;; themselves are synthesized on import, and a field clause never nests metric/segment/card refs, so we don't
-    ;; descend.
-    [#{:field "field"} (_opts :guard map?) (ref :guard vector?)]
-    (ref->db-dep ref)
+    ;; A serialized `:field` clause has no dependencies: its Database, Table and Field are synthesized on import, and
+    ;; a field clause never nests metric/segment/card refs, so we don't descend.
+    [#{:field "field"} (_opts :guard map?) (_ref :guard vector?)]
+    nil
 
     [(tag :guard #{:metric "metric" :segment "segment" :measure "measure"})
      (opts :guard map?)
@@ -1323,8 +1364,8 @@
           (mbql-deps-map allow-int-ids? opts))
 
     ;; legacy (MBQL 4) serialized refs
-    [#{:field "field" :field-id "field-id"} (ref :guard vector?) _opts]
-    (ref->db-dep ref)
+    [#{:field "field" :field-id "field-id"} (_ref :guard vector?) _opts]
+    nil
 
     [(tag :guard #{:metric "metric" :segment "segment" :measure "measure"}) (field :guard portable-id?)]
     #{[{:model (mbql-ref-tag->model tag) :id field}]}
@@ -1358,17 +1399,15 @@
   (into #{}
         (mapcat (fn [[k v]]
                   (cond
-                    ;; --- serialized (portable) refs. Table/Field references contribute only their Database as a
-                    ;; dependency (see `ref->db-dep`); the referenced Table/Field are synthesized on import. ---
-                    (and (= k :database)
-                         (string? v)
-                         (not= v "database/__virtual"))        #{[{:model "Database" :id v}]}
-                    (and (= k :source-table) (vector? v))      (ref->db-dep v)
+                    ;; --- serialized (portable) refs. Database/Table/Field references are not dependencies; they are
+                    ;; synthesized on import. ---
+                    (and (= k :database) (string? v))          nil
+                    (and (= k :source-table) (vector? v))      nil
                     (and (= k :source-table) (portable-id? v)) #{[{:model "Card" :id v}]}
                     (and (= k :source-card)  (portable-id? v)) #{[{:model "Card" :id v}]}
-                    (and (= k :source-field) (vector? v))      (ref->db-dep v)
+                    (and (= k :source-field) (vector? v))      nil
                     (and (= k :snippet-id)   (portable-id? v)) #{[{:model "NativeQuerySnippet" :id v}]}
-                    (and (= k :table-id)     (vector? v))      (ref->db-dep v)
+                    (and (= k :table-id)     (vector? v))      nil
                     (and (#{:card_id :card-id} k) (string? v)) #{[{:model "Card" :id v}]}
                     ;; --- raw (numeric) refs, walked at export time: the referenced Table/Field are real appdb ids to
                     ;; existence-check. `allow-int-ids?` gates these (see `raw-ref-id?`). ---
@@ -1743,12 +1782,11 @@
 (defn- viz-link-card-deps
   [allow-int-ids? settings]
   (when-let [{:keys [model id]} (get-in settings [:link :entity])]
-    (if (= model "table")
-      ;; Serialized: a linked Table is not a dependency (synthesized on import), but its Database is. Raw (export
-      ;; time): the numeric table id is a real Table to existence-check.
-      (cond
-        (vector? id)          #{[{:model "Database" :id (first id)}]}
-        (raw-ref-id? allow-int-ids? id) #{[{:model "Table" :id id}]})
+    (if (#{"table" "database"} model)
+      ;; Serialized: a linked Table or Database is not a dependency (synthesized on import). Raw (export time): the
+      ;; numeric id is a real row to existence-check.
+      (when (raw-ref-id? allow-int-ids? id)
+        #{[{:model (name (link-card-model->toucan-model model)) :id id}]})
       #{[{:model (name (link-card-model->toucan-model model))
           :id    id}]})))
 
@@ -1923,3 +1961,9 @@
   `(binding [resolve/*export-resolver* (resolve.default/cached-export-resolver)
              resolve/*import-resolver* (resolve.default/cached-import-resolver)]
      ~@body))
+
+(defn reset-import-cache!
+  "Drop the memoized lookups of the bound import resolver, if it caches any."
+  []
+  (when (satisfies? resolve/ResettableCache resolve/*import-resolver*)
+    (resolve/reset-cache! resolve/*import-resolver*)))

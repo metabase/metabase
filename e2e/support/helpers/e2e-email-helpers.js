@@ -13,7 +13,7 @@ const { WEB_PORT, SMTP_PORT } = WEBMAIL_CONFIG;
 /**
  * `bun run test-cypress` starts maildev for you via
  * e2e/test/scenarios/docker-compose.yml. To start it manually instead:
- * `docker run -d -p 1180:1080 -p 1125:1025 maildev/maildev:2.2.1`
+ * `docker run -d -p 127.0.0.1:1180:1080 -p 127.0.0.1:1125:1025 maildev/maildev:2.2.1`
  * or
  * `npx maildev -s 1125 -w 1180`
  */

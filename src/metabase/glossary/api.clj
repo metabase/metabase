@@ -26,7 +26,7 @@
   [_route-params
    {:keys [search]} :- [:maybe [:map {:closed true} [:search {:optional true} [:maybe ms/NonBlankString]]]]]
   {:data      (t2/hydrate (glossary.db/glossary-entries search) :creator)
-   :can_write (boolean (and (api/is-data-analyst?) (editable?)))})
+   :can_write (boolean (and (api/entitled-data-analyst?) (editable?)))})
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -39,7 +39,7 @@
    body :- [:map {:closed true}
             [:term ms/NonBlankString]
             [:definition ms/NonBlankString]]]
-  (api/check-data-analyst)
+  (api/check-data-studio-access)
   (check-editable!)
   (t2/hydrate (glossary.core/create-entry! api/*current-user-id* body) :creator))
 
@@ -54,7 +54,7 @@
    body :- [:map {:closed true}
             [:term ms/NonBlankString]
             [:definition ms/NonBlankString]]]
-  (api/check-data-analyst)
+  (api/check-data-studio-access)
   (check-editable!)
   (t2/hydrate (api/check-404 (glossary.core/update-entry! api/*current-user-id* id body)) :creator))
 
@@ -65,7 +65,7 @@
 (api.macros/defendpoint :delete "/:id"
   "Delete a glossary entry."
   [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]]
-  (api/check-data-analyst)
+  (api/check-data-studio-access)
   (check-editable!)
   (api/check-404 (glossary.core/delete-entry! api/*current-user-id* id))
   api/generic-204-no-content)

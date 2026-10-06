@@ -43,9 +43,9 @@ export function expectSearchResultContent({
         }
 
         if (expectedSearchResult.collection) {
-          cy.findAllByTestId("result-link-wrapper").first(() => {
-            cy.findByText(expectedSearchResult.collection).should("exist");
-          });
+          cy.findAllByTestId("result-link-wrapper")
+            .first()
+            .should("contain.text", expectedSearchResult.collection);
         }
         if (expectedSearchResult.timestamp) {
           cy.findByTestId("revision-history-text").findByText(

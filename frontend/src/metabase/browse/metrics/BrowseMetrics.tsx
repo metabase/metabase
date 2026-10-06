@@ -5,6 +5,7 @@ import _ from "underscore";
 import NoResults from "assets/img/metrics_bot.svg";
 import { skipToken } from "metabase/api";
 import { EmptyState } from "metabase/common/components/EmptyState";
+import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { ForwardRefLink, Link } from "metabase/common/components/Link";
 import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
 import { trackMetricCreateStarted } from "metabase/common/data-studio/analytics";
@@ -167,11 +168,11 @@ function MetricsEmptyState({
               </Text>
               <Flex pt="lg" align="center" justify="center" gap="lg">
                 {showMetabaseLinks && (
-                  <Link
-                    target="_blank"
-                    to={metricsDocsLink}
-                    variant="brandBold"
-                  >{t`Read the docs`}</Link>
+                  <Button
+                    component={ExternalLink}
+                    href={metricsDocsLink}
+                    variant="subtle"
+                  >{t`Read the docs`}</Button>
                 )}
                 {canCreateMetric && (
                   <Button

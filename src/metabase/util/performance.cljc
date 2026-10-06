@@ -158,7 +158,15 @@
      (persistent [_]
        (LazilyPersistentVector/createOwning arr)))
    :cljs
-   (deftype SmallTransientImpl [^:mutable arr, ^:mutable cnt, f]))
+   (deftype SmallTransientImpl [^:mutable arr, ^:mutable cnt, f]
+     ITransientCollection
+     (-conj! [this x]
+       (aset arr cnt x)
+       (set! cnt (inc cnt))
+       this)
+
+     (-persistent! [_]
+       (PersistentVector. nil cnt 5 (.-EMPTY-NODE PersistentVector) arr nil))))
 
 (defn- small-transient [n f]
   ;; Storing `f` in the transient itself is a hack to reduce lambda generation.
@@ -228,13 +236,13 @@
       :cljs
       (core/mapv f coll1 coll2 coll3 coll4))))
 
-#?(:clj
-   (defn mapv-indexed
-     "Like `clojure.core/map-indexed`, but returns a vector and uses Java iterators under the hood and optimized small
+(defn mapv-indexed
+  "Like `clojure.core/map-indexed`, but returns a vector and uses Java iterators under the hood and optimized small
   transient vectors. Requires `f` to be a primitive function of (long, Object) -> Object."
-     [f coll]
-     (if (nil? coll)
-       []
+  [f coll]
+  (if (nil? coll)
+    []
+    #?(:clj
        (let [n (count coll)
              it1 (.iterator ^Iterable coll)]
          (loop [i 0, res (if (<= n 32)
@@ -243,7 +251,28 @@
            (if (.hasNext it1)
              ;; Use .invokePrim directly to prevent index from autoboxing.
              (recur (inc i) (conj! res (.invokePrim ^clojure.lang.IFn$LOO f i (.next it1))))
-             (persistent! res)))))))
+             (persistent! res))))
+       :cljs
+       (let [n (count coll)]
+         (persistent!
+          (reduce-kv #(conj! %1 (f %2 %3))
+                     (if (<= n 32)
+                       (small-transient n identity)
+                       (transient []))
+                     coll))))))
+
+(defn remove-by-index
+  "Remove an item with the given `index` from vector `v`, returning a vector."
+  [v index]
+  (let [n (count v)]
+    (persistent!
+     (reduce #(if (= %2 index)
+                %1
+                (conj! %1 (nth v %2)))
+             (if (<= n 32)
+               (small-transient (dec n) identity)
+               (transient []))
+             (range (count v))))))
 
 (defn run!
   "Drop-in replacement for `clojure.core/run!`.

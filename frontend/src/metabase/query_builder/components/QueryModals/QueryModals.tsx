@@ -10,11 +10,11 @@ import { SaveQuestionModal } from "metabase/common/components/SaveQuestionModal"
 import { type ToastArgs, useToast } from "metabase/common/hooks";
 import { QuestionEmbedWidget } from "metabase/embedding/components/QuestionEmbedWidget";
 import { QuestionAlertListModal } from "metabase/notifications/modals";
-import { MODAL_TYPES, type QueryModalType } from "metabase/querying/constants";
+import { MODAL_TYPES } from "metabase/querying/constants";
 import { ArchiveCardModal } from "metabase/questions/components/ArchiveCardModal";
 import { MoveCardModal } from "metabase/questions/components/MoveCardModal";
 import { useDispatch, useSelector } from "metabase/redux";
-import type { QueryBuilderMode } from "metabase/redux/store";
+import type { QueryBuilderMode, QueryModalType } from "metabase/redux/store";
 import { useNavigate } from "metabase/router";
 import EditEventModal from "metabase/timelines/questions/containers/EditEventModal";
 import MoveEventModal from "metabase/timelines/questions/containers/MoveEventModal";
@@ -362,7 +362,9 @@ function getAddToDashboardToastProps(
   onOpenModal: (modalType: QueryModalType) => void,
 ): ToastArgs {
   return {
-    message: () => <Text c="inherit" fw="bold" mr="2.5rem">{t`Saved`}</Text>,
+    message: () => (
+      <Text c="inherit" fw="bold" lh="inherit" mr="2.5rem">{t`Saved`}</Text>
+    ),
     actionLabel: t`Add this to a dashboard`,
     action: () => onOpenModal(MODAL_TYPES.ADD_TO_DASHBOARD),
   };

@@ -58,7 +58,7 @@
    [:max number?]
    [:mean number?]
    [:median number?]
-   [:std-dev number?]
+   [:std-dev [:maybe number?]]
    [:range number?]])
 
 (mr/def ::time-range
@@ -159,9 +159,10 @@
 (mr/def ::stats-limits
   "Notes about data-volume limits applied before computing chart statistics."
   [:map {:closed true}
-   [:downsampled-series  {:optional true} [:map-of :string [:map {:closed true}
-                                                            [:original-count :int]
-                                                            [:sampled-count :int]]]]
+   [:downsampled-series  {:optional true} [:sequential [:map {:closed true}
+                                                        [:name :string]
+                                                        [:original-count :int]
+                                                        [:sampled-count :int]]]]
    [:correlations-capped {:optional true} [:map {:closed true}
                                            [:total-series :int]
                                            [:max-correlated :int]]]])
@@ -177,6 +178,7 @@
 (mr/def ::time-series-series-stats
   "Statistics for a single time series."
   [:map {:closed true}
+   [:name :string]
    [:summary ::series-summary]
    [:time-range ::time-range]
    [:data-points :int]
@@ -198,7 +200,7 @@
   [:map {:closed true}
    [:chart-type [:= :time-series]]
    [:series-count :int]
-   [:series [:map-of :string ::time-series-series-stats]]
+   [:series [:sequential ::time-series-series-stats]]
    [:correlations {:optional true} [:maybe [:sequential ::correlation]]]
    [:limits {:optional true} ::stats-limits]])
 
@@ -212,6 +214,7 @@
 (mr/def ::categorical-series-stats
   "Statistics for a single categorical series."
   [:map {:closed true}
+   [:name :string]
    [:summary [:maybe ::series-summary]]
    [:data-points :int]
    [:category-count :int]
@@ -226,7 +229,7 @@
   [:map {:closed true}
    [:chart-type [:= :categorical]]
    [:series-count :int]
-   [:series [:map-of :string ::categorical-series-stats]]
+   [:series [:sequential ::categorical-series-stats]]
    [:correlations {:optional true} [:maybe [:sequential ::correlation]]]
    [:limits {:optional true} ::stats-limits]])
 
@@ -240,6 +243,7 @@
 (mr/def ::scatter-series-stats
   "Statistics for a single scatter series."
   [:map {:closed true}
+   [:name :string]
    [:x-summary [:maybe ::series-summary]]
    [:y-summary [:maybe ::series-summary]]
    [:data-points :int]
@@ -258,7 +262,7 @@
   [:map {:closed true}
    [:chart-type [:= :scatter]]
    [:series-count :int]
-   [:series [:map-of :string ::scatter-series-stats]]
+   [:series [:sequential ::scatter-series-stats]]
    [:limits {:optional true} ::stats-limits]])
 
 (mr/def ::histogram-summary
@@ -268,10 +272,20 @@
    [:weighted-std-dev number?]
    [:data-range number?]])
 
+(mr/def ::estimated-percentiles
+  "The fixed percentile set [[metabase.interestingness.chart.histogram]] estimates."
+  [:map {:closed true}
+   [:p25 number?]
+   [:p50 number?]
+   [:p75 number?]
+   [:p90 number?]
+   [:p95 number?]
+   [:p99 number?]])
+
 (mr/def ::estimated-distribution-stats
   "Distribution statistics estimated from binned histogram data using weighted approximations."
   [:map {:closed true}
-   [:estimated-percentiles [:map-of :int number?]]
+   [:estimated-percentiles [:maybe ::estimated-percentiles]]
    [:estimated-quartiles [:map {:closed true}
                           [:q1 number?]
                           [:median number?]
@@ -293,6 +307,7 @@
 (mr/def ::histogram-series-stats
   "Statistics for a single histogram series."
   [:map {:closed true}
+   [:name :string]
    [:estimated-summary ::histogram-summary]
    [:total-count :int]
    [:data-points :int]
@@ -307,7 +322,7 @@
   [:map {:closed true}
    [:chart-type [:= :histogram]]
    [:series-count :int]
-   [:series [:map-of :string ::histogram-series-stats]]
+   [:series [:sequential ::histogram-series-stats]]
    [:limits {:optional true} ::stats-limits]])
 
 (mr/def ::unknown-stats
@@ -320,7 +335,7 @@
 
 (mr/def ::chart-stats
   "Union of all chart statistics types, dispatched on `:chart-type`."
-  [:multi {:dispatch :chart-type}
+  [:multi {:dispatch (comp keyword :chart-type)}
    [:time-series ::time-series-stats]
    [:categorical ::categorical-stats]
    [:scatter     ::scatter-stats]

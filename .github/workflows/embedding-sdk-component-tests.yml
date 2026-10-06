@@ -38,7 +38,7 @@ jobs:
       CYPRESS_MB_PRO_SELF_HOSTED_TOKEN: ${{ secrets.STAGING_MB_PRO_SELF_HOSTED_TOKEN }}
 
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - name: Prepare Docker containers
         uses: ./.github/actions/e2e-prepare-containers
@@ -214,7 +214,7 @@ jobs:
     outputs:
       target-ref: ${{ steps.get-target-ref.outputs.value }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 2
 
@@ -251,7 +251,7 @@ jobs:
 
     steps:
       - name: Check out the code from the previous commit
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           ref: ${{ needs.decide-target-ref.outputs.target-ref }}
 

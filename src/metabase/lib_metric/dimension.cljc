@@ -22,12 +22,13 @@
    foreign table, so the same field id is reachable via different `:source-field` paths. Keying maps
    by field id alone therefore collides — always key by this instead.
 
-   It drops only per-instance/derived opts (`:lib/uuid`, `:effective-type`, `:base-type`) and KEEPS
+   It drops only per-instance/derived opts (`:lib/uuid`, `:effective-type`, `:base-type`, and the
+   `:lib/transformation-added-base-type` bookkeeping flag that legacy-MBQL conversion stamps on a ref) and KEEPS
    everything identity-relevant: the id, the `:source-field`/`:join-alias` that identifies the FK or
    join, and any `:binning`/`:temporal-unit`."
   [[clause-type opts id-or-name]]
   [clause-type
-   (dissoc opts :lib/uuid :effective-type :base-type)
+   (dissoc opts :lib/uuid :effective-type :base-type :lib/transformation-added-base-type)
    id-or-name])
 
 (defn targets-equal?
@@ -159,7 +160,10 @@
                  (let [persisted-dim (find-persisted-by-target (:target mapping)
                                                                persisted-mappings
                                                                persisted-dims-by-id)
-                       dim-id        (or (:id persisted-dim) (random-uuid-str))
+                       ;; A computed dimension arrives with an id already derived from its entity and target, and
+                       ;; so is stable across recomputation; the random fallback only covers callers that build
+                       ;; pairs by hand without one.
+                       dim-id        (or (:id persisted-dim) (:id dimension) (random-uuid-str))
                        merged-dim    (-> dimension
                                          (assoc :id dim-id)
                                          (assoc :status :status/active)

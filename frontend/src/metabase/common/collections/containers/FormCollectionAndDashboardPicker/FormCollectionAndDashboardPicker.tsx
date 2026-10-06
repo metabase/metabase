@@ -250,6 +250,7 @@ export function FormCollectionAndDashboardPicker({
           ref={buttonRef}
           id={id}
           onClick={() => setIsPickerOpen(true)}
+          size="lg"
           fullWidth
           rightSection={<Icon name="ellipsis" />}
           styles={{

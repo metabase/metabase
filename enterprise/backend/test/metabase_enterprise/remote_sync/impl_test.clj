@@ -19,6 +19,8 @@
    [metabase.settings.core :as setting]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
+   [metabase.util :as u]
+   [metabase.util.yaml :as yaml]
    [toucan2.core :as t2]))
 
 (use-fixtures :once (fixtures/initialize :db))
@@ -128,28 +130,6 @@
                            (format "Database (`%s`)" db-name))
             (format "expected %s to be quoted verbatim" (pr-str db-name)))))))
 
-(deftest source-error-message-database-not-found-test
-  (testing "source-error-message names the card and the missing database for FK database-not-found errors"
-    (let [cause (ex-info "table id present, but database not found: [clickhouse nil some_table]"
-                         {:table-id ["clickhouse" nil "some_table"]
-                          :db-name  "clickhouse"
-                          :error    :metabase.models.serialization.resolve.db/database-not-found})
-          e     (ex-info "Failed to load into database for Card abc123"
-                         {:path   "Card abc123"
-                          :entity {:model "Card" :id "abc123" :name "Some card"}}
-                         cause)]
-      (is (= (str "Import failed: Card `Some card` (`abc123`) references Database (`clickhouse`), which does not "
-                  "exist on this instance. Make sure all referenced databases and other dependencies are set up "
-                  "before importing.")
-             (impl/source-error-message e)))))
-  (testing "database-not-found is found anywhere in the cause chain, not only at the immediate cause"
-    (let [root   (ex-info "table id present, but database not found: [clickhouse nil t]"
-                          {:db-name "clickhouse"
-                           :error   :metabase.models.serialization.resolve.db/database-not-found})
-          middle (ex-info "wrapped by an intervening helper" {} root)
-          e      (ex-info "Failed to load into database for Card abc123" {:path "Card abc123"} middle)]
-      (is (str/includes? (impl/source-error-message e) "Database (`clickhouse`)")))))
-
 (deftest source-error-message-load-failure-test
   (testing "source-error-message names the entity and the underlying reason (GHY-3992)"
     (let [cause (ex-info "NOT NULL constraint failed: report_card.display" {})
@@ -184,15 +164,6 @@
       (is (= (str "Import failed: could not save Dashboard `Sales` (`xyz`). some db error. "
                   "It may have been saved without: `dashcards`, `parameters`.")
              (impl/source-error-message e)))))
-  (testing "a database-not-found cause still wins over the generic load-failure branch"
-    (let [cause (ex-info "table id present, but database not found: [ch nil t]"
-                         {:db-name "ch"
-                          :error   :metabase.models.serialization.resolve.db/database-not-found})
-          e     (ex-info "Failed to load into database for Card abc123"
-                         {:entity {:model "Card" :id "abc123" :name "Some card"}
-                          :error  :metabase-enterprise.serialization.v2.load/load-failure}
-                         cause)]
-      (is (str/includes? (impl/source-error-message e) "references Database (`ch`)"))))
   (testing "a tenant-collection cause still wins over the generic load-failure branch"
     (let [cause (ex-info "Can't create a tenant collection without tenants enabled" {})
           e     (ex-info "Failed to load into database for Collection abc"
@@ -463,24 +434,24 @@
       (is (= :error (:status result)))
       (is (re-find #"Network error" (:message result))))))
 
-(deftest import!-calls-update-progress-with-expected-values-test
-  (testing "import! calls update-progress! with expected progress values"
+(deftest import!-reports-progress-checkpoints-test
+  (testing "a first full import writes only the forced checkpoints when the per-entity writes fall inside the throttle window"
     (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "import" :initiated_by (mt/user->id :rasta)})]
       (mt/with-temp [:model/Collection {_coll-id :id} {:name "Test Collection" :is_remote_synced true :entity_id "test-collection-1xxxx" :location "/"}]
-        (let [mock-source (test-helpers/create-mock-source)
+        (let [mock-source    (test-helpers/create-mock-source)
               progress-calls (atom [])]
           (mt/with-dynamic-fn-redefs [remote-sync.task/update-progress!
                                       (fn [task-id progress]
-                                        (swap! progress-calls conj {:task-id task-id :progress progress}))]
+                                        (swap! progress-calls conj {:task-id task-id :progress progress}))
+                                      ;; a frozen clock keeps every per-entity write inside the throttle window
+                                      remote-sync.task/make-progress-reporter
+                                      (let [real (mt/original-fn #'remote-sync.task/make-progress-reporter)]
+                                        (fn [task-id opts] (real task-id (assoc opts :now-fn (constantly 0)))))]
             (let [result (impl/import! (source.p/snapshot mock-source) task-id)]
               (is (= :success (:status result)))
-              (is (= 5 (count @progress-calls)))
-              (is (= task-id (:task-id (first @progress-calls))))
-              (is (= task-id (:task-id (second @progress-calls))))
-              (is (= task-id (:task-id (nth @progress-calls 2))))
-              (is (= 0.7 (:progress (nth @progress-calls 2))))
-              (is (= 0.8 (:progress (nth @progress-calls 3))))
-              (is (= 0.95 (:progress (nth @progress-calls 4)))))))))))
+              (is (every? #(= task-id (:task-id %)) @progress-calls))
+              (is (= [0.02 0.05 0.7 0.75 0.9 0.95] (mapv :progress @progress-calls))
+                  "conflict scan, load start, load done, reconcile start, commit, reindex"))))))))
 
 (deftest import!-runs-a-single-reindex-inside-the-task-test
   (testing "a full import runs exactly one reindex, synchronous on H2 and asynchronous elsewhere"
@@ -2279,10 +2250,16 @@ serdes/meta:
 
 ;;; --------------------------------- Table/Field user-settings inline round trip ---------------------------------
 
+(defn- import-snapshot!
+  "Run a forced import of `mock-source`, closing the task afterwards, returning the import result."
+  [mock-source]
+  (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "import" :initiated_by (mt/user->id :rasta)})]
+    (u/prog1 (impl/import! (source.p/snapshot mock-source) task-id :force? true)
+      (remote-sync.task/complete-sync-task! task-id))))
+
 (deftest table-and-field-user-settings-round-trip-test
-  (testing "a full export writes one file per published Table with user edits -- the TableUserSettings entity at
-            the Table's own path, inlining its edited Fields' settings under :fields -- and a later import
-            restores it, pruning field edits the file no longer lists"
+  (testing "a full export writes a file per settings row and Dimension of a published Table, and an import makes the
+            instance match them, deleting what has no file"
     (mt/with-temporary-setting-values [remote-sync-type :read-write]
       (mt/with-temp [:model/Database   {db-id :id}    {:name "test-db"}
                      :model/Collection {coll-id :id}  {:name "RS" :is_remote_synced true :location "/"}
@@ -2292,31 +2269,169 @@ serdes/meta:
                      :model/Field      {f2-id :id}    {:name "F2" :table_id table-id :base_type :type/Text}]
         (t2/insert! :model/TableUserSettings {:table_id table-id :display_name "Renamed"})
         (t2/insert! :model/FieldUserSettings {:field_id f1-id :description "curated"})
+        (t2/insert! :model/Dimension {:field_id f2-id :name "Remapped F2" :type :internal})
         (let [export-task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "export" :initiated_by (mt/user->id :rasta)})
               mock-source    (test-helpers/create-mock-source)
-              export-result  (impl/export! (source.p/snapshot mock-source) export-task-id "Test export" :force? true)]
-          (is (= :success (:status export-result)))
+              table-files    #(into {} (filter (fn [[path _]] (str/includes? path "test_table"))) (get @(:files-atom mock-source) "main"))]
+          (is (= :success (:status (impl/export! (source.p/snapshot mock-source) export-task-id "Test export" :force? true))))
           (remote-sync.task/complete-sync-task! export-task-id)
-          (let [files       (get @(:files-atom mock-source) "main")
-                table-files (into {} (filter (fn [[p _]] (str/includes? p "test_table"))) files)]
-            (is (= 1 (count table-files))
-                (str "expected exactly one Table-related file, got " (keys table-files)))
-            (let [[path content] (first table-files)]
-              (is (str/ends-with? path "test_table.yaml")
-                  "the file lives at the Table's own path, not a ___tableusersettings/___fieldusersettings file")
-              (is (not (str/includes? path "___tableusersettings")))
-              (is (not (str/includes? path "___fieldusersettings")))
-              (is (str/includes? content "Renamed"))
-              (is (str/includes? content "fields:"))
-              (is (str/includes? content "curated"))))
-          (t2/insert! :model/FieldUserSettings {:field_id f2-id :description "stale"})
-          (t2/update! :model/TableUserSettings :table_id table-id {:display_name "Local Edit"})
-          (let [import-task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "import" :initiated_by (mt/user->id :rasta)})
-                import-result  (impl/import! (source.p/snapshot mock-source) import-task-id :force? true)]
-            (is (= :success (:status import-result)))
-            (is (= "Renamed" (:display_name (t2/select-one :model/TableUserSettings :table_id table-id)))
-                "T's user display_name is restored from the import")
-            (is (= "curated" (:description (t2/select-one :model/FieldUserSettings :field_id f1-id)))
-                "F1's edited description is present")
-            (is (not (t2/exists? :model/FieldUserSettings :field_id f2-id))
-                "F2's stale local row, absent from the imported file's :fields, is gone")))))))
+          (testing "each settings row and Dimension is a file of its own, and the Table and Fields are not written"
+            (is (= #{"test_table___tableusersettings.yaml" "f1___fieldusersettings.yaml" "f2___dimension.yaml"}
+                   (set (map #(last (str/split % #"/")) (keys (table-files)))))))
+          (testing "an import restores the files' rows and deletes the ones with no file"
+            (t2/insert! :model/FieldUserSettings {:field_id f2-id :description "stale"})
+            (t2/update! :model/TableUserSettings :table_id table-id {:display_name "Local Edit"})
+            (t2/delete! :model/Dimension :field_id f2-id)
+            (is (= :success (:status (import-snapshot! mock-source))))
+            (is (= "Renamed" (t2/select-one-fn :display_name :model/TableUserSettings :table_id table-id)))
+            (is (= "curated" (t2/select-one-fn :description :model/FieldUserSettings :field_id f1-id)))
+            (is (not (t2/exists? :model/FieldUserSettings :field_id f2-id)))
+            (is (= "Remapped F2" (t2/select-one-fn :name :model/Dimension :field_id f2-id))))
+          (testing "a settings file v64 wrote, carrying its Fields' settings under `fields`, keeps them"
+            (let [files    (table-files)
+                  content  (fn [suffix] (yaml/parse-string (val (u/seek #(str/ends-with? (key %) suffix) files))))
+                  legacy   (assoc (content "test_table___tableusersettings.yaml")
+                                  :fields [(content "f1___fieldusersettings.yaml")])
+                  [path _] (u/seek #(str/ends-with? (key %) "test_table___tableusersettings.yaml") files)]
+              (swap! (:files-atom mock-source) update "main"
+                     #(-> (into {} (remove (fn [[file _]] (str/includes? file "test_table"))) %)
+                          (assoc (str/replace path "___tableusersettings" "") (yaml/generate-string legacy)))))
+            (is (= :success (:status (import-snapshot! mock-source))))
+            (is (= "curated" (t2/select-one-fn :description :model/FieldUserSettings :field_id f1-id)))
+            (is (not (t2/exists? :model/Dimension :field_id f2-id))))
+          (testing "a settings file v64 wrote for a Table without Field settings carries an empty `fields`"
+            (swap! (:files-atom mock-source) update "main"
+                   (fn [files]
+                     (into {} (map (fn [[file content]]
+                                     [file (cond-> content
+                                             (str/ends-with? file "test_table.yaml")
+                                             (-> yaml/parse-string (assoc :fields []) yaml/generate-string))]))
+                           files)))
+            (is (= :success (:status (import-snapshot! mock-source))))
+            (is (not (t2/exists? :model/FieldUserSettings :field_id f1-id))))
+          (testing "a Field file an older git sync wrote keeps the Dimensions it carries"
+            (swap! (:files-atom mock-source) update "main"
+                   assoc "databases/test-db/tables/test_table/fields/f2.yaml"
+                   (yaml/generate-string {:name        "F2"
+                                          :table_id    ["test-db" nil "Test Table"]
+                                          :base_type   "type/Text"
+                                          :dimensions  [{:name "Remapped F2" :type "internal" :entity_id (u/generate-nano-id)}]
+                                          :serdes/meta [{:model "Database" :id "test-db"}
+                                                        {:model "Table" :id "Test Table"}
+                                                        {:model "Field" :id "F2"}]}))
+            (is (= :success (:status (import-snapshot! mock-source))))
+            (is (= "Remapped F2" (t2/select-one-fn :name :model/Dimension :field_id f2-id))))
+          (testing "deleting the files drops the Table's settings and its Fields'"
+            (swap! (:files-atom mock-source) update "main"
+                   #(into {} (remove (fn [[file _]] (str/includes? file "test_table"))) %))
+            (is (= :success (:status (import-snapshot! mock-source))))
+            (is (not (t2/exists? :model/TableUserSettings :table_id table-id)))
+            (is (not (t2/exists? :model/FieldUserSettings :field_id f1-id)))))))))
+
+(deftest user-settings-removal-after-import-test
+  (testing "removing a Dimension an import brought is tracked, and pushing the removal leaves nothing pending"
+    (mt/with-temporary-setting-values [remote-sync-type :read-write]
+      (mt/with-temp [:model/Database   {db-id :id}    {:name "test-db"}
+                     :model/Collection {coll-id :id}  {:name "RS" :is_remote_synced true :location "/"}
+                     :model/Table      {table-id :id} {:name "Test Table" :db_id db-id
+                                                       :is_published true :collection_id coll-id}
+                     :model/Field      {field-id :id} {:name "F1" :table_id table-id :base_type :type/Text}]
+        (t2/insert! :model/Dimension {:field_id field-id :name "Remapped" :type :internal})
+        (let [mock-source   (test-helpers/create-mock-source)
+              export!       (fn []
+                              (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "export" :initiated_by (mt/user->id :rasta)})]
+                                (u/prog1 (impl/export! (source.p/snapshot mock-source) task-id "Test export" :force? true)
+                                  (remote-sync.task/complete-sync-task! task-id))))
+              dimension-rso #(t2/select-one :model/RemoteSyncObject :model_type "Dimension" :model_id field-id)]
+          (is (= :success (:status (export!))))
+          (is (= :success (:status (import-snapshot! mock-source))))
+          (mt/user-http-request :crowberto :delete 204 (format "field/%d/dimension" field-id))
+          (is (=? {:status "removed"} (dimension-rso)))
+          (is (= :success (:status (export!))))
+          (is (nil? (dimension-rso)))
+          (mt/user-http-request :crowberto :put 200 (format "field/%d" field-id) {:description "edited"})
+          (is (nil? (dimension-rso))))))))
+
+;; ---------- run-task-body!: the row is always closed, whatever the worker does ----------------
+
+(defn- new-task-id []
+  (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "import" :initiated_by (mt/user->id :rasta)}))
+
+(deftest run-task-body!-records-a-successful-result-test
+  (testing "a :success result completes the row, runs :on-success, and unregisters the task"
+    (let [task-id     (new-task-id)
+          on-success  (atom nil)
+          seen-running (atom nil)]
+      (impl/run-task-body! task-id nil
+                           (fn [id]
+                             (reset! seen-running (contains? (impl/running-task-ids) id))
+                             {:status :success :outcome {:kind "pull-skipped"}})
+                           :on-success (fn [id result] (reset! on-success [id (:status result)])))
+      (is (true? @seen-running) "the task is registered while its body runs")
+      (is (not (contains? (impl/running-task-ids) task-id)))
+      (is (= [task-id :success] @on-success))
+      (is (=? {:ended_at some? :cancelled false :error_message nil :outcome {:kind "pull-skipped"}}
+              (t2/select-one :model/RemoteSyncTask :id task-id))))))
+
+(deftest run-task-body!-fails-the-row-when-sync-fn-throws-an-error-test
+  (testing "an Error (not an Exception) from sync-fn still ends the row with a message"
+    (let [task-id (new-task-id)]
+      (impl/run-task-body! task-id nil (fn [_] (throw (Error. "boom"))))
+      (is (=? {:ended_at some? :cancelled false :error_message #".*boom"}
+              (t2/select-one :model/RemoteSyncTask :id task-id)))
+      (is (not (contains? (impl/running-task-ids) task-id))))))
+
+(deftest run-task-body!-fails-the-row-when-the-throwable-has-no-message-test
+  (testing "a throwable with a nil message still produces a non-empty error_message"
+    (let [task-id (new-task-id)]
+      (impl/run-task-body! task-id nil (fn [_] (throw (StackOverflowError.))))
+      (is (=? {:ended_at some? :error_message #".*StackOverflowError"}
+              (t2/select-one :model/RemoteSyncTask :id task-id))))))
+
+(deftest run-task-body!-closes-the-row-when-bookkeeping-throws-test
+  (testing "when handle-task-result! itself throws, the row is still ended by the exit path"
+    (let [task-id (new-task-id)
+          calls   (atom 0)]
+      (mt/with-dynamic-fn-redefs [impl/handle-task-result! (let [orig (mt/original-fn #'impl/handle-task-result!)]
+                                                             (fn [& args]
+                                                               (if (= 1 (swap! calls inc))
+                                                                 (throw (ex-info "pool exhausted" {}))
+                                                                 (apply orig args))))]
+        (impl/run-task-body! task-id nil (fn [_] {:status :success})))
+      (is (= 2 @calls))
+      (is (=? {:ended_at some? :cancelled false :error_message "Task ended without recording a result"}
+              (t2/select-one :model/RemoteSyncTask :id task-id))))))
+
+(deftest run-task-body!-does-not-clobber-a-concurrent-cancel-test
+  (testing "a cancel that lands while sync-fn runs is preserved: neither the result nor the exit path overwrites it"
+    (let [task-id (new-task-id)]
+      (impl/run-task-body! task-id nil
+                           (fn [id]
+                             (remote-sync.task/cancel-sync-task! id)
+                             {:status :success}))
+      (is (=? {:ended_at some? :cancelled true :error_message "Task cancelled"}
+              (t2/select-one :model/RemoteSyncTask :id task-id))))))
+
+(deftest run-task-body!-stops-the-heartbeat-on-exit-test
+  (testing "the heartbeat started for the task is stopped when the body exits, including on failure"
+    (let [task-id  (new-task-id)
+          stopped? (atom false)]
+      (mt/with-dynamic-fn-redefs [remote-sync.task/start-heartbeat! (fn [_id] (fn [] (reset! stopped? true)))]
+        (impl/run-task-body! task-id nil (fn [_] (throw (Error. "boom")))))
+      (is (true? @stopped?)))))
+
+(deftest run-task-body!-on-success-failure-does-not-fail-the-row-test
+  (testing "an exception from :on-success is logged and the row stays successful"
+    (let [task-id (new-task-id)]
+      (impl/run-task-body! task-id nil (fn [_] {:status :success})
+                           :on-success (fn [_ _] (throw (ex-info "audit log down" {}))))
+      (is (=? {:ended_at some? :cancelled false :error_message nil}
+              (t2/select-one :model/RemoteSyncTask :id task-id))))))
+
+(deftest run-task-body!-writes-the-branch-on-success-test
+  (testing "a non-nil branch is written to the setting on success and left alone on error"
+    (mt/with-temporary-setting-values [remote-sync-branch "main"]
+      (impl/run-task-body! (new-task-id) "feature" (fn [_] {:status :error :message "nope"}))
+      (is (= "main" (remote-sync.settings/remote-sync-branch)))
+      (impl/run-task-body! (new-task-id) "feature" (fn [_] {:status :success}))
+      (is (= "feature" (remote-sync.settings/remote-sync-branch))))))

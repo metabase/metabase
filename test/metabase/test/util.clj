@@ -179,6 +179,12 @@
        :name (u.random/random-name)
        :position 0}))
 
+   :model/DataApp
+   (fn [_] {:entity_id    (u/generate-nano-id)
+            :name         (u/lower-case-en (u.random/random-name))
+            :display_name (u.random/random-name)
+            :bundle_path  "dist/index.js"})
+
    :model/Database
    (fn [_] (default-timestamped
             {:details {}
@@ -413,6 +419,12 @@
        :name         (str "Test Transform Test " (u/generate-nano-id))
        :inputs       []
        :expectations []}))
+
+   :model/TransformTestRun
+   (fn [_]
+     {:status         "started"
+      :start_time     (t/instant)
+      :last_heartbeat (t/instant)})
 
    :model/TransformRun
    (fn [_]

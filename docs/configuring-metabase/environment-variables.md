@@ -887,6 +887,7 @@ Prevent the exception middleware from including stacktraces in responses.
 
 - Type: keyword
 - Default: `external-only`
+- Environment variable only: you can't set this in the Admin settings or in a [configuration file](./config-file.md).
 
 Controls which types of hosts are allowed as HTTP channel destinations.
 Options:
@@ -894,6 +895,8 @@ Options:
 - allow-private (external + private networks but NOT localhost)
 - allow-all (no restrictions including localhost).
 .
+
+Set this when a notification webhook must reach a host on your private network (`allow-private`) or on this machine (`allow-all`). Default is `external-only`
 
 ### `MB_HUMANIZATION_STRATEGY`
 
@@ -1353,14 +1356,6 @@ The Anthropic API Key.
 
 Backed by the anthropic connection in the admin AI settings provider list: reads and writes go through the llm-providers connection list, and a value set by this environment variable shadows this one field of that connection.
 
-### `MB_LLM_ANTHROPIC_MODEL`
-
-- Type: string
-- Default: `claude-opus-4-5-20251101`
-- [Configuration file name](./config-file.md): `llm-anthropic-model`
-
-The Anthropic model to use.
-
 ### `MB_LLM_AZURE_API_BASE_URL`
 
 - Type: string
@@ -1419,7 +1414,7 @@ Backed by the bedrock connection in the admin AI settings provider list: reads a
 
 The AWS region for Amazon Bedrock (e.g. us-east-1).
 
-Backed by the bedrock connection in the admin AI settings provider list: reads and writes go through the llm-providers connection list, and a value set by this environment variable shadows this one field of that connection. On a self-hosted Metabase, setting only the region enables Bedrock with the AWS default credentials chain, with no access keys configured.
+Backed by the bedrock connection in the admin AI settings provider list: reads and writes go through the llm-providers connection list, and a value set by this environment variable shadows this one field of that connection. On a self-hosted Metabase, setting only the region enables Bedrock with the AWS default credentials chain, with no access keys configured. [The Bedrock models you can pick depend on the region](../ai/providers.md#the-bedrock-models-you-can-pick-depend-on-the-region).
 
 ### `MB_LLM_BEDROCK_SECRET_ACCESS_KEY`
 
@@ -1650,22 +1645,6 @@ Connections are normally managed from the admin AI settings page. Setting this e
 
 Configuring a provider through the single-provider variables (`MB_LLM_ANTHROPIC_API_KEY` and friends) is equally supported, and is the simpler option when you only need one connection per provider and would rather not hand-write JSON. Each such provider becomes a read-only connection whose key is the provider type, resolved from the environment on every read, so editing one of those variables is picked up on the next restart. A provider configured this way takes precedence over a stored connection with the same key.
 
-### `MB_LLM_RATE_LIMIT_PER_IP`
-
-- Type: integer
-- Default: `100`
-- [Configuration file name](./config-file.md): `llm-rate-limit-per-ip`
-
-Maximum SQL generation requests per IP address per minute.
-
-### `MB_LLM_RATE_LIMIT_PER_USER`
-
-- Type: integer
-- Default: `20`
-- [Configuration file name](./config-file.md): `llm-rate-limit-per-user`
-
-Maximum SQL generation requests per user per minute.
-
 ### `MB_LLM_REQUEST_TIMEOUT_MS`
 
 - Type: integer
@@ -1701,6 +1680,26 @@ Backed by the vllm connection in the admin AI settings provider list: reads and 
 - [Configuration file name](./config-file.md): `llm-vllm-request-timeout-ms`
 
 Socket timeout in milliseconds for requests to your vLLM server.
+
+### `MB_LLM_XAI_API_BASE_URL`
+
+- Type: string
+- Default: `https://api.x.ai/v1`
+- [Configuration file name](./config-file.md): `llm-xai-api-base-url`
+
+The xAI API base URL used for Chat Completions.
+
+Backed by the xai connection in the admin AI settings provider list: reads and writes go through the llm-providers connection list, and a value set by this environment variable shadows this one field of that connection.
+
+### `MB_LLM_XAI_API_KEY`
+
+- Type: string
+- Default: `null`
+- [Configuration file name](./config-file.md): `llm-xai-api-key`
+
+The xAI API Key.
+
+Backed by the xai connection in the admin AI settings provider list: reads and writes go through the llm-providers connection list, and a value set by this environment variable shadows this one field of that connection.
 
 ### `MB_LLM_ZAI_API_BASE_URL`
 
@@ -1770,6 +1769,7 @@ The custom illustration for the login page.
 
 - Type: keyword
 - Default: `null`
+- Environment variable only: you can't set this in the Admin settings or in a [configuration file](./config-file.md).
 
 Controls which networks Metabase may connect to for map tile servers.
   Options:
@@ -1778,6 +1778,8 @@ Controls which networks Metabase may connect to for map tile servers.
   - allow-all (no restrictions).
   Defaults to external-only on Metabase Cloud and allow-private when self-hosted.
 
+Allowed network for the map tile server.
+
 ### `MB_MAP_TILE_SERVER_URL`
 
 - Type: string
@@ -1785,6 +1787,16 @@ Controls which networks Metabase may connect to for map tile servers.
 - [Configuration file name](./config-file.md): `map-tile-server-url`
 
 The map tile server URL template used in map visualizations, for example from OpenStreetMaps or MapBox. This URL is visible to clients, so do not include private keys.
+
+### `MB_MAX_UNAUTHENTICATED_REQUEST_BODY_BYTES`
+
+- Type: integer
+- Default: `4194304`
+- Environment variable only: you can't set this in the Admin settings or in a [configuration file](./config-file.md).
+
+Maximum size in bytes of an HTTP request body from a caller who is not authenticated. Larger requests are rejected with HTTP 413 before the body is read.
+
+Applies to requests without a valid session, API key or token. The body is bounded before authentication is checked, so this is the most memory an anonymous request can make the server buffer. It covers login, setup, password reset, SSO callbacks, and public or embedded queries; none of those legitimately send more than a few hundred kilobytes. Authenticated requests are not limited.
 
 ### `MB_MCP_APPS_CORS_CUSTOM_ORIGINS`
 
@@ -2014,9 +2026,11 @@ If Metabase stops sending notifications like alerts, it may be because long-runn
 
 - Type: keyword
 - Default: `allow-all`
-- [Configuration file name](./config-file.md): `oidc-allowed-networks`
+- Environment variable only: you can't set this in the Admin settings or in a [configuration file](./config-file.md).
 
 What networks are OIDC requests allowed to? Possible values: 'allow-all' (default), 'allow-private', or 'external-only'.
+
+Set this to tighten which networks OIDC discovery and token requests may reach; it defaults to allow-all. Other values: external-only and allow-private
 
 ### `MB_OIDC_PROVIDERS`
 
@@ -2164,7 +2178,7 @@ Network timeout (in seconds) for remote git operations such as fetch, push, clon
 - Default: `300000`
 - [Configuration file name](./config-file.md): `remote-sync-task-time-limit-ms`
 
-The maximum amount of time a remote sync task will be given to complete.
+How long a remote sync task may go without proving its process is alive (via heartbeat, or progress on rows without one) before it is treated as dead and superseded. A slow but live task is never affected. The task itself is aborted after ten times this limit.
 
 ### `MB_REMOTE_SYNC_TOKEN`
 
@@ -2983,6 +2997,7 @@ Note: Users with row or column security restrictions will never see suggestions.
 
 - Type: keyword
 - Default: `null`
+- Environment variable only: you can't set this in the Admin settings or in a [configuration file](./config-file.md).
 
 Controls which networks Metabase may connect to for warehouse connections.
 Options:
@@ -2991,6 +3006,8 @@ Options:
 - allow-all (no restrictions).
 Defaults to external-only on Metabase Cloud and allow-all when self-hosted.
 Also covers the SSH tunnel host and the database auth-provider URLs.
+
+Set this when Metabase must reach a warehouse on a private network (allow-private) or on this machine (allow-all). There is no admin UI for it, and a value stored in the application database is ignored. Defaults to external-only on Metabase Cloud and allow-all when self-hosted. Metabase refuses to start if this is set to anything but one of the three policies, rather than run on a policy nobody chose.
 
 ## Other environment variables
 

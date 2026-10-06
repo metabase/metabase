@@ -6,10 +6,10 @@ import { t } from "ttag";
 import { Sortable, SortableList } from "metabase/common/components/Sortable";
 import { useDndSensors } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
+import { Box } from "metabase/ui";
 import { moveElement } from "metabase/utils/arrays";
 
 import { ChartSettingFieldPicker } from "./ChartSettingFieldPicker";
-import { AddAnotherContainer } from "./ChartSettingFieldsPicker.styled";
 
 export const UNDEFINED_ITEM_KEY = "$$UNDEFINED_ITEM_KEY$$";
 export const NULL_ITEM_KEY = "$$NULL_ITEM_KEY$$";
@@ -183,7 +183,7 @@ export const ChartSettingFieldsPicker = ({
         <span className={CS.textError}>{t`error`}</span>
       )}
       {addAnother && (
-        <AddAnotherContainer>
+        <Box my="lg" pb="lg">
           <a
             className={cx(CS.textBrand, CS.textBold, CS.py1)}
             onClick={() => {
@@ -201,7 +201,7 @@ export const ChartSettingFieldsPicker = ({
           >
             {addAnother}
           </a>
-        </AddAnotherContainer>
+        </Box>
       )}
     </div>
   );

@@ -1,11 +1,12 @@
 (ns metabase.server.handler
   "Top-level Metabase Ring handler."
   (:require
-   [metabase.agent-api.usage :as agent-api.usage]
    [metabase.analytics.core :as analytics]
    [metabase.api.macros :as api.macros]
    [metabase.config.core :as config]
+   [metabase.metabot.agent-api.usage :as agent-api.usage]
    [metabase.server.middleware.auth :as mw.auth]
+   [metabase.server.middleware.body-limit :as mw.body-limit]
    [metabase.server.middleware.browser-cookie :as mw.browser-cookie]
    [metabase.server.middleware.data-app-scope :as mw.data-app-scope]
    [metabase.server.middleware.exceptions :as mw.exceptions]
@@ -74,20 +75,21 @@
       (log/warnf "Failed to load dev remote API proxy middleware: %s" (ex-message e))
       nil)))
 
-(def ^:private middleware
+(defn- middleware
   "Ring async middleware has the form
 
     (defn middleware-fn [handler]
       (fn handler' [request respond raise]
         (handler request respond raise)))"
+  [{:keys [cors] :as options}]
   ;; ▼▼▼ The returned `handlers` will see the requests in order from BOTTOM-TO-TOP, but the middleware is CONSTRUCTED/WRAPPED from TOP-TO-BOTTOM. ▼▼▼
   (->> [        ;; Inside of the middleware onion
         #'mw.exceptions/catch-uncaught-exceptions    ; catch any Exceptions that weren't passed to `raise`
-        #'mw.exceptions/catch-api-exceptions         ; catch exceptions and return them in our expected format
+        #(#'mw.exceptions/catch-api-exceptions % cors) ; catch exceptions and return them in our expected format
         #'mw.log/log-api-call                        ; log info about the request, db call counts etc.
         #'agent-api.usage/wrap-record-cli-usage      ; record CLI usage analytics for metabase-cli REST API calls
         #'mw.browser-cookie/ensure-browser-id-cookie ; add cookie to identify browser; add `:browser-id` to the request
-        #'mw.security/add-security-headers           ; Add HTTP headers to API responses to prevent them from being cached
+        #(#'mw.security/add-security-headers % cors) ; Add HTTP headers to API responses to prevent them from being cached
         #'mw.json/wrap-json-body                     ; extracts json POST/PUT body and makes it available on request
         #'mw.offset-paging/handle-paging             ; binds per-request parameters to handle paging
         #'mw.json/wrap-streamed-json-response        ; middleware to automatically serialize suitable objects as JSON in responses
@@ -95,11 +97,12 @@
         #'wrap-keyword-params                        ; converts string keys in :params to keyword keys
         #'wrap-params                                ; parses GET and POST params as :query-params/:form-params and both as :params
         #'mw.auth/verify-slack-request               ; looks for requests from slack and assocs a :slack/validated? on the request if valid
+        #'mw.body-limit/wrap-limit-request-body      ; bounds unauthenticated request body sizes; must be inside wrap-current-user-info and outside everything that reads the body
         #'mw.misc/maybe-set-site-url                 ; set the value of `site-url` if it hasn't been set yet
         #'mw.session/reset-session-timeout           ; Resets the timeout cookie for user activity to [[metabase.request.cookies/session-timeout]]
         #'mw.session/bind-current-user               ; Binds *current-user* and *current-user-id* if :metabase-user-id is non-nil
         #'mw.data-app-scope/wrap-data-app-scope      ; narrows a data-app request (X-Metabase-Client: data-app) to the `data-app` scope (runs after current-user-info so it sees any resolved token scopes)
-        #'mw.session/wrap-current-user-info          ; looks for :metabase-session-key and sets :metabase-user-id and other info if Session ID is valid
+        #(#'mw.session/wrap-current-user-info % options) ; looks for :metabase-session-key and sets :metabase-user-id and other info if Session ID is valid
         #'mw.pf-cache/wrap-premium-features-cache-check ; check cookie to refresh premium features cache if needed
         #'mw.settings-cache/wrap-settings-cache-check ; check cookie to refresh settings cache if needed
         #'analytics/embedding-mw                     ; reads sdk client headers, binds them to *client* and *version*, and tracks sdk-response metrics
@@ -120,30 +123,63 @@
         ]
        (remove nil?)))
 
+(def ^:private Options
+  "Middleware configuration from the application: extra CORS origins, and credentials beyond sessions and API keys.
+  Every key is required, so a server built without them fails at startup rather than refusing those credentials."
+  [:map
+   {:closed true}
+   [:cors
+    [:map
+     {:closed true}
+     [:origins-fn         ifn?]
+     [:sandbox-origin?-fn ifn?]]]
+   [:oauth-bearer       ::mw.session/oauth-bearer]
+   [:mcp-ui-credentials ::mw.session/mcp-ui-credentials]])
+
+(def ^:private OptionsOrVar
+  [:or Options [:fn {:error/message "a var holding handler options"} var?]])
+
+(defn- current-options
+  "The options map, dereferenced if `options` is a var.
+  Throws if it does not match [[Options]]."
+  [options]
+  ;; Checked here because `mu/defn` does not validate schemas in prod.
+  (mu/validate-throw Options (if (var? options) @options options)))
+
 (mu/defn- apply-middleware :- ::api.macros/handler
-  [handler :- ::api.macros/handler]
+  [handler :- ::api.macros/handler
+   options :- Options]
   (reduce
    (fn [handler middleware-fn]
      (middleware-fn handler))
    handler
-   middleware))
+   (middleware options)))
 
 ;;; for interactive dev we'll create a handler that rebuilds itself (reapplies the middleware) whenever any of it
-;;; changes.
+;;; changes, including the options when they are passed as a var.
 (mu/defn- dev-handler :- ::api.macros/handler
-  [server-routes :- ::api.macros/handler]
-  (let [handler (atom (apply-middleware server-routes))]
-    (doseq [varr  (cons #'middleware middleware)
+  [server-routes :- ::api.macros/handler
+   options       :- OptionsOrVar]
+  (let [rebuild #(apply-middleware server-routes (current-options options))
+        handler (atom (rebuild))]
+    (doseq [varr  (concat [#'middleware
+                           #'mw.exceptions/catch-api-exceptions
+                           #'mw.security/add-security-headers
+                           #'mw.session/wrap-current-user-info
+                           options]
+                          (middleware (current-options options)))
             :when (instance? clojure.lang.IRef varr)]
       (add-watch varr ::reload (fn [_key _ref _old-state _new-state]
                                  (log/infof "%s changed, rebuilding handler" varr)
-                                 (reset! handler (apply-middleware server-routes)))))
+                                 (reset! handler (rebuild)))))
     (fn dev-handler* [request respond raise]
       (@handler request respond raise))))
 
 (mu/defn make-handler :- ::api.macros/handler
-  "Create the primary entry point to the Ring HTTP server."
-  [server-routes :- ::api.macros/handler]
+  "Create the primary entry point to the Ring HTTP server, with middleware configured by `options`.
+  Pass `options` as a var to have the dev handler rebuild when it is redefined."
+  [server-routes :- ::api.macros/handler
+   options       :- OptionsOrVar]
   (if config/is-dev?
-    (dev-handler server-routes)
-    (apply-middleware server-routes)))
+    (dev-handler server-routes options)
+    (apply-middleware server-routes (current-options options))))

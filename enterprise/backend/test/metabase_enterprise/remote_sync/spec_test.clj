@@ -44,7 +44,7 @@
 
 (deftest all-specs-have-valid-eligibility-test
   (testing "Every spec has a valid eligibility type"
-    (let [valid-eligibility-types #{:collection :published-table :parent-table :setting :library-synced}]
+    (let [valid-eligibility-types #{:collection :published-table :parent-table :parent :setting :library-synced :always}]
       (doseq [[model-key spec] spec/remote-sync-specs]
         (testing (str "Spec for " model-key)
           (is (contains? valid-eligibility-types (get-in spec [:eligibility :type]))
@@ -58,8 +58,9 @@
             "events :prefix should be a keyword")
         (is (vector? (get-in spec [:events :types]))
             "events :types should be a vector")
-        (is (every? #{:create :update :delete :publish :unpublish} (get-in spec [:events :types]))
-            "events :types should only contain :create, :update, :delete, :publish, :unpublish")))))
+        (is (every? #{:create :update :delete :publish :unpublish :public-link-created :public-link-deleted}
+                    (get-in spec [:events :types]))
+            "events :types should only contain :create, :update, :delete, :publish, :unpublish, :public-link-created, :public-link-deleted")))))
 
 (deftest all-specs-have-valid-tracking-test
   (testing "Every spec has valid tracking configuration"
@@ -133,7 +134,9 @@
       (is (contains? types "TransformTag"))
       (is (contains? types "TransformTest"))
       (is (contains? types "Glossary"))
-      (is (= 15 (count types))))))
+      (is (contains? types "Action"))
+      (is (contains? types "DataApp"))
+      (is (= 17 (count types))))))
 
 (deftest specs-by-identity-type-test
   (testing "specs-by-identity-type filters correctly"
@@ -323,6 +326,47 @@
       (is (nil? (spec/query-export-roots field-spec)))
       (is (nil? (spec/query-export-roots segment-spec)))
       (is (nil? (spec/query-export-roots measure-spec))))))
+
+;;; ---------------------------------------------------- Actions ----------------------------------------------------
+
+(defn- do-with-synced-and-plain-actions!
+  "Runs `f` with `{:synced-coll :synced-action :plain-action}`: one action on a model in a remote-synced collection,
+  one on a model outside any."
+  [f]
+  (mt/with-temp [:model/Collection {synced-coll :id}   {:name "Synced" :is_remote_synced true :location "/"}
+                 :model/Collection {plain-coll :id}    {:name "Plain" :location "/"}
+                 :model/Card       {synced-model :id}  {:type :model :collection_id synced-coll}
+                 :model/Card       {plain-model :id}   {:type :model :collection_id plain-coll}
+                 :model/Action     {synced-action :id} {:type :implicit :name "In Sync" :model_id synced-model}
+                 :model/Action     {plain-action :id}  {:type :implicit :name "Outside" :model_id plain-model}]
+    (f {:synced-coll synced-coll :synced-action synced-action :plain-action plain-action})))
+
+(deftest action-eligibility-follows-model-test
+  (testing "an action takes its model's collection, so it is eligible for remote sync exactly when its model is"
+    (do-with-synced-and-plain-actions!
+     (fn [{:keys [synced-action plain-action]}]
+       (let [action-spec (spec/spec-for-model-key :model/Action)]
+         (is (true? (spec/check-eligibility action-spec (t2/select-one :model/Action :id synced-action))))
+         (is (false? (spec/check-eligibility action-spec (t2/select-one :model/Action :id plain-action)))))))))
+
+(deftest action-removal-scoped-to-synced-models-test
+  (testing "a pull removes absent actions only when they are in a synced collection"
+    (do-with-synced-and-plain-actions!
+     (fn [{:keys [synced-coll synced-action plain-action]}]
+       (remote-sync.db/delete-removed-instances!
+        :model/Action
+        (spec/removal-opts (spec/spec-for-model-key :model/Action) [synced-coll] #{}))
+       (is (not (t2/exists? :model/Action :id synced-action)))
+       (is (t2/exists? :model/Action :id plain-action))))))
+
+(deftest action-sync-rows-carry-model-collection-test
+  (testing "GHY-4722: the ledger rows rebuilt after a pull give an action its model's collection"
+    (do-with-synced-and-plain-actions!
+     (fn [{:keys [synced-coll synced-action]}]
+       (let [eid (t2/select-one-fn :entity_id :model/Action :id synced-action)]
+         (is (=? [{:model_type "Action" :model_id synced-action :model_name "In Sync"
+                   :model_collection_id synced-coll :status "synced"}]
+                 (spec/sync-all-entities! (t/offset-date-time) {:by-entity-id {"Action" #{eid}}}))))))))
 
 ;;; -------------------------------------------- Editability Checking Tests ----------------------------------------
 
@@ -644,8 +688,8 @@
 
 (deftest git-sync-exports-only-user-settings-test
   (testing "git sync stores what users changed about a Table and its Fields, never the Table or Fields themselves --
-            those belong to sync, which runs against each instance's own warehouse -- as one TableUserSettings
-            entity per Table inlining its Fields' edits, never separate FieldUserSettings entities"
+            those belong to sync, which runs against each instance's own warehouse -- each settings row and Dimension
+            as an entity of its own"
     (mt/with-premium-features #{:library}
       (mt/with-temp [:model/Collection {coll-id :id}  {:is_remote_synced true :name "RS" :type "library-data"}
                      :model/Database   {db-id :id}    {:name "DB"}
@@ -655,17 +699,16 @@
                      :model/Field      {f2 :id}       {:name "F2" :table_id table-id}]
         (t2/insert! :model/FieldUserSettings {:field_id f2 :description "curated" :description_set true})
         (t2/insert! :model/TableUserSettings {:table_id table-id :display_name "Renamed"})
-        (let [exportable (spec/exportable-entities)]
-          (is (contains? (set (get exportable "TableUserSettings")) table-id)
-              "the Table's own edit, plus its edited Field's, are carried by one TableUserSettings entity")
-          (is (nil? (get exportable "FieldUserSettings"))
-              "FieldUserSettings is never exported as its own entity")
+        (let [dimension-id (t2/insert-returning-pk! :model/Dimension {:field_id f1 :name "F1" :type :internal})
+              exportable   (spec/exportable-entities)]
+          (is (= [table-id] (get exportable "TableUserSettings")))
+          (is (= [f2] (get exportable "FieldUserSettings")))
+          (is (= [dimension-id] (get exportable "Dimension")))
           (is (not (contains? (set (get exportable "Table")) table-id)))
           (is (empty? (filter #{f1 f2} (get exportable "Field")))))))))
 
-(deftest git-sync-exports-table-user-settings-for-field-only-edit-test
-  (testing "a Table with no TableUserSettings row of its own, but an edited Field, is still exportable -- the
-            TableUserSettings entity is synthesized to carry the Field's edit"
+(deftest git-sync-exports-no-table-user-settings-for-field-only-edit-test
+  (testing "a Table with no TableUserSettings row of its own exports only its edited Field's settings"
     (mt/with-premium-features #{:library}
       (mt/with-temp [:model/Collection {coll-id :id}  {:is_remote_synced true :name "RS" :type "library-data"}
                      :model/Database   {db-id :id}    {:name "DB"}
@@ -674,10 +717,8 @@
                      :model/Field      {f1 :id}       {:name "F1" :table_id table-id}]
         (t2/insert! :model/FieldUserSettings {:field_id f1 :description "curated" :description_set true})
         (let [exportable (spec/exportable-entities)]
-          (is (not (t2/exists? :model/TableUserSettings :table_id table-id))
-              "the Table has no settings row of its own")
-          (is (contains? (set (get exportable "TableUserSettings")) table-id)
-              "the Table is still exportable, synthesized from its Field's edit"))))))
+          (is (nil? (get exportable "TableUserSettings")))
+          (is (= [f1] (get exportable "FieldUserSettings"))))))))
 
 (deftest ^:parallel exportable-entity-count-test
   (testing "exportable-entity-count sums the ids across every model in the targets map"

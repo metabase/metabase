@@ -11,6 +11,7 @@
    [metabase.agent-api.api]
    [metabase.api.macros.scope :as scope]
    [metabase.initialization-status.core :as init-status]
+   [metabase.mcp.http-handler :as mcp.http-handler]
    [metabase.oauth-server.core :as oauth-server]
    [metabase.oauth-server.events.revoke-on-deactivation] ; for side effects: revokes tokens on deactivation
    [metabase.oauth-server.test-util :as oauth-server.tu]
@@ -26,8 +27,11 @@
 ;; the isolated test runner never boots the web server, so mark init complete as session_test does.
 (init-status/set-complete!)
 
-(def ^:private merge-current-user-info #'mw.session/merge-current-user-info)
-(def ^:private oauth-token->token-scopes #'mw.session/oauth-token->token-scopes)
+(def ^:private merge-current-user-info
+  (partial #'mw.session/merge-current-user-info mcp.http-handler/options))
+
+(def ^:private oauth-token->token-scopes
+  (partial #'mw.session/oauth-token->token-scopes oauth-server/full-access-scope))
 
 (defn- bearer-request [token]
   {:headers {"authorization" (str "Bearer " token)}})

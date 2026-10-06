@@ -17,6 +17,7 @@
    [metabase.driver.mysql.actions :as mysql.actions]
    [metabase.driver.mysql.ddl :as mysql.ddl]
    [metabase.driver.settings :as driver.settings]
+   [metabase.driver.sql :as driver.sql]
    [metabase.driver.sql-jdbc :as driver.sql-jdbc]
    [metabase.driver.sql-jdbc.actions :as sql-jdbc.actions]
    [metabase.driver.sql-jdbc.actions-test :as sql-jdbc.actions-test]
@@ -52,6 +53,10 @@
    (org.mariadb.jdbc UrlParser)))
 
 (set! *warn-on-reflection* true)
+
+(deftest default-schema-test
+  (mt/test-driver :mysql
+    (is (nil? (driver.sql/default-schema :mysql (mt/db))))))
 
 (use-fixtures :each (fn [thunk]
                       ;; 1. If sync fails when loading a test dataset, don't swallow the error; throw an Exception so we
@@ -416,6 +421,22 @@
       "useSSL=true&allowLocalInfile=true"
       ;; the driver lets a later duplicate win, so ours has to be appended after whatever the user wrote
       "allowLocalInfile=false&allowLocalInfile=true")))
+
+(deftest ^:parallel validate-db-details-rejects-dangerous-additional-options-test
+  (testing "MySQL inherits the shared SQL-JDBC denylist: socketFactory et al. are rejected"
+    (doseq [opt ["socketFactory=evil.SocketFactory"
+                 "sslfactory=evil.Factory"
+                 "hostnameverifier=evil.Verifier"
+                 ;; the driver's own denylist still applies too
+                 "autoDeserialize=true"
+                 "allowLoadLocalInfile=true"]]
+      (testing opt
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo #"dangerous"
+             (driver/validate-db-details! :mysql {:additional-options opt}))))))
+  (testing "benign additional options are still allowed"
+    (doseq [opt [nil "tinyInt1isBit=false" "useSSL=true&trustServerCertificate=true"]]
+      (is (nil? (driver/validate-db-details! :mysql {:additional-options opt}))))))
 
 (deftest ^:synchronized local-infile-blocked-for-write-queries-test
   (mt/test-driver :mysql

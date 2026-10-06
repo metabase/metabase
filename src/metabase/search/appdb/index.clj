@@ -34,10 +34,12 @@
 
 (defonce ^:private next-sync-at (atom nil))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (defonce ^:dynamic ^:private ^{:doc "This atom is often reset! in threads, so modifications should be done only when locking it first."}
   *indexes*
   (atom {:active nil, :pending nil}))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic *mocking-tables* false)
 
 (defmethod search.engine/reset-tracking! :search.engine/appdb [_]

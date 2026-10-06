@@ -456,6 +456,7 @@
   [:map {:closed true}
    [:notification/sync? :boolean]])
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *default-options*
   "The default options for sending a notification."
   {:notification/sync? false})
