@@ -155,7 +155,7 @@ describe("exporting what resources are written from", () => {
     mockExport(new Response(JSON.stringify({ ...EXPORTED, queries: [] })));
 
     await expect(exportResources(appRoot)).rejects.toThrow(
-      "The export response has an unexpected body.",
+      "The export response holds 0 queries; 1 were requested.",
     );
   });
 
@@ -164,7 +164,7 @@ describe("exporting what resources are written from", () => {
     mockExport(new Response(JSON.stringify({ ...EXPORTED, actions: [] })));
 
     await expect(exportResources(appRoot)).rejects.toThrow(
-      "The export response has an unexpected body.",
+      "The export response is missing action 51.",
     );
   });
 

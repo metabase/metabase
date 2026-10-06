@@ -111,14 +111,22 @@ async function evaluateFiles(directory: string, filePaths: string[]) {
   }));
 }
 
+/** Narrows discovery to one definition file, the one `print-resources <file>` is asked about. */
+export interface DiscoveryOptions {
+  filePath?: string;
+}
+
 /**
  * Every object a definition file exports is a definition: `defineQuery` and
  * `defineAction` return their argument as is, and the directories hold nothing
- * else. An object re-exported by a second file counts once.
+ * else. An object re-exported by a second file counts once, for the first file
+ * that exports it; asking for one file reads that file's exports alone, so a
+ * barrel that re-exports its definitions doesn't claim them.
  */
 async function evaluateDefinitions(
   appRoot: string,
   kind: DefinitionKind,
+  { filePath: requestedFilePath }: DiscoveryOptions,
 ): Promise<EvaluatedDefinition[]> {
   const directory = path.join(appRoot, kind.directory);
   const filePaths = listDefinitionFiles(directory);
@@ -134,6 +142,10 @@ async function evaluateDefinitions(
     directory,
     filePaths,
   )) {
+    if (requestedFilePath !== undefined && filePath !== requestedFilePath) {
+      continue;
+    }
+
     for (const [exportName, value] of Object.entries(
       isObject(exports) ? exports : {},
     )) {
@@ -184,8 +196,13 @@ function assertUniqueIds(
 
 export async function discoverQueries(
   appRoot: string,
+  options: DiscoveryOptions = {},
 ): Promise<DiscoveredQuery[]> {
-  const definitions = await evaluateDefinitions(appRoot, QUERY_DEFINITIONS);
+  const definitions = await evaluateDefinitions(
+    appRoot,
+    QUERY_DEFINITIONS,
+    options,
+  );
 
   const discovered = definitions.map(({ exportName, filePath, value }) => ({
     exportName,
@@ -215,8 +232,13 @@ const isGeneratedActionId = (id: unknown): id is number =>
 
 export async function discoverActions(
   appRoot: string,
+  options: DiscoveryOptions = {},
 ): Promise<DiscoveredAction[]> {
-  const definitions = await evaluateDefinitions(appRoot, ACTION_DEFINITIONS);
+  const definitions = await evaluateDefinitions(
+    appRoot,
+    ACTION_DEFINITIONS,
+    options,
+  );
 
   const discovered = definitions.map(({ exportName, filePath, value }) => {
     const location = getRelativeDefinitionLocation(appRoot, {

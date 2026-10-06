@@ -69,7 +69,7 @@ problem, for:
   leftover action is one more write the app's viewers can run.
 
 It runs at `buildStart` for production builds, so `npm run build` fails the same way. The YAML's format
-is `validate-schema`'s job (the template's `npm run validate-resources`), and the rest of the resource
+is `validate-schema`'s job (the template's `npm run check-resources` runs it after this check), and the rest of the resource
 rules (the collection, where copies live, duplicate or foreign entity IDs, the layout) are the pull's.
 Nothing checks that a saved question's query matches its definition.
 
@@ -78,8 +78,15 @@ Nothing checks that a saved question's query matches its definition.
 `discover.ts` bundles every file under `queries/` (or `actions/`) into one module with esbuild,
 evaluates it, and takes every exported object as a definition: `defineQuery` and `defineAction`
 return their argument as is, and the two directories hold nothing else. A definition a second file
-re-exports keeps its identity through the single bundle, so it counts once. Anything that isn't a
-definition is rejected by the export endpoint's schema, not here.
+re-exports keeps its identity through the single bundle, so it counts once, for the first file that
+exports it; `print-resources <file>` reads that file's exports alone, so a barrel doesn't claim them.
+Anything that isn't a definition is rejected by the export endpoint's schema, not here.
+
+Discovery refuses what makes a definition unusable on its own or against the others: an action that
+doesn't reference a generated action, two definitions of one source action, two claiming one entity
+ID. Every command needs that, `print-resources` included. What a definition lacks against
+`resources/`, its entity ID first of all, is `check-resources`' to report: `print-resources` is the
+command an author runs to get that ID, so it must work without one.
 
 ## Dev preview vs production build
 

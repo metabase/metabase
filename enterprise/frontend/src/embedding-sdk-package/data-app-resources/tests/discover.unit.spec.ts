@@ -57,6 +57,22 @@ describe("query discovery", () => {
     ]);
   });
 
+  it("finds the definitions of one file even when a barrel sorted before it re-exports them", async () => {
+    const appRoot = makeApp();
+    const filePath = writeQuery(
+      appRoot,
+      `export const Orders = defineQuery({ savedQuestionEntityId: "${QUESTION_10}", source: { type: "table", id: 1 } });`,
+    );
+    fs.writeFileSync(
+      path.join(appRoot, "queries/index.ts"),
+      'export { Orders } from "./orders.query";\n',
+    );
+
+    await expect(discoverQueries(appRoot, { filePath })).resolves.toEqual([
+      expect.objectContaining({ exportName: "Orders", filePath }),
+    ]);
+  });
+
   it("rejects an invalid saved question ID", async () => {
     const appRoot = makeApp();
 

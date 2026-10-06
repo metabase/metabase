@@ -66,10 +66,8 @@ async function requestExport(
 export async function exportResources(appDirectory: string, file?: string) {
   const appRoot = path.resolve(appDirectory);
   const filePath = file === undefined ? undefined : path.resolve(appRoot, file);
-  const inFile = ({ filePath: definitionPath }: { filePath: string }) =>
-    filePath === undefined || definitionPath === filePath;
-  const queries = (await discoverQueries(appRoot)).filter(inFile);
-  const actions = (await discoverActions(appRoot)).filter(inFile);
+  const queries = await discoverQueries(appRoot, { filePath });
+  const actions = await discoverActions(appRoot, { filePath });
 
   if (filePath !== undefined && queries.length + actions.length === 0) {
     throw new Error(
@@ -94,11 +92,20 @@ export async function exportResources(appDirectory: string, file?: string) {
     exported.actions.map((action) => [action.id, action]),
   );
 
-  if (
-    exported.queries.length !== queries.length ||
-    actions.some(({ sourceActionId }) => !exportedActions.has(sourceActionId))
-  ) {
-    throw new Error("The export response has an unexpected body.");
+  if (exported.queries.length !== queries.length) {
+    throw new Error(
+      `The export response holds ${exported.queries.length} queries; ${queries.length} were requested.`,
+    );
+  }
+
+  const missingActions = actions
+    .map(({ sourceActionId }) => sourceActionId)
+    .filter((id) => !exportedActions.has(id));
+
+  if (missingActions.length > 0) {
+    throw new Error(
+      `The export response is missing action ${missingActions.join(", ")}.`,
+    );
   }
 
   return JSON.stringify(
