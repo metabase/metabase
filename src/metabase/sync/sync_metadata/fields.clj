@@ -121,18 +121,23 @@
   [database :- i/DatabaseInstance]
   (sync-util/with-error-handling (format "Error syncing Fields for Database ''%s''" (sync-util/name-for-logging database))
     (let [driver          (driver.u/database->driver database)
-          schemas?        (driver.u/supports? driver :schemas database)]
+          schemas?        (driver.u/supports? driver :schemas database)
+          sync-table-id?  (set (sync.db/sync-table-ids (:id database)))]
       (letfn [(sync! [fields-metadata]
                 (transduce (comp
                             (partition-by (juxt :table-name :table-schema))
                             (map (fn [table-metadata]
                                    (let [{:keys [table-name table-schema]} (first table-metadata)
-                                         table   (->> (sync.db/sync-tables-by-lower-name-and-schema
-                                                       (:id database)
-                                                       (t2.util/lower-case-en table-name)
-                                                       (some-> table-schema t2.util/lower-case-en))
-                                                      (sort-by (select-best-matching-name table-schema table-name))
-                                                      first)
+                                         ;; match over hidden Tables too, so a hidden Table's columns are never
+                                         ;; given to a visible Table whose name differs only in case
+                                         table   (let [best (->> (sync.db/active-tables-by-lower-name-and-schema
+                                                                  (:id database)
+                                                                  (t2.util/lower-case-en table-name)
+                                                                  (some-> table-schema t2.util/lower-case-en))
+                                                                 (sort-by (select-best-matching-name table-schema table-name))
+                                                                 first)]
+                                                   (when (sync-table-id? (:id best))
+                                                     best))
                                          updated (if table
                                                    (try
                                                      ;; TODO: decouple nested field columns sync from field sync. This will allow
