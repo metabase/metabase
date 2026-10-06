@@ -655,11 +655,6 @@
     :table.* "SELECT \"table\".*"
     :table/* "SELECT \"table\".*"))
 
-;;; FunnySQL does not yet support any of the custom `h2x/`-namespaced tagged forms that
-;;; `metabase.util.honey-sql-2` registers with HoneySQL (`::h2x/identifier`, `::h2x/literal`, etc.). These forms show
-;;; up in real HoneySQL maps built elsewhere in the codebase, so FunnySQL needs to compile them the same way HoneySQL
-;;; does. The following tests are expected to fail until that support is added.
-
 (deftest ^:parallel h2x-identifier-test
   (is (= ["WHERE \"a\".\"b\" = 1"]
          (funnysql/format {:where [:= (h2x/identifier :field "a" "b") 1]} :postgres)))

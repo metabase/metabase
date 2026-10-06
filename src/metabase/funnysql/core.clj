@@ -144,19 +144,6 @@
       (append-sql! context (if include-as? " AS " " "))
       (compile! rhs context))))
 
-(defn- -table-with-optional-as!
-  "Like [[-identifier-with-optional-alias!]], but for the table positions in `:from` and `:join`, where the thing being
-  named can be a `^:allow-subquery` subquery as well as an identifier. A subquery has to be wrapped in parens."
-  [table context]
-  (let [[lhs rhs] (if (vector? table)
-                    table
-                    [table])]
-    (compile! lhs context)
-    (when rhs
-      (check-identifier-form rhs)
-      (append-sql! context " AS ")
-      (compile! rhs context))))
-
 (defn- -identifier-list! [xs context]
   (let [xs (->sequence xs)]
     (run! check-identifier-form xs)
@@ -341,8 +328,8 @@
 (defn- from! [from context]
   (append-sql! context "FROM ")
   (if (keyword? from)
-    (-table-with-optional-as! from context)
-    (interpose-fn from #(-table-with-optional-as! % context) #(append-sql! context ", "))))
+    (-identifier-with-optional-alias! from context)
+    (interpose-fn from #(-identifier-with-optional-alias! % context) #(append-sql! context ", "))))
 
 (defn- join!
   [join-type joins context]
@@ -355,7 +342,7 @@
                           :inner "INNER JOIN ")]
       (loop [[thing-to-join condition & more] joins]
         (append-sql! context join-type-sql)
-        (-table-with-optional-as! thing-to-join context)
+        (-identifier-with-optional-alias! thing-to-join context)
         (append-sql! context " ON ")
         (compile! condition context)
         (when (seq more)
@@ -515,7 +502,7 @@
         clause-fns))
 
 (defn- map!
-  "Compile a map. This is normally only allowed by [[compile]] but not by [[compile!]] to avoid accidentally compiling
+  "Compile a map. This is normally only allowed by [[format]] but not by [[compile!]] to avoid accidentally compiling
   subqueries where unintended."
   [m context]
   (interpose-fn (sort-by clause-rank (keys m))
@@ -545,7 +532,7 @@
         (append-sql! context quote-char)))))
 
 (defn -identifier!
-  "Emit a (possibly qualified) identifier composed of multiple [[-identifier-part]]s."
+  "Emit a (possibly qualified) identifier composed of multiple [[-identifier-part!]]s."
   [s context]
   (interpose-fn (str/split s #"\.") #(-identifier-part! % context) #(append-sql! context ".")))
 
@@ -814,12 +801,12 @@
       (throw (ex-info "Missing value for :param" {:param k})))
     (object! v context)))
 
-(def ^:private binary-operators
+(def ^:private binary-arithmetic-operators
   #{:+ :- :/ :* :%})
 
-(defn- binary-fn-call? [x]
+(defn- binary-arithmetic-call? [x]
   (and (fn-call? x)
-       (binary-operators (first x))))
+       (binary-arithmetic-operators (first x))))
 
 (defn- -unary-binary-operator! [f x context]
   (case f
@@ -828,7 +815,7 @@
          (compile! (- x) context)
          (do
            (append-sql! context "-")
-           ((if (binary-fn-call? x)
+           ((if (binary-arithmetic-call? x)
               -parens!
               compile!) x context)))))
 
@@ -843,7 +830,7 @@
                   :is-not   " IS NOT "
                   (str \space (name f) \space))
           ;; wrap nested binary function calls in parens to avoid order-of-operation ambiguity
-          arg!  #((if (binary-fn-call? %)
+          arg!  #((if (binary-arithmetic-call? %)
                     -parens!
                     compile!) % context)]
       (interpose-fn args arg! #(append-sql! context f-str)))))

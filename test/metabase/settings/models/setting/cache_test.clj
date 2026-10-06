@@ -30,7 +30,7 @@
 
   Written raw, and to both columns, exactly as
   [[metabase.settings.models.setting.cache/update-settings-last-updated!]] writes them -- through `:model/Setting` the
-  raw SQL below would end up inside the JSON envelope rather than being evaluated."
+  query below would end up inside the JSON envelope rather than being evaluated."
   []
   (let [ts (-> (t2/query-one
                 {:select [[(let [db-type          (mdb/db-type)
