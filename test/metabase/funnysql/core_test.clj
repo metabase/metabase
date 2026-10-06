@@ -47,12 +47,10 @@
   (testing "`nil` on the LHS has to become `IS [NOT] NULL` too -- `NULL = x` is always NULL, so it matches no rows"
     (are [clause expected] (= [expected]
                               (funnysql/format {:where clause} :postgres))
-      [:=      nil :field] "WHERE \"field\" IS NULL"
-      [:is     nil :field] "WHERE \"field\" IS NULL"
-      [:<>     nil :field] "WHERE \"field\" IS NOT NULL"
-      [:!=     nil :field] "WHERE \"field\" IS NOT NULL"
-      [:not=   nil :field] "WHERE \"field\" IS NOT NULL"
-      [:is-not nil :field] "WHERE \"field\" IS NOT NULL"))
+      [:=    nil :field] "WHERE \"field\" IS NULL"
+      [:<>   nil :field] "WHERE \"field\" IS NOT NULL"
+      [:!=   nil :field] "WHERE \"field\" IS NOT NULL"
+      [:not= nil :field] "WHERE \"field\" IS NOT NULL"))
   (testing "a bare predicate moved to the left of `IS NULL` still gets parenthesized, since `a AND b IS NULL` would
             otherwise parse as `a AND (b IS NULL)`"
     (is (= ["WHERE ((\"a\" = 1) AND (\"b\" = 2)) IS NULL"]
@@ -65,6 +63,23 @@
            (funnysql/format {:where [:= nil nil]} :postgres)))
     (is (= ["WHERE NULL IS NOT NULL"]
            (funnysql/format {:where [:not= nil nil]} :postgres)))))
+
+(deftest ^:parallel is-null-semantics-test
+  (testing "[:is-not nil true] and [:is nil false] should compile correctly"
+    (are [x expected] (= [expected]
+                         (funnysql/format x :postgres))
+      [:is nil true]      "NULL IS true"
+      [:is nil false]     "NULL IS false"
+      [:is-not nil true]  "NULL IS NOT true"
+      [:is-not nil false] "NULL IS NOT false"
+      [:is :x true]       "\"x\" IS true"
+      [:is :x false]      "\"x\" IS false"
+      [:is-not :x true]   "\"x\" IS NOT true"
+      [:is-not :x false]  "\"x\" IS NOT false"
+      ;; these seem wacky especially compared to what we do for `:=` and friends with LHS `nil` but this is how Honey
+      ;; SQL handles this situation
+      [:is nil :x]        "NULL IS \"x\""
+      [:is-not nil :x]    "NULL IS NOT \"x\"")))
 
 (deftest ^:parallel number-rejects-non-numeric-rendering-test
   (testing "compiling a Number must fail closed instead of splicing whatever `(str n)` happens to produce"

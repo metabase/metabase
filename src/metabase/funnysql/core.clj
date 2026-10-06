@@ -822,6 +822,8 @@
                   :like     " LIKE "
                   :ilike    " ILIKE "
                   :not-like " NOT LIKE "
+                  :is       " IS "
+                  :is-not   " IS NOT "
                   (str \space (name f) \space))
           ;; wrap nested binary function calls in parens to avoid order-of-operation ambiguity
           arg!  #((if (binary-fn-call? %)
@@ -930,28 +932,28 @@
   ;; ⚠⚠⚠ DO NOT ADD SUPPORT FOR `:raw` -- IT IS NOT SUPPORTED ON PURPOSE ⚠⚠⚠
   ;;
   (case f
-    (:<> :!= :not= :is-not) (-equals! " <> " " IS NOT NULL" args context)
-    (:= :is)                (-equals! " = " " IS NULL" args context)
-    :and                    (-compound! " AND " true args context)
-    :between                (between! args context)
-    :case                   (case! args context)
-    :cast                   (cast! args context)
-    :composite              (-list! args context)
-    :current-timestamp      (current-timestamp! context)
-    :escape                 (escape! args context)
-    :exists                 (-exists! "EXISTS " (first args) context)
-    :in                     (-in! f args context)
-    :inline                 (inline! (first args) context)
-    :lift                   (lift! (first args) context)
-    :not                    (not! args context)
-    :not-exists             (-exists! "NOT EXISTS " (first args) context)
-    :not-in                 (-in! f args context)
-    :or                     (-compound! " OR " false args context)
-    :over                   (over! (first args) context)
-    :param                  (param! (first args) context)
-    :timestampdiff          (timestamp-diff! args context)
+    (:<> :!= :not=)    (-equals! " <> " " IS NOT NULL" args context)
+    :=                 (-equals! " = " " IS NULL" args context)
+    :and               (-compound! " AND " true args context)
+    :between           (between! args context)
+    :case              (case! args context)
+    :cast              (cast! args context)
+    :composite         (-list! args context)
+    :current-timestamp (current-timestamp! context)
+    :escape            (escape! args context)
+    :exists            (-exists! "EXISTS " (first args) context)
+    :in                (-in! f args context)
+    :inline            (inline! (first args) context)
+    :lift              (lift! (first args) context)
+    :not               (not! args context)
+    :not-exists        (-exists! "NOT EXISTS " (first args) context)
+    :not-in            (-in! f args context)
+    :or                (-compound! " OR " false args context)
+    :over              (over! (first args) context)
+    :param             (param! (first args) context)
+    :timestampdiff     (timestamp-diff! args context)
 
-    (:< :<= :> :>= :like :ilike :not-like :+ :- :/ :* :% :||)
+    (:< :<= :> :>= :like :ilike :not-like :+ :- :/ :* :% :|| :is :is-not)
     (-binary-operator! f args context)
 
     ;; `:call` exists for Honey SQL 1 compatibility e.g. `[:call f & args]`, equivalent to `[f & args]`
