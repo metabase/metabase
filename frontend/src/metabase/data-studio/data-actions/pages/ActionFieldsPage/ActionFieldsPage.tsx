@@ -6,7 +6,7 @@ import { PageContainer } from "metabase/common/data-studio/components/PageContai
 import { useParams } from "metabase/router";
 import { Button, Center, Flex, Group, Icon, Stack, Text } from "metabase/ui";
 import * as Urls from "metabase/urls";
-import type { WritebackQueryAction } from "metabase-types/api";
+import type { Database, WritebackQueryAction } from "metabase-types/api";
 
 import { ActionHeader } from "../../components/ActionHeader";
 import { useActionDatabases } from "../../hooks/use-action-databases";
@@ -40,28 +40,20 @@ export function ActionFieldsPage() {
     );
   }
 
-  const readOnly = !action.can_write;
-
-  return (
-    <ActionFieldsPageBody
-      action={action}
-      readOnly={readOnly}
-      canChangeFieldType={canEditActionQuery(action, databases)}
-    />
-  );
+  return <ActionFieldsPageBody action={action} databases={databases} />;
 }
 
 type ActionFieldsPageBodyProps = {
   action: WritebackQueryAction;
-  readOnly: boolean;
-  canChangeFieldType: boolean;
+  databases: Database[];
 };
 
 function ActionFieldsPageBody({
   action,
-  readOnly,
-  canChangeFieldType,
+  databases,
 }: ActionFieldsPageBodyProps) {
+  const readOnly = !action.can_write;
+  const canChangeFieldType = canEditActionQuery(action, databases);
   const { fieldId } = useParams<{ fieldId?: string }>();
   const { fields, updateField, reorderFields } = useActionFields(action);
   const field = fields.find((field) => field.parameter.id === fieldId);

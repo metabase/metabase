@@ -52,20 +52,14 @@ export function ActionQueryPage() {
     );
   }
 
-  const canEditQuery = canEditActionQuery(action, databases);
-
-  return isEditRoute && canEditQuery ? (
+  return isEditRoute && canEditActionQuery(action, databases) ? (
     <ActionEditPage
       key={action.id}
       action={action}
       databases={editableDatabases}
     />
   ) : (
-    <ActionDefinitionPage
-      action={action}
-      databases={editableDatabases}
-      canEditQuery={canEditQuery}
-    />
+    <ActionDefinitionPage action={action} databases={editableDatabases} />
   );
 }
 
@@ -74,15 +68,8 @@ type ActionPageProps = {
   databases: Database[];
 };
 
-type ActionDefinitionPageProps = ActionPageProps & {
-  canEditQuery: boolean;
-};
-
-function ActionDefinitionPage({
-  action,
-  databases,
-  canEditQuery,
-}: ActionDefinitionPageProps) {
+function ActionDefinitionPage({ action, databases }: ActionPageProps) {
+  const canEditQuery = canEditActionQuery(action, databases);
   const [uiState, setUiState] = useState(getInitialUiState);
 
   return (
