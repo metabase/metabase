@@ -101,6 +101,10 @@ describe("scenarios > dashboard > filters > number", () => {
     H.setFilter("Number", "Between");
     H.selectDashboardFilter(H.getDashboardCard(), "Total");
 
+    // Removing the required filter can re-run the card. Re-alias so the waits below start at the save.
+    cy.intercept("POST", "api/dashboard/*/dashcard/*/card/*/query").as(
+      "dashboardData",
+    );
     H.saveDashboard();
     cy.wait("@dashboardData");
 
