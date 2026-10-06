@@ -18,6 +18,7 @@ Read first: `skill/references/project.md`,
 
 - `skill/phases/refine.md` — you
 - `skill/phases/build.md` — subagent `custom-viz-builder`
+- `skill/phases/test.md` — subagent `custom-viz-tester`
 - `skill/phases/iterate.md` — you
 - `skill/phases/debug.md` — you
 - `skill/phases/ship.md` — you
@@ -37,6 +38,7 @@ run the phase inline.
 - `sandbox-substitutes.md` — what to use instead
 - `operations.md` — dev server, connecting Metabase, renaming, user edits
 - `fix-log-rules.md` — format and rules of `.claude/fix-log.md`
+- `testing.md` — the test API and what to test
 
 ## State
 
@@ -59,12 +61,16 @@ Route:
 
 ## Create
 
-refine → build → iterate. Builder returns open questions → ask the user,
-fold the answers into `.claude/build-statement.md`, re-run build.
+refine → build → test → iterate. Builder returns open questions → ask
+the user, fold the answers into `.claude/build-statement.md`, re-run
+build. Tester reports failing tests → debug with them as the symptom,
+before iterate.
+
+`.claude/build-statement.md` changes in iterate or debug → re-run test.
 
 ## Ship
 
-Run Checks (`project.md`). Errors → fix them first (debug). Then run
+Run Checks (`project.md`). Failures → fix them first (debug). Then run
 ship.
 
 ## Phase exits

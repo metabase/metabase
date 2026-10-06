@@ -11,4 +11,5 @@ Read: `skill/references/operations.md`, `skill/references/project.md`.
    or keeps the default.
 2. Stop the dev server, then `npm run build`. Build fails → show the
    error verbatim and stop; no auto-recovery.
-3. Hand off: the packaged steps from Connecting Metabase.
+3. Hand off: the archive path, then Connecting Metabase — the
+   requirements, the packaged steps and the docs link.

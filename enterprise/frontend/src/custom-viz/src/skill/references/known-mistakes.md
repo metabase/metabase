@@ -2,9 +2,7 @@
 
 Bugs and contract violations in generated vizzes. Each entry: **Symptom**, **Why it's
 wrong**, **Fix**, **Detector** (a mechanical rule; when it needs
-judgment, it says so), **Severity** (`blocker` = throws, produces wrong
-output, or breaks a default (`project.md`, Defaults) that the build
-statement did not opt out; `warning` = works but degrades UX).
+judgment, it says so). Code that matches a detector is a bug.
 
 Contents: Viz grows unbounded each render · Hover handler doesn't call
 `onHover(null)` on leave · React error #310 · SVG `<title>` used in
@@ -12,7 +10,9 @@ place of the host `onHover` tooltip · Drills wired on some marks but not
 others · Drill handler early-returns when one direction of a pair has no
 row · Click object incomplete, or clickable mark without
 `cursor: pointer` · Popover or overlay that cannot be closed ·
-`checkRenderable` doesn't match the build statement · Hardcoded colors
+`checkRenderable` doesn't match the build statement · Hardcoded colors ·
+`isStringLike` for a text column · `formatValue` number options without
+`column`
 
 ## Viz grows unbounded each render
 
@@ -37,7 +37,7 @@ row · Click object incomplete, or clickable mark without
   the root has padding or border.
 - **Detector** — Inspect the outermost JSX element the component
   returns; when it is a local component, inspect what that component
-  returns. `blocker` when any of: (a) a block-level root's `height` style
+  returns. A bug when any of: (a) a block-level root's `height` style
   is neither `"100%"`, the `height` prop, nor a value derived from either
   that cannot exceed it (`calc(100% - 8px)`, `height - 8`); (b) the root
   is inline (`<span>`, or `display` is `"inline"`, `"inline-block"`,
@@ -47,9 +47,7 @@ row · Click object incomplete, or clickable mark without
   "should fit". Needs judgment: content can exceed the root (sizes
   derived from data or props, long labels) and the root has no
   `overflow` rule, or has padding/border without
-  `boxSizing: "border-box"` → `warning` (content spills visually; no
-  loop).
-- **Severity** — `blocker` for (a)–(c); `warning` for overflow.
+  `boxSizing: "border-box"` (content spills visually; no loop).
 
 ## Hover handler doesn't call `onHover(null)` on leave
 
@@ -66,12 +64,11 @@ row · Click object incomplete, or clickable mark without
   a backstop. Match the convention across all hover helpers in the file.
 - **Detector** — For every function accepting a nullable mouse event or
   named like `handle*Hover`/`clear*Hover`, inspect the leave branch; if
-  it can return without reaching `onHover(null)`, emit the finding. Also
+  it can return without reaching `onHover(null)`, it is a bug. Also
   flag any mark with `onMouseEnter`/`onMouseMove` but no `onMouseLeave`
   that reaches `onHover(null)`. Do not skip because a sibling helper or
   the container "would eventually" clear it — the cursor can move from a
   mark into empty viz interior without leaving the container.
-- **Severity** — `blocker`.
 
 ## React error #310: hooks called after an early return
 
@@ -87,11 +84,10 @@ row · Click object incomplete, or clickable mark without
 - **Detector** — Walk the component's own top-level statements top to
   bottom, skipping the bodies of nested functions (hook callbacks, event
   handlers, helpers). A `return` among those statements before any
-  `use*` call is a finding, as is a `use*` call inside a
+  `use*` call is a bug, as is a `use*` call inside a
   conditional/loop/ternary/`&&` or inside a nested function, unless that
   nested function's own name starts with `use` (a custom hook). A
-  `return` inside a nested function is never a finding.
-- **Severity** — `blocker`.
+  `return` inside a nested function is never a bug.
 
 ## SVG `<title>` used in place of the host `onHover` tooltip
 
@@ -107,8 +103,7 @@ row · Click object incomplete, or clickable mark without
   `onHover(null)` on leave, and remove the `<title>` elements / `title=`
   attributes.
 - **Detector** — grep for `<title>` JSX children and `title=` attributes
-  on rendered marks; if any match and `onHover` is never called, emit.
-- **Severity** — `blocker`; `warning` if hover was opted out.
+  on rendered marks; if any match and `onHover` is never called, it is a bug.
 
 ## Drills wired on some marks but not others
 
@@ -125,9 +120,7 @@ row · Click object incomplete, or clickable mark without
 - **Detector** — (1) For each SVG/DOM mark element rendered from data,
   confirm `onClick=` or that it is pure decoration (axis, grid). (2) If
   drills were not opted out and the viz renders more than one kind of
-  mark, emit when only one kind has `onClick`.
-- **Severity** — `warning`; `blocker` when no mark has `onClick` and
-  drills were not opted out.
+  mark, a bug when only one kind has `onClick`.
 
 ## Drill handler early-returns when one direction of a pair has no row
 
@@ -146,7 +139,6 @@ row · Click object incomplete, or clickable mark without
   (source/target, row/column of a matrix), find the row lookup keyed by
   the pair `(i, j)`. Emit when a missing result (`-1`, `undefined`,
   `null`) returns early without first trying the swapped pair `(j, i)`.
-- **Severity** — `warning`.
 
 ## Click object incomplete, or clickable mark without `cursor: pointer`
 
@@ -159,12 +151,12 @@ row · Click object incomplete, or clickable mark without
 - **Fix** — Pass `value`, `column`, `dimensions`, `element` and `event`
   as in `api-contract.md`; set `cursor: pointer` on every element with
   `onClick`.
-- **Detector** — For each `onClick(` call with a non-null object, emit
+- **Detector** — For each `onClick(` call with a non-null object, a bug
   when `value`, `column`, `element` or `event` is missing, or when
   `dimensions` is missing and the viz has a dimension column. For each
-  element with an `onClick=` prop, emit when its style has no
-  `cursor: "pointer"`.
-- **Severity** — `warning`.
+  data mark with an `onClick=` prop, a bug when its style has no
+  `cursor: "pointer"`. A background handler that only calls
+  `onClick(null)` to close the menu takes no pointer cursor.
 
 ## Popover or overlay that cannot be closed
 
@@ -178,7 +170,6 @@ row · Click object incomplete, or clickable mark without
   (`tabIndex={0}`).
 - **Detector** — Needs judgment: every piece of UI the viz opens from
   state has at least one of those close paths.
-- **Severity** — `blocker`.
 
 ## `checkRenderable` doesn't match the build statement
 
@@ -187,14 +178,15 @@ row · Click object incomplete, or clickable mark without
   its own "unsupported data" message.
 - **Why it's wrong** — `checkRenderable` is the single place for
   data-shape and settings constraints (`api-contract.md`).
-- **Fix** — Enforce every constraint of the statement's data shape in
-  `checkRenderable` with a user-readable `Error`; remove the duplicate
-  checks from the component.
+- **Fix** — Enforce in `checkRenderable`, with a user-readable `Error`,
+  what the code needs to draw: column count and types, non-empty rows,
+  valid settings. Descriptive words in the statement ("integer",
+  "one row per pair", "sorted") are not constraints: a viz that rejects
+  valid data after the user switches to `avg` or adds a row is broken.
 - **Detector** — Compare `checkRenderable` against the data shape in
-  `.claude/build-statement.md`: a constraint not enforced → `blocker`.
-  The component re-checks a constraint `checkRenderable` enforces →
-  `warning`. `width`/`height` null guards are not duplicates.
-- **Severity** — `blocker` for missing; `warning` for duplicate.
+  `.claude/build-statement.md`: a column count or type the code relies
+  on but does not check is a bug, and so is a check of a value property
+  (`Number.isInteger`, uniqueness, order) the code can draw without.
 
 ## Hardcoded colors
 
@@ -209,4 +201,25 @@ row · Click object incomplete, or clickable mark without
   `getColor`, never literals (`#…`, `rgb(`, `hsl(`, named CSS colors).
   `Colors: theme` → no literals at all. `Colors: own` → mark literals
   are exactly the statement's values.
-- **Severity** — `blocker`.
+
+## `isStringLike` for a text column
+
+- **Symptom** — Metabase shows the viz's "needs a text column" error on
+  data that has one, typically from a native SQL question.
+- **Why it's wrong** — `isStringLike` matches only special text types
+  (IP addresses, BSON ids); ordinary text fails it (`api-contract.md`,
+  Column types).
+- **Fix** — Use `isString` for text, labels and categories.
+- **Detector** — Any `isStringLike(` call where the statement's column is
+  plain text or a category.
+
+## `formatValue` number options without `column`
+
+- **Symptom** — Percentages, decimals or currency show as raw numbers
+  (`0.09019645825262144` instead of `9.0%`).
+- **Why it's wrong** — The host applies number options only together
+  with a numeric `column` (`api-contract.md`, formatValue).
+- **Fix** — Pass `column: col`; for a number with no column, build the
+  string with `Intl.NumberFormat`.
+- **Detector** — A `formatValue(` call with `number_style`, `decimals`,
+  `scale`, `currency`, `prefix`, `suffix` or `compact` and no `column`.

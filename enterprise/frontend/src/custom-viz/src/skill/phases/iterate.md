@@ -21,13 +21,16 @@ Read on demand, before the edit that needs it:
   `skill/references/sandbox-substitutes.md`
 
 1. Dev server: Ensure running. First start in this session → give the
-   user the Connecting Metabase dev-mode steps.
+   user the Connecting Metabase requirements, dev-mode steps and live
+   check.
 2. One user request — one focused edit to `src/index.tsx`; saves
    hot-reload.
 3. After every edit that changes logic, markup or props (not only
-   literal style values): run Checks (`project.md`).
-4. Change alters the data shape, settings or opt-outs → update
-   `.claude/build-statement.md`.
+   literal style values): run Checks (`project.md`). A failing test
+   that the requested change deliberately contradicts is not a bug: the
+   statement update in step 4 re-runs test, which rewrites it.
+4. Change alters the data shape, settings, opt-outs or colors → update
+   `.claude/build-statement.md`; the orchestrator then re-runs test.
 5. Rename request → Renaming.
 
 Rules:

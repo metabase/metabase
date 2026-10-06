@@ -35,6 +35,7 @@ export default defineConfig({
       entry: {
         cli: resolve(__dirname, "src/cli.ts"),
         index: resolve(__dirname, "src/index.ts"),
+        testing: resolve(__dirname, "src/testing/index.ts"),
       },
       formats: ["es"],
     },
@@ -46,6 +47,7 @@ export default defineConfig({
         "react/jsx-runtime",
         "react-dom",
         "react-dom/client",
+        "react-dom/test-utils",
         /^node:/,
       ],
     },

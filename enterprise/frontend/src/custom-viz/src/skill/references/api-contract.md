@@ -98,6 +98,31 @@ checks. Keep runtime guards in the component only for what
 first measure — return `null` then, after the last hook call
 (known-mistakes: React error #310).
 
+## Column types
+
+Predicates check `base_type`/`effective_type` and `semantic_type`.
+Native SQL columns have no `semantic_type`; query-builder columns
+usually do. Pick predicates that hold for both:
+
+- Text, labels, categories → `isString`. `isStringLike` is only for
+  special text types (IP addresses, BSON ids) and is false for ordinary
+  text. `isCategory` is false for native SQL text.
+- Numbers → `isNumeric`. `isNumber` is false for date-part breakouts;
+  `isFloat` is false for a plain float.
+- Dates → `isDate`. A date-part breakout (`day-of-week`, `hour-of-day`)
+  is an integer column with `col.unit` set, and `isDate` is false for
+  it.
+
+## formatValue
+
+Number options (`number_style`, `decimals`, `scale`, `currency`,
+`prefix`, `suffix`, `compact`, …) take effect only when `column` is
+passed and is numeric; without it the value comes back as
+`String(value)`. Always pass `column: col`, merged with
+`settings.column?.(col)` when the user can format the column. To format
+a number that has no column (a computed share, a delta), build the
+string yourself with `Intl.NumberFormat`.
+
 ## Other host behavior
 
 - The host feeds your measured root size back as `width`/`height`; pin

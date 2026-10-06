@@ -4,6 +4,7 @@
 
 - `src/index.tsx` — the only viz source file. Default-exported
   `CreateCustomVisualization` factory wrapped in `defineConfig`.
+- `src/index.test.tsx` — the viz's tests (`testing.md`).
 - `public/assets/icon.svg` — the visualization picker icon. Single-color,
   `currentColor`, so it adapts to light/dark.
 - `.claude/build-statement.md` — the build statement:
@@ -41,8 +42,9 @@ either way.
 
 ## Checks
 
-`npm run type-check` — TypeScript, no emit. It does not see sandbox
-restrictions: those fail only at runtime (`sandbox-restrictions.md`).
+- `npm run type-check` — TypeScript, no emit.
+- `npm test` — the tests against a mocked host (`testing.md`).
 
-"Run Checks" means this command. Same error after two fix attempts →
+Neither sees sandbox restrictions: those fail only at runtime
+(`sandbox-restrictions.md`). "Run Checks" means both commands. Same error after two fix attempts →
 stop and report it.

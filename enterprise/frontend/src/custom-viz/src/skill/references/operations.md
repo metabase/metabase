@@ -24,16 +24,36 @@ verbatim, stop restarting.
 
 ## Connecting Metabase
 
+Requirements: Metabase with a Pro or Enterprise token. Dev mode also
+needs it started with `MB_CUSTOM_VIZ_PLUGIN_DEV_MODE_ENABLED=true`,
+which only works on a Metabase the user runs themselves (Metabase Cloud
+can't load a dev server). No such instance → offer a local one:
+
+```
+docker run -d -p 3000:3000 \
+  -e MB_CUSTOM_VIZ_PLUGIN_DEV_MODE_ENABLED=true \
+  -e MB_PREMIUM_EMBEDDING_TOKEN=<token> \
+  metabase/metabase-enterprise
+```
+
 Dev mode:
 
-1. Metabase runs with `MB_CUSTOM_VIZ_PLUGIN_DEV_MODE_ENABLED=true`.
-2. Admin → Custom visualizations → Development → set the dev server
-   URL to `http://localhost:5174`.
-3. Open a question matching the data shape, pick the viz in the
-   visualization picker.
+1. Open `<metabase>/admin/settings/custom-visualizations/development`
+   and set the dev server URL to `http://localhost:5174`
+   (`http://host.docker.internal:5174` when Metabase runs in Docker).
+2. Open a question matching the data shape and pick the viz in the
+   visualization picker, under Custom visualizations.
 
-Packaged: Admin → Custom visualizations → Add a visualization → upload
-the `.tgz`, then step 3.
+Live check, for the user once the viz shows: hover a mark, then move
+off it — the tooltip disappears; click a mark — the drill menu opens;
+switch to the dark theme — everything stays readable; put it on a
+dashboard and resize the window — it keeps the card's size.
+
+Packaged, on any Metabase with the token, Cloud included: open
+`<metabase>/admin/settings/custom-visualizations`, Add a visualization,
+upload the `.tgz`, then step 2.
+
+Docs: https://www.metabase.com/docs/latest/developers-guide/custom-visualizations
 
 ## Renaming
 

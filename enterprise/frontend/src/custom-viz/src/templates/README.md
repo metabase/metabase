@@ -22,11 +22,40 @@ npm run build      # Compiles src/ → dist/, then packages it into a .tgz
 
 > The packaged archive contains `metabase-plugin.json` plus the build output (`dist/index.js` and any whitelisted `dist/assets/*`). The `dist/` folder does not need to be committed.
 
+### Test
+
+```bash
+npm test           # Runs src/*.test.tsx against a mocked Metabase host
+```
+
+`@metabase/custom-viz/testing` renders your visualization outside Metabase with `mockColumn`,
+`mockSeries`, `checkViz` and `renderViz`. The mocked host behaves like Metabase: column type
+predicates, `getColor` and `formatValue` throw where Metabase would silently misbehave.
+
+```tsx
+import {
+  mockColumn,
+  mockSeries,
+  renderViz,
+} from "@metabase/custom-viz/testing";
+import { expect, it } from "vitest";
+
+import createVisualization from "./index";
+
+it("renders a number", () => {
+  const viz = renderViz(createVisualization, {
+    series: mockSeries([mockColumn("integer", "value")], [[5]]),
+  });
+  expect(viz.container.textContent).not.toBe("");
+});
+```
+
 ### Project structure
 
 ```
 src/
   index.tsx             # Your visualization code — start here
+  index.test.tsx        # Tests (optional)
 metabase-plugin.json    # Plugin manifest (name, icon, version)
 public/
   assets/
