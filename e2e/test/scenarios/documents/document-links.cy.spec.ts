@@ -10,66 +10,12 @@ describe("Links in documents", () => {
     cy.signInAsAdmin();
   });
 
-  describe("plain links", () => {
-    it("should support adding, editing, and removing links via floating menu", () => {
-      cy.visit("/document/new");
-      H.documentContent().click();
-
-      cy.log("Add text and make a link");
-      H.addToDocument("Click here", false);
-      times("here".length, () => cy.realPress(["Shift", "{leftarrow}"]));
-      H.documentFormattingMenu().findByRole("button", { name: /link/ }).click();
-      cy.realType("test.com{enter}");
-
-      cy.log("Assert link exists with correct href");
-      H.documentContent()
-        .findByRole("link", { name: "here" })
-        .invoke("attr", "href")
-        .then((href) => expect(href).to.equal("https://test.com"));
-
-      cy.log("Edit link url");
-      H.documentContent().findByRole("link", { name: "here" }).realHover();
-      cy.icon("pencil").click();
-      cy.findByTestId("document-formatting-menu")
-        .get("input")
-        .should("be.focused");
-      cy.realType("url.com/a/1?k=v");
-      cy.icon("check").click();
-
-      cy.log("Assert link still exists, has updated href");
-      H.documentContent()
-        .findByRole("link", { name: "here" })
-        .invoke("attr", "href")
-        .then((href) => expect(href).to.equal("https://url.com/a/1?k=v"));
-
-      cy.log("Remove link");
-      H.documentContent().findByRole("link", { name: "here" }).realHover();
-      cy.icon("pencil").click();
-      cy.findByTestId("document-formatting-menu").icon("trash").click();
-
-      cy.log("Assert link is unlinked");
-      H.documentContent()
-        .findByRole("paragraph")
-        .should("contain.text", "Click here")
-        .findByRole("link", { name: "here" })
-        .should("not.exist");
-    });
-
-    it("should convert markdown links to real links", () => {
-      cy.visit("/document/new");
-      H.documentContent().click();
-      H.addToDocument("Click [here](url.com).", false);
-      H.documentContent()
-        .findByRole("paragraph")
-        .should("contain.text", "Click here.")
-        .findByRole("link", { name: "here" })
-        .should("exist");
-    });
-  });
-
   describe("smart links", () => {
     beforeEach(() => {
       H.createQuestion(PRODUCTS_AVERAGE_BY_CATEGORY, { wrapId: true });
+    });
+
+    it("should display the most up-to-date title or 'No access' for smart links, convert markdown links, add, edit and remove links via the floating menu, and add smart links via the suggestion and mention menus", () => {
       cy.get("@questionId").then((questionId) => {
         H.createDocument({
           name: "Document with SmartLinks",
@@ -96,9 +42,7 @@ describe("Links in documents", () => {
           idAlias: "documentId",
         });
       });
-    });
 
-    it("should display the most up-to-date title for the entity it references", () => {
       H.visitDocument("@documentId");
 
       H.documentContent().should(
@@ -115,9 +59,8 @@ describe("Links in documents", () => {
       H.documentContent()
         .findByRole("link", { name: /cached name/ })
         .should("not.exist");
-    });
 
-    it("should display 'No access' if the user doesn't have permission to see the link", () => {
+      cy.log("Display 'No access' without permission to the linked entity");
       cy.get("@questionId").then((questionId) => {
         cy.intercept("GET", `/api/card/${questionId}`, {
           statusCode: 403,
@@ -131,12 +74,65 @@ describe("Links in documents", () => {
         .should("exist")
         .icon("eye_crossed_out")
         .should("exist");
-    });
 
-    it("should allow adding a smart link using the suggestion menu", () => {
+      cy.log(
+        "Convert markdown links, edit links via the floating menu, and add smart links via the suggestion and mention menus",
+      );
+      // Takes precedence over the 403 stub so smart links to the question load again
+      cy.get("@questionId").then((questionId) => {
+        cy.intercept("GET", `/api/card/${questionId}`, (req) => req.continue());
+      });
       cy.visit("/document/new");
       H.documentContent().click();
 
+      cy.log("Convert a markdown link to a real link");
+      H.addToDocument("Read [there](url.com).", false);
+      H.documentContent()
+        .findByRole("paragraph")
+        .should("contain.text", "Read there.")
+        .findByRole("link", { name: "there" })
+        .should("exist");
+      H.addToDocument("", true);
+
+      cy.log("Add text and make a link");
+      H.addToDocument("Click here", false);
+      times("here".length, () => cy.realPress(["Shift", "{leftarrow}"]));
+      H.documentFormattingMenu().findByRole("button", { name: /link/ }).click();
+      cy.realType("test.com{enter}");
+
+      cy.log("Assert link exists with correct href");
+      H.documentContent()
+        .findByRole("link", { name: "here" })
+        .invoke("attr", "href")
+        .then((href) => expect(href).to.equal("https://test.com"));
+
+      cy.log("Edit link url");
+      H.documentContent().findByRole("link", { name: "here" }).realHover();
+      cy.icon("pencil").click();
+      H.documentFormattingMenu().find("input").should("be.focused");
+      cy.realType("url.com/a/1?k=v");
+      H.documentFormattingMenu().icon("check").click();
+
+      cy.log("Assert link still exists, has updated href");
+      H.documentContent()
+        .findByRole("link", { name: "here" })
+        .invoke("attr", "href")
+        .then((href) => expect(href).to.equal("https://url.com/a/1?k=v"));
+
+      cy.log("Remove link");
+      H.documentContent().findByRole("link", { name: "here" }).realHover();
+      cy.icon("pencil").click();
+      cy.findByTestId("document-formatting-menu").icon("trash").click();
+
+      cy.log("Assert link is unlinked");
+      H.documentContent()
+        .contains("p", "Click here")
+        .findByRole("link", { name: "here" })
+        .should("not.exist");
+
+      cy.log("Add a smart link from the suggestion menu");
+      moveCursorToDocumentEnd();
+      H.addToDocument("", true);
       cy.log("Trigger suggestion menu with /");
       H.addToDocument("/", false);
 
@@ -154,11 +150,9 @@ describe("Links in documents", () => {
           name: new RegExp(PRODUCTS_AVERAGE_BY_CATEGORY.name),
         })
         .should("exist");
-    });
 
-    it("should allow adding a smart link using 'Browse all' option in suggestion menu", () => {
-      cy.visit("/document/new");
-
+      cy.log("Add a smart link using 'Browse all' option in suggestion menu");
+      H.addToDocument("", true);
       openLinkSuggestionBrowseAllPicker();
 
       H.modal().within(() => {
@@ -201,11 +195,9 @@ describe("Links in documents", () => {
           name: new RegExp("Bobby Tables's Personal Collection"),
         })
         .should("exist");
-    });
 
-    it("should allow adding a smart link using 'Browse all' option in mention menu", () => {
-      cy.visit("/document/new");
-
+      cy.log("Add a smart link using 'Browse all' option in mention menu");
+      H.addToDocument("", true);
       openLinkMentionMenuBrowseAllPicker();
 
       H.modal().within(() => {
@@ -218,7 +210,7 @@ describe("Links in documents", () => {
       cy.log("Verify table smart link was added");
       H.documentContent()
         .findByRole("link", {
-          name: new RegExp("Products"),
+          name: /Products$/,
         })
         .should("exist");
     });
@@ -226,7 +218,7 @@ describe("Links in documents", () => {
 });
 
 function openLinkSuggestionBrowseAllPicker() {
-  H.documentContent().click();
+  moveCursorToDocumentEnd();
 
   cy.log("Trigger suggestion menu with /");
   H.addToDocument("/", false);
@@ -238,10 +230,18 @@ function openLinkSuggestionBrowseAllPicker() {
 }
 
 function openLinkMentionMenuBrowseAllPicker() {
-  H.documentContent().click();
+  moveCursorToDocumentEnd();
 
   cy.log("Trigger mention menu with @");
   H.addToDocument("@", false);
 
   H.documentMentionItem(/Browse all/).click();
+}
+
+function moveCursorToDocumentEnd() {
+  H.documentContent().click();
+  cy.realPress([
+    H.metaKey,
+    Cypress.platform === "darwin" ? "ArrowDown" : "End",
+  ]);
 }

@@ -117,7 +117,7 @@ function getSidebar() {
 }
 
 function closeSidebar() {
-  cy.icon("close").click();
+  getSidebar().icon("close").click();
 }
 
 function getMentionDialog() {

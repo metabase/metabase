@@ -61,6 +61,15 @@ const config: StorybookConfig = {
   build: {
     test: {
       disableTreeShaking: false,
+      // Setting this replaces the addons --test disables by default,
+      // so the first three repeat Storybook's defaults.
+      disabledAddons: [
+        "@storybook/addon-docs",
+        "@storybook/addon-essentials/docs",
+        "@storybook/addon-coverage",
+        "@storybook/addon-a11y",
+        "@storybook/addon-interactions",
+      ],
     },
   },
   typescript: {
