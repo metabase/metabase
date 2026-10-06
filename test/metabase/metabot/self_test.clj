@@ -191,6 +191,19 @@
               (call!))
             (is (=? {:message "upstream is overloaded" :fatal? false}
                     (llm.health/failure "anthropic")))))
+        (testing "an account out of credit is fatal even though Anthropic answers it with a 400"
+          (llm.health/record-success! "anthropic")
+          (mt/with-dynamic-fn-redefs [self.claude/claude
+                                      (fn [_]
+                                        (throw (ex-info "Anthropic API error (HTTP 400)"
+                                                        {:status    400
+                                                         :body      {:type  "error"
+                                                                     :error {:type    "invalid_request_error"
+                                                                             :message "Your credit balance is too low to access the Anthropic API."}}
+                                                         :api-error true
+                                                         :provider  "anthropic"})))]
+            (is (thrown? clojure.lang.ExceptionInfo (call!)))
+            (is (=? {:message "Anthropic API error (HTTP 400)" :fatal? true} (llm.health/failure "anthropic")))))
         (testing "a consumer that throws while the provider is streaming is not the provider failing"
           (llm.health/record-success! "anthropic")
           (mt/with-dynamic-fn-redefs [self.claude/claude (fn [_]

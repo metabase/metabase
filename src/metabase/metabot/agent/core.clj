@@ -22,6 +22,7 @@
    [metabase.metabot.scope :as scope]
    [metabase.metabot.self :as self]
    [metabase.metabot.self.schema :as self.schema]
+   [metabase.metabot.settings :as metabot.settings]
    [metabase.metabot.tools :as tools]
    [metabase.util :as u]
    [metabase.util.json :as json]
@@ -492,9 +493,7 @@
   (let [context      (assign-context-ids context)
         ;; Resolve the profile once (its nlq availability redirect probes the index): reuse it for both the
         ;; prompt and the tools so they can't disagree about whether the curated library tool is offered.
-        profile      (or (if model-selection
-                           (profiles/get-profile profile-id model-selection)
-                           (profiles/get-profile profile-id))
+        profile      (or (profiles/get-profile profile-id model-selection)
                          (throw (ex-info "Unknown profile" {:profile-id profile-id})))
         capabilities (get context :capabilities #{})
         base-tools   (profiles/profile->tools profile capabilities)
@@ -551,10 +550,10 @@
   (see `rethrow-api-error!`) and gets an `:error-code` so the client can tell \"the provider turned
   us down\" — worth showing, and worth retrying now that the failure is recorded and a retry would
   resolve to the fallback — from an internal failure it can only report generically."
-  [^Exception e]
+  [^Exception e model-ref]
   (let [data (ex-data e)]
     {:type  :error
-     :error (or (self/byok-provider-error e)
+     :error (or (self/byok-provider-error e model-ref)
                 (cond-> {:message (.getMessage e), :type (str (type e)), :data data}
                   (:api-error data) (assoc :error-code "provider_error")))}))
 
@@ -764,8 +763,9 @@
                                 [:previous_model :string]
                                 [:previous_provider_name [:maybe :string]]]]]]]]
             [:memory-atom {:optional true} [:maybe [:fn #(instance? clojure.lang.Atom %)]]]]]
-  (let [opts               (m/update-existing-in opts [:context :capabilities]
-                                                 capabilities/enforce-permissions)
+  (let [opts               (-> opts
+                               (m/update-existing-in [:context :capabilities] capabilities/enforce-permissions)
+                               (update :model-selection #(or % (metabot.settings/metabot-model-selection))))
         profile-id         (:profile-id opts)
         debug?             (:debug? opts)
         labels             {:profile-id (name profile-id)}
@@ -858,6 +858,6 @@
 
                       :else
                       (log/errorf "Agent loop error: %s" msg)))
-                  (rf init (error-part e)))
+                  (rf init (error-part e (get-in opts [:model-selection :model-ref]))))
                 (finally
                   (analytics/observe! :metabase-metabot/agent-duration-ms labels (u/since-ms start-ms)))))))))))

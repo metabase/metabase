@@ -38,7 +38,12 @@ export const UNRETRIABLE_METABOT_TURN_ERROR_CODES = [
 
 // Errors a Retry can end differently — a provider failure resolves to the fallback provider on retry,
 // because the failure was recorded when the turn died.
-export const RETRIABLE_METABOT_TURN_ERROR_CODES = ["provider_error"] as const;
+export const RETRIABLE_METABOT_TURN_ERROR_CODES = [
+  "provider_error",
+  "ai_provider_billing",
+  "ai_provider_rate_limit",
+  "ai_provider_auth",
+] as const;
 
 /** Error codes the backend stamps on a failed turn's finish metadata. The wire stays open — `type` on the
  * turn error is any string — but client behavior keyed on a code should name it in one of the arrays above,
