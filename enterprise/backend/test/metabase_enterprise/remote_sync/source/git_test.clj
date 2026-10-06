@@ -1,5 +1,7 @@
 (ns metabase-enterprise.remote-sync.source.git-test
   (:require
+   [buddy.core.codecs :as codecs]
+   [buddy.core.hash :as buddy-hash]
    [clojure.java.io :as io]
    [clojure.string :as str]
    [clojure.test :refer :all]
@@ -11,8 +13,8 @@
    [metabase.util.log :as log])
   (:import (java.io File)
            (java.net SocketTimeoutException)
-           (java.nio.file Files Paths)
-           (java.nio.file.attribute FileAttribute)
+           (java.nio.file Files FileSystems LinkOption Paths)
+           (java.nio.file.attribute FileAttribute PosixFilePermissions)
            (java.util.concurrent CyclicBarrier TimeUnit)
            (org.apache.commons.io FileUtils)
            (org.eclipse.jgit.api Git TransportCommand)
@@ -873,6 +875,86 @@
                                                   (real-snapshot* s)))]
       (u/prog1 (source.p/snapshot source)
         (is @thrown? "precondition: the stale-cache recovery ran")))))
+
+(defn- clone-dir
+  "The directory of the clone that `source` reads."
+  ^File [{:keys [^Git git]}]
+  (.getDirectory (.getRepository git)))
+
+(defn- metabase-git-dir
+  "The directory under the system temp dir that holds the clones of every process."
+  ^File []
+  (io/file (System/getProperty "java.io.tmpdir") "metabase-git"))
+
+(defn- posix-permissions
+  "The POSIX permissions of `f` as a string such as \"rwx------\", or nil when the file system has no POSIX permissions."
+  [^File f]
+  (when (contains? (.supportedFileAttributeViews (FileSystems/getDefault)) "posix")
+    (PosixFilePermissions/toString (Files/getPosixFilePermissions (.toPath f) (make-array LinkOption 0)))))
+
+(defn- count-remote-commands
+  "Calls `thunk`, and returns the simple class names of the remote commands that it ran, with their counts."
+  [thunk]
+  (let [commands            (atom [])
+        call-remote-command (mt/original-fn #'git/call-remote-command)]
+    (mt/with-dynamic-fn-redefs [git/call-remote-command (fn [command args]
+                                                          (swap! commands conj (.getSimpleName (class command)))
+                                                          (call-remote-command command args))]
+      (thunk))
+    (frequencies @commands)))
+
+(deftest clone-is-under-an-owner-only-process-root-test
+  (testing "the clone of a source is in a process root directly under metabase-git, and only the owner can use the root"
+    (mt/with-temp-dir [remote-dir nil]
+      (let [url (remote-url (init-remote! remote-dir))]
+        (try
+          (let [root (.getParentFile (clone-dir (git/git-source url "master" nil ingest/legal-top-level-paths)))]
+            (is (= (.getCanonicalPath (metabase-git-dir)) (.getCanonicalPath (.getParentFile root)))
+                "the root is directly under metabase-git")
+            (is (str/starts-with? (.getName root) "p-") "the root is a process root")
+            (when-let [permissions (posix-permissions root)]
+              (is (= "rwx------" permissions) "only the owner can use the root")))
+          (finally (forget-clones! url)))))))
+
+(deftest repository-planted-at-the-old-clone-path-is-not-opened-test
+  (testing "a repository at metabase-git/<sha1 of the URL> before the first use is not opened: the source clones anew"
+    (mt/with-temp-dir [remote-dir nil]
+      (mt/with-temp-dir [other-dir nil]
+        (let [url     (remote-url (init-remote! remote-dir :files {"master.txt" "File in master"}))
+              other   (remote-url (init-remote! other-dir :files {"master.txt" "Planted"}))
+              planted (io/file (metabase-git-dir) (-> url buddy-hash/sha1 codecs/bytes->hex))]
+          (try
+            (FileUtils/deleteQuietly planted)
+            (.close (-> (Git/cloneRepository) (.setURI other) (.setDirectory planted) (.setBare true) (.call)))
+            (let [source (git/git-source url "master" nil ingest/legal-top-level-paths)]
+              (is (not= (.getCanonicalPath planted) (.getCanonicalPath (clone-dir source)))
+                  "the source does not use the planted repository")
+              (is (= "File in master" (source.p/read-file (source.p/snapshot source) "master.txt"))))
+            (finally
+              (forget-clones! url)
+              (FileUtils/deleteQuietly planted))))))))
+
+(deftest first-use-asks-the-remote-once-and-clones-once-test
+  (testing "the first use of a URL makes one lsRemote and one clone"
+    (mt/with-temp-dir [remote-dir nil]
+      (let [url (remote-url (init-remote! remote-dir :branches ["branch-1"]))]
+        (try
+          (is (= {"LsRemoteCommand" 1 "CloneCommand" 1}
+                 (count-remote-commands #(git/git-source url "master" nil ingest/legal-top-level-paths))))
+          (finally (forget-clones! url)))))))
+
+(deftest first-use-of-a-remote-with-no-branch-does-not-clone-test
+  (testing "the first use of a remote with no branch fails with the uninitialized-repository error after one lsRemote,
+            and makes no clone"
+    (mt/with-temp-dir [remote-dir nil]
+      (let [url    (remote-url {:git (-> (Git/init) (.setDirectory (io/file remote-dir)) (.setInitialBranch "master") (.call))})
+            result (atom nil)]
+        (try
+          (is (= {"LsRemoteCommand" 1}
+                 (count-remote-commands #(reset! result (try (git/git-source url "master" nil ingest/legal-top-level-paths)
+                                                             (catch Exception e (ex-message e)))))))
+          (is (str/includes? (str @result) "Cannot connect to uninitialized repository"))
+          (finally (forget-clones! url)))))))
 
 (deftest concurrent-first-use-clones-once-test
   (testing "two concurrent first uses of a URL share one clone, and both get a source"
