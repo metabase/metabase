@@ -11,6 +11,7 @@
    [metabase-enterprise.remote-sync.settings :as settings]
    [metabase-enterprise.remote-sync.source :as source]
    [metabase-enterprise.remote-sync.source.protocol :as source.p]
+   [metabase-enterprise.remote-sync.spec :as spec]
    [metabase-enterprise.remote-sync.test-helpers :as test-helpers]
    [metabase.events.core :as events]
    [metabase.lib.core :as lib]
@@ -193,6 +194,117 @@
           (is (t2/exists? :model/Card model-id) "a conflict deletes nothing")
           (is (t2/exists? :model/Action action-id) "the new action stays")
           (is (= "create" (:status (row "Action" action-id)))))))))
+
+(defn- do-with-synced-model-and-action!
+  "A synced model M with the action \"Old action\", pushed and pulled as the version \"v0\". Calls
+  `(f {:model-id :action-id :t0})`."
+  [f]
+  (with-sync-settings
+    (mt/with-temp [:model/Collection {coll-id :id} {:name "Merge Test" :is_remote_synced true :location "/"}
+                   :model/Card {model-id :id} {:name "Model M" :type :model :collection_id coll-id
+                                               :dataset_query (venues-query)}
+                   :model/Action {action-id :id} {:name "Old action" :type :query :model_id model-id}
+                   :model/QueryAction _ {:action_id action-id :dataset_query (mt/native-query {:query "select 1"})}]
+      (let [t0 (export-tree!)]
+        (pull-base! t0)
+        (f {:model-id model-id :action-id action-id :t0 t0})))))
+
+(deftest remote-model-delete-with-an-unchanged-action-file-deletes-the-action-test
+  (testing "The remote deletes model M and keeps the file of its action, which nobody changed (the decision keep). The
+            merge pull deletes the model and the action and their rows, with no conflict."
+    (do-with-synced-model-and-action!
+     (fn [{:keys [model-id action-id t0]}]
+       (let [{:keys [result]} (merge-pull! t0 (dissoc t0 (path-of t0 "Model M")))]
+         (is (= :success (:status result)) (pr-str result))
+         (is (not (t2/exists? :model/Card model-id)))
+         (is (not (t2/exists? :model/Action action-id)))
+         (is (nil? (row "Action" action-id))))))))
+
+(defn- file-spec-of
+  "The file spec (`:path` and `:content`) of the local entity `model-type` `id`."
+  [model-type id]
+  (source/entity->file-spec (source/storage-context)
+                            (first (spec/extract-entities-for-rows [{:model_type model-type :model_id id}]))))
+
+(deftest remote-model-delete-with-the-same-action-edit-on-both-sides-reports-a-conflict-test
+  (testing "Both sides make the same edit to the action of model M, and the remote deletes M (the decision of the
+            action is same). The merge pull reports a conflict and keeps the action."
+    (do-with-synced-model-and-action!
+     (fn [{:keys [model-id action-id t0]}]
+       (t2/update! :model/Action action-id {:description "same edit"})
+       (events/publish-event! :event/action-update {:object  (t2/select-one :model/Action action-id)
+                                                    :user-id (mt/user->id :rasta)})
+       (let [{:keys [path content]} (file-spec-of "Action" action-id)
+             {:keys [result loaded]} (merge-pull! t0 (-> t0 (dissoc (path-of t0 "Model M")) (assoc path content)))]
+         (is (contains? t0 path) "the edit does not move the file of the action")
+         (is (= :conflict (:status result)) (pr-str result))
+         (is (empty? loaded))
+         (is (t2/exists? :model/Card model-id))
+         (is (t2/exists? :model/Action action-id)))))))
+
+(deftest remote-model-delete-with-a-locally-archived-action-deletes-the-action-test
+  (testing "The user archives the action of model M, so the action is not in the local side of the merge. The remote
+            deletes M and keeps the file of the action. The merge pull deletes the model and the action and their
+            rows, with no conflict."
+    (do-with-synced-model-and-action!
+     (fn [{:keys [model-id action-id t0]}]
+       (t2/update! :model/Action action-id {:archived true})
+       (events/publish-event! :event/action-update {:object  (t2/select-one :model/Action action-id)
+                                                    :user-id (mt/user->id :rasta)})
+       (let [{:keys [result]} (merge-pull! t0 (dissoc t0 (path-of t0 "Model M")))]
+         (is (= :success (:status result)) (pr-str result))
+         (is (not (t2/exists? :model/Card model-id)))
+         (is (not (t2/exists? :model/Action action-id)))
+         (is (nil? (row "Action" action-id))))))))
+
+(defn- insert-card!
+  "Insert the card `card-name` with `columns`, and publish its create event, as a save from the card API does.
+  Returns its id."
+  [card-name columns]
+  (let [card-id (t2/insert-returning-pk! :model/Card (merge {:name                   card-name
+                                                             :display                :table
+                                                             :dataset_query          (venues-query)
+                                                             :visualization_settings {}
+                                                             :creator_id             (mt/user->id :rasta)}
+                                                            columns))]
+    (events/publish-event! :event/card-create {:object (t2/select-one :model/Card card-id) :user-id (mt/user->id :rasta)})
+    card-id))
+
+(deftest remote-dashboard-delete-with-a-local-new-dashboard-question-reports-a-conflict-test
+  (testing "The local side adds a question to dashboard D and does not push. The remote deletes D. The merge pull
+            reports a conflict and keeps the dashboard and the question."
+    (with-sync-settings
+      (mt/with-temp [:model/Collection {coll-id :id} {:name "Merge Test" :is_remote_synced true :location "/"}
+                     :model/Dashboard {dash-id :id} {:name "Dash D" :collection_id coll-id}
+                     :model/Card _ {:name "Card A" :collection_id coll-id}]
+        (let [t0   (export-tree!)
+              _    (pull-base! t0)
+              q-id (insert-card! "New question" {:collection_id coll-id :dashboard_id dash-id})
+              {:keys [result loaded]} (merge-pull! t0 (dissoc t0 (path-of t0 "Dash D")))]
+          (is (= :conflict (:status result)) (pr-str result))
+          (is (some #(str/includes? % "New question") (:conflicts result)) (pr-str (:conflicts result)))
+          (is (empty? loaded))
+          (is (t2/exists? :model/Dashboard dash-id))
+          (is (t2/exists? :model/Card q-id))
+          (is (= "create" (:status (row "Card" q-id)))))))))
+
+(deftest remote-document-delete-with-a-local-new-document-card-reports-a-conflict-test
+  (testing "The local side adds a card to document Doc and does not push. The remote deletes Doc. The merge pull
+            reports a conflict and keeps the document and the card."
+    (with-sync-settings
+      (mt/with-temp [:model/Collection {coll-id :id} {:name "Merge Test" :is_remote_synced true :location "/"}
+                     :model/Document {doc-id :id} {:name "Doc D" :collection_id coll-id}
+                     :model/Card _ {:name "Card A" :collection_id coll-id}]
+        (let [t0      (export-tree!)
+              _       (pull-base! t0)
+              card-id (insert-card! "New doc card" {:collection_id coll-id :document_id doc-id})
+              {:keys [result loaded]} (merge-pull! t0 (dissoc t0 (path-of t0 "Doc D")))]
+          (is (= :conflict (:status result)) (pr-str result))
+          (is (some #(str/includes? % "New doc card") (:conflicts result)) (pr-str (:conflicts result)))
+          (is (empty? loaded))
+          (is (t2/exists? :model/Document doc-id))
+          (is (t2/exists? :model/Card card-id))
+          (is (= "create" (:status (row "Card" card-id)))))))))
 
 (deftest remote-model-delete-with-an-unchanged-action-deletes-both-test
   (testing "The remote deletes model M and its action, which nobody changed locally. The merge pull deletes both and
@@ -378,5 +490,82 @@
           (is (not (t2/exists? :model/Card :id b)))
           (is (nil? (row "Collection" beta)))
           (is (nil? (row "Card" b)))
+          (is (= "local edit" (t2/select-one-fn :description :model/Card a)))
+          (is (= "update" (:status (row "Card" a)))))))))
+
+(defn- without-beta
+  "`t` with no file of the collection `collections/main/beta` or of its contents."
+  [t]
+  (into {} (remove (fn [[p _]] (str/starts-with? p "collections/main/beta"))) t))
+
+(deftest local-new-card-in-a-remote-deleted-collection-reports-a-conflict-test
+  (testing "The local side adds card C to collection Beta and does not push. The remote deletes Beta and its synced card
+            B. The merge pull reports a conflict and keeps Beta, B, C and the row of C."
+    (with-sync-settings
+      (mt/with-temp [:model/Collection {alpha :id} {:name "Alpha" :is_remote_synced true :location "/"}
+                     :model/Card _ {:name "Card A" :collection_id alpha}
+                     :model/Collection {beta :id} {:name "Beta" :is_remote_synced true :location "/"}
+                     :model/Card {b :id} {:name "Card B" :collection_id beta}]
+        (let [t0   (export-tree!)
+              _    (pull-base! t0)
+              c-id (insert-card! "New card C" {:collection_id beta})
+              {:keys [result loaded]} (merge-pull! t0 (without-beta t0))]
+          (is (= :conflict (:status result)) (pr-str result))
+          (is (some #(str/includes? % "New card C") (:conflicts result)) (pr-str (:conflicts result)))
+          (is (empty? loaded))
+          (is (t2/exists? :model/Collection :id beta))
+          (is (t2/exists? :model/Card :id b))
+          (is (t2/exists? :model/Card :id c-id))
+          (is (= "create" (:status (row "Card" c-id)))))))))
+
+(deftest local-new-card-in-a-sub-collection-of-a-remote-deleted-collection-reports-a-conflict-test
+  (testing "The local side adds card C to collection Gamma, a child of collection Beta. The remote deletes Beta and
+            Gamma. The merge pull reports a conflict and keeps both collections and C."
+    (with-sync-settings
+      (mt/with-temp [:model/Collection {alpha :id} {:name "Alpha" :is_remote_synced true :location "/"}
+                     :model/Card _ {:name "Card A" :collection_id alpha}
+                     :model/Collection {beta :id} {:name "Beta" :is_remote_synced true :location "/"}
+                     :model/Collection {gamma :id} {:name "Gamma" :is_remote_synced true :location (str "/" beta "/")}
+                     :model/Card _ {:name "Card G" :collection_id gamma}]
+        (let [t0   (export-tree!)
+              _    (pull-base! t0)
+              c-id (insert-card! "New card C" {:collection_id gamma})
+              {:keys [result loaded]} (merge-pull! t0 (without-beta t0))]
+          (is (some #(str/starts-with? % "collections/main/beta/") (keys t0)) "Gamma is under the directory of Beta")
+          (is (= :conflict (:status result)) (pr-str result))
+          (is (some #(str/includes? % "New card C") (:conflicts result)) (pr-str (:conflicts result)))
+          (is (empty? loaded))
+          (is (t2/exists? :model/Collection :id beta))
+          (is (t2/exists? :model/Collection :id gamma))
+          (is (t2/exists? :model/Card :id c-id))
+          (is (= "create" (:status (row "Card" c-id)))))))))
+
+(deftest remote-delete-of-a-collection-with-unchanged-contents-deletes-all-test
+  (testing "The remote deletes collection Beta, its child collection Gamma and their contents, which nobody changed
+            locally. The merge pull deletes all of them and their rows, and keeps a local edit in collection Alpha."
+    (with-sync-settings
+      (mt/with-temp [:model/Collection {alpha :id} {:name "Alpha" :is_remote_synced true :location "/"}
+                     :model/Card {a :id} {:name "Card A" :description "original" :collection_id alpha}
+                     :model/Collection {beta :id} {:name "Beta" :is_remote_synced true :location "/"}
+                     :model/Card {b :id} {:name "Card B" :collection_id beta}
+                     :model/Dashboard {dash-id :id} {:name "Dash D" :collection_id beta}
+                     :model/Collection {gamma :id} {:name "Gamma" :is_remote_synced true :location (str "/" beta "/")}
+                     :model/Card {g :id} {:name "Card G" :collection_id gamma}]
+        (let [t0 (export-tree!)
+              _  (pull-base! t0)
+              _  (save! a "local edit")
+              {:keys [result loaded]} (merge-pull! t0 (without-beta t0))]
+          (is (= :success (:status result)) (pr-str result))
+          (is (empty? loaded))
+          (is (not-any? #(t2/exists? :model/Collection :id %) [beta gamma]))
+          (is (not-any? #(t2/exists? :model/Card :id %) [b g]))
+          (is (not (t2/exists? :model/Dashboard :id dash-id)))
+          (is (= #{}
+                 (set (t2/select-fn-set (juxt :model_type :model_id) :model/RemoteSyncObject
+                                        {:where [:or
+                                                 [:and [:= :model_type "Collection"] [:in :model_id [beta gamma]]]
+                                                 [:and [:= :model_type "Card"] [:in :model_id [b g]]]
+                                                 [:and [:= :model_type "Dashboard"] [:= :model_id dash-id]]]})))
+              "no row of a deleted entity stays")
           (is (= "local edit" (t2/select-one-fn :description :model/Card a)))
           (is (= "update" (:status (row "Card" a)))))))))

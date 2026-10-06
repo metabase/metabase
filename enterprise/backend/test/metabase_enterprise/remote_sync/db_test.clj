@@ -45,7 +45,10 @@
              (rolled-back #(remote-sync.db/model-index-value-search-ids (ids 65536))))))
     (testing "entity-ids-by-id accepts 65,536 ids"
       (is (= {:result {}}
-             (rolled-back #(remote-sync.db/entity-ids-by-id :model/Card (ids 65536))))))))
+             (rolled-back #(remote-sync.db/entity-ids-by-id :model/Card (ids 65536))))))
+    (testing "ids-by-entity-ids accepts 65,536 entity ids"
+      (is (= {:result []}
+             (rolled-back #(remote-sync.db/ids-by-entity-ids :model/Card (set (map str (ids 65536))))))))))
 
 (defn- model-index
   "The columns of a ModelIndex of the model Card `model-id`."
@@ -79,7 +82,11 @@
                (sort (remote-sync.db/model-index-value-search-ids (across index-1 index-2))))))
       (testing "entity-ids-by-id finds the entity ids of the Cards in each chunk"
         (is (= {model-1 eid-1 model-2 eid-2}
-               (remote-sync.db/entity-ids-by-id :model/Card (across model-1 model-2))))))))
+               (remote-sync.db/entity-ids-by-id :model/Card (across model-1 model-2)))))
+      (testing "ids-by-entity-ids finds the ids of the Cards in a list of more than one chunk"
+        (is (= #{model-1 model-2}
+               (set (remote-sync.db/ids-by-entity-ids :model/Card
+                                                      (into #{eid-1 eid-2} (map str) (ids (* 2 chunk-size)))))))))))
 
 (deftest delete-closure-test
   (mt/with-temp [:model/Dashboard  {dash-id :id}     {:name "Closure dashboard"}
