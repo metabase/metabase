@@ -41,7 +41,7 @@
   (let [calls (atom [])]
     (mt/with-dynamic-fn-redefs [revision/push-revision! (fn [{:keys [entity is-creation?]}]
                                                           (swap! calls conj [entity is-creation?]))]
-      (doseq [[dispatch-value method] (methodical/primary-methods events/publish-event!)
+      (doseq [[dispatch-value method] (methodical/primary-methods (mt/original-fn #'events/publish-event!))
               :when (and (events/isa? dispatch-value ::revisions.events/event)
                          (events/isa? topic dispatch-value))]
         (method topic {:object (t2/instance model {:id 1}) :user-id 1})))
