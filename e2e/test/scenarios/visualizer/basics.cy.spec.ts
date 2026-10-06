@@ -818,6 +818,63 @@ describe("scenarios > visualizer > basics", () => {
     });
   });
 
+  it("should not reload the dashboard when the base card of a multi-series dashcard is broken (metabase#21665)", () => {
+    const Q1 = {
+      name: "21665 Q1",
+      native: { query: "select 1" },
+      display: "scalar" as const,
+    };
+
+    const Q2 = {
+      name: "21665 Q2",
+      native: { query: "select 2" },
+      display: "scalar" as const,
+    };
+
+    H.createNativeQuestion(Q2);
+    H.createNativeQuestionAndDashboard({
+      questionDetails: Q1,
+      dashboardDetails: { name: "21665D" },
+    }).then(({ body: { card_id, dashboard_id } }) => {
+      cy.wrap(card_id).as("baseQuestionId");
+      cy.wrap(dashboard_id).as("dashboardId");
+      H.visitDashboard(dashboard_id);
+    });
+
+    H.editDashboard();
+    H.getDashboardCard(0)
+      .realHover({ scrollBehavior: "bottom" })
+      .findByLabelText("Visualize another way")
+      .click();
+    H.modal().within(() => {
+      H.switchToAddMoreData();
+      H.selectDataset(Q2.name);
+      cy.button("Save").click();
+    });
+    H.saveDashboard();
+
+    cy.get("@baseQuestionId").then((baseQuestionId) => {
+      cy.request("PUT", `/api/card/${baseQuestionId}`, {
+        dataset_query: {
+          type: "native",
+          native: { query: "select order by --" },
+          database: SAMPLE_DB_ID,
+        },
+      });
+    });
+
+    const windowLoad = cy.spy().as("windowLoad");
+    cy.on("window:before:load", windowLoad);
+
+    H.visitDashboard("@dashboardId");
+    H.getDashboardCard(0)
+      .findByText(
+        "Some columns are missing, this card might not render correctly.",
+      )
+      .should("be.visible");
+    cy.get("@windowLoad").should("have.been.calledOnce");
+  });
+
   describe("public sharing and embedding", () => {
     function ensureVisualizerCardsAreRendered() {
       // Checks a cartesian chart has an axis name
