@@ -17,7 +17,6 @@ import {
   Box,
   Button,
   Card,
-  Center,
   Flex,
   Group,
   Icon,
@@ -117,9 +116,9 @@ function EnableTenancyCard() {
   const { updateSetting } = useAdminSetting("use-tenants");
 
   return (
-    <Card p="xxl" withBorder>
-      <Flex gap="xxl" align="center" justify="space-between" wrap="nowrap">
-        <Stack gap="lg" maw="30rem">
+    <Card p="xl" withBorder>
+      <Flex gap="xl" align="center" wrap="nowrap">
+        <Stack gap="lg" p="lg" flex={1}>
           <Title order={4}>{t`Enable multi-tenant user strategy`}</Title>
 
           <Text c="text-secondary" lh="lg">
@@ -140,18 +139,16 @@ function EnableTenancyCard() {
 
         {/* The same artwork the upsell shows, since this is the same subject
             one step further on. */}
-        <Card
-          p={6}
-          radius={12}
-          shadow="sm"
-          withBorder
-          maw="40%"
+        <Image
+          src={TENANTS_ILLUSTRATION}
+          w="45%"
+          maw={340}
+          flex="0 0 auto"
+          radius="xs"
+          bd="1px solid var(--mb-color-border-neutral)"
           visibleFrom="md"
-        >
-          <Center w="100%" p="xxl">
-            <Image src={TENANTS_ILLUSTRATION} w="100%" h="auto" alt="" />
-          </Center>
-        </Card>
+          alt=""
+        />
       </Flex>
     </Card>
   );
