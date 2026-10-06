@@ -564,7 +564,7 @@
 (defmethod search-query-for-model "database"
   [model search-ctx]
   (-> (base-query-for-model model search-ctx)
-      (sql.helpers/where [:= :router_database_id nil])))
+      (sql.helpers/where [:= :router_database_id nil] [:= :is_stub false])))
 
 (defmethod search-query-for-model "transform"
   [model search-ctx]

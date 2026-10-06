@@ -1,5 +1,6 @@
 (ns metabase.analyze.classifiers.name
   "Classifier that infers the semantic type of a Field based on its name and base type."
+  (:refer-clojure :exclude [some])
   (:require
    [clojure.string :as str]
    [metabase.analyze.schema :as analyze.schema]
@@ -9,7 +10,8 @@
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]))
+   [metabase.util.malli.schema :as ms]
+   [metabase.util.performance :refer [some]]))
 
 (def ^:private float-type       #{:type/Float})
 (def ^:private int-type         #{:type/Integer})

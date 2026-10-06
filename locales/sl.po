@@ -7,7 +7,7 @@ msgstr ""
 "Plural-Forms: nplurals=4; plural=n%100==1 ? 0 : n%100==2 ? 1 : n%100==3 || n%100==4 ? 2 : 3;\n"
 "Project-Id-Version: metabase-i18n\n"
 "Report-Msgid-Bugs-To: docs@metabase.com\n"
-"POT-Creation-Date: 2026-09-15 05:47+0000\n"
+"POT-Creation-Date: 2026-09-29 05:50+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -18,7 +18,7 @@ msgstr ""
 "X-Crowdin-File-ID: 2\n"
 "Language-Team: Slovenian\n"
 "Language: sl_SI\n"
-"PO-Revision-Date: 2026-09-22 05:40\n"
+"PO-Revision-Date: 2026-10-06 05:43\n"
 
 #: /home/runner/work/metabase/metabase/src/metabase/analyze/fingerprint/fingerprinters.clj
 msgid "Error generating fingerprint for {0}"
@@ -162,11 +162,6 @@ msgid "Nothing here"
 msgstr "Tukaj ni ničesar"
 
 #: enterprise/frontend/src/embedding/data-picker/TriggerComponents.tsx
-#: frontend/src/metabase/querying/common/components/DataSelector/TriggerComponents.tsx
-msgid "Select..."
-msgstr "Izberi..."
-
-#: enterprise/frontend/src/embedding/data-picker/TriggerComponents.tsx
 #: frontend/src/metabase/admin/settings/components/UploadSettings/UploadSettingsForm.tsx
 #: frontend/src/metabase/databases/components/DatabaseEngineField/DatabaseEngineSelect.tsx
 #: frontend/src/metabase/querying/common/components/DataSelector/TriggerComponents.tsx
@@ -295,7 +290,6 @@ msgstr "Uporabniški atribut"
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/GitSyncControls/GitSyncControls.tsx
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/PushChangesModal/PushChangesModal.tsx
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/RemoteSyncAdminSettings/BranchSwitcher.tsx
-#: enterprise/frontend/src/metabase-enterprise/remote_sync/components/RemoteSyncAdminSettings/RemoteSyncDependencyModal.tsx
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/RemoteSyncAdminSettings/RemoteSyncSettingsForm.tsx
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/SyncConflictModal/SyncConflictModal.tsx
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/SyncProgressModal.tsx
@@ -318,6 +312,8 @@ msgstr "Uporabniški atribut"
 #: frontend/src/metabase/admin/databases/components/DeleteDatabaseModel/DeleteDatabaseModal.tsx
 #: frontend/src/metabase/admin/datamodel/components/SegmentForm/SegmentForm.tsx
 #: frontend/src/metabase/admin/datamodel/components/SegmentRetireModal.tsx
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/EditorPanel.tsx
+#: frontend/src/metabase/admin/embedding/components/ThemeListing/DeleteThemeModal.tsx
 #: frontend/src/metabase/admin/people/components/AddRow.tsx
 #: frontend/src/metabase/admin/people/components/GroupsListing.tsx
 #: frontend/src/metabase/admin/people/containers/UserPasswordResetModal.tsx
@@ -325,6 +321,7 @@ msgstr "Uporabniški atribut"
 #: frontend/src/metabase/admin/permissions/components/CollectionPermissionsModal/CollectionPermissionsModal.tsx
 #: frontend/src/metabase/admin/permissions/components/PermissionsPageLayout/PermissionsEditBar.tsx
 #: frontend/src/metabase/admin/permissions/selectors/confirmations.tsx
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/MappingEditorRow.tsx
 #: frontend/src/metabase/admin/settings/components/ApiKeys/CreateApiKeyModal.tsx
 #: frontend/src/metabase/admin/settings/components/ApiKeys/EditApiKeyModal.tsx
 #: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.tsx
@@ -338,6 +335,7 @@ msgstr "Uporabniški atribut"
 #: frontend/src/metabase/common/collections/components/QuestionMoveConfirmModal.tsx
 #: frontend/src/metabase/common/components/ArchiveModal/ArchiveModal.tsx
 #: frontend/src/metabase/common/components/ConfirmModal/ConfirmModal.tsx
+#: frontend/src/metabase/common/components/CopyCardForm/CopyCardForm.tsx
 #: frontend/src/metabase/common/components/CopyDashboardForm/CopyDashboardForm.tsx
 #: frontend/src/metabase/common/components/DocumentCopyForm/DocumentCopyForm.tsx
 #: frontend/src/metabase/common/components/Glossary/GlossaryRowEditor.tsx
@@ -366,9 +364,6 @@ msgstr "Uporabniški atribut"
 #: frontend/src/metabase/documents/components/editor-extensions/CardEmbed/modals/NativeQueryModal.tsx
 #: frontend/src/metabase/embedding/components/SharingMenu/InviteToViewModal.tsx
 #: frontend/src/metabase/embedding/mcp/McpFeedbackArea.tsx
-#: frontend/src/metabase/embedding/settings/EmbeddingLegaleseModal/EmbeddingLegaleseModal.tsx
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/EditorPanel.tsx
-#: frontend/src/metabase/embedding/themes/components/ThemeListing/DeleteThemeModal.tsx
 #: frontend/src/metabase/forms/components/FormSecretKey/SetupKeyModal.tsx
 #: frontend/src/metabase/home/components/CustomHomePageModal/CustomHomePageModal.tsx
 #: frontend/src/metabase/home/components/EmbedHomepage/FeedbackModal.tsx
@@ -387,7 +382,6 @@ msgstr "Uporabniški atribut"
 #: frontend/src/metabase/querying/components/QueryVisualization/RunButton.tsx
 #: frontend/src/metabase/querying/components/expressions/ExpressionWidget/ExpressionWidget.tsx
 #: frontend/src/metabase/querying/metrics/components/MetricEditor/MetricEditorHeader/MetricEditorHeader.tsx
-#: frontend/src/metabase/questions/components/CopyCardForm/CopyCardForm.tsx
 #: frontend/src/metabase/reference/components/EditHeader.tsx
 #: frontend/src/metabase/reference/components/RevisionMessageModal.tsx
 #: frontend/src/metabase/timelines/common/components/DeleteEventModal/DeleteEventModal.tsx
@@ -424,6 +418,7 @@ msgstr "Prekliči"
 #: frontend/src/metabase/actions/utils.ts
 #: frontend/src/metabase/admin/performance/components/StrategyForm.tsx
 #: frontend/src/metabase/admin/permissions/components/CollectionPermissionsModal/CollectionPermissionsModal.tsx
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/GroupMappingList.tsx
 #: frontend/src/metabase/admin/settings/components/ApiKeys/EditApiKeyModal.tsx
 #: frontend/src/metabase/common/collections/components/CollectionRowMenu/EditCollectionModal/EditCollectionModal.tsx
 #: frontend/src/metabase/common/components/ActionButton/ActionButton.tsx
@@ -608,8 +603,8 @@ msgid "Metabot illustration preview"
 msgstr "Predogled ilustracije Metabot"
 
 #: enterprise/frontend/src/metabase-enterprise/ai-controls/pages/MetabotCustomizationPage/MetabotIconField.tsx
-msgid "Show Metabot illustrations in chat sidebar and AI exploration page"
-msgstr "Prikaži ilustracije Metabot v stranski vrstici klepeta in na strani za UI raziskovanje"
+msgid "Show Metabot illustrations in the chat sidebar"
+msgstr "Prikaži ilustracije Metabot v stranski vrstici klepeta"
 
 #: enterprise/frontend/src/metabase-enterprise/ai-controls/pages/MetabotCustomizationPage/MetabotIconField.tsx
 msgid "Show Metabot illustrations"
@@ -700,6 +695,8 @@ msgstr "Odstrani dostop za vse skupine"
 #: enterprise/frontend/src/metabase-enterprise/ai-controls/pages/MetabotFeatureAccessPage/components/GearIconMenu/GearIconMenu.tsx
 #: frontend/src/metabase/admin/ai/MetabotNavPane.tsx
 #: frontend/src/metabase/admin/app/reducers.ts
+#: frontend/src/metabase/admin/embedding/components/EmbeddingNav.tsx
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSettings/EmbeddingSettings.tsx
 #: frontend/src/metabase/data-studio/app/pages/DataStudioLayout/DataStudioLayout.tsx
 #: frontend/src/metabase/data-studio/settings/pages/SettingsPage/SettingsPage.tsx
 #: frontend/src/metabase/nav/components/AppSwitcher/AppSwitcher.tsx
@@ -727,7 +724,6 @@ msgstr "Uporabniške skupine"
 #: enterprise/frontend/src/metabase-enterprise/tenants/index.tsx
 #: frontend/src/metabase/admin/people/components/PeopleNav.tsx
 #: frontend/src/metabase/admin/people/containers/GroupsListingApp.tsx
-#: frontend/src/metabase/embedding-hub/pages/EmbeddingHubTenancyPage.tsx
 msgid "Tenant groups"
 msgstr "Skupine najemnika"
 
@@ -761,8 +757,8 @@ msgstr "Navodila poziva za UI klepet"
 
 #: enterprise/frontend/src/metabase-enterprise/ai-controls/pages/MetabotSystemPromptsPage/MetabotSystemPromptsPage.tsx
 #, javascript-format
-msgid "Add instructions here for the sidebar AI chat experience in {0}. You might want to give instructions about tone, types of entities to prefer, and things like that."
-msgstr "Tukaj dodajte navodila za izkušnjo UI klepeta v stranski vrstici v {0}. Morda boste želeli dodati navodila o tonu, vrstah entitet, ki naj jih daje prednost, in podobno."
+msgid "Add instructions here for the sidebar AI chat experience in {0} and for Metabot in Slack. You might want to give instructions about tone, types of entities to prefer, and things like that."
+msgstr "Tukaj dodajte navodila za stransko AI-klepetalno izkušnjo v {0} in za Metabot v Slacku. Morda boste želeli podati navodila o tonu, vrstah entitet, ki naj jih raje uporablja, in podobno."
 
 #: enterprise/frontend/src/metabase-enterprise/ai-controls/pages/MetabotSystemPromptsPage/MetabotSystemPromptsPage.tsx
 msgid "Natural language query prompt instructions"
@@ -1171,7 +1167,6 @@ msgstr "Išči skupino"
 #: frontend/src/metabase/admin/people/components/GroupsListing.tsx
 #: frontend/src/metabase/admin/permissions/selectors/collection-permissions.tsx
 #: frontend/src/metabase/admin/permissions/selectors/data-permissions/permission-editor.tsx
-#: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
 msgid "Group name"
 msgstr "Ime skupine"
 
@@ -1291,11 +1286,9 @@ msgstr "Odjavi od vseh naročnin / opozoril"
 #: enterprise/frontend/src/metabase-enterprise/auth/components/AuthSettingsPage.tsx
 #: enterprise/frontend/src/metabase-enterprise/tenants/components/TenantsSummaryOnboardingStep/TenantsSummaryOnboardingStep.tsx
 #: frontend/src/metabase/account/app/components/AccountHeader/AccountHeader.tsx
+#: frontend/src/metabase/admin/components/RelatedSettingsSection/constants.ts
 #: frontend/src/metabase/admin/settings/components/SettingsNav/SettingsNav.tsx
 #: frontend/src/metabase/admin/settings/components/SettingsPages/AuthenticationSettingsPage.tsx
-#: frontend/src/metabase/embedding-hub/components/EmbeddingHubLayout/EmbeddingHubLayout.tsx
-#: frontend/src/metabase/embedding-hub/pages/EmbeddingHubAuthenticationPage.tsx
-#: frontend/src/metabase/embedding-hub/upsells/AuthenticationUpsellPage.tsx
 #: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/AuthenticationCard/AuthenticationCard.tsx
 #: frontend/src/metabase/palette/constants.ts
 msgid "Authentication"
@@ -1352,11 +1345,13 @@ msgid "Unit"
 msgstr "Enota"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/JWTGroupMappingSection.tsx
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/use-mapping-editor.ts
 #: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/GroupMappingsWidgetView.tsx
 msgid "Mapping added"
 msgstr "Preslikava dodana"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/JWTGroupMappingSection.tsx
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/use-mapping-editor.ts
 #: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/GroupMappingsWidgetView.tsx
 msgid "Mapping updated"
 msgstr "Preslikava posodobljena"
@@ -1399,6 +1394,7 @@ msgstr "Nova preslikava"
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/RemoteSyncAdminSettings/SyncModeSection.tsx
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/utils.ts
 #: frontend/src/metabase/admin/settings/auth/components/GoogleAuthForm/GoogleAuthForm.tsx
+#: frontend/src/metabase/admin/settings/components/LdapGroupMappingSection/LdapGroupMappingSection.tsx
 #: frontend/src/metabase/admin/settings/utils.ts
 #, javascript-format
 msgid "Using {0}"
@@ -1414,6 +1410,7 @@ msgid "Add at least one mapping to use manual group mapping"
 msgstr "Dodajte vsaj eno preslikavo, da uporabite ročno preslikavo skupin"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/JWTGroupMappingSection.tsx
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/GroupMappingList.tsx
 msgid "Add mapping"
 msgstr "Dodaj preslikavo"
 
@@ -1443,30 +1440,36 @@ msgid "Enter JWT group..."
 msgstr "Vnesite skupino JWT..."
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/MappingEditorRow.tsx
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/use-mapping-editor.ts
 msgid "A mapping for this group already exists"
 msgstr "Preslikava za to skupino že obstaja"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/MappingEditorRow.tsx
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/MappingEditorRow.tsx
 #, javascript-format
 msgid "{0} groups"
 msgstr "{0} skupin"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/MappingEditorRow.tsx
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/MappingEditorRow.tsx
 #, javascript-format
 msgid "Pick {0} group..."
 msgstr "Izberite skupino {0}..."
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/MappingRow.tsx
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/MappingRow.tsx
 #: frontend/src/metabase/metadata/components/FieldSection/BehaviorSection/RemappingPicker/RemappingPicker.tsx
 msgid "Edit mapping"
 msgstr "Uredi preslikavo"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/MappingRow.tsx
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/MappingRow.tsx
 msgid "Delete mapping"
 msgstr "Izbriši preslikavo"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/MappingRow.tsx
 #: frontend/src/metabase/admin/people/components/MembershipSelect/MembershipSelect.tsx
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/MappingRow.tsx
 #: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/GroupSelect/GroupSelect.tsx
 msgid "No groups"
 msgstr "Ni skupin"
@@ -1479,10 +1482,12 @@ msgid "Changes saved"
 msgstr "Spremembe shranjene"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/use-group-mapping-settings.ts
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/use-group-mappings.ts
 msgid "Error saving group mapping"
 msgstr "Napaka pri shranjevanju preslikave skupin"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/use-mapping-deletion.ts
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/use-mapping-deletion.ts
 msgid "Mapping deleted, but not all of its groups could be updated"
 msgstr "Preslikava je izbrisana, vendar vseh njenih skupin ni bilo mogoče posodobiti"
 
@@ -1491,14 +1496,10 @@ msgid "Mapping deleted and group mapping turned off"
 msgstr "Preslikava je izbrisana in preslikava skupin je izklopljena"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/use-mapping-deletion.ts
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/use-mapping-deletion.ts
 #: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/GroupMappingsWidgetView.tsx
 msgid "Mapping deleted"
 msgstr "Preslikava izbrisana"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/SettingsJWTForm.tsx
-#: enterprise/frontend/src/metabase-enterprise/auth/containers/JwtAuthCard/JwtAuthCard.tsx
-msgid "JWT"
-msgstr "JWT"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/SettingsJWTForm.tsx
 msgid "Error saving JWT Settings"
@@ -1507,6 +1508,11 @@ msgstr "Napaka pri shranjevanju nastavitev JWT"
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/SettingsJWTForm.tsx
 msgid "Error loading JWT configuration"
 msgstr "Napaka pri nalaganju konfiguracije JWT"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/SettingsJWTForm.tsx
+#: enterprise/frontend/src/metabase-enterprise/auth/containers/JwtAuthCard/JwtAuthCard.tsx
+msgid "JWT"
+msgstr "JWT"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/SettingsJWTForm.tsx
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
@@ -1533,14 +1539,17 @@ msgid "You can send additional user attributes to {0} by adding the attributes a
 msgstr "Dodatne uporabniške atribute lahko pošljete v {0}, tako da atribute dodate kot pare ključ/vrednost v svoj JWT"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/SettingsJWTForm.tsx
+#: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
 msgid "Email attribute key"
 msgstr "Ključ atributa e-pošte"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/SettingsJWTForm.tsx
+#: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
 msgid "First name attribute key"
 msgstr "Ključ atributa imena"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/SettingsJWTForm.tsx
+#: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
 msgid "Last name attribute key"
 msgstr "Ključ atributa priimka"
 
@@ -1555,7 +1564,7 @@ msgstr "Ključ atributa dodelitve najemnika"
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/SettingsJWTForm.tsx
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
-#: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
+#: frontend/src/metabase/admin/settings/components/LdapGroupMappingSection/LdapGroupMappingSection.tsx
 msgid "Group mapping"
 msgstr "Preslikava skupin"
 
@@ -1575,6 +1584,7 @@ msgstr "Shrani in omogoči"
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/SettingsJWTForm.tsx
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
+#: enterprise/frontend/src/metabase-enterprise/remote_sync/components/RemoteSyncAdminSettings/RemoteSyncDependencyModal.tsx
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/RemoteSyncAdminSettings/RemoteSyncSettingsForm.tsx
 #: enterprise/frontend/src/metabase-enterprise/table-editing/table-edit/modals/UpdateRowActionFormModal.tsx
 #: frontend/src/embedding-sdk-bundle/components/public/dashboard/SdkDashboard.tsx
@@ -1757,17 +1767,14 @@ msgid "Map OIDC claims to user attributes. Use standard OIDC claim names or your
 msgstr "Preslikaj OIDC claims v uporabniške atribute. Uporabite standardna imena OIDC claims ali prilagojene claims vašega ponudnika."
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
-#: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
 msgid "Email attribute"
 msgstr "Atribut e-pošte"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
-#: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
 msgid "First name attribute"
 msgstr "Atribut imena"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
-#: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
 msgid "Last name attribute"
 msgstr "Atribut priimka"
 
@@ -1910,6 +1917,7 @@ msgid "SAML keystore password"
 msgstr "Geslo shrambe ključev SAML"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
+#: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
 msgid "Shh..."
 msgstr "Ššš..."
 
@@ -2093,21 +2101,21 @@ msgstr "Naslednji element"
 #: frontend/src/metabase/admin/people/components/GroupMembersTable/GroupMembersTable.tsx
 #: frontend/src/metabase/admin/people/components/PeopleList.tsx
 #: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.tsx
+#: frontend/src/metabase/admin/settings/components/widgets/PublicLinksListing/PublicLinksListing.tsx
 #: frontend/src/metabase/browse/metrics/MetricsTable.tsx
 #: frontend/src/metabase/browse/models/ModelsTable.tsx
 #: frontend/src/metabase/common/CreateDashboard/CreateDashboardForm.tsx
 #: frontend/src/metabase/common/collections/components/CollectionRowMenu/EditCollectionModal/EditCollectionModal.tsx
 #: frontend/src/metabase/common/collections/components/CreateCollectionForm/CreateCollectionForm.tsx
+#: frontend/src/metabase/common/components/CopyCardForm/CopyCardForm.tsx
 #: frontend/src/metabase/common/components/CopyDashboardForm/CopyDashboardForm.tsx
 #: frontend/src/metabase/common/components/DocumentCopyForm/DocumentCopyForm.tsx
 #: frontend/src/metabase/common/components/ItemsTable/Columns.tsx
-#: frontend/src/metabase/common/components/PublicLinksListing/PublicLinksListing.tsx
 #: frontend/src/metabase/common/components/SaveQuestionForm/SaveQuestionForm.tsx
 #: frontend/src/metabase/common/data-studio/components/PaneHeader/PaneHeader.tsx
 #: frontend/src/metabase/data-studio/components/RevisionHistory/RevisionDiff.tsx
 #: frontend/src/metabase/data-studio/data-model/components/TablePicker/components/TablePickerTreeTable.tsx
 #: frontend/src/metabase/metrics/pages/NewMetricPage/CreateMetricModal/CreateMetricModal.tsx
-#: frontend/src/metabase/questions/components/CopyCardForm/CopyCardForm.tsx
 #: frontend/src/metabase/timelines/common/components/TimelineForm/TimelineForm.tsx
 #: frontend/src/metabase/transforms/components/CreateTransformCollectionModal/CreateTransformCollectionModal.tsx
 #: frontend/src/metabase/transforms/components/TagMultiSelect/UpdateTagModal/UpdateTagModal.tsx
@@ -2159,8 +2167,8 @@ msgstr "Nastavitve predpomnjenja"
 
 #: enterprise/frontend/src/metabase-enterprise/caching/components/SidebarCacheSection.tsx
 #: enterprise/frontend/src/metabase-enterprise/caching/components/StrategyEditorForQuestionsAndDashboards/CachingPoliciesFilters.tsx
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/EditorPanel.tsx
 #: frontend/src/metabase/admin/people/components/GroupSummary.tsx
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/EditorPanel.tsx
 #: frontend/src/metabase/metrics-viewer/components/MetricControls/LeftControls/LeftControls.tsx
 #: frontend/src/metabase/metrics/components/MetricDimensions/DimensionRow.tsx
 #: frontend/src/metabase/plugins/oss/caching.ts
@@ -2624,11 +2632,11 @@ msgstr "Nastavite URL razvojnega strežnika, da se koda vtičnika nalaga z lokal
 #: enterprise/frontend/src/metabase-enterprise/custom_viz/components/CustomVizListItem.tsx
 #: enterprise/frontend/src/metabase-enterprise/data_apps/admin/components/DataAppStatusBadge/DataAppStatusBadge.tsx
 #: frontend/src/metabase/admin/performance/components/ModelPersistenceConfiguration.tsx
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingToggle/EmbeddingToggle.tsx
 #: frontend/src/metabase/admin/settings/components/SettingsPages/DomainsSettingsPage.tsx
 #: frontend/src/metabase/admin/settings/components/SettingsPages/GeneralSettingsPage.tsx
 #: frontend/src/metabase/admin/settings/components/widgets/FormattingWidget.tsx
 #: frontend/src/metabase/embedding/components/EmbedModal/StaticEmbedSetupPane/ParametersSettings.tsx
-#: frontend/src/metabase/embedding/settings/EmbeddingToggle/EmbeddingToggle.tsx
 #: frontend/src/metabase/settings-components/AdminSettingInput.tsx
 #: frontend/src/metabase/transforms/components/JobHeader/JobHeader.tsx
 #: frontend/src/metabase/transforms/pages/JobListPage/JobListPage.tsx
@@ -2756,9 +2764,9 @@ msgstr "Oglejte si dnevnik sprememb SDK"
 
 #: enterprise/frontend/src/metabase-enterprise/custom_viz/components/EditDevCustomVizForm.tsx
 #: frontend/src/metabase/admin/performance/components/ModelPersistenceConfiguration.tsx
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingToggle/EmbeddingToggle.tsx
 #: frontend/src/metabase/admin/settings/components/SettingsPages/DomainsSettingsPage.tsx
 #: frontend/src/metabase/admin/settings/components/widgets/FormattingWidget.tsx
-#: frontend/src/metabase/embedding/settings/EmbeddingToggle/EmbeddingToggle.tsx
 #: frontend/src/metabase/settings-components/AdminSettingInput.tsx
 msgid "Enabled"
 msgstr "Omogočeno"
@@ -2902,6 +2910,7 @@ msgstr "Morda so bile zgrajene za drugo različico in jih bo morda treba posodob
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/metrics/pages/NewMetricPage/NewMetricPage.tsx
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/LibrarySyncRow/LibrarySyncRow.tsx
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/SyncConflictModal/SetupConflictInfo.tsx
+#: enterprise/frontend/src/metabase-enterprise/remote_sync/utils.ts
 #: frontend/src/metabase/common/components/Pickers/EntityPicker/components/ItemLists/SearchResults.tsx
 #: frontend/src/metabase/data-studio/app/pages/DataStudioLayout/DataStudioLayout.tsx
 #: frontend/src/metabase/data-studio/upsells/pages/LibraryUpsellPage.tsx
@@ -2964,6 +2973,7 @@ msgid "Snippet"
 msgstr "Izsek kode"
 
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/LibraryPage/components/CreateMenu.tsx
+#: frontend/src/metabase/admin/settings/components/LdapGroupMappingSection/LdapGroupMappingSection.tsx
 #: frontend/src/metabase/collections/components/CollectionEmptyState/CollectionEmptyState.tsx
 #: frontend/src/metabase/collections/components/CollectionHeader/CollectionUploadInfoModal.tsx
 #: frontend/src/metabase/metabot/components/MetabotChat/MetabotAgentSuggestionMessage.tsx
@@ -3782,7 +3792,6 @@ msgid "Actions for {0}"
 msgstr "Dejanja za {0}"
 
 #: enterprise/frontend/src/metabase-enterprise/data_apps/admin/components/DataAppActionsMenu/DataAppActionsMenu.tsx
-#: metabase/metabot/scope.clj
 msgid "View resources"
 msgstr "Oglej si vire"
 
@@ -3845,6 +3854,10 @@ msgstr "Namestite veščine Metabase Data App v svoj projekt, nato prosite svoje
 msgid "Install command"
 msgstr "Ukaz za namestitev"
 
+#: enterprise/frontend/src/metabase-enterprise/data_apps/admin/components/DataAppStatusBadge/DataAppStatusBadge.tsx
+msgid "Outdated"
+msgstr "Zastarelo"
+
 #: enterprise/frontend/src/metabase-enterprise/data_apps/admin/components/DataAppSummary/DataAppSummary.tsx
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/SyncProgressModal.tsx
 #: frontend/src/metabase/status/components/DatabaseStatusLarge/DatabaseStatusLarge.tsx
@@ -3868,6 +3881,7 @@ msgstr "Nihče še nima dostopa"
 #: frontend/src/metabase/common/components/GroupsMultiSelect/GroupsMultiSelect.tsx
 #: frontend/src/metabase/explorations/components/NewExplorationData/Pills.tsx
 #: frontend/src/metabase/metrics-viewer/components/MetricSearch/MetricPill/MetricPill.tsx
+#: frontend/src/metabase/search/components/SearchUserPicker/SearchUserPicker.tsx
 #, javascript-format
 msgid "Remove {0}"
 msgstr "Odstrani {0}"
@@ -3917,6 +3931,10 @@ msgid "This data app doesn’t exist or has been disabled."
 msgstr "Ta podatkovna aplikacija ne obstaja ali je bila onemogočena."
 
 #: enterprise/frontend/src/metabase-enterprise/data_apps/components/DataAppView/DataAppView.tsx
+msgid "This data app is outdated"
+msgstr "Ta podatkovna aplikacija je zastarela"
+
+#: enterprise/frontend/src/metabase-enterprise/data_apps/components/DataAppView/DataAppView.tsx
 msgid "This data app isn’t published yet"
 msgstr "Ta podatkovna aplikacija še ni objavljena"
 
@@ -3959,6 +3977,12 @@ msgstr "Pri nalaganju te aplikacije je šlo nekaj narobe. Poskusite osvežiti st
 #: enterprise/frontend/src/metabase-enterprise/data_apps/components/DataAppView/DataAppView.tsx
 msgid "This data app didn’t load. It may have been blocked or is unreachable. Try refreshing the page, or go back."
 msgstr "Ta podatkovna aplikacija se ni naložila. Morda je bila blokirana ali ni dosegljiva. Poskusite osvežiti stran ali se vrnite nazaj."
+
+#: enterprise/frontend/src/metabase-enterprise/data_apps/constants.ts
+#: metabase_enterprise/data_apps/api.clj
+#, javascript-format
+msgid "This app was built for version {0} of data apps. Migrate it to the current version, then rebuild and sync it again."
+msgstr "Ta aplikacija je bila zgrajena za različico {0} podatkovnih aplikacij. Migrirajte jo na trenutno različico, nato jo ponovno zgradite in znova sinhronizirajte."
 
 #: enterprise/frontend/src/metabase-enterprise/data_apps/runtime/components/DataAppIframeApp/DataAppIframeApp.tsx
 msgid "This data app can’t be opened directly."
@@ -4155,7 +4179,7 @@ msgstr "Postopek teče v ozadju. Odvisno od velikosti baze podatkov lahko to tra
 #: frontend/src/metabase/embedding/components/SharingMenu/InviteToViewModal.tsx
 #: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/SdkIframeEmbedSetupModal.tsx
 #: frontend/src/metabase/embedding/setup-guide/components/StepperWithCards/StepperWithCards.tsx
-#: frontend/src/metabase/forms/components/FormSecretKey/FormSecretKey.tsx
+#: frontend/src/metabase/forms/components/FormSecretKey/SetupKeyModal.tsx
 #: frontend/src/metabase/home/components/CustomHomePageModal/CustomHomePageModal.tsx
 #: frontend/src/metabase/metabot/components/AIProviderConfigurationForm/AIProviderSetup.tsx
 #: frontend/src/metabase/metadata/components/TableSection/TableSection.tsx
@@ -4299,6 +4323,7 @@ msgstr "Podatkovne baze lahko dodajate tudi programsko prek API-ja."
 #: frontend/src/metabase/admin/permissions/components/DataPermissionsHelp/DataPermissionsHelp.tsx
 #: frontend/src/metabase/admin/permissions/components/LegacyPermissionsModal/LegacyPermissionsModal.tsx
 #: frontend/src/metabase/admin/permissions/components/PermissionsEditor/PermissionsEditorSplitPermsMessage.tsx
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSecuritySettings/EmbeddingAppSameSiteCookieDescription.tsx
 #: frontend/src/metabase/admin/settings/components/SettingsPages/DomainsSettingsPage.tsx
 #: frontend/src/metabase/admin/settings/components/SettingsPages/MapsSettingsPage.tsx
 #: frontend/src/metabase/admin/upsells/UpsellCloud.tsx
@@ -4328,12 +4353,12 @@ msgstr "Prikaži vseh {0}"
 
 #: enterprise/frontend/src/metabase-enterprise/database_routing/DestinationDatabasesList/DestinationDatabasesList.tsx
 #: enterprise/frontend/src/metabase-enterprise/table-editing/common/TableBreadcrumbs.tsx
+#: frontend/src/metabase/admin/embedding/components/ThemeListing/EmbeddingThemeCard.tsx
 #: frontend/src/metabase/admin/settings/auth/components/AuthCard/AuthCard.tsx
 #: frontend/src/metabase/admin/settings/components/ApiKeys/ManageApiKeys.tsx
 #: frontend/src/metabase/comments/components/Discussion/DiscussionActionPanel.tsx
 #: frontend/src/metabase/common/components/ErrorPages/BugReportModal.tsx
 #: frontend/src/metabase/dashboard/components/DashCard/DashCardActionsPanel/DashCardActionsPanel.tsx
-#: frontend/src/metabase/embedding/themes/components/ThemeListing/EmbeddingThemeCard.tsx
 #: frontend/src/metabase/metabot/components/AIProviderConfigurationForm/AIProviderList.tsx
 #: frontend/src/metabase/metrics-viewer/components/MetricSearch/MetricExpressionPill/MetricExpressionPill.tsx
 #: frontend/src/metabase/models/components/ModelActions/ModelActionDetails/ModelActionListItem.tsx
@@ -4458,12 +4483,12 @@ msgstr "Izberite element, da si ogledate njegove odvisnosti"
 #: enterprise/frontend/src/metabase-enterprise/dependencies/components/FilterOptionsPicker/FilterOptionsPicker.tsx
 #: enterprise/frontend/src/metabase-enterprise/table-editing/table-edit/EditTableDataFilterButton.tsx
 #: frontend/src/embedding-sdk-bundle/components/private/SdkQuestion/components/Filter/FilterDropdown/FilterDropdown.tsx
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/constants.ts
 #: frontend/src/metabase/collections/components/CollectionContent/CollectionTypeFilter.tsx
 #: frontend/src/metabase/common/components/ListFilterPopover/ListFilterPopover.tsx
 #: frontend/src/metabase/data-studio/data-model/components/TablePicker/components/TablePicker.tsx
 #: frontend/src/metabase/data-studio/segments/components/SegmentRevisionHistory/SegmentRevisionHistory.tsx
 #: frontend/src/metabase/embedding/LocaleProvider.unit.spec.tsx
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/constants.ts
 #: frontend/src/metabase/explorations/components/ExplorationSidebar/ExplorationSidebar.tsx
 #: frontend/src/metabase/metrics-viewer/components/MetricSearchPanel/MetricSearchPanel.tsx
 #: frontend/src/metabase/query_builder/components/view/ViewHeader/components/FilterHeaderButton.tsx
@@ -5026,8 +5051,22 @@ msgid "exact specifications"
 msgstr "natančne specifikacije"
 
 #: enterprise/frontend/src/metabase-enterprise/embedding/components/InteractiveEmbeddingAuthorizedOriginsWidget/InteractiveEmbeddingAuthorizedOriginsWidget.tsx
-msgid "Authorized origins for full-app embedding"
-msgstr "Pooblaščeni izvori za vdelavo celotne aplikacije"
+msgid "Authorized origins"
+msgstr "Pooblaščeni izvori"
+
+#: enterprise/frontend/src/metabase-enterprise/embedding/components/InteractiveEmbeddingSettingsCard.tsx
+msgid "Enable full app embedding"
+msgstr "Omogoči vdelavo celotne aplikacije"
+
+#: enterprise/frontend/src/metabase-enterprise/embedding/components/InteractiveEmbeddingSettingsCard.tsx
+msgid "Embed the full Metabase application or individual pages into your app. Best for complex, BI-focused scenarios where you want to embed all of Metabase's capabilities into your app. If you are looking for stability of UX, flexibility or control, or don't have a complex use case that requires a full-blown BI solution, we recommend using Modular embedding instead."
+msgstr "Vdelajte celotno aplikacijo Metabase ali posamezne strani v svojo aplikacijo. Najboljše za kompleksne, BI-usmerjene scenarije, kjer želite v svojo aplikacijo vdelati vse zmožnosti Metabase. Če iščete stabilnost UX, fleksibilnost ali nadzor ali pa nimate kompleksnega primera uporabe, ki zahteva polnokrvno BI-rešitev, priporočamo uporabo Modularnega vdelovanja."
+
+#: enterprise/frontend/src/metabase-enterprise/embedding/components/InteractiveEmbeddingSettingsCard.tsx
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSdkSettings/EmbeddingSdkSettings.tsx
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSettings/EmbeddingSettings.tsx
+msgid "Documentation"
+msgstr "Dokumentacija"
 
 #: enterprise/frontend/src/metabase-enterprise/feature_level_permissions/permission-management/data-model-permission.ts
 #: enterprise/frontend/src/metabase-enterprise/feature_level_permissions/permission-management/download-permission.ts
@@ -5239,6 +5278,7 @@ msgstr "Google Sheets"
 #: enterprise/frontend/src/metabase-enterprise/google_drive/GdriveDbMenu.tsx
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/CollectionSyncRow/CollectionSyncRow.tsx
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/LibrarySyncRow/LibrarySyncRow.tsx
+#: enterprise/frontend/src/metabase-enterprise/remote_sync/components/RemoteSyncAdminSettings/RemoteSyncDependencyModal.tsx
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/TransformsSyncRow/TransformsSyncRow.tsx
 #: frontend/src/metabase/databases/components/DatabaseSyncScheduleField/DatabaseSyncScheduleField.tsx
 #: frontend/src/metabase/monitor/tools/components/RunTypePicker/TaskRunTypePicker.tsx
@@ -5329,7 +5369,6 @@ msgstr "V redu"
 #: enterprise/frontend/src/metabase-enterprise/group_managers/components/UserTypeCell/UserTypeCell.tsx
 #: enterprise/frontend/src/metabase-enterprise/monitor/ai-auditing/metabot-analytics/components/ConversationDetailPage/ConversationHeader.tsx
 #: frontend/src/metabase/admin/people/components/GroupSummary.tsx
-#: frontend/src/metabase/embedding-hub/pages/EmbeddingHubAppearancePage.tsx
 #: frontend/src/metabase/nav/components/AppSwitcher/AppSwitcher.tsx
 #: frontend/src/metabase/palette/constants.ts
 #: frontend/src/metabase/palette/utils.ts
@@ -5935,12 +5974,12 @@ msgid "Queries generated"
 msgstr "Generirane poizvedbe"
 
 #: enterprise/frontend/src/metabase-enterprise/monitor/ai-auditing/metabot-analytics/components/ConversationDetailPage/ConversationDetailPage.tsx
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/constants.ts
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/constants.ts
 msgid "Negative"
 msgstr "Negativno"
 
 #: enterprise/frontend/src/metabase-enterprise/monitor/ai-auditing/metabot-analytics/components/ConversationDetailPage/ConversationDetailPage.tsx
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/constants.ts
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/constants.ts
 msgid "Positive"
 msgstr "Pozitivno"
 
@@ -6389,8 +6428,9 @@ msgid "Unavailable"
 msgstr "Ni na voljo"
 
 #: enterprise/frontend/src/metabase-enterprise/monitor/ai-auditing/metabot-analytics/components/ConversationStatsPage/DataComplexityCards.tsx
-msgid "Complexity score"
-msgstr "Ocena kompleksnosti"
+#, javascript-format
+msgid "Complexity score {0}"
+msgstr "Ocena kompleksnosti {0}"
 
 #: enterprise/frontend/src/metabase-enterprise/monitor/ai-auditing/metabot-analytics/components/ConversationStatsPage/query-utils.ts
 msgid "Input tokens"
@@ -6483,6 +6523,7 @@ msgstr "Diagnostika odvisnosti"
 #: enterprise/frontend/src/metabase-enterprise/monitor/dependency-diagnostics/components/DiagnosticsSidebar/ErrorsSection/ErrorsSection.tsx
 #: enterprise/frontend/src/metabase-enterprise/multi_factor_auth/components/common/CopyableCodeBlock/CopyableCodeBlock.tsx
 #: frontend/src/metabase/admin/ai/MetabotAdminSuggestedPrompts.tsx
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/EditorPanel.tsx
 #: frontend/src/metabase/admin/settings/components/ApiKeys/SecretKeyModal.tsx
 #: frontend/src/metabase/common/components/CopyButton/CopyButton.tsx
 #: frontend/src/metabase/common/components/CopyTextField/copy-text-field-props.tsx
@@ -6490,7 +6531,6 @@ msgstr "Diagnostika odvisnosti"
 #: frontend/src/metabase/detail-view/components/DetailViewSidesheet/DetailViewSidesheet.tsx
 #: frontend/src/metabase/documents/components/Editor/AnchorLinkMenu/AnchorLinkButton.tsx
 #: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/GetCode/CopyCodeSnippetButton.tsx
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/EditorPanel.tsx
 #: frontend/src/metabase/metabot/components/AIMarkdown/AIMarkdown.tsx
 #: frontend/src/metabase/metabot/components/MetabotChat/MetabotAgentToolCallPart.tsx
 #: frontend/src/metabase/metabot/components/MetabotChat/MetabotChatMessage.tsx
@@ -6530,6 +6570,7 @@ msgstr "Informacije"
 #: frontend/src/metabase/common/CreateDashboard/CreateDashboardForm.tsx
 #: frontend/src/metabase/common/collections/components/CollectionRowMenu/EditCollectionModal/EditCollectionModal.tsx
 #: frontend/src/metabase/common/collections/components/CreateCollectionForm/CreateCollectionForm.tsx
+#: frontend/src/metabase/common/components/CopyCardForm/CopyCardForm.tsx
 #: frontend/src/metabase/common/components/CopyDashboardForm/CopyDashboardForm.tsx
 #: frontend/src/metabase/common/components/ItemsTable/Columns.tsx
 #: frontend/src/metabase/common/components/SaveQuestionForm/SaveQuestionForm.tsx
@@ -6544,7 +6585,6 @@ msgstr "Informacije"
 #: frontend/src/metabase/monitor/tools/components/JobInfoApp/JobsTable.tsx
 #: frontend/src/metabase/query_builder/components/DatasetEditor/DatasetFieldMetadataSidebar/DatasetFieldMetadataSidebar.tsx
 #: frontend/src/metabase/query_builder/components/view/sidebars/QuestionInfoSidebar/QuestionInfoSidebar.tsx
-#: frontend/src/metabase/questions/components/CopyCardForm/CopyCardForm.tsx
 #: frontend/src/metabase/reference/databases/DatabaseDetail.tsx
 #: frontend/src/metabase/reference/databases/FieldDetail.tsx
 #: frontend/src/metabase/reference/databases/TableDetail.tsx
@@ -6974,6 +7014,7 @@ msgid "No changes to push"
 msgstr "Ni sprememb za push"
 
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/CollectionSyncRow/CollectionSyncRow.tsx
+#: enterprise/frontend/src/metabase-enterprise/remote_sync/components/RemoteSyncAdminSettings/RemoteSyncDependencyModal.tsx
 #, javascript-format
 msgctxt "{0} is the name of a metabase collection"
 msgid "Sync {0}"
@@ -7214,24 +7255,24 @@ msgid "Keep your dashboards, questions, and collections safely backed up in Git.
 msgstr "Varno hranite varnostne kopije svojih nadzornih plošč, vprašanj in zbirk v Git-u."
 
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/RemoteSyncAdminSettings/RemoteSyncDependencyModal.tsx
-msgid "Sync collections with dependencies?"
-msgstr "Sinhroniziram zbirke z odvisnostmi?"
-
-#: enterprise/frontend/src/metabase-enterprise/remote_sync/components/RemoteSyncAdminSettings/RemoteSyncDependencyModal.tsx
 msgid "Couldn’t sync selected collection"
 msgstr "Izbrane zbirke ni bilo mogoče sinhronizirati"
-
-#: enterprise/frontend/src/metabase-enterprise/remote_sync/components/RemoteSyncAdminSettings/RemoteSyncDependencyModal.tsx
-msgid "Sync to continue"
-msgstr "Sinhronizirajte za nadaljevanje"
 
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/RemoteSyncAdminSettings/RemoteSyncDependencyModal.tsx
 msgid "Can't be synced"
 msgstr "Ni mogoče sinhronizirati"
 
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/RemoteSyncAdminSettings/RemoteSyncDependencyModal.tsx
-msgid "Sync required collections"
-msgstr "Sinhroniziraj zahtevane zbirke"
+msgid "Item"
+msgstr "Element"
+
+#: enterprise/frontend/src/metabase-enterprise/remote_sync/components/RemoteSyncAdminSettings/RemoteSyncDependencyModal.tsx
+msgid "Used By"
+msgstr "Uporablja"
+
+#: enterprise/frontend/src/metabase-enterprise/remote_sync/components/RemoteSyncAdminSettings/RemoteSyncDependencyModal.tsx
+msgid "Go to collection"
+msgstr "Pojdi v zbirko"
 
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/RemoteSyncAdminSettings/RemoteSyncSettingsForm.tsx
 msgid "Content to sync"
@@ -7401,13 +7442,12 @@ msgid "What will be overwritten: "
 msgstr "Kaj bo prepisano: "
 
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/SyncConflictModal/SetupConflictInfo.tsx
-#: frontend/src/metabase/querying/components/SnippetSidebar/SnippetSidebar.tsx
-msgid "Snippets"
-msgstr "Izseki kode"
+msgid "Snippets and glossary"
+msgstr "Izseki kode in glosar"
 
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/SyncConflictModal/SetupConflictInfo.tsx
-msgid "Library, Transforms and Snippets."
-msgstr "Knjižnica, Transformacije in Izseki kode."
+msgid "Library, Transforms, Snippets and Glossary."
+msgstr "Knjižnica, Transformacije, Izseki kode in glosar."
 
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/SyncConflictModal/SyncConflictModal.tsx
 msgid "Failed to mark library and transforms as synced"
@@ -7502,6 +7542,14 @@ msgid "An error occurred during sync."
 msgstr "Med sinhronizacijo je prišlo do napake."
 
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/SyncProgressModal.tsx
+msgid "Sync stopped"
+msgstr "Sinhronizacija ustavljena"
+
+#: enterprise/frontend/src/metabase-enterprise/remote_sync/components/SyncProgressModal.tsx
+msgid "The sync was cancelled."
+msgstr "Sinhronizacija je bila preklicana."
+
+#: enterprise/frontend/src/metabase-enterprise/remote_sync/components/SyncProgressModal.tsx
 msgid "Please wait until this finishes before editing content."
 msgstr "Počakajte, da se to zaključi, preden urejate vsebino."
 
@@ -7510,17 +7558,35 @@ msgid "Cancelling…"
 msgstr "Preklicevanje…"
 
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/SyncProgressModal.tsx
-msgid "Still working…"
-msgstr "Še vedno poteka…"
+#, javascript-format
+msgctxt "{0} is a person's name, {1} is a time of day"
+msgid "Started by {0} at {1}"
+msgstr "Zagnal {0} ob {1}"
 
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/SyncProgressModal.tsx
 #, javascript-format
-msgid "Still working. No update for {0} minute."
-msgid_plural "Still working. No update for {0} minutes."
-msgstr[0] "Še vedno poteka. Brez posodobitve že {0} minuto."
-msgstr[1] "Še vedno poteka. Brez posodobitve že {0} minuti."
-msgstr[2] "Še vedno poteka. Brez posodobitve že {0} minute."
-msgstr[3] "Še vedno poteka. Brez posodobitve že {0} minut."
+msgctxt "{0} is a time of day"
+msgid "Started at {0}"
+msgstr "Začeto ob {0}"
+
+#: enterprise/frontend/src/metabase-enterprise/remote_sync/components/SyncProgressModal.tsx
+#, javascript-format
+msgctxt "{0} is a percentage, {1} is a sync phase such as 'importing content'"
+msgid "Stopped at {0}% while {1}"
+msgstr "Ustavljeno pri {0}% med {1}"
+
+#: enterprise/frontend/src/metabase-enterprise/remote_sync/components/SyncProgressModal.tsx
+msgid "No progress reported recently. The sync is still running."
+msgstr "V zadnjem času ni bilo sporočenega napredka. Sinhronizacija še vedno teče."
+
+#: enterprise/frontend/src/metabase-enterprise/remote_sync/components/SyncProgressModal.tsx
+#, javascript-format
+msgid "No progress for {0} minute. The sync is still running."
+msgid_plural "No progress for {0} minutes. The sync is still running."
+msgstr[0] "{0} minuto ni napredka. Sinhronizacija še vedno teče."
+msgstr[1] "{0} minuti ni napredka. Sinhronizacija še vedno teče."
+msgstr[2] "{0} minute ni napredka. Sinhronizacija še vedno teče."
+msgstr[3] "{0} minut ni napredka. Sinhronizacija še vedno teče."
 
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/SyncProgressModal.tsx
 msgid "Pulling from Git"
@@ -7651,6 +7717,30 @@ msgid "The synced collection will update to match the new branch. Questions that
 msgstr "Sinhronizirana zbirka se bo posodobila, da bo ustrezala novi veji. Vprašanja, ki obstajajo v trenutni veji, ne pa tudi v novi, bodo trajno odstranjena z vseh nadzornih plošč ali vsebin, ki se nanje sklicujejo, tudi če preklopite nazaj."
 
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/utils.ts
+msgid "preparing"
+msgstr "pripravljanje"
+
+#: enterprise/frontend/src/metabase-enterprise/remote_sync/utils.ts
+msgid "exporting content"
+msgstr "izvažanje vsebine"
+
+#: enterprise/frontend/src/metabase-enterprise/remote_sync/utils.ts
+msgid "pushing"
+msgstr "pošiljanje"
+
+#: enterprise/frontend/src/metabase-enterprise/remote_sync/utils.ts
+msgid "importing content"
+msgstr "uvažanje vsebine"
+
+#: enterprise/frontend/src/metabase-enterprise/remote_sync/utils.ts
+msgid "recording sync state"
+msgstr "beleženje stanja sinhronizacije"
+
+#: enterprise/frontend/src/metabase-enterprise/remote_sync/utils.ts
+msgid "finishing"
+msgstr "zaključevanje"
+
+#: enterprise/frontend/src/metabase-enterprise/remote_sync/utils.ts
 msgid "The sync branch changed in another session. Refresh the page and try again."
 msgstr "Veja sinhronizacije se je spremenila v drugi seji. Osvežite stran in poskusite znova."
 
@@ -7682,16 +7772,24 @@ msgid "Our analytics"
 msgstr "Naša analitika"
 
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/utils.ts
+msgid "Unknown collection"
+msgstr "Neznana zbirka"
+
+#: enterprise/frontend/src/metabase-enterprise/remote_sync/utils.ts
 msgid "Dashboards or questions in this collection rely on content saved in a personal collection, which can’t be synced. Move that content to a shared collection to continue."
 msgstr "Nadzorne plošče ali vprašanja v tej zbirki se zanašajo na vsebino, shranjeno v osebni zbirki, ki je ni mogoče sinhronizirati. Premaknite to vsebino v skupno zbirko, da nadaljujete."
+
+#: enterprise/frontend/src/metabase-enterprise/remote_sync/utils.ts
+msgid "Dashboards or questions in this collection rely on content in usage analytics, which can’t be synced. Update them to use content you can sync to continue."
+msgstr "Nadzorne plošče ali vprašanja v tej zbirki se zanašajo na vsebino v Analitiki uporabe, ki je ni mogoče sinhronizirati. Posodobite jih tako, da bodo uporabljale vsebino, ki jo lahko sinhronizirate, da nadaljujete."
 
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/utils.ts
 msgid "Dashboards or questions in this collection rely on content that can’t be synced where it currently lives. Move that content into a collection you’re syncing to continue."
 msgstr "Nadzorne plošče ali vprašanja v tej zbirki se zanašajo na vsebino, ki je ni mogoče sinhronizirati tam, kjer je trenutno. Premaknite to vsebino v zbirko, ki jo sinhronizirate, da nadaljujete."
 
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/utils.ts
-msgid "Dashboards or questions in this collection rely on snippets, which sync with the Library. Sync the Library as well to continue."
-msgstr "Nadzorne plošče ali vprašanja v tej zbirki se zanašajo na izrezke, ki se sinhronizirajo s Knjižnico. Za nadaljevanje sinhronizirajte tudi Knjižnico."
+msgid "Dashboards or questions in this collection rely on snippets, which sync with the Library. Create the Library in Data Studio, then sync it to continue."
+msgstr "Nadzorne plošče ali vprašanja v tej zbirki se zanašajo na izseke kode, ki se sinhronizirajo s Knjižnico. Ustvarite Knjižnico v Podatkovnem studiu, nato jo sinhronizirajte, da nadaljujete."
 
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/utils.ts
 msgid "Dashboards or questions in this collection rely on data saved elsewhere. To continue, sync those linked collections as well."
@@ -8384,8 +8482,9 @@ msgstr "Prosimo, konfigurirajte kanale obvestil v {0}, da boste prejemali obvest
 
 #: enterprise/frontend/src/metabase-enterprise/security_center/components/SecurityCenterNavItem/SecurityCenterMobileNavItem.tsx
 #: enterprise/frontend/src/metabase-enterprise/security_center/components/SecurityCenterNavItem/SecurityCenterNavItem.tsx
-#: frontend/src/metabase/embedding-hub/components/EmbeddingHubLayout/EmbeddingHubLayout.tsx
-#: frontend/src/metabase/embedding-hub/pages/EmbeddingHubSecurityPage.tsx
+#: frontend/src/metabase/admin/components/RelatedSettingsSection/constants.ts
+#: frontend/src/metabase/admin/embedding/components/EmbeddingNav.tsx
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSecuritySettings/EmbeddingSecuritySettings.tsx
 msgid "Security"
 msgstr "Varnost"
 
@@ -8813,13 +8912,13 @@ msgstr[3] "Izbranih je {0} vrstic"
 #: frontend/src/metabase/account/notifications/components/NotificationCard/DashboardNotificationCard.tsx
 #: frontend/src/metabase/account/notifications/components/NotificationCard/NotificationCard.tsx
 #: frontend/src/metabase/actions/utils.ts
+#: frontend/src/metabase/admin/embedding/components/ThemeListing/DeleteThemeModal.tsx
+#: frontend/src/metabase/admin/embedding/components/ThemeListing/EmbeddingThemeCard.tsx
 #: frontend/src/metabase/admin/settings/components/ApiKeys/ManageApiKeys.tsx
 #: frontend/src/metabase/comments/components/Discussion/DiscussionActionPanel.tsx
 #: frontend/src/metabase/common/components/Glossary/GlossaryTable.tsx
 #: frontend/src/metabase/dashboard/components/DashboardSubscriptionsSidebar/AddEditSidebar/DeleteSubscriptionAction.tsx
 #: frontend/src/metabase/dashboard/components/DashboardTabs/DashboardTabs.tsx
-#: frontend/src/metabase/embedding/themes/components/ThemeListing/DeleteThemeModal.tsx
-#: frontend/src/metabase/embedding/themes/components/ThemeListing/EmbeddingThemeCard.tsx
 #: frontend/src/metabase/models/components/ModelActions/ModelActionDetails/useEnableImplicitActionsForModel.ts
 #: frontend/src/metabase/monitor/tools/notifications/NotificationsAdminPage/NotificationsAdminPage.tsx
 #: frontend/src/metabase/timelines/common/components/DeleteEventModal/DeleteEventModal.tsx
@@ -8867,7 +8966,6 @@ msgstr "Ustvari nov zapis"
 #: frontend/src/metabase/common/collections/components/CreateCollectionForm/CreateCollectionForm.tsx
 #: frontend/src/metabase/common/components/Pickers/EntityPicker/components/NewCollectionDialog/NewCollectionDialog.tsx
 #: frontend/src/metabase/common/components/Pickers/EntityPicker/components/NewDashboardDialog/NewDashboardDialog.tsx
-#: frontend/src/metabase/forms/components/FormSecretKey/FormSecretKey.tsx
 #: frontend/src/metabase/metabot/components/MetabotChat/MetabotAgentSuggestionMessage.tsx
 #: frontend/src/metabase/models/components/ModelActions/ModelActionDetails/useEnableImplicitActionsForModel.ts
 #: frontend/src/metabase/timelines/common/components/EventForm/EventForm.tsx
@@ -9279,14 +9377,15 @@ msgstr "Če moraš spremeniti te nastavitve, se lahko vrneš na prejšnje korake
 
 #: enterprise/frontend/src/metabase-enterprise/tenants/components/TenantsSummaryOnboardingStep/TenantsSummaryOnboardingStep.tsx
 #: enterprise/frontend/src/metabase-enterprise/tenants/containers/TenantsListingApp.tsx
+#: frontend/src/metabase/admin/components/RelatedSettingsSection/constants.ts
 #: frontend/src/metabase/admin/people/components/PeopleNav.tsx
-#: frontend/src/metabase/embedding-hub/pages/EmbeddingHubTenancyPage.tsx
 #: metabase/permissions_rest/api.clj metabase_enterprise/api_routes/routes.clj
 msgid "Tenants"
 msgstr "Najemniki"
 
 #: enterprise/frontend/src/metabase-enterprise/tenants/components/TenantsSummaryOnboardingStep/TenantsSummaryOnboardingStep.tsx
 #: frontend/src/metabase/admin/app/reducers.ts
+#: frontend/src/metabase/admin/components/RelatedSettingsSection/constants.ts
 #: frontend/src/metabase/admin/people/components/PeopleNav.tsx
 #: frontend/src/metabase/admin/people/containers/PeopleListingApp/PeopleListingApp.tsx
 msgid "People"
@@ -9294,8 +9393,7 @@ msgstr "Ljudje"
 
 #: enterprise/frontend/src/metabase-enterprise/tenants/components/TenantsSummaryOnboardingStep/TenantsSummaryOnboardingStep.tsx
 #: frontend/src/metabase/admin/app/reducers.ts
-#: frontend/src/metabase/embedding-hub/components/EmbeddingHubLayout/EmbeddingHubLayout.tsx
-#: frontend/src/metabase/embedding-hub/pages/EmbeddingHubPermissionsPage.tsx
+#: frontend/src/metabase/admin/components/RelatedSettingsSection/constants.ts
 msgid "Permissions"
 msgstr "Dovoljenja"
 
@@ -9324,7 +9422,11 @@ msgstr "in"
 #: frontend/src/metabase/common/hooks/use-set-collection.ts
 #: frontend/src/metabase/querying/components/DataReference/DatabasePane.tsx
 msgid "table"
-msgstr "tabela"
+msgid_plural "tables"
+msgstr[0] "tabela"
+msgstr[1] "tabeli"
+msgstr[2] "tabele"
+msgstr[3] "tabel"
 
 #: enterprise/frontend/src/metabase-enterprise/tenants/components/TenantsSummaryOnboardingStep/TenantsSummaryOnboardingStep.tsx
 #, javascript-format
@@ -10210,6 +10312,7 @@ msgid "You'll be charged {0} per transform run."
 msgstr "Zaračunali vam bomo {0} na zagon transformacije."
 
 #: enterprise/frontend/src/metabase-enterprise/transforms-python/upsells/PythonTransformsUpsellModal/PurchaseAdvancedTransforms.tsx
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/SharedCombinedEmbeddingSettings/SharedCombinedEmbeddingSettings.tsx
 msgid "Upgrade"
 msgstr "Nadgradi"
 
@@ -10333,6 +10436,7 @@ msgid "We'll notify you when you've hit {0}% of your allotment."
 msgstr "Obvestili vas bomo, ko dosežete {0}% dodeljenega obsega."
 
 #: enterprise/frontend/src/metabase-enterprise/transforms/upsells/pages/TransformsUpsellPage/TransformsUpsellPage.tsx
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingLegaleseModal/EmbeddingLegaleseModal.tsx
 #: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/AuthenticationCard/EnableGuestEmbedsSection.tsx
 #: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/AuthenticationCard/EnableModularEmbeddingSection.tsx
 #: frontend/src/metabase/public/components/widgets/LegaleseStep/LegaleseStep.tsx
@@ -10559,7 +10663,7 @@ msgid "Note: deleting each of the values will revert them back to default."
 msgstr "Opomba: brisanje posameznih vrednosti jih bo povrnilo na privzete."
 
 #: enterprise/frontend/src/metabase-enterprise/whitelabel/components/ColorSettings/ColorSettings.tsx
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/EditorPanel.tsx
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/EditorPanel.tsx
 msgid "Chart colors"
 msgstr "Barve grafikonov"
 
@@ -10585,22 +10689,6 @@ msgstr "Barve"
 msgid "Preview"
 msgstr "Predogled"
 
-#: enterprise/frontend/src/metabase-enterprise/whitelabel/components/EmbeddedAppearanceSettings.tsx
-#: enterprise/frontend/src/metabase-enterprise/whitelabel/components/WhiteLabelBrandingSettingsPage.tsx
-msgctxt "Label for a setting that selects the message shown to users while Metabase is loading"
-msgid "Loading message"
-msgstr "Sporočilo med nalaganjem"
-
-#: enterprise/frontend/src/metabase-enterprise/whitelabel/components/EmbeddedAppearanceSettings.tsx
-#: enterprise/frontend/src/metabase-enterprise/whitelabel/components/WhiteLabelConcealSettingsPage.tsx
-msgid "When calculations return no results"
-msgstr "Ko izračuni ne vrnejo rezultatov"
-
-#: enterprise/frontend/src/metabase-enterprise/whitelabel/components/EmbeddedAppearanceSettings.tsx
-#: enterprise/frontend/src/metabase-enterprise/whitelabel/components/WhiteLabelConcealSettingsPage.tsx
-msgid "When no objects can be found"
-msgstr "Ko ni mogoče najti nobenih objektov"
-
 #: enterprise/frontend/src/metabase-enterprise/whitelabel/components/FontWidget/FontFilesWidget.tsx
 msgid "Font weight"
 msgstr "Debelina pisave"
@@ -10616,8 +10704,8 @@ msgid "URL"
 msgstr "URL"
 
 #: enterprise/frontend/src/metabase-enterprise/whitelabel/components/FontWidget/FontWidget.tsx
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/EditorPanel.tsx
 #: frontend/src/metabase/embedding/components/EmbedModal/StaticEmbedSetupPane/LookAndFeelSettings.tsx
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/EditorPanel.tsx
 msgid "Font"
 msgstr "Pisava"
 
@@ -10804,6 +10892,11 @@ msgstr "Favicon"
 msgid "Fonts"
 msgstr "Pisave"
 
+#: enterprise/frontend/src/metabase-enterprise/whitelabel/components/WhiteLabelBrandingSettingsPage.tsx
+msgctxt "Label for a setting that selects the message shown to users while Metabase is loading"
+msgid "Loading message"
+msgstr "Sporočilo med nalaganjem"
+
 #: enterprise/frontend/src/metabase-enterprise/whitelabel/components/WhiteLabelConcealSettingsPage.tsx
 #: frontend/src/metabase/admin/settings/components/SettingsNav/SettingsNav.tsx
 msgid "Conceal Metabase"
@@ -10848,6 +10941,14 @@ msgstr "Strani za prijavo in odjavo"
 #: enterprise/frontend/src/metabase-enterprise/whitelabel/components/WhiteLabelConcealSettingsPage.tsx
 msgid "Landing page"
 msgstr "Ciljna stran"
+
+#: enterprise/frontend/src/metabase-enterprise/whitelabel/components/WhiteLabelConcealSettingsPage.tsx
+msgid "When calculations return no results"
+msgstr "Ko izračuni ne vrnejo rezultatov"
+
+#: enterprise/frontend/src/metabase-enterprise/whitelabel/components/WhiteLabelConcealSettingsPage.tsx
+msgid "When no objects can be found"
+msgstr "Ko ni mogoče najti nobenih objektov"
 
 #: enterprise/frontend/src/metabase-enterprise/whitelabel/index.ts
 msgid "Custom URL"
@@ -10976,7 +11077,7 @@ msgid "Add another summary"
 msgstr "Dodaj še en povzetek"
 
 #: frontend/src/embedding-sdk-bundle/components/private/SdkQuestion/components/Summarize/SummarizeDropdown/SummarizeDropdown.tsx
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/constants.ts
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/constants.ts
 #: frontend/src/metabase/query_builder/components/view/ViewHeader/components/QuestionSummarizeWidget.tsx
 #: frontend/src/metabase/querying/notebook/components/NotebookStep/utils.ts
 #: frontend/src/metabase/visualizations/components/ClickActions/utils.ts
@@ -12669,10 +12770,10 @@ msgstr "Moje novo fantastično dejanje"
 #: frontend/src/metabase/actions/containers/ActionCreator/CreateActionForm/CreateActionForm.tsx
 #: frontend/src/metabase/common/CreateDashboard/CreateDashboardForm.tsx
 #: frontend/src/metabase/common/collections/components/CreateCollectionForm/CreateCollectionForm.tsx
+#: frontend/src/metabase/common/components/CopyCardForm/CopyCardForm.tsx
 #: frontend/src/metabase/common/components/CopyDashboardForm/CopyDashboardForm.tsx
 #: frontend/src/metabase/common/components/SaveQuestionForm/SaveQuestionForm.tsx
 #: frontend/src/metabase/querying/components/NativeQueryEditor/SnippetForm/SnippetForm.tsx
-#: frontend/src/metabase/questions/components/CopyCardForm/CopyCardForm.tsx
 msgid "It's optional but oh, so helpful"
 msgstr "Ni obvezno, a zelo pomaga"
 
@@ -12757,10 +12858,8 @@ msgid "Field type"
 msgstr "Tip polja"
 
 #: frontend/src/metabase/actions/containers/ActionCreator/FormCreator/FormFieldEditor/FormFieldEditor.tsx
+#: frontend/src/metabase/admin/components/RelatedSettingsSection/constants.ts
 #: frontend/src/metabase/admin/settings/components/SettingsNav/SettingsNav.tsx
-#: frontend/src/metabase/embedding-hub/components/EmbeddingHubLayout/EmbeddingHubLayout.tsx
-#: frontend/src/metabase/embedding-hub/pages/EmbeddingHubAppearancePage.tsx
-#: frontend/src/metabase/embedding-hub/upsells/AppearanceUpsellPage.tsx
 #: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/Appearance/BaseAppearanceSection.tsx
 msgid "Appearance"
 msgstr "Videz"
@@ -13318,6 +13417,7 @@ msgid "upgrade"
 msgstr "nadgradite"
 
 #: frontend/src/metabase/admin/app/reducers.ts
+#: frontend/src/metabase/admin/components/RelatedSettingsSection/constants.ts
 #: frontend/src/metabase/admin/databases/components/DatabaseList/DatabaseList.tsx
 #: frontend/src/metabase/admin/databases/containers/DatabaseEditApp.tsx
 #: frontend/src/metabase/admin/permissions/components/EntityViewSwitch/EntityViewSwitch.tsx
@@ -13332,6 +13432,12 @@ msgstr "nadgradite"
 #: frontend/src/metabase/reference/databases/TableSidebar.tsx
 msgid "Databases"
 msgstr "Podatkovne baze"
+
+#: frontend/src/metabase/admin/app/reducers.ts
+#: frontend/src/metabase/metabot/constants.ts
+#: metabase_enterprise/api_routes/routes.clj
+msgid "Embedding"
+msgstr "Vdelava"
 
 #: frontend/src/metabase/admin/app/reducers.ts
 msgid "AI"
@@ -13352,6 +13458,10 @@ msgstr "Zmogljivost"
 #: frontend/src/metabase/parameters/components/TagEditor/TagEditorSidebar.tsx
 msgid "Help"
 msgstr "Pomoč"
+
+#: frontend/src/metabase/admin/components/RelatedSettingsSection/RelatedSettingsSection.tsx
+msgid "Related settings"
+msgstr "Povezane nastavitve"
 
 #: frontend/src/metabase/admin/databases/components/ContentRemovalConfirmation/ContentRemovalConfirmation.tsx
 #, javascript-format
@@ -13802,6 +13912,236 @@ msgstr "Ustvarite segmente, da jih dodate v spustni seznam Filter v graditelju p
 msgid "Filter by table"
 msgstr "Filtriraj po tabeli"
 
+#: frontend/src/metabase/admin/embedding/components/EmbeddingNav.tsx
+msgid "Setup guide"
+msgstr "Vodnik za nastavitev"
+
+#: frontend/src/metabase/admin/embedding/components/EmbeddingNav.tsx
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/GuestEmbedsSettings/GuestEmbedsSettings.tsx
+msgid "Guest embeds"
+msgstr "Vdelave za goste"
+
+#: frontend/src/metabase/admin/embedding/components/EmbeddingNav.tsx
+#: frontend/src/metabase/admin/embedding/components/ThemeListing/EmbeddingThemeListingApp.tsx
+msgid "Themes"
+msgstr "Teme"
+
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/EditorPanel.tsx
+msgid "Edit theme"
+msgstr "Uredi temo"
+
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/EditorPanel.tsx
+#: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/GetCode/CopyCodeSnippetButton.tsx
+#: frontend/src/metabase/metabot/components/AIMarkdown/AIMarkdown.tsx
+msgid "Copy code"
+msgstr "Kopiraj kodo"
+
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/EditorPanel.tsx
+msgid "Theme name"
+msgstr "Ime teme"
+
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/EditorPanel.tsx
+msgid "Main colors"
+msgstr "Glavne barve"
+
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/EditorPanel.tsx
+msgid "Reset main colors to defaults"
+msgstr "Ponastavi glavne barve na privzete vrednosti"
+
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/EditorPanel.tsx
+msgid "Show fewer colors"
+msgstr "Prikaži manj barv"
+
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/EditorPanel.tsx
+msgid "Show more colors"
+msgstr "Prikaži več barv"
+
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/EditorPanel.tsx
+msgid "Regenerate filter, summarize, positive, negative, and chart colors from the brand color"
+msgstr "Znova ustvari barve filtrov, Povzemi, pozitivno, negativno in grafov iz barve blagovne znamke"
+
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/EditorPanel.tsx
+msgid "Regenerate from brand color"
+msgstr "Znova ustvari iz barve blagovne znamke"
+
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/EditorPanel.tsx
+msgid "Base font size"
+msgstr "Osnovna velikost pisave"
+
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/EditorPanel.tsx
+#: frontend/src/metabase/admin/embedding/components/ThemeListing/DeleteThemeModal.tsx
+msgid "Delete theme"
+msgstr "Izbriši temo"
+
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/EditorPanel.tsx
+msgid "Save theme"
+msgstr "Shrani temo"
+
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/EnableEmbeddingPrompt.tsx
+#: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/AuthenticationCard/EnableGuestEmbedsSection.tsx
+msgid "usage conditions"
+msgstr "pogoji uporabe"
+
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/EnableEmbeddingPrompt.tsx
+msgctxt "Prompt to enable modular embedding to see a live preview of an embedding theme."
+msgid "Enable modular embedding to see a live preview of your theme."
+msgstr "Omogočite modularno vdelovanje, da vidite predogled svoje teme v živo."
+
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/EnableEmbeddingPrompt.tsx
+#, javascript-format
+msgctxt "{0} is a link to the embedding conditions, for users to accept them and see a live preview of their theme."
+msgid "Accept the {0} to see a live preview of your theme."
+msgstr "Sprejmite {0}, da vidite predogled svoje teme v živo."
+
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/EnableEmbeddingPrompt.tsx
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSettings/EmbeddingSettings.tsx
+msgid "Enable modular embedding"
+msgstr "Omogoči modularno vdelavo"
+
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/EnableEmbeddingPrompt.tsx
+msgid "Accept and continue"
+msgstr "Sprejmi in nadaljuj"
+
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/PreviewPanel.tsx
+msgid "Theme preview"
+msgstr "Predogled teme"
+
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/PreviewPanel.tsx
+msgid "Create a dashboard or question to preview this theme."
+msgstr "Ustvarite nadzorno ploščo ali vprašanje, da si ogledate predogled te teme."
+
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/PreviewResourcePicker.tsx
+msgid "Change preview resource"
+msgstr "Spremeni vir za predogled"
+
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/PreviewResourcePicker.tsx
+msgid "Select data to preview"
+msgstr "Izberi podatke za predogled"
+
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/constants.ts
+msgid "Brand"
+msgstr "Blagovna znamka"
+
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/constants.ts
+msgid "Background"
+msgstr "Ozadje"
+
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/constants.ts
+msgid "Primary text"
+msgstr "Primarno besedilo"
+
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/constants.ts
+msgid "Secondary text"
+msgstr "Sekundarno besedilo"
+
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/constants.ts
+msgid "Tertiary text"
+msgstr "Terciarno besedilo"
+
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/constants.ts
+msgid "Border"
+msgstr "Obroba"
+
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/constants.ts
+msgid "Shadow"
+msgstr "Senca"
+
+#: frontend/src/metabase/admin/embedding/components/ThemeListing/DeleteThemeModal.tsx
+msgid "Are you sure you want to delete this theme? This action cannot be undone."
+msgstr "Ali ste prepričani, da želite izbrisati to temo? Tega dejanja ni mogoče razveljaviti."
+
+#: frontend/src/metabase/admin/embedding/components/ThemeListing/EmbeddingThemeCard.tsx
+msgid "Duplicate and delete"
+msgstr "Podvoji in izbriši"
+
+#: frontend/src/metabase/admin/embedding/components/ThemeListing/EmbeddingThemeCard.tsx
+#: frontend/src/metabase/collections/components/CollectionBulkActions/use-bulk-duplicate.ts
+#: frontend/src/metabase/common/components/CopyCardForm/CopyCardForm.tsx
+#: frontend/src/metabase/common/components/CopyDashboardForm/CopyDashboardForm.tsx
+#: frontend/src/metabase/common/components/CopyModal/CopyModal.tsx
+#: frontend/src/metabase/common/components/DocumentCopyForm/DocumentCopyForm.tsx
+#: frontend/src/metabase/dashboard/components/DashCard/DashCardActionsPanel/DashCardActionsPanel.tsx
+#: frontend/src/metabase/dashboard/components/DashboardTabs/DashboardTabs.tsx
+#: metabase/dashboards/write.clj metabase/dashboards_rest/api.clj
+msgid "Duplicate"
+msgstr "Podvoji"
+
+#: frontend/src/metabase/admin/embedding/components/ThemeListing/EmbeddingThemeListingApp.tsx
+msgid "Theme duplicated successfully"
+msgstr "Tema je bila uspešno podvojena"
+
+#: frontend/src/metabase/admin/embedding/components/ThemeListing/EmbeddingThemeListingApp.tsx
+msgid "Failed to duplicate theme"
+msgstr "Teme ni bilo mogoče podvojiti"
+
+#: frontend/src/metabase/admin/embedding/components/ThemeListing/EmbeddingThemeListingApp.tsx
+msgid "Create and edit themes to reuse across multiple embeds."
+msgstr "Ustvarjajte in urejajte teme za ponovno uporabo v več vdelavah."
+
+#: frontend/src/metabase/admin/embedding/components/ThemeListing/NewThemeCard.tsx
+msgid "New theme"
+msgstr "Nova tema"
+
+#: frontend/src/metabase/admin/embedding/hooks/use-default-embedding-themes.ts
+#: frontend/src/metabase/common/components/ColorScheme/ColorSchemeSelect.tsx
+#: frontend/src/metabase/embedding/components/EmbedModal/StaticEmbedSetupPane/LookAndFeelSettings.tsx
+#: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/Appearance/SimpleThemeSwitcherSection.tsx
+msgid "Light"
+msgstr "Svetla"
+
+#: frontend/src/metabase/admin/embedding/hooks/use-default-embedding-themes.ts
+#: frontend/src/metabase/common/components/ColorScheme/ColorSchemeSelect.tsx
+#: frontend/src/metabase/embedding/components/EmbedModal/StaticEmbedSetupPane/LookAndFeelSettings.tsx
+#: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/Appearance/SimpleThemeSwitcherSection.tsx
+msgid "Dark"
+msgstr "Temna"
+
+#: frontend/src/metabase/admin/embedding/hooks/use-delete-theme-flow.tsx
+msgid "Theme deleted successfully"
+msgstr "Tema je bila uspešno izbrisana"
+
+#: frontend/src/metabase/admin/embedding/hooks/use-delete-theme-flow.tsx
+msgid "Failed to delete theme"
+msgstr "Teme ni bilo mogoče izbrisati"
+
+#: frontend/src/metabase/admin/embedding/hooks/use-embedding-theme-editor.ts
+msgid "Untitled theme"
+msgstr "Neimenovana tema"
+
+#: frontend/src/metabase/admin/embedding/hooks/use-embedding-theme-editor.ts
+msgid "Filter, summarize, positive, negative, and chart colors regenerated from the brand color."
+msgstr "Barve filtrov, Povzemi, pozitivno, negativno in grafov so bile znova ustvarjene iz barve blagovne znamke."
+
+#: frontend/src/metabase/admin/embedding/hooks/use-embedding-theme-editor.ts
+#: frontend/src/metabase/common/components/UndoListing.tsx
+#: frontend/src/metabase/common/components/Unsubscribe.tsx
+#: frontend/src/metabase/dashboard/actions/auto-wire-parameters/toasts.ts
+#: frontend/src/metabase/explorations/components/ExplorationSidebar/ExplorationTreeNode.tsx
+#: frontend/src/metabase/explorations/components/ExplorationVisualization/ActionToolbar.tsx
+#: frontend/src/metabase/visualizer/components/Header/Header.tsx
+msgid "Undo"
+msgstr "Razveljavi"
+
+#: frontend/src/metabase/admin/embedding/hooks/use-embedding-theme-editor.ts
+msgid "Main colors reset to defaults."
+msgstr "Glavne barve ponastavljene na privzete vrednosti."
+
+#: frontend/src/metabase/admin/embedding/hooks/use-embedding-theme-editor.ts
+msgid "Theme saved"
+msgstr "Tema shranjena"
+
+#: frontend/src/metabase/admin/embedding/hooks/use-embedding-theme-editor.ts
+msgid "Failed to save theme"
+msgstr "Teme ni bilo mogoče shraniti"
+
+#: frontend/src/metabase/admin/embedding/setup-guide/SetupGuideAdminSettingsPage.tsx
+msgid "Embedding setup guide"
+msgstr "Vodnik za nastavitev vdelave"
+
+#: frontend/src/metabase/admin/embedding/setup-guide/SetupGuideAdminSettingsPage.tsx
+msgid "Follow the guide to get started with modular embedding"
+msgstr "Sledite vodniku, da začnete z modularnim vdelovanjem"
+
 #: frontend/src/metabase/admin/help/Help.tsx
 #: frontend/src/metabase/nav/components/AppSwitcher/AppSwitcher.tsx
 msgid "Get help"
@@ -14047,7 +14387,6 @@ msgstr "Interne skupine"
 
 #: frontend/src/metabase/admin/people/components/PeopleNav.tsx
 #: frontend/src/metabase/admin/people/containers/PeopleListingApp/PeopleListingApp.tsx
-#: frontend/src/metabase/embedding-hub/pages/EmbeddingHubTenancyPage.tsx
 msgid "Tenant users"
 msgstr "Uporabniki najemnika"
 
@@ -15135,7 +15474,6 @@ msgid "You won't be able to recover a deleted API key. You'll have to create a n
 msgstr "Izbrisanega API ključa ne boste mogli obnoviti. Ustvariti boste morali nov ključ."
 
 #: frontend/src/metabase/admin/settings/components/ApiKeys/DeleteApiKeyModal.tsx
-#: frontend/src/metabase/forms/components/FormSecretKey/RegenerateKeyConfirmModal.tsx
 msgid "No, don't delete"
 msgstr "Ne, ne izbriši"
 
@@ -15185,7 +15523,6 @@ msgid "Copy and save this API key"
 msgstr "Kopirajte in shranite ta API ključ"
 
 #: frontend/src/metabase/admin/settings/components/ApiKeys/SecretKeyModal.tsx
-#: frontend/src/metabase/forms/components/FormSecretKey/SetupKeyModal.tsx
 msgid "Store this key somewhere safe. For security reasons, we can't show it to you again."
 msgstr "Ta ključ shranite na varno. Iz varnostnih razlogov vam ga ne moremo ponovno prikazati."
 
@@ -15345,6 +15682,208 @@ msgstr "Konfiguriraj"
 msgid "Edit configuration"
 msgstr "Uredi konfiguracijo"
 
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingLegaleseModal/EmbeddingLegaleseModal.tsx
+#: frontend/src/metabase/public/components/widgets/LegaleseStep/LegaleseStep.tsx
+msgid "First, some legalese"
+msgstr "Najprej nekaj pravniških zadev"
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingLegaleseModal/EmbeddingLegaleseModal.tsx
+#: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/AuthenticationCard/EnableModularEmbeddingSection.tsx
+msgid "Sharing Metabase accounts is a security risk. Even if you filter data on the client side, each user could use their token to view any data visible to that shared user account."
+msgstr "Deljenje računov Metabase je varnostno tveganje. Tudi če filtrirate podatke na strani odjemalca, bi lahko vsak uporabnik s svojim žetonom videl katere koli podatke, vidne temu deljenemu uporabniškemu računu."
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingLegaleseModal/EmbeddingLegaleseModal.tsx
+#: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/AuthenticationCard/EnableModularEmbeddingSection.tsx
+msgid "That, and we consider shared accounts to be unfair usage. Fair usage involves giving each end-user of the embedded analytics their own Metabase account."
+msgstr "Poleg tega menimo, da so deljeni računi nepoštena uporaba. Poštena uporaba pomeni, da ima vsak končni uporabnik vdelane analitike svoj račun Metabase."
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingLegaleseModal/EmbeddingLegaleseModal.tsx
+msgid "Decline and go back"
+msgstr "Zavrni in se vrni nazaj"
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingLegaleseModal/EmbeddingLegaleseModal.tsx
+msgid "When using the Embedded analytics SDK for React, each end user should have their own Metabase account."
+msgstr "Pri uporabi SDK-ja za vdelano analitiko za React mora imeti vsak končni uporabnik svoj račun Metabase."
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingLegaleseModal/EmbeddingLegaleseModal.tsx
+#: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/AuthenticationCard/EnableModularEmbeddingSection.tsx
+msgid "When using modular embedding, each end user must have their own Metabase account."
+msgstr "Pri uporabi modularnega vdelovanja mora imeti vsak končni uporabnik svoj račun Metabase."
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSdkSettings/EmbeddingSdkSettings.tsx
+msgid "implement JWT or SAML SSO"
+msgstr "implementirajte JWT ali SAML SSO"
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSdkSettings/EmbeddingSdkSettings.tsx
+#, javascript-format
+msgctxt "{0} is the link to upsell the SDK. {1} is the link to implement JWT or SAML authentication."
+msgid "You can test Embedded analytics SDK on localhost quickly by using API keys. To use the SDK on other sites, {0} and {1}."
+msgstr "SDK za vdelano analitiko lahko hitro preizkusite na localhost z uporabo API ključev. Če želite SDK uporabljati na drugih spletnih mestih, {0} in {1}."
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSdkSettings/EmbeddingSdkSettings.tsx
+#, javascript-format
+msgctxt "{0} is the link to implement JWT or SAML authentication."
+msgid "You can test Embedded analytics SDK on localhost quickly by using API keys. To use the SDK on other sites, {0}."
+msgstr "SDK za vdelano analitiko lahko hitro preizkusite na localhost z uporabo API ključev. Če želite SDK uporabljati na drugih spletnih mestih, {0}."
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSdkSettings/EmbeddingSdkSettings.tsx
+msgid "Enable modular embedding SDK"
+msgstr "Omogoči SDK za modularno vdelovanje"
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSdkSettings/EmbeddingSdkSettings.tsx
+msgid "Embed the full power of Metabase into your application to build a custom analytics experience and programmatically manage dashboards and data."
+msgstr "V svojo aplikacijo vdelajte vso moč Metabase, da zgradite prilagojeno analitično izkušnjo ter programsko upravljate nadzorne plošče in podatke."
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSdkSettings/EmbeddingSdkSettings.tsx
+msgid "Quick start"
+msgstr "Hitri začetek"
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSecretKeyWidget.tsx
+msgid "Embedding secret key"
+msgstr "Tajni ključ za vdelavo"
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSecretKeyWidget.tsx
+msgid "Standalone Embed Secret Key used to sign JSON Web Tokens for requests to /api/embed endpoints. This lets you create a secure environment limited to specific users or organizations."
+msgstr "Samostojni skrivni ključ za vdelavo, ki se uporablja za podpisovanje spletnih žetonov JSON za zahteve za končne točke /api/embed. Tako lahko ustvarite varno okolje, omejeno na določene uporabnike ali organizacije."
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSecretKeyWidget.tsx
+#: frontend/src/metabase/forms/components/FormSecretKey/FormSecretKey.tsx
+#: frontend/src/metabase/forms/components/FormSecretKey/SetupKeyModal.tsx
+msgid "Regenerate key"
+msgstr "Znova generiraj ključ"
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSecretKeyWidget.tsx
+msgid "Regenerate embedding key?"
+msgstr "Ponovno generiram ključ za vdelavo?"
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSecretKeyWidget.tsx
+msgid "This will cause existing embeds to stop working until they are updated with the new key."
+msgstr "To bo povzročilo, da obstoječe vdelave ne bodo delovale, dokler jih ne posodobite z novim ključem."
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSecretKeyWidget.tsx
+msgid "Generate key"
+msgstr "Generiraj ključ"
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSecuritySettings/CorsInputWidget.tsx
+msgid "Separate values with a space. Localhost is not allowed. Changes will take effect within one minute."
+msgstr "Vrednosti ločite s presledkom. Localhost ni dovoljen. Spremembe bodo začele veljati v eni minuti."
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSecuritySettings/CorsInputWidget.tsx
+msgid "Separate values with a space. Localhost is automatically included. Changes will take effect within one minute."
+msgstr "Vrednosti ločite s presledkom. Localhost je samodejno vključen. Spremembe bodo začele veljati v eni minuti."
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSecuritySettings/CorsInputWidget.tsx
+msgid "Cross-Origin Resource Sharing (CORS)"
+msgstr "Cross-Origin Resource Sharing (CORS)"
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSecuritySettings/CorsInputWidget.tsx
+#, javascript-format
+msgid "Add the website domains where you want to allow embedding. {0}"
+msgstr "Dodajte domene spletnih mest, kjer želite dovoliti vdelavo. {0}"
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSecuritySettings/EmbeddingAppSameSiteCookieDescription.tsx
+#, javascript-format
+msgid "Determines whether to allow cookies for cross-site requests. {0}"
+msgstr "Določa, ali se dovolijo piškotki za zahtevke med spletnimi mesti. {0}"
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSecuritySettings/EmbeddingAppSameSiteCookieDescription.tsx
+#, javascript-format
+msgid "You should probably change this setting to {0}."
+msgstr "To nastavitev bi verjetno morali spremeniti na {0}."
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSecuritySettings/EmbeddingAppSameSiteCookieDescription.tsx
+#: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
+#: frontend/src/metabase/admin/settings/components/widgets/Notifications/WebhookForm.tsx
+#: frontend/src/metabase/dashboard/components/ClickMappings/ClickMappingsTargetWithoutSource.tsx
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParamParts/FilterWidgetTypeSelect.tsx
+#: frontend/src/metabase/parameters/components/TemporalUnitSettings/TemporalUnitSettings.tsx
+#: frontend/src/metabase/parameters/components/ValuesSourceModal/ValuesSourceTypeModal.tsx
+#: frontend/src/metabase/query_builder/components/DatasetEditor/DatasetFieldMetadataSidebar/MappedFieldPicker/MappedFieldPicker.tsx
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
+msgid "None"
+msgstr "Brez"
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSecuritySettings/SameSiteSelectWidget.tsx
+msgid "Lax (default)"
+msgstr "Lax (privzeto)"
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSecuritySettings/SameSiteSelectWidget.tsx
+msgid "Allows Metabase session cookies to be shared on the same domain. Used for production instances on the same domain."
+msgstr "Omogoča, da se piškotki seje Metabase delijo znotraj iste domene. Uporabno za produkcijske instance na isti domeni."
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSecuritySettings/SameSiteSelectWidget.tsx
+msgid "Strict (not recommended)"
+msgstr "Strict (ni priporočljivo)"
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSecuritySettings/SameSiteSelectWidget.tsx
+msgid "Does not allow Metabase session cookies to be shared with embedded instances. Use this if you do not want to enable session sharing with embedding."
+msgstr "Ne dovoljuje deljenja piškotkov seje Metabase z vdelanimi instancami. Uporabite to, če ne želite omogočiti deljenja seje pri vdelavi."
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSecuritySettings/SameSiteSelectWidget.tsx
+msgid "None (requires HTTPS)"
+msgstr "Brez (zahteva HTTPS)"
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSecuritySettings/SameSiteSelectWidget.tsx
+msgid "Use \"None\" when your app and Metabase are hosted on different domains. Incompatible with Safari and iOS-based browsers."
+msgstr "Uporabite \"Brez\", ko sta vaša aplikacija in Metabase gostovana na različnih domenah. Nezdružljivo s Safari in brskalniki na osnovi iOS."
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSecuritySettings/SameSiteSelectWidget.tsx
+msgid "SameSite cookie setting"
+msgstr "Nastavitev piškotka SameSite"
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSettings/EmbeddingSettings.tsx
+msgid "Embedding settings"
+msgstr "Nastavitve vdelave"
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSettings/EmbeddingSettings.tsx
+msgid "Embedding methods"
+msgstr "Metode vdelave"
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSettings/EmbeddingSettings.tsx
+msgid "The simplest way to embed Metabase. Embed dashboards, questions, the query builder, natural language querying with AI, and more in your app with components. Built on the SDK with per-component controls and theming."
+msgstr "Najpreprostejši način za vdelavo Metabase. Vdelajte nadzorne plošče, vprašanja, graditelj poizvedb, poizvedovanje v naravnem jeziku z UI in več v svojo aplikacijo s komponentami. Zgrajeno na SDK-ju z nadzorom in temami po komponentah."
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSettings/EmbeddingSettings.tsx
+msgid "Version pinning"
+msgstr "Pripenjanje različice"
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSettings/EmbeddingSettings.tsx
+msgid "Metabase Cloud instances are automatically upgraded to new releases. SDK packages are strictly compatible with specific version of Metabase. You can request to pin your Metabase to a major version and upgrade your Metabase and SDK dependency in a coordinated fashion."
+msgstr "Instance Metabase Cloud se samodejno nadgrajujejo na nove izdaje. Paketi SDK so strogo združljivi z določeno različico Metabase. Zahtevate lahko pripenjanje vašega Metabase na glavno različico ter nadgradite Metabase in odvisnost SDK usklajeno."
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSettings/EmbeddingSettings.tsx
+msgid "Request version pinning"
+msgstr "Zahtevaj pripenjanje različice"
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingToggle/EmbeddingToggle.tsx
+msgid "Set via environment variable"
+msgstr "Nastavljeno prek okoljske spremenljivke"
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/NewEmbedButton/NewEmbedButton.tsx
+#: frontend/src/metabase/palette/shortcuts/global.ts
+msgid "New embed"
+msgstr "Nova vdelava"
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/SharedCombinedEmbeddingSettings/SharedCombinedEmbeddingSettings.tsx
+msgid "Enable guest embeds"
+msgstr "Omogoči vdelave za goste"
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/SharedCombinedEmbeddingSettings/SharedCombinedEmbeddingSettings.tsx
+msgid "A secure way to embed charts and dashboards, without single sign-on, when you don’t want to offer ad-hoc querying or chart drill-through."
+msgstr "Varen način za vdelavo grafov in nadzornih plošč, brez enotne prijave, ko ne želite ponuditi ad-hoc poizvedovanja ali poglobljenega raziskovanja grafov."
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/SharedCombinedEmbeddingSettings/SharedCombinedEmbeddingSettings.tsx
+msgid "Upgrade to Metabase Pro for more powerful embedding methods"
+msgstr "Nadgradite na Metabase Pro za zmogljivejše metode vdelave"
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/SharedCombinedEmbeddingSettings/SharedCombinedEmbeddingSettings.tsx
+msgid "Embed charts, dashboards with drill-throughs, or even the query builder into your own application using customizable components. Secure your embeds with single sign-on."
+msgstr "Z uporabo prilagodljivih komponent vdelajte grafe, nadzorne plošče s poglobljenim raziskovanjem ali celo graditelj poizvedb v svojo aplikacijo. Zavarujte svoje vdelave z enotno prijavo."
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/SharedCombinedEmbeddingSettings/SharedCombinedEmbeddingSettings.tsx
+msgid "Published embeds"
+msgstr "Objavljene vdelave"
+
 #: frontend/src/metabase/admin/settings/components/GeneralSettings/DevInstanceBanner.tsx
 msgid "This instance is in development mode and can be used for development or testing purposes only."
 msgstr "Ta instanca je v razvojnem načinu in jo je mogoče uporabljati samo za razvojne ali testne namene."
@@ -15361,10 +15900,32 @@ msgstr "Ta instanca je v razvojnem načinu in jo je mogoče uporabljati samo za 
 msgid "Get your token"
 msgstr "Pridobi svoj žeton"
 
+#: frontend/src/metabase/admin/settings/components/LdapGroupMappingSection/LdapGroupMappingSection.tsx
+#, javascript-format
+msgid "Automatically assign people to {0} groups based on their LDAP group membership"
+msgstr "Samodejno dodeli ljudi v {0} skupine glede na njihovo članstvo v skupinah LDAP"
+
+#: frontend/src/metabase/admin/settings/components/LdapGroupMappingSection/LdapGroupMappingSection.tsx
+msgid "Manual group mappings"
+msgstr "Ročna preslikava skupin"
+
+#: frontend/src/metabase/admin/settings/components/LdapGroupMappingSection/LdapGroupMappingSection.tsx
+msgid "LDAP group name"
+msgstr "Ime skupine LDAP"
+
+#: frontend/src/metabase/admin/settings/components/LdapGroupMappingSection/LdapGroupMappingSection.tsx
+#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/GroupMappingsWidgetView.tsx
+msgid "No mappings yet"
+msgstr "Še ni preslikav"
+
 #: frontend/src/metabase/admin/settings/components/LicenseInput/LicenseInput.tsx
 #: frontend/src/metabase/setup/components/LicenseTokenStep/LicenseTokenForm.tsx
 msgid "Activate"
 msgstr "Aktiviraj"
+
+#: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
+msgid "Error loading LDAP configuration"
+msgstr "Napaka pri nalaganju konfiguracije LDAP"
 
 #: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
 msgid "LDAP host"
@@ -15377,18 +15938,6 @@ msgstr "Vrata LDAP"
 #: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
 msgid "LDAP security"
 msgstr "Varnost LDAP"
-
-#: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
-#: frontend/src/metabase/admin/settings/components/widgets/Notifications/WebhookForm.tsx
-#: frontend/src/metabase/dashboard/components/ClickMappings/ClickMappingsTargetWithoutSource.tsx
-#: frontend/src/metabase/embedding/settings/EmbeddingSecuritySettings/EmbeddingAppSameSiteCookieDescription.tsx
-#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParamParts/FilterWidgetTypeSelect.tsx
-#: frontend/src/metabase/parameters/components/TemporalUnitSettings/TemporalUnitSettings.tsx
-#: frontend/src/metabase/parameters/components/ValuesSourceModal/ValuesSourceTypeModal.tsx
-#: frontend/src/metabase/query_builder/components/DatasetEditor/DatasetFieldMetadataSidebar/MappedFieldPicker/MappedFieldPicker.tsx
-#: frontend/src/metabase/viz-core/lib/settings/graph.ts
-msgid "None"
-msgstr "Brez"
 
 #: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
 msgctxt "short for 'Secure Sockets Layer'"
@@ -15419,12 +15968,26 @@ msgid "User search base"
 msgstr "Osnova iskanja uporabnikov"
 
 #: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
+#, javascript-format
+msgid "The distinguished name (DN) of the entry in your LDAP server that {0} should use as the starting point when searching for users"
+msgstr "Razločevalno ime (DN) vnosa v vašem strežniku LDAP, ki naj ga {0} uporabi kot izhodiščno točko pri iskanju uporabnikov"
+
+#: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
 msgid "User filter"
 msgstr "Filter uporabnikov"
 
 #: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
+#, javascript-format
+msgid "Map LDAP attributes to the email, first name, and last name fields in {0}"
+msgstr "Preslikajte atribute LDAP v polja e-pošta, ime in priimek v {0}"
+
+#: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
 msgid "Group search base"
 msgstr "Osnova iskanja skupin"
+
+#: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
+msgid "Not required for LDAP directories that provide a 'memberOf' overlay, such as Active Directory. It will be searched recursively."
+msgstr "Ni potrebno za imenike LDAP, ki zagotavljajo prekrivanje »memberOf«, kot je Active Directory. Iskanje bo rekurzivno."
 
 #: frontend/src/metabase/admin/settings/components/SettingsLicense/SettingsLicense.tsx
 msgid "Metabase is open source and will be free forever – but by upgrading you can have priority support, more tools to help you share your insights with your teams and powerful options to help you create seamless, interactive data experiences for your customers."
@@ -15465,9 +16028,6 @@ msgstr "Webhooki"
 
 #: frontend/src/metabase/admin/settings/components/SettingsNav/SettingsNav.tsx
 #: frontend/src/metabase/admin/settings/components/SettingsPages/LocalizationSettingsPage.tsx
-#: frontend/src/metabase/embedding-hub/components/EmbeddingHubLayout/EmbeddingHubLayout.tsx
-#: frontend/src/metabase/embedding-hub/pages/EmbeddingHubLocalizationPage.tsx
-#: frontend/src/metabase/embedding-hub/upsells/LocalizationUpsellPage.tsx
 #: frontend/src/metabase/palette/constants.ts
 msgid "Localization"
 msgstr "Lokalizacija"
@@ -15689,18 +16249,6 @@ msgstr "Omogoči funkcije Rentgen"
 #: frontend/src/metabase/admin/settings/components/SettingsPages/GeneralSettingsPage.tsx
 msgid "Usage tracking"
 msgstr "Sledenje uporabi"
-
-#: frontend/src/metabase/admin/settings/components/SettingsPages/GeneralSettingsPage.tsx
-msgid "Version pinning"
-msgstr "Pripenjanje različice"
-
-#: frontend/src/metabase/admin/settings/components/SettingsPages/GeneralSettingsPage.tsx
-msgid "Metabase Cloud instances are automatically upgraded to new releases. SDK packages are strictly compatible with specific version of Metabase. You can request to pin your Metabase to a major version and upgrade your Metabase and SDK dependency in a coordinated fashion."
-msgstr "Instance Metabase Cloud se samodejno nadgrajujejo na nove izdaje. Paketi SDK so strogo združljivi z določeno različico Metabase. Zahtevate lahko pripenjanje vašega Metabase na glavno različico ter nadgradite Metabase in odvisnost SDK usklajeno."
-
-#: frontend/src/metabase/admin/settings/components/SettingsPages/GeneralSettingsPage.tsx
-msgid "Request version pinning"
-msgstr "Zahtevaj pripenjanje različice"
 
 #: frontend/src/metabase/admin/settings/components/SettingsPages/LocalizationSettingsPage.tsx
 msgid "Instance settings"
@@ -16166,10 +16714,6 @@ msgid "No mappings yet, group sync is not on"
 msgstr "Še ni preslikav, sinhronizacija skupin ni vklopljena"
 
 #: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/GroupMappingsWidgetView.tsx
-msgid "No mappings yet"
-msgstr "Še ni preslikav"
-
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/GroupMappingsWidgetView.tsx
 msgid "Synchronize Group Memberships"
 msgstr "Sinhroniziraj članstva v skupinah"
 
@@ -16344,9 +16888,45 @@ msgstr "Bearer"
 msgid "Delete this destination"
 msgstr "Izbriši ta cilj"
 
+#: frontend/src/metabase/admin/settings/components/widgets/PublicLinksListing/EmbeddedResources.tsx
+msgid "Embedded dashboards"
+msgstr "Vdelane nadzorne plošče"
+
+#: frontend/src/metabase/admin/settings/components/widgets/PublicLinksListing/EmbeddedResources.tsx
+msgid "No dashboards have been embedded yet."
+msgstr "Nobena nadzorna plošča še ni bila vdelana."
+
+#: frontend/src/metabase/admin/settings/components/widgets/PublicLinksListing/EmbeddedResources.tsx
+msgid "Embedded questions"
+msgstr "Vdelana vprašanja"
+
+#: frontend/src/metabase/admin/settings/components/widgets/PublicLinksListing/EmbeddedResources.tsx
+msgid "No questions have been embedded yet."
+msgstr "Nobeno vprašanje še ni bilo vdelano."
+
 #: frontend/src/metabase/admin/settings/components/widgets/PublicLinksListing/PublicDocumentResources.tsx
 msgid "No documents have been publicly shared yet."
 msgstr "Noben dokument še ni bil javno deljen."
+
+#: frontend/src/metabase/admin/settings/components/widgets/PublicLinksListing/PublicLinksListing.tsx
+msgid "Public Link"
+msgstr "Javna povezava"
+
+#: frontend/src/metabase/admin/settings/components/widgets/PublicLinksListing/PublicLinksListing.tsx
+msgid "Revoke Link"
+msgstr "Prekliči povezavo"
+
+#: frontend/src/metabase/admin/settings/components/widgets/PublicLinksListing/PublicLinksListing.tsx
+msgid "Revoke link"
+msgstr "Prekliči povezavo"
+
+#: frontend/src/metabase/admin/settings/components/widgets/PublicLinksListing/PublicLinksListing.tsx
+msgid "Disable this link?"
+msgstr "Onemogočim to povezavo?"
+
+#: frontend/src/metabase/admin/settings/components/widgets/PublicLinksListing/PublicLinksListing.tsx
+msgid "They won't work anymore, and can't be restored, but you can create new links."
+msgstr "Ne bodo več delovale in jih ni mogoče obnoviti, lahko pa ustvarite nove povezave."
 
 #: frontend/src/metabase/admin/settings/components/widgets/PublicLinksListing/PublicResources.tsx
 msgid "No dashboards have been publicly shared yet."
@@ -16538,7 +17118,6 @@ msgstr "Nadzirajte predpomnjenje"
 #: frontend/src/metabase/admin/upsells/UpsellCacheConfig.tsx
 #: frontend/src/metabase/admin/upsells/UpsellSSO.tsx
 #: frontend/src/metabase/common/components/upsells/UpsellEmbedHomepage.tsx
-#: frontend/src/metabase/embedding-hub/components/EmbeddingHubUpsellBanner.tsx
 msgid "Try Metabase Pro"
 msgstr "Preizkusi Metabase Pro"
 
@@ -16597,6 +17176,14 @@ msgstr "Pred uvedbo v produkcijo preizkusite kodo v stagingu v ločeni instanci 
 msgid "Whitelabel email notifications"
 msgstr "Whitelabel e-poštna obvestila"
 
+#: frontend/src/metabase/admin/upsells/UpsellEmbeddingTheme.tsx
+msgid "Create custom themes"
+msgstr "Ustvari teme po meri"
+
+#: frontend/src/metabase/admin/upsells/UpsellEmbeddingTheme.tsx
+msgid "Fine-tune the appearance of your embedded content with colors and fonts."
+msgstr "Natančno prilagodite videz vaše vdelane vsebine z barvami in pisavami."
+
 #: frontend/src/metabase/admin/upsells/UpsellHosting.tsx
 msgid "Minimize maintenance"
 msgstr "Zmanjšaj vzdrževanje"
@@ -16645,19 +17232,21 @@ msgstr "Sinhronizacija skupin Metabase s SAML, JWT in LDAP"
 msgid "User provisioning with SCIM"
 msgstr "Upravljanje uporabnikov prek SCIM"
 
+#: frontend/src/metabase/admin/upsells/UpsellSdkLink.tsx
+msgid "upgrade to Metabase Pro"
+msgstr "nadgradite na Metabase Pro"
+
 #: frontend/src/metabase/admin/upsells/UpsellSemanticSearch.tsx
 msgid "Get this with Pro. Try for free."
 msgstr "To dobite s Pro. Preizkusite brezplačno."
 
 #: frontend/src/metabase/admin/upsells/UpsellTenants.tsx
-#: frontend/src/metabase/embedding-hub/upsells/TenancyUpsellPage.tsx
-msgid "Use a multi-tenant user strategy"
-msgstr "Uporabite večnajemniško uporabniško strategijo"
+msgid "Manage customer-facing analytics at scale"
+msgstr "Upravljajte analitiko za stranke v velikem obsegu"
 
 #: frontend/src/metabase/admin/upsells/UpsellTenants.tsx
-#: frontend/src/metabase/embedding-hub/upsells/TenancyUpsellPage.tsx
-msgid "Securely share data with external users and allow them to create content. Reuse the same dashboards and permissions across all tenants, instead of recreating them for each customer."
-msgstr "Varno delite podatke z zunanjimi uporabniki in jim omogočite ustvarjanje vsebine. Ponovno uporabite iste nadzorne plošče in dovoljenja pri vseh najemnikih, namesto da jih znova ustvarjate za vsako stranko."
+msgid "Group your customers into tenants, reuse the same dashboards and permissions, and keep each tenant's data isolated."
+msgstr "Združite svoje stranke v najemnike, ponovno uporabite iste nadzorne plošče in dovoljenja ter ohranite podatke vsakega najemnika izolirane."
 
 #: frontend/src/metabase/admin/upsells/UpsellUploads.tsx
 msgctxt "in the sentence 'Upgrade to Metabase Pro to manage your uploaded files and available storage space.'"
@@ -17113,18 +17702,6 @@ msgid "There was an error bookmarking these items."
 msgstr "Pri dodajanju zaznamka tem elementom je prišlo do napake."
 
 #: frontend/src/metabase/collections/components/CollectionBulkActions/use-bulk-duplicate.ts
-#: frontend/src/metabase/common/components/CopyDashboardForm/CopyDashboardForm.tsx
-#: frontend/src/metabase/common/components/CopyModal/CopyModal.tsx
-#: frontend/src/metabase/common/components/DocumentCopyForm/DocumentCopyForm.tsx
-#: frontend/src/metabase/dashboard/components/DashCard/DashCardActionsPanel/DashCardActionsPanel.tsx
-#: frontend/src/metabase/dashboard/components/DashboardTabs/DashboardTabs.tsx
-#: frontend/src/metabase/embedding/themes/components/ThemeListing/EmbeddingThemeCard.tsx
-#: frontend/src/metabase/questions/components/CopyCardForm/CopyCardForm.tsx
-#: metabase/dashboards/write.clj metabase/dashboards_rest/api.clj
-msgid "Duplicate"
-msgstr "Podvoji"
-
-#: frontend/src/metabase/collections/components/CollectionBulkActions/use-bulk-duplicate.ts
 #, javascript-format
 msgid "{0} item has been duplicated."
 msgid_plural "{0} items have been duplicated."
@@ -17454,8 +18031,8 @@ msgid "This comment was deleted."
 msgstr "Ta komentar je bil izbrisan."
 
 #: frontend/src/metabase/common/CreateDashboard/CreateDashboardForm.tsx
+#: frontend/src/metabase/common/components/CopyCardForm/CopyCardForm.tsx
 #: frontend/src/metabase/common/components/CopyDashboardForm/CopyDashboardForm.tsx
-#: frontend/src/metabase/questions/components/CopyCardForm/CopyCardForm.tsx
 msgid "What is the name of your dashboard?"
 msgstr "Kako se imenuje tvoja nadzorna plošča?"
 
@@ -17748,20 +18325,6 @@ msgstr "Odstotek alfe"
 msgid "Use system default"
 msgstr "Uporabi privzeto nastavitev sistema"
 
-#: frontend/src/metabase/common/components/ColorScheme/ColorSchemeSelect.tsx
-#: frontend/src/metabase/embedding/components/EmbedModal/StaticEmbedSetupPane/LookAndFeelSettings.tsx
-#: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/Appearance/SimpleThemeSwitcherSection.tsx
-#: frontend/src/metabase/embedding/themes/hooks/use-default-embedding-themes.ts
-msgid "Dark"
-msgstr "Temna"
-
-#: frontend/src/metabase/common/components/ColorScheme/ColorSchemeSelect.tsx
-#: frontend/src/metabase/embedding/components/EmbedModal/StaticEmbedSetupPane/LookAndFeelSettings.tsx
-#: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/Appearance/SimpleThemeSwitcherSection.tsx
-#: frontend/src/metabase/embedding/themes/hooks/use-default-embedding-themes.ts
-msgid "Light"
-msgstr "Svetla"
-
 #: frontend/src/metabase/common/components/CommunityLocalizationNotice/CommunityLocalizationNotice.tsx
 msgid "Some translations are created by the Metabase community, and might not be perfect."
 msgstr "Nekateri prevodi so ustvarjeni s strani skupnosti Metabase in morda niso popolni."
@@ -17778,6 +18341,14 @@ msgstr "prispevajte k prevodom tukaj"
 #, javascript-format
 msgid "You can {0}"
 msgstr "Lahko {0}"
+
+#: frontend/src/metabase/common/components/CopyCardForm/CopyCardForm.tsx
+#: frontend/src/metabase/common/components/DocumentCopyForm/DocumentCopyForm.tsx
+#: frontend/src/metabase/common/components/SaveQuestionForm/SaveQuestionForm.tsx
+#: frontend/src/metabase/metrics/pages/NewMetricPage/CreateMetricModal/CreateMetricModal.tsx
+#: frontend/src/metabase/questions/components/MoveCardModal/MoveCardModal.tsx
+msgid "Where do you want to save this?"
+msgstr "Kam želite to shraniti?"
 
 #: frontend/src/metabase/common/components/CopyDashboardForm/CopyDashboardForm.tsx
 msgid "Only duplicate the dashboard"
@@ -17886,14 +18457,6 @@ msgstr "Izberi dimenzijo"
 #: frontend/src/metabase/common/components/DocumentCopyForm/DocumentCopyForm.tsx
 msgid "What is the name of your document?"
 msgstr "Kako je ime vašemu dokumentu?"
-
-#: frontend/src/metabase/common/components/DocumentCopyForm/DocumentCopyForm.tsx
-#: frontend/src/metabase/common/components/SaveQuestionForm/SaveQuestionForm.tsx
-#: frontend/src/metabase/metrics/pages/NewMetricPage/CreateMetricModal/CreateMetricModal.tsx
-#: frontend/src/metabase/questions/components/CopyCardForm/CopyCardForm.tsx
-#: frontend/src/metabase/questions/components/MoveCardModal/MoveCardModal.tsx
-msgid "Where do you want to save this?"
-msgstr "Kam želite to shraniti?"
 
 #: frontend/src/metabase/common/components/EmojiPicker/EmojiPicker.tsx
 #: frontend/src/metabase/common/components/InfoText/InfoTextAssetLink.tsx
@@ -18404,7 +18967,6 @@ msgid "Databases will appear here once your admins have added some"
 msgstr "Podatkovne baze se bodo prikazale tukaj, ko jih bodo skrbniki dodali"
 
 #: frontend/src/metabase/common/components/NoDatabasesEmptyState/NoDatabasesEmptyState.tsx
-#: frontend/src/metabase/embedding-hub/pages/GetStarted/EmbeddingHubGetStartedPage.tsx
 #: frontend/src/metabase/embedding/setup-guide/hooks/use-get-setup-guide-steps.ts
 #: frontend/src/metabase/metadata/components/NoDatabasesEmptyState/NoDatabasesEmptyState.tsx
 msgid "Connect a database"
@@ -18514,26 +19076,6 @@ msgstr "Premakni {0} elementov?"
 #: frontend/src/metabase/common/components/Pickers/QuestionPicker/QuestionPickerModal.tsx
 msgid "Choose a question or model"
 msgstr "Izberite vprašanje ali model"
-
-#: frontend/src/metabase/common/components/PublicLinksListing/PublicLinksListing.tsx
-msgid "Public Link"
-msgstr "Javna povezava"
-
-#: frontend/src/metabase/common/components/PublicLinksListing/PublicLinksListing.tsx
-msgid "Revoke Link"
-msgstr "Prekliči povezavo"
-
-#: frontend/src/metabase/common/components/PublicLinksListing/PublicLinksListing.tsx
-msgid "Revoke link"
-msgstr "Prekliči povezavo"
-
-#: frontend/src/metabase/common/components/PublicLinksListing/PublicLinksListing.tsx
-msgid "Disable this link?"
-msgstr "Onemogočim to povezavo?"
-
-#: frontend/src/metabase/common/components/PublicLinksListing/PublicLinksListing.tsx
-msgid "They won't work anymore, and can't be restored, but you can create new links."
-msgstr "Ne bodo več delovale in jih ni mogoče obnoviti, lahko pa ustvarite nove povezave."
 
 #: frontend/src/metabase/common/components/QuestionDownloadWidget/QuestionDownloadWidget.tsx
 msgid "The maximum download size is 1 million rows."
@@ -18951,7 +19493,7 @@ msgstr "AM/PM"
 #: frontend/src/metabase/notifications/utils.ts
 #: metabase/lib/temporal_bucket.cljc
 msgid "Minute"
-msgid_plural "{0} Minutes"
+msgid_plural "Minutes"
 msgstr[0] "minuta"
 msgstr[1] "{0} minuti"
 msgstr[2] "{0} minute"
@@ -19004,16 +19546,6 @@ msgstr "spremenjeno"
 #: frontend/src/metabase/common/components/UndoListing.tsx
 msgid "item"
 msgstr "element"
-
-#: frontend/src/metabase/common/components/UndoListing.tsx
-#: frontend/src/metabase/common/components/Unsubscribe.tsx
-#: frontend/src/metabase/dashboard/actions/auto-wire-parameters/toasts.ts
-#: frontend/src/metabase/embedding/themes/hooks/use-embedding-theme-editor.ts
-#: frontend/src/metabase/explorations/components/ExplorationSidebar/ExplorationTreeNode.tsx
-#: frontend/src/metabase/explorations/components/ExplorationVisualization/ActionToolbar.tsx
-#: frontend/src/metabase/visualizer/components/Header/Header.tsx
-msgid "Undo"
-msgstr "Razveljavi"
 
 #: frontend/src/metabase/common/components/Unsubscribe.tsx
 #, javascript-format
@@ -19221,8 +19753,8 @@ msgid "Please ask a Metabase Store Admin to upgrade your plan."
 msgstr "Prosite skrbnika Metabase Store, da nadgradi vaš paket."
 
 #: frontend/src/metabase/common/components/upsells/components/UpsellCardContent.tsx
-msgid "Get a 14 day trial of this and other Pro features."
-msgstr "Pridobite 14-dnevno preizkusno obdobje za to in druge funkcije Pro."
+msgid "Get a 14-day free trial of this and other pro features"
+msgstr "Pridobite 14-dnevno brezplačno preizkusno različico te in drugih funkcij Pro"
 
 #: frontend/src/metabase/common/hooks/use-before-unload/use-before-unload.ts
 msgid "You have unsaved changes."
@@ -19637,6 +20169,7 @@ msgid "Indexed record"
 msgstr "Indeksiran zapis"
 
 #: frontend/src/metabase/common/utils/model-names.ts
+#: frontend/src/metabase/metabot/components/MetabotAsk/MetabotGreeting.tsx
 #: frontend/src/metabase/metabot/constants.ts
 msgid "Research"
 msgstr "Raziskovanje"
@@ -22740,227 +23273,6 @@ msgstr "Dokument shranjen"
 msgid "Error saving document"
 msgstr "Napaka pri shranjevanju dokumenta"
 
-#: frontend/src/metabase/embedding-hub/components/EmbeddingHubLayout/EmbeddingHubLayout.tsx
-msgid "Get started"
-msgstr "Začnite"
-
-#: frontend/src/metabase/embedding-hub/components/EmbeddingHubLayout/EmbeddingHubLayout.tsx
-#: frontend/src/metabase/embedding-hub/pages/EmbeddingHubTenancyPage.tsx
-#: frontend/src/metabase/embedding-hub/upsells/TenancyUpsellPage.tsx
-msgid "Tenancy"
-msgstr "Najemništvo"
-
-#: frontend/src/metabase/embedding-hub/components/EmbeddingHubLayout/EmbeddingHubLayout.tsx
-#: frontend/src/metabase/nav/components/AppSwitcher/AppSwitcher.tsx
-msgid "Embedding hub"
-msgstr "Središče za vdelavo"
-
-#: frontend/src/metabase/embedding-hub/components/EmbeddingHubLayout/EmbeddingHubLayout.tsx
-#: frontend/src/metabase/palette/shortcuts/global.ts
-msgid "New embed"
-msgstr "Nova vdelava"
-
-#: frontend/src/metabase/embedding-hub/pages/EmbeddingHubAppearancePage.tsx
-msgid "Themes"
-msgstr "Teme"
-
-#: frontend/src/metabase/embedding-hub/pages/EmbeddingHubAppearancePage.tsx
-msgid "Branding elements"
-msgstr "Elementi blagovne znamke"
-
-#: frontend/src/metabase/embedding-hub/pages/EmbeddingHubAppearancePage.tsx
-msgid "Colors and branding for full-app embedding are based on the appearance settings defined in the"
-msgstr "Barve in blagovna znamka za vdelavo celotne aplikacije temeljijo na nastavitvah videza, določenih v"
-
-#: frontend/src/metabase/embedding-hub/pages/EmbeddingHubAuthenticationPage.tsx
-msgid "SAML is configured"
-msgstr "SAML je konfiguriran"
-
-#: frontend/src/metabase/embedding-hub/pages/EmbeddingHubAuthenticationPage.tsx
-msgid "You can review all authentication settings in the Admin."
-msgstr "Vse nastavitve avtentikacije lahko pregledate v Skrbniki."
-
-#: frontend/src/metabase/embedding-hub/pages/EmbeddingHubAuthenticationPage.tsx
-msgid "Go to Admin"
-msgstr "Pojdi v Skrbniki"
-
-#: frontend/src/metabase/embedding-hub/pages/EmbeddingHubAuthenticationPage.tsx
-msgid "View more authentication options, such as SAML, in the"
-msgstr "Oglejte si več možnosti avtentikacije, kot je SAML, v"
-
-#: frontend/src/metabase/embedding-hub/pages/EmbeddingHubAuthenticationPage.tsx
-msgid "Admin settings"
-msgstr "Skrbniške nastavitve"
-
-#: frontend/src/metabase/embedding-hub/pages/EmbeddingHubSecurityPage.tsx
-msgid "Upgrade to Metabase Pro to access the SDK for React and more advanced options."
-msgstr "Nadgradite na Metabase Pro za dostop do SDK za React in bolj naprednih možnosti."
-
-#: frontend/src/metabase/embedding-hub/pages/EmbeddingHubSecurityPage.tsx
-msgid "Published guest embeds"
-msgstr "Objavljene vdelave za goste"
-
-#: frontend/src/metabase/embedding-hub/pages/EmbeddingHubTenancyPage.tsx
-#: frontend/src/metabase/embedding-hub/pages/GetStarted/EmbeddingHubGetStartedPage.tsx
-msgid "Documentation"
-msgstr "Dokumentacija"
-
-#: frontend/src/metabase/embedding-hub/pages/EmbeddingHubTenancyPage.tsx
-#: frontend/src/metabase/embedding/setup-guide/components/SetupPermissionsAndTenantsPage/SetupPermissionsAndTenantsPage.tsx
-msgid "Enable multi-tenant user strategy"
-msgstr "Omogoči strategijo uporabnikov za več najemnikov"
-
-#: frontend/src/metabase/embedding-hub/pages/EmbeddingHubTenancyPage.tsx
-msgid "A tenant is a set of attributes assigned to a user to isolate them from other tenants. For example, in a SaaS app with embedded Metabase dashboards, you can assign each customer to a tenant. Tenants let you reuse the same dashboards and permissions across all tenants, instead of recreating them for each customer."
-msgstr "Najemnik je nabor atributov, dodeljenih uporabniku, da ga izolirajo od drugih najemnikov. Na primer, v SaaS aplikaciji z vdelanimi nadzornimi ploščami Metabase lahko vsako stranko dodelite najemniku. Najemniki vam omogočajo, da ponovno uporabite iste nadzorne plošče in dovoljenja pri vseh najemnikih, namesto da jih znova ustvarjate za vsako stranko."
-
-#: frontend/src/metabase/embedding-hub/pages/EmbeddingHubTenancyPage.tsx
-msgid "Enable multi-tenancy"
-msgstr "Omogoči večnajemništvo"
-
-#: frontend/src/metabase/embedding-hub/pages/EmbeddingHubTenancyPage.tsx
-msgid "View docs"
-msgstr "Oglej si dokumentacijo"
-
-#: frontend/src/metabase/embedding-hub/pages/GetStarted/ChecklistCard.tsx
-#, javascript-format
-msgid "Step {0} complete"
-msgstr "Korak {0} dokončan"
-
-#: frontend/src/metabase/embedding-hub/pages/GetStarted/EmbeddingHubGetStartedPage.tsx
-msgid "Set up SSO to unlock"
-msgstr "Nastavite SSO za odklep"
-
-#: frontend/src/metabase/embedding-hub/pages/GetStarted/EmbeddingHubGetStartedPage.tsx
-msgid "Get started with Metabase Embedding"
-msgstr "Začnite z Metabase Vdelava"
-
-#: frontend/src/metabase/embedding-hub/pages/GetStarted/EmbeddingHubGetStartedPage.tsx
-msgid "Create your first embed"
-msgstr "Ustvarite svojo prvo vdelavo"
-
-#: frontend/src/metabase/embedding-hub/pages/GetStarted/EmbeddingHubGetStartedPage.tsx
-msgid "If all you want is a simple embedded dashboard, these steps are all you need."
-msgstr "Če želite samo preprosto vdelano nadzorno ploščo, so ti koraki vse, kar potrebujete."
-
-#: frontend/src/metabase/embedding-hub/pages/GetStarted/EmbeddingHubGetStartedPage.tsx
-msgid "Start with the basics of Metabase embedding."
-msgstr "Začnite z osnovami vdelave Metabase."
-
-#: frontend/src/metabase/embedding-hub/pages/GetStarted/EmbeddingHubGetStartedPage.tsx
-msgid "Fine-tune your embed"
-msgstr "Natančno nastavite svojo vdelavo"
-
-#: frontend/src/metabase/embedding-hub/pages/GetStarted/EmbeddingHubGetStartedPage.tsx
-msgid "If you have a more sophisticated setup in mind, with many users and tenants, then keep going."
-msgstr "Če imate v mislih bolj sofisticirano postavitev, z veliko uporabniki in najemniki, nadaljujte."
-
-#: frontend/src/metabase/embedding-hub/pages/GetStarted/EmbeddingHubGetStartedPage.tsx
-msgid "Upgrade to Metabase Pro to configure advanced options."
-msgstr "Nadgradite na Metabase Pro za konfiguracijo naprednih možnosti."
-
-#: frontend/src/metabase/embedding-hub/pages/GetStarted/EmbeddingHubGetStartedPage.tsx
-#: frontend/src/metabase/embedding/setup-guide/hooks/use-get-setup-guide-steps.ts
-msgid "Connect your own database or upload a CSV and start working with your real data."
-msgstr "Povežite svojo bazo podatkov ali naložite CSV in začnite delati s svojimi dejanskimi podatki."
-
-#: frontend/src/metabase/embedding-hub/pages/GetStarted/EmbeddingHubGetStartedPage.tsx
-#: frontend/src/metabase/embedding/setup-guide/hooks/use-get-setup-guide-steps.ts
-#: frontend/src/metabase/home/components/Onboarding/items/DashboardItem.tsx
-#: frontend/src/metabase/palette/shortcuts/global.ts
-msgid "Create a dashboard"
-msgstr "Ustvari nadzorno ploščo"
-
-#: frontend/src/metabase/embedding-hub/pages/GetStarted/EmbeddingHubGetStartedPage.tsx
-#: frontend/src/metabase/embedding/setup-guide/hooks/use-get-setup-guide-steps.ts
-msgid "Automatically generate a dashboard from your data using x-rays."
-msgstr "Samodejno ustvari nadzorno ploščo iz svojih podatkov z uporabo rentgenov."
-
-#: frontend/src/metabase/embedding-hub/pages/GetStarted/EmbeddingHubGetStartedPage.tsx
-#: frontend/src/metabase/embedding/setup-guide/hooks/use-get-setup-guide-steps.ts
-msgid "Get embed snippet"
-msgstr "Pridobi izsek za vdelavo"
-
-#: frontend/src/metabase/embedding-hub/pages/GetStarted/EmbeddingHubGetStartedPage.tsx
-#: frontend/src/metabase/embedding/setup-guide/hooks/use-get-setup-guide-steps.ts
-msgid "Embed a dashboard, question, the query builder or the collection browser. Configure the experience and customize the appearance."
-msgstr "Vdelajte nadzorno ploščo, vprašanje, graditelj poizvedb ali brskalnik po zbirkah. Nastavite izkušnjo in prilagodite videz."
-
-#: frontend/src/metabase/embedding-hub/pages/GetStarted/EmbeddingHubGetStartedPage.tsx
-msgid "Embed a dashboard or question. Configure the experience and customize the appearance."
-msgstr "Vdelajte nadzorno ploščo ali vprašanje. Konfigurirajte izkušnjo in prilagodite videz."
-
-#: frontend/src/metabase/embedding-hub/pages/GetStarted/EmbeddingHubGetStartedPage.tsx
-msgid "Configure data permissions and tenants"
-msgstr "Konfiguriraj dovoljenja za podatke in najemnike"
-
-#: frontend/src/metabase/embedding-hub/pages/GetStarted/EmbeddingHubGetStartedPage.tsx
-msgid "Share data with external users and allow them to create content."
-msgstr "Delite podatke z zunanjimi uporabniki in jim omogočite ustvarjanje vsebine."
-
-#: frontend/src/metabase/embedding-hub/pages/GetStarted/EmbeddingHubGetStartedPage.tsx
-msgid "Set up SSO"
-msgstr "Nastavi SSO"
-
-#: frontend/src/metabase/embedding-hub/pages/GetStarted/EmbeddingHubGetStartedPage.tsx
-#: frontend/src/metabase/embedding/setup-guide/hooks/use-get-setup-guide-steps.ts
-msgid "Configure JWT authentication to ensure only authorized users can access your embeds."
-msgstr "Nastavi avtentikacijo JWT, da zagotoviš, da lahko do tvojih vdelav dostopajo samo pooblaščeni uporabniki."
-
-#: frontend/src/metabase/embedding-hub/pages/GetStarted/EmbeddingHubGetStartedPage.tsx
-#: frontend/src/metabase/embedding/setup-guide/hooks/use-get-setup-guide-steps.ts
-msgid "Embed in production with SSO"
-msgstr "Vdelaj v produkcijo s SSO"
-
-#: frontend/src/metabase/embedding-hub/pages/GetStarted/EmbeddingHubGetStartedPage.tsx
-msgid "Create a custom theme"
-msgstr "Ustvari temo po meri"
-
-#: frontend/src/metabase/embedding-hub/pages/GetStarted/EmbeddingHubGetStartedPage.tsx
-#: frontend/src/metabase/embedding-hub/upsells/AppearanceUpsellPage.tsx
-msgid "Fine-tune the appearance of your embedded content with colors and fonts."
-msgstr "Natančno prilagodite videz vaše vdelane vsebine z barvami in pisavami."
-
-#: frontend/src/metabase/embedding-hub/pages/GetStarted/EmbeddingHubGetStartedPage.tsx
-msgid "Configure AI"
-msgstr "Konfiguriraj UI"
-
-#: frontend/src/metabase/embedding-hub/pages/GetStarted/EmbeddingHubGetStartedPage.tsx
-msgid "Connect to an LLM provider to embed AI chat interfaces and let your users ask natural language queries."
-msgstr "Povežite se s ponudnikom LLM, da vdelate UI klepetne vmesnike in uporabnikom omogočite poizvedbe v naravnem jeziku."
-
-#: frontend/src/metabase/embedding-hub/pages/GetStarted/EmbeddingHubGetStartedPage.tsx
-msgid "Useful links"
-msgstr "Uporabne povezave"
-
-#: frontend/src/metabase/embedding-hub/pages/GetStarted/EmbeddingHubGetStartedPage.tsx
-msgid "Embedding methods"
-msgstr "Metode vdelave"
-
-#: frontend/src/metabase/embedding-hub/pages/GetStarted/EmbeddingHubGetStartedPage.tsx
-msgid "Demo"
-msgstr "Predstavitev"
-
-#: frontend/src/metabase/embedding-hub/upsells/AppearanceUpsellPage.tsx
-msgid "Create custom themes"
-msgstr "Ustvari teme po meri"
-
-#: frontend/src/metabase/embedding-hub/upsells/AuthenticationUpsellPage.tsx
-msgid "Secure your embeds with single sign-on"
-msgstr "Zavarujte svoje vdelave z enotno prijavo"
-
-#: frontend/src/metabase/embedding-hub/upsells/AuthenticationUpsellPage.tsx
-msgid "Connect Metabase to your identity provider using JSON Web Tokens (JWT) to authenticate people to ensure only authorized users can access your embeds."
-msgstr "Povežite Metabase s svojim ponudnikom identitet z uporabo JSON Web Tokens (JWT) za avtentikacijo ljudi, da zagotovite, da lahko do vaših vdelav dostopajo samo pooblaščeni uporabniki."
-
-#: frontend/src/metabase/embedding-hub/upsells/LocalizationUpsellPage.tsx
-msgid "Translate your embedded content"
-msgstr "Prevedite svojo vdelano vsebino"
-
-#: frontend/src/metabase/embedding-hub/upsells/LocalizationUpsellPage.tsx
-msgid "Upload a translation dictionary to translate content such as item titles, headings, filter labels, and data in your embedded components."
-msgstr "Naložite prevajalski slovar za prevod vsebine, kot so naslovi elementov, naslovi, oznake filtrov in podatki v vaših vdelanih komponentah."
-
 #: frontend/src/metabase/embedding/components/ArchiveButton.tsx
 msgctxt "button that opens an actions dropdown e.g. Move this item to trash"
 msgid "Actions"
@@ -23275,23 +23587,13 @@ msgid "Guest"
 msgstr "Gost"
 
 #: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/AuthenticationCard/EnableGuestEmbedsSection.tsx
-#: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/AuthenticationCard/EnableModularEmbeddingSection.tsx
-msgid "Failed to enable modular embedding"
-msgstr "Modularnega vdelovanja ni bilo mogoče omogočiti"
-
-#: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/AuthenticationCard/EnableGuestEmbedsSection.tsx
-msgid "Failed to enable embedding"
-msgstr "Omogočanje vdelave ni uspelo"
-
-#: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/AuthenticationCard/EnableGuestEmbedsSection.tsx
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/EnableEmbeddingPrompt.tsx
-msgid "usage conditions"
-msgstr "pogoji uporabe"
+msgid "Failed to enable guest embeds"
+msgstr "Vdelav za goste ni bilo mogoče omogočiti"
 
 #: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/AuthenticationCard/EnableGuestEmbedsSection.tsx
 #, javascript-format
-msgid "To continue, enable embedding and agree to the {0}."
-msgstr "Za nadaljevanje omogočite vdelavo in se strinjajte s {0}."
+msgid "To continue, enable guest embeds and agree to the {0}."
+msgstr "Za nadaljevanje omogočite vdelave za goste in se strinjajte z {0}."
 
 #: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/AuthenticationCard/EnableGuestEmbedsSection.tsx
 #: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/AuthenticationCard/EnableModularEmbeddingSection.tsx
@@ -23304,13 +23606,8 @@ msgid "Agree to the {0} to continue."
 msgstr "Za nadaljevanje se strinjaj z {0}."
 
 #: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/AuthenticationCard/EnableGuestEmbedsSection.tsx
-#: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/AuthenticationCard/EnableModularEmbeddingSection.tsx
-msgid "Enable modular embedding to get started."
-msgstr "Za začetek omogočite modularno vdelovanje."
-
-#: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/AuthenticationCard/EnableGuestEmbedsSection.tsx
-msgid "Enable embedding to get started."
-msgstr "Omogočite vdelavo, da začnete."
+msgid "Enable guest embeds to get started."
+msgstr "Za začetek omogočite vdelave za goste."
 
 #: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/AuthenticationCard/EnableGuestEmbedsSection.tsx
 #: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/AuthenticationCard/EnableModularEmbeddingSection.tsx
@@ -23335,6 +23632,10 @@ msgid "You should, however, read the license text linked above as that is the ac
 msgstr "Vseeno pa preberite besedilo licence, povezano zgoraj, saj je to dejanska licenca, s katero se boste strinjali, ko omogočite to funkcijo."
 
 #: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/AuthenticationCard/EnableModularEmbeddingSection.tsx
+msgid "Failed to enable modular embedding"
+msgstr "Modularnega vdelovanja ni bilo mogoče omogočiti"
+
+#: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/AuthenticationCard/EnableModularEmbeddingSection.tsx
 msgid "To continue, enable modular embedding and agree to the usage conditions."
 msgstr "Za nadaljevanje omogočite modularno vdelovanje in se strinjajte s pogoji uporabe."
 
@@ -23343,16 +23644,8 @@ msgid "Agree to the usage conditions to continue."
 msgstr "Za nadaljevanje se strinjaj s pogoji uporabe."
 
 #: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/AuthenticationCard/EnableModularEmbeddingSection.tsx
-msgid "When using modular embedding, each end user must have their own Metabase account."
-msgstr "Pri uporabi modularnega vdelovanja mora imeti vsak končni uporabnik svoj račun Metabase."
-
-#: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/AuthenticationCard/EnableModularEmbeddingSection.tsx
-msgid "Sharing Metabase accounts is a security risk. Even if you filter data on the client side, each user could use their token to view any data visible to that shared user account."
-msgstr "Deljenje računov Metabase je varnostno tveganje. Tudi če filtrirate podatke na strani odjemalca, bi lahko vsak uporabnik s svojim žetonom videl katere koli podatke, vidne temu deljenemu uporabniškemu računu."
-
-#: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/AuthenticationCard/EnableModularEmbeddingSection.tsx
-msgid "That, and we consider shared accounts to be unfair usage. Fair usage involves giving each end-user of the embedded analytics their own Metabase account."
-msgstr "Poleg tega menimo, da so deljeni računi nepoštena uporaba. Poštena uporaba pomeni, da ima vsak končni uporabnik vdelane analitike svoj račun Metabase."
+msgid "Enable modular embedding to get started."
+msgstr "Za začetek omogočite modularno vdelovanje."
 
 #: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/Common/EmbeddingUpsell.tsx
 msgid "Get more powerful embedding"
@@ -23387,12 +23680,6 @@ msgstr "Eno ali več vprašanj na tej nadzorni plošči poizveduje podatkovno ba
 #: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/DatabaseRoutingWarning.tsx
 msgid "This question is querying a database with database routing enabled. The database queries will be executed against the router database."
 msgstr "To vprašanje poizveduje podatkovno bazo z omogočenim usmerjanjem podatkovne baze. Poizvedbe v podatkovno bazo bodo izvedene proti usmerjevalni bazi podatkov."
-
-#: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/GetCode/CopyCodeSnippetButton.tsx
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/EditorPanel.tsx
-#: frontend/src/metabase/metabot/components/AIMarkdown/AIMarkdown.tsx
-msgid "Copy code"
-msgstr "Kopiraj kodo"
 
 #: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/GetCode/PublishQuestionEmptyState.tsx
 #, javascript-format
@@ -23767,156 +24054,6 @@ msgstr "Ta vizualizacija je potekla. Prosite svojega odjemalca MCP, naj znova za
 msgid "Could not load this visualization. Make sure Metabase is reachable, then ask your MCP client to show this again."
 msgstr "Te vizualizacije ni bilo mogoče naložiti. Preverite, ali je Metabase dosegljiv, nato prosite svojega odjemalca MCP, naj to znova prikaže."
 
-#: frontend/src/metabase/embedding/settings/EmbeddedResources.tsx
-msgid "Embedded dashboards"
-msgstr "Vdelane nadzorne plošče"
-
-#: frontend/src/metabase/embedding/settings/EmbeddedResources.tsx
-msgid "No dashboards have been embedded yet."
-msgstr "Nobena nadzorna plošča še ni bila vdelana."
-
-#: frontend/src/metabase/embedding/settings/EmbeddedResources.tsx
-msgid "Embedded questions"
-msgstr "Vdelana vprašanja"
-
-#: frontend/src/metabase/embedding/settings/EmbeddedResources.tsx
-msgid "No questions have been embedded yet."
-msgstr "Nobeno vprašanje še ni bilo vdelano."
-
-#: frontend/src/metabase/embedding/settings/EmbeddingLegaleseModal/EmbeddingLegaleseModal.tsx
-msgid "Each end user needs their own Metabase account"
-msgstr "Vsak končni uporabnik potrebuje svoj račun Metabase"
-
-#: frontend/src/metabase/embedding/settings/EmbeddingLegaleseModal/EmbeddingLegaleseModal.tsx
-msgid "When you embed Metabase, each person who uses your app needs their own Metabase account. That's because sharing a single account between users is a security risk. Filtering data on the client side doesn't solve it, since anyone with that account's token can reach anything the account can see. Additionally, we consider shared accounts to be unfair usage."
-msgstr "Ko vdelate Metabase, vsaka oseba, ki uporablja vašo aplikacijo, potrebuje svoj račun Metabase. To je zato, ker je deljenje enega računa med uporabniki varnostno tveganje. Filtriranje podatkov na strani odjemalca tega ne reši, saj lahko vsakdo z žetonom tega računa doseže vse, kar lahko vidi račun. Poleg tega deljene račune štejemo za nepošteno uporabo."
-
-#: frontend/src/metabase/embedding/settings/EmbeddingLegaleseModal/EmbeddingLegaleseModal.tsx
-msgid "Agree"
-msgstr "Strinjam se"
-
-#: frontend/src/metabase/embedding/settings/EmbeddingMethodsCard/EmbeddingMethodsCard.tsx
-msgid "Modular embedding and SDK for React"
-msgstr "Modularno vdelovanje in SDK za React"
-
-#: frontend/src/metabase/embedding/settings/EmbeddingMethodsCard/EmbeddingMethodsCard.tsx
-msgid "Embed the full power of Metabase into your application with modular embedding and the React SDK to build custom analytics experiences and programmatically manage dashboards and data."
-msgstr "Vdelajte vso moč Metabase v svojo aplikacijo z modularnim vdelovanjem in React SDK, da zgradite izkušnje analitike po meri ter programsko upravljate nadzorne plošče in podatke."
-
-#: frontend/src/metabase/embedding/settings/EmbeddingMethodsCard/EmbeddingMethodsCard.tsx
-msgid "Enable embedding"
-msgstr "Omogoči vdelavo"
-
-#: frontend/src/metabase/embedding/settings/EmbeddingMethodsCard/EmbeddingMethodsCard.tsx
-msgid "Embed Metabase dashboards and questions into your application with modular embedding."
-msgstr "Vdelajte nadzorne plošče in vprašanja Metabase v svojo aplikacijo z modularnim vdelovanjem."
-
-#: frontend/src/metabase/embedding/settings/EmbeddingMethodsCard/EmbeddingMethodsCard.tsx
-msgid "Full-app embedding"
-msgstr "Vdelava celotne aplikacije"
-
-#: frontend/src/metabase/embedding/settings/EmbeddingMethodsCard/EmbeddingMethodsCard.tsx
-msgid "A way to embed the entire Metabase app in an iframe. This involves hard trade-off and is generally not recommended unless you know exactly what you are doing."
-msgstr "Način za vdelavo celotne aplikacije Metabase v iframe. To vključuje velike kompromise in na splošno ni priporočljivo, razen če natančno veste, kaj počnete."
-
-#: frontend/src/metabase/embedding/settings/EmbeddingMethodsCard/EmbeddingMethodsCard.tsx
-msgid "Availability of embedding methods"
-msgstr "Razpoložljivost načinov vdelave"
-
-#: frontend/src/metabase/embedding/settings/EmbeddingSecretKeyWidget.tsx
-msgid "Secret key for guest embeds"
-msgstr "Skrivni ključ za vdelave za goste"
-
-#: frontend/src/metabase/embedding/settings/EmbeddingSecretKeyWidget.tsx
-msgid "Standalone Embed Secret Key used to sign JSON Web Tokens for requests to /api/embed endpoints. This lets you create a secure environment limited to specific users or organizations."
-msgstr "Samostojni skrivni ključ za vdelavo, ki se uporablja za podpisovanje spletnih žetonov JSON za zahteve za končne točke /api/embed. Tako lahko ustvarite varno okolje, omejeno na določene uporabnike ali organizacije."
-
-#: frontend/src/metabase/embedding/settings/EmbeddingSecretKeyWidget.tsx
-#: frontend/src/metabase/forms/components/FormSecretKey/FormSecretKey.tsx
-msgid "Regenerate key"
-msgstr "Znova generiraj ključ"
-
-#: frontend/src/metabase/embedding/settings/EmbeddingSecretKeyWidget.tsx
-msgid "Regenerate embedding key?"
-msgstr "Ponovno generiram ključ za vdelavo?"
-
-#: frontend/src/metabase/embedding/settings/EmbeddingSecretKeyWidget.tsx
-msgid "This will cause existing embeds to stop working until they are updated with the new key."
-msgstr "To bo povzročilo, da obstoječe vdelave ne bodo delovale, dokler jih ne posodobite z novim ključem."
-
-#: frontend/src/metabase/embedding/settings/EmbeddingSecretKeyWidget.tsx
-msgid "Generate key"
-msgstr "Generiraj ključ"
-
-#: frontend/src/metabase/embedding/settings/EmbeddingSecuritySettings/CorsInputWidget.tsx
-msgid "Separate values with a space. Localhost is not allowed. Changes will take effect within one minute."
-msgstr "Vrednosti ločite s presledkom. Localhost ni dovoljen. Spremembe bodo začele veljati v eni minuti."
-
-#: frontend/src/metabase/embedding/settings/EmbeddingSecuritySettings/CorsInputWidget.tsx
-msgid "Separate values with a space. Localhost is automatically included. Changes will take effect within one minute."
-msgstr "Vrednosti ločite s presledkom. Localhost je samodejno vključen. Spremembe bodo začele veljati v eni minuti."
-
-#: frontend/src/metabase/embedding/settings/EmbeddingSecuritySettings/CorsInputWidget.tsx
-#, javascript-format
-msgid "Add the website domains where you want to allow Modular embedding and SDK. SDK using API keys can only run on localhost. {0}"
-msgstr "Dodajte domene spletnih mest, kjer želite dovoliti Modularno vdelovanje in SDK. SDK, ki uporablja API ključe, lahko teče samo na localhost. {0}"
-
-#: frontend/src/metabase/embedding/settings/EmbeddingSecuritySettings/CorsInputWidget.tsx
-#, javascript-format
-msgid "Add the website domains where you want to allow embedding. {0}"
-msgstr "Dodajte domene spletnih mest, kjer želite dovoliti vdelavo. {0}"
-
-#: frontend/src/metabase/embedding/settings/EmbeddingSecuritySettings/CorsInputWidget.tsx
-msgid "Cross-Origin Resource Sharing (CORS)"
-msgstr "Cross-Origin Resource Sharing (CORS)"
-
-#: frontend/src/metabase/embedding/settings/EmbeddingSecuritySettings/EmbeddingAppSameSiteCookieDescription.tsx
-msgid "Determines whether or not cookies are allowed to be sent on cross-site requests. You'll likely need to change this to None if your embedding application is hosted under a different domain than Metabase. Otherwise, leave it set to Lax, as it's more secure."
-msgstr "Določa, ali je dovoljeno pošiljanje piškotkov pri zahtevah med spletnimi mesti. To boste verjetno morali spremeniti na None, če je vaša aplikacija za vdelavo gostovana pod drugo domeno kot Metabase. Sicer pustite nastavljeno na Lax, ker je bolj varno."
-
-#: frontend/src/metabase/embedding/settings/EmbeddingSecuritySettings/EmbeddingAppSameSiteCookieDescription.tsx
-#, javascript-format
-msgctxt "{0} is a 'Learn more' link to the embedding documentation"
-msgid "If you set this to None, you'll have to use HTTPS, or browsers will reject the request. {0}"
-msgstr "Če to nastavite na None, boste morali uporabljati HTTPS, sicer bodo brskalniki zahtevo zavrnili. {0}"
-
-#: frontend/src/metabase/embedding/settings/EmbeddingSecuritySettings/EmbeddingAppSameSiteCookieDescription.tsx
-#, javascript-format
-msgid "You should probably change this setting to {0}."
-msgstr "To nastavitev bi verjetno morali spremeniti na {0}."
-
-#: frontend/src/metabase/embedding/settings/EmbeddingSecuritySettings/SameSiteSelectWidget.tsx
-msgid "Lax (default)"
-msgstr "Lax (privzeto)"
-
-#: frontend/src/metabase/embedding/settings/EmbeddingSecuritySettings/SameSiteSelectWidget.tsx
-msgid "Allows Metabase session cookies to be shared on the same domain. Used for production instances on the same domain."
-msgstr "Omogoča, da se piškotki seje Metabase delijo znotraj iste domene. Uporabno za produkcijske instance na isti domeni."
-
-#: frontend/src/metabase/embedding/settings/EmbeddingSecuritySettings/SameSiteSelectWidget.tsx
-msgid "Strict (not recommended)"
-msgstr "Strict (ni priporočljivo)"
-
-#: frontend/src/metabase/embedding/settings/EmbeddingSecuritySettings/SameSiteSelectWidget.tsx
-msgid "Does not allow Metabase session cookies to be shared with embedded instances. Use this if you do not want to enable session sharing with embedding."
-msgstr "Ne dovoljuje deljenja piškotkov seje Metabase z vdelanimi instancami. Uporabite to, če ne želite omogočiti deljenja seje pri vdelavi."
-
-#: frontend/src/metabase/embedding/settings/EmbeddingSecuritySettings/SameSiteSelectWidget.tsx
-msgid "None (requires HTTPS)"
-msgstr "Brez (zahteva HTTPS)"
-
-#: frontend/src/metabase/embedding/settings/EmbeddingSecuritySettings/SameSiteSelectWidget.tsx
-msgid "Use \"None\" when your app and Metabase are hosted on different domains. Incompatible with Safari and iOS-based browsers."
-msgstr "Uporabite \"Brez\", ko sta vaša aplikacija in Metabase gostovana na različnih domenah. Nezdružljivo s Safari in brskalniki na osnovi iOS."
-
-#: frontend/src/metabase/embedding/settings/EmbeddingSecuritySettings/SameSiteSelectWidget.tsx
-msgid "SameSite cookie setting"
-msgstr "Nastavitev piškotka SameSite"
-
-#: frontend/src/metabase/embedding/settings/EmbeddingToggle/EmbeddingToggle.tsx
-msgid "Set via environment variable"
-msgstr "Nastavljeno prek okoljske spremenljivke"
-
 #: frontend/src/metabase/embedding/setup-guide/components/SetupGuide.tsx
 msgid "If all you want is a simple embedded dashboard, you're done! \n"
 "If you have a more sophisticated setup in mind, with many users and tenants, then keep going."
@@ -24089,6 +24226,10 @@ msgid "Configure data permissions and enable tenants"
 msgstr "Nastavi dovoljenja za podatke in omogoči najemnike"
 
 #: frontend/src/metabase/embedding/setup-guide/components/SetupPermissionsAndTenantsPage/SetupPermissionsAndTenantsPage.tsx
+msgid "Enable multi-tenant user strategy"
+msgstr "Omogoči strategijo uporabnikov za več najemnikov"
+
+#: frontend/src/metabase/embedding/setup-guide/components/SetupPermissionsAndTenantsPage/SetupPermissionsAndTenantsPage.tsx
 msgid "Move a dashboard to the shared collection"
 msgstr "Premakni nadzorno ploščo v skupno zbirko"
 
@@ -24218,8 +24359,8 @@ msgid "404 error after SSO sign-in"
 msgstr "Napaka 404 po prijavi s SSO"
 
 #: frontend/src/metabase/embedding/setup-guide/components/SetupSsoPage/TestJwtStep.tsx
-msgid "If after clicking on \"Sign in with SSO\", the browser returns a 404 error, make sure the value of the JWT SSO URI in the embedding hub's Authentication tab is pointing to your endpoint and your endpoint is up and running and available."
-msgstr "Če po kliku na \"Sign in with SSO\" brskalnik vrne napako 404, preverite, ali vrednost JWT SSO URI v zavihku Avtentikacija v središču za vdelavo kaže na vašo končno točko ter da je vaša končna točka zagnana in dosegljiva."
+msgid "If after clicking on \"Sign in with SSO\", the browser returns a 404 error, make sure the value of the JWT SSO URI in admin settings / auth / JWT is pointing to your endpoint and your endpoint is up and running and available."
+msgstr "Če po kliku na \"Sign in with SSO\" brskalnik vrne napako 404, preverite, da vrednost JWT SSO URI v skrbniških nastavitvah / auth / JWT kaže na vašo končno točko ter da je vaša končna točka zagnana in na voljo."
 
 #: frontend/src/metabase/embedding/setup-guide/components/SetupSsoPage/TestJwtStep.tsx
 msgid "JWT decryption error: \"Message seems corrupt\""
@@ -24242,8 +24383,8 @@ msgid "User provisioning disabled for JWT SSO"
 msgstr "Provisioning uporabnikov je onemogočen za JWT SSO"
 
 #: frontend/src/metabase/embedding/setup-guide/components/SetupSsoPage/TestJwtStep.tsx
-msgid "If after being redirected from your app to Metabase, you see an error message \"Sorry, but you'll need a $SITENAME account to view this page, contact your administrator. User provisioning is turned off for JWT SSO in the embedding hub's Authentication tab. Either turn this feature on to have users be provisioned if they don't exist yet, or ensure users exist before signing them in via JWT SSO."
-msgstr "Če po preusmeritvi iz vaše aplikacije v Metabase vidite sporočilo o napaki \"Sorry, but you'll need a $SITENAME account to view this page, contact your administrator.\", je omogočanje uporabnikov izklopljeno za JWT SSO v zavihku Avtentikacija v središču za vdelavo. To funkcijo bodisi vklopite, da se uporabniki provisionirajo, če še ne obstajajo, ali pa zagotovite, da uporabniki obstajajo, preden jih prijavite prek JWT SSO."
+msgid "If after being redirected from your app to Metabase, you see an error message \"Sorry, but you'll need a $SITENAME account to view this page, contact your administrator. User provisioning is turned off for JWT SSO in admin settings/authentication. Either turn this feature on to have users be provisioned if they don't exist yet, or ensure users exist before signing them in via JWT SSO."
+msgstr "Če po preusmeritvi iz vaše aplikacije v Metabase vidite sporočilo o napaki \"Sorry, but you'll need a $SITENAME account to view this page, contact your administrator. User provisioning is turned off for JWT SSO in admin settings/authentication. Either turn this feature on to have users be provisioned if they don't exist yet, or ensure users exist before signing them in via JWT SSO.\", pomeni, da je samodejno ustvarjanje uporabnikov za JWT SSO izklopljeno v skrbniških nastavitvah/avtentikaciji. To funkcijo vklopite, da se uporabniki ustvarijo, če še ne obstajajo, ali pa zagotovite, da uporabniki obstajajo, preden jih prijavite prek JWT SSO."
 
 #: frontend/src/metabase/embedding/setup-guide/components/SetupSsoPage/TestJwtStep.tsx
 msgid "Contact customer support"
@@ -24258,14 +24399,36 @@ msgid "Create embed"
 msgstr "Ustvari vdelavo"
 
 #: frontend/src/metabase/embedding/setup-guide/hooks/use-get-setup-guide-steps.ts
+msgid "Get embed snippet"
+msgstr "Pridobi izsek za vdelavo"
+
+#: frontend/src/metabase/embedding/setup-guide/hooks/use-get-setup-guide-steps.ts
+msgid "Embed a dashboard, question, the query builder or the collection browser. Configure the experience and customize the appearance."
+msgstr "Vdelajte nadzorno ploščo, vprašanje, graditelj poizvedb ali brskalnik po zbirkah. Nastavite izkušnjo in prilagodite videz."
+
+#: frontend/src/metabase/embedding/setup-guide/hooks/use-get-setup-guide-steps.ts
 #: frontend/src/metabase/nav/containers/MainNavbar/MainNavbarContainer/GettingStartedSection.tsx
 #: frontend/src/metabase/setup/components/DatabaseStep/DatabaseStep.tsx
 msgid "Add your data"
 msgstr "Dodajte svoje podatke"
 
 #: frontend/src/metabase/embedding/setup-guide/hooks/use-get-setup-guide-steps.ts
+msgid "Connect your own database or upload a CSV and start working with your real data."
+msgstr "Povežite svojo bazo podatkov ali naložite CSV in začnite delati s svojimi dejanskimi podatki."
+
+#: frontend/src/metabase/embedding/setup-guide/hooks/use-get-setup-guide-steps.ts
 msgid "Prepare data"
 msgstr "Pripravi podatke"
+
+#: frontend/src/metabase/embedding/setup-guide/hooks/use-get-setup-guide-steps.ts
+#: frontend/src/metabase/home/components/Onboarding/items/DashboardItem.tsx
+#: frontend/src/metabase/palette/shortcuts/global.ts
+msgid "Create a dashboard"
+msgstr "Ustvari nadzorno ploščo"
+
+#: frontend/src/metabase/embedding/setup-guide/hooks/use-get-setup-guide-steps.ts
+msgid "Automatically generate a dashboard from your data using x-rays."
+msgstr "Samodejno ustvari nadzorno ploščo iz svojih podatkov z uporabo rentgenov."
 
 #: frontend/src/metabase/embedding/setup-guide/hooks/use-get-setup-guide-steps.ts
 msgid "Pick a strategy for users and permissions"
@@ -24276,168 +24439,20 @@ msgid "Set granular permissions for multi-tenancy to control data access. Share 
 msgstr "Nastavi granularna dovoljenja za večnajemništvo za nadzor dostopa do podatkov. Deli nadzorne plošče, vprašanja in modele z zunanjimi uporabniki ter jim dovoli ustvarjanje vsebine, hkrati pa omeji dostop do internih podatkov ali podatkov drugih najemnikov."
 
 #: frontend/src/metabase/embedding/setup-guide/hooks/use-get-setup-guide-steps.ts
+msgid "Configure JWT authentication to ensure only authorized users can access your embeds."
+msgstr "Nastavi avtentikacijo JWT, da zagotoviš, da lahko do tvojih vdelav dostopajo samo pooblaščeni uporabniki."
+
+#: frontend/src/metabase/embedding/setup-guide/hooks/use-get-setup-guide-steps.ts
 msgid "Deployment"
 msgstr "Namestitev"
 
 #: frontend/src/metabase/embedding/setup-guide/hooks/use-get-setup-guide-steps.ts
+msgid "Embed in production with SSO"
+msgstr "Vdelaj v produkcijo s SSO"
+
+#: frontend/src/metabase/embedding/setup-guide/hooks/use-get-setup-guide-steps.ts
 msgid "Deploy your embedded dashboard to a production environment and share with your users."
 msgstr "Namesti svojo vdelano nadzorno ploščo v produkcijsko okolje in jo deli s svojimi uporabniki."
-
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/EditorPanel.tsx
-msgid "Edit theme"
-msgstr "Uredi temo"
-
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/EditorPanel.tsx
-msgid "Theme name"
-msgstr "Ime teme"
-
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/EditorPanel.tsx
-msgid "Main colors"
-msgstr "Glavne barve"
-
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/EditorPanel.tsx
-msgid "Reset main colors to defaults"
-msgstr "Ponastavi glavne barve na privzete vrednosti"
-
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/EditorPanel.tsx
-msgid "Show fewer colors"
-msgstr "Prikaži manj barv"
-
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/EditorPanel.tsx
-msgid "Show more colors"
-msgstr "Prikaži več barv"
-
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/EditorPanel.tsx
-msgid "Regenerate filter, summarize, positive, negative, and chart colors from the brand color"
-msgstr "Znova ustvari barve filtrov, Povzemi, pozitivno, negativno in grafov iz barve blagovne znamke"
-
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/EditorPanel.tsx
-msgid "Regenerate from brand color"
-msgstr "Znova ustvari iz barve blagovne znamke"
-
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/EditorPanel.tsx
-msgid "Base font size"
-msgstr "Osnovna velikost pisave"
-
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/EditorPanel.tsx
-#: frontend/src/metabase/embedding/themes/components/ThemeListing/DeleteThemeModal.tsx
-msgid "Delete theme"
-msgstr "Izbriši temo"
-
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/EditorPanel.tsx
-msgid "Save theme"
-msgstr "Shrani temo"
-
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/EnableEmbeddingPrompt.tsx
-msgctxt "Prompt to enable modular embedding to see a live preview of an embedding theme."
-msgid "Enable modular embedding to see a live preview of your theme."
-msgstr "Omogočite modularno vdelovanje, da vidite predogled svoje teme v živo."
-
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/EnableEmbeddingPrompt.tsx
-#, javascript-format
-msgctxt "{0} is a link to the embedding conditions, for users to accept them and see a live preview of their theme."
-msgid "Accept the {0} to see a live preview of your theme."
-msgstr "Sprejmite {0}, da vidite predogled svoje teme v živo."
-
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/EnableEmbeddingPrompt.tsx
-msgid "Enable modular embedding"
-msgstr "Omogoči modularno vdelavo"
-
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/EnableEmbeddingPrompt.tsx
-msgid "Accept and continue"
-msgstr "Sprejmi in nadaljuj"
-
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/PreviewPanel.tsx
-msgid "Theme preview"
-msgstr "Predogled teme"
-
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/PreviewPanel.tsx
-msgid "Create a dashboard or question to preview this theme."
-msgstr "Ustvarite nadzorno ploščo ali vprašanje, da si ogledate predogled te teme."
-
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/PreviewResourcePicker.tsx
-msgid "Change preview resource"
-msgstr "Spremeni vir za predogled"
-
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/PreviewResourcePicker.tsx
-msgid "Select data to preview"
-msgstr "Izberi podatke za predogled"
-
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/constants.ts
-msgid "Brand"
-msgstr "Blagovna znamka"
-
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/constants.ts
-msgid "Background"
-msgstr "Ozadje"
-
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/constants.ts
-msgid "Primary text"
-msgstr "Primarno besedilo"
-
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/constants.ts
-msgid "Secondary text"
-msgstr "Sekundarno besedilo"
-
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/constants.ts
-msgid "Tertiary text"
-msgstr "Terciarno besedilo"
-
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/constants.ts
-msgid "Border"
-msgstr "Obroba"
-
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/constants.ts
-msgid "Shadow"
-msgstr "Senca"
-
-#: frontend/src/metabase/embedding/themes/components/ThemeListing/DeleteThemeModal.tsx
-msgid "Are you sure you want to delete this theme? This action cannot be undone."
-msgstr "Ali ste prepričani, da želite izbrisati to temo? Tega dejanja ni mogoče razveljaviti."
-
-#: frontend/src/metabase/embedding/themes/components/ThemeListing/EmbeddingThemeCard.tsx
-msgid "Duplicate and delete"
-msgstr "Podvoji in izbriši"
-
-#: frontend/src/metabase/embedding/themes/components/ThemeListing/EmbeddingThemeListingApp.tsx
-msgid "Theme duplicated successfully"
-msgstr "Tema je bila uspešno podvojena"
-
-#: frontend/src/metabase/embedding/themes/components/ThemeListing/EmbeddingThemeListingApp.tsx
-msgid "Failed to duplicate theme"
-msgstr "Teme ni bilo mogoče podvojiti"
-
-#: frontend/src/metabase/embedding/themes/components/ThemeListing/NewThemeCard.tsx
-msgid "New theme"
-msgstr "Nova tema"
-
-#: frontend/src/metabase/embedding/themes/hooks/use-delete-theme-flow.tsx
-msgid "Theme deleted successfully"
-msgstr "Tema je bila uspešno izbrisana"
-
-#: frontend/src/metabase/embedding/themes/hooks/use-delete-theme-flow.tsx
-msgid "Failed to delete theme"
-msgstr "Teme ni bilo mogoče izbrisati"
-
-#: frontend/src/metabase/embedding/themes/hooks/use-embedding-theme-editor.ts
-msgid "Untitled theme"
-msgstr "Neimenovana tema"
-
-#: frontend/src/metabase/embedding/themes/hooks/use-embedding-theme-editor.ts
-msgid "Filter, summarize, positive, negative, and chart colors regenerated from the brand color."
-msgstr "Barve filtrov, Povzemi, pozitivno, negativno in grafov so bile znova ustvarjene iz barve blagovne znamke."
-
-#: frontend/src/metabase/embedding/themes/hooks/use-embedding-theme-editor.ts
-msgid "Main colors reset to defaults."
-msgstr "Glavne barve ponastavljene na privzete vrednosti."
-
-#: frontend/src/metabase/embedding/themes/hooks/use-embedding-theme-editor.ts
-msgid "Theme saved"
-msgstr "Tema shranjena"
-
-#: frontend/src/metabase/embedding/themes/hooks/use-embedding-theme-editor.ts
-msgid "Failed to save theme"
-msgstr "Teme ni bilo mogoče shraniti"
 
 #: frontend/src/metabase/explorations/components/ExplorationSidebar/ExplorationErrorMarker.tsx
 msgid "Failed to generate"
@@ -24527,6 +24542,7 @@ msgstr "Ustavljeno"
 
 #: frontend/src/metabase/explorations/components/ExplorationSidebar/ExplorationTreeNode.tsx
 #: frontend/src/metabase/forms/components/FormSubmitButton/FormSubmitButton.tsx
+#: frontend/src/metabase/metabot/components/MetabotChat/MetabotChainOfThought/ToolStep.tsx
 #: frontend/src/metabase/monitor/tools/components/TaskRunStatusPicker/TaskRunStatusPicker.tsx
 #: frontend/src/metabase/monitor/tools/components/TaskStatusPicker/TaskStatusPicker.tsx
 #: frontend/src/metabase/monitor/tools/notifications/NotificationDetailSidebar/NotificationRunSummaryLog.tsx
@@ -24588,6 +24604,7 @@ msgid "Initial investigation"
 msgstr "Začetna preiskava"
 
 #: frontend/src/metabase/explorations/components/ExplorationSidebar/utils.ts
+#: frontend/src/metabase/palette/hooks/useCommandPaletteBasicActions.tsx
 msgid "New research"
 msgstr "Novo raziskovanje"
 
@@ -24901,33 +24918,41 @@ msgstr "Izberi skupino"
 msgid "Set up key"
 msgstr "Nastavi ključ"
 
-#: frontend/src/metabase/forms/components/FormSecretKey/FormSecretKey.tsx
-msgid "Create a secret key"
-msgstr "Ustvari skrivni ključ"
-
-#: frontend/src/metabase/forms/components/FormSecretKey/FormSecretKey.tsx
-msgid "Store your new key"
-msgstr "Shrani svoj novi ključ"
-
-#: frontend/src/metabase/forms/components/FormSecretKey/RegenerateKeyConfirmModal.tsx
-msgid "Delete key and generate a new one?"
-msgstr "Izbrišem ključ in ustvarim novega?"
-
-#: frontend/src/metabase/forms/components/FormSecretKey/RegenerateKeyConfirmModal.tsx
-msgid "This will cause existing tokens to stop working until the identity provider is updated with a new key."
-msgstr "Zaradi tega obstoječi žetoni ne bodo delovali, dokler ponudnik identitet ne bo posodobljen z novim ključem."
-
-#: frontend/src/metabase/forms/components/FormSecretKey/RegenerateKeyConfirmModal.tsx
-msgid "Delete key"
-msgstr "Izbriši ključ"
-
 #: frontend/src/metabase/forms/components/FormSecretKey/SetupKeyModal.tsx
 msgid "Error generating secret key."
 msgstr "Napaka pri generiranju skrivnega ključa."
 
 #: frontend/src/metabase/forms/components/FormSecretKey/SetupKeyModal.tsx
+msgid "Set up secret key"
+msgstr "Nastavi tajni ključ"
+
+#: frontend/src/metabase/forms/components/FormSecretKey/SetupKeyModal.tsx
+msgid "Copy to clipboard"
+msgstr "Kopiraj v odložišče"
+
+#: frontend/src/metabase/forms/components/FormSecretKey/SetupKeyModal.tsx
+msgid "Secret key copied to clipboard"
+msgstr "Tajni ključ je kopiran v odložišče"
+
+#: frontend/src/metabase/forms/components/FormSecretKey/SetupKeyModal.tsx
+msgid "Error copying secret key to clipboard."
+msgstr "Napaka pri kopiranju tajnega ključa v odložišče."
+
+#: frontend/src/metabase/forms/components/FormSecretKey/SetupKeyModal.tsx
 msgid "New secret key"
 msgstr "Nov skrivni ključ"
+
+#: frontend/src/metabase/forms/components/FormSecretKey/SetupKeyModal.tsx
+msgid "Make sure you copy this key now and save it in a safe place."
+msgstr "Poskrbite, da ta ključ zdaj kopirate in ga shranite na varno mesto."
+
+#: frontend/src/metabase/forms/components/FormSecretKey/SetupKeyModal.tsx
+msgid "You won't be able to see it again."
+msgstr "Ne boste ga mogli ponovno videti."
+
+#: frontend/src/metabase/forms/components/FormSecretKey/SetupKeyModal.tsx
+msgid "This will cause existing tokens to stop working until the identity provider is updated with the new key."
+msgstr "Zaradi tega bodo obstoječi žetoni prenehali delovati, dokler ponudnik identitete ne bo posodobljen z novim ključem."
 
 #: frontend/src/metabase/home/components/CustomHomePageModal/CustomHomePageModal.tsx
 msgid "This dashboard has been set as your homepage."
@@ -25092,6 +25117,11 @@ msgstr "Nikomur ne povej, ampak ti si moj najljubši."
 #, javascript-format
 msgid "{0} tips"
 msgstr "Nasveti za {0}"
+
+#: frontend/src/metabase/home/components/HomeLayout/HomeLayout.tsx
+#: frontend/src/metabase/nav/containers/MainNavbar/MainNavbarContainer/MainNavbarView.tsx
+msgid "Home"
+msgstr "Domov"
 
 #: frontend/src/metabase/home/components/HomeLayout/HomeLayout.tsx
 msgid "Pick a dashboard to serve as the homepage"
@@ -25489,7 +25519,6 @@ msgid "New conversation"
 msgstr "Nov pogovor"
 
 #: frontend/src/metabase/metabot/components/MetabotAppBarButton.tsx
-#: frontend/src/metabase/metabot/components/MetabotDataStudioButton.tsx
 #, javascript-format
 msgid "Chat with {0} ({1}+E)"
 msgstr "Klepetaj z {0} ({1}+E)"
@@ -25566,14 +25595,6 @@ msgid "Data sources used"
 msgstr "Uporabljeni viri podatkov"
 
 #: frontend/src/metabase/metabot/components/MetabotChat/MetabotAgentSuggestionMessage.tsx
-msgid "Applying..."
-msgstr "Uveljavljam..."
-
-#: frontend/src/metabase/metabot/components/MetabotChat/MetabotAgentSuggestionMessage.tsx
-msgid "Applied"
-msgstr "Uporabljeno"
-
-#: frontend/src/metabase/metabot/components/MetabotChat/MetabotAgentSuggestionMessage.tsx
 msgid "Revision"
 msgstr "Revizija"
 
@@ -25584,10 +25605,6 @@ msgstr "Predogleda ni bilo mogoče naložiti"
 #: frontend/src/metabase/metabot/components/MetabotChat/MetabotAgentSuggestionMessage.tsx
 msgid "Loading preview"
 msgstr "Nalaganje predogleda"
-
-#: frontend/src/metabase/metabot/components/MetabotChat/MetabotAgentSuggestionMessage.tsx
-msgid "Read only"
-msgstr "Samo za branje"
 
 #: frontend/src/metabase/metabot/components/MetabotChat/MetabotAgentTodoMessage.tsx
 msgid "Todo List"
@@ -25927,15 +25944,6 @@ msgstr "Tega pogovora ni mogoče naložiti"
 msgid "Try refreshing the page."
 msgstr "Poskusite osvežiti stran."
 
-#: frontend/src/metabase/metabot/components/MetabotDataStudioButton.tsx
-#, javascript-format
-msgid "{0} can't be viewed on this page"
-msgstr "{0} si na tej strani ni mogoče ogledati"
-
-#: frontend/src/metabase/metabot/components/MetabotDataStudioSidebar.tsx
-msgid "Let's transform your data together!"
-msgstr "Skupaj preoblikujmo vaše podatke!"
-
 #: frontend/src/metabase/metabot/components/MetabotInlineSQLPrompt/MetabotInlineSQLPrompt.tsx
 msgid "Describe what SQL you want, type @ to mention an item."
 msgstr "Opišite, kakšen SQL želite, vnesite @, da omenite element."
@@ -26014,11 +26022,6 @@ msgstr "Pogovorno okno {0}"
 #: frontend/src/metabase/metabot/components/editor-extensions/MetabotMention/MetabotSuggestionNew.tsx
 msgid "Mention an item"
 msgstr "Omeni element"
-
-#: frontend/src/metabase/metabot/constants.ts
-#: metabase_enterprise/api_routes/routes.clj
-msgid "Embedding"
-msgstr "Vdelava"
 
 #: frontend/src/metabase/metabot/constants.ts
 msgid "NLQ"
@@ -28186,10 +28189,6 @@ msgid "Internal Collections"
 msgstr "Notranje zbirke"
 
 #: frontend/src/metabase/nav/containers/MainNavbar/MainNavbarContainer/MainNavbarView.tsx
-msgid "Home"
-msgstr "Domov"
-
-#: frontend/src/metabase/nav/containers/MainNavbar/MainNavbarContainer/MainNavbarView.tsx
 msgid "Other users' personal collections"
 msgstr "Osebne zbirke drugih uporabnikov"
 
@@ -28609,6 +28608,14 @@ msgstr "Ustvari izvorno poizvedbo"
 #: frontend/src/metabase/palette/shortcuts/global.ts
 msgid "add native query, add SQL, create SQL"
 msgstr "dodaj izvorno poizvedbo, dodaj SQL, ustvari SQL"
+
+#: frontend/src/metabase/palette/shortcuts/global.ts
+msgid "Create a research"
+msgstr "Ustvari raziskovanje"
+
+#: frontend/src/metabase/palette/shortcuts/global.ts
+msgid "add research, add exploration, research mode"
+msgstr "dodaj raziskovanje, dodaj raziskavo, način raziskovanja"
 
 #: frontend/src/metabase/palette/shortcuts/global.ts
 msgid "add dashboard"
@@ -29162,10 +29169,6 @@ msgstr "Ne predpomni rezultatov"
 #: frontend/src/metabase/plugins/oss/caching.ts
 msgid "No caching"
 msgstr "Brez predpomnjenja"
-
-#: frontend/src/metabase/public/components/widgets/LegaleseStep/LegaleseStep.tsx
-msgid "First, some legalese"
-msgstr "Najprej nekaj pravniških zadev"
 
 #: frontend/src/metabase/public/components/widgets/LegaleseStep/LegaleseStep.tsx
 #, javascript-format
@@ -29751,17 +29754,17 @@ msgid "Model last cached {0}"
 msgstr "Model nazadnje predpomnjen {0}"
 
 #: frontend/src/metabase/query_builder/components/view/sidebars/ModelCacheManagementSection/ModelCacheManagementSection.tsx
+#, javascript-format
+msgid "Last attempt {0}"
+msgstr "Zadnji poskus {0}"
+
+#: frontend/src/metabase/query_builder/components/view/sidebars/ModelCacheManagementSection/ModelCacheManagementSection.tsx
 msgid "Create now"
 msgstr "Ustvari zdaj"
 
 #: frontend/src/metabase/query_builder/components/view/sidebars/ModelCacheManagementSection/ModelCacheManagementSection.tsx
 msgid "Refresh now"
 msgstr "Osveži zdaj"
-
-#: frontend/src/metabase/query_builder/components/view/sidebars/ModelCacheManagementSection/ModelCacheManagementSection.tsx
-#, javascript-format
-msgid "Last attempt {0}"
-msgstr "Zadnji poskus {0}"
 
 #: frontend/src/metabase/query_builder/components/view/sidebars/QuestionInfoSidebar/QuestionDetails.tsx
 #, javascript-format
@@ -29923,6 +29926,10 @@ msgstr "Izrazi po meri"
 #: frontend/src/metabase/querying/filters/components/FilterPicker/FilterColumnPicker/FilterColumnPicker.tsx
 msgid "Custom Expression"
 msgstr "Izraz po meri"
+
+#: frontend/src/metabase/querying/common/components/DataSelector/TriggerComponents.tsx
+msgid "Select..."
+msgstr "Izberi..."
 
 #: frontend/src/metabase/querying/common/components/DataSelector/constants.ts
 msgid "Trustworthy definitions to start from."
@@ -30311,6 +30318,10 @@ msgstr "To je morda odgovor, ki ga iščete. Če ne, poskusite odstraniti ali sp
 #: frontend/src/metabase/querying/components/QueryVisualization/VisualizationResult.tsx
 msgid "Back to previous results"
 msgstr "Nazaj na prejšnje rezultate"
+
+#: frontend/src/metabase/querying/components/SnippetSidebar/SnippetSidebar.tsx
+msgid "Snippets"
+msgstr "Izseki kode"
 
 #: frontend/src/metabase/querying/components/SnippetSidebar/SnippetSidebarEmptyState.tsx
 msgid "Code snippet bot illustration"
@@ -33172,6 +33183,12 @@ msgid "Succeeded"
 msgstr "Uspešno"
 
 #: frontend/src/metabase/transforms/pages/TransformIndexesPage/TransformIndexesPage.tsx
+#, javascript-format
+msgctxt "{0} is the application name, {1} is the database's own error message"
+msgid "{0} couldn't read the indexes on this table, so statuses may be out of date. The database said: {1}"
+msgstr "{0} ni mogel prebrati indeksov v tej tabeli, zato so lahko statusi zastareli. Podatkovna baza je sporočila: {1}"
+
+#: frontend/src/metabase/transforms/pages/TransformIndexesPage/TransformIndexesPage.tsx
 msgid "Delete this index?"
 msgstr "Želite izbrisati ta indeks?"
 
@@ -33199,10 +33216,6 @@ msgstr[3] "To bo tudi arhiviralo {0} transformacij v njej."
 #: frontend/src/metabase/transforms/pages/TransformListPage/CollectionRowMenu.tsx
 msgid "Are you sure you want to archive this folder?"
 msgstr "Ali ste prepričani, da želite arhivirati to mapo?"
-
-#: frontend/src/metabase/transforms/pages/TransformListPage/CreateTransformMenu/CreateTransformMenu.tsx
-msgid "Create a transform that "
-msgstr "Ustvari transformacijo, ki "
 
 #: frontend/src/metabase/transforms/pages/TransformListPage/CreateTransformMenu/CreateTransformMenu.tsx
 msgid "Transforms can't be created when Remote Sync is in read-only mode"
@@ -35577,6 +35590,14 @@ msgid "Number of tick marks"
 msgstr "Število oznak kljukic"
 
 #: frontend/src/metabase/viz-core/lib/settings/graph.ts
+msgid "Left axis label"
+msgstr "Oznaka leve osi"
+
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
+msgid "Right axis label"
+msgstr "Oznaka desne osi"
+
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
 msgid "Hide overlapping labels"
 msgstr "Skrij prekrivajoče se oznake"
 
@@ -36111,6 +36132,10 @@ msgstr "ni bilo mogoče ustvariti ključa z enoličnim prefiksom"
 #: metabase/api_routes/routes.clj
 msgid "API endpoint does not exist."
 msgstr "API endpoint ne obstaja."
+
+#: metabase/api_scope/data_app.clj
+msgid "Read and query access for a sandboxed data app."
+msgstr "Dostop za branje in poizvedovanje za podatkovno aplikacijo v peskovniku."
 
 #: metabase/app_db/encryption.clj
 msgid "Can''t decrypt app db with MB_ENCRYPTION_SECRET_KEY"
@@ -36767,10 +36792,6 @@ msgstr "Določa, katere vrste gostiteljev so dovoljene kot cilji HTTP kanalov.\n
 "- allow-all (brez omejitev, vključno z localhost).\n"
 
 #: metabase/channel/settings.clj
-msgid "Invalid http-channel-allowed-networks! Only values of external-only, allow-private, and allow-all are allowed."
-msgstr "Neveljaven http-channel-allowed-networks! Dovoljene so samo vrednosti external-only, allow-private in allow-all."
-
-#: metabase/channel/settings.clj
 msgid "The maximum number of retries for an event."
 msgstr "Največje število ponovnih poskusov za dogodek."
 
@@ -37039,6 +37060,10 @@ msgstr "Vsebina komentarja mora biti veljaven JSON."
 #: metabase/comments/api.clj
 msgid "Comment context must be a valid JSON object."
 msgstr "Kontekst komentarja mora biti veljaven JSON objekt."
+
+#: metabase/comments/schema.clj
+msgid "Emoji must be 1 to 10 Unicode code points."
+msgstr "Emoji mora imeti od 1 do 10 Unicode kodnih točk."
 
 #: metabase/content_translation/models.clj
 #: metabase_enterprise/api_routes/routes.clj
@@ -37670,10 +37695,6 @@ msgstr "Nadzira, v katera omrežja se lahko Metabase poveže za povezave s sklad
 "Pokriva tudi gostitelja SSH tunela in URL-je ponudnika avtentikacije podatkovne baze."
 
 #: metabase/driver/settings.clj
-msgid "Invalid warehouse-allowed-networks! Only values of `external-only`, `allow-private`,` and `allow-all` are allowed."
-msgstr "Neveljaven warehouse-allowed-networks! Dovoljene so samo vrednosti `external-only`, `allow-private`,` in `allow-all`."
-
-#: metabase/driver/settings.clj
 msgid "Controls how often the heartbeats are sent when an SSH tunnel is established (in seconds)."
 msgstr "Nadzira, kako pogosto se pošiljajo heartbeat-i, ko je vzpostavljen SSH tunel (v sekundah)."
 
@@ -38062,10 +38083,6 @@ msgid "Check if admin should see the simple embedding terms popup"
 msgstr "Označite, ali naj skrbnik vidi pojavno okno s pogoji za preprosto vdelavo"
 
 #: metabase/embedding/settings.clj
-msgid "Check if admin should see the modular embedding and SDK licensing terms popup"
-msgstr "Preveri, ali mora skrbnik videti pojavno okno s pogoji licenciranja za modularno vdelovanje in SDK"
-
-#: metabase/embedding/settings.clj
 msgid "Allow admins to securely embed questions and dashboards within other applications?"
 msgstr "Dovoli skrbnikom varno vdelavo vprašanj in nadzornih plošč v druge aplikacije?"
 
@@ -38080,10 +38097,6 @@ msgstr "Dovoli skrbnikom vdelavo Metabase prek SDK?"
 #: metabase/embedding/settings.clj
 msgid "Allow admins to embed Metabase via modular embedding?"
 msgstr "Dovoli skrbnikom vdelavo Metabase prek modularnega vdelovanja?"
-
-#: metabase/embedding/settings.clj
-msgid "Allow admins to embed Metabase via modular embedding, the SDK for React, and guest embeds?"
-msgstr "Dovoli skrbnikom vdelavo Metabase prek modularnega vdelovanja, SDK za React in vdelav za goste?"
 
 #: metabase/embedding/settings.clj
 msgid "Allow admins to embed Metabase via interactive embedding?"
@@ -40275,10 +40288,6 @@ msgid "Whether the MCP server is enabled."
 msgstr "Ali je strežnik MCP omogočen."
 
 #: metabase/mcp/settings.clj
-msgid "v2 MCP tool names to disable, stored as CSV. Disabled tools are hidden from tools/list and rejected by tools/call."
-msgstr "v2 MCP imena orodij za onemogočanje, shranjena kot CSV. Onemogočena orodja so skrita iz tools/list in zavrnjena v tools/call."
-
-#: metabase/mcp/settings.clj
 msgid "Hours a stored MCP query handle is kept before the scheduled GC task deletes it."
 msgstr "Število ur, kolikor se hrani shranjen ročaj poizvedbe MCP, preden ga načrtovana naloga GC izbriše."
 
@@ -40289,62 +40298,6 @@ msgstr "Priljubljeni odjemalci MCP omogočeni za CORS, shranjeni kot ključi odj
 #: metabase/mcp/settings.clj
 msgid "Custom CORS origins for self-hosted MCP clients, space-separated."
 msgstr "CORS izvori po meri za samogostovane odjemalce MCP, ločeni s presledki."
-
-#: metabase/mcp/v2/recovery_hints.clj
-msgid "Metrics are aggregations, not sources. To use metric {0}, put its base table''s numeric id into `source-table:` (find it via `search` or `browse_data`) and reference the metric by its numeric id:"
-msgstr "Metrike so agregacije, ne viri. Za uporabo metrike {0} vnesite številčni id njene osnovne tabele v `source-table:` (najdete ga prek `search` ali `browse_data`) in se na metriko sklicujte z njenim številčnim id:"
-
-#: metabase/mcp/v2/recovery_hints.clj
-msgid "To reference a saved question or model as a query source, put its bare numeric id into `source-card:` — not a URI: `\"source-card\": {0}`."
-msgstr "Za sklicevanje na shranjeno vprašanje ali model kot vir poizvedbe vnesite njegov goli številčni ID v `source-card:` — ne URI: `\"source-card\": {0}`."
-
-#: metabase/mcp/v2/recovery_hints.clj
-msgid "Use the bare numeric table id in `source-table:` — not a URI: `\"source-table\": {0}`."
-msgstr "Uporabite goli številčni ID tabele v `source-table:` — ne URI: `\"source-table\": {0}`."
-
-#: metabase/mcp/v2/recovery_hints.clj
-msgid "`source-table:` accepts a numeric table id; `source-card:` accepts a saved-card numeric id."
-msgstr "`source-table:` sprejme številčni id tabele; `source-card:` sprejme številčni id shranjene kartice."
-
-#: metabase/mcp/v2/recovery_hints.clj
-msgid "Call `browse_data` with action \"list_tables\" to list available tables with their numeric ids, then use one as `source-table`."
-msgstr "Pokliči `browse_data` z dejanjem \"list_tables\", da izpišeš razpoložljive tabele z njihovimi številčnimi id-ji, nato eno uporabi kot `source-table`."
-
-#: metabase/mcp/v2/recovery_hints.clj
-msgid "Call `browse_data` with action \"list_tables\" for the database, then retry with the numeric table id — it is never ambiguous."
-msgstr "Pokliči `browse_data` z dejanjem \"list_tables\" za zbirko podatkov, nato poskusi znova s številčnim id-jem tabele — ta nikoli ni dvoumen."
-
-#: metabase/mcp/v2/recovery_hints.clj
-msgid "Call `browse_data` with action \"get_fields\" for the table to list its columns with their numeric ids."
-msgstr "Pokliči `browse_data` z dejanjem \"get_fields\" za tabelo, da izpišeš njene stolpce z njihovimi številčnimi id-ji."
-
-#: metabase/mcp/v2/recovery_hints.clj
-msgid "Call `browse_data` with action \"get_fields\" for the source table to list the available foreign-key columns."
-msgstr "Pokličite `browse_data` z dejanjem \"get_fields\" za izvorno tabelo, da izpišete razpoložljive stolpce tujega ključa."
-
-#: metabase/mcp/v2/recovery_hints.clj
-msgid "If a metric relates to that table, call `browse_data` with action \"get_fields\" for the table that owns the metric to read its dimensions, which give the exact `joins:` clause."
-msgstr "Če je metrika povezana s to tabelo, pokličite `browse_data` z dejanjem \"get_fields\" za tabelo, ki je lastnica metrike, da preberete njene dimenzije, ki podajo natančno klavzulo `joins:`."
-
-#: metabase/mcp/v2/recovery_hints.clj
-msgid "Find the question or model with `search` and put its bare numeric id into `source-card:`."
-msgstr "Poišči vprašanje ali model z `search` in vnesi njegov goli številčni id v `source-card:`."
-
-#: metabase/mcp/v2/recovery_hints.clj
-msgid "Call `browse_data` with action \"get_fields\" for the table that owns the measure and use the numeric id from its measures list."
-msgstr "Pokliči `browse_data` z dejanjem \"get_fields\" za tabelo, ki je lastnica mere, in uporabi številčni id s seznama njenih mer."
-
-#: metabase/mcp/v2/recovery_hints.clj
-msgid "Call `browse_data` with action \"get_fields\" for the table that owns the segment and use the numeric id from its segments list."
-msgstr "Pokliči `browse_data` z dejanjem \"get_fields\" za tabelo, ki je lastnica segmenta, in uporabi številčni id s seznama njenih segmentov."
-
-#: metabase/mcp/v2/recovery_hints.clj
-msgid "Use a numeric table id in `source-table:` (from `browse_data` action \"list_tables\"), which needs no database name at all."
-msgstr "Uporabi številčni id tabele v `source-table:` (iz `browse_data` dejanja \"list_tables\"), pri čemer ne potrebuješ nobenega imena zbirke podatkov."
-
-#: metabase/mcp/v2/recovery_hints.clj
-msgid "`source-table:` takes a numeric table id; `source-card:` takes a saved-card numeric id."
-msgstr "`source-table:` zahteva številčni id tabele; `source-card:` zahteva številčni id shranjene kartice."
 
 #: metabase/mcp/validation.clj
 msgid "MCP server is not enabled."
@@ -40469,10 +40422,6 @@ msgid "View transforms"
 msgstr "Oglej si transformacije"
 
 #: metabase/metabot/scope.clj
-msgid "Create and edit transforms"
-msgstr "Ustvari in urejaj transformacije"
-
-#: metabase/metabot/scope.clj
 msgid "View SQL snippets"
 msgstr "Oglej si SQL izrezke"
 
@@ -40553,6 +40502,10 @@ msgid "View database metadata"
 msgstr "Oglej si metapodatke podatkovne baze"
 
 #: metabase/metabot/scope.clj
+msgid "Read MCP resources"
+msgstr "Branje virov MCP"
+
+#: metabase/metabot/scope.clj
 msgid "View todos"
 msgstr "Oglej si opravila"
 
@@ -40564,6 +40517,14 @@ msgstr "Ustvari in urejaj opravila"
 msgid "No LLM provider connection named {0} is configured."
 msgstr "Ni konfigurirane povezave ponudnika LLM z imenom {0}."
 
+#: metabase/metabot/self/adapter.clj
+msgid "{0} API error (HTTP {1})"
+msgstr "Napaka API {0} (HTTP {1})"
+
+#: metabase/metabot/self/adapter.clj
+msgid "AI proxy is not supported for {0}"
+msgstr "AI proxy ni podprt za {0}"
+
 #: metabase/metabot/self/azure.clj
 msgid "Unsupported Azure model {0}. Only anthropic/* and openai/* models are supported."
 msgstr "Nepodprt Azure model {0}. Podprti so samo modeli anthropic/* in openai/*."
@@ -40573,8 +40534,8 @@ msgid "Azure credentials are not configured"
 msgstr "Poverilnice za Azure niso konfigurirane"
 
 #: metabase/metabot/self/azure.clj
-msgid "AI proxy is not supported for Azure"
-msgstr "AI proxy ni podprt za Azure"
+msgid "Azure API error (HTTP {0})"
+msgstr "Napaka Azure API (HTTP {0})"
 
 #: metabase/metabot/self/azure.clj
 msgid "Azure rejected the API key for this resource"
@@ -40595,10 +40556,6 @@ msgstr "Azure nas je omejil zaradi omejitev hitrosti"
 #: metabase/metabot/self/azure.clj
 msgid "Azure is not working but not saying why"
 msgstr "Azure ne deluje, vendar ne pove zakaj"
-
-#: metabase/metabot/self/azure.clj
-msgid "Azure API error (HTTP {0})"
-msgstr "Napaka Azure API (HTTP {0})"
 
 #: metabase/metabot/self/bedrock.clj
 msgid "AWS Bedrock got no credentials from the AWS default credentials chain. See the Metabase logs for what each provider reported."
@@ -40625,8 +40582,8 @@ msgid "AWS Bedrock needs both an access key ID and a secret access key, or neith
 msgstr "AWS Bedrock potrebuje tako access key ID kot secret access key, ali pa nobenega, da uporabi verigo privzetih poverilnic"
 
 #: metabase/metabot/self/bedrock.clj
-msgid "AI proxy is not supported for AWS Bedrock"
-msgstr "AI proxy ni podprt za AWS Bedrock"
+msgid "AWS Bedrock API error (HTTP {0})"
+msgstr "Napaka AWS Bedrock API (HTTP {0})"
 
 #: metabase/metabot/self/bedrock.clj
 msgid "AWS Bedrock rejected our credentials or request signature"
@@ -40649,12 +40606,12 @@ msgid "AWS Bedrock is not working but not saying why"
 msgstr "AWS Bedrock ne deluje, vendar ne pove zakaj"
 
 #: metabase/metabot/self/bedrock.clj
-msgid "AWS Bedrock API error (HTTP {0})"
-msgstr "Napaka AWS Bedrock API (HTTP {0})"
-
-#: metabase/metabot/self/bedrock.clj
 msgid "Unsupported Bedrock model {0}. Only anthropic.* and openai.* models are supported."
 msgstr "Nepodprt model Bedrock {0}. Podprti so samo modeli anthropic.* in openai.*."
+
+#: metabase/metabot/self/claude.clj
+msgid "Anthropic API error (HTTP {0})"
+msgstr "Napaka Anthropic API (HTTP {0})"
 
 #: metabase/metabot/self/claude.clj
 msgid "Anthropic API key expired or invalid"
@@ -40684,10 +40641,6 @@ msgstr "Anthropic API ne deluje, vendar ne pove zakaj"
 msgid "Anthropic API is overloaded and is asking us to wait"
 msgstr "Anthropic API je preobremenjen in nas prosi, da počakamo"
 
-#: metabase/metabot/self/claude.clj
-msgid "Anthropic API error (HTTP {0})"
-msgstr "Napaka Anthropic API (HTTP {0})"
-
 #: metabase/metabot/self/core.clj
 msgid "{0} API request failed"
 msgstr "{0} API zahteva ni uspela"
@@ -40705,8 +40658,8 @@ msgid "AI proxy is not configured"
 msgstr "AI proxy ni konfiguriran"
 
 #: metabase/metabot/self/deepseek.clj
-msgid "AI proxy is not supported for DeepSeek"
-msgstr "AI proxy ni podprt za DeepSeek"
+msgid "DeepSeek API error (HTTP {0})"
+msgstr "Napaka API-ja DeepSeek (HTTP {0})"
 
 #: metabase/metabot/self/deepseek.clj
 msgid "DeepSeek rejected the request — check the model and request parameters"
@@ -40744,10 +40697,6 @@ msgstr "DeepSeek je vrnil interno napako strežnika"
 msgid "DeepSeek is overloaded and is asking us to wait"
 msgstr "DeepSeek je preobremenjen in nas prosi, naj počakamo"
 
-#: metabase/metabot/self/deepseek.clj
-msgid "DeepSeek API error (HTTP {0})"
-msgstr "Napaka API-ja DeepSeek (HTTP {0})"
-
 #: metabase/metabot/self/google.clj
 msgid "Invalid Google service account key: token_uri must be a Google OAuth endpoint."
 msgstr "Neveljaven ključ storitvenega računa Google: token_uri mora biti končna točka Google OAuth."
@@ -40773,10 +40722,6 @@ msgid "\"{0}\" is not a valid Google Cloud location. Use a location ID like \"us
 msgstr "\"{0}\" ni veljavna lokacija Google Cloud. Uporabite ID lokacije, kot je \"us-central1\", ali pustite prazno za uporabo globalne lokacije."
 
 #: metabase/metabot/self/google.clj
-msgid "AI proxy is not supported for the Google provider"
-msgstr "AI proxy ni podprt za ponudnika Google"
-
-#: metabase/metabot/self/google.clj
 msgid "A Google Cloud project ID is required for the Google provider"
 msgstr "Za ponudnika Google je potreben Google Cloud ID projekta"
 
@@ -40791,6 +40736,10 @@ msgstr "Nepodprt Google model {0}. Podprti so samo modeli google/* in anthropic/
 #: metabase/metabot/self/google.clj
 msgid "Invalid Google model {0} — a publisher and model ID can hold only letters, digits, and the characters \".\", \"_\", \"-\" and \"@\""
 msgstr "Neveljaven Google model {0} — izdajatelj in ID modela lahko vsebujeta le črke, številke in znake \".\", \"_\", \"-\" ter \"@\""
+
+#: metabase/metabot/self/google.clj
+msgid "Google API error (HTTP {0})"
+msgstr "Napaka Google API (HTTP {0})"
 
 #: metabase/metabot/self/google.clj
 msgid "Google API rejected the request as invalid"
@@ -40825,10 +40774,6 @@ msgid "Google API is temporarily unavailable"
 msgstr "Google API začasno ni na voljo"
 
 #: metabase/metabot/self/google.clj
-msgid "Google API error (HTTP {0})"
-msgstr "Napaka Google API (HTTP {0})"
-
-#: metabase/metabot/self/google.clj
 msgid "(endpoint: {0})"
 msgstr "(končna točka: {0})"
 
@@ -40837,8 +40782,8 @@ msgid "check that \"{0}\" is a valid location"
 msgstr "preverite, da je \"{0}\" veljavna lokacija"
 
 #: metabase/metabot/self/mistral.clj
-msgid "AI proxy is not supported for Mistral"
-msgstr "UI proxy ni podprt za Mistral"
+msgid "Mistral API error (HTTP {0})"
+msgstr "Napaka Mistral API (HTTP {0})"
 
 #: metabase/metabot/self/mistral.clj
 msgid "Mistral API key expired or invalid"
@@ -40856,13 +40801,9 @@ msgstr "Mistral nas je omejil zaradi omejitve hitrosti"
 msgid "Mistral returned an internal server error"
 msgstr "Mistral je vrnil interno napako strežnika"
 
-#: metabase/metabot/self/mistral.clj
-msgid "Mistral API error (HTTP {0})"
-msgstr "Napaka Mistral API (HTTP {0})"
-
 #: metabase/metabot/self/moonshot.clj
-msgid "AI proxy is not supported for Moonshot"
-msgstr "AI proxy ni podprt za Moonshot"
+msgid "Moonshot API error (HTTP {0})"
+msgstr "Napaka Moonshot API (HTTP {0})"
 
 #: metabase/metabot/self/moonshot.clj
 msgid "Moonshot rejected the request — check the model and request parameters"
@@ -40888,17 +40829,13 @@ msgstr "Moonshot nas je omejil glede na hitrost, ali pa je stanje računa izčrp
 msgid "Moonshot returned an internal server error"
 msgstr "Moonshot je vrnil interno napako strežnika"
 
-#: metabase/metabot/self/moonshot.clj
-msgid "Moonshot API error (HTTP {0})"
-msgstr "Napaka Moonshot API (HTTP {0})"
-
 #: metabase/metabot/self/openai.clj
 msgid "The model provider failed to complete the response"
 msgstr "Ponudnik modela ni uspel dokončati odgovora"
 
 #: metabase/metabot/self/openai.clj
-msgid "AI proxy is not supported for OpenAI"
-msgstr "AI proxy ni podprt za OpenAI"
+msgid "OpenAI API error (HTTP {0})"
+msgstr "Napaka OpenAI API (HTTP {0})"
 
 #: metabase/metabot/self/openai.clj
 msgid "OpenAI API key expired or invalid"
@@ -40920,17 +40857,13 @@ msgstr "OpenAI API nas je omejil zaradi prevelikega števila zahtev"
 msgid "OpenAI API is not working but not saying why"
 msgstr "OpenAI API ne deluje, vendar ne pove zakaj"
 
-#: metabase/metabot/self/openai.clj
-msgid "OpenAI API error (HTTP {0})"
-msgstr "Napaka OpenAI API (HTTP {0})"
-
 #: metabase/metabot/self/openai/chat_completions.clj
 msgid "{0} returned an unexpected model list response"
 msgstr "{0} je vrnil nepričakovan odgovor s seznamom modelov"
 
 #: metabase/metabot/self/openrouter.clj
-msgid "AI proxy is not supported for OpenRouter"
-msgstr "UI proxy ni podprt za OpenRouter"
+msgid "OpenRouter API error (HTTP {0})"
+msgstr "Napaka OpenRouter API (HTTP {0})"
 
 #: metabase/metabot/self/openrouter.clj
 msgid "OpenRouter API key expired or invalid"
@@ -40964,21 +40897,13 @@ msgstr "Nadrejeni ponudnik OpenRouter je vrnil napako"
 msgid "OpenRouter service is unavailable"
 msgstr "Storitev OpenRouter ni na voljo"
 
-#: metabase/metabot/self/openrouter.clj
-msgid "OpenRouter API error (HTTP {0})"
-msgstr "Napaka OpenRouter API (HTTP {0})"
-
-#: metabase/metabot/self/vllm.clj
-msgid "AI proxy is not supported for vLLM"
-msgstr "AI proxy ni podprt za vLLM"
-
 #: metabase/metabot/self/vllm.clj
 msgid "No vLLM base URL is set"
 msgstr "Ni nastavljen noben osnovni URL vLLM"
 
 #: metabase/metabot/self/vllm.clj
-msgid "No vLLM model is set"
-msgstr "Ni nastavljen noben model vLLM"
+msgid "vLLM API error (HTTP {0})"
+msgstr "Napaka vLLM API (HTTP {0})"
 
 #: metabase/metabot/self/vllm.clj
 msgid "vLLM rejected the request — usually an unsupported schema, or a model that cannot compile the tool grammar"
@@ -41001,8 +40926,8 @@ msgid "vLLM returned an internal server error"
 msgstr "vLLM je vrnil interno napako strežnika"
 
 #: metabase/metabot/self/vllm.clj
-msgid "vLLM API error (HTTP {0})"
-msgstr "Napaka vLLM API (HTTP {0})"
+msgid "No vLLM model is set"
+msgstr "Ni nastavljen noben model vLLM"
 
 #: metabase/metabot/self/vllm.clj
 msgid "Could not reach the vLLM server at {0}. Check that it is running and that the base URL is correct."
@@ -41077,8 +41002,8 @@ msgid "The vLLM server did not respond within {0}ms. Check that it is not overlo
 msgstr "Strežnik vLLM se ni odzval v {0} ms. Preverite, da ni preobremenjen, ali povečajte časovno omejitev zahteve vLLM."
 
 #: metabase/metabot/self/zai.clj
-msgid "AI proxy is not supported for Z.AI"
-msgstr "UI proxy ni podprt za Z.AI"
+msgid "Z.AI API error (HTTP {0})"
+msgstr "Napaka Z.AI API (HTTP {0})"
 
 #: metabase/metabot/self/zai.clj
 msgid "Z.AI API key expired or invalid"
@@ -41095,10 +41020,6 @@ msgstr "Z.AI nas je omejil zaradi omejitve hitrosti"
 #: metabase/metabot/self/zai.clj
 msgid "Z.AI returned an internal server error"
 msgstr "Z.AI je vrnil interno napako strežnika"
-
-#: metabase/metabot/self/zai.clj
-msgid "Z.AI API error (HTTP {0})"
-msgstr "Napaka Z.AI API (HTTP {0})"
 
 #: metabase/metabot/settings.clj
 msgid "Override Metabot ID for agent streaming requests."
@@ -41121,8 +41042,8 @@ msgid "Whether to show Metabot illustrations in the UI."
 msgstr "Ali naj se v uporabniškem vmesniku prikazujejo ilustracije Metabota."
 
 #: metabase/metabot/settings.clj
-msgid "Custom instructions appended to Metabot''s system prompt for the chat experience (the AI sidebar and embedded Metabot)."
-msgstr "Navodila po meri, dodana Metabotovemu sistemskemu pozivu za izkušnjo klepeta (AI stranska vrstica in vdelani Metabot)."
+msgid "Custom instructions appended to Metabot''s system prompt for the chat experience (the AI sidebar, embedded Metabot, and Metabot in Slack)."
+msgstr "Navodila po meri, dodana sistemskemu pozivu Metabot za klepetalno izkušnjo (UI stranska vrstica, vdelani Metabot in Metabot v Slacku)."
 
 #: metabase/metabot/settings.clj
 msgid "Custom instructions appended to Metabot''s system prompt for the natural language query (AI exploration) experience."
@@ -42857,6 +42778,10 @@ msgstr "vrednost mora biti veljavna poizvedba MBQL z izvorno tabelo in filtri."
 msgid "a segment definition must be a single-stage query with a source table and filters, and without joins, expressions, breakouts, aggregations, fields, order by, or limit"
 msgstr "definicija segmenta mora biti enostopenjska poizvedba z izvorno tabelo in filtri ter brez JOIN-ov, izrazov, razčlenitev, agregacij, polj, ORDER BY ali LIMIT"
 
+#: metabase/server/middleware/body_limit.clj
+msgid "Request body exceeds the maximum size of {0} bytes."
+msgstr "Telo zahteve presega največjo velikost {0} bajtov."
+
 #: metabase/server/routes/index.clj
 msgid "Failed to load template ''{0}''. Did you remember to build the Metabase frontend?"
 msgstr "Nalaganje predloge ''{0}'' ni uspelo. Ste se spomnili zgraditi Metabase frontend?"
@@ -42896,6 +42821,10 @@ msgstr "Prepreči strežniku, da bi pošiljal glave CORS za zahteve, ki izvirajo
 #: metabase/server/settings.clj
 msgid "Prevent the exception middleware from including stacktraces in responses."
 msgstr "Prepreči, da bi exception middleware v odgovore vključeval stack trace."
+
+#: metabase/server/settings.clj
+msgid "Maximum size in bytes of an HTTP request body from a caller who is not authenticated. Larger requests are rejected with HTTP 413 before the body is read."
+msgstr "Največja velikost v bajtih telesa HTTP zahteve od klicatelja, ki ni avtenticiran. Večje zahteve se zavrnejo s HTTP 413, preden se telo prebere."
 
 #: metabase/server/settings.clj
 msgid "Signing secret for verifying requests from the Metabot Slack app"
@@ -43248,8 +43177,8 @@ msgid "JSON containing LDAP to Metabase group mappings."
 msgstr "JSON z mapiranji skupin iz LDAP v Metabase."
 
 #: metabase/sso/settings.clj
-msgid "{0} is not a valid DN."
-msgstr "{0} ni veljaven DN."
+msgid "{0} is not a valid DN. Example: {1}"
+msgstr "{0} ni veljaven DN. Primer: {1}"
 
 #: metabase/sso/settings.clj
 msgid "Have the mandatory LDAP settings (host and user search base) been validated and saved?"
@@ -43386,10 +43315,6 @@ msgstr "Polja, na katera se sklicujete prek implicitnih joinov, niso podprta."
 #: metabase/tiles/api.clj
 msgid "Query failed"
 msgstr "Poizvedba ni uspela"
-
-#: metabase/tiles/settings.clj
-msgid "Invalid map-tile-server-allowed-networks! Only values of external-only, allow-private, and allow-all are allowed."
-msgstr "Neveljaven map-tile-server-allowed-networks! Dovoljene so samo vrednosti external-only, allow-private in allow-all."
 
 #: metabase/tiles/settings.clj
 msgid "The map tile server URL template used in map visualizations, for example from OpenStreetMaps or MapBox. This URL is visible to clients, so do not include private keys."
@@ -44553,6 +44478,10 @@ msgstr "Uporabniki podpore"
 msgid "Transforms Python"
 msgstr "Transformacije Python"
 
+#: metabase_enterprise/api_routes/routes.clj
+msgid "Transforms Testing"
+msgstr "Testiranje transformacij"
+
 #: metabase_enterprise/audit_app/analytics_dev.clj
 msgid "Analytics dev mode is not enabled."
 msgstr "Analytics dev mode ni omogočen."
@@ -44696,6 +44625,10 @@ msgstr "Uporabnikov najemnikov ni mogoče dodati v podatkovne aplikacije."
 #: metabase_enterprise/data_apps/api.clj
 msgid "Data app queries cannot use metrics that reference other saved questions or metrics: {0}"
 msgstr "Poizvedbe podatkovnih aplikacij ne morejo uporabljati metrik, ki se sklicujejo na druga shranjena vprašanja ali metrike: {0}"
+
+#: metabase_enterprise/data_apps/config.clj
+msgid "{0}/{1}: \"version\" must be a positive whole number, such as 1."
+msgstr "{0}/{1}: \"version\" mora biti pozitivno celo število, na primer 1."
 
 #: metabase_enterprise/data_apps/config.clj
 msgid "{0}/{1}: \"description\" must be a one-line string."
@@ -45012,8 +44945,8 @@ msgid "If remote-sync-type is :read-only and remote-sync-auto-import is true, th
 msgstr "Če je remote-sync-type :read-only in je remote-sync-auto-import true, je to interval (v minutah) preverjanja posodobitev za uvoz. Privzeto je 5."
 
 #: metabase_enterprise/remote_sync/settings.clj
-msgid "The maximum amount of time a remote sync task will be given to complete"
-msgstr "Najdaljši čas, ki ga ima opravilo oddaljene sinhronizacije na voljo za dokončanje"
+msgid "How long a remote sync task may go without proving its process is alive (via heartbeat, or progress on rows without one) before it is treated as dead and superseded. A slow but live task is never affected. The task itself is aborted after ten times this limit."
+msgstr "Kako dolgo je lahko naloga oddaljene sinhronizacije brez dokazila, da proces še živi (prek srčnega utripa ali napredka po vrsticah brez njega), preden se jo obravnava kot mrtvo in nadomesti. Počasna, a živa naloga nikoli ni prizadeta. Sama naloga se prekine po desetkratniku te omejitve."
 
 #: metabase_enterprise/remote_sync/settings.clj
 msgid "Network timeout (in seconds) for remote git operations such as fetch, push, clone, and ls-remote. A stalled connection would otherwise hang a sync indefinitely."
@@ -45551,6 +45484,70 @@ msgstr "ključi atributov morajo biti ključna beseda ali niz in se ne smejo za�
 #: metabase_enterprise/tenants/models.clj
 msgid "Tenant collection: {0}"
 msgstr "Zbirka najemnika: {0}"
+
+#: metabase_enterprise/transform_testing/expectations/equals.clj
+msgid "Expectation {0} names column {1}, which matches more than one output column: {2}. Write it exactly as the output spells it."
+msgstr "Pričakovanje {0} navaja stolpec {1}, ki se ujema z več kot enim izhodnim stolpcem: {2}. Zapišite ga natanko tako, kot je zapisano v izhodu."
+
+#: metabase_enterprise/transform_testing/expectations/equals.clj
+msgid "Expectation {0} compares column {1}, which the transform output does not have. It has: {2}"
+msgstr "Pričakovanje {0} primerja stolpec {1}, ki ga izhod transformacije nima. Ima: {2}"
+
+#: metabase_enterprise/transform_testing/expectations/equals.clj
+msgid "Expectation {0} compares against a SQL query, which is not implemented yet. Give ''columns'' and ''rows'' instead."
+msgstr "Pričakovanje {0} primerja s poizvedbo SQL, kar še ni implementirano. Namesto tega podajte ''columns'' in ''rows''."
+
+#: metabase_enterprise/transform_testing/expectations/protocol.clj
+msgid "Expectation {0} is of type {1}, which is not implemented yet."
+msgstr "Pričakovanje {0} je tipa {1}, kar še ni implementirano."
+
+#: metabase_enterprise/transform_testing/runner.clj
+msgid "The expectation could not be run, and the database gave no reason."
+msgstr "Pričakovanja ni bilo mogoče zagnati in baza podatkov ni navedla razloga."
+
+#: metabase_enterprise/transform_testing/runner.clj
+msgid "Only query transforms can be tested."
+msgstr "Testirati je mogoče samo transformacije poizvedb."
+
+#: metabase_enterprise/transform_testing/runner.clj
+msgid "The {0} database of this transform does not support transform testing."
+msgstr "Baza podatkov {0} za to transformacijo ne podpira testiranja transformacij."
+
+#: metabase_enterprise/transform_testing/runner.clj
+msgid "The transform source SQL could not be parsed for test input validation: {0}"
+msgstr "Izvornega SQL te transformacije ni bilo mogoče razčleniti za validacijo testnega vhoda: {0}"
+
+#: metabase_enterprise/transform_testing/runner.clj
+msgid "Could not create the test input for {0}:"
+msgstr "Ni bilo mogoče ustvariti testnega vhoda za {0}:"
+
+#: metabase_enterprise/transform_testing/runner.clj
+msgid "The transform under test failed to run:"
+msgstr "Transformacije, ki je na testu, ni bilo mogoče zagnati:"
+
+#: metabase_enterprise/transform_testing/validator.clj
+msgid "Expectation {0} reads table(s) this test does not stand in for: {1}. An expectation may only read the transform''s output and its declared inputs."
+msgstr "Pričakovanje {0} bere tabelo(-e), ki jih ta test ne nadomešča: {1}. Pričakovanje lahko bere samo izhod transformacije in njene deklarirane vhode."
+
+#: metabase_enterprise/transform_testing/validator.clj
+msgid "The transform test could not fully remap the source to test tables; these reference(s) remain: {0}. Alias each source table and qualify its columns by the alias (e.g. `FROM my_table t ... t.col`), not by the table name."
+msgstr "Test transformacije ni mogel v celoti preslikati izvora v testne tabele; ostajajo naslednje referenc(e): {0}. Vsaki izvorni tabeli dodelite alias in stolpce kvalificirajte z aliasom (npr. `FROM my_table t ... t.col`), ne z imenom tabele."
+
+#: metabase_enterprise/transform_testing/validator.clj
+msgid "Expectation {0} has SQL that could not be parsed: {1}"
+msgstr "Pričakovanje {0} ima SQL, ki ga ni bilo mogoče razčleniti: {1}"
+
+#: metabase_enterprise/transform_testing/validator.clj
+msgid "The transform reads table(s) with no declared test input: {0}. Add an input for each."
+msgstr "Transformacija bere tabelo(-e) brez deklariranega testnega vhoda: {0}. Dodajte vhod za vsako."
+
+#: metabase_enterprise/transform_testing/validator.clj
+msgid "Test input(s) declared for table(s) the transform does not read: {0}. Remove them."
+msgstr "Deklarirani testni vhodi za tabelo(-e), ki jih transformacija ne bere: {0}. Odstranite jih."
+
+#: metabase_enterprise/transform_testing/validator.clj
+msgid "Duplicate test inputs; each input table may be declared only once: {0}"
+msgstr "Podvojeni testni vhodi; vsaka vhodna tabela je lahko deklarirana samo enkrat: {0}"
 
 #: metabase_enterprise/transforms_inspector/core.clj
 msgid "Transform Inspector: {0}"
