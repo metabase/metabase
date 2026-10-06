@@ -1961,3 +1961,9 @@
   `(binding [resolve/*export-resolver* (resolve.default/cached-export-resolver)
              resolve/*import-resolver* (resolve.default/cached-import-resolver)]
      ~@body))
+
+(defn reset-import-cache!
+  "Drop the memoized lookups of the bound import resolver, if it caches any."
+  []
+  (when (satisfies? resolve/ResettableCache resolve/*import-resolver*)
+    (resolve/reset-cache! resolve/*import-resolver*)))

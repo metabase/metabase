@@ -36,6 +36,10 @@
   (import-table-fk  [this path]            "Given [db-name schema table-name], return numeric table_id.")
   (import-field-fk  [this path]            "Given [db-name schema table-name field-name], return numeric field_id."))
 
+(defprotocol ResettableCache
+  "A resolver whose memoized lookups can be dropped."
+  (reset-cache! [this] "Drop every memoized lookup."))
+
 ;;; ============================================================
 ;;; Dynamic vars — bound to resolver instances
 ;;; ============================================================

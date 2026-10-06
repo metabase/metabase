@@ -248,6 +248,33 @@
             (is (= ["Email"] (t2/select-fn-vec :name :model/Dimension
                                                :field_id (t2/select-one-pk :model/Field :table_id (:id table) :name "email"))))))))))
 
+(deftest stub-database-survives-a-rolled-back-referrer-test
+  (testing "A stub created inside a failed entity's transaction is not reused from the cache by the next entity"
+    (let [serialized (atom nil)]
+      (ts/with-dbs [source-db dest-db]
+        (ts/with-db source-db
+          (let [db    (ts/create! :model/Database :name "source-only-db")
+                table (ts/create! :model/Table :name "customers" :db_id (:id db))
+                coll  (ts/create! :model/Collection :name "coll")
+                mp    (lib-be/application-database-metadata-provider (:id db))
+                query (lib/query mp (lib.metadata/table mp (:id table)))
+                bad   (ts/create! :model/Card :name "bad" :collection_id (:id coll) :database_id (:id db)
+                                  :table_id (:id table) :dataset_query query)
+                good  (ts/create! :model/Card :name "good" :collection_id (:id coll) :database_id (:id db)
+                                  :table_id (:id table) :dataset_query query)]
+            (reset! serialized [(serdes/extract-one "Collection" {} coll)
+                                (serdes/extract-one "Card" {} bad)
+                                (serdes/extract-one "Card" {} good)])))
+        (ts/with-db dest-db
+          (serdes/with-cache
+            (serdes.load/load-metabase! (ingestion-in-memory (update @serialized 1 assoc :name nil))
+                                        :continue-on-error true))
+          (let [stub (t2/select-one :model/Database :name "source-only-db")]
+            (is (true? (:is_stub stub)))
+            (is (not (t2/exists? :model/Card :name "bad")))
+            (is (=? {:database_id (:id stub)}
+                    (t2/select-one :model/Card :name "good")))))))))
+
 (deftest legacy-field-dimensions-import-test
   (testing "a Field file written before Dimensions got files of their own still carries them"
     (mt/with-empty-h2-app-db!

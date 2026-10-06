@@ -189,14 +189,29 @@
       (resolve/export-table-fk [_ table-id]       (export-table-fk* table-id))
       (resolve/export-field-fk [this field-id]    (export-field-fk* this field-id)))))
 
+(defn- cached
+  "Return the value memoized in `cache` under `k`, computing and memoizing it with `f` when absent. Nil is not memoized."
+  [cache k f]
+  (if-some [v (get @cache k)]
+    v
+    (let [v (f)]
+      (when (some? v)
+        (swap! cache assoc k v))
+      v)))
+
 (defn cached-import-resolver
-  "Returns a database-backed import resolver that memoizes only [[import-fk]], whose lookups never miss or insert rows."
+  "Returns a database-backed import resolver with memoized lookups, dropped by [[resolve/reset-cache!]]."
   []
-  (let [import-fk* (memoize import-fk)]
-    (reify resolve/SerdesImportResolver
-      (resolve/import-fk          [_ eid model]            (import-fk* eid model))
-      (resolve/import-fk-keyed    [_ portable model field] (import-fk-keyed portable model field))
-      (resolve/import-user        [this email]             (import-user this email))
-      (resolve/import-database-fk [_ db-name]              (import-database-fk db-name))
-      (resolve/import-table-fk    [this path]              (import-table-fk this path))
-      (resolve/import-field-fk    [this path]              (import-field-fk this path)))))
+  (let [cache (atom {})]
+    (reify
+      resolve/SerdesImportResolver
+      (import-fk          [_ eid model]            (cached cache [:fk eid model] #(import-fk eid model)))
+      (import-fk-keyed    [_ portable model field] (cached cache [:fk-keyed portable model field]
+                                                           #(import-fk-keyed portable model field)))
+      (import-user        [this email]             (cached cache [:user email] #(import-user this email)))
+      (import-database-fk [_ db-name]              (cached cache [:database db-name] #(import-database-fk db-name)))
+      (import-table-fk    [this path]              (cached cache [:table path] #(import-table-fk this path)))
+      (import-field-fk    [this path]              (cached cache [:field path] #(import-field-fk this path)))
+
+      resolve/ResettableCache
+      (reset-cache! [_] (reset! cache {})))))
