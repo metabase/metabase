@@ -1468,14 +1468,38 @@ describe("scenarios > dashboard > parameters", () => {
     });
 
     describe("embedded dashboards", () => {
-      it("should work correctly when parameter is enabled", () => {
+      it("should work correctly with enabled, disabled and locked parameters", () => {
+        const disabledCategoryParameter = createMockParameter({
+          ...categoryParameter,
+          id: "d15ab1ed",
+          name: "Category Disabled",
+          slug: "category_disabled",
+        });
+        const lockedCategoryParameter = createMockParameter({
+          ...categoryParameter,
+          id: "10c4ed00",
+          name: "Category Locked",
+          slug: "category_locked",
+        });
+        const categoryTarget = [
+          "dimension",
+          categoryFieldRef,
+          { "stage-number": 0 },
+        ];
+
         H.createQuestionAndDashboard({
           questionDetails: ordersCountByCategory,
           dashboardDetails: {
-            parameters: [categoryParameter],
+            parameters: [
+              categoryParameter,
+              disabledCategoryParameter,
+              lockedCategoryParameter,
+            ],
             enable_embedding: true,
             embedding_params: {
               [categoryParameter.slug]: "enabled",
+              [disabledCategoryParameter.slug]: "disabled",
+              [lockedCategoryParameter.slug]: "locked",
             },
           },
         }).then(({ body: dashcard }) => {
@@ -1485,6 +1509,8 @@ describe("scenarios > dashboard > parameters", () => {
             dashboard_id: dashboardId,
             cards: [
               createMockHeadingDashboardCard({
+                id: -1,
+                row: 0,
                 inline_parameters: [categoryParameter.id],
                 size_x: 24,
                 size_y: 1,
@@ -1498,11 +1524,37 @@ describe("scenarios > dashboard > parameters", () => {
                   {
                     parameter_id: categoryParameter.id,
                     card_id: dashcard.card_id,
-                    target: [
-                      "dimension",
-                      categoryFieldRef,
-                      { "stage-number": 0 },
-                    ],
+                    target: categoryTarget,
+                  },
+                  {
+                    parameter_id: disabledCategoryParameter.id,
+                    card_id: dashcard.card_id,
+                    target: categoryTarget,
+                  },
+                ],
+              },
+              createMockHeadingDashboardCard({
+                id: -2,
+                row: 7,
+                text: "Hidden filters",
+                inline_parameters: [
+                  disabledCategoryParameter.id,
+                  lockedCategoryParameter.id,
+                ],
+                size_x: 24,
+                size_y: 1,
+              }),
+              {
+                id: -3,
+                card_id: dashcard.card_id,
+                row: 8,
+                size_x: 12,
+                size_y: 6,
+                parameter_mappings: [
+                  {
+                    parameter_id: lockedCategoryParameter.id,
+                    card_id: dashcard.card_id,
+                    target: categoryTarget,
                   },
                 ],
               },
@@ -1511,10 +1563,20 @@ describe("scenarios > dashboard > parameters", () => {
 
           H.visitEmbeddedPage({
             resource: { dashboard: dashboardId },
-            params: {},
+            params: {
+              [lockedCategoryParameter.slug]: ["Gadget", "Widget"],
+            },
           });
         });
 
+        cy.log("Disabled and locked parameters are hidden");
+        H.getDashboardCard(2).within(() => {
+          cy.findByText("Hidden filters").should("exist");
+          cy.findByText("Category Disabled").should("not.exist");
+          cy.findByText("Category Locked").should("not.exist");
+        });
+
+        cy.log("A disabled parameter does not filter");
         H.getDashboardCard(1).within(() => {
           cy.findByText("Doohickey").should("be.visible");
           cy.findByText("Gizmo").should("be.visible");
@@ -1522,6 +1584,15 @@ describe("scenarios > dashboard > parameters", () => {
           cy.findByText("Widget").should("be.visible");
         });
 
+        cy.log("A locked parameter filters by its token value");
+        H.getDashboardCard(3).within(() => {
+          cy.findByText("Gadget").should("be.visible");
+          cy.findByText("Widget").should("be.visible");
+          cy.findByText("Doohickey").should("not.exist");
+          cy.findByText("Gizmo").should("not.exist");
+        });
+
+        cy.log("An enabled parameter filters");
         H.getDashboardCard(0).within(() => {
           H.filterWidget().contains("Category").click();
         });
@@ -1543,128 +1614,6 @@ describe("scenarios > dashboard > parameters", () => {
 
         // Verify filter doesn't show up in the dashboard header
         H.dashboardParametersContainer().should("not.exist");
-      });
-
-      it("should work correctly when parameter is disabled", () => {
-        H.createQuestionAndDashboard({
-          questionDetails: ordersCountByCategory,
-          dashboardDetails: {
-            parameters: [categoryParameter],
-            enable_embedding: true,
-            embedding_params: {
-              [categoryParameter.slug]: "disabled",
-            },
-          },
-        }).then(({ body: dashcard }) => {
-          const dashboardId = dashcard.dashboard_id;
-
-          H.updateDashboardCards({
-            dashboard_id: dashboardId,
-            cards: [
-              createMockHeadingDashboardCard({
-                inline_parameters: [categoryParameter.id],
-                size_x: 24,
-                size_y: 1,
-              }),
-              {
-                id: dashcard.id,
-                row: 1,
-                size_x: 12,
-                size_y: 6,
-                parameter_mappings: [
-                  {
-                    parameter_id: categoryParameter.id,
-                    card_id: dashcard.card_id,
-                    target: [
-                      "dimension",
-                      categoryFieldRef,
-                      { "stage-number": 0 },
-                    ],
-                  },
-                ],
-              },
-            ],
-          });
-
-          H.visitEmbeddedPage({
-            resource: { dashboard: dashboardId },
-            params: {},
-          });
-        });
-
-        H.getDashboardCard(0).within(() => {
-          cy.findByText("Heading Text").should("exist");
-          cy.findByText("Category").should("not.exist");
-        });
-
-        H.getDashboardCard(1).within(() => {
-          cy.findByText("Doohickey").should("be.visible");
-          cy.findByText("Gizmo").should("be.visible");
-          cy.findByText("Gadget").should("be.visible");
-          cy.findByText("Widget").should("be.visible");
-        });
-      });
-
-      it("should work correctly when parameter is locked", () => {
-        H.createQuestionAndDashboard({
-          questionDetails: ordersCountByCategory,
-          dashboardDetails: {
-            parameters: [categoryParameter],
-            enable_embedding: true,
-            embedding_params: {
-              [categoryParameter.slug]: "locked",
-            },
-          },
-        }).then(({ body: dashcard }) => {
-          const dashboardId = dashcard.dashboard_id;
-
-          H.updateDashboardCards({
-            dashboard_id: dashboardId,
-            cards: [
-              createMockHeadingDashboardCard({
-                inline_parameters: [categoryParameter.id],
-                size_x: 24,
-                size_y: 1,
-              }),
-              {
-                id: dashcard.id,
-                row: 1,
-                size_x: 12,
-                size_y: 6,
-                parameter_mappings: [
-                  {
-                    parameter_id: categoryParameter.id,
-                    card_id: dashcard.card_id,
-                    target: [
-                      "dimension",
-                      categoryFieldRef,
-                      { "stage-number": 0 },
-                    ],
-                  },
-                ],
-              },
-            ],
-          });
-
-          H.visitEmbeddedPage({
-            resource: { dashboard: dashboardId },
-            params: {
-              [categoryParameter.slug]: ["Gadget", "Widget"],
-            },
-          });
-        });
-
-        H.getDashboardCard(0).within(() => {
-          cy.findByText("Heading Text").should("exist");
-          cy.findByText("Category").should("not.exist");
-        });
-
-        H.getDashboardCard(1).within(() => {
-          cy.findByText("Gadget").should("be.visible");
-          cy.findByText("Widget").should("be.visible");
-          cy.findByText("Doohickey").should("not.exist");
-          cy.findByText("Gizmo").should("not.exist");
-        });
       });
     });
   });
