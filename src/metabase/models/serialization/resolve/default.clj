@@ -190,18 +190,13 @@
       (resolve/export-field-fk [this field-id]    (export-field-fk* this field-id)))))
 
 (defn cached-import-resolver
-  "Returns a database-backed import resolver with memoized lookups."
+  "Returns a database-backed import resolver that memoizes only [[import-fk]], whose lookups never miss or insert rows."
   []
-  (let [import-fk*       (memoize import-fk)
-        import-fk-keyed* (memoize import-fk-keyed)
-        import-user*     (memoize import-user)
-        import-database-fk* (memoize import-database-fk)
-        import-table-fk* (memoize import-table-fk)
-        import-field-fk* (memoize import-field-fk)]
+  (let [import-fk* (memoize import-fk)]
     (reify resolve/SerdesImportResolver
-      (resolve/import-fk       [_ eid model]            (import-fk* eid model))
-      (resolve/import-fk-keyed [_ portable model field] (import-fk-keyed* portable model field))
-      (resolve/import-user     [this email]             (import-user* this email))
-      (resolve/import-database-fk [_ db-name]           (import-database-fk* db-name))
-      (resolve/import-table-fk [this path]              (import-table-fk* this path))
-      (resolve/import-field-fk [this path]              (import-field-fk* this path)))))
+      (resolve/import-fk          [_ eid model]            (import-fk* eid model))
+      (resolve/import-fk-keyed    [_ portable model field] (import-fk-keyed portable model field))
+      (resolve/import-user        [this email]             (import-user this email))
+      (resolve/import-database-fk [_ db-name]              (import-database-fk db-name))
+      (resolve/import-table-fk    [this path]              (import-table-fk this path))
+      (resolve/import-field-fk    [this path]              (import-field-fk this path)))))

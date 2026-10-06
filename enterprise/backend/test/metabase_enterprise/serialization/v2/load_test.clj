@@ -218,6 +218,36 @@
             (testing "the imported Dimension replaces the Field's local one"
               (is (= ["Email"] (t2/select-fn-vec :name :model/Dimension :field_id (:id email)))))))))))
 
+(deftest user-settings-import-on-missing-database-test
+  (testing "Table settings, Field settings and Dimensions alone create a stub database when theirs is missing"
+    (let [serialized (atom nil)
+          extract    (fn [model-name filter-column ids]
+                       (serdes/extract-all model-name {:filter-column filter-column :filter-ids ids}))]
+      (ts/with-dbs [source-db dest-db]
+        (ts/with-db source-db
+          (let [db    (ts/create! :model/Database :name "source-only-db")
+                table (ts/create! :model/Table :name "customers" :db_id (:id db))
+                age   (ts/create! :model/Field :name "age" :table_id (:id table))
+                email (ts/create! :model/Field :name "email" :table_id (:id table))]
+            (t2/insert! :model/TableUserSettings {:table_id (:id table) :display_name "Renamed"})
+            (t2/insert! :model/FieldUserSettings {:field_id (:id age) :description "edited"})
+            (ts/create! :model/Dimension :field_id (:id email) :name "Email" :type :internal)
+            (reset! serialized
+                    (-> []
+                        (into (extract "TableUserSettings" :table_id [(:id table)]))
+                        (into (extract "FieldUserSettings" :field_id [(:id age)]))
+                        (into (extract "Dimension" :field_id [(:id email)]))))))
+        (ts/with-db dest-db
+          (serdes.load/load-metabase! (ingestion-in-memory @serialized))
+          (let [stub  (t2/select-one :model/Database :name "source-only-db")
+                table (t2/select-one :model/Table :db_id (:id stub) :name "customers")]
+            (is (true? (:is_stub stub)))
+            (is (= "Renamed" (t2/select-one-fn :display_name :model/TableUserSettings :table_id (:id table))))
+            (is (= "edited" (t2/select-one-fn :description :model/FieldUserSettings
+                                              :field_id (t2/select-one-pk :model/Field :table_id (:id table) :name "age"))))
+            (is (= ["Email"] (t2/select-fn-vec :name :model/Dimension
+                                               :field_id (t2/select-one-pk :model/Field :table_id (:id table) :name "email"))))))))))
+
 (deftest legacy-field-dimensions-import-test
   (testing "a Field file written before Dimensions got files of their own still carries them"
     (mt/with-empty-h2-app-db!

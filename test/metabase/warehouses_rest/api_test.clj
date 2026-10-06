@@ -652,6 +652,21 @@
                                       :details {:db "my_db"}
                                       :is_stub true})))))))
 
+(deftest connect-stub-database-test
+  (testing "PUT /api/database/:id with connection details for a stub clears is_stub and restarts the initial sync"
+    (mt/with-temporary-setting-values [disable-auto-sync true]
+      (mt/with-temp [:model/Database {db-id :id} {:engine              :postgres
+                                                  :details             {}
+                                                  :is_stub             true
+                                                  :initial_sync_status "complete"
+                                                  :initial_sync_error  "stale"}]
+        (with-redefs [driver/can-connect? (constantly true)]
+          (api-update-database! 200 db-id {:details {:host "localhost" :dbname "prod"}}))
+        (is (=? {:is_stub             false
+                 :initial_sync_status "incomplete"
+                 :initial_sync_error  nil}
+                (t2/select-one :model/Database :id db-id)))))))
+
 (deftest reject-is-stub-in-update-test
   (testing "PUT /api/database/:id returns a 400 when :is_stub=true is in the request body"
     (mt/with-temp [:model/Database {db-id :id} {:engine ::test-driver}]

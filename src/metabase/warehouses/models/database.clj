@@ -478,27 +478,6 @@
   "Every place a Database stores a set of connection details."
   [:details :write_data_details :admin_details])
 
-(defn- exempt-audit-db?
-  "Whether `database` is the Audit DB as the analytics installer writes it: a clone of the *application* database
-  rather than a warehouse anybody pointed somewhere, carrying no details of its own and reached over the app-db
-  connection. There is no user-supplied host in it to police, and checking it anyway refuses the instance's own app
-  db -- empty details read as `localhost`, since every `:sql-jdbc` client substitutes that. The refusal lands during
-  init, so the instance fails to boot rather than failing a request.
-
-  Narrowed to a database with no details at all, which is the only shape the installer produces
-  ([[metabase-enterprise.audit-app.audit/install-database!]] writes none and nothing else adds any). `:is_audit`
-  alone would be too much to hang this on: it is not writable through the API, but it is in the Database serdes
-  `:copy` set, and serialization import is one of the routes this check exists to cover."
-  [database]
-  (and (:is_audit database)
-       (every? #(empty? (get database %)) details-keys)))
-
-(defn- exempt-stub-db?
-  "Whether `database` is a stub with no details at all, as serialization import synthesizes for a missing database."
-  [database]
-  (and (:is_stub database)
-       (every? #(empty? (get database %)) details-keys)))
-
 (defn- validate-connection-hosts!
   "Refuse to store details pointing at a private/internal network address. Enforcing this on the model, and not just on
   the endpoints that test a connection, covers the routes that write a Database without ever testing it: serialization
@@ -508,17 +487,15 @@
   [[metabase.driver.connection/effective-details]] resolves it -- merged onto `:details` -- since that, and not the
   overlay by itself, is what a connection is opened with: one holding nothing but credentials repoints nothing.
 
-  The Audit DB and detail-less stubs are exempt -- see [[exempt-audit-db?]] and [[exempt-stub-db?]]."
+  An empty details map configures no connection, so it is not checked."
   [engine database keys-to-check]
-  (when-not (or (exempt-audit-db? database)
-                (exempt-stub-db? database))
-    (when-let [engine (some-> engine keyword)]
-      (driver.u/with-database-network-policy database
-        (doseq [k     keys-to-check
-                :let  [details (get database k)]
-                :when (map? details)]
-          (driver.u/validate-connection-hosts! engine (cond->> details
-                                                        (not= k :details) (merge (:details database)))))))))
+  (when-let [engine (some-> engine keyword)]
+    (driver.u/with-database-network-policy database
+      (doseq [k     keys-to-check
+              :let  [details (get database k)]
+              :when (and (map? details) (seq details))]
+        (driver.u/validate-connection-hosts! engine (cond->> details
+                                                      (not= k :details) (merge (:details database))))))))
 
 (t2/define-before-update :model/Database
   [database]
@@ -790,7 +767,7 @@
                   :updated-at    true}
    :search-terms {:name        search.spec/explode-camel-case
                   :description true}
-   :where [:= :router_database_id nil]
+   :where [:and [:= :router_database_id nil] [:= :is_stub false]]
    :render-terms {:initial-sync-status true}})
 
 (defenterprise hydrate-router-user-attribute

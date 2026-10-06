@@ -1046,16 +1046,18 @@
                                  :refingerprint      refingerprint
                                  :is_full_sync       full-sync?
                                  :is_on_demand       on-demand?
-                                 :is_stub            (when (and (or details-changed? engine-changed?)
-                                                                (nil? main-conn-error))
-                                                       false)
                                  :description        description
                                  :caveats            caveats
                                  :points_of_interest points_of_interest
                                  :auto_run_queries   auto_run_queries
                                  :settings           (when (seq settings) pending-settings)}
-                                :non-nil #{:name :engine :details :refingerprint :is_full_sync :is_on_demand :is_stub
+                                :non-nil #{:name :engine :details :refingerprint :is_full_sync :is_on_demand
                                            :description :caveats :points_of_interest :auto_run_queries :settings})
+                               (when (and (:is_stub existing-database)
+                                          (or details-changed? engine-changed?))
+                                 {:is_stub             false
+                                  :initial_sync_status "incomplete"
+                                  :initial_sync_error  nil})
                                ;; these fields can be nil
                                (when (contains? body :provider_name)
                                  {:provider_name provider_name})

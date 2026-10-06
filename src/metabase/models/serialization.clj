@@ -1782,11 +1782,11 @@
 (defn- viz-link-card-deps
   [allow-int-ids? settings]
   (when-let [{:keys [model id]} (get-in settings [:link :entity])]
-    (if (= model "table")
-      ;; Serialized: a linked Table is not a dependency (synthesized on import). Raw (export time): the numeric table
-      ;; id is a real Table to existence-check.
+    (if (#{"table" "database"} model)
+      ;; Serialized: a linked Table or Database is not a dependency (synthesized on import). Raw (export time): the
+      ;; numeric id is a real row to existence-check.
       (when (raw-ref-id? allow-int-ids? id)
-        #{[{:model "Table" :id id}]})
+        #{[{:model (name (link-card-model->toucan-model model)) :id id}]})
       #{[{:model (name (link-card-model->toucan-model model))
           :id    id}]})))
 

@@ -525,8 +525,7 @@
                 (is (= #{[{:id dash-eid          :model "Dashboard"}]
                          [{:id coll-eid          :model "Collection"}]
                          [{:id model-eid         :model "Card"}]
-                         [{:id card-eid          :model "Card"}]
-                         [{:id "Linked database" :model "Database"}]}
+                         [{:id card-eid          :model "Card"}]}
                        (set (serdes/deserialization-dependencies extracted-dashboard))))
                 (storage/store! (seq extraction) (storage.files/file-writer dump-dir))))
             (testing "ingest and load"

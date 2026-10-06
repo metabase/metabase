@@ -34,11 +34,14 @@
       (when-let [field (serdes/load-find-local (pop path))]
         (warehouse-schema.db/dimension-for-field (:id field)))))
 
-(defmethod serdes/deserialization-dependencies "Dimension" [dimension]
-  [[(first (serdes/path dimension))]])
-
 (defmethod serdes/load-update! "Dimension" [model-name ingested local]
   ((get-method serdes/load-update! :default) model-name (merge {:human_readable_field_id nil} ingested) local))
+
+(defn- dimension-path->field-ref [dimension-path]
+  (let [[db schema table field :as field-ref] (map :id (pop dimension-path))]
+    (if field
+      field-ref
+      [db nil schema table])))
 
 (defmethod serdes/make-spec "Dimension" [_model-name _opts]
   {:copy      [:name :type :entity_id]

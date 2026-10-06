@@ -137,6 +137,7 @@
                    :model/Database {dest :id}   {:engine :mysql :router_database_id router}
                    :model/Database {sample :id} {:engine :mysql :is_sample true}
                    :model/Database {audit :id}  {:engine :mysql :is_audit true}
+                   :model/Database {stub :id}   {:engine :mysql :is_stub true}
                    :model/Database {_mysql :id} {:engine :mysql}
                    :model/Database {pg2 :id}    {:engine :postgres}
                    :model/Database {pg3 :id}    {:engine :postgres}]
@@ -156,7 +157,9 @@
         (testing "sample databases can't claim an engine's slot"
           (is (not (contains? candidate-ids sample))))
         (testing "audit databases are never candidates"
-          (is (not (contains? candidate-ids audit))))))))
+          (is (not (contains? candidate-ids audit))))
+        (testing "stub databases can't claim an engine's slot"
+          (is (not (contains? candidate-ids stub))))))))
 
 (deftest check-health!-test
   (mt/test-drivers (mt/normal-drivers)
@@ -816,52 +819,17 @@
              #"private or internal network address"
              (t2/update! :model/Database (:id db) {:admin_details {:host "127.0.0.1" :user "hummingbird"}})))))))
 
-(deftest audit-db-is-not-subject-to-the-network-policy-test
-  ;; The Audit DB is a clone of the *application* database, not a warehouse an admin pointed somewhere: it carries no
-  ;; `:details` and is reached over the app-db connection. Under the policy its empty details read as `localhost` --
-  ;; every `:sql-jdbc` client substitutes that -- so validating it refuses the instance's own app db.
-  ;;
-  ;; This has to hold on update as well as insert, because
-  ;; [[metabase-enterprise.audit-app.audit/adjust-audit-db-to-source!]] flips `:engine` to "postgres" on every boot
-  ;; that installs analytics, and an `:engine` change is what makes `before-update` validate every details map. A
-  ;; refusal there is thrown during init, so Metabase fails to start rather than failing a request.
+(deftest empty-details-are-not-subject-to-the-network-policy-test
   (mt/with-temp-env-var-value! [mb-warehouse-allowed-networks "external-only"]
-    (testing "the audit db can be created"
-      (mt/with-temp [:model/Database db {:is_audit true, :engine :h2, :details {}}]
-        (testing "and its engine can be flipped the way installing analytics flips it"
-          (is (pos? (t2/update! :model/Database (:id db) {:engine "postgres"}))))))
-    (testing "an ordinary database with the same empty details is still refused"
-      (is (thrown-with-msg?
-           clojure.lang.ExceptionInfo
-           #"private or internal network address"
-           (t2/insert! :model/Database {:name "not the audit db", :engine :postgres, :details {}}))))
-    (testing "`is_audit` is not itself a way past the policy -- serdes import can set it, so the exemption is
-             narrowed to the detail-less shape the analytics installer actually writes"
-      (is (thrown-with-msg?
-           clojure.lang.ExceptionInfo
-           #"private or internal network address"
-           (t2/insert! :model/Database {:name       "audit-flavored smuggling"
-                                        :is_audit   true
-                                        :engine     (u/qualified-name ::host-details-driver)
-                                        :details    {:host "127.0.0.1"}}))))))
-
-(deftest stub-db-is-not-subject-to-the-network-policy-test
-  (mt/with-temp-env-var-value! [mb-warehouse-allowed-networks "external-only"]
-    (testing "a stub with no details can be created, although its empty details read as `localhost`"
-      (mt/with-temp [:model/Database db {:engine :postgres, :details {}, :is_stub true}]
-        (testing "but connecting it to an internal address is refused"
+    (testing "a database with empty details can be created"
+      (mt/with-temp [:model/Database db {:engine :h2, :details {}}]
+        (testing "and its engine changed, the way installing analytics flips the audit db's"
+          (is (pos? (t2/update! :model/Database (:id db) {:engine "postgres"}))))
+        (testing "but giving it an internal address is refused"
           (is (thrown-with-msg?
                clojure.lang.ExceptionInfo
                #"private or internal network address"
-               (t2/update! :model/Database (:id db) {:details {:host "127.0.0.1"}, :is_stub false}))))))
-    (testing "`is_stub` is not itself a way past the policy"
-      (is (thrown-with-msg?
-           clojure.lang.ExceptionInfo
-           #"private or internal network address"
-           (t2/insert! :model/Database {:name    "stub-flavored smuggling"
-                                        :is_stub true
-                                        :engine  (u/qualified-name ::host-details-driver)
-                                        :details {:host "127.0.0.1"}}))))))
+               (t2/update! :model/Database (:id db) {:details {:host "127.0.0.1"}}))))))))
 
 (deftest attached-dwh-relaxes-the-network-policy-test
   (mt/with-temp-env-var-value! [mb-warehouse-allowed-networks "external-only"]

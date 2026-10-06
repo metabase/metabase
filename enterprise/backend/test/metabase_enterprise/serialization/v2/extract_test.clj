@@ -1122,8 +1122,8 @@
           (is (not (contains? ser :id)))
           (is (not (contains? ser :field_id))
               ":field_id is dropped; its implied by the path")
-          (testing "depend only on the Database; the parent Field is synthesized on import if missing"
-            (is (= #{[{:model "Database"   :id "My Database"}]}
+          (testing "have no dependencies; the Database and parent Field are synthesized on import if missing"
+            (is (= #{}
                    (set (serdes/deserialization-dependencies ser)))))))
       (testing "extract-metabase behavior"
         (testing "without :include-field-values"

@@ -47,13 +47,14 @@
   (t2/update! :model/Database database-id {:provider_name provider-name}))
 
 (mu/defn health-check-candidate-ids
-  "The `:id` of the lowest-id non-audit, non-sample, non-destination Database of each engine."
+  "The `:id` of the lowest-id non-audit, non-sample, non-stub, non-destination Database of each engine."
   []
   (t2/query {:select   [[:%min.id :id]]
              :from     [(t2/table-name :model/Database)]
              :where    [:and
                         [:= :is_audit false]
                         [:= :is_sample false]
+                        [:= :is_stub false]
                         [:= :router_database_id nil]]
              :group-by [:engine]}))
 
