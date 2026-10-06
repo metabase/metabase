@@ -961,6 +961,10 @@ describe("scenarios > dashboard > parameters", () => {
       });
       H.getDashboardCard(2)
         .findByTestId("parameter-mapper-container")
+        .findByText("Select…")
+        .should("be.visible");
+      H.getDashboardCard(2)
+        .findByTestId("parameter-mapper-container")
         .findByText(/Category/)
         .should("not.exist");
       H.undoToast().should("not.exist");
@@ -968,6 +972,14 @@ describe("scenarios > dashboard > parameters", () => {
       // Verify filter isn't auto-wired after mapping it to a card
       H.disconnectDashboardFilter(H.getDashboardCard(1), "Category");
       H.selectDashboardFilter(H.getDashboardCard(1), "Category");
+      H.getDashboardCard(1)
+        .findByTestId("parameter-mapper-container")
+        .findByText(/Category/)
+        .should("exist");
+      H.getDashboardCard(2)
+        .findByTestId("parameter-mapper-container")
+        .findByText("Select…")
+        .should("be.visible");
       H.getDashboardCard(2)
         .findByTestId("parameter-mapper-container")
         .findByText(/Category/)
