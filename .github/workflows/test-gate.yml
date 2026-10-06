@@ -71,19 +71,44 @@ jobs:
     steps:
       - name: Decide
         id: decide
-        # Precedence matters for the conditions below.
         env:
           FILTERS: ${{ inputs.filters }}
-          VERDICT: >-
-            ${{ (github.ref_name == 'master' || startsWith(github.ref_name, 'release-x.')) && 'force-run'
-            || contains(github.event.pull_request.labels.*.name, 'ci:run-all') && 'force-run'
-            || contains(github.event.pull_request.labels.*.name, 'ci:skip') && 'force-skip'
-            || (github.event.pull_request.stack != null
-            && github.event.pull_request.stack.base.ref != github.event.pull_request.base.ref
-            && github.event.pull_request.stack.position != github.event.pull_request.stack.size) && 'force-skip'
-            || 'defer' }}
-        run: |
-          echo "verdict=$VERDICT" | tee -a "$GITHUB_OUTPUT"
+        # Reads only what every runner already sets: GITHUB_REF_NAME, and the event payload at
+        # GITHUB_EVENT_PATH. A push has no `pull_request` in its payload, so no PR rule matches it.
+        run: | # bash
+          # True when the PR carries the label $1. A non-PR event has no labels, so it never does.
+          has_label() {
+            jq -e --arg label "$1" \
+              'any(.pull_request.labels[]?; .name == $label)' "$GITHUB_EVENT_PATH" > /dev/null
+          }
+
+          # The rules are checked in order and the first match wins, so precedence is their order.
+          #
+          # 1. master and the release branches are what we ship, so they always run everything.
+          if [[ "$GITHUB_REF_NAME" == "master" || "$GITHUB_REF_NAME" == release-x.* ]]; then
+            verdict=force-run
+          # 2. `ci:run-all` asks for a full run on a PR, as if it were master. It beats `ci:skip`,
+          #    so a PR carrying both still gets tested.
+          elif has_label "ci:run-all"; then
+            verdict=force-run
+          # 3. `ci:skip` opts a PR out of CI entirely.
+          elif has_label "ci:skip"; then
+            verdict=force-skip
+          # 4. Only the ends of a stack run CI: the bottom PR (the one whose base is the stack's
+          #    base) and the top PR (the one at the last position). Every PR in between is skipped
+          #    until it reaches the bottom, unless it carries `ci:run-all` (rule 2). A PR outside a
+          #    stack has no `stack`, which reads as null and never matches.
+          elif jq -e '.pull_request.stack != null
+                      and .pull_request.stack.base.ref != .pull_request.base.ref
+                      and .pull_request.stack.position != .pull_request.stack.size' \
+                 "$GITHUB_EVENT_PATH" > /dev/null; then
+            verdict=force-skip
+          # 5. Everything else: each suite runs what the diff touched.
+          else
+            verdict=defer
+          fi
+
+          echo "verdict=$verdict" | tee -a "$GITHUB_OUTPUT"
           # Echoed back as JSON so a force-run can report every requested filter as matched.
           echo "filters=$(jq -Rc 'split("[,\\s]+";"") | map(select(length > 0))' <<< "$FILTERS")" | tee -a "$GITHUB_OUTPUT"
 
