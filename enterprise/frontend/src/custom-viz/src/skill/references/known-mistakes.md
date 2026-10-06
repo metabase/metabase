@@ -202,11 +202,11 @@ row · Click object incomplete, or clickable mark without
   background) or off-palette next to native charts.
 - **Why it's wrong** — Only `renderingContext.getColor` and
   `colorScheme` follow the current Metabase theme.
-- **Fix** — Derive every color from `renderingContext.getColor(name)` or
-  branch on `renderingContext.colorScheme`; user-picked colors from a
-  setting are fine.
-- **Detector** — grep for color literals (`#…`, `rgb(`, `hsl(`, named
-  CSS colors) in styles and SVG `fill`/`stroke`; emit for each one not
-  a setting default and not inside a `colorScheme` branch. Skip when
-  theme is opted out.
+- **Fix** — Follow the statement's `Colors` (`api-contract.md`,
+  Colors); user-picked colors from a setting are fine.
+- **Detector** — Every `getColor(` argument is a name from the
+  `api-contract.md` Colors list. Text, backgrounds and lines use
+  `getColor`, never literals (`#…`, `rgb(`, `hsl(`, named CSS colors).
+  `Colors: theme` → no literals at all. `Colors: own` → mark literals
+  are exactly the statement's values.
 - **Severity** — `blocker`.

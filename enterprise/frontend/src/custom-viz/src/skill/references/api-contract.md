@@ -45,10 +45,47 @@ drives value formatting. Pass `element` and `event` to anchor it, as for
 ## renderingContext
 
 Host helpers so your output matches the host exactly: `getColor(name)`
-resolves Metabase palette colors for the current theme, `colorScheme` is
-`"light" | "dark"`, `fontFamily` is the font Metabase renders with, and
+resolves a Metabase palette color for the current theme (Colors below),
+`colorScheme` is `"light" | "dark"`, `fontFamily` is the font Metabase renders with, and
 `measureText(text, style)` returns real rendered pixel sizes — use it for
 label truncation and fitting instead of guessing character widths.
+
+## Colors
+
+`getColor` accepts only the names below; any other string comes back
+unchanged and usually renders black.
+
+- Text: `text-primary` (labels, values), `text-secondary` (axis
+  labels, captions), `text-tertiary` (hints)
+- Surfaces: `background-primary` (viz background),
+  `background-secondary` (bands, alternate rows)
+- Lines: `border` (gridlines, axes, separators)
+- Emphasis: `brand` (single-series marks, selection)
+- Status: `success`, `error`, `warning` (up/down, thresholds)
+- Series, one per category in order: `accent0`, `accent1`, `accent2`,
+  `accent3`, `accent4`, `accent5`, `accent6`, `accent7`
+- Series variants: `accent0-light`, `accent1-light`, `accent2-light`,
+  `accent3-light`, `accent4-light`, `accent5-light`, `accent6-light`,
+  `accent7-light`, `accent0-dark`, `accent1-dark`, `accent2-dark`,
+  `accent3-dark`, `accent4-dark`, `accent5-dark`, `accent6-dark`,
+  `accent7-dark`
+
+Text, surfaces and lines always come from `getColor`. The statement's
+`Colors` decides data marks only:
+
+- `theme` → marks use `getColor` names too; a color setting's default
+  is one of them.
+- `own` → marks use the statement's values as literals; a value with a
+  separate dark-theme entry is picked by `colorScheme`.
+
+Deriving from a base color the way Metabase does (HSL lightness, 0–100):
+
+- light variant: lightness + 12.5; dark variant: lightness − 12.5
+- hover: a dark color gets lightness × 1.5, a light one lightness × 0.75
+- dark theme: same value as light — Metabase keeps series colors
+  unchanged across themes
+- text on a filled mark: white, unless the mark is so light that dark
+  text contrasts more
 
 ## checkRenderable vs the component
 

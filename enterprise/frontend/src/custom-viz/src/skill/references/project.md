@@ -12,7 +12,8 @@
   Building: <what>
   Data shape: <columns and types, expected row count>
   Settings: <list>
-  Opted out: <none | drills / hover / theme>
+  Opted out: <none | drills / hover>
+  Colors: <theme | own: <per mark color: base, hover, light/dark variants, dark-theme value>>
   Notes: <click behavior, styling, other user answers that change the code; omit when none; never bug or fix history>
   ```
 
@@ -33,9 +34,10 @@
 
 ## Defaults
 
-Drill-through (`onClick`), hover tooltips (`onHover`) and light/dark theme
-support (colors from `renderingContext`) are on unless the build
-statement opts out.
+Drill-through (`onClick`) and hover tooltips (`onHover`) are on unless
+the build statement opts out. Colors follow the statement's `Colors`
+(`api-contract.md`, Colors); both light and dark themes must read well
+either way.
 
 ## Checks
 
