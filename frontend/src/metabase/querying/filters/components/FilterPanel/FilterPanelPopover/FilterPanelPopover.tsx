@@ -4,7 +4,7 @@ import { useLocale } from "metabase/common/hooks";
 import { useTranslateContent } from "metabase/content-translation/hooks";
 import { FilterPicker } from "metabase/querying/filters/components/FilterPicker";
 import { getTranslatedFilterDisplayName } from "metabase/querying/filters/utils/display";
-import { Popover } from "metabase/ui";
+import { Popover, useStablePopoverPosition } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
 import { FilterPill } from "../FilterPill";
@@ -25,6 +25,7 @@ export function FilterPanelPopover({
   onChange,
 }: FilterPanelPopoverProps) {
   const [isOpened, setIsOpened] = useState(false);
+  const stablePosition = useStablePopoverPosition("bottom-start");
   const tc = useTranslateContent();
   const { locale } = useLocale();
 
@@ -45,8 +46,8 @@ export function FilterPanelPopover({
 
   return (
     <Popover
+      {...stablePosition}
       opened={isOpened}
-      position="bottom-start"
       transitionProps={{ duration: 0 }}
       onChange={setIsOpened}
     >
