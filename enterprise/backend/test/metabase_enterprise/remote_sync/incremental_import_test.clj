@@ -458,3 +458,119 @@
                  (is (= :success (:status result)) (pr-str (select-keys result [:status :message])))
                  (is (= :incremental route) "a dashboard delete stays on the incremental path")
                  (is (not (t2/exists? :model/Dashboard :name "Plain Board")) "the pull deleted the dashboard"))))))))))
+
+(deftest model-delete-cascading-to-a-kept-action-equivalence-test
+  (testing "A pull that deletes the file of a model, but not the file of its Action, deletes that Action by FK cascade.
+            As in the full import, the ledger row of the Action must go too"
+    (doseq [[label edit-action] [["the action file is unchanged" identity]
+                                 ["the action file is edited" #(str/replace-first % #"(?m)^(name: .*\n)"
+                                                                                  "$1description: remote edit\n")]]]
+      (testing label
+        (do-with-bench!
+         (fn [_f0]
+           (mt/with-temp [:model/Card        {model-id :id}  {:name "Bench Model" :type :model
+                                                              :collection_id (:id (bench-collection))}
+                          :model/Action      {action-id :id} {:name "Zebra action" :type :query :model_id model-id}
+                          :model/QueryAction _               {:action_id     action-id
+                                                              :dataset_query (mt/native-query {:query "select 1"})}]
+             (mt/with-model-cleanup [:model/Action]
+               (let [g0          (synced-tree)
+                     model-path  (path-with g0 "bench_model")
+                     action-path (path-with g0 "zebra_action")]
+                 (is (some? model-path) "precondition: the model card is in the synced tree")
+                 (is (some? action-path) "precondition: the action is in the synced tree")
+                 (is (= :incremental (run-differential! g0 (-> g0
+                                                               (dissoc model-path)
+                                                               (update action-path edit-action))))))))))))))
+
+(deftest document-delete-cascading-to-a-model-and-its-action-equivalence-test
+  (testing "A pull that deletes the file of a Document, but not the files of a model that belongs to it and of the
+            model's Action, deletes the model and the Action by FK cascade. As in the full import, the ledger rows of
+            both must go"
+    (do-with-bench!
+     (fn [_f0]
+       (mt/with-model-cleanup [:model/Action :model/Document]
+         (let [bench     (bench-collection)
+               doc-id    (t2/insert-returning-pk! :model/Document {:name          "Parent Thing"
+                                                                   :collection_id (:id bench)
+                                                                   :creator_id    (mt/user->id :rasta)
+                                                                   :document      {:type "doc" :content []}
+                                                                   :content_type  "application/json+vnd.prose-mirror"})
+               model-id  (t2/insert-returning-pk! :model/Card {:name                   "Doc Model"
+                                                               :type                   :model
+                                                               :collection_id          (:id bench)
+                                                               :document_id            doc-id
+                                                               :creator_id             (mt/user->id :rasta)
+                                                               :display                :table
+                                                               :visualization_settings {}
+                                                               :dataset_query          (mt/native-query {:query "select 1"})})
+               action-id (t2/insert-returning-pk! :model/Action {:name "Doc action" :type :query :model_id model-id})
+               _         (t2/insert! :model/QueryAction {:action_id     action-id
+                                                         :dataset_query (mt/native-query {:query "select 1"})})
+               g0        (synced-tree)
+               doc-path  (some #(when (str/ends-with? % "/parent_thing.yaml") %) (keys g0))]
+           (is (some? doc-path) "precondition: the document is in the synced tree")
+           (is (some? (path-with g0 "doc_model")) "precondition: the model card is in the synced tree")
+           (is (some? (path-with g0 "doc_action")) "precondition: the action is in the synced tree")
+           (is (= :incremental (run-differential! g0 (dissoc g0 doc-path))))))))))
+
+(defn- card-history-counts
+  "The number of Revisions and of ModerationReviews of the Card with `card-id`."
+  [card-id]
+  {:revisions          (t2/count :model/Revision :model "Card" :model_id card-id)
+   :moderation-reviews (t2/count :model/ModerationReview :moderated_item_type "card" :moderated_item_id card-id)})
+
+(deftest dashboard-delete-removes-the-history-of-its-questions-test
+  (testing "A pull that deletes the file of a Dashboard, but not the file of its question, also deletes the Revisions
+            and the ModerationReviews of the question, as a delete of the question itself does"
+    (doseq [[route force?] [[:incremental false] [:full true]]]
+      (testing route
+        (search.tu/with-index-disabled
+          (do-with-parent-and-child-card!
+           :model/Dashboard
+           (fn [g0 parent-path]
+             (let [src (rs.test/versioned-source :trees {"v0" g0 "v1" (dissoc g0 parent-path)} :current "v0")]
+               (is (= :success (:status (import-at! src "v0" :force? true))) "baseline import of v0 succeeds")
+               (let [kid-id (t2/select-one-pk :model/Card :name "Kid Question")]
+                 (t2/insert! :model/Revision {:model "Card" :model_id kid-id :user_id (mt/user->id :rasta)
+                                              :object {} :is_creation true :is_reversion false})
+                 (t2/insert! :model/ModerationReview {:moderated_item_id   kid-id
+                                                      :moderated_item_type "card"
+                                                      :moderator_id        (mt/user->id :rasta)
+                                                      :most_recent         true
+                                                      :status              "verified"})
+                 (is (= {:revisions 1 :moderation-reviews 1} (card-history-counts kid-id)) "precondition")
+                 (let [[result path] (if force?
+                                       [(import-at! src "v1" :force? true) :full]
+                                       (import-v1-under-test! src))]
+                   (is (= :success (:status result)) "the pull deleting the dashboard succeeds")
+                   (is (= route path))
+                   (is (not (t2/exists? :model/Card kid-id)) "the pull deleted the question")
+                   (is (= {:revisions 0 :moderation-reviews 0} (card-history-counts kid-id))
+                       "the history of the deleted question is gone too")))))))))))
+
+(deftest model-delete-sends-each-action-to-search-once-test
+  (testing "A pull that deletes a model and its tracked Action removes the Action from search with one id, one time"
+    (search.tu/with-index-disabled
+      (do-with-bench!
+       (fn [_f0]
+         (mt/with-temp [:model/Card        {model-id :id}  {:name "Bench Model" :type :model
+                                                            :collection_id (:id (bench-collection))}
+                        :model/Action      {action-id :id} {:name "Zebra action" :type :query :model_id model-id}
+                        :model/QueryAction _               {:action_id     action-id
+                                                            :dataset_query (mt/native-query {:query "select 1"})}]
+           (mt/with-model-cleanup [:model/Action]
+             (let [g0      (synced-tree)
+                   g1      (dissoc g0 (path-with g0 "bench_model") (path-with g0 "zebra_action"))
+                   src     (rs.test/versioned-source :trees {"v0" g0 "v1" g1} :current "v0")
+                   deleted (atom [])]
+               (is (= :success (:status (import-at! src "v0" :force? true))) "baseline import of v0 succeeds")
+               (is (t2/exists? :model/RemoteSyncObject :model_type "Action" :model_id action-id)
+                   "precondition: the ledger tracks the action")
+               (mt/with-dynamic-fn-redefs [search/delete! (fn [model ids] (swap! deleted conj [model (vec ids)]))]
+                 (let [[result path] (import-v1-under-test! src)]
+                   (is (= :success (:status result)))
+                   (is (= :incremental path))))
+               (is (= [(str action-id)]
+                      (into [] (comp (filter #(= :model/Action (first %))) (mapcat second)) @deleted))
+                   (pr-str @deleted))))))))))
