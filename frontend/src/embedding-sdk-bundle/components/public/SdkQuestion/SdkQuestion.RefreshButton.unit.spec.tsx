@@ -89,8 +89,14 @@ const setup = ({ autoRunQueries }: { autoRunQueries: boolean }) => {
     },
   );
 
+  const lastQueryBody = async () => {
+    const [lastCall] = fetchMock.callHistory.calls(queryPath).slice(-1);
+    return lastCall?.request?.clone().json();
+  };
+
   return {
     onRun,
+    lastQueryBody,
     queryCalls: () => fetchMock.callHistory.calls(queryPath).length,
   };
 };
@@ -104,7 +110,9 @@ describe("SdkQuestion.RefreshButton", () => {
   });
 
   it("should rerun the query when automatic reruns are off", async () => {
-    const { queryCalls, onRun } = setup({ autoRunQueries: false });
+    const { queryCalls, onRun, lastQueryBody } = setup({
+      autoRunQueries: false,
+    });
 
     const button = await screen.findByTestId("refresh-button");
     await waitFor(() => expect(queryCalls()).toBe(1));
@@ -115,5 +123,6 @@ describe("SdkQuestion.RefreshButton", () => {
 
     await waitFor(() => expect(queryCalls()).toBe(2));
     await waitFor(() => expect(onRun).toHaveBeenCalledTimes(1));
+    expect(await lastQueryBody()).toMatchObject({ ignore_cache: true });
   });
 });

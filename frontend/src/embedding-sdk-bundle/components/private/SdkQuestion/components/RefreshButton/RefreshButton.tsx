@@ -1,9 +1,9 @@
-import type { MouseEvent } from "react";
+import type { MouseEvent, MouseEventHandler } from "react";
 import { t } from "ttag";
 
 import { useSdkSelector } from "embedding-sdk-bundle/store";
 import { getIsGuestEmbed } from "embedding-sdk-bundle/store/selectors";
-import type { ButtonProps } from "embedding-sdk-bundle/types/ui";
+import type { CommonStylingProps } from "embedding-sdk-bundle/types/props";
 import { transformSdkQuestion } from "metabase/embedding-sdk/lib/transform-question";
 import { Button, Icon, Tooltip } from "metabase/ui";
 
@@ -14,7 +14,12 @@ import { useSdkQuestionContext } from "../../context";
  * @expand
  * @category InteractiveQuestion
  */
-export type RefreshButtonProps = ButtonProps;
+export type RefreshButtonProps = CommonStylingProps & {
+  /**
+   * Callback function to be called when the button is clicked
+   */
+  onClick?: MouseEventHandler<HTMLButtonElement>;
+};
 
 /**
  * Button to run the current query. Only appears when automatic reruns are turned off for the database.
@@ -25,7 +30,8 @@ export type RefreshButtonProps = ButtonProps;
  */
 export const RefreshButton = ({
   onClick,
-  ...buttonProps
+  className,
+  style,
 }: RefreshButtonProps = {}) => {
   const { question, queryQuestion, isQueryRunning, onRun } =
     useSdkQuestionContext();
@@ -37,19 +43,20 @@ export const RefreshButton = ({
 
   const handleClick = async (e: MouseEvent<HTMLButtonElement>) => {
     onClick?.(e);
-    const nextQuestion = await queryQuestion();
+    const nextQuestion = await queryQuestion({ ignoreCache: true });
     onRun?.(nextQuestion && transformSdkQuestion(nextQuestion));
   };
 
   return (
     <Tooltip label={t`Refresh`}>
       <Button
+        className={className}
+        style={style}
         leftSection={<Icon name="refresh" />}
         aria-label={t`Refresh`}
         data-testid="refresh-button"
         disabled={isQueryRunning}
         onClick={handleClick}
-        {...buttonProps}
       />
     </Tooltip>
   );
