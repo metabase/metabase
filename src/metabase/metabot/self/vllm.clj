@@ -168,6 +168,12 @@
 (def ^:private probe-messages
   [{:role "user" :content "Record the table name: orders"}])
 
+(def ^:private forced-tool-call-messages
+  "The prompt of the forced tool call check.
+
+  Nothing in it calls for a tool, so a server that ignores `tool_choice` answers it with text."
+  [{:role "user" :content "Say hello."}])
+
 (def ^:private probe-max-tokens
   "Generation ceiling for a preflight probe. High enough to clear a reasoning model's thinking, which
   is billed against it: a probe that stops at `length` before the tool call looks identical to a
@@ -203,14 +209,14 @@
   "Run one non-streaming Chat Completions turn against `model` and return the first choice. The
   `finish_reason` is part of the return value because a generation truncated at
   [[probe-max-tokens]] and a server that will not call tools both produce empty `tool_calls`."
-  [req model tool-choice]
+  [req model tool-choice messages]
   (let [res (adapter/request! provider
                               (assoc req
                                      :method  :post
                                      :path    "/chat/completions"
                                      :as      :json
                                      :body    (json/encode {:model       model
-                                                            :messages    probe-messages
+                                                            :messages    messages
                                                             :tools       [probe-tool]
                                                             :tool_choice tool-choice
                                                             :temperature 0
@@ -232,7 +238,7 @@
 
   Returns whether the model emitted reasoning, the only signal anywhere that it is a reasoning model."
   [req model]
-  (let [{:keys [message finish_reason]} (probe-chat! req model "auto")
+  (let [{:keys [message finish_reason]} (probe-chat! req model "auto" probe-messages)
         content    (str (:content message))
         ;; `reasoning` since vLLM 0.26; `reasoning_content` is the deprecated spelling older builds
         ;; and other OpenAI-compatible servers still use.
@@ -284,7 +290,7 @@
   "Check that guided decoding works. A different failure from [[check-tool-calling!]]: a model whose
   grammar the server cannot compile chats fine but breaks titling and the whole `sql` profile."
   [req model]
-  (let [{:keys [message finish_reason]} (probe-chat! req model "required")]
+  (let [{:keys [message finish_reason]} (probe-chat! req model "required" forced-tool-call-messages)]
     (when (empty? (:tool_calls message))
       (throw (preflight-ex
               (if (= "length" finish_reason)

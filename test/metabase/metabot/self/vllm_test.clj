@@ -1053,6 +1053,24 @@
                         {:message       {:content "I can record the table name for you." :tool_calls []}
                          :finish_reason "stop"})))))
 
+(deftest preflight-rejects-a-server-that-ignores-tool-choice-test
+  (testing "the forced tool call check asks for nothing a tool would do, so a server that treats `required` as
+           `auto` answers it with text and fails"
+    (mt/with-dynamic-fn-redefs [http/request (fn [{:keys [url body]}]
+                                               (if (re-find #"/models$" (str url))
+                                                 {:status 200 :body {:data [{:id "vllm-test" :max_model_len 32768}]}}
+                                                 (let [prompt (-> body str json/decode+kw :messages first :content)]
+                                                   {:status 200
+                                                    :body   {:choices [(if (re-find #"table name" prompt)
+                                                                         {:message       tool-calling-message
+                                                                          :finish_reason "tool_calls"}
+                                                                         {:message       {:content "Hello!" :tool_calls []}
+                                                                          :finish_reason "stop"})]}})))]
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"did not honor a forced tool call"
+           (vllm/list-models {:credentials credentials :probe? true}))))))
+
 (deftest preflight-reports-a-forced-tool-call-that-ran-out-of-budget-test
   (testing "a forced call truncated at the ceiling is named as such, not as a server refusing to honor it"
     (is (thrown-with-msg?
@@ -1089,7 +1107,7 @@
         (is (true? (deref interrupted 10000 :never-cancelled)))))))
 
 (deftest preflight-probe-request-shape-test
-  (testing "both probes ask for the same trivial completion, non-streaming and deterministic — the ceiling
+  (testing "both probes ask for a trivial completion, non-streaming and deterministic — the ceiling
            is the one a forced tool call is guaranteed to be given at request time"
     (let [requests (atom [])]
       (mt/with-dynamic-fn-redefs [http/request (fn [{:keys [url body] :as req}]
