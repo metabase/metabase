@@ -86,7 +86,9 @@
    {:model-type     "Card"
     :model-key      :model/Card
     :identity       :entity-id
-    :delete-after   [:model/Collection]  ; has collection_id FK
+    ;; Before Dashboard and Document: a delete of those removes their Cards by FK cascade, which skips the Card
+    ;; before-delete hook (revisions, moderation reviews, parameter cards, notifications).
+    :delete-after   [:model/Collection :model/Dashboard :model/Document]
     :events         {:prefix :event/card
                      :types  [:create :update :delete :public-link-created :public-link-deleted]}
     :eligibility    {:type       :collection
@@ -104,7 +106,8 @@
    {:model-type     "Action"
     :model-key      :model/Action
     :identity       :entity-id
-    :delete-after   [:model/Collection]  ; has collection_id FK
+    ;; Before Card, its parent: an import deletes each child through Toucan, not by the FK cascade of its parent.
+    :delete-after   [:model/Collection :model/Card]
     :events         {:prefix :event/action
                      :types  [:create :update :delete]}
     :eligibility    {:type       :collection

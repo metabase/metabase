@@ -57,25 +57,47 @@
                     (spec/transforms-namespace-collection? entity))))
               serdes-paths))))
 
+(defn- delete-with-closure!
+  "Deletes the entities `ids-by-model` (a map of model key to a set of ids) and the rest of their delete closure
+  (see [[remote-sync.db/delete-closure]]), children before parents in [[spec/specs-for-deletion]] order. Run it in
+  the transaction of the pull. Returns:
+   - `:deleted`: the closure, as a map of model key to a set of ids;
+   - `:search-ids`: a map of search model to the search-index ids (strings) of every deleted row, also the
+     model-index values that the delete removes by cascade."
+  [ids-by-model]
+  (let [{closure :ids-by-model :keys [model-index-ids]} (remote-sync.db/delete-closure ids-by-model)
+        ;; read before the delete, which removes the values by cascade
+        value-ids (remote-sync.db/model-index-value-search-ids (vec model-index-ids))
+        order     (mapv first (spec/specs-for-deletion))]
+    (doseq [model-key (into order (remove (set order)) (keys closure))
+            :let [ids (get closure model-key)]
+            :when (seq ids)]
+      (remote-sync.db/delete-instances! model-key (vec ids)))
+    {:deleted    closure
+     :search-ids (cond-> (update-vals closure #(mapv str %))
+                   (seq value-ids) (assoc :model/ModelIndexValue value-ids))}))
+
 (defn- remove-unsynced!
   "Deletes any remote sync content that was NOT part of the import.
 
   Takes a sequence of remote-synced collection IDs and imported-data map from spec/extract-imported-entities.
-  For each entity-id based model, deletes entities whose entity_id is not in the imported set.
+  For each entity-id based model, deletes entities whose entity_id is not in the imported set, with their delete
+  closure (see [[delete-with-closure!]]).
 
   Models with :scope-key in their spec are scoped to synced collections (using :id for Collection, :collection_id
   for others). Models without :scope-key (like TransformTag) are deleted globally by entity_id.
 
-  Path-based models (Table, Field) are not removed here - they are controlled by published table settings.
-
-  Uses specs-for-deletion to process models in dependency order (models with FK references to
-  Collection are deleted before Collection itself)."
+  Path-based models (Table, Field) are not removed here - they are controlled by published table settings."
   [synced-collection-ids {:keys [by-entity-id]}]
-  (doseq [[model-key model-spec] (spec/specs-for-deletion)
-          :let [entity-ids (get by-entity-id (:model-type model-spec) [])]]
-    (remote-sync.db/delete-removed-instances!
-     model-key
-     (spec/removal-opts model-spec synced-collection-ids entity-ids))))
+  (delete-with-closure!
+   (into {}
+         (for [[model-key model-spec] (spec/specs-for-deletion)
+               :let [entity-ids (get by-entity-id (:model-type model-spec) [])
+                     ids        (remote-sync.db/removed-instance-ids
+                                 model-key
+                                 (spec/removal-opts model-spec synced-collection-ids entity-ids))]
+               :when (seq ids)]
+           [model-key ids]))))
 
 (defn- quoted
   "Wraps `s` in backticks so that leading and trailing whitespace is visible to the reader."
@@ -438,25 +460,10 @@
       :else
       {:ingestable ingestable :deleted-rsos deleted-rsos})))
 
-(defn- cascaded-search-ids-of-cards
-  "The search-index ids, as strings and keyed by model, of the rows that a delete of the Cards with `card-ids` removes
-  by foreign-key cascade: the Actions of the models, and the values of their model indexes. A model with no such row
-  is absent. Each query takes at most [[app-db-batch-size]] ids."
-  [card-ids]
-  (let [{:keys [action-ids index-ids]} (transduce (map #(remote-sync.db/cascaded-action-and-index-ids (vec %)))
-                                                  (partial merge-with into)
-                                                  {:action-ids [] :index-ids []}
-                                                  (partition-all app-db-batch-size card-ids))
-        value-ids (into [] (mapcat #(remote-sync.db/model-index-value-search-ids (vec %)))
-                        (partition-all app-db-batch-size index-ids))]
-    (cond-> {}
-      (seq action-ids) (assoc :model/Action (mapv str action-ids))
-      (seq value-ids)  (assoc :model/ModelIndexValue value-ids))))
-
 (defn- incremental-load-snapshot!
   "Applies an incremental `plan` from [[incremental-import-plan]]: loads only its added/modified entities,
-  deletes only those genuinely removed, and reconciles just those rows of the RemoteSyncObject table —
-  leaving everything else untouched. Runs `finalize!` inside the reconcile transaction, then logs success and
+  deletes only those genuinely removed and their delete closure (see [[delete-with-closure!]]), and reconciles
+  just those rows of the RemoteSyncObject table — leaving everything else untouched. Runs `finalize!` inside the reconcile transaction, then logs success and
   returns [[import!]]'s `:success` result map carrying `snapshot-version`. The caller decides whether an
   incremental load is safe (see [[incremental-import-plan]] and [[import!]]); this assumes the plan is valid
   and local state matches the diff base.
@@ -476,63 +483,53 @@
                         (contains? (get-in imported-data [:by-entity-id model-type]) eid))
         ;; A tracked entity whose entity_id was NOT re-loaded is a genuine delete; if it WAS
         ;; re-loaded (at a new path) it's a rename, so we keep it.
-        deletes       (for [{:keys [model_type model_id]} deleted-rsos
-                            ;; N+1: one entity_id query per delete candidate (bounded by deletions in a single
-                            ;; pull; batching would need grouping by model-key into per-table IN queries).
-                            :let [model-key (:model-key (spec/spec-for-model-type model_type))
-                                  eid (when model-key (remote-sync.db/entity-id model-key model_id))]
-                            :when (not (loaded-eid? model_type eid))]
-                        {:model_type model_type :model_id model_id})
-        ;; A delete of a Dashboard or a Document cascades (by foreign key) to the Cards that belong to it. Those
-        ;; Cards have ledger rows of their own, and the same pull usually deletes them. When the remote kept the file
-        ;; of such a Card, delete the Card here too, so that its ledger row and search entry go, as in the full import.
-        ;; The lookup runs after the load, so a Card that the pull moved out of its parent is not included.
-        deleted-ids   (fn [model-type] (into [] (keep #(when (= model-type (:model_type %)) (:model_id %))) deletes))
-        cascaded      (into #{}
-                            (map (fn [card-id] {:model_type "Card" :model_id card-id}))
-                            (remote-sync.db/child-card-ids (deleted-ids "Dashboard") (deleted-ids "Document")))
-        deletes       (distinct (concat deletes cascaded))
-        model-key-of  (fn [{:keys [model_type]}] (:model-key (spec/spec-for-model-type model_type)))
-        sync-rows     (into [] (remove #(cascaded (select-keys % [:model_type :model_id])))
-                            (spec/sync-all-entities! sync-timestamp imported-data))
-        ;; search model -> search-index ids (strings) of the rows that the deletes remove by cascade
-        cascaded-search-ids (atom {})]
+        deletes       (reduce (fn [acc {:keys [model_type model_id]}]
+                                ;; N+1: one entity_id query per delete candidate (bounded by deletions in a single
+                                ;; pull; batching would need grouping by model-key into per-table IN queries).
+                                (let [model-key (:model-key (spec/spec-for-model-type model_type))
+                                      eid       (when model-key (remote-sync.db/entity-id model-key model_id))]
+                                  (cond-> acc
+                                    (not (loaded-eid? model_type eid))
+                                    (update model-key (fnil conj #{}) model_id))))
+                              {}
+                              deleted-rsos)]
     (report 0.7 {:force? true})
     ;; Before the transaction for the same reason as in [[load-snapshot!]].
     (report 0.75 {:force? true})
-    (t2/with-transaction [_conn]
-      ;; A delete of a model Card also deletes its Actions and model-index values, by foreign-key cascade. The ledger
-      ;; does not track model-index values (and can miss an Action), so note their search ids before the delete, and
-      ;; remove them from search below.
-      (when-let [card-ids (seq (keep (fn [{:keys [model_id] :as d}] (when (= :model/Card (model-key-of d)) model_id))
-                                     deletes))]
-        (reset! cascaded-search-ids (cascaded-search-ids-of-cards card-ids)))
-      (doseq [[model-key ds] (group-by model-key-of deletes)]
-        (remote-sync.db/delete-instances! model-key (mapv :model_id ds)))
-      (when (seq deletes)
-        (remote-sync.db/delete-rsos-of-keys! deletes))
-      (when (seq sync-rows)
-        ;; fold file_path + content_hash into the insert so the touched rows are written once (chunked)
-        (remote-sync.db/delete-rsos-of-keys! sync-rows)
-        (insert-with-metadata! sync-rows (when ingestable (source.ingestable/cached-file-paths ingestable))))
-      (when finalize! (finalize!)))
-    (report 0.9 {:force? true})
-    ;; We skip the whole-appdb reindex the full load runs. Added/modified entities are already
-    ;; re-indexed by the load itself — serdes' t2 insert!/update! fire the :hook/search-index
-    ;; after-insert/after-update hooks. Deletes have no such hook, so remove them explicitly.
-    (doseq [[model-key ds] (group-by model-key-of deletes)]
-      ;; the search index stores model_id as text
-      (search/delete! model-key (mapv (comp str :model_id) ds)))
-    (doseq [[model-key ids] @cascaded-search-ids
-            id-chunk        (partition-all app-db-batch-size ids)]
-      (search/delete! model-key (vec id-chunk)))
-    (report 0.95 {:force? true})
-    (log/info "Successfully reloaded entities from git repository")
-    {:status :success
-     :version snapshot-version
-     :outcome {:kind "pulled"
-               :count (+ (pulled-change-count imported-data) (count deletes))
-               :branch (settings/remote-sync-branch)}}))
+    (let [{:keys [deleted search-ids]}
+          (t2/with-transaction [_conn]
+            ;; The closure runs after the load. A Card file with no `dashboard_id` does not clear the old value, so
+            ;; the closure still holds a Card that the remote moved out of a deleted Dashboard.
+            (let [{:keys [deleted] :as result} (delete-with-closure! deletes)
+                  closure-keys (for [[model-key ids] deleted
+                                     :let [model-type (:model-type (spec/spec-for-model-key model-key))]
+                                     id ids]
+                                 {:model_type model-type :model_id id})
+                  ;; after the delete, so a loaded entity in the closure gets no row
+                  sync-rows    (spec/sync-all-entities! sync-timestamp imported-data)]
+              (when (seq closure-keys)
+                (remote-sync.db/delete-rsos-of-keys! (vec closure-keys)))
+              (when (seq sync-rows)
+                ;; fold file_path + content_hash into the insert so the touched rows are written once (chunked)
+                (remote-sync.db/delete-rsos-of-keys! sync-rows)
+                (insert-with-metadata! sync-rows (when ingestable (source.ingestable/cached-file-paths ingestable))))
+              (when finalize! (finalize!))
+              result))]
+      (report 0.9 {:force? true})
+      ;; We skip the whole-appdb reindex the full load runs. Added/modified entities are already
+      ;; re-indexed by the load itself — serdes' t2 insert!/update! fire the :hook/search-index
+      ;; after-insert/after-update hooks. Deletes have no such hook, so remove them explicitly.
+      (doseq [[model-key ids] search-ids
+              id-chunk        (partition-all app-db-batch-size ids)]
+        ;; the search index stores model_id as text
+        (search/delete! model-key (vec id-chunk)))
+      (report 0.95 {:force? true})
+      (log/info "Successfully reloaded entities from git repository")
+      {:status :success
+       :version snapshot-version
+       :outcome {:kind "pulled"
+                 :count (transduce (map count) + (pulled-change-count imported-data) (vals deleted))
+                 :branch (settings/remote-sync-branch)}})))
 
 (defn- capture-dirty-objects
   "Returns the current non-synced RemoteSyncObject rows — the local changes that have not been pushed.
