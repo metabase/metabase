@@ -1264,8 +1264,8 @@ describe("issue 25374", () => {
     });
   });
 
-  it("should pass comma-separated values down to the connected question (metabase#25374-1)", () => {
-    // Drill-through and go to the question
+  it("should pass comma-separated values down to the question and retain them on refresh and when reverting to default (metabase#25374-1, metabase#25374-2, metabase#25374-3, metabase#25374-4)", () => {
+    cy.log("Drill-through and go to the question (metabase#25374-1)");
     H.getDashboardCard(0).findByText(questionDetails.name).click();
     cy.wait("@cardQuery");
 
@@ -1273,9 +1273,11 @@ describe("issue 25374", () => {
     H.tableInteractiveBody().findByText("3");
 
     cy.location("search").should("eq", "?num=1%2C2%2C3");
-  });
 
-  it("should retain comma-separated values on refresh and when reverting to default (metabase#25374-2, metabase#25374-3, metabase#25374-4)", () => {
+    H.queryBuilderHeader().findByLabelText("Back to Dashboard").click();
+    cy.location("search").should("eq", "?equal_to=1%2C2%2C3");
+    cy.findByDisplayValue("1,2,3").should("be.visible");
+
     cy.reload();
 
     // Make sure filter widget still has all the values
