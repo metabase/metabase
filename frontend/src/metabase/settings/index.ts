@@ -2,6 +2,7 @@
 // Names absent here are module-private on purpose — add them only when a real consumer needs them.
 
 export {
+  joinSiteSettingsRequest,
   refetchSiteSettings,
   sessionPropertiesPath,
   settingsApi,
@@ -21,6 +22,7 @@ export {
 } from "./selectors";
 export { useAdminSetting, useAdminSettings } from "./use-admin-setting";
 export { useSetting, useUserSetting } from "./use-setting";
+export { useSettingSwitch } from "./use-setting-switch";
 export { useTokenRefresh, useTokenRefreshUntil } from "./use-token-refresh";
 export {
   getPlan,

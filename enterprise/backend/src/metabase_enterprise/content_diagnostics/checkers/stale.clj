@@ -7,6 +7,7 @@
    [java-time.api :as t]
    [metabase-enterprise.content-diagnostics.common :as common]
    [metabase-enterprise.content-diagnostics.db :as cd.db]
+   [metabase-enterprise.content-diagnostics.schema :as cd.schema]
    [metabase-enterprise.content-diagnostics.settings :as cd.settings]
    ;; sanctioned export: find-candidates is the stale module's public staleness-rule entry point
    ;; (see enterprise/stale :api in .clj-kondo/config/modules/config.edn).
@@ -24,9 +25,10 @@
         cutoff    (t/minus (t/local-date) (t/days threshold))
         {:keys [rows]} (stale.impl/find-candidates
                         {:collection-ids  :all
-                         ;; explicit, NOT (vals common/entity-type->model): find-candidates throws on
-                         ;; models with no find-stale-query method, and :model/Collection has none
-                         :models          #{:model/Card :model/Dashboard :model/Document :model/Transform}
+                         ;; NOT (vals common/entity-type->model): find-candidates throws on models
+                         ;; with no find-stale-query method, and :model/Collection has none
+                         :models          (into #{} (map common/entity-type->model)
+                                                cd.schema/non-collection-entity-types)
                          ;; name + recency come from the stale query - the per-model recency source
                          ;; stays single-sourced in the `find-stale-query` arms; collection_id feeds
                          ;; the container post-filter below.

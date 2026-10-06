@@ -17,21 +17,8 @@ function query(savedQuestionSourceId: number) {
   return { tableId: 1, hash: FAKE_HASH, savedQuestionSourceId };
 }
 
-function model(
-  sourceModelId: number,
-  copiedModelId: number,
-  actions: Array<[number, number]> = [],
-) {
-  return {
-    sourceModelId,
-    copiedModelId,
-    hash: FAKE_HASH,
-    actions: actions.map(([sourceActionId, copiedActionId]) => ({
-      sourceActionId,
-      copiedActionId,
-      hash: FAKE_HASH,
-    })),
-  };
+function action(sourceActionId: number, copiedActionId: number) {
+  return { sourceActionId, copiedActionId, hash: FAKE_HASH };
 }
 
 describe("resource lockfile", () => {
@@ -40,16 +27,16 @@ describe("resource lockfile", () => {
   it("reads an absent lockfile as empty", () => {
     expect(readResourceLockfile(makeApp())).toEqual({
       queries: [],
-      models: [],
+      actions: [],
       metrics: [],
     });
   });
 
-  it("round-trips queries and models", () => {
+  it("round-trips queries and actions", () => {
     const appRoot = makeApp();
     const lockfile: ResourceLockfile = {
       queries: [query(40)],
-      models: [model(5, 80, [[51, 91]])],
+      actions: [action(51, 91)],
       metrics: [],
     };
     write(appRoot, lockfile);
@@ -57,13 +44,13 @@ describe("resource lockfile", () => {
     expect(readResourceLockfile(appRoot)).toEqual(lockfile);
   });
 
-  it("defaults a missing models key rather than failing", () => {
+  it("defaults a missing actions key rather than failing", () => {
     const appRoot = makeApp();
     write(appRoot, { queries: [query(40)] });
 
     expect(readResourceLockfile(appRoot)).toEqual({
       queries: [query(40)],
-      models: [],
+      actions: [],
       metrics: [],
     });
   });
@@ -73,7 +60,7 @@ describe("resource lockfile", () => {
   it.each([
     ["unparseable JSON", "{ not json", "Could not read"],
     // A bare array is the shape no version writes; accepting it would let a
-    // hand-edited file silently drop every model entry.
+    // hand-edited file silently drop every action entry.
     ["a bare array", [query(40)], "contains an invalid entry"],
     [
       "a malformed hash",
@@ -86,17 +73,9 @@ describe("resource lockfile", () => {
       "contains an invalid entry",
     ],
     [
-      "a model entry missing its actions",
-      { queries: [], models: [{ sourceModelId: 5, copiedModelId: 80 }] },
-      "contains an invalid model entry",
-    ],
-    [
       "a malformed action mapping",
-      {
-        queries: [],
-        models: [{ ...model(5, 80), actions: [{ sourceActionId: 51 }] }],
-      },
-      "contains an invalid model entry",
+      { queries: [], actions: [{ sourceActionId: 51 }] },
+      "contains an invalid action entry",
     ],
     [
       "a duplicate saved question ID",
@@ -104,29 +83,13 @@ describe("resource lockfile", () => {
       "duplicate saved question ID",
     ],
     [
-      "a duplicate source model ID",
-      { queries: [], models: [model(5, 80), model(5, 81)] },
-      "duplicate source model ID",
-    ],
-    [
-      "a duplicate copied model ID",
-      { queries: [], models: [model(5, 80), model(6, 80)] },
-      "duplicate copied model ID",
-    ],
-    [
-      "a source action ID claimed by two models",
-      {
-        queries: [],
-        models: [model(5, 80, [[51, 91]]), model(6, 81, [[51, 92]])],
-      },
+      "a duplicate source action ID",
+      { queries: [], actions: [action(51, 91), action(51, 92)] },
       "duplicate source action ID",
     ],
     [
-      "a copied action ID claimed by two models",
-      {
-        queries: [],
-        models: [model(5, 80, [[51, 91]]), model(6, 81, [[52, 91]])],
-      },
+      "a duplicate copied action ID",
+      { queries: [], actions: [action(51, 91), action(52, 91)] },
       "duplicate copied action ID",
     ],
   ])("rejects %s", (_name, value, message) => {

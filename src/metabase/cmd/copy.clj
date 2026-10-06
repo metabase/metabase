@@ -101,7 +101,6 @@
     :model/ParameterCard
     :model/Action
     :model/ImplicitAction
-    :model/HTTPAction
     :model/QueryAction
     :model/DashboardTab
     :model/ModelIndex
@@ -410,7 +409,6 @@
   #{:model/Setting
     :model/Session
     :model/ImplicitAction
-    :model/HTTPAction
     :model/FieldUserSettings
     :model/TableUserSettings
     :model/QueryAction

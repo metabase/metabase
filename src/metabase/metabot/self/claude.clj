@@ -183,11 +183,11 @@
              (= t "content_block_stop") (close!)
              ;; Claude reports usage at both message_start and message_delta,
              ;; but message_delta values are cumulative and include the earlier
-             ;; counts.
+             ;; counts. Bedrock's InvokeModel stream can leave the input counts out.
              ;; https://platform.claude.com/docs/en/build-with-claude/streaming#event-types
              ;; https://platform.claude.com/docs/en/api/cli/messages#message_delta_usage
              (= t "message_delta")      (u/prog1
-                                          (vreset! last-usage (:usage chunk))
+                                          (vswap! last-usage merge (:usage chunk))
                                           (vreset! stop-reason (:stop_reason delta)))
              ;; end of message
              (= t "message_stop")       identity

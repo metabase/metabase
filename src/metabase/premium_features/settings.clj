@@ -244,7 +244,7 @@
   "Should we enable Collection Cleanup?"
   :collection-cleanup)
 
-(define-premium-feature ^{:added "0.64.0"} enable-content-diagnostics?
+(define-premium-feature ^{:added "0.65.0"} enable-content-diagnostics?
   "Should we enable Content Diagnostics?"
   :content-diagnostics)
 

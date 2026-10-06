@@ -1,6 +1,7 @@
 import { Link } from "metabase/common/components/Link";
 import { DataStudioBreadcrumbs } from "metabase/common/data-studio/components/DataStudioBreadcrumbs";
 import { useCollectionPath } from "metabase/common/data-studio/hooks/use-collection-path/useCollectionPath";
+import { getLibraryCollectionDisplayName } from "metabase/data-studio/common/utils";
 import * as Urls from "metabase/urls";
 import type { Table } from "metabase-types/api";
 
@@ -30,7 +31,7 @@ export function PublishedTableBreadcrumbs({
             expandedIds: path.slice(1, i + 1).map((c) => c.id),
           })}
         >
-          {collection.name}
+          {getLibraryCollectionDisplayName(collection)}
         </Link>
       ))}
       <Link to={tableListUrl}>{table.display_name}</Link>

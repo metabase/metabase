@@ -25,9 +25,7 @@ export const DASHBOARD_DATE_FILTERS = {
     representativeResult: "75.41",
   },
   "All Options": {
-    value: {
-      timeBucket: "years",
-    },
-    representativeResult: "79.37", // this may change every year
+    value: "06/01/2025",
+    representativeResult: "53.6",
   },
 };

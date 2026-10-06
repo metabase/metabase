@@ -27,7 +27,7 @@ exports[`DataComplexityCards renders the data complexity cards 1`] = `
           color="text-primary"
           data-size="md"
         >
-          Metrics and published tables within your Library.
+          Metrics and published tables within your semantic layer.
         </div>
         <div>
           <div
@@ -68,7 +68,7 @@ exports[`DataComplexityCards renders the data complexity cards 1`] = `
           color="text-primary"
           data-size="md"
         >
-          Library entities plus every active physical table.
+          Semantic layer entities plus every active physical table.
         </div>
         <div>
           <div
@@ -150,7 +150,7 @@ exports[`DataComplexityCards renders the data complexity cards 2`] = `
           color="text-primary"
           data-size="sm"
         >
-          Metrics and published tables within your Library.
+          Metrics and published tables within your semantic layer.
         </div>
       </div>
     </h2>

@@ -91,7 +91,7 @@ ends with a **Done when** that reads the API:>
 Done when:
 
 ```bash
-( source "$ROOT/.env.local"; curl -s -H "x-api-key: $DATA_APP_MB_API_KEY" "$DATA_APP_MB_URL/api/apps/<slug>" ) | grep -q '"sync_error":null' && echo ok
+( source "$ROOT/.env.local"; curl -s -H "x-api-key: $DATA_APP_MB_API_KEY" "$DATA_APP_MB_URL/api/apps/<slug>" ) | grep -q '"outdated":false' && echo ok
 ```
 
 ## Done-check summary

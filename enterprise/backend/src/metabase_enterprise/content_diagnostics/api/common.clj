@@ -22,13 +22,6 @@
 
 (set! *warn-on-reflection* true)
 
-(def covered-entity-types
-  "Entity types the stale/slow finding types can emit - deliberately a hardcoded set, NOT derived from
-  `common/entity-type->model` (which also covers `:collection`, a subject only the imbalanced and
-  duplicated finding types span). Shared by the stale/slow endpoints' `entity-types` param; endpoints
-  spanning other subjects pin their own enum."
-  #{:card :dashboard :document :transform})
-
 (defn filter-types
   "The `entity-types` filter vocabulary for an endpoint whose findings span `entity-types`: one flat enum
   of the entity types plus the card sub-kinds. `card` stays valid and means any card type."
@@ -386,11 +379,11 @@
               row   (read-entity-rows etype ids exclude-personal?)]
           [[etype (:id row)]
            (cond-> {:id (:id row) :name (:name row) :entity_type etype}
-             ;; only card/dashboard/document carry view_count (transform + collection have none)
-             (contains? #{:card :dashboard :document} etype) (assoc :view_count (:view_count row))
-             (= etype :card)                                 (assoc :card_type (:type row)
-                                                                    :display (:display row))
-             (= etype :collection)                           (assoc :namespace (:namespace row)))])))
+             ;; served only where the peer select fetched it (transform + collection have none)
+             (some #{:view_count} (common/peer-select-cols etype)) (assoc :view_count (:view_count row))
+             (= etype :card)                                    (assoc :card_type (:type row)
+                                                                       :display (:display row))
+             (= etype :collection)                              (assoc :namespace (:namespace row)))])))
 
 (defn- normalized-owner
   "Normalized `owner` from the transform `:owner` hydrate or a personal collection's owning user:

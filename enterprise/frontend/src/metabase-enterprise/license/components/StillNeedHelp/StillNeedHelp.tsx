@@ -1,31 +1,18 @@
-import styled from "@emotion/styled";
 import { t } from "ttag";
 
-import { Anchor, Text } from "metabase/ui";
-
-const Container = styled.div`
-  background: var(--mb-color-background_page-secondary);
-  border-radius: 0.5rem;
-  padding: 0.75rem 1rem;
-  margin-top: 1.5rem;
-`;
-
-const Title = styled.div`
-  color: var(--mb-color-text-secondary);
-  font-weight: bold;
-  text-transform: uppercase;
-  margin-bottom: 0.5rem;
-`;
+import { Anchor, Box, Text } from "metabase/ui";
 
 export const StillNeedHelp = () => {
   return (
-    <Container>
-      <Title>{t`Still need help?`}</Title>
+    <Box bg="background_page-secondary" bdrs="sm" py="md" px="lg" mt="xl">
+      <Box c="text-secondary" fw="bold" tt="uppercase" mb="sm">
+        {t`Still need help?`}
+      </Box>
       <Text c="text-secondary">
         {t`You can ask for billing help at `}
         {/* eslint-disable-next-line i18next/no-literal-string */}
         <Anchor href="mailto:billing@metabase.com">billing@metabase.com</Anchor>
       </Text>
-    </Container>
+    </Box>
   );
 };
