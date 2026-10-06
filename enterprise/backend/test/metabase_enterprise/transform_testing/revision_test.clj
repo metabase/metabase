@@ -61,14 +61,12 @@
                                    :revision_id (:id creation)})
             (testing "the saved test is restored"
               (is (= "Original" (t2/select-one-fn :name :model/TransformTest :id transform-test-id))))
-            (testing "the reversion is recorded after the model update revision"
-              (let [[reversion reverted-update update creation]
+            (testing "the revert records one revision: the reversion"
+              (let [[reversion update creation]
                     (revisions/revisions :model/TransformTest transform-test-id)]
-                (is (= 4 (count (revisions/revisions :model/TransformTest transform-test-id))))
+                (is (= 3 (count (revisions/revisions :model/TransformTest transform-test-id))))
                 (is (true? (:is_reversion reversion)))
                 (is (= "Original" (get-in reversion [:object :name])))
-                (is (false? (:is_reversion reverted-update)))
-                (is (= "Original" (get-in reverted-update [:object :name])))
                 (is (= "Renamed" (get-in update [:object :name])))
                 (is (true? (:is_creation creation)))))))))))
 

@@ -129,7 +129,7 @@
                      (:document reverted-document)))))
           (testing "Reversion creates new revision entry"
             (let [final-revisions (get-document-revisions doc-id)]
-              (is (= 4 (count final-revisions)))
+              (is (= 3 (count final-revisions)))
               (let [latest-revision (first final-revisions)]
                 (is (:is_reversion latest-revision))
                 (is (= "reverted to an earlier version." (:description latest-revision)))))))))))
@@ -238,3 +238,22 @@
                  (get-in content-revision [:diff :before :document])))
           (is (= {:content [{:content [{:text "New content"}]}]}
                  (get-in content-revision [:diff :after :document]))))))))
+
+(deftest document-api-edit-records-one-revision-test
+  (testing "One API edit of a Document records one revision (the hook event and the API event compare equal)"
+    (mt/with-temp [:model/Collection {coll :id} {}]
+      (let [doc-id (:id (mt/user-http-request :crowberto :post 200 "document"
+                                              {:name "D0" :collection_id coll
+                                               :document {:type "doc" :content [{:type "paragraph" :content [{:type "text" :text "v0"}]}]}}))
+            revision-count #(t2/count :model/Revision :model "Document" :model_id doc-id)]
+        (try
+          (is (= 1 (revision-count)))
+          (mt/user-http-request :crowberto :put 200 (str "document/" doc-id) {:name "D1"})
+          (is (= 2 (revision-count)))
+          (mt/user-http-request :crowberto :put 200 (str "document/" doc-id)
+                                {:document {:type "doc" :content [{:type "paragraph" :content [{:type "text" :text "v1"}]}]}})
+          (is (= 3 (revision-count)))
+          (testing "the revision objects do not hold the keys that the API hydrates"
+            (is (empty? (keep #(some (set (keys (:object %))) [:creator :can_write :can_delete :can_restore :is_remote_synced])
+                              (t2/select :model/Revision :model "Document" :model_id doc-id)))))
+          (finally (t2/delete! :model/Document :id doc-id)))))))
