@@ -2,8 +2,10 @@ import { useState } from "react";
 import { t } from "ttag";
 
 import {
+  skipToken,
   useCreateActionPublicLinkMutation,
   useDeleteActionPublicLinkMutation,
+  useGetDatabaseQuery,
   useUpdateActionMutation,
 } from "metabase/api";
 import { CopyTextInput } from "metabase/common/components/CopyTextInput";
@@ -12,6 +14,7 @@ import { PageContainer } from "metabase/common/data-studio/components/PageContai
 import { TitleSection } from "metabase/common/data-studio/components/TitleSection";
 import { useMetadataToasts } from "metabase/common/hooks";
 import { useConfirmation } from "metabase/common/hooks/use-confirmation";
+import { hasActionsEnabled } from "metabase/common/utils/database";
 import { getUserIsAdmin } from "metabase/current-user";
 import { useSelector } from "metabase/redux";
 import { useSetting } from "metabase/settings";
@@ -23,6 +26,7 @@ import {
   Switch,
   Text,
   Textarea,
+  Tooltip,
 } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type { WritebackQueryAction } from "metabase-types/api";
@@ -78,6 +82,11 @@ function PublicSharingSection({ action }: SectionProps) {
     useConfirmation();
   const { sendErrorToast } = useMetadataToasts();
   const isPublic = action.public_uuid != null;
+  const databaseId = action.database_id;
+  const { data: database } = useGetDatabaseQuery(
+    databaseId != null ? { id: databaseId } : skipToken,
+  );
+  const canMakePublic = database != null && hasActionsEnabled(database);
 
   const handleDisable = async () => {
     const { error } = await deletePublicLink({ id: action.id });
@@ -115,11 +124,17 @@ function PublicSharingSection({ action }: SectionProps) {
             {t`Creates a publicly shareable link to this action form.`}
           </Text>
         </Stack>
-        <Switch
-          aria-label={t`Make public`}
-          checked={isPublic}
-          onChange={(event) => handleToggle(event.currentTarget.checked)}
-        />
+        <Tooltip
+          label={t`Actions are disabled for this action's database.`}
+          disabled={isPublic || canMakePublic}
+        >
+          <Switch
+            aria-label={t`Make public`}
+            checked={isPublic}
+            disabled={!isPublic && !canMakePublic}
+            onChange={(event) => handleToggle(event.currentTarget.checked)}
+          />
+        </Tooltip>
       </Group>
       {action.public_uuid != null && (
         <>
