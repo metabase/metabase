@@ -565,6 +565,26 @@
   refused to — a client that does not send this, so any test driving one has to handshake as a capable client."
   {:capabilities {:extensions {:io.modelcontextprotocol/ui {:mimeTypes ["text/html;profile=mcp-app"]}}}})
 
+(defn- do-with-bearer-token!
+  "Issue an OAuth access token carrying `scopes` for `user` (default crowberto) and call `f` with the auth headers."
+  ([scopes f]
+   (do-with-bearer-token! :crowberto scopes f))
+  ([user scopes f]
+   (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+     (oauth-server.tu/with-oauth-client [client-id]
+       (mt/with-model-cleanup [:model/OAuthAccessToken]
+         (let [token (str (random-uuid))]
+           ;; `:token` is stored hashed — the resolver hashes the presented string before looking it
+           ;; up, so the row has to be written the same way a real issued token would be — including a
+           ;; live `oauth_client` row, since the resolver fails closed on a token whose client is gone.
+           (t2/insert! :model/OAuthAccessToken
+                       {:token     (oidc.util/hash-token token)
+                        :user_id   (mt/user->id user)
+                        :client_id client-id
+                        :scope     (vec scopes)
+                        :expiry    (+ (System/currentTimeMillis) 3600000)})
+           (f {"authorization" (str "Bearer " token)})))))))
+
 (defn- initialize-ui-client!
   "Handshake as a client that can render MCP Apps, returning the session id."
   []
@@ -728,28 +748,37 @@
             The credential now authenticates only the /api/embed-mcp handlers, which check it themselves.
             Everywhere else it is no credential at all."
     (mcp.ui-resource/with-fallback-template
-      (let [session-id (initialize-ui-client!)
-            credential (-> (mcp-request (jsonrpc-request "tools/call"
-                                                         {:name "refresh_ui_credential" :arguments {}})
-                                        {"mcp-session-id" session-id})
-                           (get-in [:body :result :_meta :com.metabase/mcp-apps :credential]))
-            headers    {"x-metabase-mcp-ui-auth" credential}]
-        (is (some? credential) "the tool must hand back a credential, or this proves nothing")
-        (testing "the profile the escalation exposed is no longer reachable"
-          (is (= 401 (:status (client/client-full-response :get 401 "user/current"
-                                                           {:request-options {:headers headers}})))))
-        (testing "a route off the surface is refused, as before"
-          (is (= 401 (:status (client/client-full-response :get 401 "collection"
-                                                           {:request-options {:headers headers}})))))
-        (testing "and the iframe still boots, on the endpoint built for it"
-          (is (= 200 (:status (ui.tu/ui-request! {:credential credential :session-id session-id}
-                                                 :get 200 "embed-mcp/bootstrap")))))
-        (testing "a dataset route is refused: the credential is not a query credential outside the iframe routes"
-          (is (= 401 (:status (client/client-full-response :post 401 "dataset"
-                                                           {:request-options {:headers headers}}
-                                                           {:database (mt/id)
-                                                            :type     :native
-                                                            :native   {:query "SELECT 1"}})))))))))
+      ;; One bearer token for the whole test: the credential is bound to the token it was minted from, and the
+      ;; iframe routes refuse it once that token is gone.
+      (do-with-bearer-token!
+       (set mcp.paths/v2-surface-scopes)
+       (fn [bearer]
+         (let [mcp!       (fn [body extra-headers]
+                            (client/client-full-response :post endpoint
+                                                         {:request-options {:headers (merge bearer extra-headers)}}
+                                                         body))
+               session-id (-> (mcp! (jsonrpc-request "initialize" mcp-app-ui-capabilities) {})
+                              (get-in [:headers "Mcp-Session-Id"]))
+               credential (-> (mcp! (jsonrpc-request "tools/call" {:name "refresh_ui_credential" :arguments {}})
+                                    {"mcp-session-id" session-id})
+                              (get-in [:body :result :_meta :com.metabase/mcp-apps :credential]))
+               headers    {"x-metabase-mcp-ui-auth" credential}]
+           (is (some? credential) "the tool must hand back a credential, or this proves nothing")
+           (testing "the profile the escalation exposed is no longer reachable"
+             (is (= 401 (:status (client/client-full-response :get 401 "user/current"
+                                                              {:request-options {:headers headers}})))))
+           (testing "a route off the surface is refused, as before"
+             (is (= 401 (:status (client/client-full-response :get 401 "collection"
+                                                              {:request-options {:headers headers}})))))
+           (testing "and the iframe still boots, on the endpoint built for it"
+             (is (= 200 (:status (ui.tu/ui-request! {:credential credential :session-id session-id}
+                                                    :get 200 "embed-mcp/bootstrap")))))
+           (testing "a dataset route is refused: the credential is not a query credential outside the iframe routes"
+             (is (= 401 (:status (client/client-full-response :post 401 "dataset"
+                                                              {:request-options {:headers headers}}
+                                                              {:database (mt/id)
+                                                               :type     :native
+                                                               :native   {:query "SELECT 1"}})))))))))))
 
 (deftest unauthenticated-discovery-test
   (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
@@ -833,26 +862,6 @@
                   result   (get-in response [:body :result])]
               (is (not (:isError result)))
               (is (= {:ok true :message "pong"} (:structuredContent result))))))))))
-
-(defn- do-with-bearer-token!
-  "Issue an OAuth access token carrying `scopes` for `user` (default crowberto) and call `f` with the auth headers."
-  ([scopes f]
-   (do-with-bearer-token! :crowberto scopes f))
-  ([user scopes f]
-   (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
-     (oauth-server.tu/with-oauth-client [client-id]
-       (mt/with-model-cleanup [:model/OAuthAccessToken]
-         (let [token (str (random-uuid))]
-           ;; `:token` is stored hashed — the resolver hashes the presented string before looking it
-           ;; up, so the row has to be written the same way a real issued token would be — including a
-           ;; live `oauth_client` row, since the resolver fails closed on a token whose client is gone.
-           (t2/insert! :model/OAuthAccessToken
-                       {:token     (oidc.util/hash-token token)
-                        :user_id   (mt/user->id user)
-                        :client_id client-id
-                        :scope     (vec scopes)
-                        :expiry    (+ (System/currentTimeMillis) 3600000)})
-           (f {"authorization" (str "Bearer " token)})))))))
 
 (defn- embedded-credential
   "The UI credential the fallback template embedded in shell `html`, or nil when it embedded none."
