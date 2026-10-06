@@ -134,6 +134,32 @@
               ;; a raw delete of the data app skips the hook that deletes its permission group
               (when group (t2/delete! :model/PermissionsGroup :id group)))))))))
 
+(defn- remote-sync-setting-rows
+  "The raw `setting` rows whose key starts with `remote-sync`, as `[key value value_with_aad]`, sorted by key."
+  []
+  (->> (t2/select :setting :key [:like "remote-sync%"])
+       (map (juxt :key :value :value_with_aad))
+       sort
+       vec))
+
+(defn- do-with-remote-sync-state-restored!
+  "Runs `thunk`, then puts back the raw `remote-sync%` setting rows and the RemoteSyncObject rows that existed before
+  it, and restores the settings cache."
+  [thunk]
+  (let [settings (t2/select :setting :key [:like "remote-sync%"])
+        ledger   (t2/select :model/RemoteSyncObject)]
+    (try
+      (thunk)
+      (finally
+        (t2/with-transaction [_conn]
+          (t2/delete! :setting :key [:like "remote-sync%"])
+          (when (seq settings)
+            (t2/insert! :setting settings)))
+        (setting/restore-cache!)
+        (t2/delete! :model/RemoteSyncObject)
+        (when (seq ledger)
+          (t2/insert! :model/RemoteSyncObject ledger))))))
+
 (defn- transforms-ledger-rows
   "The `[model_name status]` of each RemoteSyncObject row for the virtual Transforms root collection."
   []
@@ -144,28 +170,13 @@
 (defn- transforms-state
   "The stored `remote-sync-transforms` value and the Transforms ledger rows."
   []
-  {:stored (#'th/stored-transforms-setting)
+  {:stored (t2/select-one-fn :value :model/Setting :key "remote-sync-transforms")
    :ledger (transforms-ledger-rows)})
-
-(defn- do-with-transforms-state-restored!
-  "Runs `thunk`, then puts back the stored `remote-sync-transforms` value and the Transforms ledger rows that existed
-  before it."
-  [thunk]
-  (let [stored (#'th/stored-transforms-setting)
-        rows   (t2/select :model/RemoteSyncObject
-                          :model_type "Collection"
-                          :model_id   remote-sync.settings/transforms-root-id)]
-    (try
-      (thunk)
-      (finally
-        (#'th/write-transforms-setting! stored)
-        (when (seq rows)
-          (t2/insert! :model/RemoteSyncObject rows))))))
 
 (deftest clean-remote-sync-state-removes-stored-transforms-setting-test
   (testing (str "a remote-sync-transforms value that an earlier run stored in the app DB does not add a Transforms "
                 "ledger row when the settings cache restores it inside the test")
-    (do-with-transforms-state-restored!
+    (do-with-remote-sync-state-restored!
      (fn []
        (#'th/remove-transforms-setting!)
        ;; store the value behind the cache's back, as an earlier JVM on a persistent app DB does
@@ -179,7 +190,7 @@
   (testing "after clean-remote-sync-state, the remote-sync-transforms value and the Transforms ledger row agree when both
             existed before it"
     (mt/with-dynamic-fn-redefs [search/reindex! (constantly nil)]
-      (do-with-transforms-state-restored!
+      (do-with-remote-sync-state-restored!
        (fn []
          (remote-sync.settings/remote-sync-transforms! true)
          (let [before (transforms-state)]
@@ -194,7 +205,7 @@
     ;; The status "synced" shows that the row is the old row: the :on-change hook writes only "create" and "delete".
     ;; In the reverse fixture order, clean-transforms-setting deletes the row after clean-object restored it.
     (mt/with-dynamic-fn-redefs [search/reindex! (constantly nil)]
-      (do-with-transforms-state-restored!
+      (do-with-remote-sync-state-restored!
        (fn []
          (remote-sync.settings/remote-sync-transforms! true)
          (t2/update! :model/RemoteSyncObject
@@ -204,10 +215,57 @@
          (is (= {:stored "true" :ledger [["Transforms" "synced"]]}
                 (transforms-state))))))))
 
+(deftest clean-remote-sync-state-restores-every-remote-sync-setting-row-test
+  (testing "the raw remote-sync setting rows after clean-remote-sync-state equal the rows before it, also when the test
+            binds settings that had no row, and changes or deletes rows with no binding"
+    (mt/with-dynamic-fn-redefs [search/reindex! (constantly nil)]
+      (do-with-remote-sync-state-restored!
+       (fn []
+         (t2/delete! :setting :key [:in ["remote-sync-type" "remote-sync-branch" "remote-sync-auto-import"
+                                         "remote-sync-git-timeout-seconds"]])
+         (t2/insert! :setting [{:key "remote-sync-type" :value "read-write" :value_with_aad "read-write"}
+                               ;; a row that only a version before the `value_with_aad` column wrote
+                               {:key "remote-sync-branch" :value "legacy" :value_with_aad nil}])
+         (setting/restore-cache!)
+         (let [before (remote-sync-setting-rows)]
+           (th/clean-remote-sync-state
+            (fn []
+              (mt/with-temporary-setting-values [remote-sync-type                :read-only
+                                                 remote-sync-auto-import         true
+                                                 remote-sync-git-timeout-seconds 5]
+                (is (= [:read-only true 5]
+                       [(remote-sync.settings/remote-sync-type)
+                        (remote-sync.settings/remote-sync-auto-import)
+                        (remote-sync.settings/remote-sync-git-timeout-seconds)])))
+              ;; change and delete rows that existed before the test, with no binding to undo them
+              (remote-sync.settings/remote-sync-type! :read-only)
+              (t2/delete! :setting :key "remote-sync-branch")))
+           (is (= before (remote-sync-setting-rows)))))))))
+
+(deftest clean-remote-sync-state-keeps-setting-rows-when-the-write-back-fails-test
+  (testing "when the insert of the saved remote-sync setting rows fails, the rows stay and the exception propagates"
+    (mt/with-dynamic-fn-redefs [search/reindex! (constantly nil)]
+      (do-with-remote-sync-state-restored!
+       (fn []
+         (t2/delete! :setting :key [:in ["remote-sync-type" "remote-sync-branch" "remote-sync-transforms"]])
+         (t2/insert! :setting [{:key "remote-sync-type" :value "read-write" :value_with_aad "read-write"}
+                               {:key "remote-sync-branch" :value "legacy" :value_with_aad nil}])
+         (setting/restore-cache!)
+         (let [before  (remote-sync-setting-rows)
+               insert! (mt/original-fn #'t2/insert!)]
+           (is (thrown-with-msg?
+                clojure.lang.ExceptionInfo #"insert failed"
+                (mt/with-dynamic-fn-redefs [t2/insert! (fn [model & args]
+                                                         (if (= :setting model)
+                                                           (throw (ex-info "insert failed" {}))
+                                                           (apply insert! model args)))]
+                  (th/clean-remote-sync-state (fn [])))))
+           (is (= before (remote-sync-setting-rows)))))))))
+
 (deftest stored-transforms-setting-test-keeps-existing-transforms-state-test
   (testing "clean-remote-sync-state-removes-stored-transforms-setting-test leaves the remote-sync-transforms value and
             the Transforms ledger row that existed before it"
-    (do-with-transforms-state-restored!
+    (do-with-remote-sync-state-restored!
      (fn []
        (remote-sync.settings/remote-sync-transforms! true)
        (let [before (transforms-state)]
