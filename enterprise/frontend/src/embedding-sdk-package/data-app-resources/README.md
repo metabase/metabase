@@ -61,7 +61,8 @@ collection `data_app.yaml` names, with the definition's `savedQuestionEntityId`,
 key's user, and holding the query Metabase builds with the same `createTestQuery` code the dev preview
 runs. Every entity comes in the key order serialization writes a file and without the keys serialization
 leaves unset, which the format omits, so the author transcribes rather than composes. An item that can't
-be built or copied comes back with its `error`; the rest still come back.
+be built or copied comes back with its `error`; the rest still come back. The command refuses to run
+before `data_app.yaml` names the app's collection, since the saved questions are written into it.
 
 ## `check-resources`
 

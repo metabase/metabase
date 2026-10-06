@@ -55,6 +55,20 @@ function mockExport(response: Response) {
 describe("exporting what resources are written from", () => {
   setupResourceTests();
 
+  it("refuses to print before the manifest names the app's collection", async () => {
+    const appRoot = appWithDefinitions();
+    fs.writeFileSync(
+      path.join(appRoot, "data_app.yaml"),
+      "name: Orders\npath: ./dist/index.js\n",
+    );
+    const fetchSpy = mockExport(new Response(JSON.stringify(EXPORTED)));
+
+    await expect(exportResources(appRoot)).rejects.toThrow(
+      "names the app's collection",
+    );
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
   it("sends the definitions with their IDs, the app's collection, and the action IDs in one request, and prints the export beside each definition", async () => {
     const appRoot = appWithDefinitions();
     const fetchSpy = mockExport(new Response(JSON.stringify(EXPORTED)));

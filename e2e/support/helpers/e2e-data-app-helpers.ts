@@ -334,8 +334,9 @@ export type PortableTable = [
 
 type ResourceEntity = Record<string, unknown>;
 
-/** The slug serialization labels an entity with, from its name. */
-const slugOf = (name: string) => name.toLowerCase().replace(/\W+/g, "_");
+/** The slug serialization labels an entity with, from its name: lowercase, every other character an underscore. */
+const slugOf = (name: string) =>
+  name.toLowerCase().replace(/[^\p{L}\p{N}_.]/gu, "_");
 
 const serdesMeta = (model: string, entityId: string, name: string) => [
   { id: entityId, label: slugOf(name), model },
@@ -354,7 +355,7 @@ const resourceCollection = (
 
 /**
  * A card in the app's collection, as an author writes it: a saved question from a
- * query definition, or a copy of a model or metric from the repository. `stage`
+ * query definition, or a copy of a metric from the repository. `stage`
  * holds the clauses besides the source table.
  */
 const resourceCard = ({
@@ -367,7 +368,7 @@ const resourceCard = ({
 }: {
   entityId: string;
   name: string;
-  type: "question" | "model" | "metric";
+  type: "question" | "metric";
   collection: string;
   table: PortableTable;
   stage?: ResourceEntity;
@@ -448,7 +449,6 @@ export function declareDataAppQueries(
     name: string;
     tableId: number;
     savedQuestionEntityId: string;
-    limit?: number;
     metricId?: number;
   }>,
 ) {
@@ -457,13 +457,11 @@ export function declareDataAppQueries(
       [`${appRoot}/queries/orders.query.ts`]: [
         'import { defineQuery } from "@metabase/embedding-sdk-react/data-app";',
         ...declarations.map(
-          ({ name, tableId, savedQuestionEntityId, limit, metricId }) => {
-            const clauses = [
+          ({ name, tableId, savedQuestionEntityId, metricId }) => {
+            const clauses =
               metricId === undefined
                 ? ""
-                : `, aggregations: [{ type: "metric", id: ${metricId} }]`,
-              limit === undefined ? "" : `, limit: ${limit}`,
-            ].join("");
+                : `, aggregations: [{ type: "metric", id: ${metricId} }]`;
             return `export const ${name} = defineQuery({ savedQuestionEntityId: "${savedQuestionEntityId}", source: { type: "table", id: ${tableId} }${clauses} });`;
           },
         ),
@@ -507,7 +505,7 @@ export const copySyncedDataAppsFixture = () =>
 /**
  * Pulls `example_synced_data_apps` through a real remote-sync import, so a spec
  * gets real app rows, each with its resource collection and permission group.
- * `good` is served; `broken-bundle` fails to sync.
+ * Both `good` and `second-app` are served.
  */
 export function pullExampleDataApps() {
   setupGitSync();
@@ -520,7 +518,7 @@ export function pullExampleDataApps() {
 /**
  * Runs the host app's own production build. The SDK's `metabase-resource-check`
  * plugin runs on `buildStart`, so this is what refuses to bundle an app whose
- * `resources/` don't back its definitions.
+ * collection files don't back its definitions.
  */
 export function buildDataAppHostApp() {
   return cy.exec(`cd "${dataAppHostAppRoot()}" && npm run build`, {

@@ -14,4 +14,4 @@ npm-debug.log*
 # written at test time by the data-app resource specs
 /actions/
 /queries/
-/resources/
+/collections/

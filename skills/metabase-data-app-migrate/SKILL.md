@@ -111,7 +111,7 @@ For each `N` from the HEAD version up to `target - 1`:
 4. Run the guide's _Done-check summary_. Every line must print `ok`.
 5. Only now set `version: N+1` in `data_app.yaml`. This is the one edit to that line.
 6. If `N+1 < target`: from the repo root,
-   `git add data_apps/<slug> && git commit -m "Migrate <slug> data app to data-app version N+1" -- data_apps/<slug>`.
+   `git add data_apps/<slug> collections/data_apps && git commit -m "Migrate <slug> data app to data-app version N+1" -- data_apps/<slug> collections/data_apps`.
    The pathspec keeps anything staged outside the app out of the commit.
    No push, no typecheck, no build. If the user asks why, say the app cannot
    compile until the last upgrade.
@@ -142,7 +142,7 @@ Do not batch steps across upgrades. Do not touch `version` before item 5.
    and the package lockfile if the SDK was re-pinned. Anything else inside the
    app directory is a user edit; say so before committing.
 5. From the repo root,
-   `git add data_apps/<slug> && git commit -m "Migrate <slug> data app to data-app version M" -- data_apps/<slug>`,
+   `git add data_apps/<slug> collections/data_apps && git commit -m "Migrate <slug> data app to data-app version M" -- data_apps/<slug> collections/data_apps`,
    push, and tell the user to **Pull changes** under Admin > Data apps.
 6. Prove it. After the pull:
    ```bash

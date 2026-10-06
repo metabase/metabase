@@ -736,7 +736,7 @@ If no curated schema entry supports the intended UI, leave the section out or as
 
 ## Common Mistakes
 
-- Creating or searching for Metabase content during app building. The app's `resources/` are written as files from `npm run print-resources`, never created in Metabase.
+- Creating or searching for Metabase content during app building. The files of the app's collection are written from `npm run print-resources`, never created in Metabase.
 - Copying a metric or action from Metabase YAML in the repository (its exports, its top-level `actions/`, or git history), or from your own API calls, instead of from `npm run print-resources`.
 - Writing a saved question yourself, adding a key the print doesn't have, or changing anything in the printed entity other than a metric reference to the app's copy.
 - Writing the query object at the hook call instead of exporting it from `queries/` with `defineQuery`, or the action at `useAction` instead of from `actions/` with `defineAction`. Both are compile errors now; the fix is the directory, not a cast.

@@ -9,6 +9,7 @@ import {
 } from "./discover";
 import { getMetabaseCredentials } from "./env";
 import { isObject } from "./guards";
+import { COLLECTIONS_DIR } from "./resources";
 
 interface ExportedResources {
   queries: Record<string, unknown>[];
@@ -30,7 +31,7 @@ function isExportedResources(value: unknown): value is ExportedResources {
 
 async function requestExport(
   appRoot: string,
-  body: { collection?: string; queries: unknown[]; actions: number[] },
+  body: { collection: string; queries: unknown[]; actions: number[] },
 ): Promise<ExportedResources> {
   const { metabaseUrl, apiKey } = getMetabaseCredentials(appRoot);
   const response = await fetch(`${metabaseUrl}/api/apps/export-resources`, {
@@ -75,8 +76,16 @@ export async function exportResources(appDirectory: string, file?: string) {
     );
   }
 
+  const collection = readManifest(appRoot)?.manifest.collection;
+
+  if (collection === undefined) {
+    throw new Error(
+      `No data_app.yaml in ${appRoot} names the app's collection. Write the collection under ${COLLECTIONS_DIR}/ and name its entity ID as \`collection\` first: the saved questions are written into it.`,
+    );
+  }
+
   const exported = await requestExport(appRoot, {
-    collection: readManifest(appRoot)?.manifest.collection,
+    collection,
     queries: queries.map(({ exportName, query, savedQuestionEntityId }) => {
       const { [QUERY_DEFINITIONS.idKey]: _entityId, ...definition } = query;
       return {

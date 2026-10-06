@@ -18,7 +18,7 @@ export const QUERY_DEFINITIONS: DefinitionKind = {
   idKey: "savedQuestionEntityId",
 };
 
-export const ACTION_DEFINITIONS: DefinitionKind = {
+const ACTION_DEFINITIONS: DefinitionKind = {
   directory: "actions",
   idKey: "copiedActionEntityId",
 };
@@ -112,7 +112,7 @@ async function evaluateFiles(directory: string, filePaths: string[]) {
 }
 
 /** Narrows discovery to one definition file, the one `print-resources <file>` is asked about. */
-export interface DiscoveryOptions {
+interface DiscoveryOptions {
   filePath?: string;
 }
 
