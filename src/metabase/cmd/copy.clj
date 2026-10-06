@@ -199,7 +199,7 @@
     (let [{:keys [cols vals]} (objects->columns+values target-db-type chunkk)]
       (jdbc/insert-multi! target-db-conn-spec table-name cols vals {:transaction? false}))
     (catch SQLException e
-      (log/errorf "Error inserting chunk: %s" (ex-message e))
+      (log/error (with-out-str (jdbc/print-sql-exception-chain e)))
       (throw e))))
 
 #_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
