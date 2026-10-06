@@ -1,12 +1,13 @@
+import cx from "classnames";
 import { t } from "ttag";
 
+import CS from "metabase/css/core/index.css";
+import { Box, Stack } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
 import { Description, EmptyDescription } from "../MetadataInfo";
 import { QueryColumnFingerprintInfo } from "../QueryColumnFingerprintInfo";
 import { SemanticTypeLabel } from "../SemanticTypeLabel";
-
-import { InfoContainer, Small } from "./QueryColumnInfo.styled";
 
 export type QueryColumnInfoProps = {
   className?: string;
@@ -32,9 +33,15 @@ export function QueryColumnInfo({
     : {};
 
   return (
-    <InfoContainer className={className} data-testid="column-info">
+    <Stack
+      className={cx(CS.overflowAuto, className)}
+      pos="relative"
+      gap="md"
+      p="lg"
+      data-testid="column-info"
+    >
       <ColumnDescription description={description} />
-      <Small>
+      <Box fz="0.9em">
         <SemanticTypeLabel semanticType={semanticType} />
         {query && showFingerprintInfo && (
           <QueryColumnFingerprintInfo
@@ -45,8 +52,8 @@ export function QueryColumnInfo({
             showAllFieldValues={showAllFieldValues}
           />
         )}
-      </Small>
-    </InfoContainer>
+      </Box>
+    </Stack>
   );
 }
 

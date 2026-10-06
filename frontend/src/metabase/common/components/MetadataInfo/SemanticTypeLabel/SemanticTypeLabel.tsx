@@ -4,12 +4,9 @@ import {
   getSemanticTypeIcon,
   getSemanticTypeName,
 } from "metabase/common/utils/fields";
+import { Icon } from "metabase/ui";
 
-import {
-  Label,
-  LabelContainer,
-  RelativeSizeIcon,
-} from "../MetadataInfo.styled";
+import { Label, LabelContainer } from "../MetadataInfo";
 
 type SemanticTypeLabelProps = {
   className?: string;
@@ -25,8 +22,8 @@ export function SemanticTypeLabel({
     getSemanticTypeName(semanticType) || t`No special type`;
 
   return (
-    <LabelContainer className={className}>
-      <RelativeSizeIcon name={semanticTypeIcon} />
+    <LabelContainer className={className} c="core-brand">
+      <Icon name={semanticTypeIcon} w="1em" h="1em" />
       <Label>{semanticTypeName}</Label>
     </LabelContainer>
   );
