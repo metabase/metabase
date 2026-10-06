@@ -134,76 +134,6 @@
               ;; a raw delete of the data app skips the hook that deletes its permission group
               (when group (t2/delete! :model/PermissionsGroup :id group)))))))))
 
-(defn- transforms-ledger-rows
-  "The `[model_name status]` of each RemoteSyncObject row for the virtual Transforms root collection."
-  []
-  (t2/select-fn-vec (juxt :model_name :status) :model/RemoteSyncObject
-                    :model_type "Collection"
-                    :model_id   remote-sync.settings/transforms-root-id))
-
-(defn- transforms-state
-  "The stored `remote-sync-transforms` value and the Transforms ledger rows."
-  []
-  {:stored (#'th/stored-transforms-setting)
-   :ledger (transforms-ledger-rows)})
-
-(defn- do-with-transforms-state-restored!
-  "Runs `thunk`, then puts back the stored `remote-sync-transforms` value and the Transforms ledger rows that existed
-  before it."
-  [thunk]
-  (let [stored (#'th/stored-transforms-setting)
-        rows   (t2/select :model/RemoteSyncObject
-                          :model_type "Collection"
-                          :model_id   remote-sync.settings/transforms-root-id)]
-    (try
-      (thunk)
-      (finally
-        (#'th/write-transforms-setting! stored)
-        (when (seq rows)
-          (t2/insert! :model/RemoteSyncObject rows))))))
-
-(deftest clean-remote-sync-state-removes-stored-transforms-setting-test
-  (testing (str "a remote-sync-transforms value that an earlier run stored in the app DB does not add a Transforms "
-                "ledger row when the settings cache restores it inside the test")
-    (do-with-transforms-state-restored!
-     (fn []
-       (#'th/remove-transforms-setting!)
-       ;; store the value behind the cache's back, as an earlier JVM on a persistent app DB does
-       (t2/insert! :model/Setting {:key "remote-sync-transforms" :value "true"})
-       (th/clean-remote-sync-state
-        (fn []
-          (setting/restore-cache!)
-          (is (empty? (transforms-ledger-rows)))))))))
-
-(deftest clean-remote-sync-state-keeps-transforms-setting-and-ledger-in-step-test
-  (testing "after clean-remote-sync-state, the remote-sync-transforms value and the Transforms ledger row agree when both
-            existed before it"
-    (mt/with-dynamic-fn-redefs [search/reindex! (constantly nil)]
-      (do-with-transforms-state-restored!
-       (fn []
-         (remote-sync.settings/remote-sync-transforms! true)
-         (let [before (transforms-state)]
-           (th/clean-remote-sync-state (fn []))
-           (is (= before (transforms-state)))
-           (is (= (remote-sync.settings/remote-sync-transforms)
-                  (contains? (set (transforms-ledger-rows)) ["Transforms" "create"])))))))))
-
-(deftest clean-remote-sync-state-keeps-existing-transforms-ledger-row-test
-  (testing "a Transforms ledger row that existed before clean-remote-sync-state outlives it, because clean-object
-            restores it after clean-transforms-setting deletes it"
-    ;; The status "synced" shows that the row is the old row: the :on-change hook writes only "create" and "delete".
-    ;; In the reverse fixture order, clean-transforms-setting deletes the row after clean-object restored it.
-    (mt/with-dynamic-fn-redefs [search/reindex! (constantly nil)]
-      (do-with-transforms-state-restored!
-       (fn []
-         (remote-sync.settings/remote-sync-transforms! true)
-         (t2/update! :model/RemoteSyncObject
-                     {:model_type "Collection" :model_id remote-sync.settings/transforms-root-id}
-                     {:status "synced"})
-         (th/clean-remote-sync-state (fn []))
-         (is (= {:stored "true" :ledger [["Transforms" "synced"]]}
-                (transforms-state))))))))
-
 (defn- remote-sync-setting-rows
   "The raw `setting` rows whose key starts with `remote-sync`, as `[key value value_with_aad]`, sorted by key."
   []
@@ -212,7 +142,7 @@
        sort
        vec))
 
-(defn- do-with-remote-sync-setting-rows-restored!
+(defn- do-with-remote-sync-state-restored!
   "Runs `thunk`, then puts back the raw `remote-sync%` setting rows and the RemoteSyncObject rows that existed before
   it, and restores the settings cache."
   [thunk]
@@ -229,11 +159,66 @@
         (when (seq ledger)
           (t2/insert! :model/RemoteSyncObject ledger))))))
 
+(defn- transforms-ledger-rows
+  "The `[model_name status]` of each RemoteSyncObject row for the virtual Transforms root collection."
+  []
+  (t2/select-fn-vec (juxt :model_name :status) :model/RemoteSyncObject
+                    :model_type "Collection"
+                    :model_id   remote-sync.settings/transforms-root-id))
+
+(defn- transforms-state
+  "The stored `remote-sync-transforms` value and the Transforms ledger rows."
+  []
+  {:stored (t2/select-one-fn :value :model/Setting :key "remote-sync-transforms")
+   :ledger (transforms-ledger-rows)})
+
+(deftest clean-remote-sync-state-removes-stored-transforms-setting-test
+  (testing (str "a remote-sync-transforms value that an earlier run stored in the app DB does not add a Transforms "
+                "ledger row when the settings cache restores it inside the test")
+    (do-with-remote-sync-state-restored!
+     (fn []
+       (#'th/remove-transforms-setting!)
+       ;; store the value behind the cache's back, as an earlier JVM on a persistent app DB does
+       (t2/insert! :model/Setting {:key "remote-sync-transforms" :value "true"})
+       (th/clean-remote-sync-state
+        (fn []
+          (setting/restore-cache!)
+          (is (empty? (transforms-ledger-rows)))))))))
+
+(deftest clean-remote-sync-state-keeps-transforms-setting-and-ledger-in-step-test
+  (testing "after clean-remote-sync-state, the remote-sync-transforms value and the Transforms ledger row agree when both
+            existed before it"
+    (mt/with-dynamic-fn-redefs [search/reindex! (constantly nil)]
+      (do-with-remote-sync-state-restored!
+       (fn []
+         (remote-sync.settings/remote-sync-transforms! true)
+         (let [before (transforms-state)]
+           (th/clean-remote-sync-state (fn []))
+           (is (= before (transforms-state)))
+           (is (= (remote-sync.settings/remote-sync-transforms)
+                  (contains? (set (transforms-ledger-rows)) ["Transforms" "create"])))))))))
+
+(deftest clean-remote-sync-state-keeps-existing-transforms-ledger-row-test
+  (testing "a Transforms ledger row that existed before clean-remote-sync-state outlives it, because clean-object
+            restores it after clean-transforms-setting deletes it"
+    ;; The status "synced" shows that the row is the old row: the :on-change hook writes only "create" and "delete".
+    ;; In the reverse fixture order, clean-transforms-setting deletes the row after clean-object restored it.
+    (mt/with-dynamic-fn-redefs [search/reindex! (constantly nil)]
+      (do-with-remote-sync-state-restored!
+       (fn []
+         (remote-sync.settings/remote-sync-transforms! true)
+         (t2/update! :model/RemoteSyncObject
+                     {:model_type "Collection" :model_id remote-sync.settings/transforms-root-id}
+                     {:status "synced"})
+         (th/clean-remote-sync-state (fn []))
+         (is (= {:stored "true" :ledger [["Transforms" "synced"]]}
+                (transforms-state))))))))
+
 (deftest clean-remote-sync-state-restores-every-remote-sync-setting-row-test
   (testing "the raw remote-sync setting rows after clean-remote-sync-state equal the rows before it, also when the test
             binds settings that had no row"
     (mt/with-dynamic-fn-redefs [search/reindex! (constantly nil)]
-      (do-with-remote-sync-setting-rows-restored!
+      (do-with-remote-sync-state-restored!
        (fn []
          (t2/delete! :setting :key [:in ["remote-sync-type" "remote-sync-branch" "remote-sync-auto-import"
                                          "remote-sync-git-timeout-seconds"]])
@@ -256,7 +241,7 @@
 (deftest stored-transforms-setting-test-keeps-existing-transforms-state-test
   (testing "clean-remote-sync-state-removes-stored-transforms-setting-test leaves the remote-sync-transforms value and
             the Transforms ledger row that existed before it"
-    (do-with-transforms-state-restored!
+    (do-with-remote-sync-state-restored!
      (fn []
        (remote-sync.settings/remote-sync-transforms! true)
        (let [before (transforms-state)]
