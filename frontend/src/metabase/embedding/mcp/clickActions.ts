@@ -134,6 +134,11 @@ export function getMcpClickActions(
       },
     };
 
+    // A default action, such as a PK or FK drill, runs on click without a popover.
+    if ("default" in action && action.default) {
+      return [{ ...derivedAction, default: true }];
+    }
+
     return [derivedAction];
   });
 }
