@@ -8,3 +8,8 @@ export type {
 export { PLUGIN_API, reinitializeRequestHandlers } from "./request-handlers";
 export type { RequestClientInfo, RequestOptions } from "./types";
 export { setLocaleHeader } from "./locale";
+export {
+  setRefusedRequestHandler,
+  type RefusedRequest,
+  type RefusedRequestHandler,
+} from "./refused-request";

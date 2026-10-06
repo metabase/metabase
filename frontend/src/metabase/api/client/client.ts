@@ -13,6 +13,7 @@ import {
   type OnBeforeRequestHandlerConfig,
   apiRequestManipulationMiddleware,
 } from "./middleware";
+import { getRefusedRequestHandler } from "./refused-request";
 import type {
   EventMap,
   RequestInit,
@@ -270,8 +271,53 @@ export class ApiClient extends EventEmitter<EventMap> {
     } & RequestOptions<Raw>,
   ): Promise<ResponseFor<Raw>> {
     const init = await this._prepareRequest(options);
-    // Unjustified type cast. FIXME
-    return this._send(init, options.retry ?? false) as ResponseFor<Raw>;
+    const withRetries = options.retry ?? false;
+
+    try {
+      // Unjustified type cast. FIXME
+      return (await this._send(init, withRetries)) as ResponseFor<Raw>;
+    } catch (error) {
+      if (!(await this._shouldResendRefused(init, error))) {
+        throw error;
+      }
+
+      // Prepared again rather than reused, so the request handlers supply the
+      // credential the refused-request handler just renewed.
+      const resent = await this._prepareRequest(options);
+      // Unjustified type cast. FIXME
+      return this._send(resent, withRetries) as Promise<ResponseFor<Raw>>;
+    }
+  }
+
+  /**
+   * Whether a request that failed with `error` should be sent once more: it
+   * was refused with a 401, is not aborted, and the refused-request handler,
+   * if one is set, says so.
+   */
+  private async _shouldResendRefused(
+    init: RequestInit,
+    error: unknown,
+  ): Promise<boolean> {
+    const handler = getRefusedRequestHandler();
+
+    if (
+      !handler ||
+      init.signal?.aborted ||
+      typeof error !== "object" ||
+      error === null ||
+      !("status" in error) ||
+      error.status !== 401 ||
+      !isRequestMethod(init.method)
+    ) {
+      return false;
+    }
+
+    const shouldResend = await handler({
+      method: init.method,
+      url: relativeUrl(getBasename(), init.url),
+    });
+
+    return shouldResend && !init.signal?.aborted;
   }
 
   /**

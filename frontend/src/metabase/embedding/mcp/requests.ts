@@ -1,7 +1,8 @@
 import {
   type OnBeforeRequestHandlerConfig,
   PLUGIN_API,
-  api,
+  type RefusedRequest,
+  setRefusedRequestHandler,
 } from "metabase/api/client";
 
 import { refreshMcpCredential } from "./auth/credentialRefresh";
@@ -44,20 +45,27 @@ export async function overrideRequestForMcpApps({
 }
 
 /**
- * Gets a new UI credential when an iframe route at `url` refused the current
- * one, so the next request is authenticated. The refused request itself is not
- * retried: the shared API client has no hook to resend it.
+ * Whether to resend a request the server refused: true for an iframe route,
+ * after getting a new UI credential, which the resent request carries.
  */
-export function refreshOnRefusedIframeRequest(url: string) {
-  if (url.startsWith("/api/embed-mcp/")) {
-    refreshMcpCredential().catch((error) => {
-      console.error("Error refreshing the MCP UI credential", error);
-    });
+async function resendRefusedIframeRequest({
+  url,
+}: RefusedRequest): Promise<boolean> {
+  if (!url.startsWith("/api/embed-mcp/")) {
+    return false;
+  }
+
+  try {
+    await refreshMcpCredential();
+    return true;
+  } catch (error) {
+    console.error("Error refreshing the MCP UI credential", error);
+    return false;
   }
 }
 
 export function installMcpAppsRequestOverride() {
   PLUGIN_API.onBeforeRequestHandlers.overrideRequestsForMcpApps =
     overrideRequestForMcpApps;
-  api.on(401, refreshOnRefusedIframeRequest);
+  setRefusedRequestHandler(resendRefusedIframeRequest);
 }
