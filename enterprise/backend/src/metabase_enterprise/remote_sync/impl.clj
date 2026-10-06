@@ -57,25 +57,46 @@
                     (spec/transforms-namespace-collection? entity))))
               serdes-paths))))
 
+(defn- loaded-count
+  "The number of the entities `ids-by-model` (a map of model key to a set of ids) whose entity id is in `loaded` (a
+  map of model type to a set of entity ids)."
+  [ids-by-model loaded]
+  (transduce (map (fn [[model-key ids]]
+                    (let [eids (get loaded (:model-type (spec/spec-for-model-key model-key)))]
+                      (if (and (seq eids) (seq ids))
+                        (count (filter eids (vals (remote-sync.db/entity-ids-by-id model-key (vec ids)))))
+                        0))))
+             + 0 ids-by-model))
+
 (defn- delete-with-closure!
   "Deletes the entities `ids-by-model` (a map of model key to a set of ids) and the rest of their delete closure
   (see [[remote-sync.db/delete-closure]]), children before parents in [[spec/specs-for-deletion]] order. Run it in
-  the transaction of the pull. Returns:
+  the transaction of the pull. `loaded` is a map of model type to the set of entity ids that the pull loaded.
+  Returns:
    - `:deleted`: the closure, as a map of model key to a set of ids;
+   - `:loaded-count`: the number of entities that the closure adds to `ids-by-model` and whose entity id is in
+     `loaded`;
    - `:search-ids`: a map of search model to the search-index ids (strings) of every deleted row, also the
      model-index values that the delete removes by cascade."
-  [ids-by-model]
+  [ids-by-model loaded]
   (let [{closure :ids-by-model :keys [model-index-ids]} (remote-sync.db/delete-closure ids-by-model)
         ;; read before the delete, which removes the values by cascade
-        value-ids (remote-sync.db/model-index-value-search-ids (vec model-index-ids))
-        order     (mapv first (spec/specs-for-deletion))]
+        value-ids    (remote-sync.db/model-index-value-search-ids (vec model-index-ids))
+        ;; read before the delete, which removes the entity ids
+        loaded-count (loaded-count (into {}
+                                         (map (fn [[model-key ids]]
+                                                [model-key (into #{} (remove (get ids-by-model model-key #{})) ids)]))
+                                         closure)
+                                   loaded)
+        order        (mapv first (spec/specs-for-deletion))]
     (doseq [model-key (into order (remove (set order)) (keys closure))
             :let [ids (get closure model-key)]
             :when (seq ids)]
       (remote-sync.db/delete-instances! model-key (vec ids)))
-    {:deleted    closure
-     :search-ids (cond-> (update-vals closure #(mapv str %))
-                   (seq value-ids) (assoc :model/ModelIndexValue value-ids))}))
+    {:deleted      closure
+     :loaded-count loaded-count
+     :search-ids   (cond-> (update-vals closure #(mapv str %))
+                     (seq value-ids) (assoc :model/ModelIndexValue value-ids))}))
 
 (defn- remove-unsynced!
   "Deletes any remote sync content that was NOT part of the import.
@@ -97,7 +118,9 @@
                                  model-key
                                  (spec/removal-opts model-spec synced-collection-ids entity-ids))]
                :when (seq ids)]
-           [model-key ids]))))
+           [model-key ids]))
+   ;; the full import does not count deletes in its outcome
+   {}))
 
 (defn- quoted
   "Wraps `s` in backticks so that leading and trailing whitespace is visible to the reader."
@@ -496,11 +519,11 @@
     (report 0.7 {:force? true})
     ;; Before the transaction for the same reason as in [[load-snapshot!]].
     (report 0.75 {:force? true})
-    (let [{:keys [deleted search-ids]}
+    (let [{:keys [deleted loaded-count search-ids]}
           (t2/with-transaction [_conn]
             ;; The closure runs after the load. A Card file with no `dashboard_id` does not clear the old value, so
             ;; the closure still holds a Card that the remote moved out of a deleted Dashboard.
-            (let [{:keys [deleted] :as result} (delete-with-closure! deletes)
+            (let [{:keys [deleted] :as result} (delete-with-closure! deletes (:by-entity-id imported-data))
                   closure-keys (for [[model-key ids] deleted
                                      :let [model-type (:model-type (spec/spec-for-model-key model-key))]
                                      id ids]
@@ -528,7 +551,9 @@
       {:status :success
        :version snapshot-version
        :outcome {:kind "pulled"
-                 :count (transduce (map count) + (pulled-change-count imported-data) (vals deleted))
+                 ;; an entity that the pull loaded and the closure deleted counts one time
+                 :count (- (transduce (map count) + (pulled-change-count imported-data) (vals deleted))
+                           loaded-count)
                  :branch (settings/remote-sync-branch)}})))
 
 (defn- capture-dirty-objects

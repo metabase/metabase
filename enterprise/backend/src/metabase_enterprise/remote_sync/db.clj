@@ -124,9 +124,8 @@
     (into [:and (unsynced-anti-join-expr model-type id-column)] (removal-exprs removal-opts))))
 
 (mu/defn unsynced-instance-count
-  "The number of `model-key` rows [[delete-removed-instances!]] would remove (see [[removal-exprs]]) that also
-  have no RemoteSyncObject of `model-type` in synced status — unsynced local work an import would otherwise wipe
-  out."
+  "The number of `model-key` rows that an import removes (see [[removed-instance-ids]]) and that have no
+  RemoteSyncObject of `model-type` in synced status — unsynced local work an import would otherwise wipe out."
   [model-key    :- :keyword
    model-type   :- :string
    removal-opts :- RemovalOpts]
@@ -316,7 +315,9 @@
   "A map of ID to entity ID for the instances of `model` with `ids`."
   [model :- :keyword
    ids   :- [:sequential ms/PositiveInt]]
-  (t2/select-pk->fn :entity_id model :id [:in ids]))
+  (into {}
+        (mapcat #(t2/select-pk->fn :entity_id model :id [:in %]))
+        (partition-all ids-per-query ids)))
 
 (mu/defn existing-entity-ids
   "The subset of `entity-ids` that instances of `model` have."

@@ -42,7 +42,10 @@
              (rolled-back #(remote-sync.db/cascaded-action-and-index-ids (ids 65536))))))
     (testing "model-index-value-search-ids accepts 65,536 model index ids"
       (is (= {:result []}
-             (rolled-back #(remote-sync.db/model-index-value-search-ids (ids 65536))))))))
+             (rolled-back #(remote-sync.db/model-index-value-search-ids (ids 65536))))))
+    (testing "entity-ids-by-id accepts 65,536 ids"
+      (is (= {:result {}}
+             (rolled-back #(remote-sync.db/entity-ids-by-id :model/Card (ids 65536))))))))
 
 (defn- model-index
   "The columns of a ModelIndex of the model Card `model-id`."
@@ -54,12 +57,12 @@
    :state      "indexed"
    :creator_id (mt/user->id :rasta)})
 
-(deftest chunked-cascade-lookups-test
+(deftest chunked-lookups-test
   (let [chunk-size @#'remote-sync.db/ids-per-query
         ;; `first-id` is in the first chunk, and `last-id` is in the second chunk
         across     (fn [first-id last-id] (vec (concat [first-id] (ids chunk-size) [last-id])))]
-    (mt/with-temp [:model/Card       {model-1 :id}  {:name "First model" :type :model}
-                   :model/Card       {model-2 :id}  {:name "Second model" :type :model}
+    (mt/with-temp [:model/Card       {model-1 :id eid-1 :entity_id} {:name "First model" :type :model}
+                   :model/Card       {model-2 :id eid-2 :entity_id} {:name "Second model" :type :model}
                    :model/Action     {action-1 :id} {:name "First action" :type :implicit :model_id model-1}
                    :model/Action     {action-2 :id} {:name "Second action" :type :implicit :model_id model-2}
                    :model/ModelIndex {index-1 :id}  (model-index model-1)
@@ -73,7 +76,10 @@
                (update-vals (remote-sync.db/cascaded-action-and-index-ids (across model-1 model-2)) sort))))
       (testing "model-index-value-search-ids finds the values of the ModelIndexes in each chunk, each value one time"
         (is (= (sort [(str index-1 ":1") (str index-2 ":2")])
-               (sort (remote-sync.db/model-index-value-search-ids (across index-1 index-2)))))))))
+               (sort (remote-sync.db/model-index-value-search-ids (across index-1 index-2))))))
+      (testing "entity-ids-by-id finds the entity ids of the Cards in each chunk"
+        (is (= {model-1 eid-1 model-2 eid-2}
+               (remote-sync.db/entity-ids-by-id :model/Card (across model-1 model-2))))))))
 
 (deftest delete-closure-test
   (mt/with-temp [:model/Dashboard  {dash-id :id}     {:name "Closure dashboard"}
