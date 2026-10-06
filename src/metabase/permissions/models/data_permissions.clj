@@ -1352,7 +1352,8 @@
   "Returns the subset of `group-ids` whose new tables on `db-id` have a sandbox somewhere in this DB, and must therefore
   have their `view-data` forced to `:blocked` regardless of the new table's schema.
 
-  On OSS there are no sandboxes, so the set is always empty."
+  On OSS there are no sandboxes, so the set is always empty. The EE implementation is `:feature :none`: a sandbox that
+  is already configured keeps forcing new tables to `:blocked` even when the token no longer grants `:sandboxes`."
   metabase-enterprise.advanced-permissions.common
   [_db-id _group-ids]
   #{})

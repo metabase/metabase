@@ -246,6 +246,35 @@
                 (is (= :blocked (perm-value new-table-id))
                     "New table blocks the sandboxed group instead of leaking :unrestricted")))))))))
 
+(deftest uploaded-table-without-premium-features-test
+  (testing "An *uploaded* table fails CLOSED to :blocked for a sandboxed group even without premium features"
+    ;; The upload override (UXW-3217) prefers the schema's unanimous :unrestricted over the DB-wide
+    ;; override, so the sandbox guard is the only thing standing between a sandboxed group and the
+    ;; uploaded table. That guard must not consult the token: an EE instance whose token has lapsed
+    ;; still has sandboxes configured, and silently ignoring them is the UXW-4927 leak by another path.
+    (mt/with-temp [:model/PermissionsGroup {group-id :id}        {}
+                   :model/Database         {db-id :id}           {}
+                   :model/Table            {granted-table :id}   {:db_id db-id :schema "PUBLIC"}
+                   :model/Table            {sandboxed-table :id} {:db_id db-id :schema "OTHER"}
+                   :model/Sandbox          _                     {:group_id group-id :table_id sandboxed-table}]
+      ;; Unanimous :unrestricted for every existing table in the upload target schema, so that the
+      ;; schema-consistency rule *would* hand the new table over if the sandbox guard didn't fire.
+      (data-perms/set-table-permission! group-id granted-table :perms/view-data :unrestricted)
+      (doseq [features [#{} #{:advanced-permissions} #{:sandboxes} #{:advanced-permissions :sandboxes}]]
+        (testing (format "premium features = %s" (pr-str features))
+          (mt/with-premium-features features
+            (is (= #{group-id}
+                   (advanced-permissions.common/new-table-sandboxed-groups db-id [group-id]))
+                "The sandbox guard does not consult the token")
+            (data-perms/do-with-schema-consistent-new-table-perms
+             (fn []
+               (mt/with-temp [:model/Table {new-table-id :id} {:db_id db-id :schema "PUBLIC"}]
+                 (is (= :blocked
+                        (t2/select-one-fn :perm_value :model/DataPermissions
+                                          :db_id db-id :group_id group-id
+                                          :table_id new-table-id :perm_type :perms/view-data))
+                     "Uploaded table blocks the sandboxed group instead of inheriting the schema's :unrestricted"))))))))))
+
 (deftest new-table-in-granted-schema-test
   ;; Grant the "public" schema, block the "blocked" schema -- exactly the upload setup. The group
   ;; therefore has a :blocked table in the DB, so the EE DB-wide override returns :blocked for any
@@ -1075,7 +1104,6 @@
                                                            :create-queries :query-builder-and-native}}
                 (is (some? (upload-csv!)))))))))))
 
-
 (deftest upload-csv-keeps-permissions-on-granted-schema-test
   (testing "Upload to fully `:unrestricted` schema doesn't get `:blocked`, so uploads keep working (UXW-3217)"
     (mt/test-drivers (mt/normal-drivers-with-feature :uploads :schemas)
@@ -1104,7 +1132,7 @@
                  (let [uploaded-table  (t2/select-one [:model/Table :id :schema] :id (:table_id model))
                        uploaded-schema (:schema uploaded-table)]
                    (is (= :unrestricted
-                          (data-perms/table-permission-for-groups [all-users-id] :perms/view-data
+                          (data-perms/table-permission-for-groups #{all-users-id} :perms/view-data
                                                                   db-id (:id uploaded-table)))
                        "uploaded table in the granted schema must stay :unrestricted")
                    (testing "so the user's effective schema permission stays :unrestricted and they can upload again"
