@@ -5,6 +5,7 @@ import { t } from "ttag";
 
 import { TimelineEventInfo } from "metabase/common/components/TimelineEventInfo";
 import { useScrollOnMount } from "metabase/common/hooks/use-scroll-on-mount";
+import CS from "metabase/css/core/index.css";
 import { ActionIcon, Box, Checkbox, Flex, Icon, Menu } from "metabase/ui";
 import type { Timeline, TimelineEvent } from "metabase-types/api";
 
@@ -23,7 +24,7 @@ export interface EventCardProps {
   onHideTimelineEvents: (timelineEvent: TimelineEvent[]) => void;
 }
 
-const EventCard = ({
+const EventCardInner = ({
   event,
   timeline,
   isSelected,
@@ -62,6 +63,8 @@ const EventCard = ({
   return (
     <Flex
       className={cx(S.root, { [S.selected]: isVisible && isSelected })}
+      py="xxs"
+      px="md"
       aria-label={t`Timeline event card`}
       ref={isSelected ? selectedRef : null}
       onClick={handleToggleSelected}
@@ -77,7 +80,11 @@ const EventCard = ({
         <TimelineEventInfo event={event} />
       </Box>
       {menuItems.length > 0 && (
-        <Box className={S.aside} onClick={handleAsideClick}>
+        <Box
+          className={CS.alignSelfStart}
+          flex="0 0 auto"
+          onClick={handleAsideClick}
+        >
           <Menu position="bottom-end" shadow="sm">
             <Menu.Target>
               <ActionIcon variant="subtle" aria-label={t`Event menu`}>
@@ -128,5 +135,4 @@ const getMenuItems = (
   return items;
 };
 
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default memo(EventCard);
+export const EventCard = memo(EventCardInner);
