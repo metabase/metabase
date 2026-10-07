@@ -27,10 +27,8 @@
       (is (= (inc (count before)) (count after))))
     (testing (str entity ": the newest revision is the reversion")
       (is (true? (:is_reversion (first after))))
-      ;; GET /api/revision/transform-test/:id returns 500 (a separate bug); check only the stored revisions
-      (when-not (= "transform-test" entity)
-        (is (= "reverted to an earlier version."
-               (:description (first (mt/user-http-request :crowberto :get 200 (str "revision/" entity "/" id))))))))
+      (is (= "reverted to an earlier version."
+             (:description (first (mt/user-http-request :crowberto :get 200 (str "revision/" entity "/" id)))))))
     (testing (str entity ": the older revisions do not change")
       (is (= (map :id before) (map :id (rest after)))))
     (testing (str entity ": the revert response is the reversion")

@@ -29,8 +29,9 @@
                                   :is-creation? is-creation?
                                   :message      (:revision-message event)}))
       (catch Throwable e
-        ;; the database ended the writer's transaction (e.g. a deadlock on MySQL or MariaDB): a writer that went on would
-        ;; run in autocommit, commit the rest of its work alone and report success
+        ;; a SQLSTATE class 40 error (e.g. a deadlock) leaves a transaction that cannot commit; on MySQL and MariaDB the
+        ;; database already rolled it back, and a writer that went on would commit the rest of its work alone and report
+        ;; success
         (when (and (mdb/in-transaction?)
                    (= :transaction-rollback (sql-errors/error-kind e)))
           (throw e))
