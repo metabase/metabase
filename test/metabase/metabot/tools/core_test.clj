@@ -28,8 +28,8 @@
       {:name         "scoped"
        :description  "Needs a scope and a capability."
        :args         [:map {:closed true}]
-       :scope        "agent:sql:create"
-       :capabilities #{:permission-write-sql-queries}})
+       :scope                "agent:sql:create"
+       :metabot/capabilities #{:permission-write-sql-queries}})
     (handle [_ _args _ctx] {:output "ok"})))
 
 ;;; ------------------------------------------------ Tool ----------------------------------------------------------
@@ -48,7 +48,7 @@
   (is (= {:name "widget" :description "Reports a widget."
           :args [:map {:closed true} [:id :int]]}
          (tools/declaration widget-tool)))
-  (is (=? {:scope "agent:sql:create" :capabilities #{:permission-write-sql-queries}}
+  (is (=? {:scope "agent:sql:create" :metabot/capabilities #{:permission-write-sql-queries}}
           (tools/declaration scoped-tool))))
 
 (deftest ^:parallel configuration-lives-in-the-fields-test
@@ -68,11 +68,18 @@
     (handle [_ _ _] {:output ""})))
 
 (deftest ^:parallel validate-tool!-rejects-a-bad-declaration-test
-  (testing "unknown keys fail at load time rather than silently dropping a gate"
+  (testing "an unnamespaced key outside the neutral core fails at load time rather than silently
+           dropping whatever it was meant to do"
     (is (thrown-with-msg?
-         clojure.lang.ExceptionInfo #"Invalid tool declaration"
+         clojure.lang.ExceptionInfo #"declares unnamespaced key"
          (tools/validate-tool! (declaring {:name "x" :description "d" :args :any
                                            :capability #{:typo}})))))
+  (testing "but a namespaced one passes, because that is how a consumer adds its own keys without
+           every other consumer's schema having to know about them"
+    (is (=? {:mcp/annotations {:readOnlyHint true}}
+            (tools/validate-tool! (declaring {:name "x" :description "d" :args :any
+                                              :metabot/capabilities #{:permission-write-sql-queries}
+                                              :mcp/annotations      {:readOnlyHint true}})))))
   (testing "a missing :name, :description or :args fails"
     (doseq [declared [{:description "d" :args :any}
                       {:name "x" :args :any}

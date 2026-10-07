@@ -47,7 +47,13 @@
 ;;; ------------------------------------------------ Schemas -------------------------------------------------------
 
 (mr/def ::ctx
-  "What a handler is told about the turn it is running in.
+  "What a tool is told about the call it is running in.
+
+  `:tool-names` is the only key the framework itself reads — `tools.core/handle-each` passes it to
+  the recovery-step filtering. Everything else here is Metabot's own context, which is why it is
+  namespaced in a consumer-neutral world: another consumer supplies its own keys and the same tool
+  reads whichever it was written against. MCP would pass `:tool-names` (every registered tool, since
+  it has no profiles) plus its session id, token scopes and client info.
 
   `:tool-names` is the set of tools available *this turn*, which [[render]] uses to drop recovery
   steps the agent could not act on.
@@ -293,6 +299,15 @@
             shared/*memory-atom* memory-atom]
     (tools/handle tool args ctx)))
 
+(defn- rendered-output
+  "`result` with its `:output` rendered to a string.
+
+  The boundary where a renderable becomes text. A tool may return either; this consumer wants a
+  string, and another consumer would render the same value its own way — that is the whole point of
+  `tools.core/Renderable`."
+  [result]
+  (update result :output tools/render-text))
+
 (defn- checked-result
   "`result` if it is a valid [[::handler-result]]; otherwise an unrecoverable `:internal` error.
 
@@ -327,7 +342,7 @@
   3. stringified scalars are coerced, then the arguments are validated against `:args`;
   4. the scope is checked, and a denial is unrecoverable;
   5. the tool's `handle` runs, with the dynamic vars bound from `ctx`;
-  6. its result is validated against `tools.core/result`;
+  6. its result is validated against `tools.core/result` and its `:output` rendered to a string;
   7. any exception is classified, logged in full, and rendered for its audience."
   [entries ctx tool-name args]
   (let [tool-names (:tool-names ctx)]
@@ -336,8 +351,9 @@
                                            (throw (unknown-tool-ex tool-name entries)))
             checked                     (validated-args declaration args)]
         (check-scope! declaration)
-        (->> (call-tool tool checked ctx)
-             (checked-result tool-name)))
+        (-> (call-tool tool checked ctx)
+            (->> (checked-result tool-name))
+            rendered-output))
       (catch Throwable e
         (let [error (tools.error/classify e)]
           (log-failure! tool-name error e)
