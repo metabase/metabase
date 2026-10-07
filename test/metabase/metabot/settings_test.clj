@@ -217,9 +217,12 @@
                ;; a family with no deployment segment names no model
                "azure/anthropic"                            false
                "zai/glm-5.2"                                true
+               "zai/glm-5.3-flash"                          true
                "zai/glm-4.7"                                false
                "openrouter/anthropic/claude-sonnet-4.6"     true
                "openrouter/z-ai/glm-5.2"                    true
+               "openrouter/z-ai/glm-5.3-flash"              true
+               "openrouter/google/gemini-3.8-flash"         true
                ;; streams reasoning summaries under the server default
                "openrouter/openai/gpt-5.5"                  true
                ;; re-probed 2026-09-04: streams summaries under the explicit enable
@@ -230,6 +233,7 @@
                "google/anthropic/claude-haiku-4-5@20251001" false
                "google/google/gemini-3.5-flash"             true
                "google/google/gemini-3.7-flash"             true
+               "google/google/gemini-3.8-flash"             true
                ;; off-catalog: no thinking directive — see google/models.clj
                "google/google/gemini-2.5-flash"             false
                "mistral/mistral-medium-3-5"                 true

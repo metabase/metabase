@@ -97,6 +97,7 @@ Supported models:
 | DeepSeek V4 Flash 0731 | `deepseek/deepseek-v4-flash-0731` | 1,048,576               |
 | DeepSeek V4 Pro 0423   | `deepseek/deepseek-v4-pro`        | 1,048,576               |
 | DeepSeek V4 Pro 0813   | `deepseek/deepseek-v4-pro-0813`   | 1,048,575               |
+| Gemini 3.8 Flash       | `google/gemini-3.8-flash`         | 1,048,576               |
 | Mistral Medium 3.5     | `mistralai/mistral-medium-3-5`    | 262,144                 |
 | Kimi K3                | `moonshotai/kimi-k3`              | 1,048,576               |
 | GPT-5.4                | `openai/gpt-5.4`                  | 922,000                 |
@@ -110,6 +111,7 @@ Supported models:
 | Qwen3.8 Max 0902       | `qwen/qwen3.8-max-0902`           | 1,000,000               |
 | GLM-5.2                | `z-ai/glm-5.2`                    | 1,048,576               |
 | GLM-5.3                | `z-ai/glm-5.3`                    | 1,048,576               |
+| GLM-5.3-Flash          | `z-ai/glm-5.3-flash`              | 1,048,575               |
 
 Credentials:
 
@@ -141,10 +143,11 @@ Credentials:
 
 Supported models:
 
-| Model   | Model ID  | Context window (tokens) |
-| ------- | --------- | ----------------------- |
-| GLM-5.2 | `glm-5.2` | 1,048,576               |
-| GLM-5.3 | `glm-5.3` | 1,048,576               |
+| Model         | Model ID        | Context window (tokens) |
+| ------------- | --------------- | ----------------------- |
+| GLM-5.2       | `glm-5.2`       | 1,048,576               |
+| GLM-5.3       | `glm-5.3`       | 1,048,576               |
+| GLM-5.3-Flash | `glm-5.3-flash` | 1,048,576               |
 
 Credentials:
 
@@ -226,6 +229,7 @@ Supported models:
 | Gemini 3.5 Flash  | `google/gemini-3.5-flash`             |
 | Gemini 3.6 Flash  | `google/gemini-3.6-flash`             |
 | Gemini 3.7 Flash  | `google/gemini-3.7-flash`             |
+| Gemini 3.8 Flash  | `google/gemini-3.8-flash`             |
 
 Credentials:
 

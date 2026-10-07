@@ -1263,8 +1263,12 @@
       "metabase/anthropic/claude-sonnet-4-6" 1000000 ; proxy prefix is stripped
       "azure/openai/gpt-5.4-mini-prod"       272000  ; longest model-id prefix wins
       "google/google/gemini-3.6-flash"       1048576 ; publisher-qualified model reaches Google adapter
+      "google/google/gemini-3.8-flash"       1048576 ; Gemini 3.8 Flash reaches the Google adapter
       "zai/glm-5.3"                          1048576 ; Z.AI direct
       "openrouter/z-ai/glm-5.3"              1048576 ; OpenRouter serving limit
+      "zai/glm-5.3-flash"                    1048576 ; Z.AI direct
+      "openrouter/z-ai/glm-5.3-flash"        1048575 ; lower of context_length and top_provider.context_length
+      "openrouter/google/gemini-3.8-flash"   1048576 ; OpenRouter serving limit
       "azure/openai/my-deployment"           nil     ; unmatched deployment
       "anthropic/some-future-model"          nil     ; unknown model
       "unknown"                              nil)))  ; no such connection

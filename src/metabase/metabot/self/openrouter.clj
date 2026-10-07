@@ -78,6 +78,15 @@
    ;; Gemma 4 (`google/gemma-4-31b-it`, `google/gemma-4-26b-a4b-it`) is deliberately not listed:
    ;; through OpenRouter both 31B and 26B failed Metabot smoke tests with results changing between backing hosts.
    ;; See https://linear.app/metabase/issue/BOT-1932 for details
+   ;; Probed 2026-10-06. The listing passes. A chat turn passes. A title-shaped forced tool call
+   ;; completes at the floored budget. A 4-round Metabot tool turn passes. OpenRouter rejects the
+   ;; disable with a 400. Plain chat streams `reasoning.text`. Tool-call steps carry only
+   ;; `reasoning.encrypted`. The adapter does not replay `reasoning.encrypted`, and the 4-round
+   ;; tool turn worked without it on 2026-10-06.
+   ;; Max output: 65,536 tokens (`max_completion_tokens`, https://openrouter.ai/api/v1/models).
+   ;; TODO (Paolo 2026-10-07) -- If PR #82436 adds per-model max-output data, move 65,536 there.
+   ;; If that PR keeps a flat cap, delete this note. https://github.com/metabase/metabase/pull/82436
+   "google/gemini-3.8-flash"         {:display-name "Gemini 3.8 Flash"        :context-window 1048576 :reasoning :renderable :reasoning-mandatory? true}
    "mistralai/mistral-medium-3-5"    {:display-name "Mistral Medium 3.5"      :context-window  262144 :reasoning :renderable}
    ;; probed 2026-09-08: OpenRouter honors `reasoning {:enabled false}` for kimi-k3 even though the
    ;; native Moonshot API cannot turn k3's thinking off — a title-shaped forced tool call under the
@@ -103,6 +112,10 @@
    ;; disable is rejected with a 400 (thinking-only upstream, as on native z.ai), and a forced
    ;; tool call at the floored budget completes
    "z-ai/glm-5.3"                    {:display-name "GLM-5.3"                 :context-window 1048576 :reasoning :renderable :reasoning-mandatory? true}
+   ;; Probed 2026-10-06. The enable streams reasoning. OpenRouter rejects the disable with a 400.
+   ;; It honors tool_choice "required". A title-shaped forced tool call completes at the floored
+   ;; budget.
+   "z-ai/glm-5.3-flash"              {:display-name "GLM-5.3-Flash"           :context-window 1048575 :reasoning :renderable :reasoning-mandatory? true}
    "z-ai/glm-5.2"                    {:display-name "GLM-5.2"                 :context-window 1048576 :reasoning :renderable}})
 
 (mu/defn context-window-tokens :- [:maybe :int]
@@ -217,12 +230,16 @@
   A safety net: in theory the un-disableable reasoning bills against the same `max_tokens` budget as the tool call
   (\"max_tokens must be strictly higher than the reasoning budget\" —
   https://openrouter.ai/docs/use-cases/reasoning-tokens), so a small caller cap (the conversation-title path sends
-  512) could hit `length` before the mandatory tool call is emitted. In practice this has not been observed: probed
-  2026-09-03, qwen3.8-max reasons only ~150 tokens on title-shaped structured calls and fits the 512 cap, and
-  claude-fable-5 emits zero reasoning under a forced tool choice; probed 2026-09-08, gpt-5.4-pro and gpt-5.5-pro
-  finish the same calls at the 512 cap with the tool call (242–375 and 22 completion tokens across runs). The floor
-  guards against a model update or a longer-thinking mandatory model changing that. Matches vLLM's probe-proven
-  floor."
+  512) could hit `length` before the mandatory tool call is emitted. Earlier models did not need the floor. Probed
+  2026-09-03, qwen3.8-max reasons only ~150 tokens on title-shaped structured calls and fits the 512 cap. Probed
+  2026-09-03, claude-fable-5 emits zero reasoning under a forced tool choice. Probed 2026-09-08, gpt-5.4-pro and
+  gpt-5.5-pro finish the same calls at the 512 cap with the tool call. They used 242–375 and 22 completion tokens
+  across runs.
+
+  gemini-3.8-flash has little headroom at a 512 cap. Probed 2026-10-06, a title call capped at 512 completed with 478
+  completion tokens (454 reasoning). With the floor (sent as 2048), the same call used 638 completion tokens (615
+  reasoning). The floor also guards against a model update or a longer-thinking mandatory model. Matches vLLM's
+  probe-proven floor."
   2048)
 
 (defn- with-reasoning-directive
