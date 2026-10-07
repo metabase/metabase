@@ -11,16 +11,14 @@ import type { ContentDiagnosticsBaseFinding } from "metabase-types/api";
 import type { ContentDiagnosticsTab } from "../types";
 
 import { ContentDiagnosticsBulkDismissButton } from "./ContentDiagnosticsBulkDismissButton";
+import type { BulkDismissAction } from "./use-bulk-dismiss-findings";
 import { useBulkTrashFindings } from "./use-bulk-trash-findings";
 
-type ContentDiagnosticsBulkActionsBarProps = {
+type ContentDiagnosticsBulkActionsBarProps = BulkDismissAction & {
   selectedFindings: ContentDiagnosticsBaseFinding[];
   tab: ContentDiagnosticsTab;
   enableTrash?: boolean;
-  onSettled: (
-    failedFindingIds: number[],
-    dismissedFindingIds?: number[],
-  ) => void;
+  onSettled: (failedFindingIds: number[], settledFindingIds: number[]) => void;
 };
 
 type TrashCopy = {
@@ -102,6 +100,8 @@ export function ContentDiagnosticsBulkActionsBar({
   tab,
   onSettled,
   enableTrash = true,
+  dismissFindings,
+  isDismissing,
 }: ContentDiagnosticsBulkActionsBarProps) {
   const dispatch = useDispatch();
   const trashFindings = useBulkTrashFindings();
@@ -141,7 +141,10 @@ export function ContentDiagnosticsBulkActionsBar({
       dispatch(addUndo({ message: getResultMessage(total, transformCount) }));
     }
 
-    onSettled(failedFindings.map((finding) => finding.id));
+    onSettled(
+      failedFindings.map((finding) => finding.id),
+      selectedFindings.map((finding) => finding.id),
+    );
   };
 
   return (
@@ -175,6 +178,8 @@ export function ContentDiagnosticsBulkActionsBar({
             </Text>
             <Flex gap="sm" align="center">
               <ContentDiagnosticsBulkDismissButton
+                dismissFindings={dismissFindings}
+                isDismissing={isDismissing}
                 findingIds={selectedFindings.map((finding) => finding.id)}
                 onDismiss={(ids) => onSettled([], ids)}
               />

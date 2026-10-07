@@ -108,6 +108,24 @@ describe("PaginationControls", () => {
     expect(container).toHaveTextContent("251 - 275");
   });
 
+  it("shows a zero range when the current page has no items", () => {
+    const { nextPageButton, previousPageButton } = setup({
+      page: 1,
+      pageSize: 25,
+      itemsLength: 0,
+      total: 60,
+      showTotal: true,
+      onNextPage: () => {},
+      onPreviousPage: () => {},
+    });
+
+    expect(screen.getByTestId("test-container")).toHaveTextContent(
+      "0 - 0 of 60",
+    );
+    expect(previousPageButton).toBeEnabled();
+    expect(nextPageButton).toBeEnabled();
+  });
+
   it("should clamp the item range to the total when stale items from the previous page overshoot it", () => {
     setup({
       page: 2,

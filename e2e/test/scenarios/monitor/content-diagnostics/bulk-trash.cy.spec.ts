@@ -64,7 +64,7 @@ describe("scenarios > monitor > content diagnostics > bulk trash", () => {
     cy.findByTestId(LIST).should("not.contain.text", SECOND_DASHBOARD_NAME);
   });
 
-  it("lets an analyst select only the findings they can trash", () => {
+  it("disables trash when an analyst selects read-only findings", () => {
     H.createDashboard({ name: WRITABLE_DASHBOARD_NAME });
     H.createCollection({ name: READABLE_COLLECTION_NAME }).then(
       ({ body: collection }) => {
@@ -89,9 +89,16 @@ describe("scenarios > monitor > content diagnostics > bulk trash", () => {
 
     findingRow(WRITABLE_DASHBOARD_NAME)
       .findByRole("checkbox")
-      .should("be.enabled");
+      .should("be.enabled")
+      .click();
     findingRow(READABLE_DASHBOARD_NAME)
       .findByRole("checkbox")
-      .should("be.disabled");
+      .should("be.enabled")
+      .click();
+
+    cy.findByTestId("content-diagnostics-bulk-actions").within(() => {
+      cy.findByRole("button", { name: "Move to trash" }).should("be.disabled");
+      cy.findByRole("button", { name: "Dismiss" }).should("be.enabled");
+    });
   });
 });

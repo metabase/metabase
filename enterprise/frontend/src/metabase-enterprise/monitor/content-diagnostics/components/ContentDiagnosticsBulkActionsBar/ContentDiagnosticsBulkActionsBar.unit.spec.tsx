@@ -1,5 +1,6 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
+import type { ComponentProps } from "react";
 
 import { setupCardEndpoints } from "__support__/server-mocks";
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
@@ -23,6 +24,7 @@ import {
 } from "metabase-types/api/mocks";
 
 import { ContentDiagnosticsBulkActionsBar } from "./ContentDiagnosticsBulkActionsBar";
+import { useBulkDismissFindings } from "./use-bulk-dismiss-findings";
 
 const { trackSimpleEvent, trackSchemaEvent } =
   jest.requireMock("metabase/analytics");
@@ -49,10 +51,26 @@ function transform(
   });
 }
 
+function TestBulkActionsBar(
+  props: Omit<
+    ComponentProps<typeof ContentDiagnosticsBulkActionsBar>,
+    "dismissFindings" | "isDismissing"
+  >,
+) {
+  const { dismissFindings, isDismissing } = useBulkDismissFindings();
+  return (
+    <ContentDiagnosticsBulkActionsBar
+      {...props}
+      dismissFindings={dismissFindings}
+      isDismissing={isDismissing}
+    />
+  );
+}
+
 function setup(selectedFindings: ContentDiagnosticsBaseFinding[]) {
   const onSettled = jest.fn();
   const { store, rerender } = renderWithProviders(
-    <ContentDiagnosticsBulkActionsBar
+    <TestBulkActionsBar
       tab="stale"
       selectedFindings={selectedFindings}
       onSettled={onSettled}
@@ -129,7 +147,7 @@ describe("ContentDiagnosticsBulkActionsBar", () => {
     );
 
     await waitFor(() => {
-      expect(onSettled).toHaveBeenCalledWith([]);
+      expect(onSettled).toHaveBeenCalledWith([], [1]);
     });
 
     expect(fetchMock.callHistory.calls("path:/api/transform/7")).toHaveLength(
@@ -158,7 +176,7 @@ describe("ContentDiagnosticsBulkActionsBar", () => {
     );
 
     await waitFor(() => {
-      expect(onSettled).toHaveBeenCalledWith([]);
+      expect(onSettled).toHaveBeenCalledWith([], [1]);
     });
 
     const [putCall] = fetchMock.callHistory.calls("path:/api/card/1");
@@ -184,7 +202,7 @@ describe("ContentDiagnosticsBulkActionsBar", () => {
           name: "Move to trash",
         }),
       );
-      await waitFor(() => expect(onSettled).toHaveBeenCalledWith([]));
+      await waitFor(() => expect(onSettled).toHaveBeenCalledWith([], [1]));
       expect(trackSchemaEvent).toHaveBeenCalledWith(
         "simple_event",
         expect.objectContaining({
@@ -212,7 +230,7 @@ describe("ContentDiagnosticsBulkActionsBar", () => {
     );
 
     await waitFor(() => {
-      expect(onSettled).toHaveBeenCalledWith([2]);
+      expect(onSettled).toHaveBeenCalledWith([2], [1, 2]);
     });
     expect(hasUndo(store, "Couldn't remove 1 item")).toBe(true);
     expect(trackSimpleEvent).toHaveBeenCalledWith(
@@ -235,7 +253,7 @@ describe("ContentDiagnosticsBulkActionsBar", () => {
     const dialog = await screen.findByRole("dialog");
 
     rerender(
-      <ContentDiagnosticsBulkActionsBar
+      <TestBulkActionsBar
         tab="stale"
         selectedFindings={[]}
         onSettled={onSettled}
@@ -272,7 +290,7 @@ describe("ContentDiagnosticsBulkActionsBar", () => {
     );
 
     await waitFor(() => {
-      expect(onSettled).toHaveBeenCalledWith([]);
+      expect(onSettled).toHaveBeenCalledWith([], [1, 2]);
     });
     expect(trackSimpleEvent).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -297,7 +315,7 @@ describe("ContentDiagnosticsBulkActionsBar", () => {
     );
 
     await waitFor(() => {
-      expect(onSettled).toHaveBeenCalledWith([1]);
+      expect(onSettled).toHaveBeenCalledWith([1], [1]);
     });
     expect(trackSimpleEvent).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -387,7 +405,7 @@ describe("ContentDiagnosticsBulkActionsBar", () => {
       renderWithProviders(
         <>
           <DiagnosticsCounts />
-          <ContentDiagnosticsBulkActionsBar
+          <TestBulkActionsBar
             tab="stale"
             selectedFindings={[card({ id: 11 })]}
             onSettled={jest.fn()}
@@ -498,7 +516,7 @@ describe("ContentDiagnosticsBulkActionsBar", () => {
       const { rerender, onSettled } = setup([card({ id: 11 })]);
       const dialog = await openConfirmation();
       rerender(
-        <ContentDiagnosticsBulkActionsBar
+        <TestBulkActionsBar
           tab="stale"
           selectedFindings={[]}
           onSettled={onSettled}

@@ -28,7 +28,10 @@ import {
   trackContentDiagnosticsTabViewed,
 } from "../analytics";
 
-import { ContentDiagnosticsBulkActionsBar } from "./ContentDiagnosticsBulkActionsBar";
+import {
+  ContentDiagnosticsBulkActionsBar,
+  useBulkDismissFindings,
+} from "./ContentDiagnosticsBulkActionsBar";
 import { DiagnosticsHeader } from "./DiagnosticsHeader";
 import { DiagnosticsPagination } from "./DiagnosticsPagination";
 import type {
@@ -147,7 +150,13 @@ export function ContentDiagnosticsContent<
   );
   const isFetching = isFetchingFindings || isLoadingParams;
   const isLoading = isLoadingFindings || isLoadingParams;
-  const findings = data?.data ?? [];
+  const { dismissFindings, hiddenFindingIds, isDismissing } =
+    useBulkDismissFindings();
+  const findings = useMemo(
+    () =>
+      data?.data.filter((finding) => !hiddenFindingIds.has(finding.id)) ?? [],
+    [data, hiddenFindingIds],
+  );
   const totalCount = data?.total ?? 0;
   const selectedFinding = findings.find(
     (finding) => finding.id === selectedFindingId,
@@ -284,22 +293,23 @@ export function ContentDiagnosticsContent<
             />
           )}
           <ContentDiagnosticsBulkActionsBar
+            dismissFindings={dismissFindings}
+            isDismissing={isDismissing}
             enableTrash={enableBulkTrash}
             tab={tab}
             selectedFindings={selectedFindings}
-            onSettled={(failedIds, dismissedIds) => {
-              if (dismissedIds) {
-                // Keep rows selected after dismissal started.
-                setRowSelection((selection) => {
-                  const next = { ...selection };
-                  dismissedIds.forEach((id) => delete next[id]);
-                  return next;
+            onSettled={(failedIds, settledIds) => {
+              setRowSelection((selection) => {
+                const next = { ...selection };
+                settledIds.forEach((id) => {
+                  if (failedIds.includes(id)) {
+                    next[id] = true;
+                  } else {
+                    delete next[id];
+                  }
                 });
-              } else {
-                setRowSelection(
-                  Object.fromEntries(failedIds.map((id) => [id, true])),
-                );
-              }
+                return next;
+              });
             }}
           />
         </MonitorMain>

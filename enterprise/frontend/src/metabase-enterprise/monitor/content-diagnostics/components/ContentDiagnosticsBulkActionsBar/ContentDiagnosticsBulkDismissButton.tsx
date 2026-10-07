@@ -1,4 +1,5 @@
 import { useDisclosure } from "@mantine/hooks";
+import { useState } from "react";
 import { msgid, ngettext, t } from "ttag";
 
 import { getErrorMessage } from "metabase/api/utils";
@@ -6,9 +7,11 @@ import { BulkActionButton } from "metabase/common/components/BulkActionBar";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { useDispatch } from "metabase/redux";
 import { addUndo } from "metabase/redux/undo";
-import { useInvalidateFindingsMutation } from "metabase-enterprise/api";
+import type { InvalidateFindingsResponse } from "metabase-types/api";
 
-interface ContentDiagnosticsBulkDismissButtonProps {
+import type { BulkDismissAction } from "./use-bulk-dismiss-findings";
+
+interface ContentDiagnosticsBulkDismissButtonProps extends BulkDismissAction {
   findingIds: number[];
   onDismiss: (findingIds: number[]) => void;
 }
@@ -16,33 +19,42 @@ interface ContentDiagnosticsBulkDismissButtonProps {
 export function ContentDiagnosticsBulkDismissButton({
   findingIds,
   onDismiss,
+  dismissFindings,
+  isDismissing,
 }: ContentDiagnosticsBulkDismissButtonProps) {
   const dispatch = useDispatch();
   const [isOpen, { open, close }] = useDisclosure();
-  const [invalidateFindings, { isLoading }] = useInvalidateFindingsMutation();
+  const [confirmationCount, setConfirmationCount] = useState(0);
+
+  const handleClose = () => {
+    setConfirmationCount(findingIds.length);
+    close();
+  };
 
   const handleConfirm = async () => {
-    if (isLoading) {
+    if (isDismissing) {
       return;
     }
     if (findingIds.length === 0) {
-      close();
+      handleClose();
       return;
     }
 
-    close();
-    const result = await invalidateFindings({ ids: findingIds });
-    if ("error" in result) {
+    handleClose();
+    let result: InvalidateFindingsResponse;
+    try {
+      result = await dismissFindings(findingIds);
+    } catch (error) {
       dispatch(
         addUndo({
           icon: "warning",
-          message: getErrorMessage(result.error, t`Couldn't dismiss findings`),
+          message: getErrorMessage(error, t`Couldn't dismiss findings`),
         }),
       );
       return;
     }
 
-    const count = result.data.invalidated.length;
+    const count = result.invalidated.length;
     dispatch(
       addUndo({
         message:
@@ -58,25 +70,27 @@ export function ContentDiagnosticsBulkDismissButton({
     onDismiss(findingIds);
   };
 
+  const count = isOpen ? findingIds.length : confirmationCount;
+
   return (
     <>
-      <BulkActionButton disabled={isLoading} onClick={open}>
+      <BulkActionButton disabled={isDismissing} onClick={open}>
         {t`Dismiss`}
       </BulkActionButton>
       <ConfirmModal
         opened={isOpen}
         title={ngettext(
-          msgid`Dismiss ${findingIds.length} finding?`,
-          `Dismiss ${findingIds.length} findings?`,
-          findingIds.length,
+          msgid`Dismiss ${count} finding?`,
+          `Dismiss ${count} findings?`,
+          count,
         )}
         message={t`Dismissed findings will be hidden for everyone. The underlying content will not be deleted.`}
         confirmButtonText={t`Dismiss`}
-        confirmButtonProps={{ color: "brand", disabled: isLoading }}
+        confirmButtonProps={{ color: "brand", disabled: isDismissing }}
         onConfirm={handleConfirm}
         onClose={() => {
-          if (!isLoading) {
-            close();
+          if (!isDismissing) {
+            handleClose();
           }
         }}
       />
