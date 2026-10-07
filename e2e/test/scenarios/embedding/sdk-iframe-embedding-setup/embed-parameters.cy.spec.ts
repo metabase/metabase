@@ -24,7 +24,7 @@ describe(suiteTitle, () => {
     // the Agree CTA. Every test here preselects SSO, but the wizard opens in
     // guest mode while SSO is unconfigured, so an unaccepted guest CTA would
     // otherwise have to be clicked through first. That flow is covered by
-    // embed-flow-enable-embed-js-*.
+    // embed-flow-enable-embed-js.cy.spec.ts.
     H.updateSetting("enable-embedding-simple", true);
     H.updateSetting("show-simple-embed-terms", false);
     H.updateSetting("enable-embedding-static", true);
