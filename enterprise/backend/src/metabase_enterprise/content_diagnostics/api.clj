@@ -514,12 +514,12 @@
    _query-params
    {:keys [ids]} :- [:map {:closed true}
                      [:ids [:sequential {:min 1, :max 500} ms/PositiveInt]]]]
-  (let [invalidated (finding/invalidate-by-ids! ids [:and
-                                                     (api.common/latest-findings-clause)
-                                                     (api.common/visible-findings-clause)])
-        ids         (distinct ids)]
-    {:invalidated (filterv invalidated ids)
-     :skipped     (filterv (complement invalidated) ids)}))
+  (let [unique-ids  (distinct ids)
+        invalidated (finding/invalidate-by-ids! unique-ids [:and
+                                                            (api.common/latest-findings-clause)
+                                                            (api.common/visible-findings-clause)])]
+    {:invalidated (filterv invalidated unique-ids)
+     :skipped     (filterv (complement invalidated) unique-ids)}))
 
 (def ^{:arglists '([request respond raise])} routes
   "Ring routes for the Content Diagnostics API."
