@@ -3342,6 +3342,7 @@
                     :model/DashboardCard
                     :model/DashboardCardSeries
                     :model/Database
+                    :model/Document
                     :model/Field
                     :model/Table}}
 

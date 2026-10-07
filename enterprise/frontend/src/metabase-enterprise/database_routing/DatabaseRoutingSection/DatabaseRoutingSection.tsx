@@ -95,11 +95,9 @@ export const DatabaseRoutingSection = ({
   const hasTransforms = transforms.length > 0;
 
   // usage info is admin-only, and the fact is only there to inform the admin making the decision
-  const usageInfoQuery = useGetDatabaseUsageInfoQuery(
+  const { data: usageInfo } = useGetDatabaseUsageInfoQuery(
     shouldHideSection || !isAdmin ? skipToken : database.id,
   );
-  const reachableByPublicLink =
-    usageInfoQuery.data?.reachable_by_public_link ?? false;
 
   const disabledFeatMsg = getDisabledFeatureMessage(database, {
     hasTransforms,
@@ -222,11 +220,14 @@ export const DatabaseRoutingSection = ({
                 <Text
                   inherit
                 >{t`In guest embeds and public links, database queries will always be routed to the router database.`}</Text>
-                <Text inherit>
-                  {reachableByPublicLink
-                    ? t`This affects the public links that use this database.`
-                    : t`No public links use this database.`}
-                </Text>
+                {/* until the fact has arrived, neither sentence is one we can stand behind */}
+                {usageInfo && (
+                  <Text inherit>
+                    {usageInfo.reachable_by_public_link
+                      ? t`This affects the public links that use this database.`
+                      : t`No public links use this database.`}
+                  </Text>
+                )}
               </Stack>
             </Alert>
           )}

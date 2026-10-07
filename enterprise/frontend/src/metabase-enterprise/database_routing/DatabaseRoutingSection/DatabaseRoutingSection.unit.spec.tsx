@@ -213,6 +213,10 @@ describe("DatabaseRoutingSection affected public links", () => {
     expect(await screen.findByText(ROUTING_NOTE)).toBeInTheDocument();
     expect(await screen.findByText(AFFECTED_NOTE)).toBeInTheDocument();
     expect(screen.queryByText(UNAFFECTED_NOTE)).not.toBeInTheDocument();
+    // reintroducing a count is what this copy exists to avoid
+    expect(
+      screen.queryByText(/\d+ public (question|dashboard)/),
+    ).not.toBeInTheDocument();
   });
 
   it("should state plainly that no public links use the database when none do", async () => {
@@ -230,7 +234,7 @@ describe("DatabaseRoutingSection affected public links", () => {
     expect(screen.queryByText(AFFECTED_NOTE)).not.toBeInTheDocument();
   });
 
-  it("should not count the public links it reports", async () => {
+  it("should claim nothing about public links until the fact has arrived", async () => {
     setup({
       database: createMockDatabase({
         engine: "postgres",
@@ -240,10 +244,13 @@ describe("DatabaseRoutingSection affected public links", () => {
       reachableByPublicLink: true,
     });
 
+    // nothing is awaited yet, so the usage-info response cannot have been applied. The first
+    // sentence is true whatever the answer turns out to be; neither of the others is yet.
+    expect(screen.getByText(ROUTING_NOTE)).toBeInTheDocument();
+    expect(screen.queryByText(AFFECTED_NOTE)).not.toBeInTheDocument();
+    expect(screen.queryByText(UNAFFECTED_NOTE)).not.toBeInTheDocument();
+
     expect(await screen.findByText(AFFECTED_NOTE)).toBeInTheDocument();
-    expect(
-      screen.queryByText(/\d+ public (question|dashboard)/),
-    ).not.toBeInTheDocument();
   });
 
   it("should not mention public links while the section is collapsed", async () => {

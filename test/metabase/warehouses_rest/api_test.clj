@@ -47,6 +47,7 @@
    [metabase.util.random :as u.random]
    [metabase.warehouse-schema.table :as schema.table]
    [metabase.warehouses-rest.api :as api.database]
+   [metabase.warehouses-rest.db :as warehouses-rest.db]
    [metabase.warehouses.core :as warehouses]
    [metabase.warehouses.util :as warehouses.util]
    [ring.util.codec :as codec]
@@ -381,6 +382,42 @@
     (testing "a public dashboard holding no card on this database leaves it unreachable"
       (is (false? (reachable-by-public-link? db-id))))))
 
+(deftest get-database-usage-info-public-document-reaches-database-test
+  (mt/with-temp
+    [:model/Database {db-id :id}       {}
+     :model/Table    {table-id :id}    {:db_id db-id}
+     :model/Document {document-id :id} {:public_uuid (str (random-uuid))}
+     :model/Card     _                 {:database_id db-id
+                                        :table_id    table-id
+                                        :type        :question
+                                        :document_id document-id}]
+    (testing "a card owned by a public document makes this database reachable"
+      (is (true? (reachable-by-public-link? db-id))))))
+
+(deftest get-database-usage-info-unshared-document-is-not-reachable-test
+  (mt/with-temp
+    [:model/Database {db-id :id}       {}
+     :model/Table    {table-id :id}    {:db_id db-id}
+     :model/Document {document-id :id} {}
+     :model/Card     _                 {:database_id db-id
+                                        :table_id    table-id
+                                        :type        :question
+                                        :document_id document-id}]
+    (testing "a card owned by a document with no public link leaves this database unreachable"
+      (is (false? (reachable-by-public-link? db-id))))))
+
+(deftest get-database-usage-info-archived-public-document-is-not-reachable-test
+  (mt/with-temp
+    [:model/Database {db-id :id}       {}
+     :model/Table    {table-id :id}    {:db_id db-id}
+     :model/Document {document-id :id} {:public_uuid (str (random-uuid)), :archived true}
+     :model/Card     _                 {:database_id db-id
+                                        :table_id    table-id
+                                        :type        :question
+                                        :document_id document-id}]
+    (testing "an archived document's public link no longer resolves, so it does not make this database reachable"
+      (is (false? (reachable-by-public-link? db-id))))))
+
 (deftest get-database-usage-info-archived-public-card-is-not-reachable-test
   (mt/with-temp
     [:model/Database {db-id :id}    {}
@@ -435,7 +472,7 @@
     @results))
 
 (deftest get-database-usage-info-no-large-in-test
-  (testing "usage_info query should not use IN clauses with more than 100 items (GHY-2413)"
+  (testing "usage_info queries should not use IN clauses with more than 100 items (GHY-2413)"
     (mt/with-temp
       [:model/Database {db-id :id} {}
        :model/Table    _           {:db_id db-id}]
@@ -447,7 +484,10 @@
           (mt/user-http-request :crowberto :get 200 (format "database/%d/usage_info" db-id)))
         (doseq [q @queries]
           (is (empty? (find-in-clauses q))
-              "usage_info should not generate IN clauses with inline collections"))))))
+              "the usage counts should not generate IN clauses with inline collections")))
+      ;; reachability runs through `t2/exists?` rather than `mdb/query`, so the redef above cannot see it
+      (is (empty? (find-in-clauses (#'warehouses-rest.db/public-link-reachable-query db-id)))
+          "reachability should not generate IN clauses with inline collections"))))
 
 (deftest get-database-usage-info-test-2
   (mt/with-temp

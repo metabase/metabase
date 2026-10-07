@@ -355,21 +355,33 @@
                     :from   [(t2/table-name :model/DashboardCardSeries)]
                     :where  [:in :dashboardcard_id (public-dashcard-subquery :id)]})
 
-(mu/defn public-link-reachable?
+(def ^:private public-document-id-subquery
+  "Subquery for the ids of the Documents an anonymous visitor can open."
+  ;; an archived Document's public link no longer resolves
+  ^:allow-subquery {:select [:id]
+                    :from   [(t2/table-name :model/Document)]
+                    :where  [:and
+                             [:= :archived false]
+                             [:not= :public_uuid nil]]})
+
+(defn- public-link-reachable-query
+  "Honey SQL selecting the Cards on the Database with `database-id` that a public link reaches."
+  [database-id]
+  ;; an archived Card's public link no longer resolves, and nor does it render inside a public Dashboard or Document
+  {:where [:and
+           [:= :database_id [:auto/param database-id]]
+           [:= :archived false]
+           [:or
+            [:not= :public_uuid nil]
+            [:in :id (public-dashcard-subquery :card_id)]
+            [:in :id public-series-card-id-subquery]
+            [:in :document_id public-document-id-subquery]]]})
+
+(mu/defn public-link-reachable? :- :boolean
   "Whether any Card on the Database with `database-id` can be reached through a public link: the Card has one itself,
-  or a public Dashboard holds it through a DashboardCard or through that DashboardCard's series. The union of the
-  paths, so a path added later can only turn this from false to true. Cards referenced only from JSON -- parameter
-  mappings, parameter value sources, click behaviour targets, and link cards -- are not walked."
+  a public Dashboard holds it through a DashboardCard or that DashboardCard's series, or a public Document owns it."
   [database-id :- ::lib.schema.id/database]
-  ;; an archived Card's public link no longer resolves, and nor does it render inside a public Dashboard
-  (t2/exists? :model/Card
-              {:where [:and
-                       [:= :database_id [:auto/param database-id]]
-                       [:= :archived false]
-                       [:or
-                        [:not= :public_uuid nil]
-                        [:in :id (public-dashcard-subquery :card_id)]
-                        [:in :id public-series-card-id-subquery]]]}))
+  (t2/exists? :model/Card (public-link-reachable-query database-id)))
 
 (mu/defn database-usage-counts
   "A single row with the count of Questions (`:question`), Models (`:dataset`), Metrics (`:metric`), Segments

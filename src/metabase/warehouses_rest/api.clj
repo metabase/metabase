@@ -523,10 +523,11 @@
     ms/IntGreaterThanOrEqualToZero]
    [:reachable_by_public_link
     {:description (str "Whether anything on this database can be reached through a public link: an unarchived card on"
-                       " this database with a public link, or an unarchived public dashboard holding such a card"
-                       " through its dashboard cards or their series. Cards referenced only from JSON -- parameter"
-                       " mappings, parameter value sources, click behaviour targets, and link cards -- are not walked,"
-                       " so false means no public link was found rather than that none can exist.")}
+                       " this database with a public link, an unarchived public dashboard holding one through its"
+                       " dashboard cards or their series, or an unarchived public document owning one. Not covered:"
+                       " cards a public dashboard or document reaches only through a JSON-encoded reference --"
+                       " parameter mappings, parameter value sources, click-behaviour targets, link cards, and"
+                       " prose-mirror card embeds.")}
     :boolean]])
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
