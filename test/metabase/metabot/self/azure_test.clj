@@ -247,6 +247,15 @@
                                                :input [{:role :user :content "hi"}]})))]
       (is (not (contains? body :speed))))))
 
+(deftest ^:parallel context-window-tokens-test
+  (testing "the longest model id that prefixes the deployment name decides"
+    (are [model tokens] (= tokens (azure/context-window-tokens model))
+      "anthropic/claude-fable-5-1"      1000000
+      "anthropic/claude-fable-5-1-prod" 1000000
+      "openai/gpt-5.4"                  922000
+      "openai/gpt-5.4-mini-2026-03-17"  272000
+      "anthropic/my-deployment"         nil)))
+
 (deftest unsupported-family-throws-test
   (is (thrown-with-msg?
        clojure.lang.ExceptionInfo

@@ -347,7 +347,8 @@
 (def supported-models
   "Anthropic chat models offered in the Metabot model picker, keyed by model id.
   `list-models` returns the intersection of this map with the account's `/v1/models` catalog."
-  {"claude-fable-5"             {:display-name "Claude Fable 5"    :max-tokens 128000 :context-window 1000000}
+  {"claude-fable-5-1"           {:display-name "Claude Fable 5.1"  :max-tokens 128000 :context-window 1000000}
+   "claude-fable-5"             {:display-name "Claude Fable 5"    :max-tokens 128000 :context-window 1000000}
    "claude-opus-5"              {:display-name "Claude Opus 5"     :max-tokens 128000 :context-window 1000000}
    "claude-opus-4-8"            {:display-name "Claude Opus 4.8"   :max-tokens 128000 :context-window 1000000}
    "claude-opus-4-7"            {:display-name "Claude Opus 4.7"   :max-tokens 128000 :context-window 1000000}
@@ -452,6 +453,20 @@
   [{:keys [model ai-proxy?]} :- adapter/ResolvedRef]
   (fast-mode-model? model ai-proxy?))
 
+(def ^:private forced-tool-choice-unsupported-models
+  "Model ids that reject a forced tool choice (`{:type \"any\"}` or `{:type \"tool\"}`) with a 400:
+  https://platform.claude.com/docs/en/api/errors#forced-tool-use-not-supported
+  Some of these ids are not in [[supported-models]]: Azure deployments, Bedrock runtime ids and Vertex ids reach
+  [[claude-request-body]] without a catalog lookup."
+  #{"claude-fable-5-1" "claude-mythos-5-1" "claude-opus-5-5" "claude-sonnet-5-5"})
+
+(defn- supports-forced-tool-choice?
+  "Whether `model` accepts a forced tool choice. A prefix match, so that Azure deployment names with a suffix
+  (e.g. `claude-fable-5-1-prod`) also match."
+  [model]
+  (let [model (strip-vendor-prefix model)]
+    (not-any? #(str/starts-with? model %) forced-tool-choice-unsupported-models)))
+
 (mu/defn claude-request-body
   "Build the Anthropic Messages API request body for an LLM request.
 
@@ -460,10 +475,13 @@
   restrictions, which the model-id-derived config and the suppression rules below cannot describe."
   [{:keys [model system input tools schema tool_choice temperature max-tokens reasoning? reasoning-config fast? ai-proxy?]
     :or   {model default-model reasoning? true}} :- core/LLMRequestOpts]
-  (let [;; forced tool choice (structured output, or "required") is incompatible
+  (let [;; models that reject a forced tool choice get "auto"; the model can then answer without a tool call
+        force-ok? (supports-forced-tool-choice? model)
+        ;; forced tool choice (structured output, or "required") is incompatible
         ;; with thinking — suppress it there.
+        forced?   (and force-ok? (or (some? schema) (= "required" (some-> tool_choice name))))
         thinking  (or reasoning-config
-                      (when-not (or (not reasoning?) schema (= "required" (some-> tool_choice name)))
+                      (when (and reasoning? (not forced?))
                         (model-thinking-config model)))
         fast?     (and fast? (fast-mode-model? model ai-proxy?))
         input     (cond->> input
@@ -480,8 +498,9 @@
              :messages      messages}
       system            (assoc :system (system->cached-content-blocks system))
       all-tools         (assoc :tools all-tools)
-      schema            (assoc :tool_choice {:type "tool"
-                                             :name "structured_output"}
+      schema            (assoc :tool_choice (if force-ok?
+                                              {:type "tool" :name "structured_output"}
+                                              {:type "auto"})
                                :tools [{:name         "structured_output"
                                         :description  "Output structured data"
                                         :input_schema schema}])
@@ -489,7 +508,7 @@
       (and all-tools tool_choice)
       (assoc :tool_choice (case (name tool_choice)
                             "auto"     {:type "auto"}
-                            "required" {:type "any"}))
+                            "required" (if force-ok? {:type "any"} {:type "auto"})))
 
       thinking          (assoc :thinking thinking)
 

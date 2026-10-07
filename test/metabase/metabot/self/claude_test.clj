@@ -645,6 +645,29 @@
                              :tools       [(metabot.tu/get-time-tool)]
                              :tool_choice "required"})))))))
 
+(deftest claude-forced-tool-choice-downgrade-test
+  (mt/with-temporary-setting-values [llm.settings/llm-anthropic-api-key "sk-ant-test"]
+    (let [structured {:schema {:type "object" :properties {:answer {:type "string"}}}}
+          required   {:tools [(metabot.tu/get-time-tool)] :tool_choice "required"}
+          body       #(capture-claude-request-body! (merge {:input [{:role :user :content "hi"}] :model %1} %2))]
+      ;; Bedrock ids reach us vendor-prefixed, Azure deployment names can have a suffix
+      (are [model structured-choice required-choice thinking?]
+           (let [structured-body (body model structured)
+                 required-body   (body model required)]
+             (and (is (= structured-choice (:tool_choice structured-body)))
+                  (is (= required-choice (:tool_choice required-body)))
+                  (testing "thinking stays on when nothing is forced"
+                    (is (= thinking? (some? (:thinking structured-body))))
+                    (is (= thinking? (some? (:thinking required-body)))))))
+        "claude-fable-5-1"           {:type "auto"}                              {:type "auto"} true
+        "claude-opus-5-5"            {:type "auto"}                              {:type "auto"} true
+        "claude-sonnet-5-5"          {:type "auto"}                              {:type "auto"} true
+        "anthropic.claude-fable-5-1" {:type "auto"}                              {:type "auto"} true
+        "claude-fable-5-1-prod"      {:type "auto"}                              {:type "auto"} true
+        "claude-fable-5"             {:type "tool" :name "structured_output"}    {:type "any"}  false
+        "claude-opus-5"              {:type "tool" :name "structured_output"}    {:type "any"}  false
+        "claude-sonnet-5"            {:type "tool" :name "structured_output"}    {:type "any"}  false))))
+
 (deftest ^:parallel every-supported-model-has-a-ceiling-test
   (doseq [[id {:keys [display-name max-tokens]}] @#'claude/supported-models]
     (is (pos-int? max-tokens) id)
@@ -656,6 +679,7 @@
                                     (merge {:input [{:role :user :content "hi"}]} %)))]
       (are [opts tokens] (= tokens (max-tokens opts))
         {:model "claude-opus-4-8"}                             128000
+        {:model "claude-fable-5-1"}                            128000
         {:model "claude-haiku-4-5-20251001"}                    64000
         {:model "claude-opus-4-8" :max-tokens 32000}            32000
         ;; Bedrock ids reach us vendor-prefixed
