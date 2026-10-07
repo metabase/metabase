@@ -12,7 +12,7 @@
 #
 # Without --external, links to other sites are skipped, which is how CI runs it
 # (.github/workflows/docs-links.yml). Needs lychee (https://lychee.cli.rs) and jq. Set LINKS_REPORT to a
-# file to also collect every failure there (.github/workflows/docs-links-site.yml posts it to Slack).
+# file to also collect every failure there (.github/workflows/docs-links-site.yml files it as a GitHub issue).
 set -euo pipefail
 
 cd "$(dirname "$0")/../.."
