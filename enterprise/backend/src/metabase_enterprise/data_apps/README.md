@@ -24,32 +24,42 @@ from everyone else, and a 409 to open.
 ## Serialization
 
 A serialized app is a `data_app.yaml` in its own directory under `data_apps/`, with its bundle as a
-plain file next to it at its `path`:
+plain file next to it at its `path`. Its resource collection is a collection of the `data-apps`
+namespace, serialized like any collection under `collections/`:
 
 ```
 data_apps/
   sales/
-    data_app.yaml          # serdes/meta, entity_id, slug, name, description, version, path, allowed_hosts
+    data_app.yaml          # serdes/meta, entity_id, slug, name, description, version, path, allowed_hosts, collection
     dist/index.js          # the bundle
+collections/
+  main/
+    data_app__sales.yaml   # the app's resource collection (namespace: data-apps)
+    data_app__sales/
+      *.yaml               # the saved questions, metric copies, and action copies the app runs
 ```
 
 The YAML keeps the keys a hand-written manifest uses: `slug` is the `name` column, `name` the
-`display_name`, and `path` the `bundle_path`. The bundle travels as a serdes *resource file*: the
-entity carries it in `:serdes/resources` on export, the storage writers put it next to the YAML,
-and ingestion reads the paths `serdes/resource-paths` returns back in. A resource path must stay
-inside the entity's directory.
+`display_name`, `path` the `bundle_path`, and `collection` the entity ID of the app's resource
+collection, which the app depends on and so loads after. The bundle travels as a serdes *resource
+file*: the entity carries it in `:serdes/resources` on export, the storage writers put it next to
+the YAML, and ingestion reads the paths `serdes/resource-paths` returns back in. A resource path
+must stay inside the entity's directory.
 
-Only the manifest is serialized. `enabled` is admin-owned and never leaves the instance; the
-collection, permission group, and `table_ids` are server-managed; `bundle_hash` is recomputed from
-the bundle on import. Drafts are not exported.
+`enabled` is admin-owned and never leaves the instance; the permission group and `table_ids` are
+server-managed; `bundle_hash` is recomputed from the bundle on import. Drafts are not exported.
+A targeted export of an app brings its collection and what it holds along (`serdes/descendants`).
 
 An import matches an app by `entity_id`, falling back to its slug so it takes over a draft, and
-reasserts the app's resources. It is a no-op without the `:data-apps` feature.
+reasserts the app's resources. A manifest that names a collection the repository lacks, or one
+other than the collection the app already owns, fails to load. It is a no-op without the
+`:data-apps` feature.
 
-Remote sync treats data apps like any other entity, globally rather than per collection. Because
-the bundle is a separate file, a pull that changes only a bundle, or an export that touches an app,
-takes the full rather than the incremental path. An app's directory also holds its source, which
-serialization doesn't own, so exports replace only the YAML and resource files in `data_apps/`.
+Remote sync treats data apps like any other entity, globally rather than per collection; the app's
+collection and what it holds travel with it as its serdes descendants. Because the bundle is a separate file, a pull that changes
+only a bundle, or an export that touches an app, takes the full rather than the incremental path.
+An app's directory also holds its source, which serialization doesn't own, so exports replace only
+the YAML and resource files in `data_apps/`.
 
 ## Drafts
 
@@ -87,9 +97,13 @@ middleware's lookup doesn't pull in route code.
 
 ## Permissions
 
-Each app owns two server-managed resources (`resources.clj`), created with the app (or its draft)
-and reasserted on every import: a **collection** holding the copies the app is served from (saved
-questions, actions, table-sourced metrics) and a **permissions group** its users belong to.
+Each app owns two server-managed resources, created with the app (or its draft) and reasserted on
+every import: a **collection** holding the copies the app is served from (saved questions, actions,
+table-sourced metrics) and a **permissions group** its users belong to. The collection is a root
+collection of the `data-apps` namespace, created as the app's row is inserted unless an import names
+one (`models/data_app.clj`), and can never be swapped for another; `resources.clj` keeps its name and
+permissions in step and brings it out of the trash. Deleting the app deletes both, and the
+collection's own hooks delete what it holds.
 
 The group is set database-level `view-data :blocked` on every database, so it grants **no data
 access of its own** (which cascades `create-queries`/`download-results` to `:no`); every group but
@@ -97,9 +111,7 @@ admins is revoked from the collection before the app group gets read access. Del
 both resources and everything in the collection.
 
 **Viewing an app** requires read access to its resource collection. You have to be a member in
-the app's group or be an admin. An app without a linked resource collection is considered _unpublished_.
-The app's metadata and bundle endpoint returns HTTP 409 for all signed-in users. The frontend
-shows the error "This data app isn’t published yet".
+the app's group or be an admin.
 
 **A viewer sees an app's data only through access they already hold.** The app group grants no
 view-data of its own, so a viewer without access to an app's tables (e.g. a sandboxed user) sees no

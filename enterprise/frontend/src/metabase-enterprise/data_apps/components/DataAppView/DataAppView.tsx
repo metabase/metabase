@@ -264,16 +264,6 @@ export function DataAppView() {
       );
     }
 
-    if (status === 409) {
-      return (
-        <CenteredEmptyState
-          title={t`This data app isn’t published yet`}
-          message={t`An administrator needs to publish this data app before it can be opened.`}
-          illustrationElement={<Icon name="hourglass" size={64} />}
-        />
-      );
-    }
-
     if (status === 403) {
       return (
         <CenteredEmptyState
