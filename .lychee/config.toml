@@ -11,6 +11,10 @@ exclude = [
   "^https://console\\.mistral\\.ai/",
   # GitHub renders issue comments client-side, so lychee can't see #issuecomment anchors.
   "^https://github\\.com/.+/issues/\\d+#issuecomment-",
+  # Same for a repo's #readme anchor.
+  "^https://github\\.com/[^/]+/[^/]+#readme$",
+  # The API reference is rendered client-side by Scalar, so lychee can't see its #tag/... anchors.
+  "^https://www\\.metabase\\.com/docs/latest/api#",
 ]
 exclude_path = ["docs/util", "docs/embedding/sdk/api"]
 no_progress = true
