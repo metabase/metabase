@@ -1,9 +1,11 @@
+import cx from "classnames";
 import type { PropsWithChildren } from "react";
 import { t } from "ttag";
 
 import { IconButtonWrapper } from "metabase/common/components/IconButtonWrapper";
 import { Link } from "metabase/common/components/Link";
-import { Box, Ellipsified, Flex, Icon, Loader, rem } from "metabase/ui";
+import CS from "metabase/css/core/index.css";
+import { Box, Ellipsified, Flex, Icon, Loader } from "metabase/ui";
 import type { IconName } from "metabase-types/api";
 
 import useStatusVisibility from "../../hooks/use-status-visibility";
@@ -33,7 +35,7 @@ export interface StatusLargeProps {
   onDismiss?: () => void;
 }
 
-const StatusLarge = ({
+export const StatusLarge = ({
   status,
   isActive,
   onCollapse,
@@ -41,26 +43,26 @@ const StatusLarge = ({
 }: StatusLargeProps) => {
   return (
     <Box
-      className={S.root}
+      className={cx(S.border, S.shadow, CS.overflowHidden)}
       role="status"
-      w={rem(256)}
+      w="16rem"
       mt="lg"
       bg="background_page-primary"
     >
-      <Flex align="center" py={rem(10)} px="lg" bg="core-brand">
+      <Flex align="center" py="0.625rem" px="lg" bg="core-brand">
         <Box
           flex="1 1 auto"
           w="100%"
           c="background_page-secondary"
           fz="md"
           fw="bold"
-          lh={rem(16)}
+          lh="1rem"
         >
           <Ellipsified>{status.title}</Ellipsified>
         </Box>
         {onCollapse && (
           <IconButtonWrapper
-            className={S.toggle}
+            className={cx(CS.flexNoShrink, CS.textWhite)}
             onClick={onCollapse}
             aria-label={t`Collapse`}
           >
@@ -69,7 +71,7 @@ const StatusLarge = ({
         )}
         {onDismiss && (
           <IconButtonWrapper
-            className={S.toggle}
+            className={cx(CS.flexNoShrink, CS.textWhite)}
             onClick={onDismiss}
             aria-label={t`Dismiss`}
           >
@@ -118,25 +120,25 @@ const StatusCard = ({
     <LinkWrapper item={item} key={id}>
       <Flex align={description ? "flex-start" : "center"} m="md">
         <Flex
-          className={S.round}
           flex="0 0 auto"
           align="center"
           justify="center"
-          w={rem(32)}
-          h={rem(32)}
+          w="2rem"
+          h="2rem"
+          bdrs="lg"
           c="core-brand"
           bg="background_surface-brand-subtle"
         >
           {/* Unjustified type cast. FIXME */}
           <Icon name={icon as unknown as IconName} />
         </Flex>
-        <Box className={S.clipped} flex="1 1 auto" mx="md">
+        <Box className={CS.overflowHidden} flex="1 1 auto" mx="md">
           <Box
-            className={S.clipped}
+            className={CS.overflowHidden}
             c="text-primary"
             fz="md"
             fw="bold"
-            lh={rem(16)}
+            lh="1rem"
           >
             <Ellipsified>{title}</Ellipsified>
           </Box>
@@ -144,7 +146,7 @@ const StatusCard = ({
             c="background_page-tertiary-inverse"
             fz="xs"
             fw="bold"
-            lh={rem(13)}
+            lh="0.8125rem"
             mt="xxs"
           >
             {description}
@@ -175,18 +177,15 @@ const StatusCardIconContainer = ({
   children,
 }: PropsWithChildren<StatusCardIconContainerProps>) => (
   <Flex
-    className={S.round}
     flex="0 0 auto"
     align="center"
     justify="center"
-    w={rem(24)}
-    h={rem(24)}
+    w="1.5rem"
+    h="1.5rem"
+    bdrs="lg"
     c="text-primary-inverse"
     bg={isError ? "feedback-negative" : "feedback-positive"}
   >
     {children}
   </Flex>
 );
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default StatusLarge;

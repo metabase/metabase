@@ -1,6 +1,7 @@
 import { useBeforeUnload } from "react-use";
 import { t } from "ttag";
 
+import CS from "metabase/css/core/index.css";
 import { getUserIsAdmin } from "metabase/current-user";
 import {
   PLUGIN_AUDIT,
@@ -17,8 +18,6 @@ import { DatabaseStatus } from "../DatabaseStatus";
 import { DownloadsStatus } from "../DownloadsStatus";
 import { FileUploadStatus } from "../FileUploadStatus";
 
-import S from "./StatusListing.module.css";
-
 export const StatusListing = () => {
   const isAdmin = useSelector(getUserIsAdmin);
   const { progressModal } = PLUGIN_REMOTE_SYNC.useSyncStatus();
@@ -34,7 +33,13 @@ export const StatusListing = () => {
 
   return (
     <>
-      <Box className={S.root} pos="fixed" data-testid="status-root-container">
+      <Box
+        className={CS.z2}
+        pos="fixed"
+        right="1.5rem"
+        bottom="1.5rem"
+        data-testid="status-root-container"
+      >
         {isAdmin && <DatabaseStatus />}
         {isAdmin && <PLUGIN_REPLACEMENT.SourceReplacementStatus />}
         <FileUploadStatus />
