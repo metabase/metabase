@@ -40,8 +40,9 @@ You'll note several styling patterns in the codebase. Currently you should prefe
 
 1. [Mantine Style Props](https://mantine.dev/styles/style-props/) for most simple styling
 2. [CSS Modules](https://github.com/css-modules/css-modules) for more complex styling
+3. Global utility classes (in `/css/core`) should only be used where Mantine style props cannot be used.
 
-Other patterns, such as emotion styled components and global utility CSS classes are deprecated and should not be used for new code. Where convenient, please update deprecated styling patterns to the updated ones.
+Other patterns, such as emotion styled components should not be used for new code. Where convenient, please updated deprecated styling patterns to the updated ones.
 
 Familiarize yourself with Mantine's Layout components. You can often save a lot of CSS with built-in components like [`Center`](https://mantine.dev/core/center/) and [`SimpleGrid`](https://mantine.dev/core/simple-grid/)
 
@@ -152,7 +153,7 @@ The frontend uses [ttag](https://www.npmjs.com/package/ttag) to localize strings
 <div>{t`This is a user-facing string`}</div>
 
 <div>
-	{c("{0} is a number of engineers").t`${numEngineers} engineers at metabase`}
+ {c("{0} is a number of engineers").t`${numEngineers} engineers at metabase`}
 </div>
 ```
 
@@ -178,7 +179,7 @@ The first rule of frontend style, is we want to avoid talking about frontend sty
 
 We use [oxfmt](https://oxc.rs/) to format our JavaScript and TypeScript code, and it is enforced by CI. We recommend setting your editor to "format on save". You can also format code using `bun run format`, and verify it has been formatted correctly using `bun run lint-format-pure`. Oxfmt also sorts imports, so `bun run format` fixes import order too.
 
-We use [oxlint](https://oxc.rs/) to enforce JavaScript and TypeScript lint rules, including module boundaries. Run `bun run lint-oxlint` to lint, or `bun run lint-oxlint-fix` to apply lint fixes. Both commands build the CLJS output first. If you've already built it, `bun run lint-oxlint-pure` skips that step. For how the lint configuration works, see `frontend/lint/OXLINT.md`.
+We use [oxlint](https://oxc.rs/) to enforce JavaScript and TypeScript lint rules, including module boundaries. Run `bun run lint-oxlint` to lint, or `bun run lint-oxlint-fix` to apply lint fixes. For how the lint configuration works, see `frontend/lint/OXLINT.md`.
 
 ### Miscellaneous notes on coding style
 

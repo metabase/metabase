@@ -1,4 +1,5 @@
 import { useCallback, useMemo, useState } from "react";
+import { match } from "ts-pattern";
 import { msgid, ngettext, t } from "ttag";
 
 import { useSetArchive } from "metabase/archive/hooks";
@@ -272,7 +273,11 @@ function LibraryMoveModal({
         hasConfirmButtons: true,
         confirmButtonText: t`Move`,
       }}
-      entityType={section === "data" ? "table" : "metric"}
+      entityType={match(section)
+        .with("data", () => "table" as const)
+        .with("metrics", () => "metric" as const)
+        .with("dashboards", () => "dashboard" as const)
+        .exhaustive()}
     />
   );
 }

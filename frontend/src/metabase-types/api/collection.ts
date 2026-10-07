@@ -42,6 +42,7 @@ export type CollectionType =
   | "library"
   | "library-data"
   | "library-metrics"
+  | "library-dashboards"
   | "shared-tenant-collection"
   | "tenant-specific-root-collection"
   | null;

@@ -25,11 +25,14 @@
   check-non-remote-synced-dependencies
   check-remote-synced-dependents
   create-library-collection!
+  ensure-library-dashboards-collection!
   descendant-ids
   ineligible-dependencies
   instance-analytics-collection-type
   library-collection
   library-collection-type
+  library-dashboards-collection-type
+  library-dashboards-collection?
   library-data-collection-type
   library-metrics-collection-type
   location-path
@@ -41,6 +44,8 @@
   remote-synced-collection?
   remote-synced-dependents
   shared-tenant-collection?
-  transforms-ns]
+  transforms-ns
+  data-apps-ns
+  default-allowed-namespaces]
  [metabase.collections.util
   annotate-dashboards])
