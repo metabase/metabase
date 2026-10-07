@@ -240,7 +240,7 @@ export function SettingsOIDCForm() {
         if (result.credentials?.verified === false) {
           sendToast({
             message: t`OIDC discovery succeeded, but credentials could not be verified. The identity provider does not support the grant type used for testing.`,
-            icon: "warning",
+            variant: "warning",
           });
         } else {
           sendToast({
@@ -251,7 +251,7 @@ export function SettingsOIDCForm() {
       } catch (error) {
         sendToast({
           message: getErrorMessage(error, t`OIDC configuration check failed`),
-          icon: "warning",
+          variant: "negative",
         });
       }
     },

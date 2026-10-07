@@ -60,7 +60,7 @@ export const MetabotPromptSuggestionPane = ({
 
     sendToast(
       error
-        ? { message: t`Error removing prompt`, icon: "warning" }
+        ? { message: t`Error removing prompt`, variant: "negative" }
         : { message: t`Successfully removed prompt`, icon: "check" },
     );
 
@@ -76,7 +76,10 @@ export const MetabotPromptSuggestionPane = ({
   const handleRegeneratePrompts = async () => {
     const { data, error } = await regeneratePrompts(metabot.id);
     if (error || !data) {
-      sendToast({ message: t`Error regenerating prompts`, icon: "warning" });
+      sendToast({
+        message: t`Error regenerating prompts`,
+        variant: "negative",
+      });
       return;
     }
     setPage(0);

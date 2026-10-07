@@ -119,7 +119,7 @@ export function CollectionRowMenu(props: CollectionRowMenuProps) {
         void dispatch(
           addUndo({
             message: t`"${collection.name}" could not be unarchived`,
-            icon: "warning",
+            variant: "negative",
           }),
         );
       }

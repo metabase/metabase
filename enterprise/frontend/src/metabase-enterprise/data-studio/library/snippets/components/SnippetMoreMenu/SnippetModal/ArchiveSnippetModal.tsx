@@ -29,7 +29,7 @@ export function ArchiveSnippetModal(props: ArchiveSnippetModalProps) {
     if (error) {
       sendToast({
         message: getErrorMessage(error, t`Failed to archive snippet`),
-        icon: "warning",
+        variant: "negative",
       });
     } else {
       sendToast({

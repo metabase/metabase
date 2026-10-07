@@ -24,8 +24,7 @@ export const TestJwtStep = () => {
       }).unwrap();
     } catch (error) {
       sendToast({
-        icon: "warning",
-        toastColor: "feedback-negative",
+        variant: "negative",
         message: t`Failed to save SSO test status`,
       });
     }

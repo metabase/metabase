@@ -71,6 +71,11 @@ const setup = async ({
   writeStatus,
   writeMessage,
   writeGate,
+  checkResponse = {
+    ok: true,
+    discovery: { step: "discovery", success: true },
+    credentials: { step: "credentials", success: true, verified: true },
+  },
 }: {
   providers?: CustomOidcConfig[];
   configured?: boolean;
@@ -82,6 +87,7 @@ const setup = async ({
   writeStatus?: number;
   writeMessage?: string;
   writeGate?: Promise<void>;
+  checkResponse?: object;
 } = {}) => {
   setupSettingsEndpoints(
     providersEnvName == null
@@ -133,11 +139,7 @@ const setup = async ({
     },
     { delay: writeDelay },
   );
-  fetchMock.post("path:/api/ee/sso/oidc/check", {
-    ok: true,
-    discovery: { step: "discovery", success: true },
-    credentials: { step: "credentials", success: true, verified: true },
-  });
+  fetchMock.post("path:/api/ee/sso/oidc/check", checkResponse);
 
   renderWithProviders(<SettingsOIDCForm />, { withUndos: true });
 
@@ -284,6 +286,44 @@ describe("SettingsOIDCForm", () => {
       await setup({ providers: [EXISTING_PROVIDER] });
 
       expect(screen.getByLabelText(/^Client secret/)).not.toBeRequired();
+    });
+  });
+
+  describe("check connection", () => {
+    it("warns when discovery succeeds but the credentials cannot be verified", async () => {
+      await setup({
+        checkResponse: {
+          ok: true,
+          discovery: { step: "discovery", success: true },
+          credentials: { step: "credentials", success: true, verified: false },
+        },
+      });
+      await fillRequiredFields();
+
+      await clickWhenEnabled(
+        screen.getByRole("button", { name: "Check connection" }),
+      );
+
+      const toast = await screen.findByTestId("toast-undo");
+      expect(toast).toHaveTextContent(
+        "OIDC discovery succeeded, but credentials could not be verified.",
+      );
+      expect(toast).toHaveAttribute("data-variant", "warning");
+    });
+
+    it("shows a negative toast with the server message when the check fails", async () => {
+      await setup({
+        checkResponse: { status: 400, body: { message: "Invalid issuer" } },
+      });
+      await fillRequiredFields();
+
+      await clickWhenEnabled(
+        screen.getByRole("button", { name: "Check connection" }),
+      );
+
+      const toast = await screen.findByTestId("toast-undo");
+      expect(toast).toHaveTextContent("Invalid issuer");
+      expect(toast).toHaveAttribute("data-variant", "negative");
     });
   });
 

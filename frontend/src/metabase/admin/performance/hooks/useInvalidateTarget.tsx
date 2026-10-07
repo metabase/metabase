@@ -33,9 +33,8 @@ export const useInvalidateTarget = (
       if (isErrorWithMessage(e)) {
         dispatch(
           addUndo({
-            icon: "warning",
+            variant: "negative",
             message: e.data.message,
-            toastColor: "feedback-negative",
           }),
         );
       }

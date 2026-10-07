@@ -274,6 +274,11 @@ describe("GitSyncControls", () => {
           "true",
         );
       });
+      await waitFor(async () => {
+        expect(await findOption(/Pull changes/)).not.toHaveAttribute(
+          "data-combobox-disabled",
+        );
+      });
       await userEvent.click(await findOption(/Pull changes/));
 
       expect(
@@ -306,7 +311,14 @@ describe("GitSyncControls", () => {
       await userEvent.click(getBranchButton(/main/));
       // Wait until the dirty state has settled (push enabled) so the pull takes the dirty/merge path.
       await waitFor(async () => {
-        expect(await findOption(/Push changes/)).toBeEnabled();
+        expect(await findOption(/Push changes/)).not.toHaveAttribute(
+          "data-combobox-disabled",
+        );
+      });
+      await waitFor(async () => {
+        expect(await findOption(/Pull changes/)).not.toHaveAttribute(
+          "data-combobox-disabled",
+        );
       });
       await userEvent.click(await findOption(/Pull changes/));
 

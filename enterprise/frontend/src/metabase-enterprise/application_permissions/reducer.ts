@@ -93,7 +93,7 @@ export const saveApplicationPermissions = createThunkAction(
     ).catch((error) => {
       dispatch(
         addUndo({
-          icon: "warning",
+          variant: "negative",
           message: getErrorMessage(error, t`Error saving permissions`),
         }),
       );

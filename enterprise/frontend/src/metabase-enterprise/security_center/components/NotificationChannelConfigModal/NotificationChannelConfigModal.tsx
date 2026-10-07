@@ -45,8 +45,7 @@ export function NotificationChannelConfigModal({
       onClose();
     } catch {
       sendToast({
-        icon: "warning",
-        toastColor: "feedback-negative",
+        variant: "negative",
         message: t`Failed to save notification settings`,
       });
     } finally {
@@ -64,8 +63,7 @@ export function NotificationChannelConfigModal({
       });
     } catch {
       sendToast({
-        icon: "warning",
-        toastColor: "feedback-negative",
+        variant: "negative",
         message: t`Failed to send test notification`,
       });
     } finally {

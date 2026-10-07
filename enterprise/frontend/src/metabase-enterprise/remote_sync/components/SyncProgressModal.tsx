@@ -64,8 +64,7 @@ export function SyncProgressModal({
 
       sendToast({
         message,
-        icon: "warning",
-        toastColor: "feedback-negative",
+        variant: "negative",
         timeout: 60000,
       });
 
