@@ -14,19 +14,6 @@ describe("scenarios - setup guide", () => {
       H.activateToken("pro-cloud");
     });
 
-    it("Contains setup guide in sidebar", () => {
-      cy.visit("/admin/embedding");
-
-      cy.findByTestId("admin-layout-sidebar")
-        .findByText("Setup guide")
-        .should("exist")
-        .click();
-
-      cy.findByTestId("admin-layout-content")
-        .findByRole("heading", { name: "Embedding setup guide" })
-        .should("exist");
-    });
-
     it('"Create a dashboard" card should save the x-ray and show a success toast without leaving the guide', () => {
       cy.visit("/admin/embedding/setup-guide");
 
@@ -260,7 +247,17 @@ describe("scenarios - setup guide", () => {
     });
 
     it('"Configure data permissions and enable tenants" card should navigate to permissions onboarding page', () => {
-      cy.visit("/admin/embedding/setup-guide");
+      cy.visit("/admin/embedding");
+
+      cy.log("open the setup guide from the sidebar");
+      cy.findByTestId("admin-layout-sidebar")
+        .findByText("Setup guide")
+        .should("exist")
+        .click();
+
+      cy.findByTestId("admin-layout-content")
+        .findByRole("heading", { name: "Embedding setup guide" })
+        .should("exist");
 
       cy.findByTestId("admin-layout-content")
         .findByText("Configure data permissions and enable tenants")
