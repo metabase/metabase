@@ -689,3 +689,14 @@
   [m key value]
   #?(:clj (do (.put ^HashMap m key value) m)
      :cljs (do (.set m key value) m)))
+
+;;;; Cross-platform array-processing functions
+
+(defn mapa
+  "Like [[mapv]], but returns an array. Requires `coll` to be countable and have O(1) access."
+  [f coll]
+  (let [n (count coll)
+        res (object-array n)]
+    (dotimes [i n]
+      (aset res i (f (nth coll i))))
+    res))

@@ -35,7 +35,7 @@ Where the allowlist goes depends on how you're embedding:
 
 ### Web components allowlist for custom visualizations
 
-`allowedCustomVisualizations` is a [page-level config](./modular-embedding.md#page-level-config), not an attribute on `<metabase-dashboard>` or `<metabase-question>`. The allowlist applies to every component on the page.
+`allowedCustomVisualizations` is a [page-level config](./config.md#configure-web-components), not an attribute on `<metabase-dashboard>` or `<metabase-question>`. The allowlist applies to every component on the page.
 
 Add `allowedCustomVisualizations` to `defineMetabaseConfig()`:
 

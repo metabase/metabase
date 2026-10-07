@@ -7,10 +7,8 @@ import {
 
 import { useHasPaintedSinceMount } from "metabase/common/hooks/use-has-painted-since-mount";
 import { useMantineTheme } from "metabase/ui";
-
 import "react-grid-layout/css/styles.css";
 import "react-resizable/css/styles.css";
-
 import S from "./GridLayout.module.css";
 import { generateGridBackground } from "./utils";
 

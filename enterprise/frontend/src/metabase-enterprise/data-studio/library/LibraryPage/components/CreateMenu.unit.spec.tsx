@@ -18,6 +18,7 @@ interface SetupOptions {
   dataCollectionId?: number;
   canWriteToDataCollection?: boolean;
   canWriteToMetricCollection?: boolean;
+  canWriteToDashboardCollection?: boolean;
   remoteSyncType?: EnterpriseSettings["remote-sync-type"];
 }
 
@@ -34,8 +35,10 @@ const setup = ({
   dataCollectionId = 2,
   canWriteToDataCollection = true,
   canWriteToMetricCollection = true,
+  canWriteToDashboardCollection = false,
   remoteSyncType,
 }: SetupOptions = {}) => {
+  const onNewDashboardClick = jest.fn();
   const state = createMockState({
     settings: mockSettings({
       "token-features": createMockTokenFeatures({
@@ -54,13 +57,16 @@ const setup = ({
       dataCollectionId={dataCollectionId}
       canWriteToDataCollection={canWriteToDataCollection}
       canWriteToMetricCollection={canWriteToMetricCollection}
+      dashboardCollectionId={3}
+      canWriteToDashboardCollection={canWriteToDashboardCollection}
+      onNewDashboardClick={onNewDashboardClick}
     />,
     {
       storeInitialState: state,
     },
   );
 
-  return utils;
+  return { ...utils, onNewDashboardClick };
 };
 
 describe("CreateMenu", () => {
@@ -183,6 +189,44 @@ describe("CreateMenu", () => {
     expect(store.getState().modal.props).toMatchObject({
       initialCollectionId: null,
       namespaces: ["snippets"],
+    });
+  });
+
+  it("renders the Dashboard option when the Dashboards collection is writable", async () => {
+    const { onNewDashboardClick } = setup({
+      user: fullPermissionsUser,
+      canWriteToDashboardCollection: true,
+    });
+
+    await userEvent.click(screen.getByRole("button", { name: /New/ }));
+    expect(
+      screen.getAllByRole("menuitem").map((item) => item.textContent),
+    ).toEqual([
+      "Published table",
+      "Metric",
+      "Dashboard",
+      "Snippet",
+      "Collection",
+    ]);
+
+    await userEvent.click(screen.getByRole("menuitem", { name: /Dashboard/ }));
+    expect(onNewDashboardClick).toHaveBeenCalled();
+  });
+
+  it("renders the Collection option when only the Dashboards collection is writable", async () => {
+    const { store } = setup({
+      user: {},
+      canWriteToDataCollection: false,
+      canWriteToMetricCollection: false,
+      canWriteToDashboardCollection: true,
+    });
+
+    await userEvent.click(screen.getByRole("button", { name: /New/ }));
+    await userEvent.click(screen.getByRole("menuitem", { name: /Collection/ }));
+
+    expect(store.getState().modal.props).toMatchObject({
+      initialCollectionId: 3,
+      namespaces: [null],
     });
   });
 

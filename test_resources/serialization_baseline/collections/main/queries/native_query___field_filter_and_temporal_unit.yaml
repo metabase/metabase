@@ -60,8 +60,6 @@ visualization_settings:
   column_settings: null
 card_schema: 24
 serdes/meta:
-- id: sk02d7sPWAk2TYH2Y7JhZ
-  label: native_query___field_filter_and_temporal_unit
-  model: Card
+- model: Card
 metabase_version: v1.57.1-SNAPSHOT (14ff27d)
 type: question

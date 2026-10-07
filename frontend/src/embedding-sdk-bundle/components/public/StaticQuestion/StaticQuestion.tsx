@@ -17,6 +17,7 @@ import {
   QuestionSettings,
   QuestionSettingsDropdown,
   QuestionVisualization,
+  RefreshButton,
   SqlParametersList,
   Summarize,
   SummarizeDropdown,
@@ -89,6 +90,7 @@ export type StaticQuestionComponents = {
   Filter: typeof Filter;
   FilterDropdown: typeof FilterDropdown;
   ResetButton: typeof QuestionResetButton;
+  RefreshButton: typeof RefreshButton;
   Title: typeof Title;
   Summarize: typeof Summarize;
   SummarizeDropdown: typeof SummarizeDropdown;
@@ -240,6 +242,7 @@ const subComponents: StaticQuestionComponents = {
   Filter: Filter,
   FilterDropdown: FilterDropdown,
   ResetButton: QuestionResetButton,
+  RefreshButton: RefreshButton,
   Title: Title,
   Summarize: Summarize,
   SummarizeDropdown: SummarizeDropdown,

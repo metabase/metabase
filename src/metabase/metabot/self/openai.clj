@@ -297,6 +297,12 @@
   [model]
   (not (model-supports-temperature? model)))
 
+(defn- reasons-only-when-asked?
+  "Whether `model` defaults to reasoning effort `none`, so it doesn't reason unless the request sets an effort.
+  That's GPT-5.4 and its mini and nano; GPT-5.4 Pro defaults to `medium`."
+  [model]
+  (boolean (re-find #"^gpt-5\.4(?!-pro)" (strip-vendor-prefix model))))
+
 (mu/defn streams-reasoning? :- :boolean
   "Registry capability. OpenAI answers from the model name."
   [{:keys [model]} :- adapter/ResolvedRef]
@@ -330,7 +336,8 @@
       ;; encrypted_content lets us replay reasoning items across tool-call
       ;; round-trips despite store:false — see [[parts->openai-input]]
       (and reasoning? (reasoning-model? model))
-      (assoc :reasoning {:summary "auto"}
+      (assoc :reasoning (cond-> {:summary "auto"}
+                          (and (not schema) (reasons-only-when-asked? model)) (assoc :effort "low"))
              :include   ["reasoning.encrypted_content"])
 
       (and temperature (model-supports-temperature? model))
