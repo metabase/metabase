@@ -21,6 +21,8 @@ const serving = { core: 0, sdk: 0 };
 
 let live = 0;
 let crashed = 0;
+let startupFailures = 0;
+const MAX_STARTUP_FAILURES = 5;
 const started = Date.now();
 
 const report = () => {
@@ -58,6 +60,7 @@ const spawn = (project) => {
   child.stderr.on("data", (chunk) => process.stderr.write(chunk));
   child.on("message", (message) => {
     if (!message?.ready) return;
+    startupFailures = 0;
     const assigned = queues[project].shift();
     child.send(assigned ? { file: assigned } : { done: true });
   });
@@ -69,6 +72,11 @@ const spawn = (project) => {
     // worker died on is not retried. Either way the slot goes to the project
     // that now needs it most.
     if (code !== 0 && code !== null) crashed += 1;
+    // A worker that dies before it asks for a file would die again on respawn.
+    if (code !== 0 && code !== 75 && (startupFailures += 1) > MAX_STARTUP_FAILURES) {
+      console.error(`[pool] ${startupFailures} workers in a row died before they took a file, giving up`);
+      process.exit(1);
+    }
     const nextProject = neediest();
     if (nextProject) spawn(nextProject);
     else if (live === 0) report();
