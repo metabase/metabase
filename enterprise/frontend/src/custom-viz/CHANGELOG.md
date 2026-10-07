@@ -2,6 +2,12 @@
 
 This changelog covers the `@metabase/custom-viz` npm package — the API and CLI for building custom visualizations for Metabase. Changes to how Metabase itself hosts custom visualization plugins are covered by the [Metabase changelog](https://www.metabase.com/changelog).
 
+## Unreleased
+
+### Features
+
+- New `@metabase/custom-viz/testing` entry point renders a visualization outside Metabase against a mocked host (`mockColumn`, `mockSeries`, `checkViz`, `renderViz`). The mock matches Metabase's column type predicates and color names, and throws where Metabase would silently misbehave. Scaffolded projects get an `npm test` script (Vitest with happy-dom) that the bundled agent skill uses for its tests.
+
 ## 2.0.0
 
 ### ⚠ BREAKING CHANGES
@@ -23,8 +29,6 @@ This changelog covers the `@metabase/custom-viz` npm package — the API and CLI
 - `@metabase/custom-viz pack` stamps the exact `@metabase/custom-viz` version into the packed manifest as `sdk.version`. Your source `metabase-plugin.json` is not modified. Metabase compares the stamp against the SDK versions it was tested with — a plugin outside that range (or outside its own `metabase.version` range) is never rejected; it uploads and runs normally, with a warning shown on the admin page.
 - `getName` is now optional and is what Metabase shows as the visualization name in the UI. Omit it to use `name` from `metabase-plugin.json`; keep it to show a localized or human-friendly name.
 - `checkRenderable` is now optional. Omit it when your visualization can render any data; keep throwing from it to surface a custom error. A visualization without a `checkRenderable` is always considered renderable ([#81181](https://github.com/metabase/metabase/pull/81181)).
-
-- New `@metabase/custom-viz/testing` entry point renders a visualization outside Metabase against a mocked host (`mockColumn`, `mockSeries`, `checkViz`, `renderViz`). The mock matches Metabase's column type predicates and color names, and throws where Metabase would silently misbehave. Scaffolded projects get an `npm test` script (Vitest with happy-dom) that the bundled agent skill uses for its tests.
 
 ### Bug Fixes
 
