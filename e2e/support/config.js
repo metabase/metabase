@@ -40,6 +40,10 @@ import {
   startMockLlmServer,
   stopMockLlmServer,
 } from "./helpers/e2e-mock-llm-tasks";
+import {
+  startMockOidcServer,
+  stopMockOidcServer,
+} from "./helpers/e2e-mock-oidc-tasks";
 
 const createBundler = require("@bahmutov/cypress-esbuild-preprocessor"); // This function is called when a project is opened or re-opened (e.g. due to the project's config changing)
 const coverageTask = require("@cypress/code-coverage/task");
@@ -302,6 +306,8 @@ const defaultConfig = {
       requestAsAdmin,
       startMockLlmServer,
       stopMockLlmServer,
+      startMockOidcServer,
+      stopMockOidcServer,
       startCustomVizDevServer,
       stopCustomVizDevServer,
       buildDataApp,

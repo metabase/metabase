@@ -1,4 +1,6 @@
 const { H } = cy;
+import { chunk } from "underscore";
+
 import { SAMPLE_DB_ID, WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
@@ -604,6 +606,141 @@ describe("scenarios > question > object details", { tags: "@slow" }, () => {
 
         expect(texts.indexOf("State")).to.be.lessThan(texts.indexOf("Email"));
       });
+    });
+  });
+
+  describe("issue 30039", () => {
+    beforeEach(() => {
+      cy.signInAsNormalUser();
+    });
+
+    it("should not trigger object detail navigation after the modal was closed (metabase#30039)", () => {
+      H.startNewNativeQuestion();
+      H.NativeEditor.type("select * from ORDERS LIMIT 2");
+      H.runNativeQuery();
+      cy.findAllByTestId("detail-shortcut").first().click({ force: true });
+      cy.findByTestId("object-detail").should("be.visible");
+
+      cy.realPress("{esc}");
+      cy.findByTestId("object-detail").should("not.exist");
+
+      H.NativeEditor.type("{downArrow};");
+      H.runNativeQuery();
+      cy.findByTestId("object-detail").should("not.exist");
+    });
+  });
+
+  describe("issue 32718", () => {
+    const questionDetails = {
+      display: "table",
+      query: {
+        "source-table": PRODUCTS_ID,
+        fields: [
+          ["field", PRODUCTS.ID, { "base-type": "type/BigInteger" }],
+          ["field", PRODUCTS.EAN, { "base-type": "type/Text" }],
+          ["field", PRODUCTS.CATEGORY, { "base-type": "type/Text" }],
+          ["field", PRODUCTS.CREATED_AT, { "base-type": "type/DateTime" }],
+        ],
+        limit: 1,
+      },
+      visualization_settings: {
+        "table.columns": [
+          { name: "ID", enabled: true },
+          { name: "EAN", enabled: false },
+          { name: "CATEGORY", enabled: true },
+          { name: "CREATED_AT", enabled: true },
+        ],
+      },
+    };
+
+    beforeEach(() => {
+      cy.request("PUT", `/api/field/${PRODUCTS.CATEGORY}`, {
+        visibility_type: "details-only",
+      });
+    });
+
+    it("should honor visibility_type of the field when the question has viz settings (metabase#32718)", () => {
+      H.createQuestion(questionDetails, { visitQuestion: true });
+      H.tableInteractive().within(() => {
+        cy.findByText("ID").should("be.visible");
+        cy.findByText("Ean").should("not.exist");
+        cy.findByText("Category").should("not.exist");
+        cy.findByText("Created At").should("be.visible");
+      });
+      H.openVizTypeSidebar();
+      cy.findByTestId("Detail-button").click();
+      cy.findByTestId("object-detail").within(() => {
+        cy.findByText("ID").should("be.visible");
+        cy.findByText("Ean").should("not.exist");
+        cy.findByText("Category").should("be.visible");
+        cy.findByText("Created At").should("be.visible");
+      });
+    });
+  });
+
+  describe("issue 41133", () => {
+    const questionDetails = {
+      query: {
+        "source-table": PRODUCTS_ID,
+      },
+    };
+
+    beforeEach(() => {
+      cy.viewport(600, 400);
+      H.createQuestion(questionDetails, { visitQuestion: true });
+    });
+
+    it("object detail view should be scrollable on narrow screens (metabase#41133)", () => {
+      H.openObjectDetail(0);
+
+      // scrollTo fails when the container does not have a scrollable overflow
+      H.modal()
+        .findByText("is connected to:")
+        .parents()
+        .filter((_, el) =>
+          ["auto", "scroll"].includes(getComputedStyle(el).overflowY),
+        )
+        .first()
+        .scrollTo("bottom");
+      H.modal().findByText("is connected to:").should("be.visible");
+    });
+  });
+
+  it("should display correct data when toggling columns (metabase#63745)", () => {
+    H.visitQuestionAdhoc({
+      name: "63745",
+      display: "object",
+      dataset_query: {
+        type: "query",
+        database: SAMPLE_DB_ID,
+        query: {
+          "source-table": ORDERS_ID,
+          limit: 5,
+        },
+      },
+    });
+
+    H.openVizSettingsSidebar();
+    cy.findByTestId("chartsettings-sidebar")
+      .button("Add or remove columns")
+      .click();
+
+    cy.findAllByTestId("object-details-table-cell").should(($cells) => {
+      const cellsFlat = $cells.toArray().map((el) => el.textContent);
+      const map = new Map(chunk(cellsFlat, 2));
+      expect(map.get("User ID")).to.eq("1");
+      expect(map.get("Product ID")).to.eq("14");
+    });
+
+    cy.findByTestId("orders-table-columns").findByLabelText("ID").click();
+
+    // A stale mapping shifts each value one label down: "Product ID" then shows the User ID value.
+    cy.findAllByTestId("object-details-table-cell").should(($cells) => {
+      const cellsFlat = $cells.toArray().map((el) => el.textContent);
+      const map = new Map(chunk(cellsFlat, 2));
+      expect(map.has("ID")).to.be.false;
+      expect(map.get("User ID")).to.eq("1");
+      expect(map.get("Product ID")).to.eq("14");
     });
   });
 

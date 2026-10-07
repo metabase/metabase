@@ -37,6 +37,7 @@
    [metabase.search.core :as search]
    [metabase.search.test-util :as search.tu]
    [metabase.test :as mt]
+   [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.yaml :as yaml])
   (:import
@@ -75,13 +76,14 @@
        (into (sorted-set))))
 
 (def ^:private slug-id-prefix-re
-  #"#\d+-")
+  #"#\d+([- ])")
 
 (defn- replace-entropy
   [s]
-  ;; Template tag slugs have the form `#1-my-card-name`, where `1` is the record ID. Record IDs depend on
-  ;; import order which is non-deterministic. Replace them with a deterministic placeholder.
-  (str/replace s slug-id-prefix-re "#<some-id>-"))
+  ;; Template tag slugs have the form `#1-my-card-name`, and their default display names `#1 My Card Name`, where `1`
+  ;; is the record ID. Record IDs depend on import order which is non-deterministic. Replace them with a deterministic
+  ;; placeholder.
+  (str/replace s slug-id-prefix-re "#<some-id>$1"))
 
 (defn read-yaml
   "Reads a YAML file and returns Clojure data, with ignored fields removed."
@@ -91,6 +93,7 @@
      (cond
        (map? x) (reduce dissoc x ignored-fields)
        (string? x) (replace-entropy x)
+       (keyword? x) (keyword (replace-entropy (u/qualified-name x)))
        :else x))
    (yaml/parse-string (slurp file))))
 
