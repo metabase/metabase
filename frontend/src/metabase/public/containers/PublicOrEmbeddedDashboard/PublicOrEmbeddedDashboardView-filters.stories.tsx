@@ -20,6 +20,7 @@ import {
 } from "metabase/dashboard/context/mock-context";
 import { MetabaseReduxProvider } from "metabase/redux";
 import { stableStringify } from "metabase/utils/objects";
+import { checkNotNull } from "metabase/utils/types";
 import { BarChart } from "metabase/visualizations/visualizations/BarChart";
 import { Table } from "metabase/visualizations/visualizations/Table/Table";
 import TABLE_RAW_SERIES from "metabase/visualizations/visualizations/Table/stories-data/orders-with-people.json";
@@ -398,25 +399,19 @@ const createDefaultArgs = ({
 };
 
 function getLastPopover() {
-  // Unjustified type cast. FIXME
-  const lastPopover = Array.from(
-    document.documentElement.querySelectorAll(
-      '[data-element-id="mantine-popover"]',
-    ),
-  ).at(-1) as HTMLElement;
-
-  return within(lastPopover);
+  return within(getLastPopoverElement());
 }
 
 function getLastPopoverElement() {
-  // Unjustified type cast. FIXME
-  const lastPopover = Array.from(
-    document.documentElement.querySelectorAll(
-      '[data-element-id="mantine-popover"]',
-    ),
-  ).at(-1) as HTMLElement;
+  const popovers = document.documentElement.querySelectorAll<HTMLElement>(
+    '[data-element-id="mantine-popover"]',
+  );
+  // Mantine renders an input's options dropdown as a hidden popover when there are no options.
+  const lastPopover = Array.from(popovers)
+    .filter((popover) => popover.checkVisibility())
+    .at(-1);
 
-  return lastPopover;
+  return checkNotNull(lastPopover);
 }
 
 export const LightThemeText = {

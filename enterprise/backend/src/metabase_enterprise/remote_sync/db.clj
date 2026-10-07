@@ -58,6 +58,13 @@
    conditions :- Conditions]
   (apply t2/select-fn-set :id model-key (mapcat identity conditions)))
 
+(mu/defn instances-where
+  "The instances of `model-key` matching `conditions` (a map of column to value or Toucan 2 operator-vector value,
+  or nil for every instance)."
+  [model-key  :- :keyword
+   conditions :- Conditions]
+  (apply t2/select model-key (mapcat identity conditions)))
+
 (mu/defn entity-id-where :- [:maybe :string]
   "The `:entity_id` of the instance of `model-key` whose `column` equals `value`, or nil."
   [model-key :- :keyword
@@ -141,10 +148,12 @@
                                         :limit limit}))
 
 (mu/defn instance
-  "The instance of `model` with `id`, or nil."
+  "The instance of `model` with `id`, or nil; a Table is read through the overlay."
   [model :- :keyword
    id    :- ms/PositiveInt]
-  (t2/select-one model :id id))
+  (t2/select-one model :id id (if (= model :model/Table)
+                                {:from [(warehouse-schema-overlay/table-query)]}
+                                {})))
 
 (mu/defn instance-with-columns
   "The `columns` of the instance of `model` with `id`, or nil; a Table is read through the overlay."
@@ -292,15 +301,75 @@
   [card-ids :- [:sequential ::lib.schema.id/card]]
   (t2/select [:model/Card :id :type :display] :id [:in card-ids]))
 
-(mu/defn user-settings-exist-for-table?
-  "Whether the Table with `table-id`, or any of its Fields, has a user-settings row."
+(mu/defn table-user-settings-exist? :- :boolean
+  "Whether the Table with `table-id` has a TableUserSettings row."
   [table-id :- ::lib.schema.id/table]
-  (or (t2/exists? :model/TableUserSettings :table_id table-id)
-      (t2/exists? :model/FieldUserSettings
-                  {:from  [[(t2/table-name :model/FieldUserSettings) :u]]
-                   :join  [(warehouse-schema-overlay/field-query {:alias :f :user-settings? false})
-                           [:= :f.id :u.field_id]]
-                   :where [:= :f.table_id table-id]})))
+  (t2/exists? :model/TableUserSettings :table_id table-id))
+
+(mu/defn field-user-settings-exist? :- :boolean
+  "Whether the Field with `field-id` has a FieldUserSettings row."
+  [field-id :- ::lib.schema.id/field]
+  (t2/exists? :model/FieldUserSettings :field_id field-id))
+
+(mu/defn dimension-exists-for-field? :- :boolean
+  "Whether the Field with `field-id` has a Dimension."
+  [field-id :- ::lib.schema.id/field]
+  (t2/exists? :model/Dimension :field_id field-id))
+
+(mu/defn published-table-ids :- [:set ::lib.schema.id/table]
+  "The ids of the Tables published in the Collections with `collection-ids`."
+  [collection-ids :- [:sequential ::lib.schema.id/collection]]
+  (set (t2/select-pks-set :model/Table {:from  [(warehouse-schema-overlay/table-query {:alias :t})]
+                                        :where [:and [:= :t.is_published true] [:in :t.collection_id collection-ids]]})))
+
+(mu/defn table-ids-with-user-settings
+  "The ids of the Tables among `table-ids` that have a TableUserSettings row."
+  [table-ids :- [:sequential ::lib.schema.id/table]]
+  (t2/select-fn-vec :table_id :model/TableUserSettings {:select [:table_id] :where [:in :table_id table-ids]}))
+
+(mu/defn field-ids-with-user-settings
+  "The ids of the Fields of the Tables with `table-ids` that have a FieldUserSettings row."
+  [table-ids :- [:sequential ::lib.schema.id/table]]
+  (t2/select-fn-vec :field_id :model/FieldUserSettings
+                    {:select [:u.field_id]
+                     :from   [[(t2/table-name :model/FieldUserSettings) :u]]
+                     :join   [(warehouse-schema-overlay/field-query {:alias :f :user-settings? false}) [:= :f.id :u.field_id]]
+                     :where  [:in :f.table_id table-ids]}))
+
+(mu/defn field-ids-with-dimensions
+  "The ids of the Fields of the Tables with `table-ids` that have a Dimension."
+  [table-ids :- [:sequential ::lib.schema.id/table]]
+  (t2/select-fn-vec :field_id :model/Dimension
+                    {:select [:d.field_id]
+                     :from   [[(t2/table-name :model/Dimension) :d]]
+                     :join   [(warehouse-schema-overlay/field-query {:alias :f :user-settings? false}) [:= :f.id :d.field_id]]
+                     :where  [:in :f.table_id table-ids]}))
+
+(mu/defn delete-table-user-settings!
+  "Delete the TableUserSettings of the Tables with `table-ids`, returning the number deleted."
+  [table-ids :- [:sequential ::lib.schema.id/table]]
+  (t2/delete! :model/TableUserSettings :table_id [:in table-ids]))
+
+(mu/defn delete-field-user-settings!
+  "Delete the FieldUserSettings of the Fields with `field-ids`, returning the number deleted."
+  [field-ids :- [:sequential ::lib.schema.id/field]]
+  (t2/delete! :model/FieldUserSettings :field_id [:in field-ids]))
+
+(mu/defn delete-dimensions!
+  "Delete the Dimensions of the Fields with `field-ids`, returning the number deleted."
+  [field-ids :- [:sequential ::lib.schema.id/field]]
+  (t2/delete! :model/Dimension :field_id [:in field-ids]))
+
+(mu/defn tables-tracking-details
+  "The `:id`, `:name`, and `:collection_id` of the Tables with `table-ids`, read through the overlay."
+  [table-ids :- [:sequential ::lib.schema.id/table]]
+  (t2/select [:model/Table :id :name :collection_id] :id [:in table-ids] {:from [(warehouse-schema-overlay/table-query)]}))
+
+(mu/defn fields-tracking-details
+  "The `:id`, name, table id, collection id, and table name of the Fields with `field-ids`."
+  [field-ids :- [:sequential ::lib.schema.id/field]]
+  (let [{:keys [select from join]} (tracking-select-parts :model/Field)]
+    (t2/query {:select (into [:f.id] select) :from from :join join :where [:in :f.id field-ids]})))
 
 (mu/defn snippets
   "The `:id`, `:name`, and `:collection_id` of every NativeQuerySnippet."

@@ -19,11 +19,6 @@
                  :join   [[:core_session :session] [:= :u.id :session.user_id]]
                  :where  [:= :key_hashed session-key-hashed]}))
 
-(mu/defn delete-session!
-  "Delete the Session with `session-key-hashed`, returning the number deleted."
-  [session-key-hashed :- :string]
-  (t2/delete! :model/Session :key_hashed session-key-hashed))
-
 (mu/defn group-ids-by-name
   "The IDs of the PermissionsGroups named one of `group-names`."
   [group-names :- [:set :string]]

@@ -23,11 +23,17 @@ export const CreateMenu = ({
   canWriteToMetricCollection,
   dataCollectionId,
   canWriteToDataCollection,
+  dashboardCollectionId,
+  canWriteToDashboardCollection,
+  onNewDashboardClick,
 }: {
   metricCollectionId?: CollectionId;
   canWriteToMetricCollection?: boolean;
   dataCollectionId?: CollectionId;
   canWriteToDataCollection?: boolean;
+  dashboardCollectionId?: CollectionId;
+  canWriteToDashboardCollection?: boolean;
+  onNewDashboardClick: () => void;
 }) => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
@@ -47,17 +53,21 @@ export const CreateMenu = ({
   const canCreateMetric =
     hasDataAccess && metricCollectionId && canWriteToMetricCollection;
 
-  const canCreateCollection =
+  const canCreateDashboard =
+    dashboardCollectionId && canWriteToDashboardCollection;
+
+  const canCreateLibraryCollection =
     (dataCollectionId && canWriteToDataCollection) ||
     (metricCollectionId && canWriteToMetricCollection) ||
+    canCreateDashboard;
+
+  const canCreateCollection =
+    canCreateLibraryCollection ||
     (hasNativeWrite && PLUGIN_SNIPPET_FOLDERS.isEnabled);
 
   const collectionNamespaces: CollectionNamespace[] = [];
 
-  if (
-    (dataCollectionId && canWriteToDataCollection) ||
-    (metricCollectionId && canWriteToMetricCollection)
-  ) {
+  if (canCreateLibraryCollection) {
     collectionNamespaces.push(null);
   }
 
@@ -68,6 +78,7 @@ export const CreateMenu = ({
   const initialCollectionId =
     (dataCollectionId && canWriteToDataCollection && dataCollectionId) ||
     (metricCollectionId && canWriteToMetricCollection && metricCollectionId) ||
+    (canCreateDashboard && dashboardCollectionId) ||
     null;
 
   const menuItems = [
@@ -89,6 +100,15 @@ export const CreateMenu = ({
         onClickCapture={() => trackMetricCreateStarted("data_studio_library")}
       >
         {t`Metric`}
+      </Menu.Item>
+    ),
+    canCreateDashboard && (
+      <Menu.Item
+        key="dashboard"
+        leftSection={<FixedSizeIcon name="dashboard" />}
+        onClick={onNewDashboardClick}
+      >
+        {t`Dashboard`}
       </Menu.Item>
     ),
     hasNativeWrite && (

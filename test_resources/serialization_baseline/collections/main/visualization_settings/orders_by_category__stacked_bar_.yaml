@@ -119,8 +119,6 @@ visualization_settings:
   stackable.stack_type: stacked
 card_schema: 24
 serdes/meta:
-- id: ciG63nSLHKRTImt5iWEte
-  label: orders_by_category__stacked_bar_
-  model: Card
+- model: Card
 metabase_version: v1.57.1-SNAPSHOT (14ff27d)
 type: question
