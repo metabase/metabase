@@ -4,7 +4,8 @@
    [metabase.api.common :as api]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [tru]]))
+   [metabase.util.i18n :refer [tru]]
+   [metabase.util.log :as log]))
 
 (defn- user-attribute
   "Which user attribute should we use for this RouterDB?"
@@ -13,6 +14,39 @@
 
 #_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic ^:private *database-routing-on* :unset)
+
+;; Bound together with `*database-routing-on*` by `with-database-routing-off-if-granted-fn` below, and only there: it
+;; records whether whoever made the request has a Metabase account, which is the one thing a refusal needs that the
+;; user bindings cannot be asked for later. The public dashcard path deliberately clears the current user before
+;; running a query -- a public page must not pick up a signed-in visitor's locked parameters -- so by the time a
+;; refusal is thrown, every viewer looks anonymous.
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
+(def ^:dynamic ^:private *viewer-signed-in?* false)
+
+(defn- refuse-anonymous-access!
+  "Throw the query-time refusal for router database `db-id`, which no admin has granted anonymous access.
+
+  The message is written for whoever is asking. An anonymous visitor learns only that the database refuses anonymous
+  access: naming the database or the setting would tell a stranger holding a public URL how this instance is
+  configured. A signed-in viewer -- in practice an admin opening their own public link -- is told which database and
+  which setting to change, and `:message-for-viewer` tells the public and embedding layers that text is theirs to
+  return rather than genericize (see [[metabase.api.routes.common/message-for-viewer]]).
+
+  The warning carries the same diagnosis to the server log, so a support engineer can reach it without the link."
+  [db-id]
+  (let [database-name (database-routing.db/database-name db-id)]
+    (log/warnf (str "Refusing an anonymous query: database %d (%s) has database routing enabled and"
+                    " anonymous_access_granted is false.")
+               db-id database-name)
+    (throw (ex-info (tru "This database does not allow anonymous access.")
+                    (cond-> {:status-code                  400
+                             :anonymous-access-not-granted true
+                             :router-database-id           db-id}
+                      *viewer-signed-in?*
+                      (assoc :message-for-viewer
+                             (tru (str "{0} has database routing enabled and does not allow anonymous access, so a"
+                                       " public link or guest embed on it returns no data.")
+                                  database-name)))))))
 
 (defn- router-db-or-id->destination-db-id*
   [is-anonymous-user? user-attributes is-superuser? db-or-id]
@@ -27,10 +61,7 @@
         ;; the same data to every viewer, signed in or not. Granted means no routing, i.e. the router database answers.
         (= :router-if-granted *database-routing-on*)
         (when-not (database-routing.db/router-anonymous-access-granted? (u/the-id db-or-id))
-          (throw (ex-info (tru "This database does not allow anonymous access.")
-                          {:status-code                  400
-                           :anonymous-access-not-granted true
-                           :router-database-id           (u/the-id db-or-id)})))
+          (refuse-anonymous-access! (u/the-id db-or-id)))
 
         is-anonymous-user?
         (throw (ex-info (tru "Anonymous users cannot access a database with routing enabled.") {:status-code 400
@@ -123,10 +154,14 @@
 
 (defenterprise with-database-routing-off-if-granted-fn
   "Enterprise version. Calls the function with Database Routing prohibited, and a router database reachable only if an
-  admin has granted it anonymous access."
+  admin has granted it anonymous access.
+
+  Every anonymous surface enters here before the layers that run the query as an admin and detach it from whoever is
+  visiting, so this is also where a refusal's audience is settled: see `*viewer-signed-in?*`."
   :feature :database-routing
   [f]
-  (binding [*database-routing-on* :router-if-granted]
+  (binding [*database-routing-on* :router-if-granted
+            *viewer-signed-in?*   (some? api/*current-user-id*)]
     (f)))
 
 (defn- is-disallowed-destination-db-access?

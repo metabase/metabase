@@ -165,14 +165,29 @@
   in place of the original unless the error type is EXPLICITLY allowed to be shown in embeds. Nothing about the query
   itself gets through.
 
+  The one other message that survives is one an exception wrote for this request's viewer
+  ([[metabase.api.routes.common/message-for-viewer]]), which is how a signed-in viewer of a refused public page gets
+  a diagnosis where an anonymous one still gets the generic failure. That message is reported as curated, because a
+  dashboard card renders its own generic text over any error not marked so -- which is the very thing an admin
+  diagnosing their own public dashboard needs to see past.
+
   [[metabase.api-routes.routes]] applies this to every error written by a streaming response under the public and
-  embedding routes."
+  embedding routes, so a streaming query endpoint reduces its failure twice: here, through [[transform-qp-result]],
+  and again at the route. The reduced shape keeps only the status, error type and message, so the second pass has
+  nothing left to decide from and would replace a message the first pass deliberately kept -- hence the marker, which
+  makes reducing an already-reduced error a no-op. It is metadata, so no client ever sees it."
   [{error-type :error_type, :as error}]
-  (merge
-   {:status :failed}
-   (select-keys error [:status :error :error_type])
-   (when-not (qp.error-type/show-in-embeds? error-type)
-     {:error (tru "An error occurred while running the query.")})))
+  (if (::reduced (meta error))
+    error
+    (vary-meta
+     (merge
+      {:status :failed}
+      (select-keys error [:status :error :error_type])
+      (when-not (qp.error-type/show-in-embeds? error-type)
+        (if-let [message (routes.common/message-for-viewer [error])]
+          {:error message, :error_is_curated true}
+          {:error (tru "An error occurred while running the query.")})))
+     assoc ::reduced true)))
 
 (defmethod transform-qp-result :failed
   [results]

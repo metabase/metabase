@@ -2,10 +2,16 @@
   "Public questions, public dashboards and public documents on a database with routing enabled answer from the router
   database when an admin has granted that database anonymous access, and refuse when they have not. Every assertion
   runs twice -- once with no account, once as a signed-in non-admin whose routing attribute points at a destination
-  database -- and asserts the two agree.
+  database.
+
+  Where the grant is in place the two must agree, which is the regression test for one public URL serving different
+  data to different viewers. Where it is withheld they deliberately do not: the refusal names the database and the
+  setting to a signed-in viewer, so an admin can diagnose their own broken link, and says nothing about either to an
+  anonymous one.
 
   See [[metabase-enterprise.database-routing.common]] for where that decision is made and why."
   (:require
+   [clojure.string :as str]
    [clojure.test :refer [deftest is testing]]
    [metabase-enterprise.database-routing.test-util :as routing.tu]
    [metabase.documents.test-util :as documents.test-util]
@@ -16,17 +22,19 @@
 
 (def ^:private requesters
   "The two ways one public URL gets visited: with no Metabase account at all, and by a signed-in non-admin whose
-  routing attribute points at a destination database. Both must see exactly the same thing."
+  routing attribute points at a destination database. Both must see exactly the same data; only a refusal's wording
+  differs between them."
   [[:anonymous           (fn [& args] (apply client/client args))]
    [:signed-in-non-admin (fn [& args] (apply mt/user-http-request :rasta args))]])
 
 (defn- do-with-public-routing-setup!
   "Publishes public objects on the routed database [[routing.tu/do-with-routed-warehouse!]] stands up, whose
-  anonymous-access grant is `granted?`, and calls `f` with a map of the URLs to visit."
+  anonymous-access grant is `granted?`, and calls `f` with a map of the URLs to visit plus the router database's
+  `:db-name`, which a refusal names."
   [granted? f]
   (routing.tu/do-with-routed-warehouse!
    granted?
-   (fn [{:keys [str-dimension str-query pivot-query param-query tile-query lat-field lon-field]}]
+   (fn [{:keys [db-name str-dimension str-query pivot-query param-query tile-query lat-field lon-field]}]
      (let [card-uuid  (str (random-uuid))
            pivot-uuid (str (random-uuid))
            param-uuid (str (random-uuid))
@@ -75,7 +83,8 @@
                tile-dc     [(u/the-id tile-dashcard) (u/the-id tile-card)]
                doc-card-id (u/the-id document-card)]
            (mt/with-temporary-setting-values [enable-public-sharing true]
-             (f {:card-query          (str "public/card/" card-uuid "/query")
+             (f {:db-name             db-name
+                 :card-query          (str "public/card/" card-uuid "/query")
                  :card-csv            (str "public/card/" card-uuid "/query/csv")
                  :card-pivot          (str "public/pivot/card/" pivot-uuid "/query")
                  :card-param-values   (str "public/card/" param-uuid "/params/_STR_/values")
@@ -101,21 +110,45 @@
                  :lat-field           lat-field
                  :lon-field           lon-field}))))))))
 
-(defn- from-both
-  "Make the same public request as both [[requesters]], apply `extract` to each response, assert the two agree, and
-  return the extracted value. The agreement assertion is the regression test for one public URL serving different data
-  to different viewers."
+(defn- both
+  "Make the same public request as both [[requesters]], apply `extract` to each response, and return the two extracted
+  values keyed by requester. Asserts nothing itself: a refused page is diagnosed differently for a signed-in viewer,
+  so only the granted paths can assert agreement -- see [[from-both]]."
   [extract & args]
-  (let [extracted (mapv (fn [[requester request]]
-                          [requester (extract (apply request args))])
-                        requesters)]
-    (is (apply = (map second extracted))
+  (into {}
+        (map (fn [[requester request]]
+               [requester (extract (apply request args))]))
+        requesters))
+
+(defn- from-both
+  "Like [[both]], but asserts the two requesters saw the same thing and returns it. The agreement assertion is the
+  regression test for one public URL serving different data to different viewers, so it belongs on every path that
+  answers; the refused paths use [[both]] and assert each viewer's diagnosis separately."
+  [extract & args]
+  (let [{:keys [anonymous signed-in-non-admin]} (apply both extract args)]
+    (is (= anonymous signed-in-non-admin)
         "an anonymous visitor and a signed-in non-admin must see the same thing at one public URL")
-    (second (first extracted))))
+    anonymous))
 
 (def ^:private generic-request-failure
-  "What `+public-exceptions` returns for a non-404 error thrown by a public endpoint, i.e. a 400."
+  "What `+public-exceptions` returns to an anonymous visitor for a non-404 error thrown by a public endpoint, i.e. a
+  400."
   "An error occurred.")
+
+(defn- refused-as
+  "Visit every `[endpoint & request-args]` in `paths` as both [[requesters]], assert `extract` of the anonymous
+  visitor's response is `anonymous` and `extract` of the signed-in non-admin's is `signed-in`, and return the whole
+  bodies the anonymous visitor was shown, for the caller to check for disclosures."
+  [paths extract anonymous signed-in]
+  (mapv (fn [[endpoint & request-args]]
+          (testing endpoint
+            (let [shown (apply both identity request-args)]
+              (is (= anonymous (extract (:anonymous shown)))
+                  "an anonymous visitor learns only that something went wrong")
+              (is (= signed-in (extract (:signed-in-non-admin shown)))
+                  "a signed-in viewer is told which database and which setting")
+              (:anonymous shown))))
+        paths))
 
 ;;; --------------------------------------------- Grant in place ----------------------------------------------------
 (deftest public-question-uses-router-database-test
@@ -182,36 +215,63 @@
   (testing "without the grant, the same paths refuse rather than answering from any database"
     (do-with-public-routing-setup!
      false
-     (fn [urls]
-       (testing "queries, exports and pivots fail"
-         (doseq [[endpoint method url & args] [[:card-query          :get  (:card-query urls)]
-                                               [:card-csv            :get  (:card-csv urls)]
-                                               [:card-pivot          :get  (:card-pivot urls)]
-                                               [:dashcard-query      :get  (:dashcard-query urls)]
-                                               [:dashcard-csv        :post (:dashcard-csv urls) {}]
-                                               [:dashcard-pivot      :get  (:dashcard-pivot urls)]
-                                               [:document-card-query :get  (:document-card-query urls)]
-                                               [:document-card-csv   :post (:document-card-csv urls) {}]]]
-           (testing endpoint
-             (is (= routing.tu/generic-query-failure
-                    (apply from-both #(select-keys % [:status :error :error_type]) method url args))))))
-       (testing "the parameter, remapping and map-tile endpoints refuse with a 400"
-         (doseq [[endpoint method url & args] [[:card-param-remap  :get (:card-param-remap urls)]
-                                               [:dash-param-values :get (:dash-param-values urls)]
-                                               [:dash-param-search :get (:dash-param-search urls)]
-                                               [:dash-param-remap  :get (:dash-param-remap urls)]
-                                               [:card-tile         :get (:card-tile urls)
-                                                :latField (:lat-field urls) :lonField (:lon-field urls)]
-                                               [:dash-tile         :get (:dash-tile urls)
-                                                :latField (:lat-field urls) :lonField (:lon-field urls)]]]
-           (testing endpoint
-             (is (= generic-request-failure
-                    (apply from-both identity method 400 url args))))))
-       ;; `metabase.parameters.field/search-values-from-field-id` logs and returns `[]` when the underlying fetch
-       ;; throws -- long-standing behaviour it shares with sandbox errors and warehouse timeouts -- so these two come
-       ;; back empty instead of raising. No destination data reaches the visitor either way.
-       (testing "the card parameter-value endpoints return no values"
-         (doseq [[endpoint url] [[:card-param-values (:card-param-values urls)]
-                                 [:card-param-search (:card-param-search urls)]]]
-           (testing endpoint
-             (is (=? {:values empty?} (from-both identity :get 200 url))))))))))
+     (fn [{:keys [db-name] :as urls}]
+       (let [query-failures
+             (testing "queries, exports and pivots fail"
+               (refused-as [[:card-query          :get  (:card-query urls)]
+                            [:card-csv            :get  (:card-csv urls)]
+                            [:card-pivot          :get  (:card-pivot urls)]
+                            [:dashcard-query      :get  (:dashcard-query urls)]
+                            [:dashcard-csv        :post (:dashcard-csv urls) {}]
+                            [:dashcard-pivot      :get  (:dashcard-pivot urls)]
+                            [:document-card-query :get  (:document-card-query urls)]
+                            [:document-card-csv   :post (:document-card-csv urls) {}]]
+                           #(select-keys % [:status :error :error_type :error_is_curated])
+                           routing.tu/generic-query-failure
+                           (routing.tu/query-failure-for-viewer db-name)))
+             message-failures
+             (testing "the parameter, remapping and map-tile endpoints refuse with a 400"
+               (refused-as [[:card-param-remap  :get 400 (:card-param-remap urls)]
+                            [:dash-param-values :get 400 (:dash-param-values urls)]
+                            [:dash-param-search :get 400 (:dash-param-search urls)]
+                            [:dash-param-remap  :get 400 (:dash-param-remap urls)]
+                            [:card-tile         :get 400 (:card-tile urls)
+                             :latField (:lat-field urls) :lonField (:lon-field urls)]
+                            [:dash-tile         :get 400 (:dash-tile urls)
+                             :latField (:lat-field urls) :lonField (:lon-field urls)]]
+                           identity
+                           generic-request-failure
+                           (routing.tu/viewer-refusal-message db-name)))]
+         ;; `metabase.parameters.field/search-values-from-field-id` logs and returns `[]` when the underlying fetch
+         ;; throws -- long-standing behaviour it shares with sandbox errors and warehouse timeouts -- so these two come
+         ;; back empty instead of raising. No destination data reaches the visitor either way, and neither viewer is
+         ;; told anything, so there is nothing to diagnose here and nothing to disclose.
+         (testing "the card parameter-value endpoints return no values"
+           (doseq [[endpoint url] [[:card-param-values (:card-param-values urls)]
+                                   [:card-param-search (:card-param-search urls)]]]
+             (testing endpoint
+               (is (=? {:values empty?} (from-both identity :get 200 url))))))
+         (testing "nothing an anonymous visitor was shown names the database, the feature or the setting"
+           (doseq [shown (concat query-failures message-failures)
+                   secret [db-name "routing" "anonymous_access_granted"]]
+             (is (not (str/includes? (str shown) secret))
+                 (str (pr-str secret) " leaked in " (pr-str shown))))))))))
+
+(deftest refusal-is-warned-about-server-side-test
+  (testing "a refused query logs a warning naming the database and the setting, whoever was visiting, so the same
+           diagnosis is available from the logs alone"
+    (do-with-public-routing-setup!
+     false
+     (fn [{:keys [db-name] :as urls}]
+       (doseq [[requester request] requesters]
+         (testing requester
+           (mt/with-log-messages-for-level [messages [metabase-enterprise.database-routing.common :warn]]
+             (request :get (:card-query urls))
+             (let [warnings (->> (messages)
+                                 (filter (comp #{:warn} :level))
+                                 (map :message))]
+               (is (some (fn [message]
+                           (and (str/includes? message db-name)
+                                (str/includes? message "anonymous_access_granted")))
+                         warnings)
+                   (pr-str warnings))))))))))

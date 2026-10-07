@@ -20,7 +20,8 @@
   "Stands up a routed database whose anonymous-access grant is `granted?` and calls `f` with the ids and queries an
   anonymous-surface test needs in order to build its own objects and URLs:
 
-    :db-id :table-id :field-id   the router database, its table, and its `str` column
+    :db-id :db-name              the router database and its name, which the refusal names
+    :table-id :field-id          its table and its `str` column
     :str-dimension               a `:dimension` target for `str`, for parameter mappings
     :str-query                   a query returning `str`
     :pivot-query                 a query aggregating by `str`, for the pivot endpoints
@@ -48,6 +49,7 @@
                                                "VALUES ('router-data', -10, 10)"))
             (execute-statement! destination-db "INSERT INTO \"my_database_name\" (str) VALUES ('destination-data')")
             (let [db-id        (u/the-id router-db)
+                  db-name      (:name router-db)
                   table-id     (t2/select-one-pk :model/Table :db_id db-id)
                   field-id     (t2/select-one-pk :model/Field :table_id table-id :name "STR")
                   lat-field-id (t2/select-one-pk :model/Field :table_id table-id :name "LATITUDE")
@@ -56,6 +58,7 @@
                                                       :user_attribute           "db_name"
                                                       :anonymous_access_granted granted?}]
                 (f {:db-id         db-id
+                    :db-name       db-name
                     :table-id      table-id
                     :field-id      field-id
                     :str-dimension [:dimension [:field field-id nil]]
@@ -105,3 +108,26 @@
   "What a refused query looks like to an anonymous viewer: the shared public-sharing execution helpers replace the text
   of any error type not marked safe for embeds, so the refusal is reported as a plain query failure."
   {:status "failed", :error "An error occurred while running the query.", :error_type "qp"})
+
+(def anonymous-refusal-message
+  "What the query-time refusal says to an anonymous visitor on the paths that return its message rather than replacing
+  it: the fact of the refusal and nothing about how the instance is configured."
+  "This database does not allow anonymous access.")
+
+(defn viewer-refusal-message
+  "What the query-time refusal says to a signed-in viewer -- in practice an admin opening their own public link -- in
+  place of [[anonymous-refusal-message]]: the database and the setting to change. Kept here so both anonymous-surface
+  test namespaces assert one wording. See
+  [[metabase-enterprise.database-routing.common/refuse-anonymous-access!]]."
+  [database-name]
+  (format (str "%s has database routing enabled and does not allow anonymous access, so a public link or guest embed"
+               " on it returns no data.")
+          database-name))
+
+(defn query-failure-for-viewer
+  "[[generic-query-failure]] with the message a signed-in viewer gets instead, marked curated so the frontend renders
+  it rather than a dashboard card's own generic text."
+  [database-name]
+  (assoc generic-query-failure
+         :error (viewer-refusal-message database-name)
+         :error_is_curated true))
