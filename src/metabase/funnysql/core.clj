@@ -960,6 +960,7 @@
      :ceil
      :coalesce
      :concat
+     :concat_ws
      :count
      :current_database
      :current_schema

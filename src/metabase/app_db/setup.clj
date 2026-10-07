@@ -329,11 +329,8 @@
 
 ;;; create a custom HoneySQL quoting style called `::application-db` that uses the appropriate quote function based on
 ;;; [[*application-db*]]; register this as the default quoting style for Toucan. Then
-(defn ^:deprecated quote-for-application-db
-  "Quote SQL identifier string `s` appropriately for the currently bound application database.
-
-  DEPRECATED: this is only useful for compilation with Honey SQL, and we should be using Funny
-  SQL ([[metabase.funnysql.core]]) to compile app DB queries going forward."
+(defn quote-for-application-db
+  "Quote SQL identifier string `s` appropriately for the currently bound application database."
   ([s]
    (quote-for-application-db (mdb.connection/quoting-style (mdb.connection/db-type)) s))
   ([dialect s]
