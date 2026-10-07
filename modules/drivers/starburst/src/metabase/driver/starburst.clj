@@ -522,7 +522,8 @@
 
 (defmethod driver/describe-database* :starburst
   [driver database]
-  (let [{:keys [catalog schema]} (driver.conn/effective-details database)]
+  (let [{:keys [catalog schema]} (driver.conn/effective-details database)
+        catalog (u/lower-case-en catalog)]
     (sql-jdbc.execute/do-with-connection-with-options
      driver
      database
