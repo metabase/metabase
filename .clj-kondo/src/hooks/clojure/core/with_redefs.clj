@@ -11,23 +11,18 @@
     (catch Exception _ nil)))
 
 (defn- defn-arity?
-  "Look up `var-sym` in the `:clj` side of `analysis` (the result of `hooks/ns-analysis`, keyed by language)
-   and return true iff kondo recorded a non-empty arity for it. clj-kondo only emits
-   arities for `defn`-style fns — `defmulti` and plain `def` have neither `:fixed-arities`
-   nor `:varargs-min-arity`, so the presence of either is a clean, dynamic signal that
-   the var is a regular function we can safely nudge.
-   Follows `potemkin/import-vars` re-exports to the defining namespace; false if that is ambiguous.
-
-   We coerce to boolean and `seq`-check `:fixed-arities` so a hypothetical empty set
-   doesn't leak through as truthy. The smoke test in `with-redefs-test` empirically
-   verifies the \"arities iff `defn`\" invariant against a real `clj-kondo` run — if a
-   future kondo release starts emitting arities for `defmulti` it will fail there
-   rather than silently producing wrong nudges."
+  "Whether `var-sym` is a `defn`-style function on the `:clj` side of `analysis`, the result of `hooks/ns-analysis`.
+   Follows `potemkin/import-vars` re-exports to the defining namespace, and is false when that is ambiguous."
   ([analysis var-sym]
    (defn-arity? analysis var-sym #{}))
   ([analysis var-sym seen]
+   ;; Kondo records arities only for `defn`-style fns: a `defmulti` or a plain `def` has neither `:fixed-arities`
+   ;; nor `:varargs-min-arity`, so either one marks a regular function we can safely nudge.
+   ;; The smoke tests in `with-redefs-test` check this against a real kondo run, so a kondo release that starts
+   ;; recording arities for `defmulti` fails there instead of producing wrong nudges.
    (boolean
     (or (when-let [v (get-in analysis [:clj var-sym])]
+          ;; The `seq` keeps an empty `:fixed-arities` set from counting as an arity.
           (or (seq (:fixed-arities v))
               (:varargs-min-arity v)))
         ;; Kondo's `hooks/ns-analysis` strips each var's `:imported-ns`, so search every namespace this one re-exports
