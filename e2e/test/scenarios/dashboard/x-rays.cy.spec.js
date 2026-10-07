@@ -197,6 +197,8 @@ describe("scenarios > x-rays", { tags: "@slow" }, () => {
       cy.log(action);
       if (index > 0) {
         cy.go("back");
+        cy.url().should("include", "/question");
+        H.queryBuilderHeader().should("be.visible");
       }
 
       cy.intercept("GET", "/api/automagic-dashboards/**").as("xray");
@@ -212,7 +214,7 @@ describe("scenarios > x-rays", { tags: "@slow" }, () => {
       cy.wait(Array(XRAY_DATASETS).fill("@postDataset"), {
         timeout: 15 * 1000,
       });
-      cy.wait("@xray").its("response.statusCode").should("not.eq", 500);
+      cy.wait("@xray").its("response.statusCode").should("eq", 200);
 
       H.main().within(() => {
         cy.findByText("A look at the number of 15655").should("exist");
@@ -241,6 +243,8 @@ describe("scenarios > x-rays", { tags: "@slow" }, () => {
       cy.log(action);
       if (index > 0) {
         cy.go("back");
+        cy.url().should("include", "/question");
+        H.queryBuilderHeader().should("be.visible");
       }
 
       cy.intercept("GET", "/api/automagic-dashboards/**").as("xray");

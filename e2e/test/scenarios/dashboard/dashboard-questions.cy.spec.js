@@ -250,6 +250,7 @@ describe("Dashboard > Dashboard Questions", () => {
       H.dashboardCards().findByText("Orders, Count");
 
       cy.log("tell users which dashboards will be affected");
+      cy.intercept("PUT", "/api/card/*").as("moveQuestion");
       H.createQuestionAndDashboard({
         questionDetails: {
           name: "Sample Question",
@@ -288,7 +289,7 @@ describe("Dashboard > Dashboard Questions", () => {
       // Wait for the move to land before navigating: otherwise Test Dashboard
       // can load while its dashcard is still present, so the empty state never
       // renders and the assertion below times out.
-      cy.wait("@updateCard");
+      cy.wait("@moveQuestion");
       H.modal().should("not.exist");
 
       H.collectionTable().findByText("Test Dashboard").click();
