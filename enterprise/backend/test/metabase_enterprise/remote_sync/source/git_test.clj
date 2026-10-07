@@ -1376,3 +1376,31 @@
               (is (some? (git/commit-sha remote "section-check")) "the push goes to the URL of the setting")
               (is (nil? (git/commit-sha other "section-check")) "the push does not reach the other URL"))
             (finally (forget-clones! url))))))))
+
+(deftest push-uses-the-origin-remote-test
+  (testing "a push uses the origin remote of the clone config: a push remote that the clone config names does not
+            redirect it"
+    (doseq [{:keys [config change!]} [{:config  "remote.pushDefault names another remote"
+                                       :change! (fn [source] (set-clone-config! source "remote" nil "pushDefault" "elsewhere"))}
+                                      {:config  "branch.<the branch of HEAD>.pushRemote names another remote"
+                                       :change! (fn [{:keys [^Git git] :as source}]
+                                                  (set-clone-config! source "branch" (.getBranch (.getRepository git))
+                                                                     "pushRemote" "elsewhere"))}]]
+      (testing config
+        (mt/with-temp-dir [remote-dir nil]
+          (mt/with-temp-dir [other-dir nil]
+            (let [remote (init-remote! remote-dir :files {"master.txt" "File in master"})
+                  other  (init-remote! other-dir :files {"master.txt" "Other"})
+                  url    (remote-url remote)]
+              (try
+                (let [{:keys [^Git git] :as source} (git/git-source url "master" nil ingest/legal-top-level-paths)
+                      repo                          (.getRepository git)]
+                  (set-clone-config-values! source "remote" "elsewhere" "url" [(origin-url source) (remote-url other)])
+                  (change! source)
+                  (doto (.updateRef repo "refs/heads/push-remote-check")
+                    (.setNewObjectId (.resolve repo "refs/heads/master"))
+                    (.update))
+                  (git/push-branch! (assoc source :branch "push-remote-check"))
+                  (is (some? (git/commit-sha remote "push-remote-check")) "the push goes to the URL of the setting")
+                  (is (nil? (git/commit-sha other "push-remote-check")) "the push does not reach the other URL"))
+                (finally (forget-clones! url))))))))))
