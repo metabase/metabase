@@ -997,6 +997,15 @@ describe("scenarios > embedding > full app", () => {
       cy.findByTestId("dashboard-name-heading").should("be.visible");
       cy.button(/Edited.*by/).should("be.visible");
 
+      cy.log("hide the entity id in the dashboard info");
+      H.dashboardHeader().findByRole("img", { name: /info/i }).click();
+      H.sidesheet().within(() => {
+        cy.findByRole("heading", { name: "Description" }).should("be.visible");
+        cy.findByRole("heading", { name: /entity id/i }).should("not.exist");
+      });
+      H.sidesheet().findByLabelText("Close").click();
+      H.sidesheet().should("not.exist");
+
       cy.log("download question results with the anti-CSRF token");
       H.getDashboardCard().realHover();
       H.getDashboardCardMenu().click();
@@ -1007,13 +1016,6 @@ describe("scenarios > embedding > full app", () => {
         expect(
           interception.request.headers["x-metabase-anti-csrf-token"],
         ).to.equal(CSRF_TOKEN);
-      });
-
-      cy.log("hide the entity id in the dashboard info");
-      H.dashboardHeader().findByRole("img", { name: /info/i }).click();
-      H.sidesheet().within(() => {
-        cy.findByRole("heading", { name: "Description" }).should("be.visible");
-        cy.findByRole("heading", { name: /entity id/i }).should("not.exist");
       });
     });
 
