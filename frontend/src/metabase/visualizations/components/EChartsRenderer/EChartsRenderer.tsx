@@ -1,6 +1,6 @@
 import { mergeRefs } from "@mantine/hooks";
 import type { EChartsCoreOption, EChartsType } from "echarts/core";
-import { init } from "echarts/core";
+import { init, registerPreprocessor } from "echarts/core";
 import { forwardRef, useEffect, useRef } from "react";
 import { useMount, useUnmount, useUpdateEffect } from "react-use";
 
@@ -13,6 +13,20 @@ import {
 import { EChartsRendererRoot } from "./EChartsRenderer.styled";
 
 registerEChartsModules();
+
+// Screenshots are taken as soon as a story finishes rendering,
+// and ECharts keeps animating after that.
+registerPreprocessor((option) => {
+  if (window.METABASE_REMOVE_DELAYS) {
+    option.animation = false;
+    // The treemap series defaults to `animation: true`, which overrides the root option.
+    for (const series of [option.series].flat()) {
+      if (series && typeof series === "object") {
+        Object.assign(series, { animation: false });
+      }
+    }
+  }
+});
 
 export interface EChartsRendererProps {
   option: EChartsCoreOption;
