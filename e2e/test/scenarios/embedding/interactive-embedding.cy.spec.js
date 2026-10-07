@@ -30,7 +30,8 @@ describe("scenarios > embedding > full app", () => {
   });
 
   describe("home page navigation", () => {
-    it("should show the top and side nav by default", () => {
+    it("should show or hide the top and side nav by params", () => {
+      cy.log("show the top and side nav by default");
       H.visitFullAppEmbeddingUrl({ url: "/" });
       cy.wait("@getXrayDashboard");
 
@@ -43,37 +44,25 @@ describe("scenarios > embedding > full app", () => {
         });
 
       sideNav().should("be.visible");
-    });
 
-    it("should hide the top nav when nothing is shown", () => {
+      cy.log("hide the top nav when nothing is shown");
       H.visitFullAppEmbeddingUrl({
         url: "/",
         qs: { side_nav: false, logo: false },
       });
       cy.wait("@getXrayDashboard");
+      cy.findByTestId("home-page").should("be.visible");
       H.appBar().should("not.exist");
-    });
 
-    it("should hide the top nav by an explicit param", () => {
+      cy.log("hide the top nav by an explicit param");
       H.visitFullAppEmbeddingUrl({ url: "/", qs: { top_nav: false } });
       cy.wait("@getXrayDashboard");
+      cy.findByTestId("home-page").should("be.visible");
       H.appBar().should("not.exist");
-    });
 
-    it("should not hide the top nav when the logo is still visible", () => {
-      H.visitFullAppEmbeddingUrl({
-        url: "/question/" + ORDERS_QUESTION_ID,
-        qs: { breadcrumbs: false },
-      });
-      cy.wait("@getCardQuery");
-
-      H.appBar().within(() => {
-        cy.findByTestId("main-logo").should("be.visible");
-        cy.findByText("Our analytics").should("not.exist");
-      });
-    });
-
-    it("should keep showing sidebar toggle button when logo, breadcrumbs, the new button, and search are hidden", () => {
+      cy.log(
+        "keep showing sidebar toggle button when logo, breadcrumbs, the new button, and search are hidden",
+      );
       H.visitFullAppEmbeddingUrl({
         url: "/",
         qs: {
@@ -92,37 +81,22 @@ describe("scenarios > embedding > full app", () => {
           cy.button("Toggle sidebar").should("be.visible").click();
         });
       sideNav().should("not.be.visible");
-    });
 
-    it("should hide the side nav by a param", () => {
+      cy.log("hide the side nav by a param");
       H.visitFullAppEmbeddingUrl({ url: "/", qs: { side_nav: false } });
       H.appBar().within(() => {
         cy.findByTestId("main-logo").should("be.visible");
         cy.button("Toggle sidebar").should("not.exist");
       });
       sideNav().should("not.exist");
-    });
 
-    it("should disable home link when top nav is enabled but side nav is disabled", () => {
-      visitDashboardUrl({
-        url: `/dashboard/${ORDERS_DASHBOARD_ID}`,
-        qs: { top_nav: true, side_nav: false },
-      });
-      cy.findByTestId("main-logo-link").should(
-        "have.attr",
-        "disabled",
-        "disabled",
-      );
-    });
-
-    it("should show question creation controls by a param", () => {
+      cy.log("show question creation controls by a param");
       H.visitFullAppEmbeddingUrl({ url: "/", qs: { new_button: true } });
       H.appBar().within(() => {
         cy.button(/New/).should("be.visible");
       });
-    });
 
-    it("should preserve params when navigating", () => {
+      cy.log("preserve params when navigating");
       H.visitFullAppEmbeddingUrl({ url: "/", qs: { search: true } });
 
       H.appBar().within(() => {
@@ -138,11 +112,21 @@ describe("scenarios > embedding > full app", () => {
       H.appBar().within(() => {
         cy.findByPlaceholderText("Search…").should("be.visible");
       });
-    });
-  });
 
-  describe("browse data", () => {
-    it("should hide the top nav when nothing is shown", () => {
+      cy.log(
+        "disable home link when top nav is enabled but side nav is disabled",
+      );
+      visitDashboardUrl({
+        url: `/dashboard/${ORDERS_DASHBOARD_ID}`,
+        qs: { top_nav: true, side_nav: false },
+      });
+      cy.findByTestId("main-logo-link").should(
+        "have.attr",
+        "disabled",
+        "disabled",
+      );
+
+      cy.log("browse data: hide the top nav when nothing is shown");
       H.visitFullAppEmbeddingUrl({
         url: "/browse/databases",
         qs: { side_nav: false, logo: false },
@@ -154,7 +138,8 @@ describe("scenarios > embedding > full app", () => {
   });
 
   describe("questions", () => {
-    it("should show the question header by default", () => {
+    it("should show or hide the question header and top nav by params", () => {
+      cy.log("show the question header by default");
       visitQuestionUrl({ url: "/question/" + ORDERS_QUESTION_ID });
 
       cy.findByTestId("qb-header").should("be.visible");
@@ -169,18 +154,17 @@ describe("scenarios > embedding > full app", () => {
       cy.findByTestId("qb-header")
         .button(/Filter/)
         .should("be.visible");
-    });
 
-    it("should hide the question header by a param", () => {
+      cy.log("hide the question header by a param");
       visitQuestionUrl({
         url: "/question/" + ORDERS_QUESTION_ID,
         qs: { header: false },
       });
 
+      H.tableInteractive().should("be.visible");
       cy.findByTestId("qb-header").should("not.exist");
-    });
 
-    it("should hide the question's additional info by a param", () => {
+      cy.log("hide the question's additional info by a param");
       visitQuestionUrl({
         url: "/question/" + ORDERS_QUESTION_ID,
         qs: { additional_info: false },
@@ -189,34 +173,63 @@ describe("scenarios > embedding > full app", () => {
       cy.findByTestId("app-bar")
         .findByText("Our analytics")
         .should("be.visible");
+      cy.findByTestId("qb-header").should("be.visible");
       cy.findByTestId("qb-header")
         .findByText(/Edited/)
         .should("not.exist");
-    });
 
-    it("should hide the question's action buttons by a param", () => {
-      visitQuestionUrl({
+      cy.log(
+        "hide the question's action buttons by a param, and send the 'X-Metabase-Client' header for api requests",
+      );
+      H.visitFullAppEmbeddingUrl({
         url: "/question/" + ORDERS_QUESTION_ID,
         qs: { action_buttons: false },
+      });
+      cy.wait("@getCardQuery").then(({ request }) => {
+        expect(request?.headers?.["x-metabase-client"]).to.equal(
+          "embedding-iframe-full-app",
+        );
       });
 
       cy.icon("refresh").should("be.visible");
       cy.findByTestId("notebook-button").should("not.exist");
       cy.button(/Summarize/).should("not.exist");
       cy.button(/Filter/).should("not.exist");
-    });
 
-    it("should send 'X-Metabase-Client' header for api requests", () => {
-      H.visitFullAppEmbeddingUrl({
+      cy.log("not hide the top nav when the logo is still visible");
+      visitQuestionUrl({
         url: "/question/" + ORDERS_QUESTION_ID,
-        qs: { action_buttons: false },
+        qs: { breadcrumbs: false },
       });
 
-      cy.wait("@getCardQuery").then(({ request }) => {
-        expect(request?.headers?.["x-metabase-client"]).to.equal(
-          "embedding-iframe-full-app",
-        );
+      H.appBar().within(() => {
+        cy.findByTestId("main-logo").should("be.visible");
+        cy.findByText("Our analytics").should("not.exist");
       });
+
+      // This can't be unit test in AppBar since the logic to hide the AppBar is in its parent component
+      cy.log("desktop: hide main header when there's nothing to display there");
+      visitQuestionUrl({
+        url: "/question/" + ORDERS_QUESTION_ID,
+        qs: { side_nav: false, logo: false, breadcrumbs: false },
+      });
+      cy.findByDisplayValue("Orders");
+      cy.findByTestId("app-bar").should("not.exist");
+      cy.findByTestId("main-logo").should("not.exist");
+      cy.icon("sidebar_closed").should("not.exist");
+      cy.button("Toggle sidebar").should("not.exist");
+
+      cy.log("mobile: hide main header when there's nothing to display there");
+      cy.viewport("iphone-x");
+      visitQuestionUrl({
+        url: "/question/" + ORDERS_QUESTION_ID,
+        qs: { side_nav: false, logo: false, breadcrumbs: false },
+      });
+      cy.findByDisplayValue("Orders");
+      cy.findByTestId("app-bar").should("not.exist");
+      cy.findByTestId("main-logo").should("not.exist");
+      cy.icon("sidebar_closed").should("not.exist");
+      cy.button("Toggle sidebar").should("not.exist");
     });
 
     describe("question creation", () => {
@@ -225,7 +238,7 @@ describe("scenarios > embedding > full app", () => {
         cy.signInAsNormalUser();
       });
 
-      it("should allow to create a new question from the navbar (metabase#21511)", () => {
+      it("should allow to create a new question from the navbar and show the database for a new native question (metabase#21511)", () => {
         // Simple data picker
         H.visitFullAppEmbeddingUrl({
           url: "/collection/root",
@@ -253,9 +266,8 @@ describe("scenarios > embedding > full app", () => {
           cy.findByText("Raw Data").click();
           cy.findByText("Orders").click();
         });
-      });
 
-      it("should show the database for a new native question (metabase#21511)", () => {
+        cy.log("show the database for a new native question");
         const newQuestionQuery = {
           dataset_query: {
             database: null,
@@ -275,40 +287,6 @@ describe("scenarios > embedding > full app", () => {
         cy.findByTestId("native-query-editor-container")
           .findByText(/Sample Database/)
           .should("be.visible");
-      });
-    });
-
-    describe("desktop logo", () => {
-      // This can't be unit test in AppBar since the logic to hide the AppBar is in its parent component
-      it("should hide main header when there's nothing to display there", () => {
-        visitQuestionUrl({
-          url: "/question/" + ORDERS_QUESTION_ID,
-          qs: { side_nav: false, logo: false, breadcrumbs: false },
-        });
-        cy.findByDisplayValue("Orders");
-        cy.findByTestId("app-bar").should("not.exist");
-        cy.findByTestId("main-logo").should("not.exist");
-        cy.icon("sidebar_closed").should("not.exist");
-        cy.button("Toggle sidebar").should("not.exist");
-      });
-    });
-
-    describe("mobile logo", () => {
-      beforeEach(() => {
-        cy.viewport("iphone-x");
-      });
-
-      // This can't be unit test in AppBar since the logic to hide the AppBar is in its parent component
-      it("should hide main header when there's nothing to display there", () => {
-        visitQuestionUrl({
-          url: "/question/" + ORDERS_QUESTION_ID,
-          qs: { side_nav: false, logo: false, breadcrumbs: false },
-        });
-        cy.findByDisplayValue("Orders");
-        cy.findByTestId("app-bar").should("not.exist");
-        cy.findByTestId("main-logo").should("not.exist");
-        cy.icon("sidebar_closed").should("not.exist");
-        cy.button("Toggle sidebar").should("not.exist");
       });
     });
   });
@@ -997,12 +975,41 @@ describe("scenarios > embedding > full app", () => {
   });
 
   describe("dashboards", () => {
-    it("should show the dashboard header by default", () => {
-      visitDashboardUrl({ url: `/dashboard/${ORDERS_DASHBOARD_ID}` });
+    it("should show the dashboard header by default, send the 'X-Metabase-Client' header, and allow downloading question results when logged in via Google SSO (metabase#39848)", () => {
+      const CSRF_TOKEN = "abcdefgh";
+      cy.intercept("GET", "/api/user/current", (req) => {
+        req.on("response", (res) => {
+          res.headers["X-Metabase-Anti-CSRF-Token"] = CSRF_TOKEN;
+        });
+      });
+      cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query/csv").as(
+        "CsvDownload",
+      );
+      H.visitFullAppEmbeddingUrl({ url: `/dashboard/${ORDERS_DASHBOARD_ID}` });
+
+      cy.wait("@getDashboard").then(({ request }) => {
+        expect(request?.headers?.["x-metabase-client"]).to.equal(
+          "embedding-iframe-full-app",
+        );
+      });
+      cy.wait("@getDashCardQuery");
 
       cy.findByTestId("dashboard-name-heading").should("be.visible");
       cy.button(/Edited.*by/).should("be.visible");
 
+      cy.log("download question results with the anti-CSRF token");
+      H.getDashboardCard().realHover();
+      H.getDashboardCardMenu().click();
+
+      H.exportFromDashcard(".csv");
+
+      cy.wait("@CsvDownload").then((interception) => {
+        expect(
+          interception.request.headers["x-metabase-anti-csrf-token"],
+        ).to.equal(CSRF_TOKEN);
+      });
+
+      cy.log("hide the entity id in the dashboard info");
       H.dashboardHeader().findByRole("img", { name: /info/i }).click();
       H.sidesheet().within(() => {
         cy.findByRole("heading", { name: "Description" }).should("be.visible");
@@ -1010,7 +1017,8 @@ describe("scenarios > embedding > full app", () => {
       });
     });
 
-    it("should hide the dashboard header by a param", () => {
+    it("should hide the dashboard header or its additional info by a param, and allow selecting tabs (metabase#38429, metabase#39002)", () => {
+      cy.log("hide the dashboard header by a param");
       visitDashboardUrl({
         url: `/dashboard/${ORDERS_DASHBOARD_ID}`,
         qs: { header: false },
@@ -1019,9 +1027,26 @@ describe("scenarios > embedding > full app", () => {
         H.assertTableRowsCount(2000);
       });
       cy.findByTestId("dashboard-header").should("not.exist");
-    });
 
-    it("should hide the dashboard with multiple tabs header by a param and allow selecting tabs (metabase#38429, metabase#39002)", () => {
+      cy.log("hide the dashboard's additional info by a param");
+      visitDashboardUrl({
+        url: `/dashboard/${ORDERS_DASHBOARD_ID}`,
+        qs: { additional_info: false },
+      });
+
+      cy.findByTestId("dashboard-header")
+        .findByText("Orders in a dashboard")
+        .should("be.visible");
+      cy.findByTestId("dashboard-header")
+        .findByText(/Edited/)
+        .should("not.exist");
+      cy.findByTestId("app-bar")
+        .findByText("Our analytics")
+        .should("be.visible");
+
+      cy.log(
+        "hide the dashboard with multiple tabs header by a param and allow selecting tabs",
+      );
       const FIRST_TAB = { id: 1, name: "Tab 1" };
       const SECOND_TAB = { id: 2, name: "Tab 2" };
       H.createDashboardWithTabs({
@@ -1049,23 +1074,6 @@ describe("scenarios > embedding > full app", () => {
       cy.findByTestId("dashboard-header").should("not.exist");
       H.goToTab(SECOND_TAB.name);
       cy.findByTestId("dashboard-empty-state").should("be.visible");
-    });
-
-    it("should hide the dashboard's additional info by a param", () => {
-      visitDashboardUrl({
-        url: `/dashboard/${ORDERS_DASHBOARD_ID}`,
-        qs: { additional_info: false },
-      });
-
-      cy.findByTestId("dashboard-header")
-        .findByText("Orders in a dashboard")
-        .should("be.visible");
-      cy.findByTestId("dashboard-header")
-        .findByText(/Edited/)
-        .should("not.exist");
-      cy.findByTestId("app-bar")
-        .findByText("Our analytics")
-        .should("be.visible");
     });
 
     it("should preserve embedding options with click behavior (metabase#24756)", () => {
@@ -1313,53 +1321,16 @@ describe("scenarios > embedding > full app", () => {
         },
       });
     });
-
-    it("should allow downloading question results when logged in via Google SSO (metabase#39848)", () => {
-      const CSRF_TOKEN = "abcdefgh";
-      cy.intercept("GET", "/api/user/current", (req) => {
-        req.on("response", (res) => {
-          res.headers["X-Metabase-Anti-CSRF-Token"] = CSRF_TOKEN;
-        });
-      });
-      cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query/csv").as(
-        "CsvDownload",
-      );
-      visitDashboardUrl({
-        url: `/dashboard/${ORDERS_DASHBOARD_ID}`,
-      });
-
-      H.getDashboardCard().realHover();
-      H.getDashboardCardMenu().click();
-
-      H.exportFromDashcard(".csv");
-
-      cy.wait("@CsvDownload").then((interception) => {
-        expect(
-          interception.request.headers["x-metabase-anti-csrf-token"],
-        ).to.equal(CSRF_TOKEN);
-      });
-    });
-
-    it("should send 'X-Metabase-Client' header for api requests", () => {
-      H.visitFullAppEmbeddingUrl({ url: `/dashboard/${ORDERS_DASHBOARD_ID}` });
-
-      cy.wait("@getDashboard").then(({ request }) => {
-        expect(request?.headers?.["x-metabase-client"]).to.equal(
-          "embedding-iframe-full-app",
-        );
-      });
-    });
   });
 
   describe("x-ray dashboards", () => {
-    it("should show the dashboard header by default", () => {
+    it("should show the dashboard header by default and hide it by a param", () => {
       visitXrayDashboardUrl({ url: "/auto/dashboard/table/1" });
 
       cy.findByRole("heading", { name: "More X-rays" }).should("be.visible");
       cy.button("Save this").should("be.visible");
-    });
 
-    it("should hide the dashboard header by a param", () => {
+      cy.log("hide the dashboard header by a param");
       visitXrayDashboardUrl({
         url: "/auto/dashboard/table/1",
         qs: { header: false },
@@ -1499,33 +1470,7 @@ describe("scenarios > embedding > full app - jwt sso integration", () => {
     });
   });
 
-  it("should authenticate the user correctly if the JWT provider returns a valid JWT token", () => {
-    // 1) sign a jwt for the user
-    cy.task("signJwt", {
-      payload: {
-        email: USERS.normal.email,
-        exp: Math.round(Date.now() / 1000) + 10 * 60,
-      },
-      secret: jwtSecret,
-    }).then((jwtToken) => {
-      // 2) mock the JWT provider to redirect to the auth/sso endpoint with the JWT
-      cy.intercept(/http:\/\/localhost:8888\/.*/, (req) => {
-        const redirectUrl = `${baseUrl}/auth/sso?jwt=${jwtToken}&return_to=/dashboard/${dashboardId}`;
-        req.redirect(redirectUrl);
-      }).as("jwt-provider");
-    });
-
-    // 3) visit the dashboard
-    H.visitFullAppEmbeddingUrl({ url: `/dashboard/${dashboardId}` });
-
-    cy.wait("@jwt-provider");
-
-    // 4) verify the user is authenticated and can access the dashboard
-    cy.url().should("equal", `${baseUrl}/dashboard/${dashboardId}`);
-    H.main().findByText("Orders in a dashboard").should("be.visible");
-  });
-
-  it("should pass JWT user attributes to click behavior custom destinations (metabase#65942)", () => {
+  it("should authenticate the user and pass JWT user attributes to click behavior custom destinations (metabase#65942)", () => {
     const jwtAttributeValue = ORDERS_QUESTION_ID;
 
     // 1) set up a click behavior that uses a user attribute in the URL
@@ -1554,6 +1499,7 @@ describe("scenarios > embedding > full app - jwt sso integration", () => {
 
     // 5) verify user is on dashboard
     cy.url().should("equal", `${baseUrl}/dashboard/${dashboardId}`);
+    H.main().findByText("Orders in a dashboard").should("be.visible");
 
     cy.findAllByRole("gridcell").first().click();
     cy.wait("@getCardQuery");

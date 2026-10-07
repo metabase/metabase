@@ -90,7 +90,11 @@ describe("scenarios > sidecar > tenant users", () => {
     H.popover().contains("People").should("be.visible");
   });
 
-  it("tenant users should see a flatten view of collections", () => {
+  it("tenant users should see a flatten view of collections, with 'Our data' read only", () => {
+    /*
+      The "Our data" comes from both on the FE and the BE depending on the place it's used.
+      This test checks a few places to make sure everything is working as expected.
+    */
     loginWithJWT(GIZMO_USER);
 
     H.navigationSidebar().within(() => {
@@ -102,14 +106,6 @@ describe("scenarios > sidecar > tenant users", () => {
       // No "internal/external" naming or sections
       cy.findByText(/External collections/).should("not.exist");
     });
-  });
-
-  it("the tenant collection should be called 'Our data' and be read only", () => {
-    /*
-      The "Our data" comes from both on the FE and the BE depending on the place it's used.
-      This test checks a few places to make sure everything is working as expected.
-    */
-    loginWithJWT(GIZMO_USER);
 
     H.navigationSidebar().findByText("Our data").should("be.visible").click();
     cy.url().should("include", "/collection/");
