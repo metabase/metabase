@@ -35,7 +35,8 @@ run the phase inline.
 - `known-mistakes.md` — bugs with symptoms, fixes, detectors
 - `sandbox-restrictions.md` — what the sandbox blocks at runtime
 - `sandbox-substitutes.md` — what to use instead
-- `operations.md` — dev server, connecting Metabase, renaming, user edits
+- `operations.md` — dev server, connecting Metabase, reading a question,
+  renaming, user edits
 - `fix-log-rules.md` — format and rules of `.claude/fix-log.md`
 - `testing.md` — the test API and what to test
 

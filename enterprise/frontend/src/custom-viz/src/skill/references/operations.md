@@ -1,7 +1,7 @@
 # Operations
 
-For the main agent only: dev server, Metabase connection, renaming, user
-edits.
+For the main agent only: dev server, Metabase connection, reading a
+question, renaming, user edits.
 
 ## Dev server
 
@@ -54,6 +54,21 @@ Packaged, on any Metabase with the token, Cloud included: open
 upload the `.tgz`, then step 2.
 
 Docs: https://www.metabase.com/docs/latest/developers-guide/custom-visualizations
+
+## Reading a question
+
+Only through the Metabase MCP server: the HTTP API needs the user's
+login, so never call it. MCP tools available → `get_content` for the
+question's columns and types, `run_saved_question` for sample rows. Not
+available → offer to connect it, or take a verbal description:
+
+1. In Metabase: Admin → AI → MCP → turn on **MCP server** (AI features
+   must be on); Admin → Settings → General → **Site URL** is the address
+   the user opens Metabase at.
+2. In a terminal in the project folder:
+   `claude mcp add metabase <metabase>/api/metabase-mcp --transport http`
+3. Restart Claude Code, run `/mcp` → `metabase` → Authenticate, log in
+   and approve in the browser.
 
 ## Renaming
 

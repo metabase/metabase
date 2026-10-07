@@ -9,10 +9,10 @@ Read: `skill/references/project.md`, `skill/references/operations.md`,
 1. Ask 1–4 questions, only where different answers produce a different
    viz:
    - chart type, if genuinely ambiguous
-   - data shape: column count and types, expected row count. If a
-     Metabase MCP server is connected, offer to read it from a saved
-     question (ask for its ID or URL) — preferred over a verbal
-     description
+   - data shape: column count and types, expected row count. Reading
+     it from a saved question beats a verbal description: ask for its
+     URL or ID unless the user gave one, then `operations.md` Reading a
+     question
    - special click behavior, if the request hints at it
    - colors of the data marks, unless the request already says:
      Metabase theme colors (recommended: follow the instance palette)
