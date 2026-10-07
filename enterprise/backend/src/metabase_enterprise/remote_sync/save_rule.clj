@@ -208,11 +208,11 @@
     {}
     (let [subtree (vec (sort (remote-sync.db/subtree-collection-ids-of-ids (vec collection-ids))))]
       (when lock?
-        ;; The insert of an entity into a locked Collection, or its move into one, checks the foreign key to the
-        ;; Collection, so it waits until the pull commits. Every app DB reads at READ COMMITTED, so the read below
-        ;; sees each entity that is in the Collections now. A Collection that a user creates under a locked
-        ;; Collection does not wait: it has no foreign key to its parent. [[check-subtree!]] reads the subtree again
-        ;; before the delete.
+        ;; On Postgres and MySQL, the insert of an entity into a locked Collection, or its move into one, checks the
+        ;; foreign key to the Collection, so it waits until the pull commits. On H2 it does not wait. Every app DB
+        ;; reads at READ COMMITTED, so the read below sees each entity that is in the Collections now. A Collection
+        ;; that a user creates under a locked Collection does not wait: it has no foreign key to its parent.
+        ;; [[check-subtree!]] reads the subtree again before the delete.
         (remote-sync.db/lock-instances! :model/Collection subtree))
       (into {:model/Collection (set subtree)}
             (keep (fn [model-key]
