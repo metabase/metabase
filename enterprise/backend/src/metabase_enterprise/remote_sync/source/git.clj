@@ -137,24 +137,34 @@
             :error     (.getMessage e)}
            e))
 
+(defmacro ^:private no-hooks-proxy
+  "A proxy of the JGit file system class `klass`, with the settings of the file system `fs`, that finds and runs no git
+  hook."
+  [klass fs]
+  `(proxy [~klass] [~fs]
+     ;; JGit can copy a file system with newInstance; a copy of the class runs hooks.
+     (~'newInstance [] ~'this)
+     (~'findHook [~'_repository ~'_hook-name] nil)
+     (~'runHookIfPresent
+       ([~'_repository ~'_hook-name ~'_args]
+        (ProcessResult. ProcessResult$Status/NOT_PRESENT))
+       ([~'_repository ~'_hook-name ~'_args ~'_out ~'_err ~'_stdin]
+        (ProcessResult. ProcessResult$Status/NOT_PRESENT)))))
+
+(defn- no-hooks-fs-of
+  "For the JGit file system `fs`, the file system of the clones of remote sync."
+  ^FS [^FS fs]
+  (if (instance? FS_POSIX fs)
+    (no-hooks-proxy FS_POSIX fs)
+    ;; Of the other JGit file systems, only FS_Win32_Cygwin runs hooks.
+    fs))
+
 (def ^:private no-hooks-fs
   "A delay of the JGit file system of the clones of remote sync. A repository with this file system runs no git hook."
   ;; Metabase puts no hook in its clones, and a clone gets no hook from its remote. So a hook in a clone comes from a
   ;; write into the clone, and remote sync does not run it. The `core.hooksPath` setting is not used for this: it is in
   ;; the config file of the clone, which the same write can change.
-  (delay
-    (if (instance? FS_POSIX FS/DETECTED)
-      (proxy [FS_POSIX] [FS/DETECTED]
-        ;; JGit can copy a file system with newInstance; a copy of FS_POSIX runs hooks.
-        (newInstance [] this)
-        (findHook [_repository _hook-name] nil)
-        (runHookIfPresent
-          ([_repository _hook-name _args]
-           (ProcessResult. ProcessResult$Status/NOT_PRESENT))
-          ([_repository _hook-name _args _out _err _stdin]
-           (ProcessResult. ProcessResult$Status/NOT_PRESENT))))
-      ;; Of the other JGit file systems, only FS_Win32_Cygwin runs hooks.
-      FS/DETECTED)))
+  (delay (no-hooks-fs-of FS/DETECTED)))
 
 (defn- clone-repository!
   "Clones every branch of the repository at `remote-url` with the optional `token` into the new directory `dir`, as a
