@@ -14,12 +14,5 @@ position: 2
 database_position: 2
 has_field_values: auto-list
 serdes/meta:
-- id: Sample Database
-  model: Database
-- id: PUBLIC
-  model: Schema
-- id: PRODUCTS
-  model: Table
-- id: TITLE
-  model: Field
+- model: Field
 database_indexed: false

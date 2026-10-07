@@ -587,6 +587,9 @@
                       {:model "Schema" :id (:schema table)})
                     {:model "Table" :id (:name table)}])))
 
+(defmethod serdes/ingested-path "Table" [_ {:keys [db_id schema name]}]
+  (serdes/table->path [db_id schema name]))
+
 (defmethod serdes/entity-id "Table" [_ {:keys [name]}]
   name)
 
