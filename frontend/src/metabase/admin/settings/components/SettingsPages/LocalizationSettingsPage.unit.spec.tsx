@@ -4,6 +4,7 @@ import {
   findRequests,
   setupPropertiesEndpoints,
   setupSettingsEndpoints,
+  setupTimezonesEndpoint,
   setupUpdateSettingEndpoint,
 } from "__support__/server-mocks";
 import { createMockSettingsState } from "__support__/state";
@@ -22,17 +23,16 @@ const setup = async () => {
     "site-locale": "En",
     "report-timezone": "",
     "start-of-week": "monday",
-    // Unjustified type cast. FIXME
-    "available-timezones": [
-      "Europe/Paris",
-      "Pacific/Auckland",
-      "US/Mountain",
-      "UTC",
-    ] as string[],
   } as const;
 
   const settings = createMockSettings(localizationSettings);
   setupPropertiesEndpoints(settings);
+  setupTimezonesEndpoint([
+    "Europe/Paris",
+    "Pacific/Auckland",
+    "US/Mountain",
+    "UTC",
+  ]);
   setupUpdateSettingEndpoint();
   setupSettingsEndpoints(
     Object.entries(settings).map(([key, value]) =>

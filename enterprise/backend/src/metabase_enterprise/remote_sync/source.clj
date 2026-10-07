@@ -68,11 +68,6 @@
                                             (atom nil) (atom []))
     (seq root-dependencies) (ingestable/wrap-root-dep-ingestable root-dependencies)))
 
-(defn storage-context
-  "The serdes storage context for git sync: a Table's user settings file stands in for the Table's own."
-  []
-  (assoc (serdes/storage-base-context) :inline-user-settings true))
-
 (defn entity->path
   "The repo-relative path an extracted `entity` serializes to, using storage context `opts`."
   [opts entity]
@@ -103,7 +98,7 @@
    :resources (vec (resource-specs path entity))})
 
 (defn entity->file-spec
-  "[[entity->file-spec-at]] the path storage context `opts` (from [[storage-context]]) gives `entity`."
+  "[[entity->file-spec-at]] the path storage context `opts` (from [[serdes/storage-base-context]]) gives `entity`."
   [opts entity]
   (entity->file-spec-at (entity->path opts entity) entity))
 
@@ -127,7 +122,7 @@
   ({:model_type :model_id}), or nil if it can't be extracted."
   [row]
   (when-let [entity (first (spec/extract-entities-for-rows [row]))]
-    (let [fspec (entity->file-spec (storage-context) entity)]
+    (let [fspec (entity->file-spec (serdes/storage-base-context) entity)]
       {:path (:path fspec), :content-hash (file-spec-hash fspec)})))
 
 (defn row->content-hash
@@ -147,7 +142,7 @@
 
   Throws Exception if any entity in the stream is an Exception instance."
   [stream task-id & {:keys [total]}]
-  (let [opts   (storage-context)
+  (let [opts   (serdes/storage-base-context)
         stream (if (or (nil? task-id) total (counted? stream)) stream (vec stream))
         total  (or total (when task-id (count stream)))
         report (if (and task-id (pos? total))

@@ -76,6 +76,7 @@
    [:tool-name :string]
    [:doc {:optional true} [:maybe :string]]
    [:schema MalliSchema]
+   [:declaration {:optional true} [:maybe [:fn delay?]]]
    [:fn [:fn fn?]]
    [:decode {:optional true} [:maybe [:fn fn?]]]
    [:prompt {:optional true} [:maybe :string]]

@@ -486,7 +486,7 @@ const configs = [
       ],
       "import/no-unresolved": [
         "error",
-        { ignore: ["@metabase/embedding-sdk-react"] },
+        { ignore: ["@metabase/embedding-sdk-react", "^cljs/"] },
       ],
       "metabase/no-direct-helper-import": "error",
       "metabase/no-unsafe-element-filtering": "warn",
