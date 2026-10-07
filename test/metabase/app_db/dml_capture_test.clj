@@ -154,6 +154,7 @@
 
 ;;; `::pk-transformed-bird` transforms its pk, so capture can't trust a literal pk to be the stored value.
 (methodical/defmethod t2.model/table-name ::pk-transformed-bird [_] table-name)
+(derive ::pk-transformed-bird :metabase/model)
 (t2/deftransforms ::pk-transformed-bird {:id {:in identity, :out identity}})
 (defmethod dml-capture/capture-fields ::pk-transformed-bird [_ _op] [:id])
 (defmethod dml-capture/captured! ::pk-transformed-bird [_ event] (swap! captured conj event))
