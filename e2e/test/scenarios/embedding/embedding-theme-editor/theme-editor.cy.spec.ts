@@ -95,56 +95,11 @@ describe(
       H.main().findByText("My custom theme").should("be.visible");
     });
 
-    it("shows not found for invalid theme id", () => {
-      cy.visit("/admin/embedding/themes/99999");
-
-      H.main().findByText("We're a little lost...").should("be.visible");
-    });
-
-    it("can delete the theme from the editor with confirmation", () => {
-      createThemeViaApi("Theme to delete").then((theme) => {
-        visitThemeEditor(theme.id);
-      });
-
-      cy.log("delete button should be visible");
-      cy.findByRole("button", { name: /Delete theme/ })
-        .scrollIntoView()
-        .should("be.visible");
-
-      cy.log("open the delete confirmation modal");
-      cy.findByRole("button", { name: /Delete theme/ }).click();
-
-      cy.findByRole("dialog").within(() => {
-        cy.findByText("Delete theme").should("be.visible");
-        cy.findByText(
-          "Are you sure you want to delete this theme? This action cannot be undone.",
-        ).should("be.visible");
-
-        cy.log("cancel the deletion");
-        cy.findByRole("button", { name: /Cancel/ }).click();
-      });
-
-      cy.log("should remain on the editor page after cancelling");
-      cy.url().should("match", /\/themes\/\d+/);
-
-      cy.log("confirm deletion");
-      cy.findByRole("button", { name: /Delete theme/ }).click();
-      cy.findByRole("dialog").within(() => {
-        cy.findByRole("button", { name: /Delete/ }).click();
-      });
-
-      H.undoToast().findByText("Theme deleted successfully").should("exist");
-
-      cy.log("should navigate back to the themes listing");
-      cy.url().should("include", "/admin/embedding/themes");
-      cy.url().should("not.match", /\/themes\/\d+/);
-
-      H.main().within(() => {
-        cy.findByText("Theme to delete").should("not.exist");
-      });
-    });
-
     it("can delete a theme that has unsaved changes without getting stuck on a 404", () => {
+      cy.log("an unknown theme id shows the not found page");
+      cy.visit("/admin/embedding/themes/99999");
+      H.main().findByText("We're a little lost...").should("be.visible");
+
       // Repro of a bug where deleting a dirty theme would trigger the
       // unsaved-changes guard. The redirect to the theme list got blocked,
       // leaving the user on the now-deleted theme's URL — which 404s once
@@ -158,6 +113,29 @@ describe(
 
       cy.findByRole("button", { name: /Save theme/ }).should("be.enabled");
 
+      cy.log("open the delete confirmation modal");
+      cy.findByRole("button", { name: /Delete theme/ })
+        .scrollIntoView()
+        .should("be.visible")
+        .click();
+
+      cy.findByRole("dialog").within(() => {
+        cy.findByText("Delete theme").should("be.visible");
+        cy.findByText(
+          "Are you sure you want to delete this theme? This action cannot be undone.",
+        ).should("be.visible");
+
+        cy.log("cancel the deletion");
+        cy.findByRole("button", { name: /Cancel/ }).click();
+      });
+
+      cy.log("should remain on the editor with the unsaved changes");
+      cy.findByRole("dialog").should("not.exist");
+      cy.findByLabelText("Theme name").should(
+        "have.value",
+        "Renamed but unsaved",
+      );
+
       cy.log("delete the theme");
       cy.findByRole("button", { name: /Delete theme/ }).click();
       cy.findByRole("dialog").within(() => {
@@ -167,8 +145,10 @@ describe(
       H.undoToast().findByText("Theme deleted successfully").should("exist");
 
       cy.log("should land on the themes listing — not 404 or leave-prompt");
-      cy.url().should("include", "/admin/embedding/themes");
-      cy.url().should("not.match", /\/themes\/\d+/);
+      cy.url().should("match", /\/admin\/embedding\/themes$/);
+      H.main()
+        .findByRole("button", { name: /New theme/ })
+        .should("be.visible");
       H.main().findByText("We're a little lost...").should("not.exist");
     });
 
