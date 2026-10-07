@@ -229,7 +229,8 @@
 
 (defmethod comparable-object :model/Card
   [_model object]
-  ;; after-select adds `:card_schema` to revisions stored without it
+  ;; `:card_schema` is an internal marker: `serialize-instance` keeps it, and after-select adds it to revisions stored
+  ;; without it
   (dissoc object :card_schema))
 
 (mu/defn push-revision!
@@ -240,16 +241,17 @@
     :or   {is-creation? false}}     :- PushRevisionInput]
   (let [entity-name (name entity)
         serialized-object (serialize-instance entity id (dissoc object :message))
-        last-object (revisions.db/latest-revision-object entity-name id)
-        last-object-for-comparison (comparable-object entity last-object)]
+        last-object (revisions.db/latest-revision-object entity-name id)]
     ;; make sure we still have a map after calling out serialization function
     (assert (map? serialized-object))
     ;; the last-object could have nested object, e.g: Dashboard can have multiple Card in it,
     ;; even though we call `post-select` on the `object`, the nested object might not be transformed correctly
     ;; E.g: Cards inside Dashboard will not be transformed
     ;; so to be safe, we'll just compare them as string
-    (when-not (= (json/encode serialized-object)
-                 (json/encode last-object-for-comparison))
+    ;; `comparable-object` applies to both sides: `serialize-instance` can keep a key that it drops. The stored
+    ;; object keeps every key, because `revert-to-revision!` reads them back.
+    (when-not (= (json/encode (comparable-object entity serialized-object))
+                 (json/encode (comparable-object entity last-object)))
       (revisions.db/insert-revision! {:model        entity-name
                                       :model_id     id
                                       :user_id      user-id

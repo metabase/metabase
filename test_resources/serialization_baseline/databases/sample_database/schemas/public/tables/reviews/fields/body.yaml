@@ -9,7 +9,6 @@ table_id:
 database_type: CHARACTER VARYING
 base_type: type/Text
 effective_type: type/Text
-dimensions: []
 preview_display: false
 position: 4
 database_position: 4

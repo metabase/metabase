@@ -9,7 +9,6 @@ table_id:
 database_type: DATE
 base_type: type/Date
 effective_type: type/Date
-dimensions: []
 position: 9
 database_position: 9
 serdes/meta:

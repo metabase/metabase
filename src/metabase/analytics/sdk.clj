@@ -17,6 +17,7 @@
    [metabase.request.user-agent :as request.user-agent]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms])
   (:import
    (java.net URI)))
@@ -168,7 +169,10 @@
    [:embedding_route             {:optional true} [:maybe :string]]
    [:metabase_version            {:optional true} [:maybe :string]]
    [:embedding_client_identifier {:optional true} [:maybe :string]]
-   [:start_time_millis           {:optional true} [:maybe :int]]])
+   [:start_time_millis           {:optional true} [:maybe :int]]
+   ;; the entry shape is enforced where it is built ([[metabase.lib.schema/sandboxing.details.entry]]) and on the way
+   ;; into the app DB ([[metabase.queries.schema/query-execution.update]]); this row schema only passes it through
+   [:sandbox_details             {:optional true} [:maybe [:sequential [:map {::mr/deliberately-open true}]]]]])
 
 (mu/defn include-sdk-info :- :map
   "Adds the currently bound, or existing `*client*` and `*version*` to the given map, which is usually a row going

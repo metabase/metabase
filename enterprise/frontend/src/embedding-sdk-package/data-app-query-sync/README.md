@@ -18,7 +18,7 @@ Two directories at the data-app root, beside `package.json`:
 
 ```
 queries/orders.query.ts     export const RevenueQuery = defineQuery({ source: schema.tables.orders })
-actions/orders.action.ts    export const CreateOrder = defineAction({ action: schema.models.orders.actions.create })
+actions/orders.action.ts    export const CreateOrder = defineAction({ action: schema.actions.shipOrder })
 ```
 
 Nothing else is scanned — definitions under `src/` are invisible to sync, which is a common
@@ -33,29 +33,16 @@ authoring mistake.
    yet, plus its collection and permission group.
 3. **Reconcile queries** (`reconcile.ts`) — each authored query becomes a saved question in the
    collection, and its ID is injected back into the source as `savedQuestionSourceId`.
-4. **Reconcile models** (`reconcile-models.ts`) — each declared action's model is copied into the
-   collection, the action is copied onto that copy, and the copy's ID is injected back as
+4. **Reconcile actions** (`reconcile-actions.ts`) — each declared action, a query action that
+   belongs to no model, is copied into the collection, and the copy's ID is injected back as
    `copiedActionId`.
 
-## Why actions copy a whole model
+## Actions
 
-An action's permissions resolve through its parent model's collection
-(`metabase.actions.models`, `perms-objects-set`). Copying a card does **not** copy its actions —
-`create-card!` writes one row and nothing traverses Card → Action — so making an action reachable
-means copying its model _and_ recreating the action on that copy.
-
-Models are therefore reference-counted by the actions that need them. The lockfile entry holds the
-set of actions, not a count, because a count drifts across repeated runs while a set converges:
-
-| Event                                 | Model           | Action                    |
-| ------------------------------------- | --------------- | ------------------------- |
-| action declared, model not yet copied | copy it         | recreate on the copy      |
-| action declared, model already copied | reuse           | recreate just this action |
-| declaration dropped, siblings remain  | keep            | delete that copied action |
-| last declaration dropped              | delete the copy | cascade removes the rest  |
-
-The last row is free: `action.model_id` is `ON DELETE CASCADE`, so deleting the copied model takes
-its copied actions with it.
+An action without a model resolves its permissions through its own collection, so copying the
+action into the app collection is what makes it runnable by the app's viewers. Each lockfile entry
+maps a source action to its copy; a copy is updated when its source changes, recreated when it was
+deleted, and deleted when its declaration goes away. An action that belongs to a model is refused.
 
 ## Discovery is deliberately strict
 
@@ -76,30 +63,22 @@ injects sequentially and an earlier injection into the same file shifts every of
   "queries": [
     { "tableId": 1, "hash": "v1:sha256:…", "savedQuestionSourceId": 54 },
   ],
-  "models": [
-    {
-      "sourceModelId": 5,
-      "copiedModelId": 80,
-      "hash": "v1:sha256:…",
-      "actions": [
-        { "sourceActionId": 51, "copiedActionId": 91, "hash": "v1:sha256:…" },
-      ],
-    },
+  "actions": [
+    { "sourceActionId": 51, "copiedActionId": 91, "hash": "v1:sha256:…" },
   ],
 }
 ```
 
 It is not a cache. It is the only evidence that a card or action in Metabase belongs to this app,
-and every mutating path checks it first. The `hash` fields fingerprint the **source** payload — the
-only way to notice that someone edited the upstream model or action, since nothing in the app's own
-source changes when they do.
+and every mutating path checks it first. The `hash` fields fingerprint the payload last copied; sync
+compares it against the live copy, which catches both an edited source and a copy edited in Metabase.
 
 ## Invariants
 
 These hold across both reconcilers, and are what the tests are mostly about:
 
 - **Nothing is mutated or deleted without lockfile proof**, plus a live ownership check — still a
-  question/model, still in the app's collection, action still hanging off the copied model. Anything
+  question, still in the app's collection, an action still without a model in the app's collection. Anything
   that has moved is refused with recovery instructions rather than silently touched.
 - **The lockfile flushes after every single mutation**, so a crash mid-run leaves resumable state.
 - **`404` is the only recoverable failure.** Any other status rethrows; recreate-after-404

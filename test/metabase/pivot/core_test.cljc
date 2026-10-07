@@ -656,9 +656,8 @@
                                 (str "formatted: " v))
                tree [{:value [1 2 3] :children []}]
                formatters [mock-formatter]
-               cols [{:name "col0"}]
                col-indexes [0]
-               result (#'pivot/format-values-in-tree tree formatters cols col-indexes)]
+               result (#'pivot/format-values-in-tree tree formatters col-indexes)]
            (is (= 1 (count @received-values))
                "Formatter should be called once")
            (is (array? (first @received-values))
@@ -674,9 +673,8 @@
                                 (str "formatted: " (pr-str v)))
                tree [{:value {:a 1 :b 2} :children []}]
                formatters [mock-formatter]
-               cols [{:name "col0"}]
                col-indexes [0]]
-           (#'pivot/format-values-in-tree tree formatters cols col-indexes)
+           (#'pivot/format-values-in-tree tree formatters col-indexes)
            (is (= 1 (count @received-values))
                "Formatter should be called once")
            (is (object? (first @received-values))
@@ -694,9 +692,8 @@
                      {:value 42 :children []}
                      {:value nil :children []}]
                formatters [mock-formatter mock-formatter mock-formatter]
-               cols [{:name "col0"} {:name "col1"} {:name "col2"}]
                col-indexes [0 1 2]]
-           (#'pivot/format-values-in-tree tree formatters cols col-indexes)
+           (#'pivot/format-values-in-tree tree formatters col-indexes)
            (is (= 3 (count @received-values))
                "Formatter should be called three times")
            (is (= "string-value" (first @received-values))
@@ -713,9 +710,8 @@
                tree [{:value [1 2]
                       :children [{:value {:x 10} :children []}]}]
                formatters [mock-formatter mock-formatter]
-               cols [{:name "col0"} {:name "col1"}]
                col-indexes [0 1]]
-           (#'pivot/format-values-in-tree tree formatters cols col-indexes)
+           (#'pivot/format-values-in-tree tree formatters col-indexes)
            (is (= 2 (count @received-values))
                "Formatter should be called for both parent and child")
            (is (array? (first @received-values))

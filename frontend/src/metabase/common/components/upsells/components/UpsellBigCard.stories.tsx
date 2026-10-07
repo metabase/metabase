@@ -1,6 +1,7 @@
 import { useState } from "react";
 
 import { ReduxProvider } from "__support__/storybook";
+import upsellPerformanceToolsImage from "assets/img/upsell-performance-tools.png";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { Box, Modal } from "metabase/ui";
 
@@ -14,7 +15,7 @@ const args = {
   campaign: "upsell-big-card",
   source: "storybook",
   title: "Troubleshoot faster",
-  illustrationSrc: "app/assets/img/upsell-performance-tools.png",
+  illustrationSrc: upsellPerformanceToolsImage,
 } as const;
 
 const argTypes = {

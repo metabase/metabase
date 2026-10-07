@@ -126,6 +126,7 @@
    [:span-attrs       {:optional true} [:maybe [:map {::mr/deliberately-open true
                                                       :description "extra span attributes"}]]]
    [:error-msg        {:optional true} [:maybe fn?]]
+   [:read-stream      {:optional true} [:maybe fn?]]
    [:wrap-stream      {:optional true} [:maybe fn?]]
    [:on-request-error {:optional true} [:maybe fn?]]])
 
@@ -327,6 +328,8 @@
     :error-msg        - replaces the descriptor's own `res->message`, for a provider whose message
                         depends on the connection rather than only on the response. Applies to both
                         phases below.
+    :read-stream      - turns the response body into a reducible of the provider's events, for a stream
+                        that is not SSE. Defaults to [[core/sse-reducible]].
     :wrap-stream      - applied to the reducible before error translation, for an adapter with its own
                         translation to do first.
     :on-request-error - replaces the default [[rethrow!]] catch, for an adapter that retries. Only
@@ -335,11 +338,12 @@
                         instead, which no adapter overrides."
   [{:keys [slug display-name span] :as p}            :- Provider
    {:keys [model input tools credentials ai-proxy?]} :- core/LLMRequestOpts
-   {:keys [path body headers request-options span-attrs wrap-stream on-request-error error-msg]
+   {:keys [path body headers request-options span-attrs read-stream wrap-stream on-request-error error-msg]
     :or   {wrap-stream identity}}                    :- StreamOpts]
-  (let [msg-count  (count input)
-        tool-count (count tools)
-        res->msg   (or error-msg (:error-msg p))]
+  (let [msg-count   (count input)
+        tool-count  (count tools)
+        res->msg    (or error-msg (:error-msg p))
+        read-stream (or read-stream core/sse-reducible)]
     (log/debug (str display-name " request") {:model model :msg-count msg-count :tools tool-count})
     ;; flat keys, which is what `u.o11y/with-span` renders into its log line. clj-otel reads span
     ;; attributes only from `:attributes` and drops every other key, so these reach the log and not the
@@ -365,7 +369,7 @@
                            :body        (json/encode body)}
                         request-options)
               :body
-              core/sse-reducible
+              read-stream
               (debug/capture-stream {:provider slug
                                      :model    model
                                      :url      path

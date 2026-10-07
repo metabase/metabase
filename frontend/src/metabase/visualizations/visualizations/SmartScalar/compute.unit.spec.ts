@@ -1638,6 +1638,29 @@ describe("SmartScalar > compute", () => {
           },
           {
             description:
+              "should remove year and day when previous hour and current hour are late in the same day",
+            rows: [
+              ["2019-11-05T17:00:00", 100],
+              ["2019-11-05T20:00:00", 300],
+            ],
+            dateUnit: "hour",
+            expected: {
+              ...getMetricProperties({
+                dateStr: "Nov 5, 2019, 8:00–59 PM",
+                metricValue: 300,
+              }),
+              comparison: {
+                ...getComparisonProperties({
+                  changeType: "increase",
+                  comparisonValue: 100,
+                  dateStr: "5:00–59 PM",
+                  metricValue: 300,
+                }),
+              },
+            },
+          },
+          {
+            description:
               "should not remove year when previous minute and current minute are in different years",
             rows: [
               ["2018-10-10T04:00:00", 100],

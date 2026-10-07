@@ -42,4 +42,4 @@
    :library-collection-refs  (comma-separated-references (:library-collections query-params))
    :include-data-library?    (enabled? (:include-data-library query-params))
    :include-metric-library?  (enabled? (:include-metric-library query-params))
-   :include-models?          (enabled? (:include-models query-params))})
+   :include-actions?         (enabled? (:include-actions query-params))})

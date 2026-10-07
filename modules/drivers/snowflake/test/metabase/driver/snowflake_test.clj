@@ -268,6 +268,20 @@
                          :wif-token-file-path tok-path))]
         (is (= "from-file" (:token spec)))))))
 
+(deftest ^:synchronized connection-details->spec-wif-oidc-file-path-readable-paths-test
+  (testing "the token file is read only from a directory `readable-paths` allows"
+    (mt/with-temp-file [tok-path "wif-token"]
+      (spit tok-path "from-file")
+      (let [spec (fn [] (sql-jdbc.conn/connection-details->spec
+                         :snowflake
+                         (assoc wif-base-details
+                                :wif-provider        "OIDC"
+                                :wif-token-file-path tok-path)))]
+        (mt/with-temp-env-var-value! [mb-readable-paths "NONE"]
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Reading from path is disallowed" (spec))))
+        (mt/with-temp-env-var-value! [mb-readable-paths (.getParent (java.io.File. ^String tok-path))]
+          (is (= "from-file" (:token (spec)))))))))
+
 (defn- fake-jwt
   "Build a JWT-shaped string with `claims` as the payload. Header and signature are placeholders —
   the token is only parseable, not verifiable."

@@ -502,10 +502,13 @@ describe("scenarios > setup > AI config step", () => {
     navigateToAiConfigStep();
 
     cy.findByLabelText("Connect to an AI provider").within(() => {
-      cy.findByRole("button", { name: /OpenAI/ }).should("be.visible");
-      cy.findByRole("button", { name: /OpenRouter/ }).should("be.visible");
-      cy.findByRole("button", { name: /Microsoft Azure/ }).should("be.visible");
-      cy.findByRole("button", { name: /Amazon Bedrock/ }).should("be.visible");
+      [/OpenAI/, /OpenRouter/, /Microsoft Azure/, /Amazon Bedrock/].forEach(
+        (name) => {
+          cy.findByRole("button", { name })
+            .scrollIntoView()
+            .should("be.visible");
+        },
+      );
       // the managed provider is offered but not connectable without the LLM proxy,
       // which e2e does not configure
       cy.findByRole("button", { name: /Metabase/ }).should("be.disabled");

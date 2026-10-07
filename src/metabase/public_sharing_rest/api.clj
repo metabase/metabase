@@ -157,14 +157,24 @@
     [:json_query :parameters]
     :status]))
 
-(defmethod transform-qp-result :failed
-  [{error-type :error_type, :as results}]
-  ;; if the query failed instead, unless the error type is specified and is EXPLICITLY allowed to be shown for embeds,
-  ;; instead of returning anything about the query just return a generic error message
+(defn error-response
+  "Reduce a query `error` -- the QP's formatted error response, or the `Throwable->map` of an exception that escaped
+  it -- to what public and embedded endpoints are allowed to return: the status and error type, and a generic message
+  in place of the original unless the error type is EXPLICITLY allowed to be shown in embeds. Nothing about the query
+  itself gets through.
+
+  [[metabase.api-routes.routes]] applies this to every error written by a streaming response under the public and
+  embedding routes."
+  [{error-type :error_type, :as error}]
   (merge
-   (select-keys results [:status :error :error_type])
+   {:status :failed}
+   (select-keys error [:status :error :error_type])
    (when-not (qp.error-type/show-in-embeds? error-type)
      {:error (tru "An error occurred while running the query.")})))
+
+(defmethod transform-qp-result :failed
+  [results]
+  (error-response results))
 
 (defn- process-query-for-card-with-id-run-fn
   "Create the `:make-run` function used for [[process-query-for-card-with-id]] and [[process-query-for-dashcard]]."

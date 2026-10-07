@@ -4,7 +4,7 @@ import { usePageTitle } from "metabase/hooks/use-page-title";
 import { Outlet } from "metabase/router";
 
 export function LibrarySectionLayout() {
-  usePageTitle(t`Library`);
+  usePageTitle(t`Semantic layer`);
 
   return <Outlet />;
 }

@@ -1262,8 +1262,7 @@
   {:include-field-values     false
    :include-database-secrets false
    :continue-on-error        false
-   :skip-archived            true
-   :inline-user-settings     true})
+   :skip-archived            true})
 
 (def ^:private models-traversed-but-not-stored
   "Models git sync walks through but never writes."

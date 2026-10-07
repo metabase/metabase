@@ -144,7 +144,7 @@
   (merge
    {:id               (format "card__%d" (u/the-id card))
     :db_id            (:database_id card)
-    :entity_id        nil
+    :entity_id        (:entity_id card)
     :display_name     (:name card)
     :schema           "Everything else"
     :moderated_status nil
@@ -173,7 +173,7 @@
                (-> (mt/user-http-request :crowberto :get 200 (format "database/%d" (mt/id)))
                    (dissoc :schedules :can_upload))))))))
 
-(deftest ^:parallel get-database-test-2
+(deftest get-database-test-2
   (testing "GET /api/database/:id"
     (mt/with-temp [:model/Database db  {:name "My DB" :engine ::test-driver}
                    :model/Table    t1  {:name "Table 1" :db_id (:id db)}
@@ -213,14 +213,21 @@
               :specific-errors {:include ["should be either \"tables\" or \"tables.fields\", received: \"schemas\""]}}
              (mt/user-http-request :lucky :get 400 (format "database/%d?include=schemas" (mt/id))))))))
 
-(deftest ^:parallel get-database-stub-test
+(deftest get-database-stub-test
   (testing "GET /api/database"
     (testing "A stub database should not be included in the response"
       (mt/with-temp [:model/Database {db-id-1 :id} {:is_stub true}
                      :model/Database {db-id-2 :id} {:is_stub false}]
         (let [{databases :data} (mt/user-http-request :lucky :get 200 "database")]
           (is (nil? (m/find-first #(= (:id %) db-id-1) databases)))
-          (is (some? (m/find-first #(= (:id %) db-id-2) databases))))))))
+          (is (some? (m/find-first #(= (:id %) db-id-2) databases))))
+        (testing "unless include_stubs is passed"
+          (let [{databases :data} (mt/user-http-request :crowberto :get 200 "database" :include_stubs true)]
+            (is (some? (m/find-first #(= (:id %) db-id-1) databases)))
+            (is (some? (m/find-first #(= (:id %) db-id-2) databases)))))
+        (testing "A stub database can be fetched by id"
+          (is (=? {:id db-id-1 :is_stub true}
+                  (mt/user-http-request :crowberto :get 200 (format "database/%d" db-id-1)))))))))
 
 (deftest get-database-legacy-no-self-service-test
   (testing "GET /api/database/:id"
@@ -250,7 +257,7 @@
             (let [result (mt/user-http-request :crowberto :get 200 (format "database/%d" db-id))]
               (is (= uploads-enabled? (:can_upload result))))))))))
 
-(deftest ^:parallel get-database-usage-info-test
+(deftest get-database-usage-info-test
   (mt/with-temp
     [:model/Database {db-id :id}      {}
      :model/Table    {table-id-1 :id} {:db_id db-id}
@@ -347,7 +354,7 @@
           (is (empty? (find-in-clauses q))
               "usage_info should not generate IN clauses with inline collections"))))))
 
-(deftest ^:parallel get-database-usage-info-test-2
+(deftest get-database-usage-info-test-2
   (mt/with-temp
     [:model/Database {db-id :id} {}]
     (testing "should work with DB that has no tables"
@@ -541,7 +548,7 @@
                (mt/user-http-request :crowberto :post 400 "database" {:engine :h2, :name db-name, :details details})))
         (is (not (t2/exists? :model/Database :name db-name)))))))
 
-(deftest ^:parallel delete-database-test
+(deftest delete-database-test
   (testing "DELETE /api/database/:id"
     (testing "Check that a superuser can delete a Database"
       (mt/with-temp [:model/Database db]
@@ -644,6 +651,21 @@
                                       :engine  (u/qualified-name ::test-driver)
                                       :details {:db "my_db"}
                                       :is_stub true})))))))
+
+(deftest connect-stub-database-test
+  (testing "PUT /api/database/:id with connection details for a stub clears is_stub and restarts the initial sync"
+    (mt/with-temporary-setting-values [disable-auto-sync true]
+      (mt/with-temp [:model/Database {db-id :id} {:engine              :postgres
+                                                  :details             {}
+                                                  :is_stub             true
+                                                  :initial_sync_status "complete"
+                                                  :initial_sync_error  "stale"}]
+        (with-redefs [driver/can-connect? (constantly true)]
+          (api-update-database! 200 db-id {:details {:host "localhost" :dbname "prod"}}))
+        (is (=? {:is_stub             false
+                 :initial_sync_status "incomplete"
+                 :initial_sync_error  nil}
+                (t2/select-one :model/Database :id db-id)))))))
 
 (deftest reject-is-stub-in-update-test
   (testing "PUT /api/database/:id returns a 400 when :is_stub=true is in the request body"
@@ -777,7 +799,7 @@
           (is (= (:details db)
                  (t2/select-one-fn :details :model/Database (u/the-id db)))))))))
 
-(deftest ^:parallel enable-model-actions-with-user-controlled-scheduling-test
+(deftest enable-model-actions-with-user-controlled-scheduling-test
   (testing "Should be able to enable/disable actions for a database with user-controlled scheduling (metabase#30699)"
     (mt/with-temp [:model/Database {db-id :id} {:details  {:let-user-control-scheduling true}
                                                 :settings {:database-enable-actions true}}]
@@ -951,7 +973,7 @@
         (is (= #{"t1" "t2" "t3" "t4" "t5" "t6"} (set (map :name tables)))
             "every table is returned to a non-admin user with table-granular perms, without tripping the backstop")))))
 
-(deftest ^:parallel fetch-database-fields-test
+(deftest fetch-database-fields-test
   (letfn [(f [fields] (m/index-by #(str (:table_name %) "." (:name %)) fields))]
     (testing "GET /api/database/:id/fields"
       (is (partial= {"VENUES.ID"        {:name "ID" :display_name "ID"
@@ -993,7 +1015,7 @@
                         (map :name)
                         (some (partial = "PRICE"))))))))))
 
-(deftest ^:parallel fetch-database-metadata-remove-inactive-test
+(deftest fetch-database-metadata-remove-inactive-test
   (mt/with-temp [:model/Database {db-id :id} {}
                  :model/Table    _ {:db_id db-id, :active false}]
     (testing "GET /api/database/:id/metadata?include_hidden=true"
@@ -1233,7 +1255,7 @@
           (mt/user-http-request :rasta :get 200 "database")
           (is (< (call-count) 10)))))))
 
-(deftest ^:parallel databases-list-test-2
+(deftest databases-list-test-2
   (testing "GET /api/database"
     (testing "Test that we can get all the DBs (ordered by name, then driver)"
       (testing "Make sure databases don't paginate"
@@ -1243,7 +1265,7 @@
           (is (=? {:data #(> (count %) 1)}
                   (mt/user-http-request :rasta :get 200 "database" :limit 1 :offset 0))))))))
 
-(deftest ^:parallel databases-list-test-3
+(deftest databases-list-test-3
   (testing "GET /api/database"
     (testing "`?include=tables`"
       (let [old-ids (t2/select-pks-set :model/Database)]
@@ -1253,7 +1275,7 @@
               (is (= (expected-tables db)
                      (:tables db))))))))))
 
-(deftest ^:parallel databases-list-test-4
+(deftest databases-list-test-4
   (testing "GET /api/database"
     (testing "`?include_only_uploadable=true` -- excludes drivers that don't support uploads"
       (let [old-ids (t2/select-pks-set :model/Database)]
@@ -1262,7 +1284,7 @@
                   :total 0}
                  (get-all "database?include_only_uploadable=true" old-ids))))))))
 
-(deftest ^:parallel databases-list-test-5
+(deftest databases-list-test-5
   (testing "GET /api/database"
     (testing "`?include_only_uploadable=true` -- includes drivers that do support uploads"
       (let [old-ids (t2/select-pks-set :model/Database)]
@@ -1292,7 +1314,7 @@
                 (is (= uploads-enabled?
                        (-> result :data first :can_upload)))))))))))
 
-(deftest ^:parallel databases-list-include-saved-questions-test
+(deftest databases-list-include-saved-questions-test
   (testing "GET /api/database?saved=true"
     (mt/with-temp [:model/Card _ (assoc (card-with-native-query "Some Card")
                                         :result_metadata [{:name         "col_name"
@@ -1406,7 +1428,7 @@
            %)
         (:data (mt/user-http-request :crowberto :get 200 "database?saved=true&include=tables"))))
 
-(deftest ^:parallel databases-list-include-saved-questions-tables-test
+(deftest databases-list-include-saved-questions-tables-test
   (testing "GET /api/database?saved=true&include=tables"
     (testing "Check that we get back 'virtual' tables for Saved Questions"
       (testing "The saved questions virtual DB should be the last DB in the list"
@@ -1431,7 +1453,7 @@
             (is (= nil
                    (fetch-virtual-database)))))))))
 
-(deftest ^:parallel databases-list-include-saved-questions-tables-test-3
+(deftest databases-list-include-saved-questions-tables-test-3
   (testing "GET /api/database?saved=true&include=tables"
     (testing "should pretend Collections are schemas"
       (mt/with-temp [:model/Collection stamp-collection {:name "Stamps"}
@@ -1451,7 +1473,7 @@
            (virtual-table-for-card coin-card :schema "Coins")
            (virtual-table-for-card stamp-card :schema "Stamps")))))))
 
-(deftest ^:parallel databases-list-include-saved-questions-tables-test-4
+(deftest databases-list-include-saved-questions-tables-test-4
   (testing "GET /api/database?saved=true&include=tables"
     (testing "should remove Cards that have ambiguous columns"
       (mt/with-temp [:model/Card ok-card         (assoc (card-with-native-query "OK Card")         :result_metadata [{:name         "cam"
@@ -1497,7 +1519,7 @@
       (mt/with-dynamic-fn-redefs [driver.u/supports? (constantly false)]
         (is (nil? (fetch-virtual-database)))))))
 
-(deftest ^:parallel databases-list-include-saved-questions-tables-test-7
+(deftest databases-list-include-saved-questions-tables-test-7
   (testing "GET /api/database?saved=true&include=tables"
     (testing "should remove Cards that use cumulative-sum and cumulative-count aggregations"
       (mt/with-temp [:model/Card ok-card  (ok-mbql-card)
@@ -1516,7 +1538,7 @@
           (check-tables-included response (virtual-table-for-card ok-card))
           (check-tables-not-included response (virtual-table-for-card bad-card)))))))
 
-(deftest ^:parallel db-metadata-saved-questions-db-test
+(deftest db-metadata-saved-questions-db-test
   (testing "GET /api/database/:id/metadata works for the Saved Questions 'virtual' database"
     (mt/with-temp [:model/Card card (card-with-native-query
                                      "Birthday Card"
@@ -1743,7 +1765,7 @@
                    (:metadata_sync_schedule db)))
             (is (nil? (:cache_field_values_schedule db)))))))))
 
-(deftest ^:parallel fetch-db-with-expanded-schedules
+(deftest fetch-db-with-expanded-schedules
   (testing "If we FETCH a database will it have the correct 'expanded' schedules?"
     (mt/with-temp [:model/Database db {:details                     {:let-user-control-scheduling true}
                                        :metadata_sync_schedule      "0 0 * ? * 6 *"
@@ -1969,7 +1991,7 @@
               (.countDown blocker-latch)
               (.shutdownNow pool))))))))
 
-(deftest ^:parallel dismiss-spinner-test
+(deftest dismiss-spinner-test
   (testing "Can we dismiss the spinner? (#20863)"
     (mt/with-temp [:model/Database db    {:engine "h2", :details (:details (mt/db)) :initial_sync_status "incomplete"}
                    :model/Table    table {:db_id (u/the-id db) :initial_sync_status "incomplete"}]
@@ -1979,7 +2001,7 @@
       (testing "dismissed table spinner"
         (is (= "complete" (t2/select-one-fn :initial_sync_status :model/Table (:id table))))))))
 
-(deftest ^:parallel dismiss-spinner-test-2
+(deftest dismiss-spinner-test-2
   (testing "can we dissmiss the spinner if db has no tables? (#30837)"
     (mt/with-temp [:model/Database db    {:engine "h2", :details (:details (mt/db)) :initial_sync_status "incomplete"}]
       (mt/user-http-request :crowberto :post 200 (format "database/%d/dismiss_spinner" (u/the-id db)))
@@ -2109,6 +2131,41 @@
                 :valid   false}
                (api-validate-database! {:details {:engine :h2, :details {:db "ABC"}}})))))))
 
+(def ^:private redacted-secret-db-details
+  {:host "db.example.com", :port 5432, :dbname "x", :user "u", :password "hunter2"})
+
+(deftest validate-database-resolves-redacted-secrets-test
+  (testing "POST /api/database/validate"
+    (testing "with an `id`, sensitive values the client left redacted come from the stored Database"
+      (mt/with-temp [:model/Database db {:engine :postgres, :details redacted-secret-db-details}]
+        (let [tested-details (atom nil)]
+          (mt/with-dynamic-fn-redefs [warehouses.util/test-database-connection (fn [_engine details & _]
+                                                                                 (reset! tested-details details)
+                                                                                 nil)]
+            (api-validate-database! {:details {:engine  :postgres
+                                               :id      (u/the-id db)
+                                               :details (assoc redacted-secret-db-details
+                                                               :host     "new.example.com"
+                                                               :password secret/protected-password)}})
+            (testing "the stored password reaches the driver, not the placeholder"
+              (is (= "hunter2" (:password @tested-details))))
+            (testing "the edited host is still the one tested"
+              (is (= "new.example.com" (:host @tested-details))))))))))
+
+(deftest validate-database-does-not-echo-secrets-test
+  (testing "POST /api/database/validate"
+    (testing "secrets resolved from the stored Database are not echoed back to the client"
+      (mt/with-temp [:model/Database db {:engine :postgres, :details redacted-secret-db-details}]
+        (mt/with-dynamic-fn-redefs [warehouses.util/test-database-connection (constantly nil)]
+          (let [response (api-validate-database! {:details {:engine  :postgres
+                                                            :id      (u/the-id db)
+                                                            :details (assoc redacted-secret-db-details
+                                                                            :password secret/protected-password)}})]
+            (is (true? (:valid response)))
+            (is (= secret/protected-password (:password response)))
+            (testing "no value anywhere in the response is the real secret"
+              (is (not-any? (partial = "hunter2") (vals response))))))))))
+
 (deftest validate-database-test-2
   (testing "POST /api/database/validate"
     (let [call-count (atom 0)
@@ -2211,7 +2268,7 @@
         (is (= ["" " "]
                (mt/user-http-request :lucky :get 200 (format "database/%d/schemas" db-id))))))))
 
-(deftest ^:parallel blank-schema-identifier-test
+(deftest blank-schema-identifier-test
   (testing "We should handle Databases with blank schema correctly (#12450)"
     (mt/with-temp [:model/Database {db-id :id} {:name "my/database"}]
       (doseq [schema-name [nil ""]]
@@ -2238,7 +2295,7 @@
           (is (= ["PUBLIC"]
                  (mt/user-http-request :rasta :get 200 (format "database/%d/syncable_schemas" id)))))))))
 
-(deftest ^:parallel get-schemas-for-schemas-with-no-visible-tables
+(deftest get-schemas-for-schemas-with-no-visible-tables
   (mt/with-temp
     [:model/Database {db-id :id} {}
      :model/Table    _ {:db_id db-id :schema "schema_1a" :name "table_1"}
@@ -2300,7 +2357,7 @@
       (is (= "Not found."
              (mt/user-http-request :crowberto :get 404 (format "database/%s/schema/%s" Integer/MAX_VALUE "schema1")))))))
 
-(deftest ^:parallel get-schema-tables-test-2
+(deftest get-schema-tables-test-2
   (testing "GET /api/database/:id/schema/:schema"
     (testing "Should return a 404 if the schema isn't found"
       (mt/with-temp [:model/Database {db-id :id} {}
@@ -2320,7 +2377,7 @@
           (is (= ["table-with-perms"]
                  (map :name (mt/user-http-request :rasta :get 200 (format "database/%s/schema/%s" database-id "public"))))))))))
 
-(deftest ^:parallel get-schema-tables-test-4
+(deftest get-schema-tables-test-4
   (testing "GET /api/database/:id/schema/:schema"
     (testing "should exclude inactive Tables"
       (mt/with-temp [:model/Database {database-id :id} {}
@@ -2329,7 +2386,7 @@
         (is (= ["table"]
                (map :name (mt/user-http-request :rasta :get 200 (format "database/%s/schema/%s" database-id "public")))))))))
 
-(deftest ^:parallel get-schema-tables-test-5
+(deftest get-schema-tables-test-5
   (testing "GET /api/database/:id/schema/:schema"
     (testing "should exclude hidden Tables"
       (mt/with-temp [:model/Database {database-id :id} {}
@@ -2338,7 +2395,7 @@
         (is (= ["table"]
                (map :name (mt/user-http-request :rasta :get 200 (format "database/%s/schema/%s" database-id "public")))))))))
 
-(deftest ^:parallel get-schema-tables-test-6
+(deftest get-schema-tables-test-6
   (testing "GET /api/database/:id/schema/:schema"
     (testing "should show hidden Tables when explicitly asked for"
       (mt/with-temp [:model/Database {database-id :id} {}
@@ -2348,7 +2405,7 @@
                (set (map :name (mt/user-http-request :rasta :get 200 (format "database/%s/schema/%s" database-id "public")
                                                      :include_hidden true)))))))))
 
-(deftest ^:parallel get-schema-tables-test-7
+(deftest get-schema-tables-test-7
   (testing "GET /api/database/:id/schema/:schema"
     (testing "should work for the saved questions 'virtual' database"
       (mt/with-temp [:model/Collection coll   {:name "My Collection"}
@@ -2360,7 +2417,7 @@
         (testing "Should be able to get saved questions in a specific collection"
           (is (= [{:id               (format "card__%d" (:id card-1))
                    :db_id            (mt/id)
-                   :entity_id        nil
+                   :entity_id        (:entity_id card-1)
                    :metrics          nil
                    :moderated_status nil
                    :display_name     "Card 1"
@@ -2386,7 +2443,7 @@
             (is (contains? (set response)
                            {:id               (format "card__%d" (:id card-2))
                             :db_id            (mt/id)
-                            :entity_id        nil
+                            :entity_id        (:entity_id card-2)
                             :display_name     "Card 2"
                             :metrics          nil
                             :moderated_status nil
@@ -2398,7 +2455,7 @@
                  (mt/user-http-request :lucky :get 404
                                        (format "database/%d/schema/%s" lib.schema.id/saved-questions-virtual-database-id "Coin Collection")))))))))
 
-(deftest ^:parallel get-schema-tables-test-8
+(deftest get-schema-tables-test-8
   (testing "GET /api/database/:id/schema/:schema"
     (testing "should work for the datasets in the 'virtual' database"
       (mt/with-temp [:model/Collection coll   {:name "My Collection"}
@@ -2454,7 +2511,7 @@
             (is (contains? (set response)
                            {:id               (format "card__%d" (:id card-2))
                             :db_id            (mt/id)
-                            :entity_id        nil
+                            :entity_id        (:entity_id card-2)
                             :display_name     "Card 2"
                             :metrics          nil
                             :moderated_status nil
@@ -2466,7 +2523,7 @@
                  (mt/user-http-request :lucky :get 404
                                        (format "database/%d/schema/%s" lib.schema.id/saved-questions-virtual-database-id "Coin Collection")))))))))
 
-(deftest ^:parallel get-schema-tables-test-9
+(deftest get-schema-tables-test-9
   (testing "GET /api/database/:id/schema/:schema"
     (mt/with-temp [:model/Database {db-id :id} {}
                    :model/Table    _ {:db_id db-id :schema nil :name "t1"}
@@ -2475,7 +2532,7 @@
         (is (= ["t1" "t2"]
                (map :name (mt/user-http-request :lucky :get 200 (format "database/%d/schema/" db-id)))))))))
 
-(deftest ^:parallel get-schema-tables-schema-query-param-test
+(deftest get-schema-tables-schema-query-param-test
   (testing "GET /api/database/:id/schema/?schema=:schema"
     (mt/with-temp [:model/Database {db-id :id} {}
                    :model/Table    _ {:db_id db-id :schema nil :name "t1"}
@@ -2503,7 +2560,7 @@
                                :lucky :get 400
                                (str url "public%2Ftransactions"))))))))))
 
-(deftest ^:parallel get-schema-tables-publishing-test
+(deftest get-schema-tables-publishing-test
   (testing "GET /api/database/:id/schema/:schema"
     (testing "should return is_published as true for published tables"
       (mt/with-temp [:model/Database {database-id :id} {}
@@ -2605,7 +2662,7 @@
             (is (= "You don't have permissions to do that."
                    (mt/user-http-request :rasta :get 403 (format "database/%s/schema/%s" database-id "schema-without-perms"))))))))))
 
-(deftest ^:parallel slashes-in-identifiers-test
+(deftest slashes-in-identifiers-test
   (testing "We should handle Databases with slashes in identifiers correctly (#12450)"
     (mt/with-temp [:model/Database {db-id :id} {:name "my/database"}]
       (doseq [schema-name ["my/schema"
@@ -2771,7 +2828,7 @@
             (is (= (assoc existing-details :port 5433)
                    (t2/select-one-fn :details :model/Database :id db-id)))))))))
 
-(deftest ^:parallel secret-file-paths-returned-by-api-test
+(deftest secret-file-paths-returned-by-api-test
   (mt/with-driver :secret-test-driver
     (testing "File path values for secrets are returned as plaintext in the API (#20030)"
       (mt/with-temp [:model/Database database {:engine  :secret-test-driver
@@ -2898,7 +2955,7 @@
                      :unaggregated-query-row-limit (symbol "nil #_\"key is not present.\"")}
                     (settings)))))))))
 
-(deftest ^:parallel log-an-error-if-contains-undefined-setting-test
+(deftest log-an-error-if-contains-undefined-setting-test
   (testing "should log an error message if database contains undefined settings"
     (mt/with-temp [:model/Database {db-id :id} {:settings {:undefined-setting true}}]
       (mt/with-log-messages-for-level [messages :error]
@@ -2955,6 +3012,13 @@
                       driver/can-connect? (constantly false)]
           (is (= {:status "error"
                   :message "Failed to connect to Database"}
+                 (mt/user-http-request :crowberto :get 200 (str "database/" id "/healthcheck")))))))
+    (testing "stub database reports that it has no connection details without trying to connect"
+      (mt/with-temp [:model/Database {id :id} {:is_stub true :details {}}]
+        (with-redefs [driver/available?   (constantly true)
+                      driver/can-connect? (constantly true)]
+          (is (= {:status  "error"
+                  :message "This database has placeholder connection details. Replace that with actual connection details to make this connection Active."}
                  (mt/user-http-request :crowberto :get 200 (str "database/" id "/healthcheck")))))))
     (when config/ee-available?
       (testing "connection-type passed and configured"

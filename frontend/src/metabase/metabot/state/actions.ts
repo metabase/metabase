@@ -719,7 +719,15 @@ export const sendAgentRequest = createAsyncThunk<
           serverStarted,
           error: streamedError,
           display: isMatching(
-            { type: "ai_usage_limit_reached", message: P.string },
+            {
+              type: P.union(
+                "ai_usage_limit_reached",
+                "ai_provider_billing",
+                "ai_provider_rate_limit",
+                "ai_provider_auth",
+              ),
+              message: P.string,
+            },
             streamedError,
           )
             ? // special case where we want to show the returned error from the backend

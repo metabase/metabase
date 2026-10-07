@@ -26,9 +26,12 @@
     representation, so selecting it alone must not demand the rest of the set.
   - `:type`, read by the upgrade to 24 to recognize a metric. It is never written by an upgrade, but leaving it out
     is worse than an error: the upgrade silently skips the card and still stamps it as current.
+  - `:entity_id`, which the upgrade to 24 seeds the backfilled dimension ids from. Same failure mode as `:type`, and
+    quieter still: without it the ids are derived from `nil`, so this SELECT's dimension set disagrees with every
+    other one's and the card serializes differently depending on who read it.
 
   Keep this in sync with the columns read by the `upgrade-card-schema-to` implementations."
-  (conj schema-governed-columns :card_schema :type))
+  (conj schema-governed-columns :card_schema :type :entity_id))
 
 (def ^:private schema-select-columns
   "The `[modelable & columns]` projection [[selection]] SELECTs with: `:id`, so callers can key the rows they get

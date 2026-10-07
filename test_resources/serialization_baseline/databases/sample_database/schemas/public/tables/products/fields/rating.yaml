@@ -10,7 +10,6 @@ database_type: DOUBLE PRECISION
 base_type: type/Float
 effective_type: type/Float
 semantic_type: type/Score
-dimensions: []
 position: 6
 database_position: 6
 serdes/meta:

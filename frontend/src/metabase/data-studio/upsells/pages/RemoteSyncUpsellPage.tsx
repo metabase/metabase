@@ -1,5 +1,6 @@
 import { t } from "ttag";
 
+import remoteSyncUpsellImage from "assets/img/data-studio-remote-sync-upsell.svg";
 import { DottedBackground } from "metabase/common/components/upsells/components/DottedBackground";
 import { LineDecorator } from "metabase/common/components/upsells/components/LineDecorator";
 import { useUpgradeAction } from "metabase/common/components/upsells/components/UpgradeModal";
@@ -36,7 +37,7 @@ export function RemoteSyncUpsellPage() {
             location={LOCATION}
             title={t`Manage your ${applicationName} content in Git`}
             description={t`Keep your most important datasets, metrics, and SQL logic under version control. Sync content to a Git repository to review changes, collaborate, and maintain a production-ready source of truth.`}
-            image="app/assets/img/data-studio-remote-sync-upsell.svg"
+            image={remoteSyncUpsellImage}
             upgradeOnClick={upgradeOnClick}
             upgradeUrl={upgradeUrl}
             variant="image-full-height"

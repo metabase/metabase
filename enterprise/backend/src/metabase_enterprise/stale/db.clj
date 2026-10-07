@@ -38,6 +38,7 @@
               ;; :type is read by `queries/model?` when labelling the row; the rest are here only
               ;; because :dataset_query is schema-governed and the Card schema upgrade needs them.
               :type
+              :entity_id
               :result_metadata
               :dimensions
               :dimension_mappings

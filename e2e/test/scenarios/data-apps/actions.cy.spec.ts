@@ -2,7 +2,8 @@ import { WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import {
   DATA_APP_DISPLAY_NAME as APP_DISPLAY_NAME,
   DATA_APP_NAME as APP_NAME,
-  moveDataAppModelToCollection,
+  createDataAppCollection,
+  createDataAppScoreboardAction,
   visitDataAppRoute as visitAppRoute,
 } from "e2e/support/helpers";
 import type { CollectionPermission } from "metabase-types/api";
@@ -12,7 +13,6 @@ import { DATA_APP_TEST_ENV as TEST_ENV } from "./helpers";
 const { H } = cy;
 
 const TEST_TABLE = "scoreboard_actions";
-const MODEL_NAME = "Scoreboard model";
 const EXISTING_TEAM = "Amorous Aardvarks";
 const RESOURCE_COLLECTION = "Data App resources";
 
@@ -28,22 +28,13 @@ describe(
       H.resetTestTable({ type: "postgres", table: TEST_TABLE });
       H.resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: TEST_TABLE });
       H.setActionsEnabledForDB(WRITABLE_DB_ID);
-      H.createModelFromTableName({
-        tableName: TEST_TABLE,
-        modelName: MODEL_NAME,
-      });
     });
 
     const setupActionsApp = (actionParams: Record<string, string | number>) =>
-      cy.get<number>("@modelId").then((modelId) => {
-        H.createImplicitAction({
-          model_id: modelId,
-          kind: "create",
-        }).then(({ body: action }) => {
-          H.mockDataApp(APP_NAME, {
-            displayName: APP_DISPLAY_NAME,
-            testEnv: { ...TEST_ENV, actionId: action.id, actionParams },
-          });
+      createDataAppScoreboardAction().then((action) => {
+        H.mockDataApp(APP_NAME, {
+          displayName: APP_DISPLAY_NAME,
+          testEnv: { ...TEST_ENV, actionId: action.id, actionParams },
         });
       });
 
@@ -107,27 +98,21 @@ describe(
 
     describe("collection permissions", () => {
       const setupRestrictedApp = (access: CollectionPermission) =>
-        cy.get<number>("@modelId").then((modelId) => {
-          moveDataAppModelToCollection({
-            modelId,
-            name: RESOURCE_COLLECTION,
-            access,
-          });
-
-          H.createImplicitAction({
-            model_id: modelId,
-            kind: "create",
-          }).then(({ body: action }) => {
-            H.mockDataApp(APP_NAME, {
-              displayName: APP_DISPLAY_NAME,
-              testEnv: {
-                ...TEST_ENV,
-                actionId: action.id,
-                actionParams: { team_name: "Data App FC", score: 7 },
+        createDataAppCollection({ name: RESOURCE_COLLECTION, access }).then(
+          (collection) =>
+            createDataAppScoreboardAction({ collectionId: collection.id }).then(
+              (action) => {
+                H.mockDataApp(APP_NAME, {
+                  displayName: APP_DISPLAY_NAME,
+                  testEnv: {
+                    ...TEST_ENV,
+                    actionId: action.id,
+                    actionParams: { team_name: "Data App FC", score: 7 },
+                  },
+                });
               },
-            });
-          });
-        });
+            ),
+        );
 
       const assertNothingWritten = () =>
         H.queryWritableDB(

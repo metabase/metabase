@@ -42,6 +42,7 @@
    [metabase.util.encryption :as encryption]
    [metabase.util.encryption-test :as encryption-test]
    [metabase.util.json :as json]
+   [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -3455,6 +3456,51 @@
         (testing "only the columns that are non-NULL are flagged true"
           (is (=? {:description_set true, :semantic_type_set false, :fk_target_field_id_set false}
                   (t2/select-one :metabase_field_user_settings :field_id mixed-id))))))))
+
+(deftest table-user-settings-migration-keeps-hidden-tables-hidden-test
+  (testing "v64.2026-09-11T00:00:05-06: the backfill and the reset leave the visibility_type users see unchanged, with
+           or without a settings row"
+    (impl/test-migrations ["v64.2026-09-11T00:00:00" "v64.2026-09-11T00:00:06"] [migrate!]
+      (let [db-id           (t2/insert-returning-pk! :metabase_database {:name       "Table User Settings Test DB"
+                                                                         :engine     "h2"
+                                                                         :created_at :%now
+                                                                         :updated_at :%now
+                                                                         :details    "{}"})
+            insert-table!   (fn [table-name published? visibility-type data-layer]
+                              (t2/insert-returning-pk! :metabase_table {:active          true
+                                                                        :db_id           db-id
+                                                                        :name            table-name
+                                                                        :is_published    published?
+                                                                        :visibility_type visibility-type
+                                                                        :data_layer      data-layer
+                                                                        :created_at      :%now
+                                                                        :updated_at      :%now}))
+            hidden          (insert-table! "hidden" true "hidden" "hidden")
+            technical       (insert-table! "technical" true "technical" "internal")
+            cruft           (insert-table! "cruft" true "cruft" "internal")
+            visible         (insert-table! "visible" true nil "internal")
+            unpublished     (insert-table! "unpublished" false "hidden" "hidden")
+            user-visibility (fn [table-id]
+                              (t2/select-one-fn :v [:metabase_table
+                                                    [(warehouse-schema-overlay/table-user-visibility-type :metabase_table) :v]]
+                                                {:where [:= :metabase_table.id table-id]}))]
+        (migrate!)
+        (testing "the backfill moves a published table's hidden or technical visibility into its settings row"
+          (doseq [[table-id visibility-type] [[hidden "hidden"] [technical "technical"]]]
+            (is (=? {:visibility_type nil :data_layer "internal"}
+                    (t2/select-one [:metabase_table :visibility_type :data_layer] :id table-id)))
+            (is (=? {:visibility_type visibility-type :visibility_type_set true}
+                    (t2/select-one :metabase_table_user_settings :table_id table-id)))))
+        (testing "sync's cruft stays on metabase_table and is not recorded as the user's"
+          (is (= "cruft" (t2/select-one-fn :visibility_type :metabase_table :id cruft)))
+          (is (=? {:visibility_type nil :visibility_type_set false}
+                  (t2/select-one :metabase_table_user_settings :table_id cruft))))
+        (testing "an unpublished table gets no settings row and keeps its own visibility_type"
+          (is (nil? (t2/select-one :metabase_table_user_settings :table_id unpublished)))
+          (is (= "hidden" (t2/select-one-fn :visibility_type :metabase_table :id unpublished))))
+        (testing "the visibility_type users see is unchanged by the migration"
+          (is (= {hidden "hidden" technical "technical" cruft "cruft" visible nil unpublished "hidden"}
+                 (into {} (map (juxt identity user-visibility)) [hidden technical cruft visible unpublished]))))))))
 
 (deftest glossary-entity-id-backfill-test
   (testing "v64.2026-09-11: glossary.entity_id is added, backfilled for existing rows, NOT NULL and unique"

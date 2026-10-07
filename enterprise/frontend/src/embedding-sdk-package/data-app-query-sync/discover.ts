@@ -194,7 +194,7 @@ export async function discoverActions(
 
     if (!isRecord(action) || !isPositiveInteger(action.id)) {
       throw new Error(
-        `${location} must reference a generated action, such as \`schema.models.<model>.actions.<action>\`.`,
+        `${location} must reference a generated action, such as \`schema.actions.<action>\`.`,
       );
     }
 

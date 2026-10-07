@@ -2420,6 +2420,9 @@
     [:metabase-enterprise.sandbox.query-processor.middleware.sandboxing/original-metadata
      {:optional true}
      :metabase.lib.schema/sandboxing.original-metadata]
+    [:metabase-enterprise.sandbox.query-processor.middleware.sandboxing/details
+     {:optional true}
+     :metabase.lib.schema/sandboxing.details]
     ;;
     ;; ACTIONS
     ;;

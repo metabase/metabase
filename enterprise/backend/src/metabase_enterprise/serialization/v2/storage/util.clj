@@ -25,17 +25,18 @@
         (u.str/limit-chars max-label-length))))
 
 (defn- resolve-path
-  "Given a storage path (vector of `{:label ... :key ... :style ...}` maps), resolves to a vector of strings
-  with deduplication per folder."
+  "Given a storage path (vector of `{:label ... :key ... :style ... :suffix ...}` maps), resolves to a vector of
+  strings with deduplication per folder; a `:suffix` is appended after the label is slugified and truncated."
   [unique-name-fns path]
   (loop [remaining    path
          resolved     []]
     (if (empty? remaining)
       resolved
-      (let [{:keys [label key style] :or {style :name}} (first remaining)
-            slug (case style
-                   :name (slugify-name label)
-                   :slug label)
+      (let [{:keys [label key style suffix] :or {style :name}} (first remaining)
+            slug (str (case style
+                        :name (slugify-name label)
+                        :slug label)
+                      suffix)
             gen  (or (get @unique-name-fns resolved)
                      (let [g (lib/non-truncating-unique-name-generator)]
                        (swap! unique-name-fns assoc resolved g)

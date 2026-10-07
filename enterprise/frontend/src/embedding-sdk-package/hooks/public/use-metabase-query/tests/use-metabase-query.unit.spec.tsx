@@ -1,5 +1,5 @@
-/* eslint-disable import/order */
-
+// Register mocks before loading the modules under test.
+// oxfmt-ignore
 import {
   TEST_DATASET_QUERY,
   createDeferred,
@@ -8,7 +8,6 @@ import {
   resetTestState,
   stubSdkBundle,
 } from "./setup";
-import { TEST_SCHEMA } from "./fixtures";
 
 import { act, renderHook, waitFor } from "@testing-library/react";
 
@@ -18,6 +17,8 @@ import type { DatasetQuery } from "metabase-types/api";
 
 import { filter, useMetabaseQuery, useMetabaseQueryObject } from "..";
 import { defineQuery } from "../define-query";
+
+import { TEST_SCHEMA } from "./fixtures";
 
 beforeEach(resetTestState);
 

@@ -9,7 +9,6 @@
              [me.flowthing.pp :as pp]
              [metabase.config.core :as config]
              [clojure.pprint :as pprint]
-             ^{:clj-kondo/ignore [:discouraged-namespace]}
              [metabase.util.jvm :as u.jvm]
              [metabase.util.string :as u.str]
              [potemkin :as p]

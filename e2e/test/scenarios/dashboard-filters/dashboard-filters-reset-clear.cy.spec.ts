@@ -152,6 +152,19 @@ describe("scenarios > dashboard > filters > reset & clear", () => {
         H.popover().findByText(value).click();
       },
     });
+
+    cy.log("chevron icons are aligned in temporal unit parameter sidebar");
+    editFilter(NO_DEFAULT_NON_REQUIRED);
+    H.dashboardParameterSidebar()
+      .findAllByLabelText("chevrondown icon")
+      .should("have.length", 2)
+      .then(([$firstChevron, $secondChevron]) => {
+        const firstRect = $firstChevron.getBoundingClientRect();
+        const secondRect = $secondChevron.getBoundingClientRect();
+
+        expect(firstRect.left, "left").to.eq(secondRect.left);
+        expect(firstRect.right, "right").to.eq(secondRect.right);
+      });
   });
 
   it("time parameters", () => {
@@ -486,7 +499,7 @@ describe("scenarios > dashboard > filters > reset & clear", () => {
     });
   });
 
-  it("number parameters - multiple values", () => {
+  it("number parameters - range", () => {
     createDashboardWithParameters(PEOPLE_QUESTION, PEOPLE_ID_FIELD, [
       {
         name: NO_DEFAULT_NON_REQUIRED,
@@ -605,10 +618,28 @@ describe("scenarios > dashboard > filters > reset & clear", () => {
       },
     ]);
 
+    cy.log("required filter can be set to default after deselecting all");
+    filter(DEFAULT_REQUIRED).click();
+    H.popover().within(() => {
+      cy.findAllByRole("listitem").contains("Gizmo").click();
+      cy.button("Update filter").click();
+    });
+    filter(DEFAULT_REQUIRED).should("contain.text", "Gadget");
+    checkStatusIcon(DEFAULT_REQUIRED, "reset");
+
+    filter(DEFAULT_REQUIRED).click();
+    H.popover().within(() => {
+      cy.findAllByRole("listitem").contains("Select all").click();
+      cy.findAllByRole("listitem").contains("Select all").click();
+      cy.button("Set to default").click();
+    });
+    filter(DEFAULT_REQUIRED).should("contain.text", "2 selections");
+    checkStatusIcon(DEFAULT_REQUIRED, "none");
+
     checkDashboardParameters({
       defaultValueFormatted: "2 selections",
-      otherValue: "Doohickey,Widget,",
-      otherValueFormatted: "2 selections",
+      otherValue: "Doohickey,Gizmo,Widget,",
+      otherValueFormatted: "3 selections",
       setValue: (label, value) => {
         filter(label).click();
         H.popover().within(() => {
@@ -619,7 +650,6 @@ describe("scenarios > dashboard > filters > reset & clear", () => {
               cy.findAllByRole("listitem").contains(value).click();
             });
         });
-        // H.popover().findByRole("textbox").type(value);
         H.popover().button("Add filter").click();
       },
       updateValue: (label, value) => {
@@ -638,37 +668,6 @@ describe("scenarios > dashboard > filters > reset & clear", () => {
         H.popover().button("Update filter").click();
       },
     });
-  });
-
-  it("chevron icons are aligned in temporal unit parameter sidebar", () => {
-    createDashboardWithParameters(
-      ORDERS_COUNT_OVER_TIME,
-      ORDERS_CREATED_AT_FIELD,
-      [
-        {
-          name: "Time grouping",
-          slug: "unit-of-time",
-          id: "fed1b910",
-          type: "temporal-unit",
-          sectionId: "temporal-unit",
-        },
-      ],
-    );
-    H.editDashboard();
-    editFilter("Time grouping");
-
-    H.dashboardParameterSidebar()
-      .findAllByLabelText("chevrondown icon")
-      .then(([$firstChevron, ...$otherChevrons]) => {
-        const firstRect = $firstChevron.getBoundingClientRect();
-
-        for (const $chevron of $otherChevrons) {
-          const rect = $chevron.getBoundingClientRect();
-
-          expect(firstRect.left, "left").to.eq(rect.left);
-          expect(firstRect.right, "right").to.eq(rect.right);
-        }
-      });
   });
 });
 
@@ -720,79 +719,44 @@ describe("scenarios > dashboard > filters > reset all filters", () => {
     });
   });
 
-  describe("issue 46177", () => {
-    beforeEach(() => {
-      H.restore();
-      cy.signInAsAdmin();
-    });
+  it("should update value inside popover when resetting value to default (metabase#46177)", () => {
+    const ORDERS_QUESTION = {
+      name: "Orders question",
+      query: {
+        "source-table": ORDERS_ID,
+        limit: 5,
+      },
+    };
 
-    it("should update value inside popover when resetting value to default (metabase#46177)", () => {
-      const ORDERS_QUESTION = {
-        name: "Orders question",
-        query: {
-          "source-table": ORDERS_ID,
-          limit: 5,
-        },
-      };
+    const targetField: LocalFieldReference = ["field", ORDERS.TAX, null];
+    const numberFilter = {
+      name: "Number filter",
+      slug: "number_filter",
+      id: "10c0d4bc",
+      type: "number/=",
+      sectionId: "number",
+      default: 2.9,
+    };
 
-      const targetField: LocalFieldReference = ["field", ORDERS.TAX, null];
-      const numberFilter = {
-        name: "Number filter",
-        slug: "number_filter",
-        id: "10c0d4bc",
-        type: "number/=",
-        sectionId: "number",
-        default: 2.9,
-      };
+    createDashboardWithParameters(ORDERS_QUESTION, targetField, [numberFilter]);
 
-      createDashboardWithParameters(ORDERS_QUESTION, targetField, [
-        numberFilter,
-      ]);
+    cy.log("update filter value");
 
-      cy.log("update filter value");
+    filter(numberFilter.name).click();
+    cy.findByTestId("token-field").findByLabelText("Remove").click();
+    cy.findByTestId("token-field").findByRole("combobox").type("3");
+    cy.realPress("Tab");
+    H.popover().findByText("Update filter").click();
 
-      filter(numberFilter.name).click();
-      cy.findByTestId("token-field").findByLabelText("Remove").click();
-      cy.findByTestId("token-field").findByRole("combobox").type("3");
-      cy.realPress("Tab");
-      H.popover().findByText("Update filter").click();
+    filter(numberFilter.name).findByText("3").should("exist");
 
-      filter(numberFilter.name).findByText("3").should("exist");
+    cy.log("reset value to default with filter widget open");
+    filter(numberFilter.name).click();
+    cy.findByRole("dialog").should("be.visible");
+    filter(numberFilter.name).icon("revert").click();
 
-      cy.log("reset value to default with filter widget open");
-      filter(numberFilter.name).click();
-      cy.findByRole("dialog").should("be.visible");
-      filter(numberFilter.name).icon("revert").click();
-
-      filter(numberFilter.name)
-        .findByText(numberFilter.default)
-        .should("exist");
-      cy.findByRole("dialog").should("not.exist");
-    });
-  });
-
-  describe("issue 57388", () => {
-    it("should be possible to reset a required text filter to it's default value (metabase#57388)", () => {
-      const textFilter = {
-        name: "Filter",
-        slug: "filter",
-        id: "75d67d39",
-        type: "string/=",
-        required: true,
-        sectionId: "string",
-        default: ["Gizmo", "Gadget", "Widget", "Doohickey"],
-      };
-      createDashboardWithParameters(ORDERS_QUESTION, PRODUCTS_CATEGORY_FIELD, [
-        textFilter,
-      ]);
-
-      filter(textFilter.name).click();
-      H.popover().within(() => {
-        cy.findByText("Select all").click();
-        cy.findByText("Set to default").click();
-      });
-      H.filterWidget().eq(0).should("contain.text", "4 selections");
-    });
+    filter(numberFilter.name).findByText(numberFilter.default).should("exist");
+    cy.findByRole("dialog").should("not.exist");
   });
 });
 
@@ -948,6 +912,7 @@ function checkDashboardParameters<T = string>({
   checkResetAllFiltersHidden();
 
   cy.log("has default value, required, value same as default");
+  filter(DEFAULT_REQUIRED).should("contain.text", defaultValueFormatted);
   checkStatusIcon(DEFAULT_REQUIRED, "none");
   checkResetAllFiltersHidden();
 
@@ -1200,6 +1165,7 @@ function checkResetAllFiltersShown() {
 
 function checkResetAllFiltersHidden() {
   cy.findByLabelText("Move, trash, and more…").click();
+  H.popover().findByText("Enter fullscreen").should("be.visible");
   H.popover().findByText("Reset all filters").should("not.exist");
   cy.findByLabelText("Move, trash, and more…").click();
 }

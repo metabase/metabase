@@ -11,13 +11,13 @@ import { FixedWidthContainer } from "metabase/dashboard/components/Dashboard/Das
 import { ExportAsPdfButton } from "metabase/dashboard/components/DashboardHeader/buttons/ExportAsPdfButton";
 import { FilterApplyToast } from "metabase/dashboard/components/FilterApplyToast";
 import { useIsParameterPanelSticky } from "metabase/dashboard/hooks/use-is-parameter-panel-sticky";
+import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import {
   ActionButtonsContainer,
   type FooterVariant,
 } from "metabase/embedding/components/EmbedFooter.styled";
 import { EmbeddingFooter } from "metabase/embedding/components/EmbeddingFooter/EmbeddingFooter";
 import EmbedThemeS from "metabase/embedding/theme.module.css";
-import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { ParametersList } from "metabase/parameters/components/ParametersList";
 import { SyncedParametersList } from "metabase/parameters/components/SyncedParametersList";
 import { useSyncUrlParameters } from "metabase/parameters/components/use-sync-url-parameters";
