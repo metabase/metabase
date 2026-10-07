@@ -248,44 +248,52 @@ export type OnCreateOptions = {
   sourceQuestion?: Question | undefined;
 };
 
+// Record the displayed selection so the saved question shows the same events on a dashboard.
+const needsTimelineEventsRecording = (question: Question) =>
+  getRecordedTimelineEventsVisibility(question.settings()) == null &&
+  canDisplayTimelineEvents(question.display());
+
+const recordCollectionTimelineEvents = async (
+  question: Question,
+  dispatch: Dispatch,
+  getState: GetState,
+) => {
+  await dispatch(
+    timelineApi.endpoints.listTimelines.initiate(LIST_TIMELINES_REQUEST, {
+      forceRefetch: false,
+      subscribe: false,
+    }),
+  );
+  // Record an empty collection too, only a failed request leaves the selection unrecorded.
+  return selectListTimelines(getState()).isSuccess
+    ? question.updateSettings(
+        getCollectionTimelinesVisibility(
+          getTransformedTimelines(getState()),
+          question.collectionId(),
+        ),
+      )
+    : question;
+};
+
 export const apiCreateQuestion = (
   question: Question,
   options?: OnCreateOptions,
 ) => {
   return async (dispatch: Dispatch, getState: GetState) => {
     let submittableQuestion = getSubmittableQuestion(getState(), question);
-    // Record the displayed selection so the saved question shows the same events on a dashboard.
-    if (
-      getRecordedTimelineEventsVisibility(submittableQuestion.settings()) ==
-        null &&
-      canDisplayTimelineEvents(submittableQuestion.display())
-    ) {
-      if (
-        isLegacyTimelineEventsSource(
-          options?.sourceQuestion ?? submittableQuestion,
-        )
-      ) {
-        submittableQuestion = submittableQuestion.updateSettings({
-          "timeline.selected_timeline_ids": [],
-          "timeline.excluded_timeline_event_ids": [],
-        });
-      } else {
-        await dispatch(
-          timelineApi.endpoints.listTimelines.initiate(LIST_TIMELINES_REQUEST, {
-            forceRefetch: false,
-            subscribe: false,
-          }),
-        );
-        // Record an empty collection too, only a failed request leaves the selection unrecorded.
-        if (selectListTimelines(getState()).isSuccess) {
-          submittableQuestion = submittableQuestion.updateSettings(
-            getCollectionTimelinesVisibility(
-              getTransformedTimelines(getState()),
-              submittableQuestion.collectionId(),
-            ),
+    if (needsTimelineEventsRecording(submittableQuestion)) {
+      submittableQuestion = isLegacyTimelineEventsSource(
+        options?.sourceQuestion ?? submittableQuestion,
+      )
+        ? submittableQuestion.updateSettings({
+            "timeline.selected_timeline_ids": [],
+            "timeline.excluded_timeline_event_ids": [],
+          })
+        : await recordCollectionTimelineEvents(
+            submittableQuestion,
+            dispatch,
+            getState,
           );
-        }
-      }
     }
     // Saving models with list view setting as a question in not allowed for now,
     // so we change it back to table.
@@ -359,7 +367,17 @@ export const apiUpdateQuestion = (
       rerunQuery = rerunQuery ?? isResultDirty ?? false;
     }
 
-    const submittableQuestion = getSubmittableQuestion(getState(), question);
+    let submittableQuestion = getSubmittableQuestion(getState(), question);
+    if (
+      needsTimelineEventsRecording(submittableQuestion) &&
+      !isLegacyTimelineEventsSource(originalQuestion)
+    ) {
+      submittableQuestion = await recordCollectionTimelineEvents(
+        submittableQuestion,
+        dispatch,
+        getState,
+      );
+    }
 
     // When viewing a dataset, its dataset_query is swapped with a clean query using the dataset as a source table
     // (it's necessary for datasets to behave like tables opened in simple mode)

@@ -30,7 +30,7 @@ import {
   createMockUnsavedCard,
 } from "metabase-types/api/mocks";
 
-import { apiCreateQuestion } from "../actions";
+import { apiCreateQuestion, updateQuestion } from "../actions";
 import {
   openTimelines,
   updateTimelineEventsVisibility,
@@ -536,6 +536,32 @@ describe("QueryBuilder > timeline events", () => {
       "timeline.excluded_timeline_event_ids",
     ]);
     expect(trackSimpleEvent).not.toHaveBeenCalled();
+  });
+
+  it("turning a saved table into a time-series chart and replacing it keeps the collection events it shows", async () => {
+    const { store } = await setup({
+      card: createMockCard({ ...CARD, display: "table" }),
+      timelines: [TIMELINE],
+    });
+
+    await act(async () => {
+      await store.dispatch(
+        updateQuestion(
+          checkNotNull(getQuestion(store.getState())).setDisplay("line"),
+        ),
+      );
+    });
+    await waitFor(() => {
+      expect(getVisibleEventIds(store)).toEqual([RC1.id, RC2.id]);
+    });
+    await saveQuestion();
+
+    expect(await getSavedSettings()).toMatchObject({
+      "timeline.selected_timeline_ids": [TIMELINE.id],
+    });
+    await waitFor(() => {
+      expect(getVisibleEventIds(store)).toEqual([RC1.id, RC2.id]);
+    });
   });
 
   it("re-showing a timeline keeps events outside the chart's range", async () => {
