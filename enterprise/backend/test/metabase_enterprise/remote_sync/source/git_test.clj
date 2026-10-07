@@ -1271,3 +1271,60 @@
                   (is (some? (git/commit-sha remote "pack-check")) "precondition: the push reached the remote")
                   (is (not (.exists marker)) "the push runs no receive-pack program of the clone config"))))
             (finally (forget-clones! url))))))))
+
+(defn- set-clone-config!
+  "Sets `section`.`subsection`.`k` to `v` in the config file of the clone of `source`."
+  [{:keys [^Git git]} ^String section ^String subsection ^String k ^String v]
+  (doto (.getConfig (.getRepository git))
+    (.setString section subsection k v)
+    (.save)))
+
+(defn- origin-url
+  "The URL of the origin remote in the config file of the clone of `source`."
+  ^String [{:keys [^Git git]}]
+  (.getString (.getConfig (.getRepository git)) "remote" "origin" "url"))
+
+(defn- error-message
+  "The message of the exception that `thunk` throws, or nil when it throws none."
+  [thunk]
+  (try (thunk) nil (catch Exception e (ex-message e))))
+
+(deftest remote-commands-go-only-to-the-url-of-the-setting-test
+  (testing "a fetch or a push goes only to the URL of the remote-sync-url setting: a URL from the config file of the clone
+            does not redirect it, and the command is refused"
+    (doseq [{:keys [config commands change!]} [{:config   "remote.origin.pushurl is another URL"
+                                                :commands #{:push}
+                                                :change!  (fn [source other] (set-clone-config! source "remote" "origin" "pushurl" other))}
+                                               {:config   "remote.origin.url is another URL"
+                                                :commands #{:push :fetch}
+                                                :change!  (fn [source other] (set-clone-config! source "remote" "origin" "url" other))}
+                                               {:config   "url.<another URL>.insteadOf is the URL of the clone origin"
+                                                :commands #{:push :fetch}
+                                                :change!  (fn [source other] (set-clone-config! source "url" other "insteadOf" (origin-url source)))}
+                                               {:config   "url.<another URL>.pushInsteadOf is the URL of the clone origin"
+                                                :commands #{:push}
+                                                :change!  (fn [source other] (set-clone-config! source "url" other "pushInsteadOf" (origin-url source)))}]
+            command commands]
+      (testing (str config ", " (name command))
+        (mt/with-temp-dir [remote-dir nil]
+          (mt/with-temp-dir [other-dir nil]
+            (let [remote (init-remote! remote-dir :files {"master.txt" "File in master"})
+                  other  (init-remote! other-dir :files {"master.txt" "Other"} :branches ["only-on-other"])
+                  url    (remote-url remote)]
+              (try
+                (let [{:keys [^Git git] :as source} (git/git-source url "master" nil ingest/legal-top-level-paths)
+                      repo                          (.getRepository git)]
+                  (change! source (remote-url other))
+                  (case command
+                    :push  (let [_     (doto (.updateRef repo "refs/heads/redirect-check")
+                                         (.setNewObjectId (.resolve repo "refs/heads/master"))
+                                         (.update))
+                                 error (error-message #(git/push-branch! (assoc source :branch "redirect-check")))]
+                             (is (nil? (git/commit-sha other "redirect-check")) "the push does not reach the other URL")
+                             (is (some-> error (str/includes? "remote-sync-url"))
+                                 (str "the push is refused with an error that names the setting, not: " (pr-str error))))
+                    :fetch (let [error (error-message #(git/fetch! source))]
+                             (is (nil? (git/commit-sha source "only-on-other")) "the fetch gets nothing from the other URL")
+                             (is (some-> error (str/includes? "remote-sync-url"))
+                                 (str "the fetch is refused with an error that names the setting, not: " (pr-str error))))))
+                (finally (forget-clones! url))))))))))
