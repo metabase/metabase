@@ -99,6 +99,17 @@ interactive explorer with a dependency graph.
 - Each `:module-exports` entry widens a nested module's visibility by one ancestor. Export every link to
   make it available everywhere. OSS module `X` exports its `enterprise/X` companion automatically.
 
+## ClojureScript type declarations
+
+`frontend/src/types/cljs/` records the exports of each `:entries` namespace in `shadow-cljs.edn` as `.d.ts`
+files, and `bun run type-check` reads them instead of the cljs build. CI fails when they drift from the build.
+
+After adding, renaming, or removing an export in one of those namespaces, regenerate them:
+
+```bash
+bun run build:cljs && bun run generate:cljs-types
+```
+
 ## Ratchets
 
 After changing Clojure suppressions or module-boundary escape hatches, run `./bin/mage kondo-ratchets`.

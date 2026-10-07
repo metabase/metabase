@@ -17,6 +17,8 @@ Most of our widely-used types are located in [metabase-types](https://github.com
 
 In cases where types are only used by some local components, they should be defined locally in a `types.ts` file. (see e.g. [DataGrid](https://github.com/metabase/metabase/blob/master/frontend/src/metabase/data-grid/types.ts) types)
 
+TypeScript resolves `cljs/*` imports to generated declarations in `frontend/src/types/cljs/`, so type-checking doesn't need a ClojureScript build. When you add, rename, or remove an export in one of the `:entries` namespaces in `shadow-cljs.edn`, run `bun run build:cljs` and then `bun run generate:cljs-types`, and commit what it changes. CI fails when the declarations are out of date.
+
 ## Redux
 
 We use Redux for global state. You will find domain-specific actions, reducers, and selectors generally grouped with the components that use them. e.g:
