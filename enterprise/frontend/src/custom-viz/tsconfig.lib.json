@@ -15,9 +15,5 @@
     "src/testing/**/*.tsx",
     "src/testing/**/*.json"
   ],
-  "exclude": [
-    "node_modules",
-    "dist",
-    "src/types/_example*"
-  ]
+  "exclude": ["node_modules", "dist", "src/types/_example*"]
 }
