@@ -229,7 +229,6 @@ custom_viz_all:
   - ".github/workflows/frontend.yml"
   - ".github/actions/prepare-node-bun/**"
   - "enterprise/frontend/src/custom-viz/**"
-  - "frontend/src/metabase/utils/scripts-sandbox/**"
 
 e2e_ci: &e2e_ci
   - *shared_ci
