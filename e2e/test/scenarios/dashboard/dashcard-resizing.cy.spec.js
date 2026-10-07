@@ -233,6 +233,7 @@ describe(
         H.saveDashboard();
 
         cy.request("GET", `/api/dashboard/${dashId}`).then(({ body }) => {
+          expect(body.dashcards).to.have.length(TEST_QUESTIONS.length);
           body.dashcards.forEach(({ card, size_x, size_y }) => {
             const { height, width } = getDefaultSize(card.display);
             expect(size_x).to.equal(width);
@@ -243,6 +244,7 @@ describe(
         H.editDashboard();
 
         cy.request("GET", `/api/dashboard/${dashId}`).then(({ body }) => {
+          expect(body.dashcards).to.have.length(TEST_QUESTIONS.length);
           body.dashcards.forEach(({ card }, index) => {
             H.resizeDashboardCard({
               card: H.getDashboardCard(index),
@@ -255,6 +257,7 @@ describe(
         H.saveDashboard();
 
         cy.request("GET", `/api/dashboard/${dashId}`).then(({ body }) => {
+          expect(body.dashcards).to.have.length(TEST_QUESTIONS.length);
           body.dashcards.forEach(({ card, size_x, size_y }) => {
             const { height, width } = getMinSize(card.display);
             expect(size_x).to.equal(width);

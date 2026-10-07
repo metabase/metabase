@@ -790,7 +790,7 @@ describe("issue 31628", () => {
   const previousValue = (card) => card.findByTestId("scalar-previous-value");
 
   const moveMouseAway = () => {
-    H.dashboardHeader().realHover();
+    H.dashboardHeader().realHover({ position: "left" });
     cy.findByRole("tooltip").should("not.exist");
   };
 
@@ -900,7 +900,7 @@ describe("issue 31628", () => {
     moveMouseAway();
 
     cy.log(
-      "smart scalar 2x2: should not display the period on dashboard cards",
+      "smart scalar 2x2: should not display the period, which wider cards show",
     );
     card("smart7x3")
       .findByTestId("scalar-period")
@@ -1424,10 +1424,10 @@ describe("issue 63416", () => {
     cy.log("Make this a visualizer card");
     H.saveDashcardVisualizerModal();
 
+    H.showDashboardCardActions(0);
+    H.getDashboardCard(0).findByLabelText("Edit visualization").should("exist");
+
     H.saveDashboard();
-    cy.get("@saveDashboard-saveDashboardCards")
-      .its("response.body.dashcards.0.visualization_settings.visualization")
-      .should("exist");
 
     H.toggleFilterWidgetValues(["Doohickey"]);
 

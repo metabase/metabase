@@ -175,12 +175,13 @@ describe("scenarios > dashboard cards > replace question", () => {
     });
 
     cy.log("metabase#36984");
-    cy.findByLabelText("Edit dashboard").click();
+    H.editDashboard();
 
     findHeadingDashcard()
       .realHover({ scrollBehavior: "bottom" })
-      .findByLabelText("Replace")
-      .should("not.exist");
+      .findByLabelText("Duplicate")
+      .should("be.visible");
+    findHeadingDashcard().findByLabelText("Replace").should("not.exist");
 
     // Ensure can replace with a question
     replaceQuestion(findTargetDashcard(), {

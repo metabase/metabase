@@ -1624,7 +1624,8 @@ describe("issue 64138", () => {
     getMarkerIcon(0).trigger("mousemove");
     H.tooltip().should("be.visible");
     getMarkerIcon(0).click({ force: true });
-    cy.location("pathname").should("eq", "/question");
+    cy.location("pathname").should("match", /^\/question/);
+    cy.location("search").should("match", /objectId=\d+/);
   });
 
   function getMarkerIcon(index) {
