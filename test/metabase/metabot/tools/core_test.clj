@@ -78,6 +78,68 @@
     (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Two handlers claim the tool name"
                           (tools/entries [#'widget-tool #'widget-tool'])))))
 
+;;; ------------------------------------------------- attempt -----------------------------------------------------
+
+(tools/deftool partial-read-tool
+  "Reads several cards, reporting the ones that failed beside the ones that worked."
+  {:name "read_many" :args [:map {:closed true} [:ids [:sequential :int]]]}
+  [{:keys [ids]} ctx]
+  (let [{:keys [ok failed]} (->> (for [id ids]
+                                   (assoc (tools/attempt
+                                           (tools/with-entity {:kind :card :id id}
+                                             (if (even? id)
+                                               (str "card " id " contents")
+                                               (throw (ex-info "nope" {:status-code 404})))))
+                                          :id id))
+                                 (group-by #(if (:error %) :failed :ok)))]
+    {:output (str/join "\n"
+                       (concat (map :value ok)
+                               (for [{:keys [id error]} failed]
+                                 (str "card " id ": "
+                                      (tools/recoverable-text error (:tool-names ctx))))))}))
+
+(deftest ^:parallel attempt-returns-the-value-on-success-test
+  (is (= {:value 42} (tools/attempt (+ 40 2))))
+  (testing "a nil result is still a success — :error is the only discriminator, as for an outcome"
+    (is (= {:value nil} (tools/attempt nil)))))
+
+(deftest ^:parallel attempt-captures-a-declared-recoverable-test
+  (let [{:keys [error] :as result} (tools/attempt
+                                    (tools/with-entity {:kind :card :id 7}
+                                      (throw (ex-info "nope" {:status-code 404}))))]
+    (is (not (contains? result :value)))
+    (is (=? {:class :recoverable
+             :code  :metabase.metabot.tools.recoverable.common/not-found
+             :data  {:kind :card :id 7}}
+            error))))
+
+(deftest ^:parallel attempt-rethrows-anything-undeclared-test
+  (testing "an undeclared exception is not a modelling decision anybody made, so it bubbles out and
+           ends the turn rather than becoming a silent half-answer"
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"a real bug"
+                          (tools/attempt (throw (ex-info "a real bug" {:secret "hunter2"}))))))
+  (testing "and so does an explicit give-up: `unrecoverable!` means the user has to act"
+    (is (thrown? clojure.lang.ExceptionInfo
+                 (tools/attempt (tools.error/unrecoverable! ::nope {:user-message "Ask an admin."})))))
+  (testing "a validation error cannot occur inside a handler, but would bubble too"
+    (is (thrown? clojure.lang.ExceptionInfo
+                 (tools/attempt
+                  (throw (ex-info "v" {tools.error/error-key {:class   :validation
+                                                              :code    :invalid-arguments
+                                                              :message "v"}})))))))
+
+(deftest ^:parallel recoverable-text-test
+  (let [error {:message  "Widget 7 does not exist."
+               :recovery [{:uses #{"search"}        :text "Call `search` to find one."}
+                          {:uses #{"read_resource"} :text "Or call `read_resource`."}]}]
+    (is (= "Widget 7 does not exist.\nCall `search` to find one.\nOr call `read_resource`."
+           (tools/recoverable-text error #{"search" "read_resource"})))
+    (testing "steps are filtered by the profile, exactly as for a failed call"
+      (is (= "Widget 7 does not exist.\nCall `search` to find one."
+             (tools/recoverable-text error #{"search"})))
+      (is (= "Widget 7 does not exist."
+             (tools/recoverable-text error #{}))))))
+
 ;;; ------------------------------------------------ with-entity ---------------------------------------------------
 
 (deftest ^:parallel with-entity-converts-read-refusals-test

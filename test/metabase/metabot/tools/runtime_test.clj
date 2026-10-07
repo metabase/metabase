@@ -63,6 +63,29 @@
   [_args _ctx]
   {:output "ok"})
 
+(tools/deftool partial-failure-tool
+  "Survives a declared sub-failure and reports it beside the successes."
+  {:name "read_many" :args [:map {:closed true} [:ids [:sequential :int]]]}
+  [{:keys [ids]} ctx]
+  (let [{:keys [ok failed]} (->> (for [id ids]
+                                   (assoc (tools/attempt
+                                           (tools/with-entity {:kind :card :id id}
+                                             (if (even? id)
+                                               (str "card " id " contents")
+                                               (throw (ex-info "nope" {:status-code 404})))))
+                                          :id id))
+                                 (group-by #(if (:error %) :failed :ok)))]
+    {:output (str/join "\n"
+                       (concat (map :value ok)
+                               (for [{:keys [error]} failed]
+                                 (tools/recoverable-text error (:tool-names ctx)))))}))
+
+(tools/deftool attempted-crash-tool
+  "Wraps an undeclared exception in `attempt`, which must not swallow it."
+  {:name "attempted_crash" :args [:map {:closed true}]}
+  [_args _ctx]
+  {:output (str (tools/attempt (throw (ex-info "a real bug: hunter2" {:password "hunter2"}))))})
+
 (tools/deftool memory-tool
   "Reads the memory atom out of ctx."
   {:name "memory" :args [:map {:closed true}]}
@@ -71,7 +94,8 @@
 
 (def ^:private entries
   (tools/entries [#'happy-tool #'recoverable-tool #'unrecoverable-tool #'silent-unrecoverable-tool
-                  #'crashing-tool #'bad-shape-tool #'scoped-tool #'memory-tool]))
+                  #'crashing-tool #'bad-shape-tool #'scoped-tool #'memory-tool
+                  #'partial-failure-tool #'attempted-crash-tool]))
 
 (def ^:private all-tool-names
   (into #{"search" "read_resource"} (keys entries)))
@@ -209,6 +233,34 @@
         (let [outcome (invoke tool-name args)]
           (is (mr/validate ::tools.runtime/outcome outcome)
               (pr-str outcome)))))))
+
+;;; --------------------------------------------- Partial failure --------------------------------------------------
+
+(deftest ^:parallel an-attempted-failure-is-a-successful-call-test
+  (testing "a tool that decided to survive a sub-failure reports it and the call still succeeds"
+    (let [outcome (invoke "read_many" {:ids [2 3 4]})]
+      (is (nil? (:error outcome)))
+      (is (= ["card 2 contents"
+              "card 4 contents"
+              "Card 3 was not found. It may not exist, or you may not have access to it."
+              "Call `search` to find the entity you want and use an id from the results."]
+             (str/split-lines (:output outcome))))))
+  (testing "the captured error reads identically to one that ended the call, so the agent cannot
+           tell the difference from the text"
+    (let [whole-call (:output (invoke (ctx {:tool-names #{"boom" "search"}}) "boom" {:id 9}))
+          captured   (:output (invoke (ctx {:tool-names #{"read_many" "search"}}) "read_many" {:ids [3]}))]
+      (is (= 2 (count (str/split-lines whole-call))))
+      (is (= 2 (count (str/split-lines captured))))
+      (testing "and both drop the step the profile cannot act on"
+        (is (not (str/includes? captured "read_resource")))))))
+
+(deftest ^:parallel attempt-does-not-swallow-an-undeclared-exception-test
+  (testing "wrapping a bug in `attempt` does not turn it into a half-answer the model reports as fact"
+    (let [outcome (invoke "attempted_crash" {})]
+      (is (= {:class :unrecoverable :code :internal} (:error outcome)))
+      (doseq [secret ["hunter2" "a real bug"]]
+        (is (not (str/includes? (:output outcome) secret))
+            (str "leaked " secret))))))
 
 ;;; ------------------------------------------------- render -------------------------------------------------------
 
