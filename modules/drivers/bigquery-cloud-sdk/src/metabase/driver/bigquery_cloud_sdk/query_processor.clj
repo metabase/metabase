@@ -1105,19 +1105,9 @@
 ;; BigQuery infers untyped `NULL` in `UNION ALL` as `INT64` and then rejects the union against
 ;; sibling `TIMESTAMP` / `STRING` columns. Emit `CAST(NULL AS <type>)` so the branch's null-padded
 ;; column carries the same type as its counterpart in the full-breakout branch.
-(defn- base-type->bigquery-cast-type
-  [base-type]
-  (cond
-    (isa? base-type :type/Text)     "STRING"
-    (isa? base-type :type/Integer)  "INT64"
-    (isa? base-type :type/Float)    "FLOAT64"
-    (isa? base-type :type/Decimal)  "NUMERIC"
-    (isa? base-type :type/Boolean)  "BOOL"
-    (isa? base-type :type/Date)     "DATE"
-    (isa? base-type :type/Time)     "TIME"
-    (isa? base-type :type/DateTime) "TIMESTAMP"))
-
 (defmethod sql.pivot/null-pad-breakout-hsql :bigquery-cloud-sdk
   [_driver [_tag opts _id-or-name] _breakout-expr]
-  (when-let [bq-type (base-type->bigquery-cast-type (or (:effective-type opts) (:base-type opts)))]
-    (h2x/cast bq-type nil)))
+  (when-let [base-type (or (:effective-type opts) (:base-type opts))]
+    (try
+      (h2x/cast (bigquery.common/base-type->bigquery-type base-type) nil)
+      (catch IllegalArgumentException _ nil))))

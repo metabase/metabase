@@ -1,33 +1,17 @@
-name: Create test plan
+name: Create frontend test plan
 description: Compute the affected-tests plan for the changed files.
 
 inputs:
-  changed-files:
-    description: All changed files (CSV).
-    required: true
-  fe-changed-files:
-    description: Changed frontend_sources files (CSV).
-    required: true
-  be-changed-files:
-    description: Changed backend_sources files (CSV).
-    required: true
-  unit-infra-touched:
-    description: Whether FE unit infra changed.
-    required: true
-  loki-infra-touched:
-    description: Whether Loki infra changed.
-    required: true
-  e2e-infra-touched:
-    description: Whether e2e harness/support code changed.
-    required: true
-  shared-sources-touched:
-    description: Whether cljc/cljs/package.json changed.
-    required: true
+  stats-url:
+    description: Endpoint that stores the affected-tests stats row.
+    required: false
+    default: ''
+  stats-api-key:
+    description: API key for stats-url.
+    required: false
+    default: ''
 
 outputs:
-  stats:
-    description: FE Affected Tests stats row (JSON).
-    value: ${{ steps.compute.outputs.stats }}
   artifact-id:
     description: Artifact containing test-plan.json for this run.
     value: ${{ steps.upload.outputs.artifact-id }}
@@ -35,6 +19,14 @@ outputs:
 runs:
   using: composite
   steps:
+    # The action reads the diff itself, so a caller hands it no file lists.
+    - name: Test which files changed
+      id: changes
+      uses: dorny/paths-filter@fbd0ab8f3e69293af611ebaee6363fc25e6d187d # v4.0.1
+      with:
+        token: ${{ github.token }}
+        list-files: csv
+        filters: .github/file-paths.yaml
     - name: Prepare front-end environment
       uses: ./.github/actions/prepare-frontend
     - name: Resolve closest-ancestor e2e coverage manifest
@@ -59,13 +51,13 @@ runs:
       id: compute
       shell: bash
       env:
-        CHANGED_FILES: ${{ inputs.changed-files }}
-        FE_CHANGED_FILES: ${{ inputs.fe-changed-files }}
-        BE_CHANGED_FILES: ${{ inputs.be-changed-files }}
-        UNIT_INFRA_TOUCHED: ${{ inputs.unit-infra-touched }}
-        LOKI_INFRA_TOUCHED: ${{ inputs.loki-infra-touched }}
-        E2E_INFRA_TOUCHED: ${{ inputs.e2e-infra-touched }}
-        SHARED_SOURCES_TOUCHED: ${{ inputs.shared-sources-touched }}
+        CHANGED_FILES: ${{ steps.changes.outputs.all_changed_files }}
+        FE_CHANGED_FILES: ${{ steps.changes.outputs.frontend_sources_files }}
+        BE_CHANGED_FILES: ${{ steps.changes.outputs.backend_sources_files }}
+        UNIT_INFRA_TOUCHED: ${{ steps.changes.outputs.frontend_unit_infra }}
+        LOKI_INFRA_TOUCHED: ${{ steps.changes.outputs.frontend_loki_infra }}
+        E2E_INFRA_TOUCHED: ${{ steps.changes.outputs.e2e_infra }}
+        SHARED_SOURCES_TOUCHED: ${{ steps.changes.outputs.shared_sources }}
         E2E_SPEC_MANIFEST: ${{ steps.manifest.outputs.path }}
       run: |
         # stdout is the plan JSON; the planner's own info logs go to stderr.
@@ -83,7 +75,7 @@ runs:
 
     - name: Report test plan
       shell: bash
-      run: |
+      run: | # sh
         plan=test-plan.json
         row() { # name, selected, total
           if [ "$2" -eq "$3" ]; then echo "| $1 | all ($3) | $3 |"; else echo "| $1 | $2 | $3 |"; fi
@@ -122,3 +114,20 @@ runs:
           echo '```'
           echo "</details>"
         } | tee -a "${GITHUB_STEP_SUMMARY:-/dev/null}"
+
+    # Only land rows for PRs from the upstream repo so forks don't pollute the table. Best-effort:
+    # a failed upload must not cost us the plan.
+    - name: Upload affected tests stats
+      if: >-
+        ${{ inputs.stats-url != ''
+        && github.event.pull_request.head.repo.full_name == 'metabase/metabase' }}
+      continue-on-error: true
+      shell: bash
+      env:
+        STATS_JSON: ${{ steps.compute.outputs.stats }}
+        PR_NUMBER: ${{ github.event.pull_request.number }}
+        HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        ENG_STATS_URL: ${{ inputs.stats-url }}
+        API_KEY: ${{ inputs.stats-api-key }}
+      run: bun .github/scripts/upload-affected-tests-stats.ts

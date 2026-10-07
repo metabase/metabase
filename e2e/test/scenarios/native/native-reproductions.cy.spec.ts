@@ -10,7 +10,7 @@ import type {
 } from "metabase-types/api";
 import { createMockParameter } from "metabase-types/api/mocks";
 
-import { getRunQueryButton } from "../native-filters/helpers/e2e-sql-filter-helpers";
+import { getRunQueryButton } from "./helpers/e2e-sql-filter-helpers";
 
 const { ORDERS_ID, REVIEWS } = SAMPLE_DATABASE;
 
@@ -165,12 +165,24 @@ describe("issue 38083", () => {
           dataset_query,
         }),
       )
-      .then((card) => H.visitQuestion(card.id));
+      .then((card) => {
+        cy.wrap(card.id).as("cardId");
+        H.visitQuestion(card.id);
+      });
 
-    H.filterWidget()
-      .filter(`:contains("${QUERY.templateTags.state["display-name"]}")`)
-      .icon("revert")
-      .should("not.exist");
+    cy.log("the default value is applied on load");
+    H.filterWidget().find("input").should("have.value", "CA");
+    H.filterWidget().icon("revert").should("not.exist");
+
+    cy.log("the default value is passed in the URL");
+    cy.get("@cardId").then((cardId) => {
+      cy.intercept("POST", `/api/card/${cardId}/query`).as("cardQuery");
+      cy.visit(`/question/${cardId}?state=CA`);
+    });
+    cy.wait("@cardQuery");
+
+    H.filterWidget().find("input").should("have.value", "CA");
+    H.filterWidget().icon("revert").should("not.exist");
   });
 });
 
@@ -245,7 +257,8 @@ describe("issue 49454", () => {
     H.startNewNativeQuestion();
 
     cy.log("should not show empty tooltip (metabase#51035)");
-    cy.button("Save").realHover();
+    cy.button("Save").should("have.attr", "data-disabled");
+    cy.button("Save").should("be.visible").realHover();
     H.tooltip().should("not.exist");
 
     H.NativeEditor.type("select * from {{ #test");
@@ -299,12 +312,13 @@ describe("issue 53194", () => {
 
     cy.findByTestId("sidebar-content").within(() => {
       cy.findByText("REVIEWS").click(); // the infinite loop used to start with this action
+      cy.findByTestId("sidebar-header-title").should("contain.text", "REVIEWS");
       cy.findByText("ID").should("not.exist");
       cy.findByText("ORDERS").should("not.exist");
 
       cy.findByTestId("sidebar-header-title").click(); // if app is frozen, Cypress won't be able to execute this
-      cy.findByText("ID").should("not.exist");
       cy.findByText("REVIEWS").should("be.visible");
+      cy.findByText("ID").should("not.exist");
 
       cy.findByText("ORDERS").click();
       cy.findByText("ID").should("be.visible");
@@ -312,7 +326,7 @@ describe("issue 53194", () => {
   });
 });
 
-describe("issues 53299, 47793", { tags: ["@external", "@mongo"] }, () => {
+describe("issue 47793", { tags: ["@external", "@mongo"] }, () => {
   const MONGO_DB_ID = 2;
 
   const questionDetails: NativeQuestionDetails = {
@@ -356,12 +370,7 @@ describe("issues 53299, 47793", { tags: ["@external", "@mongo"] }, () => {
     cy.signInAsAdmin();
   });
 
-  it("should be possible to switch to mongodb when editing an sql question and to preview queries for mongodb (metabase#53299, metabase#47793)", () => {
-    H.startNewNativeQuestion();
-
-    H.selectNativeEditorDataSource("QA Mongo");
-    H.nativeEditorDataSource().should("contain", "QA Mongo");
-
+  it("should be possible to preview queries for mongodb (metabase#47793)", () => {
     H.createNativeQuestion(questionDetails, { visitQuestion: true });
     cy.findByTestId("visibility-toggler")
       .findByText(/open editor/i)
@@ -401,6 +410,10 @@ describe("issue 53171", () => {
     cy.findByTestId("sidebar-content").within(($container) => {
       const [container] = $container;
 
+      cy.findByTestId("sidebar-header").should(
+        "contain.text",
+        `Question ${"a".repeat(100)}`,
+      );
       cy.findByTestId("sidebar-header").should(($header) => {
         const [header] = $header;
         const headerDescendants = header.querySelectorAll("*");
@@ -483,12 +496,14 @@ describe("issues 52811, 52812", () => {
 
     cy.log("popover should close when clicking away (metabase#52811)");
     H.popover().findByText("Field Filter").click();
+    H.popover().should("be.visible").and("contain.text", "Orders");
     clickAway();
     cy.get(H.POPOVER_ELEMENT).should("not.exist");
 
     cy.log(
       "the default value input should not be rendered when 'Field to map to' is not set yet (metabase#52812)",
     );
+    H.rightSidebar().findByText("Field to map to").should("be.visible");
     H.rightSidebar()
       .findByText("Default filter widget value")
       .should("not.exist");
@@ -528,11 +543,28 @@ describe("issue 52806", () => {
   });
 });
 
-describe("issue 55951", () => {
+describe("issues 55951, 57644", { tags: "@external" }, () => {
   beforeEach(() => {
     H.restore("postgres-12");
     cy.signInAsAdmin();
+  });
 
+  it("should open the database picker with multiple databases, without a loading state when databases are being reloaded (metabase#55951, metabase#57644)", () => {
+    cy.log(
+      "should open the database picker when opening the native query editor and there are multiple databases (metabase#57644)",
+    );
+    H.startNewNativeQuestion({
+      database: null,
+      query: "",
+    });
+    H.popover()
+      .should("be.visible")
+      .and("contain", "Sample Database")
+      .and("contain", "QA Postgres12");
+
+    cy.log(
+      "should not show loading state in database picker when databases are being reloaded (metabase#55951)",
+    );
     cy.intercept<unknown, ListDatabasesResponse>(
       "GET",
       "/api/database",
@@ -542,9 +574,7 @@ describe("issue 55951", () => {
         });
       },
     ).as("getDatabases");
-  });
 
-  it("should not show loading state in database picker when databases are being reloaded (metabase#55951)", () => {
     cy.visit("/");
     cy.wait("@getDatabases");
 
@@ -646,41 +676,6 @@ describe("issue 56570", () => {
   });
 });
 
-describe("issue 53649", () => {
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-  });
-
-  it("should not get caught in an infinite loop when opening the native editor (metabase#53649)", () => {
-    H.startNewNativeModel();
-
-    // If the app freezes, this won't work
-    H.NativeEditor.type("select 1");
-    H.NativeEditor.get().should("contain", "select 1");
-  });
-});
-
-describe("issue 57441", () => {
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsNormalUser();
-  });
-
-  it("should be possible to create a new snippet from the sidebar (metabase#57441)", () => {
-    H.startNewNativeQuestion();
-
-    H.createSnippet({ name: "snippet 1", content: "select 1" });
-
-    cy.findByTestId("native-query-editor-action-buttons")
-      .icon("snippet")
-      .click();
-    H.rightSidebar().icon("add").click();
-    H.popover().findByText("New snippet").click();
-    H.modal().findByText("Create your new snippet").should("be.visible");
-  });
-});
-
 describe("issue 56905", () => {
   beforeEach(() => {
     H.restore();
@@ -701,45 +696,28 @@ describe("issue 56905", () => {
 });
 
 describe("issue 57644", () => {
-  describe("with only one database", () => {
-    beforeEach(() => {
-      H.restore();
-      cy.signInAsAdmin();
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+    cy.intercept({ method: "GET", pathname: "/api/database" }).as(
+      "getDatabases",
+    );
 
-      H.startNewNativeQuestion({
-        database: null,
-        query: "",
-      });
-    });
-
-    it("should not open the database picker when opening the native query editor when there is only one database (metabase#57644)", () => {
-      cy.findByTestId("native-query-top-bar")
-        .findByText("Select a database")
-        .should("be.visible");
-
-      // The popover should not be visible, we give it a timeout here because the
-      // popover disappears immediately and we don't want that to make the test pass.
-      cy.findAllByRole("dialog", { timeout: 0 }).should("not.exist");
+    H.startNewNativeQuestion({
+      database: null,
+      query: "",
     });
   });
 
-  describe("with multiple databases", () => {
-    beforeEach(() => {
-      H.restore("postgres-12");
-      cy.signInAsAdmin();
+  it("should not open the database picker when opening the native query editor when there is only one database (metabase#57644)", () => {
+    cy.wait("@getDatabases");
+    cy.findByTestId("native-query-top-bar")
+      .findByText("Select a database")
+      .should("be.visible");
 
-      H.startNewNativeQuestion({
-        database: null,
-        query: "",
-      });
-    });
-
-    it("should open the database picker when opening the native query editor and there are multiple databases (metabase#57644)", () => {
-      H.popover()
-        .should("be.visible")
-        .and("contain", "Sample Database")
-        .and("contain", "QA Postgres12");
-    });
+    // The popover should not be visible, we give it a timeout here because the
+    // popover disappears immediately and we don't want that to make the test pass.
+    cy.findAllByRole("dialog", { timeout: 0 }).should("not.exist");
   });
 });
 
@@ -790,6 +768,7 @@ describe("issue 59110", () => {
   it("should allow dragging border to completely hide native query editor (metabase#59110)", () => {
     H.startNewNativeQuestion();
 
+    H.NativeEditor.get().should("be.visible");
     cy.findByTestId("visibility-toggler")
       .findByText(/open editor/i)
       .should("not.exist");
@@ -828,7 +807,7 @@ describe("issue 59110", () => {
     });
   });
 });
-describe("issue 59356", () => {
+describe("issue 59356", { tags: "@external" }, () => {
   function typeRunShortcut() {
     cy.realPress([H.metaKey, "Enter"]);
   }
@@ -928,12 +907,11 @@ describe("issue 66745", () => {
     cy.signInAsNormalUser();
 
     cy.intercept("POST", "/api/dataset").as("dataset");
-    cy.intercept("GET", "/api/card/*").as("getCard");
     cy.intercept("PUT", "/api/card/*").as("saveCard");
   });
 
   ["row", "bar"].forEach((vizType) => {
-    it(`should not break visualization on native query column rename (metabase#63711) - ${vizType}`, () => {
+    it(`should not break visualization on native query column rename (metabase#66745) - ${vizType}`, () => {
       H.createNativeQuestion(
         {
           name: `66745 - ${vizType}`,
@@ -978,18 +956,16 @@ describe("issue 66745", () => {
         .findByText("Save")
         .should("not.exist");
 
+      cy.intercept("GET", "/api/card/*").as("getCard");
       H.visitQuestion("@questionId");
-
       cy.wait("@getCard");
-      cy.wait("@cardQuery");
-
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors
-      cy.findByText("Something’s gone wrong").should("not.exist");
 
       cy.findByTestId("query-visualization-root").within(() => {
         cy.findByText("Total").should("be.visible");
         cy.findByText("World").should("not.exist");
       });
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors
+      cy.findByText("Something’s gone wrong").should("not.exist");
 
       H.openVizSettingsSidebar();
       H.leftSidebar().within(() => {

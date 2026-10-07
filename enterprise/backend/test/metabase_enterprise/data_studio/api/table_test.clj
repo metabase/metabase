@@ -103,7 +103,7 @@
                              {:table_ids [(mt/id :users)]}))
      (testing "returns 400 when target collection is not a library-data collection"
        (mt/with-temp [:model/Collection {collection-id :id} {}]
-         (is (= "Tables can only be published to Library/Data collections."
+         (is (= "Tables can only be published to Semantic layer/Data collections."
                 (mt/user-http-request :crowberto :post 400 "ee/data-studio/table/publish-tables"
                                       {:table_ids     [(mt/id :users)]
                                        :collection_id collection-id})))))

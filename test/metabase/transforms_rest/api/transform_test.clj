@@ -599,6 +599,17 @@
                     (is (some #(true? (:source_readable %)) list-resp)
                         "At least one transform should have readable sources")))))))))))
 
+(deftest list-transforms-with-inactive-source-table-test
+  (mt/with-premium-features #{:transforms-basic :hosting}
+    (testing "a transform reading an inactive table does not break listing or fetching transforms"
+      (mt/with-temp [:model/Transform {id :id} {:source {:type  :query
+                                                         :query (lib/query (mt/metadata-provider)
+                                                                           (lib.metadata/table (mt/metadata-provider)
+                                                                                               (mt/id :venues)))}}]
+        (mt/with-temp-vals-in-db :model/Table (mt/id :venues) {:active false}
+          (is (some #(= id (:id %)) (mt/user-http-request :crowberto :get 200 "transform")))
+          (is (= id (:id (mt/user-http-request :crowberto :get 200 (format "transform/%d" id))))))))))
+
 (deftest filter-transforms-test
   (mt/with-premium-features #{:advanced-permissions :transforms-basic :hosting}
     (testing "should be able to filter transforms"
@@ -2003,8 +2014,8 @@
         ;; `-if-supported` variant keeps the legacy-search leg running on app dbs that cannot hold an index.
         (search.tu/with-temp-index-table-if-supported
           (let [search-term (str "transform-search-" (u/generate-nano-id))
-                query-name  (str search-term "-query")
-                python-name (str search-term "-python")
+                query-name  (str search-term "_query")
+                python-name (str search-term "_python")
                 query-source {:type  "query"
                               :query (lib/native-query (mt/metadata-provider) "SELECT 1")}
                 python-source {:type            "python"
@@ -2034,7 +2045,7 @@
         ;; see search-filters-transform-source-types-test for why the index scope sits outside `with-temp`
         (search.tu/with-temp-index-table-if-supported
           (let [search-term (str "transform-search-" (u/generate-nano-id))
-                query-name  (str search-term "-query")
+                query-name  (str search-term "_query")
                 query-source {:type  "query"
                               :query (lib/native-query (mt/metadata-provider) "SELECT 1")}]
             (mt/with-temp [:model/Transform {transform-id :id} {:name   query-name
@@ -2055,8 +2066,8 @@
         ;; see search-filters-transform-source-types-test for why the index scope sits outside `with-temp`
         (search.tu/with-temp-index-table-if-supported
           (let [search-term (str "transform-search-" (u/generate-nano-id))
-                native-name (str search-term "-native")
-                mbql-name   (str search-term "-mbql")
+                native-name (str search-term "_native")
+                mbql-name   (str search-term "_mbql")
                 native-source {:type  "query"
                                :query (lib/native-query (mt/metadata-provider) "SELECT 1")}
                 mbql-source {:type  "query"
@@ -2187,7 +2198,7 @@
                     existing-table-name  (t2/select-one-fn :name :model/Table (mt/id :transforms_products))
                     other-existing-name  (t2/select-one-fn :name :model/Table (mt/id :transforms_orders))]
                 (testing "POST /api/transform"
-                  (mt/user-http-request user :post 403 "transform"
+                  (mt/user-http-request user :post 409 "transform"
                                         {:name   "Colliding Transform"
                                          :source {:type "query" :query (make-query "Gadget")}
                                          :target {:type   "table"
@@ -2201,7 +2212,7 @@
                                                          :target {:type   "table"
                                                                   :schema schema
                                                                   :name   table-name}})]
-                      (mt/user-http-request user :put 403 (format "transform/%d" (:id created))
+                      (mt/user-http-request user :put 409 (format "transform/%d" (:id created))
                                             {:target {:type   "table"
                                                       :schema schema
                                                       :name   other-existing-name}}))))))))))))

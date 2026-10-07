@@ -2,6 +2,8 @@ import cx from "classnames";
 import type { CSSProperties } from "react";
 import { t } from "ttag";
 
+import segmentsListImage from "assets/img/segments-list.png";
+import segmentsListImage2x from "assets/img/segments-list@2x.png";
 import { useListSegmentsQuery } from "metabase/api";
 import { AdminAwareEmptyState } from "metabase/common/components/AdminAwareEmptyState";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
@@ -26,7 +28,10 @@ const emptyStateData = {
   get message() {
     return t`Segments will appear here once your admins have created some`;
   },
-  image: "app/assets/img/segments-list",
+  image: {
+    src: segmentsListImage,
+    srcSet: `${segmentsListImage2x} 2x`,
+  },
   get adminAction() {
     return t`Learn how to create segments`;
   },

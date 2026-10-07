@@ -22,21 +22,13 @@ tags:
 - entity_id: qJU4-opN0IFLKDEdmXiYh
   position: 0
   tag_id: dUW7nvQHQBdA0Rx0gJckI
-  serdes/meta:
-  - id: qJU4-opN0IFLKDEdmXiYh
-    model: TransformTransformTag
 - entity_id: hTtmHg0mopz6qzrEDukSm
   position: 1
   tag_id: 1uWng5tP1gyxr44PJ5FPb
-  serdes/meta:
-  - id: hTtmHg0mopz6qzrEDukSm
-    model: TransformTransformTag
 target:
   database: Sample Database
   name: daily_order_summary
   schema: TRANSFORMS
   type: table
 serdes/meta:
-- id: 7XqqzlsonSq4KFyOvtrAm
-  label: daily_order_summary
-  model: Transform
+- model: Transform

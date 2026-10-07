@@ -8,7 +8,6 @@
   docstring for the pipeline shape and the separation rules."
   (:require
    [clojure.set :as set]
-   [medley.core :as m]
    [metabase.system.core :as system]
    [metabase.typed-schemas.common :as common]
    [metabase.typed-schemas.source :as source]
@@ -47,21 +46,19 @@
     [:boolean {:description "Whether to include the root data library."}]]
    [:include-metric-library? {:optional true}
     [:boolean {:description "Whether to include the root metrics library."}]]
-   [:include-models? {:optional true}
-    [:boolean {:description (str "Include models with actions. Database scope filters models; "
-                                 "library scope does not. Without a scope, returns models only.")}]]])
+   [:include-actions? {:optional true}
+    [:boolean {:description (str "Include query actions that belong to no model. Database scope filters them; "
+                                 "library scope does not. Without a scope, returns actions only.")}]]])
 
 (def Items
   "Fetched schema entities, ready for pure assembly by [[create-schema]].
 
   Each entry holds entity maps shaped by the `metabase.typed-schemas.schema.*`
-  builders; `:key` on each entity seeds the generated object keys. `:errors`
-  describes entities that could not be built (currently only models)."
+  builders; `:key` on each entity seeds the generated object keys."
   [:map {:closed true}
-   [:models    [:sequential :map]]
+   [:actions   [:sequential :map]]
    [:tables    [:sequential :map]]
-   [:metrics   [:sequential :map]]
-   [:errors    [:sequential :map]]])
+   [:metrics   [:sequential :map]]])
 
 (defn- invalid-options!
   [message]
@@ -103,38 +100,35 @@
    (fetch-items options source/app-db-source))
   ([options source]
    (let [{:keys [database library-collection-refs
-                 include-data-library? include-metric-library? include-models?]
+                 include-data-library? include-metric-library? include-actions?]
           :or {library-collection-refs  []
                include-data-library?    false
                include-metric-library?  false
-               include-models?          false}} options]
+               include-actions?         false}} options]
      (validate-options! (assoc options
                                :library-collection-refs library-collection-refs
                                :include-data-library? include-data-library?
                                :include-metric-library? include-metric-library?
-                               :include-models? include-models?))
+                               :include-actions? include-actions?))
      (let [library-scope           (source/library-scope source
                                                          {:library-collection-refs library-collection-refs
                                                           :include-data-library? include-data-library?
                                                           :include-metric-library? include-metric-library?})
            database-ids            (source/database-ids source database)
-           {model-schemas :models
-            model-errors  :errors} (if include-models?
-                                     ;; database-ids scopes the models; nil reads all of them
-                                     (source/models source database-ids)
-                                     {:models [] :errors []})]
+           action-schemas          (if include-actions?
+                                     ;; database-ids scopes the actions; nil reads all of them
+                                     (source/actions source database-ids)
+                                     [])]
        (if (or library-scope
-               (and include-models? (nil? database-ids)))
+               (and include-actions? (nil? database-ids)))
          (let [{:keys [tables metrics]} (when library-scope
                                           (library-items source library-scope))]
-           {:models    (vec model-schemas)
+           {:actions   (vec action-schemas)
             :tables    (vec tables)
-            :metrics   (vec metrics)
-            :errors    (vec model-errors)})
-         {:models    (vec model-schemas)
+            :metrics   (vec metrics)})
+         {:actions   (vec action-schemas)
           :tables    (source/tables source database-ids nil)
-          :metrics   (source/metrics source database-ids nil)
-          :errors    (vec model-errors)})))))
+          :metrics   (source/metrics source database-ids nil)})))))
 
 (defn create-schema
   "Assembles fetched [[Items]] into the semantic schema value rendered by
@@ -144,14 +138,11 @@
   to the current time and the configured site URL."
   ([items]
    (create-schema items nil))
-  ([{:keys [models tables metrics errors]} {:keys [generated-at instance-url]}]
-   (m/assoc-some
-    (array-map
-     :schemaVersion 2
-     :generatedAt   (str (or generated-at (Instant/now)))
-     :metabase      {:instanceUrl (or instance-url (system/site-url))}
-     :models        (common/keyed-model-map models)
-     :tables        (common/keyed-map tables)
-     :metrics       (common/keyed-map metrics))
-    ;; Omit when empty so healthy responses carry no `errors` key.
-    :errors (not-empty (vec errors)))))
+  ([{:keys [actions tables metrics]} {:keys [generated-at instance-url]}]
+   (array-map
+    :schemaVersion 2
+    :generatedAt   (str (or generated-at (Instant/now)))
+    :metabase      {:instanceUrl (or instance-url (system/site-url))}
+    :actions       (common/keyed-map actions)
+    :tables        (common/keyed-map tables)
+    :metrics       (common/keyed-map metrics))))

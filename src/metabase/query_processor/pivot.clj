@@ -29,6 +29,7 @@
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.metadata :as qp.metadata]
    [metabase.query-processor.middleware.add-remaps :as qp.add-remaps]
+   [metabase.query-processor.middleware.catch-exceptions :as qp.catch-exceptions]
    [metabase.query-processor.middleware.drop-fields-in-summaries :as qp.drop-fields-in-summaries]
    [metabase.query-processor.middleware.nest-for-pivot :as qp.nest-for-pivot]
    [metabase.query-processor.middleware.normalize-query :as qp.middleware.normalize]
@@ -59,6 +60,32 @@
                        [:show-column-totals {:optional true} [:maybe :boolean]]
                        [:column-sort-order  {:optional true} [:maybe ::column-sort-order]]]])
 
+(defn- validate-pivot-indices!
+  "Throw an `:invalid-query` error if any index in `pivot-rows` or `pivot-cols` falls outside
+  `[0, num-breakouts)`."
+  [num-breakouts pivot-rows pivot-cols]
+  (doseq [[k pivots] [[:pivot-rows pivot-rows]
+                      [:pivot-cols pivot-cols]]
+          i          pivots]
+    (when (or (neg? i) (>= i num-breakouts))
+      (throw (ex-info (tru "Invalid {0}: specified breakout at index {1}, but we only have {2} breakouts"
+                           (name k) i num-breakouts)
+                      {:type          qp.error-type/invalid-query
+                       :num-breakouts num-breakouts
+                       :pivot-rows    pivot-rows
+                       :pivot-cols    pivot-cols})))))
+
+(defmacro ^:private wrapping-pivot-generation-errors
+  "Rewrap any throw from `body` as `\"Error generating pivot queries\"` of type `:qp`, matching the
+  outer error shape every pivot path presents to the QP's error handling."
+  [query & body]
+  `(try
+     ~@body
+     (catch Throwable e#
+       (throw (ex-info (tru "Error generating pivot queries")
+                       {:type qp.error-type/qp, :query ~query}
+                       e#)))))
+
 (mu/defn- keep-breakouts-at-indexes :- ::lib.schema/query
   "Keep the breakouts at indexes, reordering them if needed. Remove all other breakouts."
   [query                    :- ::lib.schema/query
@@ -75,7 +102,7 @@
   "Generate the additional queries to perform a generic pivot table"
   [query :- ::lib.schema/query
    {:keys [pivot-rows pivot-cols show-row-totals show-column-totals] :as _pivot-options} :- ::pivot-opts]
-  (try
+  (wrapping-pivot-generation-errors query
     (let [all-breakouts (lib/breakouts query)
           all-queries   (for [breakout-indexes (u/prog1 (pivot.common/breakout-combinations (count all-breakouts)
                                                                                             pivot-rows
@@ -90,11 +117,7 @@
       (conj (rest (map #(assoc-in % [:info :pivot/result-metadata] :none) all-queries))
             (->
              (assoc-in (first all-queries) [:info :pivot/original-query] query)
-             (assoc-in [:info :pivot/result-metadata] (qp.metadata/result-metadata query)))))
-    (catch Throwable e
-      (throw (ex-info (tru "Error generating pivot queries")
-                      {:type qp.error-type/qp, :query query}
-                      e)))))
+             (assoc-in [:info :pivot/result-metadata] (qp.metadata/result-metadata query)))))))
 
 (defn- maybe-userland
   "Wrap `query` as a userland query when it carries a non-empty `:info` map."
@@ -401,8 +424,8 @@
   legacy keys.
 
   Reads positional-index keys (`:pivot-rows` / `:pivot_rows`, `:pivot-cols` / `:pivot_cols`) and the
-  `show-*-totals` flags. Indices that fall outside the last stage's breakout vector are silently dropped.
-  `:pivot-measures` is presentation-only and is discarded.
+  `show-*-totals` flags. Throws `:invalid-query` when any index falls outside the last stage's
+  breakout vector. `:pivot-measures` is presentation-only and is discarded.
 
   If `query` already has a `:pivot` clause, only strips the legacy keys."
   [query :- ::lib.schema/query]
@@ -413,9 +436,9 @@
             (and (nil? rows-idxs) (nil? cols-idxs)))
       stripped
       (let [breakouts   (vec (:breakout (lib.util/query-stage query -1)))
-            n           (count breakouts)
+            _           (validate-pivot-indices! (count breakouts) rows-idxs cols-idxs)
             index->uuid (fn [i]
-                          (when (and (nat-int? i) (< i n))
+                          (when (nat-int? i)
                             (lib.options/uuid (nth breakouts i))))
             row-uuids   (into [] (keep index->uuid) (or rows-idxs []))
             col-uuids   (into [] (keep index->uuid) (or cols-idxs []))]
@@ -616,12 +639,15 @@
                  control-cached-at candidate-cached-at))
     equivalent?))
 
-(defn- ensure-pivot-clause
-  "Return `query` unchanged when its last stage already carries `:pivot`; otherwise attach a default `:pivot`
-  clause so the SQL compiler emits every subset of breakouts as its own grouping set (the powerset)."
+(defn- maybe-add-default-pivot-clause
+  "Attach a default `:pivot` clause to the last stage so the SQL compiler emits every subset of breakouts
+  as its own grouping set (the powerset). Returns `query` unchanged when the last stage already carries
+  `:pivot`, isn't an MBQL stage, or has no breakouts to pivot over."
   [query]
   (cond-> query
-    (not (lib.pivot/has-pivot? query))
+    (and (= :mbql.stage/mbql (:lib/type (lib.util/query-stage query -1)))
+         (seq (:breakout (lib.util/query-stage query -1)))
+         (not (lib.pivot/has-pivot? query)))
     (lib.pivot/with-pivot {:rows [] :columns [] :show-row-totals true :show-column-totals true})))
 
 (defn- run-single-query-pivot
@@ -630,14 +656,15 @@
   [query rff]
   (let [viz-settings (or (:viz-settings query)
                          (get-in query [:info :visualization-settings]))
-        pivot-opts   (pivot-opts-from-query query)]
-    (-> query
-        apply-legacy-pivot-keys
-        (apply-pivot-viz-settings viz-settings)
-        ensure-pivot-clause
-        (assoc-in [:middleware :pivot-options] pivot-opts)
-        maybe-userland
-        (qp/process-query rff))))
+        pivot-opts   (pivot-opts-from-query query)
+        prepared     (wrapping-pivot-generation-errors query
+                       (-> query
+                           apply-legacy-pivot-keys
+                           (apply-pivot-viz-settings viz-settings)
+                           maybe-add-default-pivot-clause
+                           (assoc-in [:middleware :pivot-options] pivot-opts)
+                           maybe-userland))]
+    (qp/process-query prepared rff)))
 
 (defn- running-in-clojure-test?
   "True when a `clojure.test` test is currently on the stack — the presence of `*testing-vars*` is the
@@ -670,19 +697,35 @@
    [:multi-query :union-all]
    [:native-pivot-query :union-all]])
 
-(def ^:private throwable-signature
-  (juxt class ex-message ex-data))
+(defn- failure-signature
+  "Comparable `[class-name message]` for a failure's deepest cause. Accepts a `Throwable` (walks
+  `ex-cause`) or a `catch-exceptions`-formatted `:status :failed` map (whose outer `:class` /
+  `:error` are already the deepest cause's)."
+  [failure]
+  (letfn [(->class-name [c]
+            (cond
+              (nil? c)            nil
+              (instance? Class c) (.getName ^Class c)
+              :else               (name c)))]
+    (cond
+      (instance? Throwable failure)
+      (let [root (loop [t failure] (if-let [c (ex-cause t)] (recur c) t))]
+        [(->class-name (class root)) (ex-message root)])
+
+      (and (map? failure) (= (:status failure) :failed))
+      [(->class-name (:class failure)) (:error failure)])))
 
 (defn- outcomes-match?
-  "True when two `{:outcome ...}`/`{:throwable ...}` maps represent equivalent behavior — both threw
-  throwables with the same signature (see [[throwable-signature]]), or both succeeded with results the
-  active [[pivot-outcome-comparator]] considers equivalent."
+  "True when two pivot-flow outcome maps -- `{:outcome ...}` or `{:throwable ...}` -- agree: both
+  failed with the same root-cause signature, or both succeeded on `pivot-outcome-comparator`."
   [{a-outcome :outcome a-throwable :throwable}
    {b-outcome :outcome b-throwable :throwable}]
-  (cond
-    (and a-throwable b-throwable) (= (throwable-signature a-throwable) (throwable-signature b-throwable))
-    (or  a-throwable b-throwable) false
-    :else                         (outcomes-data-equivalent? a-outcome b-outcome)))
+  (let [a-failure (or a-throwable (when (= (:status a-outcome) :failed) a-outcome))
+        b-failure (or b-throwable (when (= (:status b-outcome) :failed) b-outcome))]
+    (cond
+      (and a-failure b-failure) (= (failure-signature a-failure) (failure-signature b-failure))
+      (or  a-failure b-failure) false
+      :else                     (outcomes-data-equivalent? a-outcome b-outcome))))
 
 (defn- divergent-pivot-pairs
   "Vector of `[flow-a flow-b]` pairs (drawn in [[pivot-flow-comparison-pairs]] order) whose outcomes in
@@ -759,7 +802,6 @@
   (let [primary?     (= flow primary-flow)
         multi?       (= flow :multi-query)
         runner       (if multi? run-multi-query-pivot run-single-query-pivot)
-        ;; Non-`:multi-query` flow labels double as `:qp.pivot/forced-shape` stage values.
         force-shape  (when-not multi? flow)
         scoped-query (cond-> query
                        force-shape (lib.util/update-query-stage -1 assoc :qp.pivot/forced-shape force-shape))
@@ -803,6 +845,24 @@
     (let [{:keys [outcome throwable]} (get outcomes primary-flow)]
       (if throwable (throw throwable) outcome))))
 
+(mu/defn- run-pivot-query*
+  "Impl for [[run-pivot-query]]: pick the pivot implementation for `query` and run it through `rff`."
+  [query :- ::qp.schema/any-query
+   rff   :- ::qp.schema/rff]
+  (let [query             (-> query
+                              qp.middleware.normalize/normalize-preprocessing-middleware
+                              lib/prepare-after-deserialization)
+        db                (query-database query)
+        flows             (pivot-parity-flows query db)
+        single-flow       (first (remove #{:multi-query} flows))
+        use-single-query? (and single-flow (qp.settings/use-native-pivot-tables))
+        primary-flow      (if use-single-query? single-flow :multi-query)
+        primary           (if use-single-query? run-single-query-pivot run-multi-query-pivot)]
+    (binding [qp.pipeline/*pivot?* true]
+      (if (and single-flow (pivot-parity-enabled?))
+        (run-with-parity-check query rff flows primary-flow)
+        (primary query rff)))))
+
 (mu/defn run-pivot-query
   "Run the pivot `query` through `rff`.
 
@@ -816,6 +876,9 @@
   runs (primary via the caller's rff, others via the default rff for comparison) and disagreement is
   reported via [[on-parity-mismatch]]. Parity checking is on by default in clojure.test tests.
 
+  A query with `:info` is run as a userland query, so any error is caught and returned as a formatted
+  error response rather than thrown.
+
   Wrap this call in [[metabase.query-processor.streaming/streaming-response]] yourself."
   ([query :- ::qp.schema/any-query]
    (run-pivot-query query nil))
@@ -828,21 +891,12 @@
    ;; run-pivot-query, so binding it here from the query's :info map would be
    ;; redundant and could mis-set it for ad-hoc queries that carry a :card-id in :info.
    (qp.setup/with-qp-setup [query query]
-     (let [query             (-> query
-                                 qp.middleware.normalize/normalize-preprocessing-middleware
-                                 lib/prepare-after-deserialization)]
-       ;; Pivot compilation assumes the last stage has both `:breakout` and `:aggregation`; without them
-       ;; there's nothing to group over or aggregate so we fall through to a plain non-pivot run.
-       (if (or (empty? (lib/breakouts query))
-               (empty? (lib/aggregations query)))
-         (qp/process-query (maybe-userland query) rff)
-         (let [db                (query-database query)
-               flows             (pivot-parity-flows query db)
-               single-flow       (first (remove #{:multi-query} flows))
-               use-single-query? (and single-flow (qp.settings/use-native-pivot-tables))
-               primary-flow      (if use-single-query? single-flow :multi-query)
-               primary           (if use-single-query? run-single-query-pivot run-multi-query-pivot)]
-           (binding [qp.pipeline/*pivot?* true]
-             (if (and single-flow (pivot-parity-enabled?))
-               (run-with-parity-check query rff flows primary-flow)
-               (primary query rff)))))))))
+     (let [query (cond-> query
+                   (seq (:info query)) qp/userland-query)
+           rff   (or rff qp.reducible/default-rff)
+           ;; Everything between here and the first `qp/process-query`
+           ;; runs outside the QP's own middleware, so wrap it in the same exception-catching middleware
+           ;; `qp/process-query` applies to userland queries.
+           ;; No-op for non-userland queries.
+           qp    (qp.catch-exceptions/catch-exceptions run-pivot-query*)]
+       (qp query rff)))))

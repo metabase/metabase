@@ -63,14 +63,12 @@ export const DataAppActionsMenu = ({ app, canRemove = false }: Props) => {
         </Menu.Target>
 
         <Menu.Dropdown>
-          {app.resource_collection_id != null && (
-            <Menu.Item
-              component={Link}
-              to={`/collection/${app.resource_collection_id}`}
-            >
-              {t`View resources`}
-            </Menu.Item>
-          )}
+          <Menu.Item
+            component={Link}
+            to={`/collection/${app.resource_collection_id}`}
+          >
+            {t`View resources`}
+          </Menu.Item>
 
           {app.permission_group_id != null && (
             <Menu.Item

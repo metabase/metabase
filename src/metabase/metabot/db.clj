@@ -420,10 +420,12 @@
   (t2/select-fn-set :id :model/Database :id [:in database-ids] :router_database_id [:not= nil]))
 
 (mu/defn non-audit-databases
-  "The ID, name, engine, description, and audit flag of every non-audit, non-destination Database, ordered by name."
+  "The ID, name, engine, description, and audit flag of every non-audit, non-stub, non-destination Database, ordered
+  by name."
   []
   (t2/select [:model/Database :id :name :engine :description :is_audit]
              :is_audit false
+             :is_stub false
              :router_database_id nil
              {:order-by [[:%lower.name :asc]]}))
 
@@ -662,6 +664,11 @@
   "The Field with `field-id`, or nil."
   [field-id :- ::lib.schema.id/field]
   (t2/select-one :model/Field :id field-id {:from [(warehouse-schema-overlay/field-query)]}))
+
+(mu/defn fields
+  "The Fields with `field-ids`."
+  [field-ids :- [:set ::lib.schema.id/field]]
+  (t2/select :model/Field :id [:in field-ids] {:from [(warehouse-schema-overlay/field-query)]}))
 
 (mu/defn field-fingerprint
   "The fingerprint of the Field with `field-id`."
