@@ -150,7 +150,9 @@ describe("DatabaseForm > test connection", () => {
     expect(
       await screen.findByLabelText("Connection successful"),
     ).toBeInTheDocument();
-    expect(getTestConnectionButton()).not.toHaveAttribute("data-loading");
+    await waitFor(() =>
+      expect(getTestConnectionButton()).not.toHaveAttribute("data-loading"),
+    );
     expect(await findValidateRequests()).toHaveLength(1);
   });
 });
