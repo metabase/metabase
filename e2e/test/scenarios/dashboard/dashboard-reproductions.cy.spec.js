@@ -76,6 +76,8 @@ describe("issue 12578", () => {
     cy.tick(61 * 1000);
     cy.wait("@fastCardQuery");
     cy.get("@slowCardQuery.all").should("have.length", 1);
+    // The app has processed the fast card result, so the next refresh fetches it
+    cy.title().should("contain", "1/2 loaded");
 
     cy.tick(61 * 1000);
     cy.wait("@fastCardQuery");
