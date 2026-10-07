@@ -91,7 +91,8 @@ export const EmbedHomepage = () => {
         embeddingDocsUrl={embeddingDocsUrl + utmTags}
         analyticsDocsUrl={
           // eslint-disable-next-line metabase/no-unconditional-metabase-links-render -- only visible to admins
-          "https://www.metabase.com/learn/customer-facing-analytics/" + utmTags
+          "https://www.metabase.com/docs/latest/embedding/introduction" +
+          utmTags
         }
         learnMoreInteractiveEmbedUrl={learnMoreInteractiveEmbedding + utmTags}
         learnMoreStaticEmbedUrl={learnMoreStaticEmbedding + utmTags}

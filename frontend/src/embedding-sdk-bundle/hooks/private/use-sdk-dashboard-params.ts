@@ -47,7 +47,7 @@ export type SdkDashboardDisplayProps = SdkDashboardEntityInternalProps & {
   withSubscriptions?: boolean;
 
   /**
-   * A list of [parameters to hide](https://www.metabase.com/docs/latest/embedding/public-links.html#appearance-parameters).
+   * A list of [parameters to hide](https://www.metabase.com/docs/latest/embedding/public-links#appearance-parameters).
    * <br/>
    * - Combining {@link SdkDashboardProps.initialParameters | initialParameters} and {@link SdkDashboardDisplayProps.hiddenParameters | hiddenParameters} to filter data on the frontend is a [security risk](https://www.metabase.com/docs/latest/embedding/authentication#security-warning-each-end-user-must-have-their-own-metabase-account).
    * <br/>

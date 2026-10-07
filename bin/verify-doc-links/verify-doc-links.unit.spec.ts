@@ -51,6 +51,7 @@ describe("headingIds", () => {
       [
         "# Title",
         "### 2. Add a new endpoint",
+        "### `MB_API_KEY`",
         "## Security warning: each end-user _must_ have a `token`",
         "## [Linked](https://example.com) heading",
         "## Custom {#my-id}",
@@ -62,7 +63,8 @@ describe("headingIds", () => {
     );
     expect([...ids]).toEqual([
       "title",
-      "add-a-new-endpoint",
+      "2-add-a-new-endpoint",
+      "mb_api_key",
       "security-warning-each-end-user-must-have-a-token",
       "linked-heading",
       "my-id",
