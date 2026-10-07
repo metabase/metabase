@@ -1,3 +1,4 @@
+import { useFormikContext } from "formik";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -11,15 +12,15 @@ import type { TestRemoteSyncConnectionRequest } from "metabase-types/api";
 
 import { TOKEN_KEY, URL_KEY } from "../../constants";
 
+const getConnectionErrorMessage = (error: unknown) =>
+  getErrorMessage(error, t`Could not connect to repository`);
+
 const getTestResult = (
   isSuccess: boolean,
   error: unknown,
 ): TestConnectionResult | null => {
   if (error != null) {
-    return {
-      status: "error",
-      message: getErrorMessage(error, t`Could not connect to repository`),
-    };
+    return { status: "error", message: getConnectionErrorMessage(error) };
   }
 
   return isSuccess ? { status: "success" } : null;
@@ -34,6 +35,7 @@ export const GitTestConnectionButton = ({
   url,
   token,
 }: GitTestConnectionButtonProps) => {
+  const { setFieldError, setFieldTouched } = useFormikContext();
   const [testConnection, { isSuccess, error, isLoading, originalArgs }] =
     useTestRemoteSyncConnectionMutation();
   const request: TestRemoteSyncConnectionRequest = {
@@ -44,13 +46,21 @@ export const GitTestConnectionButton = ({
     ? getTestResult(isSuccess, error)
     : null;
 
+  const handleTestConnection = async () => {
+    const response = await testConnection(request);
+    if (response.error) {
+      setFieldTouched(URL_KEY, true, false);
+      setFieldError(URL_KEY, getConnectionErrorMessage(response.error));
+    }
+  };
+
   return (
     <TestConnectionButton
       data-testid="remote-sync-test-connection-button"
       result={result}
       isLoading={isLoading}
       disabled={!url}
-      onClick={() => testConnection(request)}
+      onClick={handleTestConnection}
     />
   );
 };
