@@ -268,7 +268,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
 
         // click the first bar on the card's graph and do a zoom drill-through
         H.chartPathWithFillColor("#509EE3").eq(0).click();
-        cy.findByText("See this month by week").click();
+        H.clickActionsPopover().findByText("See this month by week").click();
 
         cy.wait("@dataset");
 
@@ -342,7 +342,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
     });
     H.tableHeaderColumn("Quantity");
     cy.findByTestId("table-body")
-      .get("[data-dataset-index=0] > [data-column-id='ID']")
+      .find("[data-dataset-index=0] > [data-column-id='ID']")
       .should("have.text", "3") // Subject to change - sensitive to year shifting in the Sample Database
       .click();
 
@@ -399,6 +399,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
 
           H.chartPathWithFillColor("#88BF4D").first().trigger("mousemove");
           assertTooltipValues();
+          H.echartsTriggerBlur();
 
           H.chartPathWithFillColor("#98D9D9")
             .first()
