@@ -1,6 +1,6 @@
 # Debug — fix reported misbehavior
 
-Executor: main agent (needs the user dialog and the dev server).
+Executor: main agent (needs the user dialog).
 Input: the user's symptom. Output: a targeted fix in `src/index.tsx`.
 
 Read: `.claude/build-statement.md`, `skill/references/project.md`,
@@ -28,7 +28,7 @@ blocked API.
 5. Fix alters the data shape, settings, opt-outs or colors → update
    `.claude/build-statement.md`.
 6. Symptom came from failing tests → done when Checks pass. Otherwise:
-   dev server Ensure running; ask the user to confirm the fix after
+   dev server Check running; ask the user to confirm the fix after
    hot-reload.
 
 Rules:

@@ -28,34 +28,14 @@ npm run build      # Compiles src/ → dist/, then packages it into a .tgz
 npm test           # Runs src/*.test.tsx against a mocked Metabase host
 ```
 
-`@metabase/custom-viz/testing` renders your visualization outside Metabase with `mockColumn`,
-`mockSeries`, `checkViz` and `renderViz`. The mocked host behaves like Metabase: column type
-predicates, `getColor` and `formatValue` throw where Metabase would silently misbehave.
-
-```tsx
-import {
-  mockColumn,
-  mockSeries,
-  renderViz,
-} from "@metabase/custom-viz/testing";
-import { expect, it } from "vitest";
-
-import createVisualization from "./index";
-
-it("renders a number", () => {
-  const viz = renderViz(createVisualization, {
-    series: mockSeries([mockColumn("integer", "value")], [[5]]),
-  });
-  expect(viz.container.textContent).not.toBe("");
-});
-```
+The bundled agent skill writes `src/index.test.tsx` with `@metabase/custom-viz/testing`.
 
 ### Project structure
 
 ```
 src/
   index.tsx             # Your visualization code — start here
-  index.test.tsx        # Tests (optional)
+  index.test.tsx        # Tests written by the agent skill
 metabase-plugin.json    # Plugin manifest (name, icon, version)
 public/
   assets/

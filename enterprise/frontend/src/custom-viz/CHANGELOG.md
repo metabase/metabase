@@ -24,6 +24,8 @@ This changelog covers the `@metabase/custom-viz` npm package — the API and CLI
 - `getName` is now optional and is what Metabase shows as the visualization name in the UI. Omit it to use `name` from `metabase-plugin.json`; keep it to show a localized or human-friendly name.
 - `checkRenderable` is now optional. Omit it when your visualization can render any data; keep throwing from it to surface a custom error. A visualization without a `checkRenderable` is always considered renderable ([#81181](https://github.com/metabase/metabase/pull/81181)).
 
+- New `@metabase/custom-viz/testing` entry point renders a visualization outside Metabase against a mocked host (`mockColumn`, `mockSeries`, `checkViz`, `renderViz`). The mock matches Metabase's column type predicates and color names, and throws where Metabase would silently misbehave. Scaffolded projects get an `npm test` script (Vitest with happy-dom) that the bundled agent skill uses for its tests.
+
 ### Bug Fixes
 
 - `FormatValueOptions["date_style"]` now accepts `null`, matching the values Metabase actually passes ([#70306](https://github.com/metabase/metabase/pull/70306)).

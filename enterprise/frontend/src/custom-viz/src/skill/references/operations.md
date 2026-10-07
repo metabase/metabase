@@ -5,22 +5,22 @@ edits.
 
 ## Dev server
 
-- `npm run dev` — run in the background; rebuilds `dist/` on save, serves
-  it at `http://localhost:5174` (setup landing page at `/`), notifies
-  Metabase over SSE at `/__sse`. Rewrites `dist/` continuously.
-- `npm run build` — produces `<name>-<version>.tgz` in the project root.
-  Dev server must be stopped first.
+The user runs it in their own terminal and keeps it open: `npm run dev`
+rebuilds `dist/` on save, serves it at `http://localhost:5174` (setup
+landing page at `/`) and notifies Metabase over SSE at `/__sse`. Never
+start or stop it yourself.
 
 ```bash
-lsof -ti :5174 || echo free
 curl -sf http://localhost:5174/metabase-plugin.json -o /dev/null && echo up || echo down
-lsof -ti :5174 | xargs kill 2>/dev/null || true   # stop
+lsof -ti :5174   # pid holding the port
 ```
 
-**Ensure running:** down → `npm run dev` in the background, wait a few
-seconds, re-check. Port busy but down → kill the pid, restart, re-check.
-Same failure twice → read the background process output, show the error
-verbatim, stop restarting.
+**Check running:** down → ask the user to run `npm run dev` in a
+terminal in the project folder and keep it open. Down while the port is
+held → tell the user which process holds it (`lsof`).
+
+`npm run build` produces `<name>-<version>.tgz` in the project root and
+needs the dev server stopped (Ctrl+C in its terminal).
 
 ## Connecting Metabase
 
@@ -60,8 +60,8 @@ Docs: https://www.metabase.com/docs/latest/developers-guide/custom-visualization
 Change together: `"name"` in `metabase-plugin.json`, `"name"` in
 `package.json`, and `getName` in `src/index.tsx` when it returns a
 display name. Never rename the project directory yourself — it is the
-session's working directory; tell the user to rename it after stopping
-the dev server. Dev server running → restart it after.
+session's working directory; tell the user to stop the dev server,
+rename it, and start the dev server again.
 
 ## User edits
 

@@ -1,6 +1,8 @@
-import { GLOBAL_BLOCKED_EVENT_TYPES } from "./blocklists";
 import { makeSandboxDistortionCallback } from "./distortions";
-import { addEventListenerDistortion } from "./distortions-event";
+import {
+  GLOBAL_BLOCKED_EVENT_TYPES,
+  addEventListenerDistortion,
+} from "./distortions-event";
 
 function asStringArg(value: object): string {
   // type helper to pass non-string values as string in tests

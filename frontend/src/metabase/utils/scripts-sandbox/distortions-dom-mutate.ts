@@ -1,6 +1,5 @@
 import DOMPurify from "dompurify";
 
-import { BLOCKED_TAGS, PURIFY_CONFIG, URL_VALUED_ATTRS } from "./blocklists";
 import { coerceToString } from "./coerce";
 
 export const CREATE_ELEMENT = Document.prototype.createElement;
@@ -46,6 +45,13 @@ if (shadowInnerHTMLDescriptor?.set) {
   });
 }
 
+const PURIFY_CONFIG = {
+  FORBID_TAGS: ["form", "a", "style", "frame", "map", "area"],
+  FORBID_ATTR: ["target", "formaction", "action"],
+  ALLOWED_URI_REGEXP:
+    /^(?:#|\/|https?:|data:image\/(?:png|jpeg|gif|svg\+xml|webp);)/i,
+};
+
 function logSanitizationIfStripped(errorPrefix: string, source: string) {
   if (DOMPurify.removed.length > 0) {
     console.error(
@@ -66,6 +72,31 @@ export function sanitizedSetterDistortion(
     originalSet.call(this, sanitized);
   };
 }
+
+export const BLOCKED_TAGS = new Set([
+  "script",
+  "iframe",
+  "object",
+  "embed",
+  "link",
+  "meta",
+  "base",
+  "frame",
+  "form",
+  "a",
+  "map",
+  "area",
+  "style",
+  "video",
+  "audio",
+  "source",
+  "track",
+  "input",
+  "use",
+  "image",
+  "feimage",
+  "foreignobject",
+]);
 
 export function createElementDistortion(errorPrefix: string) {
   return function createElement(
@@ -107,6 +138,18 @@ export function createElementNSDistortion(errorPrefix: string) {
 function isInlineEventHandlerName(name: string): boolean {
   return /^on/i.test(name);
 }
+
+const URL_VALUED_ATTRS = new Set([
+  "href",
+  "src",
+  "xlink:href",
+  "action",
+  "formaction",
+  "poster",
+  "cite",
+  "background",
+  "manifest",
+]);
 
 function isUrlValuedAttr(name: string): boolean {
   return URL_VALUED_ATTRS.has(name.toLowerCase());

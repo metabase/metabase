@@ -1,9 +1,8 @@
-# Iterate — live edits with the dev server
+# Iterate — live edits
 
-Executor: main agent (owns the background dev server; a subagent's
-processes die with it).
+Executor: main agent (needs the user dialog).
 Input: a change request, or none right after build. Output: edited
-`src/index.tsx`, a running dev server.
+`src/index.tsx`.
 
 Read: `.claude/build-statement.md`, `skill/references/project.md`,
 `skill/references/operations.md`, `skill/references/fix-log-rules.md`
@@ -20,9 +19,9 @@ Read on demand, before the edit that needs it:
   `skill/references/sandbox-restrictions.md`, then
   `skill/references/sandbox-substitutes.md`
 
-1. Dev server: Ensure running. First start in this session → give the
-   user the Connecting Metabase requirements, dev-mode steps and live
-   check.
+1. Dev server: Check running (`operations.md`). First time in this
+   session → also give the user the Connecting Metabase requirements,
+   dev-mode steps and live check.
 2. One user request — one focused edit to `src/index.tsx`; saves
    hot-reload.
 3. After every edit that changes logic, markup or props (not only

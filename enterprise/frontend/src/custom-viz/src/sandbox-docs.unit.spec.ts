@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 
 import ts from "typescript";
@@ -26,6 +26,10 @@ const collectStrings = (node: ts.Node): string[] =>
     ? [node.text]
     : node.getChildren().flatMap(collectStrings);
 
+const SANDBOX_FILES = readdirSync(SANDBOX_DIR).filter(
+  (file) => file.endsWith(".ts") && !file.includes(".unit.spec."),
+);
+
 const readBlocklist = (name: string) => {
   const found: string[] = [];
   const visit = (node: ts.Node) => {
@@ -39,7 +43,7 @@ const readBlocklist = (name: string) => {
     }
     ts.forEachChild(node, visit);
   };
-  visit(parse("blocklists.ts"));
+  SANDBOX_FILES.forEach((file) => visit(parse(file)));
   return found;
 };
 
