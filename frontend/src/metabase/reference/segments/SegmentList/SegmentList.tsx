@@ -45,8 +45,8 @@ export function SegmentList({ style }: SegmentListProps) {
   const { data: segments = [], isLoading, error } = useListSegmentsQuery();
   const adminLink = useSelector((state) =>
     getDocsUrl(state, {
-      page: "data-modeling/segments",
-      anchor: "creating-a-segment",
+      page: "data-modeling/semantic-layer/segments",
+      anchor: "create-segments",
     }),
   );
   const showMetabaseLinks = useSelector(getShowMetabaseLinks);
