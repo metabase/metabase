@@ -59,27 +59,43 @@ const resolveColor = (name: string, colorScheme: "light" | "dark") => {
   return color(name, palette);
 };
 
-describe("custom-viz testing host data (regenerate with custom-viz/scripts/generate-testing-host-data.mjs)", () => {
+const computeHostData = (colorNames: string[]) => ({
+  predicates: Object.fromEntries(
+    Object.entries(COLUMN_PRESETS).map(([kind, preset]) => [
+      kind,
+      getHostPredicates(kind, preset),
+    ]),
+  ),
+  colors: Object.fromEntries(
+    COLOR_SCHEMES.map((colorScheme) => [
+      colorScheme,
+      Object.fromEntries(
+        colorNames.map((name) => [name, resolveColor(name, colorScheme)]),
+      ),
+    ]),
+  ),
+});
+
+const toComparable = (hostData: typeof HOST_DATA) =>
+  JSON.stringify({
+    predicates: hostData.predicates,
+    colorNames: COLOR_SCHEMES.map((colorScheme) =>
+      Object.keys(hostData.colors[colorScheme]),
+    ),
+  });
+
+describe("custom-viz testing host data", () => {
   const documentedColorNames = getDocumentedColorNames();
 
-  it.each(Object.entries(COLUMN_PRESETS))(
-    "matches the host predicates for the %s column preset",
-    (kind, preset) => {
-      expect(HOST_DATA.predicates[kind]).toEqual(
-        getHostPredicates(kind, preset),
+  it("matches the host predicates and the api-contract.md color names", () => {
+    const expected = computeHostData(documentedColorNames);
+    if (toComparable(HOST_DATA) !== toComparable(expected)) {
+      throw new Error(
+        `custom-viz/src/testing/host-data.json is out of date. Replace it with:\n${JSON.stringify(expected, null, 2)}`,
       );
-    },
-  );
-
-  it.each(COLOR_SCHEMES)(
-    "has a %s color for every name api-contract.md lists",
-    (colorScheme) => {
-      expect(documentedColorNames.length).toBeGreaterThan(0);
-      expect(Object.keys(HOST_DATA.colors[colorScheme]).sort()).toEqual(
-        [...documentedColorNames].sort(),
-      );
-    },
-  );
+    }
+    expect(documentedColorNames.length).toBeGreaterThan(0);
+  });
 
   it("lists only color names the host palette knows", () => {
     expect(

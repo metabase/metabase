@@ -35,11 +35,7 @@ bun run format:check
 
 ## Testing module host data
 
-`src/testing/host-data.json` holds what the `@metabase/custom-viz/testing` mocks need from Metabase: column type predicate results for each preset in `src/testing/column-presets.json`, and light/dark values for the color names listed in `src/skill/references/api-contract.md`. `custom-viz-testing-host-data.unit.spec.ts` in `metabase-enterprise/custom_viz` fails when it drifts from the host. Regenerate it from the repo root after building CLJS (`bun run build:cljs`, or a running dev build):
-
-```bash
-node enterprise/frontend/src/custom-viz/scripts/generate-testing-host-data.mjs
-```
+`src/testing/host-data.json` holds what the `@metabase/custom-viz/testing` mocks need from Metabase: column type predicate results for each preset in `src/testing/column-presets.json`, and light/dark values for the color names listed in `src/skill/references/api-contract.md`. `custom-viz-testing-host-data.unit.spec.ts` in `metabase-enterprise/custom_viz` fails when the predicates or the color names drift from the host, and prints the up-to-date file to paste in.
 
 ## Releasing
 
