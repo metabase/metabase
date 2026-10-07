@@ -815,6 +815,7 @@ if (USE_CIRCUS) {
 const MOCKING_API = /\bjest\.(mock|doMock|unmock|resetModules|isolateModules)\(/;
 // Every file gets a fresh registry, which is jest's model on Node's own loader.
 const ISOLATE_ALL = process.env.NT_ISOLATE_ALL === "1";
+const sharedGlobalKeys = new Set();
 // Mantine keeps a module-level theme whose component overrides close over project
 // components, so leaving it cached hands the next file's tree the old graph's ones.
 const EVICTABLE_PACKAGES = process.env.NT_SHARE_UI_PACKAGES === "1" ? /$^/ : /\/node_modules\/(@mantine|@emotion)\//;
@@ -854,9 +855,15 @@ let initialBootstrap;
 // them, so a 60 second RTK cache timer from file 3 fires during file 40 and the
 // loop waits for it. Timers created while a file runs are tracked and cleared.
 const pendingTimers = new Set();
+// jsdom fires animation frames every 16 ms of real time, and Redux Toolkit holds
+// some store notifications until the next frame. A spec that acts right after a
+// request settles passes under jest only because a cold file takes several
+// frames to do anything. Files here run about three times faster, so frames do too.
+const FRAME_INTERVAL = 1000 / 60;
+const FRAME_MS = process.env.NT_FRAME_MS ? Number(process.env.NT_FRAME_MS) : 4;
 const trackedTimers = {
   setTimeout: (fn, delay, ...rest) => { const handle = realSetTimeout(fn, delay, ...rest); pendingTimers.add(handle); if (process.env.NT_DEBUG_TIMERS_LEFT) handle.__stack = new Error().stack; return handle; },
-  setInterval: (fn, delay, ...rest) => { const handle = realSetInterval(fn, delay, ...rest); pendingTimers.add(handle); return handle; },
+  setInterval: (fn, delay, ...rest) => { const handle = realSetInterval(fn, delay === FRAME_INTERVAL ? FRAME_MS : delay, ...rest); pendingTimers.add(handle); return handle; },
 };
 // True while the clock is Node's own, tracked or not, and false under a fake clock.
 const clockIsReal = () => globalThis.setInterval === realSetInterval || globalThis.setInterval === trackedTimers.setInterval;
@@ -961,6 +968,7 @@ const fileCleanup = async (isolated) => {
   resetNavigator();
   globalThis.__nodeTestSpike.resetVisualizations?.();
   if (!process.env.NT_NO_REALM_RESTORE) globalThis.__nodeTestSpike.restoreRealm?.();
+  if (!process.env.NT_NO_ENV_RESTORE) globalThis.__nodeTestSpike.restoreEnvironment?.();
   if (process.env.NT_DEBUG_STATE_DIFF) { console.error(`[state] === after ${currentFile}`); stateDiff(); }
   if (process.env.NT_EVICT_PACKAGES) {
     const pattern = new RegExp(`/node_modules/(${process.env.NT_EVICT_PACKAGES})/`);
@@ -996,6 +1004,7 @@ let filesRunHere = 0;
 let fileStarted = 0;
 globalThis.__nodeTestSpike.runFile = async (t, file) => {
   fileStarted = Date.now();
+  if (process.env.NT_DEBUG_WINKEY) { const k = process.env.NT_DEBUG_WINKEY; console.error(`[winkey] start ${path.basename(file)} win=${JSON.stringify(Object.keys(Object.getOwnPropertyDescriptor(win, k) ?? {}))} global=${JSON.stringify(Object.keys(Object.getOwnPropertyDescriptor(globalThis, k) ?? {}))} same=${win === globalThis.window}`); }
   preloadMocks ??= new Map(mocks);
   currentFile = path.relative(root, file);
   const isolated = ISOLATE_ALL || MOCKING_API.test(fs.readFileSync(file, "utf8"));
@@ -1414,8 +1423,16 @@ globalThis.__nodeTestSpike.trackLets = (file, read, write) => { trackedLets.set(
   {
     const compileAny = NodeModule.prototype._compile;
     NodeModule.prototype._compile = function (content, filename, ...rest) {
-      if (!isProjectSource(filename)) packagesLoadedSinceMirror = true;
-      return compileAny.call(this, content, filename, ...rest);
+      if (isProjectSource(filename)) return compileAny.call(this, content, filename, ...rest);
+      packagesLoadedSinceMirror = true;
+      // A package or the cljs build loads once per process, so a global that it
+      // installs has to outlive the file that happened to load it.
+      const before = new Set(Reflect.ownKeys(globalThis));
+      try {
+        return compileAny.call(this, content, filename, ...rest);
+      } finally {
+        for (const key of Reflect.ownKeys(globalThis)) if (!before.has(key)) sharedGlobalKeys.add(key);
+      }
     };
   }
   if (SHARED_UI) {
@@ -1436,7 +1453,8 @@ globalThis.__nodeTestSpike.trackLets = (file, read, write) => { trackedLets.set(
       for (const [key, descriptor] of baseline) {
         const now = Object.getOwnPropertyDescriptor(target, key);
         if (now && now.value === descriptor.value && now.get === descriptor.get && now.set === descriptor.set) continue;
-        try { Object.defineProperty(target, key, descriptor); restored += 1; } catch {}
+        if (process.env.NT_DEBUG_REALM_KEYS) console.error(`[realm-key] changed ${String(key)}`);
+    try { Object.defineProperty(target, key, descriptor); restored += 1; } catch {}
       }
     }
     return restored;
@@ -1522,16 +1540,18 @@ const globalBaseline = snapshotDescriptors(globalThis);
 const sameDescriptor = (a, b) =>
   a && b && a.value === b.value && a.get === b.get && a.set === b.set &&
   a.writable === b.writable && a.enumerable === b.enumerable && a.configurable === b.configurable;
-const restoreDescriptors = (target, descriptors, removeAdded) => {
+const restoreDescriptors = (target, descriptors, removeAdded, keepAdded) => {
   let restored = 0;
   if (removeAdded) {
     for (const key of Reflect.ownKeys(target)) {
-      if (descriptors.has(key)) continue;
+      if (descriptors.has(key) || keepAdded?.has(key)) continue;
+      if (process.env.NT_DEBUG_REALM_KEYS) console.error(`[realm-key] added ${String(key)}`);
       try { delete target[key]; restored += 1; } catch {}
     }
   }
   for (const [key, descriptor] of descriptors) {
     if (sameDescriptor(Object.getOwnPropertyDescriptor(target, key), descriptor)) continue;
+    if (process.env.NT_DEBUG_REALM_KEYS) console.error(`[realm-key] changed ${String(key)}`);
     try { Object.defineProperty(target, key, descriptor); restored += 1; } catch {}
   }
   return restored;
@@ -1539,11 +1559,17 @@ const restoreDescriptors = (target, descriptors, removeAdded) => {
 const restoreRealm = () => {
   let restored = 0;
   for (const [target, descriptors] of realmBaseline) restored += restoreDescriptors(target, descriptors, true);
-  restored += restoreDescriptors(globalThis, globalBaseline, false);
+  restored += restoreDescriptors(globalThis, globalBaseline, ISOLATE_ALL && !process.env.NT_NO_GLOBAL_KEY_REMOVAL, sharedGlobalKeys);
   globalThis.__nodeTestSpike.lastRealmRestored = restored;
   if (process.env.NT_DEBUG_REALM && restored) console.error(`[realm] restored ${restored} after ${currentFile}`);
 };
 globalThis.__nodeTestSpike.restoreRealm = restoreRealm;
+// jest gives each file its own copy of process.env.
+const environmentBaseline = { ...process.env };
+globalThis.__nodeTestSpike.restoreEnvironment = () => {
+  for (const key of Object.keys(process.env)) if (!(key in environmentBaseline)) delete process.env[key];
+  for (const [key, value] of Object.entries(environmentBaseline)) if (process.env[key] !== value) process.env[key] = value;
+};
 globalThis.__nodeTestSpike.getPhase = () => phase;
 globalThis.__nodeTestSpike.resolveProject = resolveProject;
 globalThis.__nodeTestSpike.isProjectSource = isProjectSource;
