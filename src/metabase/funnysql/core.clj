@@ -368,6 +368,36 @@
     (append-sql! context "PARTITION BY ")
     (commas! xs context)))
 
+(def ^:private order-by-directions
+  "Each `:order-by` direction as `[<sort direction> <placement of NULLs>]`; `nil` means the default."
+  {:asc              [:asc nil]
+   :desc             [:desc nil]
+   :nulls-last       [nil :last]
+   :nulls-first      [nil :first]
+   :asc-nulls-last   [:asc :last]
+   :desc-nulls-last  [:desc :last]
+   :asc-nulls-first  [:asc :first]
+   :desc-nulls-first [:desc :first]})
+
+(defn- mysql-order-by-subclause!
+  "MySQL and MariaDB have no `NULLS FIRST`/`NULLS LAST`. They sort `NULL` below every other value -- first ascending, last
+  descending -- so when that isn't the placement asked for, sort on whether `expr` is `NULL` first."
+  [expr sort-direction nulls context]
+  (let [sort-direction (or sort-direction :asc)]
+    (when (and nulls
+               (not= nulls (case sort-direction
+                             :asc  :first
+                             :desc :last)))
+      (append-sql! context "(")
+      (compile! expr context)
+      (append-sql! context (case nulls
+                             :last  ") IS NULL ASC, "
+                             :first ") IS NULL DESC, ")))
+    (compile! expr context)
+    (append-sql! context (case sort-direction
+                           :asc  " ASC"
+                           :desc " DESC"))))
+
 (defn- order-by! [subclauses context]
   (when-let [subclauses (not-empty (->sequence subclauses))]
     (append-sql! context "ORDER BY ")
@@ -380,19 +410,22 @@
                 ;; silently ignores them 😢. Let's be nicer than that.
                 (when (> (count args) 2)
                   (throw (ex-info "`:order-by` only supports [<expression> <direction>], but got more than 2 args" {:args args})))
-                (compile! expr context)
                 ;; the direction is optional, e.g. `[:field]` or `:field`, and defaults to `ASC`
-                (append-sql! context (case (or direction :asc)
-                                       :asc              " ASC"
-                                       :desc             " DESC"
-                                       :nulls-last       " NULLS LAST"
-                                       :nulls-first      " NULLS FIRST"
-                                       :asc-nulls-last   " ASC NULLS LAST"
-                                       :desc-nulls-last  " DESC NULLS LAST"
-                                       :asc-nulls-first  " ASC NULLS FIRST"
-                                       :desc-nulls-first " DESC NULLS FIRST"
-                                       (throw (ex-info "Invalid order by direction"
-                                                       {:direction direction, :subclause subclause}))))))]
+                (let [[sort-direction nulls] (or (order-by-directions (or direction :asc))
+                                                 (throw (ex-info "Invalid order by direction"
+                                                                 {:direction direction, :subclause subclause})))]
+                  (if (= (engine context) :mysql)
+                    (mysql-order-by-subclause! expr sort-direction nulls context)
+                    (do
+                      (compile! expr context)
+                      (when sort-direction
+                        (append-sql! context (case sort-direction
+                                               :asc  " ASC"
+                                               :desc " DESC")))
+                      (when nulls
+                        (append-sql! context (case nulls
+                                               :last  " NULLS LAST"
+                                               :first " NULLS FIRST"))))))))]
       (interpose-fn subclauses subclause! #(append-sql! context ", ")))))
 
 (defn- inline? [x]

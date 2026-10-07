@@ -298,6 +298,23 @@
          #"\Q`:order-by` only supports [<expression> <direction>], but got more than 2 args\E"
          (funnysql/format {:select [:a], :from [:t], :order-by [[:a :asc :nulls-first]]} :postgres)))))
 
+(deftest ^:parallel order-by-nulls-ordering-mysql-test
+  (testing (str "MySQL and MariaDB don't support NULLS FIRST/NULLS LAST. They sort NULL first ascending and last "
+                "descending, so sort on `IS NULL` first only when that isn't what we want")
+    (are [k expected] (= [(str "SELECT `a` FROM `t` ORDER BY " expected)]
+                         (funnysql/format {:select [:a], :from [:t], :order-by [[:a k]]} :mysql))
+      :asc              "`a` ASC"
+      :desc             "`a` DESC"
+      :nulls-last       "(`a`) IS NULL ASC, `a` ASC"
+      :nulls-first      "`a` ASC"
+      :asc-nulls-last   "(`a`) IS NULL ASC, `a` ASC"
+      :desc-nulls-last  "`a` DESC"
+      :asc-nulls-first  "`a` ASC"
+      :desc-nulls-first "(`a`) IS NULL DESC, `a` DESC"))
+  (testing "the expression is emitted twice, so its parameters are bound twice"
+    (is (= ["SELECT `a` FROM `t` ORDER BY (coalesce(`a`, ?)) IS NULL DESC, coalesce(`a`, ?) DESC" "x" "x"]
+           (funnysql/format {:select [:a], :from [:t], :order-by [[[:coalesce :a "x"] :desc-nulls-first]]} :mysql)))))
+
 (deftest ^:parallel limit-test
   (is (= ["LIMIT 10"]
          (funnysql/format {:limit 10} :postgres)))
