@@ -23,7 +23,7 @@
   (str/join " / " (keep ex-message (take 4 (iterate ex-cause e)))))
 
 (defn- history
-  "`[is_creation is_reversion name]` of each revision of `entity` `id`, newest first."
+  "`[is_creation is_reversion name]` of each Revision of `entity` `id`, newest first."
   [entity id]
   (mapv (juxt :is_creation :is_reversion (comp :name :object))
         (revisions/revisions entity id)))
@@ -37,7 +37,7 @@
 
 (defn- revert-to-creation-signalling!
   "[[revert-to-creation!]] in this thread. Delivers `reached` before the revert's first write: at the row lock (with
-  `row-held-by-edit?`), the revisions lock, or the read of the latest revision, whichever comes first."
+  `row-held-by-edit?`), the revisions lock, or the read of the latest Revision, whichever comes first."
   [entity id reached {:keys [row-held-by-edit?]}]
   (let [lock-entity     (mt/original-fn #'revisions.db/lock-entity!)
         lock-revisions  (mt/original-fn #'revisions.db/lock-revisions!)
@@ -74,7 +74,7 @@
 
 (defn edit-holds-row-during-revert!
   "An edit holds the row of `entity`, a revert to the creation starts, and the edit writes its change when the revert
-  reaches its first lock or has read the latest revision. `with-entity` calls its argument with the id of a committed
+  reaches its first lock or has read the latest Revision. `with-entity` calls its argument with the id of a committed
   entity named \"X0\" and then renamed to \"X1\"."
   [entity with-entity]
   (with-entity
@@ -227,7 +227,7 @@
                   revert  (revert-to-creation-holding! :model/Document a reached release)
                   _       (deref reached 10000 :timeout)
                   edit    (in-thread #(mt/user-http-request :crowberto :put 200 (str "document/" b) {:name "Other edit"}))]
-              ;; time for the edit to write its revision, or to wait for the revert
+              ;; time for the edit to write its Revision, or to wait for the revert
               (deref edit 1500 nil)
               (deliver release true)
               (let [revert-out (deref revert 60000 :timeout)
