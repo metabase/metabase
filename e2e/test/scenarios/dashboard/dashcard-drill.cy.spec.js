@@ -27,7 +27,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
     cy.signInAsAdmin();
   });
 
-  describe("should pass multiple filters for numeric column on drill-through (metabase#13062)", () => {
+  it("should pass multiple filters for numeric column on drill-through (metabase#13062)", () => {
     const questionDetails = {
       name: "13062Q",
       query: {
@@ -42,48 +42,67 @@ describe("scenarios > dashboard > dashboard drill", () => {
       type: "category",
     };
 
-    beforeEach(() => {
-      // Set "Rating" Field type to: "Category"
-      cy.request("PUT", `/api/field/${REVIEWS.RATING}`, {
-        semantic_type: "type/Category",
-      });
-
-      H.createQuestionAndDashboard({ questionDetails }).then(
-        ({ body: { id, card_id, dashboard_id } }) => {
-          // Add filter to the dashboard
-          cy.request("PUT", `/api/dashboard/${dashboard_id}`, {
-            parameters: [filter],
-          });
-
-          // Connect filter to the dashboard card
-          cy.request("PUT", `/api/dashboard/${dashboard_id}`, {
-            dashcards: [
-              {
-                id,
-                card_id,
-                row: 0,
-                col: 0,
-                size_x: 11,
-                size_y: 6,
-                parameter_mappings: [
-                  {
-                    parameter_id: filter.id,
-                    card_id,
-                    target: ["dimension", ["field", REVIEWS.RATING, null]],
-                  },
-                ],
-              },
-            ],
-          });
-
-          // set filter values (ratings 5 and 4) directly through the URL
-          cy.visit(`/dashboard/${dashboard_id}?category=5&category=4`);
-          cy.findByText("2 selections");
-        },
-      );
+    // Set "Rating" Field type to: "Category"
+    cy.request("PUT", `/api/field/${REVIEWS.RATING}`, {
+      semantic_type: "type/Category",
     });
 
-    it("when clicking on the field value and on the card title (metabase#13062)", () => {
+    H.createQuestionAndDashboard({ questionDetails }).then(
+      ({ body: { id, card_id, dashboard_id } }) => {
+        // Add filter to the dashboard
+        cy.request("PUT", `/api/dashboard/${dashboard_id}`, {
+          parameters: [filter],
+        });
+
+        // Connect filter to the dashboard card
+        cy.request("PUT", `/api/dashboard/${dashboard_id}`, {
+          dashcards: [
+            {
+              id,
+              card_id,
+              row: 0,
+              col: 0,
+              size_x: 11,
+              size_y: 6,
+              parameter_mappings: [
+                {
+                  parameter_id: filter.id,
+                  card_id,
+                  target: ["dimension", ["field", REVIEWS.RATING, null]],
+                },
+              ],
+            },
+          ],
+        });
+
+        cy.wrap(dashboard_id).as("dashboardId");
+      },
+    );
+
+    cy.get("@dashboardId").then((dashboardId) => {
+      // set filter values (ratings 5 and 4) directly through the URL
+      const dashboardUrl = `/dashboard/${dashboardId}?category=5&category=4`;
+
+      cy.log("when clicking on the card title (metabase#13062-2)");
+      cy.visit(dashboardUrl);
+      H.filterWidget().should("contain", "2 selections");
+
+      cy.findByTestId("dashcard").findByText(questionDetails.name).click();
+      cy.findByTestId("qb-filters-panel")
+        .findByText("Rating is equal to 2 selections")
+        .should("be.visible");
+
+      // Sample review body
+      H.queryBuilderMain()
+        .contains("Ad perspiciatis quis et consectetur.")
+        .should("be.visible");
+
+      H.assertQueryBuilderRowCount(907);
+
+      cy.log("when clicking on the field value (metabase#13062-1)");
+      cy.visit(dashboardUrl);
+      H.filterWidget().should("contain", "2 selections");
+
       cy.findByTestId("dashcard").findByText("xavier").click();
       H.popover().findByText("Is xavier").click();
 
@@ -98,89 +117,13 @@ describe("scenarios > dashboard > dashboard drill", () => {
         .should("be.visible");
 
       H.assertQueryBuilderRowCount(1);
-
-      cy.log("when clicking on the card title (metabase#13062-2)");
-      cy.go("back");
-      H.filterWidget().findByText("2 selections").should("be.visible");
-
-      cy.findByTestId("dashcard").findByText(questionDetails.name).click();
-      cy.findByTestId("qb-filters-panel")
-        .findByText("Rating is equal to 2 selections")
-        .should("be.visible");
-
-      // Sample review body
-      H.queryBuilderMain()
-        .contains("Ad perspiciatis quis et consectetur.")
-        .should("be.visible");
-
-      H.assertQueryBuilderRowCount(907);
     });
   });
 
-  it("should drill-through on a primary key out of 2000 rows", () => {
-    cy.intercept("POST", "/api/dataset").as("dataset");
-
+  it("should drill-through on a foreign key (metabase#8055) and on a primary key out of 2000 rows", () => {
     // In this test we're using already present dashboard ("Orders in a dashboard")
     const FILTER_ID = "7c9ege62";
     const PK_VALUE = "7602";
-
-    cy.request("PUT", `/api/dashboard/${ORDERS_DASHBOARD_ID}`, {
-      parameters: [
-        {
-          id: FILTER_ID,
-          name: "Category",
-          slug: "category",
-          type: "category",
-          default: ["Gadget"],
-        },
-      ],
-    });
-    cy.request("PUT", `/api/dashboard/${ORDERS_DASHBOARD_ID}`, {
-      dashcards: [
-        {
-          id: ORDERS_DASHBOARD_DASHCARD_ID,
-          card_id: ORDERS_QUESTION_ID,
-          row: 0,
-          col: 0,
-          size_x: 16,
-          size_y: 8,
-          parameter_mappings: [
-            {
-              parameter_id: FILTER_ID,
-              card_id: ORDERS_QUESTION_ID,
-              target: [
-                "dimension",
-                [
-                  "field",
-                  PRODUCTS.CATEGORY,
-                  { "source-field": ORDERS.PRODUCT_ID },
-                ],
-              ],
-            },
-          ],
-          visualization_settings: {},
-        },
-      ],
-    });
-
-    H.visitDashboard(ORDERS_DASHBOARD_ID);
-    H.tableHeaderClick("ID");
-
-    cy.get(".test-Table-ID").contains(PK_VALUE).first().click();
-
-    cy.wait("@dataset");
-
-    cy.findByTestId("object-detail").within(() => {
-      cy.findAllByText(PK_VALUE);
-    });
-
-    const pattern = new RegExp(`/question\\?objectId=${PK_VALUE}#*`);
-    cy.url().should("match", pattern);
-  });
-
-  it("should drill-through on a foreign key (metabase#8055)", () => {
-    // In this test we're using already present dashboard ("Orders in a dashboard")
-    const FILTER_ID = "7c9ege62";
 
     cy.log("Add filter (with the default Category) to the dashboard");
     cy.request("PUT", `/api/dashboard/${ORDERS_DASHBOARD_ID}`, {
@@ -223,23 +166,38 @@ describe("scenarios > dashboard > dashboard drill", () => {
         },
       ],
     });
-    cy.intercept("POST", "/api/dataset").as("dataset");
+    cy.intercept("POST", "/api/dataset").as("fkDataset");
 
+    cy.log("Drill through on a foreign key (metabase#8055)");
     H.visitDashboard(ORDERS_DASHBOARD_ID);
     // Product ID in the first row (query fails for User ID as well)
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("105").click();
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("View details").click();
+    H.getDashboardCard().findByText("105").click();
+    H.clickActionsPopover().findByText("View details").click();
 
     cy.log("Reported on v0.29.3");
-    cy.wait("@dataset").then((xhr) => {
+    cy.wait("@fkDataset").then((xhr) => {
       expect(xhr.response.body.error).not.to.exist;
     });
     cy.findByTestId("object-detail")
       .findAllByText("Fantastic Wool Shirt")
       .should("have.length", 3)
       .and("be.visible");
+
+    cy.log("Drill through on a primary key out of 2000 rows");
+    H.visitDashboard(ORDERS_DASHBOARD_ID);
+    cy.intercept("POST", "/api/dataset").as("pkDataset");
+    H.tableHeaderClick("ID");
+
+    cy.get(".test-Table-ID").contains(PK_VALUE).first().click();
+
+    cy.wait("@pkDataset");
+
+    cy.findByTestId("object-detail").within(() => {
+      cy.findAllByText(PK_VALUE);
+    });
+
+    const pattern = new RegExp(`/question\\?objectId=${PK_VALUE}#*`);
+    cy.url().should("match", pattern);
   });
 
   it("should keep card's display when doing zoom drill-through from dashboard (metabase#38307)", () => {
@@ -475,8 +433,15 @@ describe("scenarios > dashboard > dashboard drill", () => {
       H.visitDashboard(ORDERS_DASHBOARD_ID);
     });
 
-    it("should correctly drill-through on Orders and on Products filter (metabase#11503)", () => {
+    it("should correctly drill-through on Orders and Products filters (metabase#11503)", () => {
+      cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query").as(
+        "dashcardQuery",
+      );
+
+      cy.log("Orders filter (metabase#11503-1)");
+      H.getDashboardCard().findByText("52.72").should("be.visible");
       setFilterValue(ordersIdFilter.name);
+      cy.wait("@dashcardQuery");
 
       drillThroughCardTitle("Orders");
 
@@ -490,13 +455,14 @@ describe("scenarios > dashboard > dashboard drill", () => {
 
       postDrillAssertion("ID is 2 selections");
 
-      cy.log(
-        "should correctly drill-through on Products filter (metabase#11503-2)",
-      );
-      cy.go("back");
-      H.filterWidget().eq(0).should("contain", "2 selections");
+      cy.log("Products filter (metabase#11503-2)");
+      H.visitDashboard(ORDERS_DASHBOARD_ID);
+      H.filterWidget().should("contain", "2 selections");
       H.clearFilterWidget(0);
-      H.filterWidget().eq(0).should("contain", ordersIdFilter.name);
+      H.filterWidget()
+        .should("contain", ordersIdFilter.name)
+        .and("not.contain", "2 selections");
+
       setFilterValue(productsIdFilter.name);
 
       drillThroughCardTitle("Orders");
@@ -551,59 +517,57 @@ describe("scenarios > dashboard > title drill", () => {
       H.createNativeQuestionAndDashboard({ questionDetails }).then(
         ({ body: { dashboard_id }, questionId }) => {
           cy.wrap(questionId).as("questionId");
-          H.visitDashboard(dashboard_id);
+          cy.wrap(dashboard_id).as("dashboardId");
         },
       );
     });
 
-    describe("as a user with access to underlying data", () => {
-      it("should let you click through the title to the query builder (metabase#13042)", () => {
-        cy.get("@questionId").then((questionId) => {
-          H.getDashboardCard().findByRole("link", { name: "Q1" }).as("title");
-          cy.get("@title").realHover();
-          cy.get("@title")
-            .should("have.attr", "href")
-            .and("include", `/question/${questionId}`);
-          cy.get("@title").click();
+    it("should let you click through the title to the query builder with and without access to underlying data (metabase#13042)", () => {
+      cy.get("@questionId").then((questionId) => {
+        cy.log("as a user with access to underlying data");
+        H.visitDashboard("@dashboardId");
 
-          H.queryBuilderMain().within(() => {
-            cy.findByText("This question is written in SQL.").should(
-              "be.visible",
-            );
-            cy.findByText("foo").should("be.visible");
-            cy.findByText("bar").should("be.visible");
-          });
+        H.getDashboardCard().findByRole("link", { name: "Q1" }).as("title");
+        cy.get("@title").realHover();
+        cy.get("@title")
+          .should("have.attr", "href")
+          .and("include", `/question/${questionId}`);
+        cy.get("@title").click();
 
-          cy.location("pathname").should("eq", `/question/${questionId}-q1`);
+        H.queryBuilderMain().within(() => {
+          cy.findByText("This question is written in SQL.").should(
+            "be.visible",
+          );
+          cy.findByText("foo").should("be.visible");
+          cy.findByText("bar").should("be.visible");
         });
-      });
-    });
 
-    describe("as a user without access to the underlying data", () => {
-      beforeEach(() => {
+        cy.location("pathname").should("eq", `/question/${questionId}-q1`);
+
+        cy.log("as a user without access to the underlying data");
+        // Park the cursor off the grid, so only the mouseover below computes the title's href.
+        cy.get("body").realHover({ position: "topLeft" });
         cy.signIn("nodata");
-        cy.reload();
-      });
+        H.visitDashboard("@dashboardId");
 
-      it("should let you click through the title to the query builder (metabase#13042)", () => {
-        cy.get("@questionId").then((questionId) => {
-          H.getDashboardCard().findByRole("link", { name: "Q1" }).as("title");
-          cy.get("@title").trigger("mouseover");
-          cy.get("@title")
-            .should("have.attr", "href")
-            .and("include", `/question/${questionId}`);
-          cy.get("@title").click();
+        H.getDashboardCard()
+          .findByRole("link", { name: "Q1" })
+          .as("nodataTitle");
+        cy.get("@nodataTitle").trigger("mouseover");
+        cy.get("@nodataTitle")
+          .should("have.attr", "href")
+          .and("include", `/question/${questionId}`);
+        cy.get("@nodataTitle").click();
 
-          H.queryBuilderMain().within(() => {
-            cy.findByText("This question is written in SQL.").should(
-              "be.visible",
-            );
-            cy.findByText("foo").should("be.visible");
-            cy.findByText("bar").should("be.visible");
-          });
-
-          cy.location("pathname").should("eq", `/question/${questionId}-q1`);
+        H.queryBuilderMain().within(() => {
+          cy.findByText("This question is written in SQL.").should(
+            "be.visible",
+          );
+          cy.findByText("foo").should("be.visible");
+          cy.findByText("bar").should("be.visible");
         });
+
+        cy.location("pathname").should("eq", `/question/${questionId}-q1`);
       });
     });
   });
@@ -667,57 +631,40 @@ describe("scenarios > dashboard > title drill", () => {
           ],
         });
 
-        H.visitDashboard(dashboard_id);
-        checkScalarResult("200");
+        cy.wrap(dashboard_id).as("dashboardId");
       });
     });
 
-    describe("as a user with access to underlying data", () => {
-      it("'contains' filter should still work after title drill through IF the native question field filter's type matches exactly (metabase#16181)", () => {
-        checkScalarResult("200");
+    it("'contains' filter should still work after title drill through IF the native question field filter's type matches exactly, with and without access to underlying data (metabase#16181)", () => {
+      cy.log("as a user with access to underlying data");
+      H.visitDashboard("@dashboardId");
+      assertContainsFilterSurvivesTitleDrill();
 
-        // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-        cy.findByText("Text contains").click();
-        cy.findByPlaceholderText("Enter some text").type("bb").blur();
-        cy.button("Add filter").click();
-
-        checkFilterLabelAndValue("Text contains", "bb");
-        checkScalarResult("12");
-
-        // Drill through on the question's title
-        // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-        cy.findByText("16181").click();
-
-        checkFilterLabelAndValue("Filter", "bb");
-        checkScalarResult("12");
-      });
+      cy.log("as a user without access to underlying data");
+      cy.signIn("nodata");
+      H.visitDashboard("@dashboardId");
+      assertContainsFilterSurvivesTitleDrill();
     });
 
-    describe("as a user without access to underlying data", () => {
-      beforeEach(() => {
-        cy.signIn("nodata");
-        cy.reload();
-      });
+    function assertContainsFilterSurvivesTitleDrill() {
+      checkScalarResult("200");
 
-      it("'contains' filter should still work after title drill through IF the native question field filter's type matches exactly (metabase#16181)", () => {
-        checkScalarResult("200");
+      H.filterWidget().findByText("Text contains").click();
+      cy.findByPlaceholderText("Enter some text").type("bb").blur();
+      cy.button("Add filter").click();
 
-        // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-        cy.findByText("Text contains").click();
-        cy.findByPlaceholderText("Enter some text").type("bb").blur();
-        cy.button("Add filter").click();
+      checkFilterLabelAndValue("Text contains", "bb");
+      checkScalarResult("12");
 
-        checkFilterLabelAndValue("Text contains", "bb");
-        checkScalarResult("12");
+      // Drill through on the question's title
+      H.getDashboardCard().findByText("16181").click();
 
-        // Drill through on the question's title
-        // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-        cy.findByText("16181").click();
-
-        checkFilterLabelAndValue("Filter", "bb");
-        checkScalarResult("12");
-      });
-    });
+      checkFilterLabelAndValue("Filter", "bb");
+      H.queryBuilderMain()
+        .findByTestId("scalar-value")
+        .invoke("text")
+        .should("eq", "12");
+    }
   });
 
   describe("on a simple question with a connected dashboard parameter", () => {
@@ -754,6 +701,8 @@ describe("scenarios > dashboard > title drill", () => {
           const { card_id, dashboard_id } = dashboardCard;
 
           cy.wrap(questionId).as("questionId");
+          cy.wrap(dashboard_id).as("dashboardId");
+          cy.wrap(card_id).as("cardId");
 
           const mapFiltersToCard = {
             parameter_mappings: [
@@ -771,19 +720,17 @@ describe("scenarios > dashboard > title drill", () => {
           };
 
           H.editDashboardCard(dashboardCard, mapFiltersToCard);
-
-          cy.intercept(
-            "POST",
-            `/api/dashboard/${dashboard_id}/dashcard/*/card/${card_id}/query`,
-          ).as("cardQuery");
-
-          H.visitDashboard(dashboard_id);
         },
       );
     });
 
-    describe("as a user with access to underlying data", () => {
-      it("should let you click through the title to the query builder with the parameter applied as a filter on the question", () => {
+    it("should let you click through the title to the query builder with the parameter applied as a filter, with and without access to underlying data", () => {
+      cy.then(function () {
+        const cardQueryUrl = `/api/dashboard/${this.dashboardId}/dashcard/*/card/${this.cardId}/query`;
+
+        cy.log("as a user with access to underlying data");
+        cy.intercept("POST", cardQueryUrl).as("cardQuery");
+        H.visitDashboard(this.dashboardId);
         cy.wait("@cardQuery");
 
         // make sure query results are correct
@@ -806,38 +753,32 @@ describe("scenarios > dashboard > title drill", () => {
         // make sure the results match
         H.queryBuilderMain().findByText("42").should("be.visible");
         cy.location("href").should("include", "/question#");
-      });
-    });
 
-    describe("as a user without access to underlying data", () => {
-      beforeEach(() => {
+        cy.log("as a user without access to underlying data");
         cy.signIn("nodata");
-        cy.reload();
-      });
-
-      it("should let you click through the title to the query builder with the parameter filter showing in the query builder", () => {
-        cy.wait("@cardQuery");
+        cy.intercept("POST", cardQueryUrl).as("nodataCardQuery");
+        H.visitDashboard(this.dashboardId);
+        cy.wait("@nodataCardQuery");
 
         // make sure query results are correct
         H.getDashboardCard().findByText("42").should("be.visible");
 
         H.getDashboardCard()
           .findByRole("link", { name: "GUI Question" })
-          .as("title");
-        cy.get("@title").realHover();
-        cy.get("@title")
+          .as("nodataTitle");
+        cy.get("@nodataTitle").realHover();
+        cy.get("@nodataTitle")
           .should("have.attr", "href")
           .and("include", "/question?category=Doohickey&id=#");
-        cy.get("@title").click();
+        cy.get("@nodataTitle").click();
+        cy.wait("@nodataCardQuery");
 
         // make sure the results match
         H.queryBuilderMain().findByText("42").should("be.visible");
-        cy.get("@questionId").then((questionId) => {
-          cy.location("href").should(
-            "include",
-            `/question/${questionId}-gui-question?category=Doohickey&id=#`,
-          );
-        });
+        cy.location("href").should(
+          "include",
+          `/question/${this.questionId}-gui-question?category=Doohickey&id=#`,
+        );
 
         // update the parameter filter to a new value
         H.filterWidget().contains("Doohickey").click();
@@ -849,14 +790,14 @@ describe("scenarios > dashboard > title drill", () => {
 
         // rerun the query with the newly set filter
         cy.findAllByTestId("run-button").first().click();
-        cy.wait("@cardQuery");
+        cy.wait("@nodataCardQuery");
 
         // make sure the results reflect the new filter
         H.queryBuilderMain().findByText("53").should("be.visible");
 
         // make sure the set parameter filter persists after a page refresh
         cy.reload();
-        cy.wait("@cardQuery");
+        cy.wait("@nodataCardQuery");
 
         H.queryBuilderMain().findByText("53").should("be.visible");
 
@@ -870,7 +811,7 @@ describe("scenarios > dashboard > title drill", () => {
 
         // rerun the query with the newly set filter
         cy.findAllByTestId("run-button").first().click();
-        cy.wait("@cardQuery");
+        cy.wait("@nodataCardQuery");
 
         H.queryBuilderMain().findByText("1").should("be.visible");
       });
