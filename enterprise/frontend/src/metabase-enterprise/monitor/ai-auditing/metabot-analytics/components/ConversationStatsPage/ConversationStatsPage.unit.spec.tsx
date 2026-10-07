@@ -181,11 +181,14 @@ function buildCountResponse(count: number): Dataset {
   });
 }
 
+function getViewName(stage: RequestStage): string {
+  return TABLE_NAME_BY_ID.get(stage["source-table"]) ?? "";
+}
+
 function buildDatasetResponse(body: unknown, emptyViews: string[]): Dataset {
   const stage = parseStage(body);
   if (stage && !stage.breakout) {
-    const viewName = TABLE_NAME_BY_ID.get(stage["source-table"]) ?? "";
-    return buildCountResponse(emptyViews.includes(viewName) ? 0 : 2);
+    return buildCountResponse(emptyViews.includes(getViewName(stage)) ? 0 : 2);
   }
   const values = stage ? getBreakoutValues(stage) : [];
   const aggregationNames =
@@ -226,27 +229,25 @@ type SetupOpts = {
   initialRoute?: string;
   hasTenants?: boolean;
   emptyViews?: string[];
-  heldMetadataView?: string;
+  heldView?: string;
 };
 
 function setup({
   initialRoute = STATS_PATH,
   hasTenants = false,
   emptyViews = [],
-  heldMetadataView,
+  heldView,
 }: SetupOpts = {}) {
   setupEnterprisePlugins();
 
   const heldMetadata = Promise.withResolvers<void>();
+  const heldCount = Promise.withResolvers<void>();
 
   fetchMock.get(`path:/api/database/${AUDIT_DB_ID}/metadata`, auditDatabase);
   // useAuditTable pulls the table's fields (and its FK targets') from here.
   fetchMock.post("path:/api/dataset/query_metadata", async (call) => {
     const stage = parseStage(call.options.body);
-    if (
-      stage &&
-      TABLE_NAME_BY_ID.get(stage["source-table"]) === heldMetadataView
-    ) {
+    if (stage && getViewName(stage) === heldView) {
       await heldMetadata.promise;
     }
     return {
@@ -259,7 +260,13 @@ function setup({
   });
   fetchMock.post(
     "path:/api/dataset",
-    (call) => buildDatasetResponse(call?.options.body, emptyViews),
+    async (call) => {
+      const stage = parseStage(call.options.body);
+      if (stage && !stage.breakout && getViewName(stage) === heldView) {
+        await heldCount.promise;
+      }
+      return buildDatasetResponse(call.options.body, emptyViews);
+    },
     { name: "dataset" },
   );
   setupUsersEndpoints([BOBBY, ROBERT]);
@@ -292,7 +299,11 @@ function setup({
     },
   );
 
-  return { ...view, releaseHeldMetadata: heldMetadata.resolve };
+  return {
+    ...view,
+    releaseHeldMetadata: heldMetadata.resolve,
+    releaseHeldCount: heldCount.resolve,
+  };
 }
 
 async function findChartCard(title: string): Promise<HTMLElement> {
@@ -449,10 +460,10 @@ describe("ConversationStatsPage", () => {
       expect(await screen.findByText("Tokens by day")).toBeInTheDocument();
     });
 
-    it("waits for the token count before showing the Tokens empty state", async () => {
-      const { releaseHeldMetadata } = setup({
+    it("keeps the loader up until the Tokens count comes back", async () => {
+      const { releaseHeldMetadata, releaseHeldCount } = setup({
         emptyViews: [VIEW_CONVERSATIONS, VIEW_USAGE_LOG],
-        heldMetadataView: VIEW_USAGE_LOG,
+        heldView: VIEW_USAGE_LOG,
       });
 
       await screen.findByText("No conversations");
@@ -462,6 +473,17 @@ describe("ConversationStatsPage", () => {
       expect(screen.queryByText("No token usage")).not.toBeInTheDocument();
 
       releaseHeldMetadata();
+      await waitFor(() =>
+        expect(
+          getDatasetStages().some(
+            (stage) => !stage.breakout && getViewName(stage) === VIEW_USAGE_LOG,
+          ),
+        ).toBe(true),
+      );
+
+      expect(screen.getByTestId("loading-indicator")).toBeInTheDocument();
+
+      releaseHeldCount();
 
       expect(await screen.findByText("No token usage")).toBeInTheDocument();
     });

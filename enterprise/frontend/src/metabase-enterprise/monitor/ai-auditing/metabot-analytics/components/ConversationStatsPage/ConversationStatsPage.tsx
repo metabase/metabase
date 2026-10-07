@@ -244,9 +244,7 @@ function UsageStats({ metric }: UsageStatsProps) {
         : null,
     [provider, table, groupMembersTable, dateFilter, userId, groupId, tenantId],
   );
-  const { isInitialLoading, isRefetching, hasData, error } =
-    useHasData(countQuery);
-  const showEmpty = !isInitialLoading && !isRefetching && !hasData;
+  const { currentCount, error } = useHasData(countQuery);
 
   const tenantNameById = useMemo(() => {
     const map = new Map<string, string>();
@@ -383,8 +381,8 @@ function UsageStats({ metric }: UsageStatsProps) {
             />
           }
           error={error}
-          isInitialLoading={isInitialLoading}
-          showEmpty={showEmpty}
+          isInitialLoading={currentCount === undefined}
+          showEmpty={currentCount === 0}
         >
           <ConversationsByDayChart
             {...sharedChartProps}
