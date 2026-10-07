@@ -516,30 +516,6 @@
       :else
       {:ingestable ingestable :deleted-rsos deleted-rsos})))
 
-(def ^:private collection-content-model-keys
-  "The models that the ledger tracks by entity id and whose instances a Collection holds by `collection_id`."
-  (into []
-        (keep (fn [[model-key {:keys [identity tracking]}]]
-                (when (and (= :entity-id identity)
-                           (= :collection_id (get-in tracking [:field-mappings :model_collection_id])))
-                  model-key)))
-        spec/remote-sync-specs))
-
-(defn- collection-contents
-  "The Collections `collection-ids` and their descendants, and the instances of [[collection-content-model-keys]] in
-  them that the full import also removes (the spec removal conditions), as a map of model key to a set of ids."
-  [collection-ids]
-  (if (empty? collection-ids)
-    {}
-    (let [subtree (vec (remote-sync.db/subtree-collection-ids-of-ids (vec collection-ids)))]
-      (into {:model/Collection (set subtree)}
-            (keep (fn [model-key]
-                    (let [ids (remote-sync.db/ids-in-collections
-                               model-key subtree (spec/removal-conditions (spec/spec-for-model-key model-key)))]
-                      (when (seq ids)
-                        [model-key ids]))))
-            collection-content-model-keys))))
-
 (defn- incremental-load-snapshot!
   "Applies an incremental `plan` from [[incremental-import-plan]] or [[import-merged!]]: loads only its
   added/modified entities, deletes only those genuinely removed, the contents of each removed Collection, and their
@@ -587,15 +563,15 @@
             ;; The before-delete hook of a Collection also deletes entities that are not in `deletes` (an archived
             ;; Card, for example), so the delete set holds the contents of each deleted Collection, and their rows and
             ;; search entries go too. Read after the load: an entity that the remote moved out is not in the contents.
-            (let [delete-set   (merge-with into deletes (collection-contents (:model/Collection deletes)))
-                  closure      (if save-rule
+            (let [closure      (if save-rule
                                  ;; entity rows before ledger rows, as every save path locks them
-                                 (let [closure (save-rule/lock-closure! delete-set)]
+                                 (let [closure (save-rule/lock-closure! deletes)]
                                    (save-rule/lock-ledger-rows! save-rule closure)
                                    (save-rule/check-closure! save-rule closure :reconcile)
                                    closure)
-                                 (remote-sync.db/delete-closure delete-set))
-                  {:keys [deleted] :as result} (delete-with-closure! delete-set closure (:by-entity-id imported-data))
+                                 (save-rule/delete-closure deletes))
+                  {:keys [deleted] :as result} (delete-with-closure! (:delete-set closure) closure
+                                                                     (:by-entity-id imported-data))
                   closure-keys (for [[model-key ids] deleted
                                      :let [model-type (:model-type (spec/spec-for-model-key model-key))]
                                      id ids]
@@ -644,19 +620,14 @@
 
 (defn- delete-closure-conflicts
   "The conflicts of a merge pull that deletes the local entities `deleted-ids` (a map of model key to a set of ids)
-  with their delete closure (see [[remote-sync.db/delete-closure]]): one for each entity in the closure whose decision
-  in the merge result `merge-result` does not let the pull delete it (see [[save-rule/delete-loses-no-change?]]). The
-  delete would remove a local change of that entity. Each conflict has the shape of a conflict of
-  [[remote-sync.merge/three-way-merge]].
-
-  For a deleted Collection, the closure also holds the Collections under it and every entity in those Collections."
+  with their delete closure (see [[save-rule/delete-closure]], which holds the contents of each deleted Collection):
+  one for each entity in the closure whose decision in the merge result `merge-result` does not let the pull delete it
+  (see [[save-rule/delete-loses-no-change?]]). The delete would remove a local change of that entity. Each conflict
+  has the shape of a conflict of [[remote-sync.merge/three-way-merge]]."
   [deleted-ids {:keys [decisions ours-units] :as merge-result}]
   (when (seq deleted-ids)
-    (let [key-of  (into {} (comp (filter remote-sync.merge/entity-key?) (map (juxt last identity))) (keys decisions))
-          ;; The before-delete hook of a Collection deletes its descendants and most of their contents; a Document
-          ;; stays, with no Collection. Either way the entity leaves the synced content.
-          checked (merge-with into deleted-ids (collection-contents (:model/Collection deleted-ids)))]
-      (vec (for [[model-key ids] (:ids-by-model (remote-sync.db/delete-closure checked))
+    (let [key-of (into {} (comp (filter remote-sync.merge/entity-key?) (map (juxt last identity))) (keys decisions))]
+      (vec (for [[model-key ids] (:ids-by-model (save-rule/delete-closure deleted-ids))
                  :let  [model-type (:model-type (spec/spec-for-model-key model-key))]
                  eid   (vals (remote-sync.db/entity-ids-by-id model-key (vec ids)))
                  :let  [k (key-of [model-type eid])]
@@ -681,6 +652,42 @@
     (log/infof "Pull merge stopped: content changed locally during the pull (%s)" (pr-str (select-keys data [:phase :reason :key])))
     (merge-conflict-result snapshot [(save-rule/stop-conflict state data)] (save-rule/stop-message data))))
 
+(defn- restore-base!
+  "After a stop of a merge pull with the save-rule state `state`, give each entity that the load of the pull wrote for
+  a remote change (see [[save-rule/restore-keys]]) its content in the merge base `base-snapshot` again, or delete it
+  when the base has no file of it. `base-unit-paths` is from the merge result. An entity that a user changed after the
+  load keeps the change. The stop leaves the ledger rows of these entities as the last sync wrote them, so the content
+  then agrees with its rows again."
+  [base-snapshot {:keys [base-unit-paths]} state]
+  (let [ks     (save-rule/restore-keys state)
+        reload (filterv #(contains? base-unit-paths %) ks)
+        added  (into [] (remove #(contains? base-unit-paths %)) ks)]
+    (when (seq reload)
+      (let [ingestable (source.p/->ingestable base-snapshot
+                                              {:path-filters (exact-path-filters (into [] (mapcat base-unit-paths) reload))})
+            {:keys [errors]} (serdes/with-cache
+                               (serialization/load-metabase! ingestable
+                                                             :reindex? false
+                                                             ;; an entity that a user changed after the load fails
+                                                             ;; alone, with no write
+                                                             :continue-on-error true
+                                                             :wrap-load-one (save-rule/wrap-restore-one state)))]
+        (when (seq errors)
+          (log/infof "Pull merge stopped: %d entit(ies) keep a change made after the load" (count errors)))))
+    (when (seq added)
+      (let [search-ids (t2/with-transaction [_conn]
+                         (when-let [closure (save-rule/lock-added-closure! state added)]
+                           (let [{:keys [deleted search-ids]} (delete-with-closure! (:delete-set closure) closure {})]
+                             (remote-sync.db/delete-rsos-of-keys!
+                              (vec (for [[model-key ids] deleted
+                                         :let [model-type (:model-type (spec/spec-for-model-key model-key))]
+                                         id ids]
+                                     {:model_type model-type :model_id id})))
+                             search-ids)))]
+        (doseq [[model-key ids] search-ids
+                id-chunk        (partition-all app-db-batch-size ids)]
+          (search/delete! model-key (vec id-chunk)))))))
+
 (defn- import-merged!
   "Import in merge mode. Should only be called when you have a base-snapshot and its version differs from snaphot's version.
 
@@ -694,8 +701,9 @@
 
   The load and the deletes follow the save rule (see [[save-rule]]): when a user changes an entity that the pull must
   write after the merge read it, or adds an entity under one that the pull deletes, the pull stops and returns
-  `:conflict` on that entity. A change made before the load stops the pull before any write. The version does not
-  move, and the entities that the load wrote before the stop keep the remote content."
+  `:conflict` on that entity. A change made before the pre-check stops the pull before any write. The version does not
+  move. Each entity that the load wrote for a remote change before the stop gets its content of the merge base again,
+  or goes when the merge base has no file of it; an entity that a user changed after the load keeps the change."
   [snapshot base-snapshot task-id report sync-timestamp finalize!]
   (let [{:keys [conflicts merged summary decisions theirs-paths theirs-unit-paths] :as merge-result}
         (serdes/with-cache
@@ -748,8 +756,14 @@
                                    :count  (apply + (vals summary))
                                    :branch (settings/remote-sync-branch)}))
           (catch Exception e
-            (or (stop-result snapshot state e)
-                (throw e))))))))
+            (if-let [result (stop-result snapshot state e)]
+              (do
+                (try
+                  (restore-base! base-snapshot merge-result state)
+                  (catch Exception restore-e
+                    (log/warn restore-e "Pull merge stopped, and the merge base of the loaded entities was not restored")))
+                result)
+              (throw e))))))))
 
 (defn import!
   "Imports and reloads Metabase entities from a remote snapshot.

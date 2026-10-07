@@ -303,7 +303,7 @@
                      :types  [:create :update :delete]}
     :eligibility    {:type    :setting
                      :setting :remote-sync-transforms}
-    :archived-key   :archived
+    :archived-key   nil  ; the transform table has no archived column
     :tracking       {:select-fields  [:name :collection_id]
                      :field-mappings {:model_name          :name
                                       :model_collection_id :collection_id}}

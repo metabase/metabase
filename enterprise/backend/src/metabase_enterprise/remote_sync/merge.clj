@@ -147,9 +147,9 @@
 
 (defn conflict-label
   "Renders a single conflict from [[three-way-merge]] into a human-readable string for display, e.g.
-  \"Card A (collections/foo/bar.yaml)\". Prefers the entity's name (parsed from the serialized content),
-  falling back to its serdes model + id when there's no name."
-  [{:keys [key ours theirs]}]
+  \"Card A (collections/foo/bar.yaml)\". Prefers the entity's name (parsed from the serialized content, else the
+  `:name` of the conflict), falling back to its serdes model + id when there's no name."
+  [{:keys [key ours theirs] :as conflict}]
   (let [content    (or (:content ours) (:content theirs))
         entity     (try (yaml/parse-string content) (catch Exception _ nil))
         path       (or (:path ours) (:path theirs))
@@ -158,7 +158,7 @@
         descriptor (if (= ::by-path (first key))
                      (or path "unknown file")
                      (let [[model id] (last key)] (str model " " id)))]
-    (cond-> (or (:name entity) descriptor)
+    (cond-> (or (:name entity) (:name conflict) descriptor)
       (and path (not= descriptor path)) (str " (" path ")"))))
 
 (defn- merge-indexed
@@ -210,6 +210,7 @@
       :decisions     {}
       :theirs-paths  (update-vals t :path)
       :theirs-unit-paths (update-vals t #(mapv :path (unit-specs %)))
+      :base-unit-paths (update-vals b #(mapv :path (unit-specs %)))
       :ours-contents (update-vals o :content)
       :ours-paths    (update-vals o :path)
       :ours-units    o}
@@ -237,6 +238,7 @@
   - `:theirs-paths`  - identity key -> path, for each entity in `theirs`
   - `:theirs-unit-paths` - identity key -> the paths of every file of its unit (the YAML file first), for each
                            entity in `theirs`
+  - `:base-unit-paths` - the same as `:theirs-unit-paths`, for each entity in `base`
   - `:ours-contents` - identity key -> the content of the entity's YAML file, for each entity in `ours`
   - `:ours-paths`    - identity key -> path, for each entity in `ours`
   - `:ours-units`    - identity key -> load unit, for each entity in `ours`: the `{:path :content}` of its YAML file,
