@@ -46,9 +46,11 @@
 
 (defn- record-call-and-maybe-throw!
   "Listener body for the throwing topics: records the call, then throws when `listener` is in the event's `::throw`
-  set."
+  set, or throws the Throwable mapped to `listener` in the event's `::throwables` map."
   [listener event]
   (swap! *method-calls* assoc listener event)
+  (when-let [throwable (get (::throwables event) listener)]
+    (throw throwable))
   (when (contains? (::throw event) listener)
     (throw (ex-info (str "boom " listener) {:listener listener}))))
 
@@ -115,3 +117,28 @@
       (testing "publish-event! throws the error of the listener"
         (is (= {:listener ::throwing-topic}
                (ex-data (ex-cause e))))))))
+
+(deftest first-exception-is-kept-when-a-later-listener-throws-an-error-test
+  (binding [*method-calls* (atom {})]
+    (let [event {::throw      #{::throwing-topic}
+                 ::throwables {::throwing-topics (AssertionError. "error ::throwing-topics")}}
+          cause ^Throwable (ex-cause (publish-and-catch! event))]
+      (testing "the Error of the later listener is the cause"
+        (is (instance? AssertionError cause)))
+      (testing "the exception of the first listener is suppressed on the Error"
+        (is (= [{:listener ::throwing-topic}]
+               (map ex-data (.getSuppressed cause))))))))
+
+(deftest interrupted-listener-stops-the-later-listeners-test
+  (binding [*method-calls* (atom {})]
+    (let [event        {::throwables {::throwing-topic (InterruptedException. "interrupted ::throwing-topic")}}
+          e            (publish-and-catch! event)
+          ;; also clears the flag, so the test leaves the thread uninterrupted
+          interrupted? (Thread/interrupted)]
+      (testing "the less specific listener does not run"
+        (is (= #{::throwing-topic}
+               (set (keys @*method-calls*)))))
+      (testing "the InterruptedException is the cause"
+        (is (instance? InterruptedException (ex-cause e))))
+      (testing "the interrupt flag of the thread is set again"
+        (is (true? interrupted?))))))
