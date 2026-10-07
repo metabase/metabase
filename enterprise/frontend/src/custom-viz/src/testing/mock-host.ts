@@ -147,6 +147,19 @@ const formatValue: FormatValue = (value: RowValue, options = {}) => {
   return typeof value === "object" ? JSON.stringify(value) : String(value);
 };
 
+const COLOR_VARIABLE = /var\(\s*--mb-color-([\w-]+)/g;
+
+export const assertKnownColorVariables = (markup: string) => {
+  const unknown = Array.from(markup.matchAll(COLOR_VARIABLE))
+    .map((match) => match[1])
+    .filter((name) => COLORS.light[name] === undefined);
+  if (unknown.length > 0) {
+    throw new Error(
+      `var(--mb-color-${unknown[0]}): not a supported color name; see api-contract.md Colors`,
+    );
+  }
+};
+
 export const createGetColor = (colorScheme: ColorScheme) => (name: string) => {
   const value = COLORS[colorScheme][name];
   if (value === undefined) {

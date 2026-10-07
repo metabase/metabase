@@ -2,8 +2,10 @@
 
 ## Files
 
-- `src/index.tsx` — the only viz source file. Default-exported
-  `CreateCustomVisualization` factory wrapped in `defineConfig`.
+- `src/index.tsx` — the entry: default-exports the
+  `CreateCustomVisualization` factory wrapped in `defineConfig`. You keep
+  the whole viz in this file. Other `src/` files, except
+  `src/index.test.tsx`, are user code (`operations.md`, User edits).
 - `src/index.test.tsx` — the viz's tests (`testing.md`).
 - `public/assets/icon.svg` — the visualization picker icon. Single-color,
   `currentColor`, so it adapts to light/dark.
@@ -18,10 +20,26 @@
   Notes: <click behavior, styling, other user answers that change the code; omit when none; never bug or fix history>
   ```
 
-- Scaffold-owned, never edited except when renaming: `package.json`,
-  `vite.config.ts`, `tsconfig.json`, `metabase-plugin.json`.
-- Dependencies are pinned by the scaffold; none may be added.
-- Unmodified scaffold: `src/index.tsx` renders a thumbs-up/down template.
+- Scaffold-owned, never hand-edited except when renaming: `package.json`,
+  `vite.config.ts`, `tsconfig.json`, `metabase-plugin.json`. Installing an
+  agreed library (Libraries) updates `package.json` through npm.
+- No viz built yet: `src/index.tsx` is still the scaffold's thumbs-up/down
+  template, possibly with small edits.
+
+## Libraries
+
+A third-party library is fine when the user asks for one, or when it
+clearly simplifies the viz — then name it and say why, install it only
+after the user agrees, and record it in the statement's Notes.
+
+- Prefer small modular packages (`d3-scale`, `d3-shape`, `d3-sankey`)
+  over whole frameworks; the packed plugin must stay under 5 MB
+  compressed.
+- It must work inside the sandbox (`sandbox-restrictions.md`): pure
+  computation or rendering to SVG, DOM or canvas; no network, workers,
+  injected `<style>` or global keyboard listeners.
+- The main agent installs it with `npm install --save-exact <package>`
+  before build; subagents never install.
 
 ## API sources
 

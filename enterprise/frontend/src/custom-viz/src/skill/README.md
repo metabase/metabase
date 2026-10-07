@@ -30,7 +30,7 @@ run the phase inline.
 
 ## References
 
-- `project.md` — files, build statement format, defaults, checks
+- `project.md` — files, build statement format, libraries, defaults, checks
 - `api-contract.md` — host behavior the types cannot express
 - `known-mistakes.md` — bugs with symptoms, fixes, detectors
 - `sandbox-restrictions.md` — what the sandbox blocks at runtime
@@ -50,8 +50,8 @@ run the phase inline.
 
 Route:
 
-- `src/index.tsx` is the unmodified scaffold and the user wants a viz →
-  **Create**
+- `src/index.tsx` is still the scaffold's thumbs-up/down template (no
+  viz built yet) and the user wants a viz → **Create**
 - Change, new setting, restyle, rename → iterate
 - Misbehavior report → debug
 - "ship it", "package it", "build the archive" → **Ship**

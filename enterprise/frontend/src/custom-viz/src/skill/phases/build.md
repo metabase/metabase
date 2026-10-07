@@ -34,5 +34,7 @@ Rules:
 - Never start the dev server.
 - A feature needs a blocked capability with no clean substitute → stop
   and return the question, citing the restriction label.
+- Use only packages in `package.json`. A library would clearly help →
+  return it as an open question (`project.md`, Libraries).
 
 Return: what was built, Checks status, open questions.

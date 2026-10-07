@@ -26,6 +26,8 @@ Read: `skill/references/project.md`, `skill/references/operations.md`,
    them; they may override any value, or give every value themselves.
 4. Propose obviously useful settings (a color, a threshold, a toggle)
    yourself; ask only about additions that change scope.
-5. User wants a different project name → apply Renaming now.
-6. Write the statement to `.claude/build-statement.md` in the format
+5. The user names a library, or one would clearly simplify the viz →
+   `project.md` Libraries.
+6. User wants a different project name → apply Renaming now.
+7. Write the statement to `.claude/build-statement.md` in the format
    from `project.md`.

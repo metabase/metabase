@@ -37,8 +37,9 @@ import createVisualization from "./index";
   or click produced an object), `unmount()`.
 
 The mock host throws on: a column not built with `mockColumn`;
-`getColor` with a name outside `api-contract.md` Colors; `formatValue`
-number options without a numeric `column`.
+`getColor` or a rendered `var(--mb-color-…)` with a name outside
+`api-contract.md` Colors; `formatValue` number options without a numeric
+`column`.
 
 ## What to test
 

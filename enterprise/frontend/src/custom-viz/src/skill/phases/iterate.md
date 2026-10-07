@@ -18,6 +18,8 @@ Read on demand, before the edit that needs it:
 - the request needs a browser API, tag or global listener →
   `skill/references/sandbox-restrictions.md`, then
   `skill/references/sandbox-substitutes.md`
+- the request names a library, or one would clearly help →
+  `skill/references/project.md` Libraries
 
 1. Dev server: Check running (`operations.md`). First time in this
    session → also give the user the Connecting Metabase requirements,
@@ -36,7 +38,8 @@ Rules:
 
 - Edit only `src/index.tsx`, `public/assets/icon.svg`,
   `.claude/build-statement.md`, `.claude/fix-log.md`, plus the files
-  Renaming lists.
+  Renaming lists; `package.json` changes only through a Libraries
+  install.
 - User edits rules apply.
 - Never run `npm run build`.
 

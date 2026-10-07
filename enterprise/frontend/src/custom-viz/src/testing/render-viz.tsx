@@ -18,6 +18,7 @@ import type {
 
 import {
   type ColorScheme,
+  assertKnownColorVariables,
   createGetColor,
   installMockHost,
   measureText,
@@ -145,6 +146,7 @@ export const renderViz = <TSettings extends BaseVisualizationSettings>(
       />,
     );
   });
+  assertKnownColorVariables(container.innerHTML);
 
   const hover = (element: Element) => {
     dispatchMouse(element, "mouseover", document.body);

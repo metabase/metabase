@@ -88,6 +88,18 @@ describe("custom-viz testing host data (regenerate with custom-viz/scripts/gener
   });
 
   it.each(COLOR_SCHEMES)(
+    "lists only names that exist as --mb-color CSS variables in the %s theme",
+    (colorScheme) => {
+      const variables = Object.keys(
+        deriveFullMetabaseTheme({ colorScheme }).colors,
+      );
+      expect(
+        documentedColorNames.filter((name) => !variables.includes(name)),
+      ).toEqual([]);
+    },
+  );
+
+  it.each(COLOR_SCHEMES)(
     "resolves every listed color to a parseable color in the %s theme",
     (colorScheme) => {
       const unparseable = documentedColorNames.filter((name) => {

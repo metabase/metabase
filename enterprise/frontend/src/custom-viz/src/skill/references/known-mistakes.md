@@ -196,9 +196,10 @@ row · Click object incomplete, or clickable mark without
   `colorScheme` follow the current Metabase theme.
 - **Fix** — Follow the statement's `Colors` (`api-contract.md`,
   Colors); user-picked colors from a setting are fine.
-- **Detector** — Every `getColor(` argument is a name from the
-  `api-contract.md` Colors list. Text, backgrounds and lines use
-  `getColor`, never literals (`#…`, `rgb(`, `hsl(`, named CSS colors).
+- **Detector** — Every `getColor(` argument and every
+  `var(--mb-color-…)` name is from the `api-contract.md` Colors list.
+  Text, backgrounds and lines use those names, never literals (`#…`,
+  `rgb(`, `hsl(`, named CSS colors).
   `Colors: theme` → no literals at all. `Colors: own` → mark literals
   are exactly the statement's values.
 

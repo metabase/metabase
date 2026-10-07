@@ -52,8 +52,12 @@ label truncation and fitting instead of guessing character widths.
 
 ## Colors
 
-`getColor` accepts only the names below; any other string comes back
-unchanged and usually renders black.
+Use the names below two ways. In DOM and SVG styles, write the CSS
+variable `var(--mb-color-<name>)`: it follows the theme by itself. Where
+a literal value is needed (canvas libraries, color math), call
+`renderingContext.getColor("<name>")`. Any other name renders black:
+`getColor` returns an unknown name unchanged, and an unknown variable
+resolves to nothing.
 
 - Text: `text-primary` (labels, values), `text-secondary` (axis
   labels, captions), `text-tertiary` (hints)
@@ -70,11 +74,11 @@ unchanged and usually renders black.
   `accent3-dark`, `accent4-dark`, `accent5-dark`, `accent6-dark`,
   `accent7-dark`
 
-Text, surfaces and lines always come from `getColor`. The statement's
+Text, surfaces and lines always use these names. The statement's
 `Colors` decides data marks only:
 
-- `theme` → marks use `getColor` names too; a color setting's default
-  is one of them.
+- `theme` → marks use these names too; a color setting's default is one
+  of them.
 - `own` → marks use the statement's values as literals; a value with a
   separate dark-theme entry is picked by `colorScheme`.
 
@@ -112,6 +116,8 @@ usually do. Pick predicates that hold for both:
 - Dates → `isDate`. A date-part breakout (`day-of-week`, `hour-of-day`)
   is an integer column with `col.unit` set, and `isDate` is false for
   it.
+- `isDate` and `isNumeric` can both hold (a numeric timestamp). A metric
+  is `isNumeric && !isDate`.
 
 ## formatValue
 
@@ -123,10 +129,23 @@ passed and is numeric; without it the value comes back as
 a number that has no column (a computed share, a delta), build the
 string yourself with `Intl.NumberFormat`.
 
+## Settings widgets
+
+`widget` takes a built-in name (the catalog in `types/viz-settings.d.ts`)
+or your own React component typed with `BaseWidgetProps<Value, Settings>`;
+it receives `value`, `onChange` and `onChangeSettings`. Use your own only
+when no built-in widget fits; it renders in the settings sidebar under
+the same sandbox rules.
+
 ## Other host behavior
 
 - The host feeds your measured root size back as `width`/`height`; pin
   the root to the props (known-mistakes: unbounded growth).
+- `defineConfig` renders the component inside an error boundary: an
+  exception during render leaves the viz blank and logs
+  `[plugin] … render failed` to the browser console, with no message in
+  Metabase. A data problem the user should see belongs in
+  `checkRenderable`.
 - `formatValue` and the column-type predicates exported by the package
   delegate to the host at runtime (`__METABASE_VIZ_API__`) — they work
   only inside a running Metabase.
