@@ -173,6 +173,9 @@ describe(
 
       beforeEach(() => {
         cy.intercept("GET", "/api/card/*").as("getModel");
+        cy.intercept("GET", "/api/card/*/query_metadata").as(
+          "getModelQueryMetadata",
+        );
         cy.intercept("GET", "/api/action/*").as("getAction");
 
         cy.intercept("PUT", "/api/action/*").as("updateAction");
@@ -201,6 +204,10 @@ describe(
           cy.visit(`/model/${modelId}/detail/actions`);
           cy.wait("@getModel");
         });
+
+        // The Actions menu renders only once the source table's metadata has
+        // arrived, because it is gated on `supportsImplicitActions()`.
+        cy.wait("@getModelQueryMetadata");
 
         cy.findByTestId("model-actions-header")
           .findByLabelText("Actions")

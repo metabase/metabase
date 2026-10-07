@@ -320,18 +320,20 @@
   `list-models` returns the intersection of this map with the mantle `/v1/models` catalog.
   Excludes `openai.gpt-oss*`, which are not invokable through the mantle `/openai/v1` routes.
   Context windows are from the per-model cards at https://docs.aws.amazon.com/bedrock/latest/userguide/model-cards.html"
-  {"anthropic.claude-fable-5"   {:display-name "Claude Fable 5"        :context-window 1000000}
-   "anthropic.claude-opus-5"    {:display-name "Claude Opus 5"         :context-window 1000000}
-   "anthropic.claude-opus-4-8"  {:display-name "Claude Opus 4.8"       :context-window 1000000}
-   "anthropic.claude-opus-4-7"  {:display-name "Claude Opus 4.7"       :context-window 1000000}
-   "anthropic.claude-sonnet-5"  {:display-name "Claude Sonnet 5"       :context-window 1000000}
-   "anthropic.claude-haiku-4-5" {:display-name "Claude Haiku 4.5"      :context-window 200000}
+  {"anthropic.claude-fable-5"    {:display-name "Claude Fable 5"        :context-window 1000000}
+   "anthropic.claude-opus-5-5"   {:display-name "Claude Opus 5.5"       :context-window 1000000}
+   "anthropic.claude-opus-5"     {:display-name "Claude Opus 5"         :context-window 1000000}
+   "anthropic.claude-opus-4-8"   {:display-name "Claude Opus 4.8"       :context-window 1000000}
+   "anthropic.claude-opus-4-7"   {:display-name "Claude Opus 4.7"       :context-window 1000000}
+   "anthropic.claude-sonnet-5-5" {:display-name "Claude Sonnet 5.5"     :context-window 1000000}
+   "anthropic.claude-sonnet-5"   {:display-name "Claude Sonnet 5"       :context-window 1000000}
+   "anthropic.claude-haiku-4-5"  {:display-name "Claude Haiku 4.5"      :context-window 200000}
    ;; Astra's input window is its 1,050,000 token context minus up to 128,000 output tokens.
-   "openai.gpt-6-astra"         {:display-name "GPT-6 Astra"           :context-window 922000}
-   "openai.gpt-5.4"             {:display-name "GPT-5.4"               :context-window 272000}
-   "openai.gpt-5.4-2026-03-05"  {:display-name "GPT-5.4 (2026-03-05)"  :context-window 272000}
-   "openai.gpt-5.5"             {:display-name "GPT-5.5"               :context-window 272000}
-   "openai.gpt-5.5-2026-04-23"  {:display-name "GPT-5.5 (2026-04-23)"  :context-window 272000}})
+   "openai.gpt-6-astra"          {:display-name "GPT-6 Astra"           :context-window 922000}
+   "openai.gpt-5.4"              {:display-name "GPT-5.4"               :context-window 272000}
+   "openai.gpt-5.4-2026-03-05"   {:display-name "GPT-5.4 (2026-03-05)"  :context-window 272000}
+   "openai.gpt-5.5"              {:display-name "GPT-5.5"               :context-window 272000}
+   "openai.gpt-5.5-2026-04-23"   {:display-name "GPT-5.5 (2026-04-23)"  :context-window 272000}})
 
 (mu/defn context-window-tokens :- [:maybe :int]
   "The input context window for `model`, or nil when it isn't one we know."

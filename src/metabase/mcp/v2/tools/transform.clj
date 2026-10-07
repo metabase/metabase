@@ -203,7 +203,7 @@
 
 (defn- check-target-free!
   "Refuse a target table that already exists, as the REST create and update check stacks both do.
-   Restated as a teaching error naming the fix — the REST 403 (\"A table with that name already
+   Restated as a teaching error naming the fix — the REST 409 (\"A table with that name already
    exists.\") says neither which table clashed nor what to do about it."
   [{:keys [target] :as body}]
   (when (transforms/target-table-exists? body)

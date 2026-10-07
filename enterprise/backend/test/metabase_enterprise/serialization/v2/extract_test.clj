@@ -314,9 +314,8 @@
                    :created_at    string?}
                   ser))
           (is (not (contains? ser :id)))
-          (testing "cards depend on their Collection and the query's Database (not the Tables/Fields it references)"
-            (is (= #{[{:model "Database" :id "My Database"}]
-                     [{:model "Collection" :id coll-eid}]}
+          (testing "cards depend on their Collection (not the Database/Tables/Fields the query references)"
+            (is (= #{[{:model "Collection" :id coll-eid}]}
                    (set (serdes/deserialization-dependencies ser))))))
         (let [ser (serdes/extract-one "Card" {} (t2/select-one :model/Card :id c2-id))]
           (is (=? {:serdes/meta        [{:model "Card" :id c2-eid :label "second_question"}]
@@ -332,9 +331,8 @@
           (is (not (contains? ser :id)))
           (is (not (contains? ser :table_id)) "table_id always skipped for cards — re-derived on import")
           (is (contains? ser :database_id) "database_id kept when query is empty")
-          (testing "cards depend on their Database (kept because query is empty), Collection, and parameter_mappings card refs (not the Fields)"
-            (is (= #{[{:model "Database" :id "My Database"}]
-                     [{:model "Collection" :id coll-eid}]
+          (testing "cards depend on their Collection and parameter_mappings card refs (not the Database or the Fields)"
+            (is (= #{[{:model "Collection" :id coll-eid}]
                      [{:model "Card" :id c1-eid}]}
                    (set (serdes/deserialization-dependencies ser))))))
         (let [ser (serdes/extract-one "Card" {} (t2/select-one :model/Card :id c3-id))]
@@ -366,9 +364,8 @@
                    :created_at    string?}
                   ser))
           (is (not (contains? ser :id)))
-          (testing "cards depend on their Database (kept, query empty) and Collection (not the Fields in visualization_settings)"
-            (is (= #{[{:model "Database" :id "My Database"}]
-                     [{:model "Collection" :id coll-eid}]}
+          (testing "cards depend on their Collection (not the Database or the Fields in visualization_settings)"
+            (is (= #{[{:model "Collection" :id coll-eid}]}
                    (set (serdes/deserialization-dependencies ser)))))))
       (testing "Cards can be based on other cards"
         (let [ser (serdes/extract-one "Card" {} (t2/select-one :model/Card :id c5-id))]
@@ -383,9 +380,8 @@
           (is (not (contains? ser :id)))
           (is (not (contains? ser :table_id)) "table_id stripped")
           (is (not (contains? ser :database_id)) "database_id stripped — derivable from query")
-          (testing "and depend on their Collection, Database (from query), and the upstream Card"
-            (is (= #{[{:model "Database" :id "My Database"}]
-                     [{:model "Collection" :id coll-eid}]
+          (testing "and depend on their Collection and the upstream Card"
+            (is (= #{[{:model "Collection" :id coll-eid}]
                      [{:model "Card" :id c4-eid}]}
                    (set (serdes/deserialization-dependencies ser)))))))
       (testing "Dashboards include their Dashcards"
@@ -415,10 +411,9 @@
                    :created_at  string?}
                   ser))
           (is (not (contains? ser :id)))
-          (testing "and depend on all referenced cards and actions, plus the Database of fields referenced in visualization_settings"
+          (testing "and depend on all referenced cards and actions"
             (is (= #{[{:model "Card" :id c2-eid}]
                      [{:model "Action" :id action-eid}]
-                     [{:model "Database" :id "My Database"}]
                      [{:model "Collection" :id (:entity_id (personal-collection dave-id))}]}
                    (set (serdes/deserialization-dependencies ser)))))))
       (testing "Dashboards with parameters where the source is a card"
@@ -434,9 +429,7 @@
                      :values_source_type   :card}]}
                   ser))
           (is (= #{[{:model "Collection" :id (:entity_id (personal-collection dave-id))}]
-                   [{:model "Card" :id c1-eid}]
-                   ;; the parameter's value_field references a Field, but only its Database is a dependency
-                   [{:model "Database", :id "My Database"}]}
+                   [{:model "Card" :id c1-eid}]}
                  (set (serdes/deserialization-dependencies ser))))))
       (testing "Cards with parameters where the source is a card"
         (let [ser (ts/extract-one "Dashboard" param-dash-id)]
@@ -451,9 +444,7 @@
                      :values_source_type   :card}]}
                   ser))
           (is (= #{[{:model "Collection" :id (:entity_id (personal-collection dave-id))}]
-                   [{:model "Card" :id c1-eid}]
-                   ;; the parameter's value_field references a Field, but only its Database is a dependency
-                   [{:model "Database", :id "My Database"}]}
+                   [{:model "Card" :id c1-eid}]}
                  (set (serdes/deserialization-dependencies ser))))))
       (testing "collection filtering based on :user option"
         (testing "only unowned collections are returned with no user"
@@ -545,46 +536,51 @@
                                                                     :type     "external"
                                                                     :field_id fk-id
                                                                     :human_readable_field_id cust-name}]
-      (testing "dimensions without foreign keys are inlined into their Fields\n"
-        (let [ser (ts/extract-one "Field" email-id)]
+      (testing "a dimension without a foreign key is its own entity under its Field\n"
+        (let [ser (ts/extract-one "Dimension" dim1-eid)]
           (is (malli= [:map
                        [:serdes/meta [:= [{:model "Database", :id "My Database"}
                                           {:model "Table", :id "Schemaless Table"}
-                                          {:model "Field", :id "email"}]]]
-                       [:dimensions  [:sequential
-                                      [:map
-                                       [:created_at :string]
-                                       [:human_readable_field_id {:optional true} [:maybe [:sequential [:maybe :string]]]]]]]]
+                                          {:model "Field", :id "email"}
+                                          {:model "Dimension", :id dim1-eid}]]]
+                       [:created_at :string]
+                       [:human_readable_field_id {:optional true} [:maybe [:sequential [:maybe :string]]]]]
                       ser))
           (is (not (contains? ser :id)))
-          (testing "As of #27062 a Field can only have one Dimension. For historic reasons it comes back as a list"
-            (is (= [dim1-eid]
-                   (->> ser :dimensions (map :entity_id)))))
-          (testing "depend only on the Database; the Table is synthesized on import if missing"
-            (is (= #{[{:model "Database"   :id "My Database"}]}
+          (is (= ["My Database" nil "Schemaless Table" "email"] (:field_id ser))
+              ":field_id is exported so the path can be rebuilt from the file")
+          (testing "have no dependencies; the Database, Table and Field are synthesized on import if missing"
+            (is (= #{}
                    (set (serdes/deserialization-dependencies ser)))))))
-      (testing "foreign key dimensions are inlined into their Fields"
-        (let [ser (ts/extract-one "Field" fk-id)]
-          (is (malli= [:map
-                       [:serdes/meta        [:= [{:model "Database" :id "My Database"}
-                                                 {:model "Schema" :id "PUBLIC"}
-                                                 {:model "Table" :id "Orders"}
-                                                 {:model "Field" :id "customer_id"}]]]
-                       [:name               [:= "customer_id"]]
-                       [:fk_target_field_id [:= ["My Database" "PUBLIC" "Customers" "id"]]]
-                       [:dimensions         [:sequential
-                                             [:map
-                                              [:human_readable_field_id [:maybe [:sequential [:maybe :string]]]]
-                                              [:created_at              :string]]]]]
-                      ser))
-          (is (not (contains? ser :id)))
-          (testing "dimensions are properly inlined"
-            (is (=? [{:human_readable_field_id ["My Database" "PUBLIC" "Customers" "name"]
-                      :created_at              string?}]
-                    (:dimensions ser))))
-          (testing "depend only on the Database; the Table, FK target and human-readable Fields are synthesized on import if missing"
-            (is (= #{[{:model "Database"   :id "My Database"}]}
-                   (set (serdes/deserialization-dependencies ser))))))))))
+      (testing "a foreign key dimension is its own entity under its Field"
+        (let [ser (ts/extract-one "Dimension" (t2/select-one-fn :entity_id :model/Dimension :field_id fk-id))]
+          (is (=? {:serdes/meta             [{:model "Database" :id "My Database"}
+                                             {:model "Schema" :id "PUBLIC"}
+                                             {:model "Table" :id "Orders"}
+                                             {:model "Field" :id "customer_id"}
+                                             {:model "Dimension" :id string?}]
+                   :human_readable_field_id ["My Database" "PUBLIC" "Customers" "name"]
+                   :created_at              string?}
+                  ser))
+          (testing "have no dependencies; the Database, FK target and human-readable Fields are synthesized on import if missing"
+            (is (= #{}
+                   (set (serdes/deserialization-dependencies ser)))))))
+      (testing "Fields carry no dimensions"
+        (is (not (contains? (ts/extract-one "Field" fk-id) :dimensions)))))))
+
+(deftest snippet-descendants-test
+  (testing "Exporting a snippet also exports the snippets and cards its template tags reference"
+    (mt/with-empty-h2-app-db!
+      (mt/with-temp [:model/NativeQuerySnippet {b-eid :entity_id} {:name "B" :content "1 = 1"}
+                     :model/Card               {d-id :id d-eid :entity_id} {:name "D"}
+                     :model/NativeQuerySnippet {a-id :id a-eid :entity_id}
+                     {:name "A" :content (format "{{snippet: B}} AND id IN ({{#%d-d}})" d-id)}]
+        (let [extraction (into [] (extract/extract {:targets       [["NativeQuerySnippet" a-id]]
+                                                    :no-settings   true
+                                                    :no-data-model true
+                                                    :no-transforms true}))]
+          (is (= #{a-eid b-eid} (ids-by-model "NativeQuerySnippet" extraction)))
+          (is (= #{d-eid} (ids-by-model "Card" extraction))))))))
 
 (deftest native-query-snippets-test
   (mt/with-empty-h2-app-db!
@@ -835,8 +831,8 @@
                    :created_at  string?}
                   ser))
           (is (not (contains? ser :id)))
-          (testing "depend only on the Database; the Table/Fields from the definition are not dependencies"
-            (is (= #{[{:model "Database" :id "My Database"}]}
+          (testing "have no dependencies; the Database/Table/Fields from the definition are not dependencies"
+            (is (= #{}
                    (set (serdes/deserialization-dependencies ser))))))))))
 
 (defn- mbql5-measure-definition
@@ -876,8 +872,8 @@
                        :created_at  string?}
                       ser))
               (is (not (contains? ser :id)))
-              (testing "depend only on the Database; the Table/Fields from the definition are not dependencies"
-                (is (= #{[{:model "Database" :id "My Database"}]}
+              (testing "have no dependencies; the Database/Table/Fields from the definition are not dependencies"
+                (is (= #{}
                        (set (serdes/deserialization-dependencies ser))))))))))))
 
 (deftest measure-referencing-measure-test
@@ -1099,8 +1095,8 @@
                         ser))
                 (is (not (contains? ser :model_id)))
                 (is (not (contains? ser :id)))
-                (testing "depends on the Database only"
-                  (is (= #{[{:model "Database" :id "My Database"}]}
+                (testing "has no dependencies outside its query"
+                  (is (= #{}
                          (set (serdes/deserialization-dependencies ser)))))))))))))
 
 (deftest field-values-test
@@ -1136,10 +1132,10 @@
                    :values      values}
                   ser))
           (is (not (contains? ser :id)))
-          (is (not (contains? ser :field_id))
-              ":field_id is dropped; its implied by the path")
-          (testing "depend only on the Database; the parent Field is synthesized on import if missing"
-            (is (= #{[{:model "Database"   :id "My Database"}]}
+          (is (= ["My Database" nil "Schemaless Table" "Some Field"] (:field_id ser))
+              ":field_id is exported so the path can be rebuilt from the file")
+          (testing "have no dependencies; the Database and parent Field are synthesized on import if missing"
+            (is (= #{}
                    (set (serdes/deserialization-dependencies ser)))))))
       (testing "extract-metabase behavior"
         (testing "without :include-field-values"
@@ -1173,8 +1169,8 @@
                    :description      description
                    :data_sensitivity :PII}
                   ser))
-          (is (not (contains? ser :field_id))
-              ":field_id is dropped; its implied by the path")))
+          (is (= ["My Database" nil "Schemaless Table" "Some Field"] (:field_id ser))
+              ":field_id is exported so the path can be rebuilt from the file")))
       (testing "data_sensitivity on the Field itself"
         (is (= :PII (:data_sensitivity (ts/extract-one "Field" field-id)))
             "a labeled field exports the keyword as-is")
@@ -1183,10 +1179,10 @@
       (testing "extract-metabase behavior"
         (let [entities (into [] (extract/extract {}))
               models   (map (comp :model last :serdes/meta) entities)]
-          (is (empty? (filter #{"FieldUserSettings"} models))
-              "written inside its Table's settings, never on its own")
-          (is (= 1 (count (filter #{"TableUserSettings"} models))))
-          (is (= 1 (count (:fields (first (filter #(= "TableUserSettings" (-> % :serdes/meta last :model)) entities)))))))))))
+          (is (= 1 (count (filter #{"FieldUserSettings"} models)))
+              "written as its own entity, only for the Field that has settings")
+          (is (empty? (filter #{"TableUserSettings"} models))
+              "no TableUserSettings for a Table without a settings row"))))))
 
 (deftest table-descendants-user-settings-test
   (mt/with-empty-h2-app-db!
@@ -1198,11 +1194,14 @@
       (testing "every Field is a descendant, and none has user settings to speak of yet"
         (is (= #{["Field" f1-id] ["Field" f2-id] ["Field" f3-id]}
                (set (keys (serdes/descendants "Table" table-id {}))))))
-      (testing "a Field with user settings makes the Table's settings a descendant, since they carry the Field's"
+      (testing "a Field's settings and Dimension are descendants of their own"
         (t2/insert! :model/FieldUserSettings {:field_id f2-id :description "edited"})
-        (is (= #{["Field" f1-id] ["Field" f2-id] ["Field" f3-id] ["TableUserSettings" table-id]}
-               (set (keys (serdes/descendants "Table" table-id {})))))
-        (t2/delete! :model/FieldUserSettings :field_id f2-id))
+        (let [dimension-id (t2/insert-returning-pk! :model/Dimension {:field_id f3-id :name "F3" :type :internal})]
+          (is (= #{["Field" f1-id] ["Field" f2-id] ["Field" f3-id]
+                   ["FieldUserSettings" f2-id] ["Dimension" dimension-id]}
+                 (set (keys (serdes/descendants "Table" table-id {}))))))
+        (t2/delete! :model/FieldUserSettings :field_id f2-id)
+        (t2/delete! :model/Dimension :field_id f3-id))
       (testing "a Table with user settings appears as TableUserSettings"
         (t2/insert! :model/TableUserSettings {:table_id table-id :display_name "Renamed"})
         (is (contains? (set (keys (serdes/descendants "Table" table-id {})))
@@ -1210,41 +1209,25 @@
       (testing "Field is a leaf node in the descendants graph"
         (is (empty? (serdes/descendants "Field" f1-id {})))))))
 
-(deftest inline-user-settings-extract-test
+(deftest table-user-settings-extract-test
   (mt/with-empty-h2-app-db!
-    (ts/with-temp-dpc [:model/Database {db-id       :id} {:name "DB"}
-                       :model/Table    {table-id    :id} {:name "T" :db_id db-id}
-                       :model/Table    {other-id    :id} {:name "Unedited T" :db_id db-id}
-                       :model/Field    {f1-id       :id} {:name "F1" :table_id table-id}
-                       :model/Field    {_f2-id      :id} {:name "F2" :table_id table-id}
-                       :model/FieldUserSettings _        {:field_id f1-id :description "edited"}]
-      (testing "a Table with only a Field edit synthesizes a TableUserSettings entity with that Field inlined"
-        (let [entities (into [] (serdes/extract-all "TableUserSettings"
-                                                    {:inline-user-settings true
-                                                     :filter-column        :table_id
-                                                     :filter-ids           [table-id]}))]
-          (is (= 1 (count entities)))
-          (let [entity (first entities)]
-            (is (=? [{:model "Database" :id "DB"}
-                     {:model "Table"    :id "T"}
-                     {:model "TableUserSettings" :id "1"}]
-                    (:serdes/meta entity))
-                "synthesized for a Table with no settings row of its own")
-            (is (nil? (:display_name entity)))
-            (is (= 1 (count (:fields entity))))
-            (is (=? {:description "edited"
-                     :serdes/meta [{:model "Database" :id "DB"}
-                                   {:model "Table"    :id "T"}
-                                   {:model "Field"    :id "F1"}
-                                   {:model "FieldUserSettings" :id "1"}]}
-                    (first (:fields entity)))
-                "the edited Field is inlined, with its own serdes/meta")
-            (is (not (contains? (first (:fields entity)) :field_id))))))
-      (testing "a Table with no edits at all yields nothing"
-        (is (empty? (into [] (serdes/extract-all "TableUserSettings"
-                                                 {:inline-user-settings true
-                                                  :filter-column        :table_id
-                                                  :filter-ids           [other-id]}))))))))
+    (ts/with-temp-dpc [:model/Database          {db-id    :id} {:name "DB"}
+                       :model/Table             {table-id :id} {:name "T" :db_id db-id}
+                       :model/Table             {other-id :id} {:name "Unedited T" :db_id db-id}
+                       :model/Field             {f1-id    :id} {:name "F1" :table_id table-id}
+                       :model/FieldUserSettings _              {:field_id f1-id :description "edited"}
+                       :model/TableUserSettings _              {:table_id table-id :display_name "Renamed"}]
+      (testing "a Table's settings carry only its own values, not its Fields'"
+        (is (=? [{:display_name "Renamed"
+                  :serdes/meta  [{:model "Database" :id "DB"}
+                                 {:model "Table"    :id "T"}
+                                 {:model "TableUserSettings" :id "1"}]}]
+                (into [] (serdes/extract-all "TableUserSettings" {:filter-column :table_id
+                                                                  :filter-ids    [table-id]}))))
+        (is (not (contains? (ts/extract-one "TableUserSettings" table-id) :fields))))
+      (testing "a Table with no settings row yields nothing"
+        (is (empty? (into [] (serdes/extract-all "TableUserSettings" {:filter-column :table_id
+                                                                      :filter-ids    [other-id]}))))))))
 
 (deftest collection-export-includes-user-settings-test
   (mt/with-empty-h2-app-db!
@@ -1266,8 +1249,8 @@
                  (set (map :name (by-model "Field")))))
           (is (= 1 (count (by-model "TableUserSettings"))))
           (is (= #{"F2"}
-                 (set (map #(-> % :serdes/meta (nth 2) :id) (:fields (first (by-model "TableUserSettings"))))))
-              "only the field the user edited has settings to export, inside the Table's"))))))
+                 (set (map #(-> % :serdes/meta (nth 2) :id) (by-model "FieldUserSettings"))))
+              "only the field the user edited has settings to export"))))))
 
 (deftest cards-test
   (mt/with-empty-h2-app-db!
@@ -1315,10 +1298,7 @@
                    :values_source_config {:card_id card-eid-1,
                                           :value_field [:field ["My Database" nil "Schemaless Table" "A Field"] nil]}}]
                  (:parameters ser)))
-          ;; The parameter's value_field references a Field, but Tables/Fields are not dependencies — only their
-          ;; Database is.
-          (is (= #{[{:model "Database"   :id "My Database"}]
-                   [{:model "Collection" :id coll-eid-2}]
+          (is (= #{[{:model "Collection" :id coll-eid-2}]
                    [{:model "Card"       :id card-eid-1}]}
                  (set (serdes/deserialization-dependencies ser))))))
       (testing "Nullable transformations are omitted"
@@ -1789,6 +1769,13 @@
         (let [ser (extract/extract {:no-settings true})]
           (is (= #{"Postgres DB"} (ids-by-model "Database" ser))
               "Only non-H2 databases should appear in the extract"))))))
+
+(deftest skip-stub-databases-test
+  (testing "Stub databases are not extracted, so an import can never turn a real database into a stub"
+    (mt/with-empty-h2-app-db!
+      (mt/with-temp [:model/Database _stub {:name "Stub DB"     :engine :postgres :is_stub true}
+                     :model/Database _real {:name "Postgres DB" :engine :postgres}]
+        (is (= #{"Postgres DB"} (ids-by-model "Database" (extract/extract {:no-settings true}))))))))
 
 (deftest xray-of-analytics-model-export-test
   (testing "X-rays of analytics models can be exported without errors"
@@ -2347,10 +2334,10 @@
                     positions (map :position (:tags ser))]
                 (is (= [hourly-tag-eid custom-tag-eid daily-tag-eid] tag-ids))
                 (is (= [0 1 2] positions))))
-            (testing "dependencies include collection, source database, and tags (the source Table itself is not a dependency)"
+            (testing "dependencies include collection and tags (the source Database and Table are not dependencies)"
               (let [deps (set (serdes/deserialization-dependencies ser))]
                 (is (contains? deps [{:model "Collection" :id coll-eid}]))
-                (is (contains? deps [{:model "Database" :id "My Database"}]))
+                (is (not (contains? deps [{:model "Database" :id "My Database"}])))
                 (is (not (contains? deps [{:model "Database" :id "My Database"}
                                           {:model "Table" :id "Schemaless Table"}])))
                 (is (contains? deps [{:model "TransformTag" :id hourly-tag-eid}]))
@@ -2864,13 +2851,8 @@
                                                     :display :table}]
         (let [ser  (serdes/extract-one "Card" {} (t2/select-one :model/Card card-id))
               deps (serdes/deserialization-dependencies ser)]
-          ;; Database dep comes from mbql-deps on the query's :database key
-          (is (contains? (set deps) [{:model "Database" :id "Test DB"}])
-              "Database dependency should come from the query")
-          ;; Tables/Fields are intentionally not dependencies — they're synthesized as inactive rows on import
-          ;; if missing, and upserted otherwise.
-          (is (not-any? #(some (fn [step] (#{"Table" "Field"} (:model step))) %) deps)
-              "Table/Field should not be dependencies"))))))
+          (is (not-any? #(some (fn [step] (#{"Database" "Table" "Field"} (:model step))) %) deps)
+              "Database/Table/Field should not be dependencies"))))))
 
 (deftest segment-export-strips-table-id-test
   (testing "Segment export omits table_id — derivable from definition"
