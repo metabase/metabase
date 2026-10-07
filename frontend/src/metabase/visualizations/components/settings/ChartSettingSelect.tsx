@@ -66,14 +66,13 @@ export const ChartSettingSelect = ({
   w,
 }: ChartSettingSelectProps) => {
   const popoverPortal = useContext(WidgetPopoverPortalContext);
-  const comboboxProps: SelectProps["comboboxProps"] = {
-    keepMounted: false,
-    withinPortal: Boolean(popoverPortal),
-    portalProps: popoverPortal
-      ? { target: popoverPortal.dropdownTarget }
-      : undefined,
-    floatingStrategy: popoverPortal ? undefined : "absolute",
-  };
+  const comboboxProps: SelectProps["comboboxProps"] = popoverPortal
+    ? {
+        keepMounted: false,
+        withinPortal: true,
+        portalProps: { target: popoverPortal.dropdownTarget },
+      }
+    : { withinPortal: false, floatingStrategy: "absolute" };
 
   const [dropdownOpened, setDropdownOpened] = useState(
     Boolean(defaultDropdownOpened),

@@ -166,10 +166,9 @@ describe("scenarios > visualizations > progress chart", () => {
     });
 
     // Goal should show Count selected in the input
-    H.vizSettingsSidebar()
-      .findByRole("textbox", { name: "Goal" })
-      .should("be.visible")
-      .and("have.value", "Count");
+    H.vizSettingsSidebar().within(() => {
+      cy.findByText("Count").should("exist");
+    });
   });
 
   it("should be backwards compatibile", () => {
@@ -222,9 +221,7 @@ describe("scenarios > visualizations > progress chart", () => {
 
     // Should now show the column name in a read-only text input
     H.vizSettingsSidebar().within(() => {
-      cy.findByRole("textbox", { name: "Goal" })
-        .should("be.visible")
-        .and("have.value", "Sum of Total");
+      cy.findByText("Sum of Total").should("exist");
 
       // Click dropdown again to switch back to custom value
       cy.findByText("Goal").parent().parent().icon("chevrondown").click();

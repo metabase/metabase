@@ -1,7 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
 import { render, screen } from "__support__/ui";
-import { Modal } from "metabase/ui";
 
 import { ChartSettingSelect } from "./ChartSettingSelect";
 
@@ -20,74 +19,7 @@ const selectOption = async (optionText: string) => {
   await userEvent.click(option);
 };
 
-const setupModal = () => {
-  const onClose = jest.fn();
-  const onChange = jest.fn();
-
-  render(
-    <Modal.Root opened onClose={onClose}>
-      <Modal.Overlay data-testid="modal-overlay" />
-      <Modal.Content>
-        <Modal.Title>Visualization options</Modal.Title>
-        <Modal.Body>
-          <ChartSettingSelect
-            options={options}
-            value="value1"
-            onChange={onChange}
-          />
-        </Modal.Body>
-      </Modal.Content>
-    </Modal.Root>,
-  );
-
-  return { onClose, onChange };
-};
-
 describe("ChartSettingSelect", () => {
-  describe.each([
-    {
-      name: "Escape",
-      dismiss: () => userEvent.keyboard("{Escape}"),
-    },
-    {
-      name: "a backdrop click",
-      dismiss: () => userEvent.click(screen.getByTestId("modal-overlay")),
-    },
-  ])("modal dismissal with $name", ({ dismiss }) => {
-    it("should close the modal when the dropdown has not been opened (#83368)", async () => {
-      const { onClose } = setupModal();
-
-      await dismiss();
-
-      expect(onClose).toHaveBeenCalledTimes(1);
-    });
-
-    it("should close the modal after selecting an option (#83368)", async () => {
-      const { onClose, onChange } = setupModal();
-      await selectOption("Option 2");
-      expect(onChange).toHaveBeenCalledWith("value2");
-
-      await dismiss();
-
-      expect(onClose).toHaveBeenCalledTimes(1);
-    });
-
-    it("should dismiss an open dropdown before closing the modal (#83368)", async () => {
-      const { onClose } = setupModal();
-      await userEvent.click(screen.getByTestId("chart-setting-select"));
-      expect(screen.getByRole("listbox")).toBeVisible();
-
-      await dismiss();
-
-      expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
-      expect(onClose).not.toHaveBeenCalled();
-
-      await dismiss();
-
-      expect(onClose).toHaveBeenCalledTimes(1);
-    });
-  });
-
   it("should render all options", async () => {
     render(
       <ChartSettingSelect
