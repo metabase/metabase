@@ -271,8 +271,10 @@ registerHooks({
 
 // --- jsdom as the global DOM -----------------------------------------------------
 const { JSDOM } = require(bunModule("jsdom").replace(/jsdom@[^/]+/, (m) => m)); 
-const dom = new JSDOM("<!DOCTYPE html><html><head></head><body></body></html>", { url: "http://localhost/", pretendToBeVisual: process.env.NT_NO_RAF !== "1" });
-const win = dom.window;
+const createDom = () => new JSDOM("<!DOCTYPE html><html><head></head><body></body></html>", { url: "http://localhost/", pretendToBeVisual: process.env.NT_NO_RAF !== "1" });
+const FRESH_WINDOW = process.env.NT_FRESH_WINDOW === "1";
+let dom = createDom();
+let win = dom.window;
 const keep = new Set(["undefined", "globalThis", "window", "self", "global", "setTimeout", "clearTimeout", "setInterval", "clearInterval", "setImmediate", "clearImmediate", "queueMicrotask", "console", "process", "performance", "structuredClone", "crypto", "URL", "URLSearchParams", "TextEncoder", "TextDecoder", "AbortController", "AbortSignal", "fetch", "Request", "Response", "Headers", "Blob", "File", "ReadableStream", "WritableStream", "TransformStream", "constructor"]);
 // jest's jsdom environment has no Node fetch. jest-setup.js installs the
 // cross-fetch polyfill, which is node-fetch there, and the suite uses jsdom's
@@ -328,9 +330,12 @@ const override = new Set(["Event", "EventTarget", "CustomEvent", "MessageEvent",
 if (process.env.NT_NODE_GLOBALS !== "1" && process.env.NT_NODE_URL !== "1") {
   for (const name of ["URL", "URLSearchParams", "WebSocket"]) { keep.delete(name); override.add(name); }
 }
+const installedWindowKeys = new Set();
+const installWindowGlobals = (again) => {
 for (const key of windowKeys) {
   if (keep.has(key)) continue;
-  if (key in globalThis && !override.has(key)) continue;
+  if (key in globalThis && !override.has(key) && !(again && installedWindowKeys.has(key))) continue;
+  installedWindowKeys.add(key);
   // An event handler property such as window.onkeydown is an accessor on the
   // jsdom window. Copied as a value it would have no setter, and assigning to
   // it would never reach the window, so it is copied as an accessor that
@@ -351,6 +356,8 @@ for (const alias of ["window", "self", "top", "parent"]) Object.defineProperty(g
 for (const timer of ["setTimeout", "clearTimeout", "setInterval", "clearInterval", "queueMicrotask"]) {
   Object.defineProperty(win, timer, { get: () => globalThis[timer], configurable: true });
 }
+};
+installWindowGlobals(false);
 
 // --- jest globals, collected by the harness, run on node:test ------------------------
 // node:test evaluates every suite body before it runs a test. jest loads and
@@ -898,7 +905,7 @@ const requestFrame = globalThis.window.requestAnimationFrame;
 const cancelFrame = globalThis.window.cancelAnimationFrame;
 let lastCancelledFrame = 0;
 const cancelLeftoverFrames = () => {
-  if (process.env.NT_NO_FRAME_RESET || !clockIsReal()) return;
+  if (process.env.NT_NO_FRAME_RESET || FRESH_WINDOW || !clockIsReal()) return;
   const newest = requestFrame.call(globalThis.window, () => {});
   for (let handle = lastCancelledFrame + 1; handle <= newest; handle += 1) cancelFrame.call(globalThis.window, handle);
   lastCancelledFrame = newest;
@@ -971,6 +978,14 @@ const fileCleanup = async (isolated) => {
   if (!process.env.NT_NO_REALM_RESTORE) globalThis.__nodeTestSpike.restoreRealm?.();
   if (!process.env.NT_NO_ENV_RESTORE) globalThis.__nodeTestSpike.restoreEnvironment?.();
   if (process.env.NT_DEBUG_STATE_DIFF) { console.error(`[state] === after ${currentFile}`); stateDiff(); }
+  if (FRESH_WINDOW && isolated) {
+    const previous = dom;
+    dom = createDom();
+    win = dom.window;
+    installWindowGlobals(true);
+    globalThis.__nodeTestSpike.remirror();
+    if (!process.env.NT_FRESH_WINDOW_KEEP) try { previous.window.close(); } catch {}
+  }
   if (process.env.NT_EVICT_PACKAGES) {
     const pattern = new RegExp(`/node_modules/(${process.env.NT_EVICT_PACKAGES})/`);
     let evicted = 0;
@@ -997,6 +1012,8 @@ const fileCleanup = async (isolated) => {
     globalThis.window.MetabaseBootstrap = { ...initialBootstrap };
     resetNavigator();
     runSetupChain();
+    if (FRESH_WINDOW) globalThis.__nodeTestSpike.rebaseline();
+    if (process.env.NT_DEBUG_FRESH) console.error(`[fresh] doc=${globalThis.document === win.document} body=${globalThis.document.body === win.document.body} HTMLElement=${globalThis.HTMLElement === win.HTMLElement} installed=${installedWindowKeys.size} hasDoc=${installedWindowKeys.has("document")}`);
   }
   require("metabase/plugins").reinitialize();
 };
@@ -1422,6 +1439,7 @@ globalThis.__nodeTestSpike.trackLets = (file, read, write) => { trackedLets.set(
     }
   };
   globalThis.__nodeTestSpike.mirrorGlobalsOntoWindow = mirrorGlobalsOntoWindow;
+  globalThis.__nodeTestSpike.remirror = () => { packagesLoadedSinceMirror = true; mirrorGlobalsOntoWindow(); };
   {
     const compileAny = NodeModule.prototype._compile;
     NodeModule.prototype._compile = function (content, filename, ...rest) {
@@ -1529,7 +1547,7 @@ initialBootstrap = { ...globalThis.window.MetabaseBootstrap };
 // a file changed is put back between files. globalThis only has changed keys
 // restored, never added ones removed: a shared module that set a global during
 // its one evaluation would otherwise lose it for every later file.
-const REALM_OBJECTS = [
+const realmObjects = () => [
   globalThis.document,
   win.Document.prototype,
   win.Node.prototype,
@@ -1551,8 +1569,14 @@ const snapshotDescriptors = (target) => {
   }
   return descriptors;
 };
-for (const target of REALM_OBJECTS) realmBaseline.set(target, snapshotDescriptors(target));
+for (const target of realmObjects()) realmBaseline.set(target, snapshotDescriptors(target));
 const globalBaseline = snapshotDescriptors(globalThis);
+globalThis.__nodeTestSpike.rebaseline = () => {
+  realmBaseline.clear();
+  for (const target of realmObjects()) realmBaseline.set(target, snapshotDescriptors(target));
+  globalBaseline.clear();
+  for (const [key, descriptor] of snapshotDescriptors(globalThis)) globalBaseline.set(key, descriptor);
+};
 const sameDescriptor = (a, b) =>
   a && b && a.value === b.value && a.get === b.get && a.set === b.set &&
   a.writable === b.writable && a.enumerable === b.enumerable && a.configurable === b.configurable;
