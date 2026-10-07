@@ -69,14 +69,14 @@
   1000)
 
 (defn invalidate-by-ids!
-  "Soft-invalidate the still-active findings among `ids` that match `visible-clause`; returns the set of
+  "Soft-invalidate the still-active findings among `ids` that match `where`; returns the set of
   ids found active. Each chunk commits on its own, so a later failure leaves earlier chunks invalidated.
   Two racing calls can both report an id; the `invalidated_at` NULL guard still stamps it once."
-  [ids visible-clause]
+  [ids where]
   (into #{}
         (mapcat (fn [chunk]
                   (t2/with-transaction [_conn]
-                    (let [eligible (cd.db/active-finding-ids chunk visible-clause)]
+                    (let [eligible (cd.db/active-finding-ids chunk where)]
                       (when (seq eligible)
                         (cd.db/invalidate-findings-where! [:and
                                                            [:in :id (vec eligible)]

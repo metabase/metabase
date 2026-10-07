@@ -505,13 +505,16 @@
       [:skipped     [:sequential :int]]]
   "Dismiss the findings with `ids`. Invalidation is soft and global: the row is kept, but the finding leaves
   every caller's lists. `invalidated` lists the ids this call found active and dismissed (a racing call may
-  list the same id); `skipped` lists every other requested id - nonexistent, already invalidated, or not
-  visible to the caller - without saying which. Both keep the request order, de-duplicated."
+  list the same id); `skipped` lists every other requested id - nonexistent, already invalidated,
+  superseded by a newer finding for the same entity, or not visible to the caller - without saying which.
+  Both keep the request order, de-duplicated."
   [_route-params
    _query-params
    {:keys [ids]} :- [:map {:closed true}
                      [:ids [:sequential {:min 1} ms/PositiveInt]]]]
-  (let [invalidated (finding/invalidate-by-ids! ids (api.common/visible-findings-clause))
+  (let [invalidated (finding/invalidate-by-ids! ids [:and
+                                                     (api.common/latest-findings-clause)
+                                                     (api.common/visible-findings-clause)])
         ids         (distinct ids)]
     {:invalidated (filterv invalidated ids)
      :skipped     (filterv (complement invalidated) ids)}))
