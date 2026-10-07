@@ -322,7 +322,10 @@
               revert  (in-thread #(mt/with-dynamic-fn-redefs [revisions.db/lock-entity! (fn [& args]
                                                                                           (deliver reached true)
                                                                                           (apply lock args))]
-                                    (revert-to-creation! :model/Document id)))]
+                                    (try
+                                      (revert-to-creation! :model/Document id)
+                                      (catch clojure.lang.ExceptionInfo e
+                                        {:status-code (:status-code (ex-data e)) :message (ex-message e)}))))]
           (deref reached 10000 :timeout)
           ;; time for the revert to wait at the row lock
           (is (= :timeout (deref revert 1000 :timeout)) "the revert waits for the delete")
@@ -330,8 +333,9 @@
           (let [revert-out (deref revert 60000 :timeout)]
             (is (= {:ok :deleted} (deref delete 60000 :timeout)))
             (is (nil? (t2/select-one :model/Document :id id)))
-            (is (or (contains? revert-out :error) (nil? (:ok revert-out)))
-                (str "the revert of a deleted document fails; revert returned: "
-                     (pr-str (or (some-> (:ok revert-out) (select-keys [:id :is_reversion])) revert-out))))
+            (is (= {:status-code 404 :message "Not found."} (:ok revert-out))
+                (str "the revert of a deleted document throws a 404 error; revert returned: "
+                     (pr-str (or (some-> (:ok revert-out) (select-keys [:id :is_reversion :status-code :message]))
+                                 revert-out))))
             (is (not-any? second (history :model/Document id))
                 "no reversion is recorded for a deleted document")))))))
