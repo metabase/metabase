@@ -212,6 +212,8 @@
                  (catch Exception e e))]
     (is (some? e) "the acquire throws")
     (is (str/includes? (str (ex-message e)) (str path)) "the error names the path")
+    (is (str/includes? (str (ex-message e)) "Remove this path, or make it a directory that the Metabase user owns.")
+        "the error gives the remedy")
     (is (= reason (:reason (ex-data e))))
     (is (= [] @clones) "no clone starts")))
 
@@ -275,22 +277,96 @@
          (check-refused! registry (:base-dir registry) :another-owner))
        (is (= [] (process-roots registry)) "no process root is made in the base directory")))))
 
+(defn- symlink!
+  "Makes `link` a symbolic link to `target`."
+  [^File link ^File target]
+  (Files/createSymbolicLink (.toPath link) (.toPath target) (make-array FileAttribute 0)))
+
+;; The URL of the first clone. For [[url]], the acquire that [[check-refused!]] makes reuses the active clone. For
+;; another URL, that acquire makes a new clone.
+(def ^:private first-urls
+  {"an acquire that makes a new clone"       "https://example.com/org/first.git"
+   "an acquire that reuses the active clone" url})
+
 (deftest process-root-replaced-by-a-symlink-is-refused-test
   (when (posix?)
-    (testing "when the process root is replaced by a symbolic link to a directory with a lock file, the registry refuses to clone into it"
-      (do-with-registry!
-       (fn [registry]
-         (clone-registry/acquire! registry (clone-registry/new-lease "https://example.com/org/first.git")
-                                  (fake-clone (atom []) (atom [])))
-         (let [root  (root-dir registry)
-               moved (io/file (.getParentFile root) (str (.getName root) ".moved"))]
-           (try
-             (is (.renameTo root moved))
-             (Files/createSymbolicLink (.toPath root) (.toPath moved) (make-array FileAttribute 0))
-             (check-refused! registry root :symbolic-link)
-             (finally
-               (Files/deleteIfExists (.toPath root))
-               (FileUtils/deleteQuietly moved)))))))))
+    (testing "when the process root is replaced by a symbolic link to a directory with a lock file, the registry refuses to use it"
+      (doseq [[what first-url] first-urls]
+        (testing what
+          (do-with-registry!
+           (fn [registry]
+             (clone-registry/acquire! registry (clone-registry/new-lease first-url) (fake-clone (atom []) (atom [])))
+             (let [root  (root-dir registry)
+                   moved (io/file (.getParentFile root) (str (.getName root) ".moved"))]
+               (try
+                 (is (.renameTo root moved))
+                 (symlink! root moved)
+                 (check-refused! registry root :symbolic-link)
+                 (finally
+                   (Files/deleteIfExists (.toPath root))
+                   (FileUtils/deleteQuietly moved)))))))))))
+
+(deftest base-directory-replaced-by-a-symlink-is-refused-test
+  (when (posix?)
+    (testing "when the base directory is replaced by a symbolic link after a clone, the registry refuses to use it"
+      (doseq [[what first-url] first-urls]
+        (testing what
+          (let [moved (atom nil)]
+            (try
+              (do-with-registry!
+               (fn [{:keys [^File base-dir] :as registry}]
+                 (clone-registry/acquire! registry (clone-registry/new-lease first-url) (fake-clone (atom []) (atom [])))
+                 (reset! moved (io/file (str base-dir ".moved")))
+                 (is (.renameTo base-dir @moved))
+                 (symlink! base-dir @moved)
+                 (try
+                   (check-refused! registry base-dir :symbolic-link)
+                   (finally
+                     (Files/deleteIfExists (.toPath base-dir))))))
+              (finally
+                (some-> @moved FileUtils/deleteQuietly)))))))))
+
+(defn- check-no-delete-through-a-symlink!
+  "Makes a directory with a file in it. Calls `(f registry victim)` with a new registry. Checks that the file is still
+  there after `f` and a shutdown of the registry."
+  [f]
+  (when (posix?)
+    (let [victim (io/file (System/getProperty "java.io.tmpdir") (str "clone-registry-test-victim-" (random-uuid)))
+          keep   (io/file victim "keep")]
+      (try
+        (.mkdirs victim)
+        (spit keep "x")
+        (do-with-registry! #(f % victim))
+        (is (.isFile keep) "the file in the target of the symbolic link is not deleted")
+        (finally
+          (FileUtils/deleteQuietly victim))))))
+
+(deftest shutdown-does-not-delete-through-a-symlink-root-test
+  (testing "when a retired process root is replaced by a symbolic link, a shutdown removes the link and not the files of its target"
+    (check-no-delete-through-a-symlink!
+     (fn [registry victim]
+       (let [clone! (fake-clone (atom []) (atom []))
+             _      (clone-registry/acquire! registry (clone-registry/new-lease url) clone!)
+             root-1 (root-dir registry)]
+         (io/delete-file (io/file root-1 ".lock"))
+         (clone-registry/acquire! registry (clone-registry/new-lease "https://example.com/org/b.git") clone!)
+         (is (not= root-1 (root-dir registry)) "precondition: the acquire retired the first root")
+         (FileUtils/deleteDirectory root-1)
+         (symlink! root-1 victim)
+         (clone-registry/shutdown! registry)
+         (is (not (Files/exists (.toPath root-1) (make-array LinkOption 0))) "the shutdown removes the link"))))))
+
+(deftest release-does-not-delete-through-a-symlink-generation-test
+  (testing "when the directory of a retired generation is replaced by a symbolic link, its last release removes the link and not the files of its target"
+    (check-no-delete-through-a-symlink!
+     (fn [registry victim]
+       (let [lease                  (clone-registry/new-lease url)
+             {:keys [id ^File dir]} (clone-registry/acquire! registry lease (fake-clone (atom []) (atom [])))]
+         (FileUtils/deleteDirectory dir)
+         (symlink! dir victim)
+         (clone-registry/retire! registry url id)
+         (clone-registry/release! registry lease)
+         (is (not (Files/exists (.toPath dir) (make-array LinkOption 0))) "the release removes the link"))))))
 
 ;; A clone job writes into the directory that it got before it started. An acquire can check the root of the active
 ;; generation before the job publishes it, and take the generation after.

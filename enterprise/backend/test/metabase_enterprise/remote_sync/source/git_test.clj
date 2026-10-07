@@ -1191,3 +1191,25 @@
             (finally
               (forget-clones! url)
               (forget-clones! other-url))))))))
+
+(deftest clone-runs-no-git-hook-test
+  (testing "remote sync runs no git hook from its clones: a push from a clone with an executable pre-push hook does not run the hook"
+    (mt/with-temp-dir [remote-dir nil]
+      (mt/with-temp-dir [marker-dir nil]
+        (let [remote (init-remote! remote-dir :files {"master.txt" "File in master"})
+              url    (remote-url remote)
+              marker (io/file marker-dir "hook-ran")]
+          (try
+            (let [{:keys [^Git git] :as source} (git/git-source url "master" nil ingest/legal-top-level-paths)
+                  hook (io/file (clone-dir source) "hooks" "pre-push")
+                  repo (.getRepository git)]
+              (io/make-parents hook)
+              (spit hook (str "#!/bin/sh\ntouch '" (.getPath marker) "'\n"))
+              (.setExecutable hook true)
+              (doto (.updateRef repo "refs/heads/hook-check")
+                (.setNewObjectId (.resolve repo "refs/heads/master"))
+                (.update))
+              (git/push-branch! (assoc source :branch "hook-check"))
+              (is (some? (git/commit-sha remote "hook-check")) "precondition: the push reached the remote")
+              (is (not (.exists marker)) "the pre-push hook does not run"))
+            (finally (forget-clones! url))))))))
