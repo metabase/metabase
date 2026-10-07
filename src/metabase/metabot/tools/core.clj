@@ -47,6 +47,36 @@
   defrecoverable
   unrecoverable!])
 
+;;; ------------------------------------------------ Renderable ----------------------------------------------------
+
+(defprotocol Renderable
+  "Agent-facing text that the *consumer* turns into a string.
+
+  The reason this exists rather than `:output` simply being a string: MCP builds its prose as
+  `metabase.mcp.v2.message/msg` records and renders them at the boundary, deliberately, so that
+  locale and untrusted interpolations are decided by whoever is sending the response rather than by
+  whoever wrote the sentence. Metabot has no such need and uses plain English strings.
+
+  Making the result carry a renderable instead of a string means neither surface has to give that up,
+  and a tool does not have to know which one is consuming it. A string is the trivial case."
+  (render-text [this]
+    "This value as a string, for a consumer that is about to put it on the wire."))
+
+(extend-protocol Renderable
+  String
+  (render-text [this] this))
+
+(defn renderable?
+  "Whether `x` can be [[render-text]]ed. Deliberately not satisfied by every object: a result whose
+  `:output` is a map or a keyword is a bug, and `::result` should reject it."
+  [x]
+  (satisfies? Renderable x))
+
+(mr/def ::renderable
+  "Agent-facing text: a string, or anything extending [[Renderable]]."
+  [:fn {:error/message "a string, or a value extending metabase.metabot.tools.core/Renderable"}
+   renderable?])
+
 ;;; ------------------------------------------------ Schemas -------------------------------------------------------
 
 (def ^:private DataPart
@@ -65,16 +95,32 @@
 
   `:description` is the model-facing text. It is a field rather than a docstring because a tool that
   exists in several configurations should be able to build it — the four `search` tools each hardcode
-  theirs today precisely because a docstring cannot be computed."
-  [:map {:closed true}
+  theirs today precisely because a docstring cannot be computed.
+
+  `:name`, `:description`, `:args` and `:scope` are the neutral core: every consumer needs all four,
+  and `:scope` is shared because both surfaces check strings from the same `api-scope` registry (MCP
+  tools already declare `metabot.scope/agent-content-read`).
+
+  Everything else is namespaced by the consumer it is for, and a consumer reads only its own
+  namespace. That is what lets a tool be declared once and consumed by a surface it was not written
+  for: MCP would read `:mcp/annotations`, `:mcp/required-extensions`, `:mcp/output-schema`,
+  `:mcp/title` and `:mcp/_meta`, see no `:metabot/*` keys it cares about, and fall back to its own
+  defaults.
+
+  So this map cannot be closed — a closed map would make adding a consumer a change to this schema.
+  The typo protection a closed map gave us is kept by a different rule, enforced in
+  [[validate-tool!]]: every key outside the core must be namespaced. `:capability` is rejected,
+  `:metabot/capabilities` is not, and a misspelling *within* a namespace is that consumer's to catch
+  since it is the only thing that knows its own keys."
+  [:map
    [:name         :string]
    [:description  :string]
    ;; `:any` rather than a schema-of-schemas: this is a Malli schema in any of its forms — a
    ;; registry keyword, a vector form, or a compiled Schema. `validate-tool!` checks it compiles.
    [:args         :any]
-   [:scope        {:optional true} [:maybe :string]]
-   [:capabilities {:optional true} [:maybe [:set :keyword]]]
-   [:title-fn     {:optional true} [:maybe fn?]]])
+   [:scope                  {:optional true} [:maybe :string]]
+   [:metabot/capabilities   {:optional true} [:maybe [:set :keyword]]]
+   [:metabot/title-fn       {:optional true} [:maybe fn?]]])
 
 (mr/def ::result
   "What [[handle]] returns. Success only — a failure is thrown.
@@ -85,7 +131,7 @@
   and its markdown link buffer, `metabase.metabot.used-tables`, the document API's chart draft,
   `metabase.metabot.agent.user-context`, and EE analytics persistence)."
   [:map {:closed true}
-   [:output            :string]
+   [:output            ::renderable]
    [:structured-output {:optional true} ::schema.v2/tool-io]
    [:data-parts        {:optional true} [:sequential DataPart]]
    [:resources         {:optional true} [:sequential ::schema.v2/tool-io]]])
@@ -102,7 +148,7 @@
   This is the one place the \"an item is just a smaller tool\" equivalence loosens: a tool must
   produce `:output`, an item need not."
   [:map {:closed true}
-   [:output            {:optional true} :string]
+   [:output            {:optional true} ::renderable]
    [:structured-output {:optional true} ::schema.v2/tool-io]
    [:data-parts        {:optional true} [:sequential DataPart]]
    [:resources         {:optional true} [:sequential ::schema.v2/tool-io]]])
@@ -191,7 +237,9 @@
       (when-not (mr/validate ::item-result result)
         (throw (ex-info (str "load-item returned an invalid result for " (pr-str item))
                         {:item item :result result})))
-      (assoc result :item item :failed? false :output (:output result "")))
+      ;; Rendered here so that `compose` and every composer downstream work with strings, and only
+      ;; the edges of the system deal in renderables.
+      (assoc result :item item :failed? false :output (render-text (:output result ""))))
     (catch Throwable e
       (let [error (tools.error/classify e)]
         (if (= :recoverable (:class error))
@@ -216,6 +264,10 @@
   rejects fails the whole turn, so the declaration is the place to find out."
   #"^[a-z][a-z0-9_]*$")
 
+(def ^:private core-declaration-keys
+  "The keys every consumer needs. Anything else must be namespaced for one; see [[::declaration]]."
+  #{:name :description :args :scope})
+
 (defn validate-tool!
   "Check `tool`'s declaration, throwing on anything a load-time check can catch, and return the
   declaration."
@@ -225,6 +277,17 @@
       (throw (ex-info (str "Invalid tool declaration: " (pr-str declared))
                       {:declaration declared
                        :explain     (mr/explain ::declaration declared)})))
+    ;; The declaration is open so a new consumer can add its own keys without editing the schema,
+    ;; which costs us the typo protection a closed map gives. This buys it back: an unqualified key
+    ;; outside the core is a misspelling of a core key or a consumer key someone forgot to namespace,
+    ;; and either way it would be read by nobody and silently drop whatever it was meant to do.
+    (when-let [stray (seq (remove #(or (contains? core-declaration-keys %) (qualified-keyword? %))
+                                  (keys declared)))]
+      (throw (ex-info (str "Tool " tool-name " declares unnamespaced key(s) " (vec stray)
+                           ". Only " (vec (sort core-declaration-keys)) " are consumer-neutral;"
+                           " anything else belongs to one consumer and must say which, e.g."
+                           " :metabot/capabilities.")
+                      {:name tool-name :stray (vec stray)})))
     (when-not (re-matches tool-name-pattern tool-name)
       (throw (ex-info (str "Tool name " (pr-str tool-name) " is not snake_case") {:name tool-name})))
     ;; Build the validator now rather than on the first model call. `mr/schema` on an unregistered

@@ -59,7 +59,7 @@
      :description  (:description this)
      :args         (:args this)
      :scope        scope/agent-search
-     :title-fn     search-display})
+     :metabot/title-fn search-display})
   (handle [this args _ctx]
     (do-search (:tool-name this) (:allowed-types this) (:opts this) args)))
 
@@ -213,7 +213,7 @@
     (let [variants [search-tool sql-search-tool nlq-search-tool transform-search-tool]]
       (is (every? #(instance? SearchTool %) variants))
       (is (= [scope/agent-search] (distinct (map (comp :scope tools/declaration) variants))))
-      (is (= [search-display] (distinct (map (comp :title-fn tools/declaration) variants))))
+      (is (= [search-display] (distinct (map (comp :metabot/title-fn tools/declaration) variants))))
       (is (= ["search"] (distinct (map (comp :name tools/declaration) variants))))))
   (testing "and differ only in the fields they were constructed with"
     (is (= #{"model" "table"} (:allowed-types sql-search-tool)))
@@ -377,7 +377,7 @@
     {:name         "edit_sql_query"
      :description  "Edit an existing SQL query using structured edits."
      :scope        scope/agent-sql-edit
-     :capabilities #{:permission-write-sql-queries}
+     :metabot/capabilities #{:permission-write-sql-queries}
      :args         [:map {:closed true}
                     [:query_id [:or :string :int]]
                     [:old_string :string]
