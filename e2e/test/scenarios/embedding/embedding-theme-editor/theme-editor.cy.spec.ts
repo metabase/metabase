@@ -149,6 +149,7 @@ describe(
       H.main()
         .findByRole("button", { name: /New theme/ })
         .should("be.visible");
+      H.main().findByText("Dirty delete").should("not.exist");
       H.main().findByText("We're a little lost...").should("not.exist");
     });
 
