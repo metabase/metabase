@@ -3,6 +3,7 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import {
+  ActionIcon,
   Box,
   Button,
   Flex,
@@ -253,30 +254,28 @@ const ValueInput = ({
         w="100%"
         {...valueOpts}
       />
-      {/* TODO: replace with ActionIcon (GDGT-2457) */}
       {canDelete && (
-        <Button
+        <ActionIcon
           variant="subtle"
-          color="neutral"
           size="sm"
-          leftSection={<Icon name="close" />}
           onClick={onDelete}
           data-testid="remove-mapping"
-        />
+        >
+          <Icon name="close" />
+        </ActionIcon>
       )}
-      {/* TODO: replace with ActionIcon (GDGT-2457) */}
       {canRevert && (
         <Tooltip
           label={t`Revert to "${valueOpts?.revert?.value}" value from ${valueOpts?.revert?.source}`}
         >
-          <Button
+          <ActionIcon
             variant="subtle"
-            color="neutral"
             size="sm"
-            leftSection={<Icon name="refresh" />}
             onClick={onRevert}
             data-testid="revert-mapping"
-          />
+          >
+            <Icon name="refresh" />
+          </ActionIcon>
         </Tooltip>
       )}
     </>

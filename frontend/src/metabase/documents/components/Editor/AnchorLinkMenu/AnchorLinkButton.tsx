@@ -1,22 +1,22 @@
 import { useClipboard } from "@mantine/hooks";
-import type { ComponentPropsWithoutRef, ElementType } from "react";
 import { useCallback } from "react";
 import { t } from "ttag";
 
-import { Button, type ButtonProps, Icon, Text, Tooltip } from "metabase/ui";
+import {
+  ActionIcon,
+  type ActionIconProps,
+  Icon,
+  Text,
+  Tooltip,
+} from "metabase/ui";
 import { isPlainKey } from "metabase/utils/keyboard";
 
-type Props<C extends ElementType = "button"> = ButtonProps & {
+type Props = ActionIconProps & {
   url: string;
   onCopy?: () => void;
-  component?: C;
-} & Omit<ComponentPropsWithoutRef<C>, keyof ButtonProps | "component">;
+};
 
-export const AnchorLinkButton = <C extends ElementType = "button">({
-  url,
-  onCopy,
-  ...props
-}: Props<C>) => {
+export const AnchorLinkButton = ({ url, onCopy, ...props }: Props) => {
   const clipboard = useClipboard({ timeout: 2000 });
 
   const handleCopy = useCallback(() => {
@@ -39,18 +39,16 @@ export const AnchorLinkButton = <C extends ElementType = "button">({
       label={<Text fw={700} c="inherit">{t`Copied!`}</Text>}
       opened={clipboard.copied}
     >
-      {/* TODO: replace with ActionIcon (GDGT-2457) */}
-      <Button
-        // Unjustified type cast. FIXME
-        {...(props as ButtonProps)}
+      <ActionIcon
+        {...props}
         aria-label={t`Copy link`}
         variant="subtle"
-        color="neutral"
         size="sm"
-        leftSection={<Icon name="link" />}
         onClick={handleCopy}
         onKeyDown={handleKeyDown}
-      />
+      >
+        <Icon name="link" />
+      </ActionIcon>
     </Tooltip>
   );
 };

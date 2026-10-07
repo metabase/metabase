@@ -5,7 +5,15 @@ import type {
   DatePickerUnit,
   RelativeDatePickerValue,
 } from "metabase/querying/common/types";
-import { Box, Button, Divider, Group, Icon, Select, Text } from "metabase/ui";
+import {
+  ActionIcon,
+  Box,
+  Divider,
+  Group,
+  Icon,
+  Select,
+  Text,
+} from "metabase/ui";
 
 import { NumberInputWithFallbackValue } from "../../NumberInputWithFallbackValue";
 import type { DatePickerSubmitButtonProps } from "../../types";
@@ -140,15 +148,14 @@ export function DateOffsetIntervalPicker({
             floatingStrategy: "fixed",
           }}
         />
-        {/* TODO: replace with ActionIcon (GDGT-2457) */}
-        <Button
+        <ActionIcon
           variant="subtle"
-          color="neutral"
           size="sm"
-          leftSection={<Icon name="close" />}
           aria-label={t`Remove offset`}
           onClick={handleOffsetRemove}
-        />
+        >
+          <Icon name="close" />
+        </ActionIcon>
       </Box>
       <Divider />
       <Group px="lg" py="sm" gap="sm" justify="space-between">

@@ -6,7 +6,7 @@ import type {
   RelativeDatePickerValue,
 } from "metabase/querying/common/types";
 import {
-  Button,
+  ActionIcon,
   Divider,
   Flex,
   Group,
@@ -103,16 +103,15 @@ export function DateIntervalPicker({
           }}
         />
         <Tooltip label={t`Starting from…`} position="bottom">
-          {/* TODO: replace with ActionIcon (GDGT-2457) */}
-          <Button
+          <ActionIcon
             variant="subtle"
-            color="neutral"
             size="sm"
             ml="sm"
             aria-label={t`Starting from…`}
-            leftSection={<Icon name="arrow_left_to_line" />}
             onClick={handleStartingFromClick}
-          />
+          >
+            <Icon name="arrow_left_to_line" />
+          </ActionIcon>
         </Tooltip>
       </Flex>
       <Flex p="lg" pt={0}>

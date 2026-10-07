@@ -17,7 +17,15 @@ import { useEditorHost } from "metabase/rich_text_editing/tiptap/EditorHost";
 import { buildDraftCard } from "metabase/rich_text_editing/tiptap/extensions/shared/draft-card";
 import { wrapCardEmbed } from "metabase/rich_text_editing/tiptap/extensions/shared/layout";
 import { useSetting } from "metabase/settings";
-import { Box, Button, Flex, Icon, Text, Tooltip } from "metabase/ui";
+import {
+  ActionIcon,
+  Box,
+  Button,
+  Flex,
+  Icon,
+  Text,
+  Tooltip,
+} from "metabase/ui";
 import type { MetabotGenerateContentRequest } from "metabase-types/api";
 
 import { useLazyMetabotGenerateContentQuery } from "../../../api";
@@ -274,16 +282,15 @@ export const MetabotComponent = memo(
           mb="lg"
         >
           <Box pos="absolute" top={0} right={0} className={S.closeButton}>
-            {/* TODO: replace with ActionIcon (GDGT-2457) */}
             {editor.options.editable && (
-              <Button
+              <ActionIcon
                 variant="subtle"
-                color="neutral"
                 size="sm"
                 m="xxs"
-                leftSection={<Icon name="close" data-hide-on-print />}
                 onClick={() => deleteNode()}
-              />
+              >
+                <Icon name="close" data-hide-on-print />
+              </ActionIcon>
             )}
           </Box>
           <Flex flex={1} direction="column" className={S.contentWrapper}>

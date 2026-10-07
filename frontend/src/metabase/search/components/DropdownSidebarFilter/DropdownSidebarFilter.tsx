@@ -16,7 +16,7 @@ import type {
 import CS from "metabase/css/core/index.css";
 import { useSelector } from "metabase/redux";
 import { getIsNavbarOpen } from "metabase/selectors/app";
-import { Box, Button, Group, Icon, Popover, Stack, Text } from "metabase/ui";
+import { ActionIcon, Box, Group, Icon, Popover, Stack, Text } from "metabase/ui";
 import { isNotNull } from "metabase/utils/types";
 import type { IconName } from "metabase-types/api";
 
@@ -136,15 +136,14 @@ export const DropdownSidebarFilter = ({
                   </Text>
                 </Group>
               )}
-              {/* TODO: replace with ActionIcon (GDGT-2457) */}
-              <Button
+              <ActionIcon
                 variant="subtle"
-                color="neutral"
                 size="sm"
                 data-testid="sidebar-filter-dropdown-button"
                 onClick={onClearFilter}
-                leftSection={<Icon name={getDropdownIcon()} />}
-              />
+              >
+                <Icon name={getDropdownIcon()} />
+              </ActionIcon>
             </Group>
           </FieldSet>
         </Box>

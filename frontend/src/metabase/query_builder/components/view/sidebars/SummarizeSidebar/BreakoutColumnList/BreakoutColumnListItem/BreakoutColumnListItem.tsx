@@ -10,7 +10,14 @@ import {
 } from "metabase/common/components/MetadataInfo/QueryColumnInfoIcon";
 import { useTranslateContent } from "metabase/content-translation/hooks";
 import { ColumnBucketPickerPopover } from "metabase/querying/common/components/QueryColumnPicker/ColumnBucketPickerPopover";
-import { Box, type BoxProps, Button, Flex, Icon, Tooltip } from "metabase/ui";
+import {
+  ActionIcon,
+  Box,
+  type BoxProps,
+  Flex,
+  Icon,
+  Tooltip,
+} from "metabase/ui";
 import * as Lib from "metabase-lib";
 
 import BreakoutColumnListItemS from "./BreakoutColumnListItem.module.css";
@@ -133,30 +140,28 @@ export function BreakoutColumnListItem({
               : onAddBreakout(column)
           }
         />
-        {/* TODO: replace with ActionIcon (GDGT-2457) */}
         {isSelected && (
-          <Button
+          <ActionIcon
             variant="transparent"
-            size="compact-md"
-            w="2rem"
-            leftSection={<Icon c="icon-primary-inverse" name="close" />}
+            size="2rem"
             onClick={handleRemoveColumn}
             aria-label={t`Remove dimension`}
-          />
+          >
+            <Icon c="icon-primary-inverse" name="close" />
+          </ActionIcon>
         )}
       </Flex>
       {!isSelected && (
         <Tooltip label={t`Add grouping`}>
-          {/* TODO: replace with ActionIcon (GDGT-2457) */}
-          <Button
+          <ActionIcon
             variant="subtle"
-            color="neutral"
             size="sm"
             className={BreakoutColumnListItemS.AddButton}
-            leftSection={<Icon name="add" />}
             aria-label={t`Add dimension`}
             onClick={handleAddClick}
-          />
+          >
+            <Icon name="add" />
+          </ActionIcon>
         </Tooltip>
       )}
     </HoverParent>

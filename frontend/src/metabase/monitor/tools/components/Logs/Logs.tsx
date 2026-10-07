@@ -13,6 +13,7 @@ import { MonitorHeaderTitle } from "metabase/monitor/components/MonitorHeaderTit
 import { MonitorMain } from "metabase/monitor/components/MonitorLayout";
 import { Outlet, useLocation } from "metabase/router";
 import {
+  ActionIcon,
   Button,
   Center,
   DefaultSelectItem,
@@ -83,18 +84,17 @@ export const Logs = ({
                   placeholder={t`Filter logs`}
                   rightSection={
                     query.length > 0 ? (
-                      // TODO: replace with ActionIcon (GDGT-2457)
-                      <Button
+                      <ActionIcon
                         aria-label={t`Clear`}
-                        leftSection={<Icon name="close" />}
                         variant="subtle"
-                        color="neutral"
                         size="sm"
                         onClick={() => {
                           patchUrlState({ query: "" });
                           refollow();
                         }}
-                      />
+                      >
+                        <Icon name="close" />
+                      </ActionIcon>
                     ) : undefined
                   }
                   value={query}

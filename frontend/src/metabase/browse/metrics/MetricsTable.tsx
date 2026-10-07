@@ -25,7 +25,7 @@ import { MarkdownPreview } from "metabase/common/components/MarkdownPreview";
 import CS from "metabase/css/core/index.css";
 import { useNavigate } from "metabase/router";
 import {
-  Button,
+  ActionIcon,
   FixedSizeIcon,
   Flex,
   Icon,
@@ -370,14 +370,9 @@ function MenuCell({ metric }: { metric?: MetricResult }) {
     >
       <Menu position="bottom-end">
         <Menu.Target>
-          {/* TODO: replace with ActionIcon (GDGT-2457) */}
-          <Button
-            variant="subtle"
-            color="neutral"
-            size="sm"
-            aria-label={t`Metric options`}
-            leftSection={<Icon name="ellipsis" />}
-          />
+          <ActionIcon variant="subtle" size="sm" aria-label={t`Metric options`}>
+            <Icon name="ellipsis" />
+          </ActionIcon>
         </Menu.Target>
         <Menu.Dropdown>
           {actions.map((action) => (

@@ -20,7 +20,13 @@ import {
   tokenAtPos,
 } from "metabase/querying/expressions";
 import { COMMA, GROUP } from "metabase/querying/expressions/pratt";
-import { Button, Tooltip as ButtonTooltip, Flex, Icon } from "metabase/ui";
+import {
+  ActionIcon,
+  Button,
+  Tooltip as ButtonTooltip,
+  Flex,
+  Icon,
+} from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type { Database } from "metabase-types/api";
 
@@ -211,17 +217,16 @@ export function Editor(props: EditorProps) {
           </ButtonTooltip>
           {source.trim() !== "" && error == null && isValidated && (
             <ButtonTooltip label={t`Auto-format`}>
-              {/* TODO: replace with ActionIcon (GDGT-2457) */}
-              <Button
+              <ActionIcon
                 variant="subtle"
-                color="neutral"
                 size="sm"
                 aria-label={t`Auto-format`}
                 onClick={formatExpression}
                 className={S.toolbarButton}
                 disabled={isFormatting || error != null}
-                leftSection={<Icon name="format_code" />}
-              />
+              >
+                <Icon name="format_code" />
+              </ActionIcon>
             </ButtonTooltip>
           )}
         </Flex>
