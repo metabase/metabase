@@ -95,11 +95,12 @@
   leaves no `task_history` row."
   []
   (cond
-    (scanned-before?)
-    (log/info "Skipping Content Diagnostics upgrade backfill: a scan has already run")
-
+    ;; findings first: it's one cheap query, while `scanned-before?` reads every `task_history` row for the scan
     (cd.db/any-findings?)
     (log/info "Skipping Content Diagnostics upgrade backfill: findings already exist")
+
+    (scanned-before?)
+    (log/info "Skipping Content Diagnostics upgrade backfill: a scan has already run")
 
     (not (premium-features/has-feature? :content-diagnostics))
     (log/info "Skipping Content Diagnostics upgrade backfill: the :content-diagnostics feature is absent")
