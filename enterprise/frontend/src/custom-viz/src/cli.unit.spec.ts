@@ -76,6 +76,8 @@ describe("cli init", () => {
       "public/assets/icon.svg",
       ".gitignore",
       "README.md",
+      "AGENTS.md",
+      ".claude/skills/custom-viz/SKILL.md",
     ];
 
     for (const file of expectedFiles) {

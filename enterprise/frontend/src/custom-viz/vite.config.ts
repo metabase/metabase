@@ -7,6 +7,7 @@ import dts from "vite-plugin-dts";
 
 const STATIC_FILES = [
   "templates/.claude",
+  "templates/AGENTS.md",
   "templates/dev-server-landing.html",
   "skill",
 ];

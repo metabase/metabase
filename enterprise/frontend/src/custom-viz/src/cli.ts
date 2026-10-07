@@ -13,7 +13,6 @@ import { version } from "../package.json";
 
 import { packPlugin } from "./pack";
 import {
-  generateAgentsMd,
   generateGitignore,
   generateIconSvg,
   generateIndexTsx,
@@ -23,6 +22,12 @@ import {
   generateTsConfig,
   generateViteConfig,
 } from "./templates";
+
+const TEMPLATES_DIR = join(
+  dirname(fileURLToPath(import.meta.url)),
+  "templates",
+);
+const AGENT_FILES = ["AGENTS.md", ".claude"];
 
 const program = new Command();
 
@@ -67,11 +72,8 @@ program
       writeFile(join(name, "public", "assets", "icon.svg"), generateIconSvg()),
       writeFile(join(name, ".gitignore"), generateGitignore()),
       writeFile(join(name, "README.md"), generateReadme(name, displayName)),
-      writeFile(join(name, "AGENTS.md"), generateAgentsMd()),
-      cp(
-        join(dirname(fileURLToPath(import.meta.url)), "templates", ".claude"),
-        join(name, ".claude"),
-        { recursive: true },
+      ...AGENT_FILES.map((file) =>
+        cp(join(TEMPLATES_DIR, file), join(name, file), { recursive: true }),
       ),
     ]);
 
