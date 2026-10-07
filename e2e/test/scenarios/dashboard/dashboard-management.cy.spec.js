@@ -1,6 +1,5 @@
 const { H } = cy;
 import { USERS } from "e2e/support/cypress_data";
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
 import { onlyOn } from "e2e/support/helpers/e2e-skip-test-helpers";
 
@@ -334,35 +333,6 @@ describe("managing dashboard from the dashboard's edit menu", () => {
           });
         });
       });
-    });
-  });
-
-  it("should be prevented from doing a shallow copy if the dashboard contains a dashboard question", () => {
-    cy.signInAsAdmin();
-
-    H.createNativeQuestionAndDashboard({
-      questionDetails,
-      dashboardDetails: { name: dashboardName },
-    }).then(({ body: { dashboard_id } }) => {
-      H.createQuestion({
-        name: "Foo dashboard question",
-        query: { "source-table": SAMPLE_DATABASE.ORDERS_ID, limit: 5 },
-        dashboard_id,
-      }).then(({ body: card }) => {
-        cy.wrap(card.id).as("dashboardQuestionId");
-        H.addOrUpdateDashboardCard({ card_id: card.id, dashboard_id });
-        H.visitDashboard(dashboard_id);
-      });
-    });
-
-    H.openDashboardMenu();
-    H.popover().findByText("Duplicate").should("be.visible").click();
-
-    H.modal().within(() => {
-      cy.findByRole("heading", {
-        name: `Duplicate "${dashboardName}" and its questions`,
-      });
-      cy.findByLabelText("Only duplicate the dashboard").should("not.exist");
     });
   });
 });

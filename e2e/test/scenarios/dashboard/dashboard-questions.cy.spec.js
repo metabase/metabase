@@ -64,9 +64,13 @@ describe("Dashboard > Dashboard Questions", () => {
       H.entityPickerModal().findByText("First collection").click();
       H.entityPickerModal().button("Move").click();
 
-      H.modal().findByText(/do you still want this question to appear/i);
-      // defaults to yes
-      H.modal().button("Done").click();
+      H.modal().within(() => {
+        cy.findByText(/do you still want this question to appear/i);
+        cy.findByRole("radio", {
+          name: /Yes, it should still appear there/i,
+        }).should("be.checked");
+        cy.button("Done").click();
+      });
       H.undoToast().findByText("First collection");
       H.appBar().findByText("First collection"); // breadcrumb should change
       H.appBar().findByText("Orders in a dashboard").should("not.exist"); // dashboard name should no longer be visible
@@ -77,16 +81,6 @@ describe("Dashboard > Dashboard Questions", () => {
     });
 
     it("can move an existing question between a dashboard and a collection", () => {
-      H.createQuestion({
-        name: "Total Orders that should stay",
-        dashboard_id: S.ORDERS_DASHBOARD_ID,
-        query: {
-          "source-table": SAMPLE_DATABASE.ORDERS_ID,
-          aggregation: [["count"]],
-        },
-        display: "scalar",
-      });
-
       H.createQuestion(
         {
           name: "Total Orders",
@@ -137,31 +131,8 @@ describe("Dashboard > Dashboard Questions", () => {
 
       H.undoToast().findByText("Second collection");
       H.visitDashboard(S.ORDERS_DASHBOARD_ID);
+      H.dashboardCards().findByText("Orders").should("be.visible");
       H.dashboardCards().findByText("Total Orders").should("not.exist");
-
-      cy.log("test moving a question while keeping the dashcard");
-      H.dashboardCards().findByText("Total Orders that should stay").click();
-
-      H.openQuestionActions();
-      H.popover().findByText("Move").click();
-      H.entityPickerModal().findByText("First collection").click();
-      H.entityPickerModal().findByText("Second collection").click();
-      H.entityPickerModal().button("Move").click();
-      H.modal().within(() => {
-        cy.findByText(/do you still want this question to appear/i).should(
-          "exist",
-        );
-        cy.findByRole("radio", {
-          name: /Yes, it should still appear there/i,
-        }).should("be.checked");
-        cy.button("Done").click();
-      });
-
-      H.undoToast().findByText("Second collection");
-      H.visitDashboard(S.ORDERS_DASHBOARD_ID);
-      H.dashboardCards()
-        .findByText("Total Orders that should stay")
-        .should("exist");
     });
 
     it("can move a dashboard question between dashboards", () => {
@@ -652,6 +623,16 @@ describe("Dashboard > Dashboard Questions", () => {
         H.addHeadingWhileEditing("A section");
         H.saveDashboard();
 
+        cy.log("shallow copy is allowed without dashboard questions");
+        H.openDashboardMenu("Duplicate");
+        H.modal().within(() => {
+          cy.findByDisplayValue("Dashboard with a title - Duplicate");
+          cy.findByLabelText("Only duplicate the dashboard").should(
+            "be.visible",
+          );
+          cy.button("Cancel").click();
+        });
+
         H.createQuestion({
           name: "Total Orders",
           dashboard_id: dashboardId,
@@ -672,7 +653,30 @@ describe("Dashboard > Dashboard Questions", () => {
           display: "scalar",
         });
 
+        // the copy form fetches the dashboard without a dashboard_load_id
+        cy.intercept(
+          { method: "GET", pathname: `/api/dashboard/${dashboardId}` },
+          (req) => {
+            if (!req.url.includes("dashboard_load_id")) {
+              req.alias = "copyFormDashboard";
+            }
+          },
+        );
         H.visitDashboard(dashboardId);
+
+        cy.log("shallow copy is not allowed with dashboard questions");
+        H.openDashboardMenu("Duplicate");
+        cy.wait("@copyFormDashboard");
+        H.modal().within(() => {
+          cy.findByRole("heading", {
+            name: 'Duplicate "Dashboard with a title" and its questions',
+          });
+          cy.findByLabelText("Only duplicate the dashboard").should(
+            "not.exist",
+          );
+          cy.button("Cancel").click();
+        });
+
         H.openDashboardMenu("Move to trash");
         H.modal().button("Move to trash").click();
         cy.findByText(/gone wrong/, { timeout: 0 }).should("not.exist");
