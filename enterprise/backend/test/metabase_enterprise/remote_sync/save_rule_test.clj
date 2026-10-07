@@ -528,7 +528,7 @@
 
 (deftest save-event-during-the-reconcile-test
   (testing "The remote edits card A. During the reconcile transaction, the user saves A (a loaded entity) and C (an
-            entity that the pull does not touch). Both edits stay dirty, and the save of C does not wait."
+            entity that the pull does not touch). Both edits stay dirty. Except on H2, the save of C does not wait."
     (do-with-synced-cards!
      (fn [{:keys [a c t0]}]
        (let [user-c       (promise)
@@ -543,7 +543,10 @@
          (is (nil? (:error save-a)))
          (is (= ["edit A during reconcile" "update"] [(desc a) (:status (row "Card" a))]))
          (is (= ["edit C during reconcile" "update"] [(desc c) (:status (row "Card" c))]))
-         (is (< (:ms save-c) 1000) "a save of an entity that the pull does not touch does not wait"))))))
+         ;; On H2 the reconcile runs in exclusive mode, which pauses every statement of another session until the
+         ;; reconcile ends.
+         (when-not (= :h2 (mdb/db-type))
+           (is (< (:ms save-c) 1000) "a save of an entity that the pull does not touch does not wait")))))))
 
 (defn- public-link-tx!
   "The transaction of POST /api/<model>/:id/public_link: an update of the entity row, then the event in the same

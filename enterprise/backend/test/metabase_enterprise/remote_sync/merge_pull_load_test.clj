@@ -6,6 +6,7 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase-enterprise.remote-sync.db :as remote-sync.db]
    [metabase-enterprise.remote-sync.impl :as impl]
    [metabase-enterprise.remote-sync.models.remote-sync-task :as remote-sync.task]
    [metabase-enterprise.remote-sync.save-rule :as save-rule]
@@ -14,6 +15,8 @@
    [metabase-enterprise.remote-sync.source.protocol :as source.p]
    [metabase-enterprise.remote-sync.spec :as spec]
    [metabase-enterprise.remote-sync.test-helpers :as test-helpers]
+   [metabase.app-db.core :as mdb]
+   [metabase.collections.models.collection :as collection]
    [metabase.events.core :as events]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -22,6 +25,7 @@
    [metabase.search.test-util :as search.tu]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
+   [metabase.util :as u]
    [metabase.util.yaml :as yaml]
    [toucan2.core :as t2]))
 
@@ -838,46 +842,274 @@
       (is (not s?))
       (is (nil? s-row) "the row of S goes with S"))))
 
-;;; ------------------------------- a collection that a user creates during the reconcile -------------------------------
+;;; ------------------------ a placement under a remote-deleted collection during the reconcile ------------------------
 
-(deftest sub-collection-created-during-the-reconcile-stops-the-pull-test
+(defn- on-thread
+  "Run `f` on a plain Thread, with no binding of the connection of the pull. Returns a promise of `{:result}`, or of
+  `{:error :status-code}`: the messages of the exception and its causes, and the first `:status-code` of their
+  ex-data."
+  [f]
+  (let [p (promise)]
+    (.start (Thread. ^Runnable
+             (fn []
+               (deliver p (try
+                            {:result (f)}
+                            (catch Throwable e
+                              (let [chain (take-while some? (iterate ex-cause e))]
+                                {:error       (str/join " | " (keep ex-message chain))
+                                 :status-code (some (comp :status-code ex-data) chain)})))))))
+    p))
+
+(defn- deadlock?
+  "True when the text `s` names a deadlock."
+  [s]
+  (boolean (some-> s u/lower-case-en (str/includes? "deadlock"))))
+
+(defn- h2?
+  "True when the app DB is H2. On H2 the reconcile runs in exclusive mode: a statement of another session pauses until
+  the reconcile ends."
+  []
+  (= :h2 (mdb/db-type)))
+
+(def ^:private gate-message
+  "The message of a create or a move of a collection whose parent collection is locked."
+  "The parent collection is being changed. Try again.")
+
+(defn- check-placement-failed
+  "Check that the user's create or move of a collection under a collection that the reconcile deletes failed: at once
+  with the gate error, or on H2 after the pause with the error of a missing parent."
+  [user]
+  (if (h2?)
+    (is (str/includes? (str (:error user)) "ancestors do not exist") (pr-str user))
+    (do
+      (is (= 409 (:status-code user)) (pr-str user))
+      (is (str/includes? (str (:error user)) gate-message) (pr-str user)))))
+
+(defn- write-during-the-reconcile!
+  "Collections Alpha (with card A, and collection X with card X1) and Beta (with card B) are synced as the version v0.
+  The remote deletes Beta and B. In the reconcile of the merge pull, at `at` (`:after-the-check`: after the save rule
+  checked the delete closure; `:at-the-delete`: at the start of the delete step), `(user! ids)` runs on a plain thread,
+  with `ids` the map of `:alpha`, `:beta` and `:x`. The pull waits at most 2 s for it, then continues. Returns the pull
+  result, the result of the user's write (see [[on-thread]]), and what exists after the pull."
+  [at user!]
+  (with-sync-settings
+    (mt/with-temp [:model/Collection {alpha :id} {:name "Alpha" :is_remote_synced true :location "/"}
+                   :model/Card       _           {:name "Card A" :collection_id alpha}
+                   :model/Collection {x :id}     {:name "X" :is_remote_synced true :location (str "/" alpha "/")}
+                   :model/Card       {x1 :id}    {:name "Card X1" :collection_id x}
+                   :model/Collection {beta :id}  {:name "Beta" :is_remote_synced true :location "/"}
+                   :model/Card       _           {:name "Card B" :collection_id beta}]
+      (mt/with-model-cleanup [:model/Card :model/Collection]
+        (let [t0     (export-tree!)
+              _      (pull-base! t0)
+              user   (atom nil)
+              start! (fn []
+                       (when (nil? @user)
+                         (reset! user (on-thread #(user! {:alpha alpha :beta beta :x x})))
+                         (deref @user 2000 nil)))
+              pull   #(merge-pull! t0 (without-beta t0))
+              {:keys [result]}
+              (case at
+                :after-the-check
+                (let [real (mt/original-fn #'save-rule/check-closure!)]
+                  (mt/with-dynamic-fn-redefs [save-rule/check-closure! (fn [state closure phase]
+                                                                         (let [checked (real state closure phase)]
+                                                                           (when (= :reconcile phase)
+                                                                             (start!))
+                                                                           checked))]
+                    (pull)))
+
+                :at-the-delete
+                (let [real (mt/original-fn #'impl/delete-with-closure!)]
+                  (mt/with-dynamic-fn-redefs [impl/delete-with-closure! (fn [& args]
+                                                                          (start!)
+                                                                          (apply real args))]
+                    (pull))))]
+          {:result     (select-keys result [:status :conflicts :message])
+           :user       (some-> @user (deref 60000 {:error "timed out"}))
+           :alpha      alpha
+           :beta?      (t2/exists? :model/Collection :id beta)
+           :x-location (t2/select-one-fn :location :model/Collection :id x)
+           :x1?        (t2/exists? :model/Card :id x1)
+           :gammas     (t2/select-fn-vec :location :model/Collection :name "Gamma")
+           :new-cards  (t2/select-fn-vec :collection_id :model/Card :name "New card C")})))))
+
+(deftest collection-created-under-a-remote-deleted-collection-during-the-reconcile-fails-test
   (testing "The remote deletes collection Beta. In the reconcile, after the save rule checked the delete closure, the
-            user creates collection Gamma under Beta and card D in Gamma. The merge did not see Gamma, so the pull stops,
-            and Beta, Gamma and D stay."
+            user creates collection Gamma under Beta. The create fails, and the pull succeeds. No collection Gamma
+            exists, so the delete of Beta removes no collection that the user created."
+    (let [{:keys [result user beta? gammas]}
+          (write-during-the-reconcile! :after-the-check
+                                       (fn [{:keys [beta]}]
+                                         (t2/insert-returning-pk! :model/Collection {:name             "Gamma"
+                                                                                     :location         (str "/" beta "/")
+                                                                                     :is_remote_synced true})))]
+      (is (= :success (:status result)) (pr-str result))
+      (is (not beta?))
+      (check-placement-failed user)
+      (is (empty? gammas) "no collection Gamma exists"))))
+
+(deftest collection-moved-under-a-remote-deleted-collection-during-the-reconcile-stays-test
+  (testing "The remote deletes collection Beta. In the reconcile, at the delete, the user moves collection X, which
+            holds card X1, from Alpha into Beta. The move fails, and the pull succeeds. X and X1 stay under Alpha."
+    (let [{:keys [result user alpha beta? x-location x1?]}
+          (write-during-the-reconcile! :at-the-delete
+                                       (fn [{:keys [beta x]}]
+                                         (collection/move-collection! (t2/select-one :model/Collection :id x)
+                                                                      (str "/" beta "/"))))]
+      (is (= :success (:status result)) (pr-str result))
+      (is (not beta?))
+      (check-placement-failed user)
+      (is (= (str "/" alpha "/") x-location) "X stays under Alpha")
+      (is x1? "card X1 stays"))))
+
+(deftest card-saved-into-a-remote-deleted-collection-during-the-reconcile-fails-test
+  (testing "The remote deletes collection Beta. In the reconcile, at the delete, the user saves new card C into Beta.
+            The save fails, and the pull succeeds. On H2 the save pauses until the reconcile commits; on the other app
+            DBs the foreign key check of the save waits for the lock of Beta. Then the save finds no Beta."
+    (let [{:keys [result user beta? new-cards]}
+          (write-during-the-reconcile! :at-the-delete
+                                       (fn [{:keys [beta]}]
+                                         (insert-card! "New card C" {:collection_id beta})))]
+      (is (= :success (:status result)) (pr-str result))
+      (is (not beta?))
+      (is (some? (:error user)) (str "the save fails: " (pr-str user)))
+      (is (empty? new-cards) "no card C exists"))))
+
+(defn- two-deleted-collections!
+  "Collections Alpha (with card A), Beta1 (with card C) and Beta2 (with card B2) are synced as the version v0. The
+  remote deletes Beta1 and Beta2. Calls `(f {:beta1 :beta2 :c :t0 :t1})`, with `t1` the files of the remote."
+  [f]
+  (with-sync-settings
+    (mt/with-temp [:model/Collection {alpha :id} {:name "Alpha" :is_remote_synced true :location "/"}
+                   :model/Card       _           {:name "Card A" :collection_id alpha}
+                   :model/Collection {beta1 :id} {:name "Beta1" :is_remote_synced true :location "/"}
+                   :model/Card       {c :id}     {:name "Card C" :collection_id beta1}
+                   :model/Collection {beta2 :id} {:name "Beta2" :is_remote_synced true :location "/"}
+                   :model/Card       _           {:name "Card B2" :collection_id beta2}]
+      (mt/with-model-cleanup [:model/Card :model/Collection]
+        (let [t0 (export-tree!)]
+          (pull-base! t0)
+          (f {:beta1 beta1
+              :beta2 beta2
+              :c     c
+              :t0    t0
+              :t1    (into {} (remove (fn [[p _]] (or (str/starts-with? p "collections/main/beta1")
+                                                      (str/starts-with? p "collections/main/beta2"))))
+                           t0)}))))))
+
+(deftest card-moved-between-two-remote-deleted-collections-during-the-reconcile-test
+  (testing "The remote deletes collections Beta1 and Beta2. In the reconcile, after the pull locked the rows of the
+            collections, the user moves card C from Beta1 to Beta2. Neither side gets a deadlock error. Nothing is
+            lost: the pull deletes C only when C did not move, and else it stops with a conflict and C stays."
+    (two-deleted-collections!
+     (fn [{:keys [beta2 c t0 t1]}]
+       (let [user (atom nil)
+             real (mt/original-fn #'remote-sync.db/lock-instances!)
+             {:keys [result]}
+             (mt/with-dynamic-fn-redefs [remote-sync.db/lock-instances!
+                                         (fn [model ids & more]
+                                           (let [locked (apply real model ids more)]
+                                             (when (and (= :model/Collection model) (nil? @user))
+                                               (reset! user (on-thread #(t2/update! :model/Card c {:collection_id beta2})))
+                                               (Thread/sleep 800))
+                                             locked))]
+               (merge-pull! t0 t1))
+             user   (some-> @user (deref 60000 {:error "timed out"}))
+             c?     (t2/exists? :model/Card :id c)]
+         (is (some? user) "the user thread ran")
+         (is (not (deadlock? (:message result))) (pr-str result))
+         (is (not (deadlock? (:error user))) (pr-str user))
+         (is (contains? #{:success :conflict} (:status result)) (pr-str result))
+         (is (= c? (= :conflict (:status result))) "C stays exactly when the pull stops")
+         (when c?
+           (is (= beta2 (t2/select-one-fn :collection_id :model/Card :id c)) "C stays in Beta2")))))))
+
+(deftest collection-moved-into-another-remote-deleted-collection-before-the-reconcile-stops-the-pull-test
+  (testing "The remote deletes collections Beta1 and Beta2. Before the reconcile, the user moves Beta1 into Beta2 and
+            keeps the transaction open for 300 ms. The reconcile does not wait for the user and does not deadlock: it
+            runs again, finds that Beta1 changed, and stops the pull. Beta1 stays under Beta2."
+    (two-deleted-collections!
+     (fn [{:keys [beta1 beta2 t0 t1]}]
+       (let [user  (atom nil)
+             moved (promise)
+             move! #(t2/with-transaction [_conn]
+                      (collection/move-collection! (t2/select-one :model/Collection :id beta1) (str "/" beta2 "/"))
+                      (deliver moved true)
+                      (Thread/sleep 300))
+             {:keys [result]} (merge-pull! t0 t1 :on-report (once-at! 0.75 (fn []
+                                                                             (reset! user (on-thread move!))
+                                                                             (deref moved 10000 nil))))
+             user  (some-> @user (deref 60000 {:error "timed out"}))]
+         (is (nil? (:error user)) (pr-str user))
+         (is (not (deadlock? (:message result))) (pr-str result))
+         (is (= :conflict (:status result)) (pr-str result))
+         (is (some #(str/includes? % "Beta1") (:conflicts result)) (pr-str result))
+         (is (= (str "/" beta2 "/") (t2/select-one-fn :location :model/Collection :id beta1)) "Beta1 stays under Beta2")
+         (is (t2/exists? :model/Collection :id beta2) "Beta2 stays"))))))
+
+(deftest collection-created-under-a-remote-deleted-collection-before-the-reconcile-stops-the-pull-test
+  (testing "The remote deletes collection Beta. Before the reconcile, the user creates collection Gamma under Beta and
+            keeps the transaction open for 300 ms. The reconcile does not wait for the user: it runs again, finds
+            Gamma, and stops the pull. Beta and Gamma stay."
     (with-sync-settings
       (mt/with-temp [:model/Collection {alpha :id} {:name "Alpha" :is_remote_synced true :location "/"}
                      :model/Card       _           {:name "Card A" :collection_id alpha}
                      :model/Collection {beta :id}  {:name "Beta" :is_remote_synced true :location "/"}
                      :model/Card       _           {:name "Card B" :collection_id beta}]
         (mt/with-model-cleanup [:model/Card :model/Collection]
-          (let [t0     (export-tree!)
-                _      (pull-base! t0)
-                user   (atom nil)
-                real   (mt/original-fn #'save-rule/check-closure!)
-                create! (fn []
-                          (let [gamma (t2/insert-returning-pk! :model/Collection {:name             "Gamma"
-                                                                                  :location         (str "/" beta "/")
-                                                                                  :is_remote_synced true})]
-                            {:gamma gamma :d (insert-card! "New card D" {:collection_id gamma})}))
-                {:keys [result]}
-                (mt/with-dynamic-fn-redefs [save-rule/check-closure!
-                                            (fn [state closure phase]
-                                              (let [checked (real state closure phase)]
-                                                (when (and (= :reconcile phase) (nil? @user))
-                                                  ;; a plain thread, with no binding of the connection of the pull
-                                                  (let [p (promise)]
-                                                    (.start (Thread. ^Runnable #(deliver p (try (create!)
-                                                                                                (catch Throwable e e)))))
-                                                    (reset! user (deref p 30000 ::still-waiting))))
-                                                checked))]
-                  (merge-pull! t0 (without-beta t0)))
-                {:keys [gamma d]} @user]
-            (is (map? @user) (str "the user thread created Gamma and D: " (pr-str @user)))
+          (let [t0      (export-tree!)
+                _       (pull-base! t0)
+                user    (atom nil)
+                created (promise)
+                create! #(t2/with-transaction [_conn]
+                           (let [id (t2/insert-returning-pk! :model/Collection {:name             "Gamma"
+                                                                                :location         (str "/" beta "/")
+                                                                                :is_remote_synced true})]
+                             (deliver created id)
+                             (Thread/sleep 300)
+                             id))
+                {:keys [result]} (merge-pull! t0 (without-beta t0)
+                                              :on-report (once-at! 0.75 (fn []
+                                                                          (reset! user (on-thread create!))
+                                                                          (deref created 10000 nil))))
+                {gamma :result :as user} (some-> @user (deref 60000 {:error "timed out"}))]
+            (is (some? gamma) (pr-str user))
             (is (= :conflict (:status result)) (pr-str result))
             (is (= ["Gamma"] (:conflicts result)) "the conflict names the new collection")
             (is (= (str "Import blocked: content was added locally during the pull under content that the remote "
                         "branch deleted. Your local change is kept.")
                    (:message result)))
             (is (t2/exists? :model/Collection :id beta) "Beta stays")
-            (is (t2/exists? :model/Collection :id gamma) "Gamma stays")
-            (is (t2/exists? :model/Card :id d) "card D stays")))))))
+            (is (= (str "/" beta "/") (t2/select-one-fn :location :model/Collection :id gamma)) "Gamma stays under Beta")))))))
+
+(deftest reconcile-that-stays-busy-stops-the-pull-test
+  (testing "The remote deletes collection Beta and its card B. Before the reconcile, the user locks the row of B and
+            keeps it locked for 3 s. The reconcile does not wait: it runs again a few times, and then stops the pull
+            with the busy message. The version does not move, and Beta and B stay."
+    (with-sync-settings
+      (mt/with-temp [:model/Collection {alpha :id} {:name "Alpha" :is_remote_synced true :location "/"}
+                     :model/Card       _           {:name "Card A" :collection_id alpha}
+                     :model/Collection {beta :id}  {:name "Beta" :is_remote_synced true :location "/"}
+                     :model/Card       {b :id}     {:name "Card B" :collection_id beta}]
+        (let [t0       (export-tree!)
+              _        (pull-base! t0)
+              version0 (remote-sync.task/last-version)
+              user     (atom nil)
+              locked   (promise)
+              hold!    #(t2/with-transaction [_conn]
+                          (t2/query {:select [:id] :from [:report_card] :where [:= :id b] :for :update})
+                          (deliver locked true)
+                          (Thread/sleep 3000))
+              {:keys [result]} (merge-pull! t0 (without-beta t0)
+                                            :on-report (once-at! 0.75 (fn []
+                                                                        (reset! user (on-thread hold!))
+                                                                        (deref locked 10000 nil))))]
+          (some-> @user (deref 60000 nil))
+          (is (= :conflict (:status result)) (pr-str result))
+          (is (= (str "Import blocked: content under a collection that the remote branch deleted was in use during "
+                      "the pull. Try the pull again.")
+                 (:message result)))
+          (is (= version0 (remote-sync.task/last-version)) "the version does not move")
+          (is (t2/exists? :model/Collection :id beta) "Beta stays")
+          (is (t2/exists? :model/Card :id b) "B stays"))))))
