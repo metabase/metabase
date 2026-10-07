@@ -461,10 +461,10 @@
   #{"claude-fable-5-1" "claude-mythos-5-1" "claude-opus-5-5" "claude-sonnet-5-5"})
 
 (defn- supports-forced-tool-choice?
-  "Whether `model` accepts a forced tool choice. A prefix match, so that Azure deployment names with a suffix
-  (e.g. `claude-fable-5-1-prod`) also match."
+  "Whether `model` accepts a forced tool choice. A prefix match on the hyphenated id, so that Azure deployment names
+  with a suffix or a dotted version (e.g. `claude-fable-5.1-prod`) also match."
   [model]
-  (let [model (strip-vendor-prefix model)]
+  (let [model (str/replace (strip-vendor-prefix model) "." "-")]
     (not-any? #(str/starts-with? model %) forced-tool-choice-unsupported-models)))
 
 (mu/defn claude-request-body

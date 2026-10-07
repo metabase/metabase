@@ -664,6 +664,7 @@
         "claude-sonnet-5-5"          {:type "auto"}                              {:type "auto"} true
         "anthropic.claude-fable-5-1" {:type "auto"}                              {:type "auto"} true
         "claude-fable-5-1-prod"      {:type "auto"}                              {:type "auto"} true
+        "claude-fable-5.1-prod"      {:type "auto"}                              {:type "auto"} true
         "claude-fable-5"             {:type "tool" :name "structured_output"}    {:type "any"}  false
         "claude-opus-5"              {:type "tool" :name "structured_output"}    {:type "any"}  false
         "claude-sonnet-5"            {:type "tool" :name "structured_output"}    {:type "any"}  false))))
