@@ -21,11 +21,10 @@
   (when (and (settings/remote-sync-enabled)
              (= :read-only (settings/remote-sync-type))
              (settings/remote-sync-auto-import))
-    (let [branch (settings/remote-sync-branch)
-          source (source/source-from-settings branch)]
+    (let [branch (settings/remote-sync-branch)]
       ;; The job owns the source, also while the task reads it: `dh/with-timeout` runs the task on this thread, and
       ;; returns only after the task ends.
-      (try
+      (source/with-source [source (source/source-from-settings branch)]
         (let [snapshot         (source.p/snapshot source)
               snapshot-version (source.p/version snapshot)
               last-version     (remote-sync.task/last-version)
@@ -55,9 +54,7 @@
                                          (fn [task-id] (impl/import! snapshot task-id))
                                          :on-success (fn [task-id _result]
                                                        (impl/publish-sync-event! :event/remote-sync-import task-id
-                                                                                 {:branch branch :auto true} nil)))))))))
-        (finally
-          (source/close! source))))))
+                                                                                 {:branch branch :auto true} nil)))))))))))))
 
 (task/defjob ^{:doc "Auto-imports any remote collections."} AutoImport [_]
   (auto-import!))

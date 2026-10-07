@@ -236,9 +236,8 @@
         effective-url   (or remote-sync-url (settings/remote-sync-url))]
     (api/check-400 (not (str/blank? effective-url)) "Remote sync is not configured.")
     (try
-      ;; Checks the URL protocol and lists the remote's branches afresh (no local clone and no cached JGit
-      ;; instance), so a rotated token is detected on every click. Branch/type are omitted so the
-      ;; branch-existence check is skipped.
+      ;; check-git-settings! asks the remote on each call, so a rotated token fails here. With no branch or type, it
+      ;; skips the branch-existence check.
       (settings/check-git-settings! {:remote-sync-url   effective-url
                                      :remote-sync-token effective-token})
       {:status :success}

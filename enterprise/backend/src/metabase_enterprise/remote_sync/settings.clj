@@ -173,7 +173,8 @@
   Returns the [[source.p/Remote]] that it asked, which answers later questions (such as the default branch) with no
   further call to the remote; nil when no args are passed and remote sync is disabled.
 
-  Throws ExceptionInfo if unable to connect to the repository with the provided settings."
+  Throws ExceptionInfo for a URL scheme other than https, http, file or a path; when the remote cannot be reached or
+  refuses the token; when it has no branch; and, for :read-only with a branch, when the branch does not exist."
   ([] (when (setting/get :remote-sync-enabled) (check-git-settings! {:remote-sync-url    (setting/get :remote-sync-url)
                                                                      :remote-sync-token  (setting/get :remote-sync-token)
                                                                      :remote-sync-branch (setting/get :remote-sync-branch)
@@ -189,8 +190,7 @@
    ;; Ask a remote, not a `git/git-source`: a source clones the whole repository when no clone exists yet.
    (let [remote   (git/git-remote remote-sync-url remote-sync-token)
          branches (source.p/branches remote)]
-     (when (empty? branches)
-       (throw (ex-info "Cannot connect to uninitialized repository" {:url remote-sync-url})))
+     (git/check-has-branches! branches remote-sync-url)
      (when (and (= :read-only remote-sync-type) (not (str/blank? remote-sync-branch)) (not (some #{remote-sync-branch} branches)))
        (throw (ex-info "Invalid branch name" {:url remote-sync-url :branch remote-sync-branch})))
      remote)))

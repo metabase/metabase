@@ -271,8 +271,8 @@
   (remote-sync.merge/force-push-casualties [] (serialize-specs stream nil) (snapshot->specs snapshot)))
 
 (defn remote-from-settings
-  "The [[source.p/Remote]] for the configured remote-sync-url and remote-sync-token, or nil when no URL is configured.
-  Unlike [[source-from-settings]], it does not clone the repository."
+  "The [[source.p/Remote]] for the configured remote-sync-url and remote-sync-token, or nil when no URL is set. Makes no
+  clone."
   []
   (when-let [url (setting/get :remote-sync-url)]
     (git/git-remote url (setting/get :remote-sync-token))))
@@ -303,3 +303,12 @@
       (.close ^java.io.Closeable source)
       (catch Throwable t
         (log/error t "Could not close a remote-sync source")))))
+
+(defmacro with-source
+  "Binds `sym` to the source that `expr` makes, runs `body`, and closes the source with [[close!]]."
+  [[sym expr] & body]
+  `(let [~sym ~expr]
+     (try
+       ~@body
+       (finally
+         (close! ~sym)))))

@@ -3,8 +3,7 @@
    [methodical.core :as methodical]))
 
 (defprotocol Remote
-  "Questions that the remote repository answers by itself. An implementation needs no local copy of the repository,
-  so asking one is cheap."
+  "Questions that the remote repository answers by itself, with no local copy of it."
   (branches [remote]
     "The branch names of the remote, as a sorted collection of strings.")
 

@@ -1429,15 +1429,12 @@
          current-branch (settings/remote-sync-branch)]
      (if (cache-valid? cache-state current-branch force-refresh?)
        (assoc cache-state :cached? true)
-       (let [last-imported (remote-sync.task/last-version)
-             source        (source/source-from-settings current-branch)]
-         (try
+       (let [last-imported (remote-sync.task/last-version)]
+         (source/with-source [source (source/source-from-settings current-branch)]
            (let [snapshot (snapshot-or-missing-branch source)]
              (if (= ::missing-branch snapshot)
                (branch-missing-result current-branch last-imported)
-               (fresh-result! current-branch last-imported snapshot)))
-           (finally
-             (source/close! source))))))))
+               (fresh-result! current-branch last-imported snapshot)))))))))
 
 ;;; ------------------------------------------- Task Result Handling -------------------------------------------
 
@@ -1535,14 +1532,13 @@
 (defn run-task-body!
   "Run `sync-fn` (a fn of task-id returning a result map) for the already-created RemoteSyncTask `task-id` on the
   current thread, recording the outcome on the row. `branch` is written to the remote-sync-branch setting on
-  success when non-nil; `:on-success` receives [task-id result] after a successful result is recorded. `:source`, when
-  given, is the source that the task reads; the task owns it and closes it with [[source/close!]] on exit.
+  success when non-nil; `:on-success` receives [task-id result] after a successful result is recorded.
 
   Guarantees, whatever `sync-fn` or the bookkeeping does: a heartbeat runs on the row for the duration, the task
-  is registered in [[running-task-ids]] for the duration, the source is closed, and the row is ended on exit. Any
-  `Throwable` from `sync-fn` becomes an `:error` result; an `Error` must not escape the worker thread, where nothing
-  would log it and the row would stay open."
-  [task-id branch sync-fn & {:keys [on-success source]}]
+  is registered in [[running-task-ids]] for the duration, and the row is ended on exit. When the heartbeat does not
+  start, `sync-fn` does not run. Any `Throwable` from `sync-fn` becomes an `:error` result; an `Error` must not escape
+  the worker thread, where nothing would log it and the row would stay open."
+  [task-id branch sync-fn & {:keys [on-success]}]
   (let [stop-heartbeat! (volatile! (constantly nil))]
     (swap! running-tasks conj task-id)
     (try
@@ -1564,7 +1560,6 @@
         (log/errorf t "Remote sync task %d bookkeeping failed" task-id))
       (finally
         (@stop-heartbeat!)
-        (source/close! source)
         (swap! running-tasks disj task-id)
         (ensure-task-ended! task-id)))))
 
@@ -1573,9 +1568,9 @@
 
   Takes a task-type string ('import' or 'export'), a branch name to update in settings upon completion, a
   sync-fn function that takes a task-id and performs the sync operation, an optional :on-success callback
-  that receives [task-id result] after a successful sync, and an optional :source that the task owns (see
-  [[run-task-body!]]). Creates a new task (or errors if one is already running), then runs [[run-task-body!]] in a
-  virtual thread with a timeout.
+  that receives [task-id result] after a successful sync, and an optional :source that the task owns: the task closes
+  it with [[source/close!]] after [[run-task-body!]] ends. Creates a new task (or errors if one is already running),
+  then runs [[run-task-body!]] in a virtual thread with a timeout.
 
   Returns a RemoteSyncTask. Throws ExceptionInfo with status 400 if a sync task is already in progress; the caller
   then still owns the source."
@@ -1583,11 +1578,10 @@
   (let [{task-id :id existing? :existing? :as task} (create-task-with-lock! task-type)]
     (api/check-400 (not existing?) "Remote sync in progress")
     (u.jvm/in-virtual-thread*
-     ;; run-task-body! closes the source too; this close covers a throw before its try. A second close does nothing.
      (try
        (dh/with-timeout {:interrupt? true
                          :timeout-ms (* (settings/remote-sync-task-time-limit-ms) 10)}
-         (run-task-body! task-id branch sync-fn :on-success on-success :source source))
+         (run-task-body! task-id branch sync-fn :on-success on-success))
        (finally
          (source/close! source))))
     task))
@@ -1722,9 +1716,8 @@
   the `remote-sync-branch` setting."
   [branch]
   (let [no-changes {:diverged? false :clean? true :conflicts [] :summary {:added 0 :updated 0 :removed 0}
-                    :force-push-casualties {:deleted [] :overwritten []}}
-        source     (source/source-from-settings branch)]
-    (try
+                    :force-push-casualties {:deleted [] :overwritten []}}]
+    (source/with-source [source (source/source-from-settings branch)]
       (let [snapshot       (source.p/snapshot source)
             remote-version (source.p/version snapshot)
             base-version   (remote-sync.task/last-version)]
@@ -1746,9 +1739,7 @@
                                         (if (seq targets)
                                           (source/force-push-casualties-no-base
                                            (spec/extract-entities-for-export targets) snapshot)
-                                          {:deleted [] :overwritten []})))})))
-      (finally
-        (source/close! source)))))
+                                          {:deleted [] :overwritten []})))}))))))
 
 (defn create-branch!
   "Creates a new remote branch from `base-branch` and switches `remote-sync-branch`
@@ -1756,11 +1747,8 @@
    is responsible for those concerns."
   [name base-branch]
   (guards/ensure-no-active-task!)
-  (let [source (source/source-from-settings)]
-    (try
-      (source.p/create-branch source name base-branch)
-      (finally
-        (source/close! source))))
+  (source/with-source [source (source/source-from-settings)]
+    (source.p/create-branch source name base-branch))
   (settings/remote-sync-branch! name))
 
 (defn stash!
@@ -1768,11 +1756,8 @@
    async export to it. Returns the resulting RemoteSyncTask. Does not publish events."
   [new-branch message & {:keys [on-success]}]
   (guards/ensure-no-active-task!)
-  (let [source (source/source-from-settings)]
-    (try
-      (source.p/create-branch source new-branch (settings/remote-sync-branch))
-      (finally
-        (source/close! source))))
+  (source/with-source [source (source/source-from-settings)]
+    (source.p/create-branch source new-branch (settings/remote-sync-branch)))
   ;; the export makes and owns its own source
   (async-export! new-branch false message :on-success on-success))
 

@@ -691,7 +691,7 @@
         (is (str/includes? (.getString config "remote" "origin" "url") remote-dir))
         (is (= "+refs/heads/*:refs/heads/*" (.getString config "remote" "origin" "fetch")))))))
 
-(deftest get-jgit-reclones-after-local-repo-deleted-test
+(deftest deleted-clone-directory-is-cloned-again-test
   (testing "GHY-3815: if the cached local clone dir is deleted out from under us, the next
             operation re-clones instead of returning a stale cached Git instance (which fails
             permanently with 'origin: not found' until an instance restart)"
@@ -1236,7 +1236,7 @@
           (is (= :missing-branch (:error-type (ex-data e))))
           (is (= "branch-1" (:branch (ex-data e)))))))))
 
-(deftest repo-path-ignores-token-test
+(deftest clone-directory-ignores-token-test
   (testing "rotating the token reuses the existing clone instead of cloning into a new directory"
     ;; Credentials are passed per remote command, so the clone does not depend on the token.
     (mt/with-temp-dir [remote-dir nil]

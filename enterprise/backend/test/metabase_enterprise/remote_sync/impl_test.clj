@@ -692,7 +692,7 @@
           (is (empty? (test-helpers/clone-dirs url)) "Precondition: no local clone yet")
           (is (nil? (impl/finish-remote-config!)))
           (is (= "master" (setting/get :remote-sync-branch)) "the remote's default branch is recorded")
-          (is (empty? (test-helpers/clone-dirs url)) "saving settings must not clone the repository"))))))
+          (is (empty? (test-helpers/clone-dirs url)) "filling in the branch must not clone the repository"))))))
 
 (deftest finish-remote-config!-starts-import-in-read-only-mode-test
   (testing "finish-remote-config! starts import in read-only mode even when collection exists"
@@ -2541,7 +2541,7 @@ serdes/meta:
                      (str "after recovery " (inc i) ": the clone of the import and the active clone")))
                (deliver proceed true)
                (is (wait-until #(task-ended? task-id)) "precondition: the import task ended")
-               (is (= 1 (count (test-helpers/clone-dirs url))) "only the active clone stays after the import"))
+               (is (wait-until #(= 1 (count (test-helpers/clone-dirs url)))) "only the active clone stays after the import"))
              (finally (deliver proceed true)))))))))
 
 (deftest import-that-throws-in-its-task-releases-its-lease-test
@@ -2565,7 +2565,7 @@ serdes/meta:
                (is (wait-until #(task-ended? task-id)) "precondition: the import task ended")
                (is (=? {:error_message #".*The import failed.*"} (t2/select-one :model/RemoteSyncTask :id task-id))
                    "precondition: the task failed")
-               (is (not (.exists ^java.io.File dir)) "the retired clone is deleted")
+               (is (wait-until #(not (.exists ^java.io.File dir))) "the retired clone is deleted")
                (is (not (test-helpers/repository-open? git)) "the Git instance of the retired clone is closed"))
              (finally (deliver proceed true)))))))))
 
@@ -2605,7 +2605,8 @@ serdes/meta:
            (testing request
              (request!)
              (is (some? (active-generation url)) "precondition: the request used a clone")
-             (is (empty? (test-helpers/leases url)) "no lease holds a clone after the request"))))))))
+             ;; The task thread of the stash export closes its source after the task row ends.
+             (is (wait-until #(empty? (test-helpers/leases url))) "no lease holds a clone after the request"))))))))
 
 (deftest import-task-that-throws-before-its-body-releases-its-lease-test
   (testing "an import task whose heartbeat does not start logs the throw, releases its lease, and its task row ends"
@@ -2638,13 +2639,16 @@ serdes/meta:
   (testing "an import task that the task timeout interrupts releases its lease"
     (do-with-git-remote!
      (fn [url]
+       ;; The first clone of the process registry starts its sweep of the old clone directories of all local Metabase
+       ;; processes, with an idle time of 10 times this setting. So the first clone runs before the setting change.
+       (source/close! (source/source-from-settings))
        (mt/with-temporary-setting-values [remote-sync-task-time-limit-ms 10]
          (let [interrupted (promise)]
            (mt/with-dynamic-fn-redefs [impl/import! (interruptible-import! interrupted)]
              (let [{task-id :id} (impl/async-import! "master" true {})]
                (is (true? (deref interrupted 5000 false)) "precondition: the timeout interrupts the task")
                (is (wait-until #(task-ended? task-id)) "precondition: the task ended")
-               (is (empty? (test-helpers/leases url)) "no lease holds a clone after the timeout")))))))))
+               (is (wait-until #(empty? (test-helpers/leases url))) "no lease holds a clone after the timeout")))))))))
 
 (deftest request-that-throws-releases-its-lease-test
   (testing "a request that throws while it reads the clone releases the lease of its source"

@@ -10,13 +10,16 @@
   (:import
    (java.io File)
    (java.net URI)
-   (org.eclipse.jgit.api Git GitCommand PushCommand TransportCommand TransportConfigCallback)
+   (java.util Collections Map WeakHashMap)
+   (java.util.concurrent.locks ReentrantLock)
+   (java.util.function Function)
+   (org.eclipse.jgit.api FetchCommand Git GitCommand PushCommand TransportCommand TransportConfigCallback)
    (org.eclipse.jgit.dircache DirCache DirCacheBuilder DirCacheEditor DirCacheEditor$DeletePath
                               DirCacheEditor$DeleteTree DirCacheEditor$PathEdit DirCacheEntry)
    (org.eclipse.jgit.lib CommitBuilder Constants FileMode ObjectId PersonIdent ProgressMonitor Ref Repository)
    (org.eclipse.jgit.lib ObjectInserter ObjectReader)
    (org.eclipse.jgit.revwalk RevCommit RevTree RevWalk)
-   (org.eclipse.jgit.transport PushResult RefSpec RemoteConfig RemoteRefUpdate
+   (org.eclipse.jgit.transport CredentialsProvider PushResult RefSpec RemoteConfig RemoteRefUpdate
                                RemoteRefUpdate$Status Transport Transport$Operation URIish
                                UsernamePasswordCredentialsProvider)
    (org.eclipse.jgit.treewalk TreeWalk)
@@ -67,6 +70,46 @@
   (when token
     (UsernamePasswordCredentialsProvider. "x-token-auth" token)))
 
+(defn loggable-url
+  "`remote-url` without its password, for a log message or ex-data."
+  ^String [^String remote-url]
+  ;; URIish/toString leaves out the password.
+  (try
+    (str (URIish. remote-url))
+    (catch Exception _
+      "<a URL that cannot be parsed>")))
+
+(defn- same-server?
+  "True iff the URI `uri` has the scheme, the host and the port of the URI `expected`."
+  [^URIish expected ^URIish uri]
+  (let [scheme (fn [^URIish u] (some-> (.getScheme u) u/lower-case-en))
+        host   (fn [^URIish u] (some-> (.getHost u) u/lower-case-en))
+        port   (fn [^URIish u]
+                 (let [p (.getPort u)]
+                   (if (pos? p)
+                     p
+                     (case (scheme u) "https" 443 "http" 80 p))))]
+    (and (= (scheme expected) (scheme uri))
+         (= (host expected) (host uri))
+         (= (port expected) (port uri)))))
+
+(defn- for-server-of
+  "A CredentialsProvider that gives the credentials of `provider` only for a URI with the scheme, the host and the port
+  of `remote-url`, and no credentials for another URI."
+  ^CredentialsProvider [^CredentialsProvider provider ^String remote-url]
+  ;; JGit follows an HTTP redirect after the transport callback, and asks the provider for the URI of the redirect
+  ;; target.
+  (let [expected (URIish. remote-url)]
+    (proxy [CredentialsProvider] []
+      (isInteractive [] (.isInteractive provider))
+      (supports [items] (.supports provider ^"[Lorg.eclipse.jgit.transport.CredentialItem;" items))
+      (get [uri items]
+        (and (same-server? expected uri)
+             (if (instance? java.util.List items)
+               (.get provider ^URIish uri ^java.util.List items)
+               (.get provider ^URIish uri ^"[Lorg.eclipse.jgit.transport.CredentialItem;" items))))
+      (reset [uri] (.reset provider uri)))))
+
 (defn- check-transport-url!
   "Throws unless `transport` goes to `remote-url`. The error names both URLs, without a password, and the remedy.
   `clone-dir` is the directory of the clone that runs the command, or nil."
@@ -108,11 +151,21 @@
       (finally
         (run! #(.close ^Transport %) transports)))))
 
+(def ^:private fetch-locks
+  "The fetch lock of each repository. A weak key lets the lock go with its repository."
+  (Collections/synchronizedMap (WeakHashMap.)))
+
+(defn- fetch-lock
+  "The lock that a fetch into `repo` holds."
+  ^ReentrantLock [^Repository repo]
+  (.computeIfAbsent ^Map fetch-locks repo (reify Function (apply [_ _] (ReentrantLock.)))))
+
 (defn- call-remote-command [^TransportCommand command {:keys [^String token ^String remote-url]}]
   (let [analytics-labels {:operation (-> command .getClass .getSimpleName) :remote true}
         ;; GitHub convention: use "x-access-token" as username when authenticating with a personal access token
         ;; For Gitlab any values can be used as the user name so x-access-token works just as well
-        credentials-provider (when token (credentials-provider remote-url token))
+        credentials-provider (when token
+                               (some-> (credentials-provider remote-url token) (for-server-of remote-url)))
         clone-dir            (some-> (.getRepository command) .getDirectory)]
     (analytics/inc! :metabase-remote-sync/git-operations analytics-labels)
     (try
@@ -124,7 +177,17 @@
         (.setTransportConfigCallback (remote-transport-config remote-url clone-dir)))
       (when (instance? PushCommand command)
         (check-push-transports! command remote-url clone-dir))
-      (.call command)
+      (if (instance? FetchCommand command)
+        ;; Sources of one URL share one clone, and two fetches into it at one time can fail on the lock of a pack
+        ;; file. The lock is held only for the JGit call, which waits for no other lock. A ReentrantLock, not a
+        ;; monitor: on JDK 21, a virtual thread that blocks in a monitor pins its carrier thread.
+        (let [lock (fetch-lock (.getRepository command))]
+          (.lock lock)
+          (try
+            (.call command)
+            (finally
+              (.unlock lock))))
+        (.call command))
       (catch Exception e
         (analytics/inc! :metabase-remote-sync/git-operations-failed analytics-labels)
         (throw (clean-git-exception e command true))))))
@@ -160,12 +223,10 @@
 
 (defn- branch-without-head
   "For the `refs` returned by an lsRemote of a remote that advertises no HEAD, the branch that stands in for HEAD: the
-  first of its branches. Nil when the remote advertises HEAD, or has no branches.
-
-  A remote with branches can advertise no HEAD, for example a bare repository whose HEAD names `master` when only
-  `main` was pushed. A clone of such a remote (see [[clone-repository!]]) and its default branch (see
-  [[ref-head-branch]]) both use this branch, so they agree."
+  first of its branches. Nil when the remote advertises HEAD, or has no branches."
   [refs]
+  ;; A clone (clone-repository!) and the default branch (ref-head-branch) both use this branch, so they agree. Example:
+  ;; a bare repository whose HEAD names master when only main was pushed.
   (when-not (some #(= Constants/HEAD (.getName ^Ref %)) refs)
     (first (ref-branch-names refs))))
 
@@ -177,11 +238,18 @@
                            (.setRemote remote-url))
                        remote))
 
+(defn check-has-branches!
+  "Throws \"Cannot connect to uninitialized repository\" when `branches`, the branches of the remote at `remote-url`, is
+  empty."
+  [branches ^String remote-url]
+  (when (empty? branches)
+    (throw (ex-info "Cannot connect to uninitialized repository" {:url (loggable-url remote-url)}))))
+
 (defn- clone-failure
   "The exception for a clone of `remote-url` into `dir` that failed with `e`."
   [^Exception e remote-url ^File dir]
   (ex-info (format "Failed to clone git repository: %s" (ex-message e))
-           {:url       remote-url
+           {:url       (loggable-url remote-url)
             :repo-path dir
             :error     (.getMessage e)}
            e))
@@ -224,15 +292,14 @@
   Throws \"Cannot connect to uninitialized repository\" for a remote with no branch, before any clone. Throws
   ExceptionInfo if the remote or the clone fails, for example on a network error, an invalid URL or a rejected token."
   [^File dir {:keys [^String remote-url ^String token]}]
-  (log/info "Cloning repository" {:url remote-url :repo-path dir})
+  (log/info "Cloning repository" {:url (loggable-url remote-url) :repo-path dir})
   ;; One lsRemote tells whether the remote has a branch, and gives the branch to clone when it advertises no HEAD.
   (let [args {:token token :remote-url remote-url}
         refs (try
                (ls-remote-refs args)
                (catch Exception e
                  (throw (clone-failure e remote-url dir))))]
-    (when (empty? (ref-branch-names refs))
-      (throw (ex-info "Cannot connect to uninitialized repository" {:url remote-url})))
+    (check-has-branches! (ref-branch-names refs) remote-url)
     (try
       (let [command (-> (Git/cloneRepository)
                         (.setDirectory dir)
@@ -441,32 +508,53 @@
       (isCancelled [_] false)
       (showDuration [_ _]))))
 
+(defn- pushed?
+  "True iff the remote branch `branch-name` is at `commit-id` after the push of `push-result` that sent `update`."
+  [^PushResult push-result ^String branch-name ^ObjectId commit-id ^RemoteRefUpdate update]
+  (and (= commit-id (.getNewObjectId update))
+       (condp = (.getStatus update)
+         RemoteRefUpdate$Status/OK         true
+         ;; the remote was at `commit-id` before the push
+         RemoteRefUpdate$Status/UP_TO_DATE (= commit-id (some-> (.getAdvertisedRef push-result branch-name) .getObjectId))
+         false)))
+
 (defn push-branch!
-  "Pushes a local branch to the remote repository. Optional `progress-monitor` (a JGit ProgressMonitor)
-  reports push progress.
+  "Pushes the commit `commit-id` (an ObjectId) to the branch :branch of the remote repository, as a fast-forward. With
+  no `commit-id`, pushes the commit of the local branch :branch, read once when the call starts. Optional
+  `progress-monitor` (a JGit ProgressMonitor) reports push progress.
 
   Takes a git-source map containing a :git Git instance, its :remote-url, :branch, and optional :token for
   authentication. Uses the 'origin' remote of the clone.
 
-  Returns the push response from JGit. Throws ExceptionInfo if the push operation fails or returns a
-  non-OK/UP_TO_DATE status. Throws ExceptionInfo, and pushes to no URL, if the git config sends the push to any URL
-  other than :remote-url."
-  ([git-source] (push-branch! git-source nil))
-  ([{:keys [^Git git ^String branch] :as git-source} ^ProgressMonitor progress-monitor]
+  Returns the push response from JGit. Throws ExceptionInfo unless the remote branch is at `commit-id` after the push,
+  for example when the remote branch is not an ancestor of `commit-id`. Throws ExceptionInfo, and pushes to no URL, if
+  the git config sends the push to any URL other than :remote-url."
+  ([{:keys [^Git git ^String branch] :as git-source}]
+   (let [branch-name (qualify-branch branch)]
+     (push-branch! git-source
+                   (or (.resolve (.getRepository git) branch-name)
+                       (throw (ex-info (str "Failed to push branch " branch-name ": it has no local commit")
+                                       {:branch branch-name})))
+                   nil)))
+  ([{:keys [^Git git ^String branch] :as git-source} ^ObjectId commit-id ^ProgressMonitor progress-monitor]
    (let [branch-name (qualify-branch branch)
+         ;; The source is the commit id, not the local branch: another source of this clone can fetch, and so move
+         ;; or delete the local branch, before JGit reads the source of the push.
          push-cmd    (cond-> (-> (.push git)
                                  ;; with no remote, JGit takes the push remote from the git config
                                  (.setRemote Constants/DEFAULT_REMOTE_NAME)
                                  (.setRefSpecs (doto (java.util.ArrayList.)
-                                                 (.add (RefSpec. (str branch-name ":" branch-name))))))
+                                                 (.add (RefSpec. (str (.name commit-id) ":" branch-name))))))
                        progress-monitor (.setProgressMonitor progress-monitor))
          push-response (call-remote-command push-cmd git-source)
-         push-results  (->> push-response
-                            (map #(into [] (.getRemoteUpdates ^PushResult %)))
-                            flatten)]
-     (when-let [failures (seq (remove #(#{RemoteRefUpdate$Status/OK RemoteRefUpdate$Status/UP_TO_DATE} %)
-                                      (map #(.getStatus ^RemoteRefUpdate %) push-results)))]
-       (throw (ex-info (str "Failed to push branch " branch-name " to remote") {:failures failures})))
+         updates       (for [^PushResult result push-response
+                             ^RemoteRefUpdate update (.getRemoteUpdates result)]
+                         [result update])
+         failures      (for [[result ^RemoteRefUpdate update] updates
+                             :when (not (pushed? result branch-name commit-id update))]
+                         (.getStatus update))]
+     (when (or (empty? updates) (seq failures))
+       (throw (ex-info (str "Failed to push branch " branch-name " to remote") {:failures (vec failures)})))
      push-response)))
 
 (defn- remote-refs
@@ -490,9 +578,8 @@
         (throw (ex-info "Failed to get a default branch for git repository." {:head-ref head-ref})))))
 
 (defn default-branch
-  "The default branch name (without 'refs/heads/') of the repository at `remote-url`, read from the remote with the
-  optional `token`, or from the answer that a [[git-remote]] holds. Needs no local clone. Throws ExceptionInfo if no
-  default branch is found."
+  "The default branch (without 'refs/heads/') of `remote`, a map with `:remote-url` and an optional `:token`. Needs no
+  clone. Throws ExceptionInfo when the remote has no default branch."
   [remote]
   (ref-head-branch (remote-refs remote)))
 
@@ -559,7 +646,7 @@
           (.update))
         ;; local commit durable; push about to start — force this one-shot checkpoint past the throttle
         (when report-progress (report-progress commit-progress-checkpoint {:force? true}))
-        (push-branch! snapshot (when report-progress (->push-progress-monitor report-progress)))
+        (push-branch! snapshot commit-id (when report-progress (->push-progress-monitor report-progress)))
         (close-commit-resources! inserter reader rev-walk)   ; close only after a successful push
         (.name commit-id))))
 
@@ -585,8 +672,8 @@
                  (when parent-tree (.copy ^RevTree parent-tree)) (atom nil))))
 
 (defn branches
-  "The branch names (without 'refs/heads/') of the repository at `remote-url`, read from the remote with the optional
-  `token`, or from the answer that a [[git-remote]] holds, sorted. Needs no local clone."
+  "The sorted branch names (without 'refs/heads/') of `remote`, a map with `:remote-url` and an optional `:token`. Needs
+  no clone."
   [remote]
   (ref-branch-names (remote-refs remote)))
 
@@ -632,7 +719,8 @@
 
   Returns the name of the newly created branch.
 
-  Throws ExceptionInfo if the base branch is not found or if the new branch already exists."
+  Throws ExceptionInfo if the base branch is not found, if the base commit is not in the clone (for example after a
+  force push removed it from the remote), or if the new branch already exists."
   [{:keys [^Git git] :as source} branch-name base-commit-ish]
   (fetch! source)
   (delete-branches-without-remote! source)
@@ -642,13 +730,19 @@
     (when-not base-commit-id
       (throw (ex-info (format "Branch base '%s' not found" base-commit-ish)
                       {:base-commit-ish base-commit-ish})))
+    ;; JGit resolves a full SHA without a check that the object exists.
+    (when-not (.has (.getObjectDatabase repo) base-commit-id)
+      (throw (ex-info (format (str "The base commit %s of the new branch is no longer on the remote, for example after"
+                                   " a force push. Import again, or export with force. Then create the branch again.")
+                              (.name base-commit-id))
+                      {:base-commit-ish base-commit-ish :reason :missing-base-commit})))
     (when (.resolve repo new-branch-ref)
       (throw (ex-info (format "Branch '%s' already exists" branch-name)
                       {:branch branch-name})))
     (doto (.updateRef repo new-branch-ref)
       (.setNewObjectId base-commit-id)
       (.update))
-    (push-branch! (assoc source :branch branch-name))
+    (push-branch! (assoc source :branch branch-name) base-commit-id nil)
     branch-name))
 
 (defrecord GitSnapshot [git remote-url branch version token managed-dirs]
@@ -686,11 +780,9 @@
 
 (defn- recover-stale-clone!
   "Recovers `source` from a stale clone (see [[stale-cache-error?]]). Retires the generation that `source` read, unless
-  a concurrent recovery did, and adds the next generation of its URL to its lease. Returns `source` on that generation.
-
-  The retired clone stays while a lease holds it: another operation, or this source object, can still read it."
+  a concurrent recovery did, and adds the next generation of its URL to its lease. Returns `source` on that generation."
   [{:keys [remote-url token lease generation] :as source}]
-  (log/info "Re-cloning stale git cache" {:url remote-url :generation generation})
+  (log/info "Re-cloning stale git cache" {:url (loggable-url remote-url) :generation generation})
   (let [registry         (clone-registry/process-registry)
         _                (clone-registry/retire! registry remote-url generation)
         {:keys [id git]} (clone-registry/acquire! registry lease (clone-job remote-url token))]
@@ -732,7 +824,7 @@
   [{:keys [lease] :as source}]
   ;; A recovery returns a copy of the source on a new generation, and the caller can keep the original. A commit on a
   ;; snapshot of the copy is only in the new generation, so a read of that commit through the original needs it.
-  (if-let [git (some->> lease (clone-registry/lease-git (clone-registry/process-registry)))]
+  (if-let [git (clone-registry/lease-git (clone-registry/process-registry) lease)]
     (assoc source :git git)
     source))
 
@@ -770,11 +862,8 @@
   and a set of managed top-level directory names. Files in managed directories
   are fully replaced during writes — any existing file not in the write set is removed.
 
-  Returns a GitSource record implementing the Source protocol. Its lease holds a clone of `url` in the clone registry
-  of this process. The first use of `url` in the process clones the repository.
-
-  The caller closes the source when it reads neither the source nor a snapshot of it any more. The close releases the
-  lease. A clone that a stale-cache recovery retired is deleted when no lease holds it. A second close does nothing."
+  Returns a GitSource. The first use of `url` in this process clones the repository. The caller closes the source when
+  it reads neither the source nor a snapshot of it any more; a second close does nothing."
   [url branch token managed-dirs]
   (let [lease            (clone-registry/new-lease url)
         {:keys [id git]} (clone-registry/acquire! (clone-registry/process-registry) lease (clone-job url token))]
