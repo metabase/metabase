@@ -590,6 +590,53 @@
            ;; the stubbed reindexes left the documents of the deleted Collections in the index
            (#'tu/reindex-search-index!)))))))
 
+(defn- shared-fixture-warnings
+  "Run `thunk` with the once-per-JVM warning of the shared fixture not yet logged. Returns the WARN messages of the
+  test-helpers namespace that `thunk` logs, then puts back the logged state from before."
+  [thunk]
+  (let [logged? @#'th/another-writer-warning-logged?
+        before  @logged?]
+    (try
+      (reset! logged? false)
+      (mt/with-log-messages-for-level [messages [metabase-enterprise.remote-sync.test-helpers :warn]]
+        (thunk)
+        (messages))
+      (finally
+        (reset! logged? before)))))
+
+(deftest clean-remote-sync-state-warns-once-when-a-started-scheduler-can-write-test
+  (testing (str "clean-remote-sync-state logs one warning per JVM that names what it deletes and writes back, when a "
+                "started scheduler can run jobs that write the app DB during the test")
+    (do-with-remote-sync-state-restored!
+     (fn []
+       (is (=? [{:level   :warn
+                 :message #"(?s)scheduler.*Dashboard, Card, Action, Document, DataApp, Collection.*remote-sync%"}]
+               (shared-fixture-warnings
+                (fn []
+                  (mt/with-temp-scheduler!
+                    (th/clean-remote-sync-state (fn []))
+                    (th/clean-remote-sync-state (fn [])))))))))))
+
+(deftest clean-remote-sync-state-does-not-warn-when-no-started-scheduler-can-write-test
+  (testing "clean-remote-sync-state logs no warning when the scheduler is not started"
+    (do-with-remote-sync-state-restored!
+     (fn []
+       (is (= []
+              (shared-fixture-warnings
+               (fn []
+                 (tu/do-with-unstarted-temp-scheduler!
+                  (fn []
+                    (th/clean-remote-sync-state (fn []))))))))
+       (testing "and a later fixture run with a started scheduler still warns"
+         (is (=? [{:level :warn}]
+                 (shared-fixture-warnings
+                  (fn []
+                    (tu/do-with-unstarted-temp-scheduler!
+                     (fn []
+                       (th/clean-remote-sync-state (fn []))))
+                    (mt/with-temp-scheduler!
+                      (th/clean-remote-sync-state (fn []))))))))))))
+
 (defn- run-vars-quietly
   "Run the test vars `vs` with their namespace's `:each` fixtures. Returns their counts as `{:pass n :fail n :error n}`;
   their failures are not reported to the calling test."

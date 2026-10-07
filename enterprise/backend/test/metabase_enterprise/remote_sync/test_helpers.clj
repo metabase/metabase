@@ -612,6 +612,9 @@ width: fixed
       (finally
         (write-remote-sync-setting-rows! rows)))))
 
+(defonce ^:private another-writer-warning-logged?
+  (atom false))
+
 (def clean-remote-sync-state
   "Composed test fixture that ensures RemoteSyncObject, RemoteSyncTask, and optional feature
   model tables (Transform, TransformTag, PythonLibrary) are clean, that no stored `remote-sync-transforms` value
