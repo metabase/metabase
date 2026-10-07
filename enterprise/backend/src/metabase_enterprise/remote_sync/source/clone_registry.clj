@@ -623,7 +623,7 @@
                          (when (shut-down?)
                            (close-git! git dir)
                            (delete-in-root! root root)
-                           (throw (ex-info "The git clone registry is shut down" {:url url})))
+                           (throw (ex-info "The git clone registry is shut down" {})))
                          (publish! {:id id :dir dir :git git :leases #{}})
                          (deliver job {:id id}))
                        (catch Throwable e
