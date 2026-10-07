@@ -859,60 +859,6 @@ describe("scenarios > dashboard", () => {
     cy.get("@fetchFieldValues").should("not.have.been.called");
   });
 
-  it("should be possible to visit a dashboard with click-behavior linked to the dashboard without permissions (metabase#15368)", () => {
-    cy.request("GET", "/api/user/current").then(
-      ({ body: { personal_collection_id } }) => {
-        // Save new dashboard in admin's personal collection
-        cy.request("POST", "/api/dashboard", {
-          name: "15368D",
-          collection_id: personal_collection_id,
-        }).then(({ body: { id: NEW_DASHBOARD_ID } }) => {
-          const COLUMN_REF = `["ref",["field-id",${ORDERS.ID}]]`;
-          // Add click behavior to the existing "Orders in a dashboard" dashboard
-          cy.request("PUT", `/api/dashboard/${ORDERS_DASHBOARD_ID}`, {
-            dashcards: [
-              {
-                id: ORDERS_DASHBOARD_DASHCARD_ID,
-                card_id: ORDERS_QUESTION_ID,
-                row: 0,
-                col: 0,
-                size_x: 16,
-                size_y: 8,
-                series: [],
-                visualization_settings: {
-                  column_settings: {
-                    [COLUMN_REF]: {
-                      click_behavior: {
-                        type: "link",
-                        linkType: "dashboard",
-                        parameterMapping: {},
-                        targetId: NEW_DASHBOARD_ID,
-                      },
-                    },
-                  },
-                },
-                parameter_mappings: [],
-              },
-            ],
-          });
-
-          cy.intercept(
-            "GET",
-            `/api/dashboard/${ORDERS_DASHBOARD_ID}/query_metadata*`,
-          ).as("queryMetadata");
-        });
-      },
-    );
-    cy.signInAsNormalUser();
-    H.visitDashboard(ORDERS_DASHBOARD_ID);
-
-    cy.wait("@queryMetadata");
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Orders in a dashboard");
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.contains("37.65");
-  });
-
   it("should be possible to scroll vertically after fullscreen layer is closed (metabase#15596)", () => {
     // Make this dashboard card extremely tall so that it spans outside of visible viewport
     cy.request("PUT", `/api/dashboard/${ORDERS_DASHBOARD_ID}`, {
