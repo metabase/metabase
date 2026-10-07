@@ -631,6 +631,23 @@
           (mt/user-http-request :crowberto :put 200 (str "action/" action-id) {:archived false})
           (is (= [false false] (state))))))))
 
+(deftest server-populated-columns-not-writable-test
+  (testing "creating or updating an action ignores the columns the server populates"
+    (mt/with-actions-test-data-and-actions-enabled
+      (mt/with-model-cleanup [:model/Action]
+        (let [personal-id (:id (collection/user->personal-collection (mt/user->id :rasta)))
+              spoofed     {:creator_id        (mt/user->id :crowberto)
+                           :made_public_by_id (mt/user->id :crowberto)
+                           :public_uuid       (str (random-uuid))}
+              stored      #(t2/select-one [:model/Action :creator_id :made_public_by_id :public_uuid] :id %)
+              created     (mt/user-http-request :rasta :post 200 "action"
+                                                (merge (model-less-query-action personal-id) spoofed))]
+          (is (= {:creator_id (mt/user->id :rasta) :made_public_by_id nil :public_uuid nil}
+                 (into {} (stored (:id created)))))
+          (mt/user-http-request :rasta :put 200 (str "action/" (:id created)) (assoc spoofed :name "Renamed"))
+          (is (= {:creator_id (mt/user->id :rasta) :made_public_by_id nil :public_uuid nil}
+                 (into {} (stored (:id created))))))))))
+
 (deftest update-checks-actions-enabled-test
   (testing "while actions are disabled on its database, a query action's query can't change but the rest of it can"
     (mt/with-actions-test-data-and-actions-enabled

@@ -76,7 +76,7 @@
    _query-params
    {:keys [parameters database_id]
     action-type :type
-    :as action} :- ::actions.schema/action.for-insert]
+    :as action} :- ::actions.schema/action.create-request]
   (when (and (nil? database_id)
              (= action-type :query))
     (throw (ex-info (tru "Must provide a database_id for query actions")
@@ -103,7 +103,7 @@
   [{:keys [id]} :- [:map {:closed true}
                     [:id ::actions.schema/id]]
    _query-params
-   action :- ::actions.schema/action.for-update]
+   action :- ::actions.schema/action.update-request]
   (let [existing-action (api/write-check :model/Action id)
         action          (api/updates-with-archived-directly existing-action action)]
     (api/update-check existing-action action)

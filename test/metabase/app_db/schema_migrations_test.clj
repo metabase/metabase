@@ -3609,8 +3609,8 @@
           (is (pos-int? (insert-action! nil))))))))
 
 (deftest detach-query-actions-from-models-test
-  (testing "v65.2026-10-07T00:00:02: query actions and their dashboard cards lose their model, which a rollback restores;
-            implicit actions keep it"
+  (testing "v65.2026-10-07T00:00:02: query actions and their dashboard cards lose their model; a rollback restores the
+            actions' model but leaves the dashboard cards detached; implicit actions keep it"
     (impl/test-migrations ["v65.2026-10-07T00:00:00" "v65.2026-10-07T00:00:02"] [migrate!]
       (let [user-id        (t2/insert-returning-pk! :core_user {:first_name  "Action"
                                                                 :last_name   "Owner"
@@ -3646,10 +3646,10 @@
                                                                        :entity_id  (u/generate-nano-id)
                                                                        :created_at :%now
                                                                        :updated_at :%now})
-            insert-button! (fn [action-id]
+            insert-button! (fn [action-id card-id]
                              (t2/insert-returning-pk! :report_dashboardcard {:dashboard_id           dash-id
                                                                              :action_id              action-id
-                                                                             :card_id                model-id
+                                                                             :card_id                card-id
                                                                              :parameter_mappings     "[]"
                                                                              :visualization_settings "{}"
                                                                              :entity_id              (u/generate-nano-id)
@@ -3661,19 +3661,21 @@
                                                                              :updated_at             :%now}))
             query-id       (insert-action! "query")
             implicit-id    (insert-action! "implicit")
-            query-button   (insert-button! query-id)
-            other-button   (insert-button! implicit-id)
-            button-cards   #(t2/select-pk->fn :card_id :report_dashboardcard :id [:in [query-button other-button]])]
+            query-button   (insert-button! query-id model-id)
+            unbound-button (insert-button! query-id nil)
+            other-button   (insert-button! implicit-id model-id)
+            button-cards   #(t2/select-pk->fn :card_id :report_dashboardcard
+                                              :id [:in [query-button unbound-button other-button]])]
         (migrate!)
         (is (= {:model_id nil, :legacy_model_id model-id}
                (t2/select-one [:action :model_id :legacy_model_id] :id query-id)))
         (is (= {:model_id model-id, :legacy_model_id nil}
                (t2/select-one [:action :model_id :legacy_model_id] :id implicit-id)))
-        (is (= {query-button nil, other-button model-id} (button-cards)))
+        (is (= {query-button nil, unbound-button nil, other-button model-id} (button-cards)))
         (migrate! :down 64)
         (is (= {query-id model-id, implicit-id model-id}
                (t2/select-pk->fn :model_id :action :id [:in [query-id implicit-id]])))
-        (is (= {query-button model-id, other-button model-id} (button-cards)))))))
+        (is (= {query-button nil, unbound-button nil, other-button model-id} (button-cards)))))))
 
 (deftest drop-http-actions-test
   (testing "v65.2026-10-03T00:00:01: HTTP actions and the dashboard buttons that ran them are deleted, other actions stay"
