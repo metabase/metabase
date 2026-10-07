@@ -1,5 +1,9 @@
 (ns metabase-enterprise.data-apps.resources
-  "Lifecycle for the permission group and resource collection owned by a data app."
+  "Lifecycle for the permission group and resource collection owned by a data app.
+
+   The collection is created with the app, in the `data-apps` collection namespace, and is never replaced: the
+   model's hooks hold that invariant. What this namespace keeps in step afterwards is its name, its place out of
+   the trash, the permissions on it and on the group, and its existence, should it have been deleted on its own."
   (:require
    [metabase-enterprise.data-apps.db :as data-apps.db]
    [metabase-enterprise.data-apps.permissions :as data-app.permissions]
@@ -11,6 +15,14 @@
 
 (defn- resource-name [app]
   (format "Data App: %s" (:name app)))
+
+(defn create-resource-collection!
+  "Create the resource collection of `app`, a root collection in the `data-apps` namespace, as the app is inserted.
+   Created like any collection, so its events are published; as admin, since an import has no user bound."
+  [app]
+  (request/as-admin
+    (collection/create-collection! {:name      (resource-name app)
+                                    :namespace (name collection/data-apps-ns)})))
 
 (defn- create-permission-group! [app]
   (let [group (data-apps.db/insert-permission-group! {:name (resource-name app)
@@ -61,22 +73,21 @@
   (data-app.permissions/reconcile-app-group-permissions! (:id group) (data-apps.db/non-router-database-ids))
   (apply-collection-permissions! group collection))
 
-(defn- create-resource-collection! [app]
-  (let [collection (data-apps.db/insert-resource-collection! {:name (resource-name app)
-                                                              :location "/"})]
-    (data-apps.db/update-data-app! (:id app) {:resource_collection_id (:id collection)})
-    collection))
-
-(defn- resource-collection! [app]
+(defn- resource-collection!
+  "The resource collection of `app`, created again if the app's was deleted out from under it: the reference is
+   nullable so that deleting the app can delete the collection first, which also lets the collection go alone."
+  [app]
   (or (some->> (:resource_collection_id app)
                (data-apps.db/resource-collection))
-      (create-resource-collection! app)))
+      (let [collection (create-resource-collection! app)]
+        (data-apps.db/update-data-app! (:id app) {:resource_collection_id (:id collection)})
+        collection)))
 
 (defn ensure-resources!
   "Create or restore the server-owned permission resources for `app` and return their IDs."
   [app]
   (perms/with-global-permissions-lock
-    (let [app        (data-apps.db/non-blob-data-app (:id app))
+    (let [app        (data-apps.db/data-app (:id app))
           group      (permission-group! app)
           collection (resource-collection! app)]
       (data-apps.db/update-permission-group! (:id group)

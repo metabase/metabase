@@ -4,6 +4,7 @@ import path from "node:path";
 import { load as parseYaml } from "js-yaml";
 
 export type DataAppManifest = {
+  slug?: string;
   allowed_hosts?: string[];
 };
 
@@ -34,6 +35,21 @@ const parseAllowedHosts = (
   return value;
 };
 
+const parseSlug = (
+  value: unknown,
+  manifestPath: string,
+): string | undefined => {
+  if (value == null) {
+    return undefined;
+  }
+
+  if (!isString(value)) {
+    throw new Error(`${manifestPath}: "slug" must be a string.`);
+  }
+
+  return value;
+};
+
 export const readManifest = (
   appRoot: string,
 ): { manifestPath: string; manifest: DataAppManifest } | null => {
@@ -57,12 +73,13 @@ export const readManifest = (
     );
   }
 
-  const raw: { allowed_hosts?: unknown } =
+  const raw: { slug?: unknown; allowed_hosts?: unknown } =
     typeof parsed === "object" && parsed !== null ? parsed : {};
 
   return {
     manifestPath,
     manifest: {
+      slug: parseSlug(raw.slug, manifestPath),
       allowed_hosts: parseAllowedHosts(raw.allowed_hosts, manifestPath),
     },
   };

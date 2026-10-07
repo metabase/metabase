@@ -4,17 +4,24 @@ import fetchMock, { type RouteResponse } from "fetch-mock";
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import {
   setupCreateLlmProviderEndpoint,
+  setupCreateLlmProviderEndpointWithError,
+  setupLlmModelsEndpoint,
+  setupLlmProviderTypesEndpoint,
+  setupLlmProvidersEndpoint,
   setupMetabaseManagedAiEndpoints,
   setupPropertiesEndpoints,
+  setupTokenRefreshEndpoint,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { createMockState } from "__support__/state";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import { AIProviderList, AIProviderSetup } from "metabase/metabot";
 import { reinitialize } from "metabase/plugins";
 import type { MetabotUsageResponse } from "metabase-enterprise/api";
 import type { TokenStatusFeature } from "metabase-types/api";
 import {
   createMockLlmProviderConnection,
+  createMockLlmProviderType,
   createMockSettings,
   createMockTokenFeatures,
   createMockTokenStatus,
@@ -36,6 +43,7 @@ type MetabotUsageQuota = {
 };
 
 type SetupOptions = {
+  view?: "provider" | "admin" | "setup";
   isAdmin?: boolean;
   isConfigured?: boolean;
   hasManagedAi?: boolean;
@@ -50,6 +58,7 @@ type SetupOptions = {
 };
 
 function setup({
+  view = "provider",
   isAdmin = true,
   isConfigured = false,
   hasManagedAi = false,
@@ -113,10 +122,7 @@ function setup({
     );
   }
 
-  fetchMock.post(
-    "path:/api/premium-features/token/refresh",
-    () => sessionProperties["token-status"],
-  );
+  setupTokenRefreshEndpoint(() => sessionProperties["token-status"]);
 
   setupCreateLlmProviderEndpoint(
     createMockLlmProviderConnection({
@@ -125,6 +131,17 @@ function setup({
       name: "Metabase AI",
     }),
   );
+  setupLlmProviderTypesEndpoint([
+    createMockLlmProviderType({
+      type: "metabase",
+      label: "Metabase AI service",
+      managed: true,
+      singleton: true,
+      fields: [],
+    }),
+  ]);
+  setupLlmProvidersEndpoint([]);
+  setupLlmModelsEndpoint([]);
 
   const storeInitialState = createMockState({
     currentUser: createMockUser({ is_superuser: isAdmin }),
@@ -133,12 +150,18 @@ function setup({
 
   setupEnterpriseOnlyPlugin("metabot");
 
-  return renderWithProviders(
-    <MetabaseAIProviderSetup onConnect={onConnect} onCancel={onCancel} />,
-    {
-      storeInitialState,
-    },
-  );
+  const views = {
+    provider: (
+      <MetabaseAIProviderSetup onConnect={onConnect} onCancel={onCancel} />
+    ),
+    admin: <AIProviderList />,
+    setup: <AIProviderSetup onDone={onConnect} />,
+  };
+
+  return {
+    ...renderWithProviders(views[view], { storeInitialState }),
+    sessionProperties,
+  };
 }
 
 const PRICING: MetabaseManagedAiPricing = {
@@ -265,33 +288,36 @@ describe("MetabaseAIProviderSetup", () => {
       expect(screen.queryByText(/legacy tiered AI/i)).not.toBeInTheDocument();
     });
 
-    it("creates a managed provider connection when the managed AI feature is already enabled", async () => {
-      const onConnect = jest.fn();
-      setup({ hasManagedAi: true, onConnect });
+    it.each([{ hasManagedAi: true }, { hasDeprecatedAi: true }])(
+      "connects immediately when an AI feature is already enabled: %j",
+      async (features) => {
+        const onConnect = jest.fn();
+        setup({ ...features, onConnect });
 
-      await userEvent.click(
-        await screen.findByRole("button", { name: "Connect" }),
-      );
+        await userEvent.click(
+          await screen.findByRole("button", { name: "Connect" }),
+        );
 
-      await waitFor(() => {
+        await waitFor(() => {
+          expect(
+            fetchMock.callHistory.called("path:/api/llm/providers", {
+              method: "POST",
+              body: { type: "metabase" },
+            }),
+          ).toBe(true);
+        });
+
         expect(
-          fetchMock.callHistory.called("path:/api/llm/providers", {
-            method: "POST",
-            body: { type: "metabase" },
-          }),
-        ).toBe(true);
-      });
-
-      expect(
-        fetchMock.callHistory.called(
-          "path:/api/ee/cloud-add-ons/metabase-ai-managed",
-          { method: "POST" },
-        ),
-      ).toBe(false);
-      await waitFor(() => {
-        expect(onConnect).toHaveBeenCalledTimes(1);
-      });
-    });
+          fetchMock.callHistory.called(
+            "path:/api/ee/cloud-add-ons/metabase-ai-managed",
+            { method: "POST" },
+          ),
+        ).toBe(false);
+        await waitFor(() => {
+          expect(onConnect).toHaveBeenCalledTimes(1);
+        });
+      },
+    );
 
     it("keeps the Connect button visible but disabled until the Terms are accepted", async () => {
       setup();
@@ -357,6 +383,119 @@ describe("MetabaseAIProviderSetup", () => {
           }),
         ).toBe(true);
       });
+    });
+
+    it.each(["provider", "admin", "setup"] as const)(
+      "keeps the %s confirmation open after connecting until Done is clicked (BOT-2135)",
+      async (view) => {
+        const onConnect = jest.fn();
+        const { sessionProperties } = setup({
+          view,
+          onConnect,
+          offerMetabaseManagedAi: true,
+        });
+        const connection = createMockLlmProviderConnection({
+          key: "metabase",
+          type: "metabase",
+          name: "Metabase AI service",
+        });
+        fetchMock.removeRoute("create-llm-provider");
+        fetchMock.post("path:/api/llm/providers", () => {
+          setupLlmProvidersEndpoint([connection]);
+          return connection;
+        });
+
+        let hasActivatedFeature = false;
+        const tokenStatus = createMockTokenStatus({
+          features: ["metabase-ai-managed"],
+        });
+        setupTokenRefreshEndpoint(() => {
+          if (!hasActivatedFeature) {
+            return sessionProperties["token-status"];
+          }
+          setupPropertiesEndpoints({
+            ...sessionProperties,
+            "llm-metabot-configured?": true,
+            "token-features": createMockTokenFeatures({
+              hosting: true,
+              "metabase-ai-managed": true,
+            }),
+            "token-status": tokenStatus,
+          });
+          return tokenStatus;
+        });
+
+        if (view === "admin") {
+          await userEvent.click(
+            await screen.findByRole("button", { name: /Add a provider/ }),
+          );
+        }
+        if (view !== "provider") {
+          await userEvent.click(
+            await screen.findByRole("button", {
+              name: "Metabase AI service",
+            }),
+          );
+        }
+        await userEvent.click(
+          await screen.findByRole("checkbox", {
+            name: /I agree with the Metabase AI Service/i,
+          }),
+        );
+        await userEvent.click(screen.getByRole("button", { name: "Connect" }));
+
+        await waitFor(
+          () => {
+            expect(fetchMock.callHistory.called("premium-token-refresh")).toBe(
+              true,
+            );
+          },
+          { timeout: 3000 },
+        );
+        expect(
+          screen.getByText("Setting up Metabot AI, please wait"),
+        ).toBeVisible();
+        expect(
+          screen.queryByText("Metabot AI is ready"),
+        ).not.toBeInTheDocument();
+        expect(onConnect).not.toHaveBeenCalled();
+
+        hasActivatedFeature = true;
+
+        expect(
+          await screen.findByText("Metabot AI is ready", {}, { timeout: 3000 }),
+        ).toBeVisible();
+        expect(screen.getByText("Happy exploring!")).toBeVisible();
+        expect(onConnect).not.toHaveBeenCalled();
+
+        await userEvent.click(screen.getByRole("button", { name: "Done" }));
+
+        await waitFor(() => {
+          expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+        });
+        expect(onConnect).toHaveBeenCalledTimes(view === "admin" ? 0 : 1);
+      },
+    );
+
+    it("closes the setup modal without completing the flow when creating the provider fails", async () => {
+      const onConnect = jest.fn();
+      setup({ onConnect });
+      setupCreateLlmProviderEndpointWithError(500, "Unable to create provider");
+
+      await userEvent.click(
+        await screen.findByRole("checkbox", {
+          name: /I agree with the Metabase AI Service/i,
+        }),
+      );
+      await userEvent.click(screen.getByRole("button", { name: "Connect" }));
+
+      expect(
+        await screen.findByText("Unable to create provider"),
+      ).toBeVisible();
+      await waitFor(() => {
+        expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+      });
+      expect(onConnect).not.toHaveBeenCalled();
     });
 
     it("does not create the connection when the add-on purchase fails", async () => {

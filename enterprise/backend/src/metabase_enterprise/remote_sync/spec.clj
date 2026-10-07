@@ -34,12 +34,9 @@
    - :model-key      - Toucan2 model keyword (e.g., :model/Card)
    - :identity       - Identity strategy: :entity-id, :path, or :hybrid
    - :path-keys      - For :path or :hybrid identity: vector of path components [:database :schema :table :field]
-   - :parent-model   - For :parent-table and :parent eligibility: the parent model key to check eligibility against
-                       (e.g., :model/Table for Field, Segment, Measure; :model/Card for Action)
+   - :parent-model   - For :parent-table eligibility: the parent model key to check eligibility against
+                       (e.g., :model/Table for Field, Segment, Measure)
    - :parent-fk      - For child models: the FK column pointing to the parent (e.g., :table_id)
-   - :parent-rso-key - Optional, for child models whose RemoteSyncObject rows record their parent's id: the
-                       RemoteSyncObject column that holds it (e.g., :model_table_id for Field). A cascade from the
-                       parent then finds the child rows by this column instead of through :parent-fk.
    - :cascade-filter  - Optional map of additional filter conditions for cascade queries.
                        Only needed when the filter differs from {archived-key false}.
                        E.g., Field needs {:active true} since it has no :archived-key.
@@ -50,8 +47,9 @@
                        :prefix - Event keyword prefix (e.g., :event/card)
                        :types  - Vector of event types to handle [:create :update :delete]
    - :eligibility    - Eligibility configuration:
-                       :type       - :collection, :published-table, :parent-table, :parent, :setting, or
-                                     :library-synced (:parent follows :parent-fk to a :parent-model instance)
+                       :type       - :collection, :published-table, :parent-table, :parent, :setting,
+                                     :library-synced, or :always (:parent follows :parent-fk to a :parent-model
+                                     instance)
                        :collection - For :collection type: :remote-synced, :transforms-namespace, :snippets-namespace, or :any
                        :setting    - For :setting type: setting keyword to check
                        (Note: :library-synced type uses the library-is-remote-synced? setting to determine eligibility)
@@ -60,7 +58,7 @@
                        :select-fields  - Fields to select for hydration
                        :hydrate-query? - When true, hydrate via the model's
                                          `metabase-enterprise.remote-sync.db` tracking-join query instead of
-                                         :select-fields (Field, Segment, Measure, Action)
+                                         :select-fields (Field, Segment, Measure)
                        :field-mappings - Map of RemoteSyncObject column -> source field or [field transform-fn]
    - :conditions     - Optional map of conditions for filtering syncable entities.
                        Only entities matching these conditions are eligible for sync
@@ -72,10 +70,11 @@
                        :statuses   - Set of statuses to check for removal (e.g., #{\"removed\" \"delete\"})
                        :scope-key  - Optional key for scoping deletions (e.g., :collection_id, :id).
                                      If nil, deletions are global (by entity_id only).
-                                     :scope-table - Optional table that :scope-key points into; the rows are
-                                     then scoped to that table's rows in the synced collections (Action)
                        :all-on-setting-disable - Optional setting keyword; when this setting's sentinel
                                      RSO exists with 'delete' status, remove ALL entities of this type
+   - :resources?     - Optional. True when the model's YAML files carry resource files (see
+                       `metabase.models.serialization/resource-paths`), whose changes only a full import or export
+                       handles.
    - :export-scope   - Export scope for query-export-roots:
                        :root-collections - Query root-level remote-synced + namespace collections (Collection)
                        :root-only        - Query root instances with collection_id = nil (Transform)
@@ -105,19 +104,17 @@
    {:model-type     "Action"
     :model-key      :model/Action
     :identity       :entity-id
-    :delete-after   [:model/Card]  ; has model_id FK
-    :parent-model   :model/Card
-    :parent-fk      :model_id
+    :delete-after   [:model/Collection]  ; has collection_id FK
     :events         {:prefix :event/action
                      :types  [:create :update :delete]}
-    :eligibility    {:type :parent}
+    :eligibility    {:type       :collection
+                     :collection :remote-synced}
     :archived-key   :archived
-    :tracking       {:hydrate-query? true
+    :tracking       {:select-fields  [:name :collection_id]
                      :field-mappings {:model_name          :name
                                       :model_collection_id :collection_id}}
-    :removal        {:statuses    #{"removed" "delete"}
-                     :scope-key   :model_id
-                     :scope-table :report_card}
+    :removal        {:statuses  #{"removed"}
+                     :scope-key :collection_id}
     :enabled?       true}
 
    :model/Dashboard
@@ -245,7 +242,6 @@
     :path-keys      [:database :schema :table :field]
     :parent-model   :model/Table
     :parent-fk      :table_id
-    :parent-rso-key :model_table_id
     :cascade-filter {:active true}
     :events         {:prefix :event/field
                      :types  [:create :update :delete]}
@@ -364,7 +360,23 @@
     :removal        {:statuses               #{"removed" "delete"}  ; no scope-key = global deletion
                      :all-on-setting-disable :remote-sync-transforms}
     :export-scope   :all  ; query for all instances
-    :enabled?       :remote-sync-transforms}})
+    :enabled?       :remote-sync-transforms}
+
+   :model/DataApp
+   {:model-type     "DataApp"
+    :model-key      :model/DataApp
+    :identity       :entity-id
+    :events         {:prefix :event/data-app
+                     :types  [:create :update :delete]}
+    :eligibility    {:type :always}
+    :archived-key   nil
+    :tracking       {:select-fields  [:name]
+                     :field-mappings {:model_name :name}}
+    :conditions     {:draft false}
+    :removal        {:statuses #{"removed" "delete"}}
+    :resources?     true
+    :export-scope   :all
+    :enabled?       true}})
 
 ;;; ------------------------------------------------- Helper Functions -------------------------------------------------
 
@@ -642,12 +654,11 @@
                                category category)}))))
 
 (defn removal-opts
-  "The `metabase-enterprise.remote-sync.db` removal-opts (`:scope-key`, `:scope-table`, `:synced-collection-ids`,
-  `:entity-ids`, `:removal-conditions`) for removing the entity-id `spec`'s rows not in the import, scoped to
+  "The `metabase-enterprise.remote-sync.db` removal-opts (`:scope-key`, `:synced-collection-ids`, `:entity-ids`,
+  `:removal-conditions`) for removing the entity-id `spec`'s rows not in the import, scoped to
   `synced-collection-ids` when the spec has a `:scope-key`, minus the imported `entity-ids`."
   [spec synced-collection-ids entity-ids]
   {:scope-key              (get-in spec [:removal :scope-key])
-   :scope-table            (get-in spec [:removal :scope-table])
    :synced-collection-ids  synced-collection-ids
    :entity-ids             entity-ids
    :removal-conditions     (removal-conditions spec)})
@@ -742,29 +753,30 @@
    ({:type :category :model :count :names :message}), one per affected model type."
   [{:keys [by-entity-id]}]
   (let [synced-collection-ids (all-syncable-collection-ids)]
-    (cond-> []
-      (seq synced-collection-ids)
-      (into (for [[model-key spec] (specs-for-deletion)
-                  :when (and (not (get-in spec [:removal :all-on-setting-disable]))
-                             (not= :model/Collection model-key))
-                  :let [model-type   (:model-type spec)
-                        imported-ids (get by-entity-id model-type #{})
-                        ;; Same base restriction remove-unsynced! deletes by, plus an anti-join keeping only the
-                        ;; unsynced rows the import would delete. Done in SQL so we never materialize a whole
-                        ;; collection's worth of rows just to count/sample them.
-                        opts         (removal-opts spec synced-collection-ids imported-ids)
-                        n            (remote-sync.db/unsynced-instance-count model-key model-type opts)
-                        name-col     (get-in spec [:tracking :field-mappings :model_name])]
-                  :when (pos? n)]
-              {:type     (keyword (str (u/lower-case-en model-type) "-deletion-conflict"))
-               :category model-type
-               :model    model-type
-               :count    n
-               ;; A bounded sample of names for the UI; :count above is the true total.
-               :names    (remote-sync.db/unsynced-instance-names model-key model-type name-col opts
-                                                                 max-conflict-names)
-               :message  (format "Import would delete %d unsynced local %s %s"
-                                 n model-type (if (= 1 n) "entity" "entities"))})))))
+    (into []
+          (for [[model-key spec] (specs-for-deletion)
+                :when (and (not (get-in spec [:removal :all-on-setting-disable]))
+                           (not= :model/Collection model-key)
+                           (or (seq synced-collection-ids)
+                               (nil? (get-in spec [:removal :scope-key]))))
+                :let [model-type   (:model-type spec)
+                      imported-ids (get by-entity-id model-type #{})
+                      ;; Same base restriction remove-unsynced! deletes by, plus an anti-join keeping only the
+                      ;; unsynced rows the import would delete. Done in SQL so we never materialize a whole
+                      ;; collection's worth of rows just to count/sample them.
+                      opts         (removal-opts spec synced-collection-ids imported-ids)
+                      n            (remote-sync.db/unsynced-instance-count model-key model-type opts)
+                      name-col     (get-in spec [:tracking :field-mappings :model_name])]
+                :when (pos? n)]
+            {:type     (keyword (str (u/lower-case-en model-type) "-deletion-conflict"))
+             :category model-type
+             :model    model-type
+             :count    n
+             ;; A bounded sample of names for the UI; :count above is the true total.
+             :names    (remote-sync.db/unsynced-instance-names model-key model-type name-col opts
+                                                               max-conflict-names)
+             :message  (format "Import would delete %d unsynced local %s %s"
+                               n model-type (if (= 1 n) "entity" "entities"))}))))
 
 (defn- object-matches-conditions?
   "True if `object` satisfies every column-value pair in `conditions` (or if no conditions are set).
@@ -830,12 +842,6 @@
     (when-let [table (remote-sync.db/instance parent-model table_id)]
       (check-eligibility (spec-for-model-key parent-model) table))))
 
-(defmethod check-eligibility-by-type :parent
-  [{:keys [parent-model parent-fk]} object]
-  (when-let [parent-id (get object parent-fk)]
-    (when-let [parent (remote-sync.db/instance parent-model parent-id)]
-      (check-eligibility (spec-for-model-key parent-model) parent))))
-
 (defmethod check-eligibility-by-type :setting
   [{:keys [eligibility]} _object]
   (setting/get-value-of-type :boolean (:setting eligibility)))
@@ -843,6 +849,10 @@
 (defmethod check-eligibility-by-type :library-synced
   [_spec _object]
   (rs-settings/library-is-remote-synced?))
+
+(defmethod check-eligibility-by-type :always
+  [_ _]
+  true)
 
 (defmethod check-eligibility-by-type :default
   [_ _]
@@ -1095,9 +1105,7 @@
   (when (seq entity-ids)
     (let [;; Get select fields from spec, with :id always included
           select-fields (into [:id] (or (:select-fields tracking) [:name :collection_id]))
-          entities (if (:hydrate-query? tracking)
-                     (remote-sync.db/tracking-details-by-entity-ids model-key entity-ids)
-                     (remote-sync.db/instances-with-columns-by-entity-ids model-key select-fields entity-ids))]
+          entities (remote-sync.db/instances-with-columns-by-entity-ids model-key select-fields entity-ids)]
       (map (fn [entity]
              (let [;; Apply field mappings
                    field-mappings (:field-mappings tracking)
@@ -1238,6 +1246,15 @@
             (remote-sync.db/ids-where model-key (when archived-key {archived-key false})))
       nil)))
 
+(defmethod query-export-roots :always
+  [{:keys [export-scope model-key model-type] :as spec}]
+  (case export-scope
+    :all
+    (into #{}
+          (map (fn [id] [model-type id]))
+          (remote-sync.db/ids-where model-key (export-conditions spec)))
+    nil))
+
 (defmethod query-export-roots :default [_] nil)
 
 (def git-sync-extract-opts
@@ -1245,8 +1262,7 @@
   {:include-field-values     false
    :include-database-secrets false
    :continue-on-error        false
-   :skip-archived            true
-   :inline-user-settings     true})
+   :skip-archived            true})
 
 (def ^:private models-traversed-but-not-stored
   "Models git sync walks through but never writes."

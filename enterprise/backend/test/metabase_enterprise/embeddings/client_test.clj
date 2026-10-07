@@ -19,8 +19,17 @@
               :record-tokens? false)))
       (is (= [{:provider "ai-service" :model-name "model" :vector-dimensions 2}
               ["text"]
-              {:record-tokens? false}]
+              {:record-tokens? false :connection-key "ai-service"}]
              @captured)))))
+
+(deftest embeds-through-the-connection-keyed-after-the-provider-test
+  (let [captured (atom nil)]
+    (with-redefs [semantic-search/get-embeddings-batch
+                  (fn [_model _texts & {:as opts}]
+                    (reset! captured opts)
+                    [[1.0 2.0]])]
+      (embeddings.client/get-embeddings-batch {:provider "openai" :model-name "model" :model-dimensions 2} ["text"])
+      (is (= {:connection-key "openai"} @captured)))))
 
 (deftest conflicting-dimension-keys-are-rejected-test
   (is (thrown-with-msg? clojure.lang.ExceptionInfo

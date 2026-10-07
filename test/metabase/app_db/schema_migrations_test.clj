@@ -42,6 +42,7 @@
    [metabase.util.encryption :as encryption]
    [metabase.util.encryption-test :as encryption-test]
    [metabase.util.json :as json]
+   [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -2861,6 +2862,23 @@
           (migrate!)
           (is (= sentinel (t2/select-one-fn :value :setting :key "encryption-check"))))))))
 
+(deftest retire-confirmed-at-v59-ids-test
+  (testing "v59.2026-07-10T22:29:18 deletes the changelog rows of the confirmed_at changesets that moved to v63 ids"
+    (impl/test-migrations "v59.2026-07-10T22:29:18" [migrate!]
+      (let [clog       (keyword (liquibase/changelog-table-name (mdb/data-source)))
+            last-order (:orderexecuted (t2/select-one clog {:order-by [[:orderexecuted :desc]]}))
+            v59-ids    ["v59.2026-07-10T22:29:16" "v59.2026-07-10T22:29:17"]]
+        (t2/insert! clog (map-indexed (fn [i id]
+                                        {:id            id
+                                         :author        "escherize"
+                                         :filename      "migrations/059_update_migrations.yaml"
+                                         :dateexecuted  :%now
+                                         :orderexecuted (+ last-order i 1)
+                                         :exectype      "EXECUTED"})
+                                      v59-ids))
+        (migrate!)
+        (is (empty? (t2/select clog :id [:in v59-ids])))))))
+
 (deftest dependency-status-segment-handles-missing-column-migration-test
   (testing "The whole 20260402_dependency_status changeset run survives a missing
             segment.dependency_analysis_version column (issue #74443). Every changeset that
@@ -3288,6 +3306,38 @@
           (is (some? (t2/select-one-fn :id :data_permissions :id normal-perm)))
           (is (= 1 (t2/count :data_permissions :db_id normal-id))))))))
 
+(deftest auth-identity-confirmed-at-retires-misnumbered-v59-ids-test
+  (testing "v63.2026-07-10 confirmed_at changesets adopt a database that ran them under their old v59 ids, and roll back"
+    (impl/test-migrations ["v63.2026-07-10T22:29:15" "v63.2026-07-10T22:29:17"] [migrate!]
+      (let [clog       (keyword (liquibase/changelog-table-name (mdb/data-source)))
+            last-order (:orderexecuted (t2/select-one clog {:order-by [[:orderexecuted :desc]]}))
+            v59-ids    ["v59.2026-07-10T22:29:16" "v59.2026-07-10T22:29:17"]
+            column?    #(seq (t2/query [(str "SELECT column_name FROM information_schema.columns"
+                                             " WHERE lower(table_name) = 'auth_identity' AND lower(column_name) = 'confirmed_at'"
+                                             (case (mdb/db-type)
+                                               :mysql    " AND table_schema = database()"
+                                               :postgres " AND table_schema = current_schema()"
+                                               :h2       ""))]))]
+        ;; simulate an instance upgraded by the code that shipped these changesets under v59 ids
+        (t2/query ["ALTER TABLE auth_identity ADD COLUMN confirmed_at TIMESTAMP NULL"])
+        (t2/insert! clog (map-indexed (fn [i id]
+                                        {:id            id
+                                         :author        "escherize"
+                                         :filename      "migrations/059_update_migrations.yaml"
+                                         :dateexecuted  :%now
+                                         :orderexecuted (+ last-order i 1)
+                                         :exectype      "EXECUTED"})
+                                      v59-ids))
+        (.resetAll (liquibase.changelog.ChangeLogHistoryServiceFactory/getInstance))
+        (migrate!)
+        (testing "the stale v59 rows are gone and the existing column is adopted"
+          (is (empty? (t2/select clog :id [:in v59-ids])))
+          (is (= "MARK_RAN" (t2/select-one-fn :exectype clog :id "v63.2026-07-10T22:29:16")))
+          (is (column?)))
+        (testing "rolling back to 62 drops the column"
+          (migrate! :down 62)
+          (is (not (column?))))))))
+
 (deftest move-metabot-conversation-state-to-messages-test
   (testing "v64.2026-07-06: the legacy conversation state blob moves to the earliest live assistant message, then the column drops"
     (impl/test-migrations ["v64.2026-07-06T00:00:01" "v64.2026-07-06T00:00:02"] [migrate!]
@@ -3407,6 +3457,51 @@
           (is (=? {:description_set true, :semantic_type_set false, :fk_target_field_id_set false}
                   (t2/select-one :metabase_field_user_settings :field_id mixed-id))))))))
 
+(deftest table-user-settings-migration-keeps-hidden-tables-hidden-test
+  (testing "v64.2026-09-11T00:00:05-06: the backfill and the reset leave the visibility_type users see unchanged, with
+           or without a settings row"
+    (impl/test-migrations ["v64.2026-09-11T00:00:00" "v64.2026-09-11T00:00:06"] [migrate!]
+      (let [db-id           (t2/insert-returning-pk! :metabase_database {:name       "Table User Settings Test DB"
+                                                                         :engine     "h2"
+                                                                         :created_at :%now
+                                                                         :updated_at :%now
+                                                                         :details    "{}"})
+            insert-table!   (fn [table-name published? visibility-type data-layer]
+                              (t2/insert-returning-pk! :metabase_table {:active          true
+                                                                        :db_id           db-id
+                                                                        :name            table-name
+                                                                        :is_published    published?
+                                                                        :visibility_type visibility-type
+                                                                        :data_layer      data-layer
+                                                                        :created_at      :%now
+                                                                        :updated_at      :%now}))
+            hidden          (insert-table! "hidden" true "hidden" "hidden")
+            technical       (insert-table! "technical" true "technical" "internal")
+            cruft           (insert-table! "cruft" true "cruft" "internal")
+            visible         (insert-table! "visible" true nil "internal")
+            unpublished     (insert-table! "unpublished" false "hidden" "hidden")
+            user-visibility (fn [table-id]
+                              (t2/select-one-fn :v [:metabase_table
+                                                    [(warehouse-schema-overlay/table-user-visibility-type :metabase_table) :v]]
+                                                {:where [:= :metabase_table.id table-id]}))]
+        (migrate!)
+        (testing "the backfill moves a published table's hidden or technical visibility into its settings row"
+          (doseq [[table-id visibility-type] [[hidden "hidden"] [technical "technical"]]]
+            (is (=? {:visibility_type nil :data_layer "internal"}
+                    (t2/select-one [:metabase_table :visibility_type :data_layer] :id table-id)))
+            (is (=? {:visibility_type visibility-type :visibility_type_set true}
+                    (t2/select-one :metabase_table_user_settings :table_id table-id)))))
+        (testing "sync's cruft stays on metabase_table and is not recorded as the user's"
+          (is (= "cruft" (t2/select-one-fn :visibility_type :metabase_table :id cruft)))
+          (is (=? {:visibility_type nil :visibility_type_set false}
+                  (t2/select-one :metabase_table_user_settings :table_id cruft))))
+        (testing "an unpublished table gets no settings row and keeps its own visibility_type"
+          (is (nil? (t2/select-one :metabase_table_user_settings :table_id unpublished)))
+          (is (= "hidden" (t2/select-one-fn :visibility_type :metabase_table :id unpublished))))
+        (testing "the visibility_type users see is unchanged by the migration"
+          (is (= {hidden "hidden" technical "technical" cruft "cruft" visible nil unpublished "hidden"}
+                 (into {} (map (juxt identity user-visibility)) [hidden technical cruft visible unpublished]))))))))
+
 (deftest glossary-entity-id-backfill-test
   (testing "v64.2026-09-11: glossary.entity_id is added, backfilled for existing rows, NOT NULL and unique"
     (impl/test-migrations ["v64.2026-09-11T12:00:00" "v64.2026-09-11T12:00:03"] [migrate!]
@@ -3458,3 +3553,99 @@
                                         :mysql    " AND table_schema = database()"
                                         :postgres " AND table_schema = current_schema()"
                                         :h2       ""))]))))))))
+
+(deftest action-collection-id-backfill-test
+  (testing "v65.2026-10-02T00:00:06: each action takes its model's collection, model_id becomes nullable, and
+            already-archived actions count as archived directly, and archived models' actions get archived"
+    (impl/test-migrations ["v65.2026-10-02T00:00:00" "v65.2026-10-02T00:00:07"] [migrate!]
+      (let [user-id   (t2/insert-returning-pk! :core_user {:first_name "Action"
+                                                           :last_name  "Owner"
+                                                           :email      "action-owner@metabase.com"
+                                                           :password   "superstrong"
+                                                           :entity_id  (u/generate-nano-id)
+                                                           :date_joined :%now})
+            db-id     (t2/insert-returning-pk! :metabase_database {:name       "Action Test DB"
+                                                                   :engine     "h2"
+                                                                   :created_at :%now
+                                                                   :updated_at :%now
+                                                                   :details    "{}"})
+            coll-id   (t2/insert-returning-pk! :collection {:name      "Models"
+                                                            :slug      "models"
+                                                            :entity_id (u/generate-nano-id)
+                                                            :location "/"})
+            insert-model! (fn [collection-id & {:keys [archived]}]
+                            (t2/insert-returning-pk! :report_card {:name                   "Model"
+                                                                   :entity_id              (u/generate-nano-id)
+                                                                   :type                   "model"
+                                                                   :display                "table"
+                                                                   :dataset_query          "{}"
+                                                                   :visualization_settings "{}"
+                                                                   :creator_id             user-id
+                                                                   :database_id            db-id
+                                                                   :collection_id          collection-id
+                                                                   :archived               (boolean archived)
+                                                                   :created_at             :%now
+                                                                   :updated_at             :%now}))
+            insert-action! (fn [model-id & {:keys [archived]}]
+                             (t2/insert-returning-pk! :action {:name       "Action"
+                                                               :archived   (boolean archived)
+                                                               :entity_id  (u/generate-nano-id)
+                                                               :type       "implicit"
+                                                               :model_id   model-id
+                                                               :created_at :%now
+                                                               :updated_at :%now}))
+            in-coll   (insert-action! (insert-model! coll-id))
+            in-root   (insert-action! (insert-model! nil))
+            archived  (insert-action! (insert-model! coll-id) :archived true)
+            on-trashed-model (insert-action! (insert-model! coll-id :archived true))]
+        (migrate!)
+        (is (true? (t2/select-one-fn :archived_directly :action :id archived)))
+        (is (false? (t2/select-one-fn :archived_directly :action :id in-coll)))
+        (testing "the actions of an archived model are archived with it"
+          (is (= [true false] ((juxt :archived :archived_directly) (t2/select-one :action :id on-trashed-model)))))
+        (is (= coll-id (t2/select-one-fn :collection_id :action :id in-coll)))
+        (is (nil? (t2/select-one-fn :collection_id :action :id in-root)))
+        (testing "an action can be inserted without a model"
+          (is (pos-int? (insert-action! nil))))))))
+
+(deftest drop-http-actions-test
+  (testing "v65.2026-10-03T00:00:01: HTTP actions and the dashboard buttons that ran them are deleted, other actions stay"
+    (impl/test-migrations ["v65.2026-10-03T00:00:00" "v65.2026-10-03T00:00:01"] [migrate!]
+      (let [user-id        (t2/insert-returning-pk! :core_user {:first_name  "Action"
+                                                                :last_name   "Owner"
+                                                                :email       "http-action-owner@metabase.com"
+                                                                :password    "superstrong"
+                                                                :entity_id   (u/generate-nano-id)
+                                                                :date_joined :%now})
+            dash-id        (t2/insert-returning-pk! :report_dashboard {:name       "Buttons"
+                                                                       :creator_id user-id
+                                                                       :parameters "[]"
+                                                                       :entity_id  (u/generate-nano-id)
+                                                                       :created_at :%now
+                                                                       :updated_at :%now})
+            insert-action! (fn [action-type]
+                             (t2/insert-returning-pk! :action {:name       "Action"
+                                                               :entity_id  (u/generate-nano-id)
+                                                               :type       action-type
+                                                               :created_at :%now
+                                                               :updated_at :%now}))
+            insert-button! (fn [action-id]
+                             (t2/insert-returning-pk! :report_dashboardcard {:dashboard_id dash-id
+                                                                             :action_id    action-id
+                                                                             :parameter_mappings "[]"
+                                                                             :visualization_settings "{}"
+                                                                             :entity_id    (u/generate-nano-id)
+                                                                             :size_x       4
+                                                                             :size_y       4
+                                                                             :row          0
+                                                                             :col          0
+                                                                             :created_at   :%now
+                                                                             :updated_at   :%now}))
+            http-id        (insert-action! "http")
+            implicit-id    (insert-action! "implicit")
+            http-button    (insert-button! http-id)
+            other-button   (insert-button! implicit-id)]
+        (t2/insert! :http_action {:action_id http-id :template "{}"})
+        (migrate!)
+        (is (= #{implicit-id} (t2/select-pks-set :action)))
+        (is (= #{other-button} (t2/select-pks-set :report_dashboardcard :id [:in [http-button other-button]])))))))

@@ -748,39 +748,33 @@
 
 (defmethod collection-children-query :table
   [_ collection {:keys [archived? pinned-state]}]
-  (let [user-info {:user-id       api/*current-user-id*
-                   :is-superuser? api/*is-superuser?*}
-        published-clause (perms/published-table-visible-clause :t.id user-info)
-        queryable-clause (cond-> [:or
-                                  [:in :t.id (perms/visible-table-filter-select
-                                              :id
-                                              user-info
-                                              {:perms/view-data      :unrestricted
-                                               :perms/create-queries :query-builder})]]
-                           published-clause (conj [:and
-                                                   [:in :t.id (perms/visible-table-filter-select
-                                                               :id
-                                                               user-info
-                                                               {:perms/view-data :unrestricted})]
-                                                   published-clause]))]
-    {:select [:t.id
-              [:t.id :table_id]
-              [:t.display_name :name]
-              :t.description
-              :t.collection_id
-              [:t.db_id :database_id]
-              [[:!= :t.archived_at nil] :archived]
-              [(h2x/literal "table") :model]]
-     :from   [(warehouse-schema-overlay/table-query {:alias :t})]
-     :where  [:and
-              [:= :t.is_published true]
-              (poison-when-pinned-clause pinned-state)
-              (collection/visible-collection-filter-clause :t.collection_id {:cte-name :visible_collection_ids})
-              queryable-clause
-              [:= :t.collection_id (:id collection)]
-              (if archived?
-                [:!= :t.archived_at nil]
-                [:= :t.archived_at nil])]}))
+  {:select [:t.id
+            [:t.id :table_id]
+            [:t.display_name :name]
+            :t.description
+            :t.collection_id
+            [:t.db_id :database_id]
+            [[:!= :t.archived_at nil] :archived]
+            [(h2x/literal "table") :model]]
+   :from   [(warehouse-schema-overlay/table-query {:alias :t})]
+   :where  [:and
+            [:= :t.is_published true]
+            (poison-when-pinned-clause pinned-state)
+            (collection/visible-collection-filter-clause :t.collection_id {:cte-name :visible_collection_ids})
+            ;; The subquery form, not the CTE one: this query becomes a UNION ALL branch or an EXISTS probe, where
+            ;; a CTE is not valid, and hoisting the CTE to the top level does not work either: H2 2.1.214 returns no
+            ;; rows for a CTE with bound parameters referenced from inside a derived table (see the docstring).
+            (perms/visible-table-filter-subquery-clause
+             :t.id
+             {:user-id       api/*current-user-id*
+              :is-superuser? api/*is-superuser?*}
+             {:perms/view-data      :unrestricted
+              :perms/create-queries :query-builder}
+             {:include-published-via-collection? true})
+            [:= :t.collection_id (:id collection)]
+            (if archived?
+              [:!= :t.archived_at nil]
+              [:= :t.archived_at nil])]})
 
 (defn- annotate-collections
   [parent-coll colls {:keys [show-dashboard-questions?]}]

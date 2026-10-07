@@ -138,6 +138,8 @@ categories:
             url: "ai/settings"
           - name: "MCP server"
             url: "ai/mcp"
+          - name: "MCP tools"
+            url: "ai/mcp-tools"
           - name: "Agent API"
             url: "ai/agent-api"
           - name: "Agent-driven development"
@@ -213,6 +215,8 @@ categories:
         pages:
           - name: "Library"
             url: "data-modeling/semantic-layer/library"
+          - name: "Published tables"
+            url: "data-modeling/semantic-layer/published-tables"
           - name: "Metrics"
             url: "data-modeling/semantic-layer/metrics"
           - name: "Measures"

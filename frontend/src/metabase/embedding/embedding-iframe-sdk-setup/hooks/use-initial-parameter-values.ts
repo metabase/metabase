@@ -1,9 +1,9 @@
 import { useDebouncedCallback } from "@mantine/hooks";
 import { useCallback, useMemo } from "react";
 
+import type { ParameterValues } from "metabase/embedding-sdk/types/dashboard";
 import { SET_INITIAL_PARAMETER_DEBOUNCE_MS } from "metabase/embedding/embedding-iframe-sdk-setup/constants";
 import type { SdkIframeEmbedSetupContextType } from "metabase/embedding/embedding-iframe-sdk-setup/context";
-import type { ParameterValues } from "metabase/embedding-sdk/types/dashboard";
 import type { ParameterValueOrArray } from "metabase-types/api";
 
 type ParameterValuesKey = "initialParameters" | "initialSqlParameters";
