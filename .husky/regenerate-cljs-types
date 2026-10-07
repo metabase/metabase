@@ -1,0 +1,3 @@
+#!/usr/bin/env sh
+[ -d node_modules ] || exit 0
+bun run generate:cljs-types || echo "Some cljs type declarations weren't regenerated. bun run type-check will report the problem." >&2
