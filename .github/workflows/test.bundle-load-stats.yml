@@ -24,6 +24,20 @@ on:
         type: string
         required: false
         default: ""
+      harness_ref:
+        description: >
+          Ref to take the benchmark and its scripts from. Defaults to the
+          measured commit, which is what the per-merge path wants. A backfill
+          passes one ref for every commit it measures, so the harness is held
+          still and only the jar changes.
+        type: string
+        required: false
+        default: ""
+      upload:
+        description: "Append the rows to eng-stats-importer."
+        type: boolean
+        required: false
+        default: false
 
 # A later attempt must not cancel the first one: the concurrency group applies
 # before any job `if`, so a run that goes on to skip every job still cancels.
@@ -74,7 +88,9 @@ jobs:
       - name: Check out the code
         uses: actions/checkout@v7
         with:
-          ref: ${{ env.HEAD_SHA }}
+          # Only the harness comes from this tree. The app under test is the
+          # downloaded uberjar, so a backfill can hold this still.
+          ref: ${{ inputs.harness_ref || env.HEAD_SHA }}
       - uses: ./.github/actions/prepare-node-bun
       - name: Prepare JDK 25
         uses: actions/setup-java@v5.2.0
@@ -135,13 +151,33 @@ jobs:
       - name: Show the Metabase log if something went wrong
         if: failure()
         run: tail -100 artifacts/metabase.log || true
+      - name: Resolve the commit stamp
+        if: ${{ inputs.commit != '' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # `workflow_run.head_commit` is empty on a workflow_call, and the tree
+          # checked out above is the harness rather than the measured commit, so
+          # the subject and the date come from the API.
+          commit=$(gh api "repos/${GITHUB_REPOSITORY}/commits/${HEAD_SHA}")
+          subject=$(printf '%s' "$commit" | jq -r '.commit.message' | head -1)
+          # A random delimiter, because the subject is untrusted text that could
+          # otherwise close the heredoc early.
+          delimiter="STAMP_$(openssl rand -hex 8)"
+          {
+            echo "COMMIT_SUBJECT<<${delimiter}"
+            echo "$subject"
+            echo "${delimiter}"
+            printf 'COMMIT_STAMP=%s\n' "$(printf '%s' "$commit" | jq -r '.commit.committer.date')"
+          } >> "$GITHUB_ENV"
+
       - name: Import load times into Stats
-        if: ${{ inputs.commit == '' }}
+        if: ${{ inputs.commit == '' || inputs.upload }}
         env:
           # Passed via env (not interpolated into the shell) so the commit
           # message can't inject commands; the script keeps only the subject.
-          COMMIT_MESSAGE: ${{ github.event.workflow_run.head_commit.message }}
-          COMMIT_TIMESTAMP: ${{ github.event.workflow_run.head_commit.timestamp }}
+          COMMIT_MESSAGE: ${{ github.event.workflow_run.head_commit.message || env.COMMIT_SUBJECT }}
+          COMMIT_TIMESTAMP: ${{ github.event.workflow_run.head_commit.timestamp || env.COMMIT_STAMP }}
           ENG_STATS_URL: ${{ secrets.ENG_STATS_URL }}
           API_KEY: ${{ secrets.ENG_STATS_API_KEY }}
         run: |
