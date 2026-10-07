@@ -1,8 +1,12 @@
+import cx from "classnames";
 import type { ChangeEvent, FocusEvent, HTMLAttributes, Ref } from "react";
 import { forwardRef, useCallback, useState } from "react";
 import { t } from "ttag";
 
-import { InputButton, InputField, InputRoot } from "./FileInput.styled";
+import CS from "metabase/css/core/index.css";
+import { Box, Text } from "metabase/ui";
+
+import S from "./FileInput.module.css";
 
 export type FileInputAttributes = Omit<
   HTMLAttributes<HTMLLabelElement>,
@@ -19,7 +23,15 @@ export interface FileInputProps extends FileInputAttributes {
 }
 
 export const FileInput = forwardRef(function FileInput(
-  { name, autoFocus, onChange, onFocus, onBlur, ...props }: FileInputProps,
+  {
+    name,
+    autoFocus,
+    className,
+    onChange,
+    onFocus,
+    onBlur,
+    ...props
+  }: FileInputProps,
   ref: Ref<HTMLLabelElement>,
 ): JSX.Element {
   const [hasValue, setHasValue] = useState(false);
@@ -34,17 +46,29 @@ export const FileInput = forwardRef(function FileInput(
   );
 
   return (
-    <InputRoot ref={ref} {...props}>
-      <InputField
+    <label ref={ref} {...props} className={cx(CS.flex, className)}>
+      <Box
+        component="input"
         type="file"
+        className={S.input}
         name={name}
-        hasValue={hasValue}
+        c="text-primary"
+        flex="1 1 auto"
+        ff="inherit"
+        fw={hasValue ? "bold" : undefined}
         autoFocus={autoFocus}
         onChange={handleChange}
         onFocus={onFocus}
         onBlur={onBlur}
       />
-      <InputButton>{t`Select a file`}</InputButton>
-    </InputRoot>
+      <Text
+        component="span"
+        className={cx(S.border, S.button, CS.cursorPointer, CS.textNoWrap)}
+        fw="bold"
+        lh="md"
+        px="md"
+        py="sm"
+      >{t`Select a file`}</Text>
+    </label>
   );
 });
