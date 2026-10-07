@@ -80,10 +80,8 @@ describe("scenarios > dashboard > tabs", () => {
     // Go back to first tab
     H.goToTab("Tab 1");
     H.dashboardCards().within(() => {
-      cy.findByText("Orders, count").should("not.exist");
-    });
-    H.dashboardCards().within(() => {
       cy.findByText("Orders").should("be.visible");
+      cy.findByText("Orders, Count").should("not.exist");
     });
   });
 
@@ -800,14 +798,14 @@ const createNumberFilterMapping = ({ card_id }) => {
 };
 
 function assertFiltersVisibility({ visible = [], hidden = [] }) {
-  cy.findByTestId("dashboard-parameters-widget-container", () => {
+  cy.findByTestId("dashboard-parameters-widget-container").within(() => {
     visible.forEach((filter) => cy.findByText(filter.name).should("exist"));
     hidden.forEach((filter) => cy.findByText(filter.name).should("not.exist"));
   });
 
   // Ensure all filters are visible in edit mode
   H.editDashboard();
-  cy.findByTestId("edit-dashboard-parameters-widget-container", () => {
+  cy.findByTestId("edit-dashboard-parameters-widget-container").within(() => {
     [...visible, ...hidden].forEach((filter) =>
       cy.findByText(filter.name).should("exist"),
     );
