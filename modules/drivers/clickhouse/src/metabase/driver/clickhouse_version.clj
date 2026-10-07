@@ -24,16 +24,15 @@
        "SELECT s.ver, toInt32(verSplit[1]), toInt32(verSplit[2]) FROM s"))
 
 (defn- single-node?
-  "Whether the server has no remote nodes configured. An empty system.clusters or clusters containing only the
-  local server are both standalone deployments. Don't rely on macros: self-hosted clusters need not define them."
+  "Return true if system.clusters has no entries marked as non-local.
+  This check uses configuration data and does not verify the number of active nodes."
   [^Connection conn]
   (try
     (with-open [stmt (.createStatement conn)
                 rset (.executeQuery stmt "SELECT count() = 0 FROM system.clusters WHERE is_local = 0")]
       (and (.next rset) (.getBoolean rset 1)))
     (catch SQLException e
-      ;; Missing permissions must not break version detection or enable uploads on an unknown deployment.
-      (log/warn e "Could not determine whether ClickHouse is a single-node deployment; uploads remain disabled.")
+      (log/warn e "Could not determine whether ClickHouse is a single-node deployment.")
       false)))
 
 (def ^:private ^{:arglists '([database])} get-clickhouse-version

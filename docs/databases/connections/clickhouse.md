@@ -109,9 +109,7 @@ Set up an additional connection used for write operations. See [Writable connect
 
 Metabase supports [CSV uploads](../uploads.md) to ClickHouse Cloud and self-hosted single-node ClickHouse deployments. Self-hosted clusters aren't supported.
 
-For self-hosted deployments, Metabase checks `system.clusters` during schema sync and enables uploads when there are no remote nodes configured. The database user must be able to read this system table, as well as create tables and insert data in the database selected for uploads. Select that ClickHouse database as the upload schema in Metabase.
-
-For an existing connection, sync the database schema after upgrading Metabase so it can detect upload support.
+For self-hosted deployments, the database user must be able to read the `system.clusters` table, as well as create tables and insert data.
 
 ## Model features
 
