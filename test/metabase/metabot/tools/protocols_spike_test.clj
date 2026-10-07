@@ -333,3 +333,151 @@
     (let [outcome (invoke "read_resource" {:uris ["nope" "also-nope"]})]
       (is (nil? (:error outcome)))
       (is (= 2 (count (re-seq #"is not a Metabase resource URI" (:output outcome))))))))
+
+;;; ════════════════════════════════════════════════════════════════════════════════════════════════
+;;; edit_sql_query — a mutation tool: three failures, three audiences
+;;; ════════════════════════════════════════════════════════════════════════════════════════════════
+
+(tools.error/defrecoverable unknown-query-id!
+  "The query id is not in this conversation's query state."
+  {:payload [:map {:closed true}
+             [:query-id  :string]
+             [:available [:sequential :string]]]}
+  [{:keys [query-id available]}]
+  {:message  (if (seq available)
+               (str "Query " query-id " is not in this conversation. Available query ids: "
+                    (str/join ", " available) ".")
+               (str "Query " query-id " is not in this conversation, and none have been created "
+                    "in it yet."))
+   :recovery (if (seq available)
+               []
+               [{:uses #{"create_sql_query"}
+                 :text "Call `create_sql_query` to make one first."}])})
+
+(tools.error/defrecoverable sql-syntax-error!
+  "The edited SQL does not parse."
+  {:payload [:map {:closed true}
+             [:dialect :string]
+             [:line    {:optional true} [:maybe :int]]
+             [:column  {:optional true} [:maybe :int]]]}
+  [{:keys [dialect line column]}]
+  ;; Structured fields, never the raw sqlglot message — that can carry ANSI escapes, and `render`'s
+  ;; dev/test assertion would reject it.
+  {:message  (str "The edited query is not valid " dialect " SQL"
+                  (when line (str " at line " line (when column (str ", column " column)))) ".")
+   :recovery [{:uses #{} :text "Fix the syntax and send the edit again."}]})
+
+(def ^:private fake-queries
+  {"q1" {:database 1 :sql "SELECT id, name FROM orders"}
+   "q2" {:database 99 :sql "SELECT 1"}})
+
+(defrecord EditSqlQueryTool []
+  tools/Tool
+  (declaration [_]
+    {:name         "edit_sql_query"
+     :description  "Edit an existing SQL query using structured edits."
+     :scope        scope/agent-sql-edit
+     :capabilities #{:permission-write-sql-queries}
+     :args         [:map {:closed true}
+                    [:query_id [:or :string :int]]
+                    [:old_string :string]
+                    [:new_string :string]]})
+  (handle [_ {:keys [query_id old_string new_string]} ctx]
+    (let [queries  (get-in (some-> (:memory-atom ctx) deref) [:state :queries] fake-queries)
+          query-id (str query_id)
+          query    (or (get queries query-id)
+                       (unknown-query-id! {:query-id  query-id
+                                           :available (vec (sort (keys queries)))}))]
+      ;; A permission the agent cannot acquire, so the user is the one who has to act. Note this is
+      ;; the call Maksym questioned: MBQL may still be open, which would make it recoverable.
+      (when (= 99 (:database query))
+        (tools.error/unrecoverable!
+         ::no-native-query-permission
+         {:user-message "You don't have permission to write SQL against this database."
+          :data         {:database-id (:database query)}}))
+      (let [new-sql (str/replace-first (:sql query) old_string new_string)]
+        (when (str/includes? new-sql "FROM FROM")
+          (sql-syntax-error! {:dialect "postgres" :line 1 :column 22}))
+        {:output            (str "<result>\nQuery " query-id " updated.\n"
+                                 "<query>" new-sql "</query>\n</result>\n"
+                                 "<instructions>\nShow the user the result.\n</instructions>")
+         :structured-output {:query-id query-id :query-content new-sql}}))))
+
+(def edit-sql-query-tool (->EditSqlQueryTool))
+
+;;; ════════════════════════════════════════════════════════════════════════════════════════════════
+;;; get_timeline_details — a single-query tool that is one converter
+;;; ════════════════════════════════════════════════════════════════════════════════════════════════
+
+(defrecord GetTimelineDetailsTool []
+  tools/Tool
+  (declaration [_]
+    {:name        "get_timeline_details"
+     :description "Get the full details of a timeline including its events."
+     :scope       scope/agent-timelines-read
+     :args        [:map {:closed true} [:timeline_id pos-int?]]})
+  (handle [_ {:keys [timeline_id]} _ctx]
+    (let [timeline (tools/with-entity {:kind :timeline :id timeline_id}
+                     (if (= 1 timeline_id)
+                       {:name "Releases" :events [{:name "v50"}]}
+                       (throw (ex-info "Not found." {:status-code 404}))))]
+      {:output (format "<timeline name=\"%s\">%s events</timeline>"
+                       (:name timeline) (count (:events timeline)))})))
+
+(def get-timeline-details-tool (->GetTimelineDetailsTool))
+
+;;; ── tests for the two above ───────────────────────────────────────────────────────────────────
+
+(def ^:private more-entries
+  (tools/entries [edit-sql-query-tool get-timeline-details-tool]))
+
+(defn- invoke-more [tool args]
+  (binding [scope/*current-user-scope* #{"*"}]
+    (tools.runtime/invoke more-entries
+                          {:profile-id :sql :metabot-id nil
+                           :tool-names #{"edit_sql_query" "get_timeline_details"
+                                         "create_sql_query" "search"}}
+                          tool args)))
+
+(deftest ^:parallel a-mutation-tool-routes-three-failures-three-ways-test
+  (testing "recoverable: the agent can pick a different query id"
+    (is (=? {:output "Query q7 is not in this conversation. Available query ids: q1, q2."
+             :error  {:class :recoverable}}
+            (invoke-more "edit_sql_query" {:query_id "q7" :old_string "a" :new_string "b"}))))
+  (testing "recoverable: the agent can fix its own syntax"
+    (is (=? {:error {:class :recoverable
+                     :code  ::sql-syntax-error}}
+            (invoke-more "edit_sql_query" {:query_id   "q1"
+                                           :old_string "FROM orders"
+                                           :new_string "FROM FROM orders"}))))
+  (testing "unrecoverable: only the user can grant a permission, so the turn ends"
+    (is (=? {:output "This call failed and the user was shown the error (:metabase.metabot.tools.protocols-spike-test/no-native-query-permission). Don't retry it."
+             :error  {:class        :unrecoverable
+                      :user-message "You don't have permission to write SQL against this database."}}
+            (invoke-more "edit_sql_query" {:query_id "q2" :old_string "1" :new_string "2"}))))
+  (testing "success"
+    (is (=? {:output            #(str/includes? % "SELECT id, name, total FROM orders")
+             :structured-output {:query-id "q1"}}
+            (invoke-more "edit_sql_query" {:query_id   "q1"
+                                           :old_string "id, name"
+                                           :new_string "id, name, total"})))))
+
+(deftest ^:parallel a-mutation-tool-reads-state-from-ctx-test
+  (testing "no dynamic var, no per-tool memory allowlist"
+    (is (=? {:output "Query q1 is not in this conversation. Available query ids: mine."}
+            (binding [scope/*current-user-scope* #{"*"}]
+              (tools.runtime/invoke more-entries
+                                    {:profile-id  :sql :metabot-id nil
+                                     :tool-names  #{"edit_sql_query"}
+                                     :memory-atom (atom {:state {:queries {"mine" {:database 1
+                                                                                   :sql "SELECT 1"}}}})}
+                                    "edit_sql_query"
+                                    {:query_id "q1" :old_string "a" :new_string "b"}))))))
+
+(deftest ^:parallel a-single-query-tool-can-be-one-converter-test
+  (is (= {:output "<timeline name=\"Releases\">1 events</timeline>"}
+         (invoke-more "get_timeline_details" {:timeline_id 1})))
+  (is (=? {:output #(str/starts-with? % "Timeline 9 was not found.")
+           :error  {:class :recoverable
+                    :code  :metabase.metabot.tools.recoverable.common/not-found}}
+          (invoke-more "get_timeline_details" {:timeline_id 9}))))
