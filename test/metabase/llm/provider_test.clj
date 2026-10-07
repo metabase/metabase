@@ -226,7 +226,7 @@
            clojure.lang.ExceptionInfo #"Access key ID is required for bedrock"
            (llm.provider/validate-config! "bedrock" {})))
       (testing "the pair is a mandatory set, so the form marks each of its fields required"
-        (is (= {:access-key-id true :secret-access-key true :region false :session-token false}
+        (is (= {:access-key-id true :secret-access-key true :region false :model-id false :session-token false}
                (->> (llm.provider/provider-type "bedrock")
                     :fields
                     (into {} (map (juxt :key (comp boolean :required?))))))))
@@ -689,8 +689,8 @@
                 "so a type without a decided logo fails to compile. Nothing links the two, so adding a type here "
                 "without updating them ships a provider that silently falls back to the generic icon. Update "
                 "both, then this list.")
-    (is (= #{"anthropic" "openai" "openrouter" "mistral" "zai" "moonshot" "deepseek" "google" "azure" "bedrock"
-             "vllm" "metabase"}
+    (is (= #{"anthropic" "openai" "openrouter" "mistral" "zai" "moonshot" "deepseek" "xai" "google" "azure"
+             "bedrock" "vllm" "metabase"}
            (into #{} (map :type) (llm.provider/provider-types))))))
 
 (deftest ^:parallel provider-types-test
@@ -719,6 +719,7 @@
             "zai"        "glm-5.2"
             "moonshot"   "kimi-k3"
             "deepseek"   "deepseek-v4-pro"
+            "xai"        "grok-4.7"
             "google"     "google/gemini-3.5-flash"
             ;; azure's models are deployment names the admin chooses, so there is nothing to default to
             "azure"      nil
@@ -738,7 +739,8 @@
             "mistral"    "mistral-medium-3-5"
             "zai"        "glm-5.2"
             "moonshot"   "kimi-k3"
-            "deepseek"   "deepseek-v4-flash"
+            "deepseek"   "deepseek-flash"
+            "xai"        "grok-4.3"
             "google"     nil
             "azure"      nil
             "bedrock"    "anthropic.claude-haiku-4-5"
@@ -750,3 +752,25 @@
   (testing "every type other than the managed one is always available"
     (is (true? (llm.provider/type-available? "anthropic")))
     (is (false? (llm.provider/type-available? "evilai")))))
+
+(deftest ^:parallel served-mini-model-test
+  (testing "a listing that includes the type's mini model records it on the connection"
+    (is (= {:mini-model "claude-haiku-4-5-20251001"}
+           (llm.provider/served-mini-model "anthropic" [{:id "claude-sonnet-4-6" :display_name "Claude Sonnet 4.6"}
+                                                        {:id "claude-haiku-4-5-20251001" :display_name "Claude Haiku 4.5"}]))))
+  (testing "one that leaves it out records nothing, so an earlier answer is retired rather than kept"
+    (is (= {:mini-model nil}
+           (llm.provider/served-mini-model "anthropic" [{:id "claude-sonnet-4-6" :display_name "Claude Sonnet 4.6"}])))
+    (is (= {:mini-model nil} (llm.provider/served-mini-model "anthropic" []))))
+  (testing "a type with no mini model has nothing to record"
+    (is (= {:mini-model nil}
+           (llm.provider/served-mini-model "azure" [{:id "openai/gpt-4.1" :display_name "gpt-4.1"}])))))
+
+(deftest ^:parallel connection-mini-model-test
+  (testing "reads the model the connection's listing recorded"
+    (is (= "claude-haiku-4-5-20251001"
+           (llm.provider/connection-mini-model {:key "anthropic" :type "anthropic"
+                                                :config {:api-key "sk-ant" :mini-model "claude-haiku-4-5-20251001"}}))))
+  (testing "and nothing for a connection no listing has answered for, whatever its type would offer"
+    (is (nil? (llm.provider/connection-mini-model {:key "anthropic" :type "anthropic" :config {:api-key "sk-ant"}})))
+    (is (nil? (llm.provider/connection-mini-model nil)))))

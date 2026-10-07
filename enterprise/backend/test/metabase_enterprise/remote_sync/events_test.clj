@@ -1306,9 +1306,9 @@
 
 ;;; ----------------------------------------- TableUserSettings RSO Tracking from Field Events --------------------------
 
-(deftest field-update-creates-table-user-settings-rso-when-fus-exists-test
-  (testing "field-update on an eligible field with a FUS row creates a TableUserSettings RSO for its Table — no
-            Field or FieldUserSettings RSO"
+(deftest field-update-creates-field-user-settings-rso-when-fus-exists-test
+  (testing "field-update on an eligible field with a FUS row creates a FieldUserSettings RSO for the Field — no
+            Field or TableUserSettings RSO"
     (mt/with-temp [:model/Collection coll  {:is_remote_synced true :name "Remote-Sync" :type "library-data"}
                    :model/Table      table {:name "T" :is_published true :collection_id (:id coll)}
                    :model/Field      field {:name "f" :table_id (:id table) :base_type :type/Text}]
@@ -1316,12 +1316,24 @@
       (t2/delete! :model/RemoteSyncObject)
       (events/publish-event! :event/field-update {:object field :user-id (mt/user->id :rasta)})
       (let [entries (t2/select :model/RemoteSyncObject)]
-        (is (= 1 (count entries)) "exactly one RSO — the Table's TableUserSettings, no Field/FieldUserSettings RSO")
-        (is (=? {:model_type     "TableUserSettings"
-                 :model_id       (:id table)
+        (is (= 1 (count entries)) "exactly one RSO — the Field's FieldUserSettings")
+        (is (=? {:model_type     "FieldUserSettings"
+                 :model_id       (:id field)
                  :status         "update"
                  :model_table_id (:id table)}
                 (first entries)))))))
+
+(deftest field-update-tracks-field-of-table-published-in-its-user-settings-test
+  (testing "field-update on a field of a Table published through its TableUserSettings creates a FieldUserSettings RSO"
+    (mt/with-temp [:model/Collection coll  {:is_remote_synced true :name "Remote-Sync" :type "library-data"}
+                   :model/Table      table {:name "T"}
+                   :model/Field      field {:name "f" :table_id (:id table) :base_type :type/Text}]
+      (t2/insert! :model/TableUserSettings {:table_id (:id table) :is_published true :collection_id (:id coll)})
+      (t2/insert! :model/FieldUserSettings {:field_id (:id field) :description "curated"})
+      (t2/delete! :model/RemoteSyncObject)
+      (events/publish-event! :event/field-update {:object field :user-id (mt/user->id :rasta)})
+      (is (=? [{:model_type "FieldUserSettings" :model_id (:id field) :status "update"}]
+              (t2/select :model/RemoteSyncObject))))))
 
 ;;; ------------------------------------- Concurrent Un-Sync Race Tests -------------------------------------
 ;;;
@@ -1426,6 +1438,21 @@
                  (deref handler 10000 nil)))))
          (assert-removal-survived coll-id card))))))
 
+(deftest dimension-change-creates-dimension-rso-test
+  (testing "adding or removing a Field's Dimension through the API tracks the Field's Dimension"
+    (mt/with-temporary-setting-values [remote-sync-type :read-write]
+      (mt/with-temp [:model/Collection coll  {:is_remote_synced true :name "Remote-Sync" :type "library-data"}
+                     :model/Table      table {:name "T" :is_published true :collection_id (:id coll)}
+                     :model/Field      field {:name "f" :table_id (:id table) :base_type :type/Text}]
+        (t2/delete! :model/RemoteSyncObject)
+        (mt/user-http-request :crowberto :post 200 (format "field/%d/dimension" (:id field))
+                              {:type "internal" :name "Remapped"})
+        (is (=? [{:model_type "Dimension" :model_id (:id field) :status "update"}]
+                (t2/select :model/RemoteSyncObject)))
+        (mt/user-http-request :crowberto :delete 204 (format "field/%d/dimension" (:id field)))
+        (is (=? [{:model_type "Dimension" :model_id (:id field) :status "removed"}]
+                (t2/select :model/RemoteSyncObject)))))))
+
 (deftest field-update-no-rso-when-no-fus-row-test
   (testing "field-update on an eligible field with NO FUS row, and no TableUserSettings row either, creates no
             RSOs at all"
@@ -1457,24 +1484,21 @@
       (events/publish-event! :event/field-update {:object field :user-id (mt/user->id :rasta)})
       (is (empty? (t2/select :model/RemoteSyncObject))))))
 
-(deftest field-update-table-user-settings-rso-marks-removed-when-table-leaves-sync-scope-test
-  (testing "existing TableUserSettings RSO is marked removed when the field's table leaves sync scope — no
-            Field or FieldUserSettings RSO created"
+(deftest field-update-field-user-settings-rso-marks-removed-when-table-leaves-sync-scope-test
+  (testing "an existing FieldUserSettings RSO is marked removed when the field's table leaves sync scope"
     (mt/with-temp [:model/Collection synced {:is_remote_synced true :name "Synced" :type "library-data"}
                    :model/Collection normal {:name "Normal" :type "library-data"}
                    :model/Table      table  {:name "T" :is_published true :collection_id (:id synced)}
                    :model/Field      field  {:name "f" :table_id (:id table) :base_type :type/Text}]
       (t2/insert! :model/FieldUserSettings {:field_id (:id field) :description "curated"})
       (t2/delete! :model/RemoteSyncObject)
-      (t2/insert! :model/RemoteSyncObject {:model_type        "TableUserSettings"
-                                           :model_id          (:id table)
-                                           :model_name        "T"
+      (t2/insert! :model/RemoteSyncObject {:model_type        "FieldUserSettings"
+                                           :model_id          (:id field)
+                                           :model_name        "f"
                                            :model_table_id    (:id table)
                                            :status            "synced"
                                            :status_changed_at (t/offset-date-time)})
       (t2/update! :model/Table (:id table) {:collection_id (:id normal)})
       (events/publish-event! :event/field-update {:object field :user-id (mt/user->id :rasta)})
-      (let [entries (t2/select :model/RemoteSyncObject)]
-        (is (= 1 (count entries)) "still only one RSO — no Field/FieldUserSettings RSO added")
-        (is (= "removed"
-               (:status (t2/select-one :model/RemoteSyncObject :model_type "TableUserSettings" :model_id (:id table)))))))))
+      (is (=? [{:model_type "FieldUserSettings" :model_id (:id field) :status "removed"}]
+              (t2/select :model/RemoteSyncObject))))))
