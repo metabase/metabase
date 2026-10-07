@@ -644,6 +644,10 @@ describe("issue 29304", () => {
         // cypress runs all tests in an iframe and the app uses this property to avoid embedding mode for all tests
         // by removing the property the app would work in embedding mode
         window.Cypress = undefined;
+        // Load charts up front so the lazy Suspense boundary never suspends.
+        // Nulling Cypress above also nulls isCypressActive, which keeps the
+        // frozen clock from advancing React 19's lazy retry (metabase#29304).
+        window.METABASE_LOAD_ALL_VISUALIZATIONS = true;
       },
     });
   };
