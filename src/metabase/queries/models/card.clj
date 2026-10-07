@@ -4,6 +4,7 @@
   (:require
    [better-cond.core :as b]
    [clojure.set :as set]
+   [clojure.string :as str]
    [honey.sql.helpers :as sql.helpers]
    [medley.core :as m]
    [metabase.analytics-interface.core :as analytics]
@@ -989,6 +990,34 @@
     :dashboard-question
     (:type card)))
 
+(defn- check-data-app-card
+  "Throws unless `card`, when it is in a data app's collection, is what a pull of the app accepts: a question or
+  metric that is not archived, public or embedded, reading no card outside the collection. The next export writes
+  the card into the app's files, and every pull refuses a file that says otherwise."
+  [{:keys [collection_id] :as card}]
+  (when (and (some? collection_id)
+             (contains? (set (perms/data-app-collection-ids)) collection_id))
+    ;; a new card without a type is a question, the column's default
+    (when (or (not (contains? #{:question :metric} (keyword (or (:type card) :question))))
+              (:archived card)
+              (:public_uuid card)
+              (:enable_embedding card)
+              (:embedding_params card)
+              (:embedding_type card))
+      (throw (ex-info "A card in a data app's collection must be a question or metric that is not archived, public or embedded"
+                      {:status-code 400})))
+    (let [card-ids (into #{}
+                         (keep (fn [path]
+                                 (let [{:keys [model id]} (last path)]
+                                   (when (= "Card" model) id))))
+                         (serdes/serialization-dependencies "Card" card))
+          outside  (when (seq card-ids)
+                     (queries.db/card-ids-outside-collection card-ids collection_id))]
+      (when (seq outside)
+        (throw (ex-info (str "A card in a data app's collection can read only the app's own cards, not card "
+                             (str/join ", " (sort outside)))
+                        {:status-code 400}))))))
+
 (t2/define-before-insert :model/Card
   [card]
   (check-timeline-visibility-permissions! card *copy-source-card*)
@@ -1004,7 +1033,8 @@
         pre-insert
         populate-query-fields
         public-sharing/add-public-uuid-prefix)
-    (collection/check-allowed-content (library-content-type <> mi/*deserializing?*) (:collection_id <>))))
+    (collection/check-allowed-content (library-content-type <> mi/*deserializing?*) (:collection_id <>))
+    (check-data-app-card <>)))
 
 (t2/define-after-insert :model/Card
   [card]
@@ -1073,15 +1103,7 @@
     (when (or (contains? changes :visualization_settings) (contains? changes :display))
       (check-timeline-visibility-permissions! card original))
     (check-allowed-content card changes)
-    ;; a card in a data app's collection stays what a pull of the app accepts
-    (when (and (some? (:collection_id card))
-               (or (not (contains? #{:question :metric} (keyword (:type card))))
-                   (:archived card)
-                   (:public_uuid card)
-                   (:enable_embedding card))
-               (contains? (set (perms/data-app-collection-ids)) (:collection_id card)))
-      (throw (ex-info "A card in a data app's collection must be a question or metric that is not archived, public or embedded"
-                      {:status-code 400})))
+    (check-data-app-card card)
     (-> card
         (dissoc :verified-result-metadata?)
         (migrate-schema-governed-columns original changes)

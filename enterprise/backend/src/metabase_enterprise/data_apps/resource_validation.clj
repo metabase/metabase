@@ -130,10 +130,14 @@
   "A serialized query names cards, tables, fields and snippets by entity ID or by path. A numeric ID names a row on one
   instance only, and the dependency checks, which read entity IDs, don't see it."
   [{:keys [path entity]}]
-  (let [numeric? (volatile! false)]
+  (let [numeric?  (volatile! false)
+        ;; a card as a source table, in the older form
+        card-ref? (fn [x] (and (string? x) (re-matches #"card__\d+" x)))]
     (walk/postwalk (fn [x]
                      (when (or (and (map? x)
-                                    (some #(integer? (get x %)) [:source-card :source-table :card-id :snippet-id :table-id]))
+                                    (or (some #(integer? (get x %))
+                                              [:source-card :source-table :card-id :snippet-id :table-id :source-field :database])
+                                        (card-ref? (:source-table x))))
                                (and (vector? x)
                                     (or (string? (first x)) (keyword? (first x)))
                                     (contains? #{"field" "metric" "segment" "measure"} (name (first x)))
@@ -142,7 +146,7 @@
                      x)
                    (select-keys entity [:dataset_query :query]))
     (when @numeric?
-      [(problem path (tru "{0} must not reference a card, table, field or snippet by numeric ID." path))])))
+      [(problem path (tru "{0} must not reference a card, table, field, snippet or database by numeric ID." path))])))
 
 (defn- duplicate-problems [resources]
   (for [[[model entity-id] files] (group-by (juxt :model (comp :entity_id :entity)) resources)
@@ -198,7 +202,9 @@
   [{:keys [path] :as file}]
   (let [table-id (fn [[db-name schema table-name]]
                    (some-> (models.db/database-id-by-name db-name)
-                           (as-> database-id (models.db/table-id-by-name table-name schema database-id))))]
+                           (as-> database-id (models.db/table-id-by-name table-name schema database-id))
+                           ;; an inactive table is one that sync no longer finds, or a placeholder
+                           (as-> id (when (data-apps.db/active-table? id) id))))]
     (for [[kind [db-name schema table-name & field-names :as ref]] (sort-by second (portable-refs (:entity file)))
           :when (or (nil? (table-id [db-name schema table-name]))
                     (and (= kind :field)
@@ -208,22 +214,39 @@
 
 (defn- ownership-problems
   "Serdes would update any row carrying an entity ID a file names, so a file may only name what this app owns:
-  the collection its manifest names, if it exists, must be a data app's collection that no other app owns, and
-  existing cards and actions must be in it."
+  the collection its manifest names, if it exists, must be the collection the app has, or one of the namespace that
+  no app owns, and existing cards and actions must be in it."
   [app-entity-id manifest-path collection-entity-id resources]
   (let [app               (data-apps.db/data-app-by-entity-id app-entity-id)
         app-collection-id (:resource_collection_id app)
+        collections       (data-apps.db/collections-by-entity-ids [collection-entity-id])
         ;; a collection on the instance that no app owns, or this app owns, may be the app's; another app's may not
         owned?            (fn [collection-id]
                             (or (= app-collection-id collection-id)
                                 (not (data-apps.db/resource-collection-owned? collection-id))))
+        ;; a collection of the namespace that no app owns is the app's to claim with what it holds: what an earlier
+        ;; pull loaded into it before the app itself failed to load
+        claimable-id      (when (nil? app-collection-id)
+                            (some (fn [{:keys [id] collection-namespace :namespace}]
+                                    (when (and (= :data-apps (keyword collection-namespace))
+                                               (not (data-apps.db/resource-collection-owned? id)))
+                                      id))
+                                  collections))
+        in-collection?    (fn [collection-id]
+                            (or (and (some? app-collection-id) (= app-collection-id collection-id))
+                                (and (some? claimable-id) (= claimable-id collection-id))))
         entity-ids-of     (fn [model]
                             (into [] (comp (filter (comp #{model} :model)) (map (comp :entity_id :entity))) resources))
         file-of           (fn [model entity-id]
                             (some #(when (and (= model (:model %)) (= entity-id (:entity_id (:entity %)))) (:path %))
                                   resources))]
     (concat
-     (for [{:keys [id entity_id] collection-namespace :namespace} (data-apps.db/collections-by-entity-ids [collection-entity-id])
+     ;; the app's hooks refuse a change of collection, but only after the load has moved what it reached first
+     (when (and (some? app-collection-id) (not-any? #(= app-collection-id (:id %)) collections))
+       [(problem manifest-path
+                 (tru "{0} names collection {1}, but the app already has a collection, and a data app''s collection cannot be changed."
+                      manifest-path collection-entity-id))])
+     (for [{:keys [id entity_id] collection-namespace :namespace} collections
            :let  [message (cond
                             (not= :data-apps (keyword collection-namespace))
                             (tru "Collection {0} already exists outside the data-apps namespace, so it can''t become a data app''s collection. Give the app a collection of its own: a new entity ID in data_app.yaml and in the collection''s file."
@@ -237,7 +260,7 @@
      (for [[model rows] [["Card"   (data-apps.db/cards-by-entity-ids (entity-ids-of "Card"))]
                          ["Action" (data-apps.db/actions-by-entity-ids (entity-ids-of "Action"))]]
            {:keys [entity_id collection_id]} rows
-           :when (not (and (some? app-collection-id) (= app-collection-id collection_id)))]
+           :when (not (in-collection? collection_id))]
        (problem (file-of model entity_id)
                 (tru "{0} {1} already exists outside this data app''s collection, so the app can''t load it. Move it back if it belongs to this app."
                      model entity_id))))))
@@ -309,6 +332,34 @@
           {:keys [path]} defined-by]
       (problem path (tru "{0} {1} is defined by more than one data app: {2}." model entity-id (str/join ", " (map :path defined-by)))))))
 
+(defn- shared-entity-id-problems
+  "Two manifests can't carry one entity ID: a load keeps one app, and the other's collection is left with no owner."
+  [manifests]
+  (for [[entity-id carried-by] (group-by (comp :entity_id :entity) manifests)
+        :when (and entity-id (< 1 (count carried-by)))
+        {:keys [path]} carried-by]
+    (problem path (tru "{0} has the entity ID {1}, which another data app also has." path entity-id))))
+
+(defn- child-collection-problems
+  "A data app's collection holds no collections, and a load would refuse one only after it had started."
+  [manifests files]
+  (let [app-collections (into #{} (keep (comp :collection :entity)) manifests)]
+    (for [{:keys [path entity]} files
+          :when (and (= "Collection" (model-of entity)) (contains? app-collections (:parent_id entity)))]
+      (problem path (tru "{0} is a collection inside a data app''s collection, which can''t hold one." path)))))
+
+(defn- deleted-app-problems
+  "An app on this instance that `manifests` no longer hold is deleted by the pull, and its hook deletes its collection
+  with what it holds, so the files of that collection can't stay behind in the repository."
+  [manifests files]
+  (let [held (into #{} (keep (comp :entity_id :entity)) manifests)]
+    (for [{:keys [entity_id collection_entity_id] slug :name} (data-apps.db/data-apps-and-collection-entity-ids)
+          :when (not (contains? held entity_id))
+          {:keys [path]} (app-resources collection_entity_id files)]
+      (problem path
+               (tru "{0} belongs to the collection of data app {1}, which the commit no longer holds. Delete an app''s collection files with its directory, or put the directory back."
+                    path slug)))))
+
 (defn- defined-dependencies
   "The `[model entity-id]` of each snippet, segment and measure that `files` load: a resource that names one counts
   it as present, since the same pull brings it."
@@ -323,9 +374,16 @@
   snapshot), each as `{:file :message}`. An app whose resources have a problem can't be loaded as the author meant
   it, so an import that sees one fails naming the file."
   [files]
-  (let [manifests (filter (comp #{"DataApp"} model-of :entity) files)
+  (let [manifests (filter #(or (= "DataApp" (model-of (:entity %)))
+                               ;; a manifest by its path too: one that doesn't say what it is would be skipped by
+                               ;; the load, and the app deleted as no longer in the repository
+                               (re-matches #"data_apps/[^/]+/data_app\.yaml" (:path %)))
+                          files)
         defined   (defined-dependencies files)]
     (concat
+     (shared-entity-id-problems manifests)
      (shared-collection-problems manifests)
      (shared-resource-problems manifests files)
+     (child-collection-problems manifests files)
+     (deleted-app-problems manifests files)
      (mapcat #(app-problems defined % files) manifests))))

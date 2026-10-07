@@ -25,7 +25,7 @@
         (mt/with-temp [:model/Collection {ancestor-id :id} {:name "Filed under" :location "/"}]
           (let [app (create-data-app! "wrens")
                 {:keys [resource_collection_id]} (data-app.resources/ensure-resources! app)]
-            (is (thrown-with-msg? clojure.lang.ExceptionInfo #"same namespace as its parent"
+            (is (thrown-with-msg? clojure.lang.ExceptionInfo #"cannot move a data app's collection"
                                   (collection/move-collection!
                                    (t2/select-one :model/Collection :id resource_collection_id)
                                    (collection/children-location (t2/select-one :model/Collection :id ancestor-id)))))

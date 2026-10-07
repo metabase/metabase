@@ -42,7 +42,8 @@
                     (spec/data-apps-namespace-collection?
                      {:namespace (if (and (map? collection) (contains? collection :namespace))
                                    (:namespace collection)
-                                   (remote-sync.db/collection-namespace (u/the-id collection)))}))))))
+                                   ;; the root collection has no ID, and nothing in it is synced
+                                   (some-> (u/id collection) remote-sync.db/collection-namespace))}))))))
 
 (defenterprise table-editable?
   "Determines if a table's metadata should be editable.

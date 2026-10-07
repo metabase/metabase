@@ -160,7 +160,13 @@
         (check-implicit-action-model model-id)
         (check-implicit-actions-supported action))
       (when (some #(contains? (t2/changes <>) %) [:collection_id :model_id])
-        (check-collection-content <>)))))
+        (check-collection-content <>))
+      ;; an export leaves out an archived action, and the next pull would then delete it from every instance
+      (when (and (changed? :archived)
+                 (:archived <>)
+                 (some? (:collection_id <>))
+                 (contains? (set (perms/data-app-collection-ids)) (:collection_id <>)))
+        (throw (ex-info (tru "An action in a data app''s collection can''t be archived.") {:status-code 400}))))))
 
 (defn- set-query-database
   "`query-action` with the `:database_id` of its query, when it has one."

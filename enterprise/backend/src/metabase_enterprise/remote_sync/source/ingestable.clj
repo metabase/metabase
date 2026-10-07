@@ -50,7 +50,7 @@
     (when (seq problems)
       (throw (ex-info (str/join " " (map (fn [{:keys [file message]}] (format "Invalid data app file %s: %s" file message))
                                          problems))
-                      {:files (mapv :file problems)})))))
+                      {:files (mapv :file problems) :error ::invalid-data-app-files})))))
 
 (defn- ingest-all
   "Returns {:entities {stripped-hierarchy {:content <yaml-string> :path <repo-path>}}, :errors [Exception...]}.

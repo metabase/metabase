@@ -304,3 +304,87 @@
           (refused (native {:type "snippet" :snippet-name "s" :snippet-id 1})))
         (testing "a table template tag"
           (refused (native {:type "table" :table-id (mt/id :venues)})))))))
+
+(deftest refuses-more-references-by-numeric-id-test
+  (testing "a card as the source table in the older form, the source field of a field reference, and a database"
+    (mt/with-temp [:model/Card {other-id :id} {:dataset_query {:database (mt/id)
+                                                               :type     :query
+                                                               :query    {:source-table (mt/id :venues)}}}]
+      (let [refused (fn [f]
+                      (is (some #(str/includes? % "numeric ID")
+                                (messages (edit-file (shop (question-resources)) question-path f)))))]
+        (refused #(assoc-in % [:dataset_query :stages 0 :source-table] (str "card__" other-id)))
+        (refused #(assoc-in % [:dataset_query :stages 0 :fields]
+                            [["field" {:source-field (mt/id :venues :category_id)} "NAME"]]))
+        (refused #(assoc-in % [:dataset_query :database] (mt/id)))))))
+
+(deftest refuses-a-change-of-the-apps-collection-test
+  (testing "the app's hooks refuse a change of collection, but only after the load has moved what it reached first"
+    (mt/with-temp [:model/Collection {collection-id :id} {:entity_id collection-eid :name "Mine" :namespace :data-apps}
+                   :model/DataApp    _ {:name "shop" :display_name "Shop" :bundle_path "index.js"
+                                        :entity_id (data-apps.tu/app-entity-id "shop")
+                                        :resource_collection_id collection-id}]
+      (let [other-eid (data-apps.tu/collection-entity-id "other")
+            resources (data-apps.tu/build-resources collection-name other-eid
+                                                    [{:entity_id question-eid :name "VenuesList" :query (venues-query)}]
+                                                    [])]
+        (is (some #(str/includes? % "a data app's collection cannot be changed")
+                  (messages (shop resources :collection other-eid))))
+        (testing "the collection the app has is fine"
+          (is (= [] (messages (shop (question-resources))))))))))
+
+(deftest refuses-a-manifest-that-doesnt-say-what-it-is-test
+  (testing "a data_app.yaml without serdes/meta would be skipped by the load, and the app deleted as no longer in the
+            repository"
+    (is (some #(str/includes? % "must hold a single DataApp whose serdes/meta ID is its entity_id")
+              (messages (edit-file (shop nil) "data_apps/shop/data_app.yaml" #(dissoc % :serdes/meta)))))))
+
+(deftest refuses-two-manifests-with-one-entity-id-test
+  (testing "a load keeps one app, and the other's collection is left with no owner"
+    (let [tree (merge (shop (question-resources))
+                      (data-apps.tu/app-files "shop2" {:name "Shop 2" :path "index.js" :bundle "B"
+                                                       :entity_id (data-apps.tu/app-entity-id "shop")}))]
+      (is (= 2 (count (filter #(str/includes? % "which another data app also has") (messages tree))))))))
+
+(deftest accepts-what-a-failed-pull-left-in-the-collection-the-app-claims-test
+  (testing "a card loaded into the app's collection before the app itself failed to load is the app's to claim"
+    (mt/with-temp [:model/Collection {collection-id :id} {:entity_id collection-eid :name "Mine" :namespace :data-apps}
+                   :model/Card       _ {:name "Left behind" :entity_id question-eid :collection_id collection-id}]
+      (is (= [] (messages (shop (question-resources)))))
+      (testing "but not one in another collection of the namespace"
+        (mt/with-temp [:model/Collection {other-id :id} {:name "Other" :namespace :data-apps}]
+          (t2/update! :model/Card :entity_id question-eid {:collection_id other-id})
+          (is (some #(str/includes? % "already exists outside this data app's collection")
+                    (messages (shop (question-resources))))))))))
+
+(deftest refuses-a-table-that-is-inactive-test
+  (testing "an inactive table is one that sync no longer finds, so the app's query would run against nothing"
+    (let [resources (question-resources)]
+      (mt/with-temp-vals-in-db :model/Table (mt/id :venues) {:active false}
+        (is (some #(str/includes? % "which does not exist on this instance") (messages (shop resources))))))))
+
+(deftest refuses-a-collection-inside-the-apps-collection-test
+  (testing "a data app's collection holds no collections, and a load would refuse one only after it had started"
+    (let [inner "innerCollectionEnt01"
+          tree  (assoc (shop (question-resources))
+                       (str collection-dir "inner.yaml")
+                       (yaml/generate-string {:serdes/meta [{:model "Collection" :id inner :label "inner"}]
+                                              :entity_id   inner
+                                              :name        "Inner"
+                                              :namespace   "data-apps"
+                                              :parent_id   collection-eid}))]
+      (is (some #(str/includes? % "is a collection inside a data app's collection") (messages tree))))))
+
+(deftest refuses-the-collection-files-of-an-app-the-commit-no-longer-holds-test
+  (testing "the pull would delete the app, whose hook deletes the collection with what it holds, while the files remain"
+    (mt/with-temp [:model/Collection {collection-id :id} {:entity_id collection-eid :name "Mine" :namespace :data-apps}
+                   :model/DataApp    _ {:name "shop" :display_name "Shop" :bundle_path "index.js"
+                                        :entity_id (data-apps.tu/app-entity-id "shop")
+                                        :resource_collection_id collection-id}]
+      (let [tree (dissoc (shop (question-resources)) "data_apps/shop/data_app.yaml" "data_apps/shop/index.js")]
+        (is (= 2 (count (filter #(str/includes? % "which the commit no longer holds") (messages tree))))
+            "the collection's file and the card's")
+        (testing "with the app's directory the files are the app's"
+          (is (= [] (messages (shop (question-resources))))))
+        (testing "a commit that deletes the directory and the collection's files is a deletion"
+          (is (= [] (messages {}))))))))

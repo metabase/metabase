@@ -142,6 +142,10 @@
           (instance? java.net.UnknownHostException (ex-cause e)))
       "Network error: Unable to reach git repository host"
 
+      ;; the validator names a file, whose path may hold any word the matches below look for
+      (= (:error (ex-data e)) :metabase-enterprise.remote-sync.source.ingestable/invalid-data-app-files)
+      (str "Failed to reload from git repository: " message)
+
       (str/includes? message "Authentication failed")
       "Authentication failed: Please check your git credentials"
 
@@ -1211,7 +1215,9 @@
             (remote-sync.task/set-version! task-id version))
           (doseq [removed-ids (partition-all 500 (find-departed-entities export-rows))]
             (remote-sync.db/delete-rsos! removed-ids))
-          (mark-rows-synced! (remote-sync.db/all-rso-ids) synced sync-timestamp))
+          (mark-rows-synced! (remote-sync.db/all-rso-ids) synced sync-timestamp)
+          ;; editing a resource and exporting is how an app changes here, and the tables it reads with it
+          (data-apps/record-table-dependencies!))
         (if (= version :remote-sync/empty-commit)
           (do
             (log/info "Remote sync full export: re-serialized content matches remote; skipped empty commit")
@@ -1244,7 +1250,8 @@
         ;; delete departed rows first, then update RSO metadata — same order as full-export!
         (doseq [removed-ids (partition-all 500 removed-ids)]
           (remote-sync.db/delete-rsos! removed-ids))
-        (mark-rows-synced! (map :id synced) synced sync-timestamp))
+        (mark-rows-synced! (map :id synced) synced sync-timestamp)
+        (data-apps/record-table-dependencies!))
       (if (= version :remote-sync/empty-commit)
         (do (log/info "Remote sync incremental export: nothing changed; skipped empty commit")
             {:status :success :outcome {:kind "push-skipped"}})

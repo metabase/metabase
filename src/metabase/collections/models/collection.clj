@@ -1856,6 +1856,9 @@
                        :new-location new-location})))
     (when (= (:type collection) tenant-specific-root-collection-type)
       (throw (ex-info "Can't move a tenant collection" {:status-code 400})))
+    ;; an export writes a data app's collection under another as a file every pull refuses
+    (when (contains? (set (perms/data-app-collection-ids)) (:id collection))
+      (throw (ex-info "You cannot move a data app's collection." {:status-code 400})))
     ;; first move this Collection
     (log/infof "Moving Collection %s and its descendants from %s to %s"
                (u/the-id collection) (:location collection) new-location)
@@ -2079,11 +2082,12 @@
     (api/check
      (not (is-trash? collection-before-updates))
      [400 "You cannot modify the Trash Collection."])
-    ;; an export leaves out a trashed collection, which would delete the app's resource files
+    ;; an export leaves out a trashed collection, which would delete the app's resource files, and writes an
+    ;; official one into a file every pull refuses
     (api/check
-     (not (and (:archived collection-updates)
+     (not (and (or (:archived collection-updates) (some? (:authority_level collection-updates)))
                (contains? (set (perms/data-app-collection-ids)) (:id collection-before-updates))))
-     [400 "You cannot move a data app's collection to the trash."])
+     [400 "You cannot move a data app's collection to the trash or make it official."])
     ;; VARIOUS CHECKS BEFORE DOING ANYTHING:
     ;; (1) if this is a personal Collection, check that the 'propsed' changes are allowed
     (when (or (:personal_owner_id collection-before-updates)

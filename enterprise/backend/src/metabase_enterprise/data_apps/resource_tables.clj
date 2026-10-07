@@ -11,13 +11,25 @@
 
 (set! *warn-on-reflection* true)
 
+(defn- without-optional-brackets
+  "`sql` with each optional clause kept as the SQL it holds: a parser reads neither `[[` nor `]]`, and a table named
+  inside a clause is read like one outside. A template tag is written back as it is."
+  [sql]
+  (letfn [(render [token]
+            (cond
+              (string? token)                                token
+              (= :metabase.lib.parse/optional (:type token)) (apply str (map render (:contents token)))
+              :else                                          (str "{{" (:name token) "}}")))]
+    (apply str (map render (lib/parse {} sql)))))
+
 (defn- native-table-ids
   "The tables a native query names in its SQL, as its driver's parser reads them, and in its table template tags."
   [{database-id :database, :as query}]
-  (into (data-apps.db/table-ids-named database-id
-                                      (driver/native-query-table-refs (driver.u/database->driver database-id) query))
-        (map :table)
-        (lib/native-query-table-references query)))
+  (let [parseable (lib/with-native-query query (without-optional-brackets (lib/raw-native-query query)))]
+    (into (data-apps.db/table-ids-named database-id
+                                        (driver/native-query-table-refs (driver.u/database->driver database-id) parseable))
+          (map :table)
+          (lib/native-query-table-references query))))
 
 (defn- query-table-ids [dataset-query]
   (let [query (lib/query (lib-be/application-database-metadata-provider (:database dataset-query)) dataset-query)]
