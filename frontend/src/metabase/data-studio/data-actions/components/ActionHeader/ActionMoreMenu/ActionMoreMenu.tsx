@@ -52,14 +52,12 @@ export function ActionMoreMenu({ action }: ActionMoreMenuProps) {
           </ActionIcon>
         </Menu.Target>
         <Menu.Dropdown>
-          {action.model_id == null && (
-            <Menu.Item
-              leftSection={<Icon name="move" />}
-              onClick={() => setIsMoveModalOpened(true)}
-            >
-              {t`Move`}
-            </Menu.Item>
-          )}
+          <Menu.Item
+            leftSection={<Icon name="move" />}
+            onClick={() => setIsMoveModalOpened(true)}
+          >
+            {t`Move`}
+          </Menu.Item>
           <Menu.Item
             leftSection={<Icon name="archive" />}
             onClick={handleArchiveClick}

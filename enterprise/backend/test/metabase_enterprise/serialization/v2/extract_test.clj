@@ -235,9 +235,8 @@
                        :model/Action
                        {action-id  :id
                         action-eid :entity_id}
-                       {:name     "Some action"
-                        :type     :query
-                        :model_id model-id}
+                       {:name "Some action"
+                        :type :query}
                        :model/Dashboard
                        {dash-id  :id
                         dash-eid :entity_id}
@@ -1071,8 +1070,7 @@
                                                      :email      "ann@heart.band"}
                        :model/Database {db-id :id :as db} {:name "My Database"}]
       (mt/with-db db
-        (mt/with-actions [{card-id-1  :id
-                           card-eid-1 :entity_id}
+        (mt/with-actions [_
                           {:name          "Source question"
                            :database_id   db-id
                            :type          :model
@@ -1084,8 +1082,7 @@
                            :type          :query
                            :dataset_query {:type "native", :native {:query "select 1"}, :database db-id}
                            :database_id   db-id
-                           :creator_id    ann-id
-                           :model_id      card-id-1}]
+                           :creator_id    ann-id}]
           (let [action (action/select-action :id action-id)]
             (testing "action"
               (let [ser (ts/extract-one "Action" action-id)]
@@ -1098,13 +1095,12 @@
                          :query       [{:dataset_query {:database "My Database"
                                                         :lib/type :mbql/query
                                                         :stages   [{:lib/type :mbql.stage/native
-                                                                    :native   "select 1"}]}}]
-                         :model_id    card-eid-1}
+                                                                    :native   "select 1"}]}}]}
                         ser))
+                (is (not (contains? ser :model_id)))
                 (is (not (contains? ser :id)))
-                (testing "depends on the Model and Database"
-                  (is (= #{[{:model "Database" :id "My Database"}]
-                           [{:model "Card" :id card-eid-1}]}
+                (testing "depends on the Database only"
+                  (is (= #{[{:model "Database" :id "My Database"}]}
                          (set (serdes/deserialization-dependencies ser)))))))))))))
 
 (deftest field-values-test

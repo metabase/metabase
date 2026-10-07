@@ -2501,14 +2501,14 @@
 (deftest delete-model-publishes-action-delete-events-test
   (testing "GHY-4722: deleting a model announces the deletion of each of its actions, which the database removes with it"
     (mt/with-temp [:model/Card   {model-id :id} {:type :model :dataset_query (mt/mbql-query venues)}
-                   :model/Action {query :id}    {:type :query :name "Rename" :model_id model-id}
-                   :model/Action {archived :id} {:type :query :name "Old" :model_id model-id :archived true}]
+                   :model/Action {implicit :id} {:type :implicit :name "Create" :model_id model-id}
+                   :model/Action {archived :id} {:type :implicit :name "Old" :model_id model-id :archived true}]
       (let [published (atom #{})]
         (mt/with-dynamic-fn-redefs [events/publish-event! (fn [topic {:keys [object]}]
                                                             (when (= :event/action-delete topic)
                                                               (swap! published conj (:id object))))]
           (mt/user-http-request :crowberto :delete 204 (str "card/" model-id)))
-        (is (= #{query archived} @published))))))
+        (is (= #{implicit archived} @published))))))
 
 ;; deleting a card that doesn't exist should return a 404 (#1957)
 (deftest deleting-a-card-that-doesnt-exist-should-return-a-404---1957-
@@ -3186,8 +3186,8 @@
                    :model/Collection new-collection {}
                    :model/Card       model-1        {:type :model :collection_id (u/the-id old-collection)}
                    :model/Card       model-2        {:type :model :collection_id (u/the-id old-collection)}
-                   :model/Action     action-1       {:type :query :name "One" :model_id (u/the-id model-1)}
-                   :model/Action     action-2       {:type :query :name "Two" :model_id (u/the-id model-2)}]
+                   :model/Action     action-1       {:type :implicit :name "One" :model_id (u/the-id model-1)}
+                   :model/Action     action-2       {:type :implicit :name "Two" :model_id (u/the-id model-2)}]
       (POST-card-collections! :crowberto 200 new-collection [model-1 model-2])
       (is (= #{(u/the-id new-collection)}
              (t2/select-fn-set :collection_id :model/Action :id [:in [(u/the-id action-1) (u/the-id action-2)]]))))))

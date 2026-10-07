@@ -212,26 +212,13 @@ describe("scenarios > admin > settings > public sharing", () => {
     H.setActionsEnabledForDB(SAMPLE_DB_ID);
     const expectedActionName = "Public action";
 
-    H.createQuestion({
-      name: "Model",
-      query: {
-        "source-table": ORDERS_ID,
-      },
-      type: "model",
+    H.createAction({
+      ...DEFAULT_ACTION_DETAILS,
+      name: expectedActionName,
+      collection_id: null,
     }).then(({ body }) => {
-      const modelId = body.id;
-      cy.wrap(modelId).as("modelId");
-    });
-
-    cy.get("@modelId").then((modelId) => {
-      H.createAction({
-        ...DEFAULT_ACTION_DETAILS,
-        name: expectedActionName,
-        model_id: modelId,
-      }).then(({ body }) => {
-        const actionId = body.id;
-        cy.wrap(actionId).as("actionId");
-      });
+      const actionId = body.id;
+      cy.wrap(actionId).as("actionId");
     });
 
     cy.get("@actionId")
@@ -269,11 +256,11 @@ describe("scenarios > admin > settings > public sharing", () => {
       cy.findByText(expectedActionName).click();
       cy.url().should(
         "eq",
-        `${location.origin}/model/${this.modelId}/detail/actions/${this.actionId}`,
+        `${location.origin}/data-studio/data-actions/${this.actionId}`,
       );
-      cy.findByRole("dialog").within(() => {
-        cy.findByText(expectedActionName).should("be.visible");
-      });
+      cy.findByTestId("action-header")
+        .findByDisplayValue(expectedActionName)
+        .should("be.visible");
       cy.visit("/admin/settings/public-sharing");
     });
 

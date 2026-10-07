@@ -7,18 +7,12 @@ import {
   useListActionsQuery,
   useListDatabasesQuery,
 } from "metabase/api";
-import { useSetArchive } from "metabase/archive/hooks";
-import { Link } from "metabase/common/components/Link";
 import { useConfirmation } from "metabase/common/hooks/use-confirmation";
 import { ActionIcon, Alert, Button, Icon, Menu } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { parseTimestamp } from "metabase/utils/time-dayjs";
 import type Question from "metabase-lib/v1/Question";
-import {
-  canArchiveAction,
-  canEditAction,
-  canRunAction,
-} from "metabase-lib/v1/actions/utils";
+import { canEditAction, canRunAction } from "metabase-lib/v1/actions/utils";
 import type { Database, WritebackAction } from "metabase-types/api";
 
 import {
@@ -51,12 +45,6 @@ function ModelActionDetails({ model }: Props) {
   const onDeleteAction = useCallback(
     (action: WritebackAction) => deleteAction(action.id),
     [deleteAction],
-  );
-  const archive = useSetArchive();
-  const onArchiveAction = useCallback(
-    (action: WritebackAction) =>
-      archive({ id: action.id, model: "action" }, true),
-    [archive],
   );
   const { show: askConfirmation, modalContent: confirmationModal } =
     useConfirmation();
@@ -103,48 +91,41 @@ function ModelActionDetails({ model }: Props) {
             actionUrl={actionUrl}
             canRun={canRunAction(action, databases)}
             canEdit={canEditAction(action, model)}
-            canArchive={canArchiveAction(action, model)}
-            onArchive={onArchiveAction}
           />
         </li>
       );
     },
-    [model, databases, onArchiveAction],
+    [model, databases],
   );
-
-  const newActionUrl = Urls.newAction(model.card());
 
   return (
     <Root data-testid="model-action-details">
-      {canWrite && (
+      {canWrite && hasActionsMenu && (
         <ActionsHeader data-testid="model-actions-header">
-          <Button component={Link} to={newActionUrl}>{t`New action`}</Button>
-          {hasActionsMenu && (
-            <Menu position="bottom-end">
-              <Menu.Target>
-                <ActionIcon aria-label={t`Actions`} variant="subtle" ml="sm">
-                  <Icon name="ellipsis" />
-                </ActionIcon>
-              </Menu.Target>
-              <Menu.Dropdown>
-                {hasImplicitActions ? (
-                  <Menu.Item
-                    leftSection={<Icon name="bolt" aria-hidden />}
-                    onClick={onDeleteImplicitActions}
-                  >
-                    {t`Disable basic actions`}
-                  </Menu.Item>
-                ) : (
-                  <Menu.Item
-                    leftSection={<Icon name="bolt" aria-hidden />}
-                    onClick={onEnableImplicitActions}
-                  >
-                    {t`Create basic actions`}
-                  </Menu.Item>
-                )}
-              </Menu.Dropdown>
-            </Menu>
-          )}
+          <Menu position="bottom-end">
+            <Menu.Target>
+              <ActionIcon aria-label={t`Actions`} variant="subtle" ml="sm">
+                <Icon name="ellipsis" />
+              </ActionIcon>
+            </Menu.Target>
+            <Menu.Dropdown>
+              {hasImplicitActions ? (
+                <Menu.Item
+                  leftSection={<Icon name="bolt" aria-hidden />}
+                  onClick={onDeleteImplicitActions}
+                >
+                  {t`Disable basic actions`}
+                </Menu.Item>
+              ) : (
+                <Menu.Item
+                  leftSection={<Icon name="bolt" aria-hidden />}
+                  onClick={onEnableImplicitActions}
+                >
+                  {t`Create basic actions`}
+                </Menu.Item>
+              )}
+            </Menu.Dropdown>
+          </Menu>
         </ActionsHeader>
       )}
       {database && !hasActionsEnabled && (
@@ -182,7 +163,7 @@ function NoActionsState({
   return (
     <EmptyStateContainer>
       <EmptyStateTitle>{t`No actions have been created yet.`}</EmptyStateTitle>
-      <EmptyStateMessage>{t`Get started quickly with some basic actions to create, edit and delete, or create your own from scratch.`}</EmptyStateMessage>
+      <EmptyStateMessage>{t`Get started quickly with some basic actions to create, edit and delete.`}</EmptyStateMessage>
       {hasCreateButton && (
         <EmptyStateActionContainer>
           <Button

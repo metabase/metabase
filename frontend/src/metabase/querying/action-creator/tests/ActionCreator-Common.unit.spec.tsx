@@ -7,7 +7,6 @@ import { getBeforeUnloadUnsavedMessage } from "metabase/common/hooks/use-before-
 import {
   createMockActionParameter,
   createMockImplicitQueryAction,
-  createMockQueryAction,
 } from "metabase-types/api/mocks";
 
 import type { SetupOpts } from "./common";
@@ -22,10 +21,9 @@ async function setup({
 }
 
 describe("ActionCreator > Common", () => {
-  describe.each([
-    ["query", createMockQueryAction],
-    ["implicit", createMockImplicitQueryAction],
-  ])(`%s actions`, (_, getAction) => {
+  describe("implicit actions", () => {
+    const getAction = createMockImplicitQueryAction;
+
     describe("with write permissions", () => {
       afterEach(() => {
         jest.resetAllMocks();

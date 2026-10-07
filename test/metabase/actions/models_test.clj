@@ -20,10 +20,10 @@
 (deftest hydrate-query-action-test
   (mt/test-drivers (mt/normal-drivers-with-feature :actions/custom)
     (mt/with-actions-test-data-and-actions-enabled
-      (mt/with-actions [{:keys [model-id action-id] :as _context} {:type :query}]
+      (mt/with-actions [{:keys [action-id] :as _context} {:type :query}]
         (is (partial= {:id action-id
                        :name "Query Example"
-                       :model_id model-id
+                       :model_id nil
                        :database_id (mt/id)
                        :parameters [{:id "id" :type :number}]}
                       (action/select-action :id action-id)))))))
@@ -146,10 +146,10 @@
 (deftest hydrate-creator-test
   (mt/test-drivers (mt/normal-drivers-with-feature :actions/custom)
     (mt/with-actions-test-data-and-actions-enabled
-      (mt/with-actions [{:keys [model-id action-id] :as _context} {}]
+      (mt/with-actions [{:keys [action-id] :as _context} {}]
         (is (partial= {:id action-id
                        :name "Query Example"
-                       :model_id model-id
+                       :model_id nil
                        :creator_id (mt/user->id :crowberto)
                        :creator {:common_name "Crowberto Corv"}
                        :parameters [{:id "id" :type :number}]}
@@ -158,7 +158,7 @@
 (deftest hydrate-model-test
   (mt/test-drivers (mt/normal-drivers-with-feature :actions/custom)
     (mt/with-actions-test-data-and-actions-enabled
-      (mt/with-actions [{:keys [model-id action-id] :as _context} {}]
+      (mt/with-actions [{:keys [model-id action-id] :as _context} {:type :implicit}]
         (let [action (t2/hydrate (action/select-action :id action-id) :model)]
           (is (some? (:model action)))
           (is (= (:id (:model action)) model-id)))))))
@@ -207,25 +207,35 @@
 
 (deftest query-action-database-id-derived-from-query-test
   (mt/with-actions-enabled
-    (mt/with-actions [{model-id :id, model-db-id :database_id} {:type :model, :dataset_query (mt/mbql-query categories)}]
+    (mt/with-model-cleanup [:model/Action]
       (testing "insert! derives :database_id from the query's database"
         (let [action-id (action/insert! (lib/normalize ::actions.schema/action.for-insert
                                                        {:type          :query
                                                         :name          "derive db insert"
-                                                        :model_id      model-id
-                                                        :database_id   Integer/MAX_VALUE   ; bogus; the query targets the model DB
+                                                        :database_id   Integer/MAX_VALUE   ; bogus; the query targets the test DB
                                                         :dataset_query (mt/native-query {:query "update categories set name = 'x' where id = 1"})}))]
-          (is (= model-db-id (:database_id (action/select-action :id action-id))))))
+          (is (= (mt/id) (:database_id (action/select-action :id action-id))))))
       (testing "update! re-derives :database_id from the query"
         (let [action-id (action/insert! (lib/normalize ::actions.schema/action.for-insert
                                                        {:type          :query
                                                         :name          "derive db update"
-                                                        :model_id      model-id
                                                         :dataset_query (mt/native-query {:query "update categories set name = 'x' where id = 1"})}))
               existing  (action/select-action :id action-id)]
           ;; a :database_id-only update can't repoint the action away from the query's database
           (action/update! {:id action-id, :database_id Integer/MAX_VALUE} existing)
-          (is (= model-db-id (:database_id (action/select-action :id action-id)))))))))
+          (is (= (mt/id) (:database_id (action/select-action :id action-id)))))))))
+
+(deftest query-action-cannot-belong-to-a-model-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :actions/custom)
+    (mt/with-actions-enabled
+      (mt/with-actions [{:keys [model-id action-id]} {:type :query}]
+        (testing "a query action cannot be inserted with a model"
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Only basic actions can belong to a model\."
+                                (t2/insert! :model/Action {:type :query, :name "With model", :model_id model-id}))))
+        (testing "a query action cannot be attached to a model"
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Only basic actions can belong to a model\."
+                                (t2/update! :model/Action action-id {:model_id model-id})))
+          (is (nil? (t2/select-one-fn :model_id :model/Action :id action-id))))))))
 
 (deftest query-action-without-model-test
   (mt/test-drivers (mt/normal-drivers-with-feature :actions/custom)
@@ -265,29 +275,24 @@
             (let [action-id (action/insert! (lib/normalize ::actions.schema/action.for-insert
                                                            {:type          :query
                                                             :name          "On a question"
-                                                            :model_id      question-id
                                                             :dataset_query (mt/native-query {:query "update categories set name = 'x' where id = 1"})}))]
               (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Actions must be made with models, not cards"
-                                    (action/update! {:id action-id :type :implicit :kind :row/update}
+                                    (action/update! {:id action-id :type :implicit :kind :row/update :model_id question-id}
                                                     (action/select-action :id action-id))))))))
       (testing "a query action cannot become implicit when its model has clauses"
-        (mt/with-actions [_                   {:type :model :dataset_query (mt/mbql-query categories {:limit 1})}
-                          {:keys [action-id]} {:type :query}]
+        (mt/with-actions [_                             {:type :model :dataset_query (mt/mbql-query categories {:limit 1})}
+                          {:keys [action-id model-id]} {:type :query}]
           (is (thrown-with-msg? clojure.lang.ExceptionInfo #"not supported for models with clauses"
-                                (action/update! {:id action-id :type :implicit :kind :row/update}
+                                (action/update! {:id action-id :type :implicit :kind :row/update :model_id model-id}
                                                 (action/select-action :id action-id)))))))))
 
 (deftest model-to-saved-question-test
   (mt/test-drivers (mt/normal-drivers-with-feature :actions/custom)
     (mt/with-actions-enabled
-      (testing "Non-implicit actions are archived directly, and their dashboard buttons deleted, if their model is converted to a saved question"
+      (testing "Query actions are left alone if their model is converted to a saved question"
         (mt/with-actions [{:keys [action-id model-id]} {:type :query}]
-          (mt/with-temp [:model/Dashboard     {dashboard-id :id} {}
-                         :model/DashboardCard {dashcard-id :id}  {:action_id action-id :dashboard_id dashboard-id}]
-            (is (false? (t2/select-one-fn :archived :model/Action action-id)))
-            (t2/update! :model/Card model-id {:type :question})
-            (is (= [true true] ((juxt :archived :archived_directly) (t2/select-one :model/Action :id action-id))))
-            (is (not (t2/exists? :model/DashboardCard :id dashcard-id))))))
+          (t2/update! :model/Card model-id {:type :question})
+          (is (= [false false] ((juxt :archived :archived_directly) (t2/select-one :model/Action :id action-id))))))
       (testing "Implicit actions are deleted if their model is converted to a saved question"
         (mt/with-actions [{:keys [action-id model-id]} {:type :implicit}]
           (is (false? (t2/select-one-fn :archived :model/Action action-id)))

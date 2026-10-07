@@ -70,6 +70,10 @@
    :parameters             transform-action-parameters
    :visualization_settings transform-action-visualization-settings})
 
+(t2/define-after-select :model/Action
+  [action]
+  (dissoc action :legacy_model_id))
+
 (t2/deftransforms :model/QueryAction
   {:dataset_query lib-be/transform-query})
 
@@ -96,6 +100,13 @@
     (throw (ex-info (tru "Actions must be made with models, not cards.")
                     {:status-code 400}))))
 
+(defn- check-query-action-model
+  "Throws a 400 when `action` belongs to a model but is not implicit."
+  [{model-id :model_id, :as action}]
+  (when (and model-id (not (implicit? action)))
+    (throw (ex-info (tru "Only basic actions can belong to a model.")
+                    {:status-code 400}))))
+
 (defn check-implicit-actions-supported
   "Throws a 400 when `action` is implicit and its model's query does not support implicit actions."
   [{model-id :model_id, :as action}]
@@ -119,6 +130,7 @@
   [{model-id :model_id, :as action}]
   (u/prog1 (cond-> (public-sharing/add-public-uuid-prefix action)
              model-id set-model-collection)
+    (check-query-action-model action)
     (when (implicit? action)
       (check-implicit-action-model model-id))
     (check-collection-content (:collection_id <>))))
@@ -129,6 +141,8 @@
     (u/prog1 (cond-> (public-sharing/add-public-uuid-prefix-if-changed action)
                (and model-id (changed? :model_id))
                set-model-collection)
+      (when (or (changed? :type) (changed? :model_id))
+        (check-query-action-model action))
       (when (and (implicit? action) (or (changed? :type) (changed? :model_id)))
         (check-implicit-action-model model-id)
         (check-implicit-actions-supported action))
@@ -560,7 +574,9 @@
 (defmethod serdes/make-spec "Action" [_model-name opts]
   {:copy      [:archived :archived_directly :description :entity_id :name :public_uuid]
    :skip      [;; always re-derived from public_uuid on import
-               :public_uuid_prefix]
+               :public_uuid_prefix
+               ;; only kept to roll back the migration that detached query actions from their models
+               :legacy_model_id]
    :transform {:created_at             (serdes/date)
                :type                   (serdes/kw)
                :creator_id             (serdes/fk :model/User)
@@ -577,7 +593,9 @@
    :defaults  {:archived false, :archived_directly false}})
 
 (defmethod serdes/load-one! "Action" [ingested maybe-local]
-  (when-not (= "http" (some-> (:type ingested) name))
+  (case (some-> (:type ingested) name)
+    "http"  nil
+    "query" (serdes/default-load-one! (dissoc ingested :model_id) maybe-local)
     (serdes/default-load-one! ingested maybe-local)))
 
 (defmethod serdes/deserialization-dependencies "Action" [action]
@@ -585,7 +603,7 @@
    (concat
     (when-let [collection-id (:collection_id action)]
       [[{:model "Collection" :id collection-id}]])
-    (when-let [model-id (:model_id action)]
+    (when-let [model-id (and (not= (:type action) "query") (:model_id action))]
       [[{:model "Card" :id model-id}]])
     ;; this method is called on ingested data before transformation, and so here it always will be a string
     (when (= (:type action) "query")

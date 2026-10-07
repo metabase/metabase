@@ -3,7 +3,6 @@ import {
   getFieldSettingsForFieldType,
 } from "metabase/actions/utils";
 import { hasNativeWritePermissions } from "metabase/common/utils/database";
-import { getTagTypeFromFieldSettings } from "metabase/querying/action-creator";
 import * as Lib from "metabase-lib";
 import { getTemplateTagParameters } from "metabase-lib/v1/parameters/utils/template-tags";
 import type {
@@ -13,6 +12,7 @@ import type {
   FieldSettings,
   FieldType,
   TemplateTag,
+  TemplateTagType,
   WritebackAction,
   WritebackParameter,
 } from "metabase-types/api";
@@ -23,6 +23,12 @@ export type ActionDefinition = Required<
     "database_id" | "dataset_query" | "parameters" | "visualization_settings"
   >
 >;
+
+const TAG_TYPE_BY_FIELD_TYPE: Record<FieldType, TemplateTagType> = {
+  string: "text",
+  number: "number",
+  date: "date",
+};
 
 export function getQueryParameters(query: Lib.Query): WritebackParameter[] {
   return getTemplateTagParameters(Object.values(Lib.templateTags(query)));
@@ -111,7 +117,7 @@ export function setTemplateTagFieldType(
     Object.entries(Lib.templateTags(query)).map(([name, tag]) => [
       name,
       tag.id === parameterId
-        ? { ...tag, type: getTagTypeFromFieldSettings(fieldType) }
+        ? { ...tag, type: TAG_TYPE_BY_FIELD_TYPE[fieldType] }
         : tag,
     ]),
   );

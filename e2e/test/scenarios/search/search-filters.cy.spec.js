@@ -124,25 +124,25 @@ describe("scenarios > search", () => {
           name: "Orders Model",
           query: { "source-table": ORDERS_ID },
           type: "model",
-        }).then(({ body: { id } }) => {
-          H.createAction({
-            name: "Update orders quantity",
-            description: "Set orders quantity to the same value",
-            type: "query",
-            model_id: id,
-            database_id: SAMPLE_DB_ID,
-            dataset_query: {
-              database: SAMPLE_DB_ID,
-              native: {
-                query: "UPDATE orders SET quantity = quantity",
-              },
-              type: "native",
+        });
+
+        H.createAction({
+          name: "Update orders quantity",
+          description: "Set orders quantity to the same value",
+          type: "query",
+          collection_id: null,
+          database_id: SAMPLE_DB_ID,
+          dataset_query: {
+            database: SAMPLE_DB_ID,
+            native: {
+              query: "UPDATE orders SET quantity = quantity",
             },
-            parameters: [],
-            visualization_settings: {
-              type: "button",
-            },
-          });
+            type: "native",
+          },
+          parameters: [],
+          visualization_settings: {
+            type: "button",
+          },
         });
 
         H.createQuestion(

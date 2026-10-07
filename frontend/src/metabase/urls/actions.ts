@@ -11,11 +11,6 @@ type ParentModelProps = {
   name?: string;
 };
 
-export function newAction(parentModel: ParentModelProps) {
-  const baseUrl = modelDetail(parentModel, "actions");
-  return `${baseUrl}/new`;
-}
-
 export function modelAction(
   parentModel: ParentModelProps,
   actionId: WritebackActionId,

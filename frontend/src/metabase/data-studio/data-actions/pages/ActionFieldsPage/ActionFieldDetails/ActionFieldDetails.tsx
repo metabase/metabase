@@ -2,8 +2,6 @@ import { useMemo } from "react";
 import { t } from "ttag";
 
 import { getFieldTypes, getInputTypes } from "metabase/actions/constants";
-import { textToOptions } from "metabase/actions/containers/ActionCreator/FormCreator/OptionEditor";
-import { getDefaultValueInputType } from "metabase/actions/containers/ActionCreator/FormCreator/utils";
 import {
   getFieldSettingsForFieldType,
   inputTypeHasOptions,
@@ -24,6 +22,8 @@ import {
 import type { FieldSettings, FieldType } from "metabase-types/api";
 
 import type { ActionField } from "../../../hooks/use-action-fields";
+
+import { getDefaultValueInputType, textToOptions } from "./utils";
 
 type ActionFieldDetailsProps = {
   field: ActionField;

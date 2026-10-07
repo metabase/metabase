@@ -18,3 +18,11 @@ export const sortAndGroupActions = (
 
   return sortedGroupedActions;
 };
+
+export const getSortedActionsWithoutModel = (
+  actions: WritebackAction[],
+): WritebackAction[] =>
+  _.sortBy(
+    actions.filter((action) => action.model_id == null),
+    (action) => action.name.toLowerCase(),
+  );

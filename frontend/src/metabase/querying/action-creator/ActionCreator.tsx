@@ -1,5 +1,4 @@
 import { ActionCreator as ActionCreatorContent } from "metabase/actions/containers/ActionCreator/ActionCreator";
-import type { DataReferenceSlot } from "metabase/actions/containers/ActionCreator/types";
 import {
   skipToken,
   useGetActionQuery,
@@ -10,21 +9,13 @@ import type {
   Card,
   CardId,
   Database,
-  DatabaseId,
   WritebackAction,
   WritebackActionId,
 } from "metabase-types/api";
 
-import { ActionContextProvider } from "./ActionContextProvider";
-import {
-  DataReferenceInline,
-  DataReferenceTriggerButton,
-} from "./InlineDataReference";
-
 export interface ActionCreatorProps {
   actionId?: WritebackActionId;
   modelId?: CardId;
-  databaseId?: DatabaseId;
 
   action?: WritebackAction;
   /**
@@ -37,15 +28,9 @@ export interface ActionCreatorProps {
   onClose?: () => void;
 }
 
-const DATA_REFERENCE: DataReferenceSlot = {
-  TriggerButton: DataReferenceTriggerButton,
-  Panel: DataReferenceInline,
-};
-
 export function ActionCreator({
   actionId,
   modelId,
-  databaseId,
   action,
   isRouted,
   onSubmit,
@@ -66,20 +51,18 @@ export function ActionCreator({
   // This is needed in case we already have an action and pass it from the outside
   const contextAction = action || initialAction;
 
+  if (contextAction?.type !== "implicit") {
+    return null;
+  }
+
   return (
-    <ActionContextProvider
-      initialAction={contextAction}
-      databaseId={databaseId}
-    >
-      <ActionCreatorContent
-        modelId={modelId}
-        canWriteModelActions={canWriteActions(model, modelDatabase)}
-        isRouted={isRouted}
-        dataReference={DATA_REFERENCE}
-        onSubmit={onSubmit}
-        onClose={onClose}
-      />
-    </ActionContextProvider>
+    <ActionCreatorContent
+      action={contextAction}
+      canWriteModelActions={canWriteActions(model, modelDatabase)}
+      isRouted={isRouted}
+      onSubmit={onSubmit}
+      onClose={onClose}
+    />
   );
 }
 

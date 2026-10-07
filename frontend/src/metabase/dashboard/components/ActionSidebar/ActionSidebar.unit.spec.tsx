@@ -11,6 +11,7 @@ import {
   screen,
   waitFor,
   waitForLoaderToBeRemoved,
+  within,
 } from "__support__/ui";
 import { MockDashboardContext } from "metabase/dashboard/context/mock-context";
 import type { DashCardId } from "metabase-types/api";
@@ -21,6 +22,7 @@ import {
   createMockDashboard,
   createMockDashboardCard,
   createMockDatabase,
+  createMockImplicitQueryAction,
   createMockQueryAction,
 } from "metabase-types/api/mocks";
 
@@ -36,7 +38,12 @@ const actionDashcardWithAction = createMockActionDashboardCard({
 const collectionItem = createMockCollectionItem({
   model: "dataset",
 });
-const modelCard = createMockCard();
+const modelCard = createMockCard({ id: collectionItem.id, type: "model" });
+const implicitAction = createMockImplicitQueryAction({
+  id: 10,
+  name: "Create",
+  model_id: modelCard.id,
+});
 const actionsDatabase = createMockDatabase({
   settings: { "database-enable-actions": true },
 });
@@ -51,7 +58,7 @@ const setup = ({
 } = {}) => {
   setupDatabasesEndpoints([actionsDatabase]);
   setupSearchEndpoints([collectionItem]);
-  setupActionsEndpoints([]);
+  setupActionsEndpoints([implicitAction]);
   setupCardsEndpoints([modelCard]);
 
   const vizUpdateSpy = jest.fn();
@@ -81,8 +88,12 @@ const navigateToActionCreatorModal = async () => {
   await screen.findByTestId("action-dashcard-settings");
   await waitForLoaderToBeRemoved();
   await userEvent.click(screen.getByText(collectionItem.name));
-  await userEvent.click(screen.getByText("Create new action"));
-  await waitForLoaderToBeRemoved();
+  await userEvent.click(
+    within(screen.getByTestId(`action-item-${implicitAction.name}`)).getByRole(
+      "button",
+    ),
+  );
+  await screen.findByTestId("action-creator");
 };
 
 describe("Dashboard > ActionSidebar", () => {
@@ -150,11 +161,7 @@ describe("Dashboard > ActionSidebar", () => {
 
       await userEvent.click(document.body);
 
-      const mockNativeQueryEditor = screen.getByTestId(
-        "mock-native-query-editor",
-      );
-
-      expect(mockNativeQueryEditor).toBeInTheDocument();
+      expect(screen.getByTestId("action-creator")).toBeInTheDocument();
     });
 
     it("should close modal when clicking 'Cancel'", async () => {
@@ -166,9 +173,7 @@ describe("Dashboard > ActionSidebar", () => {
       await userEvent.click(cancelButton);
 
       await waitFor(() =>
-        expect(
-          screen.queryByTestId("mock-native-query-editor"),
-        ).not.toBeInTheDocument(),
+        expect(screen.queryByTestId("action-creator")).not.toBeInTheDocument(),
       );
     });
   });

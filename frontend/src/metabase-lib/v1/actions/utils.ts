@@ -16,11 +16,3 @@ export const canEditAction = (action: WritebackAction, model: Question) => {
 
   return model.canWriteActions();
 };
-
-export const canArchiveAction = (action: WritebackAction, model: Question) => {
-  if (action.model_id !== model.id()) {
-    return false;
-  }
-
-  return action.type !== "implicit" && canEditAction(action, model);
-};

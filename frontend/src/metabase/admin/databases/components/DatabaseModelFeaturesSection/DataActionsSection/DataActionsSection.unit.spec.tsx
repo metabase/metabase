@@ -3,14 +3,14 @@ import { useState } from "react";
 
 import { render, screen, waitFor } from "__support__/ui";
 
-import type { ModelActionsSectionProps } from "./ModelActionsSection";
-import { ModelActionsSection } from "./ModelActionsSection";
+import type { DataActionsSectionProps } from "./DataActionsSection";
+import { DataActionsSection } from "./DataActionsSection";
 
 function ModelActionSectionWrapper({
-  hasModelActionsEnabled: initialValue,
-  onToggleModelActionsEnabled: onChange,
+  hasDataActionsEnabled: initialValue,
+  onToggleDataActionsEnabled: onChange,
   disabled,
-}: ModelActionsSectionProps) {
+}: DataActionsSectionProps) {
   const [isEnabled, setEnabled] = useState(initialValue);
 
   const handleChange = async (nextValue: boolean) => {
@@ -19,36 +19,36 @@ function ModelActionSectionWrapper({
   };
 
   return (
-    <ModelActionsSection
-      hasModelActionsEnabled={isEnabled}
-      onToggleModelActionsEnabled={handleChange}
+    <DataActionsSection
+      hasDataActionsEnabled={isEnabled}
+      onToggleDataActionsEnabled={handleChange}
       disabled={disabled}
     />
   );
 }
 
 function setup({
-  hasModelActionsEnabled = false,
-  onToggleModelActionsEnabled = jest.fn(),
+  hasDataActionsEnabled = false,
+  onToggleDataActionsEnabled = jest.fn(),
   disabled = false,
-}: Partial<ModelActionsSectionProps>) {
+}: Partial<DataActionsSectionProps>) {
   render(
     <ModelActionSectionWrapper
-      hasModelActionsEnabled={hasModelActionsEnabled}
-      onToggleModelActionsEnabled={onToggleModelActionsEnabled}
+      hasDataActionsEnabled={hasDataActionsEnabled}
+      onToggleDataActionsEnabled={onToggleDataActionsEnabled}
       disabled={disabled}
     />,
   );
 
-  const toggle = screen.getByLabelText("Model actions");
+  const toggle = screen.getByLabelText("Data actions");
 
-  return { toggle, onToggleModelActionsEnabled };
+  return { toggle, onToggleDataActionsEnabled };
 }
 
-describe("ModelActionsSection", () => {
+describe("DataActionsSection", () => {
   it("should allow toggling actions", async () => {
-    const { toggle, onToggleModelActionsEnabled } = setup({
-      hasModelActionsEnabled: false,
+    const { toggle, onToggleDataActionsEnabled } = setup({
+      hasDataActionsEnabled: false,
     });
 
     expect(toggle).not.toBeChecked();
@@ -56,12 +56,12 @@ describe("ModelActionsSection", () => {
     await userEvent.click(toggle);
 
     await waitFor(() => expect(toggle).toBeChecked());
-    expect(onToggleModelActionsEnabled).toHaveBeenLastCalledWith(true);
+    expect(onToggleDataActionsEnabled).toHaveBeenLastCalledWith(true);
 
     await userEvent.click(toggle);
 
     await waitFor(() => expect(toggle).not.toBeChecked());
-    expect(onToggleModelActionsEnabled).toHaveBeenLastCalledWith(false);
+    expect(onToggleDataActionsEnabled).toHaveBeenLastCalledWith(false);
   });
 
   it("should not allow toggling actions if section is disabled", async () => {
@@ -71,13 +71,13 @@ describe("ModelActionsSection", () => {
 
   it("should handle errors while toggling actions", async () => {
     const errorMessage = "Lacking write database permissions";
-    const onToggleModelActionsEnabled = jest.fn().mockRejectedValueOnce({
+    const onToggleDataActionsEnabled = jest.fn().mockRejectedValueOnce({
       data: { message: errorMessage },
     });
 
     const { toggle } = setup({
-      hasModelActionsEnabled: false,
-      onToggleModelActionsEnabled,
+      hasDataActionsEnabled: false,
+      onToggleDataActionsEnabled,
     });
 
     await userEvent.click(toggle);
@@ -87,6 +87,6 @@ describe("ModelActionsSection", () => {
     await userEvent.click(toggle);
     await waitFor(() => expect(toggle).toBeChecked());
     expect(screen.queryByText(errorMessage)).not.toBeInTheDocument();
-    expect(onToggleModelActionsEnabled).toHaveBeenLastCalledWith(true);
+    expect(onToggleDataActionsEnabled).toHaveBeenLastCalledWith(true);
   });
 });

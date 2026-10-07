@@ -200,6 +200,23 @@ describe("InfoText", () => {
         `Updated ${LAST_EDITED_DURATION}`,
       );
     });
+    it("shows a model action's model", async () => {
+      await setup({
+        model: "action",
+        resultProps: { model_name: "Orders model" },
+      });
+
+      expect(screen.getByText("Orders model")).toBeInTheDocument();
+    });
+
+    it("shows the collection of an action without a model", async () => {
+      await setup({ model: "action", resultProps: { model_name: null } });
+
+      expect(screen.getByText("Collection Name")).toHaveAttribute(
+        "href",
+        `/collection/${MOCK_COLLECTION.id}-collection-name`,
+      );
+    });
   });
 
   describe("showing last_edited_by vs created_by", () => {

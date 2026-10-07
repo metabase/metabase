@@ -190,7 +190,7 @@
 (defmethod create-action*! :query
   [options-map model-id]
   (let [action-id (insert-action!
-                   (merge {:model_id model-id
+                   (merge {:collection_id (t2/select-one-fn :collection_id :model/Card :id model-id)
                            :name "Query Example"
                            :parameters [{:id "id"
                                          :slug "id"

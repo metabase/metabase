@@ -39,7 +39,7 @@ export const createMockQueryAction = ({
     dataset_query,
     name: "Query Action Mock",
     description: null,
-    model_id: 1,
+    model_id: null,
     collection_id: null,
     database_id: 1,
     parameters: undefined,

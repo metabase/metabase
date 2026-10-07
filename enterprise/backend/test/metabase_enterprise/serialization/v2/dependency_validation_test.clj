@@ -226,16 +226,15 @@
                                                    {:name "snip" :content "1=1" :collection_id snip-coll-id
                                                     :creator_id (mt/user->id :rasta)})]
               (is (= #{[{:model "Collection" :id snip-coll-id}]} (deps "NativeQuerySnippet" snip-id)))))
-          (testing "Action (query) references its model Card, Database, and the tables/fields in its query"
-            (let [action-id (t2/insert-returning-pk! :model/Action {:name "A" :type :query :model_id model-card-id})]
+          (testing "Action (query) references its Database, and the tables/fields in its query"
+            (let [action-id (t2/insert-returning-pk! :model/Action {:name "A" :type :query})]
               (t2/insert! :model/QueryAction {:action_id     action-id
                                               :database_id   db-id
                                               :dataset_query {:database db-id
                                                               :type     :query
                                                               :query    {:source-table table-id
                                                                          :filter       [:> [:field field-id nil] 1]}}})
-              (is (= #{[{:model "Card" :id model-card-id}]
-                       [{:model "Database" :id db-id}]
+              (is (= #{[{:model "Database" :id db-id}]
                        [{:model "Table" :id table-id}]
                        [{:model "Field" :id field-id}]}
                      (deps "Action" action-id)))))

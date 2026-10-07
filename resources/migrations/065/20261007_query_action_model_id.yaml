@@ -1,0 +1,40 @@
+## Query actions no longer belong to a model: only implicit actions keep model_id. The detached model is kept in
+## legacy_model_id so a rollback can reattach it.
+
+databaseChangeLog:
+  - changeSet:
+      id: v65.2026-10-07T00:00:00
+      author: ranquild
+      comment: Add action.legacy_model_id
+      changes:
+        - addColumn:
+            tableName: action
+            columns:
+              - column:
+                  name: legacy_model_id
+                  type: int
+                  remarks: The model a query Action belonged to before query Actions stopped belonging to models
+                  constraints:
+                    nullable: true
+      rollback:
+        - dropColumn:
+            tableName: action
+            columnName: legacy_model_id
+
+  - changeSet:
+      id: v65.2026-10-07T00:00:01
+      author: ranquild
+      comment: Detach query actions from their models
+      changes:
+        - sql:
+            sql: >-
+              UPDATE action
+              SET legacy_model_id = model_id, model_id = NULL
+              WHERE type = 'query' AND model_id IS NOT NULL;
+      rollback:
+        - sql:
+            sql: >-
+              UPDATE action
+              SET model_id = legacy_model_id
+              WHERE legacy_model_id IS NOT NULL
+                AND EXISTS (SELECT 1 FROM report_card WHERE report_card.id = action.legacy_model_id);

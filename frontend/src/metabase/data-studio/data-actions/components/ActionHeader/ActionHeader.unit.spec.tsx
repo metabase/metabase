@@ -38,7 +38,6 @@ describe("ActionHeader", () => {
     setup({
       action: createMockQueryAction({
         name: "Update order",
-        model_id: null,
         can_write: true,
       }),
     });
@@ -55,27 +54,10 @@ describe("ActionHeader", () => {
     ).toBeInTheDocument();
   });
 
-  it("should not offer Move for an action that belongs to a model", async () => {
-    setup({
-      action: createMockQueryAction({ model_id: 1, can_write: true }),
-    });
-
-    await userEvent.click(
-      screen.getByRole("button", { name: "Action options" }),
-    );
-    expect(
-      await screen.findByRole("menuitem", { name: /Archive/ }),
-    ).toBeInTheDocument();
-    expect(
-      screen.queryByRole("menuitem", { name: /Move/ }),
-    ).not.toBeInTheDocument();
-  });
-
   it("should not let a user who can't edit the action rename, move or archive it", () => {
     setup({
       action: createMockQueryAction({
         name: "Update order",
-        model_id: null,
         can_write: false,
       }),
     });

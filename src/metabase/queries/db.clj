@@ -387,13 +387,6 @@
     (t2/delete! :model/DashboardCard :action_id [:in action-ids])
     0))
 
-(mu/defn archive-explicit-actions-for-model!
-  "Archive the unarchived non-implicit Actions of the model Card with `model-id` directly, returning the number
-  updated."
-  [model-id :- ms/PositiveInt]
-  (t2/update! :model/Action {:model_id model-id, :type [:not= :implicit], :archived false}
-              {:archived true, :archived_directly true}))
-
 (mu/defn delete-implicit-actions-for-model!
   "Delete the implicit Actions of the model Card with `model-id`, returning the number deleted."
   [model-id :- ms/PositiveInt]

@@ -3562,6 +3562,48 @@
         (testing "an action can be inserted without a model"
           (is (pos-int? (insert-action! nil))))))))
 
+(deftest detach-query-actions-from-models-test
+  (testing "v65.2026-10-07T00:00:01: query actions lose their model, which a rollback restores; implicit actions keep it"
+    (impl/test-migrations ["v65.2026-10-07T00:00:00" "v65.2026-10-07T00:00:01"] [migrate!]
+      (let [user-id        (t2/insert-returning-pk! :core_user {:first_name  "Action"
+                                                                :last_name   "Owner"
+                                                                :email       "query-action-owner@metabase.com"
+                                                                :password    "superstrong"
+                                                                :entity_id   (u/generate-nano-id)
+                                                                :date_joined :%now})
+            db-id          (t2/insert-returning-pk! :metabase_database {:name       "Action Test DB"
+                                                                        :engine     "h2"
+                                                                        :created_at :%now
+                                                                        :updated_at :%now
+                                                                        :details    "{}"})
+            model-id       (t2/insert-returning-pk! :report_card {:name                   "Model"
+                                                                  :entity_id              (u/generate-nano-id)
+                                                                  :type                   "model"
+                                                                  :display                "table"
+                                                                  :dataset_query          "{}"
+                                                                  :visualization_settings "{}"
+                                                                  :creator_id             user-id
+                                                                  :database_id            db-id
+                                                                  :created_at             :%now
+                                                                  :updated_at             :%now})
+            insert-action! (fn [action-type]
+                             (t2/insert-returning-pk! :action {:name       "Action"
+                                                               :entity_id  (u/generate-nano-id)
+                                                               :type       action-type
+                                                               :model_id   model-id
+                                                               :created_at :%now
+                                                               :updated_at :%now}))
+            query-id       (insert-action! "query")
+            implicit-id    (insert-action! "implicit")]
+        (migrate!)
+        (is (= {:model_id nil, :legacy_model_id model-id}
+               (t2/select-one [:action :model_id :legacy_model_id] :id query-id)))
+        (is (= {:model_id model-id, :legacy_model_id nil}
+               (t2/select-one [:action :model_id :legacy_model_id] :id implicit-id)))
+        (migrate! :down 64)
+        (is (= {query-id model-id, implicit-id model-id}
+               (t2/select-pk->fn :model_id :action :id [:in [query-id implicit-id]])))))))
+
 (deftest drop-http-actions-test
   (testing "v65.2026-10-03T00:00:01: HTTP actions and the dashboard buttons that ran them are deleted, other actions stay"
     (impl/test-migrations ["v65.2026-10-03T00:00:00" "v65.2026-10-03T00:00:01"] [migrate!]

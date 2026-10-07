@@ -1,8 +1,6 @@
 // eslint-disable-next-line eslint-js/no-restricted-imports
 import styled from "@emotion/styled";
 
-import { EditableText as EditableTextBase } from "metabase/common/components/EditableText";
-
 export const Container = styled.div`
   display: flex;
   flex: 0 0 auto;
@@ -21,7 +19,7 @@ export const LeftHeader = styled.div`
   gap: var(--mantine-spacing-lg);
 `;
 
-export const EditableText = styled(EditableTextBase)`
+export const Name = styled.h3`
   font-weight: bold;
   font-size: 1.3em;
   color: var(--mb-color-text-secondary);

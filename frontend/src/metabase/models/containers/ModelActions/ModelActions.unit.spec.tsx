@@ -29,10 +29,8 @@ import type {
   Database,
   Settings,
   WritebackAction,
-  WritebackQueryAction,
 } from "metabase-types/api";
 import {
-  createMockQueryAction as _createMockQueryAction,
   createMockCardQueryMetadata,
   createMockDatabase,
   createMockField,
@@ -147,19 +145,6 @@ function createNativeModelCard(card?: Partial<Card>) {
   });
 }
 
-const TEST_QUERY = "UPDATE orders SET status = 'shipped'";
-
-function createMockQueryAction(
-  opts?: Partial<WritebackQueryAction>,
-): WritebackQueryAction {
-  return _createMockQueryAction({
-    ...opts,
-    dataset_query: createMockNativeDatasetQuery({
-      native: createMockNativeQuery({ query: TEST_QUERY }),
-    }),
-  });
-}
-
 type SetupOpts = {
   model: Card;
   tab?: string;
@@ -226,9 +211,6 @@ async function setup({
       <Route path="/model/:slug/detail">
         <Route index element={redirect("actions")} />
         <Route path="actions" element={<ModelActions />}>
-          {modalRoute("new", ActionCreatorModal, {
-            modalProps: { transitionProps: { duration: 0 } },
-          })}
           {modalRoute(":actionId", ActionCreatorModal, {
             modalProps: { transitionProps: { duration: 0 } },
           })}
@@ -298,7 +280,7 @@ describe("ModelActions", () => {
 
       it("is shown if actions are disabled for the model's database but there are existing actions", async () => {
         const model = getModel();
-        const action = createMockQueryAction({ model_id: model.id });
+        const action = createMockImplicitQueryAction({ model_id: model.id });
 
         await setup({ model, actions: [action] });
 
@@ -317,7 +299,7 @@ describe("ModelActions", () => {
 
       it("shows alert if actions are disabled for the model's database but there are existing actions", async () => {
         const model = getModel();
-        const action = createMockQueryAction({ model_id: model.id });
+        const action = createMockImplicitQueryAction({ model_id: model.id });
 
         await setup({ model, actions: [action], tab: "actions" });
 
@@ -328,42 +310,6 @@ describe("ModelActions", () => {
           screen.getByText(
             `Running Actions is not enabled for database ${TEST_DATABASE.name}`,
           ),
-        ).toBeInTheDocument();
-      });
-
-      it("allows to create a new query action from the empty state", async () => {
-        await setupActions({ model: getModel(), actions: [] });
-        await userEvent.click(screen.getByRole("link", { name: "New action" }));
-        expect(await screen.findByTestId("mock-action-editor")).toBeVisible();
-      });
-
-      it("lists existing query actions", async () => {
-        const model = getModel();
-        const action = createMockQueryAction({ model_id: model.id });
-        await setupActions({ model, actions: [action] });
-
-        expect(screen.getByText(action.name)).toBeInTheDocument();
-        expect(screen.getByText(TEST_QUERY)).toBeInTheDocument();
-        expect(
-          screen.getByText(`Created by ${action.creator.common_name}`),
-        ).toBeInTheDocument();
-        expect(await screen.findByLabelText("Run")).toBeInTheDocument();
-        expect(screen.queryByText("Basic action")).not.toBeInTheDocument();
-      });
-
-      it("lists existing public query actions with public label", async () => {
-        const model = getModel();
-        const action = createMockQueryAction({
-          model_id: model.id,
-          public_uuid: "mock-uuid",
-        });
-        await setupActions({ model, actions: [action] });
-
-        expect(screen.getByText(action.name)).toBeInTheDocument();
-        expect(screen.getByText(TEST_QUERY)).toBeInTheDocument();
-        expect(screen.getByText("Public action form")).toBeInTheDocument();
-        expect(
-          screen.getByText(`Created by ${action.creator.common_name}`),
         ).toBeInTheDocument();
       });
 
@@ -381,21 +327,20 @@ describe("ModelActions", () => {
         expect(screen.getAllByText("Basic action")).toHaveLength(3);
       });
 
-      it("allows to create a new query action", async () => {
-        const model = getModel();
+      it("doesn't allow to create query actions", async () => {
         await setupActions({
-          model,
-          actions: [createMockQueryAction({ model_id: model.id })],
+          model: getModel(),
+          actions: createMockImplicitCUDActions(getModel().id),
         });
 
-        await userEvent.click(screen.getByRole("link", { name: "New action" }));
-
-        expect(await screen.findByTestId("mock-action-editor")).toBeVisible();
+        expect(
+          screen.queryByRole("link", { name: "New action" }),
+        ).not.toBeInTheDocument();
       });
 
-      it("allows to edit a query action via link", async () => {
+      it("allows to edit an implicit action via link", async () => {
         const model = getModel();
-        const action = createMockQueryAction({ model_id: model.id });
+        const action = createMockImplicitQueryAction({ model_id: model.id });
         await setupActions({ model, actions: [action] });
 
         await userEvent.click(screen.getByRole("link", { name: action.name }));
@@ -403,50 +348,15 @@ describe("ModelActions", () => {
         expect(await screen.findByTestId("mock-action-editor")).toBeVisible();
       });
 
-      it("allows to edit a query action via menu", async () => {
+      it("allows to edit an implicit action via menu", async () => {
         const model = getModel();
-        const action = createMockQueryAction({ model_id: model.id });
+        const action = createMockImplicitQueryAction({ model_id: model.id });
         await setupActions({ model, actions: [action] });
 
         await openActionMenu(action);
         await userEvent.click(await screen.findByText("Edit"));
 
         expect(await screen.findByTestId("mock-action-editor")).toBeVisible();
-      });
-
-      it("allows to archive a query action", async () => {
-        const model = getModel();
-        const action = createMockQueryAction({ model_id: model.id });
-        await setupActions({ model, actions: [action] });
-
-        const listItem = screen.getByRole("listitem", { name: action.name });
-        await userEvent.click(within(listItem).getByLabelText("ellipsis icon"));
-        await userEvent.click(await screen.findByText("Archive"));
-
-        expect(
-          screen.getByRole("heading", { name: /Archive/ }),
-        ).toBeInTheDocument();
-        await userEvent.click(screen.getByRole("button", { name: "Archive" }));
-
-        await waitFor(() =>
-          expect(screen.queryByRole("dialog")).not.toBeInTheDocument(),
-        );
-
-        expect(
-          fetchMock.callHistory.calls(`path:/api/action/${action.id}`, {
-            method: "PUT",
-          }),
-        ).toHaveLength(1);
-        const call = fetchMock.callHistory.lastCall(
-          `path:/api/action/${action.id}`,
-          {
-            method: "PUT",
-          },
-        );
-        expect(await call?.request?.json()).toEqual({
-          id: action.id,
-          archived: true,
-        });
       });
 
       it("doesn't allow to archive an implicit action", async () => {
@@ -493,7 +403,9 @@ describe("ModelActions", () => {
       });
 
       it("doesn't allow to edit actions", async () => {
-        const action = createMockQueryAction({ model_id: modelCard.id });
+        const action = createMockImplicitQueryAction({
+          model_id: modelCard.id,
+        });
         await setupActions({ model: modelCard, actions: [action] });
 
         await openActionMenu(action);
@@ -502,7 +414,9 @@ describe("ModelActions", () => {
       });
 
       it("doesn't allow to archive actions", async () => {
-        const action = createMockQueryAction({ model_id: modelCard.id });
+        const action = createMockImplicitQueryAction({
+          model_id: modelCard.id,
+        });
         await setupActions({ model: modelCard, actions: [action] });
 
         await openActionMenu(action);
@@ -523,7 +437,7 @@ describe("ModelActions", () => {
         const model = getModel();
         const actions = [
           ...createMockImplicitCUDActions(model.id),
-          createMockQueryAction({ id: 4, model_id: model.id }),
+          createMockImplicitQueryAction({ id: 4, model_id: model.id }),
         ];
         await setupActions({ model, actions, databases: [] });
 
@@ -531,7 +445,7 @@ describe("ModelActions", () => {
       });
 
       it("doesn't allow to run an action if its database has actions disabled", async () => {
-        const action = createMockQueryAction({
+        const action = createMockImplicitQueryAction({
           database_id: TEST_DATABASE.id,
         });
 
@@ -545,7 +459,7 @@ describe("ModelActions", () => {
       });
 
       it("allows to run an action if its database has actions enabled", async () => {
-        const action = createMockQueryAction({
+        const action = createMockImplicitQueryAction({
           database_id: TEST_DATABASE_WITH_ACTIONS.id,
         });
 
@@ -559,7 +473,7 @@ describe("ModelActions", () => {
       });
 
       it("allows to run an action without native query access", async () => {
-        const action = createMockQueryAction({
+        const action = createMockImplicitQueryAction({
           database_id: TEST_DATABASE_WITH_ACTIONS_READONLY.id,
         });
 
@@ -578,12 +492,13 @@ describe("ModelActions", () => {
     const modelCard = createStructuredModelCard();
 
     it("allows to create implicit actions", async () => {
-      const action = createMockQueryAction({ model_id: modelCard.id });
-      await setupActions({ model: modelCard, actions: [action] });
+      await setupActions({ model: modelCard, actions: [] });
       fetchMock.modifyRoute("action-post", { response: {} });
 
       await openHeaderActionsMenu();
-      await userEvent.click(await screen.findByText("Create basic actions"));
+      await userEvent.click(
+        await screen.findByRole("menuitem", { name: "Create basic actions" }),
+      );
 
       await waitFor(() => {
         expect(

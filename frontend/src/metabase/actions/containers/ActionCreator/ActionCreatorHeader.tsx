@@ -1,35 +1,20 @@
-import { t } from "ttag";
-
 import {
   ActionButtons,
   Container,
-  EditableText,
   LeftHeader,
+  Name,
 } from "./ActionCreatorHeader.styled";
 
 type Props = {
   name: string;
-  isEditable: boolean;
-  canRename: boolean;
-  onChangeName: (name: string) => void;
   actionButtons: React.ReactElement[];
 };
 
-const ActionCreatorHeader = ({
-  name = t`New Action`,
-  isEditable,
-  canRename,
-  onChangeName,
-  actionButtons,
-}: Props) => {
+const ActionCreatorHeader = ({ name, actionButtons }: Props) => {
   return (
     <Container>
       <LeftHeader>
-        <EditableText
-          initialValue={name}
-          onChange={onChangeName}
-          isDisabled={!isEditable || !canRename}
-        />
+        <Name>{name}</Name>
       </LeftHeader>
       {actionButtons.length > 0 && (
         <ActionButtons>{actionButtons}</ActionButtons>

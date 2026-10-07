@@ -78,6 +78,20 @@ const ACTION = createMockQueryAction({
   },
 });
 
+const IMPLICIT_ACTION = createMockImplicitQueryAction({
+  id: 2,
+  name: ACTION.name,
+  database_id: DATABASE_ID,
+  model_id: ACTION_MODEL_ID,
+  parameters: ACTION.parameters,
+  visualization_settings: {
+    fields: {
+      parameter_1: createMockFieldSettings({ id: "parameter_1" }),
+      parameter_2: createMockFieldSettings({ id: "parameter_2" }),
+    },
+  },
+});
+
 const DATABASE = createMockDatabase({
   settings: {
     "database-enable-actions": true,
@@ -345,7 +359,10 @@ describe("Actions > ActionViz > Action", () => {
     });
 
     it("should allow to edit underlying action if a user has edit permissions", async () => {
-      await setup();
+      setupActionEndpoints(IMPLICIT_ACTION);
+      await setup({
+        dashcard: createMockActionDashboardCard({ action: IMPLICIT_ACTION }),
+      });
 
       await userEvent.click(screen.getByText("Click me"));
 
@@ -373,14 +390,13 @@ describe("Actions > ActionViz > Action", () => {
     });
 
     it("should open action form after action editing", async () => {
-      const updatedTitle = "Test action title";
-      await setup();
+      setupActionEndpoints(IMPLICIT_ACTION);
+      await setup({
+        dashcard: createMockActionDashboardCard({ action: IMPLICIT_ACTION }),
+      });
 
-      fetchMock.modifyRoute(`action-${ACTION.id}-put`, {
-        response: {
-          ...ACTION,
-          name: updatedTitle,
-        },
+      fetchMock.modifyRoute(`action-${IMPLICIT_ACTION.id}-put`, {
+        response: IMPLICIT_ACTION,
       });
 
       await userEvent.click(screen.getByText("Click me"));
@@ -390,16 +406,14 @@ describe("Actions > ActionViz > Action", () => {
       // wait for action edit form to be loaded
       const editorModal = await screen.findByTestId("action-editor-modal");
 
-      // edit action title
-      const actionTitleField =
-        await within(editorModal).findByTestId("editable-text");
-      await userEvent.type(actionTitleField, updatedTitle);
-      await userEvent.tab(); // blur field
+      const [showFieldCheckbox] =
+        await within(editorModal).findAllByLabelText("Show field");
+      await userEvent.click(showFieldCheckbox);
 
       await userEvent.click(within(editorModal).getByText("Update"));
 
       expect(
-        fetchMock.callHistory.called(`path:/api/action/${ACTION.id}`),
+        fetchMock.callHistory.called(`path:/api/action/${IMPLICIT_ACTION.id}`),
       ).toBe(true);
 
       await waitFor(() => {

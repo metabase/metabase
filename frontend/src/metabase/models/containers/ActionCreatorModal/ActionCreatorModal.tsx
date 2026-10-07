@@ -38,7 +38,6 @@ function ActionCreatorModal({
   const navigate = useNavigate();
   const actionId = Urls.extractEntityId(params.actionId);
   const modelId = Urls.extractEntityId(params.slug);
-  const databaseId = model.databaseId() ?? undefined;
 
   const { isLoading: isActionLoading, data: action } = useGetActionQuery(
     actionId === undefined ? skipToken : { id: actionId },
@@ -48,12 +47,14 @@ function ActionCreatorModal({
 
   useEffect(() => {
     if (loading === false) {
-      const notFound = actionId && !action;
+      const notFound = actionId == null || action == null;
       const hasModelMismatch = action != null && action.model_id !== modelId;
 
-      if (notFound || action?.archived) {
+      if (notFound || action.archived) {
         const nextLocation = Urls.modelDetail(model.card(), "actions");
         navigate(nextLocation, { replace: true });
+      } else if (action.type === "query") {
+        navigate(Urls.dataAction(action.id), { replace: true });
       } else if (hasModelMismatch) {
         dispatch(setErrorPage({ status: 404 }));
       }
@@ -70,7 +71,6 @@ function ActionCreatorModal({
     <ActionCreator
       actionId={actionId}
       modelId={modelId}
-      databaseId={databaseId}
       isRouted
       onClose={onClose}
     />

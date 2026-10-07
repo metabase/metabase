@@ -46,9 +46,7 @@ describe("PaletteResults", () => {
 
     expect(await screen.findByText("New question")).toBeInTheDocument();
 
-    // useCommandPaletteBasicActions makes one baseline /api/search call; any
-    // additional call means the debounced remote search has already run.
-    expect(fetchMock.callHistory.calls("path:/api/search").length).toBe(1);
+    expect(fetchMock.callHistory.calls("path:/api/search").length).toBe(0);
   });
 
   //For some reason, New Question isn't showing up without searching. My guess is virtualization weirdness
@@ -147,8 +145,7 @@ describe("PaletteResults", () => {
       await screen.findByRole("option", { name: "Bar Question" }),
     ).toHaveTextContent("lame collection");
 
-    // One call is always made to determine if the instance has models inside useCommandPaletteBasicActions
-    expect(fetchMock.callHistory.calls("path:/api/search").length).toBe(2);
+    expect(fetchMock.callHistory.calls("path:/api/search").length).toBe(1);
   });
 
   it("should provide links to settings pages for admins", async () => {
@@ -192,8 +189,7 @@ describe("PaletteResults", () => {
       await screen.findByRole("option", { name: /View search results/ }),
     ).toBeInTheDocument();
 
-    // One call is always made to determine if the instance has models inside useCommandPaletteBasicActions
-    expect(fetchMock.callHistory.calls("path:/api/search").length).toBe(1);
+    expect(fetchMock.callHistory.calls("path:/api/search").length).toBe(0);
   });
 
   it("should provide a link to docs with the proper url param", async () => {
@@ -214,8 +210,7 @@ describe("PaletteResults", () => {
       expect.stringContaining("utm_campaign=docs-search"),
     );
 
-    // One call is always made to determine if the instance has models inside useCommandPaletteBasicActions
-    expect(fetchMock.callHistory.calls("path:/api/search").length).toBe(2);
+    expect(fetchMock.callHistory.calls("path:/api/search").length).toBe(1);
   });
 
   it("should offer the Download diagnostics action", async () => {

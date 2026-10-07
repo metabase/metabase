@@ -52,6 +52,10 @@ const getCardInfoText = (result: SearchResult): InfoTextData => {
 };
 
 const getActionInfoText = (result: SearchResult): InfoTextData => {
+  if (result.model_name == null) {
+    return getCollectionResult(result);
+  }
+
   return {
     label: result.model_name,
   };
