@@ -808,7 +808,8 @@
       (mt/with-dynamic-fn-redefs [metabot.self/list-models (fn [& _]
                                                              (is false "the environment key must not leave")
                                                              {:models []})]
-        (is (=? {:message "This connection's credentials come from environment variables. Change its base URL there too."}
+        (is (=? {:message (str "This connection's credentials come from environment variables, so its base URL "
+                               "has to as well. Set MB_LLM_ANTHROPIC_API_BASE_URL.")}
                 (mt/user-http-request :crowberto :put 400 "llm/providers/anthropic"
                                       {:config {:api-key  "sk-ant-attempted-override"
                                                 :base-url "https://new.example.com"}})))))))
@@ -921,7 +922,8 @@
            (stored-config "anthropic")))
     (testing "and explains when the credential must be moved through deployment configuration"
       (mt/with-temp-env-var-value! [mb-llm-anthropic-api-key "sk-ant-env"]
-        (is (=? {:message "This connection's credentials come from environment variables. Change its base URL there too."}
+        (is (=? {:message (str "This connection's credentials come from environment variables, so its base URL "
+                               "has to as well. Set MB_LLM_ANTHROPIC_API_BASE_URL.")}
                 (mt/user-http-request :crowberto :put 400 "setting/llm-anthropic-api-base-url"
                                       {:value "https://new.example.com"}))))))
   (testing "and never plants a dormant value underneath an environment-owned base URL"
@@ -1710,7 +1712,8 @@
                     "address, so a create naming its own is refused before anything is probed.")
         (mt/with-temporary-setting-values [llm-providers []]
           (mt/with-temp-env-var-value! [mb-llm-ollama-api-key "sk-operator"]
-            (is (=? {:message "This connection's credentials come from environment variables. Change its base URL there too."}
+            (is (=? {:message (str "This connection's credentials come from environment variables, so its base URL "
+                                   "has to as well. Set MB_LLM_OLLAMA_API_BASE_URL.")}
                     (mt/user-http-request :crowberto :post 400 "llm/providers"
                                           {:type   "ollama"
                                            :config {:base-url "http://ollama.internal:11434/v1"}})))
@@ -1735,8 +1738,11 @@
                                                              {:models [{:id "m" :display_name "m"}]})]
         (mt/with-temporary-setting-values [llm-providers []]
           (mt/with-temp-env-var-value! [mb-llm-vllm-api-key "sk-operator"]
-            (mt/user-http-request :crowberto :post 400 "llm/providers"
-                                  {:type "vllm" :config {:base-url "https://elsewhere.example.com/v1"}})
+            (is (=? {:message (str "This connection's credentials come from environment variables, so its base URL "
+                                   "has to as well. Set MB_LLM_VLLM_API_BASE_URL.")}
+                    (mt/user-http-request :crowberto :post 400 "llm/providers"
+                                          {:type "vllm" :config {:base-url "https://elsewhere.example.com/v1"}}))
+                "naming the variable the operator has to set, since a create has no base URL of its own to change")
             (is (not (str/includes? (pr-str @probed) "sk-operator")))
             (is (empty? (llm.provider/stored-connections)))))))))
 

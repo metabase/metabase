@@ -1201,7 +1201,10 @@
        (let [env-secret? (some env-fields missing-secrets)]
          (throw (ex-info (cond
                            env-secret?
-                           (tru "This connection''s credentials come from environment variables. Change its base URL there too.")
+                           ;; the message names the variable because the operator can change only that. A create has
+                           ;; no base URL of its own to change.
+                           (tru "This connection''s credentials come from environment variables, so its base URL has to as well. Set {0}."
+                                (get (connection-env-vars type-name) :base-url "the matching base URL variable"))
 
                            legacy-setting?
                            (tru "Use the provider connection settings to change the base URL and enter the credentials again.")
