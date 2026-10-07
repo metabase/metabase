@@ -1,6 +1,5 @@
 (ns metabase.app-db.activity-counter-test
-  "Proves the JDBC-level counter counts what it claims, before any cost test relies on it. Not ^:parallel: the
-  counter is JVM-wide."
+  "Tests for the JDBC-level app-DB counter. Not ^:parallel: the counter is JVM-wide."
   (:require
    [clojure.test :refer :all]
    [metabase.app-db.activity-test-util :as activity]
@@ -28,9 +27,8 @@
   [counts]
   (get-in counts [:by-thread (.threadId (Thread/currentThread))] (zipmap activity/count-keys (repeat 0))))
 
-;; Metabase's transaction implementation (metabase.app-db.connection/do-transaction) sets a savepoint at the start
-;; of EVERY transaction scope, top-level included, and a failed transaction rolls back to that savepoint and then
-;; rolls back the connection. The expected counts below encode that behaviour; if it changes, these tests say so.
+;; do-transaction sets a savepoint in every scope, the top-level one included; a failed transaction rolls back to it,
+;; then rolls back the connection.
 
 (deftest plain-transaction-test
   (testing "one transaction, one statement: BEGIN + SAVEPOINT + statement + COMMIT on one connection"
@@ -96,10 +94,16 @@
 
 (deftest restores-application-db-test
   (testing "the original application DB is restored afterwards, even when the body throws"
-    (let [before (mdb/app-db)]
-      (is (thrown? clojure.lang.ExceptionInfo
-                   (activity/with-db-activity! (throw (ex-info "boom" {})))))
-      (is (identical? before (mdb/app-db))))))
+    (let [app-db-var #'mdb.connection/*application-db*
+          original   (.getRawRoot app-db-var)
+          before     (mdb/app-db)]
+      (try
+        (is (thrown? clojure.lang.ExceptionInfo
+                     (activity/with-db-activity! (throw (ex-info "boom" {})))))
+        (is (identical? before (mdb/app-db)))
+        (finally
+          ;; so that a counter that does not restore the root breaks this test only
+          (alter-var-root app-db-var (constantly original)))))))
 
 (deftest thread-bound-application-db-test
   (testing "the application DB that the calling thread has bound (for example an empty H2 app DB) is counted"
@@ -112,31 +116,34 @@
           (is (identical? before (mdb/app-db))))))))
 
 (deftest connection-checked-out-before-the-count-test
-  (testing "inside a default mt/with-temp, a statement is counted or the counter throws; never a silent zero"
+  (testing "inside a default mt/with-temp, the counter throws"
     (mt/with-temp [:model/Collection _ {}]
-      (let [result (try
-                     (activity/with-db-activity! (select-1!))
-                     (catch Exception e e))]
-        (if (instance? Exception result)
-          (is (some? (ex-message result)))
-          (is (=? {:statements 1} (this-thread result))))))))
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"already holds an app-DB connection"
+                            (activity/with-db-activity! (select-1!))))))
+  (testing "and a later count runs"
+    (is (= :ran (:result (activity/count-db-activity! (constantly :ran)))))))
 
 (deftest overlapping-counts-on-two-threads-test
-  (testing "two counts that overlap on two threads and end out of order leave the original application DB in the root"
+  (testing "a second count on another thread throws, and the first count restores the original application DB in the root"
     (let [app-db-var #'mdb.connection/*application-db*
           original   (.getRawRoot app-db-var)
           a-started  (promise)
           a-may-end  (promise)]
       (try
-        (let [a (future (activity/count-db-activity! (fn [] (deliver a-started true) (deref a-may-end 10000 ::timeout))))
-              _ (deref a-started 10000 ::timeout)
-              ;; the second count may run, or it may refuse to start; either way the first count must end
-              b (future (try
-                          (activity/count-db-activity! (fn [] (deliver a-may-end true) (deref a 10000 ::timeout)))
-                          (catch Exception e e)
-                          (finally (deliver a-may-end true))))]
-          (deref b 10000 ::timeout)
-          (deref a 10000 ::timeout)
+        (let [a (future (activity/count-db-activity! (fn [] (deliver a-started true) (deref a-may-end 10000 ::timeout))))]
+          (try
+            (is (true? (deref a-started 10000 ::timeout)))
+            (let [b (deref (future (try
+                                     (activity/count-db-activity! (constantly :b))
+                                     (catch Exception e e)))
+                           10000 ::timeout)]
+              (is (= "Another app-DB count runs now; counts cannot overlap" (ex-message b))))
+            (testing "and a third count, started while the first one runs, throws too"
+              (is (thrown-with-msg? clojure.lang.ExceptionInfo #"counts cannot overlap"
+                                    (activity/count-db-activity! (constantly :c)))))
+            (finally
+              (deliver a-may-end true)))
+          (is (=? {:result true} (deref a 10000 ::timeout)))
           (is (identical? original (.getRawRoot app-db-var))))
         (finally
           (alter-var-root app-db-var (constantly original)))))))
@@ -152,7 +159,7 @@
       (is (=? {:statements 2 :prepares 2} (this-thread counts))))))
 
 (deftest uncounted-statements-test
-  (testing "the statements that the ns docstring says the counter does not see are not counted"
+  (testing "statements on the connections from ResultSet.getStatement, DatabaseMetaData.getConnection and Connection.unwrap are not counted"
     (let [counts (activity/with-db-activity!
                    (with-open [^Connection conn (.getConnection ^DataSource (mdb/app-db))
                                stmt             (.createStatement conn)

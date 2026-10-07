@@ -5,10 +5,8 @@
   difference ([[per-entity]]), which cancels the fixed per-pull overhead. This assumes that the cost is linear in
   the entity count; then small sizes give the per-entity numbers of large ones.
 
-  Tests that use these helpers MUST NOT be `^:parallel`: [[measure!]] uses the JVM-wide JDBC counter in
-  [[metabase.app-db.activity-test-util]]. The content helpers expect the caller's namespace to use the
-  `(fixtures/initialize :db)` fixture and, for each test, `rs.test/clean-remote-sync-state` and
-  `rs.test/commit-with-temp`.
+  [[measure!]] uses the JVM-wide JDBC counter, so it throws in a `^:parallel` test. The content helpers expect
+  `rs.test/clean-remote-sync-state` around each test.
 
   Example: per MBQL card, the cost of a forced reload of unchanged content.
 
@@ -85,7 +83,7 @@
 
 (defn do-with-content!
   "Create a remote-synced collection with `cards` MBQL cards (3 field refs each) and `dashboards` dashboards of
-  `dashcards` dashboard cards each, then call `f` with the serialized tree (see [[rs.test/synced-tree]]). Sets
+  `dashcards` dashboard cards each, then call `f` with the files that an export would write. Sets
   `remote-sync-type` to `:read-write` and `remote-sync-transforms` to false for the duration, and deletes the
   content that it created afterwards."
   [{:keys [cards dashboards dashcards] :or {dashboards 0 dashcards 0}} f]

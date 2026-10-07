@@ -1,29 +1,19 @@
 (ns metabase.app-db.activity-test-util
-  "Counts app-DB activity at the JDBC level, for cost tests. [[count-keys]] defines what it counts.
-
-  How: for the duration of [[count-db-activity!]], the root value of `metabase.app-db.connection/*application-db*` is
-  replaced by a copy whose `:data-source` hands out counting proxies of the real (pooled) connections. Each app-DB
-  connection that a thread gets during the count goes through that data source, so the counts cover every library
-  (toucan, raw JDBC, the query processor) and every thread that uses the root binding, including the virtual threads
-  async imports/exports run on.
+  "Counts app-DB activity at the JDBC level, for cost tests. [[count-keys]] defines what it counts. Counts every
+  library (toucan, raw JDBC, the query processor) and every thread that uses the root `*application-db*`.
 
   Not counted: work on a connection that a thread got before the count (so [[count-db-activity!]] throws when the
-  calling thread holds one, as in the body of a default `mt/with-temp`); a statement that a `ResultSet` or
-  `DatabaseMetaData` hands out, or that is made on the connection that `Connection.unwrap` returns; and Quartz's
-  separate data source.
+  calling thread holds one, as in the body of a default `mt/with-temp`); work on the statement that
+  `ResultSet.getStatement` returns, or on the connection that `DatabaseMetaData.getConnection` or `Connection.unwrap`
+  returns; and Quartz's separate data source.
 
-  Because the swap is JVM-wide, anything else using the app DB at the same time is counted too. Tests that use
-  this MUST NOT be marked `^:parallel`, and the totals include background work (scheduler, heartbeats, async
-  search indexing) that happens to run during the block. Two ways to cope:
-  - compare two sizes of the same scenario (see `metabase-enterprise.remote-sync.cost-test-util/per-entity`) so
-    fixed and background costs cancel;
-  - use `:by-thread`, the same counts keyed by the id of the thread that made each call, to assert exactly on
-    threads you control (see `metabase.app-db.activity-counter-test`) or to see where unexpected activity came
-    from.
-
-  The result holds the total of each key of [[count-keys]] across threads, the same counts for each thread under
-  `:by-thread {thread-id counts}`, the thunk's value under `:result`, and its wall time under `:elapsed-ms`."
+  The count is JVM-wide, so anything else that uses the app DB at the same time is counted too, and the totals include
+  background work (scheduler, heartbeats, async search indexing) that happens to run during the block. Two ways to
+  cope:
+  - compare two sizes of the same scenario, so that fixed and background costs cancel;
+  - assert exactly on `:by-thread`, the counts keyed by the id of the thread that made each call."
   (:require
+   [mb.hawk.parallel]
    [metabase.app-db.connection :as mdb.connection]
    [metabase.settings.core :as setting]
    [toucan2.connection :as t2.conn])
@@ -35,9 +25,7 @@
 (set! *warn-on-reflection* true)
 
 (def count-keys
-  "The count keys of a [[count-db-activity!]] result, in order. On Postgres, the round trips are about
-  `:statements` + `:commits` + `:rollbacks` + `:savepoints` + `:releases` + `:checkins`, plus `:transactions` unless
-  the driver sends `BEGIN` with the next statement."
+  "The count keys of a [[count-db-activity!]] result, in order."
   [;; statement executions: each method in `execute-methods`; a batch counts once
    :statements
    ;; `prepareStatement`, `prepareCall` and `createStatement` calls
@@ -62,7 +50,7 @@
 (def ^:private zero-counts (zipmap count-keys (repeat 0)))
 
 (defn- bump
-  "Increment `k` in the calling thread's counts. Thread-safe."
+  "Increment `k` in the calling thread's counts."
   [counts k]
   (swap! counts update-in [(.threadId (Thread/currentThread)) k] (fnil inc 0)))
 
@@ -119,20 +107,9 @@
                 result))))
 
 (defn- counting-data-source ^DataSource [counts ^DataSource ds]
-  (reify DataSource
-    (getConnection [_]
-      (bump counts :checkouts)
-      (counting-connection counts (.getConnection ds)))
-    (getConnection [_ user password]
-      (bump counts :checkouts)
-      (counting-connection counts (.getConnection ds user password)))
-    (getLogWriter [_] (.getLogWriter ds))
-    (setLogWriter [_ w] (.setLogWriter ds w))
-    (setLoginTimeout [_ s] (.setLoginTimeout ds s))
-    (getLoginTimeout [_] (.getLoginTimeout ds))
-    (getParentLogger [_] (.getParentLogger ds))
-    (unwrap [_ iface] (.unwrap ds iface))
-    (isWrapperFor [_ iface] (.isWrapperFor ds iface))))
+  (proxy-of DataSource ds
+            (fn [n _] (when (= "getConnection" n) (bump counts :checkouts)))
+            (fn [n result _] (if (= "getConnection" n) (counting-connection counts result) result))))
 
 (defn- counting-app-db
   "A copy of the ApplicationDB `app-db` whose data source counts into `counts`."
@@ -145,9 +122,10 @@
   (atom false))
 
 (defn count-db-activity!
-  "Run `thunk` with app-DB activity counted JVM-wide (see the ns docstring). Returns the counts map with the
-  thunk's return value under `:result` and its wall time under `:elapsed-ms`. Not for `^:parallel` tests. Throws,
-  having sent nothing, when the calling thread holds an app-DB connection already, or when another count runs.
+  "Run `thunk` with app-DB activity counted JVM-wide. Returns the total of each [[count-keys]] key across threads, the
+  same counts per thread under `:by-thread {thread-id counts}`, the thunk's value under `:result`, and its wall time
+  under `:elapsed-ms`. Throws in a `^:parallel` test. Throws, having sent nothing, when the calling thread holds an
+  app-DB connection already, or when another count runs.
 
   Just before the count, and not counted, forces the settings-cache check (`setting/restore-cache-if-needed!`), so a
   setting read in `thunk` sends no check while the check's throttle holds. Limits:
@@ -162,10 +140,11 @@
   itself makes is not counted. A conveyed thread that runs after this returns still uses the counting copy, and its
   activity is not reported."
   [thunk]
+  (mb.hawk.parallel/assert-test-is-not-parallel "count-db-activity!")
   (when (instance? Connection t2.conn/*current-connectable*)
     (throw (ex-info (str "The calling thread already holds an app-DB connection (for example inside a default "
-                         "mt/with-temp), and the counter cannot see work on it. Use rs.test/commit-with-temp, or "
-                         "start the count outside the transaction.")
+                         "mt/with-temp), and the counter cannot see work on it. Start the count outside the "
+                         "transaction, or bind `metabase.test.util.thread-local/*thread-local*` false.")
                     {:connection t2.conn/*current-connectable*})))
   (when-not (compare-and-set! counting? false true)
     (throw (ex-info "Another app-DB count runs now; counts cannot overlap" {})))
@@ -176,6 +155,8 @@
       ;; inside the `try`, so that a check that throws still resets `counting?`
       (setting/restore-cache-if-needed! :force-check? true)
       (let [start-ns  (System/nanoTime)
+            ;; the root copy's data source hands out counting proxies of the pooled connections, so each connection
+            ;; that a thread gets during the count is counted, also on the virtual threads of async imports/exports
             _         (alter-var-root app-db-var (constantly (counting-app-db counts original)))
             result    (if (thread-bound? app-db-var)
                         (with-bindings {app-db-var (counting-app-db counts mdb.connection/*application-db*)}
