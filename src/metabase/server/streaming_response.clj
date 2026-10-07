@@ -402,8 +402,6 @@
    f {:keys [content-type status headers async-timeout-ms], :as options} finished-chan]
   (let [canceled-chan (a/promise-chan)
         completed?   (AtomicBoolean. false)]
-    (when async-timeout-ms
-      (.setTimeout async-context async-timeout-ms))
     (.addListener async-context
                   (reify AsyncListener
                     (onTimeout [_ _event]
@@ -417,6 +415,8 @@
                     (onComplete [_ _event])
                     (onStartAsync [_ _event])))
     (try
+      (when async-timeout-ms
+        (.setTimeout async-context async-timeout-ms))
       (.setStatus response (or status 202))
       (let [gzip?   (should-gzip-response? request-map)
             headers (cond-> (assoc (merge headers (:headers response-map))
