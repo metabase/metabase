@@ -20,7 +20,7 @@
            (org.apache.commons.io FileUtils)
            (org.eclipse.jgit.api Git TransportCommand)
            (org.eclipse.jgit.dircache DirCacheEditor DirCacheEditor$PathEdit DirCacheEntry)
-           (org.eclipse.jgit.lib AnyObjectId FileMode PersonIdent)
+           (org.eclipse.jgit.lib AnyObjectId CommitBuilder FileMode PersonIdent TreeFormatter)
            (org.eclipse.jgit.transport UsernamePasswordCredentialsProvider)
            (org.eclipse.jgit.util FS FS_Win32_Cygwin ProcessResult$Status)))
 
@@ -1466,3 +1466,155 @@
                   (is (some? (git/commit-sha remote "push-remote-check")) "the push goes to the URL of the setting")
                   (is (nil? (git/commit-sha other "push-remote-check")) "the push does not reach the other URL"))
                 (finally (forget-clones! url))))))))))
+
+(deftest export-commit-reaches-the-remote-when-another-source-fetches-before-the-push-test
+  (testing "the commit that finish-commit! returns is on the remote, also when another source of the URL fetches between
+            the commit and the push"
+    (mt/with-temp-dir [remote-dir nil]
+      (let [remote (init-remote! remote-dir :files {"master.txt" "File in master"})
+            url    (remote-url remote)]
+        (try
+          (let [source   (git/git-source url "master" nil ingest/legal-top-level-paths)
+                other    (git/git-source url "master" nil ingest/legal-top-level-paths)
+                commit   (source.p/open-commit (source.p/snapshot source))
+                fetched? (atom false)
+                _        (source.p/stage-upsert! commit {:path "collections/new.yaml" :content "x: 1\n"})
+                ;; A throw is a correct answer too: then nothing records the commit as synced.
+                version  (try
+                           (source.p/finish-commit!
+                            commit "Export"
+                            (fn [fraction & _]
+                              ;; 0.8 is first reported at the commit checkpoint: the local ref is at the new commit,
+                              ;; and the push has not started.
+                              (when (and (= 0.8 fraction) (compare-and-set! fetched? false true))
+                                (source.p/snapshot other))))
+                           (catch Exception e e))]
+            (is @fetched? "precondition: the other source fetched at the commit checkpoint")
+            (when (string? version)
+              (is (= version (git/commit-sha remote "master"))
+                  "the remote branch is at the commit that finish-commit! returned")))
+          (finally (forget-clones! url)))))))
+
+(defn- ex-data-chain
+  "The ex-data of `e` and of each of its causes."
+  [^Throwable e]
+  (keep ex-data (take-while some? (iterate ex-cause e))))
+
+(deftest password-in-the-url-is-not-logged-test
+  (testing "a password in the URL is in no log message and in no ex-data of a failed clone or a stale-clone recovery"
+    (let [password "S3CRETPASS"
+          url      (str "https://user:" password "@127.0.0.1:1/repo.git")]
+      (try
+        (mt/with-log-messages-for-level [messages [metabase-enterprise.remote-sync.source.git :info]]
+          (let [clone-error    (thrown-by #(git/git-source url "master" nil ingest/legal-top-level-paths))
+                recovery-error (thrown-by #(#'git/recover-stale-clone! {:remote-url url
+                                                                        :token      nil
+                                                                        :lease      (clone-registry/new-lease url)
+                                                                        :generation nil}))]
+            (is (some? clone-error) "precondition: the clone of a closed port fails")
+            (is (some? recovery-error) "precondition: the recovery clone of a closed port fails")
+            (is (some #(str/includes? (:message %) "Cloning repository") (messages))
+                "precondition: the clone is logged")
+            (is (some #(str/includes? (:message %) "Re-cloning stale git cache") (messages))
+                "precondition: the recovery is logged")
+            (is (= [] (filter #(str/includes? (str (:message %)) password) (messages)))
+                "no log message has the password")
+            (doseq [e [clone-error recovery-error]]
+              (is (= [] (filter #(str/includes? (pr-str %) password) (ex-data-chain e)))
+                  "no ex-data has the password"))))
+        (finally (forget-clones! url))))))
+
+(deftest clone-with-deleted-config-is-cloned-again-test
+  (testing "when a cleaner deletes the config and HEAD files of the active clone and keeps its directory, a new source
+            takes a snapshot with no error"
+    (mt/with-temp-dir [remote-dir nil]
+      (let [remote (init-remote! remote-dir :files {"master.txt" "File in master"})
+            url    (remote-url remote)]
+        (try
+          (let [dir (with-open [^java.io.Closeable source (git/git-source url "master" nil ingest/legal-top-level-paths)]
+                      (source.p/snapshot source)
+                      (clone-dir source))]
+            (doseq [f ["config" "HEAD"]]
+              (is (.delete (io/file dir f)) (str "precondition: " f " is deleted")))
+            (is (.isDirectory ^File dir) "precondition: the clone directory stays")
+            (with-open [^java.io.Closeable source (git/git-source url "master" nil ingest/legal-top-level-paths)]
+              (is (= "File in master"
+                     (try (source.p/read-file (source.p/snapshot source) "master.txt")
+                          (catch Exception e (str "threw: " (ex-message e)))))
+                  "the new source reads the remote")))
+          (finally (forget-clones! url)))))))
+
+(defn- rewrite-branch!
+  "Points `branch` of the test remote at a new root commit, as a force push that rewrites history does. The old commits
+  of the branch are then on no branch of the remote."
+  [{:keys [^Git git]} ^String branch]
+  (let [repo  (.getRepository git)
+        ident (PersonIdent. "Test Setup" "test@metabase.com")]
+    (with-open [inserter (.newObjectInserter repo)]
+      (let [commit (.insert inserter (doto (CommitBuilder.)
+                                       (.setTreeId (.insert inserter (TreeFormatter.)))
+                                       (.setAuthor ident)
+                                       (.setCommitter ident)
+                                       (.setMessage "Rewritten history")))]
+        (.flush inserter)
+        (doto (.updateRef repo (str "refs/heads/" branch))
+          (.setNewObjectId commit)
+          (.setForceUpdate true)
+          (.update))))))
+
+(deftest create-branch-from-a-commit-that-is-not-in-the-clone-test
+  (testing "when a force push removed the base commit from the remote and the clone is new, create-branch throws an error
+            that names the commit and the remedy, and makes no branch"
+    (mt/with-temp-dir [remote-dir nil]
+      (let [remote (init-remote! remote-dir :files {"master.txt" "File in master"})
+            url    (remote-url remote)]
+        (try
+          (let [base (with-open [^java.io.Closeable source (git/git-source url "master" nil ingest/legal-top-level-paths)]
+                       (:version (source.p/snapshot source)))]
+            (rewrite-branch! remote "master")
+            ;; A new process clones again, and its clone gets only the commits that the remote has.
+            (forget-clones! url)
+            (with-open [^java.io.Closeable source (git/git-source url "master" nil ingest/legal-top-level-paths)]
+              (let [e (thrown-by #(source.p/create-branch source "from-base" base))]
+                (is (some? e) "create-branch throws")
+                (is (str/includes? (str (ex-message e)) base) "the error names the commit")
+                (is (str/includes? (str (ex-message e)) "Import again, or export with force") "the error names the remedy")
+                (is (nil? (git/commit-sha remote "from-base")) "the remote gets no branch"))))
+          (finally (forget-clones! url)))))))
+
+(deftest fetches-of-one-clone-do-not-overlap-test
+  (testing "two sources of one URL that fetch at the same time fetch one after the other, so that no fetch fails on a
+            pack lock of the other"
+    (mt/with-temp-dir [remote-dir nil]
+      (let [remote   (init-remote! remote-dir :files {"master.txt" "File in master"})
+            url      (remote-url remote)
+            check!   (mt/original-fn #'git/check-transport-url!)
+            entered  (atom 0)
+            first-in (promise)
+            second-in (promise)
+            release  (promise)]
+        (try
+          (with-open [^java.io.Closeable a (git/git-source url "master" nil ingest/legal-top-level-paths)
+                      ^java.io.Closeable b (git/git-source url "master" nil ingest/legal-top-level-paths)]
+            (is (identical? (:git a) (:git b)) "precondition: the two sources share one clone")
+            (git-working-add! remote "after.txt" "Added after the clone")
+            (git-working-commit! remote "Add after.txt")
+            ;; JGit calls the transport callback inside the fetch, after it opens the transport.
+            (mt/with-dynamic-fn-redefs [git/check-transport-url! (fn [transport remote-url clone-dir]
+                                                                   (case (swap! entered inc)
+                                                                     1 (do (deliver first-in true)
+                                                                           (deref release 10000 nil))
+                                                                     2 (deliver second-in true)
+                                                                     nil)
+                                                                   (check! transport remote-url clone-dir))]
+              (let [fetch-a (future (thrown-by #(git/fetch! a)))
+                    _       (is (true? (deref first-in 10000 false)) "precondition: the first fetch runs")
+                    fetch-b (future (thrown-by #(git/fetch! b)))]
+                (try
+                  (is (nil? (deref second-in 500 nil)) "the second fetch does not start while the first one runs")
+                  (finally
+                    (deliver release true)))
+                (is (nil? (deref fetch-a 10000 ::timeout)) "the first fetch succeeds")
+                (is (nil? (deref fetch-b 10000 ::timeout)) "the second fetch succeeds")
+                (is (true? (deref second-in 10000 false)) "the second fetch runs after the first one"))))
+          (finally (forget-clones! url)))))))

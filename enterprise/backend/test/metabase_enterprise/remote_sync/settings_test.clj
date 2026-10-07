@@ -12,6 +12,8 @@
    [metabase.settings.core :as setting]
    [metabase.test :as mt])
   (:import
+   (com.sun.net.httpserver HttpExchange HttpHandler HttpServer)
+   (java.net InetAddress InetSocketAddress)
    (org.eclipse.jgit.api Git)))
 
 (set! *warn-on-reflection* true)
@@ -429,3 +431,45 @@
               (is (= env-url (settings/remote-sync-url)) "Precondition: the URL from the environment is in effect")
               (is (= "alpha" (settings/remote-sync-branch))
                   "The save stores the default branch of the URL in effect, not of the URL in the request"))))))))
+
+(defn- start-http-server!
+  "Starts an HTTP server on 127.0.0.1 at a free port that answers each request with `(handle exchange)`. Returns it."
+  ^HttpServer [handle]
+  (doto (HttpServer/create (InetSocketAddress. (InetAddress/getLoopbackAddress) 0) 0)
+    (.createContext "/" (reify HttpHandler
+                          (handle [_ exchange]
+                            (with-open [^HttpExchange exchange exchange]
+                              (handle exchange)))))
+    (.start)))
+
+(defn- respond!
+  "Sends the status `status` with no body and the response headers `headers` on `exchange`."
+  [^HttpExchange exchange status headers]
+  (doseq [[k v] headers]
+    (.add (.getResponseHeaders exchange) k v))
+  (.sendResponseHeaders exchange (int status) -1))
+
+(deftest token-is-not-sent-to-a-redirect-target-on-another-host-test
+  (testing "the settings check sends the token to no host other than the host of the URL, also when the remote
+            redirects"
+    (let [b-auth (atom [])
+          b      (start-http-server! (fn [^HttpExchange exchange]
+                                       (let [auth (.getFirst (.getRequestHeaders exchange) "Authorization")]
+                                         (swap! b-auth conj auth)
+                                         (if auth
+                                           (respond! exchange 404 {})
+                                           (respond! exchange 401 {"WWW-Authenticate" "Basic realm=\"b\""})))))
+          ;; The same address, by another host name: the redirect goes to another host.
+          b-url  (str "http://localhost:" (.getPort (.getAddress b)))
+          a      (start-http-server! (fn [^HttpExchange exchange]
+                                       (respond! exchange 302 {"Location" (str b-url (.getRequestURI exchange))})))]
+      (try
+        (is (thrown? Exception
+                     (settings/check-git-settings! {:remote-sync-url   (str "http://127.0.0.1:" (.getPort (.getAddress a))
+                                                                            "/org/repo.git")
+                                                    :remote-sync-token "TOKEN-REDIRECT-SECRET"})))
+        (is (seq @b-auth) "precondition: the redirect target got a request")
+        (is (= [] (remove nil? @b-auth)) "the redirect target gets no Authorization header")
+        (finally
+          (.stop a 0)
+          (.stop b 0))))))

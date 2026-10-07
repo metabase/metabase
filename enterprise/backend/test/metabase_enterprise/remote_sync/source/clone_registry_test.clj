@@ -6,7 +6,9 @@
    [metabase-enterprise.remote-sync.source.clone-registry :as clone-registry]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [metabase.util.log :as log])
+   [metabase.util.log :as log]
+   [toucan2.connection :as t2.connection]
+   [toucan2.core :as t2])
   (:import
    (java.io File)
    (java.nio.channels FileLock)
@@ -14,7 +16,9 @@
    (java.nio.file.attribute FileAttribute PosixFilePermissions UserPrincipal)
    (java.time Instant)
    (java.util.concurrent CountDownLatch TimeUnit)
-   (org.apache.commons.io FileUtils)))
+   (org.apache.commons.io FileUtils)
+   (org.eclipse.jgit.api Git)
+   (org.eclipse.jgit.lib PersonIdent)))
 
 (set! *warn-on-reflection* true)
 
@@ -108,6 +112,22 @@
             (is (= [] (process-roots registry)) "a shutdown deletes the old root and the new root")))
         (finally
           (FileUtils/deleteQuietly base))))))
+
+(deftest retired-process-root-is-deleted-after-its-last-release-test
+  (testing "a process root that lost its lock file is deleted at the last release of a clone in it, before a shutdown"
+    (do-with-registry!
+     (fn [registry]
+       (let [clone!       (fake-clone (atom []) (atom []))
+             lease-1      (clone-registry/new-lease url)
+             {dir-1 :dir} (clone-registry/acquire! registry lease-1 clone!)
+             root-1       (.getParentFile ^File dir-1)]
+         (io/delete-file (io/file root-1 ".lock"))
+         (let [lease-2 (clone-registry/new-lease url)]
+           (clone-registry/acquire! registry lease-2 clone!)
+           (is (not= root-1 (root-dir registry)) "precondition: the acquire retired the first root")
+           (clone-registry/release! registry lease-1)
+           (clone-registry/release! registry lease-2)
+           (is (not (.exists root-1)) "the retired root is deleted")))))))
 
 (deftest failed-root-lock-leaves-no-directory-test
   (testing "when the lock file of a new process root cannot be opened, the registry deletes the new root"
@@ -278,6 +298,30 @@
        (mt/with-dynamic-fn-redefs [clone-registry/process-user (fn [] (reify UserPrincipal (getName [_] "another-user")))]
          (check-refused! registry (:base-dir registry) :another-owner))
        (is (= [] (process-roots registry)) "no process root is made in the base directory")))))
+
+(deftest base-directory-under-an-unsafe-parent-is-refused-test
+  (when (posix?)
+    (testing "when other users can write to the parent of the base directory and it has no sticky bit, the registry refuses to clone"
+      (let [parent (io/file (System/getProperty "java.io.tmpdir") (str "clone-registry-test-parent-" (random-uuid)))]
+        (try
+          (.mkdirs parent)
+          ;; Another user can rename an entry of such a directory, also one that this process owns.
+          (set-permissions! parent "rwxrwxrwx")
+          (let [registry (clone-registry/make-registry (io/file parent "metabase-git"))
+                clones   (atom [])]
+            (try
+              (let [e (try
+                        (clone-registry/acquire! registry (clone-registry/new-lease url) (fake-clone clones (atom [])))
+                        nil
+                        (catch Exception e e))]
+                (is (some? e) "the acquire throws")
+                (is (str/includes? (str (ex-message e)) (str parent)) "the error names the parent")
+                (is (= :unsafe-parent (:reason (ex-data e))))
+                (is (= [] @clones) "no clone starts"))
+              (finally
+                (clone-registry/shutdown! registry))))
+          (finally
+            (FileUtils/deleteQuietly parent)))))))
 
 (defn- symlink!
   "Makes `link` a symbolic link to `target`."
@@ -558,6 +602,51 @@
          (is (= 1 (:id (deref waiter 10000 ::timeout))))
          (is (= 1 (count @clones))))))))
 
+(deftest clone-job-does-not-use-the-app-db-connection-of-its-caller-test
+  (testing "a clone job that a caller in an app-DB transaction starts does not get the connection of that transaction"
+    (mt/initialize-if-needed! :db)
+    (do-with-registry!
+     (fn [registry]
+       (let [seen (promise)]
+         (t2/with-transaction [conn]
+           (clone-registry/acquire! registry (clone-registry/new-lease url)
+                                    (fn [^File dir]
+                                      (deliver seen t2.connection/*current-connectable*)
+                                      (.mkdirs dir)
+                                      (reify java.lang.AutoCloseable (close [_]))))
+           (is (instance? java.sql.Connection conn) "precondition: the caller holds a connection")
+           ;; The caller can leave the transaction while the job runs, and the pool then takes the connection back.
+           (is (not (identical? conn (deref seen 10000 ::timeout))))))))))
+
+(deftest clone-job-that-ends-after-shutdown-leaves-no-process-root-test
+  (testing "a clone job that ignores the interrupt of a shutdown and ends after it leaves no process root on disk"
+    (do-with-registry!
+     (fn [registry]
+       (let [started (CountDownLatch. 1)
+             go      (CountDownLatch. 1)
+             ;; A blocking socket read, as in a JGit clone, does not stop on an interrupt.
+             clone!  (fn [^File dir]
+                       (.countDown started)
+                       (loop []
+                         (when-not (try (.await go 100 TimeUnit/MILLISECONDS)
+                                        (catch InterruptedException _ false))
+                           (recur)))
+                       (.mkdirs dir)
+                       (spit (io/file dir "HEAD") "ref: refs/heads/master")
+                       (reify java.lang.AutoCloseable (close [_])))
+             waiter  (future (try (clone-registry/acquire! registry (clone-registry/new-lease url) clone!)
+                                  (catch Throwable e e)))]
+         (try
+           (is (.await started 10 TimeUnit/SECONDS) "precondition: the clone job runs")
+           (let [root (root-dir registry)]
+             (clone-registry/shutdown! registry)
+             (is (not (.exists root)) "precondition: the shutdown deletes the root")
+             (.countDown go)
+             (is (not= ::timeout (deref waiter 10000 ::timeout)) "precondition: the clone job ends")
+             (is (= [] (process-roots registry)) "no process root is on disk after the job ends"))
+           (finally
+             (.countDown go))))))))
+
 (deftest retired-generation-lives-while-a-lease-holds-it-test
   (testing "a retired generation stays while a lease holds it, and is closed and deleted at its last lease"
     (do-with-registry!
@@ -723,6 +812,8 @@
              _      (acquire! a)
              lock-a (io/file (root-dir a) ".lock")]
          (is (= "held" (lock-seen-by-another-process lock-a)) "precondition: the root of the first registry is locked")
+         ;; An old lock file: the sweep keeps a root with a new lock file whatever its owner.
+         (.setLastModified lock-a (ms-ago two-hours-ms))
          (let [b      (make! nil)
                _      (acquire! b)
                lock-b (io/file (root-dir b) ".lock")]
@@ -800,6 +891,33 @@
            (is (.exists live) "a process root never matches the rule of an old clone directory")
            (finally
              (stop-process! holder))))))))
+
+(deftest first-sweep-keeps-an-old-clone-after-a-fetch-with-no-change-test
+  (testing "the first sweep keeps a clone directory of an earlier version whose last fetch got no new commit"
+    (mt/with-temp-dir [remote-dir nil]
+      (do-with-registries!
+       (fn [^File base make!]
+         (let [ident (PersonIdent. "Test" "test@metabase.com")
+               clone (io/file base (sha1-name))
+               then  (ms-ago two-hours-ms)]
+           (with-open [remote (.call (-> (Git/init) (.setDirectory (io/file remote-dir)) (.setInitialBranch "master")))]
+             (spit (io/file remote-dir "a.txt") "a")
+             (.call (.addFilepattern (.add remote) "a.txt"))
+             (.call (-> (.commit remote) (.setMessage "Initial commit") (.setAuthor ident) (.setCommitter ident))))
+           ;; As an earlier Metabase version makes its clone.
+           (.close (.call (-> (Git/cloneRepository) (.setURI (str (.toURI (io/file remote-dir)))) (.setDirectory clone)
+                              (.setBare true))))
+           (doseq [^File f (file-seq clone)]
+             (.setLastModified f then))
+           (with-open [g (Git/open clone)]
+             (.call (.fetch g)))
+           (doseq [^File f (file-seq clone)
+                   :when (and (.isFile f)
+                              (or (#{"FETCH_HEAD" "packed-refs"} (.getName f))
+                                  (str/starts-with? (str (.relativize (.toPath clone) (.toPath f))) "refs")))]
+             (is (< (.lastModified f) (ms-ago 3600000)) (str "precondition: the fetch with no change does not write " f)))
+           (acquire! (make! {:old-clone-idle-ms (constantly 3600000)}))
+           (is (.exists clone) "the first sweep keeps the clone")))))))
 
 (deftest later-sweep-does-not-delete-old-clone-directories-test
   (testing "a later sweep of the same registry deletes the roots of stopped processes, but not old clone directories"
