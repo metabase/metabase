@@ -35,7 +35,8 @@ describe("UnsubscribeUserModal", () => {
   it("should close on successful submit", async () => {
     const { onClose } = setup();
 
-    await userEvent.click(await screen.findByText("Unsubscribe"));
+    await screen.findByText(/Unsubscribe John Doe/);
+    await userEvent.click(screen.getByText("Unsubscribe"));
 
     await waitFor(async () => {
       const deletes = await findRequests("DELETE");
@@ -49,7 +50,8 @@ describe("UnsubscribeUserModal", () => {
     const unsubscribeResponse = { status: 404, body: error };
     const { onClose } = setup({ unsubscribeResponse });
 
-    await userEvent.click(await screen.findByText("Unsubscribe"));
+    await screen.findByText(/Unsubscribe John Doe/);
+    await userEvent.click(screen.getByText("Unsubscribe"));
 
     await waitFor(async () => {
       const deletes = await findRequests("DELETE");
