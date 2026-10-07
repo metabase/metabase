@@ -330,10 +330,12 @@
 (defn- check-context-budget!
   "Fail a connection whose model runs with a window too small to hold Metabot's prompt.
 
-  Nothing in a request can widen it: Ollama's OpenAI-compatible surface has no `num_ctx` field. Nor
-  does exceeding it produce an error — with context shift, on by default, Ollama keeps the first few
-  tokens and the tail and silently discards the middle, which is where the tools and the system prompt
-  are. Metabot would run, with no instructions and no tools it could name.
+  No field in a request can make the window larger: Ollama's OpenAI-compatible surface has no `num_ctx`
+  field. A prompt that is too long does not cause an error. Ollama makes it shorter in two stages. First,
+  it removes the oldest messages until the prompt fits, but it keeps the system messages and the last
+  message. If the prompt is still too long, context shift (on by default) keeps the first few tokens and
+  the end, and removes the middle. The tools and the system prompt are in the middle, so Metabot would
+  run without its instructions and without tools it can name.
 
   The probes cannot show this. They are one-line prompts that fit in any window, so the truncation
   they would reveal is of the *answer*; this truncates the *question*."
