@@ -639,3 +639,25 @@
              (is (not (t2/exists? :model/Card :id a)))
              (is (not (entry? b)) "the search entry of the deleted card B goes")
              (is (not (entry? a)) "the search entry of the removed card A goes"))))))))
+
+;;; ---------------------------- untracked content in a remote-deleted collection ----------------------------
+
+(deftest remote-delete-of-a-collection-keeps-an-exploration-summary-document-test
+  (testing "Collection Beta holds an exploration and its Summary document, which remote sync does not track. The remote
+            deletes Beta. The merge pull keeps the document, as the full import does."
+    (with-sync-settings
+      (mt/with-temp [:model/Collection {alpha :id} {:name "Alpha" :is_remote_synced true :location "/"}
+                     :model/Card _ {:name "Card X" :collection_id alpha}
+                     :model/Collection {beta :id} {:name "Beta" :is_remote_synced true :location "/"}
+                     :model/Card _ {:name "Card B" :collection_id beta}
+                     :model/Exploration {explo :id} {:name "Explo" :creator_id (mt/user->id :rasta) :collection_id beta}
+                     :model/Document {doc :id} {:name "Explo summary" :creator_id (mt/user->id :rasta)
+                                                :collection_id beta :exploration_id explo}]
+        (let [t0 (export-tree!)
+              _  (pull-base! t0)
+              {:keys [result]} (merge-pull! t0 (without-beta t0))]
+          (is (not-any? #(str/includes? % "Explo summary") (vals t0)) "precondition: the push leaves out the document")
+          (is (= :success (:status result)) (pr-str result))
+          (is (not (t2/exists? :model/Collection :id beta)))
+          (is (t2/exists? :model/Exploration :id explo))
+          (is (t2/exists? :model/Document :id doc) "the Summary document stays"))))))
