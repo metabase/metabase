@@ -2794,6 +2794,41 @@
                                              :expected-status 400
                                              :authorization basic)))))))))))
 
+(deftest site-url-mcp-token-refreshes-after-a-site-url-change-test
+  (testing "A client that authorized MCP scopes with resource=<Site URL> keeps naming that URL when it refreshes. After
+            an admin changes the Site URL, the refresh still succeeds and the token stays MCP-bound"
+    (mt/with-temporary-setting-values [site-url                                  "http://localhost:3000"
+                                       oauth-server-dynamic-registration-enabled true]
+      (t2/with-transaction [_conn nil {:rollback-only true}]
+        (let [{:keys [client token]} (run-flow! {:registration binding-flow-registration
+                                                 :scope        "agent:content:read agent:query:run"
+                                                 :resource     "http://localhost:3000"})]
+          (mt/with-temporary-setting-values [site-url "https://mb.example.com"]
+            (let [refreshed (token-request! {:grant_type    "refresh_token"
+                                             :refresh_token (:refresh_token token)
+                                             :resource      "http://localhost:3000"}
+                                            :authorization (basic-auth-header (:client_id client)
+                                                                              (:client_secret client)))]
+              (is (oauth-server/mcp-resource? (access-token-resource refreshed))))))))))
+
+(deftest rest-token-naming-an-old-site-url-stays-rest-test
+  (testing "A REST token (no MCP scopes, no resource) that refreshes with resource=<old Site URL> after an admin
+            changes the Site URL does not become MCP-bound"
+    (mt/with-temporary-setting-values [site-url                                  "http://localhost:3000"
+                                       oauth-server-dynamic-registration-enabled true]
+      (t2/with-transaction [_conn nil {:rollback-only true}]
+        (let [{:keys [client token]} (run-flow! {:registration binding-flow-registration
+                                                 :scope        oauth-server/full-access-scope})]
+          (is (nil? (access-token-resource token)))
+          (mt/with-temporary-setting-values [site-url "https://mb.example.com"]
+            (is (= "invalid_grant"
+                   (:error (token-request! {:grant_type    "refresh_token"
+                                            :refresh_token (:refresh_token token)
+                                            :resource      "http://localhost:3000"}
+                                           :expected-status 400
+                                           :authorization (basic-auth-header (:client_id client)
+                                                                             (:client_secret client))))))))))))
+
 (deftest refresh-without-client-credentials-reveals-nothing-test
   (testing "A refresh request without client credentials for a confidential client gets the same answer whether its
             refresh token is live or unknown, so the endpoint does not tell a caller which tokens are live. The
