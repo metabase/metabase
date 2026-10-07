@@ -287,6 +287,7 @@ const HOOK_TIMEOUT = Number(process.env.NT_HOOK_TIMEOUT ?? 8000);
 // Node's own timers, taken before any fake clock can replace them, so a deadline
 // still fires while a test has the clock faked.
 const realSetTimeout = globalThis.setTimeout;
+const realSetImmediate = globalThis.setImmediate;
 const realClearTimeout = globalThis.clearTimeout;
 const realSetInterval = globalThis.setInterval;
 const realClearInterval = globalThis.clearInterval;
@@ -450,6 +451,16 @@ const runSuite = async (suite, t, outer) => {
         try { require("fetch-mock").default.callHistory.clear(); } catch {}
         phase = "beforeEach";
         for (const [index, fn] of hooks.beforeEach.entries()) await runTagged(hookTag("beforeEach", index, fn), () => withDeadline(() => fn(), HOOK_TIMEOUT));
+        // node:test puts more turns of the event loop between two tests than
+        // jest does. A request that the previous test's cleanup scheduled lands
+        // in that gap, before this test has any route, and is recorded as
+        // unmatched. It is not this test's request, so it does not count here.
+        if (!process.env.NT_NO_GAP_CALL_DROP) {
+          try {
+            const history = require("fetch-mock").default.callHistory;
+            if (history.callLogs.some((log) => !log.route)) history.callLogs = history.callLogs.filter((log) => log.route);
+          } catch {}
+        }
         if (process.env.NT_DEBUG_PHASE === "1") installRouterProbe();
         phase = "body";
         if (process.env.NT_DEBUG_FETCH_WHEN === "1") {
@@ -717,17 +728,19 @@ let initialBootstrap;
 // them, so a 60 second RTK cache timer from file 3 fires during file 40 and the
 // loop waits for it. Timers created while a file runs are tracked and cleared.
 const pendingTimers = new Set();
+const trackedTimers = {
+  setTimeout: (fn, delay, ...rest) => { const handle = realSetTimeout(fn, delay, ...rest); pendingTimers.add(handle); return handle; },
+  setInterval: (fn, delay, ...rest) => { const handle = realSetInterval(fn, delay, ...rest); pendingTimers.add(handle); return handle; },
+};
+// True while the clock is Node's own, tracked or not, and false under a fake clock.
+const clockIsReal = () => globalThis.setInterval === realSetInterval || globalThis.setInterval === trackedTimers.setInterval;
 const trackTimers = () => {
   for (const name of ["setTimeout", "setInterval"]) {
     const original = name === "setTimeout" ? realSetTimeout : realSetInterval;
     Object.defineProperty(globalThis, name, {
       configurable: true,
       writable: true,
-      value: (fn, delay, ...rest) => {
-        const handle = original(fn, delay, ...rest);
-        pendingTimers.add(handle);
-        return handle;
-      },
+      value: trackedTimers[name],
     });
   }
 };
@@ -750,7 +763,7 @@ const requestFrame = globalThis.window.requestAnimationFrame;
 const cancelFrame = globalThis.window.cancelAnimationFrame;
 let lastCancelledFrame = 0;
 const cancelLeftoverFrames = () => {
-  if (process.env.NT_NO_FRAME_RESET || globalThis.setInterval !== realSetInterval) return;
+  if (process.env.NT_NO_FRAME_RESET || !clockIsReal()) return;
   const newest = requestFrame.call(globalThis.window, () => {});
   for (let handle = lastCancelledFrame + 1; handle <= newest; handle += 1) cancelFrame.call(globalThis.window, handle);
   lastCancelledFrame = newest;
@@ -804,6 +817,7 @@ const fileCleanup = async (isolated) => {
   fakeTimers.useRealTimers();
   timerShape("after-useRealTimers");
   restoreTimerGlobals();
+  if (!process.env.NT_NO_TIMER_CLEAR) { clearPendingTimers(); trackTimers(); }
   cancelLeftoverFrames();
   const fetchMock = require("fetch-mock").default;
   const phaseStart = Date.now();
@@ -831,7 +845,7 @@ const fileCleanup = async (isolated) => {
   if (isolated) {
     mocks.clear();
     for (const [key, factory] of preloadMocks) mocks.set(key, factory);
-    state.mockExports.clear();
+    state.mockExports.clear(); globalThis.__nodeTestSpike.clearActualModules?.();
     // The stub modules live outside the project, so eviction spares them, and
     // their cached exports would hand the next file objects from the old graph.
     for (const stubFile of mockStubs.values()) delete require.cache[stubFile];
@@ -987,7 +1001,23 @@ const resolveFrom = (id, from) => {
 // resolve hook when that module is still cached. A spec directory that has
 // been handed the stub for a path would get the stub again here, so the real
 // module is asked for from a directory that only ever sees real modules.
-const requireFromActual = Module.createRequire(path.join(processDir, "actual", "index.js"));
+const requireFromActualDirectory = Module.createRequire(path.join(processDir, "actual", "index.js"));
+// The same memory works against a mock too. A directory that resolved a
+// request to the real file gets the real module again for as long as Node has
+// it cached, and the resolve hook, which would hand out the mock, is not asked.
+// So the real module of a mocked file never stays in Node's cache: it is held
+// here, for requireActual and for automocks.
+const actualModules = new Map();
+globalThis.__nodeTestSpike.clearActualModules = () => actualModules.clear();
+const requireFromActual = (file) => {
+  if (actualModules.has(file)) return actualModules.get(file);
+  const actual = requireFromActualDirectory(file);
+  if (mocks.has(file) && !process.env.NT_NO_MOCK_CACHE_FIX) {
+    actualModules.set(file, actual);
+    delete require.cache[file];
+  }
+  return actual;
+};
 const requireActual = (id) => {
   const from = callerFile();
   const file = resolveFrom(id, from);
@@ -1010,6 +1040,8 @@ const jestMock = (id, factory) => {
   else if (file.startsWith("node:")) mocks.set(file, () => moduleMocker.generateFromMetadata(moduleMocker.getMetadata(process.getBuiltinModule(file))));
   else mocks.set(file, () => { bypassMocks += 1; try { return moduleMocker.generateFromMetadata(moduleMocker.getMetadata(requireFromActual(file))); } finally { bypassMocks -= 1; } });
   state.mockExports.delete(file);
+  actualModules.delete(file);
+  if (!process.env.NT_NO_MOCK_CACHE_FIX && !file.startsWith("node:")) delete require.cache[file];
   mockedThisFile = true;
   // Consumers require the mock through a stub path, and Node caches that module,
   // so a later file's factory would otherwise never be read.
@@ -1081,7 +1113,7 @@ globalThis.jest = {
   // Project modules load again on their next require. Packages stay, as they
   // do for an isolated file, so React and the testing library keep one copy.
   resetModules: () => {
-    if (!process.env.NT_NO_RESET_MODULES) { evictProjectModules(); state.mockExports.clear(); }
+    if (!process.env.NT_NO_RESET_MODULES) { evictProjectModules(); state.mockExports.clear(); globalThis.__nodeTestSpike.clearActualModules?.(); }
     return globalThis.jest;
   },
   isolateModules: (fn) => {
@@ -1223,6 +1255,27 @@ globalThis.__nodeTestSpike.trackLets = (file, read, write) => { trackedLets.set(
       }
     }
   };
+  // Under jest the global object is the jsdom window, so a package that defines
+  // a global, such as the CSS.escape polyfill, also defines it on the window.
+  // Here they are two objects. Whatever a package adds to the global object is
+  // made readable from the window as well.
+  let packagesLoadedSinceMirror = true;
+  const mirrorGlobalsOntoWindow = () => {
+    packagesLoadedSinceMirror = false;
+    if (process.env.NT_NO_WINDOW_MIRROR) return;
+    for (const key of Object.getOwnPropertyNames(globalThis)) {
+      if (key in win) continue;
+      try { Object.defineProperty(win, key, { configurable: true, get: () => globalThis[key], set: (value) => { globalThis[key] = value; } }); } catch {}
+    }
+  };
+  globalThis.__nodeTestSpike.mirrorGlobalsOntoWindow = mirrorGlobalsOntoWindow;
+  {
+    const compileAny = NodeModule.prototype._compile;
+    NodeModule.prototype._compile = function (content, filename, ...rest) {
+      if (!isProjectSource(filename)) packagesLoadedSinceMirror = true;
+      return compileAny.call(this, content, filename, ...rest);
+    };
+  }
   if (SHARED_UI) {
     const compilePackage = NodeModule.prototype._compile;
     NodeModule.prototype._compile = function (content, filename, ...rest) {
@@ -1254,6 +1307,7 @@ globalThis.__nodeTestSpike.trackLets = (file, read, write) => { trackedLets.set(
     } finally {
       if (packageModulesPending.length > 0 && args[1]?.filename && isProjectSource(args[1].filename)) recordPackageExports();
       loadDepth -= 1;
+      if (loadDepth === 0 && packagesLoadedSinceMirror) mirrorGlobalsOntoWindow();
       if (loadDepth === 0 && valuesBeforeLoad) {
         for (const [file, tracked] of trackedLets) {
           const before = valuesBeforeLoad.get(file);
@@ -1280,6 +1334,7 @@ globalThis.__nodeTestSpike.resetLets = () => {
     try { write(baseline); } catch {}
   }
 };
+if (!process.env.NT_NO_TIMER_CLEAR) trackTimers();
 runSetupChain();
 initialBootstrap = { ...globalThis.window.MetabaseBootstrap };
 
