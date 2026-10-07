@@ -78,14 +78,7 @@ export const DataAppDataAccessWarning = ({ warning, groupName }: Props) => {
                 >
                   {parts.map((part, index) => (
                     <Flex key={part.url} align="center" gap={4}>
-                      <Anchor
-                        component={Link}
-                        to={part.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        size="sm"
-                        fw={700}
-                      >
+                      <Anchor component={Link} to={part.url} size="sm" fw={700}>
                         {part.label}
                       </Anchor>
 

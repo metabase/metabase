@@ -78,6 +78,7 @@ export const setup = ({
         : warnings.filter((warning) =>
             assigned.some((group) => group.id === warning.group_id),
           )),
+    { name: "data-app-group-permission-warnings" },
   );
 
   fetchMock.post("path:/api/apps/sales/groups", ({ options: { body } }) => {

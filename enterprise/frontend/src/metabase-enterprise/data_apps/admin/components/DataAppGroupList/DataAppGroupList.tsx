@@ -11,10 +11,13 @@ import { usePagination } from "metabase/common/hooks/use-pagination";
 import { getGroupNameLocalized } from "metabase/common/utils/groups";
 import Animation from "metabase/css/core/animation.module.css";
 import {
+  Alert,
+  Anchor,
   Box,
   Collapse,
   Flex,
   Icon,
+  Loader,
   Stack,
   Text,
   UnstyledButton,
@@ -83,6 +86,34 @@ export const DataAppGroupList = ({
 
   return (
     <Stack data-testid="group-management-sections" gap="lg">
+      {groups.length > 0 && warningsQuery.isError && (
+        <Alert
+          color="error"
+          icon={<Icon name="warning" />}
+          size="compact"
+          styles={{ wrapper: { alignItems: "center" } }}
+        >
+          {t`Could not check data access`}
+
+          <Anchor
+            component="button"
+            inherit
+            ml="0.5rem"
+            c="core-brand"
+            fw={700}
+            disabled={warningsQuery.isFetching}
+            onClick={() => warningsQuery.refetch()}
+          >{t`Retry`}</Anchor>
+        </Alert>
+      )}
+
+      {groups.length > 0 && warningsQuery.isLoading && (
+        <Flex align="center" gap="sm">
+          <Loader size="xs" aria-label={t`Checking data access`} />
+          <Text c="text-secondary">{t`Checking data access…`}</Text>
+        </Flex>
+      )}
+
       <Box
         className={cx(
           S.groupListContent,

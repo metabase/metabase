@@ -72,7 +72,8 @@
   (let [table-ids    (mapv :id tables)
         database-ids (into #{} (map :database_id) tables)]
     (when (seq tables)
-      {:permissions   (perms/index-database-permissions (vec group-ids) (vec database-ids))
+      {:permissions   (group-by (juxt :group_id :db_id :perm_type)
+                                (data-apps.db/permissions-for-warnings group-ids database-ids table-ids))
        :sandboxes      (into #{} (map (juxt :group_id :table_id))
                              (sandbox/policies-for-groups-and-tables group-ids table-ids))
        :impersonations (into #{} (map (juxt :group_id :db_id))

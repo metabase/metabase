@@ -1,4 +1,5 @@
 import userEvent from "@testing-library/user-event";
+import fetchMock from "fetch-mock";
 
 import { screen, waitFor, within } from "__support__/ui";
 import { defer } from "metabase/utils/promise";
@@ -54,6 +55,9 @@ describe("ManageDataAppGroupsPage warnings", () => {
       "href",
       expect.stringContaining("/admin/permissions/data"),
     );
+
+    // should not open in new tab
+    expect(ordersLink).not.toHaveAttribute("target");
   });
 
   it("clears a removed group's warning", async () => {
@@ -130,5 +134,66 @@ describe("ManageDataAppGroupsPage warnings", () => {
     } finally {
       warningsResponse.resolve([]);
     }
+  });
+
+  it("shows a loading indicator until the warning check finishes", async () => {
+    const warningsResponse = defer<DataAppGroupPermissionWarning[]>();
+
+    setup({
+      groups: [{ id: FINCHES_GROUP_ID, name: "Finches", member_count: 0 }],
+      warningsResponse: warningsResponse.promise,
+    });
+
+    try {
+      expect(
+        await screen.findByLabelText("Checking data access"),
+      ).toBeInTheDocument();
+
+      expect(
+        screen.getByRole("button", { name: "Remove Finches" }),
+      ).toBeEnabled();
+
+      warningsResponse.resolve([FINCHES_WARNING]);
+
+      expect(
+        await screen.findByRole("button", { name: "Missing data access" }),
+      ).toBeInTheDocument();
+
+      // loading indicator should disappear after the warning check finishes
+      expect(
+        screen.queryByLabelText("Checking data access"),
+      ).not.toBeInTheDocument();
+    } finally {
+      warningsResponse.resolve([]);
+    }
+  });
+
+  it("shows an error banner and retries the warning check", async () => {
+    setup({
+      groups: [{ id: FINCHES_GROUP_ID, name: "Finches", member_count: 0 }],
+      warningsError: true,
+    });
+
+    const banner = await screen.findByRole("alert");
+    expect(banner).toHaveTextContent("Could not check data access");
+
+    expect(
+      screen.getByRole("button", { name: "Remove Finches" }),
+    ).toBeEnabled();
+
+    fetchMock.modifyRoute("data-app-group-permission-warnings", {
+      response: [FINCHES_WARNING],
+    });
+
+    await userEvent.click(
+      within(banner).getByRole("button", { name: "Retry" }),
+    );
+
+    // show the warning after retry succeeds
+    expect(
+      await screen.findByRole("button", { name: "Missing data access" }),
+    ).toBeInTheDocument();
+
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 });

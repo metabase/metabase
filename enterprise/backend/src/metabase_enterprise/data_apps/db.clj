@@ -260,6 +260,15 @@
   [app-id group-id]
   (t2/delete! :model/DataAppGroupAssignment :data_app_id app-id :permission_group_id group-id))
 
+(defn permissions-for-warnings
+  "View-data permission rows for the warning tables and their databases."
+  [group-ids database-ids table-ids]
+  (t2/select [:model/DataPermissions :group_id :db_id :perm_type :table_id :perm_value]
+             :group_id [:in group-ids]
+             :db_id [:in database-ids]
+             :perm_type :perms/view-data
+             {:where [:or [:in :table_id table-ids] [:= :table_id nil]]}))
+
 (defn table-details
   "Table names and database details for `table-ids`."
   [table-ids]

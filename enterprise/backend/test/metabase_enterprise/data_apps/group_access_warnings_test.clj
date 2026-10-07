@@ -138,3 +138,28 @@
     (mt/with-premium-features #{}
       (mt/user-http-request :crowberto :get 402 "apps/birds/group-permission-warnings")
       (mt/user-http-request :rasta :get 402 "apps/birds/group-permission-warnings"))))
+
+(deftest group-permission-warning-lookups-exclude-unrelated-permissions-test
+  (mt/with-temp [:model/Database other-db {}
+                 :model/PermissionsGroup finches {}
+                 :model/PermissionsGroup owls {}
+                 :model/PermissionsGroup sparrows {}]
+    (t2/delete! :model/DataPermissions :group_id [:in [(:id finches) (:id owls) (:id sparrows)]])
+    (let [table-permission {:group_id (:id finches) :db_id (mt/id) :table_id (mt/id :venues)
+                            :perm_type :perms/view-data :perm_value :unrestricted}
+          database-permission {:group_id (:id owls) :db_id (mt/id) :table_id nil
+                               :perm_type :perms/view-data :perm_value :unrestricted}]
+      (t2/insert! :model/DataPermissions
+                  [table-permission
+                   database-permission
+                   (assoc table-permission :table_id (mt/id :orders))
+                   (assoc table-permission :perm_type :perms/create-queries :perm_value :query-builder)
+                   (assoc database-permission :group_id (:id sparrows))
+                   (assoc database-permission :db_id (:id other-db))])
+      (let [access (#'group-access/group-table-access
+                    #{(:id finches) (:id owls)}
+                    [{:id (mt/id :venues) :database_id (mt/id)}])
+            permission-rows (mapcat val (:permissions access))]
+        ;; exclude loading permission rows that the data access warning check does not need
+        (is (= #{table-permission database-permission}
+               (into #{} (map #(select-keys % (keys table-permission))) permission-rows)))))))

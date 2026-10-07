@@ -65,10 +65,7 @@ describe("scenarios > data apps > group access warnings (EMB-2416)", () => {
 
       cy.findByRole("link", { name: "Sample Database" }).should("be.visible");
 
-      cy.findByRole("link", { name: "Orders" })
-        .should("be.visible")
-        .invoke("removeAttr", "target")
-        .click();
+      cy.findByRole("link", { name: "Orders" }).should("be.visible").click();
     });
 
     cy.log("orders table link navigates to the table permission page");
@@ -90,8 +87,13 @@ describe("scenarios > data apps > group access warnings (EMB-2416)", () => {
       "groupWarnings",
     );
 
+    cy.go("back");
+    cy.location("pathname").should(
+      "equal",
+      `/admin/settings/apps/${APP_NAME}/groups`,
+    );
+
     cy.log("group warnings should be gone");
-    cy.visit(`/admin/settings/apps/${APP_NAME}/groups`);
     cy.wait("@groupWarnings").its("response.body").should("deep.equal", []);
 
     cy.log("group warnings should not show in the ui");

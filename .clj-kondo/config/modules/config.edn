@@ -3793,6 +3793,7 @@
    :model-imports #{:model/Action
                     :model/Card
                     :model/Collection
+                    :model/DataPermissions
                     :model/Database
                     :model/Field
                     :model/Permissions
