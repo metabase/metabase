@@ -8337,7 +8337,7 @@
       },
       "metabase.collections.schema.CollectionType" : {
         "type" : "string",
-        "enum" : [ "instance-analytics", "trash", "remote-synced", "library", "library-models", "library-metrics" ]
+        "enum" : [ "instance-analytics", "trash", "remote-synced", "library", "library-models", "library-metrics", "library-dashboards" ]
       },
       "metabase.collections.schema.LastEditInfo" : {
         "type" : "object",
@@ -13246,6 +13246,10 @@
           "source-query/model?" : {
             "type" : "boolean"
           },
+          "qp.pivot/forced-shape" : {
+            "type" : "string",
+            "enum" : [ "native-pivot-query", "union-all" ]
+          },
           "parameters" : {
             "$ref" : "#/components/schemas/metabase.lib.schema.parameter.parameters"
           },
@@ -13353,6 +13357,10 @@
             },
             "source-table" : {
               "$ref" : "#/components/schemas/metabase.lib.schema.id.table"
+            },
+            "qp.pivot/forced-shape" : {
+              "type" : "string",
+              "enum" : [ "native-pivot-query", "union-all" ]
             },
             "order-by" : {
               "$ref" : "#/components/schemas/metabase.lib.schema.order-by.order-bys"
@@ -13491,6 +13499,10 @@
             },
             "source-query/model?" : {
               "type" : "boolean"
+            },
+            "qp.pivot/forced-shape" : {
+              "type" : "string",
+              "enum" : [ "native-pivot-query", "union-all" ]
             },
             "parameters" : {
               "$ref" : "#/components/schemas/metabase.lib.schema.parameter.parameters"
