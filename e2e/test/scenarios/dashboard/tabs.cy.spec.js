@@ -797,7 +797,7 @@ describe("scenarios > dashboard > tabs > snowplow", () => {
   });
 });
 
-describe("issue 61013", () => {
+describe("scenarios > dashboard > tabs > add a question to an empty dashboard with tabs (metabase#61013)", () => {
   const dashboardName = "Dashboard 61013";
 
   beforeEach(() => {
@@ -880,7 +880,7 @@ describe("issue 61013", () => {
   });
 });
 
-describe("issue 39863", () => {
+describe("scenarios > dashboard > tabs > query reruns when switching tabs (metabase#39863)", () => {
   const DATE_FILTER = {
     id: "2",
     name: "Date filter",
