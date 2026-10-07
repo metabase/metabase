@@ -107,14 +107,17 @@
   (not-every? #(some-> (metabot.db/card %) mi/can-read?)
               (lib/all-source-card-ids-recursive query)))
 
-(defn- reads-sql-card?
-  "Whether `query` reads a saved SQL question at any depth: as its source, in a join, or through another saved
-   question. The SQL of such a question runs inside the notebook query around it, so the query is a SQL query here,
-   although no stage of `query` itself is native."
+(defn- reads-metabot-sql-card?
+  "Whether `query` reads, at any depth, a saved SQL question that Metabot wrote: as its source, in a join, or
+   through another saved question.
+   A saved question runs here as it does for the user anywhere else, SQL or not. The exception is SQL that Metabot
+   saved itself, which would otherwise be a way to run SQL it may not run. A question keeps the mark of its Metabot
+   origin until someone edits its query or display."
   [query]
   (boolean
    (some (fn [card-id]
-           (some-> (lib.metadata/card query card-id) :dataset-query not-empty lib/any-native-stage?))
+           (and (some-> (lib.metadata/card query card-id) :dataset-query not-empty lib/any-native-stage?)
+                (some-> (metabot.db/card card-id) ((some-fn :metabot_conversation_id :metabot_chart_id)))))
          (lib/all-source-card-ids-recursive query))))
 
 (defn- sql-refusal
@@ -125,12 +128,11 @@
            {:agent-error? true}))
 
 (defn- sql-card-refusal
-  "The refusal for a notebook query that reads a saved SQL question. Rebuilding the query over the same question
-   would be refused again, so the hint points away from it."
+  "The refusal for a notebook query that reads a SQL question Metabot saved. Rebuilding the query over the same
+   question would be refused again, so the hint points away from it."
   []
-  (ex-info (str "run_query only runs notebook queries, and this one reads a saved SQL question. "
-                "To get values, build the question from tables with construct_notebook_query instead. "
-                "If only the saved SQL question has the answer, tell the user you can't read its results.")
+  (ex-info (str "run_query only runs notebook queries, and this one reads a saved question that holds SQL you "
+                "wrote. To get values, build the question from tables with construct_notebook_query instead.")
            {:agent-error? true}))
 
 (defn- runnable-query
@@ -145,7 +147,7 @@
     (when (lib/any-native-stage? normalized)
       (throw (sql-refusal)))
     (check-cards-runnable! normalized)
-    (when (reads-sql-card? normalized)
+    (when (reads-metabot-sql-card? normalized)
       ;; The SQL refusal says what a question holds, so it goes only to a user who can read every question involved.
       (throw (if (reads-hidden-card? normalized)
                (no-permission)

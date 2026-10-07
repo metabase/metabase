@@ -11,7 +11,8 @@
    ;; Tests redefine `process-query` here, not in `metabase.query-processor.core`. The core var is a potemkin copy of
    ;; this one, so once other tests have patched both, redefining the copy no longer takes effect.
    [metabase.query-processor :as qp]
-   [metabase.test :as mt]))
+   [metabase.test :as mt]
+   [toucan2.core :as t2]))
 
 (defn- run-tool!
   "Call `run_query` as rasta with `queries` in conversation state and query execution enabled."
@@ -33,10 +34,19 @@
     (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
         (lib/aggregate (lib/count)))))
 
+(defn- venues-sql
+  []
+  (mt/native-query {:query "SELECT COUNT(*) AS N FROM VENUES"}))
+
 (defn- card-query
   "A notebook query whose source is the saved question `card-id`."
   [card-id]
   {:database (mt/id), :type :query, :query {:source-table (str "card__" card-id)}})
+
+(defn- mark-saved-by-metabot!
+  "Mark `card-ids` as saved from a Metabot chart, the way `save_entity` does."
+  [& card-ids]
+  (t2/update! (t2/table-name :model/Card) :id [:in card-ids] {:metabot_chart_id "chart-1"}))
 
 (defn- data-lines
   "The table lines between the data boundary markers of a `run_query` output."
@@ -153,33 +163,44 @@
   (mt/with-non-admin-groups-no-root-collection-perms
     (mt/with-temp [:model/Collection {open :id}   {}
                    :model/Collection {hidden :id} {}
-                   :model/Card {notebook-card :id}   {:collection_id open
-                                                      :dataset_query (venues-count)}
-                   :model/Card {sql-card :id}        {:collection_id open
-                                                      :dataset_query (mt/native-query
-                                                                      {:query "SELECT ID FROM VENUES ORDER BY ID"})}
-                   :model/Card {over-sql-card :id}   {:collection_id open
-                                                      :dataset_query (card-query sql-card)}
-                   :model/Card {hidden-card :id}     {:collection_id hidden
-                                                      :dataset_query (venues-count)}
-                   :model/Card {hidden-sql-card :id} {:collection_id hidden
-                                                      :dataset_query (mt/native-query {:query "SELECT 1"})}
-                   :model/Card {over-hidden-sql :id} {:collection_id open
-                                                      :dataset_query (card-query hidden-sql-card)}]
+                   :model/Card {notebook-card :id}     {:collection_id open
+                                                        :dataset_query (venues-count)}
+                   :model/Card {sql-card :id}          {:collection_id open
+                                                        :dataset_query (venues-sql)}
+                   :model/Card {over-sql-card :id}     {:collection_id open
+                                                        :dataset_query (card-query sql-card)}
+                   :model/Card {metabot-sql-card :id}  {:collection_id open
+                                                        :dataset_query (venues-sql)}
+                   :model/Card {over-metabot-sql :id}  {:collection_id open
+                                                        :dataset_query (card-query metabot-sql-card)}
+                   :model/Card {edited-sql-card :id}   {:collection_id open
+                                                        :dataset_query (venues-sql)}
+                   :model/Card {hidden-card :id}       {:collection_id hidden
+                                                        :dataset_query (venues-count)}
+                   :model/Card {hidden-metabot-sql :id} {:collection_id hidden
+                                                         :dataset_query (venues-sql)}
+                   :model/Card {over-hidden-sql :id}   {:collection_id open
+                                                        :dataset_query (card-query hidden-metabot-sql)}]
       (perms/grant-collection-read-permissions! (perms-group/all-users) open)
-      (testing "a notebook query over a saved notebook question runs"
-        (is (=? {:structured-output {:returned 1, :truncated? false}}
-                (run-tool! {"q1" (card-query notebook-card)} {:query_id "q1"}))))
-      (testing "a notebook query over a saved SQL question is refused as SQL"
-        (doseq [[shape card-id] {"read directly"                    sql-card
-                                 "read through a notebook question" over-sql-card}]
+      (mark-saved-by-metabot! metabot-sql-card edited-sql-card hidden-metabot-sql)
+      (t2/update! :model/Card edited-sql-card {:display :bar})
+      (testing "a notebook query over a saved question runs, whether the question is a notebook or a SQL one"
+        (doseq [[shape card-id] {"a notebook question"                           notebook-card
+                                 "a SQL question"                                sql-card
+                                 "a notebook question over a SQL question"       over-sql-card
+                                 "a SQL question Metabot saved, edited since"    edited-sql-card}]
           (testing shape
-            (is (= {:output (str "run_query only runs notebook queries, and this one reads a saved SQL question. "
-                                 "To get values, build the question from tables with construct_notebook_query "
-                                 "instead. If only the saved SQL question has the answer, tell the user you can't "
-                                 "read its results.")}
+            (is (=? {:structured-output {:returned 1, :truncated? false}}
+                    (run-tool! {"q1" (card-query card-id)} {:query_id "q1"}))))))
+      (testing "a notebook query over a SQL question Metabot saved is refused as SQL"
+        (doseq [[shape card-id] {"read directly"                    metabot-sql-card
+                                 "read through a notebook question" over-metabot-sql}]
+          (testing shape
+            (is (= {:output (str "run_query only runs notebook queries, and this one reads a saved question that "
+                                 "holds SQL you wrote. To get values, build the question from tables with "
+                                 "construct_notebook_query instead.")}
                    (run-tool! {"q1" (card-query card-id)} {:query_id "q1"}))))))
-      (testing "a question the user can't read gets one refusal, SQL or not, read directly or through one they can"
-        (doseq [card-id [hidden-card hidden-sql-card over-hidden-sql]]
+      (testing "a question the user can't read gets the permission refusal, never the SQL one"
+        (doseq [card-id [hidden-card hidden-metabot-sql over-hidden-sql]]
           (is (= {:output "You do not have permission to run this query."}
                  (run-tool! {"q1" (card-query card-id)} {:query_id "q1"}))))))))
