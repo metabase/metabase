@@ -1495,7 +1495,10 @@ describe("scenarios > embedding > full app - jwt sso integration", () => {
     cy.signOut(); // we *need* to sign out, otherwise the SSO process won't kick in
   });
 
-  it("when trying to access a resource while un-authenticated, it should pass the path via return_to to the jwt provider", () => {
+  it("should pass the path via return_to to the jwt provider when un-authenticated, then authenticate the user and pass JWT user attributes to click behavior custom destinations (metabase#65942)", () => {
+    cy.log(
+      "pass the path via return_to to the jwt provider when un-authenticated",
+    );
     cy.intercept(/http:\/\/localhost:8888\/.*/, (req) => {
       req.reply({
         statusCode: 200,
@@ -1510,9 +1513,10 @@ describe("scenarios > embedding > full app - jwt sso integration", () => {
         `http://localhost:8888/jwt-provider?return_to=/dashboard/${dashboardId}`,
       );
     });
-  });
 
-  it("should authenticate the user and pass JWT user attributes to click behavior custom destinations (metabase#65942)", () => {
+    cy.log(
+      "authenticate the user and pass JWT user attributes to click behavior custom destinations",
+    );
     const jwtAttributeValue = ORDERS_QUESTION_ID;
 
     // 1) set up a click behavior that uses a user attribute in the URL
@@ -1531,13 +1535,13 @@ describe("scenarios > embedding > full app - jwt sso integration", () => {
       cy.intercept(/http:\/\/localhost:8888\/.*/, (req) => {
         const redirectUrl = `${baseUrl}/auth/sso?jwt=${jwtToken}&return_to=/dashboard/${dashboardId}`;
         req.redirect(redirectUrl);
-      }).as("jwt-provider");
+      }).as("jwt-provider-redirect");
     });
 
     // 4) visit the dashboard as embedded
     H.visitFullAppEmbeddingUrl({ url: `/dashboard/${dashboardId}` });
 
-    cy.wait("@jwt-provider");
+    cy.wait("@jwt-provider-redirect");
 
     // 5) verify user is on dashboard
     cy.url().should("equal", `${baseUrl}/dashboard/${dashboardId}`);
