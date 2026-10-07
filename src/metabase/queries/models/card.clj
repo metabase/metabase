@@ -1560,10 +1560,11 @@
   serdes/load-update!)
 
 (defmethod serdes/load-update! "Card" [model-name ingested local]
-  ;; The export writes the columns of a native card, and they hold for the query in the same file. A load that changes
-  ;; only the SQL then gives the stored columns again, and the columns of a native query cannot be inferred: mark them
-  ;; verified, so the before-update hook keeps them. A file without columns gets no mark, and the hook acts as on any
-  ;; other update. An old export can hold a legacy query, so normalize the query before the check.
+  ;; The export writes the columns of a native card, and they hold for the query in the same file unless a person
+  ;; edited the SQL by hand. A load that changes only the SQL then gives the stored columns again, and the columns of a
+  ;; native query cannot be inferred: mark them verified, so the before-update hook keeps them. A file without columns
+  ;; gets no mark, and the hook acts as on any other update. An old export can hold a legacy query, so normalize the
+  ;; query before the check.
   ((get-method load-update-multifn :default)
    model-name
    (cond-> ingested
