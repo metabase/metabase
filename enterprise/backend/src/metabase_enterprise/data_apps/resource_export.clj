@@ -57,15 +57,16 @@
     {}))
 
 (defn- extraction-error
-  "Why serialization can't export the `model-name` entity with `id`, or nil when it can: the one entity is extracted
-  on its own, with the error let through."
+  "Why serialization can't export the `model-name` entity with `id`, or nil when it leaves the entity out without an
+  error: the one entity is extracted on its own, with the error let through. Serialization wraps what fails inside
+  an extraction in \"Error extracting ...\" at each level, so the reason is the innermost cause."
   [model-name id]
   (try
     ;; reduced rather than seq'd: the extraction is a reducible, not a seq
     (run! identity (serdes/extract-all model-name {:filter-column :id :filter-ids [id]}))
     nil
     (catch Exception e
-      (or (:cause (ex-data e)) (ex-message e)))))
+      (ex-message (last (take-while some? (iterate ex-cause e)))))))
 
 (defn- cards-read
   "The IDs, as a comma-separated string, of the cards the `model-name` entity `source` references everywhere
@@ -88,7 +89,7 @@
 (defn- check-copyable
   "Throws when the `model-name` entity `source`, labelled `label` and exported as `exported`, can't be copied into a
   data app's resources: it's archived (the pull refuses it), a routing destination backs it, it references a card other
-  than `own-cards`, or serialization couldn't export it."
+  than `own-cards`, or serialization couldn't export it, with the reason when it gave one."
   [label model-name {:keys [archived database_id] :as source} exported own-cards]
   (when archived
     (fail (tru "{0} is archived." label)))
@@ -97,7 +98,9 @@
   (when-let [card-ids (cards-read model-name source own-cards)]
     (fail (tru "{0} reads card {1}, which a data app''s resources can''t hold." label card-ids)))
   (when-not exported
-    (fail (tru "Serialization could not export {0}: {1}" label (extraction-error model-name (:id source))))))
+    (fail (if-let [cause (extraction-error model-name (:id source))]
+            (tru "Serialization could not export {0}: {1}" label cause)
+            (tru "Serialization could not export {0}." label)))))
 
 (def ^:private public-keys
   "What makes a source public or embedded. A copy never is, and the pull refuses a file that says it is."
@@ -141,7 +144,8 @@
    :parameter_mappings     []})
 
 (mu/defn- built-query
-  "The query Metabase builds from `query-definition`, as the dev preview does. (A routing destination has no tables
+  "The query Metabase builds from `query-definition`, as the dev preview does, once its source table and every table
+  a column reaches through a foreign key exist as the typed schema lists them. (A routing destination has no tables
   of its own, only cards.)"
   [{[{{table-id :id} :source}] :stages, :as query-definition} :- ::query-definition/query-definition]
   (let [table (data-apps.db/table table-id)]
@@ -152,6 +156,11 @@
       ;; that would refuse it are off in production: an invalid query must not export and then fail when it runs.
       (when-not (mr/validate ::lib.schema/query built)
         (fail (tru "The definition does not build a valid query.")))
+      ;; Types generated before a table was deactivated still reach its columns through a foreign key, and the
+      ;; query would fail on the implicit join when it runs.
+      (doseq [joined-id (sort (lib/all-implicitly-joined-table-ids built))]
+        (when-not (data-apps.db/table joined-id)
+          (fail (tru "Table {0} does not exist." (str joined-id)))))
       built)))
 
 (mu/defn- export-query

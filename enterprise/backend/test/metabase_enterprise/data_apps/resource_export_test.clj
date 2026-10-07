@@ -204,6 +204,16 @@
                        {:queries [{:export "Gone"
                                    :query  {:stages [{:source {:type "table" :id table-id}}]}}]}))))))
 
+(deftest refuses-a-column-that-reaches-a-deactivated-table-test
+  (testing "types generated before categories was deactivated still select its name through venues.category_id, and
+            the query would fail on the implicit join when it runs"
+    (mt/with-temp-vals-in-db :model/Table (mt/id :categories) {:active false}
+      (is (=? {:queries [{:export "VenueCategories" :error (str "Table " (mt/id :categories) " does not exist.")}]}
+              (export! :crowberto 200
+                       {:queries [{:export "VenueCategories"
+                                   :query  {:stages [{:source {:type "table" :id (mt/id :venues)}
+                                                      :fields [{:type "column" :name "NAME" :source-field-id (mt/id :venues :category_id)}]}]}}]}))))))
+
 (deftest refuses-a-definition-that-builds-an-invalid-query-test
   (testing "the request schema accepts what a type lets through, and lib's own checks are off in production, so the
             built query is checked: an invalid one must not export and then fail when it runs"
@@ -228,25 +238,27 @@
                                               :embedding_params  {}})
        (t2/update! :model/Action :id action-id {:public_uuid       (str (random-uuid))
                                                 :made_public_by_id (mt/user->id :crowberto)})
-       (let [{:keys [actions metrics]} (export! :crowberto 200
-                                                {:queries [{:export "VenueCount"
-                                                            :query  {:stages [{:source       {:type "table" :id (mt/id :venues)}
-                                                                               :aggregations [{:type "metric" :id metric-id}]}]}}]
-                                                 :actions [action-id]})]
+       (let [{:keys [actions metrics] :as response} (export! :crowberto 200
+                                                             {:queries [{:export "VenueCount"
+                                                                         :query  {:stages [{:source       {:type "table" :id (mt/id :venues)}
+                                                                                            :aggregations [{:type "metric" :id metric-id}]}]}}]
+                                                              :actions [action-id]})]
+         (is (=? {:actions [{:id action-id :entity map?}] :metrics [{:id metric-id :entity map?}]} response))
          (doseq [{:keys [entity]} (concat actions metrics)]
-           (is (map? entity))
            (is (not-any? (partial contains? entity)
                          [:public_uuid :made_public_by_id :enable_embedding :embedding_params :embedding_type]))))))))
 
 (deftest an-item-serialization-cannot-export-answers-with-the-cause-test
-  (testing "one entity serialization fails on comes back with its error, and the rest still export"
+  (testing "one entity that fails inside its extraction comes back with the reason, which serialization wraps at each
+            level, and the rest still export"
     (data-apps.tu/do-with-sources!
      (fn [{:keys [metric-id action-id]}]
-       (let [extract-one @#'serdes/extract-one]
-         (mt/with-dynamic-fn-redefs [serdes/extract-one (fn [model-name opts instance]
-                                                          (if (and (= model-name "Card") (= metric-id (:id instance)))
-                                                            (throw (ex-info "the metric is broken" {}))
-                                                            (extract-one model-name opts instance)))]
+       (t2/update! :model/Card :id metric-id {:visualization_settings {:broken true}})
+       (let [export-settings (mt/original-fn #'serdes/export-visualization-settings)]
+         (mt/with-dynamic-fn-redefs [serdes/export-visualization-settings (fn [settings]
+                                                                            (if (:broken settings)
+                                                                              (throw (ex-info "the metric is broken" {}))
+                                                                              (export-settings settings)))]
            ;; called directly: the redefinition is bound on this thread, not on the one a request runs on
            (is (=? {:queries [{:export "VenueCount" :entity map?}]
                     :actions [{:id action-id :entity map?}]
@@ -259,6 +271,21 @@
                                     :query  {:stages [{:source       {:type :table :id (mt/id :venues)}
                                                        :aggregations [{:type :metric :id metric-id}]}]}}])
                         [action-id])))))))))))
+
+(deftest an-item-serialization-leaves-out-answers-without-a-reason-test
+  (testing "a card materialized by an exploration Summary is one serialization leaves out without an error"
+    (data-apps.tu/do-with-sources!
+     (fn [{:keys [metric-id]}]
+       (mt/with-temp [:model/Exploration {exploration-id :id} {:name "Explo" :creator_id (mt/user->id :crowberto)}
+                      :model/Document    {summary-id :id}     {:name           "Summary"
+                                                               :creator_id     (mt/user->id :crowberto)
+                                                               :exploration_id exploration-id}]
+         (t2/update! :model/Card :id metric-id {:document_id summary-id})
+         (is (=? {:metrics [{:id metric-id :error (str "Serialization could not export Metric " metric-id ".")}]}
+                 (export! :crowberto 200
+                          {:queries [{:export "VenueCount"
+                                      :query  {:stages [{:source       {:type "table" :id (mt/id :venues)}
+                                                         :aggregations [{:type "metric" :id metric-id}]}]}}]}))))))))
 
 (deftest a-failure-of-the-export-is-logged-and-a-refusal-is-not-test
   (testing "a refusal is the author's to act on; anything else is a failure the server keeps a trace of"
@@ -349,7 +376,7 @@
     (data-apps.tu/do-with-sources!
      (fn [{:keys [metric-id action-id model-action-id]}]
        (let [calls   (atom [])
-             extract @#'resource-export/extract-by-entity-id]
+             extract (mt/original-fn #'resource-export/extract-by-entity-id)]
          (mt/with-dynamic-fn-redefs [resource-export/extract-by-entity-id (fn [model-name ids]
                                                                             (swap! calls conj model-name)
                                                                             (extract model-name ids))]
