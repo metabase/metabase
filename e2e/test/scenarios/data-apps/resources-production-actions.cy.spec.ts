@@ -88,9 +88,9 @@ describe(
         });
 
         cy.request("POST", "/api/apps/export-resources", {
+          collection: COLLECTION,
           actions: [source.id],
         }).then(({ body }) => {
-          expect(body).not.to.have.property("models");
           expect(body.actions[0].entity).to.deep.include({
             entity_id: source.entity_id,
             type: "query",

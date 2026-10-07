@@ -405,7 +405,10 @@ export function exportDataAppActionCopies(
     .request<{ actions: Array<{ entity: ResourceEntity }> }>(
       "POST",
       "/api/apps/export-resources",
-      { actions: copies.map(({ sourceActionId }) => sourceActionId) },
+      {
+        collection,
+        actions: copies.map(({ sourceActionId }) => sourceActionId),
+      },
     )
     .then(({ body }) =>
       cy.wrap(
