@@ -491,12 +491,18 @@
         (partition-all ids-per-query collection-ids)))
 
 (mu/defn ids-in-collections :- [:set ms/PositiveInt]
-  "The IDs of the instances of `model` whose `collection_id` is one of `collection-ids`."
-  [model          :- :keyword
-   collection-ids :- [:sequential ::lib.schema.id/collection]]
-  (into #{}
-        (mapcat #(t2/select-pks-vec model :collection_id [:in %]))
-        (partition-all ids-per-query collection-ids)))
+  "The IDs of the instances of `model` whose `collection_id` is one of `collection-ids` and that match the
+  removal-conditions map `conditions` of a spec (nil matches every instance)."
+  ([model          :- :keyword
+    collection-ids :- [:sequential ::lib.schema.id/collection]]
+   (ids-in-collections model collection-ids nil))
+  ([model          :- :keyword
+    collection-ids :- [:sequential ::lib.schema.id/collection]
+    conditions     :- Conditions]
+   (into #{}
+         (mapcat #(t2/select-pks-vec model {:where (into [:and [:in :collection_id %]]
+                                                         (removal-condition-exprs conditions))}))
+         (partition-all ids-per-query collection-ids))))
 
 (mu/defn remote-synced-subtree-collection-ids
   "The IDs of the remote-synced Collections among `collections` and their descendants."

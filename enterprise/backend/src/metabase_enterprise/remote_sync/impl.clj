@@ -515,14 +515,15 @@
 
 (defn- collection-contents
   "The Collections `collection-ids` and their descendants, and the instances of [[collection-content-model-keys]] in
-  them, as a map of model key to a set of ids."
+  them that the full import also removes (the spec removal conditions), as a map of model key to a set of ids."
   [collection-ids]
   (if (empty? collection-ids)
     {}
     (let [subtree (vec (remote-sync.db/subtree-collection-ids-of-ids (vec collection-ids)))]
       (into {:model/Collection (set subtree)}
             (keep (fn [model-key]
-                    (let [ids (remote-sync.db/ids-in-collections model-key subtree)]
+                    (let [ids (remote-sync.db/ids-in-collections
+                               model-key subtree (spec/removal-conditions (spec/spec-for-model-key model-key)))]
                       (when (seq ids)
                         [model-key ids]))))
             collection-content-model-keys))))
@@ -530,10 +531,10 @@
 (defn- incremental-load-snapshot!
   "Applies an incremental `plan` from [[incremental-import-plan]] or [[import-merged!]]: loads only its
   added/modified entities, deletes only those genuinely removed, the contents of each removed Collection, and their
-  delete closure (see [[delete-with-closure!]]), and reconciles just those rows of the RemoteSyncObject table — leaving everything else
-  untouched. Runs `finalize!` inside the reconcile transaction, then logs success and returns [[import!]]'s
-  `:success` result map carrying `snapshot-version`. The caller decides whether an incremental load is safe; this
-  assumes the plan is valid.
+  delete closure (see [[delete-with-closure!]]), and reconciles just those rows of the RemoteSyncObject table —
+  leaving everything else untouched. Runs `finalize!` inside the reconcile transaction, then logs success and returns
+  [[import!]]'s `:success` result map carrying `snapshot-version`. The caller decides whether an incremental load is
+  safe; this assumes the plan is valid.
 
   Renames are handled by entity identity, not path: a rename re-loads the same entity_id at the new path
   (an add), so the old path's delete is recognized as a rename and the entity is not removed."
