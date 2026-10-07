@@ -16,7 +16,11 @@ import {
 } from "__support__/ui";
 import { MonitorContent } from "metabase/monitor/components/MonitorLayout/MonitorContent";
 import { Route } from "metabase/router";
-import type { RevokeSessionsResponse, Session } from "metabase-types/api";
+import type {
+  RevokeSessionsResponse,
+  Session,
+  SessionListResponse,
+} from "metabase-types/api";
 import {
   createMockRevokeSessionsResponse,
   createMockSession,
@@ -46,6 +50,8 @@ type SetupOpts = {
   sessions?: Session[];
   total?: number;
   listFails?: boolean;
+  /** Answers each list request from its query params, in place of `sessions` and `total` */
+  getListResponse?: (params: URLSearchParams) => SessionListResponse;
   initialRoute?: string;
   revokeResponse?: RevokeSessionsResponse;
   revokeError?: Parameters<typeof setupRevokeSessionsErrorEndpoint>[0];
@@ -55,12 +61,17 @@ const setup = ({
   sessions = [ANN_SESSION, BOB_SESSION, CARL_SESSION],
   total = sessions.length,
   listFails = false,
+  getListResponse,
   initialRoute = PATHNAME,
   revokeResponse = createMockRevokeSessionsResponse(),
   revokeError,
 }: SetupOpts = {}) => {
   if (listFails) {
     setupListSessionsErrorEndpoint();
+  } else if (getListResponse) {
+    fetchMock.get("path:/api/ee/session-management", (call) =>
+      getListResponse(new URL(call.url).searchParams),
+    );
   } else {
     setupListSessionsEndpoint(sessions, { total });
   }
@@ -386,6 +397,41 @@ describe("SessionsPage", () => {
       await waitFor(() => {
         expect(listCalls()).toBeGreaterThan(callsBefore);
       });
+    });
+
+    it("goes back to the last page when a revoke empties a later one", async () => {
+      const lastSession = createMockSession({
+        id: "last-session",
+        user: createMockSessionUser({ id: 5, common_name: "Lee Last" }),
+      });
+      let isLastSessionRevoked = false;
+      const { router } = setup({
+        initialRoute: `${PATHNAME}?page=1`,
+        getListResponse: (params) => {
+          const isFirstPage = params.get("offset") === "0";
+          const secondPage = isLastSessionRevoked ? [] : [lastSession];
+          return {
+            data: isFirstPage
+              ? [ANN_SESSION, BOB_SESSION, CARL_SESSION]
+              : secondPage,
+            total: isLastSessionRevoked ? PAGE_SIZE : PAGE_SIZE + 1,
+            limit: PAGE_SIZE,
+            offset: Number(params.get("offset")),
+          };
+        },
+      });
+
+      await clickRowCheckbox("last-session");
+      await clickBulkRevoke();
+      isLastSessionRevoked = true;
+      await confirmRevoke();
+
+      expect(
+        await screen.findByTestId("session-row-ann-session"),
+      ).toBeInTheDocument();
+      expect(getLastListParams().get("offset")).toBe("0");
+      expect(router?.location.search).not.toContain("page=");
+      expect(screen.queryByText("No active sessions")).not.toBeInTheDocument();
     });
 
     it("revokes nothing when the confirmation is cancelled", async () => {

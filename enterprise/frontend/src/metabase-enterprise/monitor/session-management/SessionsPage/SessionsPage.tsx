@@ -10,6 +10,7 @@ import {
 import { DebouncedSearchInput } from "metabase/common/components/DebouncedSearchInput";
 import { PaginationControls } from "metabase/common/components/PaginationControls";
 import { useAbortableQuery } from "metabase/common/hooks/use-abortable-query";
+import { usePageInRange } from "metabase/common/hooks/use-page-in-range";
 import { useUrlState } from "metabase/common/hooks/use-url-state";
 import { usePageTitle } from "metabase/hooks/use-page-title";
 import { SIDEBAR_WIDTH } from "metabase/monitor/components/DetailSidebar";
@@ -75,6 +76,19 @@ export const SessionsPage = () => {
     [sessions, rowSelection],
   );
   const selectedCount = selectedSessions.length;
+
+  const goToPage = useCallback(
+    (page: number) => patchUrlState({ page }, { immediate: true }),
+    [patchUrlState],
+  );
+
+  // A revoke can empty a later page
+  usePageInRange({
+    page: urlState.page,
+    pageSize: PAGE_SIZE,
+    total: isFetching || error !== undefined ? undefined : data?.total,
+    onPageChange: goToPage,
+  });
 
   useEffect(() => {
     clearSelection();
