@@ -516,9 +516,9 @@
     ;; to determine whether we're in a Docker container
     (mt/with-temp-file [mock-file]
       (spit mock-file "Temp file!")
-      (mt/with-dynamic-fn-redefs [premium-features.settings/is-hosted? (constantly false)]
-        (with-redefs [io/file (constantly (java.io.File. mock-file))]
-          (is (= "docker" (@#'stats/deployment-model))))))
+      (with-redefs [premium-features.settings/is-hosted? (constantly false)
+                    io/file                              (constantly (java.io.File. mock-file))]
+        (is (= "docker" (@#'stats/deployment-model)))))
     (mt/with-dynamic-fn-redefs [premium-features.settings/is-hosted? (constantly false)
                                 stats/in-docker?                     (constantly false)]
       (is (= "jar" (@#'stats/deployment-model))))))
