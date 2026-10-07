@@ -113,9 +113,7 @@ Set up Remote Sync in your production Metabase in Read-only mode pointed at the 
 
 ### 2. Create a branch from the Metabase UI
 
-Switch branches in Metabase, as the Metabase UI is the source of truth for which branch the development instance pushes to and pulls from.
-
-In your development Metabase, click the **branch dropdown** at the top and [create a new branch](../installation-and-operation/remote-sync.md#creating-a-branch) for your work, like `feature/support-dashboard`.
+In your development Metabase, [create a new branch](../installation-and-operation/remote-sync.md#creating-a-branch) for your work, like `feature/support-dashboard`. Metabase switches to the new branch. Your local Git checkout doesn't change which branch Metabase pushes to and pulls from.
 
 ### 3. Ask the agent to create content
 
