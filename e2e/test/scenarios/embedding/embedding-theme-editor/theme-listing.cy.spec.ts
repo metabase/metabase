@@ -128,9 +128,13 @@ describe(
       createThemeViaApi("Untitled theme");
       cy.visit("/admin/embedding/themes");
 
-      H.main().within(() => {
-        cy.findByText("Untitled theme").should("be.visible");
-      });
+      cy.log("clicking a theme card opens the theme editor");
+      H.main().findByText("Untitled theme").click();
+      cy.url().should("match", /\/admin\/embedding\/themes\/\d+$/);
+      cy.findByLabelText("Theme name").should("have.value", "Untitled theme");
+
+      cy.findByRole("button", { name: /Cancel/ }).click();
+      cy.url().should("match", /\/admin\/embedding\/themes$/);
 
       cy.log("duplicate a theme");
       clickThemeMenuItem("Untitled theme", "Duplicate");
@@ -176,15 +180,10 @@ describe(
         cy.log("deleted theme is gone; other themes and new theme card remain");
         cy.findByText("Copy of Untitled theme").should("not.exist");
         cy.findByText("Untitled theme").should("be.visible");
+        cy.findByRole("button", { name: /New theme/ }).should("be.visible");
         cy.findByText("Light").should("be.visible");
         cy.findByText("Dark").should("be.visible");
-        cy.findByRole("button", { name: /New theme/ }).should("be.visible");
       });
-
-      cy.log("clicking a theme card opens the theme editor");
-      H.main().findByText("Untitled theme").click();
-      cy.url().should("match", /\/admin\/embedding\/themes\/\d+$/);
-      cy.findByLabelText("Theme name").should("have.value", "Untitled theme");
     });
   },
 );
