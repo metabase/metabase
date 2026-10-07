@@ -13,7 +13,10 @@ import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
 import { Route } from "metabase/router";
 import * as Urls from "metabase/urls";
 import { parseSearchQuery } from "metabase/utils/browser";
-import { AUDIT_DB_ID } from "metabase-enterprise/monitor/ai-auditing/metabot-analytics/constants";
+import {
+  AUDIT_DB_ID,
+  VIEW_CONVERSATIONS,
+} from "metabase-enterprise/monitor/ai-auditing/metabot-analytics/constants";
 import {
   ADMIN_GROUP,
   ALL_USERS_GROUP,
@@ -84,6 +87,12 @@ const CONVERSATIONS_PATH = Urls.monitorAiAuditingConversations();
 
 const { database: auditDatabase } = buildAuditViewsFixture();
 
+const TABLE_NAME_BY_ID = new Map(
+  (auditDatabase.tables ?? []).map(
+    (table) => [Number(table.id), table.name] as const,
+  ),
+);
+
 const FIELD_NAME_BY_ID = new Map(
   (auditDatabase.tables ?? []).flatMap((table) =>
     (table.fields ?? []).map(
@@ -126,6 +135,7 @@ const BREAKOUT_VALUES: Record<string, RowValue[]> = {
 type FieldRef = [string, { "temporal-unit"?: string }, number];
 type FilterClause = [string, object, FieldRef, ...unknown[]];
 type RequestStage = {
+  "source-table": number;
   aggregation?: unknown[];
   breakout?: FieldRef[];
   filters?: FilterClause[];
@@ -159,8 +169,23 @@ function getBreakoutValues(stage: RequestStage): RowValue[] {
   return values;
 }
 
-function buildDatasetResponse(body: unknown): Dataset {
+function buildCountResponse(count: number): Dataset {
+  return createMockDataset({
+    data: createMockDatasetData({
+      cols: [createMockColumn({ source: "aggregation", name: "count" })],
+      rows: [[count]],
+    }),
+    database_id: AUDIT_DB_ID,
+    row_count: 1,
+  });
+}
+
+function buildDatasetResponse(body: unknown, emptyViews: string[]): Dataset {
   const stage = parseStage(body);
+  if (stage && !stage.breakout) {
+    const viewName = TABLE_NAME_BY_ID.get(stage["source-table"]) ?? "";
+    return buildCountResponse(emptyViews.includes(viewName) ? 0 : 2);
+  }
   const values = stage ? getBreakoutValues(stage) : [];
   const aggregationNames =
     (stage?.aggregation ?? []).length > 1 ? ["sum", "sum_2"] : ["count"];
@@ -199,11 +224,13 @@ function getFilteredFieldIds(): number[] {
 type SetupOpts = {
   initialRoute?: string;
   hasTenants?: boolean;
+  emptyViews?: string[];
 };
 
 function setup({
   initialRoute = STATS_PATH,
   hasTenants = false,
+  emptyViews = [],
 }: SetupOpts = {}) {
   setupEnterprisePlugins();
 
@@ -216,7 +243,7 @@ function setup({
   });
   fetchMock.post(
     "path:/api/dataset",
-    (call) => buildDatasetResponse(call?.options.body),
+    (call) => buildDatasetResponse(call?.options.body, emptyViews),
     { name: "dataset" },
   );
   setupUsersEndpoints([BOBBY, ROBERT]);
@@ -376,6 +403,32 @@ describe("ConversationStatsPage", () => {
       expect(
         await screen.findByText("Conversations by day"),
       ).toBeInTheDocument();
+    });
+  });
+
+  describe("empty state", () => {
+    it("shows one empty state instead of the charts when nothing matches the filters", async () => {
+      setup({ emptyViews: [VIEW_CONVERSATIONS] });
+
+      expect(await screen.findByText("No conversations")).toBeInTheDocument();
+      expect(
+        screen.getByRole("tab", { name: "Conversations" }),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByTestId("conversation-filters-date-select"),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByText("Conversations by day"),
+      ).not.toBeInTheDocument();
+    });
+
+    it("shows the token charts when there is token usage but no conversations", async () => {
+      setup({
+        initialRoute: Urls.monitorAiAuditingUsageMetric("tokens"),
+        emptyViews: [VIEW_CONVERSATIONS],
+      });
+
+      expect(await screen.findByText("Tokens by day")).toBeInTheDocument();
     });
   });
 

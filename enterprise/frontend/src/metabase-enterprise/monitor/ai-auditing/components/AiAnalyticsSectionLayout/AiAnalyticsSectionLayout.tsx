@@ -86,7 +86,7 @@ type RouteContentProps = {
   showEmpty: boolean;
 };
 
-function RouteContent({
+export function RouteContent({
   children,
   emptyState,
   error,

@@ -257,6 +257,10 @@ export function buildFilteredQuery({
   return q;
 }
 
+export function buildCountQuery(opts: FilteredQueryOpts): Query {
+  return Lib.aggregateByCount(buildFilteredQuery(opts), 0);
+}
+
 type SourceBreakoutQueryOpts = StatsFilters & {
   provider: MetadataProvider;
   table: TableMetadata | CardMetadata;
