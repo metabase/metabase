@@ -80,7 +80,7 @@ export const GitSyncControls = () => {
       currentTask?.sync_task_type === "export"
     ) {
       sendToast({
-        icon: "warning",
+        variant: "negative",
         message: t`The remote branch changed before your push finished. Pull the latest changes, then push again.`,
       });
       dispatch(taskCleared());
@@ -182,7 +182,7 @@ export const GitSyncControls = () => {
         setConflictPreflight(null);
         sendToast({
           message: t`Couldn't check whether your changes can be merged. You can still force the pull or stash to a new branch.`,
-          icon: "warning",
+          variant: "warning",
         });
       } finally {
         setIsCheckingPreflight(false);
@@ -217,7 +217,7 @@ export const GitSyncControls = () => {
 
       sendToast({
         message: errorMessage || t`Failed to pull from remote`,
-        icon: "warning",
+        variant: "negative",
       });
     }
   }, [

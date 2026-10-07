@@ -147,8 +147,7 @@ export const CollectionContentView = ({
       if (rejected.length > 1) {
         sendToast({
           message: t`Please upload files individually`,
-          toastColor: "feedback-negative",
-          icon: "warning",
+          variant: "warning",
         });
         return;
       }
@@ -168,8 +167,7 @@ export const CollectionContentView = ({
 
       sendToast({
         message: errorMessage,
-        toastColor: "feedback-negative",
-        icon: "warning",
+        variant: "warning",
       });
     },
     [sendToast],
@@ -270,6 +268,7 @@ export const CollectionContentView = ({
               dispatch(
                 addUndo({
                   message: t`There was an error permanently deleting this item.`,
+                  variant: "negative",
                 }),
               );
             }

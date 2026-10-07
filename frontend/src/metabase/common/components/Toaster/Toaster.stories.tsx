@@ -1,8 +1,11 @@
 import type { StoryFn } from "@storybook/react";
+import { merge } from "icepick";
 
+import type { UndoVariant } from "metabase/redux/store/undo";
 import { Icon, Stack } from "metabase/ui";
 import {
   StoryJsx,
+  StoryRow,
   StorySection,
   StoryShowcase,
 } from "metabase/ui/stories/showcase";
@@ -68,6 +71,13 @@ export const Default = {
 };
 
 const noop = () => undefined;
+
+const COLORED_VARIANTS: { variant: UndoVariant; title: string }[] = [
+  { variant: "negative", title: "Negative" },
+  { variant: "warning", title: "Warning" },
+];
+
+const BUTTON_COUNTS = [0, 1, 2] as const;
 
 export const Overview = {
   render: () => (
@@ -154,9 +164,41 @@ export const Overview = {
           />
         </Stack>
       </StorySection>
+
+      {COLORED_VARIANTS.map(({ variant, title }) => (
+        <StorySection
+          key={variant}
+          title={title}
+          description={`<Toast variant="${variant}" ... />`}
+        >
+          {BUTTON_COUNTS.map((buttonCount) => (
+            <StoryRow
+              key={buttonCount}
+              label={buttonCount === 1 ? "1 button" : `${buttonCount} buttons`}
+            >
+              <Toast
+                show
+                variant={variant}
+                message="The title goes here"
+                leftSection={<Icon name="model" size={16} />}
+                confirmText="Button"
+                secondaryText="Button"
+                onConfirm={buttonCount > 0 ? noop : undefined}
+                onSecondary={buttonCount > 1 ? noop : undefined}
+                onDismiss={noop}
+              />
+            </StoryRow>
+          ))}
+        </StorySection>
+      ))}
     </StoryShowcase>
   ),
+  args: { theme: "light" },
   parameters: {
     controls: { include: ["theme"] },
   },
 };
+
+export const OverviewDark = merge(Overview, {
+  args: { theme: "dark" },
+});
