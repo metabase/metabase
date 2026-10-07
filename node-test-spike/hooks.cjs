@@ -133,8 +133,10 @@ const mapped = [
   [/^locales\/(.*)\.json$/, (m) => abs(`frontend/test/__mocks__/locales/${m[1]}.json`)],
   [/^csv-parse\/browser\/esm\/sync$/, () => abs("node_modules/csv-parse/dist/cjs/sync.cjs")],
   [/^csv-stringify\/browser\/esm\/sync$/, () => abs("node_modules/csv-stringify/dist/cjs/sync.cjs")],
-  [/^sdk-ee-plugins$/, () => abs("frontend/src/metabase/plugins/noop.ts")],
-  [/^(sdk-iframe-embedding-ee-plugins|sdk-iframe-embedding-script-ee-plugins|ee-plugins|ee-overrides)$/, () => abs("frontend/src/metabase/utils/noop.ts")],
+  // jest's moduleNameMapper keys are regular expressions without anchors, so
+  // they also catch a relative path that ends in one of these names.
+  [/sdk-ee-plugins/, () => abs("frontend/src/metabase/plugins/noop.ts")],
+  [/sdk-iframe-embedding-ee-plugins|ee-plugins|ee-overrides/, () => abs("frontend/src/metabase/utils/noop.ts")],
   [/^docs\/embedding\/sdk\/snippets\//, () => fileStub],
   [/^docs\/(.*)$/, (m) => abs(`docs/${m[1]}`)],
   [/^build-configs\/(.*)$/, (m) => findFile(abs(`frontend/build/${m[1]}`))],
@@ -197,12 +199,49 @@ const isProjectSource = (file) =>
   /\.(tsx?|jsx?)$/.test(file) && !file.includes("/node_modules/") && !file.includes("/target/cljs_dev/") && !file.startsWith(cacheDir) &&
   (file.startsWith(abs("frontend/")) || file.startsWith(abs("enterprise/frontend/")) || file.startsWith(abs("e2e/support/")) || file.startsWith(abs("node-test-spike/")));
 
+// jest's jsdom environment resolves packages with the conditions "require",
+// "default" and "browser". Node would use "node" and, for code it takes to be
+// a module, "import", and so pick a different build of the same package.
+const JEST_CONDITIONS = ["require", "default", "browser"];
+// Only a require() is redirected. An import inside a package that is a real ES
+// module keeps Node's conditions, because its named imports need a module
+// build of what it imports.
+const resolveContext = (context) =>
+  process.env.NT_NODE_CONDITIONS === "1" || !context.conditions?.includes("require") ? context : { ...context, conditions: JEST_CONDITIONS };
+// jest runs a package file as CommonJS unless the package is on its transform
+// list, so a require() that lands on an ES module file of any other package
+// fails there with a syntax error. Node can require such a file. The harness
+// fails it too, because a spec can depend on a file being unimportable.
+const TRANSFORMED_PACKAGES = (() => {
+  try { return new RegExp(`^(${require(abs("jest.esm-packages.js")).join("|")})$`); } catch { return null; }
+})();
+const packageTypes = new Map();
+const isModuleFile = (url, packageUrl) => {
+  if (/\.mjs(\?|$)/.test(url)) return true;
+  if (!/\.js(\?|$)/.test(url)) return false;
+  if (!packageTypes.has(packageUrl)) {
+    let type = "commonjs";
+    try { type = JSON.parse(fs.readFileSync(path.join(fileURLToPath(packageUrl), "package.json"), "utf8")).type ?? "commonjs"; } catch {}
+    packageTypes.set(packageUrl, type);
+  }
+  return packageTypes.get(packageUrl) === "module";
+};
+let resolvingForMock = 0;
+const refuseUntransformedModule = (result, context) => {
+  if (!TRANSFORMED_PACKAGES || process.env.NT_NO_ESM_REFUSAL || !context.conditions?.includes("require") || !result.url.includes("/node_modules/")) return;
+  const packageMatch = result.url.match(/^(.*node_modules\/(?:\.bun\/[^/]+\/node_modules\/)?((?:@[^/]+\/)?[^/]+))\//);
+  const name = packageMatch?.[2];
+  if (!name || TRANSFORMED_PACKAGES.test(name.replace("/", "+"))) return;
+  if (result.format !== "module" && !isModuleFile(result.url, packageMatch[1])) return;
+  throw new SyntaxError(`Cannot use import statement outside a module (${name} is an ES module that jest does not transform)`);
+};
 registerHooks({
   resolve(specifier, context, nextResolve) {
     const parentFile = context.parentURL?.startsWith("file:") ? fileURLToPath(context.parentURL.split("?")[0]) : undefined;
     if (process.env.NT_DEBUG && specifier.startsWith(".")) console.error("[resolve]", specifier, "parentURL=", context.parentURL, "->", parentFile && resolveProject(specifier, parentFile));
     const projectFile = specifier.startsWith("file:") || specifier.startsWith("node:") ? null : resolveProject(specifier, parentFile);
-    const result = projectFile ? { url: pathToFileURL(projectFile).href, shortCircuit: true } : nextResolve(specifier, context);
+    if (process.env.NT_DEBUG_CONDITIONS && specifier === "@reduxjs/toolkit") console.error(`[conditions] ${JSON.stringify(context.conditions)} parent=${String(context.parentURL).slice(-60)}`);
+    const result = projectFile ? { url: pathToFileURL(projectFile).href, shortCircuit: true } : nextResolve(specifier, resolveContext(context));
     if (!bypassMocks && result.url.startsWith("node:") && mocks.has(result.url)) {
       return { url: pathToFileURL(mockStub(result.url)).href, format: "commonjs", shortCircuit: true };
     }
@@ -210,6 +249,10 @@ registerHooks({
       const file = fileURLToPath(result.url.split("?")[0]);
       if (mocks.has(file)) return { url: pathToFileURL(mockStub(file)).href, format: "commonjs", shortCircuit: true };
     }
+    // Only a require from project code: the harness's own packages, jsdom among
+    // them, load outside jest's module system and may require anything. A
+    // mocked package never loads, and jest.mock itself only asks for its path.
+    if (!resolvingForMock && parentFile && isProjectSource(parentFile)) refuseUntransformedModule(result, context);
     return result;
   },
   load(url, context, nextLoad) {
@@ -217,7 +260,12 @@ registerHooks({
       const file = fileURLToPath(url.split("?")[0]);
       if (isProjectSource(file)) return { format: "commonjs", shortCircuit: true, source: transform(file) };
     }
-    return nextLoad(url, context);
+    const loaded = nextLoad(url, context);
+    if (process.env.NT_DEBUG_ESM_REQUIRE && loaded?.format === "module" && url.includes("/node_modules/")) {
+      const name = url.match(/node_modules\/(?:\.bun\/[^/]+\/node_modules\/)?((?:@[^/]+\/)?[^/]+)/)?.[1];
+      fs.appendFileSync(process.env.NT_DEBUG_ESM_REQUIRE, `${name}\n`);
+    }
+    return loaded;
   },
 });
 
@@ -239,11 +287,47 @@ if (process.env.NT_NODE_FETCH !== "1") {
   for (const name of ["fetch", "Request", "Response", "Headers", "FormData", "AbortController", "AbortSignal", "Blob", "File"]) delete globalThis[name];
   if (typeof globalThis.self === "undefined") globalThis.self = globalThis;
 }
+// jest's sandbox global is the jsdom window, and it has none of these Node
+// globals. Libraries pick their behaviour from them: React's scheduler uses
+// setImmediate when it exists, then MessageChannel, and only then setTimeout,
+// which is what it gets under jest.
+if (process.env.NT_NODE_GLOBALS !== "1") {
+  for (const name of [
+    ...(process.env.NT_KEEP_MESSAGE_CHANNEL === "1" ? [] : ["MessageChannel", "MessagePort"]),
+    "BroadcastChannel", "ByteLengthQueuingStrategy", "CompressionStream", "CountQueuingStrategy", "CryptoKey", "DecompressionStream",
+    "PerformanceEntry", "PerformanceMark", "PerformanceMeasure", "PerformanceObserver",
+    "PerformanceObserverEntryList", "PerformanceResourceTiming", "ReadableByteStreamController", "ReadableStreamBYOBReader",
+    "ReadableStreamBYOBRequest", "ReadableStreamDefaultController", "ReadableStreamDefaultReader", "SubtleCrypto", "TextEncoderStream",
+    "TransformStreamDefaultController", "WritableStreamDefaultController", "WritableStreamDefaultWriter",
+  ]) {
+    try { delete globalThis[name]; } catch {}
+  }
+  // jsdom itself calls setImmediate, from the same global object, so these two
+  // stay available to the runtime and are hidden from everything else.
+  const fromRuntime = () => {
+    const caller = (new Error().stack ?? "").split("\n")[3] ?? "";
+    return caller.includes("/node_modules/jsdom/") || caller.includes("node:") || caller.includes("/node-test-spike/");
+  };
+  for (const name of process.env.NT_KEEP_IMMEDIATE === "1" ? [] : ["setImmediate", "clearImmediate"]) {
+    const original = globalThis[name];
+    Object.defineProperty(globalThis, name, {
+      configurable: true,
+      enumerable: false,
+      get: () => (fromRuntime() ? original : undefined),
+      set: (value) => { Object.defineProperty(globalThis, name, { configurable: true, writable: true, enumerable: false, value }); },
+    });
+  }
+}
 const windowKeys = new Set();
 for (let proto = win; proto && proto !== Object.prototype; proto = Object.getPrototypeOf(proto)) {
   for (const key of Object.getOwnPropertyNames(proto)) windowKeys.add(key);
 }
 const override = new Set(["Event", "EventTarget", "CustomEvent", "MessageEvent", "ErrorEvent", "KeyboardEvent", "MouseEvent", "FocusEvent", "InputEvent", "UIEvent", "PointerEvent", "DragEvent", "DOMException", "navigator", "location", "history", "localStorage", "sessionStorage", "addEventListener", "removeEventListener", "dispatchEvent", "postMessage", "MutationObserver"]);
+// The URL classes and WebSocket are jsdom's under jest. So are atob and btoa, but
+// jsdom's are wrappers that call the global ones, which have to stay Node's.
+if (process.env.NT_NODE_GLOBALS !== "1" && process.env.NT_NODE_URL !== "1") {
+  for (const name of ["URL", "URLSearchParams", "WebSocket"]) { keep.delete(name); override.add(name); }
+}
 for (const key of windowKeys) {
   if (keep.has(key)) continue;
   if (key in globalThis && !override.has(key)) continue;
@@ -771,7 +855,7 @@ let initialBootstrap;
 // loop waits for it. Timers created while a file runs are tracked and cleared.
 const pendingTimers = new Set();
 const trackedTimers = {
-  setTimeout: (fn, delay, ...rest) => { const handle = realSetTimeout(fn, delay, ...rest); pendingTimers.add(handle); return handle; },
+  setTimeout: (fn, delay, ...rest) => { const handle = realSetTimeout(fn, delay, ...rest); pendingTimers.add(handle); if (process.env.NT_DEBUG_TIMERS_LEFT) handle.__stack = new Error().stack; return handle; },
   setInterval: (fn, delay, ...rest) => { const handle = realSetInterval(fn, delay, ...rest); pendingTimers.add(handle); return handle; },
 };
 // True while the clock is Node's own, tracked or not, and false under a fake clock.
@@ -789,6 +873,7 @@ const trackTimers = () => {
 const clearPendingTimers = () => {
   let cleared = 0;
   for (const handle of pendingTimers) {
+    if (process.env.NT_DEBUG_TIMERS_LEFT && !handle._destroyed) console.error(`[timer-left] delay=${handle._idleTimeout} ${String(handle.__stack).split("\n").slice(2, 9).join(" | ").replace(/\/Users\/[^ ]*node_modules\/\.bun\//g, "")}`);
     try { realClearTimeout(handle); realClearInterval(handle); cleared += 1; } catch {}
   }
   pendingTimers.clear();
@@ -877,6 +962,13 @@ const fileCleanup = async (isolated) => {
   globalThis.__nodeTestSpike.resetVisualizations?.();
   if (!process.env.NT_NO_REALM_RESTORE) globalThis.__nodeTestSpike.restoreRealm?.();
   if (process.env.NT_DEBUG_STATE_DIFF) { console.error(`[state] === after ${currentFile}`); stateDiff(); }
+  if (process.env.NT_EVICT_PACKAGES) {
+    const pattern = new RegExp(`/node_modules/(${process.env.NT_EVICT_PACKAGES})/`);
+    let evicted = 0;
+    for (const cachedFile of Object.keys(require.cache)) if (pattern.test(cachedFile)) { delete require.cache[cachedFile]; evicted += 1; }
+    for (const kind of Object.keys(packageHooks)) packageHooks[kind].length = 0;
+    if (process.env.NT_DEBUG_EVICT_PACKAGES) console.error(`[evict-packages] ${evicted}`);
+  }
   globalThis.__nodeTestSpike.measureEnd?.(isolated);
   globalThis.__nodeTestSpike.restoreSharedPackages?.();
   globalThis.__nodeTestSpike.resetLets?.();
@@ -1044,7 +1136,8 @@ const resolveFrom = (id, from) => {
   if (Module.isBuiltin(id)) return `node:${id.replace(/^node:/, "")}`;
   const project = resolveProject(id, from);
   if (project) return project;
-  return Module.createRequire(from).resolve(id);
+  resolvingForMock += 1;
+  try { return Module.createRequire(from).resolve(id); } finally { resolvingForMock -= 1; }
 };
 // Node remembers what each directory resolved a request to, and skips the
 // resolve hook when that module is still cached. A spec directory that has
@@ -1383,6 +1476,14 @@ globalThis.__nodeTestSpike.resetLets = () => {
     try { write(baseline); } catch {}
   }
 };
+// React's scheduler keeps the timer functions it finds when it loads. It is one
+// copy for the whole process, so it has to find Node's own: a timer of its that
+// was tracked would be cleared at the end of a file, and the scheduler would go
+// on believing that its callback is still due.
+{
+  const fromProject = Module.createRequire(abs("frontend/src/index.js"));
+  Module.createRequire(fromProject.resolve("react-dom"))("scheduler");
+}
 if (!process.env.NT_NO_TIMER_CLEAR) trackTimers();
 runSetupChain();
 initialBootstrap = { ...globalThis.window.MetabaseBootstrap };
@@ -1661,7 +1762,57 @@ const resetCustomElements = () => {
     registry._whenDefinedPromiseMap = Object.create(null);
   } catch {}
 };
-globalThis.__nodeTestSpike.betweenFiles = () => { resetTranslationLocale(); resetLocation(); restoreCanvasMocks(); wrapCanvasGetContext(); resetCustomElements(); };
+// More of what a new window gives a file under jest, each behind its own switch.
+const jsdomUtils = () => require(path.join(bunModule("jsdom"), "lib/jsdom/living/generated/utils.js"));
+// Event listeners on the window and the document. Code from an earlier file
+// that listens for keys, clicks or focus would still run for every later file.
+const listenerTargets = () => [dom.window, dom.window.document, dom.window.document.documentElement, dom.window.document.body];
+let baselineListeners = null;
+const resetWindowListeners = () => {
+  if (process.env.NT_NO_LISTENER_RESET) return;
+  try {
+    baselineListeners ??= listenerTargets().map(() => ({}));
+    listenerTargets().forEach((target, index) => {
+      const impl = jsdomUtils().implForWrapper(target);
+      if (!impl?._eventListeners) return;
+      for (const type of Object.keys(impl._eventListeners)) {
+        const kept = baselineListeners[index][type];
+        if (kept) impl._eventListeners[type] = [...kept];
+        else delete impl._eventListeners[type];
+      }
+      // React marks a node once it has put its listeners there, and would not
+      // put them back after they are removed here.
+      for (const key of Object.keys(target)) if (key.startsWith("_reactListening") || key.startsWith("__react")) { try { delete target[key]; } catch {} }
+    });
+  } catch {}
+};
+// Storage, cookies, the title, and attributes on <html> and <body>.
+const resetWindowData = () => {
+  if (process.env.NT_NO_WINDOW_DATA_RESET) return;
+  try { dom.window.localStorage.clear(); dom.window.sessionStorage.clear(); } catch {}
+  try { dom.cookieJar.removeAllCookiesSync(); } catch {}
+  try {
+    const { document } = dom.window;
+    if (document.title !== "") document.title = "";
+    for (const element of [document.documentElement, document.body]) {
+      for (const attribute of [...element.attributes]) element.removeAttribute(attribute.name);
+    }
+  } catch {}
+};
+// React Testing Library's configuration: a spec that calls configure() changes
+// it for the one shared copy of the library.
+let testingLibraryConfig = null;
+const resetTestingLibraryConfig = () => {
+  if (process.env.NT_NO_RTL_CONFIG_RESET) return;
+  try {
+    const library = Module.createRequire(abs("frontend/src/index.js"))("@testing-library/react");
+    if (testingLibraryConfig === null) { testingLibraryConfig = { ...library.getConfig() }; return; }
+    const current = library.getConfig();
+    if (Object.keys(testingLibraryConfig).some((key) => current[key] !== testingLibraryConfig[key])) library.configure({ ...testingLibraryConfig });
+  } catch {}
+};
+resetTestingLibraryConfig();
+globalThis.__nodeTestSpike.betweenFiles = () => { resetTranslationLocale(); resetLocation(); restoreCanvasMocks(); wrapCanvasGetContext(); resetCustomElements(); resetWindowListeners(); resetWindowData(); resetTestingLibraryConfig(); };
 wrapCanvasGetContext();
 let baselineVisualizations = null;
 try {
