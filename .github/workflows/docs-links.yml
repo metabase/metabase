@@ -20,6 +20,9 @@ jobs:
             .lychee
             frontend/src
             enterprise/frontend/src
+            src
+            enterprise/backend/src
+            resources
 
       - name: Cache lychee
         uses: actions/cache@v5
@@ -41,6 +44,6 @@ jobs:
         if: ${{ !cancelled() }}
         run: docs/util/check-links.sh nav
 
-      - name: Check docs links in the frontend sources
+      - name: Check docs links in the source code
         if: ${{ !cancelled() }}
         run: docs/util/check-links.sh src
