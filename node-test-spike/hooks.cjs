@@ -444,7 +444,11 @@ const flatContext = {
 
 const runSuite = async (suite, t, outer) => {
   const ctx = FLAT ? flatContext : t;
-  const hooks = { beforeEach: [...outer.beforeEach, ...suite.beforeEach], afterEach: [...suite.afterEach, ...outer.afterEach] };
+  // A hook at the top level of a spec file is in jest's root block, together
+  // with the setup files' hooks and after them. Only hooks inside a describe
+  // are a nested block, whose afterEach runs before its parent's.
+  const afterEach = outer.fileLevel && !process.env.NT_NO_ROOT_HOOK_ORDER ? [...outer.afterEach, ...suite.afterEach] : [...suite.afterEach, ...outer.afterEach];
+  const hooks = { beforeEach: [...outer.beforeEach, ...suite.beforeEach], afterEach };
   for (const fn of suite.beforeAll) await fn();
   for (const child of suite.children) {
     if (child.type === "suite") {
@@ -540,9 +544,12 @@ const runSuite = async (suite, t, outer) => {
         failure = { error };
         // A timed-out body keeps running. Under a fake clock advancing in real
         // time it also keeps allocating, so drop its timers and hand back the
-        // real ones before the next test starts.
-        try { fakeTimers.clearAllTimers(); } catch {}
-        fakeTimers.useRealTimers();
+        // real ones before the next test starts. Any other failure leaves the
+        // clock alone, as jest does: a spec may have set it once in beforeAll.
+        if (/^test timed out after|^test aborted after/.test(String(error?.message))) {
+          try { fakeTimers.clearAllTimers(); } catch {}
+          fakeTimers.useRealTimers();
+        }
       }
       if (process.env.NT_DEBUG_CALLS) {
         const fetchMock = require("fetch-mock").default;
@@ -955,7 +962,7 @@ globalThis.__nodeTestSpike.runFile = async (t, file) => {
     for (const fn of [...packageHooks.beforeAll, ...rootSuite.beforeAll]) await fn();
     actEnvironmentForFile = globalThis.IS_REACT_ACT_ENVIRONMENT;
     try {
-      await runSuite(fileSuite, t, { beforeEach: [...packageHooks.beforeEach, ...rootSuite.beforeEach], afterEach: [...packageHooks.afterEach, ...rootSuite.afterEach] });
+      await runSuite(fileSuite, t, { fileLevel: true, beforeEach: [...packageHooks.beforeEach, ...rootSuite.beforeEach], afterEach: [...packageHooks.afterEach, ...rootSuite.afterEach] });
     } finally {
       for (const fn of [...rootSuite.afterAll, ...packageHooks.afterAll]) { try { await fn(); } catch {} }
     }
