@@ -73,12 +73,7 @@ describe(suiteTitle, () => {
     H.entityPickerModal().within(() => {
       cy.findByText("Select a dashboard").should("be.visible");
 
-      cy.findByTestId("item-picker-level-0")
-        .findByText("Our analytics")
-        .click();
-      cy.findByTestId("item-picker-level-1")
-        .findByText(FIRST_DASHBOARD_NAME)
-        .click();
+      cy.findByText(FIRST_DASHBOARD_NAME).click();
     });
 
     getEmbedSidebar().within(() => {
