@@ -81,7 +81,7 @@ jobs:
     secrets: inherit
     with:
       digest: ${{ needs.containerize.outputs.digest-ee }}
-      
+
   bundle-size:
     needs: uberjar
     uses: ./.github/workflows/bundle-size.yml
