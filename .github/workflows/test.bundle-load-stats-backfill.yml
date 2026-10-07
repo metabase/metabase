@@ -1,0 +1,118 @@
+name: Bundle Load Stats Backfill
+
+# Measures historical master commits with today's benchmark, so the table holds a
+# comparable line back through the window rather than starting at the merge that
+# last changed the harness.
+#
+# One commit per day. The curve a reader watches is a trend over weeks, and the
+# per-merge path already covers the resolution below that: 30 days of master is
+# about 700 commits, which is no more informative and 20 times the runner time.
+#
+# The window is bounded by artifact retention rather than by this workflow.
+# Uberjars expire after 30 days, and a commit whose jar has gone cannot be
+# measured without building one, so `plan` drops those instead of spending a job
+# on each.
+
+on:
+  workflow_dispatch:
+    inputs:
+      days:
+        description: "How many days back to sample. Nothing older than 30 has a jar."
+        type: string
+        required: false
+        default: "30"
+      harness_ref:
+        description: "Ref to take the benchmark from. Defaults to the ref this is dispatched on."
+        type: string
+        required: false
+        default: ""
+      commits:
+        description: "Full 40 character SHAs to measure instead of sampling by day, comma or space separated."
+        type: string
+        required: false
+        default: ""
+      upload:
+        description: "Append the rows to the table. Turn this off to smoke test the path without recording anything."
+        type: boolean
+        required: false
+        default: true
+
+# One backfill at a time. Each measured commit is a row, and a second run would
+# append a duplicate for every commit the first one already recorded. Dispatch
+# with `upload` off to exercise the path without recording anything.
+concurrency:
+  group: bundle-load-stats-backfill
+  cancel-in-progress: false
+
+jobs:
+  plan:
+    if: ${{ github.repository == 'metabase/metabase' }}
+    runs-on: ${{ vars.SLIM_RUNNER_KEY }}
+    timeout-minutes: 15
+    outputs:
+      commits: ${{ steps.pick.outputs.commits }}
+    steps:
+      - name: Pick the first master commit of each day that still has a jar
+        id: pick
+        env:
+          GH_TOKEN: ${{ github.token }}
+          DAYS: ${{ inputs.days }}
+          COMMITS: ${{ inputs.commits }}
+        run: |
+          set -euo pipefail
+
+          if [ -n "${COMMITS}" ]; then
+            # Named on dispatch, which is how a couple of commits get measured
+            # without waiting on a window. Anything that is not a full SHA is
+            # dropped rather than reaching the API, and `fetch-artifact` needs
+            # the full 40 characters to name the artifact anyway.
+            printf '%s' "${COMMITS}" | tr ',' ' ' | tr -s ' ' '\n' \
+              | grep -E '^[0-9a-f]{40}$' > sampled.txt || true
+            echo "Measuring $(wc -l < sampled.txt) commits named on dispatch"
+          else
+            since=$(date -u -d "${DAYS} days ago" +%Y-%m-%dT%H:%M:%SZ)
+            echo "Sampling master since ${since}"
+
+            # An ISO timestamp sorts chronologically as text, so sorting and then
+            # keeping the first row per date gives the earliest commit of each day.
+            gh api --paginate \
+              "repos/${GITHUB_REPOSITORY}/commits?sha=master&since=${since}&per_page=100" \
+              --jq '.[] | "\(.commit.committer.date) \(.sha)"' \
+              | sort \
+              | awk '{ day = substr($1, 1, 10) } !seen[day]++ { print $2 }' > sampled.txt
+            echo "Sampled $(wc -l < sampled.txt) commits, one per day"
+          fi
+
+          : > kept.txt
+          while read -r sha; do
+            found=$(gh api -X GET "repos/${GITHUB_REPOSITORY}/actions/artifacts" \
+              -f per_page=1 -f "name=metabase-ee-${sha}-uberjar" --jq '.total_count')
+            if [ "${found}" -gt 0 ]; then
+              echo "${sha}" >> kept.txt
+            else
+              echo "skipping ${sha}, its uberjar has expired"
+            fi
+          done < sampled.txt
+
+          echo "Measuring $(wc -l < kept.txt) commits"
+          # A matrix holds at most 256 entries, which one per day cannot reach.
+          commits=$(jq -R -s -c 'split("\n") | map(select(length > 0))' < kept.txt)
+          echo "commits=${commits}" >> "$GITHUB_OUTPUT"
+
+  measure:
+    needs: [plan]
+    if: ${{ needs.plan.outputs.commits != '[]' }}
+    strategy:
+      # One slow commit must not stop the rest of the window being recorded.
+      fail-fast: false
+      # Each matrix entry gets its own runner, so these do not sit in each
+      # other's noise. The cap is to leave the pool something to work with.
+      max-parallel: 4
+      matrix:
+        commit: ${{ fromJSON(needs.plan.outputs.commits) }}
+    uses: ./.github/workflows/test.bundle-load-stats.yml
+    with:
+      commit: ${{ matrix.commit }}
+      harness_ref: ${{ inputs.harness_ref || github.ref_name }}
+      upload: ${{ inputs.upload }}
+    secrets: inherit
