@@ -44,7 +44,7 @@
   (update-keys {;; Migrations need to update their own state
                 :model/CloudMigration :all :model/Setting :all
                 ;; Users need to login, make queries, and we need need to audit them.
-                :model/User :all :model/Session :all :model/LoginHistory :all
+                :model/User :all :model/LoginHistory :all
                 :model/UserParameterValue :all
                 :model/AuditLog :all :model/ViewLog :all
                 ;; Cards need to able to update their last used at timestamp, but we don't want to create
