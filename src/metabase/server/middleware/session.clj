@@ -277,6 +277,8 @@
      ;; oauth-info carries `:token-scopes` in addition to the standard current-user-info keys, so
      ;; merging it whole both authenticates the request and records the granted scopes.
      (dissoc (or session-info api-key-info oauth-info mcp-ui-info) :auth-provider)
+     ;; Not derived from `auth-method`: an SSO session reports its provider there, and an embedding route overrides it.
+     (when session-info {:authenticated-via-session? true})
      (when auth-method {:embedding/auth-method auth-method})
      (when x-metabase-locale
        (log/tracef "Found X-Metabase-Locale header: using %s as user locale" (pr-str x-metabase-locale))
@@ -285,7 +287,8 @@
 (defn wrap-current-user-info
   "Add `:metabase-user-id`, `:is-superuser?`, `:is-group-manager?` and `:user-locale` to the request if a valid session
   token, API key, OAuth bearer access token, OR MCP UI credential was passed. A bearer token additionally sets
-  `:token-scopes` (the access it was granted); precedence is session > API key > bearer > MCP UI credential.
+  `:token-scopes` (the access it was granted), and a login session sets `:authenticated-via-session?`; precedence is
+  session > API key > bearer > MCP UI credential.
   Bearer tokens and MCP UI credentials authenticate only when `options` supplies their `:oauth-bearer` and
   `:mcp-ui-credentials` fns."
   ([handler]

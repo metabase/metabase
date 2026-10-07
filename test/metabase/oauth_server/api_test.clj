@@ -2,12 +2,16 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer [deftest is testing use-fixtures]]
+   [metabase.api-keys.core :as api-key]
+   [metabase.auth-identity.core :as auth-identity]
    [metabase.config.core :as config]
    [metabase.mcp.core :as mcp]
    [metabase.oauth-server.api.oauth :as api.oauth]
    [metabase.oauth-server.core :as oauth-server]
    [metabase.test :as mt]
    [metabase.test.http-client :as client]
+   [metabase.util.secret :as u.secret]
+   [oidc-provider.store :as oidc.store]
    [oidc-provider.util :as oidc-util]
    [toucan2.core :as t2])
   (:import
@@ -2506,3 +2510,162 @@
             (let [response (authorize not-mcp)]
               (is (= 400 (:status response)))
               (is (= "invalid_scope" (get-in response [:body :error]))))))))))
+
+;;; ------------------------------------------ Who may consent -----------------------------------------------------
+
+(def ^:private consent-request-params
+  {:redirect_uri  "https://example.com/callback"
+   :response_type "code"
+   :scope         "agent:content:read"
+   :state         "test-state"})
+
+(defn- consent-get!
+  "GET /oauth/authorize for `client-id`, sending only `headers` (no test-user session), expecting `expected-status`.
+   Returns the full response."
+  [headers expected-status client-id]
+  (apply client/client-full-response :get expected-status "oauth/authorize"
+         {:request-options {:headers headers}}
+         (mapcat identity (assoc consent-request-params :client_id client-id))))
+
+(defn- consent-approve!
+  "POST an approval of `client-id`'s consent form to /oauth/authorize/decision, sending only `headers` plus the CSRF
+   cookie and `extra-cookies`. The form is signed exactly as the consent page signs it, so a refusal can only come
+   from who is asking. Returns the full response."
+  [headers extra-cookies expected-status client-id]
+  (let [csrf-token "0123456789abcdef0123456789abcdef"
+        params     (assoc consent-request-params :client_id client-id)]
+    (client/client-full-response
+     :post expected-status "oauth/authorize/decision"
+     {:request-options {:headers (merge headers
+                                        {"content-type" "application/x-www-form-urlencoded"
+                                         "cookie"       (str/join "; " (cons (str "metabase.OAUTH_CSRF=" csrf-token)
+                                                                             extra-cookies))})}}
+     (assoc params
+            :approved      "true"
+            :granted_scope "agent:content:read"
+            :csrf_token    csrf-token
+            :params_sig    (sign-decision-params csrf-token params)))))
+
+(defn- authorization-code-user-ids
+  "The user ids of the authorization codes issued to `client-id`."
+  [client-id]
+  (t2/select-fn-vec :user_id :model/OAuthAuthorizationCode :client_id client-id))
+
+(defn- session-cookie [session-key]
+  (str "metabase.SESSION=" session-key))
+
+(defn- refused-like-anonymous!
+  "Assert that the consent endpoints treat a request sending `headers` exactly as an anonymous one: the consent page
+   redirects to login, and an approval is refused without issuing a code."
+  [headers client-id]
+  (testing "GET /oauth/authorize redirects to login instead of rendering the consent page"
+    (let [response (consent-get! headers 302 client-id)]
+      (is (str/starts-with? (get-in response [:headers "Location"])
+                            "http://localhost:3000/auth/login?redirect="))
+      (is (not (str/includes? (str (:body response)) "/oauth/authorize/decision")))))
+  (testing "POST /oauth/authorize/decision is refused and issues no code"
+    (let [response (consent-approve! headers nil 401 client-id)]
+      (is (= {:error "unauthorized"} (:body response)))
+      (is (nil? (get-in response [:headers "Location"])))
+      (is (empty? (authorization-code-user-ids client-id))))))
+
+(deftest api-key-cannot-consent-test
+  (testing "GHY-4287: an API key must never mint an OAuth token. It authenticates as a user the seat count does not
+            bill, so the consent endpoints treat it exactly like an anonymous request, for an admin's key and for a
+            non-admin's key alike."
+    (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+      (t2/with-transaction [_conn nil {:rollback-only true}]
+        (doseq [[description user raw-key] [["an admin's API key" :crowberto "mb_consentadmin1"]
+                                            ["a non-admin's API key" :rasta "mb_consentuser01"]]]
+          (testing description
+            (mt/with-temp [:model/ApiKey _ {:name                  description
+                                            :user_id               (mt/user->id user)
+                                            :creator_id            (mt/user->id :crowberto)
+                                            :updated_by_id         (mt/user->id :crowberto)
+                                            ::api-key/unhashed-key (u.secret/secret raw-key)}]
+              (testing "the key really authenticates, so the refusal is about how, not whether"
+                (client/client :get 200 "api/user/current" {:request-options {:headers {"x-api-key" raw-key}}}))
+              (refused-like-anonymous! {"x-api-key" raw-key} (:client_id (create-test-client!))))))))))
+
+(deftest oauth-bearer-token-cannot-consent-test
+  (testing "GHY-4287: an OAuth bearer token, even one holding the full-access scope, cannot consent to mint another
+            token. The consent endpoints treat it exactly like an anonymous request."
+    (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+      (t2/with-transaction [_conn nil {:rollback-only true}]
+        (let [client-id (:client_id (create-test-client!))
+              token     (str (random-uuid))]
+          (oidc.store/save-access-token (:token-store (oauth-server/get-provider))
+                                        token (str (mt/user->id :crowberto)) client-id
+                                        [oauth-server/full-access-scope]
+                                        (+ (inst-ms (java.util.Date.)) 3600000) nil)
+          (testing "the token really authenticates, so the refusal is about how, not whether"
+            (client/client :get 200 "api/user/current"
+                           {:request-options {:headers {"authorization" (str "Bearer " token)}}}))
+          (refused-like-anonymous! {"authorization" (str "Bearer " token)} client-id))))))
+
+(defn- consents!
+  "Assert that a request sending `headers` and `extra-cookies` sees the consent page, and that its approval issues a
+   code for `user-id`."
+  [headers extra-cookies user-id client-id]
+  (testing "GET /oauth/authorize renders the consent page"
+    (let [headers  (cond-> headers
+                     (seq extra-cookies) (assoc "cookie" (str/join "; " extra-cookies)))
+          response (consent-get! headers 200 client-id)]
+      (is (str/includes? (:body response) "/oauth/authorize/decision"))))
+  (testing "POST /oauth/authorize/decision issues a code for the session's user"
+    (let [response (consent-approve! headers extra-cookies 302 client-id)]
+      (is (some? (extract-query-param (get-in response [:headers "Location"]) "code")))
+      (is (= [user-id] (authorization-code-user-ids client-id))))))
+
+(defn- insert-user!
+  "Insert a User with `overrides`. Not `with-temp`: the code an approval issues references the user, so only the
+   enclosing rollback-only transaction can remove it."
+  [overrides]
+  (t2/insert-returning-instance! :model/User (merge (mt/with-temp-defaults :model/User) overrides)))
+
+(defn- login-session-key!
+  "Log `user` in with a password session and return its session key."
+  [user]
+  (:key (auth-identity/create-session-with-auth-tracking! user nil :provider/password)))
+
+(deftest login-session-can-consent-test
+  (testing "GHY-4287: a login session for a personal user can consent, whether it arrives as the session cookie or as
+            the X-Metabase-Session header, and whether a password login or an SSO login minted it"
+    (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+      (t2/with-transaction [_conn nil {:rollback-only true}]
+        (let [user (insert-user! {})]
+          (t2/insert! :model/AuthIdentity {:user_id (:id user) :provider "oidc"})
+          (let [session-key (login-session-key! user)]
+            (testing "a session cookie"
+              (consents! {} [(session-cookie session-key)] (:id user) (:client_id (create-test-client!))))
+            (testing "the X-Metabase-Session header"
+              (consents! {"x-metabase-session" session-key} nil (:id user) (:client_id (create-test-client!)))))
+          (testing "an SSO-provisioned session"
+            (let [session (auth-identity/create-session-with-auth-tracking! user nil :provider/oidc)]
+              (testing "the session really is auth-identity-linked, otherwise this is a plain-session test"
+                (is (some? (:auth_identity_id session))))
+              (consents! {} [(session-cookie (:key session))] (:id user) (:client_id (create-test-client!))))))))))
+
+(deftest session-wins-over-api-key-for-consent-test
+  (testing "GHY-4287: a request carrying both a session cookie and an API key is authenticated by the session, as on
+            every other route, so consent works and the code is issued to the session's user, not the key's"
+    (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+      (t2/with-transaction [_conn nil {:rollback-only true}]
+        (mt/with-temp [:model/ApiKey _ {:name                  "consent key"
+                                        :user_id               (mt/user->id :crowberto)
+                                        :creator_id            (mt/user->id :crowberto)
+                                        :updated_by_id         (mt/user->id :crowberto)
+                                        ::api-key/unhashed-key (u.secret/secret "mb_consentboth01")}]
+          (let [user (insert-user! {})]
+            (consents! {"x-api-key" "mb_consentboth01"} [(session-cookie (login-session-key! user))]
+                       (:id user) (:client_id (create-test-client!)))))))))
+
+(deftest non-personal-user-session-cannot-consent-test
+  (testing "GHY-4287: only a personal user can consent. A login session for any other kind of user is treated like an
+            anonymous request."
+    (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+      (t2/with-transaction [_conn nil {:rollback-only true}]
+        (let [session-key (login-session-key! (insert-user! {:type :api-key}))]
+          (testing "the session really authenticates, so the refusal is about who, not whether"
+            (client/client session-key :get 200 "api/user/current"))
+          (refused-like-anonymous! {"x-metabase-session" session-key} (:client_id (create-test-client!))))))))
