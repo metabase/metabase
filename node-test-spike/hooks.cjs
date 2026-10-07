@@ -56,9 +56,18 @@ const letTracker = (file, source) => {
   const list = names.join(", ");
   return `\n;globalThis.__nodeTestSpike?.trackLets?.(__filename, () => [${list}], (__values) => { [${list}] = __values; });\n`;
 };
+// Measurement only: module-level containers and instances, to count how many
+// spec files leave module state changed.
+const TOP_LEVEL_CONTAINER = /^(?:export )?const ([A-Za-z_$][\w$]*)\s*(?::[^=\n]*)?=\s*(?:new\s+[A-Za-z_$]|\[|\{)/gm;
+const constTracker = (file, source) => {
+  if (!process.env.NT_MEASURE_DIRTY || /\.(spec|test)\.|\/test\/|__support__|\/mocks?\//.test(file)) return "";
+  const names = [...new Set([...source.matchAll(TOP_LEVEL_CONTAINER)].map((match) => match[1]))];
+  if (names.length === 0) return "";
+  return `\n;globalThis.__nodeTestSpike?.trackConsts?.(__filename, ${JSON.stringify(names)}, () => [${names.map((name) => `typeof ${name} === "undefined" ? undefined : ${name}`).join(", ")}]);\n`;
+};
 const transformCached = (file) => {
   const source = fs.readFileSync(file, "utf8");
-  return transformSource(file, source) + letTracker(file, source);
+  return transformSource(file, source) + letTracker(file, source) + constTracker(file, source);
 };
 const transform = (file) => {
   const memoized = transformMemo.get(file);
@@ -366,8 +375,11 @@ Object.assign(globalThis, {
 let phase = "init";
 const { AsyncLocalStorage } = require("node:async_hooks");
 const originStore = new AsyncLocalStorage();
-const runTagged = (tag, fn) => originStore.run(tag, fn);
-const hookTag = (kind, index, fn) => `${kind}#${index}:${String(fn).replace(/\s+/g, " ").slice(0, 70)}`;
+// Debug only: tags the async work a hook or a test body starts, so the fetch
+// probe can say which one a late request came from.
+const TAG_ORIGINS = process.env.NT_DEBUG_FETCH_WHEN === "1";
+const runTagged = (tag, fn) => (TAG_ORIGINS ? originStore.run(tag, fn) : fn());
+const hookTag = (kind, index, fn) => (TAG_ORIGINS ? `${kind}#${index}:${String(fn).replace(/\s+/g, " ").slice(0, 70)}` : kind);
 let routerProbeInstalled = false;
 const installRouterProbe = () => {
   if (routerProbeInstalled) return;
@@ -668,8 +680,17 @@ const MOCKING_API = /\bjest\.(mock|doMock|unmock|resetModules|isolateModules)\(/
 const ISOLATE_ALL = process.env.NT_ISOLATE_ALL === "1";
 // Mantine keeps a module-level theme whose component overrides close over project
 // components, so leaving it cached hands the next file's tree the old graph's ones.
-const EVICTABLE_PACKAGES = /\/node_modules\/(@mantine|@emotion)\//;
-const isEvictable = (file) => isProjectSource(file) || EVICTABLE_PACKAGES.test(file);
+const EVICTABLE_PACKAGES = process.env.NT_SHARE_UI_PACKAGES === "1" ? /$^/ : /\/node_modules\/(@mantine|@emotion)\//;
+// Project modules that are shared between isolated files the way packages are.
+// stateless-tier.cjs writes the list: modules of the named areas that hold no
+// module-level state and import only packages and one another, so nothing in
+// the set can point at a module that is rebuilt.
+const STABLE_MODULES = new Set(
+  process.env.NT_STABLE_MODULES === "1" && fs.existsSync(path.join(__dirname, "stable-modules.json"))
+    ? JSON.parse(fs.readFileSync(path.join(__dirname, "stable-modules.json"), "utf8")).map(abs)
+    : [],
+);
+const isEvictable = (file) => (isProjectSource(file) && !STABLE_MODULES.has(file)) || EVICTABLE_PACKAGES.test(file);
 const evictProjectModules = () => {
   if (process.env.NT_DEBUG_EVICT) {
     for (const file of Object.keys(require.cache)) {
@@ -800,6 +821,8 @@ const fileCleanup = async (isolated) => {
   globalThis.__nodeTestSpike.resetVisualizations?.();
   if (!process.env.NT_NO_REALM_RESTORE) globalThis.__nodeTestSpike.restoreRealm?.();
   if (process.env.NT_DEBUG_STATE_DIFF) { console.error(`[state] === after ${currentFile}`); stateDiff(); }
+  globalThis.__nodeTestSpike.measureEnd?.(isolated);
+  globalThis.__nodeTestSpike.restoreSharedPackages?.();
   globalThis.__nodeTestSpike.resetLets?.();
   restoreSetupMocks();
   resetDayjsLocale();
@@ -869,6 +892,7 @@ globalThis.__nodeTestSpike.runFile = async (t, file) => {
   }
   let fileSuite = newSuite(file);
   suiteStack.push(fileSuite);
+  globalThis.__nodeTestSpike.measureStart?.();
   try { require(file); } finally { suiteStack.pop(); }
   // A file whose jest.mock calls sit in an imported helper was not isolated at
   // its start, so modules from earlier files have their real dependencies
@@ -1000,6 +1024,9 @@ let setupMocksOpen = false;
 let setupMocksPending = [];
 const setupMocks = [];
 const runSetupChain = () => {
+  // The setup files register the root hooks each time they run. Without this
+  // every isolated file would add another copy for all later tests to run.
+  for (const kind of ["beforeAll", "afterAll", "beforeEach", "afterEach"]) rootSuite[kind].length = 0;
   setupMocksOpen = true;
   try {
     for (const setupFile of SETUP_CHAIN) require(abs(setupFile));
@@ -1099,6 +1126,63 @@ globalThis.jest = {
 globalThis.ga = {};
 
 // --- setupFiles + setupFilesAfterEnv, in jest order ---------------------------------
+const measured = { consts: new Map(), testWrites: new Set(), before: null };
+const shallowPrint = (value) => {
+  if (value === null || typeof value !== "object") return null;
+  try {
+    if (Array.isArray(value)) return `a${value.length}:${value.slice(0, 60).map(identityOf).join(",")}`;
+    const keys = Object.keys(value);
+    return `o${keys.length}:${keys.slice(0, 60).map((key) => { let item; try { item = value[key]; } catch { item = "!"; } return `${key}=${identityOf(item)}`; }).join(",")}`;
+  } catch { return null; }
+};
+globalThis.__nodeTestSpike.trackConsts = (file, names, read) => {
+  let values;
+  try { values = read(); } catch { return; }
+  const kept = [];
+  values.forEach((value, index) => {
+    if (value === null || typeof value !== "object" || value.$$typeof) return;
+    const label = `${file.replace(root, "")}:${names[index]}`;
+    if (value instanceof Map || value instanceof Set) {
+      for (const method of ["set", "add", "delete", "clear"]) {
+        if (typeof value[method] !== "function") continue;
+        const original = value[method];
+        try {
+          Object.defineProperty(value, method, { configurable: true, writable: true, value: function (...args) {
+            if (!globalThis.__nodeTestSpike.isLoading() && (phase === "body" || phase === "beforeEach" || phase === "afterEach")) measured.testWrites.add(label);
+            return original.apply(this, args);
+          } });
+        } catch {}
+      }
+      return;
+    }
+    if (value instanceof WeakMap || value instanceof WeakSet || value instanceof RegExp || value instanceof Date) return;
+    kept.push([label, value]);
+  });
+  measured.consts.set(file, kept);
+};
+const printAll = () => {
+  const prints = new Map();
+  for (const kept of measured.consts.values()) for (const [label, value] of kept) prints.set(label, shallowPrint(value));
+  return prints;
+};
+const measureStart = () => { if (process.env.NT_MEASURE_DIRTY) { measured.before = printAll(); measured.testWrites.clear(); } };
+const measureEnd = (isolated) => {
+  if (!process.env.NT_MEASURE_DIRTY || !measured.before) return;
+  const changedLets = [];
+  for (const [file, tracked] of trackedLets) {
+    try { tracked.read().forEach((value, index) => { if (value !== tracked.baseline[index]) changedLets.push(`${file.replace(root, "")}#${index}`); }); } catch {}
+  }
+  const changedObjects = [];
+  for (const [label, print] of printAll()) {
+    const before = measured.before.get(label);
+    if (before !== undefined && before !== print) changedObjects.push(label);
+  }
+  const short = (list) => list.slice(0, 4).map((item) => item.replace(/^\/(frontend|enterprise\/frontend)\/src\//, "")).join(" ");
+  fs.appendFileSync(process.env.NT_MEASURE_DIRTY, [currentFile, isolated ? 1 : 0, changedLets.length, measured.testWrites.size, changedObjects.length, globalThis.__nodeTestSpike.lastRealmRestored ?? 0, measured.consts.size, short(changedLets), short([...measured.testWrites]), short(changedObjects)].join("\t") + "\n");
+  measured.before = null;
+};
+globalThis.__nodeTestSpike.measureStart = measureStart;
+globalThis.__nodeTestSpike.measureEnd = measureEnd;
 const trackedLets = new Map();
 globalThis.__nodeTestSpike.trackLets = (file, read, write) => { trackedLets.set(file, { baseline: read(), read, write }); };
 // Other modules write into these bindings while they load: a registry gets its
@@ -1117,12 +1201,58 @@ globalThis.__nodeTestSpike.trackLets = (file, read, write) => { trackedLets.set(
     }
     return values;
   };
+  globalThis.__nodeTestSpike.isLoading = () => loadDepth > 0;
+  // With the UI packages shared between isolated files, project code can still
+  // write onto a package's own objects while it loads, as the popover dropdown
+  // registration does. The package would then keep pointing at one file's copy
+  // of that code. Each package export is recorded as it was when control first
+  // came back to project code, and put back between files.
+  const SHARED_UI = process.env.NT_SHARE_UI_PACKAGES === "1" ? /\/node_modules\/(@mantine|@emotion)\// : null;
+  const packageModulesPending = [];
+  const packageBaselines = [];
+  const packageSeen = new WeakSet();
+  const ownDescriptors = (target) => new Map(Reflect.ownKeys(target).map((key) => [key, Object.getOwnPropertyDescriptor(target, key)]));
+  const recordPackageExports = () => {
+    for (const loaded of packageModulesPending.splice(0)) {
+      const candidates = [loaded.exports];
+      try { for (const key of Object.keys(loaded.exports ?? {})) candidates.push(loaded.exports[key]); } catch {}
+      for (const candidate of candidates) {
+        if (candidate === null || (typeof candidate !== "object" && typeof candidate !== "function") || packageSeen.has(candidate)) continue;
+        packageSeen.add(candidate);
+        try { packageBaselines.push([candidate, ownDescriptors(candidate)]); } catch {}
+      }
+    }
+  };
+  if (SHARED_UI) {
+    const compilePackage = NodeModule.prototype._compile;
+    NodeModule.prototype._compile = function (content, filename, ...rest) {
+      const result = compilePackage.call(this, content, filename, ...rest);
+      if (SHARED_UI.test(filename)) packageModulesPending.push(this);
+      return result;
+    };
+  }
+  globalThis.__nodeTestSpike.restoreSharedPackages = () => {
+    let restored = 0;
+    for (const [target, baseline] of packageBaselines) {
+      for (const key of Reflect.ownKeys(target)) {
+        if (baseline.has(key)) continue;
+        try { delete target[key]; restored += 1; } catch {}
+      }
+      for (const [key, descriptor] of baseline) {
+        const now = Object.getOwnPropertyDescriptor(target, key);
+        if (now && now.value === descriptor.value && now.get === descriptor.get && now.set === descriptor.set) continue;
+        try { Object.defineProperty(target, key, descriptor); restored += 1; } catch {}
+      }
+    }
+    return restored;
+  };
   NodeModule._load = function (...args) {
     if (loadDepth === 0 && trackedLets.size > 0) valuesBeforeLoad = readAll();
     loadDepth += 1;
     try {
       return loadModule.apply(this, args);
     } finally {
+      if (packageModulesPending.length > 0 && args[1]?.filename && isProjectSource(args[1].filename)) recordPackageExports();
       loadDepth -= 1;
       if (loadDepth === 0 && valuesBeforeLoad) {
         for (const [file, tracked] of trackedLets) {
@@ -1205,10 +1335,42 @@ const restoreRealm = () => {
   let restored = 0;
   for (const [target, descriptors] of realmBaseline) restored += restoreDescriptors(target, descriptors, true);
   restored += restoreDescriptors(globalThis, globalBaseline, false);
+  globalThis.__nodeTestSpike.lastRealmRestored = restored;
   if (process.env.NT_DEBUG_REALM && restored) console.error(`[realm] restored ${restored} after ${currentFile}`);
 };
 globalThis.__nodeTestSpike.restoreRealm = restoreRealm;
 globalThis.__nodeTestSpike.getPhase = () => phase;
+globalThis.__nodeTestSpike.resolveProject = resolveProject;
+globalThis.__nodeTestSpike.isProjectSource = isProjectSource;
+// Measurement only: self time of every module body, summed over the process.
+if (process.env.NT_MODULE_TIMES) {
+  const NodeModuleForTiming = require("node:module");
+  const compile = NodeModuleForTiming.prototype._compile;
+  const totals = new Map();
+  const stack = [];
+  NodeModuleForTiming.prototype._compile = function (content, filename, ...rest) {
+    const frame = { child: 0n };
+    stack.push(frame);
+    const start = process.hrtime.bigint();
+    try {
+      return compile.call(this, content, filename, ...rest);
+    } finally {
+      const elapsed = process.hrtime.bigint() - start;
+      stack.pop();
+      if (stack.length > 0) stack[stack.length - 1].child += elapsed;
+      const entry = totals.get(filename) ?? { self: 0n, loads: 0 };
+      entry.self += elapsed - frame.child;
+      entry.loads += 1;
+      totals.set(filename, entry);
+    }
+  };
+  process.on("exit", () => {
+    try {
+      fs.mkdirSync(process.env.NT_MODULE_TIMES, { recursive: true });
+      fs.writeFileSync(path.join(process.env.NT_MODULE_TIMES, `${process.pid}.json`), JSON.stringify([...totals].map(([file, entry]) => [file, Number(entry.self) / 1e6, entry.loads])));
+    } catch {}
+  });
+}
 // A spec that registers its own visualization would otherwise collide with the
 // next file's registration, since the registry outlives the file.
 // dayjs is one instance for the whole process, and the order its plugins are
