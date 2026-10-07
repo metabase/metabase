@@ -18,7 +18,8 @@ import {
   Flex,
   Icon,
   Menu,
-  rem,
+  Stack,
+  Title,
 } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { parseTimestamp } from "metabase/utils/time-dayjs";
@@ -31,18 +32,16 @@ import {
 import type { Database, WritebackAction } from "metabase-types/api";
 
 import S from "./ModelActionDetails.module.css";
-import ModelActionListItem from "./ModelActionListItem";
+import { ModelActionListItem } from "./ModelActionListItem";
 import { useEnableImplicitActionsForModel } from "./useEnableImplicitActionsForModel";
-
-interface OwnProps {
-  model: Question;
-}
-
-type Props = OwnProps;
 
 const EMPTY_DATABASE_LIST: Database[] = [];
 
-function ModelActionDetails({ model }: Props) {
+interface ModelActionDetailsProps {
+  model: Question;
+}
+
+export function ModelActionDetails({ model }: ModelActionDetailsProps) {
   const { data: databasesResponse } = useListDatabasesQuery();
   const databases = databasesResponse?.data ?? EMPTY_DATABASE_LIST;
   const { data: actions = [] } = useListActionsQuery({
@@ -99,11 +98,7 @@ function ModelActionDetails({ model }: Props) {
       const actionUrl = Urls.action(model.card(), action.id);
 
       return (
-        <li
-          key={action.id}
-          className={S.actionListItem}
-          aria-label={action.name}
-        >
+        <li key={action.id} className={S.itemSpacing} aria-label={action.name}>
           <ModelActionListItem
             action={action}
             actionUrl={actionUrl}
@@ -170,7 +165,7 @@ function ModelActionDetails({ model }: Props) {
       {actions.length > 0 ? (
         <Box
           component="ul"
-          className={S.actionList}
+          className={S.responsiveWidth}
           mt="lg"
           aria-label={t`Action list`}
         >
@@ -187,29 +182,23 @@ function ModelActionDetails({ model }: Props) {
   );
 }
 
+interface NoActionsStateProps {
+  hasCreateButton: boolean;
+  onCreateClick: () => void;
+}
+
 function NoActionsState({
   hasCreateButton,
   onCreateClick,
-}: {
-  hasCreateButton: boolean;
-  onCreateClick: () => void;
-}) {
+}: NoActionsStateProps) {
   return (
-    <Flex
-      direction="column"
-      justify="center"
-      gap="sm"
-      h="100%"
-      maw={rem(400)}
-      m="auto"
-      ta="center"
-    >
-      <Box
-        component="h4"
-        fz={rem(16)}
-        fw={700}
+    <Stack justify="center" gap="sm" h="100%" maw="25rem" m="auto" ta="center">
+      <Title
+        order={4}
+        fz="1rem"
+        lh="normal"
         c="text-primary"
-      >{t`No actions have been created yet.`}</Box>
+      >{t`No actions have been created yet.`}</Title>
       <Box
         component="p"
         fz="md"
@@ -226,7 +215,7 @@ function NoActionsState({
           >{t`Create basic actions`}</Button>
         </Box>
       )}
-    </Flex>
+    </Stack>
   );
 }
 
@@ -234,6 +223,3 @@ function mostRecentFirst(action: WritebackAction) {
   const createdAt = parseTimestamp(action["created_at"]);
   return -createdAt.valueOf();
 }
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default ModelActionDetails;

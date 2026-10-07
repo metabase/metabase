@@ -1,4 +1,4 @@
-.actionList {
+.responsiveWidth {
   width: 70%;
 
   @media screen and (--breakpoint-max-md) {
@@ -6,6 +6,6 @@
   }
 }
 
-.actionListItem:not(:first-of-type) {
+.itemSpacing:not(:first-of-type) {
   margin-top: 2.25rem;
 }

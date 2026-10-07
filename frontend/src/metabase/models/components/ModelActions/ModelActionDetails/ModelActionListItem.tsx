@@ -6,39 +6,40 @@ import { t } from "ttag";
 import { ActionExecuteModal } from "metabase/actions/containers/ActionExecuteModal";
 import { ForwardRefLink, Link } from "metabase/common/components/Link";
 import { useConfirmation } from "metabase/common/hooks/use-confirmation";
-import { ActionIcon, Box, Flex, Icon, Menu, Tooltip, rem } from "metabase/ui";
+import CS from "metabase/css/core/index.css";
+import { ActionIcon, Box, Flex, Icon, Menu, Tooltip } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 import type { WritebackAction, WritebackQueryAction } from "metabase-types/api";
 
 import S from "./ModelActionListItem.module.css";
 
-interface Props {
-  action: WritebackAction;
-  actionUrl: string;
-  canRun: boolean;
-  canEdit: boolean;
-  canArchive: boolean;
-  onArchive: (action: WritebackAction) => void;
+interface CodeBlockProps {
+  children: ReactNode;
 }
 
-function CodeBlock({ children }: { children: ReactNode }) {
+function CodeBlock({ children }: CodeBlockProps) {
   return (
     <Box
       component="pre"
-      className={cx(S.actionCard, S.codeBlock)}
+      className={cx(CS.textMonospace, CS.textPreWrap)}
       p="lg"
       m={0}
       fz="xs"
       c="text-primary-inverse"
       bg="text-primary"
+      bdrs="xs"
     >
       {children}
     </Box>
   );
 }
 
-function QueryActionCardContent({ action }: { action: WritebackQueryAction }) {
+interface QueryActionCardContentProps {
+  action: WritebackQueryAction;
+}
+
+function QueryActionCardContent({ action }: QueryActionCardContentProps) {
   const question = Question.create({ dataset_query: action.dataset_query });
   if (!question.isNative()) {
     return (
@@ -57,26 +58,35 @@ function QueryActionCardContent({ action }: { action: WritebackQueryAction }) {
 function ImplicitActionCardContent() {
   return (
     <Flex
-      className={S.actionCard}
       align="center"
       p="lg"
       c="text-secondary"
       bg="background_page-tertiary"
       fw={400}
+      bdrs="xs"
     >
       <div>{t`Auto tracking schema`}</div>
     </Flex>
   );
 }
 
-function ModelActionListItem({
+interface ModelActionListItemProps {
+  action: WritebackAction;
+  actionUrl: string;
+  canRun: boolean;
+  canEdit: boolean;
+  canArchive: boolean;
+  onArchive: (action: WritebackAction) => void;
+}
+
+export function ModelActionListItem({
   action,
   actionUrl,
   canRun,
   canEdit,
   canArchive,
   onArchive,
-}: Props) {
+}: ModelActionListItemProps) {
   const { show: askConfirmation, modalContent: confirmationModal } =
     useConfirmation();
   const [
@@ -96,9 +106,15 @@ function ModelActionListItem({
     <>
       <Flex align="flex-end" justify="space-between">
         <div>
-          <Link className={S.actionTitle} to={actionUrl}>
+          <Box
+            component={Link}
+            className={cx(CS.textDefault, CS.textBrandHover)}
+            to={actionUrl}
+            fz="1rem"
+            fw={700}
+          >
             {action.name}
-          </Link>
+          </Box>
           <Box
             component="span"
             display="block"
@@ -109,15 +125,13 @@ function ModelActionListItem({
             c="text-secondary"
           >
             {action.type === "implicit" && (
-              <span className={S.actionSubtitlePart}>{t`Basic action`}</span>
+              <span className={S.dotSeparated}>{t`Basic action`}</span>
             )}
             {action.public_uuid && (
-              <span
-                className={S.actionSubtitlePart}
-              >{t`Public action form`}</span>
+              <span className={S.dotSeparated}>{t`Public action form`}</span>
             )}
             {action.creator && (
-              <span className={S.actionSubtitlePart}>
+              <span className={S.dotSeparated}>
                 {t`Created by ${action.creator.common_name}`}
               </span>
             )}
@@ -159,7 +173,7 @@ function ModelActionListItem({
         ) : null}
         {canRun && (
           <>
-            <Box pos="absolute" top={rem(8)} right={rem(8)}>
+            <Box pos="absolute" top="0.5rem" right="0.5rem">
               <Tooltip label={t`Run`}>
                 <ActionIcon
                   variant="subtle"
@@ -184,6 +198,3 @@ function ModelActionListItem({
     </>
   );
 }
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default ModelActionListItem;
