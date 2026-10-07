@@ -1,5 +1,5 @@
 import type { Row } from "@tanstack/react-table";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { t } from "ttag";
 
 import {
@@ -13,6 +13,7 @@ import { ListEmptyState } from "metabase/common/components/ListEmptyState";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { PageContainer } from "metabase/common/data-studio/components/PageContainer";
 import CS from "metabase/css/core/index.css";
+import { useLocation } from "metabase/router";
 import {
   Avatar,
   Card,
@@ -36,8 +37,10 @@ import { ActionsHeader } from "../../components/ActionsHeader";
 import {
   type ActionTreeNode,
   buildActionTree,
+  getCollectionNodeId,
   getCreatorName,
   getDatabaseName,
+  getDefaultExpanded,
   getEmptyMessage,
   getNodeId,
   getSubRows,
@@ -55,6 +58,11 @@ const renderRowLink: RenderRowLink<ActionTreeNode> = (row, props) => {
 };
 
 export function ActionListPage() {
+  const location = useLocation();
+  const targetCollectionId = Urls.extractEntityId(
+    new URLSearchParams(location.search).get("collectionId") ?? undefined,
+  );
+  const hasScrolledRef = useRef(false);
   const [searchQuery, setSearchQuery] = useState("");
 
   const {
@@ -81,12 +89,17 @@ export function ActionListPage() {
 
   const columns = useMemo(() => getColumns(databases), [databases]);
 
+  const defaultExpanded = useMemo(
+    () => getDefaultExpanded(treeData, targetCollectionId),
+    [treeData, targetCollectionId],
+  );
+
   const treeTableInstance = useTreeTableInstance({
     data: treeData,
     columns,
     getNodeId,
     getSubRows,
-    defaultExpanded: true,
+    defaultExpanded,
     expanded: searchQuery ? true : undefined,
     globalFilter: searchQuery,
     onGlobalFilterChange: setSearchQuery,
@@ -100,12 +113,20 @@ export function ActionListPage() {
     }
   };
 
+  const isLoading = isLoadingActions || isLoadingCollections;
+
+  useEffect(() => {
+    if (targetCollectionId != null && !hasScrolledRef.current && !isLoading) {
+      treeTableInstance.scrollToNode(getCollectionNodeId(targetCollectionId));
+      hasScrolledRef.current = true;
+    }
+  }, [targetCollectionId, isLoading, treeTableInstance]);
+
   const error = actionsError ?? collectionsError;
   if (error) {
     return <LoadingAndErrorWrapper loading={false} error={error} />;
   }
 
-  const isLoading = isLoadingActions || isLoadingCollections;
   const emptyMessage = getEmptyMessage({
     hasActions: treeData.length > 0,
     hasResults: treeTableInstance.rows.length > 0,

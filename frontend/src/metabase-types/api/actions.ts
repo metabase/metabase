@@ -154,7 +154,7 @@ export interface FieldSettings {
   fieldType: FieldType;
   inputType: InputSettingType;
   required: boolean;
-  defaultValue?: string | number;
+  defaultValue?: string | number | null;
   hidden: boolean;
   range?: DateRange | NumberRange;
   valueOptions?: FieldValueOptions;

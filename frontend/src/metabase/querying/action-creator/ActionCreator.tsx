@@ -5,6 +5,7 @@ import {
   useGetCardQuery,
   useListDatabasesQuery,
 } from "metabase/api";
+import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import type {
   Card,
   CardId,
@@ -45,13 +46,19 @@ export function ActionCreator({
   const modelDatabase = databases?.data.find(
     (database) => database.id === model?.dataset_query.database,
   );
-  const { data: initialAction } = useGetActionQuery(
-    actionId != null ? { id: actionId } : skipToken,
-  );
+  const {
+    data: initialAction,
+    isLoading,
+    error,
+  } = useGetActionQuery(actionId != null ? { id: actionId } : skipToken);
   // This is needed in case we already have an action and pass it from the outside
   const contextAction = action || initialAction;
 
-  if (contextAction?.type !== "implicit") {
+  if (contextAction == null) {
+    return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
+  }
+
+  if (contextAction.type !== "implicit") {
     return null;
   }
 

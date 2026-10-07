@@ -1,4 +1,8 @@
-import type { CardId, WritebackActionId } from "metabase-types/api";
+import type {
+  CardId,
+  CollectionId,
+  WritebackActionId,
+} from "metabase-types/api";
 
 import { modelDetail } from "./models";
 
@@ -21,8 +25,20 @@ export function publicAction(siteUrl: string, uuid: string) {
 
 const DATA_ACTIONS_ROOT_URL = `/data-studio/data-actions`;
 
-export function dataActionList() {
-  return DATA_ACTIONS_ROOT_URL;
+export type DataActionListParams = {
+  collectionId?: CollectionId;
+};
+
+export function dataActionList({ collectionId }: DataActionListParams = {}) {
+  const searchParams = new URLSearchParams();
+  if (collectionId != null) {
+    searchParams.set("collectionId", String(collectionId));
+  }
+
+  const queryString = searchParams.toString();
+  return queryString.length > 0
+    ? `${DATA_ACTIONS_ROOT_URL}?${queryString}`
+    : DATA_ACTIONS_ROOT_URL;
 }
 
 export function newDataAction() {

@@ -44,7 +44,7 @@ export function ActionFieldDetails({
     [settings.fieldType],
   );
   const isHiddenWithoutDefault =
-    settings.hidden && settings.required && settings.defaultValue === undefined;
+    settings.hidden && settings.required && settings.defaultValue == null;
 
   const handleFieldTypeChange = (fieldType: FieldType) => {
     onChange(getFieldSettingsForFieldType(settings, fieldType));
@@ -116,7 +116,9 @@ export function ActionFieldDetails({
             value={(settings.valueOptions ?? []).join("\n")}
             readOnly={readOnly}
             onChange={(value) =>
-              onChange({ valueOptions: textToOptions(value) })
+              onChange({
+                valueOptions: textToOptions(value, settings.fieldType),
+              })
             }
           />
         )}

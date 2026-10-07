@@ -200,7 +200,7 @@ function ModelActionPicker({
                 action={action}
                 isSelected={currentAction?.id === action.id}
                 onClick={onClick}
-                onEdit={handleEdit}
+                onEdit={action.type === "implicit" ? handleEdit : undefined}
               />
             ))}
           </ActionsList>

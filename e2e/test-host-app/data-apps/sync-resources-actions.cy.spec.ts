@@ -65,7 +65,7 @@ describe(
           "number",
         );
         return cy
-          .request<WritebackAction[]>("/api/action?namespace=data-apps")
+          .request<WritebackAction[]>("/api/action")
           .then(({ body }) =>
             body.filter(
               (action) => action.collection_id === app.resource_collection_id,

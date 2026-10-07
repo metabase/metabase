@@ -1,4 +1,9 @@
-import type { FieldValueOptions, InputSettingType } from "metabase-types/api";
+import { cleanOptionValues } from "metabase/actions/utils";
+import type {
+  FieldType,
+  FieldValueOptions,
+  InputSettingType,
+} from "metabase-types/api";
 
 const DEFAULT_VALUE_INPUT_TYPES: Record<InputSettingType, string> = {
   string: "text",
@@ -16,11 +21,13 @@ export function getDefaultValueInputType(inputType: InputSettingType): string {
   return DEFAULT_VALUE_INPUT_TYPES[inputType];
 }
 
-export function textToOptions(text: string): FieldValueOptions {
+export function textToOptions(
+  text: string,
+  fieldType: FieldType,
+): FieldValueOptions {
   const options = text
-    .trim()
     .split("\n")
     .map((option) => option.trim())
     .filter(Boolean);
-  return [...new Set(options)];
+  return [...new Set(cleanOptionValues(options, fieldType))];
 }

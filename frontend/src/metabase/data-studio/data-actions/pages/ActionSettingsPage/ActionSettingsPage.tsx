@@ -2,10 +2,8 @@ import { useState } from "react";
 import { t } from "ttag";
 
 import {
-  skipToken,
   useCreateActionPublicLinkMutation,
   useDeleteActionPublicLinkMutation,
-  useGetDatabaseQuery,
   useUpdateActionMutation,
 } from "metabase/api";
 import { CopyTextInput } from "metabase/common/components/CopyTextInput";
@@ -32,6 +30,7 @@ import * as Urls from "metabase/urls";
 import type { WritebackQueryAction } from "metabase-types/api";
 
 import { ActionHeader } from "../../components/ActionHeader";
+import { useActionDatabase } from "../../hooks/use-action-database";
 import { useRouteAction } from "../../hooks/use-route-action";
 
 export function ActionSettingsPage() {
@@ -40,18 +39,17 @@ export function ActionSettingsPage() {
     isLoading: isLoadingAction,
     error: actionError,
   } = useRouteAction();
-  const databaseId = action?.database_id;
   const {
-    data: database,
+    database,
     isLoading: isLoadingDatabase,
     error: databaseError,
-  } = useGetDatabaseQuery(databaseId != null ? { id: databaseId } : skipToken);
+  } = useActionDatabase(action);
   const isAdmin = useSelector(getUserIsAdmin);
   const isPublicSharingEnabled = useSetting("enable-public-sharing");
   const isLoading = isLoadingAction || isLoadingDatabase;
   const error = actionError ?? databaseError;
 
-  if (isLoading || error != null || action == null || database == null) {
+  if (isLoading || error != null || action == null) {
     return (
       <Center h="100%">
         <LoadingAndErrorWrapper loading={isLoading} error={error} />
@@ -68,7 +66,7 @@ export function ActionSettingsPage() {
         {isAdmin && isPublicSharingEnabled && (
           <PublicSharingSection
             action={action}
-            canMakePublic={hasActionsEnabled(database)}
+            canMakePublic={database != null && hasActionsEnabled(database)}
           />
         )}
         <SuccessMessageSection

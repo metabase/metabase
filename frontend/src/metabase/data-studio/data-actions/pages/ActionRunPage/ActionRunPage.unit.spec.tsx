@@ -1,7 +1,7 @@
 import {
   setupActionEndpoints,
   setupCollectionByIdEndpoint,
-  setupDatabaseEndpoints,
+  setupDatabasesEndpoints,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
 import { ROOT_COLLECTION } from "metabase/common/collections/constants";
@@ -22,7 +22,7 @@ type SetupOpts = {
 
 function setup({ action, database }: SetupOpts) {
   setupActionEndpoints(action);
-  setupDatabaseEndpoints(database);
+  setupDatabasesEndpoints([database]);
   setupCollectionByIdEndpoint({
     collections: [createMockCollection(ROOT_COLLECTION)],
   });
@@ -58,6 +58,18 @@ describe("ActionRunPage", () => {
       database: createMockDatabase({
         id: 1,
         settings: { "database-enable-actions": false },
+      }),
+    });
+
+    expect(await screen.findByRole("button", { name: /Run/ })).toBeDisabled();
+  });
+
+  it("should disable Run when the user can't see the action's database", async () => {
+    setup({
+      action: createMockQueryAction({ database_id: 1, can_write: true }),
+      database: createMockDatabase({
+        id: 2,
+        settings: { "database-enable-actions": true },
       }),
     });
 

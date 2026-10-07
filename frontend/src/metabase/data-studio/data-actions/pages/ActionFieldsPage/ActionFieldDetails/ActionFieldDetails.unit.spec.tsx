@@ -82,6 +82,14 @@ describe("ActionFieldDetails", () => {
     ).toBeInTheDocument();
   });
 
+  it("should warn about a hidden required field with a null default value", () => {
+    setup({ settings: { hidden: true, required: true, defaultValue: null } });
+
+    expect(
+      screen.getByText(/hidden required field with no default value/),
+    ).toBeInTheDocument();
+  });
+
   it("should not warn about a hidden required field with a default value", () => {
     setup({ settings: { hidden: true, required: true, defaultValue: "new" } });
 

@@ -150,6 +150,46 @@
             (is (=? [{:card_id pos-int? :action_id nil}]
                     (t2/select :model/DashboardCard :dashboard_id dashboard-id)))))))))
 
+(deftest query-action-dashcards-lose-their-model-test
+  (testing "an older export's query action loads into its model's collection, and its dashboard buttons lose the model"
+    (let [serialized (atom nil)
+          model-eid  (atom nil)]
+      (ts/with-dbs [source-db dest-db]
+        (ts/with-db source-db
+          (let [db        (ts/create! :model/Database :name "my-db")
+                coll      (ts/create! :model/Collection :name "Actions")
+                model     (ts/create! :model/Card
+                                      :name          "A model"
+                                      :type          :model
+                                      :collection_id (:id coll)
+                                      :database_id   (:id db)
+                                      :dataset_query {:database (:id db)
+                                                      :type     :native
+                                                      :native   {:query "SELECT 1"}})
+                action    (ts/create! :model/Action :name "Old query" :type :query :collection_id (:id coll))
+                _         (ts/create! :model/QueryAction
+                                      :action_id     (:id action)
+                                      :dataset_query {:database (:id db) :type :native :native {:query "UPDATE t SET x = 1"}})
+                dashboard (ts/create! :model/Dashboard :name "Buttons" :collection_id (:id coll))]
+            (ts/create! :model/DashboardCard :dashboard_id (:id dashboard) :action_id (:id action))
+            (reset! model-eid (:entity_id model))
+            (reset! serialized (into [] (serdes.extract/extract {})))))
+        (ts/with-db dest-db
+          (serdes.load/load-metabase! (ingestion-in-memory
+                                       (for [entity @serialized]
+                                         (case (-> entity :serdes/meta last :model)
+                                           "Action"    (-> entity (assoc :model_id @model-eid) (dissoc :collection_id))
+                                           "Dashboard" (update entity :dashcards
+                                                               (partial mapv #(cond-> %
+                                                                                (:action_id %) (assoc :card_id @model-eid))))
+                                           entity))))
+          (let [coll-id      (t2/select-one-pk :model/Collection :name "Actions")
+                dashboard-id (t2/select-one-pk :model/Dashboard :name "Buttons")]
+            (is (=? {:collection_id coll-id, :model_id nil}
+                    (t2/select-one :model/Action :name "Old query")))
+            (is (=? [{:card_id nil :action_id pos-int?}]
+                    (t2/select :model/DashboardCard :dashboard_id dashboard-id)))))))))
+
 (deftest load-basics-test
   (testing "a simple, fresh collection is imported"
     (let [serialized (atom nil)

@@ -482,7 +482,7 @@ describe("ActionViz > ActionDashcardSettings", () => {
     expect(screen.getByText("Action Parameter 2")).toBeInTheDocument();
   });
 
-  it("supports inline edit for implit and query actions", async () => {
+  it("supports inline edit for implicit actions only", async () => {
     setup({
       dashcard: actionDashcardWithAction,
     });
@@ -503,8 +503,8 @@ describe("ActionViz > ActionDashcardSettings", () => {
     expect(implicitAction).toBeInTheDocument();
 
     expect(
-      within(queryAction).getByRole("button", { name: "pencil icon" }),
-    ).toBeInTheDocument();
+      within(queryAction).queryByRole("button", { name: "pencil icon" }),
+    ).not.toBeInTheDocument();
     expect(
       within(implicitAction).getByRole("button", { name: "pencil icon" }),
     ).toBeInTheDocument();

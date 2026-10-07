@@ -55,7 +55,10 @@ export function ActionHeader({
           {path
             ?.filter((collection) => !isRootCollection(collection))
             .map((collection) => (
-              <Link key={collection.id} to={Urls.dataActionList()}>
+              <Link
+                key={collection.id}
+                to={Urls.dataActionList({ collectionId: collection.id })}
+              >
                 {collection.name}
               </Link>
             ))}

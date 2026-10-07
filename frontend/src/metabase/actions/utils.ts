@@ -110,7 +110,7 @@ export const inputTypeHasOptions = (inputType: InputSettingType) =>
   ["select", "radio"].includes(inputType);
 
 function cleanFieldValue(
-  value: string | number | undefined,
+  value: string | number | null | undefined,
   fieldType: FieldType,
 ) {
   if (value == null) {
@@ -125,7 +125,10 @@ function cleanFieldValue(
   }
 }
 
-function cleanOptionValues(values: FieldValueOptions, fieldType: FieldType) {
+export function cleanOptionValues(
+  values: FieldValueOptions,
+  fieldType: FieldType,
+) {
   return values
     .map((value) => cleanFieldValue(value, fieldType))
     .filter(isNotNull);

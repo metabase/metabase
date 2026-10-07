@@ -88,6 +88,33 @@ export function buildActionTree(
   return [...folders, ...topLevelActions];
 }
 
+/**
+ * The expanded state that opens the collection node of `collectionId` and its ancestors, or every node without one.
+ */
+export function getDefaultExpanded(
+  nodes: ActionTreeNode[],
+  collectionId: CollectionId | undefined,
+): Record<string, boolean> | true {
+  if (collectionId == null) {
+    return true;
+  }
+  const targetId = getCollectionNodeId(collectionId);
+  const findPath = (nodes: ActionTreeNode[]): string[] | undefined => {
+    for (const node of nodes) {
+      if (node.id === targetId) {
+        return [node.id];
+      }
+      const path = findPath(node.children ?? []);
+      if (path != null) {
+        return [node.id, ...path];
+      }
+    }
+    return undefined;
+  };
+  const path = findPath(nodes) ?? [];
+  return Object.fromEntries(path.map((id) => [id, true]));
+}
+
 export const getNodeId = (node: ActionTreeNode) => node.id;
 
 export const getSubRows = (node: ActionTreeNode) => node.children;

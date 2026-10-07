@@ -175,7 +175,7 @@ function getDefaultOptions({
   isHidden: boolean;
   isRequired: boolean;
   hasDefaultValue: boolean;
-  defaultValue?: string | number;
+  defaultValue?: string | number | null;
 }) {
   const defaultOptions = [
     {

@@ -149,7 +149,11 @@ function ActionVizForm({
           showEmptyState={shouldPrefetch && !hasPrefetchedValues}
           showConfirmMessage={showConfirmMessage}
           confirmMessage={action.visualization_settings?.confirmMessage}
-          onEdit={canEditAction ? handleActionEdit : undefined}
+          onEdit={
+            canEditAction && action.type === "implicit"
+              ? handleActionEdit
+              : undefined
+          }
           onSubmit={onModalSubmit}
           onSubmitSuccess={handleSubmitSuccess}
           onClose={() => setShowFormModal(false)}
