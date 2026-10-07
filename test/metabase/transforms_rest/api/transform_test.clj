@@ -2187,7 +2187,7 @@
                     existing-table-name  (t2/select-one-fn :name :model/Table (mt/id :transforms_products))
                     other-existing-name  (t2/select-one-fn :name :model/Table (mt/id :transforms_orders))]
                 (testing "POST /api/transform"
-                  (mt/user-http-request user :post 403 "transform"
+                  (mt/user-http-request user :post 409 "transform"
                                         {:name   "Colliding Transform"
                                          :source {:type "query" :query (make-query "Gadget")}
                                          :target {:type   "table"
@@ -2201,7 +2201,7 @@
                                                          :target {:type   "table"
                                                                   :schema schema
                                                                   :name   table-name}})]
-                      (mt/user-http-request user :put 403 (format "transform/%d" (:id created))
+                      (mt/user-http-request user :put 409 (format "transform/%d" (:id created))
                                             {:target {:type   "table"
                                                       :schema schema
                                                       :name   other-existing-name}}))))))))))))

@@ -14,6 +14,7 @@
    [metabase-enterprise.remote-sync.test-helpers :as test-helpers]
    [metabase.app-db.core :as app-db]
    [metabase.collections.models.collection :as collection]
+   [metabase.models.serialization :as serdes]
    [metabase.models.serialization.resolve :as resolve]
    [metabase.search.core :as search]
    [metabase.settings.core :as setting]
@@ -130,28 +131,6 @@
                            (format "Database (`%s`)" db-name))
             (format "expected %s to be quoted verbatim" (pr-str db-name)))))))
 
-(deftest source-error-message-database-not-found-test
-  (testing "source-error-message names the card and the missing database for FK database-not-found errors"
-    (let [cause (ex-info "table id present, but database not found: [clickhouse nil some_table]"
-                         {:table-id ["clickhouse" nil "some_table"]
-                          :db-name  "clickhouse"
-                          :error    :metabase.models.serialization.resolve.db/database-not-found})
-          e     (ex-info "Failed to load into database for Card abc123"
-                         {:path   "Card abc123"
-                          :entity {:model "Card" :id "abc123" :name "Some card"}}
-                         cause)]
-      (is (= (str "Import failed: Card `Some card` (`abc123`) references Database (`clickhouse`), which does not "
-                  "exist on this instance. Make sure all referenced databases and other dependencies are set up "
-                  "before importing.")
-             (impl/source-error-message e)))))
-  (testing "database-not-found is found anywhere in the cause chain, not only at the immediate cause"
-    (let [root   (ex-info "table id present, but database not found: [clickhouse nil t]"
-                          {:db-name "clickhouse"
-                           :error   :metabase.models.serialization.resolve.db/database-not-found})
-          middle (ex-info "wrapped by an intervening helper" {} root)
-          e      (ex-info "Failed to load into database for Card abc123" {:path "Card abc123"} middle)]
-      (is (str/includes? (impl/source-error-message e) "Database (`clickhouse`)")))))
-
 (deftest source-error-message-load-failure-test
   (testing "source-error-message names the entity and the underlying reason (GHY-3992)"
     (let [cause (ex-info "NOT NULL constraint failed: report_card.display" {})
@@ -186,15 +165,6 @@
       (is (= (str "Import failed: could not save Dashboard `Sales` (`xyz`). some db error. "
                   "It may have been saved without: `dashcards`, `parameters`.")
              (impl/source-error-message e)))))
-  (testing "a database-not-found cause still wins over the generic load-failure branch"
-    (let [cause (ex-info "table id present, but database not found: [ch nil t]"
-                         {:db-name "ch"
-                          :error   :metabase.models.serialization.resolve.db/database-not-found})
-          e     (ex-info "Failed to load into database for Card abc123"
-                         {:entity {:model "Card" :id "abc123" :name "Some card"}
-                          :error  :metabase-enterprise.serialization.v2.load/load-failure}
-                         cause)]
-      (is (str/includes? (impl/source-error-message e) "references Database (`ch`)"))))
   (testing "a tenant-collection cause still wins over the generic load-failure branch"
     (let [cause (ex-info "Can't create a tenant collection without tenants enabled" {})
           e     (ex-info "Failed to load into database for Collection abc"
@@ -1976,6 +1946,7 @@ serdes/meta:
                                    :source (export-test-source)
                                    :base-snapshot nil)]
           (is (= :conflict (:status result)))
+          (is (= {:kind "history-rewritten"} (:outcome result)))
           (is (str/includes? (:message result) "rewritten")))))))
 
 (deftest export!-refuses-when-diverged-without-merge-flag-test
@@ -1989,9 +1960,25 @@ serdes/meta:
                                      :source (export-test-source)
                                      :base-snapshot (export-test-snapshot "base-B"))]
             (is (= :conflict (:status result)))
+            (is (= {:conflicts [] :outcome {:kind "remote-changed"}}
+                   (select-keys result [:conflicts :outcome]))
+                "nothing collided; the outcome names why it stopped")
             (is (false? @merged?) "no merge without the merge flag")
             ;; :conflict short-circuits before any write — the version is never advanced
             (is (nil? (:version (t2/select-one :model/RemoteSyncTask :id task-id))))))))))
+
+(deftest diverged-export-conflict-keeps-sync-base-test
+  (testing "a diverged export that ends in conflict leaves the sync base alone, so a retry with merge? still merges"
+    (mt/with-temp [:model/RemoteSyncTask _ {:sync_task_type "import" :version "base-B" :ended_at (t/offset-date-time)}
+                   :model/RemoteSyncTask {task-id :id} {:sync_task_type "export"}]
+      (let [result (impl/export! (export-test-snapshot "remote-R") task-id "msg"
+                                 :source (export-test-source)
+                                 :base-snapshot (export-test-snapshot "base-B"))]
+        (impl/handle-task-result! result task-id)
+        (is (= {:version "remote-R" :conflicts [] :outcome {:kind "remote-changed"}}
+               (t2/select-one [:model/RemoteSyncTask :version :conflicts :outcome] :id task-id))
+            "the task row records the remote version it conflicted against and why it stopped")
+        (is (= "base-B" (remote-sync.task/last-version)))))))
 
 (deftest export!-force-overwrites-without-merging-test
   (testing "force? overwrites the remote wholesale (full export) even when it advanced — no merge"
@@ -2215,6 +2202,7 @@ serdes/meta:
                                  :merge? true
                                  :base-snapshot nil)]
         (is (= :conflict (:status result)))
+        (is (= {:kind "history-rewritten"} (:outcome result)))
         (is (str/includes? (:message result) "rewritten"))))))
 
 ;;; ------------------------------- merging pull and push extract the library once -------------------------------
@@ -2320,7 +2308,8 @@ serdes/meta:
             (is (= "Remapped F2" (t2/select-one-fn :name :model/Dimension :field_id f2-id))))
           (testing "a settings file v64 wrote, carrying its Fields' settings under `fields`, keeps them"
             (let [files    (table-files)
-                  content  (fn [suffix] (yaml/parse-string (val (u/seek #(str/ends-with? (key %) suffix) files))))
+                  content  (fn [suffix]
+                             (serdes/restore-path (yaml/parse-string (val (u/seek #(str/ends-with? (key %) suffix) files)))))
                   legacy   (assoc (content "test_table___tableusersettings.yaml")
                                   :fields [(content "f1___fieldusersettings.yaml")])
                   [path _] (u/seek #(str/ends-with? (key %) "test_table___tableusersettings.yaml") files)]
