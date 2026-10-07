@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.data-apps.group-access :as group-access]
+   [metabase.permissions-rest.data-permissions.graph :as data-perms.graph]
    [metabase.permissions.core :as perms]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
@@ -61,10 +62,19 @@
                                          :table_ids [(mt/id :venues) (mt/id :orders)]}
                      :model/PermissionsGroup group {}]
         (group-access/add-groups! app [(:id group)])
-        (perms/set-database-permission! (:id group) (mt/id) :perms/view-data :blocked)
-        (perms/set-table-permission! (:id group) (mt/id :venues) :perms/view-data :unrestricted)
-        (mt/with-temp [:model/Sandbox _ {:group_id (:id group) :table_id (mt/id :orders)}]
-          (is (= [] (mt/user-http-request :crowberto :get 200 "apps/birds/group-permission-warnings"))))))))
+        (mt/user-http-request :crowberto :put 200 "permissions/graph"
+                              (-> (data-perms.graph/api-graph)
+                                  (assoc-in [:groups (:id group) (mt/id) :view-data]
+                                            {"PUBLIC" {(mt/id :venues) :unrestricted
+                                                       (mt/id :orders) :sandboxed}})
+                                  (assoc :sandboxes [{:group_id (:id group) :table_id (mt/id :orders)}])))
+        (is (= [] (mt/user-http-request :crowberto :get 200 "apps/birds/group-permission-warnings")))
+        (mt/user-http-request :crowberto :put 200 "permissions/graph"
+                              (assoc-in (data-perms.graph/api-graph)
+                                        [:groups (:id group) (mt/id) :view-data "PUBLIC" (mt/id :orders)]
+                                        :blocked))
+        (is (=? [{:group_id (:id group) :missing_tables [{:id (mt/id :orders)}]}]
+                (mt/user-http-request :crowberto :get 200 "apps/birds/group-permission-warnings")))))))
 
 (deftest group-permission-warnings-require-admin-test
   (mt/with-premium-features #{:data-apps :advanced-permissions :sandboxes}
@@ -109,11 +119,19 @@
       (mt/with-temp [:model/DataApp app {:name "birds" :display_name "Birds" :bundle_path "birds.js"
                                          :table_ids [(mt/id :venues)]}
                      :model/PermissionsGroup group {}]
-        (perms/set-database-permission! (:id group) (mt/id) :perms/view-data :blocked)
         (group-access/add-groups! app [(:id group)])
-        (mt/with-temp [:model/ConnectionImpersonation _ {:group_id (:id group) :db_id (mt/id)
-                                                         :attribute "role"}]
-          (is (= [] (group-access/permission-warnings app))))))))
+        (mt/user-http-request :crowberto :put 200 "permissions/graph"
+                              (-> (data-perms.graph/api-graph)
+                                  (assoc-in [:groups (:id group) (mt/id) :view-data] :impersonated)
+                                  (assoc :impersonations [{:group_id (:id group) :db_id (mt/id)
+                                                           :attribute "role"}])))
+        (is (= [] (mt/user-http-request :crowberto :get 200 "apps/birds/group-permission-warnings")))
+        (mt/user-http-request :crowberto :put 200 "permissions/graph"
+                              (assoc-in (data-perms.graph/api-graph)
+                                        [:groups (:id group) (mt/id) :view-data]
+                                        :blocked))
+        (is (=? [{:group_id (:id group) :missing_tables [{:id (mt/id :venues)}]}]
+                (mt/user-http-request :crowberto :get 200 "apps/birds/group-permission-warnings")))))))
 
 (deftest group-permission-warning-lookups-are-batched-test
   (mt/with-no-data-perms-for-all-users!

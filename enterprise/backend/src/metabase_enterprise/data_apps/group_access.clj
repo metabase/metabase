@@ -2,8 +2,6 @@
   (:require
    [metabase-enterprise.data-apps.db :as data-apps.db]
    [metabase-enterprise.data-apps.resources :as resources]
-   [metabase-enterprise.impersonation.core :as impersonation]
-   [metabase-enterprise.sandbox.core :as sandbox]
    [metabase.api.common :as api]
    [metabase.permissions.core :as perms]
    [metabase.settings.core :as setting]
@@ -59,25 +57,19 @@
   nil)
 
 (defn- group-has-table-access?
-  [{:keys [permissions sandboxes impersonations]} group-id {table-id :id database-id :database_id}]
-  (or (contains? sandboxes [group-id table-id])
-      (contains? impersonations [group-id database-id])
-      (some (fn [{permission-table-id :table_id value :perm_value}]
-              (and (or (nil? permission-table-id) (= permission-table-id table-id))
-                   (= value :unrestricted)))
-            (get permissions [group-id database-id :perms/view-data]))))
+  [{:keys [permissions]} group-id {table-id :id database-id :database_id}]
+  (some (fn [{permission-table-id :table_id value :perm_value}]
+          (and (or (nil? permission-table-id) (= permission-table-id table-id))
+               (= value :unrestricted)))
+        (get permissions [group-id database-id :perms/view-data])))
 
 (defn- group-table-access
   [group-ids tables]
   (let [table-ids    (mapv :id tables)
         database-ids (into #{} (map :database_id) tables)]
     (when (seq tables)
-      {:permissions   (group-by (juxt :group_id :db_id :perm_type)
-                                (data-apps.db/permissions-for-warnings group-ids database-ids table-ids))
-       :sandboxes      (into #{} (map (juxt :group_id :table_id))
-                             (sandbox/policies-for-groups-and-tables group-ids table-ids))
-       :impersonations (into #{} (map (juxt :group_id :db_id))
-                             (impersonation/policies-for-groups-and-databases group-ids database-ids))})))
+      {:permissions (group-by (juxt :group_id :db_id :perm_type)
+                              (data-apps.db/permissions-for-warnings group-ids database-ids table-ids))})))
 
 (defn permission-warnings
   "Missing table access for assigned groups, including access inherited from All Users."
