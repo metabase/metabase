@@ -82,10 +82,12 @@
   none, fails here instead of drifting quietly. [[omitted]] means no cap is sent at all."
   {;; Anthropic Messages, direct: the catalog's own dated and undated spellings
    :anthropic         {"claude-fable-5"               32000
+                       "claude-opus-5-5"              32000
                        "claude-opus-5"                32000
                        "claude-opus-4-8"              32000
                        "claude-opus-4-7"              32000
                        "claude-opus-4-6"              32000
+                       "claude-sonnet-5-5"            32000
                        "claude-sonnet-5"              32000
                        "claude-sonnet-4-6"            32000
                        "claude-opus-4-5-20251101"     32000
@@ -111,9 +113,11 @@
    :managed           {"claude-sonnet-4-6"            32000}
    ;; Bedrock: vendor-prefixed
    :bedrock-anthropic {"anthropic.claude-fable-5"     32000
+                       "anthropic.claude-opus-5-5"    32000
                        "anthropic.claude-opus-5"      32000
                        "anthropic.claude-opus-4-8"    32000
                        "anthropic.claude-opus-4-7"    32000
+                       "anthropic.claude-sonnet-5-5"  32000
                        "anthropic.claude-sonnet-5"    32000
                        "anthropic.claude-haiku-4-5"   32000}
    :bedrock-openai    {"openai.gpt-6-astra"           32000
@@ -123,10 +127,12 @@
                        "openai.gpt-5.5-2026-04-23"    32000}
    ;; Azure: the bare deployment name, dateless, and cased however the admin named it
    :azure-anthropic   {"claude-fable-5"               32000
+                       "claude-opus-5-5"              32000
                        "claude-opus-5"                32000
                        "claude-opus-4-8"              32000
                        "claude-opus-4-7"              32000
                        "claude-opus-4-6"              32000
+                       "claude-sonnet-5-5"            32000
                        "claude-sonnet-5"              32000
                        "claude-sonnet-4-6"            32000
                        "claude-opus-4-5"              32000
@@ -149,8 +155,10 @@
                        "GPT-5.5"                     omitted}
    ;; Vertex: partner ids, dated with `@`
    :vertex-claude     {"claude-fable-5"               32000
+                       "claude-opus-5-5"              32000
                        "claude-opus-5"                32000
                        "claude-opus-4-6"              32000
+                       "claude-sonnet-5-5"            32000
                        "claude-sonnet-5"              32000
                        "claude-sonnet-4-6"            32000
                        "claude-haiku-4-5@20251001"    32000}
@@ -159,7 +167,7 @@
                        "google/gemini-3.7-flash"      32000
                        "google/gemini-2.0-flash"      32000}
    :deepseek          {"deepseek-v4-pro"              32000
-                       "deepseek-v4-flash"            32000}
+                       "deepseek-flash"               32000}
    ;; OpenRouter: dotted Claude versions, dated DeepSeek snapshots
    :openrouter        {"anthropic/claude-fable-5"         32000
                        "anthropic/claude-opus-5"          32000
