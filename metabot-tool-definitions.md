@@ -1,13 +1,8 @@
 # Metabot tool definitions
 
-This document refines the approach in **"Metabot tool layer: technical design"**. Read that
-document first. This one assumes its error model: the three error classes, `defrecoverable`,
-`unrecoverable!`, the converters, and the rule that only authored text reaches the agent or
-the user.
+This document refines the approach in **"Metabot tool layer: technical design"**. Read that document first. This one assumes its error model: the three error classes, `defrecoverable`, `unrecoverable!`, the converters, and the rule that only authored text reaches the agent or the user.
 
-The error model held up in implementation. The tool definition did not. The problems were almost
-all in one area: tools that do one thing per item. This document replaces `deftool` with a record
-and two protocols, and gives batched tools a model that the original design did not have.
+The error model held up in implementation. The tool definition did not. The problems were almost all in one area: tools that do one thing per item. This document replaces `deftool` with a record and two protocols, and gives batched tools a model that the original design did not have.
 
 ---
 
@@ -47,9 +42,7 @@ A tool that can also take several items at once adds `BatchedTool`:
   (compose             [this entries ctx]))      ; the result for the whole call
 ```
 
-`Tool` stays the single-item tool. Take `BatchedTool` away and the record still works. It reads
-one URI, loads one id, edits one query. So `handle` **is** the item loader. There is no second
-per-item function to keep in step with it.
+`Tool` stays the single-item tool. Take `BatchedTool` away and the record still works. It reads one URI, loads one id, edits one query. So `handle` **is** the item loader. There is no second per-item function to keep in step with it.
 
 A consumer calls one function:
 
@@ -57,8 +50,7 @@ A consumer calls one function:
 (tools/call tool args ctx)
 ```
 
-`call` makes the single-or-batched decision. No consumer branches, and no consumer repeats the
-orchestration.
+`call` makes the single-or-batched decision. No consumer branches, and no consumer repeats the orchestration.
 
 ---
 
@@ -66,8 +58,7 @@ orchestration.
 
 ### 3.1 At declaration time
 
-A consumer publishes the batched declaration when there is one. A batched tool is offered to the
-model in its batched form only. The single form exists so that `handle` is a real tool.
+A consumer publishes the batched declaration when there is one. A batched tool is offered to the model in its batched form only. The single form exists so that `handle` is a real tool.
 
 ```mermaid
 flowchart LR
@@ -79,8 +70,7 @@ flowchart LR
     E --> P
 ```
 
-Both declarations are checked at load time. A batched `:args` that the tool composed wrongly fails
-then, not on the first model call.
+Both declarations are checked at load time. A batched `:args` that the tool composed wrongly fails then, not on the first model call.
 
 ### 3.2 At call time
 
@@ -102,11 +92,9 @@ flowchart TD
     K --> R
 ```
 
-`around-batch` wraps everything inside it, including `compose`. `(with-cache (run))` is a whole
-implementation.
+`around-batch` wraps everything inside it, including `compose`. `(with-cache (run))` is a whole implementation.
 
-`entry` renders each item's `:output` to a string, so `compose` never handles a renderable. The
-consumer renders whatever `compose` finally returns. See section 4.4.
+`entry` renders each item's `:output` to a string, so `compose` never handles a renderable. The consumer renders whatever `compose` finally returns. See section 4.4.
 
 ### 3.3 Where a thrown error goes
 
@@ -118,8 +106,7 @@ consumer renders whatever `compose` finally returns. See section 4.4.
 | `around-batch` | n/a | the whole call fails |
 | `batched-args` or `compose` | n/a | the whole call fails |
 
-An undeclared exception discards the items that loaded. This is deliberate. A bug is not a partial
-result.
+An undeclared exception discards the items that loaded. This is deliberate. A bug is not a partial result.
 
 ---
 
@@ -127,47 +114,37 @@ result.
 
 ### 4.1 Protocols give real extension points
 
-The macro put every option in one map. To add a capability you add a key, and the framework tests
-for that key. The test is `contains?`, so a typo reads as "this tool does not want the capability".
+The macro put every option in one map. To add a capability you add a key, and the framework tests for that key. The test is `contains?`, so a typo reads as "this tool does not want the capability".
 
-A protocol is a type test. A tool either implements `BatchedTool` or it does not. Clojure can see
-the difference. A reader can see the difference.
+A protocol is a type test. A tool either implements `BatchedTool` or it does not. Clojure can see the difference. A reader can see the difference.
 
 ### 4.2 Configuration becomes data, not a copy
 
-Four tools in the codebase are the same tool. `search`, `sql_search`, `nlq_search` and
-`transform_search` share:
+Four tools in the codebase are the same tool. `search`, `sql_search`, `nlq_search` and `transform_search` share:
 
 - the same scope (`agent-search`)
 - the same title function (`search-display`)
 - the same body: `(do-search label allowed-types opts args)`
 
-They differ in five values: name, description, argument schema, allowed entity types, and an
-options map.
+They differ in five values: name, description, argument schema, allowed entity types, and an options map.
 
-Today that is four `mu/defn` forms with four copies of the same metadata. A reader must compare
-them to find out that they match. The original design keeps that shape; it only changes the macro.
+Today that is four `mu/defn` forms with four copies of the same metadata. A reader must compare them to find out that they match. The original design keeps that shape; it only changes the macro.
 
-With a record it is one type and four instances. What varies is in the constructor call. What is
-shared is in the record.
+With a record it is one type and four instances. What varies is in the constructor call. What is shared is in the record.
 
-The description also stops being a docstring. All four tools hardcode their description today
-because a docstring cannot be computed.
+The description also stops being a docstring. All four tools hardcode their description today because a docstring cannot be computed.
 
 ### 4.3 Batched tools get a model
 
-The original design has no model for a tool that does one thing per item. It asks the question and
-leaves it open: can a declared error be rendered inside a successful result?
+The original design has no model for a tool that does one thing per item. It asks the question and leaves it open: can a declared error be rendered inside a successful result?
 
-Some tools need this. `read_resource` takes up to 5 URIs. `load_skill` takes a list of skill ids.
-`list_available_fields` takes three lists of ids. Each one has a hand-written blanket catch today:
+Some tools need this. `read_resource` takes up to 5 URIs. `load_skill` takes a list of skill ids. `list_available_fields` takes three lists of ids. Each one has a hand-written blanket catch today:
 
 ```clojure
 (catch Exception e {:uri uri :error (ex-message e)})
 ```
 
-That forwards any exception message to the model. It is the main thing the original design's text
-rule exists to stop, and it is in two tools today.
+That forwards any exception message to the model. It is the main thing the original design's text rule exists to stop, and it is in two tools today.
 
 These tools are plural for two unrelated reasons:
 
@@ -179,29 +156,19 @@ This design separates them:
 - The unit of partial failure is the **agent's request item**. It is the only unit.
 - Batching is a **wrapper** around the whole run. It takes no part in per-item control flow.
 
-Because each item is handled on its own, `handle` can throw. A batch loader cannot: it must report
-several failures at once, and an error constructor throws only one.
+Because each item is handled on its own, `handle` can throw. A batch loader cannot: it must report several failures at once, and an error constructor throws only one.
 
-For everything that differs between the single and the batched form, `BatchedTool` has a
-`batched-...` function. It receives the single form and returns a **complete** batched form. The
-framework derives nothing, so there are no special cases and no shape a tool cannot express. Two
-things differ in practice — the argument schema and the description — and both are in the
-declaration, so one pair of functions covers both.
+For everything that differs between the single and the batched form, `BatchedTool` has a `batched-...` function. It receives the single form and returns a **complete** batched form. The framework derives nothing, so there are no special cases and no shape a tool cannot express. Two things differ in practice — the argument schema and the description — and both are in the declaration, so one pair of functions covers both.
 
-This matters for the wire format. A framework that wrapped the single `{:uri :string}` schema would
-publish `[{"uri": "a"}]`. `read_resource` publishes `["a"]`. The tool composes the batched schema,
-so nothing changes.
+This matters for the wire format. A framework that wrapped the single `{:uri :string}` schema would publish `[{"uri": "a"}]`. `read_resource` publishes `["a"]`. The tool composes the batched schema, so nothing changes.
 
 ### 4.4 A consumer can be layered on
 
-MCP v2 has its own tool definition. These tool sets should stay separate: their `search` tools have
-different arguments, modes, projections and paging.
+MCP v2 has its own tool definition. These tool sets should stay separate: their `search` tools have different arguments, modes, projections and paging.
 
 But a tool can be **one concept** that either consumer uses. Three things make this work.
 
-**Text is a renderable, not a string.** MCP builds prose as message records and renders them at
-the boundary. It does this for locale and to keep untrusted text separate. Metabot uses plain
-English strings.
+**Text is a renderable, not a string.** MCP builds prose as message records and renders them at the boundary. It does this for locale and to keep untrusted text separate. Metabot uses plain English strings.
 
 ```clojure
 (defprotocol Renderable
@@ -212,9 +179,7 @@ English strings.
   (render-text [this] this))
 ```
 
-`:output` holds a renderable. A string is one, so every example in this document is already
-correct, and a Metabot tool author writes strings and never thinks about this. The protocol exists
-so that a consumer with its own text model does not force a change in tool code:
+`:output` holds a renderable. A string is one, so every example in this document is already correct, and a Metabot tool author writes strings and never thinks about this. The protocol exists so that a consumer with its own text model does not force a change in tool code:
 
 ```clojure
 ;; a tool written for a consumer that renders late
@@ -229,12 +194,9 @@ There are two render points, and both are outside the tool:
 | `entry`, per item | that item's `:output`, so a composer always receives strings |
 | the consumer, at the end | the final `:output`, whatever the tool or the composer returned |
 
-`render-text` is deliberately not satisfied by every object. A result whose `:output` is a map or a
-keyword is a bug, and `::result` rejects it.
+`render-text` is deliberately not satisfied by every object. A result whose `:output` is a map or a keyword is a bug, and `::result` rejects it.
 
-**The declaration has a neutral core and namespaced extras.** `:name`, `:description`, `:args` and
-`:scope` are neutral. Both consumers need all four. MCP tools already declare scopes from the same
-registry.
+**The declaration has a neutral core and namespaced extras.** `:name`, `:description`, `:args` and `:scope` are neutral. Both consumers need all four. MCP tools already declare scopes from the same registry.
 
 ```clojure
 {:name        "glossary"
@@ -247,21 +209,15 @@ registry.
 
 A consumer reads its own namespace. It uses its own defaults for the rest.
 
-The declaration map is therefore open. The original design closes its options map to catch typos.
-This design keeps that protection with a different rule: every key outside the neutral core must be
-namespaced. `:capability` is rejected. `:metabot/capabilities` is not. A misspelling inside a
-namespace belongs to that consumer, which is the only thing that knows its own keys.
+The declaration map is therefore open. The original design closes its options map to catch typos. This design keeps that protection with a different rule: every key outside the neutral core must be namespaced. `:capability` is rejected. `:metabot/capabilities` is not. A misspelling inside a namespace belongs to that consumer, which is the only thing that knows its own keys.
 
-**An error is data.** Each consumer maps a `ToolError` to its own wire format. On MCP every class
-becomes `isError` content with a JSON-RPC code, because MCP has no turn for `:unrecoverable` to end.
+**An error is data.** Each consumer maps a `ToolError` to its own wire format. On MCP every class becomes `isError` content with a JSON-RPC code, because MCP has no turn for `:unrecoverable` to end.
 
 Nothing in MCP must change for this. The work keeps the option open.
 
 ### 4.5 Consumers get simpler
 
-`tools/call` holds the single-or-batched test. The runtime calls it and never asks what kind of tool
-it has. `tools/run-batched` and `tools/batched?` stay public for a consumer that needs them for its
-own reasons.
+`tools/call` holds the single-or-batched test. The runtime calls it and never asks what kind of tool it has. `tools/run-batched` and `tools/batched?` stay public for a consumer that needs them for its own reasons.
 
 A consumer with a different error vocabulary passes its own per-item function:
 
@@ -269,8 +225,7 @@ A consumer with a different error vocabulary passes its own per-item function:
 (tools/call tool args ctx entry-fn)
 ```
 
-`entry-fn` turns one item's arguments into an entry. Rendering a recoverable error to text is
-neutral. What a consumer does with an unrecoverable one is not.
+`entry-fn` turns one item's arguments into an entry. Rendering a recoverable error to text is neutral. What a consumer does with an unrecoverable one is not.
 
 ---
 
@@ -323,16 +278,11 @@ neutral. What a consumer does with an unrecoverable one is not.
 
 ### 5.4 How the modeling changes
 
-**The agent's request item is the only unit of partial failure.** A tool that fans out internally —
-`search` runs several queries and merges them — is a single-item tool. What it does inside the call
-is its own business. It returns a result or it throws. There is no partial failure to model.
+**The agent's request item is the only unit of partial failure.** A tool that fans out internally — `search` runs several queries and merges them — is a single-item tool. What it does inside the call is its own business. It returns a result or it throws. There is no partial failure to model.
 
-**Sub-item failures belong to the item loader.** `read_resource` on
-`metabase://database/1/tables` is one item. If part of that listing is incomplete, the item says so
-in its own output.
+**Sub-item failures belong to the item loader.** `read_resource` on `metabase://database/1/tables` is one item. If part of that listing is incomplete, the item says so in its own output.
 
-**Composition decides where a failure appears.** A tool that formats per item puts failures in
-position. A tool that builds one document has no positions, so it puts them in a block.
+**Composition decides where a failure appears.** A tool that formats per item puts failures in position. A tool that builds one document has no positions, so it puts them in a block.
 
 ---
 
@@ -373,8 +323,7 @@ One action. Three failures, three audiences.
          :structured-output {:query-id query-id :query-content new-sql}}))))
 ```
 
-Gone: the `try`, the `handle-agent-error` call, the `if valid?` branch that returned a
-success-shaped failure, and the `:instructions` key.
+Gone: the `try`, the `handle-agent-error` call, the `if valid?` branch that returned a success-shaped failure, and the `:instructions` key.
 
 Results:
 
@@ -405,11 +354,9 @@ One call, one result. The result has one row or many. The cardinality does not m
                        (:name timeline) (count (:events timeline)))})))
 ```
 
-The whole tool is one converter. `with-entity` turns a 403 or a 404 into a declared error. Every
-other exception ends the turn.
+The whole tool is one converter. `with-entity` turns a 403 or a 404 into a declared error. Every other exception ends the turn.
 
-`search` is also this class. It runs several queries and merges them into one list. That is
-internal.
+`search` is also this class. It runs several queries and merges them into one list. That is internal.
 
 ### 6.3 Single-item tool with variants
 
@@ -446,8 +393,7 @@ One record. Four instances.
                 {:search-native-query true}))
 ```
 
-The same pattern fits `create_sql_query`, whose two variants are one flag apart. It fits
-`construct_notebook_query` less well: its two variants have different schemas and different bodies.
+The same pattern fits `create_sql_query`, whose two variants are one flag apart. It fits `construct_notebook_query` less well: its two variants have different schemas and different bodies.
 
 ### 6.4 Batched tool, ordinary composition
 
@@ -475,18 +421,15 @@ The single form is a complete tool. The batched form adds four short functions.
   (compose       [_ entries _ctx] (tools/concatenated entries)))
 ```
 
-`concatenated` joins the outputs in order. It collects the structured outputs into a vector. It
-concatenates the data parts. A failed item's text is in its own position.
+`concatenated` joins the outputs in order. It collects the structured outputs into a vector. It concatenates the data parts. A failed item's text is in its own position.
 
-The last two lines are the complete answer to Clojure's missing protocol defaults. Write the
-delegation out. A reader then sees what the tool does without another hop.
+The last two lines are the complete answer to Clojure's missing protocol defaults. Write the delegation out. A reader then sees what the tool does without another hop.
 
 The item schema is in a var. Both declarations use it, so they cannot drift.
 
 ### 6.5 Batched tool, custom composition
 
-`read_resource` needs its own composer for one reason. It emits a single title part built from the
-items that loaded. That key is not per-item.
+`read_resource` needs its own composer for one reason. It emits a single title part built from the items that loaded. That key is not per-item.
 
 ```clojure
 (defrecord ReadResourceTool []
@@ -535,11 +478,9 @@ Call `search` and feed a URI from its results back here.
 </resources>
 ```
 
-The failure is inside the element for its own URI. This is what the tool does today through the
-`**Error:**` branch of `format-resources`.
+The failure is inside the element for its own URI. This is what the tool does today through the `**Error:**` branch of `format-resources`.
 
-The batched `:args` is a list of strings, not a list of maps. The tool composes the schema, so the
-wire format does not change.
+The batched `:args` is a list of strings, not a list of maps. The tool composes the schema, so the wire format does not change.
 
 ### 6.6 Batched tool with heterogeneous items
 
@@ -567,12 +508,9 @@ Here the single schema goes in whole. This is why `batched-declaration` receives
   (compose [_ entries _ctx] ...))
 ```
 
-This replaces `list_available_fields`' three parallel id lists with one addressable list. Each
-failure then names the item it belongs to. The current flat `:errors` vector cannot: its only link
-to an id is that the fetch helper put the id in the sentence.
+This replaces `list_available_fields`' three parallel id lists with one addressable list. Each failure then names the item it belongs to. The current flat `:errors` vector cannot: its only link to an id is that the fetch helper put the id in the sentence.
 
-Its output is one document grouped by kind. There are no per-item positions, so its failures go in
-a block.
+Its output is one document grouped by kind. There are no per-item positions, so its failures go in a block.
 
 ### 6.7 What a composer sees
 
@@ -586,8 +524,7 @@ Every entry has the same shape:
  :structured-output {...}}                        ; present when it loaded
 ```
 
-A composer that joins outputs asks nothing. A composer that separates them asks a boolean. There is
-no key to probe for, and no renderable to render.
+A composer that joins outputs asks nothing. A composer that separates them asks a boolean. There is no key to probe for, and no renderable to render.
 
 ---
 
@@ -597,22 +534,18 @@ no key to probe for, and no renderable to render.
 
 Today the call succeeds. Its whole output is failure text. No `:error` is set.
 
-Arguably the call should fail. But with which error? There is no code for "five items were five
-different kinds of missing". A single code loses the attribution the agent needs to retry.
+Arguably the call should fail. But with which error? There is no code for "five items were five different kinds of missing". A single code loses the attribution the agent needs to retry.
 
 ### 7.2 Item limits lose their teaching
 
 `read_resource` says this today:
 
-> Too many URIs provided (6). Please limit to 5 URIs maximum. Be more selective and focus on the
-> most relevant items for the current task or fetch them in batches.
+> Too many URIs provided (6). Please limit to 5 URIs maximum. Be more selective and focus on the most relevant items for the current task or fetch them in batches.
 
 The batched `:args` schema says this:
 
 > Invalid tool arguments: `uris` should have at most 5 elements; received an array.
 
-The schema is the right home for the limit. The message is worse. `list_available_fields` has the
-same problem.
+The schema is the right home for the limit. The message is worse. `list_available_fields` has the same problem.
 
-The limit is now in a schema the tool composed itself, so an `:error/message` on that entry is easy
-to add. That is the likely answer.
+The limit is now in a schema the tool composed itself, so an `:error/message` on that entry is easy to add. That is the likely answer.
