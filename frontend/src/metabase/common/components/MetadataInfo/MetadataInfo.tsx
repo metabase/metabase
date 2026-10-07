@@ -1,7 +1,14 @@
 import cx from "classnames";
 import type { HTMLAttributes, ReactNode } from "react";
 
-import { Box, type BoxProps, Flex, type FlexProps } from "metabase/ui";
+import {
+  Box,
+  type BoxProps,
+  Flex,
+  type FlexProps,
+  Text,
+  type TextProps,
+} from "metabase/ui";
 
 import S from "./MetadataInfo.module.css";
 
@@ -34,8 +41,8 @@ export const LabelContainer = (props: React.PropsWithChildren<FlexProps>) => {
   );
 };
 
-export const Label = (props: React.PropsWithChildren<BoxProps>) => {
-  return <Box component="span" lh="1em" {...props} />;
+export const Label = (props: React.PropsWithChildren<TextProps>) => {
+  return <Text component="span" inherit c="inherit" lh="1em" {...props} />;
 };
 
 type FadeProps = BoxProps &

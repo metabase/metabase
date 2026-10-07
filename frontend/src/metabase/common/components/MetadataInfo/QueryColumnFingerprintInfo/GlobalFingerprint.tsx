@@ -3,7 +3,7 @@ import { msgid, ngettext, t } from "ttag";
 
 import { useGetFieldQuery, useGetFieldValuesQuery } from "metabase/api";
 import CS from "metabase/css/core/index.css";
-import { Box, Flex, Loader, Stack } from "metabase/ui";
+import { Box, Flex, Loader, Stack, Text } from "metabase/ui";
 import { formatNumber } from "metabase/utils/formatting";
 import type { FieldId, FieldValue } from "metabase-types/api";
 
@@ -134,13 +134,14 @@ function ShortenedFieldValuesList({
         </Flex>
       </Fade>
       <Fade pos="absolute" w="100%" slide visible={!isLoading}>
-        <Box
+        <Text
           className={cx(CS.textNoWrap, CS.overflowHidden, CS.textEllipsis)}
+          inherit
           fw="bold"
           lh="1.3em"
         >
           {shortenedValuesStr}
-        </Box>
+        </Text>
       </Fade>
     </Box>
   );
