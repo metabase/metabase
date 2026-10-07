@@ -1205,8 +1205,6 @@ describe("scenarios > embedding > full app", () => {
       };
 
       it("should handle invalid questions/dashboards (metabase#65500)", () => {
-        cy.signInAsAdmin();
-
         H.createDashboardWithTabs({
           dashboard: {
             name: "Dashboard with tabs",
@@ -1343,7 +1341,6 @@ describe("scenarios > embedding > full app", () => {
 
   describe("documents > comments", () => {
     it("should not display comments in an embedded app", () => {
-      H.activateToken("pro-self-hosted");
       const DOCUMENT_ID = 1;
       const PARAGRAPH_ID = "b7fa322a-964e-d668-8d30-c772ef4f0022";
 
