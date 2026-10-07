@@ -1,0 +1,1 @@
+export { MetabotInlineChart } from "./MetabotInlineChart";
