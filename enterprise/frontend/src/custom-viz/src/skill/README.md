@@ -25,8 +25,7 @@ Read first: `skill/references/project.md`,
 
 When executing a phase yourself, follow that file only; skip reading
 files whose content is still in your context. Subagents are defined in
-`.claude/agents/`. No subagent support, the agent file is missing, or
-the subagent reports its tools blocked by `agent-guard` failing to run →
+`.claude/agents/`. No subagent support or the agent file is missing →
 run the phase inline.
 
 ## References
