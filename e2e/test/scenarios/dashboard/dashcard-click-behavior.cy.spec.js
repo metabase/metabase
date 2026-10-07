@@ -28,7 +28,9 @@ const CREATED_AT_COLUMN_SOURCE = {
   id: CREATED_AT_COLUMN_ID,
   name: CREATED_AT_COLUMN_NAME,
 };
-const FILTER_VALUE = "123";
+const FILTER_VALUE = "Dell Adams";
+const FILTERED_POINT_COUNT = 1;
+const FILTERED_POINT_CREATED_AT = "2026-10";
 const POINT_COUNT = 64;
 const POINT_CREATED_AT = "2025-07";
 const POINT_CREATED_AT_FORMATTED = "July 2025";
@@ -130,10 +132,13 @@ const URL_BASE = "https://metabase.com/";
 const URL_WITH_PARAMS = `${URL_BASE}{{${DASHBOARD_FILTER_TEXT.slug}}}/{{${COUNT_COLUMN_ID}}}/{{${CREATED_AT_COLUMN_ID}}}`;
 const URL_WITH_FILLED_PARAMS = URL_WITH_PARAMS.replace(
   `{{${COUNT_COLUMN_ID}}}`,
-  POINT_COUNT,
+  FILTERED_POINT_COUNT,
 )
-  .replace(`{{${CREATED_AT_COLUMN_ID}}}`, POINT_CREATED_AT)
-  .replace(`{{${DASHBOARD_FILTER_TEXT.slug}}}`, FILTER_VALUE);
+  .replace(`{{${CREATED_AT_COLUMN_ID}}}`, FILTERED_POINT_CREATED_AT)
+  .replace(
+    `{{${DASHBOARD_FILTER_TEXT.slug}}}`,
+    encodeURIComponent(FILTER_VALUE),
+  );
 
 describe("scenarios > dashboard > dashboard cards > click behavior", () => {
   beforeEach(() => {
@@ -213,8 +218,9 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       });
 
       clickLineChartPoint();
-      // TODO: fix it, currently we drill down to the question on dot click
-      // assertDrillThroughMenuOpen();
+      H.popover()
+        .should("contain", "Filter by this value")
+        .and("not.contain", "See these Orders");
     });
 
     it("allows setting dashboard without filters as custom destination and changing it back to default click behavior", () => {
@@ -235,8 +241,11 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       H.editDashboard();
 
       cy.log("doesn't throw when setting default behavior (metabase#35354)");
-      cy.on("uncaught:exception", (err) => {
-        expect(err.name.includes("TypeError")).to.be.false;
+      const typeErrors = [];
+      cy.on("uncaught:exception", (error) => {
+        if (error.name.includes("TypeError")) {
+          typeErrors.push(error);
+        }
       });
 
       H.getDashboardCard().realHover().icon("click").click();
@@ -279,6 +288,12 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       // calls are 2 of those.
       cy.get("@rootCollection").should("not.have.been.called");
       cy.get("@collections").should("not.have.been.called");
+
+      cy.go("back");
+      testChangingBackToDefaultBehavior();
+      cy.then(() => {
+        expect(typeErrors).to.have.length(0);
+      });
     });
 
     it("allows setting dashboard with multiple parameters as custom destination", () => {
@@ -561,7 +576,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
 
       cy.get("aside")
         .findByLabelText("Select a dashboard tab")
-        .should("not.have.value")
+        .should("have.value", "")
         .click();
       cy.findByRole("listbox").findByText(SECOND_TAB.name).click();
 
@@ -616,6 +631,10 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
           H.visitDashboard(dashboardId);
         });
 
+      cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query").as(
+        "targetDashcardQuery",
+      );
+
       cy.findAllByTestId("parameter-widget")
         .contains(DASHBOARD_FILTER_TEXT.name)
         .parent()
@@ -624,6 +643,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
         H.fieldValuesCombobox().type("John Doe{enter}{esc}");
         cy.button("Add filter").click();
       });
+      cy.wait("@targetDashcardQuery");
 
       cy.findAllByTestId("parameter-widget")
         .contains(DASHBOARD_FILTER_TEXT_WITH_DEFAULT.name)
@@ -633,6 +653,18 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
         H.fieldValuesCombobox().type("{backspace}World{enter}{esc}");
         cy.button("Update filter").click();
       });
+      cy.wait("@targetDashcardQuery");
+
+      cy.log("the target dashboard keeps the last used values");
+      cy.reload();
+      cy.findAllByTestId("parameter-widget")
+        .contains(DASHBOARD_FILTER_TEXT.name)
+        .parent()
+        .should("contain.text", "John Doe");
+      cy.findAllByTestId("parameter-widget")
+        .contains(DASHBOARD_FILTER_TEXT_WITH_DEFAULT.name)
+        .parent()
+        .should("contain.text", "World");
 
       H.createDashboardWithQuestions({
         questions: [questionDetails, questionDetails],
@@ -895,16 +927,13 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
 
       cy.button(DASHBOARD_FILTER_TEXT.name).click();
       H.dashboardParametersPopover().within(() => {
-        cy.findByPlaceholderText("Search the list").type("Dell Adams");
+        cy.findByPlaceholderText("Search the list").type(FILTER_VALUE);
         cy.button("Add filter").click();
       });
 
-      H.onNextAnchorClick((anchor) => {
-        expect(anchor).to.have.attr("href", URL_WITH_FILLED_PARAMS);
-        expect(anchor).to.have.attr("rel", "noopener");
-        expect(anchor).to.have.attr("target", "_blank");
-      });
+      H.stubAnchorClick();
       clickLineChartPoint();
+      H.assertAnchorClicked({ href: URL_WITH_FILLED_PARAMS });
 
       H.clearFilterWidget();
       testChangingBackToDefaultBehavior();
@@ -1406,17 +1435,14 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
         cy.button(DASHBOARD_FILTER_TEXT.name).click();
         H.dashboardParametersPopover().within(() => {
           H.removeFieldValuesValue(0);
-          cy.findByPlaceholderText("Search the list").type("Dell Adams");
+          cy.findByPlaceholderText("Search the list").type(FILTER_VALUE);
           cy.button("Update filter").click();
         });
-        H.onNextAnchorClick((anchor) => {
-          expect(anchor).to.have.attr("href", URL_WITH_FILLED_PARAMS);
-          expect(anchor).to.have.attr("rel", "noopener");
-          expect(anchor).to.have.attr("target", "_blank");
-        });
+        H.stubAnchorClick();
         getTableCell(COLUMN_INDEX.CREATED_AT)
           .should("have.text", "Created at: October 2026")
           .click();
+        H.assertAnchorClicked({ href: URL_WITH_FILLED_PARAMS });
       })();
     });
   });
@@ -1556,15 +1582,12 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
 
       cy.button(DASHBOARD_FILTER_TEXT.name).click();
       H.dashboardParametersPopover().within(() => {
-        cy.findByPlaceholderText("Search the list").type("Dell Adams");
+        cy.findByPlaceholderText("Search the list").type(FILTER_VALUE);
         cy.button("Add filter").click();
       });
-      H.onNextAnchorClick((anchor) => {
-        expect(anchor).to.have.attr("href", URL_WITH_FILLED_PARAMS);
-        expect(anchor).to.have.attr("rel", "noopener");
-        expect(anchor).to.have.attr("target", "_blank");
-      });
+      H.stubAnchorClick();
       clickLineChartPoint();
+      H.assertAnchorClicked({ href: URL_WITH_FILLED_PARAMS });
     });
 
     it("allows opening custom URL destination that is not a Metabase instance URL using link (metabase#33379)", () => {
