@@ -78,6 +78,15 @@
                     (import! "master"))
                   (is (= tasks (t2/count :model/RemoteSyncTask)) "precondition: the job skipped"))
                 (is (empty? (test-helpers/leases url)) "no lease holds a clone after the job"))
+              (testing "a skip, because the last task conflicted at the same version"
+                (let [tasks (t2/count :model/RemoteSyncTask)]
+                  (mt/with-dynamic-fn-redefs [remote-sync.task/most-recent-task (constantly {:ended_at  (java.time.OffsetDateTime/now)
+                                                                                             :cancelled false
+                                                                                             :conflicts ["library"]
+                                                                                             :version   version})]
+                    (import! "master"))
+                  (is (= tasks (t2/count :model/RemoteSyncTask)) "precondition: the job skipped"))
+                (is (empty? (test-helpers/leases url)) "no lease holds a clone after the job"))
               (testing "a failure, because the branch is missing"
                 (is (thrown-with-msg? Exception #"Invalid branch" (import! "no-such-branch"))
                     "precondition: the job fails")
