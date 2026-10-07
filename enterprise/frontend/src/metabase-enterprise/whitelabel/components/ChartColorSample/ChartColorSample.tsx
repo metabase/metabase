@@ -1,4 +1,4 @@
-import { type JSX, memo, useMemo } from "react";
+import { memo, useMemo } from "react";
 import _ from "underscore";
 
 import { Box, Flex } from "metabase/ui";
