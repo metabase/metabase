@@ -218,7 +218,9 @@ describe("scenarios - setup guide", () => {
       cy.log("embedding checklist should not show up if not enabled");
       cy.visit("/");
 
-      cy.findByTestId("home-page").should("be.visible");
+      cy.findByTestId("home-page")
+        .findByText("Try out these sample x-rays to see what Metabase can do.")
+        .should("be.visible");
       cy.get("main")
         .findByText("Get started with modular embedding")
         .should("not.exist");
