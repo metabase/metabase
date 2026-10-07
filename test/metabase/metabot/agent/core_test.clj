@@ -1257,7 +1257,13 @@
       (testing "metabot :yes allows non-gated profiles"
         (is (nil? (check! :internal {:permission/metabot :yes})))
         (is (nil? (check! :slackbot {:permission/metabot :yes})))
-        (is (nil? (check! :embedding_next {:permission/metabot :yes})))))
+        (is (nil? (check! :embedding_next {:permission/metabot :yes}))))
+      (testing "an unknown profile gets only the base check here, and init-agent rejects it"
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"permission"
+                              (check! :no-such-profile {:permission/metabot :no})))
+        (is (nil? (check! :no-such-profile {:permission/metabot :yes})))
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Unknown profile"
+                              (#'agent/init-agent {:profile-id :no-such-profile :messages []})))))
     (testing "profile-specific permissions (with metabot :yes)"
       (testing "sql profile"
         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"permission"
@@ -1275,3 +1281,13 @@
         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"permission"
                               (check! :explorations {:permission/metabot :yes :permission/metabot-nlq :no})))
         (is (nil? (check! :explorations {:permission/metabot :yes :permission/metabot-nlq :yes})))))))
+
+(deftest init-agent-tracks-profile-required-permission-test
+  (testing "usage tracking records the permission that gates the profile"
+    (doseq [[profile-id expected] {:internal :permission/metabot
+                                   :sql      :permission/metabot-sql-generation
+                                   :nlq      :permission/metabot-nlq}]
+      (testing profile-id
+        (is (= expected
+               (get-in (#'agent/init-agent {:profile-id profile-id :context {}})
+                       [:tracking-opts :required-permission])))))))
