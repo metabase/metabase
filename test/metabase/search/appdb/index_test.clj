@@ -362,12 +362,10 @@
           yesterday   (t/- (now) (t/days 1))]
       (mt/with-temp [:model/Database   {db-id :id}     {}
                      :model/Collection {coll-id :id}   {}
-                     :model/Card       {model-id :id}  {:type "model"
-                                                        ;; :collection_id = coll-id
-                                                        :collection_id coll-id}
                      :model/Action     {action-id :id} {:name       action-name
                                                         :type       "query"
-                                                        :model_id   model-id
+                                                        ;; :collection_id = coll-id
+                                                        :collection_id coll-id
                                                         ;; :model_created_at = yesterday
                                                         :created_at yesterday
                                                         ;; :model_updated_at = yesterday
