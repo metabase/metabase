@@ -284,11 +284,11 @@
     coerced))
 
 (defn- call-tool
-  "Call `tool`'s `handle` with `args` and `ctx`, with the dynamic vars bound from `ctx`.
+  "Call `tool` with `args` and `ctx`, with the dynamic vars bound from `ctx`.
 
-  `handle` is the only thing the runtime asks of a tool. Whether that tool does one thing or one
-  thing per item is its own business, decided by what its `handle` delegates to — see
-  `tools.core/BatchedTool`.
+  `tools.core/call` is the whole of it: whether this tool does one item or several is its own
+  business, and the orchestration for the batched case lives in `tools.core` where every consumer
+  shares it. This namespace never asks which kind it has.
 
   The vars are bound as well as the ctx passed because code a tool reaches *through* does not take a
   ctx — `metabase.metabot.tools.shared.content-store`, which the representations pipeline uses, reads
@@ -297,7 +297,7 @@
   (binding [shared/*metabot-id*  metabot-id
             shared/*profile-id*  profile-id
             shared/*memory-atom* memory-atom]
-    (tools/handle tool args ctx)))
+    (tools/call tool args ctx)))
 
 (defn- rendered-output
   "`result` with its `:output` rendered to a string.
@@ -341,7 +341,7 @@
   2. arguments that were not valid JSON are a validation error (see [[raw-arguments-key]]);
   3. stringified scalars are coerced, then the arguments are validated against `:args`;
   4. the scope is checked, and a denial is unrecoverable;
-  5. the tool's `handle` runs, with the dynamic vars bound from `ctx`;
+  5. the tool runs with the dynamic vars bound from `ctx`, through `tools.core/call`;
   6. its result is validated against `tools.core/result` and its `:output` rendered to a string;
   7. any exception is classified, logged in full, and rendered for its audience."
   [entries ctx tool-name args]
