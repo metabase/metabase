@@ -51,10 +51,17 @@ describe("Static embed dashboards/questions downloads (results and export as pdf
       );
       waitLoading();
 
+      cy.findByRole("heading", { name: "Orders in a dashboard" }).should(
+        "be.visible",
+      );
+      H.getDashboardCard()
+        .findAllByTestId("cell-data")
+        .should("have.length.above", 0);
+
       cy.findByRole("button", { name: "Download as PDF" }).should("not.exist");
 
       // we should not have any dashcard action in a static embedded/embed scenario, so the menu should not be there
-      cy.findByRole("button", { name: "Download results" }).should("not.exist");
+      H.getEmbeddedDashboardCardMenu().should("not.exist");
     });
 
     it("should be able to download a static embedded dashboard as PDF and a dashcard as CSV", () => {

@@ -261,7 +261,11 @@ describe("scenarios > embedding > sdk iframe embedding > custom elements api", (
       <metabase-question question-id="${ORDERS_QUESTION_ID}" with-downloads="false" />
       `);
 
+      cy.wait("@getCardQuery");
+
       H.getSimpleEmbedIframeContent()
+        .findByTestId("interactive-question-result-toolbar")
+        .should("be.visible")
         .findByLabelText("download icon")
         .should("not.exist");
     });
