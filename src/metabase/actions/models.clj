@@ -282,6 +282,7 @@
   [updates         :- ::actions.schema/action.for-update
    existing-action :- ::actions.schema/action]
   (let [updates (merge (select-keys existing-action [:type]) updates)] ; in case the updates do not include it.
+    (check-query-action-model updates)
     (update*! (lib/normalize ::actions.schema/action.for-update updates) existing-action)))
 
 (defn- normalize-query-actions [actions]

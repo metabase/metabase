@@ -211,7 +211,7 @@
                          :model/Collection {parent-id :id}     {:name "Parent"}
                          :model/Collection {child-id :id}      {:name "Child" :location (str "/" parent-id "/")}
                          :model/Collection {snip-coll-id :id}   {:name "Snips" :namespace "snippets"}
-                         :model/Card       {model-card-id :id} {:name "Model" :type :model :database_id db-id}
+                         :model/Card       _ {:name "Model" :type :model :database_id db-id}
                          :model/Card       {embed-card-id :id} {:name "Embedded" :database_id db-id}]
         (let [deps (fn [model id]
                      (serdes/serialization-dependencies model (t2/select-one (keyword "model" model) :id id)))]

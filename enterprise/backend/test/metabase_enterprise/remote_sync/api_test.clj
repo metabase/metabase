@@ -811,7 +811,7 @@
                      (repo-files))))))))))
 
 (deftest export-includes-model-actions-test
-  (testing "GHY-4722: pushing a synced model writes its actions into the model's collection"
+  (testing "GHY-4722: pushing a synced collection writes its model's implicit actions and its query actions"
     (mt/with-temporary-setting-values [remote-sync-type :read-write]
       (mt/with-actions-enabled
         (mt/with-model-cleanup [:model/Action :model/Card]
@@ -843,7 +843,7 @@
                     (mt/user-http-request :crowberto :post 200 "action"
                                           {:name          "Rename Venue"
                                            :type          "query"
-                                           :model_id      (:id model)
+                                           :collection_id coll-id
                                            :database_id   (mt/id)
                                            :dataset_query {:type     "native"
                                                            :database (mt/id)
@@ -946,17 +946,17 @@
                       :commit-remote! commit-remote!}))))))))))
 
 (defn- do-with-pushed-model-actions!
-  "Pushes a synced model with an implicit action (`collections/main/synced/create_venue.yaml`) and a query action
-  (`collections/main/synced/rename_venue.yaml`) through the API, then calls `f` with the map from [[do-with-pushed-model!]]."
+  "Pushes a synced model with an implicit action (`collections/main/synced/create_venue.yaml`) and a query action in
+  the same collection (`collections/main/synced/rename_venue.yaml`) through the API, then calls `f` with the map from [[do-with-pushed-model!]]."
   [f]
   (do-with-pushed-model!
-   (fn [{:keys [model push! repo-file] :as ctx}]
+   (fn [{:keys [coll-id model push! repo-file] :as ctx}]
      (mt/user-http-request :crowberto :post 200 "action"
                            {:name "Create Venue" :type "implicit" :kind "row/create" :model_id (:id model)})
      (mt/user-http-request :crowberto :post 200 "action"
                            {:name          "Rename Venue"
                             :type          "query"
-                            :model_id      (:id model)
+                            :collection_id coll-id
                             :database_id   (mt/id)
                             :dataset_query {:type     "native"
                                             :database (mt/id)
@@ -968,13 +968,13 @@
      (f ctx))))
 
 (deftest push-after-model-becomes-question-removes-actions-test
-  (testing "turning a pushed model into a question removes its actions from the repo on the next push"
+  (testing "turning a pushed model into a question removes its implicit actions from the repo on the next push"
     (do-with-pushed-model-actions!
      (fn [{:keys [model push! repo-file]}]
        (mt/user-http-request :crowberto :put 200 (str "card/" (:id model)) {:type "question"})
        (is (remote-sync.task/successful? (push!)))
        (is (nil? (repo-file "collections/main/synced/create_venue.yaml")))
-       (is (nil? (repo-file "collections/main/synced/rename_venue.yaml")))))))
+       (is (some? (repo-file "collections/main/synced/rename_venue.yaml")) "the query action stays")))))
 
 (deftest push-after-model-query-drops-implicit-actions-test
   (testing "GHY-4722: a model query that no longer supports implicit actions removes them from the repo on the next push"
@@ -987,13 +987,13 @@
        (is (some? (repo-file "collections/main/synced/rename_venue.yaml")) "the query action stays")))))
 
 (deftest push-after-model-deleted-removes-actions-test
-  (testing "GHY-4722: deleting a pushed model removes its actions from the repo on the next push"
+  (testing "GHY-4722: deleting a pushed model removes its implicit actions from the repo on the next push"
     (do-with-pushed-model-actions!
      (fn [{:keys [model push! repo-file]}]
        (mt/user-http-request :crowberto :delete 204 (str "card/" (:id model)))
        (is (remote-sync.task/successful? (push!)))
        (is (nil? (repo-file "collections/main/synced/create_venue.yaml")))
-       (is (nil? (repo-file "collections/main/synced/rename_venue.yaml")))))))
+       (is (some? (repo-file "collections/main/synced/rename_venue.yaml")) "the query action stays")))))
 
 (defn- insert-untracked-action!
   "Inserts an implicit action \"Local Action\" (`collections/main/synced/local_action.yaml`) on the model with `model-id` straight
@@ -1041,8 +1041,8 @@
 (deftest push-tracks-archiving-an-action-test
   (testing "GHY-4722: archiving an action removes its file on the next push, and unarchiving it writes the file back"
     (do-with-pushed-model-actions!
-     (fn [{:keys [model push! repo-file]}]
-       (let [action-id (t2/select-one-pk :model/Action :model_id (:id model) :name "Rename Venue")]
+     (fn [{:keys [push! repo-file]}]
+       (let [action-id (t2/select-one-pk :model/Action :name "Rename Venue")]
          (mt/user-http-request :crowberto :put 200 (str "action/" action-id) {:archived true})
          (is (remote-sync.task/successful? (push!)))
          (is (nil? (repo-file "collections/main/synced/rename_venue.yaml")))
@@ -1055,7 +1055,7 @@
     (do-with-pushed-model-actions!
      (fn [{:keys [model push! repo-file]}]
        (mt/with-temp [:model/Collection {unsynced-id :id} {:name "Unsynced" :location "/"}]
-         (let [action-id (t2/select-one-pk :model/Action :model_id (:id model) :name "Rename Venue")
+         (let [action-id (t2/select-one-pk :model/Action :model_id (:id model) :name "Create Venue")
                other     (mt/user-http-request :crowberto :post 200 "card"
                                                {:name                   "Other Model"
                                                 :type                   "model"
@@ -1065,10 +1065,10 @@
                                                 :dataset_query          (mt/mbql-query venues)})]
            (mt/user-http-request :crowberto :put 200 (str "action/" action-id) {:model_id (:id other)})
            (is (remote-sync.task/successful? (push!)))
-           (is (nil? (repo-file "collections/main/synced/rename_venue.yaml")))
+           (is (nil? (repo-file "collections/main/synced/create_venue.yaml")))
            (mt/user-http-request :crowberto :put 200 (str "action/" action-id) {:model_id (:id model)})
            (is (remote-sync.task/successful? (push!)))
-           (is (some? (repo-file "collections/main/synced/rename_venue.yaml")))))))))
+           (is (some? (repo-file "collections/main/synced/create_venue.yaml")))))))))
 
 (deftest turning-sync-on-again-tracks-untracked-actions-test
   (testing "GHY-4722: turning sync on again for a collection tracks an action created while sync was off, and the next push writes it"
@@ -1084,8 +1084,8 @@
 (deftest archiving-a-collection-marks-its-actions-for-deletion-test
   (testing "GHY-4722: archiving the synced collection that holds a model marks its actions for deletion, and the next push removes their files"
     (do-with-pushed-model-actions!
-     (fn [{:keys [coll-id model push! repo-file]}]
-       (let [action-id (t2/select-one-pk :model/Action :model_id (:id model) :name "Rename Venue")]
+     (fn [{:keys [coll-id push! repo-file]}]
+       (let [action-id (t2/select-one-pk :model/Action :name "Rename Venue")]
          (mt/user-http-request :crowberto :put 200 (str "collection/" coll-id) {:archived true})
          (is (= "delete" (action-rso-status action-id)))
          (is (remote-sync.task/successful? (push!)))
@@ -2460,6 +2460,6 @@
       (mt/with-temp [:model/Collection {synced-id :id} {:name "Synced" :is_remote_synced true :location "/"}
                      :model/Card       {model-id :id}  {:type :model :collection_id synced-id
                                                         :dataset_query (mt/mbql-query venues)}
-                     :model/Action     {action-id :id} {:type :query :name "Rename" :model_id model-id}]
+                     :model/Action     {action-id :id} {:type :implicit :name "Create" :model_id model-id}]
         (mt/user-http-request :crowberto :put 200 (str "card/" model-id) {:archived true})
         (is (true? (t2/select-one-fn :archived :model/Action :id action-id)))))))

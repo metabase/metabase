@@ -393,8 +393,8 @@
 
 (deftest action-parameters-test
   (mt/with-actions-enabled
-    (mt/with-temp [:model/Card {card-id :id} {:type          :model
-                                              :dataset_query (mt/mbql-query venues)}]
+    (mt/with-temp [:model/Card _ {:type          :model
+                                  :dataset_query (mt/mbql-query venues)}]
       (mt/with-model-cleanup [:model/Action]
         (let [initial-action {:name          "Query example"
                               :type          "query"
@@ -613,7 +613,12 @@
       (mt/with-model-cleanup [:model/Action]
         (mt/with-temp [:model/Card {model-id :id} {:type :model :dataset_query (mt/mbql-query categories)}]
           (is (=? {:specific-errors {:model_id [(str "should be nil, received: " model-id)]}}
-                  (mt/user-http-request :crowberto :post 400 "action" (assoc (model-less-query-action nil) :model_id model-id)))))))))
+                  (mt/user-http-request :crowberto :post 400 "action" (assoc (model-less-query-action nil) :model_id model-id))))
+          (testing "or moved onto one"
+            (let [action-id (:id (mt/user-http-request :crowberto :post 200 "action" (model-less-query-action nil)))]
+              (is (= "Only basic actions can belong to a model."
+                     (mt/user-http-request :crowberto :put 400 (str "action/" action-id) {:model_id model-id})))
+              (is (nil? (t2/select-one-fn :model_id :model/Action :id action-id))))))))))
 
 (deftest archiving-directly-test
   (testing "archiving an action through the API marks it as archived directly, and unarchiving clears that"

@@ -154,7 +154,7 @@
                                         :type     :query
                                         :database db-id}}
                        :model/Card
-                       {model-id :id}
+                       _
                        {:name          "Some Model"
                         :database_id   db-id
                         :table_id      no-schema-id
