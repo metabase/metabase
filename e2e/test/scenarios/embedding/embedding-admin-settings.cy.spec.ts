@@ -86,7 +86,7 @@ describe("scenarios > embedding > admin settings > starter", () => {
     assertCorsSettingOnSecurityPage();
   });
 
-  it("should show embedding upsell on oss", () => {
+  it("should show embedding upsell on starter", () => {
     cy.visit("/admin/embedding/interactive");
 
     cy.findByTestId("admin-layout-content").within(() => {
