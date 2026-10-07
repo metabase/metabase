@@ -79,24 +79,6 @@ describe("scenarios > dashboard > dashboard back navigation", () => {
     H.NativeEditor.get().should("not.exist");
   });
 
-  it("should display a back to the dashboard button in table x-ray dashboards", () => {
-    const cardTitle = "Total transactions";
-    cy.visit(`/auto/dashboard/table/${ORDERS_ID}?#show=${MAX_CARDS}`);
-    cy.wait("@dataset", { timeout: MAX_XRAY_WAIT_TIMEOUT });
-
-    H.getDashboardCards()
-      .filter(`:contains("${cardTitle}")`)
-      .findByText(cardTitle)
-      .click();
-    cy.wait("@dataset");
-
-    H.queryBuilderHeader()
-      .findByLabelText(/Back to .*Orders.*/)
-      .click();
-
-    H.getDashboardCards().filter(`:contains("${cardTitle}")`).should("exist");
-  });
-
   it("should display a back to the dashboard button in model x-ray dashboards", () => {
     const cardTitle = "Orders by Subtotal";
     cy.request("PUT", `/api/card/${ORDERS_QUESTION_ID}`, { type: "model" });

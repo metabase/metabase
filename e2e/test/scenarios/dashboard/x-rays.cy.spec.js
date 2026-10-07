@@ -237,16 +237,24 @@ describe("scenarios > x-rays", { tags: "@slow" }, () => {
     cy.wait("@geojson", { timeout });
 
     // confirm results of "Total transactions" card are present
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("18,760", timeout);
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Total transactions").click();
+    getDashcardByTitle("Total transactions").findByText("18,760", timeout);
+    H.dashboardGrid().findByText("Total transactions").click();
 
     // confirm we're in the query builder with the same results
     cy.url().should("contain", "/question");
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("18,760");
+    H.queryBuilderMain().findByText("18,760");
 
+    cy.log("return with the back to the x-ray button");
+    H.queryBuilderHeader()
+      .findByLabelText(/Back to .*Orders.*/)
+      .click();
+    getDashcardByTitle("Total transactions")
+      .findByText("18,760", timeout)
+      .should("be.visible");
+
+    cy.log("return with the browser back button");
+    H.dashboardGrid().findByText("Total transactions").click();
+    H.queryBuilderMain().findByText("18,760");
     cy.go("back");
 
     // add a parameter filter to the auto dashboard
