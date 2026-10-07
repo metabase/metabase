@@ -21,7 +21,7 @@
            (org.eclipse.jgit.api Git TransportCommand)
            (org.eclipse.jgit.dircache DirCacheEditor DirCacheEditor$PathEdit DirCacheEntry)
            (org.eclipse.jgit.lib AnyObjectId CommitBuilder FileMode PersonIdent TreeFormatter)
-           (org.eclipse.jgit.transport UsernamePasswordCredentialsProvider)
+           (org.eclipse.jgit.transport URIish UsernamePasswordCredentialsProvider)
            (org.eclipse.jgit.util FS FS_Win32_Cygwin ProcessResult$Status)))
 
 (set! *warn-on-reflection* true)
@@ -1185,6 +1185,23 @@
     (let [provider (#'git/credentials-provider "https://bitbucket.org/org/repo" "my-token")]
       (is (instance? UsernamePasswordCredentialsProvider provider)))))
 
+(deftest ^:parallel credentials-go-only-to-the-server-of-the-url-test
+  (testing "the credentials filter accepts the server of the URL, and an upgrade of http to https on the same host with the
+            default ports, as a redirect can do"
+    (doseq [[expected uri same?] [["https://github.com/org/repo.git" "https://github.com/org/repo.git" true]
+                                  ["https://github.com/org/repo.git" "https://GitHub.com:443/other.git" true]
+                                  ["http://github.com/org/repo.git" "http://github.com:80/org/repo.git" true]
+                                  ["http://github.com/org/repo.git" "https://github.com/org/repo.git" true]
+                                  ["http://github.com:80/org/repo.git" "https://github.com:443/org/repo.git" true]
+                                  ["https://github.com/org/repo.git" "http://github.com/org/repo.git" false]
+                                  ["http://github.com/org/repo.git" "https://example.com/org/repo.git" false]
+                                  ["http://github.com/org/repo.git" "https://github.com:8443/org/repo.git" false]
+                                  ["http://github.com:8080/org/repo.git" "https://github.com/org/repo.git" false]
+                                  ["https://github.com/org/repo.git" "https://github.com:8443/org/repo.git" false]
+                                  ["https://github.com/org/repo.git" "https://example.com/org/repo.git" false]]]
+      (testing (str expected " to " uri)
+        (is (= same? (#'git/same-server? (URIish. ^String expected) (URIish. ^String uri))))))))
+
 ;; ---------------------------------------------------------------------------
 ;; Missing remote branch tests (issue #72778)
 ;; ---------------------------------------------------------------------------
@@ -1479,7 +1496,6 @@
                 commit   (source.p/open-commit (source.p/snapshot source))
                 fetched? (atom false)
                 _        (source.p/stage-upsert! commit {:path "collections/new.yaml" :content "x: 1\n"})
-                ;; A throw is a correct answer too: then nothing records the commit as synced.
                 version  (try
                            (source.p/finish-commit!
                             commit "Export"
@@ -1490,9 +1506,10 @@
                                 (source.p/snapshot other))))
                            (catch Exception e e))]
             (is @fetched? "precondition: the other source fetched at the commit checkpoint")
-            (when (string? version)
-              (is (= version (git/commit-sha remote "master"))
-                  "the remote branch is at the commit that finish-commit! returned")))
+            ;; The remote did not move, so the push is a fast-forward.
+            (is (string? version) "the export does not throw")
+            (is (= version (git/commit-sha remote "master"))
+                "the remote branch is at the commit that finish-commit! returned"))
           (finally (forget-clones! url)))))))
 
 (defn- ex-data-chain
@@ -1617,4 +1634,39 @@
                 (is (nil? (deref fetch-a 10000 ::timeout)) "the first fetch succeeds")
                 (is (nil? (deref fetch-b 10000 ::timeout)) "the second fetch succeeds")
                 (is (true? (deref second-in 10000 false)) "the second fetch runs after the first one"))))
+          (finally (forget-clones! url)))))))
+
+(deftest interrupted-fetch-stops-waiting-for-the-fetch-lock-test
+  (testing "a fetch that waits for the fetch lock of its clone throws when its thread is interrupted, and does not fetch"
+    (mt/with-temp-dir [remote-dir nil]
+      (let [remote (init-remote! remote-dir :files {"master.txt" "File in master"})
+            url    (remote-url remote)]
+        (try
+          (with-open [^java.io.Closeable source (git/git-source url "master" nil ingest/legal-top-level-paths)]
+            (let [lock    (#'git/fetch-lock (.getRepository ^Git (:git source)))
+                  held    (promise)
+                  release (promise)
+                  holder  (Thread. ^Runnable (fn []
+                                               (.lock lock)
+                                               (try
+                                                 (deliver held true)
+                                                 (deref release 10000 nil)
+                                                 (finally
+                                                   (.unlock lock)))))
+                  result  (promise)
+                  waiter  (Thread. ^Runnable (fn [] (deliver result (try (git/fetch! source) ::fetched
+                                                                         (catch Throwable e e)))))]
+              (.start holder)
+              (try
+                (is (true? (deref held 10000 false)) "precondition: another thread holds the fetch lock")
+                (.start waiter)
+                (Thread/sleep 300)
+                (.interrupt waiter)
+                (.join waiter 2000)
+                (is (not (.isAlive waiter)) "the interrupted fetch ends while the other thread holds the lock")
+                (is (instance? Exception (deref result 0 ::running)) "the interrupted fetch throws")
+                (finally
+                  (deliver release true)
+                  (.join holder 10000)
+                  (.join waiter 10000)))))
           (finally (forget-clones! url)))))))

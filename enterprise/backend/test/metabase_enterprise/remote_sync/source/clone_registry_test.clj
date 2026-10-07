@@ -299,9 +299,11 @@
          (check-refused! registry (:base-dir registry) :another-owner))
        (is (= [] (process-roots registry)) "no process root is made in the base directory")))))
 
-(deftest base-directory-under-an-unsafe-parent-is-refused-test
+(deftest base-directory-under-an-unsafe-parent-logs-a-warning-test
   (when (posix?)
-    (testing "when other users can write to the parent of the base directory and it has no sticky bit, the registry refuses to clone"
+    (testing "when other users can write to the parent of the base directory and it has no sticky bit, the registry logs
+              a warning that names the parent and clones"
+      ;; A Kubernetes emptyDir volume has these permissions.
       (let [parent (io/file (System/getProperty "java.io.tmpdir") (str "clone-registry-test-parent-" (random-uuid)))]
         (try
           (.mkdirs parent)
@@ -310,14 +312,16 @@
           (let [registry (clone-registry/make-registry (io/file parent "metabase-git"))
                 clones   (atom [])]
             (try
-              (let [e (try
-                        (clone-registry/acquire! registry (clone-registry/new-lease url) (fake-clone clones (atom [])))
-                        nil
-                        (catch Exception e e))]
-                (is (some? e) "the acquire throws")
-                (is (str/includes? (str (ex-message e)) (str parent)) "the error names the parent")
-                (is (= :unsafe-parent (:reason (ex-data e))))
-                (is (= [] @clones) "no clone starts"))
+              (mt/with-log-messages-for-level [messages [metabase-enterprise.remote-sync.source.clone-registry :warn]]
+                (let [result (try
+                               (clone-registry/acquire! registry (clone-registry/new-lease url) (fake-clone clones (atom [])))
+                               (catch Exception e e))]
+                  (is (not (instance? Exception result)) "the acquire does not throw")
+                  (is (= 1 (count @clones)) "the clone starts")
+                  (is (some #(and (str/includes? (str (:message %)) (str parent))
+                                  (str/includes? (str (:message %)) "Another user can rename"))
+                            (messages))
+                      "a warning names the parent and the risk")))
               (finally
                 (clone-registry/shutdown! registry))))
           (finally
@@ -618,34 +622,92 @@
            ;; The caller can leave the transaction while the job runs, and the pool then takes the connection back.
            (is (not (identical? conn (deref seen 10000 ::timeout))))))))))
 
+(defn- uninterruptible-clone
+  "A clone function that counts down `started`, waits for `go` and ignores each interrupt, as a blocking socket read in a
+  JGit clone does. Then it writes a clone into its directory."
+  [^CountDownLatch started ^CountDownLatch go]
+  (fn [^File dir]
+    (.countDown started)
+    (loop []
+      (when-not (try (.await go 100 TimeUnit/MILLISECONDS)
+                     (catch InterruptedException _ false))
+        (recur)))
+    (.mkdirs dir)
+    (spit (io/file dir "HEAD") "ref: refs/heads/master")
+    (reify java.lang.AutoCloseable (close [_]))))
+
+(defn- clone-job-ended?
+  "True iff no clone job of [[url]] runs in `registry` within 10 s."
+  [registry]
+  (loop [i 0]
+    (cond (nil? (get-in @(:state registry) [url :job])) true
+          (> i 200)                                     false
+          :else                                         (do (Thread/sleep 50) (recur (inc i))))))
+
 (deftest clone-job-that-ends-after-shutdown-leaves-no-process-root-test
-  (testing "a clone job that ignores the interrupt of a shutdown and ends after it leaves no process root on disk"
+  (testing "a clone job that ignores the interrupt of a shutdown and ends after the wait of the shutdown leaves no process
+            root on disk, also when no caller waits for it"
+    (let [base     (io/file (System/getProperty "java.io.tmpdir") (str "clone-registry-test-" (random-uuid)))
+          registry (clone-registry/make-registry base {:shutdown-wait-ms 100})
+          started  (CountDownLatch. 1)
+          go       (CountDownLatch. 1)]
+      (try
+        (let [waiter (future (clone-registry/acquire! registry (clone-registry/new-lease url)
+                                                      (uninterruptible-clone started go)))]
+          (is (.await started 10 TimeUnit/SECONDS) "precondition: the clone job runs")
+          ;; The caller stops waiting, as an interrupted request does.
+          (future-cancel waiter)
+          (let [root (root-dir registry)]
+            (clone-registry/shutdown! registry)
+            (is (not (.exists root)) "precondition: the shutdown deletes the root")
+            (.countDown go)
+            (is (clone-job-ended? registry) "precondition: the clone job ends")
+            (is (= [] (process-roots registry)) "no process root is on disk after the job ends")))
+        (finally
+          (.countDown go)
+          (clone-registry/shutdown! registry)
+          (FileUtils/deleteQuietly base))))))
+
+(deftest shutdown-waits-for-a-clone-job-test
+  (testing "a shutdown waits for a clone job that ignores its interrupt, so that at the exit of the JVM the job deletes
+            what it wrote before the JVM stops its thread"
     (do-with-registry!
      (fn [registry]
        (let [started (CountDownLatch. 1)
              go      (CountDownLatch. 1)
-             ;; A blocking socket read, as in a JGit clone, does not stop on an interrupt.
-             clone!  (fn [^File dir]
-                       (.countDown started)
-                       (loop []
-                         (when-not (try (.await go 100 TimeUnit/MILLISECONDS)
-                                        (catch InterruptedException _ false))
-                           (recur)))
-                       (.mkdirs dir)
-                       (spit (io/file dir "HEAD") "ref: refs/heads/master")
-                       (reify java.lang.AutoCloseable (close [_])))
-             waiter  (future (try (clone-registry/acquire! registry (clone-registry/new-lease url) clone!)
+             _       (future (try (clone-registry/acquire! registry (clone-registry/new-lease url)
+                                                           (uninterruptible-clone started go))
                                   (catch Throwable e e)))]
          (try
            (is (.await started 10 TimeUnit/SECONDS) "precondition: the clone job runs")
-           (let [root (root-dir registry)]
-             (clone-registry/shutdown! registry)
-             (is (not (.exists root)) "precondition: the shutdown deletes the root")
-             (.countDown go)
-             (is (not= ::timeout (deref waiter 10000 ::timeout)) "precondition: the clone job ends")
-             (is (= [] (process-roots registry)) "no process root is on disk after the job ends"))
+           ;; The job ends during the wait of the shutdown.
+           (future (Thread/sleep 300) (.countDown go))
+           (clone-registry/shutdown! registry)
+           (is (nil? (get-in @(:state registry) [url :job])) "the clone job ended before the shutdown returned")
+           (is (= [] (process-roots registry)) "no process root is on disk when the shutdown returns")
            (finally
              (.countDown go))))))))
+
+(deftest shutdown-wait-is-bounded-test
+  (testing "a shutdown waits at most the wait time of the registry for a clone job that does not end"
+    (let [base     (io/file (System/getProperty "java.io.tmpdir") (str "clone-registry-test-" (random-uuid)))
+          registry (clone-registry/make-registry base {:shutdown-wait-ms 200})
+          started  (CountDownLatch. 1)
+          go       (CountDownLatch. 1)]
+      (try
+        (future (try (clone-registry/acquire! registry (clone-registry/new-lease url) (uninterruptible-clone started go))
+                     (catch Throwable e e)))
+        (is (.await started 10 TimeUnit/SECONDS) "precondition: the clone job runs")
+        (let [start (System/nanoTime)]
+          (clone-registry/shutdown! registry)
+          (is (< (/ (- (System/nanoTime) start) 1e6) 2000) "the shutdown returns before the job ends"))
+        (is (some? (get-in @(:state registry) [url :job])) "precondition: the clone job still runs")
+        (.countDown go)
+        (is (clone-job-ended? registry) "precondition: the clone job ends")
+        (is (= [] (process-roots registry)) "no process root is on disk after the job ends")
+        (finally
+          (.countDown go)
+          (FileUtils/deleteQuietly base))))))
 
 (deftest retired-generation-lives-while-a-lease-holds-it-test
   (testing "a retired generation stays while a lease holds it, and is closed and deleted at its last lease"
