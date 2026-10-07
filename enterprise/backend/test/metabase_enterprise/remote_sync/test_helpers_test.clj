@@ -2,6 +2,8 @@
   "Tests for test-helpers: the MockSource implementation and the clean-remote-sync-state fixture."
   (:require
    [clojure.test :refer :all]
+   [java-time.api :as t]
+   [metabase-enterprise.remote-sync.db :as remote-sync.db]
    [metabase-enterprise.remote-sync.impl :as impl]
    [metabase-enterprise.remote-sync.settings :as remote-sync.settings]
    [metabase-enterprise.remote-sync.source.protocol :as source.p]
@@ -432,6 +434,133 @@
                      :writer       :committed
                      :writer-first true}
                     (write-back-against-a-two-row-writer! a b))))))))))
+
+(defn- session-id
+  "The app DB session id of the connection that the calling thread uses."
+  []
+  (case (mdb/db-type)
+    :postgres         (:id (t2/query-one ["SELECT pg_backend_pid() AS id"]))
+    (:mysql :mariadb) (:id (t2/query-one ["SELECT CONNECTION_ID() AS id"]))))
+
+(defn- session-blocks-another?
+  "Whether another app DB session waits for a lock. On Postgres, the lock must be one that the session `id` holds; on
+  MySQL and MariaDB, the session `id` must have an open transaction."
+  [id]
+  (case (mdb/db-type)
+    :postgres
+    (pos? (:n (t2/query-one ["SELECT count(*) AS n FROM pg_stat_activity WHERE ? = ANY (pg_blocking_pids(pid))" id])))
+
+    (:mysql :mariadb)
+    (pos? (:n (t2/query-one [(str "SELECT count(*) AS n FROM information_schema.innodb_trx w "
+                                  "JOIN information_schema.innodb_trx b ON b.trx_mysql_thread_id = ? "
+                                  "WHERE w.trx_state = 'LOCK WAIT' AND w.trx_mysql_thread_id <> ?")
+                             id id])))))
+
+(defn- cleanup-against-a-two-row-writer!
+  "Run the cleanup fixture `fixture` around a body that inserts two rows with `insert-two!`, which returns their ids
+  `[a b]`. While the cleanup runs, a transaction on another thread runs `(lock-first! x)`, waits until the cleanup
+  waits for it, then runs `(lock-second! y)`; `[x y]` is `[a b]` for `order` `:a-first` and `[b a]` for `:b-first`.
+  Deletes the two rows after the fixture. Returns `{:proceed :cleanup :writer :rows-left}`."
+  [fixture table insert-two! lock-first! lock-second! order]
+  (let [writer-id (promise)
+        proceed   (promise)
+        writer    (atom nil)
+        watcher   (atom nil)
+        ids       (atom nil)
+        error     (try
+                    (fixture
+                     (fn []
+                       (let [[a b] (reset! ids (insert-two!))
+                             [x y] (if (= :a-first order) [a b] [b a])]
+                         (reset! writer
+                                 (future
+                                   (try
+                                     (t2/with-transaction [_conn]
+                                       (when (= :postgres (mdb/db-type))
+                                         ;; bounds every wait of the writer, so that it always ends and releases its
+                                         ;; locks; MySQL and MariaDB detect a deadlock at once
+                                         (t2/query-one ["SET LOCAL lock_timeout = '20s'"]))
+                                       (lock-first! x)
+                                       (deliver writer-id (session-id))
+                                       (deref proceed 10000 ::timeout)
+                                       (lock-second! y))
+                                     :committed
+                                     (catch Throwable e e)
+                                     (finally
+                                       (deliver writer-id nil)))))
+                         (let [id (deref writer-id 10000 ::timeout)]
+                           (reset! watcher
+                                   (future
+                                     (let [deadline (+ (System/currentTimeMillis) 10000)]
+                                       (loop []
+                                         (cond
+                                           (realized? proceed)
+                                           nil
+
+                                           (session-blocks-another? id)
+                                           (deliver proceed ::cleanup-blocked)
+
+                                           (< (System/currentTimeMillis) deadline)
+                                           ;; MySQL refreshes `information_schema.innodb_trx` only when it was not
+                                           ;; read in the last 100 ms
+                                           (do (Thread/sleep 200) (recur)))))))))))
+                    nil
+                    (catch Throwable e e))]
+    (deliver proceed ::cleanup-done)
+    (let [writer-result (deref @writer 30000 ::timeout)
+          _             (deref @watcher 30000 ::timeout)
+          rows-left     (set (t2/select-fn-vec :id table :id [:in @ids]))]
+      (doseq [id rows-left]
+        (t2/query-one {:delete-from table :where [:= :id id]}))
+      {:proceed   @proceed
+       :cleanup   (sql-state-and-message error)
+       :writer    (if (instance? Throwable writer-result) (sql-state-and-message writer-result) writer-result)
+       :rows-left rows-left})))
+
+(defn- insert-two-ledger-rows!
+  "Insert two RemoteSyncObject rows. Returns their ids."
+  []
+  (let [now (t/offset-date-time)]
+    (mapv #(t2/insert-returning-pk! :model/RemoteSyncObject {:model_type        "Card"
+                                                             :model_id          %
+                                                             :model_name        "Card"
+                                                             :status            "update"
+                                                             :status_changed_at now})
+          [Integer/MAX_VALUE (dec Integer/MAX_VALUE)])))
+
+(defn- insert-two-task-rows!
+  "Insert two RemoteSyncTask rows, one of them ended. Returns their ids."
+  []
+  [(t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "import"
+                                                   :initiated_by   (mt/user->id :rasta)
+                                                   :ended_at       (t/offset-date-time)})
+   (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "export"
+                                                   :initiated_by   (mt/user->id :rasta)})])
+
+(deftest clean-object-and-clean-task-table-do-not-deadlock-with-a-two-row-writer-test
+  (testing (str "the cleanups of the RemoteSyncObject and RemoteSyncTask tables complete while another transaction "
+                "locks two rows of the table in two statements, in each order")
+    (when (#{:postgres :mysql :mariadb} (mdb/db-type))
+      (mt/with-dynamic-fn-redefs [search/reindex! (constantly nil)]
+        (do-with-remote-sync-state-restored!
+         (fn []
+           (doseq [order [:a-first :b-first]]
+             (testing (str "the cleanup of RemoteSyncObject, against the ledger statements of an export: delete a "
+                           "departed row, then mark a written row synced; order " order)
+               (is (= {:proceed ::cleanup-blocked :cleanup nil :writer :committed :rows-left #{}}
+                      (cleanup-against-a-two-row-writer!
+                       th/clean-object :remote_sync_object insert-two-ledger-rows!
+                       #(remote-sync.db/delete-rsos! [%])
+                       #(remote-sync.db/set-rsos-status! [%] "synced" (t/offset-date-time))
+                       order))))
+             (testing (str "the cleanup of RemoteSyncTask, against a transaction that updates two task rows; order "
+                           order)
+               (is (= {:proceed ::cleanup-blocked :cleanup nil :writer :committed :rows-left #{}}
+                      (cleanup-against-a-two-row-writer!
+                       th/clean-task-table :remote_sync_task insert-two-task-rows!
+                       #(remote-sync.db/update-task! % {:progress 0.5})
+                       #(remote-sync.db/update-task! % {:progress 0.5})
+                       order)))))))))))
 
 (deftest clean-remote-sync-state-does-not-reindex-when-the-test-writes-no-content-test
   (testing "clean-remote-sync-state around a test that writes no content does not reindex search"
