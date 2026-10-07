@@ -559,8 +559,6 @@ describe("scenarios > dashboard > title drill", () => {
     describe("as a user with access to underlying data", () => {
       it("should let you click through the title to the query builder (metabase#13042)", () => {
         cy.get("@questionId").then((questionId) => {
-          cy.findByTestId("loading-indicator").should("not.exist");
-
           H.getDashboardCard().findByRole("link", { name: "Q1" }).as("title");
           cy.get("@title").realHover();
           cy.get("@title")
@@ -589,8 +587,6 @@ describe("scenarios > dashboard > title drill", () => {
 
       it("should let you click through the title to the query builder (metabase#13042)", () => {
         cy.get("@questionId").then((questionId) => {
-          cy.findByTestId("loading-indicator").should("not.exist");
-
           H.getDashboardCard().findByRole("link", { name: "Q1" }).as("title");
           cy.get("@title").trigger("mouseover");
           cy.get("@title")
@@ -1237,14 +1233,18 @@ describe("issue 29076", () => {
       .findAllByRole("row")
       .should("have.length", 1);
 
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Orders").click();
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Visualization").should("be.visible");
+    cy.intercept("POST", "/api/card/*/query").as("questionQuery");
+    H.getDashboardCard().findByRole("link", { name: "Orders" }).click();
+    cy.wait("@questionQuery");
+
+    cy.location("pathname").should(
+      "eq",
+      `/question/${ORDERS_QUESTION_ID}-orders`,
+    );
     H.assertQueryBuilderRowCount(1); // test that user is sandboxed - normal users has over 2000 rows
     H.assertDatasetReqIsSandboxed({
-      requestAlias: "@cardQuery",
-      columnId: ORDERS.USER_ID,
+      requestAlias: "@questionQuery",
+      columnId: ORDERS.ID,
       columnAssertion: Number(USERS.sandboxed.login_attributes.attr_uid),
     });
   });
@@ -1267,9 +1267,6 @@ describe("issue 42165", () => {
     cy.signInAsAdmin();
 
     cy.intercept("POST", "/api/dataset").as("dataset");
-    cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query").as(
-      "dashcardQuery",
-    );
 
     H.createDashboardWithQuestions({
       dashboardDetails: {
@@ -1322,12 +1319,21 @@ describe("issue 42165", () => {
   it("should use card name instead of series names when navigating to QB from dashcard title", () => {
     cy.get("@dashboardId").then((dashboardId) => {
       H.visitDashboard(dashboardId);
+      cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query").as(
+        "filteredQuery",
+      );
 
       H.filterWidget().click();
       H.popover().findByText("Previous 30 days").click();
-      cy.wait("@dashcardQuery");
+      cy.wait("@filteredQuery");
 
-      H.getDashboardCard(0).findByText("fooBarQuestion").click();
+      H.getDashboardCard(0).within(() => {
+        cy.findAllByTestId("legend-item").should("have.length", 5);
+        cy.findAllByTestId("legend-item")
+          .first()
+          .should("contain.text", "Affiliate");
+        cy.findByText("fooBarQuestion").click();
+      });
 
       cy.wait("@dataset");
       cy.title().should("eq", "fooBarQuestion · Metabase");
