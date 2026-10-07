@@ -24,7 +24,8 @@
   Google's covers connecting a Model Garden endpoint, which its fixed catalog cannot list."
   {"metabase" "metabase/cmd/resources/ai-provider-metabase.md"
    "bedrock"  "metabase/cmd/resources/ai-provider-bedrock.md"
-   "google"   "metabase/cmd/resources/ai-provider-google.md"})
+   "google"   "metabase/cmd/resources/ai-provider-google.md"
+   "ollama"   "metabase/cmd/resources/ai-provider-ollama.md"})
 
 (def ^:private dynamic-catalog-types
   "Provider types that serve whatever models the operator loaded, so there is no list to publish."

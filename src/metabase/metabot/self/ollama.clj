@@ -338,13 +338,20 @@
   run without its instructions and without tools it can name.
 
   The probes cannot show this. They are one-line prompts that fit in any window, so the truncation
-  they would reveal is of the *answer*; this truncates the *question*."
+  they would reveal is of the *answer*; this truncates the *question*.
+
+  The remedy differs by host. On a self-hosted server the window is server configuration. Cloud already
+  runs a model at its largest window, so a small window is the limit of the model, and the admin can only
+  pick a different one."
   [credentials model]
   (when-let [window (loaded-context-length credentials model)]
     (when (< window adapter/min-context-window-tokens)
       (throw (preflight-ex
-              (tru "{0} runs with a {1} token context window, which is too small for Metabot — it needs at least {2}."
-                   (str model) (str window) (str adapter/min-context-window-tokens)))))))
+              (if (conn/served-by-cloud? credentials model)
+                (tru "{0} runs with a {1} token context window, which is too small for Metabot. Pick a model with a context window of at least {2} tokens."
+                     (str model) (str window) (str adapter/min-context-window-tokens))
+                (tru "{0} runs with a {1} token context window, which is too small for Metabot. Configure Ollama to load the model with a context window of at least {2} tokens."
+                     (str model) (str window) (str adapter/min-context-window-tokens))))))))
 
 (def ^:private max-fallback-candidates
   "How many chat models the connect path tries before giving up. Each costs a model load and two

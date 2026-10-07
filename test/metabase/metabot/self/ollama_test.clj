@@ -646,7 +646,7 @@
                 "is where the tools and the system prompt are, so Metabot would run with neither.")
     (is (thrown-with-msg?
          clojure.lang.ExceptionInfo
-         #"4096 token context window, which is too small for Metabot — it needs at least 16384"
+         #"4096 token context window, which is too small for Metabot\. Configure Ollama to load the model with a context window of at least 16384 tokens\.$"
          (probe! [{:id "good-model" :context-length 4096}] tool-calling-message))))
   (testing "a window that clears the floor passes"
     (is (= "good-model"
@@ -715,7 +715,7 @@
                 "server that was started with too small a window")
     (is (thrown-with-msg?
          clojure.lang.ExceptionInfo
-         #"4096 token context window, which is too small for Metabot — it needs at least 16384"
+         #"4096 token context window, which is too small for Metabot\. Pick a model with a context window of at least 16384 tokens\.$"
          (cloud-probe! [{:id "small-window-model" :context-length 4096}]))))
   (testing "a Cloud model whose window clears the floor passes"
     (is (= "big-window-model"

@@ -378,6 +378,10 @@ Credentials:
 - **API base URL** (required). Your Ollama server's address, ending in /v1, or https://ollama.com/v1 for Ollama Cloud. To reach a server on your private network, set MB_LLM_ALLOWED_NETWORKS=allow-private; for one on this machine, allow-all. You can also set it with the environment variable `MB_LLM_OLLAMA_API_BASE_URL`.
 - **API key**. Required for Ollama Cloud. Leave blank if your server doesn't require one. You can also set it with the environment variable `MB_LLM_OLLAMA_API_KEY`.
 
+### Context window
+
+Ollama can load a model with a smaller context window than the model supports. Metabot needs at least 16,384 tokens, and Metabase checks the window when you connect. See Ollama's documentation on [context length](https://docs.ollama.com/context-length).
+
 ## Metabase AI service
 
 - Provider key: `metabase`
