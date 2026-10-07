@@ -154,6 +154,11 @@
                     #(if (= 'example.real-ns %)
                        {:clj  proxied-vars
                         :cljs {'proxied-multi {:ns 'example.real-ns, :name 'proxied-multi, :fixed-arities #{1}}}}
+                       (stub-ns-analysis %))))))
+  (testing "a private defn in a re-export source can't be what a var of the same name was imported from"
+    (is (= [] (lint '(with-redefs [proxied-fn (fn [& _] nil)] :body)
+                    #(if (= 'example.real-ns %)
+                       {:clj (assoc-in proxied-vars ['proxied-fn :private] true)}
                        (stub-ns-analysis %)))))))
 
 (deftest ^:synchronized follows-nested-re-exports-test

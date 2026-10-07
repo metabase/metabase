@@ -37,7 +37,7 @@
         (let [proxied (for [ns-sym (get-in analysis [:clj :proxied-namespaces])
                             :when  (not (seen ns-sym))]
                         [ns-sym (:clj (ns-analysis ns-sym))])
-              sources (filter (fn [[_ vars]] (contains? vars var-sym)) proxied)]
+              sources (filter (fn [[_ vars]] (when-let [v (get vars var-sym)] (not (:private v)))) proxied)]
           (and (every? (comp some? second) proxied)
                (seq sources)
                (every? (fn [[ns-sym vars]] (defn-arity? {:clj vars} var-sym (conj seen ns-sym))) sources)))))))
