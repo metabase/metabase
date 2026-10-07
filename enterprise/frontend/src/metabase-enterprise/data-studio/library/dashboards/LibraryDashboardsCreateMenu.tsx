@@ -7,8 +7,10 @@ import type {
   EntityPickerOptions,
   OmniPickerItem,
 } from "metabase/common/components/Pickers";
+import { useNavigate } from "metabase/router";
 import { Button, FixedSizeIcon, Icon, Menu } from "metabase/ui";
-import type { CollectionId } from "metabase-types/api";
+import * as Urls from "metabase/urls";
+import type { CollectionId, Dashboard } from "metabase-types/api";
 
 // Only the Library › Dashboards folder (and its subfolders) can be picked
 const PICKER_OPTIONS: EntityPickerOptions = {
@@ -38,6 +40,16 @@ export function LibraryDashboardsCreateMenu({
     isCollectionModalOpen,
     { open: openCollectionModal, close: closeCollectionModal },
   ] = useDisclosure(false);
+  const navigate = useNavigate();
+
+  // Open the new dashboard in the editor; saving or canceling there brings
+  // the user to its Data Studio page
+  const handleDashboardCreated = (dashboard: Dashboard) => {
+    closeDashboardModal();
+    navigate(Urls.dashboard(dashboard, { editMode: true }), {
+      state: { returnTo: Urls.dataStudioLibraryDashboard(dashboard.id) },
+    });
+  };
 
   return (
     <>
@@ -68,6 +80,7 @@ export function LibraryDashboardsCreateMenu({
             options: PICKER_OPTIONS,
             isHiddenItem: isHiddenPickerItem,
           }}
+          onCreate={handleDashboardCreated}
           onClose={closeDashboardModal}
         />
       )}
