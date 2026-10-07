@@ -37,17 +37,13 @@ export const setupRemoteSyncBranchesEndpoint = (
 };
 
 /**
- * Setup the remote-sync current-task endpoint
+ * Setup the remote-sync current-task endpoint with no current task
  */
-const setupRemoteSyncCurrentTaskEndpoint = (
-  status: "idle" | "running" | "completed" = "idle",
-) => {
+const setupRemoteSyncCurrentTaskEndpoint = () => {
   fetchMock.removeRoute("remote-sync-current-task");
-  fetchMock.get(
-    "path:/api/ee/remote-sync/current-task",
-    { status },
-    { name: "remote-sync-current-task" },
-  );
+  fetchMock.get("path:/api/ee/remote-sync/current-task", 204, {
+    name: "remote-sync-current-task",
+  });
 };
 
 export interface RemoteSyncSettingsResponse {
@@ -211,7 +207,7 @@ export const setupRemoteSyncEndpoints = ({
 } = {}) => {
   setupRemoteSyncBranchesEndpoint(branches);
   setupRemoteSyncDirtyEndpoint({ dirty, changedCollections });
-  setupRemoteSyncCurrentTaskEndpoint("idle");
+  setupRemoteSyncCurrentTaskEndpoint();
   setupRemoteSyncImportEndpoint();
   setupRemoteSyncExportEndpoint();
   setupRemoteSyncExportPreflightEndpoint(exportPreflight);
