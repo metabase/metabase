@@ -87,9 +87,8 @@ OAuth protected resource metadata is available at:
 /.well-known/oauth-protected-resource/api/metabase-mcp
 ```
 
-On the consent screen, the baseline scopes are ticked and locked, the full-access scope starts unticked, and every other
-scope the client requested starts ticked. Only the scopes left ticked are granted, and only for the token this
-authorization mints: an untick never touches a token the app already has. A scope left unticked is not remembered by
+On the consent screen, every scope the client requested starts ticked, and the baseline scopes are also locked. Only
+the scopes left ticked are granted, and only for the token this authorization mints: an untick never touches a token the app already has. A scope left unticked is not remembered by
 Metabase. A later 403 can trigger another step-up in clients that support it. Other clients may require manual
 reauthorization. Each challenge's `error_description` ends with a note that the user must grant the permission on the
 consent screen.

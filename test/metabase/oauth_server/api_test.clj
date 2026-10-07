@@ -2278,7 +2278,7 @@
                   "agent:content:write" "agent:sql:run" "agent:delivery:write"
                   not-v2 oauth-server/full-access-scope]
                  (map :scope (consent-checkboxes body))))
-          (testing "the baseline is ticked and locked; `mb:full` starts unticked; everything else starts ticked (GHY-4826)"
+          (testing "the baseline is ticked and locked; everything else, `mb:full` included, starts ticked (GHY-4826)"
             (is (= {"agent:resource:read"          [true true]
                     "agent:content:read"           [true true]
                     "agent:query:run"              [true true]
@@ -2286,7 +2286,7 @@
                     "agent:sql:run"                [true false]
                     "agent:delivery:write"         [true false]
                     not-v2                         [true false]
-                    oauth-server/full-access-scope [false false]}
+                    oauth-server/full-access-scope [true false]}
                    (into {} (map (juxt :scope (juxt :checked? :disabled?))) (consent-checkboxes body))))))))))
 
 (deftest consent-scope-order-covers-v2-scopes-test
