@@ -68,8 +68,8 @@ export function extractDocsLinks(fileName: string, text: string): DocsLink[] {
   return links;
 }
 
-// The docs site renders markdown with kramdown, whose ids differ from GitHub's for headings
-// that start with a digit or punctuation: "2. Add an endpoint" becomes "add-an-endpoint".
+// Same ids as GitHub: the docs site keeps leading digits and underscores ("2. Add `MB_API_KEY`"
+// becomes "2-add-mb_api_key"), and drops the markers around _emphasis_.
 export function headingIds(markdown: string): Set<string> {
   const ids = new Set<string>();
   let inFence = false;
@@ -90,10 +90,9 @@ export function headingIds(markdown: string): Set<string> {
       heading[1]
         .replace(/\[([^\]]*)]\([^)]*\)/g, "$1")
         .replace(/[`*]|\b_|_\b/g, "")
-        .replace(/^[^a-zA-Z]+/, "")
-        .replace(/[^a-zA-Z0-9 -]/g, "")
-        .replace(/ /g, "-")
-        .toLowerCase() || "section";
+        .toLowerCase()
+        .replace(/[^\p{L}\p{M}\p{N}\p{Pc} -]/gu, "")
+        .replace(/ /g, "-");
     let id = base;
     for (let n = 1; ids.has(id); n++) {
       id = `${base}-${n}`;

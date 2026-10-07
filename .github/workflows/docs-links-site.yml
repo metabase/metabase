@@ -1,0 +1,41 @@
+name: Check metabase.com links
+
+on:
+  schedule:
+    - cron: "0 5 * * *"
+  workflow_dispatch:
+
+jobs:
+  site-links:
+    name: Check metabase.com links against the live site
+    if: ${{ github.event_name != 'schedule' || github.repository == 'metabase/metabase' }}
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+        with:
+          sparse-checkout: |
+            docs
+            frontend/src
+            enterprise/frontend/src
+            src
+            enterprise/backend/src
+            resources
+            modules
+
+      - name: Install lychee
+        env:
+          LYCHEE_VERSION: "0.24.2"
+          LYCHEE_SHA256: 1f4e0ef7f6554a6ed33dd7ac144fb2e1bbed98598e7af973042fc5cd43951c9a
+        run: |
+          archive=lychee-x86_64-unknown-linux-gnu.tar.gz
+          curl -sSfL -o "$archive" "https://github.com/lycheeverse/lychee/releases/download/lychee-v${LYCHEE_VERSION}/$archive"
+          echo "$LYCHEE_SHA256  $archive" | sha256sum -c -
+          tar xzf "$archive"
+          sudo install lychee-x86_64-unknown-linux-gnu/lychee /usr/local/bin/lychee
+
+      - name: Check metabase.com links
+        run: docs/util/check-links.sh site
