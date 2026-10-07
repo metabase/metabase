@@ -241,21 +241,29 @@
       (catch OverlappingFileLockException _
         false))))
 
+(def ^:private new-lock-file-ms
+  "A sweep keeps a process root whose lock file is younger than this, in ms."
+  60000)
+
 (defn- sweep-roots!
-  "Deletes each process root in `base-dir` that this JVM did not make and whose lock is free. Keeps a root with no lock
-  file, and a root whose lock check throws."
+  "Deletes each process root in `base-dir` that this JVM did not make, whose lock file is older than
+  [[new-lock-file-ms]], and whose lock is free. Keeps a root with no lock file, and a root whose lock check throws."
   [^File base-dir]
-  (doseq [^File dir (.listFiles base-dir)
-          :when     (and (str/starts-with? (.getName dir) "p-")
-                         (Files/isDirectory (.toPath dir) (no-follow))
-                         (not (contains? @own-roots (.getCanonicalPath dir))))]
-    (when (try
-            (lock-free? dir)
-            (catch Exception e
-              (log/debug e "Kept a git clone directory whose lock could not be checked" {:path (str dir)})
-              false))
-      (log/info "Deleting the git clone directory of a stopped process" {:path (str dir)})
-      (delete-dir! dir))))
+  (let [now (System/currentTimeMillis)]
+    (doseq [^File dir (.listFiles base-dir)
+            :when     (and (str/starts-with? (.getName dir) "p-")
+                           (Files/isDirectory (.toPath dir) (no-follow))
+                           (not (contains? @own-roots (.getCanonicalPath dir))))]
+      (when (try
+              ;; A process creates its lock file before it takes the lock, so a new lock file can be free for a moment.
+              ;; A missing lock file gives 0 here, and then lock-free? throws.
+              (and (> (- now (.lastModified (io/file dir lock-file-name))) new-lock-file-ms)
+                   (lock-free? dir))
+              (catch Exception e
+                (log/debug e "Kept a git clone directory whose lock could not be checked" {:path (str dir)})
+                false))
+        (log/info "Deleting the git clone directory of a stopped process" {:path (str dir)})
+        (delete-dir! dir)))))
 
 (def ^:private old-clone-name
   "The name of a clone directory of an earlier Metabase version: a SHA-1 in hexadecimal, alone or followed by `-` and a
@@ -300,14 +308,18 @@
         (delete-dir! dir)))))
 
 (defn- sweep!
-  "Deletes the process roots of stopped processes in the base directory of `registry`. At the first sweep of `registry`,
-  when it has an `:old-clone-idle-ms`, also deletes the idle clone directories of earlier Metabase versions. A failure
-  is logged."
+  "Deletes the process roots of stopped processes in the base directory of `registry`. When `registry` has an
+  `:old-clone-idle-ms`, the first sweep in which that function returns also deletes the idle clone directories of
+  earlier Metabase versions. A failure is logged."
   [{:keys [^File base-dir old-clone-idle-ms old-clones-swept?]}]
   (try
     (sweep-roots! base-dir)
-    (when (and old-clone-idle-ms (compare-and-set! old-clones-swept? false true))
-      (sweep-old-clones! base-dir (long (old-clone-idle-ms))))
+    ;; The flag is set only after the read of the idle time succeeds, so that a throw of the read does not stop the
+    ;; old-clone sweep for the life of the registry.
+    (when (and old-clone-idle-ms (not @old-clones-swept?))
+      (let [idle-ms (long (old-clone-idle-ms))]
+        (when (compare-and-set! old-clones-swept? false true)
+          (sweep-old-clones! base-dir idle-ms))))
     (catch Throwable e
       (log/warn e "Could not delete the git clone directories of stopped processes" {:path (str base-dir)}))))
 
@@ -323,15 +335,16 @@
 (defn make-registry
   "A registry whose process root is a new directory under `base-dir`. It changes nothing on disk before its first clone.
   Each new process root that it locks starts a sweep of `base-dir`: the sweep deletes each process root of another
-  process whose lock is free. It never opens the lock file of a root that this JVM made. Where the lock call throws, the
-  registry runs with no sweep.
+  process whose lock is free and whose lock file is older than [[new-lock-file-ms]]. It never opens the lock file of a
+  root that this JVM made. Where the lock call throws, the registry runs with no sweep.
 
   `max-lease-age-ms`, when given, is a function of no arguments that returns the age limit of a lease in ms. Each
   [[acquire!]] and [[retire!]] of a URL logs each lease of that URL that is older than the limit, one time.
 
-  `old-clone-idle-ms`, when given, is a function of no arguments that returns a time in ms. The first sweep then also
-  deletes each clone directory of an earlier Metabase version directly in `base-dir` that nobody wrote to for longer
-  than that time: a directory whose name is a SHA-1 in lowercase hexadecimal, alone or followed by `-` and a UUID."
+  `old-clone-idle-ms`, when given, is a function of no arguments that returns a time in ms. The first sweep in which it
+  returns also deletes each clone directory of an earlier Metabase version directly in `base-dir` that nobody wrote to
+  for longer than that time: a directory whose name is a SHA-1 in lowercase hexadecimal, alone or followed by `-` and a
+  UUID."
   ([^File base-dir]
    (make-registry base-dir nil))
   ([^File base-dir {:keys [max-lease-age-ms old-clone-idle-ms]}]
