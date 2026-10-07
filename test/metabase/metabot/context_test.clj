@@ -7,6 +7,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-metadata :as meta]
    [metabase.metabot.agent.user-context :as user-context]
+   [metabase.metabot.config :as metabot.config]
    [metabase.metabot.context :as context]
    [metabase.metabot.curation :as curation]
    [metabase.metabot.table-utils :as table-utils]
@@ -15,6 +16,10 @@
 
 (def ^:private users-native-query (lib/native-query meta/metadata-provider "SELECT * FROM users"))
 (def ^:private users-mbql-query (lib/query meta/metadata-provider (meta/table-metadata :users)))
+
+(defn- create-context
+  [context]
+  (context/create-context context {:metabot (metabot.config/resolve-metabot metabot.config/internal-metabot-id)}))
 
 (deftest database-tables-for-context-returns-stubs
   (testing "Used tables become lightweight stubs — id/type/name/schema/description only, never columns"
@@ -118,7 +123,7 @@
         (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Table table-id :selection)
         (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Dashboard dash-id :view)
         (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Collection col-id :view)
-        (let [recently-viewed (-> (context/create-context {})
+        (let [recently-viewed (-> (create-context {})
                                   :user_recently_viewed)]
           (is (= 5 (count recently-viewed)))
           ;; Assert that collection is excluded even though it was viewed most recently
@@ -134,7 +139,7 @@
           (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Card card-id :view)
           (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Table table-id :selection)
           (mt/with-temporary-setting-values [metabot-recent-views-enabled? false]
-            (let [ctx (context/create-context {})]
+            (let [ctx (create-context {})]
               (is (not (contains? ctx :user_recently_viewed))))))))))
 
 (deftest recent-views-disabled-strips-preexisting-test
@@ -207,7 +212,7 @@
               keys-of (fn [items] (set (map (juxt :type :id) items)))]
           (testing "The default Metabot includes recent views"
             (mt/with-premium-features #{:content-verification}
-              (let [items (-> (context/create-context {}) :user_recently_viewed)
+              (let [items (-> (create-context {}) :user_recently_viewed)
                     ks    (keys-of items)]
                 (is (= 5 (count items)))
                 (is (contains? ks uq*))
@@ -286,7 +291,7 @@
             raw      {:user_is_viewing [{:type  "adhoc"
                                          :query (lib/query  mp (lib.metadata/table mp (mt/id :orders)))}]
                       :current_time_with_timezone "2025-01-15T12:00:00+02:00"}
-            enriched (context/create-context raw)
+            enriched (create-context raw)
             uc-vars  (user-context/enrich-context-for-template enriched)
             viewing  (:viewing_context uc-vars)]
         (testing "viewing context is non-empty"

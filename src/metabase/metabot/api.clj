@@ -430,9 +430,8 @@
             [:positive          :boolean]
             [:issue_type        {:optional true} [:maybe :string]]
             [:freeform_feedback {:optional true} [:maybe :string]]]]
-  (let [metabot (metabot.config/resolve-metabot (:metabot_id body))]
-    (metabot.config/check-metabot-enabled! metabot)
-    (metabot.feedback/persist-feedback! (assoc body :metabot_id (:id metabot))))
+  (metabot.config/check-metabot-enabled!)
+  (metabot.feedback/persist-feedback! body)
   api/generic-204-no-content)
 
 (api.macros/defendpoint :post "/source-feedback" :- [:map
@@ -447,9 +446,8 @@
             [:source_id    ms/PositiveInt]
             [:source_type  [:enum "table" "card" "model"]]
             [:positive     :boolean]]]
-  (let [metabot (metabot.config/resolve-metabot (:metabot_id body))]
-    (metabot.config/check-metabot-enabled! metabot)
-    (metabot.feedback/persist-source-feedback! (assoc body :metabot_id (:id metabot))))
+  (metabot.config/check-metabot-enabled!)
+  (metabot.feedback/persist-source-feedback! body)
   api/generic-204-no-content)
 
 (def ^{:arglists '([request respond raise])} routes

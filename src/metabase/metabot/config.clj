@@ -13,6 +13,11 @@
   "The entity ID of the embedded Metabot instance."
   "embeddedmetabotmetabo")
 
+(def legacy-metabot-ids
+  "Legacy UUIDs mapped to Metabot entity IDs."
+  {"b5716059-ad40-4d83-a4e1-673af020b2d8" internal-metabot-id
+   "c61bf5f5-1025-47b6-9298-bf1827105bb6" embedded-metabot-id})
+
 (defn any-metabot-enabled?
   "Returns true if at least one of the metabot instances (internal or embedded) is enabled."
   []
@@ -45,23 +50,30 @@
        metabot-id))
 
 (defn resolve-dynamic-metabot-id
-  "Resolve an explicit ID, the configured ID, or the internal Metabot entity ID."
+  "Resolve an explicit ID, the configured ID, or the internal Metabot entity ID.
+
+  Maps UUIDs in [[legacy-metabot-ids]] to their entity IDs."
   [metabot-id]
   (let [metabot-id (or metabot-id
                        (metabot.settings/metabot-id)
                        internal-metabot-id)]
-    (get {"b5716059-ad40-4d83-a4e1-673af020b2d8" internal-metabot-id
-          "c61bf5f5-1025-47b6-9298-bf1827105bb6" embedded-metabot-id}
-         metabot-id metabot-id)))
+    (get legacy-metabot-ids metabot-id metabot-id)))
+
+(defn find-metabot
+  "Return the Metabot row for an entity ID, a legacy UUID, or a numeric primary key, or nil.
+
+  A nil ID uses the configured or internal Metabot."
+  [metabot-id]
+  (if (integer? metabot-id)
+    (metabot.db/metabot metabot-id)
+    (metabot.db/metabot-by-entity-id (resolve-dynamic-metabot-id metabot-id))))
 
 (defn resolve-metabot
   "Return the Metabot row for an entity ID, a legacy UUID, or a numeric primary key.
 
   A nil ID uses the configured or internal Metabot. Throws a 400 if the ID matches no Metabot."
   [metabot-id]
-  (let [metabot (if (integer? metabot-id)
-                  (metabot.db/metabot metabot-id)
-                  (metabot.db/metabot-by-entity-id (resolve-dynamic-metabot-id metabot-id)))]
+  (let [metabot (find-metabot metabot-id)]
     (api/check metabot [400 "Unknown Metabot."])
     metabot))
 

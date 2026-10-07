@@ -16,7 +16,6 @@
    [metabase.metabot.agent.profiles :as profiles]
    [metabase.metabot.agent.streaming :as streaming]
    [metabase.metabot.capabilities :as capabilities]
-   [metabase.metabot.config :as metabot.config]
    [metabase.metabot.context :as metabot.context]
    [metabase.metabot.metadata-perms :as metabot.perms]
    [metabase.metabot.schema :as metabot.schema]
@@ -705,7 +704,7 @@
   [opts :- [:map {:closed true}
             [:messages ::messages]
             [:profile-id ::profile-id]
-            [:metabot {:optional true} ::metabot.schema/metabot]
+            [:metabot ::metabot.schema/metabot]
             [:conversation-id {:optional true} [:maybe :string]]
             [:state {:optional true} [:maybe ::metabot.schema/state]]
             [:context {:optional true} [:maybe ::context]]
@@ -719,9 +718,7 @@
              [:maybe [:and [:string {:max ait/max-session-id-length}] [:re ait/safe-session-id-re]]]]
             [:debug? {:optional true} [:maybe :boolean]]
             [:memory-atom {:optional true} [:maybe [:fn #(instance? clojure.lang.Atom %)]]]]]
-  (let [opts               (-> opts
-                               (assoc :metabot (or (:metabot opts) (metabot.config/resolve-metabot nil)))
-                               (m/update-existing-in [:context :capabilities] capabilities/enforce-permissions))
+  (let [opts               (m/update-existing-in opts [:context :capabilities] capabilities/enforce-permissions)
         profile-id         (:profile-id opts)
         debug?             (:debug? opts)
         labels             {:profile-id (name profile-id)}

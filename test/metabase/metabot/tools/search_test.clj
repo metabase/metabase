@@ -3,6 +3,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.api.common :as api]
+   [metabase.collections.models.collection :as collection]
    [metabase.lib-be.metadata.jvm :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.metabot.config :as metabot.config]
@@ -778,17 +779,24 @@
     (search.tu/with-temp-index-table
       (mt/with-temp [:model/Collection {collection-id :id} {:name "Embedded sources" :authority_level "official"}
                      :model/Collection {elsewhere-id :id} {:name "Other sources" :authority_level "official"}
+                     :model/Collection {drafts-id :id} {:name "Embedded drafts"
+                                                        :location (collection/location-path collection-id)}
                      :model/Dashboard {included-id :id} {:name "Embedded report" :collection_id collection-id}
+                     :model/Dashboard {draft-id :id} {:name "Embedded report draft" :collection_id drafts-id}
                      :model/Dashboard _ {:name "Embedded report elsewhere" :collection_id elsewhere-id}]
         (mt/with-temp-vals-in-db :model/Metabot
                                  (:id (metabot.config/resolve-metabot metabot.config/embedded-metabot-id))
                                  {:collection_id collection-id :use_verified_content true}
           (doseq [request-id [metabot.config/embedded-metabot-id "c61bf5f5-1025-47b6-9298-bf1827105bb6"]]
-            (is (= [included-id]
-                   (mapv :id (search/search {:term-queries ["Embedded report"]
-                                             :entity-types ["dashboard"]
-                                             :collection-id elsewhere-id
-                                             :metabot (metabot.config/resolve-metabot request-id)}))))))))))
+            (let [metabot (metabot.config/resolve-metabot request-id)
+                  search-args {:term-queries ["Embedded report"]
+                               :entity-types ["dashboard"]
+                               :collection-id elsewhere-id
+                               :metabot metabot}]
+              (is (= #{included-id draft-id}
+                     (into #{} (map :id) (search/search (assoc-in search-args [:metabot :use_verified_content] false)))))
+              (is (= [included-id]
+                     (mapv :id (search/search search-args)))))))))))
 
 (deftest confined-collection-is-not-overridable-test
   (testing "an embedded metabot (and the nlq profile) is confined to its own collection — that is a

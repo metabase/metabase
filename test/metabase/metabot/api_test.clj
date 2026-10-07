@@ -48,10 +48,15 @@
              ["c61bf5f5-1025-47b6-9298-bf1827105bb6" "embeddedmetabotmetabo" :embedding_next]
              [nil "metabotmetabotmetabot" :internal]]]
       (testing (str "Metabot request id " request-id)
-        (let [received (atom nil)]
+        (let [received (atom nil)
+              received-context (atom nil)
+              create-context (mt/original-fn #'metabot.context/create-context)]
           (mt/with-model-cleanup [:model/MetabotMessage
                                   [:model/MetabotConversation :created_at]]
-            (mt/with-dynamic-fn-redefs [agent/run-agent-loop (fn [opts]
+            (mt/with-dynamic-fn-redefs [metabot.context/create-context (fn [ctx opts]
+                                                                         (reset! received-context opts)
+                                                                         (create-context ctx opts))
+                                        agent/run-agent-loop (fn [opts]
                                                                (reset! received opts)
                                                                [])
                                         conversation-title/ensure-title! (constantly {:status :missing})]
@@ -62,6 +67,7 @@
                                       request-id (assoc :metabot_id request-id)))
               (is (= (t2/select-one :model/Metabot :entity_id entity-id)
                      (:metabot @received)))
+              (is (= (:metabot @received) (:metabot @received-context)))
               (is (= profile-id (:profile-id @received))))))))))
 
 (deftest agent-streaming-unknown-metabot-test
@@ -74,17 +80,17 @@
                                   :conversation_id conversation-id})))
     (is (not (t2/exists? :model/MetabotConversation :id conversation-id)))))
 
-(deftest feedback-metabot-resolution-test
-  (let [metabot (t2/select-one :model/Metabot :entity_id metabot.config/internal-metabot-id)
-        received (atom nil)]
-    (mt/with-dynamic-fn-redefs [metabot.feedback/persist-feedback! #(reset! received %)
-                                metabot.feedback/persist-source-feedback! #(reset! received %)]
-      (doseq [metabot-id [(:id metabot) (:entity_id metabot)]
-              [endpoint feedback] [["feedback" {:positive true}]
-                                   ["source-feedback" {:positive true :source_id 42 :source_type "table"}]]]
-        (mt/user-http-request :rasta :post 204 (str "metabot/" endpoint)
-                              (assoc feedback :metabot_id metabot-id :message_id "test-message"))
-        (is (= (:id metabot) (:metabot_id @received)))))))
+(deftest feedback-metabot-id-test
+  (mt/with-temp [:model/Metabot {:keys [id entity_id]} {:name "Feedback Metabot"}]
+    (mt/with-temporary-setting-values [metabot-enabled? false
+                                       embedded-metabot-enabled? true]
+      (mt/with-dynamic-fn-redefs [metabot.feedback/persist-feedback! (constantly nil)
+                                  metabot.feedback/persist-source-feedback! (constantly nil)]
+        (doseq [metabot-id [id entity_id]
+                [endpoint feedback] [["feedback" {:positive true}]
+                                     ["source-feedback" {:positive true :source_id 42 :source_type "table"}]]]
+          (mt/user-http-request :rasta :post 204 (str "metabot/" endpoint)
+                                (assoc feedback :metabot_id metabot-id :message_id "test-message")))))))
 
 (deftest native-agent-streaming-test
   (mt/with-temporary-setting-values [llm.settings/llm-providers llm.tu/default-connections

@@ -99,7 +99,7 @@
                                        [:sample {:optional true} :boolean]
                                        [:model {:optional true} [:enum "metric" "model"]]
                                        [:model_id {:optional true} pos-int?]]]
-  (let [id      (:id (metabot.config/resolve-metabot id))
+  (let [id      (:id (api/check-404 (metabot.config/find-metabot id) "Unknown Metabot."))
         offset  (when-not sample (request/offset))
         total   (metabot.db/prompt-count id model model_id)
         prompts (metabot.db/prompts id model model_id sample (request/limit) offset)]

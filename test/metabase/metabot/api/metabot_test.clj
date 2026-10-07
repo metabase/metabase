@@ -24,7 +24,7 @@
               (mt/user-http-request :rasta :get 200
                                     (format "metabot/metabot/%s/prompt-suggestions" metabot-id))))))
   (is (= "Unknown Metabot."
-         (mt/user-http-request :rasta :get 400 "metabot/metabot/nonexistent-entity-id/prompt-suggestions"))))
+         (mt/user-http-request :rasta :get 404 "metabot/metabot/nonexistent-entity-id/prompt-suggestions"))))
 
 (defmacro with-clean-metabots
   "Macro to reset the Metabots table to an empty state before a test and restore it after the test runs."
