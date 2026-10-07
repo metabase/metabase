@@ -53,6 +53,7 @@ describe("Transform Embedding Theme Override", () => {
         "button_label-subtle-neutral-default": expect.arrayContaining([
           "yellow",
         ]),
+        "icon-primary": expect.arrayContaining(["yellow"]),
         "text-tertiary": expect.arrayContaining(["green"]),
         "text-disabled": expect.arrayContaining(["green"]),
         "background-primary": expect.arrayContaining(["orange"]),
