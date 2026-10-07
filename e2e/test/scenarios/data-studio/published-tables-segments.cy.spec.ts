@@ -19,34 +19,8 @@ describe("scenarios > data studio > library > published tables > segments", () =
     cy.intercept("PUT", "/api/segment/*").as("updateSegment");
   });
 
-  describe("Segment list", () => {
-    it("should show empty state and navigate to new segment page", () => {
-      H.DataStudio.Tables.visitSegmentsPage(ORDERS_ID);
-
-      SegmentList.getEmptyState().scrollIntoView().should("be.visible");
-      SegmentList.getNewSegmentLink().scrollIntoView().click();
-
-      cy.url().should(
-        "include",
-        `/data-studio/library/tables/${ORDERS_ID}/segments/new`,
-      );
-    });
-
-    it("should display segments and navigate to edit page", () => {
-      createTestSegment({ name: "High Value Orders" });
-      H.DataStudio.Tables.visitSegmentsPage(ORDERS_ID);
-
-      SegmentList.getSegment("High Value Orders").click();
-
-      cy.get<number>("@segmentId").then((segmentId) => {
-        cy.url().should(
-          "include",
-          `/data-studio/library/tables/${ORDERS_ID}/segments/${segmentId}`,
-        );
-      });
-    });
-
-    it("should navigate between Overview, Fields, and Segments tabs", () => {
+  describe("Segment list and creation", () => {
+    it("should navigate between tabs, show empty state, create a segment and redirect to edit page", () => {
       H.DataStudio.Tables.visitOverviewPage(ORDERS_ID);
 
       H.DataStudio.Tables.overviewTab().should("be.visible");
@@ -62,13 +36,15 @@ describe("scenarios > data studio > library > published tables > segments", () =
       H.DataStudio.Tables.overviewTab().click();
       cy.url().should("include", `/data-studio/library/tables/${ORDERS_ID}`);
       cy.url().should("not.include", "/segments");
-    });
-  });
 
-  describe("Segment creation", () => {
-    it("should create a segment and redirect to edit page", () => {
+      cy.log("create a segment");
       H.DataStudio.Tables.visitSegmentsPage(ORDERS_ID);
-      SegmentList.getNewSegmentLink().click();
+      SegmentList.getEmptyState().scrollIntoView().should("be.visible");
+      SegmentList.getNewSegmentLink().scrollIntoView().click();
+      cy.url().should(
+        "include",
+        `/data-studio/library/tables/${ORDERS_ID}/segments/new`,
+      );
 
       SegmentEditor.getNameInput().type("Premium Orders");
       SegmentEditor.getFilterPlaceholder().click();
@@ -90,22 +66,15 @@ describe("scenarios > data studio > library > published tables > segments", () =
     });
   });
 
-  describe("Breadcrumbs", () => {
-    it("should display collection-based breadcrumbs", () => {
-      createTestSegment({ name: "Breadcrumb Test Segment" });
+  describe("Segment navigation and deletion", () => {
+    it("should navigate back via collection-based breadcrumbs, open a segment from the list and redirect to the list after deletion", () => {
+      createTestSegment("Segment to Delete");
       cy.get<number>("@segmentId").then((segmentId) => {
         H.DataStudio.Tables.visitSegmentPage(ORDERS_ID, segmentId);
       });
 
+      cy.log("navigate back via breadcrumbs");
       SegmentEditor.get().findByText("Data").should("be.visible");
-    });
-
-    it("should navigate back to published table segments via breadcrumb", () => {
-      createTestSegment({ name: "Breadcrumb Nav Test" });
-      cy.get<number>("@segmentId").then((segmentId) => {
-        H.DataStudio.Tables.visitSegmentPage(ORDERS_ID, segmentId);
-      });
-
       SegmentEditor.getBreadcrumb("Orders").click();
 
       cy.url().should(
@@ -113,13 +82,19 @@ describe("scenarios > data studio > library > published tables > segments", () =
         `/data-studio/library/tables/${ORDERS_ID}/segments`,
       );
       cy.url().should("not.match", /segments\/\d+/);
-    });
-  });
 
-  describe("Segment deletion", () => {
-    it("should redirect to published table segments list after deletion", () => {
-      createTestSegment({ name: "Segment to Delete" });
+      cy.log("open the segment from the list");
+      SegmentList.getSegment("Segment to Delete").click();
       cy.get<number>("@segmentId").then((segmentId) => {
+        cy.url().should(
+          "include",
+          `/data-studio/library/tables/${ORDERS_ID}/segments/${segmentId}`,
+        );
+        SegmentEditor.get()
+          .findByDisplayValue("Segment to Delete")
+          .should("be.visible");
+
+        cy.log("delete after a direct visit");
         H.DataStudio.Tables.visitSegmentPage(ORDERS_ID, segmentId);
       });
 
@@ -138,12 +113,9 @@ describe("scenarios > data studio > library > published tables > segments", () =
   });
 });
 
-function createTestSegment(opts: { name?: string; description?: string } = {}) {
-  const { name = "Test Segment", description } = opts;
-
+function createTestSegment(name: string) {
   H.createSegment({
     name,
-    description,
     definition: {
       type: "query",
       database: SAMPLE_DB_ID,

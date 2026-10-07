@@ -71,6 +71,7 @@ import compare_component from "./compare.svg?component";
 import connections_component from "./connections.svg?component";
 import contract_component from "./contract.svg?component";
 import copy_component from "./copy.svg?component";
+import corner_down_right_component from "./corner_down_right.svg?component";
 import corner_up_right_component from "./corner_up_right.svg?component";
 import currency_component from "./currency.svg?component";
 import curve_component from "./curve.svg?component";
@@ -375,6 +376,7 @@ export const Icons: Record<IconName, React.VFC> = {
   connections: connections_component,
   contract: contract_component,
   copy: copy_component,
+  corner_down_right: corner_down_right_component,
   corner_up_right: corner_up_right_component,
   currency: currency_component,
   curved: curved_component,

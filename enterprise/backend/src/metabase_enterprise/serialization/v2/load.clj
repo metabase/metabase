@@ -222,8 +222,12 @@
           (try
             (with-retries 3 200
               (fn []
-                (t2/with-transaction [_tx]
-                  (serdes/load-one! ingested local-or-nil))))
+                (try
+                  (t2/with-transaction [_tx]
+                    (serdes/load-one! ingested local-or-nil))
+                  (catch Throwable e
+                    (serdes/reset-import-cache!)
+                    (throw e)))))
             ctx
             (catch Exception e
               ;; if the entity was part of a dependency loop, a stripped version of it may already be committed; with

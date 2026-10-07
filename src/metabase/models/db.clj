@@ -259,11 +259,6 @@
   [database-id :- [:maybe ::lib.schema.id/database]]
   (t2/select-one-fn :name [:model/Database :id :name] :id database-id))
 
-(mu/defn database-names
-  "The names of every Database."
-  []
-  (t2/select-fn-vec :name :model/Database))
-
 (mu/defn database-id-by-name
   "The id of the Database named `database-name`, or nil."
   [database-name :- :string]
@@ -275,6 +270,15 @@
    schema      :- [:maybe :string]
    database-id :- ::lib.schema.id/database]
   (t2/select-one-fn :id :model/Table :name table-name :schema schema :db_id database-id {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]}))
+
+(mu/defn insert-stub-database!
+  "Insert a stub Postgres Database named `database-name` with empty connection details and return its id."
+  [database-name :- :string]
+  (t2/insert-returning-pk! :model/Database {:name                database-name
+                                            :engine              :postgres
+                                            :details             {}
+                                            :is_stub             true
+                                            :initial_sync_status "complete"}))
 
 (mu/defn insert-inactive-table!
   "Insert an inactive Table named `table-name` in `schema` of the Database with `database-id` and return its id."
