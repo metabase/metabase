@@ -298,16 +298,14 @@
       (testing "the retry waits until the user has reconnected"
         (is (re-find #"(?i)retry once they have reconnected" instructions))
         (is (not (re-find #"(?i)(don't|do not) retry" instructions))))
-      (testing "GHY-4555: the consent screen shows a newly requested permission unticked, so the model tells the user
-                to tick it, and asks rather than sending them through consent unprompted"
+      (testing "GHY-4555: the model asks rather than sending the user through consent unprompted"
         (is (not (re-find #"(?i)no per-permission" instructions)))
-        (is (re-find #"(?i)unticked" instructions))
-        (is (re-find #"(?i)tell them to tick it" instructions))
-        (is (re-find #"(?i)ask whether to grant it" instructions))
-        (testing "and that every other permission starts unticked too, so a step-up doesn't silently drop one the
-                  connection already had"
-          (is (re-find #"(?i)every other permission also starts unticked" instructions))
-          (is (re-find #"(?i)re-tick the ones they want to keep" instructions))))
+        (is (re-find #"(?i)ask whether to grant it" instructions)))
+      (testing "GHY-4826: the consent screen starts with every requested permission ticked, so the model tells the user
+                to leave it ticked; telling them to tick or re-tick a ticked box would have them untick it"
+        (is (re-find #"(?i)starts with every permission the client requests ticked" instructions))
+        (is (re-find #"(?i)tell them to leave this one ticked" instructions))
+        (is (not (re-find #"(?i)unticked|re-tick|tell them to tick" instructions))))
       (testing "the skills guidance is kept"
         (is (re-find #"learn\(\)" instructions))))))
 
@@ -996,22 +994,22 @@
 (def ^:private metadata-url
   "http://localhost:3000/.well-known/oauth-protected-resource")
 
-(def ^:private unticked-note
+(def ^:private consent-note
   "What every `insufficient_scope` `error_description` ends with."
-  ". The user must tick this permission on the consent screen.")
+  ". The user must grant this permission on the consent screen.")
 
 (deftest ^:parallel step-up-description-test
-  (testing "GHY-4555: a step-up opens a consent screen where the missing permission is unticked, so a client that shows
-            the error_description tells the user to tick it; the note covers a permission that was never granted and one
-            that was unticked and removed, so it does not claim the permission starts unticked; the text stays inside
-            RFC 6750's error_description characters (printable ASCII without quote or backslash)"
+  (testing "GHY-4555: a client that shows the error_description tells the user to grant the missing permission on the
+            consent screen; the text stays inside RFC 6750's error_description characters (printable ASCII without quote
+            or backslash)"
     (is (= (str "execute_sql requires agent:sql:run (Write and run its own raw SQL on your connected databases)"
-                unticked-note)
+                consent-note)
            (#'v2.api/step-up-description
             "execute_sql requires agent:sql:run (Write and run its own raw SQL on your connected databases)")))
-    (is (not (str/includes? unticked-note "starts unticked"))
-        "a removed permission does not start unticked, it was ticked and then cleared")
-    (is (re-matches #"[\x20\x21\x23-\x5B\x5D-\x7E]+" unticked-note))))
+    (is (re-matches #"[\x20\x21\x23-\x5B\x5D-\x7E]+" consent-note)))
+  (testing "GHY-4826: the consent screen starts with the requested permission ticked, so the note does not tell the user
+            to tick it: clicking a ticked box unticks it"
+    (is (not (re-find #"(?i)\btick" consent-note)))))
 
 (deftest scope-denial-is-a-403-insufficient-scope-challenge-test
   (testing "GHY-4543: a scope denial must be a real HTTP 403 carrying an `insufficient_scope` WWW-Authenticate
@@ -1030,7 +1028,7 @@
                          "scope=\"agent:content:read agent:sql:run\", "
                          "resource_metadata=\"" metadata-url "/api/metabase-mcp\", "
                          "error_description=\"execute_sql requires agent:sql:run "
-                         "(" (registry/english-scope-label "agent:sql:run") ")" unticked-note "\"")
+                         "(" (registry/english-scope-label "agent:sql:run") ")" consent-note "\"")
                     (get-in response [:headers "WWW-Authenticate"]))
                  "scope is the held v2 scopes plus the required one; the legacy non-v2 scope is not echoed")
              (testing "the body is still the JSON-RPC error, for clients that read it"
@@ -1087,7 +1085,7 @@
                        "scope=\"agent:content:read agent:query:run agent:delivery:write\", "
                        "resource_metadata=\"" metadata-url "/api/metabase-mcp\", "
                        "error_description=\"alert_write requires agent:query:run "
-                       "(" (registry/english-scope-label "agent:query:run") ")" unticked-note "\"")
+                       "(" (registry/english-scope-label "agent:query:run") ")" consent-note "\"")
                   (get-in response [:headers "WWW-Authenticate"])))
            (is (= -32600 (get-in response [:body :error :code])))
            (is (re-find #"requires the agent:query:run scope" (get-in response [:body :error :message])))
@@ -1152,7 +1150,7 @@
                            "scope=\"agent:content:read agent:query:run agent:sql:run agent:resource:read\", "
                            "resource_metadata=\"" metadata-url "/api/metabase-mcp\", "
                            "error_description=\"execute_sql requires agent:sql:run "
-                           "(" (registry/english-scope-label "agent:sql:run") ")" unticked-note "\"")
+                           "(" (registry/english-scope-label "agent:sql:run") ")" consent-note "\"")
                       (get-in response [:headers "WWW-Authenticate"])))))))))))
 
 (deftest data-resource-read-without-its-scope-is-a-403-insufficient-scope-challenge-test
@@ -1173,7 +1171,7 @@
                            "scope=\"agent:content:read agent:resource:read\", "
                            "resource_metadata=\"" metadata-url "/api/metabase-mcp\", "
                            "error_description=\"catalog://metabase/fields requires agent:resource:read "
-                           "(" (registry/english-scope-label "agent:resource:read") ")" unticked-note "\"")
+                           "(" (registry/english-scope-label "agent:resource:read") ")" consent-note "\"")
                       (get-in response [:headers "WWW-Authenticate"])))
                (testing "the body is the JSON-RPC error, with no transport-internal marker"
                  (is (= #{:jsonrpc :id :error} (set (keys (:body response)))))
@@ -1344,9 +1342,8 @@
        "it needs (each tool's description starts with the permission it requires), and why, and ask whether to grant "
        "it. Some clients open the consent screen themselves; otherwise the user reconnects (Claude Code: /mcp, "
        "select this server, Re-authenticate; "
-       "Codex: `codex mcp login <server>`, then a new session). The permission is unticked on the consent screen; "
-       "tell them to tick it. Every other permission also starts unticked, so tell them to re-tick the ones they "
-       "want to keep. Retry once they have reconnected."))
+       "Codex: `codex mcp login <server>`, then a new session). The consent screen starts with every permission "
+       "the client requests ticked; tell them to leave this one ticked. Retry once they have reconnected."))
 
 (deftest initialize-instructions-say-each-thing-once-test
   (testing "GHY-4555: every connection pays for the instructions in tokens, so the scope-failure guidance is one
@@ -1379,7 +1376,7 @@
        "scope=\"agent:content:read agent:content:write agent:query:run agent:sql:run\", "
        "resource_metadata=\"" metadata-url "/api/metabase-mcp\", "
        "error_description=\"" tool-name " requires agent:sql:run "
-       "(" (registry/english-scope-label "agent:sql:run") ")" unticked-note "\""))
+       "(" (registry/english-scope-label "agent:sql:run") ")" consent-note "\""))
 
 (deftest native-source-scope-denial-is-a-403-insufficient-scope-challenge-test
   (testing "GHY-4543: question_write and transform_write check agent:sql:run inside the handler, once the source

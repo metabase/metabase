@@ -123,7 +123,7 @@
   "Turn the space-separated OAuth `scope` value into a vector of `{:scope :description :full-access? :locked?}` maps for
    the consent page, so the user sees exactly what the client is asking for. Scopes in [[consent-scope-order]] come
    first in that order, then the rest in request order. `:locked?` marks an MCP baseline scope, which is always granted;
-   every other scope starts unticked. Falls back to the raw scope string when a scope has no registered human-readable
+   `:full-access?` marks the full account access scope. Falls back to the raw scope string when a scope has no registered human-readable
    description. Returns nil when no scope was requested."
   [scope-param]
   (when-let [scopes (scope-tokens scope-param)]
