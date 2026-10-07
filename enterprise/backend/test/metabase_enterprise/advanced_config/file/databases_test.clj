@@ -69,17 +69,6 @@
         (finally
           (t2/delete! :model/Database :name test-db-name))))))
 
-(deftest init-from-config-file-connection-validation-test
-  (testing "Validate connection details when creating a Database from a config file, and error if they are invalid"
-    (is (thrown-with-msg?
-         clojure.lang.ExceptionInfo
-         #"Database cannot be found\."
-         (advanced-config.file/initialize!
-          {:version 1
-           :config  {:databases [{:name    (str test-db-name "-in-memory")
-                                  :engine  "h2"
-                                  :details {:db "mem:some-in-memory-db"}}]}})))))
-
 (deftest init-attached-dwh-from-config-file-under-external-only-networks-test
   (mt/with-premium-features #{:config-text-file :attached-dwh}
     (mt/with-temp-env-var-value! [mb-warehouse-allowed-networks "external-only"]

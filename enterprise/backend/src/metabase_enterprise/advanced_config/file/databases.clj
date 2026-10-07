@@ -6,7 +6,6 @@
    [metabase-enterprise.advanced-config.db :as advanced-config.db]
    [metabase-enterprise.advanced-config.file.interface :as advanced-config.file.i]
    [metabase-enterprise.advanced-config.settings :as advanced-config.settings]
-   [metabase.driver.util :as driver.u]
    [metabase.sample-data.core :as sample-data]
    [metabase.sync.core :as sync]
    [metabase.util :as u]
@@ -120,36 +119,30 @@
     (init-sample-database! database)
 
     :else
-    (do
-      ;; assert that we are able to connect to this Database. Otherwise, throw an Exception.
-      ;; Stubs are placeholders with no usable details, so we skip the connection test.
-      (when-not (:is_stub database)
-        (driver.u/with-database-network-policy database
-          (driver.u/can-connect-with-details? (keyword (:engine database)) (:details database) :throw-exceptions)))
-      (let [existing (advanced-config.db/database-by-name (:name database))]
-        (cond
-          (and existing (:is_stub database))
-          ;; A stub entry only creates a missing database; it never overwrites an existing one with `:details {}`.
-          (log/info (u/format-color :yellow "Database with ID %s already exists; ignoring stub entry" (:id existing)))
+    (let [existing (advanced-config.db/database-by-name (:name database))]
+      (cond
+        (and existing (:is_stub database))
+        ;; A stub entry only creates a missing database; it never overwrites an existing one with `:details {}`.
+        (log/info (u/format-color :yellow "Database with ID %s already exists; ignoring stub entry" (:id existing)))
 
-          existing
-          (do
-            (log/info (u/format-color :blue "Updating Database %s with ID %s" (:engine database) (:id existing)))
-            (advanced-config.db/update-database! (:id existing)
-                                                 (cond-> (normalize-settings database)
-                                                   (:is_attached_dwh database) strip-attached-dwh-update-ks
-                                                   (:is_stub existing)         (assoc :is_stub             false
-                                                                                      :initial_sync_status "incomplete")))
-            (when (:is_stub existing)
-              (sync-if-configured! (advanced-config.db/database (:id existing)))))
+        existing
+        (do
+          (log/info (u/format-color :blue "Updating Database %s with ID %s" (:engine database) (:id existing)))
+          (advanced-config.db/update-database! (:id existing)
+                                               (cond-> (normalize-settings database)
+                                                 (:is_attached_dwh database) strip-attached-dwh-update-ks
+                                                 (:is_stub existing)         (assoc :is_stub             false
+                                                                                    :initial_sync_status "incomplete")))
+          (when (:is_stub existing)
+            (sync-if-configured! (advanced-config.db/database (:id existing)))))
 
-          :else
-          (let [db (advanced-config.db/insert-database! (cond-> (normalize-settings database)
-                                                          (:is_stub database) (assoc :initial_sync_status "complete")))]
-            (log/info (u/format-color :green "Created new %s Database" (:engine database)))
-            (if (:is_stub database)
-              (log/info "Created stub database; skipping sync.")
-              (sync-if-configured! db))))))))
+        :else
+        (let [db (advanced-config.db/insert-database! (cond-> (normalize-settings database)
+                                                        (:is_stub database) (assoc :initial_sync_status "complete")))]
+          (log/info (u/format-color :green "Created new %s Database" (:engine database)))
+          (if (:is_stub database)
+            (log/info "Created stub database; skipping sync.")
+            (sync-if-configured! db)))))))
 
 (defmethod advanced-config.file.i/initialize-section! :databases
   [_section-name databases]

@@ -3503,7 +3503,6 @@
    :uses #{api
            api-keys
            app-db
-           driver
            lib
            lib.schema
            permissions
