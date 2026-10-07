@@ -1,6 +1,7 @@
 import {
   MinRowsError,
   getDatasetError,
+  getDatasetRequestFailure,
   getGenericErrorMessage,
   getPermissionErrorMessage,
 } from "./errors";
@@ -50,5 +51,51 @@ describe("getDatasetError", () => {
       message: getGenericErrorMessage(),
       icon: "warning",
     });
+  });
+});
+
+describe("getDatasetRequestFailure", () => {
+  it("reads the query error from a 4xx body", () => {
+    expect(
+      getDatasetRequestFailure({
+        status: 400,
+        data: {
+          status: "failed",
+          error: "Column FOO does not exist",
+          error_type: "invalid-query",
+          error_is_curated: true,
+        },
+      }),
+    ).toEqual({
+      error: "Column FOO does not exist",
+      error_type: "invalid-query",
+      error_is_curated: true,
+    });
+  });
+
+  it("keeps the status of a 403 so it reads as a permission error", () => {
+    const failure = getDatasetRequestFailure({
+      status: 403,
+      data: { error: "You do not have permissions to run this query." },
+    });
+    expect(failure && getDatasetError(failure)).toEqual({
+      message: getPermissionErrorMessage(),
+      icon: "key",
+    });
+  });
+
+  it("keeps the status of a response without a query error", () => {
+    expect(
+      getDatasetRequestFailure({ status: 504, data: "<html>Timeout</html>" }),
+    ).toEqual({ error: { status: 504, data: "<html>Timeout</html>" } });
+  });
+
+  it("returns undefined when there was no HTTP response", () => {
+    expect(
+      getDatasetRequestFailure({
+        status: "FETCH_ERROR",
+        error: "TypeError: Failed to fetch",
+      }),
+    ).toBeUndefined();
   });
 });

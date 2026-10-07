@@ -29,12 +29,12 @@ import {
 import * as Urls from "metabase/urls";
 import { isResourceNotFoundError } from "metabase/utils/errors";
 import Visualization from "metabase/visualizations/components/Visualization";
-import { ErrorView } from "metabase/visualizations/components/Visualization/ErrorView";
-import { getDatasetError, getGenericErrorMessage } from "metabase/viz-core";
 import Question from "metabase-lib/v1/Question";
 
+import { InlineChartError } from "./InlineChartError";
 import S from "./MetabotInlineChart.module.css";
 import { SaveChartAction } from "./SaveChartAction";
+import { getChartError } from "./utils";
 
 /**
  * Renders a Metabot-generated `card` entity as a live, read-only chart inline in
@@ -118,11 +118,8 @@ export function MetabotInlineChart({
     [card, dataset],
   );
 
-  const datasetError = dataset ? getDatasetError(dataset) : undefined;
-  const requestError = error
-    ? { message: getGenericErrorMessage(), icon: "warning" as const }
-    : undefined;
-  const chartError = datasetError ?? requestError;
+  const chartError = getChartError(dataset, error);
+  const hasChartResults = rawSeries != null && !chartError;
 
   return (
     <Box
@@ -144,48 +141,53 @@ export function MetabotInlineChart({
         >
           {title}
         </Anchor>
-        <Tooltip label={clipboard.copied ? t`Copied` : t`Copy chart`}>
-          <ActionIcon
-            variant="subtle"
-            aria-label={t`Copy chart`}
-            onClick={() => clipboard.copy(clipboardPayload)}
-          >
-            <Icon name="copy" size={16} />
-          </ActionIcon>
-        </Tooltip>
+        {!chartError && (
+          <Tooltip label={clipboard.copied ? t`Copied` : t`Copy chart`}>
+            <ActionIcon
+              variant="subtle"
+              aria-label={t`Copy chart`}
+              onClick={() => clipboard.copy(clipboardPayload)}
+            >
+              <Icon name="copy" size={16} />
+            </ActionIcon>
+          </Tooltip>
+        )}
         <SaveChartAction
           conversationId={conversationId}
           chartId={chartId}
           savedCardId={savedCardId}
           question={question}
           readonly={readonly}
+          hasResults={hasChartResults}
         />
       </Flex>
-      <Box className={S.viz}>
-        {!shouldRunQuery ? (
-          <Center h="100%" p="lg">
-            <Button
-              variant="filled"
-              leftSection={<Icon name="play_outlined" aria-hidden />}
-              onClick={requestRun}
-            >
-              {t`Run query`}
-            </Button>
-          </Center>
-        ) : chartError ? (
-          <Center h="100%" p="lg">
-            <ErrorView error={chartError.message} icon={chartError.icon} />
-          </Center>
-        ) : !rawSeries ? (
-          <LoadingAndErrorWrapper loading />
-        ) : (
-          <Visualization
-            rawSeries={rawSeries}
-            isQueryBuilder={false}
-            onChangeCardAndRun={noop}
-          />
-        )}
-      </Box>
+      {chartError ? (
+        <Box className={S.error}>
+          <InlineChartError error={chartError} />
+        </Box>
+      ) : (
+        <Box className={S.viz}>
+          {!shouldRunQuery ? (
+            <Center h="100%" p="lg">
+              <Button
+                variant="filled"
+                leftSection={<Icon name="play_outlined" aria-hidden />}
+                onClick={requestRun}
+              >
+                {t`Run query`}
+              </Button>
+            </Center>
+          ) : !rawSeries ? (
+            <LoadingAndErrorWrapper loading />
+          ) : (
+            <Visualization
+              rawSeries={rawSeries}
+              isQueryBuilder={false}
+              onChangeCardAndRun={noop}
+            />
+          )}
+        </Box>
+      )}
     </Box>
   );
 }

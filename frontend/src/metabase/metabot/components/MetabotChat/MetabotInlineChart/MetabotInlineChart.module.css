@@ -36,3 +36,11 @@
     height: 21rem;
   }
 }
+
+.error {
+  padding: 0 1rem;
+
+  .large & {
+    padding: 0 1.5rem;
+  }
+}

@@ -233,6 +233,7 @@ export {
   ChartSettingsError,
   getDatasetError,
   getDatasetPermissionError,
+  getDatasetRequestFailure,
   getGenericErrorMessage,
   MinColumnsError,
   MinRowsError,

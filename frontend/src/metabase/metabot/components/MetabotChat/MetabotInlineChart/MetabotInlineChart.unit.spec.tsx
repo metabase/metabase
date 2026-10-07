@@ -90,7 +90,7 @@ function setup(
 }
 
 async function openSaveModal() {
-  await userEvent.click(screen.getByRole("button", { name: "Save" }));
+  await userEvent.click(await screen.findByRole("button", { name: "Save" }));
   return screen.findByTestId("save-question-modal");
 }
 
@@ -178,7 +178,63 @@ describe("MetabotInlineChart", () => {
     ).toBeInTheDocument();
   });
 
+  describe("errored chart", () => {
+    const rawError =
+      "ORDER BY does not support expressions of type ARRAY<STRING> at [1:198]";
+
+    it("replaces the chart area with the error row", async () => {
+      setup({ dataset: { error: rawError } });
+      expect(
+        await screen.findByTestId("metabot-inline-chart-error"),
+      ).toBeInTheDocument();
+      expect(screen.queryByTestId("visualization")).not.toBeInTheDocument();
+    });
+
+    it("offers the database error from a failed request", async () => {
+      setup({ status: 400, dataset: { error: rawError } });
+      await userEvent.click(
+        await screen.findByRole("button", { name: "Details" }),
+      );
+      await waitFor(() => expect(screen.getByText(rawError)).toBeVisible());
+    });
+
+    it("hides the Copy chart and Save buttons", async () => {
+      setup({ dataset: { error: rawError } });
+      await screen.findByTestId("metabot-inline-chart-error");
+      expect(
+        screen.queryByRole("button", { name: "Copy chart" }),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole("button", { name: "Save" }),
+      ).not.toBeInTheDocument();
+    });
+
+    it("keeps the Saved link when the chart was already saved", async () => {
+      setupCardEndpoints(
+        createMockCard({ id: 99, metabot_chart_id: "card-1" }),
+      );
+      const { store } = setup({ dataset: { error: rawError } });
+
+      act(() => {
+        store.dispatch(markChartSaved({ entityId: "card-1", cardId: 99 }));
+      });
+
+      await screen.findByTestId("metabot-inline-chart-error");
+      expect(await screen.findByText("Saved")).toBeInTheDocument();
+    });
+  });
+
   describe("saving", () => {
+    it("hides the Save button until results arrive", async () => {
+      setup();
+      expect(
+        screen.queryByRole("button", { name: "Save" }),
+      ).not.toBeInTheDocument();
+      expect(
+        await screen.findByRole("button", { name: "Save" }),
+      ).toBeInTheDocument();
+    });
+
     it("opens the save modal when Save is clicked", async () => {
       setupSaveModalEndpoints();
       setup();

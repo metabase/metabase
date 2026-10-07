@@ -2,6 +2,7 @@ import { msgid, ngettext, t } from "ttag";
 
 import { SERVER_ERROR_TYPES } from "metabase/utils/errors";
 import type { Dataset, IconName } from "metabase-types/api";
+import { isObject } from "metabase-types/guards";
 
 export class MinColumnsError extends Error {
   constructor(minColumns: number) {
@@ -100,5 +101,32 @@ export function getDatasetError(
         ? error
         : getGenericErrorMessage(),
     icon: "warning",
+  };
+}
+
+type DatasetFailure = Pick<
+  Dataset,
+  "error" | "error_type" | "error_is_curated"
+>;
+
+/**
+ * Turns a failed `POST /api/dataset` request into the error fields a failed
+ * dataset carries, so it can go through `getDatasetError`.
+ */
+export function getDatasetRequestFailure(
+  requestError: unknown,
+): DatasetFailure | undefined {
+  if (!isObject(requestError) || typeof requestError.status !== "number") {
+    return undefined;
+  }
+  const { status, data } = requestError;
+  if (status === 403 || !isObject(data) || typeof data.error !== "string") {
+    return { error: { status, data } };
+  }
+  return {
+    error: data.error,
+    error_type:
+      typeof data.error_type === "string" ? data.error_type : undefined,
+    error_is_curated: data.error_is_curated === true,
   };
 }

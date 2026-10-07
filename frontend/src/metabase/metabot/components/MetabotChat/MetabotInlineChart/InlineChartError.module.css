@@ -1,0 +1,18 @@
+.chevron {
+  transition: transform 150ms ease;
+}
+
+.chevronOpen {
+  transform: rotate(90deg);
+}
+
+.details {
+  overflow-wrap: anywhere;
+}
+
+/* Sits in the ErrorBox's right padding, clear of its scrollbar */
+.copyError {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+}

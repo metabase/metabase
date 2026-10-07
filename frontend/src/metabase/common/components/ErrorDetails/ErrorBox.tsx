@@ -1,6 +1,6 @@
 import cx from "classnames";
 
-import { Box } from "metabase/ui";
+import { Box, type BoxProps } from "metabase/ui";
 
 import S from "./ErrorDetails.module.css";
 import type { ErrorDetails } from "./types";
@@ -8,9 +8,9 @@ import type { ErrorDetails } from "./types";
 export const ErrorBox = ({
   children,
   className,
-}: {
+  ...boxProps
+}: Omit<BoxProps, "children"> & {
   children: ErrorDetails;
-  className?: string;
 }) => (
   <Box
     className={cx(S.monospace, className)}
@@ -19,6 +19,7 @@ export const ErrorBox = ({
     fw="bold"
     bg="background_page-secondary"
     mah="16rem"
+    {...boxProps}
   >
     {/* ensure we don't try to render anything except a string */}
     {typeof children === "string"

@@ -21,12 +21,14 @@ export function SaveChartAction({
   savedCardId,
   question,
   readonly,
+  hasResults,
 }: {
   conversationId: string;
   chartId: string;
   savedCardId: number | undefined;
   question: Question;
   readonly: boolean;
+  hasResults: boolean;
 }) {
   const dispatch = useDispatch();
   const navigate = useNavigate();
@@ -62,7 +64,7 @@ export function SaveChartAction({
 
   return (
     <>
-      {match({ savedCardId, readonly })
+      {match({ savedCardId, readonly, hasResults })
         .with({ savedCardId: P.number }, ({ savedCardId }) => (
           <Button
             component={ForwardRefLink}
@@ -75,16 +77,19 @@ export function SaveChartAction({
             {t`Saved`}
           </Button>
         ))
-        .with({ readonly: true }, () => null)
-        .with({ savedCardId: P.nullish, readonly: false }, () => (
-          <Button
-            variant="transparent"
-            size="compact-md"
-            onClick={() => setIsSaveModalOpen(true)}
-          >
-            {t`Save`}
-          </Button>
-        ))
+        .with({ readonly: true }, { hasResults: false }, () => null)
+        .with(
+          { savedCardId: P.nullish, readonly: false, hasResults: true },
+          () => (
+            <Button
+              variant="transparent"
+              size="compact-md"
+              onClick={() => setIsSaveModalOpen(true)}
+            >
+              {t`Save`}
+            </Button>
+          ),
+        )
         .exhaustive()}
       {isSaveModalOpen && (
         <SaveQuestionModal
