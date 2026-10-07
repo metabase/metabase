@@ -1,61 +1,11 @@
 import { t } from "ttag";
 
 import { ForwardRefLink } from "metabase/common/components/Link";
-import { canAccessDataStudio } from "metabase/common/data-studio/selectors";
-import { canAccessDataModel } from "metabase/current-user";
-import { PLUGIN_SCHEMA_VIEWER } from "metabase/plugins";
-import { useSelector } from "metabase/redux";
-import type { State } from "metabase/redux/store";
-import { getHasAdminPath } from "metabase/selectors/admin";
 import { ActionIcon, Icon, Menu } from "metabase/ui";
-import * as Urls from "metabase/urls";
 import { SAVED_QUESTIONS_VIRTUAL_DB_ID } from "metabase-lib/v1/metadata/utils/saved-questions";
-import type { DatabaseId, IconName } from "metabase-types/api";
+import type { DatabaseId } from "metabase-types/api";
 
-type DatabaseQuickLink = {
-  key: string;
-  label: string;
-  icon: IconName;
-  to: string;
-  isVisible: boolean;
-};
-
-const canManageDatabases = (state: State) =>
-  getHasAdminPath(state, "databases");
-
-function useDatabaseQuickLinks(databaseId: DatabaseId): DatabaseQuickLink[] {
-  const hasDatabaseManagementAccess = useSelector(canManageDatabases);
-  const hasDataModelAccess = useSelector(canAccessDataModel);
-  const hasDataStudioAccess = useSelector(canAccessDataStudio);
-
-  const links: DatabaseQuickLink[] = [
-    {
-      key: "manage",
-      label: t`Manage database`,
-      icon: "gear",
-      to: Urls.viewDatabase(databaseId),
-      isVisible: hasDatabaseManagementAccess,
-    },
-    {
-      key: "data-model",
-      label: t`Edit metadata`,
-      icon: "label",
-      to: hasDataStudioAccess
-        ? Urls.dataStudioData({ databaseId })
-        : Urls.dataModel({ databaseId }),
-      isVisible: hasDataModelAccess,
-    },
-    {
-      key: "schema-viewer",
-      label: t`View schema`,
-      icon: "network",
-      to: Urls.dataStudioSchemaViewer({ databaseId }),
-      isVisible: hasDataStudioAccess && PLUGIN_SCHEMA_VIEWER.isEnabled,
-    },
-  ];
-
-  return links.filter((link) => link.isVisible);
-}
+import { useDatabaseQuickLinks } from "./use-database-quick-links";
 
 type DatabaseQuickLinksMenuProps = {
   databaseId: DatabaseId;
