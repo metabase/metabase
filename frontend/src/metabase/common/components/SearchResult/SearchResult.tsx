@@ -9,9 +9,9 @@ import type { To } from "metabase/router";
 import { useNavigate } from "metabase/router";
 import type { AnchorProps, BoxProps, StackProps } from "metabase/ui";
 import {
+  ActionIcon,
   Anchor,
   Box,
-  Button,
   Divider,
   Group,
   Icon,
@@ -245,14 +245,9 @@ export function SearchResult({
       )}
       {showXRayButton && (
         <Box className={S.xraySection} pos="relative">
-          {/* TODO: replace with ActionIcon (GDGT-2457) */}
-          <Button
-            variant="subtle"
-            color="neutral"
-            size="sm"
-            leftSection={<Icon name="bolt" />}
-            onClick={onXRayClick}
-          />
+          <ActionIcon variant="subtle" size="sm" onClick={onXRayClick}>
+            <Icon name="bolt" />
+          </ActionIcon>
         </Box>
       )}
     </SearchResultContainer>

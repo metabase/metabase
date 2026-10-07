@@ -7,7 +7,7 @@ import { SetByEnvVar } from "metabase/common/components/SetByEnvVar";
 import CS from "metabase/css/core/index.css";
 import { useAdminSetting } from "metabase/settings";
 import { SettingHeader } from "metabase/settings-components";
-import { Box, Button, Flex, Icon, Paper, Text } from "metabase/ui";
+import { ActionIcon, Box, Button, Flex, Icon, Paper, Text } from "metabase/ui";
 import type { EnterpriseSettingKey } from "metabase-types/api";
 
 import { PreviewImage } from "./IllustrationWidget.styled";
@@ -132,17 +132,16 @@ export function ImageUploadWidget({
                       ? fileName
                       : t`Remove uploaded image`}
                 </Text>
-                {/* TODO: replace with ActionIcon (GDGT-2457) */}
                 {!isDefaultImage && (
-                  <Button
+                  <ActionIcon
                     variant="subtle"
-                    color="neutral"
                     size="sm"
-                    leftSection={<Icon name="close" />}
                     ml="lg"
                     onClick={handleRemove}
                     aria-label={t`Remove custom illustration`}
-                  />
+                  >
+                    <Icon name="close" />
+                  </ActionIcon>
                 )}
               </Flex>
             </Flex>

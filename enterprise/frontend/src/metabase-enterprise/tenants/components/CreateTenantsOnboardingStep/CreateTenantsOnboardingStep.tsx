@@ -7,6 +7,7 @@ import { useToast } from "metabase/common/hooks";
 import { createEmptyTenantDraft } from "metabase/embedding/setup-guide/components/SetupPermissionsAndTenantsPage/utils";
 import type { CreatedTenantData } from "metabase/plugins/oss/tenants";
 import {
+  ActionIcon,
   Button,
   Flex,
   Group,
@@ -139,16 +140,15 @@ export const CreateTenantsOnboardingStep = ({
                   fw="bold"
                   classNames={{ input: S.TenantNameInput }}
                 />
-                {/* TODO: replace with ActionIcon (GDGT-2457) */}
                 {tenants.length > 1 && (
-                  <Button
+                  <ActionIcon
                     variant="subtle"
-                    color="neutral"
                     size="sm"
-                    leftSection={<Icon name="close" />}
                     onClick={() => removeTenantCard(index)}
                     aria-label={t`Remove tenant`}
-                  />
+                  >
+                    <Icon name="close" />
+                  </ActionIcon>
                 )}
               </Group>
 

@@ -1,16 +1,40 @@
 .root {
+  --ai-size-xs: 16px;
+  --ai-size-sm: 24px;
+  --ai-size-md: 32px;
+  --ai-size-lg: 40px;
+  --mb-ai-radius: 6px;
+  --mb-ai-icon-size: 16px;
+
+  border-radius: var(--ai-radius, var(--mb-ai-radius));
+
+  &:active {
+    transform: none;
+  }
+
+  &[data-size="xs"],
+  &[data-size="sm"] {
+    --mb-ai-radius: 4px;
+    --mb-ai-icon-size: 12px;
+  }
+
+  &[data-size="lg"] {
+    --mb-ai-radius: 8px;
+  }
+
+  &[data-size="xs"],
+  &[data-size="sm"],
+  &[data-size="md"],
+  &[data-size="lg"] {
+    .icon > svg {
+      width: var(--mb-ai-icon-size);
+      height: var(--mb-ai-icon-size);
+    }
+  }
+
   &[data-disabled] {
     color: var(--mb-color-icon-disabled);
     pointer-events: all;
-  }
-
-  &[data-variant="subtle"] {
-    color: var(--mb-color-text-disabled);
-
-    &:hover {
-      color: var(--mb-color-text-secondary);
-      background-color: var(--mb-color-background_page-secondary);
-    }
   }
 
   /* To be able to seamlessly support color property across variants we need
@@ -79,6 +103,102 @@
     &[data-disabled] {
       color: var(--mb-color-text-disabled);
       background-color: transparent;
+    }
+  }
+}
+
+.root[data-variant="default"] {
+  --mb-ai-bg: var(--mb-color-button-default-neutral-default);
+  --mb-ai-hover: var(--mb-color-button-default-neutral-hover);
+  --mb-ai-pressed: var(--mb-color-button-default-neutral-pressed);
+  --mb-ai-disabled-bg: var(--mb-color-background_surface-disabled);
+  --mb-ai-bd-color: var(--mb-color-border-neutral-strong);
+
+  box-shadow: var(--mantine-shadow-xs);
+}
+
+.root[data-variant="light"] {
+  --mb-ai-bg: var(--mb-color-button-light-neutral-default);
+  --mb-ai-hover: var(--mb-color-button-light-neutral-hover);
+  --mb-ai-pressed: var(--mb-color-button-light-neutral-pressed);
+  --mb-ai-disabled-bg: var(--mb-color-background_surface-disabled);
+}
+
+.root[data-variant="subtle"] {
+  --mb-ai-bg: var(--mb-color-button-subtle-neutral-default);
+  --mb-ai-hover: var(--mb-color-button-subtle-neutral-hover);
+  --mb-ai-pressed: var(--mb-color-button-subtle-neutral-pressed);
+  --mb-ai-disabled-bg: var(--mb-ai-bg);
+}
+
+.root[data-variant="default"],
+.root[data-variant="light"],
+.root[data-variant="subtle"] {
+  color: var(--mb-ai-color, var(--mb-color-icon-primary));
+  background-color: var(--mb-ai-bg);
+  border: 0.5px solid var(--mb-ai-bd-color, transparent);
+
+  &:hover:not([data-loading], :disabled, [data-disabled]) {
+    color: var(
+      --mb-ai-hover-color,
+      var(--mb-ai-color, var(--mb-color-icon-primary))
+    );
+    background-color: var(--mb-ai-hover);
+  }
+
+  &:active:not([data-loading], :disabled, [data-disabled]) {
+    color: var(
+      --mb-ai-hover-color,
+      var(--mb-ai-color, var(--mb-color-icon-primary))
+    );
+    background-color: var(--mb-ai-pressed);
+    box-shadow: none;
+  }
+
+  &:disabled:not([data-loading]),
+  &[data-disabled]:not([data-loading]) {
+    color: var(--mb-color-icon-disabled);
+    background-color: var(--mb-ai-disabled-bg);
+    border-color: transparent;
+    box-shadow: none;
+  }
+}
+
+:global(.mb-mantine-ActionIconGroup-group) {
+  &:has(> .root) {
+    --ai-border-width: 0px;
+
+    width: fit-content;
+    overflow: hidden;
+    border: 0.5px solid var(--mb-color-border-neutral-strong);
+    border-radius: 6px;
+    box-shadow: var(--mantine-shadow-xs);
+  }
+
+  &:has(> .root[data-size="lg"]) {
+    border-radius: 8px;
+  }
+
+  & > .root[data-variant] {
+    --mb-ai-disabled-bg: var(--mb-color-background_surface-disabled);
+
+    width: auto;
+    min-width: auto;
+    padding-inline: 16px;
+    border-width: 0;
+    border-radius: 0;
+    box-shadow: none;
+    overflow: visible;
+
+    &[data-size="lg"] {
+      padding-inline: 24px;
+    }
+
+    &:not(:first-child)::before {
+      content: "";
+      position: absolute;
+      inset: 0 auto 0 0;
+      border-inline-start: 0.5px solid var(--mb-color-border-neutral-strong);
     }
   }
 }

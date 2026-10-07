@@ -11,7 +11,7 @@ import { useSelector } from "metabase/redux";
 import type { AdminPath } from "metabase/redux/store";
 import { useNavigate } from "metabase/router";
 import { getIsPaidPlan } from "metabase/selectors/settings";
-import { Box, Button, Flex, Group, Icon } from "metabase/ui";
+import { ActionIcon, Box, Flex, Group, Icon } from "metabase/ui";
 
 import { ADMIN_NAVBAR_HEIGHT } from "../../constants";
 import { AppSwitcher } from "../AppSwitcher";
@@ -135,15 +135,13 @@ const MobileNavbar = ({ adminPaths, currentPath }: AdminMobileNavbarProps) => {
 
   return (
     <Group ref={ref} hiddenFrom="md" gap="0.5rem" align="center">
-      {/* TODO: replace with ActionIcon (GDGT-2457) */}
-      <Button
+      <ActionIcon
         onClick={() => setMobileNavOpen((prev) => !prev)}
         variant="transparent"
-        size="compact-md"
-        leftSection={
-          <Icon name="burger" size={24} color="text-primary-inverse" />
-        }
-      />
+        size={24}
+      >
+        <Icon name="burger" size={24} color="text-primary-inverse" />
+      </ActionIcon>
 
       {mobileNavOpen && (
         <Flex

@@ -22,7 +22,7 @@ import {
 } from "metabase/plugins";
 import { useDispatch, useSelector } from "metabase/redux";
 import type { Dispatch } from "metabase/redux/store";
-import { Box, Button, Flex, Icon, Menu } from "metabase/ui";
+import { ActionIcon, Box, Flex, Icon, Menu } from "metabase/ui";
 import type {
   Collection,
   CollectionId,
@@ -192,14 +192,13 @@ class SnippetSidebarInner extends Component<
                       }
                     }}
                   />
-                  {/* TODO: replace with ActionIcon (GDGT-2457) */}
-                  <Button
+                  <ActionIcon
                     variant="subtle"
-                    color="neutral"
                     size="sm"
                     onClick={this.hideSearch}
-                    leftSection={<Icon name="close" />}
-                  />
+                  >
+                    <Icon name="close" />
+                  </ActionIcon>
                 </>
               ) : (
                 <>
@@ -223,26 +222,21 @@ class SnippetSidebarInner extends Component<
                     )}
 
                     {snippets.length >= MIN_SNIPPETS_FOR_SEARCH && (
-                      // TODO: replace with ActionIcon (GDGT-2457)
-                      <Button
+                      <ActionIcon
                         variant="subtle"
-                        color="neutral"
                         size="sm"
                         onClick={this.showSearch}
-                        leftSection={<Icon name="search" />}
-                      />
+                      >
+                        <Icon name="search" />
+                      </ActionIcon>
                     )}
 
                     {showAddMenu && (
                       <Menu position="bottom-end">
                         <Menu.Target>
-                          {/* TODO: replace with ActionIcon (GDGT-2457) */}
-                          <Button
-                            variant="subtle"
-                            color="neutral"
-                            size="sm"
-                            leftSection={<Icon name="add" />}
-                          />
+                          <ActionIcon variant="subtle" size="sm">
+                            <Icon name="add" />
+                          </ActionIcon>
                         </Menu.Target>
                         <Menu.Dropdown>
                           {[
