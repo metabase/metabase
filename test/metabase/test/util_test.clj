@@ -9,6 +9,7 @@
    [metabase.test.data :as data]
    [metabase.util :as u]
    [metabase.util.log :as log]
+   [potemkin :as p]
    [toucan2.core :as t2])
   (:import
    (clojure.lang Agent)
@@ -171,6 +172,22 @@
                                                   (if (pos? x) (counting-target (dec x)) :recursed))]
       (is (= :recursed (counting-target 50))))))
 
+(defn- nested-redef-target [] ::real)
+
+;; Not ^:parallel: `with-redefs` replaces the var's root for every thread.
+(deftest with-dynamic-fn-redefs-inside-with-redefs-test
+  (testing "A stub that `with-redefs` puts over a proxied var is not kept as the var's original"
+    (mt/with-dynamic-fn-redefs [nested-redef-target (constantly ::dynamic)]
+      (is (= ::dynamic (nested-redef-target))))
+    ;; The global root swap is the case under test: it puts a stub where the proxy was.
+    #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
+    (with-redefs [nested-redef-target (constantly ::stub)]
+      (mt/with-dynamic-fn-redefs [nested-redef-target (constantly ::dynamic)]
+        (is (= ::dynamic (nested-redef-target)))))
+    (is (= ::real (nested-redef-target)))
+    (is (= ::real ((mt/original-fn #'nested-redef-target))))
+    (is (= ::real ((mt/dynamic-value #'nested-redef-target))))))
+
 (defn- reexport-source
   "The var `premium-features/is-hosted?` is imported from, checked so these tests fail if the re-export moves."
   []
@@ -205,6 +222,24 @@
       (is (not= ::global ((mt/original-fn #'premium-features/is-hosted?)))))
     (mt/with-dynamic-fn-redefs [premium-features/is-hosted? (constantly ::reexport)]
       (is (= ::reexport (premium-features/is-hosted?))))))
+
+(defn chain-source [] ::real)
+(p/import-fn chain-source chain-middle)
+(p/import-fn chain-middle chain-end)
+
+;; Not ^:parallel: patching `chain-source` replaces the roots of both re-exports for every thread.
+(deftest with-dynamic-fn-redefs-transitive-reexport-test
+  (testing "A redef of a re-export of a re-export holds after the var at the start of the chain is patched"
+    (mt/with-dynamic-fn-redefs [chain-end (constantly ::end)]
+      (is (= ::end (chain-end))))
+    (mt/with-dynamic-fn-redefs [chain-source (constantly ::source)]
+      (is (= ::source (chain-middle)))
+      (is (= ::source (chain-end))))
+    (mt/with-dynamic-fn-redefs [chain-end (constantly ::end)]
+      (is (= ::end (chain-end)))
+      (is (= ::real (chain-middle))))
+    (is (= ::real (chain-end)))
+    (is (= ::real ((mt/original-fn #'chain-end))))))
 
 (deftest ^:parallel ordered-subset?-test
   (is (mt/ordered-subset? [1 2 3] [1 2 3]))
