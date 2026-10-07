@@ -26,7 +26,7 @@ import { EmbeddedMetabotUpsell } from "./EmbeddedMetabotUpsell";
 import { McpAppsSettings } from "./McpAppsSettings";
 import { MetabotSettingsPanel } from "./MetabotSettingsPanel";
 
-type MetabotTabId =
+type MetabotTabEntityId =
   | typeof FIXED_METABOT_ENTITY_IDS.DEFAULT
   | typeof FIXED_METABOT_ENTITY_IDS.EMBEDDED;
 
@@ -53,7 +53,7 @@ export function AISettingsPage() {
   } = useAdminSetting("ai-features-enabled?");
   const areAiFeaturesEnabled = aiFeaturesEnabledValue !== false;
 
-  const selectedMetabotId = getSelectedMetabotId(
+  const selectedMetabotEntityId = getSelectedMetabotEntityId(
     searchParams.get(METABOT_ID_QUERY_PARAM),
   );
 
@@ -77,7 +77,7 @@ export function AISettingsPage() {
             <MetabotSettingsSection
               hasEmbedding={hasEmbedding}
               id={METABOT_SECTION_ID}
-              selectedMetabotId={selectedMetabotId}
+              selectedMetabotEntityId={selectedMetabotEntityId}
             />
           </DisabledSection>
           <Divider />
@@ -152,22 +152,23 @@ function AgentApiSettingsSection({ disabled }: { disabled: boolean }) {
 function MetabotSettingsSection({
   hasEmbedding,
   id,
-  selectedMetabotId,
+  selectedMetabotEntityId,
 }: {
   hasEmbedding: boolean;
   id: string;
-  selectedMetabotId: MetabotTabId;
+  selectedMetabotEntityId: MetabotTabEntityId;
 }) {
   const { data, isLoading, error } = useListMetabotsQuery();
   const shouldShowUpsell =
-    !hasEmbedding && selectedMetabotId === FIXED_METABOT_ENTITY_IDS.EMBEDDED;
+    !hasEmbedding &&
+    selectedMetabotEntityId === FIXED_METABOT_ENTITY_IDS.EMBEDDED;
   const activeMetabot = !shouldShowUpsell
-    ? data?.items.find((m) => m.entity_id === selectedMetabotId)
+    ? data?.items.find((m) => m.entity_id === selectedMetabotEntityId)
     : null;
 
   return (
     <SettingsSection id={id} title={t`Metabot settings`}>
-      <Tabs value={selectedMetabotId}>
+      <Tabs value={selectedMetabotEntityId}>
         <Tabs.List>
           <Tabs.Tab
             renderRoot={(props) => (
@@ -265,19 +266,21 @@ function DisabledSection({
   );
 }
 
-function getSelectedMetabotId(metabotId: string | null): MetabotTabId {
-  if (metabotId === FIXED_METABOT_ENTITY_IDS.EMBEDDED) {
+function getSelectedMetabotEntityId(
+  metabotId: string | null,
+): MetabotTabEntityId {
+  if (metabotId === FIXED_METABOT_ENTITY_IDS.EMBEDDED || metabotId === "2") {
     return FIXED_METABOT_ENTITY_IDS.EMBEDDED;
   }
 
   return FIXED_METABOT_ENTITY_IDS.DEFAULT;
 }
 
-function getMetabotTabPath(metabotId: MetabotTabId) {
+function getMetabotTabPath(metabotEntityId: MetabotTabEntityId) {
   return {
     pathname: METABOT_SETTINGS_PATH,
     search: queryToSearch({
-      [METABOT_ID_QUERY_PARAM]: metabotId,
+      [METABOT_ID_QUERY_PARAM]: metabotEntityId,
     }),
   };
 }

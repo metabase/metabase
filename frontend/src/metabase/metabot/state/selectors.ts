@@ -45,7 +45,7 @@ export const getActiveMetabotAgentIds = createSelector(
   (state) => Object.keys(state.agents) as MetabotAgentId[],
 );
 
-export const getMetabotId = () =>
+export const getMetabotEntityId = () =>
   isEmbedding()
     ? FIXED_METABOT_ENTITY_IDS.EMBEDDED
     : FIXED_METABOT_ENTITY_IDS.DEFAULT;
@@ -296,8 +296,12 @@ export const getMetabotReqIdOverride = createSelector(
   (convo) => convo.experimental.metabotReqIdOverride,
 );
 
-export const getMetabotRequestId = (state: State, conversationId: string) =>
-  getMetabotReqIdOverride(state, conversationId) ?? getMetabotId();
+export const getMetabotRequestEntityId = (
+  state: State,
+  conversationId: string,
+) =>
+  getMetabotReqIdOverride(state, conversationId) ??
+  (isEmbedding() ? FIXED_METABOT_ENTITY_IDS.EMBEDDED : undefined);
 
 export const getProfileOverride = createSelector(
   getConversation,

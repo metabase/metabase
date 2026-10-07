@@ -335,7 +335,7 @@ export const adminQuotaLimitErroredResponse: SSEEvent[] = [
   },
 ];
 
-export const DEFAULT_METABOT_IDS = { DEFAULT: 1, EMBEDDED: 2 } as const;
+export const TEST_METABOT_IDS = { INTERNAL: 41, EMBEDDED: 42 } as const;
 
 type DefaultMetabotOverrides = {
   default?: Partial<MetabotInfo>;
@@ -347,12 +347,12 @@ export function buildDefaultMetabots(
 ): MetabotInfo[] {
   return [
     createMockMetabotInfo({
-      id: DEFAULT_METABOT_IDS.DEFAULT,
+      id: TEST_METABOT_IDS.INTERNAL,
       entity_id: FIXED_METABOT_ENTITY_IDS.DEFAULT,
       ...overrides.default,
     }),
     createMockMetabotInfo({
-      id: DEFAULT_METABOT_IDS.EMBEDDED,
+      id: TEST_METABOT_IDS.EMBEDDED,
       entity_id: FIXED_METABOT_ENTITY_IDS.EMBEDDED,
       name: "Embedded Metabot",
       ...overrides.embedded,

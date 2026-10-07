@@ -26,6 +26,7 @@ import { Metabot } from "../components/Metabot";
 import { MetabotChat } from "../components/MetabotChat";
 
 import {
+  TEST_METABOT_IDS,
   assertConversation,
   assertNotVisible,
   assertVisible,
@@ -422,7 +423,7 @@ describe("metabot > ui", () => {
       const prompts = [
         {
           id: 1,
-          metabot_id: 1,
+          metabot_id: TEST_METABOT_IDS.INTERNAL,
           prompt: "What is the total revenue for this quarter?",
           model: "metric" as const,
           model_id: 1,
@@ -432,7 +433,7 @@ describe("metabot > ui", () => {
         },
         {
           id: 2,
-          metabot_id: 1,
+          metabot_id: TEST_METABOT_IDS.INTERNAL,
           prompt:
             "Show me the customer acquisition trends over the last 6 months",
           model: "model" as const,
@@ -443,7 +444,7 @@ describe("metabot > ui", () => {
         },
         {
           id: 3,
-          metabot_id: 1,
+          metabot_id: TEST_METABOT_IDS.INTERNAL,
           prompt: "What are our top performing products by sales volume?",
           model: "metric" as const,
           model_id: 3,

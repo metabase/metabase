@@ -224,21 +224,24 @@ describe("AISettingsPage", () => {
     expect(screen.getByRole("switch", { name: "Agent API" })).toBeDisabled();
   });
 
-  it("selects the embedded Metabot by entity id", async () => {
-    await setup({
-      enableEmbedding: true,
-      initialRoute: `/admin/metabot?metabot_id=${FIXED_METABOT_ENTITY_IDS.EMBEDDED}`,
-      metabots: buildDefaultMetabots({
-        default: { id: 41 },
-        embedded: { id: 42 },
-      }),
-    });
+  it.each([FIXED_METABOT_ENTITY_IDS.EMBEDDED, "2"])(
+    "selects the embedded Metabot for %s",
+    async (metabotId) => {
+      await setup({
+        enableEmbedding: true,
+        initialRoute: `/admin/metabot?metabot_id=${metabotId}`,
+        metabots: buildDefaultMetabots({
+          default: { id: 41 },
+          embedded: { id: 42 },
+        }),
+      });
 
-    expect(
-      screen.getByRole("tab", { name: "Embedded", selected: true }),
-    ).toBeInTheDocument();
-    expect(screen.getByText("Enable Embedded Metabot")).toBeInTheDocument();
-  });
+      expect(
+        screen.getByRole("tab", { name: "Embedded", selected: true }),
+      ).toBeInTheDocument();
+      expect(screen.getByText("Enable Embedded Metabot")).toBeInTheDocument();
+    },
+  );
 
   it("reflects the persisted use_verified_content state from the API", async () => {
     await setup({

@@ -61,7 +61,7 @@ export const MetabotGreeting = ({
 
   const suggestedPromptsReq = useGetSuggestedMetabotPromptsQuery(
     {
-      metabot_id: metabot.metabotId,
+      metabot_id: metabot.metabotEntityId,
       limit: SUGGESTED_PROMPTS_LIMIT,
       sample: true,
     },

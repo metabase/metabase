@@ -13,7 +13,7 @@ import { EntityIcon } from "metabase/common/components/EntityIcon";
 import { useToast } from "metabase/common/hooks";
 import { deserializeCardFromQuery } from "metabase/common/utils/card";
 import { useGetIcon } from "metabase/hooks/use-icon";
-import { getMetabotId } from "metabase/metabot/state";
+import { getMetabotEntityId } from "metabase/metabot/state";
 import {
   getCollectionLocationLabel,
   getDatabaseLocationLabel,
@@ -192,7 +192,7 @@ const SourceFeedbackButtons = ({
   const iconSize = size === "sm" ? 12 : 16;
   const [feedback, setFeedback] = useState<boolean | null>(null);
   const [sendToast] = useToast();
-  const metabotId = useSelector(getMetabotId);
+  const metabotEntityId = useSelector(getMetabotEntityId);
   const [submitMetabotSourceFeedback, { isLoading }] =
     useSubmitMetabotSourceFeedbackMutation();
 
@@ -206,7 +206,7 @@ const SourceFeedbackButtons = ({
 
     try {
       await submitMetabotSourceFeedback({
-        metabot_id: metabotId,
+        metabot_id: metabotEntityId,
         message_id: messageId,
         positive,
         ...source,
