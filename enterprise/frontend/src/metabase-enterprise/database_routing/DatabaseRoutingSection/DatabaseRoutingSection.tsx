@@ -116,8 +116,9 @@ export const DatabaseRoutingSection = ({
   };
 
   const handleQuestionCancel = () => {
-    // The chevron's disclosure is the admin's own, so only a toggled-on section collapses.
-    if (isPendingEnable) {
+    // A confirmation declined changes nothing, and the chevron's disclosure is the admin's own,
+    // so only a section the routing toggle opened collapses.
+    if (openQuestion === "choose" && isPendingEnable) {
       setIsExpanded(false);
     }
     cancelQuestion();
@@ -133,11 +134,13 @@ export const DatabaseRoutingSection = ({
       description={dbRoutingInfo}
       data-testid="database-routing-section"
     >
-      <AnonymousAccessChoiceModal
-        opened={openQuestion !== null}
-        onCancel={handleQuestionCancel}
-        onAnswer={answerQuestion}
-      />
+      {openQuestion !== null && (
+        <AnonymousAccessChoiceModal
+          question={openQuestion}
+          onCancel={handleQuestionCancel}
+          onAnswer={answerQuestion}
+        />
+      )}
       <Flex justify="space-between" align="center">
         <Stack>
           <Label htmlFor="database-routing-toggle">

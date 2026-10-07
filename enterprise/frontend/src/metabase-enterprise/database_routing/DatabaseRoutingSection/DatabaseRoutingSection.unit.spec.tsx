@@ -793,6 +793,14 @@ describe("DatabaseRoutingSection anonymous access question at the toggle", () =>
 
     // the prop still lags the store, which is exactly when the admin is looking at this switch
     await userEvent.click(screen.getByLabelText("Allow anonymous access"));
+    // the grant is in force on the server, so withdrawing it is confirmed like any other revoke
+    await userEvent.click(
+      within(
+        await screen.findByRole("dialog", {
+          name: "Stop serving anonymous visitors?",
+        }),
+      ).getByRole("button", { name: "Stop serving them" }),
+    );
 
     const puts = await findRequests("PUT");
     expect(puts).toHaveLength(2);
@@ -824,5 +832,158 @@ describe("DatabaseRoutingSection anonymous access question at the toggle", () =>
     });
     // snapping back to the lagging prop would contradict what the server just accepted
     expect(grant).toBeChecked();
+  });
+});
+
+describe("DatabaseRoutingSection confirmation before revoking anonymous access", () => {
+  const CONFIRMATION = "Stop serving anonymous visitors?";
+
+  const findConfirmation = () =>
+    screen.findByRole("dialog", { name: CONFIRMATION });
+  const queryConfirmation = () =>
+    screen.queryByRole("dialog", { name: CONFIRMATION });
+
+  const grantedDatabase = (overrides: Partial<Database> = {}) =>
+    routedDatabase({ router_anonymous_access_granted: true, ...overrides });
+
+  const revokeAnonymousAccess = async () =>
+    userEvent.click(await screen.findByLabelText("Allow anonymous access"));
+
+  const confirmRevoke = async () =>
+    userEvent.click(
+      within(await findConfirmation()).getByRole("button", {
+        name: "Stop serving them",
+      }),
+    );
+
+  it("should ask before sending anything when the grant is turned off on a reachable database", async () => {
+    setup({ database: grantedDatabase(), anonymouslyReachable: true });
+    await waitForReachabilityFact();
+
+    await revokeAnonymousAccess();
+
+    expect(await findConfirmation()).toBeInTheDocument();
+    expect(await findRequests("PUT")).toHaveLength(0);
+  });
+
+  it("should leave the switch on and send nothing when the confirmation is declined", async () => {
+    setup({ database: grantedDatabase(), anonymouslyReachable: true });
+    await waitForReachabilityFact();
+
+    await revokeAnonymousAccess();
+    await userEvent.click(
+      within(await findConfirmation()).getByRole("button", { name: "Cancel" }),
+    );
+
+    expect(queryConfirmation()).not.toBeInTheDocument();
+    expect(screen.getByLabelText("Allow anonymous access")).toBeChecked();
+    expect(await findRequests("PUT")).toHaveLength(0);
+  });
+
+  it("should revoke the grant and confirm it with a toast once the admin confirms", async () => {
+    setup({ database: grantedDatabase(), anonymouslyReachable: true });
+    await waitForReachabilityFact();
+
+    await revokeAnonymousAccess();
+    await confirmRevoke();
+
+    const puts = await findRequests("PUT");
+    expect(puts).toHaveLength(1);
+    expect(puts[0].body).toEqual({
+      user_attribute: "cool_guy",
+      anonymous_access_granted: false,
+    });
+    expect(
+      await screen.findByText("Anonymous access disallowed"),
+    ).toBeInTheDocument();
+  });
+
+  it("should not ask about a database nothing anonymous reaches", async () => {
+    setup({ database: grantedDatabase(), anonymouslyReachable: false });
+    await waitForReachabilityFact();
+
+    await revokeAnonymousAccess();
+
+    expect(queryConfirmation()).not.toBeInTheDocument();
+    const puts = await findRequests("PUT");
+    expect(puts).toHaveLength(1);
+    expect(puts[0].body).toEqual({
+      user_attribute: "cool_guy",
+      anonymous_access_granted: false,
+    });
+  });
+
+  it("should never ask when the grant is turned on, since that only widens what works", async () => {
+    setup({
+      database: routedDatabase({ router_anonymous_access_granted: false }),
+      anonymouslyReachable: true,
+    });
+    await waitForReachabilityFact();
+
+    await userEvent.click(
+      await screen.findByLabelText("Allow anonymous access"),
+    );
+
+    expect(queryConfirmation()).not.toBeInTheDocument();
+    const puts = await findRequests("PUT");
+    expect(puts).toHaveLength(1);
+    expect(puts[0].body).toEqual({
+      user_attribute: "cool_guy",
+      anonymous_access_granted: true,
+    });
+  });
+
+  it("should say what stops working without over-claiming which surface reaches the database", async () => {
+    setup({ database: grantedDatabase(), anonymouslyReachable: true });
+    await waitForReachabilityFact();
+
+    await revokeAnonymousAccess();
+
+    const confirmation = await findConfirmation();
+    // the reachability fact is true of either surface, so the copy may only disjoin them
+    expect(confirmation).toHaveTextContent(
+      "through a public link or a published guest embed",
+    );
+    expect(confirmation).toHaveTextContent("stop returning data");
+    // a count would be a stronger claim than the reachability fact supports
+    expect(confirmation).not.toHaveTextContent(/\d/);
+  });
+
+  it("should leave a just-stored router untouched when the confirmation is declined", async () => {
+    setup({
+      database: routingCapableDatabase({ router_user_attribute: null }),
+      anonymouslyReachable: true,
+    });
+    await waitForReachabilityFact();
+
+    await enableRoutingAndAnswer("Keep serving them");
+    await pickUserAttribute("cool_guy");
+    await revokeAnonymousAccess();
+    await userEvent.click(
+      within(await findConfirmation()).getByRole("button", { name: "Cancel" }),
+    );
+
+    // the prop still lags the store, so declining must not drop what the panel remembers of it
+    expect(screen.getByLabelText("Enable database routing")).toBeChecked();
+    const grant = screen.getByLabelText("Allow anonymous access");
+    expect(grant).toBeChecked();
+    expect(grant).toBeEnabled();
+    expect(await findRequests("PUT")).toHaveLength(1);
+  });
+
+  it("should not ask again about an answer the admin is still free to revise", async () => {
+    setup({
+      database: routingCapableDatabase({ router_user_attribute: null }),
+      anonymouslyReachable: true,
+    });
+    await waitForReachabilityFact();
+
+    await enableRoutingAndAnswer("Keep serving them");
+    // nothing is stored yet, so there is no grant in force to take anything away
+    await userEvent.click(screen.getByLabelText("Allow anonymous access"));
+
+    expect(queryConfirmation()).not.toBeInTheDocument();
+    expect(screen.getByLabelText("Allow anonymous access")).not.toBeChecked();
+    expect(await findRequests("PUT")).toHaveLength(0);
   });
 });

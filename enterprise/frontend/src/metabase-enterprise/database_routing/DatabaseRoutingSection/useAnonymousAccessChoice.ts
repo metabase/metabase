@@ -13,8 +13,9 @@ import type { Database } from "metabase-types/api";
  * Which form the anonymous-access question takes while it is open.
  *
  * "choose" puts the grant to an admin who has not decided it yet, before a router is stored.
+ * "revoke" confirms withdrawing a grant that is serving anonymous visitors right now.
  */
-export type AnonymousAccessQuestion = "choose";
+export type AnonymousAccessQuestion = "choose" | "revoke";
 
 /**
  * The routing enable and its anonymous-access grant, which are one decision.
@@ -57,6 +58,8 @@ export const useAnonymousAccessChoice = (
   const [sentAttribute, setSentAttribute] = useState<string | undefined>(
     undefined,
   );
+  // A revoke the admin has asked for and not yet confirmed. Nothing has been sent.
+  const [isConfirmingRevoke, setIsConfirmingRevoke] = useState(false);
 
   const routerAttribute = userAttribute ?? sentAttribute;
   // Once routing is stored the grant lives on the server, so the held answer has done its work.
@@ -78,9 +81,11 @@ export const useAnonymousAccessChoice = (
     mustAnswerBeforeStoring &&
     (tempEnabled || attributeAwaitingAnswer !== undefined);
 
-  const openQuestion: AnonymousAccessQuestion | null = isChoosingGrant
-    ? "choose"
-    : null;
+  const openQuestion: AnonymousAccessQuestion | null = isConfirmingRevoke
+    ? "revoke"
+    : isChoosingGrant
+      ? "choose"
+      : null;
 
   const storeRouter = async (
     attribute: string,
@@ -112,15 +117,10 @@ export const useAnonymousAccessChoice = (
     await storeRouter(attribute, pendingGrant);
   };
 
-  const changeAnonymousAccess = async (granted: boolean) => {
-    // With no stored attribute there is nothing to store the grant against, so it keeps waiting.
-    if (!routerAttribute) {
-      setPendingAnonymousAccess(granted);
-      return;
-    }
+  const writeAnonymousAccess = async (attribute: string, granted: boolean) => {
     const result = await updateRouterDatabase({
       id: database.id,
-      user_attribute: routerAttribute,
+      user_attribute: attribute,
       anonymous_access_granted: granted,
     });
     // the trigger resolves rather than rejects on failure; the error is rendered inline
@@ -136,9 +136,25 @@ export const useAnonymousAccessChoice = (
     });
   };
 
+  const changeAnonymousAccess = async (granted: boolean) => {
+    // With no stored attribute there is nothing to store the grant against, so it keeps waiting.
+    if (!routerAttribute) {
+      setPendingAnonymousAccess(granted);
+      return;
+    }
+    // Revoking takes data away from visitors the stored grant is serving right now, so it is
+    // confirmed first. Granting is never confirmed: it only ever widens what works.
+    if (!granted && anonymouslyReachable) {
+      setIsConfirmingRevoke(true);
+      return;
+    }
+    await writeAnonymousAccess(routerAttribute, granted);
+  };
+
   // Nothing reaches the server until an attribute does, so abandoning only drops local state.
   const discardPendingRouting = () => {
     setTempEnabled(false);
+    setIsConfirmingRevoke(false);
     setPendingAnonymousAccess(undefined);
     setAttributeAwaitingAnswer(undefined);
     setSentAttribute(undefined);
@@ -163,6 +179,14 @@ export const useAnonymousAccessChoice = (
   };
 
   const answerQuestion = async (granted: boolean) => {
+    if (isConfirmingRevoke) {
+      setIsConfirmingRevoke(false);
+      // the question is only raised once an attribute exists to write the grant against
+      if (routerAttribute) {
+        await writeAnonymousAccess(routerAttribute, granted);
+      }
+      return;
+    }
     setPendingAnonymousAccess(granted);
     if (attributeAwaitingAnswer === undefined) {
       return;
@@ -172,6 +196,11 @@ export const useAnonymousAccessChoice = (
   };
 
   const cancelQuestion = () => {
+    // Declining a confirmation leaves the grant exactly as it was, with nothing sent.
+    if (isConfirmingRevoke) {
+      setIsConfirmingRevoke(false);
+      return;
+    }
     discardPendingRouting();
   };
 
