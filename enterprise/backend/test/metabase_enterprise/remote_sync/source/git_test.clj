@@ -1279,15 +1279,29 @@
     (.setString section subsection k v)
     (.save)))
 
+(defn- set-clone-config-values!
+  "Sets `section`.`subsection`.`k` to the list of values `vs` in the config file of the clone of `source`."
+  [{:keys [^Git git]} ^String section ^String subsection ^String k vs]
+  (doto (.getConfig (.getRepository git))
+    (.setStringList section subsection k ^java.util.List (vec vs))
+    (.save)))
+
 (defn- origin-url
   "The URL of the origin remote in the config file of the clone of `source`."
   ^String [{:keys [^Git git]}]
   (.getString (.getConfig (.getRepository git)) "remote" "origin" "url"))
 
-(defn- error-message
-  "The message of the exception that `thunk` throws, or nil when it throws none."
+(defn- thrown-by
+  "The exception that `thunk` throws, or nil when it throws none."
   [thunk]
-  (try (thunk) nil (catch Exception e (ex-message e))))
+  (try (thunk) nil (catch Exception e e)))
+
+(defn- check-refusal
+  "Asserts that `e` is the refusal of a command to a URL other than the URL of the setting."
+  [command e]
+  (is (some-> (ex-message e) (str/includes? "remote-sync-url"))
+      (str "the " command " is refused with an error that names the setting, not: " (pr-str (ex-message e))))
+  (is (= :transport-url (:reason (ex-data e))) "the thrown exception tells a refusal from another error"))
 
 (deftest remote-commands-go-only-to-the-url-of-the-setting-test
   (testing "a fetch or a push goes only to the URL of the remote-sync-url setting: a URL from the config file of the clone
@@ -1303,7 +1317,17 @@
                                                 :change!  (fn [source other] (set-clone-config! source "url" other "insteadOf" (origin-url source)))}
                                                {:config   "url.<another URL>.pushInsteadOf is the URL of the clone origin"
                                                 :commands #{:push}
-                                                :change!  (fn [source other] (set-clone-config! source "url" other "pushInsteadOf" (origin-url source)))}]
+                                                :change!  (fn [source other] (set-clone-config! source "url" other "pushInsteadOf" (origin-url source)))}
+                                               ;; A push goes to each push URL in turn; a fetch uses the first url value.
+                                               {:config   "remote.origin.url has two values, the URL of the clone origin first"
+                                                :commands #{:push}
+                                                :change!  (fn [source other] (set-clone-config-values! source "remote" "origin" "url" [(origin-url source) other]))}
+                                               {:config   "remote.origin.url has two values, another URL first"
+                                                :commands #{:push :fetch}
+                                                :change!  (fn [source other] (set-clone-config-values! source "remote" "origin" "url" [other (origin-url source)]))}
+                                               {:config   "remote.origin.pushurl has two values, the URL of the clone origin first"
+                                                :commands #{:push}
+                                                :change!  (fn [source other] (set-clone-config-values! source "remote" "origin" "pushurl" [(origin-url source) other]))}]
             command commands]
       (testing (str config ", " (name command))
         (mt/with-temp-dir [remote-dir nil]
@@ -1319,12 +1343,36 @@
                     :push  (let [_     (doto (.updateRef repo "refs/heads/redirect-check")
                                          (.setNewObjectId (.resolve repo "refs/heads/master"))
                                          (.update))
-                                 error (error-message #(git/push-branch! (assoc source :branch "redirect-check")))]
+                                 error (thrown-by #(git/push-branch! (assoc source :branch "redirect-check")))]
                              (is (nil? (git/commit-sha other "redirect-check")) "the push does not reach the other URL")
-                             (is (some-> error (str/includes? "remote-sync-url"))
-                                 (str "the push is refused with an error that names the setting, not: " (pr-str error))))
-                    :fetch (let [error (error-message #(git/fetch! source))]
+                             (is (nil? (git/commit-sha remote "redirect-check")) "the refused push sends nothing to the URL of the setting")
+                             (check-refusal "push" error))
+                    :fetch (let [error (thrown-by #(git/fetch! source))]
                              (is (nil? (git/commit-sha source "only-on-other")) "the fetch gets nothing from the other URL")
-                             (is (some-> error (str/includes? "remote-sync-url"))
-                                 (str "the fetch is refused with an error that names the setting, not: " (pr-str error))))))
+                             (check-refusal "fetch" error))))
                 (finally (forget-clones! url))))))))))
+
+(deftest remote-section-named-by-the-url-does-not-redirect-test
+  (testing "remote sync reads only the origin remote of the clone config: a remote section whose name is the URL of the
+            setting does not redirect a fetch, a push or an lsRemote"
+    (mt/with-temp-dir [remote-dir nil]
+      (mt/with-temp-dir [other-dir nil]
+        (let [remote (init-remote! remote-dir :files {"master.txt" "File in master"})
+              other  (init-remote! other-dir :files {"master.txt" "Other"} :branches ["only-on-other"])
+              url    (remote-url remote)]
+          (try
+            (let [{:keys [^Git git] :as source} (git/git-source url "master" nil ingest/legal-top-level-paths)
+                  repo                          (.getRepository git)]
+              (doseq [k ["url" "pushurl"]]
+                (set-clone-config! source "remote" url k (remote-url other)))
+              (git/fetch! source)
+              (is (nil? (git/commit-sha source "only-on-other")) "the fetch gets nothing from the other URL")
+              (is (= ["master"] (source.p/branches source)) "the lsRemote lists the branches of the URL of the setting")
+              ;; after the fetch, which prunes each local branch that the remote does not have
+              (doto (.updateRef repo "refs/heads/section-check")
+                (.setNewObjectId (.resolve repo "refs/heads/master"))
+                (.update))
+              (git/push-branch! (assoc source :branch "section-check"))
+              (is (some? (git/commit-sha remote "section-check")) "the push goes to the URL of the setting")
+              (is (nil? (git/commit-sha other "section-check")) "the push does not reach the other URL"))
+            (finally (forget-clones! url))))))))
