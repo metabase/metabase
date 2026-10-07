@@ -107,10 +107,9 @@ export const dashboardUsesRoutingEnabledDatabases = (
   dashboard: Pick<Dashboard, "dashcards">,
   databases: Pick<Database, "id" | "router_user_attribute">[],
 ) => {
-  return getDashboardDatabaseIds(dashboard).some((databaseId) => {
-    const database = databases.find((db) => db.id === databaseId);
-    return database ? hasDbRoutingEnabled(database) : false;
-  });
+  return getDashboardDatabaseIds(dashboard).some((database_id) =>
+    questionUsesRoutingEnabledDatabase({ database_id }, databases),
+  );
 };
 
 export function hasTableEditingEnabled(database: Pick<Database, "settings">) {

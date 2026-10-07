@@ -2,8 +2,8 @@
   "Application database queries for the public sharing module. Every function here is a direct Toucan 2 call with no
   additional logic, so the rest of the module never talks to `toucan2.core` itself."
   (:require
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
 (mu/defn unarchived-card-ids-and-public-uuids-by-prefix
@@ -48,5 +48,5 @@
 
 (mu/defn database-name
   "The name of the Database with `database-id`."
-  [database-id :- ms/PositiveInt]
+  [database-id :- ::lib.schema.id/database]
   (t2/select-one-fn :name :model/Database :id [:auto/param database-id]))

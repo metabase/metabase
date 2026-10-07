@@ -2016,6 +2016,7 @@
            metabase.public-sharing.validation}
    :uses #{api
            database-routing
+           lib.schema
            settings
            util}
    :model-imports #{:model/Action

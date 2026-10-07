@@ -105,7 +105,7 @@ describe("QuestionSharingMenu > Enterprise", () => {
     const PLAIN_DATABASE = createMockDatabase({ id: 10, name: "Warehouse" });
 
     const routingExplanation =
-      /Tenant warehouse has database routing turned on and does not allow anonymous access/;
+      /Tenant warehouse has database routing enabled and does not allow anonymous access/;
 
     it("disables creating a public link on a routed database that refuses anonymous access", async () => {
       await setupQuestionSharingMenu({

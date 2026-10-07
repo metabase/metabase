@@ -35,6 +35,7 @@
    [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.permissions.test-util :as perms.test-util]
+   [metabase.public-sharing.test-util :as public-sharing.test-util]
    [metabase.pulse.dashboard-subscription-test :as dashboard-subscription-test]
    [metabase.queries-rest.api.card-test :as api.card-test]
    [metabase.query-processor.middleware.permissions :as qp.perms]
@@ -2708,14 +2709,6 @@
       (is (= "Not found."
              (mt/user-http-request :crowberto :post 404 (format "dashboard/%d/public_link" Integer/MAX_VALUE)))))))
 
-(defn- anonymous-access-refused-message
-  "What the creation endpoint says when the Dashboard has a Card on a routed database that does not allow anonymous
-  access."
-  [database-name]
-  (format (str "%s has database routing enabled and does not allow anonymous access, so a public link on it would"
-               " return no data.")
-          database-name))
-
 (deftest share-dashboard-on-routed-database-test
   (testing "POST /api/dashboard/:id/public_link"
     (mt/with-temporary-setting-values [enable-public-sharing true]
@@ -2726,7 +2719,7 @@
                          :model/Card          card       {}
                          :model/DashboardCard _          {:dashboard_id (u/the-id dashboard)
                                                           :card_id      (u/the-id card)}]
-            (is (= (anonymous-access-refused-message (:name (mt/db)))
+            (is (= (public-sharing.test-util/anonymous-access-refused-message (:name (mt/db)))
                    (mt/user-http-request :crowberto :post 400
                                          (format "dashboard/%d/public_link" (u/the-id dashboard)))))
             (is (not (t2/exists? :model/Dashboard :id (u/the-id dashboard), :public_uuid [:not= nil])))))
@@ -2740,9 +2733,18 @@
                          :model/Card                series    {}
                          :model/DashboardCardSeries _         {:dashboardcard_id (u/the-id dashcard)
                                                                :card_id          (u/the-id series)}]
-            (is (= (anonymous-access-refused-message (:name (mt/db)))
+            (is (= (public-sharing.test-util/anonymous-access-refused-message (:name (mt/db)))
                    (mt/user-http-request :crowberto :post 400
                                          (format "dashboard/%d/public_link" (u/the-id dashboard)))))))
+        (testing "an already-shared Dashboard still returns its existing link, so a dead one stays deletable"
+          (mt/with-temp [:model/DatabaseRouter _         {:database_id (mt/id), :user_attribute "db_name"}
+                         :model/Dashboard     dashboard  (shared-dashboard)
+                         :model/Card          card       {}
+                         :model/DashboardCard _          {:dashboard_id (u/the-id dashboard)
+                                                          :card_id      (u/the-id card)}]
+            (is (= (:public_uuid dashboard)
+                   (:uuid (mt/user-http-request :crowberto :post 200
+                                                (format "dashboard/%d/public_link" (u/the-id dashboard))))))))
         (testing "once an admin allows anonymous access it can"
           (mt/with-temp [:model/DatabaseRouter _         {:database_id              (mt/id)
                                                           :user_attribute           "db_name"

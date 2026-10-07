@@ -9,12 +9,15 @@ import { useDatabaseRefusingAnonymousAccess } from "../use-database-refusing-ano
 
 export function PublicLinkMenuItem({
   hasPublicLink,
-  databaseIds = [],
+  databaseIds,
   onClick,
 }: {
   hasPublicLink: boolean;
-  /** The databases this question or dashboard queries. */
-  databaseIds?: DatabaseId[];
+  /**
+   * The databases this question or dashboard queries. Required, so a new call
+   * site cannot skip the anonymous-access check by leaving it out.
+   */
+  databaseIds: DatabaseId[];
   onClick: () => void;
 }) {
   const refusingDatabase = useDatabaseRefusingAnonymousAccess(databaseIds);
@@ -35,7 +38,7 @@ export function PublicLinkMenuItem({
         <Box maw="20rem">
           {t`Create a public link`}
           <Text size="sm" c="text-secondary" style={{ textWrap: "pretty" }}>
-            {t`${refusingDatabase.name} has database routing turned on and does not allow anonymous access, so a public link would return no data.`}
+            {t`${refusingDatabase.name} has database routing enabled and does not allow anonymous access, so a public link on it would return no data.`}
           </Text>
           <Text
             component={Link}

@@ -44,7 +44,7 @@ describe("DashboardSharingMenu > Enterprise", () => {
     });
 
     const routingExplanation =
-      /Tenant warehouse has database routing turned on and does not allow anonymous access/;
+      /Tenant warehouse has database routing enabled and does not allow anonymous access/;
 
     const dashcardsOn = (databaseId: number) => [
       createMockDashboardCard({
