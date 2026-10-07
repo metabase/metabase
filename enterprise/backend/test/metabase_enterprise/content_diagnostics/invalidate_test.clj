@@ -4,6 +4,7 @@
   (:require
    [clojure.test :refer :all]
    [java-time.api :as t]
+   [metabase-enterprise.content-diagnostics.db :as cd.db]
    [metabase-enterprise.content-diagnostics.test-util :as cd.tu]
    [metabase.permissions.core :as perms]
    [metabase.test :as mt]
@@ -118,7 +119,28 @@
           (is (= {:invalidated [a], :skipped [missing]}
                  (invalidate! [missing a missing a]))))))))
 
-(deftest invalidate-rejects-empty-ids-test
-  (testing "an empty `ids` is a 400"
-    (mt/with-premium-features #{:content-diagnostics :advanced-permissions}
-      (mt/user-http-request :rasta :post 400 "ee/content-diagnostics/invalidate" {:ids []}))))
+(deftest invalidate-rolls-back-on-failure-test
+  (testing "a failed write rolls back every stamp and answers 500"
+    (with-cards!
+      (fn [card other-card _]
+        (let [a      (cd.tu/insert-finding! "scan" card nil)
+              b      (cd.tu/insert-finding! "scan" other-card nil)
+              stamp! cd.db/invalidate-findings-where!]
+          ;; stamp for real, then fail, so the assertions prove a rollback rather than a write never made
+          (mt/with-dynamic-fn-redefs [cd.db/invalidate-findings-where! (fn [where]
+                                                                         (stamp! where)
+                                                                         (throw (ex-info "boom" {})))]
+            (mt/user-http-request :rasta :post 500 "ee/content-diagnostics/invalidate" {:ids [a b]}))
+          (is (true? (active? a)))
+          (is (true? (active? b))))))))
+
+(deftest invalidate-rejects-bad-ids-size-test
+  (mt/with-premium-features #{:content-diagnostics :advanced-permissions}
+    (testing "an empty `ids` is a 400"
+      (mt/user-http-request :rasta :post 400 "ee/content-diagnostics/invalidate" {:ids []}))
+    (testing "more than 500 `ids` is a 400"
+      (mt/user-http-request :rasta :post 400 "ee/content-diagnostics/invalidate" {:ids (range 1 502)}))
+    (testing "exactly 500 is accepted"
+      (let [start (nonexistent-id)]
+        (mt/user-http-request :rasta :post 200 "ee/content-diagnostics/invalidate"
+                              {:ids (range start (+ start 500))})))))
