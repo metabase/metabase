@@ -37,6 +37,9 @@
     (testing "child-card-ids accepts 65,536 dashboard ids"
       (is (= {:result []}
              (rolled-back #(remote-sync.db/child-card-ids (ids 65536) [])))))
+    (testing "transform-test-ids accepts 65,536 transform ids"
+      (is (= {:result []}
+             (rolled-back #(remote-sync.db/transform-test-ids (ids 65536))))))
     (testing "cascaded-action-and-index-ids accepts 65,536 card ids"
       (is (= {:result {:action-ids [] :index-ids []}}
              (rolled-back #(remote-sync.db/cascaded-action-and-index-ids (ids 65536))))))

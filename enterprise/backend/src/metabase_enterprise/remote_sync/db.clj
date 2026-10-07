@@ -227,6 +227,14 @@
         (concat (map (partial vector :dashboard_id) (partition-all ids-per-query dashboard-ids))
                 (map (partial vector :document_id) (partition-all ids-per-query document-ids)))))
 
+(mu/defn transform-test-ids :- [:sequential ms/PositiveInt]
+  "The ids of the TransformTests of the Transforms `transform-ids`. A delete of those Transforms removes these
+  TransformTests."
+  [transform-ids :- [:sequential ms/PositiveInt]]
+  (into []
+        (mapcat #(t2/select-pks-vec :model/TransformTest :transform_id [:in %]))
+        (partition-all ids-per-query transform-ids)))
+
 (def ^:private IdsByModel
   "A map of Toucan 2 model key (such as `:model/Card`) to ids of its instances."
   [:map-of
@@ -264,15 +272,15 @@
 
 (def ^:private closure-lock-order
   "The order in which [[delete-closure]] locks the models of one round: parents before children."
-  [:model/Dashboard :model/Document :model/Card :model/Action])
+  [:model/Dashboard :model/Document :model/Card :model/Action :model/Transform :model/TransformTest])
 
 (mu/defn delete-closure :- [:map
                             [:ids-by-model    IdsByModel]
                             [:model-index-ids [:set ms/PositiveInt]]]
   "The delete closure of the entities `ids-by-model`: those entities, plus every entity that a delete of them removes
-  by foreign-key cascade and that the ledger can track (the Cards of each Dashboard and Document, and the Actions of
-  each Card), until no new entity comes. Also returns the ids of the ModelIndexes of the closure's Cards, which the
-  delete removes by cascade with their values.
+  by cascade and that the ledger can track (the Cards of each Dashboard and Document, the Actions of each Card, and the
+  TransformTests of each Transform), until no new entity comes. Also returns the ids of the ModelIndexes of the
+  closure's Cards, which the delete removes by cascade with their values.
 
   With `:lock?`, it locks the rows of the entities of each round for update, parents first, before it reads their
   children. Else it takes no lock."
@@ -290,9 +298,10 @@
          (lock-instances! model-key (vec (sort ids)))))
      (let [{:keys [action-ids] new-index-ids :index-ids} (cascaded-action-and-index-ids
                                                           (vec (:model/Card frontier)))
-           children  {:model/Card   (set (child-card-ids (vec (:model/Dashboard frontier))
-                                                         (vec (:model/Document frontier))))
-                      :model/Action (set action-ids)}
+           children  {:model/Card          (set (child-card-ids (vec (:model/Dashboard frontier))
+                                                                (vec (:model/Document frontier))))
+                      :model/Action        (set action-ids)
+                      :model/TransformTest (set (transform-test-ids (vec (:model/Transform frontier))))}
            fresh     (into {}
                            (keep (fn [[model-key ids]]
                                    (let [new-ids (into #{} (remove (get closure model-key #{})) ids)]

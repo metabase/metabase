@@ -9,7 +9,7 @@
   - [[pre-check!]], with no lock, before the load, also on the delete closure;
   - in the load transaction of each entity ([[wrap-load-one]]), with the entity row and its child rows locked;
   - in the reconcile transaction, with the entity rows of the delete closure ([[lock-closure!]]) and then the ledger
-    rows ([[lock-ledger-rows!]]) locked: [[check-closure!]].
+    rows ([[lock-ledger-rows!]]) locked: [[check-closure!]], then [[check-subtree!]].
 
   The three checks use one delete closure, [[delete-closure]]. After a stop, the pull gives each entity that its load
   wrote for a remote change its content of the merge base again ([[restore-keys]], [[wrap-restore-one]] and
@@ -211,7 +211,8 @@
         ;; The insert of an entity into a locked Collection, or its move into one, checks the foreign key to the
         ;; Collection, so it waits until the pull commits. Every app DB reads at READ COMMITTED, so the read below
         ;; sees each entity that is in the Collections now. A Collection that a user creates under a locked
-        ;; Collection does not wait: it has no foreign key to its parent.
+        ;; Collection does not wait: it has no foreign key to its parent. [[check-subtree!]] reads the subtree again
+        ;; before the delete.
         (remote-sync.db/lock-instances! :model/Collection subtree))
       (into {:model/Collection (set subtree)}
             (keep (fn [model-key]
@@ -302,6 +303,22 @@
 
         (changed? state k model-type id)
         (stop! phase :changed k :closure? true)))))
+
+(defn check-subtree!
+  "Stop the pull in the phase `phase` when a Collection is under a Collection of the delete set of the locked delete
+  `closure` (see [[lock-closure!]]) and not in that delete set: a user created it after the lock. The delete of its
+  parent would remove it and its contents. Call it after [[check-closure!]], in the same transaction, as near to the
+  delete as possible."
+  [closure phase]
+  (let [deleted (get-in closure [:delete-set :model/Collection] #{})]
+    (when (seq deleted)
+      ;; A Collection has no foreign key to its parent, so its insert does not wait for the lock on the parent. A
+      ;; Collection that a user creates after this read and before the delete commits is still deleted.
+      (when-let [added (seq (sort (remove deleted (remote-sync.db/subtree-collection-ids-of-ids (vec deleted)))))]
+        (let [id (first added)]
+          (stop! phase :unknown [["Collection" (remote-sync.db/entity-id :model/Collection id)]]
+                 :closure? true
+                 :name (:name (first (remote-sync.db/instance-names :model/Collection [id])))))))))
 
 (defn pre-check!
   "Stop the pull, before any write, when an entity of ours that the pull will load or delete (the merge keys

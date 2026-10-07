@@ -568,6 +568,7 @@
                                  (let [closure (save-rule/lock-closure! deletes)]
                                    (save-rule/lock-ledger-rows! save-rule closure)
                                    (save-rule/check-closure! save-rule closure :reconcile)
+                                   (save-rule/check-subtree! closure :reconcile)
                                    closure)
                                  (save-rule/delete-closure deletes))
                   {:keys [deleted] :as result} (delete-with-closure! (:delete-set closure) closure
