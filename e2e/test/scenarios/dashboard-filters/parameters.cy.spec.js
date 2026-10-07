@@ -849,7 +849,9 @@ describe("scenarios > dashboard > parameters", () => {
       H.removeDashboardCard(0);
       H.getDashboardCard().findByText("test question").should("exist");
       H.undo();
-      H.getDashboardCard(0).findByDisplayValue("Heading Text").should("exist");
+      H.getDashboardCard(0)
+        .findByTestId("editing-parameter-widget")
+        .should("contain", "Count");
       H.removeDashboardCard(0);
       H.saveDashboard();
 
