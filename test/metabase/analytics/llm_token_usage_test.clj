@@ -17,6 +17,8 @@
 (def ^:private base-usage
   {:request-id          "abc123"
    :model-id            "anthropic/claude-haiku-4-5"
+   :provider            "anthropic"
+   :model-name          "claude-haiku-4-5"
    :total-tokens        150
    :prompt-tokens       100
    :completion-tokens   50
@@ -193,6 +195,7 @@
             :request-id          "req-123"
             :model-id            "anthropic/claude-haiku-4-5"
             :provider            "anthropic"
+            :model-name          "claude-haiku-4-5"
             :tag                 "test-tag"
             :prompt-tokens       100
             :completion-tokens   50
@@ -236,6 +239,8 @@
                                                :prometheus          false
                                                :request-id          "req-456"
                                                :model-id            "openai/gpt-4"
+                                               :provider            "openai"
+                                               :model-name          "gpt-4"
                                                :prompt-tokens       200
                                                :completion-tokens   100
                                                :total-tokens        300
@@ -245,7 +250,7 @@
                     (snowplow-test/pop-event-data-and-user-id!))))
           (testing "no Prometheus metrics incremented"
             (is (= 0.0 (mt/metric-value system :metabase-metabot/llm-input-tokens
-                                        {:model "openai/gpt-4" :source "none" :provider "unknown"})))))))))
+                                        {:model "openai/gpt-4" :source "none" :provider "openai"})))))))))
 
 (deftest track-token-usage!-both-false-error-test
   (testing "throws when both :snowplow and :prometheus are false"

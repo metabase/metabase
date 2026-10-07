@@ -19,8 +19,8 @@
   [:map {:closed true}
    [:request-id                                     :string]
    [:model-id                                       :string]
-   [:provider                      {:optional true} [:maybe :string]]
-   [:model-name                    {:optional true} [:maybe :string]]
+   [:provider                                       :string]
+   [:model-name                                     :string]
    [:total-tokens                                   ms/IntGreaterThanOrEqualToZero]
    [:prompt-tokens                                  ms/IntGreaterThanOrEqualToZero]
    [:completion-tokens                              ms/IntGreaterThanOrEqualToZero]
