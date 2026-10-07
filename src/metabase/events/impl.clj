@@ -37,7 +37,7 @@
     {:error/message "Events should derive from :metabase/event"}
     #(events.hierarchy/isa? % :metabase/event)]])
 
-(defn- with-suppressed
+(defn- add-suppressed!
   "Add each of `others` to `e` as suppressed, and return `e`."
   ^Throwable [^Throwable e others]
   (doseq [^Throwable other others
@@ -57,15 +57,15 @@
                            errors
                            (catch InterruptedException e
                              (.interrupt (Thread/currentThread))
-                             (throw (with-suppressed e errors)))
+                             (throw (add-suppressed! e errors)))
                            (catch Exception e
                              (conj errors e))
                            (catch Error e
-                             (throw (with-suppressed e errors)))))
+                             (throw (add-suppressed! e errors)))))
                        []
                        methods)]
     (when-let [[e & more] (seq errors)]
-      (throw (with-suppressed e more)))))
+      (throw (add-suppressed! e more)))))
 
 ;; Inside an open app-DB transaction, the first throw stops the listeners after it, as with `:do`: the transaction
 ;; rolls back, and a later listener must not act on rows that never commit (for example, send the invite email of a
