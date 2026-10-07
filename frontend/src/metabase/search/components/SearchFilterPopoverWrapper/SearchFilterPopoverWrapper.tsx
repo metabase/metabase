@@ -5,6 +5,7 @@ import type {
   FilterTypeKeys,
   SearchFilterPropTypes,
 } from "metabase/common/search/types";
+import CS from "metabase/css/core/index.css";
 import type { StackProps } from "metabase/ui";
 import {
   Box,
@@ -46,7 +47,7 @@ export const SearchFilterPopoverWrapper = ({
 
   return (
     <FocusTrap active>
-      <Stack className={S.container} w="100%" gap={0} {...stackProps}>
+      <Stack className={CS.overflowHidden} w="100%" gap={0} {...stackProps}>
         {children}
         <Box component="hr" className={S.divider} w="100%" />
         <Group justify="flex-end" align="center" px="sm" pb="sm">

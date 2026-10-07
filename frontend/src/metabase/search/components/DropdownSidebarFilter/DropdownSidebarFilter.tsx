@@ -13,6 +13,7 @@ import type {
   SearchFilterDropdown,
   SearchFilterPropTypes,
 } from "metabase/common/search/types";
+import CS from "metabase/css/core/index.css";
 import { useSelector } from "metabase/redux";
 import { getIsNavbarOpen } from "metabase/selectors/app";
 import { Box, Button, Group, Icon, Popover, Stack, Text } from "metabase/ui";
@@ -118,7 +119,7 @@ export const DropdownSidebarFilter = ({
             legend={fieldHasValue ? label() : undefined}
           >
             <Group
-              className={S.overflowHidden}
+              className={CS.overflowHidden}
               justify="space-between"
               wrap="nowrap"
               w="100%"
@@ -126,7 +127,7 @@ export const DropdownSidebarFilter = ({
               {fieldHasValue ? (
                 <DisplayComponent value={value} />
               ) : (
-                <Group className={S.overflowHidden} wrap="nowrap">
+                <Group className={CS.overflowHidden} wrap="nowrap">
                   {iconName && (
                     <Icon className={S.labelIcon} size={16} name={iconName} />
                   )}

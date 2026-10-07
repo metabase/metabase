@@ -31,7 +31,7 @@
 @media (--breakpoint-min-md) {
   .body {
     flex-direction: row-reverse;
-    gap: var(--mantine-spacing-xxxl);
+    gap: 2.5rem;
   }
 
   .controls {

@@ -85,14 +85,7 @@ export const InfoTextEditedInfo = ({
     if (isCompact) {
       const formattedDuration = timestamp && getRelativeTime(timestamp);
       return (
-        <Tooltip
-          label={
-            <LastEditInfoLabel
-              className={S.lastEditedInfoTooltip}
-              {...lastEditedInfoData}
-            />
-          }
-        >
+        <Tooltip label={<LastEditInfoLabel {...lastEditedInfoData} />}>
           <Text component="span" size="sm" c="text-secondary" truncate>
             {formattedDuration}
           </Text>

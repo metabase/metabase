@@ -3,7 +3,7 @@
   text-overflow: ellipsis;
   border: 2px solid var(--mb-color-border-neutral);
   margin: 0;
-  padding: var(--mantine-spacing-sm) var(--mantine-spacing-md);
+  padding: 0.5rem 0.75rem;
   cursor: pointer;
 
   & legend {
@@ -31,10 +31,6 @@
 
 .labelIcon {
   overflow: visible;
-}
-
-.overflowHidden {
-  overflow: hidden;
 }
 
 .eventSandbox {
