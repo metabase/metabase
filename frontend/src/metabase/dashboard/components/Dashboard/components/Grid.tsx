@@ -14,6 +14,7 @@ import {
   DashboardGridConnected,
   type DashboardGridProps,
 } from "../../DashboardGrid";
+import { DashboardGridSkeleton } from "../../DashboardGridSkeleton";
 import {
   DashboardEmptyState,
   DashboardEmptyStateWithoutAddPrompt,
@@ -26,6 +27,7 @@ export const Grid = ({
 }: Pick<DashboardGridProps, "className" | "style" | "p">) => {
   const {
     dashboard,
+    dashboardId,
     selectedTabId,
     isEditing,
     onRefreshPeriodChange,
@@ -71,6 +73,11 @@ export const Grid = ({
 
   const isEmpty = !dashboardHasCards || (dashboardHasCards && !tabHasCards);
 
+  if (!dashboard) {
+    return <DashboardGridSkeleton dashboardId={dashboardId} />;
+  }
+
+  // Only a refetch of a dashboard that's already open gets here.
   if (isLoadingWithoutCards) {
     return <Loader size="lg" label={t`Loading…`} />;
   }

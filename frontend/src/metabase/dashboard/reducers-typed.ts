@@ -54,6 +54,7 @@ import {
   addManyCardsToDash,
   cancelFetchCardData,
   clearCardData,
+  dashboardLayoutFetched,
   fetchCardDataAction,
   fetchDashboard,
   fetchDashboardCardDataAction,
@@ -319,6 +320,10 @@ export const dashboards = createReducer(
       .addCase(fetchDashboard.fulfilled, (state, { payload }) => ({
         ...state,
         ...payload.entities.dashboard,
+      }))
+      .addCase(dashboardLayoutFetched, (state, { payload }) => ({
+        ...state,
+        ...payload.dashboard,
       }))
       .addCase(
         setDashboardAttributes,

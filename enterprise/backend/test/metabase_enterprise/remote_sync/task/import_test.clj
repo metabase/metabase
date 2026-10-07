@@ -5,6 +5,7 @@
    [metabase-enterprise.remote-sync.impl :as impl]
    [metabase-enterprise.remote-sync.models.remote-sync-task :as remote-sync.task]
    [metabase-enterprise.remote-sync.source :as source]
+   [metabase-enterprise.remote-sync.source.protocol :as source.p]
    [metabase-enterprise.remote-sync.task.import :as task.import]
    [metabase-enterprise.remote-sync.test-helpers :as test-helpers]
    [metabase.test :as mt]
@@ -101,3 +102,23 @@
                     (is (true? (deref interrupted 5000 false)) "precondition: the timeout interrupts the import")
                     (is (empty? (test-helpers/leases url)) "no lease holds a clone after the job")))))
             (finally (test-helpers/forget-clones! url))))))))
+
+(deftest auto-import-does-not-repeat-an-unresolved-conflict-test
+  (testing "GHY-4737: an auto-import that conflicted is not retried, as a new conflict task, at the same source version"
+    (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git"
+                                       remote-sync-token "test-token"
+                                       remote-sync-branch "main"
+                                       remote-sync-type :read-only
+                                       remote-sync-auto-import true]
+      (mt/with-dynamic-fn-redefs [source/source-from-settings (fn [& _] (test-helpers/create-mock-source))
+                                  impl/import!                (fn [snapshot & _]
+                                                                {:status    :conflict
+                                                                 :version   (source.p/version snapshot)
+                                                                 :conflicts ["library"]})]
+        (let [before (t2/count :model/RemoteSyncTask)]
+          (#'task.import/auto-import!)
+          (is (= (inc before) (t2/count :model/RemoteSyncTask))
+              "the first tick records the conflict")
+          (#'task.import/auto-import!)
+          (is (= (inc before) (t2/count :model/RemoteSyncTask))
+              "the next tick at the same source version skips instead of recording another conflict"))))))

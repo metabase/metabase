@@ -13,6 +13,7 @@
    [metabase-enterprise.semantic-search.settings :as semantic.settings]
    [metabase.analytics-interface.core :as analytics]
    [metabase.health-inspector.core :as health-inspector]
+   [metabase.llm.provider :as llm.provider]
    [metabase.llm.settings :as llm.settings]
    [metabase.test :as mt])
   (:import
@@ -56,8 +57,9 @@
       (is (= "https://embed.example/v1/embeddings"
              (semantic.embedding/embedder-circuit-endpoint {:provider "ai-service"}))))
     (mt/with-dynamic-fn-redefs
-      [semantic.settings/openai-api-base-url (constantly "https://openai.example")
-       semantic.settings/openai-api-key      (constantly "test-key")]
+      [llm.provider/connection (constantly {:key    "openai"
+                                            :type   "openai"
+                                            :config {:api-key "test-key" :base-url "https://openai.example"}})]
       (is (= "https://openai.example/v1/embeddings"
              (semantic.embedding/embedder-circuit-endpoint {:provider "openai"}))))))
 

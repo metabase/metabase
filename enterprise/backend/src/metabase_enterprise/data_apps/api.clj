@@ -96,7 +96,7 @@
    [:bundle_path     ms/NonBlankString]
    [:enabled         :boolean]
    [:allowed_hosts   [:sequential :string]]
-   [:resource_collection_id [:maybe ms/PositiveInt]]
+   [:resource_collection_id ms/PositiveInt]
    [:permission_group_id    [:maybe ms/PositiveInt]]
    [:table_ids       [:sequential ms/PositiveInt]]
    [:has_user_permission_warnings {:optional true} :boolean]
@@ -246,16 +246,10 @@
 
 (defn- read-check-data-app
   "Check whether the current user can access a data app. Viewing requires read access to the app's
-   resource collection. An app with no linked resource collection has not been published yet: it is
-   not viewable by anyone through this endpoint (an admin must publish it first), signalled with a
-   409 so the client can show a dedicated \"not published\" screen rather than leaking metadata or
-   the bundle to every signed-in user."
+   resource collection, which every app has."
   [app]
   (api/read-check app)
-  (if-let [collection-id (:resource_collection_id app)]
-    (api/read-check :model/Collection collection-id)
-    (throw (ex-info (tru "This data app has not been published yet.")
-                    {:status-code 409})))
+  (api/read-check :model/Collection (:resource_collection_id app))
   app)
 
 (defn- check-not-outdated
@@ -417,7 +411,7 @@
   :- QueryTableDependenciesResponse
   "Return the tables read by already-saved queries, including ones reached only through an implicit join.
 
-   Sync copies models, actions and metrics whose queries it never resolves through `/query`, and only
+   Sync copies actions and metrics whose queries it never resolves through `/query`, and only
    this metadata-based lookup sees an implicit join: the id of a table reached through a foreign key
    appears nowhere in the query itself."
   [{:keys [slug]} :- [:map {:closed true} [:slug ms/NonBlankString]]

@@ -43,11 +43,19 @@ docs/configuring-metabase/environment-variables.md # auto-generated
 docs/configuring-metabase/config-template.md # auto-generated
 docs/installation-and-operation/commands.md # auto-generated
 docs/ai/providers.md # auto-generated
+docs/ai/mcp-tools.md # auto-generated
 docs/embedding/sdk/api # auto-generated
 docs/embedding/eajs/snippets # auto-generated
 
 # @metabase/devexp
 .github @metabase/devexp
+
+# These files are left unowned on purpose.
+# They change in most backend PRs, so an owning team would review many changes for little benefit.
+# Ratchet budgets may split per module in future, which would give each module's team its own file.
+# .clj-kondo/ratchets.edn @metabase/devexp
+# .clj-kondo/ratchets-test.edn @metabase/devexp
+# .clj-kondo/config.edn @metabase/devexp
 
 # @metabase/cloud-ops
 src/metabase/analytics/prometheus.clj @metabase/cloud-ops
