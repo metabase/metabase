@@ -130,20 +130,6 @@ describe("scenarios - setup guide", () => {
         .should("be.visible");
     });
 
-    it('"Get embed snippet" card should take you to the embed flow', () => {
-      cy.visit("/admin/embedding/setup-guide");
-
-      cy.findByTestId("admin-layout-content")
-        .findByText("Get embed snippet")
-        .click();
-
-      H.modal()
-        .first()
-        .within(() => {
-          cy.findByText("Select your embed experience").should("be.visible");
-        });
-    });
-
     it('"Get embed snippet" step should be done when a guest embed is published', () => {
       cy.log("Create a dashboard to embed");
       H.createDashboard({ name: "Test Dashboard" });
@@ -165,6 +151,8 @@ describe("scenarios - setup guide", () => {
       H.modal()
         .first()
         .within(() => {
+          cy.findByText("Select your embed experience").should("be.visible");
+
           cy.log("switch to guest auth");
           cy.findByLabelText("Guest").click();
           cy.log("choose dashboard experience");
