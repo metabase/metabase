@@ -1,4 +1,3 @@
-import { useMemo } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -8,10 +7,7 @@ import {
   type TestConnectionResult,
 } from "metabase/common/components/TestConnectionButton";
 import { useTestRemoteSyncConnectionMutation } from "metabase-enterprise/api/remote-sync";
-import type {
-  RemoteSyncConfigurationSettings,
-  TestRemoteSyncConnectionRequest,
-} from "metabase-types/api";
+import type { TestRemoteSyncConnectionRequest } from "metabase-types/api";
 
 import { TOKEN_KEY, URL_KEY } from "../../constants";
 
@@ -30,18 +26,20 @@ const getTestResult = (
 };
 
 interface GitTestConnectionButtonProps {
-  values: RemoteSyncConfigurationSettings;
+  url: string | null | undefined;
+  token: string | null | undefined;
 }
 
 export const GitTestConnectionButton = ({
-  values,
+  url,
+  token,
 }: GitTestConnectionButtonProps) => {
   const [testConnection, { isSuccess, error, isLoading, originalArgs }] =
     useTestRemoteSyncConnectionMutation();
-  const request = useMemo<TestRemoteSyncConnectionRequest>(
-    () => ({ [URL_KEY]: values[URL_KEY], [TOKEN_KEY]: values[TOKEN_KEY] }),
-    [values],
-  );
+  const request: TestRemoteSyncConnectionRequest = {
+    [URL_KEY]: url,
+    [TOKEN_KEY]: token,
+  };
   const result = _.isEqual(originalArgs, request)
     ? getTestResult(isSuccess, error)
     : null;
@@ -51,7 +49,7 @@ export const GitTestConnectionButton = ({
       data-testid="remote-sync-test-connection-button"
       result={result}
       isLoading={isLoading}
-      disabled={!values[URL_KEY]}
+      disabled={!url}
       onClick={() => testConnection(request)}
     />
   );

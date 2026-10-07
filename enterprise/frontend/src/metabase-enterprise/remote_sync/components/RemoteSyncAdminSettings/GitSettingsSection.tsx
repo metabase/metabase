@@ -39,7 +39,10 @@ export const GitSettingsSection = () => {
         })}
       />
       <Box>
-        <GitTestConnectionButton values={values} />
+        <GitTestConnectionButton
+          url={values[URL_KEY]}
+          token={values[TOKEN_KEY]}
+        />
       </Box>
     </RemoteSyncSettingsSection>
   );

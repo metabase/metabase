@@ -2,32 +2,29 @@ import userEvent from "@testing-library/user-event";
 
 import { setupRemoteSyncTestConnectionEndpoint } from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
-import type { RemoteSyncConfigurationSettings } from "metabase-types/api";
 
 import { GitTestConnectionButton } from "./GitTestConnectionButton";
 
-const VALUES: RemoteSyncConfigurationSettings = {
-  "remote-sync-enabled": true,
-  "remote-sync-url": "https://github.com/test/repo.git",
-  "remote-sync-token": "ghp_abc123",
-  "remote-sync-type": "read-only",
-  "remote-sync-branch": "main",
-};
+const URL = "https://github.com/test/repo.git";
+const TOKEN = "ghp_abc123";
 
 const setup = ({
-  values = VALUES,
   error,
 }: {
-  values?: RemoteSyncConfigurationSettings;
   error?: { status: number; message: string };
 } = {}) => {
   setupRemoteSyncTestConnectionEndpoint({ error });
   const { rerender } = renderWithProviders(
-    <GitTestConnectionButton values={values} />,
+    <GitTestConnectionButton url={URL} token={TOKEN} />,
   );
   return {
-    rerender: (newValues: RemoteSyncConfigurationSettings) =>
-      rerender(<GitTestConnectionButton values={newValues} />),
+    rerender: ({
+      url = URL,
+      token = TOKEN,
+    }: {
+      url?: string;
+      token?: string;
+    }) => rerender(<GitTestConnectionButton url={url} token={token} />),
   };
 };
 
@@ -55,23 +52,9 @@ describe("GitTestConnectionButton", () => {
     );
   });
 
-  it("should keep the result when a value outside the request changes", async () => {
-    const { rerender } = setup();
-    await clickTestConnection();
-    expect(
-      await screen.findByLabelText("Connection successful"),
-    ).toBeInTheDocument();
-
-    rerender({ ...VALUES, "remote-sync-branch": "develop" });
-    expect(screen.getByLabelText("Connection successful")).toBeInTheDocument();
-  });
-
   it.each([
-    {
-      name: "URL",
-      change: { "remote-sync-url": "https://github.com/x/y.git" },
-    },
-    { name: "token", change: { "remote-sync-token": "ghp_other" } },
+    { name: "URL", change: { url: "https://github.com/x/y.git" } },
+    { name: "token", change: { token: "ghp_other" } },
   ])("should clear the result when the $name changes", async ({ change }) => {
     const { rerender } = setup();
     await clickTestConnection();
@@ -79,7 +62,7 @@ describe("GitTestConnectionButton", () => {
       await screen.findByLabelText("Connection successful"),
     ).toBeInTheDocument();
 
-    rerender({ ...VALUES, ...change });
+    rerender(change);
     expect(
       screen.queryByLabelText("Connection successful"),
     ).not.toBeInTheDocument();
