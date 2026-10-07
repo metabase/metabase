@@ -363,8 +363,8 @@ describe("scenarios > embedding > full app", () => {
       });
     }
 
-    function verifyCardSelected({ cardName, collectionName }) {
-      cy.wait("@getCard").then(({ response }) => {
+    function verifyCardSelected({ alias, cardName, collectionName }) {
+      cy.wait(alias).then(({ response }) => {
         cy.wrap(response.body).its("name").should("equal", cardName);
         cy.wrap(response.body)
           .its("collection.name")
@@ -374,7 +374,6 @@ describe("scenarios > embedding > full app", () => {
 
     beforeEach(() => {
       cy.signInAsNormalUser();
-      cy.intercept("GET", "/api/card/*").as("getCard");
       cy.intercept("GET", "/api/table/*/query_metadata").as("getTableMetadata");
     });
 
@@ -517,104 +516,41 @@ describe("scenarios > embedding > full app", () => {
       });
     });
 
+    describe("collections", () => {
+      it("should only offer models as data sources in every collection the user can see", () => {
+        createCollectionMatrixCards({ withQuestions: true }).then(
+          (modelIds) => {
+            COLLECTION_CASES.forEach((testCase, index) => {
+              const modelName = getMatrixModelName(testCase.location);
+              const questionName = getMatrixQuestionName(testCase.location);
+              cy.log(`${testCase.user} user, model in ${testCase.location}`);
+
+              signInForCollectionCase(testCase);
+              cy.intercept({
+                method: "GET",
+                pathname: `/api/card/${modelIds[testCase.location]}`,
+              }).as(`getMatrixModel${index}`);
+
+              startNewEmbeddingQuestion();
+              H.popover()
+                .findByRole("link", { name: modelName })
+                .should("exist");
+              H.popover().should("not.contain", questionName);
+
+              selectDataSource(modelName);
+              verifyCardSelected({
+                alias: `@getMatrixModel${index}`,
+                cardName: modelName,
+                collectionName: testCase.collectionName,
+              });
+            });
+          },
+        );
+      });
+    });
+
     describe("question", () => {
       const cardType = "question";
-
-      it("should not be able to select a data source in the root collection", () => {
-        const cardDetails = {
-          ...ordersCardDetails,
-          type: cardType,
-          collection_id: null,
-        };
-        H.createQuestion(cardDetails);
-        startNewEmbeddingQuestion();
-        H.popover().should("not.contain", cardDetails.name);
-      });
-
-      it("should not be able to select a data source in a regular collection", () => {
-        const cardDetails = {
-          ...ordersCardDetails,
-          type: cardType,
-          collection_id: FIRST_COLLECTION_ID,
-        };
-        H.createQuestion(cardDetails);
-        startNewEmbeddingQuestion();
-        H.popover().should("not.contain", cardDetails.name);
-      });
-
-      it("should not be able to select a data source in a nested collection", () => {
-        const cardDetails = {
-          ...ordersCardDetails,
-          type: cardType,
-          collection_id: SECOND_COLLECTION_ID,
-        };
-        H.createQuestion(cardDetails);
-        startNewEmbeddingQuestion();
-        H.popover().should("not.contain", cardDetails.name);
-      });
-
-      it("should not be able to select a data source in a personal collection", () => {
-        const cardDetails = {
-          ...ordersCardDetails,
-          type: cardType,
-          collection_id: NORMAL_PERSONAL_COLLECTION_ID,
-        };
-        H.createQuestion(cardDetails);
-        startNewEmbeddingQuestion();
-        H.popover().should("not.contain", cardDetails.name);
-      });
-
-      it("should not be able to select a data source in another user personal collection", () => {
-        cy.signInAsAdmin();
-        const cardDetails = {
-          ...ordersCardDetails,
-          type: cardType,
-          collection_id: NORMAL_PERSONAL_COLLECTION_ID,
-        };
-        H.createQuestion(cardDetails);
-        startNewEmbeddingQuestion();
-        H.popover().should("not.contain", cardDetails.name);
-      });
-
-      it("should not be able to select a data source when there is no access to the root collection", () => {
-        const cardDetails = {
-          ...ordersCardDetails,
-          type: cardType,
-          collection_id: FIRST_COLLECTION_ID,
-        };
-
-        cy.signInAsAdmin();
-        H.createQuestion(cardDetails);
-        cy.log("grant `nocollection` user access to `First collection`");
-        cy.updateCollectionGraph({
-          [ALL_USERS_GROUP]: { [FIRST_COLLECTION_ID]: "read" },
-        });
-
-        cy.signIn("nocollection");
-        startNewEmbeddingQuestion();
-        H.popover().should("not.contain", cardDetails.name);
-      });
-
-      it("should not be able to select a data source when there is no access to the immediate parent collection", () => {
-        const cardDetails = {
-          ...ordersCardDetails,
-          type: cardType,
-          collection_id: THIRD_COLLECTION_ID,
-        };
-
-        cy.signInAsAdmin();
-        H.createQuestion(cardDetails);
-        cy.updateCollectionGraph({
-          [ALL_USERS_GROUP]: {
-            [FIRST_COLLECTION_ID]: "read",
-            [THIRD_COLLECTION_ID]: "read",
-          },
-        });
-
-        cy.signIn("nocollection");
-        startNewEmbeddingQuestion();
-        H.popover().should("not.contain", cardDetails.name);
-      });
 
       it("should not be able to join a card when the data source is a table", () => {
         const cardDetails = {
@@ -632,130 +568,6 @@ describe("scenarios > embedding > full app", () => {
 
     describe("model", () => {
       const cardType = "model";
-
-      it("should select a data source in the root collection", () => {
-        const cardDetails = {
-          ...ordersCardDetails,
-          type: "model",
-          collection_id: null,
-        };
-        H.createQuestion(cardDetails);
-        startNewEmbeddingQuestion();
-        H.popover().findByRole("link", { name: cardDetails.name }).click();
-        verifyCardSelected({
-          cardName: cardDetails.name,
-          collectionName: "Our analytics",
-        });
-      });
-
-      it("should select a data source in a regular collection", () => {
-        const cardDetails = {
-          ...ordersCardDetails,
-          type: cardType,
-          collection_id: FIRST_COLLECTION_ID,
-        };
-        H.createQuestion(cardDetails);
-        startNewEmbeddingQuestion();
-        selectDataSource(cardDetails.name);
-        verifyCardSelected({
-          cardName: cardDetails.name,
-          collectionName: "First collection",
-        });
-      });
-
-      it("should select a data source in a nested collection", () => {
-        const cardDetails = {
-          ...ordersCardDetails,
-          type: cardType,
-          collection_id: SECOND_COLLECTION_ID,
-        };
-        H.createQuestion(cardDetails);
-        startNewEmbeddingQuestion();
-        selectDataSource(cardDetails.name);
-        verifyCardSelected({
-          cardName: cardDetails.name,
-          collectionName: "Second collection",
-        });
-      });
-
-      it("should select a data source in a personal collection", () => {
-        const cardDetails = {
-          ...ordersCardDetails,
-          type: cardType,
-          collection_id: NORMAL_PERSONAL_COLLECTION_ID,
-        };
-        H.createQuestion(cardDetails);
-        startNewEmbeddingQuestion();
-        selectDataSource(cardDetails.name);
-        verifyCardSelected({
-          cardName: cardDetails.name,
-          collectionName: "Robert Tableton's Personal Collection",
-        });
-      });
-
-      it("should select a data source in another user personal collection", () => {
-        cy.signInAsAdmin();
-        const cardDetails = {
-          ...ordersCardDetails,
-          type: cardType,
-          collection_id: NORMAL_PERSONAL_COLLECTION_ID,
-        };
-        H.createQuestion(cardDetails);
-        startNewEmbeddingQuestion();
-        selectDataSource(cardDetails.name);
-        verifyCardSelected({
-          cardName: cardDetails.name,
-          collectionName: "Robert Tableton's Personal Collection",
-        });
-      });
-
-      it("should select a data source when there is no access to the root collection", () => {
-        const cardDetails = {
-          ...ordersCardDetails,
-          type: cardType,
-          collection_id: FIRST_COLLECTION_ID,
-        };
-
-        cy.signInAsAdmin();
-        H.createQuestion(cardDetails);
-        cy.log("grant `nocollection` user access to `First collection`");
-        cy.updateCollectionGraph({
-          [ALL_USERS_GROUP]: { [FIRST_COLLECTION_ID]: "read" },
-        });
-
-        cy.signIn("nocollection");
-        startNewEmbeddingQuestion();
-        selectDataSource(cardDetails.name);
-        verifyCardSelected({
-          cardName: cardDetails.name,
-          collectionName: "First collection",
-        });
-      });
-
-      it("should select a data source when there is no access to the immediate parent collection", () => {
-        const cardDetails = {
-          ...ordersCardDetails,
-          type: cardType,
-          collection_id: THIRD_COLLECTION_ID,
-        };
-
-        cy.signInAsAdmin();
-        H.createQuestion(cardDetails);
-        cy.updateCollectionGraph({
-          [ALL_USERS_GROUP]: {
-            [FIRST_COLLECTION_ID]: "read",
-            [THIRD_COLLECTION_ID]: "read",
-          },
-        });
-
-        cy.signIn("nocollection");
-        startNewEmbeddingQuestion();
-        selectDataSource(cardDetails.name);
-        verifyCardSelected({
-          cardName: cardDetails.name,
-          collectionName: "Third collection",
-        });
-      });
 
       it("should be able to join a card when the data source is a table", () => {
         const cardDetails = {
@@ -1109,165 +921,25 @@ describe("scenarios > embedding > full app", () => {
     });
 
     describe("model", () => {
-      it("should select a data source in the root collection", () => {
-        const cardDetails = {
-          ...ordersCardDetails,
-          type: "model",
-          collection_id: null,
-        };
-        H.createQuestion(cardDetails);
-        startNewEmbeddingQuestion({ isMultiStageDataPicker: true });
-        selectCard({
-          cardName: cardDetails.name,
-          cardType: "model",
-          collectionNames: [],
-        });
-        clickOnDataSource(ordersCardDetails.name);
-        verifyCardSelected({
-          cardName: cardDetails.name,
-          collectionName: "Our analytics",
-        });
-      });
+      it("should select a model in every collection the user can see", () => {
+        createCollectionMatrixCards({ withQuestions: false }).then(() => {
+          COLLECTION_CASES.forEach((testCase) => {
+            const modelName = getMatrixModelName(testCase.location);
+            cy.log(`${testCase.user} user, model in ${testCase.location}`);
 
-      it("should select a data source in a regular collection", () => {
-        const cardDetails = {
-          ...ordersCardDetails,
-          type: "model",
-          collection_id: FIRST_COLLECTION_ID,
-        };
-        H.createQuestion(cardDetails);
-        startNewEmbeddingQuestion({ isMultiStageDataPicker: true });
-        selectCard({
-          cardName: cardDetails.name,
-          cardType: "model",
-          collectionNames: ["First collection"],
-        });
-        clickOnDataSource(ordersCardDetails.name);
-        verifyCardSelected({
-          cardName: cardDetails.name,
-          collectionName: "First collection",
-        });
-      });
-
-      it("should select a data source in a nested collection", () => {
-        const cardDetails = {
-          ...ordersCardDetails,
-          type: "model",
-          collection_id: SECOND_COLLECTION_ID,
-        };
-        H.createQuestion(cardDetails);
-        startNewEmbeddingQuestion({ isMultiStageDataPicker: true });
-        selectCard({
-          cardName: cardDetails.name,
-          cardType: "model",
-          collectionNames: ["First collection", "Second collection"],
-        });
-        clickOnDataSource(ordersCardDetails.name);
-        verifyCardSelected({
-          cardName: cardDetails.name,
-          collectionName: "Second collection",
-        });
-      });
-
-      it("should select a data source in a personal collection", () => {
-        const cardDetails = {
-          ...ordersCardDetails,
-          type: "model",
-          collection_id: NORMAL_PERSONAL_COLLECTION_ID,
-        };
-        H.createQuestion(cardDetails);
-        startNewEmbeddingQuestion({ isMultiStageDataPicker: true });
-        selectCard({
-          cardName: cardDetails.name,
-          cardType: "model",
-          collectionNames: ["Your personal collection"],
-        });
-        clickOnDataSource(ordersCardDetails.name);
-        verifyCardSelected({
-          cardName: cardDetails.name,
-          collectionName: "Your personal collection",
-        });
-      });
-
-      it("should select a data source in another user personal collection", () => {
-        cy.signInAsAdmin();
-        const cardDetails = {
-          ...ordersCardDetails,
-          type: "model",
-          collection_id: NORMAL_PERSONAL_COLLECTION_ID,
-        };
-        H.createQuestion(cardDetails);
-        startNewEmbeddingQuestion({ isMultiStageDataPicker: true });
-        selectCard({
-          cardName: cardDetails.name,
-          cardType: "model",
-          collectionNames: [
-            "All personal collections",
-            "Robert Tableton's Personal Collection",
-          ],
-        });
-        clickOnDataSource(ordersCardDetails.name);
-        verifyCardSelected({
-          cardName: cardDetails.name,
-          collectionName: "Robert Tableton's Personal Collection",
-        });
-      });
-
-      it("should select a data source when there is no access to the root collection", () => {
-        const cardDetails = {
-          ...ordersCardDetails,
-          type: "model",
-          collection_id: FIRST_COLLECTION_ID,
-        };
-
-        cy.signInAsAdmin();
-        H.createQuestion(cardDetails);
-        cy.log("grant `nocollection` user access to `First collection`");
-        cy.updateCollectionGraph({
-          [ALL_USERS_GROUP]: { [FIRST_COLLECTION_ID]: "read" },
-        });
-
-        cy.signIn("nocollection");
-        startNewEmbeddingQuestion({ isMultiStageDataPicker: true });
-        selectCard({
-          cardName: cardDetails.name,
-          cardType: "model",
-          collectionNames: ["First collection"],
-        });
-        clickOnDataSource(ordersCardDetails.name);
-        verifyCardSelected({
-          cardName: cardDetails.name,
-          collectionName: "First collection",
-        });
-      });
-
-      it("should select a data source when there is no access to the immediate parent collection", () => {
-        const cardDetails = {
-          ...ordersCardDetails,
-          type: "model",
-          collection_id: THIRD_COLLECTION_ID,
-        };
-
-        cy.signInAsAdmin();
-        H.createQuestion(cardDetails);
-        cy.updateCollectionGraph({
-          [ALL_USERS_GROUP]: {
-            [FIRST_COLLECTION_ID]: "read",
-            [THIRD_COLLECTION_ID]: "read",
-          },
-        });
-
-        cy.signIn("nocollection");
-        startNewEmbeddingQuestion({ isMultiStageDataPicker: true });
-        selectCard({
-          cardName: cardDetails.name,
-          cardType: "model",
-          collectionNames: ["Third collection"],
-        });
-        clickOnDataSource(ordersCardDetails.name);
-        verifyCardSelected({
-          cardName: cardDetails.name,
-          collectionName: "Third collection",
+            signInForCollectionCase(testCase);
+            startNewEmbeddingQuestion({ isMultiStageDataPicker: true });
+            selectCard({
+              cardName: modelName,
+              cardType: "model",
+              collectionNames: testCase.stagedPath,
+            });
+            clickOnDataSource(modelName);
+            verifyCardSelected({
+              cardName: modelName,
+              collectionName: testCase.stagedCollectionName,
+            });
+          });
         });
       });
 
@@ -2022,4 +1694,109 @@ const selectDataSource = (dataSource) => {
  */
 const selectFirstDataSource = (dataSource) => {
   H.popover().findAllByRole("link", { name: dataSource }).first().click();
+};
+
+const MATRIX_LOCATIONS = [
+  { location: "root", collectionId: null },
+  { location: "First", collectionId: FIRST_COLLECTION_ID },
+  { location: "Second", collectionId: SECOND_COLLECTION_ID },
+  { location: "personal", collectionId: NORMAL_PERSONAL_COLLECTION_ID },
+  { location: "Third", collectionId: THIRD_COLLECTION_ID },
+];
+
+const COLLECTION_CASES = [
+  {
+    user: "normal",
+    location: "root",
+    collectionName: "Our analytics",
+    stagedPath: [],
+    stagedCollectionName: "Our analytics",
+  },
+  {
+    user: "normal",
+    location: "First",
+    collectionName: "First collection",
+    stagedPath: ["First collection"],
+    stagedCollectionName: "First collection",
+  },
+  {
+    user: "normal",
+    location: "Second",
+    collectionName: "Second collection",
+    stagedPath: ["First collection", "Second collection"],
+    stagedCollectionName: "Second collection",
+  },
+  {
+    user: "normal",
+    location: "personal",
+    collectionName: "Robert Tableton's Personal Collection",
+    stagedPath: ["Your personal collection"],
+    stagedCollectionName: "Your personal collection",
+  },
+  {
+    user: "admin",
+    location: "personal",
+    collectionName: "Robert Tableton's Personal Collection",
+    stagedPath: [
+      "All personal collections",
+      "Robert Tableton's Personal Collection",
+    ],
+    stagedCollectionName: "Robert Tableton's Personal Collection",
+  },
+  {
+    user: "nocollection",
+    location: "First",
+    readCollectionIds: [FIRST_COLLECTION_ID],
+    collectionName: "First collection",
+    stagedPath: ["First collection"],
+    stagedCollectionName: "First collection",
+  },
+  {
+    user: "nocollection",
+    location: "Third",
+    readCollectionIds: [FIRST_COLLECTION_ID, THIRD_COLLECTION_ID],
+    collectionName: "Third collection",
+    stagedPath: ["Third collection"],
+    stagedCollectionName: "Third collection",
+  },
+];
+
+const getMatrixModelName = (location) => `Model in ${location}`;
+
+const getMatrixQuestionName = (location) => `Question in ${location}`;
+
+const createCollectionMatrixCards = ({ withQuestions }) => {
+  const modelIds = {};
+  cy.signInAsAdmin();
+  MATRIX_LOCATIONS.forEach(({ location, collectionId }) => {
+    H.createQuestion({
+      name: getMatrixModelName(location),
+      type: "model",
+      query: { "source-table": ORDERS_ID },
+      collection_id: collectionId,
+    }).then(({ body }) => {
+      modelIds[location] = body.id;
+    });
+    if (withQuestions) {
+      H.createQuestion({
+        name: getMatrixQuestionName(location),
+        type: "question",
+        query: { "source-table": ORDERS_ID },
+        collection_id: collectionId,
+      });
+    }
+  });
+  return cy.wrap(modelIds);
+};
+
+const signInForCollectionCase = ({ user, readCollectionIds }) => {
+  if (readCollectionIds) {
+    cy.signInAsAdmin();
+    cy.updateCollectionGraph({
+      [ALL_USERS_GROUP]: Object.fromEntries(
+        readCollectionIds.map((collectionId) => [collectionId, "read"]),
+      ),
+    });
+  }
+  cy.signIn(user);
 };
