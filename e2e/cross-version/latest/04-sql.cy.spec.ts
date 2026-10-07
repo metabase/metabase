@@ -88,6 +88,14 @@ describe("Cross-version questions - sql", () => {
   );
 
   it("verify: sql question can be filtered", { tags: ["@target"] }, () => {
+    // As a result of PR #77133, cards created in >=v63 fail to load on older
+    // versions. We explicitly don't guarantee that things created in a new version of
+    // Metabase will work when rolled back to an older version so skipping this test for
+    // v58 aligns with our support commitments.
+    cy.request("/api/session/properties").then(({ body }) => {
+      cy.skipOn(/^v[01]\.58\./.test(body.version.tag));
+    });
+
     cy.signIn("admin", { skipCache: true });
 
     X.visitRootCollectionAndWait();
