@@ -81,10 +81,19 @@ export const DatabaseRoutingSection = ({
     [enabled],
   );
 
-  // The answer given at the toggle, held here until a user attribute carries it to the server.
+  // Held until a user attribute carries it to the server in the same request.
   const [pendingAnonymousAccess, setPendingAnonymousAccess] = useState<
     boolean | undefined
   >(undefined);
+  // The attribute waiting on an answer, when the admin reached the select without being asked.
+  const [attributeAwaitingAnswer, setAttributeAwaitingAnswer] = useState<
+    string | undefined
+  >(undefined);
+  // The prop lags a successful store by a refetch, so remember what went to the server.
+  const [sentAttribute, setSentAttribute] = useState<string | undefined>(
+    undefined,
+  );
+  const routerAttribute = userAttribute ?? sentAttribute;
   // Once routing is stored the grant lives on the server, so the held answer has done its work.
   const pendingGrant = isRoutingStored ? undefined : pendingAnonymousAccess;
   const anonymousAccessGranted =
@@ -112,18 +121,17 @@ export const DatabaseRoutingSection = ({
 
   const anonymouslyReachable = !!usageInfo?.anonymously_reachable;
 
-  // A just-toggled database was asked about at the toggle instead, and a granted router serves
-  // anonymous traffic from the router database, so in neither case has anything stopped working.
+  // A just-toggled database was asked instead, and a granted router still serves them.
   const hasStoppedServingAnonymousVisitors =
     isRoutingStored && !anonymousAccessGranted && anonymouslyReachable;
 
-  // Derived rather than stored, so the question is still asked when the toggle beats the
-  // reachability fact. An answer closes it; cancelling closes it by turning the toggle off.
+  // The invariant: a router is never stored without the grant decision attached.
+  const mustAnswerBeforeStoring =
+    !isRoutingStored && anonymouslyReachable && pendingGrant === undefined;
+  // Derived, so it survives the toggle beating the reachability fact. The chevron only discloses.
   const mustChooseAnonymousAccess =
-    tempEnabled &&
-    !isRoutingStored &&
-    anonymouslyReachable &&
-    pendingGrant === undefined;
+    mustAnswerBeforeStoring &&
+    (tempEnabled || attributeAwaitingAnswer !== undefined);
 
   const disabledFeatMsg = getDisabledFeatureMessage(database, {
     hasTransforms,
@@ -135,38 +143,53 @@ export const DatabaseRoutingSection = ({
       !userAttrsReq.isLoading && userAttributeOptions.length === 0,
   });
 
-  const handleUserAttributeChange = async (attribute: string) => {
-    await updateRouterDatabase({
+  const storeRouter = async (
+    attribute: string,
+    granted: boolean | undefined,
+  ) => {
+    const result = await updateRouterDatabase({
       id: database.id,
       user_attribute: attribute,
-      // An omitted grant leaves the stored one alone, so only the first enable carries the answer.
-      ...(pendingGrant !== undefined && {
-        anonymous_access_granted: pendingGrant,
-      }),
+      // An omitted grant leaves the stored one alone, so only a first enable carries the answer.
+      ...(granted !== undefined && { anonymous_access_granted: granted }),
     });
-
-    if (!isRoutingStored) {
-      sendToast({ message: t`Database routing enabled` });
-    } else {
-      sendToast({ message: t`Database routing updated` });
+    // the trigger resolves rather than rejects on failure; the error is rendered inline
+    if ("error" in result) {
+      return;
     }
+    setSentAttribute(attribute);
+    sendToast({
+      message: isRoutingStored
+        ? t`Database routing updated`
+        : t`Database routing enabled`,
+    });
+  };
+
+  const handleUserAttributeChange = async (attribute: string) => {
+    if (mustAnswerBeforeStoring) {
+      setAttributeAwaitingAnswer(attribute);
+      return;
+    }
+    await storeRouter(attribute, pendingGrant);
   };
 
   const handleAnonymousAccessChange = async (granted: boolean) => {
-    // With no stored attribute the grant has nothing to be stored against, so the answer keeps waiting.
-    if (!userAttribute) {
+    // With no stored attribute there is nothing to store the grant against, so it keeps waiting.
+    if (!routerAttribute) {
       setPendingAnonymousAccess(granted);
       return;
     }
     const result = await updateRouterDatabase({
       id: database.id,
-      user_attribute: userAttribute,
+      user_attribute: routerAttribute,
       anonymous_access_granted: granted,
     });
     // the trigger resolves rather than rejects on failure; the error is rendered inline
     if ("error" in result) {
       return;
     }
+    // What the server just accepted outranks the prop until the refetch lands.
+    setPendingAnonymousAccess(granted);
     sendToast({
       message: granted
         ? t`Anonymous access allowed`
@@ -174,24 +197,48 @@ export const DatabaseRoutingSection = ({
     });
   };
 
+  // Nothing reaches the server until an attribute does, so abandoning only drops local state.
+  const discardPendingRouting = () => {
+    setTempEnabled(false);
+    setPendingAnonymousAccess(undefined);
+    setAttributeAwaitingAnswer(undefined);
+    setSentAttribute(undefined);
+  };
+
   const handleToggle = async (enabled: boolean) => {
     setIsExpanded(enabled);
-    setTempEnabled(enabled);
     if (enabled) {
+      setTempEnabled(true);
       return;
     }
-    setPendingAnonymousAccess(undefined);
-    await updateRouterDatabase({ id: database.id, user_attribute: null });
-
-    if (isRoutingStored) {
+    discardPendingRouting();
+    if (!isRoutingStored) {
+      return;
+    }
+    const result = await updateRouterDatabase({
+      id: database.id,
+      user_attribute: null,
+    });
+    if (!("error" in result)) {
       sendToast({ message: t`Database routing disabled` });
     }
   };
 
+  const handleChoiceAnswer = async (granted: boolean) => {
+    setPendingAnonymousAccess(granted);
+    if (attributeAwaitingAnswer === undefined) {
+      return;
+    }
+    setAttributeAwaitingAnswer(undefined);
+    await storeRouter(attributeAwaitingAnswer, granted);
+  };
+
   const handleChoiceCancel = () => {
-    setIsExpanded(false);
-    setTempEnabled(false);
-    setPendingAnonymousAccess(undefined);
+    // The chevron's disclosure is the admin's own, so only a toggled-on section collapses.
+    if (tempEnabled) {
+      setIsExpanded(false);
+    }
+    discardPendingRouting();
   };
 
   if (shouldHideSection) {
@@ -207,7 +254,7 @@ export const DatabaseRoutingSection = ({
       <AnonymousAccessChoiceModal
         opened={mustChooseAnonymousAccess}
         onCancel={handleChoiceCancel}
-        onAnswer={setPendingAnonymousAccess}
+        onAnswer={handleChoiceAnswer}
       />
       <Flex justify="space-between" align="center">
         <Stack>

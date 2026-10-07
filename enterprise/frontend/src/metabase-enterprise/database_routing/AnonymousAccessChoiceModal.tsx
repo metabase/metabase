@@ -6,15 +6,11 @@ interface AnonymousAccessChoiceModalProps {
   opened: boolean;
   /** Dismissing the question without answering it. Nothing changes. */
   onCancel: () => void;
-  /** Whether anonymous visitors may keep querying this database. */
+  /** Called with the admin's answer. */
   onAnswer: (granted: boolean) => void;
 }
 
-/**
- * Puts the anonymous-access grant to the admin as a choice, for a database something anonymous already
- * reaches. The caller decides what the answer is applied to, so the same question can be asked before
- * routing is turned on and before an existing grant is taken away.
- */
+/** Puts the anonymous-access grant to the admin as a choice. The caller applies the answer. */
 export const AnonymousAccessChoiceModal = ({
   opened,
   onCancel,
@@ -34,14 +30,14 @@ export const AnonymousAccessChoiceModal = ({
         <Button variant="subtle" onClick={onCancel}>{t`Cancel`}</Button>
         <Flex align="center" gap="lg">
           <Button onClick={() => onAnswer(false)}>
-            {t`Let them stop working`}
+            {t`Stop serving them`}
           </Button>
           <Button
             variant="filled"
             data-autofocus
             onClick={() => onAnswer(true)}
           >
-            {t`Keep them working`}
+            {t`Keep serving them`}
           </Button>
         </Flex>
       </Flex>
