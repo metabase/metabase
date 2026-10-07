@@ -463,6 +463,10 @@ const runSuite = async (suite, t, outer) => {
       let failure;
       if (actEnvironmentForFile !== undefined && !process.env.NT_NO_ACT_ENV_RESTORE) globalThis.IS_REACT_ACT_ENVIRONMENT = actEnvironmentForFile;
       const testStarted = Date.now();
+      if (process.env.NT_DEBUG_BODY) {
+        const attrs = (element) => [...element.attributes].map((a) => `${a.name}="${a.value.slice(0, 40)}"`).join(" ");
+        process.stderr.write(`[body] ${currentFile.slice(-34)} html{${attrs(document.documentElement)}} body{${attrs(document.body)}} head=${document.head.children.length} active=${document.activeElement?.tagName} requestSame=${(() => { try { const fm = require("fetch-mock").default; return `${globalThis.Request === fm.config.Request} fetchIsMock=${globalThis.fetch === fm.fetchHandler} name=${globalThis.Request?.name}/${fm.config.Request?.name}`; } catch (e) { return String(e).slice(0, 40); } })()}\n`);
+      }
       if (process.env.NT_DEBUG_CLIP) {
         const descriptor = Object.getOwnPropertyDescriptor(globalThis.navigator, "clipboard");
         const clip = globalThis.navigator.clipboard;
@@ -620,6 +624,7 @@ const runSuite = async (suite, t, outer) => {
         globalThis.__nodeTestSpike.cacheAtFake = undefined;
         for (const key of Object.keys(require.cache)) if (!before.has(key)) process.stderr.write(`[fake-load] ${key.replace(/.*\/node_modules\//, "nm/").replace(root, "")}\n`);
       }
+      if (process.env.NT_DEBUG_BODY) { try { const fm = require("fetch-mock").default; process.stderr.write(`[calls] ${fm.callHistory.callLogs.map((log) => `${log.options?.method ?? "?"}:${log.request ? "req:" + log.request.method : "noreq"}:${log.route ? "matched" : "unmatched"}:${String(log.url).slice(-28)}`).join(" | ")}\n`); } catch {} }
       if (process.env.NT_DEBUG_TESTS) process.stderr.write(`[test-done] ms=${Date.now() - testStarted} ${failure ? "FAIL" : "ok"} ${currentFile.slice(-40)} "${child.name.slice(0, 50)}"\n`);
       if (failure) {
         if (process.env.NT_FAILURE_DETAIL) fs.appendFileSync(process.env.NT_FAILURE_DETAIL, `\n===== ${currentFile} > ${child.name}\n${String(failure.error?.stack ?? failure.error).slice(0, 40000)}\n`);
@@ -1643,7 +1648,20 @@ const patchCallHistory = () => {
   } catch {}
 };
 patchCallHistory();
-globalThis.__nodeTestSpike.betweenFiles = () => { resetTranslationLocale(); resetLocation(); restoreCanvasMocks(); wrapCanvasGetContext(); };
+// The custom elements registry belongs to the window and has no way to remove
+// a definition. A module that defines its elements once, guarded by "if not
+// defined yet", would leave every later file with the classes of the first
+// file that loaded it. A new window has an empty registry, so empty this one.
+const resetCustomElements = () => {
+  if (process.env.NT_NO_CUSTOM_ELEMENTS_RESET) return;
+  try {
+    const { implForWrapper } = require(path.join(bunModule("jsdom"), "lib/jsdom/living/generated/utils.js"));
+    const registry = implForWrapper(globalThis.window.customElements);
+    registry._customElementDefinitions.length = 0;
+    registry._whenDefinedPromiseMap = Object.create(null);
+  } catch {}
+};
+globalThis.__nodeTestSpike.betweenFiles = () => { resetTranslationLocale(); resetLocation(); restoreCanvasMocks(); wrapCanvasGetContext(); resetCustomElements(); };
 wrapCanvasGetContext();
 let baselineVisualizations = null;
 try {
