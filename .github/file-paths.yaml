@@ -52,6 +52,7 @@ frontend_configs: &frontend_configs
 frontend_sources: &frontend_sources
   - *shared_sources
   - *frontend_configs
+  - "shadow-cljs.edn"
   - "enterprise/frontend/!(test)**/**/{!(*.spec),}.{js,jsx,ts,tsx,css}"
   - "frontend/!(test)**/**/{!(*.spec),}.{js,jsx,ts,tsx,css}"
 
