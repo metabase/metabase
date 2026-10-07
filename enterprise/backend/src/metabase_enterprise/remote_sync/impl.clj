@@ -1481,9 +1481,11 @@
   `Throwable` from `sync-fn` becomes an `:error` result; an `Error` must not escape the worker thread, where nothing
   would log it and the row would stay open."
   [task-id branch sync-fn & {:keys [on-success source]}]
-  (let [stop-heartbeat! (remote-sync.task/start-heartbeat! task-id)]
+  (let [stop-heartbeat! (volatile! (constantly nil))]
     (swap! running-tasks conj task-id)
     (try
+      ;; Inside the try: when the heartbeat does not start, the catch logs it and the finally ends the row.
+      (vreset! stop-heartbeat! (remote-sync.task/start-heartbeat! task-id))
       (let [result (try
                      (sync-fn task-id)
                      (catch Throwable t
@@ -1499,7 +1501,7 @@
       (catch Throwable t
         (log/errorf t "Remote sync task %d bookkeeping failed" task-id))
       (finally
-        (stop-heartbeat!)
+        (@stop-heartbeat!)
         (source/close! source)
         (swap! running-tasks disj task-id)
         (ensure-task-ended! task-id)))))

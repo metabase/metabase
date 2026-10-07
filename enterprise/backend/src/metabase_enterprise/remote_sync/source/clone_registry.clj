@@ -2,7 +2,8 @@
   "The local clones of git remotes that one process holds. A registry makes each clone new, in a directory under its
   process root `<base-dir>/p-<uuid>`, which it locks for its whole life. It makes the root and `base-dir` owner-only.
   It never opens a directory that it did not make. It refuses to clone, and throws, when `base-dir` or the root is a
-  symbolic link, is not a directory, or is owned by a user other than the user of this process.
+  symbolic link, is not a directory, or is owned by a user other than the user of this process. Each new root that it
+  locks starts a sweep, which deletes the process roots of stopped processes.
 
   Each clone of a URL is one generation of that URL. At most one generation of a URL is active. A source holds one
   lease, which can hold several generations of its URL.
@@ -20,13 +21,14 @@
    [buddy.core.codecs :as codecs]
    [buddy.core.hash :as buddy-hash]
    [clojure.java.io :as io]
+   [clojure.string :as str]
    [metabase.settings.core :as setting]
    [metabase.util :as u]
    [metabase.util.log :as log])
   (:import
-   (java.io File)
-   (java.nio.channels FileChannel FileLock)
-   (java.nio.file FileSystems Files LinkOption OpenOption StandardOpenOption)
+   (java.io File IOException)
+   (java.nio.channels FileChannel FileLock OverlappingFileLockException)
+   (java.nio.file FileSystems Files FileVisitOption LinkOption NoSuchFileException OpenOption Path StandardOpenOption)
    (java.nio.file.attribute FileAttribute PosixFilePermissions UserPrincipal)
    (java.util.concurrent ExecutorService Executors ThreadFactory)
    (org.apache.commons.io FileUtils)))
@@ -149,10 +151,38 @@
   ^FileLock [^FileChannel channel]
   (.tryLock channel))
 
+(defn- take-root-lock!
+  "The lock of the new process root `dir` on its lock file `channel`. When the lock call throws, as on some network
+  file systems, logs a warning that names `dir`, closes `channel`, deletes the lock file, and returns nil. Throws when
+  another process holds the lock."
+  ^FileLock [^File dir ^FileChannel channel]
+  (let [lock (try
+               (or (lock-root! channel)
+                   ::held)
+               (catch Exception e
+                 (log/warn e (str "Could not lock the git clone directory of this process. Remote sync runs, and it deletes"
+                                  " no git clone directory of a stopped process. After a crash of this process, delete"
+                                  " this directory: " dir))
+                 nil))]
+    (cond
+      (= ::held lock)
+      ;; Only a sweep of another process can hold the lock of a new root. That sweep deletes the root.
+      (throw (IOException. (str "Another process holds the lock of the new git clone directory " dir)))
+
+      (nil? lock)
+      ;; A sweep keeps a root with no lock file, so no other process deletes this root.
+      (do (.close channel)
+          (Files/deleteIfExists (.toPath (io/file dir lock-file-name)))
+          nil)
+
+      :else
+      lock)))
+
 (defn- make-root!
   "Creates a new process root under `base-dir` and locks its lock file. Returns the root: its `:dir`, and the `:channel`
-  and `:lock` of its lock file. Throws when [[check-own-directory!]] refuses `base-dir` or the root. On a failure, no
-  new root stays on disk."
+  and `:lock` of its lock file. Where the lock call throws, the root has no lock file and its `:channel` and `:lock`
+  are nil. Throws when [[check-own-directory!]] refuses `base-dir` or the root. On a failure, no new root stays on
+  disk."
   [^File base-dir]
   (make-owner-only-base! base-dir)
   (let [dir (io/file base-dir (str "p-" (random-uuid)))]
@@ -165,9 +195,10 @@
                                       ^"[Ljava.nio.file.OpenOption;"
                                       (into-array OpenOption [StandardOpenOption/CREATE StandardOpenOption/WRITE]))]
         (try
-          (u/prog1 {:dir dir :channel channel :lock (lock-root! channel)}
-            (swap! own-roots conj (.getCanonicalPath dir))
-            (log/info "Created the git clone directory of this process" {:path (str dir)}))
+          (let [lock (take-root-lock! dir channel)]
+            (u/prog1 {:dir dir :channel (when lock channel) :lock lock}
+              (swap! own-roots conj (.getCanonicalPath dir))
+              (log/info "Created the git clone directory of this process" {:path (str dir)})))
           (catch Throwable e
             (.close channel)
             (throw e))))
@@ -179,18 +210,104 @@
   "Releases the lock of `root` and closes the channel of its lock file."
   [{:keys [dir ^FileChannel channel ^FileLock lock]}]
   (try
-    (when (.isOpen channel)
+    (when (some-> channel .isOpen)
       (some-> lock .release)
       (.close channel))
     (catch Throwable e
       (log/warn e "Could not release the lock of the git clone directory of this process" {:path (str dir)}))))
 
 (defn- intact-root?
-  "True iff the directory of `root` and its lock file exist."
-  [{:keys [^File dir]}]
-  ;; A cleaner of the temp dir can delete either one. A root without its lock file looks unused to other processes.
+  "True iff the directory of `root` exists, and its lock file exists when `root` has a lock."
+  [{:keys [^File dir lock]}]
+  ;; A cleaner of the temp dir can delete either one. A lock file that was deleted shows no lock to other processes.
   (and (.isDirectory dir)
-       (.isFile (io/file dir lock-file-name))))
+       (or (nil? lock)
+           (.isFile (io/file dir lock-file-name)))))
+
+(defn- lock-free?
+  "True iff this process can take the lock of the lock file of the process root `dir`. Takes the lock and releases it at
+  once. Throws when the lock file does not exist."
+  [^File dir]
+  ;; No CREATE: a process makes its root before its lock file, so a root with no lock file can be new.
+  (with-open [channel (FileChannel/open (.toPath (io/file dir lock-file-name))
+                                        ^"[Ljava.nio.file.OpenOption;"
+                                        (into-array OpenOption [StandardOpenOption/WRITE LinkOption/NOFOLLOW_LINKS]))]
+    (try
+      (if-let [lock (.tryLock channel)]
+        (do (.release lock) true)
+        false)
+      ;; This JVM holds the lock. The close of this channel releases it, so the sweep never opens the lock file of a
+      ;; root in [[own-roots]].
+      (catch OverlappingFileLockException _
+        false))))
+
+(defn- sweep-roots!
+  "Deletes each process root in `base-dir` that this JVM did not make and whose lock is free. Keeps a root with no lock
+  file, and a root whose lock check throws."
+  [^File base-dir]
+  (doseq [^File dir (.listFiles base-dir)
+          :when     (and (str/starts-with? (.getName dir) "p-")
+                         (Files/isDirectory (.toPath dir) (no-follow))
+                         (not (contains? @own-roots (.getCanonicalPath dir))))]
+    (when (try
+            (lock-free? dir)
+            (catch Exception e
+              (log/debug e "Kept a git clone directory whose lock could not be checked" {:path (str dir)})
+              false))
+      (log/info "Deleting the git clone directory of a stopped process" {:path (str dir)})
+      (delete-dir! dir))))
+
+(def ^:private old-clone-name
+  "The name of a clone directory of an earlier Metabase version: a SHA-1 in hexadecimal, alone or followed by `-` and a
+  UUID."
+  #"[0-9a-f]{40}(-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})?")
+
+(defn- last-write-ms
+  "The newest modification time, in ms, of the clone directory `dir`, its `FETCH_HEAD`, its `packed-refs`, and the files
+  under its `refs` directory."
+  [^File dir]
+  ;; A fetch writes FETCH_HEAD. A push and a branch creation write refs or packed-refs.
+  (let [time-ms   (fn [^Path path]
+                    (try
+                      (.toMillis (Files/getLastModifiedTime path (no-follow)))
+                      (catch NoSuchFileException _
+                        0)))
+        refs      (.toPath (io/file dir "refs"))
+        ref-times (when (Files/isDirectory refs (no-follow))
+                    (with-open [paths (Files/walk refs (make-array FileVisitOption 0))]
+                      (mapv time-ms (iterator-seq (.iterator paths)))))]
+    (reduce max (concat (map #(time-ms (.toPath (io/file dir ^String %))) ["." "FETCH_HEAD" "packed-refs"])
+                        ref-times))))
+
+(defn- sweep-old-clones!
+  "Deletes each clone directory of an earlier Metabase version directly in `base-dir` whose [[last-write-ms]] is more
+  than `idle-ms` ago."
+  [^File base-dir idle-ms]
+  ;; A process of an earlier version can still use its clone during a rolling upgrade. Each of its tasks fetches at its
+  ;; start, and no task runs longer than the task timeout.
+  (let [now (System/currentTimeMillis)]
+    (doseq [^File dir (.listFiles base-dir)
+            :when     (and (re-matches old-clone-name (.getName dir))
+                           (Files/isDirectory (.toPath dir) (no-follow)))]
+      (when (try
+              (> (- now (last-write-ms dir)) idle-ms)
+              (catch Exception e
+                (log/debug e "Kept a git clone directory whose last write time could not be read" {:path (str dir)})
+                false))
+        (log/info "Deleting a git clone directory of an earlier Metabase version" {:path (str dir)})
+        (delete-dir! dir)))))
+
+(defn- sweep!
+  "Deletes the process roots of stopped processes in the base directory of `registry`. At the first sweep of `registry`,
+  when it has an `:old-clone-idle-ms`, also deletes the idle clone directories of earlier Metabase versions. A failure
+  is logged."
+  [{:keys [^File base-dir old-clone-idle-ms old-clones-swept?]}]
+  (try
+    (sweep-roots! base-dir)
+    (when (and old-clone-idle-ms (compare-and-set! old-clones-swept? false true))
+      (sweep-old-clones! base-dir (long (old-clone-idle-ms))))
+    (catch Throwable e
+      (log/warn e "Could not delete the git clone directories of stopped processes" {:path (str base-dir)}))))
 
 (defn- clone-thread-factory
   "Daemon threads for the clone jobs."
@@ -202,19 +319,28 @@
           (.setDaemon true))))))
 
 (defn make-registry
-  "A registry whose process root is a new directory under `base-dir`. It makes nothing on disk before its first clone.
+  "A registry whose process root is a new directory under `base-dir`. It changes nothing on disk before its first clone.
+  Each new process root that it locks starts a sweep of `base-dir`: the sweep deletes each process root of another
+  process whose lock is free. It never opens the lock file of a root that this JVM made. Where the lock call throws, the
+  registry runs with no sweep.
 
   `max-lease-age-ms`, when given, is a function of no arguments that returns the age limit of a lease in ms. Each
-  [[acquire!]] and [[retire!]] of a URL logs each lease of that URL that is older than the limit, one time."
+  [[acquire!]] and [[retire!]] of a URL logs each lease of that URL that is older than the limit, one time.
+
+  `old-clone-idle-ms`, when given, is a function of no arguments that returns a time in ms. The first sweep then also
+  deletes each clone directory of an earlier Metabase version directly in `base-dir` that nobody wrote to for longer
+  than that time: a directory whose name is a SHA-1 in lowercase hexadecimal, alone or followed by `-` and a UUID."
   ([^File base-dir]
    (make-registry base-dir nil))
-  ([^File base-dir {:keys [max-lease-age-ms]}]
-   {:base-dir         base-dir
-    :root             (atom nil)
-    :old-roots        (atom [])
-    :state            (atom {})
-    :executor         (delay (Executors/newCachedThreadPool (clone-thread-factory)))
-    :max-lease-age-ms max-lease-age-ms}))
+  ([^File base-dir {:keys [max-lease-age-ms old-clone-idle-ms]}]
+   {:base-dir          base-dir
+    :root              (atom nil)
+    :old-roots         (atom [])
+    :state             (atom {})
+    :executor          (delay (Executors/newCachedThreadPool (clone-thread-factory)))
+    :max-lease-age-ms  max-lease-age-ms
+    :old-clone-idle-ms old-clone-idle-ms
+    :old-clones-swept? (atom false)}))
 
 (defn new-lease
   "A new lease on the clones of `url`, held by the caller. It holds no generation before [[acquire!]]."
@@ -370,14 +496,18 @@
 
 (defn- root!
   "The intact process root of `registry`. Makes a new root at the first call, and when the current root is not intact.
-  Throws when [[check-own-directory!]] refuses the base directory or the root."
+  A new root with a lock starts a [[sweep!]]. Throws when [[check-own-directory!]] refuses the base directory or the
+  root."
   [{:keys [base-dir root] :as registry}]
   ;; A clone into a deleted root would make its path again, with default permissions and no lock file.
   (retire-broken-root! registry)
   (or (check-current-root! registry)
       (locking root
         (or @root
-            (reset! root (make-root! base-dir))))))
+            ;; make-root! adds the new root to own-roots before the sweep, so the sweep never opens its lock file.
+            (u/prog1 (reset! root (make-root! base-dir))
+              (when (:lock <>)
+                (sweep! registry)))))))
 
 (defn- generation-dir
   "The directory of generation `id` of `url`."
@@ -495,9 +625,11 @@
   runs [[shutdown!]]."}
   process-registry*
   (delay
-    (let [registry (make-registry (io/file (System/getProperty "java.io.tmpdir") "metabase-git")
-                                  ;; the task timeout: a task runs at most this long
-                                  {:max-lease-age-ms #(* 10 (setting/get :remote-sync-task-time-limit-ms))})]
+    (let [;; the task timeout: a task runs at most this long
+          task-timeout-ms #(* 10 (setting/get :remote-sync-task-time-limit-ms))
+          registry        (make-registry (io/file (System/getProperty "java.io.tmpdir") "metabase-git")
+                                         {:max-lease-age-ms  task-timeout-ms
+                                          :old-clone-idle-ms task-timeout-ms})]
       (.addShutdownHook (Runtime/getRuntime)
                         (Thread. ^Runnable (fn [] (shutdown! registry)) "remote-sync-git-clones-shutdown"))
       registry)))

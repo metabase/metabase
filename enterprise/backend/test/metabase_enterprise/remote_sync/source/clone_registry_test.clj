@@ -734,6 +734,7 @@
                (is (= 1 (:id (acquire! registry))) "a later acquire shares the clone")
                (is (.exists dead) "no sweep deletes a root of another process")
                (is (.exists old) "no sweep deletes an old clone directory")
+               (is (not (.exists (io/file root ".lock"))) "the root has no lock file, so a sweep of another process keeps it")
                (is (some #(str/includes? (str (:message %)) (str root)) (messages))
                    "the warning names the root of this process")))))))))
 
