@@ -234,6 +234,7 @@
   metabase.query-processor.middleware.process-userland-query-test/with-query-execution        [[:block 1]]
   metabase.query-processor.pipeline-queries-test/mbql5-query                                  [[:block 1]]
   metabase.query-processor.pipeline-queries-test/run-mbql5-query                              [[:block 1]]
+  metabase.query-processor.pivot/wrapping-pivot-generation-errors                             [[:block 1]]
   metabase.query-processor.store/cached                                                       [[:block 1]]
   metabase.query-processor.store/with-metadata-provider                                       [[:inner 0]]
   metabase.query-processor.streaming/streaming-response                                       [[:block 1]]
