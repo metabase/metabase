@@ -382,18 +382,34 @@ width: fixed
     (impl/handle-task-result! result task)
     result))
 
+(defn- delete-rows-one-by-one!
+  "Delete every row of `table`, each with one statement outside a transaction."
+  [table]
+  ;; A statement that deletes many rows locks them in scan order, so it can deadlock with a transaction that locks two
+  ;; of them in the other order, as an export does: it deletes the departed ledger rows, then marks the written rows
+  ;; synced. One statement per row holds the lock of one row only. `t2/query-one` opens no transaction.
+  (doseq [{:keys [id]} (t2/query {:select [:id] :from [table] :order-by [:id]})]
+    (t2/query-one {:delete-from table :where [:= :id id]})))
+
+(defn- do-with-empty-table
+  "Run `f` with `table` empty, then make the rows of `table` equal to its rows before `f`, as stored. Writes one row
+  per statement, outside a transaction."
+  [table f]
+  ;; the table, not the model: no hook or transform runs, so a restored row equals the stored row
+  (let [old-rows (t2/select table)]
+    (try
+      (delete-rows-one-by-one! table)
+      (f)
+      (finally
+        (delete-rows-one-by-one! table)
+        (doseq [row old-rows]
+          (t2/query-one {:insert-into table :values [row]}))))))
+
 (defn clean-object
   "Test fixture that resets the RemoteSyncObject table before running tests to prevent existing
   entries from affecting dirty state checks."
   [f]
-  (let [old-models (t2/select :model/RemoteSyncObject)]
-    (try
-      (t2/delete! :model/RemoteSyncObject)
-      (f)
-      (finally
-        (t2/delete! :model/RemoteSyncObject)
-        (when (seq old-models)
-          (t2/insert! :model/RemoteSyncObject old-models))))))
+  (do-with-empty-table (t2/table-name :model/RemoteSyncObject) f))
 
 (defmacro with-clean-object
   "Execute `body` with a clean RemoteSyncObject table."
@@ -403,14 +419,7 @@ width: fixed
 (defn clean-task-table
   "Test fixture that resets the RemoteSyncTask table to an empty state before running tests."
   [f]
-  (let [old-models (t2/select :model/RemoteSyncTask)]
-    (try
-      (t2/delete! :model/RemoteSyncTask)
-      (f)
-      (finally
-        (t2/delete! :model/RemoteSyncTask)
-        (when (seq old-models)
-          (t2/insert! :model/RemoteSyncTask old-models))))))
+  (do-with-empty-table (t2/table-name :model/RemoteSyncTask) f))
 
 (def ^:private builtin-python-library
   "The built-in PythonLibrary created by migration. Recreated by fixture after cleanup."
