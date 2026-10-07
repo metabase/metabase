@@ -139,7 +139,6 @@
             run-id 102
             logged-messages (atom [])
             run-called? (atom false)]
-        ;; `log*` is shared by every log call; avoid permanently proxying that hot path for this synchronized test.
         (with-redefs [log/log* (fn [_ level _ message]
                                  (swap! logged-messages conj {:level level :message message}))
                       transform-run/running-run-for-transform-id (constantly nil)
@@ -160,7 +159,6 @@
                            :name "Test Query Transform"}
           run-id 100
           logged-messages (atom [])]
-      ;; `log*` is shared by every log call; avoid permanently proxying that hot path for this synchronized test.
       (with-redefs [log/log* (fn [_ level _ message]
                                (swap! logged-messages conj {:level level :message message}))
                     transform-run/running-run-for-transform-id (constantly nil)]
@@ -183,7 +181,6 @@
           run-id 102
           logged-messages (atom [])
           run-called? (atom false)]
-      ;; `log*` is shared by every log call; avoid permanently proxying that hot path for this synchronized test.
       (with-redefs [log/log* (fn [_ level _ message]
                                (swap! logged-messages conj {:level level :message message}))
                     transform-run/running-run-for-transform-id (constantly nil)
@@ -206,7 +203,6 @@
             run-id 103
             logged-messages (atom [])
             run-called? (atom false)]
-        ;; `log*` is shared by every log call; avoid permanently proxying that hot path for this synchronized test.
         (with-redefs [log/log* (fn [_ level _ message]
                                  (swap! logged-messages conj {:level level :message message}))
                       transform-run/running-run-for-transform-id (constantly nil)
@@ -244,7 +240,6 @@
                                  :name        "Locked Transform"}
                 logged          (atom [])
                 run-called?     (atom false)]
-            ;; `log*` is shared by every log call; avoid permanently proxying that hot path for this synchronized test.
             (with-redefs [log/log* (fn [_ level _ message]
                                      (swap! logged conj {:level level :message message}))
                           transform-run/running-run-for-transform-id (constantly nil)

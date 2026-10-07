@@ -65,7 +65,6 @@
       (testing "no metric activity when there are no stale runs"
         (let [inc-calls     (atom [])
               observe-calls (atom [])]
-          ;; The analytics façade is a thin, frequently called hot path; avoid permanently proxying it.
           (with-redefs [analytics/inc!     (fn [metric & _] (swap! inc-calls conj metric))
                         analytics/observe! (fn [metric & _] (swap! observe-calls conj metric))]
             (mt/with-temp [:model/Transform    {transform-id :id} {}

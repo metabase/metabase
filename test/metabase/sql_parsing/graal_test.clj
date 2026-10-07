@@ -54,7 +54,6 @@
   (testing (str "A fired Python-call timeout still surfaces as TimeoutException from the API even if "
                 "the timeout-metric bump throws — a misconfigured analytics registry must not shadow "
                 "the timeout (#77084).")
-    ;; `analytics-interface/inc!` is a hot path; avoid permanently proxying it via with-dynamic-fn-redefs.
     (with-redefs [;; force the timeout branch of do-with-python-context without waiting 30s
                   graal/with-timeout* (fn [_ _] :metabase.sql-parsing.graal/timeout)
                   ;; poison only the timeout metric; leave the acquisition inc! alone

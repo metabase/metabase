@@ -369,7 +369,6 @@
                                        (count long-col-full-name)))
             ;; Disable truncate-alias when compiling the native query to ensure we don't further truncate the column.
             ;; We want to simulate a user-defined query where the column name is long, but valid for the driver.
-            ;; `truncate-alias` is called for every generated SQL alias; avoid permanently proxying that hot path.
             native-sub-query   (with-redefs [metabase.lib.util.unique-name-generator/truncate-alias
                                              (fn mock-truncate-alias
                                                ([ss] ss)

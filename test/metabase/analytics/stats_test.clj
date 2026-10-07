@@ -517,7 +517,6 @@
     (mt/with-temp-file [mock-file]
       (spit mock-file "Temp file!")
       (mt/with-dynamic-fn-redefs [premium-features.settings/is-hosted? (constantly false)]
-        ;; `io/file` is a hot, cheap function; permanently proxying it would tax the rest of the test JVM.
         (with-redefs [io/file (constantly (java.io.File. mock-file))]
           (is (= "docker" (@#'stats/deployment-model))))))
     (mt/with-dynamic-fn-redefs [premium-features.settings/is-hosted? (constantly false)

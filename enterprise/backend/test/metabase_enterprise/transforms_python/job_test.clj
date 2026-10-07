@@ -60,7 +60,6 @@
                               :name "Test Python Transform"}
             run-id 101
             logged-messages (atom [])]
-        ;; `log*` is shared by every log call; avoid permanently proxying that hot path for this synchronized test.
         (with-redefs [log/log* (fn [_ level _ message]
                                  (swap! logged-messages conj {:level level :message message}))
                       transform-run/running-run-for-transform-id (constantly nil)]

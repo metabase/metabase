@@ -136,7 +136,6 @@
     (mt/with-log-level :warn
       (mt/with-user-in-groups [user [(perms-group/admin)]]
         (let [log-warn-count (atom #{})]
-          ;; `log*` is shared by every log call; avoid permanently proxying that hot path for this synchronized test.
           (with-redefs [t2/delete!
                         (fn [model & _args]
                           (when (= model :model/PermissionsGroupMembership)

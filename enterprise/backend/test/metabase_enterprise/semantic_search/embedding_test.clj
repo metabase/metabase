@@ -165,7 +165,6 @@
         analytics-calls  (atom [])
         tracking-calls   (atom [])
         resolution-calls (atom [])]
-    ;; `analytics/inc!` is a hot path; avoid permanently proxying it via with-dynamic-fn-redefs.
     (with-redefs
      [embeddings.provider/resolve-model            (fn [requested]
                                                      (swap! resolution-calls conj requested)
@@ -311,7 +310,6 @@
                 :mock-response  {:embedding mock-embedding}
                 :counts-tokens? false}]]
         (t2/delete! :model/SemanticSearchTokenTracking)
-        ;; The analytics façade is a thin, frequently called hot path; avoid permanently proxying it.
         (with-redefs [analytics/inc! (fn [metric & args]
                                        (swap! analytics-calls conj [metric args]))
                       http/post (fn post-mock [_url & _options]

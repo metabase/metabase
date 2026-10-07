@@ -141,7 +141,6 @@
       (semantic.tu/upsert-index! (semantic.tu/mock-documents))
       (testing "vector-search-explain? runs EXPLAIN ANALYZE and emits the vector-scan instrumentation metrics"
         (let [analytics-calls (atom [])]
-          ;; The analytics façade is a thin, frequently called hot path; avoid permanently proxying it.
           (with-redefs [analytics/inc! (fn [metric & args]
                                          (swap! analytics-calls conj [metric args]))]
             (mt/with-test-user :crowberto
@@ -162,7 +161,6 @@
                                      [0 :plan-node]))))))))
       (testing "with instrumentation off (the default) no instrumentation metrics are emitted"
         (let [analytics-calls (atom [])]
-          ;; The analytics façade is a thin, frequently called hot path; avoid permanently proxying it.
           (with-redefs [analytics/inc! (fn [metric & args]
                                          (swap! analytics-calls conj [metric args]))]
             (mt/with-test-user :crowberto
@@ -644,7 +642,6 @@
       (semantic.tu/upsert-index! (semantic.tu/mock-documents))
       (testing "Analytics metrics are recorded for semantic search operations"
         (let [analytics-calls (atom [])]
-          ;; The analytics façade is a thin, frequently called hot path; avoid permanently proxying it.
           (with-redefs [analytics/inc! (fn [metric & args]
                                          (swap! analytics-calls conj [metric args]))]
             (testing "Permission filtering metrics"

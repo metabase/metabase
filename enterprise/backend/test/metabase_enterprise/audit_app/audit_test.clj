@@ -182,7 +182,6 @@
           (.putNextEntry out (JarEntry. (str resource "/" rel)))
           (.write out (.getBytes ^String sql StandardCharsets/UTF_8))
           (.closeEntry out)))
-      ;; `io/resource` is a hot, cheap function; permanently proxying it would tax the rest of the test JVM.
       (with-redefs [io/resource (fn [path]
                                   (when (= path resource)
                                     jar-url))]
@@ -208,7 +207,6 @@
           [jar-a url-a] (make-jar [["a.sql" "select 1;"]])
           [jar-b url-b] (make-jar [["b.sql" "select 1;"]])]
       (try
-        ;; `io/resource` is a hot, cheap function; permanently proxying it would tax the rest of the test JVM.
         (let [checksum-a (with-redefs [io/resource (constantly url-a)]
                            (#'ee-audit/views-checksum))
               checksum-b (with-redefs [io/resource (constantly url-b)]

@@ -12,12 +12,16 @@
    callers to make that assessment."
   '#{clojure.java.io/file
      clojure.java.io/resource
+     ;; shared by every log call
      clojure.tools.logging/log*
+     ;; clock primitive
      java-time.api/zoned-date-time
      metabase.analytics-interface.core/inc!
      metabase.analytics-interface.core/observe!
      metabase.analytics-interface.core/set-gauge!
+     ;; tight Lib metadata lookup
      metabase.lib.metadata.protocols/table
+     ;; called for every generated SQL alias
      metabase.lib.util.unique-name-generator/truncate-alias})
 
 (defn- resolved-lhs-symbol [lhs]

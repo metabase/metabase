@@ -2048,7 +2048,6 @@
   (testing "Prometheus counters get incremented for error responses"
     (let [calls    (atom nil)
           observed (atom [])]
-      ;; The analytics façade is a thin, frequently called hot path; avoid permanently proxying it.
       (with-redefs [analytics/inc!     (fn [metric & _] (swap! calls conj metric))
                     analytics/observe! (fn [& args] (swap! observed conj (vec args)))]
         (testing "Success response"

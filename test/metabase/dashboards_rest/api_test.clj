@@ -5061,7 +5061,6 @@
         (let [providers      (atom [])
               load-id        (str (random-uuid))
               original-table @#'lib.metadata.protocols/table]
-          ;; Metadata table lookup is a tight Lib hot path; avoid permanently proxying it for one test.
           (with-redefs [lib.metadata.protocols/table (fn [mp table-id]
                                                        (swap! providers conj mp)
                                                        (original-table mp table-id))]

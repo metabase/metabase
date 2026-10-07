@@ -207,7 +207,6 @@
               metrics (atom {:metabase-search/semantic-fallback-results-usage 0
                              :metabase-search/semantic-fallback-triggered 0
                              :metabase-search/semantic-results-before-fallback 0})]
-          ;; The analytics façade is a thin, frequently called hot path; avoid permanently proxying it.
           (with-redefs [analytics/inc! (fn [metric & _args]
                                          (case metric
                                            :metabase-search/semantic-fallback-triggered

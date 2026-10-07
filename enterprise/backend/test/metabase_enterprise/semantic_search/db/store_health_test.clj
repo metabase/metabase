@@ -264,7 +264,6 @@
       (reset! probe-future nil)
       ;; Nothing probed yet, so the refresh is due.
       (reset! probe nil)
-      ;; The analytics façade is a thin, frequently called hot path; avoid permanently proxying it.
       (with-redefs
        [analytics/set-gauge!                                      #(swap! gauge-calls conj (vec %&))
         semantic.store-health/collect-pgvector-readiness-metrics! #(swap! refreshes inc)
