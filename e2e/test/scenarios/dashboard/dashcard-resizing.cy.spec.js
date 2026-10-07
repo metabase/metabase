@@ -410,15 +410,11 @@ describe("issue 31701", () => {
   const entityCard = () => H.getDashboardCard(0);
   const customCard = () => H.getDashboardCard(1);
 
-  const editEntityLinkContainer = () =>
-    cy.findByTestId("entity-edit-display-link");
-  const editCustomLinkContainer = () =>
-    cy.findByTestId("custom-edit-text-link");
+  const editEntityLinkContainer = "[data-testid='entity-edit-display-link']";
+  const editCustomLinkContainer = "[data-testid='custom-edit-text-link']";
 
-  const viewEntityLinkContainer = () =>
-    cy.findByTestId("entity-view-display-link");
-  const viewCustomLinkContainer = () =>
-    cy.findByTestId("custom-view-text-link");
+  const viewEntityLinkContainer = "[data-testid='entity-view-display-link']";
+  const viewCustomLinkContainer = "[data-testid='custom-view-text-link']";
 
   beforeEach(() => {
     H.restore();
@@ -477,8 +473,8 @@ describe("issue 31701", () => {
       cy.log(`Testing on resolution ${width} x ${height}`);
       cy.viewport(width, height);
 
-      assertLinkCardOverflow(editEntityLinkContainer(), entityCard());
-      assertLinkCardOverflow(editCustomLinkContainer(), customCard());
+      assertLinkCardOverflow(editEntityLinkContainer, entityCard());
+      assertLinkCardOverflow(editCustomLinkContainer, customCard());
     });
 
     H.saveDashboard();
@@ -488,18 +484,18 @@ describe("issue 31701", () => {
       cy.log(`Testing on resolution ${width} x ${height}`);
       cy.viewport(width, height);
 
-      assertLinkCardOverflow(viewEntityLinkContainer(), entityCard());
-      assertLinkCardOverflow(viewCustomLinkContainer(), customCard());
+      assertLinkCardOverflow(viewEntityLinkContainer, entityCard());
+      assertLinkCardOverflow(viewCustomLinkContainer, customCard());
     });
   });
 });
 
 const assertLinkCardOverflow = (link, card) => {
-  link.then((linkElem) => {
-    card.then((dashCardElem) => {
-      expect(linkElem[0].scrollHeight).to.eq(
-        dashCardElem[0].firstChild.scrollHeight,
-      );
-    });
+  card.should((dashCardElem) => {
+    const linkElem = dashCardElem.find(link);
+    expect(linkElem).to.have.length(1);
+    expect(linkElem[0].scrollHeight).to.eq(
+      dashCardElem[0].firstChild.scrollHeight,
+    );
   });
 };

@@ -142,6 +142,7 @@ describe("scenarios > dashboard cards > replace question", () => {
     replaceQuestion(findTargetDashcard(), {
       nextQuestionName: "Orders",
     });
+    findTargetDashcard().findByText("Product ID").should("exist");
 
     // There're two toasts: "Undo replace" and "Auto-connect"
     H.undoToastList()
@@ -158,8 +159,7 @@ describe("scenarios > dashboard cards > replace question", () => {
     findTargetDashcard().within(() => {
       assertDashCardTitle("Custom name");
       cy.findByText("18,760").should("exist");
-      cy.findByText("Ean").should("not.exist");
-      cy.findByText("Rustic Paper Wallet").should("not.exist");
+      cy.findByText("Product ID").should("not.exist");
     });
     assertDashboardFilterMapping(findTargetDashcard(), {
       filterName: PARAMETER.UNUSED.name,
@@ -171,8 +171,7 @@ describe("scenarios > dashboard cards > replace question", () => {
     findTargetDashcard().within(() => {
       assertDashCardTitle("Custom name");
       cy.findByText("18,760").should("exist");
-      cy.findByText("Ean").should("not.exist");
-      cy.findByText("Rustic Paper Wallet").should("not.exist");
+      cy.findByText("Product ID").should("not.exist");
     });
 
     cy.log("metabase#36984");

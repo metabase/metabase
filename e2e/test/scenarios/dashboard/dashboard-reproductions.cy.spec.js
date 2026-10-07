@@ -1604,19 +1604,29 @@ describe("issue 64138", () => {
       });
 
     cy.log("hovering marker icons should not open their tooltips");
-    getMarkerIcon(0).realHover();
-    H.popover({ skipVisibilityCheck: true }).should("not.exist");
+    getMarkerIcon(0).trigger("mousemove");
+    H.tooltip().should("not.exist");
 
     cy.log("clicking marker icons should not navigate to the question");
     getMarkerIcon(0).click({ force: true });
     cy.location("pathname").should("match", /^\/dashboard\/[0-9]+$/);
     H.modal().should("not.exist");
+
+    cy.log(
+      "outside of edit mode, the map shows its controls and handles markers",
+    );
+    cy.findByTestId("edit-bar").button("Cancel").click();
+    H.getDashboardCard(0).findByLabelText("Zoom in").should("exist");
+    getMarkerIcon(0).trigger("mousemove");
+    H.tooltip().should("be.visible");
+    getMarkerIcon(0).click({ force: true });
+    cy.location("pathname").should("eq", "/question");
   });
 
   function getMarkerIcon(index) {
     // pick the last one so it will be on top
     return H.getDashboardCard(index)
-      .get(".leaflet-marker-icon")
+      .find(".leaflet-marker-icon")
       .should("have.length.gt", 0)
       .last();
   }

@@ -1315,66 +1315,55 @@ describe("issue 67432", () => {
       .icon("chevrondown")
       .should("exist");
 
-    // Collect the visual order of categories from the table
-    const visualCategories = [];
+    // Products 1-5 sorted by Category descending; equal categories keep their row order
+    const EXPECTED_ROWS = [
+      ["Rustic Paper Wallet", "Gizmo"],
+      ["Enormous Marble Wallet", "Gadget"],
+      ["Small Marble Shoes", "Doohickey"],
+      ["Synergistic Granite Chair", "Doohickey"],
+      ["Enormous Aluminum Shirt", "Doohickey"],
+    ];
+
     H.tableInteractiveBody()
       .find('[data-column-id="CATEGORY"]')
-      .each(($cell) => {
-        visualCategories.push($cell.text());
-      })
-      .then(() => {
-        // Select multiple cells across rows by dragging
-        const getNonPKCells = () =>
-          H.tableInteractiveBody().find(
-            '[data-selectable-cell]:not([data-column-id="ID"])',
-          );
-
-        // Select cells in first two rows (4 cells: Title+Category for 2 rows)
-        getNonPKCells()
-          .eq(0)
-          .trigger("mousedown", { which: 1 })
-          .then(() => {
-            const lastCellIndex = ROWS_LIMIT * 2 - 1;
-            getNonPKCells()
-              .should("have.length", ROWS_LIMIT * 2)
-              .eq(lastCellIndex)
-              .trigger("mouseover", { buttons: 1 });
-            getNonPKCells()
-              .should("have.length", ROWS_LIMIT * 2)
-              .eq(lastCellIndex)
-              .trigger("mouseup");
-          });
-
-        // Copy to clipboard
-        cy.realPress(["Meta", "c"]);
-
-        // Verify clipboard content has rows in sorted order
-        H.readClipboard().then((clipboardText) => {
-          // The clipboard should contain properly tab-separated content
-          // with newlines between rows (not a single cell)
-          const lines = clipboardText.split("\n");
-
-          // Should have header row + data rows (at least 6 lines: header + 5 data rows)
-          expect(lines.length).to.be.eq(ROWS_LIMIT + 1);
-
-          // Header should be tab-separated with both columns
-          const headerCells = lines[0].split("\t");
-          expect(headerCells).to.include("Title");
-          expect(headerCells).to.include("Category");
-
-          // Verify each data row is tab-separated and in the correct sorted order
-          const clipboardCategories = lines.slice(1).map((line) => {
-            const cells = line.split("\t");
-            // Category is the second column
-            return cells[1];
-          });
-
-          // The categories in clipboard should match the visual order
-          for (let i = 0; i < clipboardCategories.length; i++) {
-            expect(clipboardCategories[i]).to.equal(visualCategories[i]);
-          }
-        });
+      .should(($cells) => {
+        expect($cells.toArray().map((cell) => cell.textContent)).to.deep.equal(
+          EXPECTED_ROWS.map(([, category]) => category),
+        );
       });
+
+    // Select multiple cells across rows by dragging
+    const getNonPKCells = () =>
+      H.tableInteractiveBody().find(
+        '[data-selectable-cell]:not([data-column-id="ID"])',
+      );
+
+    // Select Title and Category cells in every row
+    getNonPKCells()
+      .eq(0)
+      .trigger("mousedown", { which: 1 })
+      .then(() => {
+        const lastCellIndex = ROWS_LIMIT * 2 - 1;
+        getNonPKCells()
+          .should("have.length", ROWS_LIMIT * 2)
+          .eq(lastCellIndex)
+          .trigger("mouseover", { buttons: 1 });
+        getNonPKCells()
+          .should("have.length", ROWS_LIMIT * 2)
+          .eq(lastCellIndex)
+          .trigger("mouseup");
+      });
+
+    // Copy to clipboard
+    cy.realPress(["Meta", "c"]);
+
+    // The clipboard holds tab-separated rows in the sorted order
+    H.readClipboard().should(
+      "equal",
+      [["Title", "Category"], ...EXPECTED_ROWS]
+        .map((cells) => cells.join("\t"))
+        .join("\n"),
+    );
   });
 });
 
