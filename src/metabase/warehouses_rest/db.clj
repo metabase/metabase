@@ -374,7 +374,12 @@
                              [:not= :public_uuid nil]]})
 
 (defn- anonymously-reachable-query
-  "Honey SQL selecting the Cards on the Database with `database-id` that anonymous traffic reaches."
+  "Honey SQL selecting the Cards on the Database with `database-id` that anonymous traffic reaches. Four paths count,
+  and the Dashboard and Document ones ask nothing of the Card beyond being unarchived and on the Database.
+
+  Not covered: a Card a Dashboard or Document reaches only through a JSON-encoded reference -- parameter mappings,
+  parameter value sources, click-behaviour targets, link cards, and prose-mirror Card embeds. The answer therefore
+  under-reports: a Card this selects really is reachable, but one it misses may be reachable too."
   [database-id]
   ;; an archived Card's public link no longer resolves, nor does its guest embed render, and nor does the Card render
   ;; inside a Dashboard or Document that anonymous traffic can open
@@ -382,15 +387,18 @@
            [:= :database_id [:auto/param database-id]]
            [:= :archived false]
            [:or
+            ;; the Card carries a public link, or is itself published as a guest embed
             anonymously-published-clause
+            ;; a Dashboard anonymous traffic can open holds the Card through a DashboardCard
             [:in :id (anonymous-dashcard-subquery :card_id)]
+            ;; the same Dashboard holds it as a series of one of those DashboardCards
             [:in :id anonymous-series-card-id-subquery]
+            ;; a Document with a public link owns the Card
             [:in :document_id public-document-id-subquery]]]})
 
 (mu/defn anonymously-reachable? :- :boolean
-  "Whether any Card on the Database with `database-id` can be reached by anonymous traffic. The paths this answers
-  from are the response contract, and `:anonymously_reachable` on `metabase.warehouses-rest.api/usage-info` states
-  them."
+  "Whether any Card on the Database with `database-id` can be reached by anonymous traffic.
+  [[anonymously-reachable-query]] records which paths count and which are not covered."
   [database-id :- ::lib.schema.id/database]
   (t2/exists? :model/Card (anonymously-reachable-query database-id)))
 

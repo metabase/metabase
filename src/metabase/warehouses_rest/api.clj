@@ -522,14 +522,12 @@
     {:description "Transforms reading from or writing to this database."}
     ms/IntGreaterThanOrEqualToZero]
    [:anonymously_reachable
-    {:description (str "Whether anything on this database can be reached by anonymous traffic. An unarchived card on"
-                       " this database counts when it carries a public link or is published as a guest embed; when an"
-                       " unarchived dashboard that carries a public link or is published as a guest embed holds it"
-                       " through its dashboard cards or their series; or when an unarchived document with a public"
-                       " link owns it. The dashboard and document paths ask nothing of the card itself beyond being"
-                       " unarchived and on this database. Not covered: cards a dashboard or document"
-                       " reaches only through a JSON-encoded reference -- parameter mappings, parameter value"
-                       " sources, click-behaviour targets, link cards, and prose-mirror card embeds.")}
+    {:description (str "Whether anything on this database can be reached by anonymous traffic: an unarchived card"
+                       " that carries a public link or is published as a guest embed, one that a dashboard anonymous"
+                       " traffic can itself open holds, or one that a document with a public link owns. The answer"
+                       " under-reports -- a card reached only through a JSON-encoded reference (a parameter mapping,"
+                       " a parameter value source, a click-behaviour target, a link card, or a prose-mirror card"
+                       " embed) does not count, so true is certain and false is not a guarantee.")}
     :boolean]])
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API

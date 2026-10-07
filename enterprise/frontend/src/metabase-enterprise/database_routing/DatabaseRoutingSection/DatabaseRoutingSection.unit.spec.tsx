@@ -210,17 +210,15 @@ describe("DatabaseRoutingSection", () => {
 });
 
 describe("DatabaseRoutingSection anonymous reachability warning", () => {
-  const WILL_STOP =
-    "This database will stop serving public links and guest embeds";
-  const HAVE_STOPPED =
-    "This database has stopped serving public links and guest embeds";
-  const REMEDY = "To get them working again, allow anonymous access below.";
+  const WILL_STOP = "This database will stop serving anonymous visitors";
+  const HAVE_STOPPED = "This database has stopped serving anonymous visitors";
+  const REMEDY = "To start serving them again, allow anonymous access below.";
   const ROUTED_QUERIES_NOTE =
     "In guest embeds and public links, database queries will always be routed to the router database.";
-  const NO_PUBLIC_LINKS_REASSURANCE = "No public links use this database.";
+  const NOTHING_REACHABLE_REASSURANCE = "No public links use this database.";
 
   const ANY_TENSE =
-    /^This database (will stop|has stopped) serving public links and guest embeds$/;
+    /^This database (will stop|has stopped) serving anonymous visitors$/;
   const findWarning = () => screen.findByRole("alert", { name: ANY_TENSE });
   const queryWarning = () => screen.queryByRole("alert", { name: ANY_TENSE });
 
@@ -306,14 +304,14 @@ describe("DatabaseRoutingSection anonymous reachability warning", () => {
     expect(await findWarning()).toBeInTheDocument();
   });
 
-  it("should carry neither the routed-queries note nor the no-public-links reassurance", async () => {
+  it("should carry neither the routed-queries note nor the nothing-reachable reassurance", async () => {
     setup({ database: routedDatabase(), anonymouslyReachable: true });
 
     await findWarning();
 
     expect(screen.queryByText(ROUTED_QUERIES_NOTE)).not.toBeInTheDocument();
     expect(
-      screen.queryByText(NO_PUBLIC_LINKS_REASSURANCE),
+      screen.queryByText(NOTHING_REACHABLE_REASSURANCE),
     ).not.toBeInTheDocument();
   });
 });

@@ -224,13 +224,13 @@ export const DatabaseRoutingSection = ({
               icon={<Icon name="warning" />}
               title={
                 routingAlreadyInEffect
-                  ? t`This database has stopped serving public links and guest embeds`
-                  : t`This database will stop serving public links and guest embeds`
+                  ? t`This database has stopped serving anonymous visitors`
+                  : t`This database will stop serving anonymous visitors`
               }
               mb="lg"
             >
               {routingAlreadyInEffect &&
-                t`To get them working again, allow anonymous access below.`}
+                t`To start serving them again, allow anonymous access below.`}
             </Alert>
           )}
           <Stack mb="xxl" gap="sm">
