@@ -3724,6 +3724,7 @@
                     :model/Collection
                     :model/Dashboard
                     :model/Document
+                    :model/TaskHistory
                     :model/Transform
                     :model/User}}
   enterprise/content-translation
