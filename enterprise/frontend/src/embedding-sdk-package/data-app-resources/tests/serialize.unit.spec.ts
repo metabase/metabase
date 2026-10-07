@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 
-import { exportResources } from "../export";
+import { serializeResources } from "../serialize";
 
 import { makeApp, setupResourceTests, writeAction, writeQuery } from "./setup";
 
@@ -10,7 +10,7 @@ const ACTION_COPY = "actionCopyEntityId001";
 
 const COLLECTION = "appCollectionEntity01";
 
-const EXPORTED = {
+const SERIALIZED = {
   queries: [
     {
       export: "Orders",
@@ -48,11 +48,11 @@ function appWithDefinitions() {
   return appRoot;
 }
 
-function mockExport(response: Response) {
+function mockSerialization(response: Response) {
   return jest.spyOn(global, "fetch").mockResolvedValue(response);
 }
 
-describe("exporting what resources are written from", () => {
+describe("serializing what resources are written from", () => {
   setupResourceTests();
 
   it("refuses to print before the manifest names the app's collection", async () => {
@@ -61,9 +61,11 @@ describe("exporting what resources are written from", () => {
       path.join(appRoot, "data_app.yaml"),
       "name: Orders\npath: ./dist/index.js\n",
     );
-    const fetchSpy = mockExport(new Response(JSON.stringify(EXPORTED)));
+    const fetchSpy = mockSerialization(
+      new Response(JSON.stringify(SERIALIZED)),
+    );
 
-    await expect(exportResources(appRoot)).rejects.toThrow(
+    await expect(serializeResources(appRoot)).rejects.toThrow(
       "names the app's collection",
     );
     expect(fetchSpy).not.toHaveBeenCalled();
@@ -75,23 +77,27 @@ describe("exporting what resources are written from", () => {
       path.join(appRoot, "queries/orders.query.ts"),
       `export const Products = defineQuery({ source: { type: "table", id: 2 } });\n`,
     );
-    const fetchSpy = mockExport(new Response(JSON.stringify(EXPORTED)));
+    const fetchSpy = mockSerialization(
+      new Response(JSON.stringify(SERIALIZED)),
+    );
 
-    await expect(exportResources(appRoot)).rejects.toThrow(
+    await expect(serializeResources(appRoot)).rejects.toThrow(
       "queries/orders.query.ts:Products has no savedQuestionEntityId.",
     );
     expect(fetchSpy).not.toHaveBeenCalled();
   });
 
-  it("sends the definitions with their IDs, the app's collection, and the action IDs in one request, and prints the export beside each definition", async () => {
+  it("sends the definitions with their IDs, the app's collection, and the action IDs in one request, and prints the serialization beside each definition", async () => {
     const appRoot = appWithDefinitions();
-    const fetchSpy = mockExport(new Response(JSON.stringify(EXPORTED)));
+    const fetchSpy = mockSerialization(
+      new Response(JSON.stringify(SERIALIZED)),
+    );
 
-    const printed = JSON.parse(await exportResources(appRoot));
+    const printed = JSON.parse(await serializeResources(appRoot));
 
     expect(fetchSpy).toHaveBeenCalledTimes(1);
     const [url, init] = fetchSpy.mock.calls[0];
-    expect(url).toBe("http://metabase.test/api/apps/export-resources");
+    expect(url).toBe("http://metabase.test/api/apps/serialize-resources");
     expect(init?.headers).toEqual({
       "Content-Type": "application/json",
       "X-API-Key": "mb_test_key",
@@ -113,7 +119,7 @@ describe("exporting what resources are written from", () => {
           export: "Orders",
           file: "queries/orders.query.ts",
           savedQuestionEntityId: QUESTION,
-          entity: EXPORTED.queries[0].entity,
+          entity: SERIALIZED.queries[0].entity,
           metrics: [],
         },
       ],
@@ -132,11 +138,11 @@ describe("exporting what resources are written from", () => {
 
   it("sends only the definitions in the given file", async () => {
     const appRoot = appWithDefinitions();
-    const fetchSpy = mockExport(
-      new Response(JSON.stringify({ ...EXPORTED, actions: [] })),
+    const fetchSpy = mockSerialization(
+      new Response(JSON.stringify({ ...SERIALIZED, actions: [] })),
     );
 
-    await exportResources(appRoot, "queries/orders.query.ts");
+    await serializeResources(appRoot, "queries/orders.query.ts");
 
     expect(JSON.parse(String(fetchSpy.mock.calls[0][1]?.body))).toEqual({
       collection: COLLECTION,
@@ -148,7 +154,7 @@ describe("exporting what resources are written from", () => {
   it("fails for a file with no definitions", async () => {
     const appRoot = appWithDefinitions();
 
-    await expect(exportResources(appRoot, "src/App.tsx")).rejects.toThrow(
+    await expect(serializeResources(appRoot, "src/App.tsx")).rejects.toThrow(
       "src/App.tsx has no defineQuery or defineAction definitions.",
     );
   });
@@ -165,7 +171,7 @@ describe("exporting what resources are written from", () => {
     delete process.env.DATA_APP_MB_API_KEY;
 
     try {
-      await expect(exportResources(appRoot)).rejects.toThrow(
+      await expect(serializeResources(appRoot)).rejects.toThrow(
         "DATA_APP_MB_URL and DATA_APP_MB_API_KEY must be set, in the repo-root .env.local or the environment.",
       );
     } finally {
@@ -180,28 +186,32 @@ describe("exporting what resources are written from", () => {
 
   it("fails when the response has a query too few", async () => {
     const appRoot = appWithDefinitions();
-    mockExport(new Response(JSON.stringify({ ...EXPORTED, queries: [] })));
+    mockSerialization(
+      new Response(JSON.stringify({ ...SERIALIZED, queries: [] })),
+    );
 
-    await expect(exportResources(appRoot)).rejects.toThrow(
-      "The export response holds 0 queries; 1 were requested.",
+    await expect(serializeResources(appRoot)).rejects.toThrow(
+      "The serialization response holds 0 queries; 1 were requested.",
     );
   });
 
   it("fails when the response lacks a requested action", async () => {
     const appRoot = appWithDefinitions();
-    mockExport(new Response(JSON.stringify({ ...EXPORTED, actions: [] })));
+    mockSerialization(
+      new Response(JSON.stringify({ ...SERIALIZED, actions: [] })),
+    );
 
-    await expect(exportResources(appRoot)).rejects.toThrow(
-      "The export response is missing action 51.",
+    await expect(serializeResources(appRoot)).rejects.toThrow(
+      "The serialization response is missing action 51.",
     );
   });
 
-  it("fails with the response when the export request fails", async () => {
+  it("fails with the response when the serialization request fails", async () => {
     const appRoot = appWithDefinitions();
-    mockExport(new Response("Unauthenticated", { status: 401 }));
+    mockSerialization(new Response("Unauthenticated", { status: 401 }));
 
-    await expect(exportResources(appRoot)).rejects.toThrow(
-      "The export request failed (401): Unauthenticated",
+    await expect(serializeResources(appRoot)).rejects.toThrow(
+      "The serialization request failed (401): Unauthenticated",
     );
   });
 });

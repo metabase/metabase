@@ -1,7 +1,7 @@
 import type { Command } from "commander";
 
 import { checkResources } from "../../data-app-resources/check";
-import { exportResources } from "../../data-app-resources/export";
+import { serializeResources } from "../../data-app-resources/serialize";
 
 type AppRootOptions = { appRoot: string };
 
@@ -20,14 +20,14 @@ export function addDataAppsCommands(program: Command) {
   addAppCommand(
     dataAppsCommand,
     "print-resources",
-    "print what the files of the data app's collection are written from, exported by Metabase, as JSON",
+    "print what the files of the data app's collection are written from, serialized by Metabase, as JSON",
   )
     .argument(
       "[file]",
       "only the definitions in this file, relative to the app directory",
     )
     .action(async (file: string | undefined, { appRoot }: AppRootOptions) => {
-      process.stdout.write(`${await exportResources(appRoot, file)}\n`);
+      process.stdout.write(`${await serializeResources(appRoot, file)}\n`);
     });
 
   addAppCommand(

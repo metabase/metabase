@@ -18,7 +18,7 @@ type IdentifiedQuery = DiscoveredQuery & { savedQuestionEntityId: string };
 const isIdentified = (query: DiscoveredQuery): query is IdentifiedQuery =>
   query.savedQuestionEntityId !== undefined;
 
-interface ExportedResources {
+interface SerializedResources {
   queries: Record<string, unknown>[];
   actions: Record<string, unknown>[];
   metrics: unknown[];
@@ -27,7 +27,7 @@ interface ExportedResources {
 const isObjectArray = (value: unknown): value is Record<string, unknown>[] =>
   Array.isArray(value) && value.every(isObject);
 
-function isExportedResources(value: unknown): value is ExportedResources {
+function isSerializedResources(value: unknown): value is SerializedResources {
   return (
     isObject(value) &&
     isObjectArray(value.queries) &&
@@ -36,12 +36,12 @@ function isExportedResources(value: unknown): value is ExportedResources {
   );
 }
 
-async function requestExport(
+async function requestSerialization(
   appRoot: string,
   body: { collection: string; queries: unknown[]; actions: number[] },
-): Promise<ExportedResources> {
+): Promise<SerializedResources> {
   const { metabaseUrl, apiKey } = getMetabaseCredentials(appRoot);
-  const response = await fetch(`${metabaseUrl}/api/apps/export-resources`, {
+  const response = await fetch(`${metabaseUrl}/api/apps/serialize-resources`, {
     method: "POST",
     headers: { "Content-Type": "application/json", "X-API-Key": apiKey },
     body: JSON.stringify(body),
@@ -49,17 +49,17 @@ async function requestExport(
 
   if (!response.ok) {
     throw new Error(
-      `The export request failed (${response.status}): ${await response.text()}`,
+      `The serialization request failed (${response.status}): ${await response.text()}`,
     );
   }
 
-  const exported: unknown = await response.json();
+  const serialized: unknown = await response.json();
 
-  if (!isExportedResources(exported)) {
-    throw new Error("The export response has an unexpected body.");
+  if (!isSerializedResources(serialized)) {
+    throw new Error("The serialization response has an unexpected body.");
   }
 
-  return exported;
+  return serialized;
 }
 
 /**
@@ -71,7 +71,7 @@ async function requestExport(
  * queries aggregate, all as serialization writes them.
  * One request to the Metabase instance and API key in `.env.local`.
  */
-export async function exportResources(appDirectory: string, file?: string) {
+export async function serializeResources(appDirectory: string, file?: string) {
   const appRoot = path.resolve(appDirectory);
   const filePath = file === undefined ? undefined : path.resolve(appRoot, file);
   const queries = await discoverQueries(appRoot, { filePath });
@@ -107,7 +107,7 @@ export async function exportResources(appDirectory: string, file?: string) {
 
   const identified = queries.filter(isIdentified);
 
-  const exported = await requestExport(appRoot, {
+  const serialized = await requestSerialization(appRoot, {
     collection,
     queries: identified.map(({ exportName, query, savedQuestionEntityId }) => {
       const { [QUERY_DEFINITIONS.idKey]: _entityId, ...definition } = query;
@@ -120,23 +120,23 @@ export async function exportResources(appDirectory: string, file?: string) {
     actions: actions.map(({ sourceActionId }) => sourceActionId),
   });
 
-  const exportedActions = new Map(
-    exported.actions.map((action) => [action.id, action]),
+  const serializedActions = new Map(
+    serialized.actions.map((action) => [action.id, action]),
   );
 
-  if (exported.queries.length !== identified.length) {
+  if (serialized.queries.length !== identified.length) {
     throw new Error(
-      `The export response holds ${exported.queries.length} queries; ${identified.length} were requested.`,
+      `The serialization response holds ${serialized.queries.length} queries; ${identified.length} were requested.`,
     );
   }
 
   const missingActions = actions
     .map(({ sourceActionId }) => sourceActionId)
-    .filter((id) => !exportedActions.has(id));
+    .filter((id) => !serializedActions.has(id));
 
   if (missingActions.length > 0) {
     throw new Error(
-      `The export response is missing action ${missingActions.join(", ")}.`,
+      `The serialization response is missing action ${missingActions.join(", ")}.`,
     );
   }
 
@@ -146,15 +146,15 @@ export async function exportResources(appDirectory: string, file?: string) {
         export: query.exportName,
         file: path.relative(appRoot, query.filePath),
         savedQuestionEntityId: query.savedQuestionEntityId,
-        ...exported.queries[index],
+        ...serialized.queries[index],
       })),
       actions: actions.map((action) => ({
         export: action.exportName,
         file: path.relative(appRoot, action.filePath),
         copiedActionEntityId: action.copiedActionEntityId ?? null,
-        ...exportedActions.get(action.sourceActionId),
+        ...serializedActions.get(action.sourceActionId),
       })),
-      metrics: exported.metrics,
+      metrics: serialized.metrics,
     },
     null,
     2,

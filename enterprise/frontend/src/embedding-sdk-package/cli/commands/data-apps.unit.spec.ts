@@ -42,7 +42,7 @@ describe("data app commands", () => {
   const printed = () =>
     stdout.mock.calls.map(([chunk]) => String(chunk)).join("");
 
-  it("prints the export of one file's definitions, relative to the app root", async () => {
+  it("prints the serialization of one file's definitions, relative to the app root", async () => {
     const appRoot = appWithQuery();
     writeAction(
       appRoot,

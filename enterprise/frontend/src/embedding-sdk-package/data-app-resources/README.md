@@ -13,7 +13,7 @@ definitions. Nothing changes in Metabase until the repository is pulled: the pul
 serialized content, like everything else the repository holds, so a local experiment can't break the
 running app, and the saved questions never get ahead of the app code that is deployed.
 
-`check-resources` reads nothing from Metabase; `print-resources` asks it for the export.
+`check-resources` reads nothing from Metabase; `print-resources` asks it for the serialization.
 
 ## What an app declares
 
@@ -50,8 +50,8 @@ and references rewritten to the copies.
 
 ## `print-resources`
 
-`embedding-sdk-react data-apps print-resources [file]` (`export.ts`) sends the evaluated definitions (all
-of them, or those in `file`, relative to the app directory) to `POST /api/apps/export-resources`, with the
+`embedding-sdk-react data-apps print-resources [file]` (`serialize.ts`) sends the evaluated definitions (all
+of them, or those in `file`, relative to the app directory) to `POST /api/apps/serialize-resources`, with the
 instance and API key from `.env.local`, and prints the answer as JSON: the saved question Metabase
 writes for each `defineQuery` definition, each `defineAction`'s source action, and the metrics the
 queries aggregate, all as serialization writes them, each beside the definition's file and entity ID.
@@ -90,7 +90,7 @@ evaluates it, and takes every exported object as a definition: `defineQuery` and
 return their argument as is, and the two directories hold nothing else. A definition a second file
 re-exports keeps its identity through the single bundle, so it counts once, for the first file that
 exports it; `print-resources <file>` reads that file's exports alone, so a barrel doesn't claim them.
-Anything that isn't a definition is rejected by the export endpoint's schema, not here.
+Anything that isn't a definition is rejected by the serialization endpoint's schema, not here.
 
 Discovery refuses what makes a definition unusable on its own or against the others: an action that
 doesn't reference a generated action, two definitions of one source action, two claiming one entity
