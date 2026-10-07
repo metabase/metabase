@@ -276,8 +276,10 @@
         ref-times (when (Files/isDirectory refs (no-follow))
                     (with-open [paths (Files/walk refs (make-array FileVisitOption 0))]
                       (mapv time-ms (iterator-seq (.iterator paths)))))]
-    (reduce max (concat (map #(time-ms (.toPath (io/file dir ^String %))) ["." "FETCH_HEAD" "packed-refs"])
-                        ref-times))))
+    (reduce max 0 (concat (map time-ms [(.toPath dir)
+                                        (.toPath (io/file dir "FETCH_HEAD"))
+                                        (.toPath (io/file dir "packed-refs"))])
+                          ref-times))))
 
 (defn- sweep-old-clones!
   "Deletes each clone directory of an earlier Metabase version directly in `base-dir` whose [[last-write-ms]] is more

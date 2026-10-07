@@ -12,6 +12,7 @@
    (java.nio.channels FileLock)
    (java.nio.file FileSystems Files LinkOption)
    (java.nio.file.attribute FileAttribute PosixFilePermissions UserPrincipal)
+   (java.time Instant)
    (java.util.concurrent CountDownLatch TimeUnit)
    (org.apache.commons.io FileUtils)))
 
@@ -655,6 +656,11 @@
     (u/prog1 (str/trim (slurp (.getInputStream p)))
       (.waitFor p 30 TimeUnit/SECONDS))))
 
+(defn- ms-ago
+  "The time `ms` milliseconds before now, in ms since the epoch."
+  [ms]
+  (.toEpochMilli (.minusMillis (Instant/now) ms)))
+
 (defn- do-with-registries!
   "Calls `(f base make!)` with a new temp directory `base`. `(make! opts)` returns a new registry under `base` with the
   options `opts`. Shuts down each registry that `make!` made, then deletes `base`."
@@ -724,7 +730,7 @@
      (fn [base make!]
        (let [dead     (plant-root! base)
              old      (doto (io/file base (#'clone-registry/url-key "https://example.com/org/old.git")) .mkdirs)
-             _        (.setLastModified old (- (System/currentTimeMillis) (* 2 3600000)))
+             _        (.setLastModified old (ms-ago (* 2 3600000)))
              registry (make! {:old-clone-idle-ms (constantly 3600000)})]
          (mt/with-log-messages-for-level [messages [metabase-enterprise.remote-sync.source.clone-registry :warn]]
            (mt/with-dynamic-fn-redefs [clone-registry/lock-root! (fn [_] (throw (java.io.IOException. "No locks available")))]
@@ -751,7 +757,7 @@
   ^File [^File base ^String name idle-ms & {:keys [recent]}]
   (let [dir   (io/file base name)
         files (map #(io/file dir %) ["HEAD" "FETCH_HEAD" "packed-refs" "refs/heads/master" "objects/pack/pack-1.pack"])
-        then  (- (System/currentTimeMillis) idle-ms)]
+        then  (ms-ago idle-ms)]
     (doseq [^File f files]
       (io/make-parents f)
       (spit f "x"))
@@ -779,7 +785,7 @@
              holder  (hold-lock! (io/file live ".lock"))]
          (try
            (doseq [^File f (file-seq live)]
-             (.setLastModified f (- (System/currentTimeMillis) two-hours-ms)))
+             (.setLastModified f (ms-ago two-hours-ms)))
            (acquire! (make! {:old-clone-idle-ms (constantly 3600000)}))
            (doseq [[what ^File dir] deleted]
              (testing what
