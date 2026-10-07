@@ -70,6 +70,36 @@ beside it.
 `Cold spread %` still comes from all the cold runs, because a spread is a
 property of the series rather than of one load.
 
+## How the network is shaped
+
+The network comes from `tc netem` on the loopback interface, not from the
+browser. Browser throttling is applied per request, so it charges every byte the
+bandwidth rate wherever that byte sits in the response. A layout that pushes the
+script tags past the initial congestion window costs a whole round trip instead,
+and only packet-level shaping reproduces that. Measured on the slow condition,
+the two models disagree by about 7x on a document that crosses the boundary.
+
+This makes the harness Linux only, and it needs root for `tc`. CI runs on Ubuntu
+with passwordless sudo, which is the only place it has to work.
+
+Three details decide whether a reading means anything:
+
+- **Loopback runs at a 65536-byte MTU.** The window is counted in segments, so
+  at that MTU the initial ten-segment window holds about 640 kB. Every document
+  fits in one flight and the reading comes out the same whatever the layout
+  does. `measure.ts` forces `lo` to 1500 and puts it back on exit.
+- **Only the backend port is shaped.** The harness drives Chrome over CDP on
+  loopback as well. Delaying that channel would move the moment each reading is
+  taken without moving the load the reading describes, so a `prio` qdisc and
+  four `u32` filters scope netem to the port in the measured URL.
+- **A packet crosses `lo` egress once per direction**, so netem is given half of
+  `NETWORK_LATENCY`. The variable stays a round trip, the same thing it meant
+  when the browser supplied it.
+
+`measure.ts` reads back the MTU and the qdisc after it applies them, and exits
+non-zero when either is missing. An unshaped run still reports plausible times,
+so a silent failure would be read as a result.
+
 ## Running it against a real Metabase
 
 This is what CI does, and it is the accurate option. The document is 136 kb, most
@@ -126,11 +156,15 @@ WARM=1 CPU_THROTTLE=4 bun frontend/test/bench/measure.ts http://127.0.0.1:8099/ 
 | ----------------- | ------------ | -------------------------------------------------------- |
 | `CPU_THROTTLE`    | `4`          | CPU slowdown, so a laptop stands in for a slower machine |
 | `NETWORK_MBPS`    | `10`         | throughput, `0` to leave the network alone               |
-| `NETWORK_LATENCY` | `40`         | added latency in ms                                      |
+| `NETWORK_LATENCY` | `40`         | added round trip in ms, split half per direction         |
 | `WARM`            | unset        | keep the cache between runs, to measure a returning user |
 | `SESSION_COOKIE`  | unset        | `metabase.SESSION`, to load the page signed in           |
 | `PORT_OFFSET`     | `0`          | added to the debugging port `9222`                       |
 | `CHROME_PATH`     | macOS Chrome | the browser binary                                       |
+
+Setting `NETWORK_MBPS=0` leaves the network alone, which also leaves the MTU
+alone. Those numbers answer a question about parse and execute, and they cannot
+be compared against a shaped run.
 
 ## What CI records
 
