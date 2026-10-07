@@ -44,12 +44,11 @@ describe(
       H.updateSetting("show-sdk-embed-terms", false);
     });
 
-    it("shows all embedding types without the setup guide", () => {
+    it("shows all embedding types without the setup guide and the embedding upsell on oss", () => {
       assertSidebarWithoutSetupGuide();
       assertCorsSettingOnSecurityPage();
-    });
 
-    it("should show embedding upsell on oss", () => {
+      cy.log("embedding upsell");
       cy.visit("/admin/embedding/interactive");
 
       cy.findByTestId("admin-layout-content").within(() => {
@@ -81,12 +80,11 @@ describe("scenarios > embedding > admin settings > starter", () => {
     H.updateSetting("show-sdk-embed-terms", false);
   });
 
-  it("shows all embedding types without the setup guide", () => {
+  it("shows all embedding types without the setup guide and the embedding upsell on starter", () => {
     assertSidebarWithoutSetupGuide();
     assertCorsSettingOnSecurityPage();
-  });
 
-  it("should show embedding upsell on starter", () => {
+    cy.log("embedding upsell");
     cy.visit("/admin/embedding/interactive");
 
     cy.findByTestId("admin-layout-content").within(() => {
