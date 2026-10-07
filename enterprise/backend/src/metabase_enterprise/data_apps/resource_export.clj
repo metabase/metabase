@@ -125,8 +125,9 @@
 
 (defn- question-card
   "The saved question an author writes for a `defineQuery` definition, as a card for serialization to extract: the
-  query Metabase `built`, created by the caller, with the definition's entity ID. The app's collection is set on the
-  extracted entity, since serialization resolves a collection by numeric ID."
+  query Metabase `built`, created by the caller, with the definition's entity ID, which the definition carries so the
+  file is complete as printed. The app's collection is set on the extracted entity, since serialization resolves a
+  collection by numeric ID."
   [{:keys [export entity_id]} built]
   {:entity_id              entity_id
    :name                   (export-name->card-name export)
@@ -159,7 +160,7 @@
   [collection-entity-id        :- ms/NanoIdString
    {:keys [export query] :as definition} :- [:map {:closed true}
                                              [:export ms/NonBlankString]
-                                             [:entity_id {:optional true} [:maybe ms/NanoIdString]]
+                                             [:entity_id ms/NanoIdString]
                                              [:query ::query-definition/query-definition]]]
   (with-item-error
     {:export export}

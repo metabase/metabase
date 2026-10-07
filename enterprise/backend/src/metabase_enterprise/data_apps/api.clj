@@ -155,7 +155,7 @@
    [:collection ms/NanoIdString]
    [:queries {:default []} [:sequential [:map {:closed true}
                                          [:export ms/NonBlankString]
-                                         [:entity_id {:optional true} [:maybe ms/NanoIdString]]
+                                         [:entity_id ms/NanoIdString]
                                          [:query ::query-definition/query-definition]]]]
    [:actions {:default []} [:sequential {:distinct true} ms/PositiveInt]]])
 

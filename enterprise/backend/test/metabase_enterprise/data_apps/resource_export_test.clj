@@ -10,6 +10,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.models.serialization :as serdes]
    [metabase.test :as mt]
+   [metabase.util :as u]
    [metabase.util.malli.fn :as mu.fn]
    [toucan2.core :as t2]))
 
@@ -17,13 +18,30 @@
 
 (def ^:private app-collection "appCollectionEntity01")
 
+(defn- with-ids
+  "`queries` with an entity ID each, as a definition carries one, unless a query brings its own."
+  [queries]
+  (mapv #(merge {:entity_id (u/generate-nano-id)} %) queries))
+
 (defn- export!
-  "Export `body` as `user`, in the app collection `app-collection` unless `body` names one."
+  "Export `body` as `user`, in the app collection `app-collection` unless `body` names one, each query with an entity
+  ID unless it brings one."
   ([user status body]
    (export! user status body #{:data-apps}))
   ([user status body features]
    (mt/with-premium-features features
-     (mt/user-http-request user :post status "apps/export-resources" (merge {:collection app-collection} body)))))
+     (mt/user-http-request user :post status "apps/export-resources"
+                           (cond-> (merge {:collection app-collection} body)
+                             (:queries body) (update :queries with-ids))))))
+
+(deftest export-needs-each-querys-entity-id-test
+  (testing "the saved question is written with the definition's entity ID, so every query names one"
+    (mt/with-premium-features #{:data-apps}
+      (is (=? {:errors {:queries some?}}
+              (mt/user-http-request :crowberto :post 400 "apps/export-resources"
+                                    {:collection app-collection
+                                     :queries    [{:export "Venues" :query {:stages [{:source {:type "table" :id (mt/id :venues)}}]}}]
+                                     :actions    []}))))))
 
 (deftest export-needs-the-apps-collection-test
   (testing "the saved question is written into the app's collection, so the request names it"
@@ -196,8 +214,8 @@
                              {:export "Whole" :entity map?}]}
                   (resource-export/export-resources
                    app-collection
-                   [{:export "Half" :query {:stages [{:source {:type :table :id (mt/id :venues)} :limit 1.5}]}}
-                    {:export "Whole" :query {:stages [{:source {:type :table :id (mt/id :venues)} :limit 2}]}}]
+                   (with-ids [{:export "Half" :query {:stages [{:source {:type :table :id (mt/id :venues)} :limit 1.5}]}}
+                              {:export "Whole" :query {:stages [{:source {:type :table :id (mt/id :venues)} :limit 2}]}}])
                    []))))))))
 
 (deftest a-public-source-exports-as-the-private-copy-the-author-writes-test
@@ -237,9 +255,9 @@
                      (mt/with-current-user (mt/user->id :crowberto)
                        (resource-export/export-resources
                         app-collection
-                        [{:export "VenueCount"
-                          :query  {:stages [{:source       {:type :table :id (mt/id :venues)}
-                                             :aggregations [{:type :metric :id metric-id}]}]}}]
+                        (with-ids [{:export "VenueCount"
+                                    :query  {:stages [{:source       {:type :table :id (mt/id :venues)}
+                                                       :aggregations [{:type :metric :id metric-id}]}]}}])
                         [action-id])))))))))))
 
 (deftest a-failure-of-the-export-is-logged-and-a-refusal-is-not-test
@@ -251,11 +269,11 @@
                              {:export "Nothing" :error (str "Table " Integer/MAX_VALUE " does not exist.")}]}
                   (resource-export/export-resources
                    app-collection
-                   [{:export "Broken"
-                     :query  {:stages [{:source {:type :table :id (mt/id :venues)}
-                                        :fields [{:type :column :name "NOT_A_COLUMN"}]}]}}
-                    {:export "Nothing"
-                     :query  {:stages [{:source {:type :table :id Integer/MAX_VALUE}}]}}]
+                   (with-ids [{:export "Broken"
+                               :query  {:stages [{:source {:type :table :id (mt/id :venues)}
+                                                  :fields [{:type :column :name "NOT_A_COLUMN"}]}]}}
+                              {:export "Nothing"
+                               :query  {:stages [{:source {:type :table :id Integer/MAX_VALUE}}]}}])
                    [])))
           (let [logged (filter #(str/includes? (:message %) "Could not export a data app resource") (messages))]
             (is (= 1 (count logged)))
@@ -384,7 +402,7 @@
         (let [{:keys [entity]} (-> (resource-export/export-resources
                                     app-collection
                                     ;; decoded, as the endpoint hands a definition over
-                                    [{:export "Venues" :query {:stages [{:source {:type :table :id (mt/id :venues)}}]}}]
+                                    (with-ids [{:export "Venues" :query {:stages [{:source {:type :table :id (mt/id :venues)}}]}}])
                                     [])
                                    :queries first)]
           (is (= [:database :stages :lib/type] (keys (:dataset_query entity))))
