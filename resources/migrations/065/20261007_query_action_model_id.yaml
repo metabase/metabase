@@ -38,3 +38,30 @@ databaseChangeLog:
               SET model_id = legacy_model_id
               WHERE legacy_model_id IS NOT NULL
                 AND EXISTS (SELECT 1 FROM report_card WHERE report_card.id = action.legacy_model_id);
+
+  - changeSet:
+      id: v65.2026-10-07T00:00:02
+      author: ranquild
+      comment: Detach dashboard cards of query actions from the actions' former models
+      changes:
+        - sql:
+            sql: >-
+              UPDATE report_dashboardcard
+              SET card_id = NULL
+              WHERE card_id IS NOT NULL
+                AND EXISTS (SELECT 1 FROM action
+                            WHERE action.id = report_dashboardcard.action_id
+                              AND action.type = 'query'
+                              AND action.legacy_model_id = report_dashboardcard.card_id);
+      rollback:
+        - sql:
+            sql: >-
+              UPDATE report_dashboardcard
+              SET card_id = (SELECT action.legacy_model_id FROM action
+                             WHERE action.id = report_dashboardcard.action_id
+                               AND EXISTS (SELECT 1 FROM report_card WHERE report_card.id = action.legacy_model_id))
+              WHERE card_id IS NULL
+                AND EXISTS (SELECT 1 FROM action
+                            WHERE action.id = report_dashboardcard.action_id
+                              AND action.type = 'query'
+                              AND action.legacy_model_id IS NOT NULL);

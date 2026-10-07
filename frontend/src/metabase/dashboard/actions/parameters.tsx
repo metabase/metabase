@@ -621,6 +621,7 @@ export const setActionForDashcard = createThunkAction(
         attributes: {
           action_id: newAction.id,
           action: newAction,
+          card_id: newAction.model_id,
         },
       }),
     );
