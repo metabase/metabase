@@ -98,8 +98,7 @@
   (testing "every other whitelisted model still gets the profile's temperature"
     (doseq [model ["anthropic/claude-opus-4.5" "anthropic/claude-opus-4.1"
                    "anthropic/claude-sonnet-4.5" "anthropic/claude-haiku-4.5"
-                   "deepseek/deepseek-v4-pro" "google/gemma-4-31b-it" "mistralai/mistral-medium-3-5"
-                   "z-ai/glm-5.2"]]
+                   "deepseek/deepseek-v4-pro" "mistralai/mistral-medium-3-5" "z-ai/glm-5.2"]]
       (testing model
         (is (= 0.3 (request-body-temperature model))))))
   (testing "the 4.6 Claudes accept temperature only while reasoning is off — enabled thinking rejects it"
@@ -160,7 +159,7 @@
 
 (deftest ^:parallel request-body-other-models-keep-required-tool-choice-test
   (testing "models that accept a forced tool call keep tool_choice required"
-    (doseq [model ["anthropic/claude-haiku-4.5" "google/gemma-4-31b-it" "openai/gpt-5.4" "z-ai/glm-5.2"]]
+    (doseq [model ["anthropic/claude-haiku-4.5" "openai/gpt-5.4" "z-ai/glm-5.2"]]
       (testing model
         (let [body (openrouter/openrouter-request-body
                     {:model  model
@@ -183,7 +182,6 @@
     "anthropic/claude-fable-5"    true
     "moonshotai/kimi-k3"          true
     "z-ai/glm-5.2"                true
-    "google/gemma-4-31b-it"       true
     "openai/gpt-5.5"              true
     "openai/gpt-5.6-sol"          true
     "openai/gpt-5.4"              true
@@ -267,8 +265,7 @@
     (let [renderable         #{"anthropic/claude-fable-5" "anthropic/claude-opus-5" "anthropic/claude-opus-4.8"
                                "anthropic/claude-opus-4.7" "anthropic/claude-opus-4.6" "anthropic/claude-sonnet-5"
                                "anthropic/claude-sonnet-4.6" "deepseek/deepseek-v4-pro" "deepseek/deepseek-v4-pro-0813"
-                               "deepseek/deepseek-v4-flash-0731" "google/gemma-4-31b-it" "google/gemma-4-26b-a4b-it"
-                               "mistralai/mistral-medium-3-5" "moonshotai/kimi-k3"
+                               "deepseek/deepseek-v4-flash-0731" "mistralai/mistral-medium-3-5" "moonshotai/kimi-k3"
                                "openai/gpt-5.4" "openai/gpt-5.4-mini" "qwen/qwen3.8-max" "z-ai/glm-5.3" "z-ai/glm-5.2"}
           renderable-default #{"openai/gpt-5.6-sol" "openai/gpt-5.6-terra" "openai/gpt-5.6-luna" "openai/gpt-5.5"
                                "openai/gpt-5.5-pro" "openai/gpt-5.4-pro"}

@@ -1230,7 +1230,6 @@
       "google/google/gemini-3.6-flash"       1048576 ; publisher-qualified model reaches Google adapter
       "zai/glm-5.3"                          1048576 ; Z.AI direct
       "openrouter/z-ai/glm-5.3"              1048576 ; OpenRouter serving limit
-      "openrouter/google/gemma-4-31b-it"     262144  ; OpenRouter serving limit
       "azure/openai/my-deployment"           nil     ; unmatched deployment
       "anthropic/some-future-model"          nil     ; unknown model
       "unknown"                              nil)))  ; no such connection

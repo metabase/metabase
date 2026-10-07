@@ -93,8 +93,6 @@ Supported models:
 | DeepSeek V4 Flash 0731 | `deepseek/deepseek-v4-flash-0731` | 1,048,576               |
 | DeepSeek V4 Pro 0423   | `deepseek/deepseek-v4-pro`        | 1,048,576               |
 | DeepSeek V4 Pro 0813   | `deepseek/deepseek-v4-pro-0813`   | 1,048,575               |
-| Gemma 4 26B A4B        | `google/gemma-4-26b-a4b-it`       | 262,144                 |
-| Gemma 4 31B            | `google/gemma-4-31b-it`           | 262,144                 |
 | Mistral Medium 3.5     | `mistralai/mistral-medium-3-5`    | 262,144                 |
 | Kimi K3                | `moonshotai/kimi-k3`              | 1,048,576               |
 | GPT-5.4                | `openai/gpt-5.4`                  | 922,000                 |
