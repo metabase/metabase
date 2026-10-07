@@ -5,7 +5,7 @@ import Animation from "metabase/css/core/animation.module.css";
 import { NAV_SIDEBAR_WIDTH } from "metabase/nav/constants";
 import { useSelector } from "metabase/redux";
 import { getIsNavbarOpen } from "metabase/selectors/app";
-import { Box, type BoxProps, Card, Flex, Portal, Text } from "metabase/ui";
+import { type BoxProps, Card, Flex, Portal, Text } from "metabase/ui";
 
 import S from "./BulkActionBar.module.css";
 
@@ -45,17 +45,31 @@ export const BulkActionBarPortal = ({
   }
   return (
     <Portal>
-      <Box
-        className={cx(S.toast, className, Animation.popToast)}
+      <Flex
+        className={cx(S.clickThrough, className, Animation.popToast)}
+        pos="fixed"
+        left={0}
+        right={0}
+        bottom={0}
+        justify="center"
+        mb="lg"
         ml={isNavbarOpen ? NAV_SIDEBAR_WIDTH : 0}
       >
-        <Card className={S.toastCard} data-testid="toast-card" {...props}>
+        <Card
+          className={S.toastCard}
+          bg="tooltip-background"
+          c="tooltip-text"
+          py="md"
+          px="lg"
+          data-testid="toast-card"
+          {...props}
+        >
           {message && <Text c="tooltip-text">{message}</Text>}
           <Flex gap="sm" align="center">
             {children}
           </Flex>
         </Card>
-      </Box>
+      </Flex>
     </Portal>
   );
 };

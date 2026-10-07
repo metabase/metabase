@@ -1,22 +1,13 @@
-.toast {
-  position: fixed;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  display: flex;
-  justify-content: center;
-  margin-bottom: var(--mantine-spacing-lg);
+/* The full-width wrapper must not block clicks on the page beneath it */
+.clickThrough {
   pointer-events: none;
 }
 
 .toastCard {
-  background-color: var(--mb-color-tooltip-background);
-  color: var(--mb-color-tooltip-text);
-  padding: var(--mantine-spacing-md) var(--mantine-spacing-lg);
   display: flex;
   flex-direction: row;
   align-items: center;
   justify-content: space-between;
-  gap: var(--mantine-spacing-xxxl);
+  gap: 2.5rem;
   pointer-events: auto;
 }
