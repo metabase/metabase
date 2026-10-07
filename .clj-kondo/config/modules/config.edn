@@ -3928,7 +3928,12 @@
            premium-features
            util
            warehouse-schema-overlay}
-   :model-imports #{:model/Card :model/Collection :model/Table}}
+   :model-imports #{:model/Card
+                    :model/Collection
+                    :model/Dashboard
+                    :model/Pulse
+                    :model/Table
+                    :model/Timeline}}
 
   enterprise/mcp
   {:team    "Metabot"
