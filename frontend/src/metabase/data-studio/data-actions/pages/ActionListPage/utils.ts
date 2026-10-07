@@ -1,6 +1,10 @@
 import { t } from "ttag";
 
 import { getCollectionIcon } from "metabase/common/collections/utils";
+import {
+  hasActionsEnabled,
+  hasNativeWritePermissions,
+} from "metabase/common/utils/database";
 import { getUserName } from "metabase/utils/user";
 import type {
   Collection,
@@ -113,6 +117,13 @@ export function getDefaultExpanded(
   };
   const path = findPath(nodes) ?? [];
   return Object.fromEntries(path.map((id) => [id, true]));
+}
+
+export function canCreateActions(databases: Database[]): boolean {
+  return databases.some(
+    (database) =>
+      hasActionsEnabled(database) && hasNativeWritePermissions(database),
+  );
 }
 
 export const getNodeId = (node: ActionTreeNode) => node.id;

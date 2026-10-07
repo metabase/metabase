@@ -3,16 +3,14 @@ import { t } from "ttag";
 import { Link } from "metabase/common/components/Link";
 import { DataStudioBreadcrumbs } from "metabase/common/data-studio/components/DataStudioBreadcrumbs";
 import { PaneHeader } from "metabase/common/data-studio/components/PaneHeader";
-import { hasNativeWritePermissions } from "metabase/common/utils/database";
 import { Button, Icon, Tooltip } from "metabase/ui";
 import * as Urls from "metabase/urls";
 
-import { useActionDatabases } from "../../hooks/use-action-databases";
+type ActionsHeaderProps = {
+  canCreate: boolean;
+};
 
-export function ActionsHeader() {
-  const { databases, isLoading } = useActionDatabases();
-  const canCreate = databases.some(hasNativeWritePermissions);
-
+export function ActionsHeader({ canCreate }: ActionsHeaderProps) {
   return (
     <PaneHeader
       data-testid="actions-section-header"
@@ -32,7 +30,6 @@ export function ActionsHeader() {
         ) : (
           <Tooltip
             label={t`To create an action, you need permission to write native queries on a database with actions enabled.`}
-            disabled={isLoading}
           >
             <Button variant="filled" leftSection={<Icon name="add" />} disabled>
               {t`New action`}

@@ -1,4 +1,10 @@
-import { type ActionTreeNode, getDefaultExpanded } from "./utils";
+import { createMockDatabase } from "metabase-types/api/mocks";
+
+import {
+  type ActionTreeNode,
+  canCreateActions,
+  getDefaultExpanded,
+} from "./utils";
 
 const TREE: ActionTreeNode[] = [
   {
@@ -39,5 +45,40 @@ describe("getDefaultExpanded", () => {
 
   it("should expand nothing for a collection that is not in the tree", () => {
     expect(getDefaultExpanded(TREE, 4)).toEqual({});
+  });
+});
+
+describe("canCreateActions", () => {
+  it("should allow creating actions with native write access to an actions-enabled database", () => {
+    expect(
+      canCreateActions([
+        createMockDatabase({
+          native_permissions: "write",
+          settings: { "database-enable-actions": true },
+        }),
+      ]),
+    ).toBe(true);
+  });
+
+  it("should not allow creating actions without native write access", () => {
+    expect(
+      canCreateActions([
+        createMockDatabase({
+          native_permissions: "none",
+          settings: { "database-enable-actions": true },
+        }),
+      ]),
+    ).toBe(false);
+  });
+
+  it("should not allow creating actions when actions are disabled", () => {
+    expect(
+      canCreateActions([
+        createMockDatabase({
+          native_permissions: "write",
+          settings: { "database-enable-actions": false },
+        }),
+      ]),
+    ).toBe(false);
   });
 });

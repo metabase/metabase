@@ -17,6 +17,7 @@ import { useLocation } from "metabase/router";
 import {
   Avatar,
   Card,
+  Center,
   Ellipsified,
   EntityNameCell,
   Flex,
@@ -26,7 +27,6 @@ import {
   TextInput,
   TreeTable,
   type TreeTableColumnDef,
-  TreeTableSkeleton,
   useTreeTableInstance,
 } from "metabase/ui";
 import * as Urls from "metabase/urls";
@@ -37,6 +37,7 @@ import { ActionsHeader } from "../../components/ActionsHeader";
 import {
   type ActionTreeNode,
   buildActionTree,
+  canCreateActions,
   getCollectionNodeId,
   getCreatorName,
   getDatabaseName,
@@ -75,7 +76,11 @@ export function ActionListPage() {
     isLoading: isLoadingCollections,
     error: collectionsError,
   } = useListCollectionsTreeQuery({ "exclude-archived": true });
-  const { data: databasesResponse } = useListDatabasesQuery();
+  const {
+    data: databasesResponse,
+    isLoading: isLoadingDatabases,
+    error: databasesError,
+  } = useListDatabasesQuery();
 
   const databases = useMemo(
     () => databasesResponse?.data ?? [],
@@ -113,7 +118,8 @@ export function ActionListPage() {
     }
   };
 
-  const isLoading = isLoadingActions || isLoadingCollections;
+  const isLoading =
+    isLoadingActions || isLoadingCollections || isLoadingDatabases;
 
   useEffect(() => {
     if (targetCollectionId != null && !hasScrolledRef.current && !isLoading) {
@@ -122,9 +128,13 @@ export function ActionListPage() {
     }
   }, [targetCollectionId, isLoading, treeTableInstance]);
 
-  const error = actionsError ?? collectionsError;
-  if (error) {
-    return <LoadingAndErrorWrapper loading={false} error={error} />;
+  const error = actionsError ?? collectionsError ?? databasesError;
+  if (isLoading || error != null) {
+    return (
+      <Center h="100%">
+        <LoadingAndErrorWrapper loading={isLoading} error={error} />
+      </Center>
+    );
   }
 
   const emptyMessage = getEmptyMessage({
@@ -134,7 +144,7 @@ export function ActionListPage() {
 
   return (
     <PageContainer data-testid="actions-list" gap={0}>
-      <ActionsHeader />
+      <ActionsHeader canCreate={canCreateActions(databases)} />
       <Stack className={CS.overflowHidden}>
         <TextInput
           placeholder={t`Search actions…`}
@@ -143,18 +153,14 @@ export function ActionListPage() {
           onChange={(event) => setSearchQuery(event.target.value)}
         />
         <Card withBorder p={0}>
-          {isLoading ? (
-            <TreeTableSkeleton columnWidths={[0.4, 0.2, 0.2, 0.2]} />
-          ) : (
-            <TreeTable
-              instance={treeTableInstance}
-              emptyState={
-                emptyMessage ? <ListEmptyState label={emptyMessage} /> : null
-              }
-              onRowClick={handleRowClick}
-              renderRowLink={renderRowLink}
-            />
-          )}
+          <TreeTable
+            instance={treeTableInstance}
+            emptyState={
+              emptyMessage ? <ListEmptyState label={emptyMessage} /> : null
+            }
+            onRowClick={handleRowClick}
+            renderRowLink={renderRowLink}
+          />
         </Card>
       </Stack>
     </PageContainer>
