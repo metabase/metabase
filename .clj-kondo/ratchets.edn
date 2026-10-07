@@ -21,11 +21,11 @@
                                 :consistent-alias                                          2
                                 :def-fn                                                    1
                                 :deprecated-namespace                                      29
-                                :deprecated-var                                            53
+                                :deprecated-var                                            61
                                 :discouraged-java-method                                   4
                                 :duplicate-require                                         1
                                 :main-without-gen-class                                    1
-                                :metabase/discourage-dynamic-vars                          324
+                                :metabase/discourage-dynamic-vars                          323
                                 :metabase/discourage-millis-duration                       1
                                 :metabase/modules                                          23
                                 :metabase/namespace-name                                   3
@@ -108,8 +108,7 @@
                                 :unresolved-symbol                       15
                                 :unresolved-var                          1
                                 :unused-referred-var                     4}
- :comment-exempt               #{:deprecated-namespace
-                                 :discouraged-namespace
+ :comment-exempt               #{:discouraged-namespace
                                  :discouraged-var
                                  :metabase/discourage-dynamic-vars
                                  :metabase/modules
