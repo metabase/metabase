@@ -19,7 +19,8 @@
    (org.eclipse.jgit.transport PushResult RefSpec RemoteRefUpdate
                                RemoteRefUpdate$Status UsernamePasswordCredentialsProvider)
    (org.eclipse.jgit.treewalk TreeWalk)
-   (org.eclipse.jgit.treewalk.filter TreeFilter)))
+   (org.eclipse.jgit.treewalk.filter TreeFilter)
+   (org.eclipse.jgit.util FS FS_POSIX ProcessResult ProcessResult$Status)))
 
 (set! *warn-on-reflection* true)
 
@@ -136,9 +137,28 @@
             :error     (.getMessage e)}
            e))
 
+(def ^:private no-hooks-fs
+  "A delay of the JGit file system of the clones of remote sync. A repository with this file system runs no git hook."
+  ;; Metabase puts no hook in its clones, and a clone gets no hook from its remote. So a hook in a clone comes from a
+  ;; write into the clone, and remote sync does not run it. The `core.hooksPath` setting is not used for this: it is in
+  ;; the config file of the clone, which the same write can change.
+  (delay
+    (if (instance? FS_POSIX FS/DETECTED)
+      (proxy [FS_POSIX] [FS/DETECTED]
+        ;; JGit can copy a file system with newInstance; a copy of FS_POSIX runs hooks.
+        (newInstance [] this)
+        (findHook [_repository _hook-name] nil)
+        (runHookIfPresent
+          ([_repository _hook-name _args]
+           (ProcessResult. ProcessResult$Status/NOT_PRESENT))
+          ([_repository _hook-name _args _out _err _stdin]
+           (ProcessResult. ProcessResult$Status/NOT_PRESENT))))
+      ;; Of the other JGit file systems, only FS_Win32_Cygwin runs hooks.
+      FS/DETECTED)))
+
 (defn- clone-repository!
   "Clones every branch of the repository at `remote-url` with the optional `token` into the new directory `dir`, as a
-  bare clone, and returns its Git instance. A remote that advertises no HEAD is cloned too.
+  bare clone, and returns its Git instance. A remote that advertises no HEAD is cloned too. The clone runs no git hook.
 
   Throws \"Cannot connect to uninitialized repository\" for a remote with no branch, before any clone. Throws
   ExceptionInfo if the remote or the clone fails, for example on a network error, an invalid URL or a rejected token."
@@ -156,7 +176,8 @@
       (let [command (-> (Git/cloneRepository)
                         (.setDirectory dir)
                         (.setURI remote-url)
-                        (.setBare true))]
+                        (.setBare true)
+                        (.setFs ^FS @no-hooks-fs))]
         ;; A JGit clone first fetches the branch that it is given (by default HEAD), and fails when the remote does not
         ;; advertise that ref. Nothing reads the HEAD of the bare clone, so the branch has no other effect.
         (when-let [branch (branch-without-head refs)]

@@ -43,10 +43,14 @@
   (-> url buddy-hash/sha1 codecs/bytes->hex))
 
 (defn- delete-dir!
-  "Deletes the directory `dir`. A failure, for example on a file that a JGit gc removes during the delete, does not
-  throw; a directory that remains is logged."
+  "Deletes the directory `dir`. When `dir` is a symbolic link, deletes only the link. A failure, for example on a file
+  that a JGit gc removes during the delete, does not throw; a directory that remains is logged."
   [^File dir]
-  (FileUtils/deleteQuietly dir)
+  ;; FileUtils/deleteQuietly deletes the files in the target when `dir` itself is a symbolic link to a directory. It
+  ;; does not follow a link below `dir`.
+  (if (Files/isSymbolicLink (.toPath dir))
+    (.delete dir)
+    (FileUtils/deleteQuietly dir))
   (when (.exists dir)
     (log/warn "Could not delete a git clone directory" {:path (str dir)})))
 
@@ -94,12 +98,15 @@
 
 (defn- check-own-directory!
   "Throws unless `dir` is a directory, and not a symbolic link, that the user of this process owns. The error names the
-  path, and its data has the `:path` and the `:reason`: `:symbolic-link`, `:not-a-directory` or `:another-owner`."
+  path, the reason and the remedy, and its data has the `:path` and the `:reason`: `:symbolic-link`, `:not-a-directory`
+  or `:another-owner`."
   [^File dir]
   (let [path    (.toPath dir)
         refuse! (fn [reason ^String problem]
                   (throw (ex-info (str "The git clone directory " path " " problem
-                                       ". Metabase clones only into a directory that the Metabase user owns.")
+                                       ". Metabase clones only into a directory that the Metabase user owns."
+                                       " Remove this path, or make it a directory that the Metabase user owns."
+                                       " Then try again.")
                                   {:path (str path) :reason reason})))]
     (cond
       (Files/isSymbolicLink path)
@@ -274,19 +281,25 @@
               :when (and dir (in-root? current dir))]
         (retire! registry url active)))))
 
+(defn- check-current-root!
+  "Checks the base directory and the current process root of `registry` with [[check-own-directory!]], and returns the
+  current root. Returns nil when there is no current root. Throws when the check refuses one of them."
+  [{:keys [base-dir root]}]
+  (when-let [current @root]
+    (check-own-directory! base-dir)
+    (check-own-directory! (:dir current))
+    current))
+
 (defn- root!
   "The intact process root of `registry`. Makes a new root at the first call, and when the current root is not intact.
   Throws when [[check-own-directory!]] refuses the base directory or the root."
   [{:keys [base-dir root] :as registry}]
   ;; A clone into a deleted root would make its path again, with default permissions and no lock file.
   (retire-broken-root! registry)
-  (if-let [current @root]
-    (do (check-own-directory! base-dir)
-        (check-own-directory! (:dir current))
-        current)
-    (locking root
-      (or @root
-          (reset! root (make-root! base-dir))))))
+  (or (check-current-root! registry)
+      (locking root
+        (or @root
+            (reset! root (make-root! base-dir))))))
 
 (defn- generation-dir
   "The directory of generation `id` of `url`."
@@ -355,10 +368,13 @@
   When the URL has no active generation, the caller waits for the one clone job of that URL. The job calls
   `(clone! dir)` on an executor thread, with the dynamic bindings of the caller that started it. `clone!` makes the
   clone in the new directory `dir` and returns its Git instance (an AutoCloseable). An interrupt of a caller ends only
-  its own wait. A failure of the job goes to every caller that waits for it, and the next call starts a new job."
+  its own wait. A failure of the job goes to every caller that waits for it, and the next call starts a new job.
+  Throws when [[check-own-directory!]] refuses the base directory or the current process root, also when the URL has an
+  active generation. After the removal of the refused path, the next call makes a new root."
   [{:keys [root state] :as registry} {lease-id :id url :url} clone!]
   (loop []
     (retire-broken-root! registry)
+    (check-current-root! registry)
     (retire-missing! registry url)
     (let [[old new]                         (swap-vals! state update url take-generation root lease-id)
           {old-active :active old-job :job} (get old url)
