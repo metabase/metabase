@@ -39,30 +39,47 @@ describe("issue 12578", () => {
 
   it("should not fetch cards that are still loading when refreshing", () => {
     cy.clock(Date.now());
-    H.createQuestionAndDashboard({ questionDetails: ORDERS_QUESTION }).then(
-      ({ body: { dashboard_id } }) => {
-        H.visitDashboard(dashboard_id);
-      },
-    );
+    H.createDashboardWithQuestions({
+      questions: [
+        ORDERS_QUESTION,
+        { ...ORDERS_QUESTION, name: "Fast orders question" },
+      ],
+      cards: [
+        { col: 0, row: 0, size_x: 12, size_y: 6 },
+        { col: 12, row: 0, size_x: 12, size_y: 6 },
+      ],
+    }).then(({ dashboard, questions: [slowCard, fastCard] }) => {
+      H.visitDashboard(dashboard.id);
+
+      // The slow card is still loading at the second refresh. The fast card
+      // is fetched in the same refresh, which proves that the refresh ran.
+      cy.intercept(
+        "POST",
+        `/api/dashboard/*/dashcard/*/card/${slowCard.id}/query`,
+        (req) => {
+          req.on("response", (res) => {
+            res.setDelay(99999);
+          });
+        },
+      ).as("slowCardQuery");
+      cy.intercept(
+        "POST",
+        `/api/dashboard/*/dashcard/*/card/${fastCard.id}/query`,
+      ).as("fastCardQuery");
+    });
 
     // Without tick the dashboard header will not load
     cy.tick();
     H.openDashboardMenu("Auto-refresh");
     H.popover().findByText("1 minute").click();
 
-    // Mock slow card request
-    cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query", (req) => {
-      req.on("response", (res) => {
-        res.setDelay(99999);
-      });
-    }).as("dashcardQuery");
     cy.tick(61 * 1000);
-    cy.get("@dashcardQuery.all").should("have.length", 1);
+    cy.wait("@fastCardQuery");
+    cy.get("@slowCardQuery.all").should("have.length", 1);
 
     cy.tick(61 * 1000);
-    // Give a second request time to reach the intercept before the count
-    cy.wait(1000);
-    cy.get("@dashcardQuery.all").should("have.length", 1);
+    cy.wait("@fastCardQuery");
+    cy.get("@slowCardQuery.all").should("have.length", 1);
   });
 });
 
