@@ -4,6 +4,7 @@
    [java-time.api :as t]
    [metabase-enterprise.session-management.db :as sm.db]
    [metabase-enterprise.session-management.schema :as sm.schema]
+   [metabase.analytics.core :as analytics]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
@@ -234,13 +235,22 @@
                                    authed-session-key-hash))}))
 
 (defn- record-revocation!
-  "Write the audit trail for a revoke by criteria: one `:event/sessions-revoked` summary row for the whole call, plus
-  one `:event/session-revoked` row per affected user, tied back to the summary by the criteria they share. Never
-  throws."
+  "Record a revoke by criteria: the product-analytics event, and the audit trail — one `:event/sessions-revoked`
+  summary row for the whole call, plus one `:event/session-revoked` row per affected user, tied back to the summary by
+  the criteria they share. Never throws."
   [criteria revoked remaining user-ids]
   ;; published outside any transaction, and failures are swallowed after logging: the sessions are already gone by
   ;; the time this runs, and an audit problem must not report otherwise to the caller
   (try
+    ;; the analytics event goes first because it is best-effort and swallows its own failures, while an audit
+    ;; publish — needing the audit feature or hosting — is the failure mode this `try` exists for. It carries only
+    ;; how many sessions went, bucketed: never the criteria, the users, or the ids, which stay in the audit rows
+    (analytics/track-event! :snowplow/simple_event
+                            {:event        "sessions_revoked"
+                             :event_detail (case revoked
+                                             0 "none"
+                                             1 "single"
+                                             "multiple")})
     (events/publish-event! :event/sessions-revoked
                            {:user-id api/*current-user-id*
                             :details {:criteria criteria, :count revoked, :remaining remaining}})
@@ -251,7 +261,7 @@
                               :model-id user-id
                               :details  {:criteria criteria, :count revoked-for-user}}))
     (catch Throwable e
-      (log/warn e "Error recording a session revocation in the audit log"))))
+      (log/warn e "Error recording a session revocation"))))
 
 (api.macros/defendpoint :post "/revoke" :- ::RevokeByCriteriaResponse
   "Revoke — end — every live session matching the given criteria, which are the filters the list endpoint takes.

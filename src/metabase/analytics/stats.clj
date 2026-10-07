@@ -585,12 +585,13 @@
   (let [one-day-ago (->one-day-ago)
         total-translation-count (:total (get-translation-count))]
     (merge
-     {:models                          (analytics.db/unarchived-model-count)
-      :new_embedded_dashboards         (analytics.db/new-embedded-dashboard-count-since one-day-ago)
-      :new_users_last_24h              (analytics.db/new-active-user-count-since one-day-ago)
-      :pivot_tables                    (analytics.db/unarchived-pivot-table-count)
-      :query_executions_last_24h       (analytics.db/query-execution-count-since one-day-ago)
-      :entity_id_translations_last_24h total-translation-count}
+     {:models                             (analytics.db/unarchived-model-count)
+      :new_embedded_dashboards            (analytics.db/new-embedded-dashboard-count-since one-day-ago)
+      :new_users_last_24h                 (analytics.db/new-active-user-count-since one-day-ago)
+      :pivot_tables                       (analytics.db/unarchived-pivot-table-count)
+      :query_executions_last_24h          (analytics.db/query-execution-count-since one-day-ago)
+      :entity_id_translations_last_24h    total-translation-count
+      :sessions_revoked_by_admin_last_24h (analytics.db/admin-revoked-session-count-since one-day-ago)}
      (transform-metrics))))
 
 (def ^:private string-keyed-int-histogram
@@ -743,6 +744,7 @@
                    [:pivot_tables :int]
                    [:query_executions_last_24h :int]
                    [:entity_id_translations_last_24h :int]
+                   [:sessions_revoked_by_admin_last_24h :int]
                    [:transforms :int]
                    [:transform_runs_last_24h :int]]]
   (mapv
@@ -751,43 +753,44 @@
      (assert (some? v) "Cannot have a nil value in snowplow metrics.")
      {"name" (name k) "value" v "tags" (-> tags sort vec)})
    [[:above_goal_alerts               (get-in stats [:stats :alert :above_goal] 0)                    #{"alerts"}]
-    [:alerts                          (get-in stats [:stats :alert :alerts] 0)                        #{"alerts"}]
-    [:all_time_query_executions       (get-in stats [:stats :execution :executions] 0)                #{"query_executions"}]
-    [:analyzed_databases              (get-in stats [:stats :database :databases :analyzed] 0)        #{}]
-    [:cache_average_entry_size        (get-in stats [:stats :cache :average_entry_size] 0)            #{"cache"}]
-    [:cache_num_queries_cached        (get-in stats [:stats :cache :num_queries_cached_unbinned] 0)   #{"cache"}]
-    [:cards_in_collections            (get-in stats [:stats :collection :cards_in_collections] 0)     #{"collections"}]
-    [:cards_not_in_collections        (get-in stats [:stats :collection :cards_not_in_collections] 0) #{"collections"}]
-    [:collections                     (get-in stats [:stats :collection :collections] 0)              #{"collections"}]
-    [:connected_databases             (get-in stats [:stats :database :databases :total] 0)           #{"databases"}]
-    [:dashboards_with_params          (get-in stats [:stats :dashboard :with_params] 0)               #{"dashboards"}]
-    [:embedded_dashboards             (get-in stats [:stats :dashboard :embedded :total] 0)           #{"dashboards" "embedding"}]
-    [:embedded_questions              (get-in stats [:stats :question :embedded :total] 0)            #{"questions" "embedding"}]
-    [:entity_id_translations_last_24h (:entity_id_translations_last_24h metric-info 0)                #{"embedding"}]
-    [:first_time_only_alerts          (get-in stats [:stats :alert :first_time_only] 0)               #{"alerts"}]
-    [:library_data                    (get-in stats [:stats :library :library_data] 0)               #{"library"}]
-    [:library_metrics                 (get-in stats [:stats :library :library_metrics] 0)            #{"library"}]
-    [:metabase_fields                 (get-in stats [:stats :field :fields] 0)                        #{"fields"}]
-    [:metrics                         (get-in stats [:stats :metric :metrics] 0)                      #{"metrics"}]
-    [:models                          (:models metric-info 0)                                         #{}]
-    [:native_questions                (get-in stats [:stats :question :questions :native] 0)          #{"questions"}]
-    [:new_embedded_dashboards         (:new_embedded_dashboards metric-info 0)                        #{}]
-    [:new_users_last_24h              (:new_users_last_24h metric-info 0)                             #{"users"}]
-    [:permission_groups               (get-in stats [:stats :group :groups] 0)                        #{"permissions"}]
-    [:pivot_tables                    (:pivot_tables metric-info 0)                                   #{}]
-    [:public_dashboards               (get-in stats [:stats :dashboard :public :total] 0)             #{"dashboards"}]
-    [:public_dashboards_with_params   (get-in stats [:stats :dashboard :public :with_params] 0)       #{"dashboards"}]
-    [:public_questions                (get-in stats [:stats :question :public :total] 0)              #{"questions"}]
-    [:public_questions_with_params    (get-in stats [:stats :question :public :with_params] 0)        #{"questions"}]
-    [:query_builder_questions         (get-in stats [:stats :question :questions :total] 0)           #{"questions"}]
-    [:query_executions_last_24h       (:query_executions_last_24h metric-info 0)                      #{"query_executions"}]
-    [:questions                       (get-in stats [:stats :question :questions :total] 0)           #{"questions"}]
-    [:questions_with_params           (get-in stats [:stats :question :questions :with_params] 0)     #{"questions"}]
-    [:segments                        (get-in stats [:stats :segment :segments] 0)                    #{"segments"}]
-    [:tables                          (get-in stats [:stats :table :tables] 0)                        #{"tables"}]
-    [:transform_runs_last_24h         (:transform_runs_last_24h metric-info 0)                        #{"transforms"}]
-    [:transforms                      (:transforms metric-info 0)                                     #{"transforms"}]
-    [:users                           (get-in stats [:stats :user :users :total] 0)                   #{"users"}]]))
+    [:alerts                             (get-in stats [:stats :alert :alerts] 0)                        #{"alerts"}]
+    [:all_time_query_executions          (get-in stats [:stats :execution :executions] 0)                #{"query_executions"}]
+    [:analyzed_databases                 (get-in stats [:stats :database :databases :analyzed] 0)        #{}]
+    [:cache_average_entry_size           (get-in stats [:stats :cache :average_entry_size] 0)            #{"cache"}]
+    [:cache_num_queries_cached           (get-in stats [:stats :cache :num_queries_cached_unbinned] 0)   #{"cache"}]
+    [:cards_in_collections               (get-in stats [:stats :collection :cards_in_collections] 0)     #{"collections"}]
+    [:cards_not_in_collections           (get-in stats [:stats :collection :cards_not_in_collections] 0) #{"collections"}]
+    [:collections                        (get-in stats [:stats :collection :collections] 0)              #{"collections"}]
+    [:connected_databases                (get-in stats [:stats :database :databases :total] 0)           #{"databases"}]
+    [:dashboards_with_params             (get-in stats [:stats :dashboard :with_params] 0)               #{"dashboards"}]
+    [:embedded_dashboards                (get-in stats [:stats :dashboard :embedded :total] 0)           #{"dashboards" "embedding"}]
+    [:embedded_questions                 (get-in stats [:stats :question :embedded :total] 0)            #{"questions" "embedding"}]
+    [:entity_id_translations_last_24h    (:entity_id_translations_last_24h metric-info 0)                #{"embedding"}]
+    [:first_time_only_alerts             (get-in stats [:stats :alert :first_time_only] 0)               #{"alerts"}]
+    [:library_data                       (get-in stats [:stats :library :library_data] 0)                #{"library"}]
+    [:library_metrics                    (get-in stats [:stats :library :library_metrics] 0)             #{"library"}]
+    [:metabase_fields                    (get-in stats [:stats :field :fields] 0)                        #{"fields"}]
+    [:metrics                            (get-in stats [:stats :metric :metrics] 0)                      #{"metrics"}]
+    [:models                             (:models metric-info 0)                                         #{}]
+    [:native_questions                   (get-in stats [:stats :question :questions :native] 0)          #{"questions"}]
+    [:new_embedded_dashboards            (:new_embedded_dashboards metric-info 0)                        #{}]
+    [:new_users_last_24h                 (:new_users_last_24h metric-info 0)                             #{"users"}]
+    [:permission_groups                  (get-in stats [:stats :group :groups] 0)                        #{"permissions"}]
+    [:pivot_tables                       (:pivot_tables metric-info 0)                                   #{}]
+    [:public_dashboards                  (get-in stats [:stats :dashboard :public :total] 0)             #{"dashboards"}]
+    [:public_dashboards_with_params      (get-in stats [:stats :dashboard :public :with_params] 0)       #{"dashboards"}]
+    [:public_questions                   (get-in stats [:stats :question :public :total] 0)              #{"questions"}]
+    [:public_questions_with_params       (get-in stats [:stats :question :public :with_params] 0)        #{"questions"}]
+    [:query_builder_questions            (get-in stats [:stats :question :questions :total] 0)           #{"questions"}]
+    [:query_executions_last_24h          (:query_executions_last_24h metric-info 0)                      #{"query_executions"}]
+    [:questions                          (get-in stats [:stats :question :questions :total] 0)           #{"questions"}]
+    [:questions_with_params              (get-in stats [:stats :question :questions :with_params] 0)     #{"questions"}]
+    [:segments                           (get-in stats [:stats :segment :segments] 0)                    #{"segments"}]
+    [:sessions_revoked_by_admin_last_24h (:sessions_revoked_by_admin_last_24h metric-info 0)             #{"sessions"}]
+    [:tables                             (get-in stats [:stats :table :tables] 0)                        #{"tables"}]
+    [:transform_runs_last_24h            (:transform_runs_last_24h metric-info 0)                        #{"transforms"}]
+    [:transforms                         (:transforms metric-info 0)                                     #{"transforms"}]
+    [:users                              (get-in stats [:stats :user :users :total] 0)                   #{"users"}]]))
 
 (defn- whitelabeling-in-use?
   "Are any whitelabeling settings set to values other than their default?"

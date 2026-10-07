@@ -222,6 +222,7 @@
                     :model/QueryCache
                     :model/QueryExecution
                     :model/Segment
+                    :model/Session
                     :model/Table
                     :model/Transform
                     :model/TransformRun
@@ -4367,7 +4368,8 @@
   enterprise/session-management
   {:team "UX West"
    :api  #{metabase-enterprise.session-management.api}
-   :uses #{api
+   :uses #{analytics
+           api
            events
            lib.schema
            request

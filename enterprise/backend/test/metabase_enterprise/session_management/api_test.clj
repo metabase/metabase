@@ -5,6 +5,7 @@
    [clojure.test :refer :all]
    [java-time.api :as t]
    [medley.core :as m]
+   [metabase.analytics.snowplow-test :as snowplow-test]
    [metabase.api.macros :as api.macros]
    [metabase.api.open-api :as open-api]
    [metabase.app-db.core :as mdb]
@@ -656,6 +657,29 @@
                   (is (= "User" model))
                   (is (= user-id model_id))
                   (is (= revoked (:count details))))))))))))
+
+(deftest revoke-analytics-event-test
+  (testing "a revoke sends one `sessions_revoked` analytics event, saying whether it ended none, one, or several"
+    (mt/with-temp [:model/User {user-a :id} {}
+                   :model/User {user-b :id} {}]
+      (let [revoke! (fn [body]
+                      (snowplow-test/with-fake-snowplow-collector
+                        (mt/user-http-request :crowberto :post 200 "ee/session-management/revoke" body)
+                        ;; only ours: reading a setting in here can emit an event of its own, `new_instance_created`
+                        (filter #(= "sessions_revoked" (get (:data %) "event"))
+                                (snowplow-test/pop-event-data-and-user-id!))))
+            event   (fn [detail]
+                      [{:data    {"event" "sessions_revoked", "event_detail" detail}
+                        :user-id (str (mt/user->id :crowberto))}])]
+        (testing "criteria that matched nothing still report the attempt: an admin did reach for revocation"
+          (is (= (event "none") (revoke! {:ids [(session/generate-session-id)]}))))
+        (testing "one session"
+          (is (= (event "single") (revoke! {:ids [(insert-session! user-a)]}))))
+        (testing "several sessions, and never the users or the criteria they were picked by"
+          (is (= (event "multiple")
+                 (revoke! {:ids [(insert-session! user-a)
+                                 (insert-session! user-a)
+                                 (insert-session! user-b)]}))))))))
 
 (deftest revoke-logs-without-audit-feature-test
   (testing "the revoke is logged even when the audit log is not being written"
