@@ -235,7 +235,8 @@
                                                                        [{:type :tool-input :id "call-1" :function "json"
                                                                          :arguments {:title "Orders by month"}}
                                                                         {:type :usage :id "msg-1"
-                                                                         :usage {:promptTokens 900 :completionTokens 30}}]))]
+                                                                         :usage {:promptTokens     900
+                                                                                 :completionTokens 30}}]))]
           (try
             (is (= "Orders by month"
                    (#'conversation-title/generate! conversation-id "internal" "Show orders by month")))
