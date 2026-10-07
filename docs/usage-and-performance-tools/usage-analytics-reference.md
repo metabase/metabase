@@ -433,6 +433,7 @@ Columns:
 - Metabase Version
 - Auth Method
 - Is Sandboxed
+- Sandbox Details
 - Is Impersonated
 - Is Db Routed
 - Parameters
