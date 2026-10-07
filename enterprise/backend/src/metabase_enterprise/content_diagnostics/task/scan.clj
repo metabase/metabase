@@ -98,7 +98,7 @@
     (scanned-before?)
     (log/info "Skipping Content Diagnostics upgrade backfill: a scan has already run")
 
-    (some? (cd.db/last-detected-at))
+    (cd.db/any-findings?)
     (log/info "Skipping Content Diagnostics upgrade backfill: findings already exist")
 
     (not (premium-features/has-feature? :content-diagnostics))
