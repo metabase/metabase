@@ -16,7 +16,7 @@ const USERS = ${JSON.stringify(users, null, 2)}
 
 // Demo component to switch between fake users.
 // In a real app, this would be managed by your auth provider.
-// See https://www.metabase.com/docs/latest/embedding/sdk/authentication
+// See https://www.metabase.com/docs/latest/embedding/authentication
 export const UserSwitcher = () => {
   const {email, switchUser} = useContext(AnalyticsContext)
 

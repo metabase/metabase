@@ -170,7 +170,7 @@ describe("SdkUsageProblemDisplay", () => {
 
     expect(docsLink).toHaveAttribute(
       "href",
-      "https://www.metabase.com/docs/latest/embedding/sdk/authentication#2-add-a-new-endpoint-to-your-backend-to-handle-authentication",
+      "https://www.metabase.com/docs/latest/embedding/authentication#2-add-a-new-endpoint-to-your-backend-to-handle-authentication",
     );
   });
 
@@ -273,7 +273,7 @@ describe("SdkUsageProblemDisplay", () => {
 
     expect(docsLink).toHaveAttribute(
       "href",
-      "https://www.metabase.com/docs/latest/embedding/sdk/introduction#in-metabase",
+      "https://www.metabase.com/docs/latest/embedding/sdk/introduction#enable-the-sdk-in-metabase",
     );
 
     mock.mockRestore();
@@ -338,7 +338,7 @@ describe("SdkUsageProblemDisplay", () => {
 
     expect(docsLink).toHaveAttribute(
       "href",
-      "https://www.metabase.com/docs/latest/embedding/sdk/authentication#2-add-a-new-endpoint-to-your-backend-to-handle-authentication",
+      "https://www.metabase.com/docs/latest/embedding/authentication#2-add-a-new-endpoint-to-your-backend-to-handle-authentication",
     );
   });
 
