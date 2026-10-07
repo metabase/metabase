@@ -58,8 +58,8 @@
     ;; carry it, which exercises that such exports still import cleanly now that it's skipped.
     :metabase_version
     ;; result_metadata is non-deterministic for dashboard/document cards because the Card before-update hook
-    ;; re-computes it without :verified-result-metadata? set. Fixing this properly requires making serdes
-    ;; load set :verified-result-metadata? on Card updates, which is not straightforward.
+    ;; re-computes it without :verified-result-metadata? set. A load sets that flag only for a native card whose
+    ;; file gives columns.
     :result_metadata})
 
 (defn- strip-base-path [base file]

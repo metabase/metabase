@@ -1563,13 +1563,14 @@
   ;; The export writes the columns of a native card, and they hold for the query in the same file. A load that changes
   ;; only the SQL then gives the stored columns again, and the columns of a native query cannot be inferred: mark them
   ;; verified, so the before-update hook keeps them. A file without columns gets no mark, and the hook acts as on any
-  ;; other update.
+  ;; other update. An old export can hold a legacy query, so normalize the query before the check.
   ((get-method load-update-multifn :default)
    model-name
    (cond-> ingested
      (and (seq (:result_metadata ingested))
-          (seq (:dataset_query ingested))
-          (lib/native? (:dataset_query ingested)))
+          (some-> (not-empty (:dataset_query ingested))
+                  (->> (lib/normalize ::queries.schema/card.dataset-query))
+                  lib/native?))
      (assoc :verified-result-metadata? true))
    local))
 
