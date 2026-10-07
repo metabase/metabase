@@ -29,7 +29,7 @@ describe("scenarios > dashboard > dashboard back navigation", () => {
     );
   });
 
-  it("should display a back to the dashboard button when navigating to a question", () => {
+  it("should display a back to the dashboard button when navigating to a question and keep the selected tab", () => {
     const dashboardName = "Orders in a dashboard";
     const backButtonLabel = `Back to ${dashboardName}`;
 
@@ -62,6 +62,32 @@ describe("scenarios > dashboard > dashboard back navigation", () => {
     cy.findByTestId("collection-table").findByText("Orders").click();
     H.queryBuilderHeader().findByDisplayValue("Orders").should("be.visible");
     cy.findByLabelText(backButtonLabel).should("not.exist");
+
+    cy.log("should return to the dashboard with the same tab selected");
+    cy.intercept("GET", "/api/card/*").as("card");
+    H.visitDashboardAndCreateTab({
+      dashboardId: ORDERS_DASHBOARD_ID,
+      save: false,
+    });
+
+    // Add card to second tab
+    cy.icon("pencil").click();
+    H.openQuestionsSidebar();
+    H.sidebar().within(() => {
+      cy.findByText("Orders, Count").click();
+    });
+    H.saveDashboard();
+
+    H.getDashboardCard().within(() => {
+      cy.findByText("Orders, Count").click();
+      cy.wait("@card");
+    });
+
+    H.queryBuilderHeader()
+      .findByLabelText("Back to Orders in a dashboard")
+      .click();
+
+    cy.findByRole("tab", { selected: true }).should("have.text", "Tab 2");
   });
 
   it("should expand the native editor when editing a question from a dashboard", () => {
@@ -191,32 +217,6 @@ describe("scenarios > dashboard > dashboard back navigation", () => {
     H.getDashboardCard(1).findByText(PERMISSION_ERROR);
     cy.get("@dashboard.all").should("have.length", 1);
     cy.get("@dashcardQuery.all").should("have.length", 1);
-  });
-
-  it("should return to dashboard with specific tab selected", () => {
-    H.visitDashboardAndCreateTab({
-      dashboardId: ORDERS_DASHBOARD_ID,
-      save: false,
-    });
-
-    // Add card to second tab
-    cy.icon("pencil").click();
-    H.openQuestionsSidebar();
-    H.sidebar().within(() => {
-      cy.findByText("Orders, Count").click();
-    });
-    H.saveDashboard();
-
-    H.getDashboardCard().within(() => {
-      cy.findByText("Orders, Count").click();
-      cy.wait("@card");
-    });
-
-    H.queryBuilderHeader()
-      .findByLabelText("Back to Orders in a dashboard")
-      .click();
-
-    cy.findByRole("tab", { selected: true }).should("have.text", "Tab 2");
   });
 });
 
