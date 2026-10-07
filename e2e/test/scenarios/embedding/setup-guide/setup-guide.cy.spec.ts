@@ -286,11 +286,38 @@ describe("scenarios - setup guide", () => {
         .should("be.visible");
     });
 
-    it("permissions setup page should mark steps as completed", () => {
+    it("locks the production embed step when JWT is not enabled", () => {
+      cy.visit("/admin/embedding/setup-guide");
+
+      cy.log("jwt should be disabled by default");
+      cy.request("GET", "/api/session/properties").then(({ body }) => {
+        expect(body["jwt-enabled"]).to.equal(false);
+      });
+
+      cy.findByTestId("admin-layout-content")
+        .findByText("Embed in production with SSO")
+        .scrollIntoView()
+        .should("be.visible")
+        .closest("button")
+        .icon("lock")
+        .should("be.visible");
+
+      cy.findByTestId("admin-layout-content")
+        .findByText("Embed in production with SSO")
+        .closest("button")
+        .findByText("Complete the other steps to unlock")
+        .should("be.visible");
+    });
+  });
+
+  describe("permissions setup", () => {
+    beforeEach(() => {
       H.restore("setup");
       cy.signInAsAdmin();
       H.activateToken("pro-self-hosted");
+    });
 
+    it("permissions setup page should mark steps as completed", () => {
       cy.visit("/admin/embedding/setup-guide/permissions");
 
       cy.log("all 5 steps are present and none are completed at first");
@@ -347,10 +374,6 @@ describe("scenarios - setup guide", () => {
     });
 
     it('"Enable tenants and create shared collection" button should enable tenants and create a shared collection', () => {
-      H.restore("setup");
-      cy.signInAsAdmin();
-      H.activateToken("pro-self-hosted");
-
       cy.log("create an x-ray dashboard via the embedding setup guide");
       cy.visit("/admin/embedding/setup-guide");
 
@@ -466,10 +489,6 @@ describe("scenarios - setup guide", () => {
     });
 
     it("enable-tenants step should not be marked as completed when tenants are enabled but no shared collection exists", () => {
-      H.restore("setup");
-      cy.signInAsAdmin();
-      H.activateToken("pro-self-hosted");
-
       cy.log("enable tenants via setting without creating a shared collection");
       H.updateSetting("use-tenants", true);
 
@@ -493,10 +512,6 @@ describe("scenarios - setup guide", () => {
     });
 
     it('"Enable tenants and create shared collection" button should be disabled when already set up', () => {
-      H.restore("setup");
-      cy.signInAsAdmin();
-      H.activateToken("pro-self-hosted");
-
       cy.log("enable tenants and create a shared collection");
       H.updateSetting("use-tenants", true);
       cy.request("POST", "/api/collection", {
@@ -521,10 +536,6 @@ describe("scenarios - setup guide", () => {
     });
 
     it("selecting database routing strategy should show documentation link in step 3", () => {
-      H.restore("setup");
-      cy.signInAsAdmin();
-      H.activateToken("pro-self-hosted");
-
       cy.visit("/admin/embedding/setup-guide/permissions");
 
       cy.log("click the enable tenants button");
@@ -561,10 +572,6 @@ describe("scenarios - setup guide", () => {
 
     describe("create tenants step", () => {
       beforeEach(() => {
-        H.restore("setup");
-        cy.signInAsAdmin();
-        H.activateToken("pro-self-hosted");
-
         cy.log("enable tenants and create shared collection");
         H.updateSetting("use-tenants", true);
         cy.request("POST", "/api/collection", {
@@ -768,64 +775,68 @@ describe("scenarios - setup guide", () => {
           .findByRole("radio", { name: /Row and column level security/ })
           .should("have.attr", "aria-checked", "true");
       });
+    });
+  });
 
-      it("shows autocomplete suggestions for organization_id based on selected field values", () => {
-        H.restore("postgres-12");
-        cy.signInAsAdmin();
-        H.activateToken("pro-self-hosted");
+  describe("row-level security setup", () => {
+    beforeEach(() => {
+      H.restore("postgres-12");
+      cy.signInAsAdmin();
+      H.activateToken("pro-self-hosted");
+    });
 
-        cy.visit("/admin/embedding/setup-guide/permissions");
+    it("shows autocomplete suggestions for organization_id based on selected field values", () => {
+      cy.visit("/admin/embedding/setup-guide/permissions");
 
-        cy.log("enable tenants and create shared collection");
-        H.main()
-          .findByRole("button", {
-            name: "Enable tenants and create shared collection",
-          })
-          .click();
+      cy.log("enable tenants and create shared collection");
+      H.main()
+        .findByRole("button", {
+          name: "Enable tenants and create shared collection",
+        })
+        .click();
 
-        cy.log("wait for tenants to be enabled");
-        H.main()
-          .findByRole("listitem", {
-            name: "Enable multi-tenant user strategy",
-            timeout: 10_000,
-          })
-          .icon("check")
-          .should("exist");
+      cy.log("wait for tenants to be enabled");
+      H.main()
+        .findByRole("listitem", {
+          name: "Enable multi-tenant user strategy",
+          timeout: 10_000,
+        })
+        .icon("check")
+        .should("exist");
 
-        cy.log("complete the move-dashboard step");
-        H.main()
-          .findByRole("button", { name: "Create a sample dashboard" })
-          .click();
+      cy.log("complete the move-dashboard step");
+      H.main()
+        .findByRole("button", { name: "Create a sample dashboard" })
+        .click();
 
-        cy.log("use row and column level security");
-        H.main()
-          .findByRole("radio", { name: /Row and column level security/ })
-          .scrollIntoView()
-          .click();
+      cy.log("use row and column level security");
+      H.main()
+        .findByRole("radio", { name: /Row and column level security/ })
+        .scrollIntoView()
+        .click();
 
-        H.main()
-          .findByRole("button", { name: "Use row and column level security" })
-          .scrollIntoView()
-          .click();
+      H.main()
+        .findByRole("button", { name: "Use row and column level security" })
+        .scrollIntoView()
+        .click();
 
-        cy.log("pick orders table");
-        H.main().findByText("Pick a table").click();
-        H.miniPicker().findByText(NON_SAMPLE_DB_NAME).click();
-        H.miniPicker().findByText("Orders").click();
+      cy.log("pick orders table");
+      H.main().findByText("Pick a table").click();
+      H.miniPicker().findByText(NON_SAMPLE_DB_NAME).click();
+      H.miniPicker().findByText("Orders").click();
 
-        H.main().findByPlaceholderText("Pick a column").click();
-        H.popover().findByText("User ID").click();
-        H.main().findByRole("button", { name: "Next" }).click();
+      H.main().findByPlaceholderText("Pick a column").click();
+      H.popover().findByText("User ID").click();
+      H.main().findByRole("button", { name: "Next" }).click();
 
-        cy.log("autocomplete dropdown should show matching user id values");
-        H.main().findByPlaceholderText("e.g. 1").type("1");
+      cy.log("autocomplete dropdown should show matching user id values");
+      H.main().findByPlaceholderText("e.g. 1").type("1");
 
-        H.popover().within(() => {
-          cy.findAllByRole("option").should("have.length.at.least", 8);
+      H.popover().within(() => {
+        cy.findAllByRole("option").should("have.length.at.least", 8);
 
-          // The ID differs across run, so let's only do one assertion here.
-          cy.findByRole("option", { name: "1" }).should("exist");
-        });
+        // The ID differs across run, so let's only do one assertion here.
+        cy.findByRole("option", { name: "1" }).should("exist");
       });
     });
 
@@ -833,10 +844,6 @@ describe("scenarios - setup guide", () => {
     // are only populated when the user goes through the "Select data" step
     // in the UI. Without it, the data permissions description won't show.
     it("shows RLS data permissions description in summary", () => {
-      H.restore("postgres-12");
-      cy.signInAsAdmin();
-      H.activateToken("pro-self-hosted");
-
       cy.visit("/admin/embedding/setup-guide/permissions");
 
       cy.log("enable tenants and create shared collection");
@@ -916,10 +923,6 @@ describe("scenarios - setup guide", () => {
     });
 
     it("should create sandboxes for multiple tables via row-level security setup", () => {
-      H.restore("postgres-12");
-      cy.signInAsAdmin();
-      H.activateToken("pro-self-hosted");
-
       cy.intercept("PUT", "/api/permissions/graph").as(
         "updatePermissionsGraph",
       );
@@ -1082,10 +1085,6 @@ describe("scenarios - setup guide", () => {
     });
 
     it("should update existing sandboxes when changing column selection", () => {
-      H.restore("postgres-12");
-      cy.signInAsAdmin();
-      H.activateToken("pro-self-hosted");
-
       cy.intercept("PUT", "/api/permissions/graph").as(
         "updatePermissionsGraph",
       );
@@ -1240,149 +1239,124 @@ describe("scenarios - setup guide", () => {
         });
       });
     });
+  });
 
-    it(
-      "should block schemas without selected tables in RLS setup",
-      { tags: ["@external"] },
-      () => {
-        H.restore("postgres-writable");
-        cy.signInAsAdmin();
-        H.activateToken("pro-self-hosted");
+  it(
+    "should block schemas without selected tables in RLS setup",
+    { tags: ["@external"] },
+    () => {
+      H.restore("postgres-writable");
+      cy.signInAsAdmin();
+      H.activateToken("pro-self-hosted");
 
-        cy.log(
-          'reset "multi_schema" fixture: creates Domestic and Wild schemas, each with tables',
-        );
-        H.resetTestTable({ type: "postgres", table: "multi_schema" });
-        H.resyncDatabase({ dbId: WRITABLE_DB_ID });
+      cy.log(
+        'reset "multi_schema" fixture: creates Domestic and Wild schemas, each with tables',
+      );
+      H.resetTestTable({ type: "postgres", table: "multi_schema" });
+      H.resyncDatabase({ dbId: WRITABLE_DB_ID });
 
-        cy.intercept("PUT", "/api/permissions/graph").as(
-          "updatePermissionsGraph",
-        );
+      cy.intercept("PUT", "/api/permissions/graph").as(
+        "updatePermissionsGraph",
+      );
 
-        cy.visit("/admin/embedding/setup-guide/permissions");
+      cy.visit("/admin/embedding/setup-guide/permissions");
 
-        cy.log("enable tenants and create shared collection");
-        H.main()
-          .findByRole("button", {
-            name: "Enable tenants and create shared collection",
-          })
-          .click();
+      cy.log("enable tenants and create shared collection");
+      H.main()
+        .findByRole("button", {
+          name: "Enable tenants and create shared collection",
+        })
+        .click();
 
-        cy.log("wait for tenants to be enabled");
-        H.main()
-          .findByRole("listitem", {
-            name: "Enable multi-tenant user strategy",
-            timeout: 10_000,
-          })
-          .icon("check")
-          .should("exist");
+      cy.log("wait for tenants to be enabled");
+      H.main()
+        .findByRole("listitem", {
+          name: "Enable multi-tenant user strategy",
+          timeout: 10_000,
+        })
+        .icon("check")
+        .should("exist");
 
-        cy.log("complete the move-dashboard step");
-        H.main()
-          .findByRole("button", { name: "Create a sample dashboard" })
-          .click();
+      cy.log("complete the move-dashboard step");
+      H.main()
+        .findByRole("button", { name: "Create a sample dashboard" })
+        .click();
 
-        cy.log("select RLS strategy");
-        H.main()
-          .findByRole("radio", { name: /Row and column level security/ })
-          .scrollIntoView()
-          .click();
+      cy.log("select RLS strategy");
+      H.main()
+        .findByRole("radio", { name: /Row and column level security/ })
+        .scrollIntoView()
+        .click();
 
-        H.main()
-          .findByRole("button", {
-            name: "Use row and column level security",
-          })
-          .scrollIntoView()
-          .click();
+      H.main()
+        .findByRole("button", {
+          name: "Use row and column level security",
+        })
+        .scrollIntoView()
+        .click();
 
-        cy.log(
-          "pick a table from the Domestic schema of the Postgres database",
-        );
+      cy.log("pick a table from the Domestic schema of the Postgres database");
 
-        H.main().findByText("Pick a table").click();
-        H.miniPicker().findByText("Writable Postgres12").click();
-        H.miniPicker().findByText("Domestic").click();
-        H.miniPicker().findByText("Animals").click();
+      H.main().findByText("Pick a table").click();
+      H.miniPicker().findByText("Writable Postgres12").click();
+      H.miniPicker().findByText("Domestic").click();
+      H.miniPicker().findByText("Animals").click();
 
-        cy.log("pick Score column as the tenant filter field");
-        H.main().findByPlaceholderText("Pick a column").click();
-        H.popover().findByText("Score").click();
+      cy.log("pick Score column as the tenant filter field");
+      H.main().findByPlaceholderText("Pick a column").click();
+      H.popover().findByText("Score").click();
 
-        cy.log("create sandbox");
-        H.main().findByRole("button", { name: "Next" }).click();
+      cy.log("create sandbox");
+      H.main().findByRole("button", { name: "Next" }).click();
 
-        cy.log("wait for sandbox creation to complete");
-        cy.wait("@updatePermissionsGraph");
+      cy.log("wait for sandbox creation to complete");
+      cy.wait("@updatePermissionsGraph");
 
-        cy.log("no error toast should appear");
-        H.undoToast().should("not.exist");
+      cy.log("no error toast should appear");
+      H.undoToast().should("not.exist");
 
-        cy.log("verify schemas without selected tables are blocked");
-        cy.request(
-          "GET",
-          `/api/permissions/graph/group/${ALL_EXTERNAL_USERS_GROUP_ID}`,
-        ).then((response) => {
-          const graph = response.body;
+      cy.log("verify schemas without selected tables are blocked");
+      cy.request(
+        "GET",
+        `/api/permissions/graph/group/${ALL_EXTERNAL_USERS_GROUP_ID}`,
+      ).then((response) => {
+        const graph = response.body;
 
-          const permissions =
-            graph.groups[ALL_EXTERNAL_USERS_GROUP_ID!][WRITABLE_DB_ID];
-          expect(permissions).to.exist;
+        const permissions =
+          graph.groups[ALL_EXTERNAL_USERS_GROUP_ID!][WRITABLE_DB_ID];
+        expect(permissions).to.exist;
 
-          const viewData = permissions["view-data"];
-          expect(viewData).to.exist;
+        const viewData = permissions["view-data"];
+        expect(viewData).to.exist;
 
-          // Domestic schema should have granular per-table permissions
-          expect(viewData["Domestic"]).to.be.an("object");
-          const domesticTableIds = Object.keys(viewData["Domestic"]);
-          expect(domesticTableIds.length).to.be.at.least(1);
+        // Domestic schema should have granular per-table permissions
+        expect(viewData["Domestic"]).to.be.an("object");
+        const domesticTableIds = Object.keys(viewData["Domestic"]);
+        expect(domesticTableIds.length).to.be.at.least(1);
 
-          // At least one table should be sandboxed (the Animals table we selected)
-          const domesticValues = Object.values(viewData["Domestic"]);
-          expect(domesticValues).to.include("sandboxed");
+        // At least one table should be sandboxed (the Animals table we selected)
+        const domesticValues = Object.values(viewData["Domestic"]);
+        expect(domesticValues).to.include("sandboxed");
 
-          // Wild schema should be blocked (it has no selected tables)
-          expect(viewData["Wild"]).to.equal("blocked");
+        // Wild schema should be blocked (it has no selected tables)
+        expect(viewData["Wild"]).to.equal("blocked");
 
-          // create-queries should allow query-builder for Domestic,
-          // and be "no" for Wild (cascaded from blocked view-data)
-          const createQueries = permissions["create-queries"];
-          expect(createQueries["Domestic"]).to.equal("query-builder");
-          expect(createQueries["Wild"]).to.equal("no");
-        });
-
-        H.main()
-          .findByRole("listitem", {
-            name: "Select data to make available",
-            timeout: 10_000,
-          })
-          .icon("check")
-          .should("exist");
-      },
-    );
-
-    it("locks the production embed step when JWT is not enabled", () => {
-      cy.visit("/admin/embedding/setup-guide");
-
-      cy.log("jwt should be disabled by default");
-      cy.request("GET", "/api/session/properties").then(({ body }) => {
-        expect(body["jwt-enabled"]).to.equal(false);
+        // create-queries should allow query-builder for Domestic,
+        // and be "no" for Wild (cascaded from blocked view-data)
+        const createQueries = permissions["create-queries"];
+        expect(createQueries["Domestic"]).to.equal("query-builder");
+        expect(createQueries["Wild"]).to.equal("no");
       });
 
-      cy.findByTestId("admin-layout-content")
-        .findByText("Embed in production with SSO")
-        .scrollIntoView()
-        .should("be.visible")
-        .closest("button")
-        .icon("lock")
-        .should("be.visible");
-
-      cy.findByTestId("admin-layout-content")
-        .findByText("Embed in production with SSO")
-        .closest("button")
-        .findByText("Complete the other steps to unlock")
-        .should("be.visible");
-    });
-  });
+      H.main()
+        .findByRole("listitem", {
+          name: "Select data to make available",
+          timeout: 10_000,
+        })
+        .icon("check")
+        .should("exist");
+    },
+  );
 
   describe("connection impersonation step", () => {
     beforeEach(() => {
@@ -1865,47 +1839,43 @@ describe("scenarios - setup guide", () => {
         .icon("lock")
         .should("not.exist");
     });
-  });
 
-  it("shows /help-premium troubleshooting link for pro-cloud plan in sso setup", () => {
-    H.restore("setup");
-    cy.signInAsAdmin();
-    H.activateToken("pro-cloud");
+    it("shows /help-premium troubleshooting link for pro-cloud plan in sso setup", () => {
+      cy.log("enable JWT");
+      cy.request("PUT", "/api/setting", {
+        "jwt-enabled": true,
+        "jwt-identity-provider-uri": "https://jwt.example.com/auth",
+        "jwt-shared-secret": "0".repeat(64),
+      });
 
-    cy.log("enable JWT");
-    cy.request("PUT", "/api/setting", {
-      "jwt-enabled": true,
-      "jwt-identity-provider-uri": "https://jwt.example.com/auth",
-      "jwt-shared-secret": "0".repeat(64),
+      cy.visit("/admin/embedding/setup-guide/sso");
+
+      cy.log("step 1 should be marked as done");
+      H.main()
+        .findByRole("listitem", {
+          name: "Set up JWT authentication",
+          timeout: 10_000,
+        })
+        .should("have.attr", "data-completed", "true");
+
+      cy.log("navigate to step 3");
+      H.main()
+        .findByRole("listitem", {
+          name: "Test that JWT authentication is working correctly",
+        })
+        .click();
+
+      cy.log("click troubleshooting button");
+      H.main().findByRole("button", { name: "No, I couldn't log in" }).click();
+
+      cy.log("troubleshooting view should be shown");
+      H.main().findByText("Troubleshooting").should("be.visible");
+
+      cy.log("help link should point to /help-premium");
+      H.main()
+        .findByRole("link", { name: "Contact customer support" })
+        .should("have.attr", "href")
+        .and("include", "metabase.com/help-premium");
     });
-
-    cy.visit("/admin/embedding/setup-guide/sso");
-
-    cy.log("step 1 should be marked as done");
-    H.main()
-      .findByRole("listitem", {
-        name: "Set up JWT authentication",
-        timeout: 10_000,
-      })
-      .should("have.attr", "data-completed", "true");
-
-    cy.log("navigate to step 3");
-    H.main()
-      .findByRole("listitem", {
-        name: "Test that JWT authentication is working correctly",
-      })
-      .click();
-
-    cy.log("click troubleshooting button");
-    H.main().findByRole("button", { name: "No, I couldn't log in" }).click();
-
-    cy.log("troubleshooting view should be shown");
-    H.main().findByText("Troubleshooting").should("be.visible");
-
-    cy.log("help link should point to /help-premium");
-    H.main()
-      .findByRole("link", { name: "Contact customer support" })
-      .should("have.attr", "href")
-      .and("include", "metabase.com/help-premium");
   });
 });
