@@ -159,6 +159,14 @@ describe("scenarios > sidecar > tenant users", () => {
       });
     });
 
+    cy.log("admins see the synced collection icon");
+    cy.visit("/");
+    H.navigationSidebar()
+      .findByText("Shared tenant collection 1")
+      .closest("li")
+      .icon("synced_collection")
+      .should("be.visible");
+
     cy.signOut();
 
     loginWithJWT(GIZMO_USER);
