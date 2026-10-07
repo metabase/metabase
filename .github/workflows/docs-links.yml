@@ -18,6 +18,7 @@ jobs:
           sparse-checkout: |
             docs
             .lychee
+            .github/ISSUE_TEMPLATE
             frontend/src
             enterprise/frontend/src
             src

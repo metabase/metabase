@@ -1,23 +1,29 @@
-name: Check metabase.com links
+name: Check links against the live sites
 
 on:
   schedule:
-    - cron: "0 5 * * *"
+    # Sundays at 05:00 UTC
+    - cron: "0 5 * * 0"
   workflow_dispatch:
 
 jobs:
-  site-links:
-    name: Check metabase.com links against the live site
+  live-links:
+    name: Check links against the live sites
     if: ${{ github.event_name != 'schedule' || github.repository == 'metabase/metabase' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
-    timeout-minutes: 10
+    timeout-minutes: 15
     permissions:
       contents: read
+    env:
+      LINKS_REPORT: broken-links.txt
+      SLACK_CHANNEL: C0ACAG2CXHV # #team-growth
     steps:
       - name: Checkout repository
         uses: actions/checkout@v7
         with:
           sparse-checkout: |
+            .lychee
+            .github/ISSUE_TEMPLATE
             docs
             frontend/src
             enterprise/frontend/src
@@ -37,5 +43,46 @@ jobs:
           tar xzf "$archive"
           sudo install lychee-x86_64-unknown-linux-gnu/lychee /usr/local/bin/lychee
 
-      - name: Check metabase.com links
-        run: docs/util/check-links.sh site
+      - name: Check links
+        id: check
+        continue-on-error: true
+        env:
+          # lychee uses it for github.com, which rate-limits anonymous requests.
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          status=0
+          docs/util/check-links.sh site || status=1
+          docs/util/check-links.sh --external || status=1
+          exit "$status"
+
+      - name: Write the Slack message
+        if: steps.check.outcome == 'failure'
+        env:
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          max_lines=20
+          if [ -s "$LINKS_REPORT" ]; then
+            failures=$(sort -u "$LINKS_REPORT" | sed -E 's/: Rejected status code: ([0-9]+).*$/: \1/; s/: File not found\..*$/: file not found/')
+            count=$(grep -c '' <<<"$failures")
+            text=$(printf ':link: *%s broken links* in metabase/metabase (<%s|weekly link check>)\n```\n%s\n```' \
+              "$count" "$RUN_URL" "$(head -n "$max_lines" <<<"$failures" | cut -c1-160)")
+            if [ "$count" -gt "$max_lines" ]; then
+              text+=$(printf '\n…and %s more in the run.' "$((count - max_lines))")
+            fi
+          else
+            text=":warning: The weekly link check failed without listing any links. <$RUN_URL|See the run>."
+          fi
+          jq -n --arg channel "$SLACK_CHANNEL" --arg text "$text" '{channel: $channel, text: $text}' > slack-payload.json
+
+      - name: Post to Slack
+        if: steps.check.outcome == 'failure'
+        uses: slackapi/slack-github-action@45a88b9581bfab2566dc881e2cd66d334e621e2c # v3.0.3
+        with:
+          method: chat.postMessage
+          token: ${{ secrets.SLACK_BOT_TOKEN }}
+          payload-file-path: ./slack-payload.json
+          errors: true
+
+      - name: Fail the run
+        if: steps.check.outcome == 'failure'
+        run: exit 1

@@ -33,13 +33,15 @@ docs/util/check-links.sh                   # all three
 docs/util/check-links.sh docs              # only the markdown under docs/
 docs/util/check-links.sh nav               # only nav.yml
 docs/util/check-links.sh src               # only the source code
-docs/util/check-links.sh site              # every metabase.com link against the live site
+docs/util/check-links.sh site              # metabase.com and GitHub wiki links against the live sites
 docs/util/check-links.sh --external [nav]  # also fetch links to other sites
 ```
 
-`docs/util/check-links.sh site` fetches every `metabase.com` link in the repo from the live site, and fails on a redirect as well as a 404: a link that only works through a redirect breaks silently when the site drops the redirect. It needs the network, so CI runs it nightly (`.github/workflows/docs-links-site.yml`) rather than on every PR. Old docs paths listed under `redirect_from` answer 200 on the site, so the offline checks catch those instead. If it flags something that isn't a link people follow, like a CSP origin, add it to `site_not_links` in the script.
+`docs/util/check-links.sh site` fetches every `metabase.com` link in the repo from the live site, and fails on a redirect as well as a 404: a link that only works through a redirect breaks silently when the site drops the redirect. It treats links to our GitHub wikis the same way, because a wiki that's been turned off redirects every page to the repo instead of answering 404. Old docs paths listed under `redirect_from` answer 200 on the site, so the offline checks catch those instead. If it flags something that isn't a link people follow, like a CSP origin, add it to `site_not_links` in the script.
 
-By default (and in CI) links to other sites are skipped, so the check is fast and works offline. Run it with `--external` now and then to catch external links that have gone dead. It's slower, and a busy site can answer with a 429, which lychee counts as fine.
+Both `site` and `--external` need the network, so CI runs them every Sunday (`.github/workflows/docs-links-site.yml`) rather than on every PR, and posts the broken links to #team-growth.
+
+By default (and in CI) links to other sites are skipped, so the check is fast and works offline. Run it with `--external` to catch external links that have gone dead. It's slower, and a busy site can answer with a 429, which lychee counts as fine.
 
 Some sites can't be checked at all: they block anything that isn't a browser, sit behind a login, or render the page in JavaScript so lychee can't see the `#anchor`. Those are listed under `exclude` in `.lychee/config.toml`, each with a comment saying why. If `--external` flags a link that works in a browser, add it there rather than removing the link.
 
@@ -47,4 +49,4 @@ Broken nav urls are reported as `docs/util/data/nav.yml:LINE`. If a page moved, 
 
 A url with the wrong capitalization can pass on macOS and still fail in CI, because Linux filenames are case-sensitive.
 
-If you link to a heading that starts with a digit or punctuation, give the heading an explicit `{#id}` first. GitHub and the docs site generate different ids for those headings.
+The docs site generates the same heading ids as GitHub, so link to a heading by the id GitHub gives it: ``### 2. Add `MB_API_KEY` `` becomes `#2-add-mb_api_key`. Give a heading an explicit `{#id}` when you want a shorter or more stable one.
