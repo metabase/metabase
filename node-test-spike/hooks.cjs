@@ -247,6 +247,17 @@ const override = new Set(["Event", "EventTarget", "CustomEvent", "MessageEvent",
 for (const key of windowKeys) {
   if (keep.has(key)) continue;
   if (key in globalThis && !override.has(key)) continue;
+  // An event handler property such as window.onkeydown is an accessor on the
+  // jsdom window. Copied as a value it would have no setter, and assigning to
+  // it would never reach the window, so it is copied as an accessor that
+  // forwards there.
+  const windowDescriptor = Object.getOwnPropertyDescriptor(win, key);
+  if (/^on[a-z]+$/.test(key) && windowDescriptor?.set && process.env.NT_NO_HANDLER_ACCESSORS !== "1") {
+    try {
+      Object.defineProperty(globalThis, key, { configurable: true, enumerable: windowDescriptor.enumerable, get() { return win[key]; }, set(handler) { win[key] = handler; } });
+      continue;
+    } catch {}
+  }
   let value;
   try { value = win[key]; } catch { continue; }
   const bound = typeof value === "function" && !/^[A-Z]/.test(key) ? value.bind(win) : value;
@@ -373,12 +384,22 @@ describe.skip = makeDescribe("skip"); describe.only = makeDescribe("run");
 // package loads once, so its hooks are kept apart from the setup files' hooks,
 // which are registered again each time the setup files run.
 const packageHooks = { beforeAll: [], afterAll: [], beforeEach: [], afterEach: [] };
+// React Testing Library switches React's act-environment flag on for a file,
+// then off and back on around each waitFor. An async act that a waitFor did
+// not wait for restores the "off" it saw when it started, whenever it
+// completes. When that lands after the waitFor has returned, the flag stays off
+// for the rest of the file. Under jest it lands elsewhere. Each test starts
+// with the value the file was given.
+let actEnvironmentForFile;
 const registeredFromPackage = () => {
   const frames = (new Error().stack ?? "").split("\n").slice(3, 6);
   return frames.length > 0 && frames[0].includes("/node_modules/");
 };
 const hook = (kind) => (fn) => {
-  if (!process.env.NT_NO_PACKAGE_HOOKS && registeredFromPackage()) packageHooks[kind].push(fn);
+  if (!process.env.NT_NO_PACKAGE_HOOKS && registeredFromPackage()) {
+    if (process.env.NT_DEBUG_PACKAGE_HOOKS) console.error(`[package-hook] ${kind} ${(new Error().stack ?? "").split("\n").slice(2, 5).map((l) => l.trim().replace(/.*node_modules\//, "nm/").slice(0, 90)).join(" <- ")}`);
+    packageHooks[kind].push(fn);
+  }
   else current()[kind].push(fn);
 };
 Object.assign(globalThis, {
@@ -436,6 +457,7 @@ const runSuite = async (suite, t, outer) => {
     const poisoned = globalThis.__nodeTestSpike.poisoned === true;
     await ctx.test(child.name, { skip: poisoned || child.mode === "skip", todo: child.mode === "todo", timeout: child.timeout ?? TIMEOUT }, async () => {
       let failure;
+      if (actEnvironmentForFile !== undefined && !process.env.NT_NO_ACT_ENV_RESTORE) globalThis.IS_REACT_ACT_ENVIRONMENT = actEnvironmentForFile;
       const testStarted = Date.now();
       if (process.env.NT_DEBUG_CLIP) {
         const descriptor = Object.getOwnPropertyDescriptor(globalThis.navigator, "clipboard");
@@ -522,11 +544,6 @@ const runSuite = async (suite, t, outer) => {
         try { fakeTimers.clearAllTimers(); } catch {}
         fakeTimers.useRealTimers();
       }
-      // A request dispatched by the body's last render is still walking the
-      // api client's handler chain when the body's promise settles. jest reaches
-      // its afterEach several promise hops later than this loop does, so give
-      // that chain one macrotask to reach fetch while the routes still exist.
-      if (!process.env.NT_NO_SETTLE_TURN) await new Promise((resolve) => realSetTimeout(resolve, 0));
       if (process.env.NT_DEBUG_CALLS) {
         const fetchMock = require("fetch-mock").default;
         const calls = fetchMock.callHistory.calls();
@@ -936,6 +953,7 @@ globalThis.__nodeTestSpike.runFile = async (t, file) => {
   }
   try {
     for (const fn of [...packageHooks.beforeAll, ...rootSuite.beforeAll]) await fn();
+    actEnvironmentForFile = globalThis.IS_REACT_ACT_ENVIRONMENT;
     try {
       await runSuite(fileSuite, t, { beforeEach: [...packageHooks.beforeEach, ...rootSuite.beforeEach], afterEach: [...packageHooks.afterEach, ...rootSuite.afterEach] });
     } finally {
@@ -1599,6 +1617,25 @@ const restoreCanvasMocks = () => {
   }
   canvasMocks.length = kept;
 };
+// The unmocked-route check in the setup file's afterEach reads the call
+// history. A request that was still in flight when the body finished can reach
+// fetch on either side of that check, by a few microtasks, and jest's own hook
+// overhead happens to put it after. Here the rule is explicit: an unmatched call
+// that reaches fetch after the body has finished is not this test's call.
+const AFTER_BODY = new Set(["afterBody", "afterThrow", "afterEach", "between"]);
+const patchCallHistory = () => {
+  if (process.env.NT_NO_LATE_CALL_RULE) return;
+  try {
+    const history = require("fetch-mock").default.callHistory;
+    if (history.__lateCallRule) return;
+    history.__lateCallRule = true;
+    const recordCall = history.recordCall.bind(history);
+    history.recordCall = (callLog) => { callLog.__arrivedAfterBody = AFTER_BODY.has(phase); return recordCall(callLog); };
+    const calls = history.calls.bind(history);
+    history.calls = (...args) => calls(...args).filter((log) => log.route || !log.__arrivedAfterBody);
+  } catch {}
+};
+patchCallHistory();
 globalThis.__nodeTestSpike.betweenFiles = () => { resetTranslationLocale(); resetLocation(); restoreCanvasMocks(); wrapCanvasGetContext(); };
 wrapCanvasGetContext();
 let baselineVisualizations = null;
