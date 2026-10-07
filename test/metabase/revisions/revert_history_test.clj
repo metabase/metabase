@@ -154,6 +154,20 @@
                                    {:entity entity :id id :revision_id (:id (first before))})
              (is (= (map :id before) (map :id (revisions/revisions model id)))))))))))
 
+(deftest card-revert-to-revision-without-card-schema-test
+  (testing "a revert to a Card revision that differs from the latest revision only in :card_schema records no revision"
+    ((with-edited-entity :model/Card)
+     (fn [id]
+       (let [object  (:object (first (revisions/revisions :model/Card id)))
+             insert! #(t2/insert-returning-pk! :model/Revision
+                                               {:model "Card" :model_id id :user_id (mt/user->id :crowberto)
+                                                :object % :is_creation false :is_reversion false})
+             target  (insert! (dissoc object :card_schema))
+             _       (insert! object)
+             before  (revisions/revisions :model/Card id)]
+         (mt/user-http-request :crowberto :post 200 "revision/revert" {:entity "card" :id id :revision_id target})
+         (is (= (map :id before) (map :id (revisions/revisions :model/Card id)))))))))
+
 (def ^:private document-hydrated-keys
   #{:creator :can_write :can_delete :can_restore :is_remote_synced})
 
