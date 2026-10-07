@@ -1077,20 +1077,7 @@ describe("issue 48878", () => {
     cy.intercept("GET", "/api/dashboard/*").as("getDashboard");
     cy.intercept("PUT", "/api/dashboard/*").as("updateDashboard");
 
-    let fetchCardRequestsCount = 0;
-
-    cy.intercept("GET", "/api/card/*", (request) => {
-      // we only want to simulate the race condition 4th time this request is triggered
-      if (fetchCardRequestsCount === 2) {
-        request.continue(
-          () => new Promise((resolve) => setTimeout(resolve, 2000)),
-        );
-      } else {
-        request.continue();
-      }
-
-      ++fetchCardRequestsCount;
-    }).as("fetchCard");
+    cy.intercept("GET", "/api/card/*").as("fetchCard");
     setup();
   });
 
@@ -1102,16 +1089,6 @@ describe("issue 48878", () => {
   });
 
   function setup() {
-    cy.log("create dummy model");
-
-    // Create a dummy model so that GET /api/search does not return the model want to test.
-    // If we don't do this, GET /api/search will return and put card object with dataset_query
-    // attribute in the redux store (entity framework) which would prevent the issue from happening.
-    createModel({
-      name: "Dummy model",
-      query: "select 1",
-    });
-
     cy.log("create model");
 
     createModel({
