@@ -1,6 +1,6 @@
 (ns metabase.query-processor.middleware.catch-exceptions
   "Middleware for catching exceptions thrown by the query processor and returning them in a friendlier format."
-  (:refer-clojure :exclude [some get-in])
+  (:refer-clojure :exclude [some get-in select-keys mapv])
   (:require
    [clojure.string :as str]
    [metabase.analytics-interface.core :as analytics]
@@ -18,7 +18,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.performance :refer [some get-in]])
+   [metabase.util.performance :refer [some get-in select-keys mapv]])
   (:import
    (clojure.lang ExceptionInfo)
    (java.sql SQLException)))
@@ -106,15 +106,30 @@
 
 (defn- query-info
   "Map of about `query` to add to the exception response."
-  [{query-type :type, :as query} {:keys [preprocessed native]}]
+  [{query-type :type, :as query} {:keys [preprocessed native]} native-perms?]
   (merge
    {:json_query (dissoc query :info :driver)}
    ;; add the fully-preprocessed and native forms to the error message for MBQL queries, since they're extremely
-   ;; useful for debugging purposes.
+   ;; useful for debugging purposes. Both reflect any sandboxing applied to the query, so only users who could write
+   ;; the native query themselves get to see them.
    (when (= (keyword query-type) :query)
-     {:preprocessed preprocessed
-      :native       (when (qp.perms/current-user-has-adhoc-native-query-perms? query)
-                      native)})))
+     {:preprocessed (when native-perms? preprocessed)
+      :native       (when native-perms? native)})))
+
+(def ^:private safe-ex-data-keys
+  "Keys of an exception's ex-data that are returned to users without ad-hoc native query perms. Anything else can carry
+  the compiled SQL, its params, or the preprocessed query, which may include a sandbox's query and the login attribute
+  values bound into it."
+  [:type :status-code :is-curated])
+
+(defn- remove-query-details-from-ex-data
+  "Narrow the `:ex-data` of an exception response, and of each exception in its `:via` chain, to [[safe-ex-data-keys]]."
+  [response]
+  (letfn [(narrow [m]
+            (cond-> m
+              (:ex-data m) (update :ex-data select-keys safe-ex-data-keys)))]
+    (cond-> (narrow response)
+      (:via response) (update :via #(mapv narrow %)))))
 
 (mr/def ::query-execution-info
   "The in-flight QueryExecution info that userland query processing attaches to exceptions: the columns about to be saved, plus the query and start time."
@@ -144,10 +159,12 @@
     (if-let [query-execution (:query-execution (ex-data e))]
       (merge (query-execution-info query-execution)
              (format-exception* query (ex-cause e) extra-info))
-      (merge
-       {:data {:rows [], :cols []}, :row_count 0}
-       (exception-response e)
-       (query-info query extra-info)))
+      (let [native-perms? (qp.perms/current-user-has-adhoc-native-query-perms? query)]
+        (merge
+         {:data {:rows [], :cols []}, :row_count 0}
+         (cond-> (exception-response e)
+           (not native-perms?) remove-query-details-from-ex-data)
+         (query-info query extra-info native-perms?))))
     (catch Throwable e
       (assoc (Throwable->map e) :status :failed))))
 

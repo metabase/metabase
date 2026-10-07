@@ -214,11 +214,17 @@
       (data-perms/set-table-permission! (perms-group/all-users) (mt/id :venues) :perms/create-queries :query-builder)
       (testing (str "If someone doesn't have native query execution permissions, they shouldn't see the native version of "
                     "the query in the error response")
-        (is (=? {:native nil, :preprocessed map?}
-                (test.users/with-test-user :rasta
-                  (qp/process-query
-                   (qp/userland-query
-                    (mt/mbql-query venues {:fields [!month.id]})))))))
+        (let [result (test.users/with-test-user :rasta
+                       (qp/process-query
+                        (qp/userland-query
+                         (mt/mbql-query venues {:fields [!month.id]}))))]
+          (is (=? {:status :failed, :native nil, :preprocessed nil}
+                  result))
+          (testing "or the compiled SQL and params the driver put in the ex-data"
+            (is (=? [{:ex-data {:type qp.error-type/invalid-query}}]
+                    (filter :ex-data (cons result (:via result)))))
+            (is (not-any? (some-fn :sql :params :query)
+                          (keep :ex-data (cons result (:via result))))))))
       (testing "They should see it if they have ad-hoc native query perms"
         (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)
         (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/create-queries :query-builder-and-native)
@@ -226,7 +232,8 @@
         (is (=? {:native       {:query  (str "SELECT DATE_TRUNC('month', \"PUBLIC\".\"VENUES\".\"ID\") AS \"ID\""
                                              " FROM \"PUBLIC\".\"VENUES\" LIMIT 1048575")
                                 :params nil}
-                 :preprocessed map?}
+                 :preprocessed map?
+                 :via          [{:ex-data {:sql some?}}]}
                 (test.users/with-test-user :rasta
                   (qp/process-query
                    (qp/userland-query
