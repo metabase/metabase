@@ -11,11 +11,20 @@
   to …\"}` convention: a failure is thrown, so forgetting to handle one cannot silently hand the
   model a sentence nobody wrote.
 
-  Converters ([[with-entity]], [[with-pipeline-errors]]) turn one known kind of foreign error into a
-  declared one at the call site. They are deliberately narrow and deliberately explicit: an exception
-  shape a converter does not recognise passes through unchanged and ends up unrecoverable, which is
-  the safe direction. Reaching for a converter is a decision to relay something to the model, so it
-  is written at the call site rather than applied automatically."
+  Everything a tool does about a failure is an explicit decision written at the call site, and the
+  default — doing nothing — is that the failure bubbles out and ends the turn. There are three such
+  decisions, each needing its own form:
+
+  - *relay a foreign error*: a converter ([[with-entity]], [[with-pipeline-errors]]) turns one known
+    shape into a declared recoverable error. They are deliberately narrow: a shape a converter does
+    not recognise passes through unchanged and ends up unrecoverable.
+  - *survive a sub-failure*: [[attempt]] captures a declared recoverable error as data, so a tool
+    that does several things can report the ones that failed beside the ones that worked. It catches
+    *only* declared recoverable errors — anything else still bubbles.
+  - *give up on the user's behalf*: `unrecoverable!`, with a `:user-message`.
+
+  None of them is applied automatically, and there is no blanket \"keep going\" mode. A tool that has
+  not thought about a partial failure gets the safe behaviour rather than a silent half-answer."
   (:require
    [clojure.string :as str]
    [metabase.metabot.tools.error :as tools.error]
@@ -106,7 +115,9 @@
   - `:title-fn` - *optional* - builds the title shown on the tool-input part.
 
   The handler takes `[args ctx]` and returns `::runtime/handler-result` — `{:output \"…\"}` plus the
-  optional keys a concrete consumer reads. It returns success only; see the namespace docstring.
+  optional keys a concrete consumer reads. It returns success only: a failure is thrown. A handler
+  that does several things and should survive one of them failing says so with [[attempt]] at that
+  call site, and renders what it captured into its own `:output`; see the namespace docstring.
 
   The var is the handler, so profiles keep referring to `#'tools/x-tool` and tests can call it
   directly. Expands to a plain `defn`, not `mu/defn`: the runtime validates the arguments in every
@@ -163,6 +174,85 @@
               (assoc acc tool-name e)))
           {}
           handlers))
+
+;;; ------------------------------------------------ Recovery steps ------------------------------------------------
+
+(defn recovery-steps-for-tools
+  "The subset of `recovery` whose steps only name tools in `tool-names`.
+
+  Shared with the runtime so that a step's `:uses` has exactly one meaning. A step naming a tool the
+  profile lacks is dropped, not rewritten: half a sentence about `read_resource` is worse than
+  silence."
+  [recovery tool-names]
+  (let [available (set tool-names)]
+    (filterv #(every? available (:uses %)) recovery)))
+
+(defn names-a-tool?
+  "Whether `text` names a tool in backticks, e.g. \"call `read_resource`\". Used by the runtime's
+  dev/test assertions, which hold that only recovery steps name tools and only ones they declare."
+  [text tool-name]
+  (str/includes? (str text) (str "`" tool-name "`")))
+
+;;; ------------------------------------------------ Partial failure -----------------------------------------------
+
+(defn do-attempt
+  "Implementation of [[attempt]]."
+  [thunk]
+  (try
+    {:value (thunk)}
+    (catch Throwable e
+      (let [error (tools.error/classify e)]
+        ;; Only a declared recoverable error can be captured. Its text was written for the model and
+        ;; is covered by the catalog test; an undeclared exception has no such text, and swallowing
+        ;; it here would turn a bug into a half-answer the model reports as fact.
+        (if (= :recoverable (:class error))
+          {:error error}
+          (throw e))))))
+
+(defmacro attempt
+  "Run `body` and capture a declared recoverable failure instead of letting it end the turn.
+
+  Returns `{:value <result>}` or `{:error <ToolError>}` — the same \"success is the absence of
+  `:error`\" shape as `runtime/outcome`. Anything that is not a declared recoverable error is
+  rethrown, so a real bug still bubbles out.
+
+  This is how a tool that does several things reports the parts that failed beside the parts that
+  worked. It is per call site on purpose: a tool only survives a sub-failure if its author decided it
+  should, and the error it survives has to be one somebody wrote text for.
+
+    (let [{:keys [ok failed]} (->> (for [uri uris]
+                                     (assoc (attempt (read-one uri)) :uri uri))
+                                   (group-by #(if (:error %) :failed :ok)))]
+      {:output (str (render-resources (map :value ok))
+                    (when (seq failed)
+                      (str \"\\n\\nThese could not be read:\\n\"
+                           (str/join \"\\n\"
+                                     (for [{:keys [uri error]} failed]
+                                       (str uri \": \" (recoverable-text error (:tool-names ctx))))))))})
+
+  Note what the handler still owes the model: a failure captured this way is *its* text to place.
+  The runtime never sees it, so a captured error that is never rendered is a failure the model is
+  never told about."
+  {:style/indent 0}
+  [& body]
+  `(do-attempt (fn [] ~@body)))
+
+(defn recoverable-text
+  "A declared recoverable `error` as the lines the model reads: the message, then each recovery step
+  the current profile can act on.
+
+  The same assembly the runtime uses for a failed call, exposed so that a tool rendering an
+  [[attempt]]ed failure into its own `:output` produces identical text — the agent should not be able
+  to tell whether a `not-found!` ended the call or was one of five things the call tried.
+
+  Not re-checked against `runtime/render`'s authored-text assertions: the text comes from a
+  declaration, and `metabase.metabot.tools.error-test` already renders every declaration in the
+  catalog through those assertions."
+  [{:keys [message recovery]} tool-names]
+  (->> (recovery-steps-for-tools recovery tool-names)
+       (map :text)
+       (cons message)
+       (str/join "\n")))
 
 ;;; ------------------------------------------------ Converters ----------------------------------------------------
 
@@ -258,19 +348,3 @@
   {:style/indent [:defn]}
   [& body]
   `(do-with-pipeline-errors (fn [] ~@body)))
-
-(defn recovery-steps-for-tools
-  "The subset of `recovery` whose steps only name tools in `tool-names`.
-
-  Shared with the runtime so that a step's `:uses` has exactly one meaning. A step naming a tool the
-  profile lacks is dropped, not rewritten: half a sentence about `read_resource` is worse than
-  silence."
-  [recovery tool-names]
-  (let [available (set tool-names)]
-    (filterv #(every? available (:uses %)) recovery)))
-
-(defn names-a-tool?
-  "Whether `text` names a tool in backticks, e.g. \"call `read_resource`\". Used by the runtime's
-  dev/test assertions, which hold that only recovery steps name tools and only ones they declare."
-  [text tool-name]
-  (str/includes? (str text) (str "`" tool-name "`")))

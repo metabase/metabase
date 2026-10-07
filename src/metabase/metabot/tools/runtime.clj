@@ -244,10 +244,9 @@
   [{:keys [class code message recovery user-message]} tool-names]
   (let [output (case class
                  :validation  message
-                 :recoverable (->> (tools/recovery-steps-for-tools recovery tool-names)
-                                   (map :text)
-                                   (cons message)
-                                   (str/join "\n"))
+                 ;; The same assembly a tool uses for an `attempt`ed failure, so that a `not-found!`
+                 ;; reads identically whether it ended the call or was one of several things tried.
+                 :recoverable (tools/recoverable-text {:message message :recovery recovery} tool-names)
                  (unrecoverable-output code))]
     (when (or config/is-dev? config/is-test?)
       (assert-authored! output (str class " " code))
