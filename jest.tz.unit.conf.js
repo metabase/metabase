@@ -37,6 +37,6 @@ module.exports = {
   coverageReporters: ["text", "json-summary"],
   collectCoverageFrom: ["frontend/src/**/*.{js,ts,jsx,tsx}"],
   coveragePathIgnorePatterns: ["/node_modules/"],
-  testEnvironment: "jest-environment-jsdom",
+  testEnvironment: "@happy-dom/jest-environment",
   testTimeout: 30000,
 };
