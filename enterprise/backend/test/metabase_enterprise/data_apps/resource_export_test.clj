@@ -3,6 +3,7 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [medley.core :as m]
    [metabase-enterprise.data-apps.resource-export :as resource-export]
    [metabase-enterprise.data-apps.test-util :as data-apps.tu]
    [metabase.actions.core :as actions]
@@ -213,6 +214,35 @@
                        {:queries [{:export "VenueCategories"
                                    :query  {:stages [{:source {:type "table" :id (mt/id :venues)}
                                                       :fields [{:type "column" :name "NAME" :source-field-id (mt/id :venues :category_id)}]}]}}]}))))))
+
+(deftest refuses-a-metric-that-reaches-a-deactivated-table-test
+  (testing "a metric the query aggregates reads categories through venues.category_id in its own query, which the
+            built query holds only the ID of, and the query would fail on the table when it runs"
+    (let [mp         (mt/metadata-provider)
+          venues     (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+          categories (mt/id :categories)
+          category   (m/find-first (comp #{(mt/id :categories :name)} :id) (lib/filterable-columns venues))]
+      (mt/with-temp [:model/Card {bars-id :id}  {:name          "Bars"
+                                                 :type          :metric
+                                                 :database_id   (mt/id)
+                                                 :dataset_query (-> venues
+                                                                    (lib/filter (lib/= category "Bar"))
+                                                                    (lib/aggregate (lib/count)))}
+                     :model/Card {count-id :id} {:name          "Venue count"
+                                                 :type          :metric
+                                                 :database_id   (mt/id)
+                                                 :dataset_query (lib/aggregate venues (lib/count))}]
+        (mt/with-temp-vals-in-db :model/Table categories {:active false}
+          (is (=? {:queries [{:export "BarCount" :error (str "Table " categories " does not exist.")}
+                             {:export "VenueCount" :entity map?}]
+                   :metrics [{:id count-id :entity map?}]}
+                  (export! :crowberto 200
+                           {:queries [{:export "BarCount"
+                                       :query  {:stages [{:source       {:type "table" :id (mt/id :venues)}
+                                                          :aggregations [{:type "metric" :id bars-id}]}]}}
+                                      {:export "VenueCount"
+                                       :query  {:stages [{:source       {:type "table" :id (mt/id :venues)}
+                                                          :aggregations [{:type "metric" :id count-id}]}]}}]}))))))))
 
 (deftest refuses-a-definition-that-builds-an-invalid-query-test
   (testing "the request schema accepts what a type lets through, and lib's own checks are off in production, so the

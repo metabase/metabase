@@ -5,8 +5,8 @@
   is, apart from what makes it a copy.
 
   The endpoint is for superusers, who write an app's repository, so nothing here is checked against the caller.
-  Opening it to anyone else needs that put back: every source, and every table a query's column reaches through a
-  foreign key. What a routing destination backs is left out, as the typed schema leaves it out."
+  Opening it to anyone else needs that put back: every source, and every table a query reads at any depth. What a
+  routing destination backs is left out, as the typed schema leaves it out."
   (:require
    [clojure.string :as str]
    [clojure.walk :as walk]
@@ -145,8 +145,8 @@
 
 (mu/defn- built-query
   "The query Metabase builds from `query-definition`, as the dev preview does, once its source table and every table
-  a column reaches through a foreign key exist as the typed schema lists them. (A routing destination has no tables
-  of its own, only cards.)"
+  it reads at any depth, through a foreign key or a metric it aggregates, exist as the typed schema lists them. (A
+  routing destination has no tables of its own, only cards.)"
   [{[{{table-id :id} :source}] :stages, :as query-definition} :- ::query-definition/query-definition]
   (let [table (data-apps.db/table table-id)]
     (when-not table
@@ -156,11 +156,11 @@
       ;; that would refuse it are off in production: an invalid query must not export and then fail when it runs.
       (when-not (mr/validate ::lib.schema/query built)
         (fail (tru "The definition does not build a valid query.")))
-      ;; Types generated before a table was deactivated still reach its columns through a foreign key, and the
-      ;; query would fail on the implicit join when it runs.
-      (doseq [joined-id (sort (lib/all-implicitly-joined-table-ids built))]
-        (when-not (data-apps.db/table joined-id)
-          (fail (tru "Table {0} does not exist." (str joined-id)))))
+      ;; Types generated before a table was deactivated still reach its columns through a foreign key, as does the
+      ;; query of a metric the built query holds only the ID of, and the query would fail on the table when it runs.
+      (doseq [read-id (sort (:table (lib/all-referenced-entity-ids-recursive built)))]
+        (when-not (data-apps.db/table read-id)
+          (fail (tru "Table {0} does not exist." (str read-id)))))
       built)))
 
 (mu/defn- export-query
