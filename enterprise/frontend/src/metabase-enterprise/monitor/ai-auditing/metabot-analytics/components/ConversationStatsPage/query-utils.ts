@@ -237,6 +237,26 @@ export function applyMetricOrderBy(
   return Lib.orderBy(query, 0, orderCol, "desc");
 }
 
+type FilteredQueryOpts = Omit<BreakoutQueryOpts, "metric">;
+
+export function buildFilteredQuery({
+  provider,
+  table,
+  groupMembersTable,
+  dateFilter,
+  userId,
+  groupId,
+  tenantId,
+}: FilteredQueryOpts): Query {
+  let q = Lib.queryFromTableOrCardMetadata(provider, table);
+  q = applyDateFilter(q, dateFilter);
+  q = applyIdFilter(q, "user_id", userId);
+  q = applyIdFilter(q, "tenant_id", tenantId);
+  q = groupId != null ? joinGroupMembers(q, groupMembersTable) : q;
+  q = groupId != null ? applyIdFilter(q, "group_id", groupId) : q;
+  return q;
+}
+
 type SourceBreakoutQueryOpts = StatsFilters & {
   provider: MetadataProvider;
   table: TableMetadata | CardMetadata;
@@ -245,22 +265,11 @@ type SourceBreakoutQueryOpts = StatsFilters & {
 };
 
 export function buildSourceBreakoutQuery({
-  provider,
-  table,
-  groupMembersTable,
-  dateFilter,
-  userId,
-  groupId,
-  tenantId,
   metric,
   breakoutColumn,
+  ...filteredQueryOpts
 }: SourceBreakoutQueryOpts): Query {
-  let q = Lib.queryFromTableOrCardMetadata(provider, table);
-  q = applyDateFilter(q, dateFilter);
-  q = applyIdFilter(q, "user_id", userId);
-  q = applyIdFilter(q, "tenant_id", tenantId);
-  q = groupId != null ? joinGroupMembers(q, groupMembersTable) : q;
-  q = groupId != null ? applyIdFilter(q, "group_id", groupId) : q;
+  let q = buildFilteredQuery(filteredQueryOpts);
   q = applyUsageStatsAggregation(q, metric);
   q = breakoutByColumn(q, breakoutColumn);
   q = applyMetricOrderBy(q, metric);
