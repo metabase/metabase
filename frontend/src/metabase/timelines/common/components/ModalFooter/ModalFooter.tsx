@@ -7,7 +7,7 @@ export interface ModalFooterProps {
   children?: ReactNode;
 }
 
-const ModalFooter = ({
+export const ModalFooter = ({
   hasPadding,
   children,
 }: ModalFooterProps): JSX.Element => {
@@ -23,6 +23,3 @@ const ModalFooter = ({
     </Flex>
   );
 };
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default ModalFooter;

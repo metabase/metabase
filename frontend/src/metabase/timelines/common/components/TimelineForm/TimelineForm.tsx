@@ -32,7 +32,7 @@ export interface TimelineFormProps {
   onCancel?: () => void;
 }
 
-const TimelineForm = ({
+export const TimelineForm = ({
   initialValues,
   onSubmit,
   onArchive,
@@ -85,6 +85,3 @@ const TimelineForm = ({
     </FormProvider>
   );
 };
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default TimelineForm;

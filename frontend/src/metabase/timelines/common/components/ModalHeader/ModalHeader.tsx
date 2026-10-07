@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { c } from "ttag";
 
 import { IconButtonWrapper } from "metabase/common/components/IconButtonWrapper";
+import CS from "metabase/css/core/index.css";
 import { Box, Ellipsified, Flex, Group, Icon } from "metabase/ui";
 
 import S from "./ModalHeader.module.css";
@@ -18,18 +19,23 @@ export interface ModalHeaderProps {
   };
 }
 
-const ModalHeader = ({
+export const ModalHeader = ({
   title,
   children,
   onClose,
   onGoBack,
   pathOptions,
 }: ModalHeaderProps): JSX.Element => {
+  const canGoBack = onGoBack !== undefined;
+
   return (
     <Box p="xxl" pb={0}>
       <Flex align="center">
         <Flex
-          className={cx(S.headerLink, { [S.clickable]: onGoBack != null })}
+          className={cx(CS.textDefault, {
+            [CS.cursorPointer]: canGoBack,
+            [CS.textBrandHover]: canGoBack,
+          })}
           align="center"
           miw={0}
           mr="auto"
@@ -62,6 +68,3 @@ const ModalHeader = ({
     </Box>
   );
 };
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default ModalHeader;

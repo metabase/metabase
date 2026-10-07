@@ -3,6 +3,7 @@ import { useCallback } from "react";
 import { msgid, ngettext } from "ttag";
 
 import { getEventCount } from "metabase/common/utils/timelines";
+import CS from "metabase/css/core/index.css";
 import { Box, Flex, Icon } from "metabase/ui";
 import type { Timeline } from "metabase-types/api";
 
@@ -14,7 +15,11 @@ export interface TimelinePickerProps {
   onChange?: (value: Timeline) => void;
 }
 
-const TimelinePicker = ({ value, options, onChange }: TimelinePickerProps) => {
+export const TimelinePicker = ({
+  value,
+  options,
+  onChange,
+}: TimelinePickerProps) => {
   return (
     <Box>
       {options.map((option) => (
@@ -48,31 +53,31 @@ const TimelineCard = ({
 
   return (
     <Flex
-      key={timeline.id}
-      className={cx(S.cardRoot, { [S.selected]: isSelected })}
+      className={cx(S.card, CS.cursorPointer, { [S.selected]: isSelected })}
       align="center"
       p="lg"
+      bdrs="xxs"
       onClick={handleClick}
     >
       <Flex
-        className={S.cardIconContainer}
+        className={S.iconBorder}
         flex="0 0 auto"
         justify="center"
         align="center"
         w="2rem"
         h="2rem"
       >
-        <Icon className={S.cardIcon} name={timeline.icon} />
+        <Icon className={S.icon} name={timeline.icon} />
       </Flex>
       <Box flex="1 1 auto" mx="lg" miw={0}>
-        <Box className={S.cardTitle} fz="1rem" fw="bold" mb="xxxs">
+        <Box className={S.title} fz="1rem" fw="bold" mb="xxxs">
           {timeline.name}
         </Box>
-        <Box className={S.cardDescription} fz="sm">
+        <Box className={S.description} fz="sm">
           {timeline.description}
         </Box>
       </Box>
-      <Box className={S.cardAside} flex="0 0 auto" fz="sm">
+      <Box className={S.aside} flex="0 0 auto" fz="sm">
         {ngettext(
           msgid`${eventCount} event`,
           `${eventCount} events`,
@@ -82,6 +87,3 @@ const TimelineCard = ({
     </Flex>
   );
 };
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default TimelinePicker;

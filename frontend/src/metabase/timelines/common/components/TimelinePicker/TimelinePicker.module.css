@@ -1,51 +1,46 @@
-.cardRoot {
-  border-radius: var(--mantine-radius-xxs);
-  cursor: pointer;
-
-  &:not(:last-child) {
-    margin-bottom: var(--mantine-spacing-sm);
-  }
+.card:not(:last-child) {
+  margin-bottom: 0.5rem;
 }
 
-.cardIconContainer {
+.iconBorder {
   border: 1px solid var(--mb-color-border-neutral);
-  border-radius: var(--mantine-radius-lg);
+  border-radius: 1rem;
 }
 
-.cardIcon {
+.icon {
   color: var(--mb-color-text-primary);
 }
 
-.cardTitle {
+.title {
   color: var(--mb-color-text-primary);
   word-wrap: break-word;
 }
 
-.cardDescription {
+.description {
   color: var(--mb-color-text-secondary);
   word-wrap: break-word;
 }
 
-.cardAside {
+.aside {
   color: var(--mb-color-text-primary);
 }
 
 /* Selected and hovered cards share one look; children react to the card state. */
-.cardRoot:hover,
+.card:hover,
 .selected {
   background-color: var(--mb-color-core-brand);
 
-  .cardTitle,
-  .cardDescription,
-  .cardAside {
+  .title,
+  .description,
+  .aside {
     color: var(--mb-color-text-primary-inverse);
   }
 
-  .cardIcon {
+  .icon {
     color: var(--mb-color-core-brand);
   }
 
-  .cardIconContainer {
+  .iconBorder {
     border-color: var(--mb-color-background_page-primary);
     background-color: var(--mb-color-background_page-primary);
   }
