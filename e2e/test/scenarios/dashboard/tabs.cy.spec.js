@@ -67,34 +67,6 @@ describe("scenarios > dashboard > tabs", () => {
     cy.signInAsAdmin();
   });
 
-  it("should only display cards on the selected tab", () => {
-    // Create new tab
-    H.visitDashboardAndCreateTab({
-      dashboardId: ORDERS_DASHBOARD_ID,
-      save: false,
-    });
-
-    cy.findByRole("heading", {
-      name: "Create a new question or browse your collections for an existing one.",
-    }).should("exist");
-    H.dashboardGrid().should("not.exist");
-
-    // Add card to second tab
-    H.openQuestionsSidebar();
-    H.sidebar().within(() => {
-      cy.findByText("Orders, Count").click();
-    });
-    H.saveDashboard();
-    cy.url().should("match", /\d+\-tab\-2/); // id is not stable
-
-    // Go back to first tab
-    H.goToTab("Tab 1");
-    H.dashboardCards().within(() => {
-      cy.findByText("Orders").should("be.visible");
-      cy.findByText("Orders, Count").should("not.exist");
-    });
-  });
-
   it("should only display filters mapped to cards on the selected tab", () => {
     H.createDashboardWithTabs({
       tabs: [TAB_1, TAB_2],
@@ -129,6 +101,15 @@ describe("scenarios > dashboard > tabs", () => {
     assertFiltersVisibility({
       visible: [DASHBOARD_DATE_FILTER, DASHBOARD_TEXT_FILTER],
       hidden: [DASHBOARD_NUMBER_FILTER, DASHBOARD_LOCATION_FILTER],
+    });
+
+    cy.log("leaving edit mode should not show cards from other tabs");
+    H.dashboardGrid().within(() => {
+      cy.findByText("Orders").should("exist");
+      cy.findByText("Orders, Count, Grouped by Created At (year)").should(
+        "not.exist",
+      );
+      H.getDashboardCards().should("have.length", 1);
     });
 
     assertFilterValues([
@@ -175,24 +156,6 @@ describe("scenarios > dashboard > tabs", () => {
     H.dashboardGrid().within(() => {
       cy.findByText("New heading").should("exist");
       H.getDashboardCards().should("have.length", 2);
-    });
-  });
-
-  it("should allow undoing a tab deletion", () => {
-    H.visitDashboardAndCreateTab({
-      dashboardId: ORDERS_DASHBOARD_ID,
-      save: false,
-    });
-
-    // Delete first tab
-    H.deleteTab("Tab 1");
-    cy.findByRole("tab", { name: "Tab 1" }).should("not.exist");
-
-    // Undo then go back to first tab
-    H.undo();
-    H.goToTab("Tab 1");
-    H.dashboardCards().within(() => {
-      cy.findByText("Orders").should("be.visible");
     });
   });
 
@@ -374,7 +337,7 @@ describe("scenarios > dashboard > tabs", () => {
     });
   });
 
-  it("should only fetch cards on the current tab", () => {
+  it("should only display and fetch cards on the current tab", () => {
     cy.intercept("PUT", "/api/dashboard/*").as("saveDashboardCards");
     cy.intercept("POST", "/api/card/*/query").as("cardQuery");
 
@@ -383,8 +346,12 @@ describe("scenarios > dashboard > tabs", () => {
       save: false,
     });
 
+    cy.findByRole("heading", {
+      name: "Create a new question or browse your collections for an existing one.",
+    }).should("exist");
+    H.dashboardGrid().should("not.exist");
+
     // Add card to second tab
-    cy.icon("pencil").click();
     H.openQuestionsSidebar();
     H.sidebar().within(() => {
       cy.findByText("Orders, Count").click();
@@ -393,6 +360,7 @@ describe("scenarios > dashboard > tabs", () => {
     cy.wait("@cardQuery");
 
     H.saveDashboard();
+    cy.url().should("match", /\d+\-tab\-2/); // id is not stable
 
     cy.wait("@saveDashboardCards").then(({ response }) => {
       cy.wrap(response.body.dashcards[1].id).as("secondTabDashcardId");
@@ -459,6 +427,10 @@ describe("scenarios > dashboard > tabs", () => {
     // Go back to first tab, expect no additional queries
     H.goToTab("Tab 1");
     cy.findAllByTestId("dashcard").contains("37.65");
+    H.dashboardCards().within(() => {
+      cy.findByText("Orders").should("be.visible");
+      cy.findByText("Orders, Count").should("not.exist");
+    });
     cy.get("@firstTabQuerySpy").should("have.been.calledOnce");
     cy.get("@secondTabQuerySpy").should("have.been.calledOnce");
 
@@ -676,7 +648,7 @@ describe("scenarios > dashboard > tabs", () => {
     cy.findAllByTestId("tab-button-input-wrapper").eq(2).findByText("Tab 2");
   });
 
-  it("should allow users to duplicate and delete tabs more than once (#45364)", () => {
+  it("should allow users to duplicate, delete and undo deleting tabs more than once (#45364)", () => {
     H.visitDashboard(ORDERS_DASHBOARD_ID);
     H.editDashboard();
 
@@ -691,6 +663,21 @@ describe("scenarios > dashboard > tabs", () => {
     cy.findAllByRole("tab").eq(1).should("have.text", "Copy of Tab 1");
     cy.findAllByRole("tab").eq(2).should("have.text", "Copy of Tab 1");
 
+    H.deleteTab("Tab 1");
+    cy.findByRole("tab", { name: "Tab 1" }).should("not.exist");
+
+    cy.log("undo restores the deleted tab with its cards");
+    H.undo();
+    H.goToTab("Tab 1");
+    H.dashboardCards().within(() => {
+      cy.findByText("Orders").should("be.visible");
+    });
+
+    // Delete Tab 1 while another tab is selected, as before the undo
+    cy.findAllByRole("tab", { name: "Copy of Tab 1" })
+      .should("have.length", 2)
+      .last()
+      .click();
     H.deleteTab("Tab 1");
 
     cy.findAllByRole("tab").eq(0).should("have.text", "Copy of Tab 1");
@@ -1078,53 +1065,6 @@ describe("issue 39863", () => {
     H.goToTab(TAB_2.name);
     assertNoLoadingSpinners();
     cy.get("@dashcardQuery.all").should("have.length", 4);
-  });
-});
-
-describe("issue 40695", () => {
-  const TAB_1 = {
-    id: 1,
-    name: "Tab 1",
-  };
-  const TAB_2 = {
-    id: 2,
-    name: "Tab 2",
-  };
-
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-  });
-
-  it("should not show dashcards from other tabs after entering and leaving editing mode", () => {
-    H.createDashboardWithTabs({
-      tabs: [TAB_1, TAB_2],
-      dashcards: [
-        createMockDashboardCard({
-          id: -1,
-          dashboard_tab_id: TAB_1.id,
-          size_x: 10,
-          size_y: 4,
-          card_id: ORDERS_QUESTION_ID,
-        }),
-        createMockDashboardCard({
-          id: -2,
-          dashboard_tab_id: TAB_2.id,
-          size_x: 10,
-          size_y: 4,
-          card_id: ORDERS_COUNT_QUESTION_ID,
-        }),
-      ],
-    }).then((dashboard) => H.visitDashboard(dashboard.id));
-
-    H.editDashboard();
-    cy.findByTestId("edit-bar").button("Cancel").click();
-
-    H.dashboardGrid().within(() => {
-      cy.findByText("Orders").should("exist");
-      cy.findByText("Orders, Count").should("not.exist");
-      H.getDashboardCards().should("have.length", 1);
-    });
   });
 });
 
