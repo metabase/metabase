@@ -17,7 +17,7 @@
    (org.eclipse.jgit.lib ObjectInserter ObjectReader)
    (org.eclipse.jgit.revwalk RevCommit RevTree RevWalk)
    (org.eclipse.jgit.transport PushResult RefSpec RemoteConfig RemoteRefUpdate
-                               RemoteRefUpdate$Status UsernamePasswordCredentialsProvider)
+                               RemoteRefUpdate$Status Transport URIish UsernamePasswordCredentialsProvider)
    (org.eclipse.jgit.treewalk TreeWalk)
    (org.eclipse.jgit.treewalk.filter TreeFilter)
    (org.eclipse.jgit.util FS FS_POSIX FS_Win32_Cygwin ProcessResult ProcessResult$Status)))
@@ -64,12 +64,32 @@
   (when token
     (UsernamePasswordCredentialsProvider. "x-token-auth" token)))
 
-(def ^:private default-pack-programs
-  "A transport callback that sets the default upload-pack and receive-pack programs."
-  ;; JGit reads the remote.<name>.uploadpack and receivepack keys of the clone config when it opens a transport, and for
-  ;; a file:// remote or a plain path it runs any program other than the default. The callback runs after that read.
+(defn- check-transport-url!
+  "Throws unless `transport` goes to `remote-url`. The error names both URLs, without a password, and the remedy.
+  `clone-dir` is the directory of the clone that runs the command, or nil."
+  [^Transport transport ^String remote-url ^File clone-dir]
+  ;; URIish/toString leaves out the password.
+  (let [expected (some-> remote-url URIish.)
+        uri      (.getURI transport)]
+    (when-not (= expected uri)
+      (throw (ex-info (str "Remote sync sends git commands only to the URL of the remote-sync-url setting, " expected
+                           ". The git config sends this command to " uri " instead."
+                           " Remove each remote or url entry that names another URL from the git config"
+                           (when clone-dir (str " of the clone " clone-dir))
+                           ", or restart Metabase to make a new clone. Then try again.")
+                      {:reason :transport-url :url (str expected) :transport-url (str uri)})))))
+
+(defn- remote-transport-config
+  "The transport callback of a remote command to `remote-url` from the clone in `clone-dir` (nil for none). It throws
+  unless the transport goes to `remote-url`, and sets the default upload-pack and receive-pack programs."
+  ^TransportConfigCallback [^String remote-url ^File clone-dir]
+  ;; JGit picks the URL of a transport, and reads the remote.<name>.uploadpack and receivepack keys, from the git config
+  ;; when it opens the transport. The URL can come from remote.<name>.url or pushurl, or from a url.<base>.insteadOf or
+  ;; pushInsteadOf rewrite. For a file:// remote or a plain path, JGit runs any pack program other than the default. The
+  ;; callback runs after the transport is open and before it connects, so it sees the URL that the command would use.
   (reify TransportConfigCallback
     (configure [_ transport]
+      (check-transport-url! transport remote-url clone-dir)
       (.setOptionUploadPack transport RemoteConfig/DEFAULT_UPLOAD_PACK)
       (.setOptionReceivePack transport RemoteConfig/DEFAULT_RECEIVE_PACK))))
 
@@ -77,15 +97,16 @@
   (let [analytics-labels {:operation (-> command .getClass .getSimpleName) :remote true}
         ;; GitHub convention: use "x-access-token" as username when authenticating with a personal access token
         ;; For Gitlab any values can be used as the user name so x-access-token works just as well
-        credentials-provider (when token (credentials-provider remote-url token))]
+        credentials-provider (when token (credentials-provider remote-url token))
+        clone-dir            (some-> (.getRepository command) .getDirectory)]
     (analytics/inc! :metabase-remote-sync/git-operations analytics-labels)
     (try
       (-> (doto command
             ;; bound the network operation so a stalled connection can't hang the sync forever (GHY-3727)
             (.setTimeout (int (setting/get :remote-sync-git-timeout-seconds)))
             (.setCredentialsProvider credentials-provider)
-            ;; remote sync runs no program that the config file of the clone names
-            (.setTransportConfigCallback default-pack-programs))
+            ;; remote sync uses no URL and runs no program that the git config names
+            (.setTransportConfigCallback (remote-transport-config remote-url clone-dir)))
           (.call))
       (catch Exception e
         (analytics/inc! :metabase-remote-sync/git-operations-failed analytics-labels)
@@ -99,11 +120,11 @@
 (defn fetch!
   "Fetches updates from the remote git repository.
 
-  Takes a git-source map containing a :git Git instance and optional :token for authentication. Returns the result
-  of the git fetch operation. Uses the 'origin' remote of the clone.
+  Takes a git-source map containing a :git Git instance, its :remote-url and optional :token for authentication.
+  Returns the result of the git fetch operation. Uses the 'origin' remote of the clone.
   Prunes local refs that no longer exist on the remote so deleted branches are reflected locally.
 
-  Throws ExceptionInfo if the fetch operation fails."
+  Throws ExceptionInfo if the fetch operation fails, or if the git config sends it to a URL other than :remote-url."
   [{:keys [^Git git] :as git-source}]
   (when (some? git)
     (log/info "Fetching repository" {:repo (str git)})
@@ -407,11 +428,11 @@
   "Pushes a local branch to the remote repository. Optional `progress-monitor` (a JGit ProgressMonitor)
   reports push progress.
 
-  Takes a git-source map containing a :git Git instance, :branch, and optional :token for
+  Takes a git-source map containing a :git Git instance, its :remote-url, :branch, and optional :token for
   authentication. Uses the 'origin' remote of the clone.
 
   Returns the push response from JGit. Throws ExceptionInfo if the push operation fails or returns a
-  non-OK/UP_TO_DATE status."
+  non-OK/UP_TO_DATE status, or if the git config sends it to a URL other than :remote-url."
   ([git-source] (push-branch! git-source nil))
   ([{:keys [^Git git ^String branch] :as git-source} ^ProgressMonitor progress-monitor]
    (let [branch-name (qualify-branch branch)
