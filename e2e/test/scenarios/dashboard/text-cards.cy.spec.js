@@ -324,6 +324,13 @@ describe("scenarios > dashboard > parameters in text and heading cards", () => {
       cy.findByText("[zz] Pick up where you left off").should("not.exist");
     });
   });
+});
+
+describe("scenarios > dashboard > parameters in text and heading cards > date locale", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+  });
 
   it("should localize date parameters in the instance locale", () => {
     cy.request("GET", "/api/user/current").then(({ body: { id: USER_ID } }) => {

@@ -230,11 +230,6 @@ describe("scenarios > dashboard", () => {
         };
         H.createCollection(collectionInRoot);
         const myPersonalCollection = "My personal collection";
-        H.createDashboard({
-          name: "dashboard in root collection",
-        }).then(({ body: { id: dashboardId } }) => {
-          H.visitDashboard(dashboardId);
-        });
 
         cy.log("assert that personal collections are not visible");
         H.editDashboard();

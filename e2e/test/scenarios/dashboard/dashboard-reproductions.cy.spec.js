@@ -1084,7 +1084,6 @@ describe("should not redirect users to other pages when linking an entity (metab
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
-    cy.intercept("GET", "/api/search?q=*").as("search");
     cy.intercept("GET", "/api/activity/recents?*").as("recentViews");
   });
 
@@ -1632,11 +1631,20 @@ describe("issue 47170", () => {
       cy.findByText("Something’s gone wrong").should("not.exist");
     });
   });
+});
+
+describe("issue 51524", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+  });
 
   it("should show legible dark mode colors in fullscreen mode (metabase#51524)", () => {
+    cy.intercept("PUT", "/api/setting/color-scheme").as("saveColorScheme");
     cy.visit("/account/profile");
     cy.findByDisplayValue("Use system default").click();
     H.popover().findByText("Dark").click();
+    cy.wait("@saveColorScheme");
     cy.visit(`/dashboard/${ORDERS_DASHBOARD_ID}`);
 
     H.dashboardHeader().findByLabelText("Move, trash, and more…").click();
@@ -1979,8 +1987,6 @@ describe("issue 62170", () => {
     H.getDashboardCard().within(() => {
       cy.findByText("Orders Count").should("be.visible");
     });
-
-    cy.wait(REFRESH_PERIOD * 1000);
 
     // Verify card data was refreshed
     cy.wait("@cardDataRefresh");
