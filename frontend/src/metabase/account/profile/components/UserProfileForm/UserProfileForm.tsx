@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from "react";
+import { type JSX, useCallback, useMemo } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 import * as Yup from "yup";

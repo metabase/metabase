@@ -3,6 +3,7 @@ import type {
   FocusEvent,
   FocusEventHandler,
   HTMLAttributes,
+  JSX,
   KeyboardEvent,
   MouseEvent,
   Ref,

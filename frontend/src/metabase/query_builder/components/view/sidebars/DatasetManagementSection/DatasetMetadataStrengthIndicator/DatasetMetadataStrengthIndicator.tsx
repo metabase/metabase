@@ -1,4 +1,4 @@
-import { useRef } from "react";
+import { type RefObject, useRef } from "react";
 import { useHoverDirty } from "react-use";
 import { t } from "ttag";
 
@@ -62,7 +62,8 @@ const TOOLTIP_DELAY = 700;
 
 export function DatasetMetadataStrengthIndicator({ dataset, ...props }: Props) {
   const rootRef = useRef<HTMLDivElement>(null);
-  const isHovering = useHoverDirty(rootRef);
+  // react-use types the ref as non-null but only reads `.current`.
+  const isHovering = useHoverDirty(rootRef as RefObject<Element>);
   const resultMetadata = dataset.getResultMetadata();
 
   if (!Array.isArray(resultMetadata) || resultMetadata.length === 0) {

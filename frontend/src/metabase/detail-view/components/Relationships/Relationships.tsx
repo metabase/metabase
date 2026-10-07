@@ -1,4 +1,4 @@
-import { type ReactNode, useMemo } from "react";
+import { type JSX, type ReactNode, useMemo } from "react";
 import { jt, t } from "ttag";
 
 import { type BoxProps, Stack, Text } from "metabase/ui";

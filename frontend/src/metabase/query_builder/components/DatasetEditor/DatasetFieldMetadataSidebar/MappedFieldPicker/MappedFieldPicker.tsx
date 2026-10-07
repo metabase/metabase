@@ -41,7 +41,7 @@ export function MappedFieldPicker({
 
   const selectedField = field && selectedFieldId ? field : null;
 
-  const selectButtonRef = useRef<HTMLButtonElement>();
+  const selectButtonRef = useRef<HTMLButtonElement>(undefined);
 
   const focusSelectButton = useCallback(() => {
     selectButtonRef.current?.focus();

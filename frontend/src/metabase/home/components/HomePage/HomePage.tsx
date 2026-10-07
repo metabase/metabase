@@ -1,4 +1,4 @@
-import { useLayoutEffect } from "react";
+import { type JSX, useLayoutEffect } from "react";
 import { t } from "ttag";
 
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";

@@ -53,8 +53,8 @@ export function useResetWidthsOnColumnsChange(
   data?: DatasetData,
   question?: Question,
 ) {
-  const prevData = useRef<DatasetData>();
-  const prevDataQuestion = useRef<Question>();
+  const prevData = useRef<DatasetData>(undefined);
+  const prevDataQuestion = useRef<Question>(undefined);
 
   useEffect(() => {
     const isDataChange =

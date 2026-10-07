@@ -1,0 +1,18 @@
+diff --git a/src/commands/test/renderers/index.js b/src/commands/test/renderers/index.js
+index faa8206758530fc4b2685d2db147f9d02e26f6df..36562fb083b6a35dd996adaab6a18208d9c34798 100644
+--- a/src/commands/test/renderers/index.js
++++ b/src/commands/test/renderers/index.js
+@@ -3,7 +3,12 @@ const { renderVerbose } = require('./verbose');
+ const { renderNonInteractive } = require('./non-interactive');
+ const { renderSilent } = require('./silent');
+ 
+-const { renderInteractive } = importJsx('./interactive');
++// Load the interactive (ink) renderer lazily. It pulls react-reconciler, which
++// reads React internals that React 19 removed, so requiring it eagerly crashes
++// at load time. CI uses a non-interactive renderer and never calls this, so
++// deferring the require keeps loki working on React 19.
++const renderInteractive = (...args) =>
++  importJsx('./interactive').renderInteractive(...args);
+ 
+ module.exports = {
+   renderInteractive,

@@ -1,6 +1,7 @@
 import type { Store } from "@reduxjs/toolkit";
 import { useArgs } from "@storybook/preview-api";
 import type { StoryFn } from "@storybook/react";
+import type { ComponentType } from "react";
 import { t } from "ttag";
 
 import { getPublicStore } from "__support__/entities-store";
@@ -22,7 +23,7 @@ const storeInitialState = createMockState({
 // Unjustified type cast. FIXME
 const store = getPublicStore(storeInitialState) as unknown as Store<State>;
 
-const ReduxDecorator = (Story: StoryFn) => {
+const ReduxDecorator = (Story: ComponentType) => {
   return (
     <MetabaseReduxProvider store={store}>
       <Story />

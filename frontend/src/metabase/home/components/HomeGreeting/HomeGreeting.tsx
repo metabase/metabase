@@ -1,5 +1,5 @@
 import cx from "classnames";
-import { useEffect, useMemo, useState } from "react";
+import { type JSX, useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 

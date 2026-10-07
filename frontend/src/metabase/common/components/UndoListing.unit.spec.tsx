@@ -1,5 +1,6 @@
 import type { Store } from "@reduxjs/toolkit";
 import userEvent from "@testing-library/user-event";
+import { createRef } from "react";
 
 import { act, renderWithProviders, screen, waitFor } from "__support__/ui";
 import type { State } from "metabase/redux/store";
@@ -234,6 +235,9 @@ function makeUndo(override: UndoOverride = {}): Undo {
     canDismiss: true,
     id,
     _domId: id,
+    // Matches the ref the addUndo reducer assigns. react-transition-group needs
+    // a nodeRef under React 19, which removed the findDOMNode fallback.
+    ref: createRef(),
     ...override,
   };
 }

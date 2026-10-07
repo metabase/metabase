@@ -1,5 +1,5 @@
 import { useFormikContext } from "formik";
-import { useMemo } from "react";
+import { type JSX, useMemo } from "react";
 
 import type { DatabaseData, Engine } from "metabase-types/api";
 

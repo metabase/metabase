@@ -1,3 +1,4 @@
+import type { JSX } from "react";
 import { match } from "ts-pattern";
 import { jt, t } from "ttag";
 

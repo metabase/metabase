@@ -4,6 +4,7 @@ import { createMockSettingsState, createMockState } from "__support__/state";
 import {
   SdkVisualizationWrapper,
   VisualizationWrapper,
+  createWaitForChartsDecorator,
 } from "__support__/storybook";
 import type { MetabaseTheme } from "metabase/embedding-sdk/theme";
 import { Box } from "metabase/ui";
@@ -18,6 +19,7 @@ import { data } from "./stories-data";
 export default {
   title: "viz/PieChart",
   component: PieChart,
+  decorators: [createWaitForChartsDecorator({ count: 1 })],
 };
 
 registerVisualization(PieChart);
