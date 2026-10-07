@@ -24,6 +24,18 @@ databaseChangeLog:
   - changeSet:
       id: v65.2026-10-07T00:00:01
       author: ranquild
+      comment: Mark archived query actions as archived directly, since restoring their model will no longer restore them
+      changes:
+        - sql:
+            sql: >-
+              UPDATE action
+              SET archived_directly = TRUE
+              WHERE type = 'query' AND model_id IS NOT NULL AND archived = TRUE;
+      rollback: # archived actions stay archived directly, which older versions support
+
+  - changeSet:
+      id: v65.2026-10-07T00:00:02
+      author: ranquild
       comment: Detach query actions from their models
       changes:
         - sql:
@@ -40,7 +52,7 @@ databaseChangeLog:
                 AND EXISTS (SELECT 1 FROM report_card WHERE report_card.id = action.legacy_model_id);
 
   - changeSet:
-      id: v65.2026-10-07T00:00:02
+      id: v65.2026-10-07T00:00:03
       author: ranquild
       comment: Detach dashboard cards of query actions from the actions' former models
       changes:

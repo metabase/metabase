@@ -55,13 +55,6 @@ export const actionApi = Api.injectEndpoints({
       query: (body) => ({
         method: "PUT",
         url: `/api/action/${body.id}`,
-        // The action editor passes the full WritebackAction it fetched
-        // (including server-managed fields like `creator`, `created_at`,
-        // `database_enabled_actions`, ...). The backend routes anything
-        // outside the Action columns to the type-specific update table
-        // (query_action / implicit_action), where those
-        // columns don't exist and the request 500s. Whitelist only the
-        // fields that the API endpoint actually accepts.
         body: _.pick(body, [
           "id",
           "archived",
@@ -74,7 +67,6 @@ export const actionApi = Api.injectEndpoints({
           "name",
           "parameter_mappings",
           "parameters",
-          "public_uuid",
           "visualization_settings",
         ]),
       }),

@@ -452,3 +452,28 @@
                          :serdes/meta [{:model "Action" :id entity-id}]}
                         nil)
       (is (not (t2/exists? :model/Action :entity_id entity-id))))))
+
+(deftest load-query-action-without-collection-test
+  (testing "a query action from an export without action collections is loaded into its former model's collection"
+    (mt/with-temp [:model/Collection {coll-id :id}         {}
+                   :model/Card       {model-eid :entity_id} {:type          :model
+                                                             :collection_id coll-id
+                                                             :dataset_query (mt/mbql-query categories)}]
+      (mt/with-model-cleanup [:model/Action]
+        (let [action-id (action/insert! (lib/normalize ::actions.schema/action.for-insert
+                                                       {:type          :query
+                                                        :name          "Old export"
+                                                        :collection_id coll-id
+                                                        :database_id   (mt/id)
+                                                        :dataset_query (mt/native-query {:query "update categories set name = 'x' where id = 1"})}))
+              hydrated  (u/rfirst (serdes/extract-query "Action" {:filter-column :id, :filter-ids [action-id]}))
+              ingested  (-> (serdes/extract-one "Action" {} hydrated)
+                            (dissoc :collection_id)
+                            (assoc :model_id model-eid))]
+          (t2/delete! :model/Action :id action-id)
+          (serdes/load-one! ingested nil)
+          (is (=? {:collection_id coll-id, :model_id nil}
+                  (t2/select-one :model/Action :entity_id (:entity_id ingested))))
+          (is (= #{[{:model "Card" :id model-eid}]}
+                 (set (filter #(= "Card" (:model (first %)))
+                              (serdes/deserialization-dependencies ingested))))))))))

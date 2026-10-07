@@ -3609,9 +3609,10 @@
           (is (pos-int? (insert-action! nil))))))))
 
 (deftest detach-query-actions-from-models-test
-  (testing "v65.2026-10-07T00:00:02: query actions and their dashboard cards lose their model; a rollback restores the
-            actions' model but leaves the dashboard cards detached; implicit actions keep it"
-    (impl/test-migrations ["v65.2026-10-07T00:00:00" "v65.2026-10-07T00:00:02"] [migrate!]
+  (testing "v65.2026-10-07T00:00:03: query actions and their dashboard cards lose their model, and archived ones become
+            archived directly; a rollback restores the actions' model but leaves the dashboard cards detached; implicit
+            actions keep it"
+    (impl/test-migrations ["v65.2026-10-07T00:00:00" "v65.2026-10-07T00:00:03"] [migrate!]
       (let [user-id        (t2/insert-returning-pk! :core_user {:first_name  "Action"
                                                                 :last_name   "Owner"
                                                                 :email       "query-action-owner@metabase.com"
@@ -3633,13 +3634,14 @@
                                                                   :database_id            db-id
                                                                   :created_at             :%now
                                                                   :updated_at             :%now})
-            insert-action! (fn [action-type]
-                             (t2/insert-returning-pk! :action {:name       "Action"
-                                                               :entity_id  (u/generate-nano-id)
-                                                               :type       action-type
-                                                               :model_id   model-id
-                                                               :created_at :%now
-                                                               :updated_at :%now}))
+            insert-action! (fn [action-type & {:as columns}]
+                             (t2/insert-returning-pk! :action (merge {:name       "Action"
+                                                                      :entity_id  (u/generate-nano-id)
+                                                                      :type       action-type
+                                                                      :model_id   model-id
+                                                                      :created_at :%now
+                                                                      :updated_at :%now}
+                                                                     columns)))
             dash-id        (t2/insert-returning-pk! :report_dashboard {:name       "Buttons"
                                                                        :creator_id user-id
                                                                        :parameters "[]"
@@ -3661,6 +3663,8 @@
                                                                              :updated_at             :%now}))
             query-id       (insert-action! "query")
             implicit-id    (insert-action! "implicit")
+            archived-query (insert-action! "query" :archived true)
+            archived-impl  (insert-action! "implicit" :archived true)
             query-button   (insert-button! query-id model-id)
             unbound-button (insert-button! query-id nil)
             other-button   (insert-button! implicit-id model-id)
@@ -3672,6 +3676,10 @@
         (is (= {:model_id model-id, :legacy_model_id nil}
                (t2/select-one [:action :model_id :legacy_model_id] :id implicit-id)))
         (is (= {query-button nil, unbound-button nil, other-button model-id} (button-cards)))
+        (is (= {query-id false, implicit-id false, archived-query true, archived-impl false}
+               (update-vals (t2/select-pk->fn :archived_directly :action
+                                              :id [:in [query-id implicit-id archived-query archived-impl]])
+                            boolean)))
         (migrate! :down 64)
         (is (= {query-id model-id, implicit-id model-id}
                (t2/select-pk->fn :model_id :action :id [:in [query-id implicit-id]])))

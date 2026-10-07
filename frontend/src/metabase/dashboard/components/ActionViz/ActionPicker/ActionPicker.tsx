@@ -13,6 +13,7 @@ import {
   Modal,
   PREVENT_AUTOCOMPLETE_CLIPPING_MODAL_PROPS,
 } from "metabase/ui";
+import * as Urls from "metabase/urls";
 import type { Card, WritebackAction } from "metabase-types/api";
 
 import {
@@ -70,9 +71,9 @@ export function ActionPicker({
       ))}
       {isEmpty && (
         <EmptyState
-          message={t`No models found`}
-          action={t`Create new model`}
-          link={"/model/new"}
+          message={t`No actions found`}
+          action={t`Create new action`}
+          link={Urls.newDataAction()}
         />
       )}
     </div>

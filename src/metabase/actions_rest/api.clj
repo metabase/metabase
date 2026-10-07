@@ -22,18 +22,22 @@
 
 (api.macros/defendpoint :get "/" :- [:sequential ::actions.schema/action]
   "Returns the unarchived actions in collections the current user can read. Pass optional `?model-id=<model-id>` to
-  limit to the actions of a particular model, and optional `?type=<type>` to limit to actions of that type."
+  limit to the actions of a particular model, optional `?type=<type>` to limit to actions of that type, and optional
+  `?namespace=<namespace>` to list actions in collections of that namespace instead of the default one."
   {:scope api-scope/data-app}
   [_route-params
    {:keys [model-id]
-    action-type :type} :- [:map {:closed true}
-                           [:model-id {:optional true} [:maybe ::lib.schema.id/card]]
-                           [:type     {:optional true} [:maybe ::actions.schema/type]]]]
+    action-type          :type
+    collection-namespace :namespace} :- [:map {:closed true}
+                                         [:model-id  {:optional true} [:maybe ::lib.schema.id/card]]
+                                         [:type      {:optional true} [:maybe ::actions.schema/type]]
+                                         [:namespace {:optional true} [:maybe ms/NonBlankString]]]]
   (let [actions (if model-id
                   (let [model (api/read-check :model/Card model-id)]
                     (cond->> (actions/select-actions-for-models [model] [model-id])
                       action-type (filter #(= action-type (keyword (:type %))))))
-                  (when-let [action-ids (seq (actions-rest.db/unarchived-action-ids-visible-to-user {:type action-type}))]
+                  (when-let [action-ids (seq (actions-rest.db/unarchived-action-ids-visible-to-user
+                                              {:type action-type, :namespace collection-namespace}))]
                     (actions/select-actions-for-ids nil (vec action-ids))))]
     (t2/hydrate (vec actions) :creator :can_write)))
 

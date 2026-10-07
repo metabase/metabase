@@ -9,16 +9,23 @@
    [toucan2.core :as t2]))
 
 (mu/defn unarchived-action-ids-visible-to-user
-  "The ids of the unarchived Actions in Collections the current user can read, limited to actions of `:type` if given."
+  "The ids of the unarchived Actions in Collections of `:namespace` the current user can read, limited to actions of
+  `:type` if given."
   ([]
    (unarchived-action-ids-visible-to-user {}))
-  ([{action-type :type} :- [:map {:closed true}
-                            [:type {:optional true} [:maybe ::actions.schema/type]]]]
-   (t2/select-pks-vec :model/Action {:where [:and
-                                             [:= :archived false]
-                                             (when action-type
-                                               [:= :type (name action-type)])
-                                             (collection/visible-collection-filter-clause)]})))
+  ([{action-type :type, collection-namespace :namespace} :- [:map {:closed true}
+                                                             [:type      {:optional true} [:maybe ::actions.schema/type]]
+                                                             [:namespace {:optional true} [:maybe :string]]]]
+   (t2/select-fn-vec :id :model/Action {:select    [:action.id]
+                                        :from      [[(t2/table-name :model/Action) :action]]
+                                        :left-join [[(t2/table-name :model/Collection) :collection]
+                                                    [:= :collection.id :action.collection_id]]
+                                        :where     [:and
+                                                    [:= :action.archived false]
+                                                    (when action-type
+                                                      [:= :action.type (name action-type)])
+                                                    [:= :collection.namespace collection-namespace]
+                                                    (collection/visible-collection-filter-clause :action.collection_id)]})))
 
 (mu/defn public-actions
   "The name, id, public uuid, and model id of the unarchived Actions that are publicly shared."

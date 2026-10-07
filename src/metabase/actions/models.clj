@@ -598,10 +598,22 @@
                                         :import serdes/import-visualization-settings}}
    :defaults  {:archived false, :archived_directly false}})
 
+(defn- ingested-collection-ref
+  "The Collection ref of an ingested Action, or its model's Collection ref when it has none."
+  [{:keys [collection_id model_id]}]
+  (or collection_id
+      (some-> model_id
+              (serdes/*import-fk* :model/Card)
+              actions.db/card-collection-id
+              (serdes/*export-fk* :model/Collection))))
+
 (defmethod serdes/load-one! "Action" [ingested maybe-local]
   (case (some-> (:type ingested) name)
     "http"  nil
-    "query" (serdes/default-load-one! (dissoc ingested :model_id) maybe-local)
+    "query" (serdes/default-load-one! (-> ingested
+                                          (assoc :collection_id (ingested-collection-ref ingested))
+                                          (dissoc :model_id))
+                                      maybe-local)
     (serdes/default-load-one! ingested maybe-local)))
 
 (defmethod serdes/deserialization-dependencies "Action" [action]
@@ -609,7 +621,8 @@
    (concat
     (when-let [collection-id (:collection_id action)]
       [[{:model "Collection" :id collection-id}]])
-    (when-let [model-id (and (not= (:type action) "query") (:model_id action))]
+    (when-let [model-id (and (or (not= (:type action) "query") (nil? (:collection_id action)))
+                             (:model_id action))]
       [[{:model "Card" :id model-id}]])
     (when (= (:type action) "query")
       (serdes/mbql-deps false (:dataset_query (first (:query action))))))))

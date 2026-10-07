@@ -533,6 +533,22 @@
               (is (contains? (listed-ids :rasta) (:id visible)))
               (is (not (contains? (listed-ids :rasta) (:id hidden)))))))))))
 
+(deftest list-actions-by-namespace-test
+  (testing "GET /api/action lists actions in default-namespace collections, or in the collections of `namespace`"
+    (mt/with-actions-test-data-and-actions-enabled
+      (mt/with-model-cleanup [:model/Action]
+        (mt/with-temp [:model/Collection {app-coll-id :id} {:namespace (name collection/data-apps-ns)}
+                       :model/Collection {coll-id :id}     {}]
+          (let [root     (mt/user-http-request :crowberto :post 200 "action" (model-less-query-action nil))
+                regular  (mt/user-http-request :crowberto :post 200 "action" (model-less-query-action coll-id))
+                app      (mt/user-http-request :crowberto :post 200 "action" (model-less-query-action app-coll-id))
+                list-ids (fn [& params]
+                           (set (map :id (apply mt/user-http-request :crowberto :get 200 "action" params))))]
+            (let [ids (list-ids)]
+              (is (set/subset? #{(:id root) (:id regular)} ids))
+              (is (not (contains? ids (:id app)))))
+            (is (= #{(:id app)} (list-ids :namespace (name collection/data-apps-ns))))))))))
+
 (deftest list-actions-by-type-test
   (testing "GET /api/action?type= returns only actions of that type, alone or combined with model-id"
     (mt/with-actions-test-data-and-actions-enabled

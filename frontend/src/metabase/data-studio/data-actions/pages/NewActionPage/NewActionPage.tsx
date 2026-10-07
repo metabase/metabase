@@ -79,6 +79,7 @@ function NewActionPageBody({ databases }: NewActionPageBodyProps) {
     useDisclosure();
   const navigate = useNavigate();
   const isSavedRef = useRef(false);
+  const isDirty = draft.isDirty || name.trim().length > 0;
 
   const handleCreate = (action: WritebackAction) => {
     isSavedRef.current = true;
@@ -139,7 +140,7 @@ function NewActionPageBody({ databases }: NewActionPageBodyProps) {
         />
       )}
       <LeaveRouteConfirmModal
-        isEnabled={draft.isDirty}
+        isEnabled={isDirty}
         isLocationAllowed={isLocationAllowed}
       />
     </>
