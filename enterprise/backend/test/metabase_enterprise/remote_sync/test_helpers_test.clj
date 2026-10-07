@@ -8,12 +8,14 @@
    [metabase-enterprise.remote-sync.test-helpers :as th]
    [metabase.actions.models :as action]
    [metabase.actions.schema :as actions.schema]
+   [metabase.app-db.activity-test-util :as activity]
    [metabase.app-db.core :as mdb]
    [metabase.lib.core :as lib]
    [metabase.search.core :as search]
    [metabase.settings.core :as setting]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
+   [metabase.util :as u]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -72,25 +74,44 @@
           "Snippets dir should be cleaned even though no snippet files were written"))))
 
 (defn- content-ids
-  "Ids of the main app's cards, dashboards and non-personal collections (test users' personal collections
-  are created lazily, so they are left out)."
+  "Ids of the cards, dashboards and non-personal collections (test users' personal collections are created lazily, so
+  they are left out)."
   []
   {:cards       (t2/select-pks-set :model/Card)
    :dashboards  (t2/select-pks-set :model/Dashboard)
    :collections (t2/select-pks-set :model/Collection :personal_owner_id nil)})
 
+(defn- new-content-files
+  "Files of a Collection, a Card in it and a Dashboard that shows the Card, with new entity ids, so that an import of
+  them adds rows also when an earlier run left the content of [[th/create-mock-source]] in the app DB."
+  []
+  (let [[coll card dash dashcard] (repeatedly 4 u/generate-nano-id)
+        dir                       (str "collections/" coll "_imported")]
+    {(str dir "/" coll "_imported.yaml")
+     (th/generate-collection-yaml coll "Imported")
+
+     (str dir "/cards/" card "_imported_question.yaml")
+     (th/generate-card-yaml card "Imported question" coll)
+
+     (str dir "/dashboards/" dash "_imported_dashboard.yaml")
+     (th/generate-dashboard-yaml dash "Imported dashboard" coll :dashcards [{:entity_id dashcard :card_id card}])}))
+
 (deftest clean-remote-sync-state-removes-imported-content-test
-  (testing "content a test imports into the main app is gone once the clean-remote-sync-state fixture ends"
+  (testing "content a test imports is gone once the clean-remote-sync-state fixture ends"
     (mt/dataset test-data
-      (mt/id) ; the mock source's card references test-data
+      (mt/id) ; the card of the imported files references test-data
       (mt/with-dynamic-fn-redefs [search/reindex! (constantly nil)]
         (let [before (content-ids)]
           (th/clean-remote-sync-state
            (fn []
              (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "import"
-                                                                           :initiated_by   (mt/user->id :rasta)})]
-               (is (= :success (:status (impl/import! (source.p/snapshot (th/create-mock-source)) task-id))))
-               (is (t2/exists? :model/Card :name "Some Question")))))
+                                                                           :initiated_by   (mt/user->id :rasta)})
+                   src     (th/create-mock-source :initial-files {"main" (new-content-files)})]
+               (is (= :success (:status (impl/import! (source.p/snapshot src) task-id))))
+               (testing "the import adds a card, a dashboard and a collection"
+                 (is (= {:cards 1 :dashboards 1 :collections 1}
+                        (into {} (for [[k ids] (content-ids)]
+                                   [k (count (remove (set (get before k)) ids))]))))))))
           (is (= before (content-ids))))))))
 
 (deftest clean-remote-sync-state-removes-collection-contents-test
@@ -163,6 +184,11 @@
         (when (seq ledger)
           (t2/insert! :model/RemoteSyncObject ledger))))))
 
+(defn- this-thread
+  "The counts of the calling thread in the [[activity/count-db-activity!]] result `counts`."
+  [counts]
+  (get-in counts [:by-thread (.threadId (Thread/currentThread))] (zipmap activity/count-keys (repeat 0))))
+
 (defn- transforms-ledger-rows
   "The `[model_name status]` of each RemoteSyncObject row for the virtual Transforms root collection."
   []
@@ -195,6 +221,8 @@
     (mt/with-dynamic-fn-redefs [search/reindex! (constantly nil)]
       (do-with-remote-sync-state-restored!
        (fn []
+         ;; so that the setter changes the value and its :on-change hook writes the Transforms ledger row
+         (#'th/remove-transforms-setting!)
          (remote-sync.settings/remote-sync-transforms! true)
          (let [before (transforms-state)]
            (th/clean-remote-sync-state (fn []))
@@ -210,6 +238,8 @@
     (mt/with-dynamic-fn-redefs [search/reindex! (constantly nil)]
       (do-with-remote-sync-state-restored!
        (fn []
+         ;; so that the setter changes the value and its :on-change hook writes the Transforms ledger row
+         (#'th/remove-transforms-setting!)
          (remote-sync.settings/remote-sync-transforms! true)
          (t2/update! :model/RemoteSyncObject
                      {:model_type "Collection" :model_id remote-sync.settings/transforms-root-id}
@@ -245,8 +275,9 @@
               (t2/delete! :setting :key "remote-sync-branch")))
            (is (= before (remote-sync-setting-rows)))))))))
 
-(deftest clean-remote-sync-state-keeps-setting-rows-when-the-write-back-fails-test
-  (testing "when the insert of the saved remote-sync setting rows fails, the rows stay and the exception propagates"
+(deftest clean-remote-sync-state-writes-back-the-other-setting-rows-when-the-write-of-one-fails-test
+  (testing "when the write-back of one remote-sync setting row fails, the other rows are written back and the fixture
+            throws an exception that names the failed key"
     (mt/with-dynamic-fn-redefs [search/reindex! (constantly nil)]
       (do-with-remote-sync-state-restored!
        (fn []
@@ -254,16 +285,54 @@
          (t2/insert! :setting [{:key "remote-sync-type" :value "read-write" :value_with_aad "read-write"}
                                {:key "remote-sync-branch" :value "legacy" :value_with_aad nil}])
          (setting/restore-cache!)
-         (let [before  (remote-sync-setting-rows)
-               insert! (mt/original-fn #'t2/insert!)]
-           (is (thrown-with-msg?
-                clojure.lang.ExceptionInfo #"insert failed"
-                (mt/with-dynamic-fn-redefs [t2/insert! (fn [model & args]
-                                                         (if (= :setting model)
-                                                           (throw (ex-info "insert failed" {}))
-                                                           (apply insert! model args)))]
-                  (th/clean-remote-sync-state (fn [])))))
-           (is (= before (remote-sync-setting-rows)))))))))
+         (let [write! (mt/original-fn #'th/write-remote-sync-setting-row!)
+               error  (try
+                        (mt/with-dynamic-fn-redefs [th/write-remote-sync-setting-row!
+                                                    (fn [k & args]
+                                                      (if (= "remote-sync-branch" k)
+                                                        (throw (ex-info "write failed" {}))
+                                                        (apply write! k args)))]
+                          (th/clean-remote-sync-state
+                           (fn []
+                             (t2/update! :setting :key "remote-sync-type" {:value "read-only" :value_with_aad "read-only"})
+                             (t2/delete! :setting :key "remote-sync-branch"))))
+                        nil
+                        (catch clojure.lang.ExceptionInfo e
+                          e))]
+           (is (=? {:keys ["remote-sync-branch"]} (ex-data error)))
+           (is (re-find #"remote-sync-branch" (str (ex-message error))))
+           (is (= "write failed" (ex-message (ex-cause error))))
+           (testing "the update of the other key is written back, and the deleted row is not"
+             (is (= [["remote-sync-type" "read-write" "read-write"]]
+                    (filter (comp #{"remote-sync-type" "remote-sync-branch"} first) (remote-sync-setting-rows)))))))))))
+
+(deftest write-back-writes-only-changed-keys-each-with-one-statement-outside-a-transaction-test
+  (testing "the write-back writes each changed key with one statement, opens no transaction, and leaves unchanged keys"
+    (do-with-remote-sync-state-restored!
+     (fn []
+       (t2/delete! :setting :key [:like "remote-sync%"])
+       (let [saved   [{:key "remote-sync-type" :value "read-write" :value_with_aad "read-write"}
+                      {:key "remote-sync-url" :value "https://example.com/a.git" :value_with_aad "https://example.com/a.git"}
+                      {:key "remote-sync-auto-import" :value "true" :value_with_aad "true"}]
+             written (atom [])
+             write!  (mt/original-fn #'th/write-remote-sync-setting-row!)]
+         (t2/insert! :setting saved)
+         ;; a changed key, a deleted key, a new key, and an unchanged key (remote-sync-auto-import)
+         (t2/update! :setting :key "remote-sync-type" {:value "read-only" :value_with_aad "read-only"})
+         (t2/delete! :setting :key "remote-sync-url")
+         (t2/insert! :setting {:key "remote-sync-branch" :value "main" :value_with_aad "main"})
+         (mt/with-dynamic-fn-redefs [th/write-remote-sync-setting-row!
+                                     (fn [k & args]
+                                       (let [counts (activity/count-db-activity! #(apply write! k args))]
+                                         (swap! written conj [k (select-keys (this-thread counts)
+                                                                             [:statements :transactions])])))]
+           (#'th/write-remote-sync-setting-rows! saved))
+         (is (= [["remote-sync-branch" {:statements 1 :transactions 0}]
+                 ["remote-sync-type" {:statements 1 :transactions 0}]
+                 ["remote-sync-url" {:statements 1 :transactions 0}]]
+                (sort-by first @written)))
+         (is (= (sort (map (juxt :key :value :value_with_aad) saved))
+                (remote-sync-setting-rows))))))))
 
 (deftest stored-transforms-setting-test-keeps-existing-transforms-state-test
   (testing "clean-remote-sync-state-removes-stored-transforms-setting-test leaves the remote-sync-transforms value and
