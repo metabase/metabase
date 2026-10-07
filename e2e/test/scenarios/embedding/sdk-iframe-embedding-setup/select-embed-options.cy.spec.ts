@@ -169,7 +169,7 @@ describe(suiteTitle, () => {
 
     cy.log("drill-through should be enabled in the preview");
     H.getSimpleEmbedIframeContent().within(() => {
-      cy.findByText("110.93").click();
+      cy.findByText("110.93").should("be.visible").click();
       cy.findByText("Filter by this value").should("be.visible");
     });
 
@@ -474,7 +474,7 @@ describe(suiteTitle, () => {
 
     cy.log("drill-through should be enabled by default in chart preview");
     H.getSimpleEmbedIframeContent().within(() => {
-      cy.findByText("18,760").click();
+      cy.findByText("18,760").should("be.visible").click();
       cy.findByText("See these Orders").should("exist");
     });
 
