@@ -394,17 +394,17 @@ const resourceCard = ({
 
 /**
  * The copies of the actions `copies` name, as an author writes them into the
- * app's collection: what Metabase exports for each source action, with the
+ * app's collection: what Metabase serializes for each source action, with the
  * copy's entity ID and in the app's `collection`.
  */
-export function exportDataAppActionCopies(
+export function serializeDataAppActionCopies(
   copies: Array<{ sourceActionId: number; entityId: string }>,
   collection: string,
 ) {
   return cy
     .request<{ actions: Array<{ entity: ResourceEntity }> }>(
       "POST",
-      "/api/apps/export-resources",
+      "/api/apps/serialize-resources",
       {
         collection,
         actions: copies.map(({ sourceActionId }) => sourceActionId),

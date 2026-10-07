@@ -20,7 +20,7 @@ type Copy = { source: WritebackAction; entityId: string; exportName: string };
 /**
  * Loads actions into an app the way an author does: the source actions exist
  * in Metabase, belonging to no model, and the author copies what Metabase
- * exports for them into the app's collection with new entity IDs. A
+ * serializes for them into the app's collection with new entity IDs. A
  * repository pull is what creates the copies.
  */
 describe(
@@ -66,7 +66,7 @@ describe(
         })),
       );
 
-      return H.exportDataAppActionCopies(
+      return H.serializeDataAppActionCopies(
         copies.map(({ source, entityId }) => ({
           sourceActionId: source.id,
           entityId,

@@ -46,7 +46,7 @@ describe(
 
     /**
      * Declares an action that belongs to no model, writes the copy an author
-     * writes from its export, publishes the app, and yields it with the copy's
+     * writes from its serialization, publishes the app, and yields it with the copy's
      * entity ID.
      */
     const publishApp = () =>
@@ -61,7 +61,7 @@ describe(
           },
         ]);
 
-        return H.exportDataAppActionCopies(
+        return H.serializeDataAppActionCopies(
           [{ sourceActionId: source.id, entityId: actionCopy }],
           COLLECTION,
         )
@@ -78,7 +78,7 @@ describe(
           .then((app) => cy.wrap({ app, actionCopy }, { log: false }));
       });
 
-    it("exports the action an author copies, as serialization writes it, with no model", () => {
+    it("serializes the action an author copies, with no model, as its file holds it", () => {
       H.createDataAppScoreboardAction().then((source) => {
         // Executing the action reads this, so the copy must keep it.
         cy.request("PUT", `/api/action/${source.id}`, {
@@ -87,7 +87,7 @@ describe(
           },
         });
 
-        cy.request("POST", "/api/apps/export-resources", {
+        cy.request("POST", "/api/apps/serialize-resources", {
           collection: COLLECTION,
           actions: [source.id],
         }).then(({ body }) => {
