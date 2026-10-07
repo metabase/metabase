@@ -100,4 +100,4 @@
       (is (contains? excluded-columns :collection_position))
       (is (contains? excluded-columns :public_uuid_prefix))
       (is (contains? excluded-columns :creator) "a key that the API hydrates")
-      (is (= 16 (count excluded-columns)) "Should exclude exactly 11 metadata fields and 5 hydrated keys"))))
+      (is (= 16 (count excluded-columns)) "the metadata columns and the hydrated keys"))))

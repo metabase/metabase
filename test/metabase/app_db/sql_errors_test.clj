@@ -16,6 +16,9 @@
     (testing "MySQL and MariaDB report a catch-all state, disambiguated by the vendor code"
       (is (= :duplicate-key (sql-errors/error-kind (SQLException. "Duplicate entry" "23000" 1062))))
       (is (nil? (sql-errors/error-kind (SQLException. "Cannot add foreign key" "23000" 1452))))))
+  (testing "transaction rollbacks: deadlocks and serialization failures"
+    (are [state] (= :transaction-rollback (sql-errors/error-kind (SQLException. "rolled back" state)))
+      "40001" "40P01" "40000"))
   (testing "unrecognized errors"
     (is (nil? (sql-errors/error-kind (SQLException. "syntax" "42000"))))
     (is (nil? (sql-errors/error-kind (SQLException. "no state"))))

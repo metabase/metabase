@@ -240,7 +240,7 @@
                  (get-in content-revision [:diff :after :document]))))))))
 
 (deftest document-api-edit-records-one-revision-test
-  (testing "One API edit of a Document records one revision (the hook event and the API event compare equal)"
+  (testing "One API edit of a Document records one revision"
     (mt/with-temp [:model/Collection {coll :id} {}]
       (let [doc-id (:id (mt/user-http-request :crowberto :post 200 "document"
                                               {:name "D0" :collection_id coll

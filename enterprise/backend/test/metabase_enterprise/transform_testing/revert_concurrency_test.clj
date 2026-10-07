@@ -21,7 +21,9 @@
           (try
             (t2/update! :model/TransformTest id {:name "X1"})
             (f id)
-            (finally (t2/delete! :model/TransformTest :id id))))
+            (finally
+              (t2/delete! :model/TransformTest :id id)
+              (t2/delete! :model/Revision :model "TransformTest" :model_id id))))
         (finally (t2/delete! :model/Transform :id transform-id))))))
 
 (deftest transform-test-edit-holds-row-during-revert-test
