@@ -26,8 +26,10 @@ import createVisualization from "./index";
   `date-breakout`, `month-breakout` are bucketed datetimes;
   `day-of-week`, `hour-of-day` are integer date parts.
 - `mockSeries(cols, rows)` — a one-result `series`.
-- `checkViz(createVisualization, { series, settings? })` — runs
-  `checkRenderable` with default settings filled in; throws its error.
+- `checkViz(createVisualization, { series, settings? })` — resolves
+  settings as Metabase does (`getValue`; else the passed value if
+  `isValid` accepts it; else `getDefault`), runs `checkRenderable`;
+  throws its error.
 - `renderViz(createVisualization, { series, settings?, colorScheme?, width?, height? })`
   — `checkViz`, then renders the component; a render error throws.
   Returns `container`, `hovers` and `clicks` (every `onHover`/`onClick`

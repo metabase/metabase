@@ -38,6 +38,7 @@ export type RenderVizOptions<TSettings extends BaseVisualizationSettings> =
 
 type SettingResolvers = {
   getValue?: (series: Series, settings: object) => unknown;
+  isValid?: (series: Series, settings: object) => boolean;
   getDefault?: (series: Series, settings: object) => unknown;
 };
 
@@ -71,15 +72,22 @@ const resolveSettings = <TSettings extends BaseVisualizationSettings>(
   viz: CustomVisualization<TSettings>,
   { series, settings = {} }: VizOptions<TSettings>,
 ): CustomVisualizationSettings<TSettings> => {
-  const resolved: Record<string, unknown> = { column: () => ({}) };
-  Object.entries(settings).forEach(([key, value]) => {
-    resolved[key] = value;
-  });
+  const stored: Record<string, unknown> = settings;
+  const resolved: Record<string, unknown> = { ...stored, column: () => ({}) };
   Object.entries(viz.settings ?? {}).forEach(([id, definition]) => {
-    if (!(id in settings) && isSettingResolvers(definition)) {
-      resolved[id] =
-        definition.getValue?.(series, resolved) ??
-        definition.getDefault?.(series, resolved);
+    if (!isSettingResolvers(definition)) {
+      return;
+    }
+    const { getValue, isValid, getDefault } = definition;
+    if (getValue) {
+      resolved[id] = getValue(series, resolved);
+    } else if (
+      stored[id] !== undefined &&
+      (!isValid || isValid(series, resolved))
+    ) {
+      resolved[id] = stored[id];
+    } else {
+      resolved[id] = getDefault?.(series, resolved);
     }
   });
   if (!isSettings<TSettings>(resolved)) {
