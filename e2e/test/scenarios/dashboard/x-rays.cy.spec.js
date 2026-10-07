@@ -288,19 +288,9 @@ describe("scenarios > x-rays", { tags: "@slow" }, () => {
   it("should correctly apply breakout in query builder (metabase#14648)", () => {
     cy.visit(`/auto/dashboard/table/${ORDERS_ID}`);
 
-    // canceled requests will still increment intercept counter
-    const NUMBER_OF_DATASET_REQUESTS = 8 * 2;
-    cy.intercept("POST", "/api/dataset").as("ordersDataset");
-
-    cy.log("wait for dashcard with 18,760 dataset");
-
-    waitForSatisfyingResponse(
-      "@ordersDataset",
-      { body: { data: { rows: [[18760]] } } },
-      NUMBER_OF_DATASET_REQUESTS,
-    );
-
-    H.getDashboardCards().contains("18,760").click();
+    getDashcardByTitle("Total transactions")
+      .findByText("18,760", { timeout: 30000 })
+      .click();
 
     H.popover().within(() => {
       cy.findByText("Break out by…").click();
@@ -361,7 +351,13 @@ describe("scenarios > x-rays", { tags: "@slow" }, () => {
         cy.wait("@dataset", { timeout: 60000 });
 
         // Ensure charts actually got rendered
-        cy.get("text").contains("Created At");
+        cy.url().should("include", "/auto/dashboard/");
+        H.main()
+          .findByText(
+            /^A closer look at number of Orders where Created At is in/,
+          )
+          .should("be.visible");
+        H.dashboardGrid().find("text").contains("Created At");
       },
     );
   });
@@ -468,24 +464,6 @@ describe("scenarios > x-rays", { tags: "@slow" }, () => {
     getDashcardByTitle("A look at the number of Orders").should("exist");
   });
 });
-
-function waitForSatisfyingResponse(
-  alias,
-  partialResponse,
-  maxRequests,
-  level = 0,
-) {
-  if (level === maxRequests) {
-    throw `${maxRequests} requests exceeded`; // fail the test
-  }
-
-  cy.wait(alias).then((interception) => {
-    const isMatch = Cypress._.isMatch(interception.response, partialResponse);
-    if (!isMatch) {
-      waitForSatisfyingResponse(alias, partialResponse, maxRequests, level + 1);
-    }
-  });
-}
 
 function getDashcardByTitle(title) {
   return H.dashboardGrid()

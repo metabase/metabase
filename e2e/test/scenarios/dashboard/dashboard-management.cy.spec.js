@@ -69,6 +69,8 @@ describe("managing dashboard from the dashboard's edit menu", () => {
               cy.reload();
               assertOnRequest("getDashboard");
               cy.findByDisplayValue(`${dashboardName}1`);
+              H.openDashboardInfoSidebar();
+              H.sidesheet().findByText("Foo").should("be.visible");
             });
 
             it("should shallow duplicate a dashboard but not its cards", () => {

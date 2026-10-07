@@ -60,6 +60,7 @@ describe("scenarios > dashboard > dashboard back navigation", () => {
 
     H.appBar().findByText("Our analytics").click();
     cy.findByTestId("collection-table").findByText("Orders").click();
+    H.queryBuilderHeader().findByDisplayValue("Orders").should("be.visible");
     cy.findByLabelText(backButtonLabel).should("not.exist");
   });
 

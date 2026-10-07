@@ -103,6 +103,7 @@ describe("Dashboard > Dashboard Questions", () => {
 
       H.dashboardCards().findByText("Total Orders").click();
       H.openQuestionActions();
+      H.popover().findByText("Move").should("be.visible");
       H.popover().findByText("Turn into a model").should("not.exist");
       H.popover().findByText("Add to dashboard").should("not.exist");
       cy.findByLabelText("Navigation bar").should(
@@ -241,6 +242,8 @@ describe("Dashboard > Dashboard Questions", () => {
       H.entityPickerModal().button("Move").click();
 
       cy.wait(["@updateCard", "@updateCard"]);
+      H.undoToast().findByText("Moved 2 questions");
+      H.collectionTable().findByText("Orders Model").should("be.visible");
       cy.findByTestId("error-boundary").should("not.exist");
       H.visitDashboard(S.ORDERS_DASHBOARD_ID, { dashcardTimeout: 30000 });
       H.dashboardCards().findByText("Orders");
@@ -489,11 +492,13 @@ describe("Dashboard > Dashboard Questions", () => {
       H.navigationSidebar().findByText("Orders");
       H.entityPickerModal().findByText("Orders in a dashboard").click();
       H.entityPickerModal().button("Move").click();
+      H.undoToast().findByText("Orders in a dashboard");
       H.visitDashboard(S.ORDERS_DASHBOARD_ID);
       // it's still bookmarked
       cy.findByTestId("sidebar-toggle").click();
       H.navigationSidebar().findByText("Orders");
       H.dashboardCards().findByText("Orders").click();
+      H.appBar().findByText("Orders in a dashboard");
 
       // unbookmark it
       H.queryBuilderHeader().icon("bookmark_filled").click();
@@ -544,8 +549,13 @@ describe("Dashboard > Dashboard Questions", () => {
       cy.icon("copy").click();
       cy.findAllByTestId("dashcard").should("have.length", 2);
       H.showDashboardCardActions(0);
-      cy.icon("trash").should("not.exist");
-      cy.icon("close").should("exist");
+      H.getDashboardCard(0)
+        .findByTestId("dashboardcard-actions-panel")
+        .should("be.visible")
+        .within(() => {
+          cy.icon("close").should("exist");
+          cy.icon("trash").should("not.exist");
+        });
 
       cy.log(
         "should have the trash option if changes leave only one dashcard for a question",
@@ -729,6 +739,7 @@ describe("Dashboard > Dashboard Questions", () => {
 
       // check that it got removed
       H.visitDashboard(S.ORDERS_DASHBOARD_ID);
+      H.dashboardCards().findByText("More Total Orders").should("be.visible");
       H.dashboardCards().findByText("Total Orders").should("not.exist");
 
       // restore it
@@ -1040,6 +1051,9 @@ describe("Dashboard > Dashboard Questions", () => {
       cy.wait(["@getADashboard"]);
 
       H.modal()
+        .findByLabelText(/Where do you want to save this/)
+        .should("contain.text", "Personal Collection");
+      H.modal()
         .findByText(/Orders in a dashboard/)
         .should("not.exist");
 
@@ -1203,6 +1217,7 @@ describe("Dashboard > Dashboard Questions", () => {
       cy.log("assert option to migrate is no longer available");
       H.openCollectionMenu();
       H.popover().within(() => {
+        cy.findByText("Move").should("be.visible");
         cy.findByText("Move questions into their dashboards").should(
           "not.exist",
         );
@@ -1227,9 +1242,15 @@ describe("Dashboard > Dashboard Questions", () => {
       cy.log(
         "should be immediately responsive to dashcard changes making new candidates",
       );
+      cy.intercept(
+        "GET",
+        "/api/collection/*/dashboard-question-candidates*",
+      ).as("dashboardQuestionCandidates");
       H.visitCollection(S.FIRST_COLLECTION_ID);
+      cy.wait("@dashboardQuestionCandidates");
       H.openCollectionMenu();
       H.popover().within(() => {
+        cy.findByText("Move").should("be.visible");
         cy.findByText("Move questions into their dashboards").should(
           "not.exist",
         );
@@ -1270,6 +1291,7 @@ describe("Dashboard > Dashboard Questions", () => {
       cy.log("user should not be able to engage with the tool");
       H.openCollectionMenu();
       H.popover().within(() => {
+        cy.findByText("Move").should("be.visible");
         cy.findByText("Move questions into their dashboards").should(
           "not.exist",
         );
