@@ -584,7 +584,7 @@ describe("RemoteSyncSettingsForm", () => {
       });
     });
 
-    it("should show the connection error under the repository URL field", async () => {
+    it("should show the connection error in the failure icon's tooltip", async () => {
       setup({
         remoteSyncType: "read-only",
         remoteSyncUrl: "https://github.com/test/repo.git",
@@ -610,11 +610,10 @@ describe("RemoteSyncSettingsForm", () => {
         expect(testRequest).toBeDefined();
       });
 
-      expect(
-        await screen.findByText(
-          "Authentication failed: Please check your git credentials",
-        ),
-      ).toBeInTheDocument();
+      await userEvent.hover(await screen.findByLabelText("Connection failed"));
+      expect(await screen.findByRole("tooltip")).toHaveTextContent(
+        "Authentication failed: Please check your git credentials",
+      );
       expect(screen.getByLabelText(/Repository URL/i)).toHaveValue(
         "https://github.com/test/repo.git",
       );

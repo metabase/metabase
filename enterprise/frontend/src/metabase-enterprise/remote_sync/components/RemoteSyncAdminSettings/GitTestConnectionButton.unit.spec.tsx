@@ -2,7 +2,6 @@ import userEvent from "@testing-library/user-event";
 
 import { setupRemoteSyncTestConnectionEndpoint } from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
-import { FormProvider } from "metabase/forms";
 
 import { GitTestConnectionButton } from "./GitTestConnectionButton";
 
@@ -15,12 +14,9 @@ const setup = ({
   error?: { status: number; message: string };
 } = {}) => {
   setupRemoteSyncTestConnectionEndpoint({ error });
-  const renderButton = (url: string, token: string) => (
-    <FormProvider initialValues={{}} onSubmit={jest.fn()}>
-      <GitTestConnectionButton url={url} token={token} />
-    </FormProvider>
+  const { rerender } = renderWithProviders(
+    <GitTestConnectionButton url={URL} token={TOKEN} />,
   );
-  const { rerender } = renderWithProviders(renderButton(URL, TOKEN));
   return {
     rerender: ({
       url = URL,
@@ -28,7 +24,7 @@ const setup = ({
     }: {
       url?: string;
       token?: string;
-    }) => rerender(renderButton(url, token)),
+    }) => rerender(<GitTestConnectionButton url={url} token={token} />),
   };
 };
 
