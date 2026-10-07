@@ -447,18 +447,17 @@
                                   (tru "The {0} connection key is reserved for the Metabase AI service."
                                        (pr-str llm.provider/managed-connection-key)))
           submitted (without-blank-values (update-keys config keyword))
-          _         (llm.provider/assert-config-applies! type submitted submitted)
           conn      {:key    conn-key
                      :type   type
                      :name   (or (not-empty name) (str (:label provider-type)))
-                     :config (llm.provider/config-to-store type submitted)}
+                     :config submitted}
           env-config (llm.provider/env-overlay-config conn-key type)
           ;; what this connection will run on the moment it exists, which a variable already naming one of
           ;; its fields has a say in
           effective (llm.provider/effective-config conn env-config)]
       (llm.provider/assert-credentials-not-captured! conn submitted env-config)
       ;; a secret the environment supplies may only go where the environment points, as on update
-      (llm.provider/assert-destination-change-authorized! type env-config effective submitted (keys env-config))
+      (llm.provider/assert-base-url-change-authorized! type env-config effective submitted (keys env-config))
       (llm.provider/validate-config! type effective)
       (let [{:keys [connection-info] :as listed} (verify-credentials! conn effective model)
             conn              (update conn :config merge connection-info)
@@ -498,23 +497,18 @@
         conn-type  (:type existing)
         env-config (llm.provider/env-overlay-config conn-key conn-type)
         client-cfg (apply dissoc config (:env-fields live))
-        submitted  (cond-> existing
+        merged     (cond-> existing
                      (some? config)     (assoc :config (without-blank-values
                                                         (llm.provider/merge-config
                                                          conn-type (:config existing) client-cfg)))
                      (not-empty name)   (assoc :name name))
-        _          (llm.provider/assert-config-applies! conn-type client-cfg
-                                                        (merge (:config submitted) env-config))
-        ;; the connection as the app DB will hold it, so the checks below and the answer at the end are
-        ;; about the connection the admin will have rather than the request that arrived
-        merged     (update submitted :config #(llm.provider/config-to-store conn-type %))
         ;; what the connection will actually run on, which is not everything it merged
         effective  (llm.provider/effective-config merged env-config)]
     ;; Before validation probes the new URL with the effective credentials, require proof that the caller holds every
     ;; secret that would travel there. Omitted and masked secrets were merged from storage; env-owned ones cannot be
     ;; re-supplied through this API at all.
-    (llm.provider/assert-destination-change-authorized! conn-type (:config live) effective client-cfg
-                                                        (:env-fields live))
+    (llm.provider/assert-base-url-change-authorized! conn-type (:config live) effective client-cfg
+                                                     (:env-fields live))
     ;; and before the completeness check, which would otherwise report a credential the environment has moved this
     ;; connection away from as one the admin never entered
     (llm.provider/assert-credentials-not-captured! merged client-cfg env-config)

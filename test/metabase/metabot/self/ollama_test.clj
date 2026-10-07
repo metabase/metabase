@@ -1,7 +1,7 @@
 (ns metabase.metabot.self.ollama-test
   "Deliberately narrower than [[metabase.metabot.self.vllm-test]] — the two adapters share a
-  transport, so what is covered here is what differs: the two deployments, the catalog shape Ollama
-  returns, the context-window check, and the diagnoses."
+  transport, so what is covered here is what differs: telling Ollama Cloud's models apart, the catalog
+  shape Ollama returns, the context-window check, and the diagnoses."
   (:require
    [clj-http.client :as http]
    [clojure.test :refer :all]
@@ -13,6 +13,7 @@
    [metabase.metabot.self.debug :as debug]
    [metabase.metabot.self.ollama :as ollama]
    [metabase.metabot.self.ollama.capabilities :as ollama.capabilities]
+   [metabase.metabot.self.ollama.connection :as ollama.connection]
    [metabase.test :as mt]
    [metabase.util.json :as json]
    [metabase.util.log.capture :as log.capture])
@@ -53,11 +54,11 @@
 (def ^:private credentials
   "A self-hosted connection. No API key: a self-hosted Ollama is unauthenticated, so this is the
   ordinary case rather than a degenerate one."
-  {:hosting "self-hosted" :base-url base-url})
+  {:base-url base-url})
 
 (def ^:private cloud-credentials
-  "An Ollama Cloud connection: a key and no address, because Cloud's address is not configurable."
-  {:hosting "cloud" :api-key "sk-cloud-key"})
+  "An Ollama Cloud connection: Cloud's own address, and the key it requires."
+  {:base-url "https://ollama.com/v1" :api-key "sk-cloud-key"})
 
 (def ^:private keyed-credentials
   "A self-hosted Ollama behind a proxy that requires a key."
@@ -65,8 +66,7 @@
 
 (defn- captured-request
   "Drive `list-models` against a stub and return the request it issued. Credentials go through
-  `with-field-defaults` first, as every real caller does — a hand-built map could carry a `:hosting`
-  value no caller can produce."
+  `with-field-defaults` first, as every real caller does."
   [raw-config]
   (let [seen (atom nil)]
     (mt/with-dynamic-fn-redefs [http/request (fn [req]
@@ -208,6 +208,45 @@
       (is (= "Answer by calling the `structured_output` tool. Do not reply in chat."
              (:content (last (:messages body))))
           "last, where an instruction carries furthest"))))
+
+(deftest ^:parallel request-body-asks-a-cloud-model-on-a-self-hosted-server-in-words-test
+  (testing (str "a self-hosted server forwards a Cloud-tagged model to ollama.com, body and all, so the grammar "
+                "would be discarded there just the same — the model, not the connection, decides")
+    (let [body (ollama/ollama-request-body {:model       "gpt-oss:120b-cloud"
+                                            :input       [{:role :user :content "hi"}]
+                                            :schema      {:type "object"}
+                                            :credentials credentials})]
+      (is (nil? (:response_format body)))
+      (is (= "Answer by calling the `structured_output` tool. Do not reply in chat."
+             (:content (last (:messages body)))))))
+  (testing "while a model the same server runs itself still gets the grammar"
+    (is (some? (:response_format (ollama/ollama-request-body {:model       "qwen3:8b"
+                                                              :input       [{:role :user :content "hi"}]
+                                                              :schema      {:type "object"}
+                                                              :credentials credentials}))))))
+
+(deftest ^:parallel served-by-cloud-test
+  (testing "Ollama Cloud's own address serves every model under its plain name"
+    (are [url] (true? (ollama.connection/served-by-cloud? {:base-url url} "gemma4:31b"))
+      "https://ollama.com/v1"
+      "https://OLLAMA.com/v1"
+      "https://api.ollama.com/v1"))
+  (testing "an address that merely contains the name is not it"
+    (are [url] (false? (ollama.connection/served-by-cloud? {:base-url url} "gemma4:31b"))
+      "https://ollama.com.example.org/v1"
+      "https://notollama.com/v1"
+      "http://ollama.internal:11434/v1"))
+  (testing "on any other server, a Cloud model says so in its tag, by Ollama's own rule"
+    (are [model expected] (= expected (ollama.connection/served-by-cloud? credentials model))
+      "gpt-oss:120b-cloud"                  true
+      "gemma4:cloud"                        true
+      "GPT-OSS:120B-CLOUD"                  true
+      "qwen3:8b"                            false
+      ;; the rule reads the tag, and a name with no tag has none
+      "my-model-cloud"                      false
+      ;; a registry port is not a tag
+      "registry.example.com:5000/foo-cloud" false
+      nil                                   false)))
 
 (deftest ^:parallel request-body-leaves-an-unstructured-request-alone-test
   (testing "the instruction is for structured requests only — appending it to ordinary chat would put
@@ -1097,114 +1136,57 @@
     (testing "with no default model — the operator serves whatever they pulled"
       (is (nil? (llm.provider/default-model "ollama"))))))
 
-(deftest ollama-form-asks-which-deployment-test
-  (testing "the two deployments need opposite things, so the admin says which they have rather than
-           the form guessing"
-    (let [fields   (:fields (llm.provider/provider-type "ollama"))
-          by-key   (into {} (map (juxt :key identity)) fields)
-          hosting  (:hosting by-key)
-          base-url (:base-url by-key)]
-      (testing "self-hosted is the default — this type exists because operators asked to run their own
-               models, so defaulting to a paid service would invert the request"
-        (is (= "self-hosted" (:default hosting)))
-        (is (= ["self-hosted" "cloud"] (mapv :value (:options hosting)))))
-      (testing "the address is asked for only when it is knowable — Cloud's is not configurable"
-        (is (= {:field :hosting :value "self-hosted"} (:show-when base-url))))
-      (testing "no default address: a self-hosted Ollama is wherever the operator put it, and on a
-               real install localhost is the Metabase container rather than that host. The
-               placeholder shows the shape without asserting an address."
-        (is (nil? (:default base-url)))))))
+(deftest ollama-form-asks-for-an-address-and-a-key-test
+  (let [by-key   (into {} (map (juxt :key identity)) (:fields (llm.provider/provider-type "ollama")))
+        base-url (:base-url by-key)]
+    (testing "two fields, and nothing that says which kind of server is behind them: the address does"
+      (is (= #{:base-url :api-key} (set (keys by-key)))))
+    (testing (str "the address is required and has no default: a self-hosted Ollama is wherever the operator put "
+                  "it, and on a real install localhost is the Metabase container rather than that host")
+      (is (true? (:required? base-url)))
+      (is (nil? (:default base-url))))
+    (testing "the key is optional, since a self-hosted server takes none"
+      (is (not (:required? (:api-key by-key)))))))
 
-(deftest ollama-requires-an-address-or-a-key-test
-  (testing "`:required?` cannot say 'required in one deployment', so :required-any carries the coarse
-           rule, as it does for Google's two auth methods, and :validate the exact one"
-    (testing "either deployment configured on its own is complete"
-      (is (true? (llm.provider/credentials-complete? "ollama" {:hosting "cloud" :api-key "sk-x"})))
-      (is (true? (llm.provider/credentials-complete? "ollama" {:hosting  "self-hosted"
-                                                               :base-url base-url}))))
-    (testing "and neither is not"
-      (is (false? (llm.provider/credentials-complete? "ollama" {})))
-      (is (thrown-with-msg?
-           clojure.lang.ExceptionInfo
-           #"ollama needs one of: API base URL or API key"
-           (llm.provider/validate-config! "ollama" {:hosting "self-hosted"})))))
-  (testing "the union is satisfied by either credential whichever deployment is picked, so each
-           deployment's own requirement is checked too. Asked of `config-complete?`, which is what the
-           `usable` flag reads: a credential is present either way, the question is reachability."
-    (testing "a self-hosted server needs its address; a key alone is Cloud's credential"
-      (is (false? (llm.provider/config-complete? "ollama" {:hosting "self-hosted" :api-key "sk-x"})))
-      (is (thrown-with-msg?
-           clojure.lang.ExceptionInfo
-           #"self-hosted Ollama needs the API base URL"
-           (llm.provider/validate-config! "ollama" {:hosting "self-hosted" :api-key "sk-x"}))))
-    (testing "and Cloud needs a key; its address is fixed, so a base URL says nothing about it"
-      (is (false? (llm.provider/config-complete? "ollama" {:hosting "cloud" :base-url base-url})))
-      (is (thrown-with-msg?
-           clojure.lang.ExceptionInfo
-           #"Ollama Cloud needs an API key"
-           (llm.provider/validate-config! "ollama" {:hosting "cloud" :base-url base-url}))))
-    (testing "the deployment defaults to self-hosted, so MB_LLM_OLLAMA_API_KEY on its own is incomplete
-             rather than a working Cloud connection"
-      (is (false? (llm.provider/config-complete?
-                   "ollama" (llm.provider/with-field-defaults "ollama" {:api-key "sk-x"}))))))
+(deftest ollama-requires-an-address-test
+  (testing "an address is a complete connection, whether it is a server of the operator's or Ollama Cloud's"
+    (is (true? (llm.provider/credentials-complete? "ollama" {:base-url base-url})))
+    (is (true? (llm.provider/credentials-complete? "ollama" cloud-credentials))))
+  (testing "a key with nowhere to send it is not"
+    (is (false? (llm.provider/credentials-complete? "ollama" {:api-key "sk-x"})))
+    (is (thrown-with-msg?
+         clojure.lang.ExceptionInfo
+         #"API base URL is required for ollama"
+         (llm.provider/validate-config! "ollama" {:api-key "sk-x"}))))
+  (testing "an address is judged by the network policy"
+    (is (thrown-with-msg?
+         clojure.lang.ExceptionInfo
+         #"not allowed to connect to"
+         (llm.provider/validate-config! "ollama" {:base-url "http://192.168.1.20:11434/v1"}))))
   (testing "a trailing slash still cannot double up when a path is joined onto it"
     (is (= "http://host:11434/v1"
            (:base-url (llm.provider/with-field-defaults "ollama" {:base-url "http://host:11434/v1///"}))))))
 
-(deftest ollama-does-not-keep-a-base-url-cloud-would-never-use-test
-  (testing (str "Cloud never reads `:base-url`, so a connection submitted with the address it used "
-                "while self-hosted is neither refused over it nor left carrying it")
-    (mt/with-temporary-setting-values [llm-providers []]
-      (let [submitted {:hosting "cloud" :api-key "sk-cloud" :base-url "http://192.168.1.20:11434/v1"}]
-        (is (nil? (llm.provider/validate-config! "ollama" submitted))
-            "not rejected on the private-network policy, which applies to an address Cloud never calls")
-        (llm.provider/set-connections! [{:key "ollama" :type "ollama" :name "o" :config submitted}])
-        (is (= {:hosting "cloud" :api-key "sk-cloud"}
-               (:config (first (llm.provider/stored-connections))))
-            "and the address is gone, so nothing later reads it as a destination the caller chose"))))
-  (testing "a self-hosted connection is still judged on the address it does use"
-    (is (thrown-with-msg?
-         clojure.lang.ExceptionInfo
-         #"not allowed to connect to"
-         (llm.provider/validate-config! "ollama" {:hosting  "self-hosted"
-                                                  :base-url "http://192.168.1.20:11434/v1"})))))
-
-(deftest ollama-resolves-the-address-from-the-deployment-test
+(deftest ollama-calls-the-address-it-was-given-test
   ;; Credentials go through `with-field-defaults` on every real path — `resolve-model-ref` for
-  ;; requests, the provider API for connect — so these run through it too. Testing the adapter with a
-  ;; hand-built map would pass for a `:hosting` value no caller can actually produce.
+  ;; requests, the provider API for connect — so these run through it too.
   (letfn [(url-of [raw-config] (:url (captured-request raw-config)))]
-    (testing "Cloud has one address, so it is not configurable and a stray stored base URL cannot
-             override the deployment the admin chose"
-      (is (= "https://ollama.com/v1/models" (url-of {:hosting "cloud" :api-key "sk-cloud-key"})))
-      (is (= "https://ollama.com/v1/models"
-             (url-of {:hosting "cloud" :base-url "http://leftover:11434/v1"}))))
+    (testing "Ollama Cloud is reached at its own address, like any other server"
+      (is (= "https://ollama.com/v1/models" (url-of cloud-credentials))))
     (testing "a self-hosted connection goes exactly where it was told"
-      (is (= (str base-url "/models") (url-of {:hosting "self-hosted" :base-url base-url}))))
-    (testing "a self-hosted connection with no address throws rather than falling through to Cloud,
-             which would send an operator's data somewhere they did not choose"
+      (is (= (str base-url "/models") (url-of credentials))))
+    (testing "a connection with no address throws rather than guessing at one"
       (let [e (is (thrown-with-msg?
                    clojure.lang.ExceptionInfo
                    #"No Ollama base URL is set"
-                   (url-of {:hosting "self-hosted" :api-key "proxy-key"})))]
+                   (url-of {:api-key "proxy-key"})))]
         (testing "tagged so the admin API renders it under the field rather than as a 500"
-          (is (= {:status-code 400 :field :base-url} (select-keys (ex-data e) [:status-code :field]))))))
-    (testing "an environment-configured connection names its deployment with MB_LLM_OLLAMA_HOSTING.
-             Without it `:hosting` defaults to self-hosted, so a key on its own is an incomplete
-             self-hosted connection rather than a silent Cloud one."
-      (is (= "http://env:11434/v1/models" (url-of {:base-url "http://env:11434/v1"})))
-      (is (thrown-with-msg?
-           clojure.lang.ExceptionInfo
-           #"No Ollama base URL is set"
-           (url-of {:api-key "sk-x"}))))))
+          (is (= {:status-code 400 :field :base-url} (select-keys (ex-data e) [:status-code :field]))))))))
 
 (deftest ollama-is-configurable-from-the-environment-test
-  (testing "`:hosting` is not a credential, but it has to be settable or an env-configured Cloud
-           connection could not say that is what it is"
-    (is (= {:hosting  "MB_LLM_OLLAMA_HOSTING"
-            :base-url "MB_LLM_OLLAMA_API_BASE_URL"
-            :api-key  "MB_LLM_OLLAMA_API_KEY"}
-           (llm.provider/connection-env-vars "ollama"))))
+  (is (= {:base-url "MB_LLM_OLLAMA_API_BASE_URL"
+          :api-key  "MB_LLM_OLLAMA_API_KEY"}
+         (llm.provider/connection-env-vars "ollama")))
   (letfn [(connection-config []
             (:config (first (llm.provider/connections))))
           (url-for [config]
@@ -1216,38 +1198,29 @@
                  {:credentials (llm.provider/with-field-defaults "ollama" config)}))
               @called))]
     (mt/with-temporary-setting-values [llm-providers []]
-      (testing "a base URL alone synthesizes a self-hosted connection and reaches that server"
+      (testing "a base URL alone synthesizes a connection and reaches that server"
         (mt/with-temp-env-var-value! [mb-llm-ollama-api-base-url base-url]
-          (is (= {:base-url base-url :hosting "self-hosted"} (connection-config)))
+          (is (= {:base-url base-url} (connection-config)))
           (is (= (str base-url "/models") (url-for (connection-config))))))
-      (testing "a key plus MB_LLM_OLLAMA_HOSTING=cloud synthesizes a Cloud connection and reaches Cloud"
-        (mt/with-temp-env-var-value! [mb-llm-ollama-api-key "sk-env"
-                                      mb-llm-ollama-hosting "cloud"]
-          (is (= {:api-key "sk-env" :hosting "cloud"} (connection-config)))
+      (testing "Cloud's address plus a key synthesizes a Cloud connection and reaches Cloud"
+        (mt/with-temp-env-var-value! [mb-llm-ollama-api-base-url "https://ollama.com/v1"
+                                      mb-llm-ollama-api-key      "sk-env"]
+          (is (= {:base-url "https://ollama.com/v1" :api-key "sk-env"} (connection-config)))
           (is (= "https://ollama.com/v1/models" (url-for (connection-config))))))
-      (testing "a key on its own is an incomplete self-hosted connection rather than a silent Cloud
-               one — `:hosting` defaults to self-hosted, so the address has to be said out loud"
+      (testing "a key on its own brings no connection into existence: it has nowhere to be sent"
         (mt/with-temp-env-var-value! [mb-llm-ollama-api-key "sk-env"]
-          (is (thrown-with-msg?
-               clojure.lang.ExceptionInfo
-               #"No Ollama base URL is set"
-               (url-for (connection-config)))))))))
+          (is (empty? (llm.provider/connections))))))))
 
 (deftest ollama-takes-one-key-for-either-deployment-test
-  (testing "one field shown in both modes: Cloud always needs a key and a self-hosted server needs
-           one only behind a proxy, but the admin has already said which they have, so copy spelling
-           out both cases would always be half noise"
-    (let [api-key (->> (:fields (llm.provider/provider-type "ollama"))
-                       (m/find-first (comp #{:api-key} :key)))]
-      (is (nil? (:show-when api-key)))))
   (testing "it is the only secret the type stores"
     (is (= #{:api-key} (llm.provider/secret-field-keys "ollama"))))
-  (testing "and it authenticates either deployment, since both take the same Bearer header"
+  (testing "and it authenticates against Cloud and a self-hosted server alike, since both take the same Bearer header"
     (letfn [(bearer [creds] (get-in (captured-request creds) [:headers "Authorization"]))]
       (is (= "Bearer sk-cloud-key" (bearer cloud-credentials)))
       (is (= "Bearer proxy-key" (bearer keyed-credentials)))
       (testing "a plain self-hosted server takes no key, and must not get an empty header"
         (is (nil? (bearer credentials)))))))
+
 (deftest ollama-has-no-model-allow-list-test
   (testing "`known-models` returns nil rather than throwing — the catalog is whatever is pulled"
     (is (nil? (self/known-models "ollama")))))

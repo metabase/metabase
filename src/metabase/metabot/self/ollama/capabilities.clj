@@ -131,7 +131,7 @@
   back onto the very config it probed with. Repointing at another address or rotating the key retires
   it, since the same tag on another server is another model."
   [credentials model]
-  [(hash (select-keys credentials [:hosting :base-url :api-key])) model])
+  [(hash (select-keys credentials [:base-url :api-key])) model])
 
 (def ^:private retry-after-ms
   "How long an entry that holds no answer, from a server that did not give one, is left alone.

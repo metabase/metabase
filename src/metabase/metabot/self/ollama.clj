@@ -1,5 +1,5 @@
 (ns metabase.metabot.self.ollama
-  "Ollama adapter, serving both deployments: Cloud and self-hosted.
+  "Ollama adapter, for a self-hosted Ollama server or Ollama Cloud.
 
   A sibling of [[metabase.metabot.self.vllm]] rather than a layer over it — same Chat Completions
   transport, but Ollama has no server flags to point an admin at, so every diagnosis differs.
@@ -34,7 +34,7 @@
 
 (def ^:private provider
   "Ollama's descriptor. No `:supports-ai-proxy?`, so [[adapter/request!]] refuses a proxied request: the
-  proxy fronts hosted providers, and both Ollama deployments are reached directly."
+  proxy fronts hosted providers, and Ollama, self-hosted or Cloud, is reached directly."
   (adapter/provider
    {:slug           "ollama"
     :display-name   "Ollama"
@@ -215,13 +215,13 @@
   really use — [[forced/probe-body]] decides which that is, and [[forced/probe-verdict]] reads the
   answer.
 
-  The remedy is what differs between deployments, so only the message branches here. Self-hosted can
-  fail on the *server* rather than the model, because an Ollama too old to read `response_format`
-  ignores it and the model answers in prose. Cloud cannot fail that way: nothing there was ever going
-  to enforce it, so a model that will not take the instruction has to be caught at connect — nothing
-  downstream can repair it."
+  The remedy is what differs between a self-hosted model and one Ollama Cloud serves, so only the
+  message branches here. Self-hosted can fail on the *server* rather than the model, because an Ollama
+  too old to read `response_format` ignores it and the model answers in prose. Cloud cannot fail that
+  way: nothing there was ever going to enforce it, so a model that will not take the instruction has
+  to be caught at connect — nothing downstream can repair it."
   [{:keys [credentials] :as req} model]
-  (let [cloud? (conn/cloud? credentials)
+  (let [cloud? (conn/served-by-cloud? credentials model)
         choice (probe-chat! req model (forced/probe-body cloud?))]
     (when-let [verdict (forced/probe-verdict cloud? choice)]
       (throw (preflight-ex
@@ -293,7 +293,7 @@
 
   Nothing on it is required, so connecting still succeeds, but the `/api/show` and `/api/ps` lookups
   then fail quietly on every request: thinking models get the smaller token budget and the context-window
-  check is skipped. `/api/version` because it takes nothing and both deployments serve it. The message is
+  check is skipped. `/api/version` because it takes nothing and ollama.com serves it too. The message is
   logged, not the exception, whose ex-data can carry the response."
   [credentials]
   (try
@@ -355,8 +355,8 @@
   Cheapest first, each where it can first be answered. Tool calling leads: structured output only means
   anything once it works. The context window comes next — it is a lookup on `/api/ps`, but one that
   can only answer once a probe has loaded the model — so a window too small costs one generation
-  rather than two. Which structured-output probe runs depends on the deployment, because the mechanism
-  does — see [[metabase.metabot.self.ollama.forced-calls/probe-body]].
+  rather than two. Which structured-output probe runs depends on whether Ollama Cloud serves the model,
+  because the mechanism does — see [[metabase.metabot.self.ollama.forced-calls/probe-body]].
 
   Sequential: concurrency would not help — Ollama serializes generation per model unless
   `OLLAMA_NUM_PARALLEL` is raised, and a losing probe cannot be called off: `future-cancel` interrupts,
@@ -452,6 +452,13 @@
 
 ;;; --------------------------------------------------- Requests -------------------------------------------------
 
+(defn- forced-plan
+  "How `opts`' forced tool call is expressed, decided by whether Ollama Cloud serves the requested model —
+  see [[conn/served-by-cloud?]]. Per request rather than per connection: Metabot and the mini model can be
+  on the same connection, and only one of them a Cloud model."
+  [{:keys [credentials model] :as opts}]
+  (forced/plan opts (conn/served-by-cloud? credentials model)))
+
 (defn- reasoning-message
   "Builds the assistant message that sends one block of the model's thinking back to it.
 
@@ -486,9 +493,9 @@
   stay here rather than in the shared builder, which also serves Z.AI, Mistral and OpenRouter.
 
   A forced tool call is [[metabase.metabot.self.ollama.forced-calls]]' subject, because `tool_choice`
-  does nothing on Ollama and what can be done instead depends on the deployment. All this passes it is
-  which server is being talked to. `plan` may be supplied by a caller that already has one — the
-  streaming path does — so that a request derives it once.
+  does nothing on Ollama and what can be done instead depends on who serves the model — see [[forced-plan]].
+  `plan` may be supplied by a caller that already has one — the streaming path does — so that a request
+  derives it once.
 
   The reasoning floor is looked up rather than read off the connection, because one connection serves
   as many models as the operator has pulled — see
@@ -500,7 +507,7 @@
   Ollama does have a `reasoning_effort` switch, but turning thinking off would only save tokens on
   the operator's own hardware, and it errors on models that cannot think at all."
   ([opts :- core/LLMRequestOpts]
-   (ollama-request-body opts (forced/plan opts (conn/cloud? (:credentials opts)))))
+   (ollama-request-body opts (forced-plan opts)))
 
   ([{:keys [max-tokens model temperature credentials reasoning?] :as opts
      :or   {reasoning? true}} :- core/LLMRequestOpts
@@ -557,7 +564,7 @@
   unsupported and throws. `plan` may be supplied by a caller that already has one, as in
   [[ollama-request-body]]."
   ([opts :- core/LLMRequestOpts]
-   (ollama-raw opts (forced/plan opts (conn/cloud? (:credentials opts)))))
+   (ollama-raw opts (forced-plan opts)))
 
   ([{:keys [model credentials] :as opts} :- core/LLMRequestOpts
     plan                                 :- [:maybe ::forced/plan]]
@@ -573,8 +580,6 @@
                        ;; IO branch cannot swallow a failure the provider's own messages would translate.
                        :on-request-error (fn [e]
                                            (if (instance? IOException e)
-                                             ;; the address as resolved, not `(:base-url credentials)`: a
-                                             ;; Cloud connection carries none of its own
                                              (throw (request-io-ex e (conn/base-url credentials) timeout-ms))
                                              (adapter/rethrow! provider e)))}))))
 
@@ -623,8 +628,8 @@
 
 (defn ollama
   "Call an Ollama server's Chat Completions API, return AISDK stream."
-  [{:keys [credentials] :as opts}]
-  (let [plan (forced/plan opts (conn/cloud? credentials))]
+  [opts]
+  (let [plan (forced-plan opts)]
     (eduction (comp (or (forced/read-back-xf plan) identity)
                     (unfinished-stream-xf)
                     (ollama->aisdk-chunks-xf))

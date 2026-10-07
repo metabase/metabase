@@ -15,10 +15,10 @@
 (set! *warn-on-reflection* true)
 
 (def ^:private credentials
-  {:hosting "self-hosted" :base-url "http://ollama.internal:11434/v1"})
+  {:base-url "http://ollama.internal:11434/v1"})
 
 (def ^:private cloud-credentials
-  {:hosting "cloud" :api-key "sk-cloud-key"})
+  {:base-url "https://ollama.com/v1" :api-key "sk-cloud-key"})
 
 (defn- showing
   "Stub `http/request` for `/api/show`, answering from `capabilities-by-model` — a model absent from it

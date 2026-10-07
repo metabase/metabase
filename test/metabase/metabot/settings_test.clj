@@ -292,7 +292,7 @@
         (is (false? (metabot.settings/llm-metabot-supports-reasoning?)))))))
 
 (def ^:private ollama-credentials
-  {:hosting "self-hosted" :base-url "http://ollama.internal:11434/v1"})
+  {:base-url "http://ollama.internal:11434/v1"})
 
 (def ^:private ollama-connection
   (connection "ollama" "ollama" ollama-credentials))

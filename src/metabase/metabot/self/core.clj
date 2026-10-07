@@ -189,24 +189,10 @@
    ;; recorded by the connect-time probe, not entered by the admin
    [:probed-model        {:optional true} [:maybe :string]]])
 
-(def OllamaCredentials
-  "An Ollama connection's config: which deployment it is, plus the API-key pair. `:hosting` picks between
-  the stored `:base-url` and Cloud's fixed address, so it is part of the address rather than a flag beside
-  it.
-
-  Public so `metabase.metabot.self.ollama.connection` can narrow `:hosting` to the registry's own values
-  instead of restating the key list — one place for the keys, one for the enum."
-  [:map {:closed true}
-   [:hosting      {:optional true} [:maybe :string]]
-   [:api-key      {:optional true} [:maybe :string]]
-   [:base-url     {:optional true} [:maybe :string]]
-   ;; recorded by the connect-time probe, not entered by the admin
-   [:probed-model {:optional true} [:maybe :string]]])
-
 (def LLMCredentials
   "A connection's credentials, in whichever provider shape it carries. Public so the adapter layer can say
   `:credentials` once rather than restating an open map at each schema that carries one."
-  [:or ApiKeyCredentials AzureCredentials BedrockCredentials GoogleCredentials OllamaCredentials])
+  [:or ApiKeyCredentials AzureCredentials BedrockCredentials GoogleCredentials])
 
 (def ^:private ReasoningConfig
   "A dialect-shaped reasoning/thinking directive, sent verbatim to the provider."

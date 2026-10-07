@@ -369,11 +369,8 @@ Metabase lists whichever models your Ollama server has available, so what you ca
 
 Credentials:
 
-- **Where Ollama runs** (required). One of: `self-hosted`, `cloud`. Defaults to `self-hosted`. You can also set it with the environment variable `MB_LLM_OLLAMA_HOSTING`.
-- **API base URL**. Only when **Where Ollama runs** is **Self-hosted** (`self-hosted`). Your Ollama server's address, ending in /v1. To reach a server on your private network, set MB_LLM_ALLOWED_NETWORKS=allow-private; for one on this machine, allow-all. You can also set it with the environment variable `MB_LLM_OLLAMA_API_BASE_URL`.
-- **API key**. Required for Ollama Cloud. Leave blank if your self-hosted server doesn't require one. You can also set it with the environment variable `MB_LLM_OLLAMA_API_KEY`.
-
-A self-hosted Ollama needs the **API base URL**. Ollama Cloud needs the **API key**.
+- **API base URL** (required). Your Ollama server's address, ending in /v1, or https://ollama.com/v1 for Ollama Cloud. To reach a server on your private network, set MB_LLM_ALLOWED_NETWORKS=allow-private; for one on this machine, allow-all. You can also set it with the environment variable `MB_LLM_OLLAMA_API_BASE_URL`.
+- **API key**. Required for Ollama Cloud. Leave blank if your server doesn't require one. You can also set it with the environment variable `MB_LLM_OLLAMA_API_KEY`.
 
 ## Metabase AI service
 

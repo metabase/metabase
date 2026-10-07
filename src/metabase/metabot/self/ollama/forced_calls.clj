@@ -5,8 +5,8 @@
   (https://docs.ollama.com/api/openai-compatibility lists it unsupported), so the forced tool call the
   shared Chat Completions builder produces is ignored (without any error). That
   makes forcing a call a subject in its own right here, rather than one flag on a request: what can be
-  enforced depends on the deployment, the request goes out differently as a result, and the answer
-  comes back on a different channel and has to be moved.
+  enforced depends on who serves the model, the request goes out differently as a result, and the
+  answer comes back on a different channel and has to be moved.
 
   What a self-hosted server does have is `response_format`, which compiles a JSON Schema into a
   decoding grammar and the constraint holds
@@ -19,7 +19,8 @@
 
   None of it is available on Ollama Cloud, which serves no structured outputs (ollama/ollama#12362,
   https://docs.ollama.com/capabilities/structured-outputs) and discards `format` as silently as
-  `tool_choice`. There a forced call is asked for in words and nothing guarantees it."
+  `tool_choice` — whether reached at ollama.com or through a self-hosted server that forwards a Cloud
+  model there. A forced call to a Cloud model is asked for in words and nothing guarantees it."
   (:require
    [clojure.string :as str]
    [metabase.metabot.self.core :as core]
@@ -42,7 +43,7 @@
   [:enum :structured :tool-union])
 
 (mr/def ::mechanism
-  "What this deployment can actually do about a [[::mode]].
+  "What the server serving the model can actually do about a [[::mode]].
 
   `:grammar` is enforced by the server and cannot be talked out of. `:instruction` is a request in
   words, which a model may ignore. `:none` means neither is available — a `required` turn carrying no
@@ -135,12 +136,12 @@
                 tools)})
 
 (mu/defn plan :- [:maybe ::plan]
-  "How `opts`' forced tool call will be expressed on a `cloud?` deployment, or nil when nothing is
-  forced — see [[::plan]] for the shape.
+  "How `opts`' forced tool call will be expressed, or nil when nothing is forced — see [[::plan]] for the
+  shape. `cloud?` says whether Ollama Cloud serves the requested model.
 
-  `cloud?` is the only thing about the deployment this needs, and what it implies is decided here
-  rather than by the caller: the adapter should not have to know that Cloud's limitation is about
-  grammars, only which server it is talking to.
+  `cloud?` is the only thing about the server this needs, and what it implies is decided here rather
+  than by the caller: the adapter should not have to know that Cloud's limitation is about grammars,
+  only who serves the model.
 
   A plan is produced for every forced request, even where nothing can be done about it, so that
   callers have one question to ask rather than two: `(some? (plan opts cloud?))` answers whether a
@@ -313,7 +314,8 @@
   [{:role "user" :content "Give this conversation a short title. The user asked which orders shipped late."}])
 
 (mu/defn probe-body :- ::chat-completions-body
-  "The Chat Completions body fields for a structured-output probe on this deployment.
+  "The Chat Completions body fields for a structured-output probe of a model, `cloud?` saying whether
+  Ollama Cloud serves it.
 
   Built by running a title-shaped request through the very pipeline a real one takes, rather than by
   restating its shape: a probe that describes production by hand stops describing it the moment
@@ -322,7 +324,7 @@
 
   So self-hosted is held to a grammar and Cloud is asked in words and offered the tool — each probed
   through the mechanism it will really use. Probing the other one proves nothing, being a path this
-  connection never takes."
+  model never takes."
   [cloud? :- :boolean]
   (let [opts {:input probe-messages :schema probe-schema}
         plan (plan opts cloud?)]

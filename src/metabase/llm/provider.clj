@@ -40,22 +40,11 @@
   (mapv (fn [region] {:value region :label region})
         (sort llm.provider.settings/known-aws-regions)))
 
-(def ollama-self-hosted
-  "The `:hosting` value for a self-hosted Ollama. Named rather than inlined because the adapter
-  matches on it too, and a literal on each side could drift apart silently."
-  "self-hosted")
-
-(def ollama-cloud
-  "The `:hosting` value for Ollama Cloud. See [[ollama-self-hosted]]."
-  "cloud")
-
 (def ^:private provider-type-registry
   "Every provider type Metabase can connect to, in the order the admin UI offers them.
 
   `:fields` describes the credential inputs for a connection's `:config` map. A `:password` field is treated as
-  secret everywhere: it is masked on the way out of the API and preserved when a client echoes the mask back.
-
-  A type may also carry a `:validate` hook over the whole config — see [[config-problem]]."
+  secret everywhere: it is masked on the way out of the API and preserved when a client echoes the mask back."
   [{:type          "anthropic"
     :label         (deferred-tru "Anthropic")
     :default-model "claude-sonnet-4-6"
@@ -321,8 +310,6 @@
                      :help        (deferred-tru "The name of the model deployment on your Azure resource. We recommend naming deployments after the model they serve.")}]}
    {:type          "bedrock"
     :label         (deferred-tru "Amazon Bedrock")
-    ;; `:region` only picks an AWS endpoint, and there is no base URL. See [[destination-fields]].
-    :destination-fields []
     :default-model "anthropic.claude-opus-4-8"
     :mini-model    "anthropic.claude-haiku-4-5"
     ;; A connection with a model ID serves that model instead of the catalog.
@@ -388,42 +375,26 @@
                      :help     (deferred-tru "Only needed if you started your server with --api-key.")}]}
    {:type          "ollama"
     :label         (deferred-tru "Ollama")
-    ;; Cloud ignores the stored URL and calls ollama.com, so switching deployment moves the connection
-    ;; as surely as editing the URL. See [[destination-fields]].
-    :destination-fields [:base-url :hosting]
     ;; serves whatever the operator pulled, so a new connection takes its model from the catalog
     ;; that connecting fetches (see [[metabase.metabot.self.ollama/list-models]])
     :default-model nil
-    ;; the coarse rule; `:validate` below is the exact one
-    :required-any  [[:base-url] [:api-key]]
-    :validate
-    (fn [{:keys [hosting api-key base-url]}]
-      (if (= ollama-cloud hosting)
-        (when-not (u/trimmed-string api-key)
-          (tru "Ollama Cloud needs an API key."))
-        (when-not (u/trimmed-string base-url)
-          (tru "A self-hosted Ollama needs the API base URL of your server."))))
-    :fields        [{:key       :hosting
-                     :label     (deferred-tru "Where Ollama runs")
-                     :type      :segmented
-                     :required? true
-                     :options   [{:value ollama-self-hosted :label (deferred-tru "Self-hosted")}
-                                 {:value ollama-cloud :label (deferred-tru "Cloud")}]
-                     :default   ollama-self-hosted}
-                    {:key         :base-url
+    :fields        [{:key         :base-url
                      :normalize   strip-trailing-slashes
                      :validate    llm.provider.settings/llm-url-problem
                      :label       (deferred-tru "API base URL")
                      :type        :text
-                     :show-when   {:field :hosting :value ollama-self-hosted}
+                     :required?   true
                      :placeholder "http://ollama.your.company:11434/v1"
-                     :help        (deferred-tru (str "Your Ollama server''s address, ending in /v1. To reach a server "
-                                                     "on your private network, set MB_LLM_ALLOWED_NETWORKS=allow-private; "
-                                                     "for one on this machine, allow-all."))}
+                     :help        (deferred-tru (str "Your Ollama server''s address, ending in /v1, or https://ollama.com/v1 "
+                                                     "for Ollama Cloud. To reach a server on your private network, set "
+                                                     "MB_LLM_ALLOWED_NETWORKS=allow-private; for one on this machine, "
+                                                     "allow-all."))}
                     {:key   :api-key
                      :label (deferred-tru "API key")
                      :type  :password
-                     :help  (deferred-tru "Required for Ollama Cloud. Leave blank if your self-hosted server doesn''t require one.")}]}
+                     ;; not required: a self-hosted server takes none, and a base URL on its own is a complete
+                     ;; configuration. Ollama Cloud refuses a generation without one, which connecting finds out.
+                     :help  (deferred-tru "Required for Ollama Cloud. Leave blank if your server doesn''t require one.")}]}
    {:type          "metabase"
     :label         (deferred-tru "Metabase AI service")
     :managed?      true
@@ -553,79 +524,25 @@
   [type-name field-key]
   (u/find-first-map (:fields (provider-type type-name)) [:key] field-key))
 
-(defn- field-active?
-  "Whether `field` applies to a connection configured like `config`: a `:show-when` field does so only
-  while the field it names holds that value. Ollama's base URL is inert once the deployment is Cloud,
-  so neither validation nor [[assert-credential-write-authorized!]] should judge a connection on it.
-
-  The controlling field is read through its `:default`, so a config that never set it is judged
-  against the value it will run as."
-  [type-name {:keys [show-when]} config]
-  (or (nil? show-when)
-      (let [{:keys [field value]} show-when]
-        (= value (or (u/trimmed-string (get config field))
-                     (:default (field-descriptor type-name field)))))))
-
-(defn- switched-off?
-  "Whether `config` *explicitly* switches `field` off: it sets the `:show-when` controller to
-  something else.
-
-  Stricter than [[field-active?]], which infers from the controller's `:default` — fine for judging a
-  config, not for deleting from one. Google's `:auth-method` defaults to the service account key, so
-  inferring would drop the OAuth token from any connection carrying one without naming the method."
-  [{:keys [show-when]} config]
-  (boolean (when-let [{:keys [field value]} show-when]
-             (when-let [chosen (u/trimmed-string (get config field))]
-               (not= chosen value)))))
-
 (defn- validate-field!
   [type-name {:keys [key label required? prefix default options] :as field} config]
-  (when (field-active? type-name field config)
-    (let [value (u/trimmed-string (get config key))]
-      (when (and required? (not value) (not default))
-        (throw (ex-info (tru "{0} is required for {1}." (str label) type-name)
-                        {:status-code 400 :field key})))
-      (when (and value prefix (not (str/starts-with? value prefix)))
-        (throw (ex-info (tru "Invalid {0} for {1}. It must start with ''{2}''." (str label) type-name prefix)
-                        {:status-code 400 :field key})))
-      (when (and value (seq options) (not-any? #(= value (:value %)) options))
-        (throw (ex-info (tru "Invalid {0} for {1}." (str label) type-name)
-                        {:status-code 400 :field key})))
-      (validate-field-value! field config))))
+  (let [value (u/trimmed-string (get config key))]
+    (when (and required? (not value) (not default))
+      (throw (ex-info (tru "{0} is required for {1}." (str label) type-name)
+                      {:status-code 400 :field key})))
+    (when (and value prefix (not (str/starts-with? value prefix)))
+      (throw (ex-info (tru "Invalid {0} for {1}. It must start with ''{2}''." (str label) type-name prefix)
+                      {:status-code 400 :field key})))
+    (when (and value (seq options) (not-any? #(= value (:value %)) options))
+      (throw (ex-info (tru "Invalid {0} for {1}." (str label) type-name)
+                      {:status-code 400 :field key})))
+    (validate-field-value! field config)))
 
 (defn- validate-config-field!
   "Run [[validate-field!]]'s checks for the single field `field-key` of `type-name` against `config`."
   [type-name field-key config]
   (when-let [field (field-descriptor type-name field-key)]
     (validate-field! type-name field config)))
-
-(defn- controller-value-label
-  "What the admin's form calls `value` in `field`'s own `:options`, falling back to the value itself."
-  [field value]
-  (if-let [option (u/find-first-map (:options field) [:value] value)]
-    (str (:label option))
-    value))
-
-(defn- assert-field-applies!
-  "Reject writing `field-key` to a connection configured like `config`, which switches it off.
-
-  Nothing may report a value as saved that the store will drop on the way past, so this refuses exactly
-  what [[switched-off?]] would remove and nothing more — a connection that never named its controller
-  keeps writing to both sides of it. The admin is told which other field is the reason, since that is
-  the one they have to change first."
-  [type-name field-key config]
-  (when-let [field (field-descriptor type-name field-key)]
-    (when (switched-off? field config)
-      (let [{controller-key :field} (:show-when field)
-            controller              (field-descriptor type-name controller-key)]
-        (throw (ex-info (tru "{0} does not apply when {1} is {2}."
-                             (str (:label field))
-                             (str (:label controller))
-                             (controller-value-label controller (u/trimmed-string (get config controller-key))))
-                        {:status-code 400
-                         :api-error   true
-                         :error-code  :llm-field-does-not-apply
-                         :field       field-key}))))))
 
 (defn- typed-value
   "The value `submitted` carries for `field-key` when the caller really typed one, or nil.
@@ -640,26 +557,6 @@
                (not (setting/obfuscated-value? raw))
                (not (setting/obfuscated-value? value)))
       value)))
-
-(defn assert-config-applies!
-  "Reject a value the caller really typed into a field the connection it lands on switches off.
-
-  Only a [[typed-value]] counts — neither a blank nor a mask is someone asking for a value to be kept.
-  `config` is the connection those values land on, which is not `submitted` where the environment or
-  the stored connection has a say in it."
-  [type-name submitted config]
-  (doseq [field-key (keys submitted)
-          :when     (typed-value submitted field-key)]
-    (assert-field-applies! type-name field-key config)))
-
-(defn- config-problem
-  "What `type-name`'s `:validate` hook finds wrong with `config`, as a sentence to show the admin, or nil.
-
-  A field's `:validate` sees one value, and only when it is present. This one sees the whole config, so it is
-  where a rule about an *absent* field, or about two fields together, has to go."
-  [type-name config]
-  (when-let [validate (:validate (provider-type type-name))]
-    (validate config)))
 
 (defn- validate-required-any!
   "Throw a 400 unless `config` satisfies one of `type-name`'s `:required-any` credential groups — for Google, a
@@ -703,8 +600,6 @@
   (doseq [field (:fields (provider-type type-name))]
     (validate-field! type-name field config))
   (validate-required-any! type-name config)
-  (when-let [problem (config-problem type-name config)]
-    (throw (ex-info (str problem) {:status-code 400})))
   (validate-requires! type-name config))
 
 (defn credentials-complete?
@@ -742,12 +637,11 @@
 (defn config-complete?
   "Whether a connection of `type-name` can make requests: [[credentials-complete?]], or for the Metabase-managed
   provider — which authenticates with the instance token rather than with credentials of its own — whether the LLM
-  proxy is configured, and either way [[config-problem]] finds nothing."
+  proxy is configured."
   [type-name config]
-  (and (nil? (config-problem type-name config))
-       (if (managed-type? type-name)
-         (some? (llm.provider.settings/llm-proxy-base-url))
-         (credentials-complete? type-name config))))
+  (if (managed-type? type-name)
+    (some? (llm.provider.settings/llm-proxy-base-url))
+    (credentials-complete? type-name config)))
 
 ;;; ---------------------------------------- Connections configured by env var ------------------------------------
 
@@ -813,14 +707,10 @@
                  :settings {:base-url {:setting :llm-vllm-api-base-url :credential? true}
                             :api-key  {:setting :llm-vllm-api-key}}}
    "ollama"     {:type     "ollama"
-                 ;; both are credentials, because either deployment can be configured on its own: a base
-                 ;; URL alone is a self-hosted server, which needs no key. Cloud additionally requires an
-                 ;; API key, but using Cloud also requires `:hosting` to be [[ollama-cloud]].
-                 ;; `:hosting` is not a credential — on its own it configures nothing — but it has to be
-                 ;; settable, or an env-configured Cloud connection could not say that is what it is.
+                 ;; as for vLLM, the base URL is the credential: a self-hosted server takes no key, so the URL alone
+                 ;; brings a usable connection into existence. A key alone, with no address to send it to, does not.
                  :settings {:base-url {:setting :llm-ollama-api-base-url :credential? true}
-                            :api-key  {:setting :llm-ollama-api-key :credential? true}
-                            :hosting  {:setting :llm-ollama-hosting}}}})
+                            :api-key  {:setting :llm-ollama-api-key}}}})
 
 (defn connection-env-vars
   "The environment variables that configure a connection of `type-name`, as `{config-field \"MB_LLM_...\"}`.
@@ -859,26 +749,13 @@
   (when (= type-name (:type overlay))
     overlay))
 
-(defn- with-implied-ollama-hosting
-  "An Ollama overlay whose base URL selects a self-hosted deployment. The URL applies to nothing else, so a variable
-  setting it would otherwise sit inert under a stored Cloud connection. `MB_LLM_OLLAMA_HOSTING`, where set, still
-  decides. The implied `:hosting` is attributed to the URL's variable, the one the operator actually set."
-  [{:keys [config vars] :as supplied}]
-  ;; Ugly and Ollama-specific, but doing this in a generic way was even uglier.
-  (if (and (:base-url config) (not (:hosting config)))
-    (-> supplied
-        (assoc-in [:config :hosting] ollama-self-hosted)
-        (assoc-in [:vars :hosting] (:base-url vars)))
-    supplied))
-
 (defn- env-overlays
   "The environment's contribution to each connection key, resolved on every read so editing a variable takes effect
   on the next restart without anything having to be migrated or re-saved."
   []
   (into {}
         (keep (fn [[conn-key spec]]
-                (let [{:keys [config] :as supplied} (cond-> (env-supplied-fields spec)
-                                                      (= "ollama" (:type spec)) with-implied-ollama-hosting)]
+                (let [{:keys [config] :as supplied} (env-supplied-fields spec)]
                   (when (seq config)
                     [conn-key (assoc supplied :type (:type spec))]))))
         single-provider-settings))
@@ -888,13 +765,6 @@
   nothing for it — see [[applicable-overlay]] for which overlay reaches it."
   [conn-key type-name]
   (applicable-overlay (get (env-overlays) conn-key) type-name))
-
-(defn- supplying-env-var
-  "The variable that supplies `field` of the connection stored under `conn-key` — not always the field's own, see
-  [[with-implied-ollama-hosting]] — or the field's own variable where the environment supplies nothing for it."
-  [conn-key type-name field]
-  (or (get-in (env-overlay conn-key type-name) [:vars field])
-      (get (connection-env-vars type-name) field)))
 
 (defn- env-managed-connection
   "The managed connection `MB_LLM_METABOT_PROVIDER` demands: a `metabase/...` reference pinned by the environment
@@ -929,19 +799,6 @@
                          env-managed? (assoc :env-vars #{(setting/env-var-name :llm-providers)})))]
     (into [] (map annotate) (stored-connections))))
 
-(defn- destination-fields
-  "The `:config` fields that decide which server a connection's credentials are sent to — `:base-url` unless the
-  registry says otherwise, as Ollama does: its `:hosting` picks between the stored URL and Cloud's fixed one, so the
-  connection can be moved without `:base-url` changing at all. The registry has to carry this because the adapters
-  that resolve addresses live downstream of this namespace and cannot be asked.
-
-  A field that only picks among the vendor's own endpoints — Google's `:location`, Bedrock's `:region` — is not one:
-  a credential cannot follow it anywhere else, and treating it as one would move requests out of the chosen region.
-
-  Compared, never interpreted: this namespace does not resolve addresses, it only needs to know when one moved."
-  [type-name]
-  (:destination-fields (provider-type type-name) [:base-url]))
-
 (def ^:private env-base-url-shadowing-types
   "Types whose base-URL variable shadows the address alone, letting a key typed in the UI go along with it.
 
@@ -972,102 +829,82 @@
         (warn! field))
       (update conn :config #(apply dissoc % captured)))))
 
-(defn- drop-captured-destination
-  "Drop `conn`'s stored [[destination-fields]] when layering `env-config` over it would send an environment-supplied
-  secret to an address that came from the app DB, leaving the type's defaults to stand in.
+(defn- drop-captured-base-url
+  "Drop `conn`'s stored base URL when layering `env-config` over it would send an environment-supplied secret to a
+  URL that came from the app DB, leaving the type's default to stand in.
 
-  [[assert-destination-change-authorized!]] refuses to point a connection somewhere new while carrying a secret the API
+  [[assert-base-url-change-authorized!]] refuses to point a connection somewhere new while carrying a secret the API
   caller did not freshly supply, and a secret the environment supplies can never be re-supplied through the API at
-  all. That check runs when the destination is written, so it cannot account for a variable set afterwards.
+  all. That check runs when the base URL is written, so it cannot account for a variable set afterwards.
   Deciding it again here makes the rule hold whichever order the two arrived in.
 
-  Every destination field, not only `:base-url`: Ollama's `:hosting` moves a connection to Cloud's fixed address
-  without `:base-url` changing at all, so guarding the URL alone would let a stored `cloud` carry an
-  environment-supplied key to `ollama.com`.
-
   A connection the `MB_LLM_PROVIDERS` JSON supplies is exempt: it is `:source :env`, written by the operator
-  rather than through the API, so its destination is as trusted as the variable holding the secret. A type whose
-  destination has no default — Azure, vLLM — is left incomplete, and so unusable, rather than pointed anywhere.
+  rather than through the API, so its base URL is as trusted as the variable holding the secret. A type whose base
+  URL has no default — Azure, vLLM, Ollama — is left incomplete, and so unusable, rather than pointed anywhere.
 
-  Warned about once per value: it is the only trace an operator gets of a destination their instance is
-  configured with but is not using."
+  Warned about once per value rather than on every read: it is the only trace an operator gets of a base URL their
+  instance is configured with but is not using."
   [{conn-key :key :keys [type source config] :as conn} env-config]
-  (let [stored-value (fn [field]
-                       ;; a stored value equal to the registry default is not a destination the API caller
-                       ;; chose: dropping it changes nothing, and the warning would tell an operator to set a
-                       ;; variable to the value they already have
-                       (let [value (u/trimmed-string (get config field))]
-                         (when-not (= value (:default (field-descriptor type field)))
-                           value)))
-        captured     (when (and (= :db source)
-                                (some #(contains? env-config %) (secret-field-keys type)))
-                       (filterv #(and (stored-value %)
-                                      (not (contains? env-config %)))
-                                (destination-fields type)))]
-    (drop-fields-warning-once!
-     conn :destination captured
-     (fn [field]
-       (log/warnf (str "Ignoring the stored %s of the %s LLM connection: its credentials come from the "
-                       "environment, so its destination has to as well. Set %s to keep using it.")
-                  (name field) conn-key
-                  (get (connection-env-vars type) field "the matching environment variable"))))))
+  (drop-fields-warning-once!
+   conn :base-url
+   (when (and (= :db source)
+              (u/trimmed-string (:base-url config))
+              (not (contains? env-config :base-url))
+              (some #(contains? env-config %) (secret-field-keys type)))
+     [:base-url])
+   (fn [_field]
+     (log/warnf (str "Ignoring the stored base URL of the %s LLM connection: its credentials come from the "
+                     "environment, so its base URL has to as well. Set %s to keep using it.")
+                conn-key (get (connection-env-vars type) :base-url "the matching base URL variable")))))
 
-(defn- destination-choice
-  "Where a connection points on one field: the stored value, or the field's default when it stores none.
+(defn- base-url-choice
+  "Where `config` points a connection of `type-name`: its base URL, or the type's default when it stores none.
 
   A blank address still goes somewhere — the vendor's own — so an overlay replacing it moves the
   connection just as replacing a typed one does. Normalized, so a trailing slash is not a move."
-  [{:keys [key default normalize]} config]
-  (when-let [chosen (or (u/trimmed-string (get config key)) default)]
-    (cond-> chosen normalize normalize)))
+  [type-name config]
+  (let [{:keys [default normalize]} (field-descriptor type-name :base-url)]
+    (when-let [chosen (or (u/trimmed-string (:base-url config)) default)]
+      (cond-> chosen normalize normalize))))
 
-(defn- moved-destination-field
-  "The field, if any, by which an environment overlay sends a connection somewhere other than where it
-  was pointing.
+(defn- env-moves-base-url?
+  "Whether an environment overlay's base URL sends a connection somewhere other than where it was pointing.
 
-  A field the overlay leaves inert sends nothing anywhere — Ollama's base URL once the deployment is
-  Cloud — so only one that still applies counts."
-  [type config env-config]
-  (let [effective (merge config env-config)]
-    (some (fn [field]
-            (when (u/trimmed-string (get env-config field))
-              (let [descriptor (field-descriptor type field)]
-                (when (field-active? type descriptor effective)
-                  (when-let [chosen (destination-choice descriptor config)]
-                    (when (not= chosen (destination-choice descriptor env-config))
-                      field))))))
-          (cond->> (destination-fields type)
-            (contains? env-base-url-shadowing-types type) (remove #{:base-url})))))
+  Never on a type in [[env-base-url-shadowing-types]], whose base-URL variable shadows the address alone."
+  [type-name config env-config]
+  (boolean
+   (and (not (contains? env-base-url-shadowing-types type-name))
+        (u/trimmed-string (:base-url env-config))
+        (when-let [chosen (base-url-choice type-name config)]
+          (not= chosen (base-url-choice type-name env-config))))))
 
 (defn- drop-captured-secrets
   "Keep a credential from following a connection the environment has moved, leaving it unusable rather
   than sent somewhere it was never meant for.
 
-  A secret and the address it reaches have to come from the same place. [[drop-captured-destination]]
-  holds that line when the environment brings the secret; this holds it when the environment brings the
-  address — `MB_LLM_OLLAMA_HOSTING=cloud` over a key an admin typed for a server of their own, or an
-  `MB_LLM_OLLAMA_API_BASE_URL` pointing somewhere else. A key is entered for the address it will be sent
-  to, so an overlay pointing elsewhere moves the connection whether the address was typed or left at the
-  vendor's default. Only an overlay naming where the connection already points moves nothing, and the
-  base-URL variables of [[env-base-url-shadowing-types]] are exempt.
+  A secret and the address it reaches have to come from the same place. [[drop-captured-base-url]] holds that
+  line when the environment brings the secret; this holds it when the environment brings the address — a
+  `MB_LLM_OLLAMA_API_BASE_URL` pointing somewhere other than the server an admin typed a key for. A key is
+  entered for the address it will be sent to, so an overlay pointing elsewhere moves the connection whether the
+  address was typed or left at the vendor's default. Only an overlay naming where the connection already points
+  moves nothing, and the base-URL variables of [[env-base-url-shadowing-types]] are exempt.
 
   A connection the `MB_LLM_PROVIDERS` JSON supplies is the operator's own, so nothing is taken from it."
   [{conn-key :key :keys [type source config] :as conn} env-config]
-  (let [moved    (when (= :db source)
-                   (moved-destination-field type config env-config))
-        captured (when moved
-                   (filterv #(and (u/trimmed-string (get config %))
-                                  (not (contains? env-config %)))
-                            ;; sorted so the fields leave in the order they are warned about
-                            (sort (secret-field-keys type))))]
-    (drop-fields-warning-once!
-     conn :secret captured
-     (fn [field]
-       (log/warnf (str "Ignoring the stored %s of the %s LLM connection: %s points it at another server, so "
-                       "its credentials have to come from the environment as well. Set %s to keep using it.")
-                  (name field) conn-key
-                  (or (supplying-env-var conn-key type moved) "the environment")
-                  (get (connection-env-vars type) field "the matching environment variable"))))))
+  (drop-fields-warning-once!
+   conn :secret
+   (when (and (= :db source)
+              (env-moves-base-url? type config env-config))
+     (filterv #(and (u/trimmed-string (get config %))
+                    (not (contains? env-config %)))
+              ;; sorted so the fields leave in the order they are warned about
+              (sort (secret-field-keys type))))
+   (fn [field]
+     (log/warnf (str "Ignoring the stored %s of the %s LLM connection: %s points it at another server, so "
+                     "its credentials have to come from the environment as well. Set %s to keep using it.")
+                (name field) conn-key
+                (get (connection-env-vars type) :base-url "the environment")
+                (get (connection-env-vars type) field "the matching environment variable")))))
 
 (defn assert-credentials-not-captured!
   "Reject a credential the caller has just typed for a connection the environment points at another server.
@@ -1080,15 +917,15 @@
   `submitted` is the caller's own input: a blank clears a field and a mask is the client echoing back what is
   already stored, so neither is anyone asking for a credential to be sent anywhere. `conn` carries the config the
   credential would land in, which is what decides whether the connection moved."
-  [{conn-key :key type-name :type :keys [config]} submitted env-config]
-  (when-let [moved (moved-destination-field type-name config env-config)]
+  [{type-name :type :keys [config]} submitted env-config]
+  (when (env-moves-base-url? type-name config env-config)
     (when-let [field (first (filter (fn [field-key]
                                       (and (typed-value submitted field-key)
                                            (not (contains? env-config field-key))))
                                     ;; sorted so a type with several secrets always names the same one
                                     (sort (secret-field-keys type-name))))]
       (throw (ex-info (tru "{0} points this connection at another server, so its credentials have to come from the environment as well. Set {1} to keep using it."
-                           (or (supplying-env-var conn-key type-name moved) "The environment")
+                           (get (connection-env-vars type-name) :base-url "The environment")
                            (get (connection-env-vars type-name) field "the matching environment variable"))
                       {:status-code 400
                        :api-error   true
@@ -1112,7 +949,7 @@
   answered for on this rather than on what it merged, or a write sends a credential where a read of the
   same connection would not.
 
-  Only that half of what [[connections]] does. Dropping the stored destination as well would take a base
+  Only that half of what [[connections]] does. Dropping the stored base URL as well would take a base
   URL the caller has just supplied out of the comparison that decides whether they moved the connection,
   which is the one thing that must see it."
   [conn env-config]
@@ -1130,7 +967,7 @@
   those inputs.
 
   The exception is a secret and the address it reaches arriving from different places — see
-  [[drop-captured-destination]] and [[drop-captured-secrets]].
+  [[drop-captured-base-url]] and [[drop-captured-secrets]].
 
   A standalone `:env` connection is synthesized only when a variable marked `:credential?` is set — credentials are
   what bring a connection into existence; a base URL alone shadows but does not create. The managed connection is
@@ -1141,9 +978,9 @@
                            (if-let [{env-config :config vars :vars}
                                     (applicable-overlay (get overlays conn-key) type)]
                              (-> conn
-                                 ;; first: it reads the stored destination, which the next one removes
+                                 ;; first: it reads the stored base URL, which the next one removes
                                  (drop-captured-secrets env-config)
-                                 (drop-captured-destination env-config)
+                                 (drop-captured-base-url env-config)
                                  (update :config merge env-config)
                                  (update :env-vars (fnil into (sorted-set)) (vals vars))
                                  (assoc :env-fields (set (keys env-config))))
@@ -1207,30 +1044,10 @@
             :when (not= (get config field-key) (get previous field-key))]
       (validate-field-value! field config))))
 
-(defn config-to-store
-  "What the app DB will keep of `config` — see [[switched-off?]] for what it will not.
-
-  Anything deciding whether a connection is good, asking its server, or telling an admin what was saved
-  has to work from this rather than from what arrived, or it answers for a connection nobody will have."
-  [type-name config]
-  (if-not (provider-type type-name)
-    config
-    (into {}
-          (remove (fn [[field-key _]]
-                    (when-let [field (field-descriptor type-name field-key)]
-                      (switched-off? field config))))
-          config)))
-
 (defn set-connections!
-  "Persist `conns` as the stored connection list, dropping the derived annotation keys and any field
-  the connection explicitly switches off."
+  "Persist `conns` as the stored connection list, dropping the derived annotation keys."
   [conns]
-  (llm.provider.settings/set-llm-providers!
-   (mapv (fn [{:keys [type] :as conn}]
-           (-> conn
-               (dissoc :source :env-vars :env-fields)
-               (update :config #(config-to-store type %))))
-         conns)))
+  (llm.provider.settings/set-llm-providers! (mapv #(dissoc % :source :env-vars :env-fields) conns)))
 
 ;;; --------------------------------------------------- Slugs ------------------------------------------------------
 
@@ -1376,21 +1193,16 @@
       (or (u/trimmed-string (setting/env-var-value setting-kw))
           (get (with-field-defaults group-type {}) field)))))
 
-(defn- destination-field?
-  "Whether writing `field` on a connection of `type-name` can move where its requests are sent."
-  [type-name field]
-  (boolean (some #{field} (destination-fields type-name))))
-
-(defn assert-destination-change-authorized!
-  "Reject moving a connection while it carries a secret the API caller did not freshly supply.
+(defn assert-base-url-change-authorized!
+  "Reject moving a connection while carrying a secret that the API caller did not freshly supply.
 
   `old-config` and `new-config` are the effective configs before and after the edit, including environment overlays;
-  registry defaults and normalization are applied here before comparing their [[destination-fields]]. `submitted-config` is the
+  registry defaults and normalization are applied here before comparing their base URLs. `submitted-config` is the
   unmerged client input, so an omitted secret or one echoed back masked does not count as fresh. `env-fields` names
   values the client cannot re-supply and gets a more actionable error. `legacy-setting?` says the caller is a
   one-setting-at-a-time API that cannot submit the URL and credentials together."
   ([type-name old-config new-config submitted-config env-fields]
-   (assert-destination-change-authorized! type-name old-config new-config submitted-config env-fields nil))
+   (assert-base-url-change-authorized! type-name old-config new-config submitted-config env-fields nil))
   ([type-name old-config new-config submitted-config env-fields {:keys [legacy-setting?]}]
    (let [old-config      (with-field-defaults type-name old-config)
          new-config      (with-field-defaults type-name new-config)
@@ -1400,29 +1212,29 @@
          fresh-secret?   (fn [field]
                            (and (not (contains? env-fields field))
                                 (typed-value submitted-config field)))
-         missing-secrets (remove fresh-secret? carried-secrets)
-         moved           (some #(when (not= (get old-config %) (get new-config %)) %)
-                               (destination-fields type-name))]
-     (when (and moved (seq missing-secrets))
-       (throw (ex-info (cond
-                         (some env-fields missing-secrets)
-                         (tru "This connection''s credentials come from environment variables. Point it at a different server there too.")
+         missing-secrets (remove fresh-secret? carried-secrets)]
+     (when (and (not= (:base-url old-config) (:base-url new-config))
+                (seq missing-secrets))
+       (let [env-secret? (some env-fields missing-secrets)]
+         (throw (ex-info (cond
+                           env-secret?
+                           (tru "This connection''s credentials come from environment variables. Change its base URL there too.")
 
-                         legacy-setting?
-                         (tru "Use the provider connection settings to move this connection and enter the credentials again.")
+                           legacy-setting?
+                           (tru "Use the provider connection settings to change the base URL and enter the credentials again.")
 
-                         :else
-                         (tru "Enter this connection''s credentials again to point it at a different server."))
-                       {:status-code 400
-                        :api-error   true
-                        :error-code  :llm-destination-change-requires-credentials
-                        :field       moved
-                        :secrets     (mapv name missing-secrets)}))))))
+                           :else
+                           (tru "Enter this connection''s credentials again to point it at a different base URL."))
+                         {:status-code 400
+                          :api-error   true
+                          :error-code  :llm-base-url-change-requires-credentials
+                          :field       :base-url
+                          :secrets     (mapv name missing-secrets)})))))))
 
 (defn- assert-credential-write-authorized!
   "Reject adding a secret to a connection sitting on a base URL this API cannot show the caller.
 
-  [[assert-destination-change-authorized!]] binds the two together from the destination's side. This is the other side:
+  [[assert-base-url-change-authorized!]] binds the two together from the base URL's side. This is the other side:
   the per-provider settings write one field at a time, so a credential entered here arrives with no sight of where
   it will be sent. The connection settings submit the whole connection, base URL included, so they are where a
   connection on a custom URL takes its credentials.
@@ -1432,9 +1244,7 @@
   type in [[env-base-url-shadowing-types]]."
   [type-name field {:keys [config env-fields]}]
   (when (contains? (secret-field-keys type-name) field)
-    (let [filled   (with-field-defaults type-name config)
-          base-url (when (field-active? type-name (field-descriptor type-name :base-url) filled)
-                     (:base-url filled))]
+    (let [base-url (:base-url (with-field-defaults type-name config))]
       (when (and base-url
                  (not= base-url (:base-url (with-field-defaults type-name {})))
                  (not (contains? (set env-fields) :base-url)))
@@ -1457,9 +1267,7 @@
         value            (u/trimmed-string new-value)
         stored           (stored-connections)
         idx              (first (keep-indexed (fn [i conn] (when (= conn-key (:key conn)) i)) stored))
-        live             (connection conn-key)
-        current-config   (or (:config live) {})
-        new-config       (if value (assoc current-config field value) (dissoc current-config field))]
+        live             (connection conn-key)]
     ;; a client echoing back the mask [[metabase.settings.core/obfuscate-value]] handed it is not entering a new
     ;; value, the same way [[metabase.settings.core/set!]] treats sensitive settings. Both forms are checked: the
     ;; mask of a newline-terminated secret (a JSON key file) matches only untrimmed, while a mask that picked up
@@ -1469,37 +1277,34 @@
       (log/infof "Attempted to set %s to an obfuscated value. Ignoring change." (name setting-kw))
       (do
         (when (request.current/current-request)
-          (if (destination-field? group-type field)
+          (if (= field :base-url)
             (do
-              ;; Stricter than the move [[assert-destination-change-authorized!]] refuses below, and it can
-              ;; afford to be: nothing echoes this API, so a write of the value the variable already holds
-              ;; is nobody's normal traffic. Persisting it would leave an inert value under the overlay to
-              ;; become live the day the operator drops the variable. The connection settings cannot be this
-              ;; strict — the form resubmits every field it disabled, so there an echo is the normal case.
               (when (contains? (:env-fields live) field)
-                ;; the variable is named since it is the only thing the operator can act on
-                (throw (ex-info (tru "This connection''s address comes from {0}. Change it there."
-                                     (or (supplying-env-var conn-key group-type field) "an environment variable"))
+                ;; Persisting an inert value underneath the environment overlay would make it live if the operator
+                ;; later removed that variable, carrying any stored credentials to a URL the API caller planted
+                ;; earlier.
+                (throw (ex-info (tru "This connection''s base URL comes from an environment variable. Change it there.")
                                 {:status-code 400
                                  :api-error   true
-                                 :error-code  :llm-destination-is-env-managed
-                                 :field       field})))
-              (assert-destination-change-authorized! group-type current-config new-config {field value}
-                                                     (:env-fields live) {:legacy-setting? true}))
+                                 :error-code  :llm-base-url-is-env-managed
+                                 :field       :base-url})))
+              (let [current-config (or (:config live) {})
+                    new-config     (if value
+                                     (assoc current-config field value)
+                                     (dissoc current-config field))]
+                (assert-base-url-change-authorized! group-type current-config new-config {field value}
+                                                    (:env-fields live) {:legacy-setting? true})))
             (when value
               (assert-credential-write-authorized! group-type field live)
-              ;; with nothing stored yet, the connection this write creates, which runs on the defaults of
-              ;; its destination fields until something moves it
+              ;; with nothing stored yet, the connection this write creates, which runs on the default base URL
+              ;; until something moves it
               (assert-credentials-not-captured! (if idx
                                                   (nth stored idx)
                                                   {:key conn-key :type group-type :config {}})
                                                 {field value}
                                                 (env-overlay-config conn-key group-type)))))
         (when value
-          ;; against the whole connection, not the one value: a field is only worth judging — and only
-          ;; worth keeping — in the deployment its own controller puts it in
-          (assert-field-applies! group-type field new-config)
-          (validate-config-field! group-type field new-config))
+          (validate-config-field! group-type field {field value}))
         (cond
           idx   (set-connections! (update-in stored [idx :config]
                                              (fn [config]

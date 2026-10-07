@@ -236,7 +236,6 @@ config:
     llm-moonshot-api-key: null
     llm-ollama-api-base-url: null
     llm-ollama-api-key: null
-    llm-ollama-hosting: null
     llm-ollama-request-timeout-ms: 300000
     llm-openai-api-base-url: https://api.openai.com
     llm-openai-api-key: null

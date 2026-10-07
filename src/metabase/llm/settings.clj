@@ -415,26 +415,17 @@
 
 ;;; -------------------------------------------------- Ollama ---------------------------------------------------
 
-(defsetting llm-ollama-hosting
-  (deferred-tru "Whether the Ollama connection configured from the environment is `self-hosted` or `cloud`. Defaults to `self-hosted`.")
-  :encryption :no
-  :visibility :settings-manager
-  :export?    false
-  :getter     (connection-field-getter :llm-ollama-hosting)
-  :setter     (connection-field-setter :llm-ollama-hosting)
-  :doc        "Backed by the ollama connection in the admin AI settings provider list: reads and writes go through the llm-providers connection list, and a value set by this environment variable shadows this one field of that connection.")
-
 (defsetting llm-ollama-api-base-url
-  (deferred-tru "The base URL of your Ollama server''s OpenAI-compatible API, e.g. `http://localhost:11434/v1`.")
+  (deferred-tru "The base URL of your Ollama server''s OpenAI-compatible API, e.g. `http://localhost:11434/v1`, or `https://ollama.com/v1` for Ollama Cloud.")
   :encryption :when-encryption-key-set
   :visibility :settings-manager
   :export?    false
   :getter     (connection-field-getter :llm-ollama-api-base-url)
   :setter     (connection-field-setter :llm-ollama-api-base-url)
-  :doc        "Backed by the ollama connection in the admin AI settings provider list: reads and writes go through the llm-providers connection list. A value set by this environment variable shadows that connection's base URL and implies the self-hosted deployment.")
+  :doc        "Backed by the ollama connection in the admin AI settings provider list: reads and writes go through the llm-providers connection list. A value set by this environment variable shadows that connection's base URL.")
 
 (defsetting llm-ollama-api-key
-  (deferred-tru (str "The API key for Ollama Cloud. Also set MB_LLM_OLLAMA_HOSTING=cloud. "
+  (deferred-tru (str "The API key for Ollama Cloud, with MB_LLM_OLLAMA_API_BASE_URL set to https://ollama.com/v1. "
                      "For self-hosted servers, only needed behind an authenticated proxy."))
   :sensitive? true
   :visibility :settings-manager
