@@ -38,6 +38,7 @@ const AGENT_API_SECTION_ID = "agent-api";
 const AI_FEATURES_ENABLED_SECTION_ID = "ai-features-enabled";
 const METABOT_SETTINGS_PATH = "/admin/metabot";
 const METABOT_ID_QUERY_PARAM = "metabot_id";
+const LEGACY_EMBEDDED_TAB_URL_VALUE = "2";
 
 export function AISettingsPage() {
   const [searchParams] = useSearchParams();
@@ -269,7 +270,10 @@ function DisabledSection({
 function getSelectedMetabotEntityId(
   metabotId: string | null,
 ): MetabotTabEntityId {
-  if (metabotId === FIXED_METABOT_ENTITY_IDS.EMBEDDED || metabotId === "2") {
+  if (
+    metabotId === FIXED_METABOT_ENTITY_IDS.EMBEDDED ||
+    metabotId === LEGACY_EMBEDDED_TAB_URL_VALUE
+  ) {
     return FIXED_METABOT_ENTITY_IDS.EMBEDDED;
   }
 
