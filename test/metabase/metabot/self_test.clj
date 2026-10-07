@@ -1429,6 +1429,19 @@
                               0.3 1024 {:tag "metabot_agent"})
     (catch clojure.lang.ExceptionInfo e e)))
 
+(defn- text-turn-response
+  "A mocked LLM stream for a turn that answers in text: a `:start` part, one `:text` part per string in
+  `texts`, then `trailing-parts`, e.g. a [[usage-part]]."
+  [texts & trailing-parts]
+  (test-util/mock-llm-response
+   (concat [{:type :start :id "m1"}]
+           (map-indexed (fn [i text] {:type :text :id (str "t" i) :text text}) texts)
+           trailing-parts)))
+
+(def ^:private answer-text "Here you go:\n```json\n{\"answer\": \"42\"}\n```")
+
+(def ^:private more-text "\n\nI could also explain how I got there, step by st")
+
 (deftest call-llm-structured-rejects-malformed-json-test
   (llm.tu/with-default-connections
     (testing "a content-filter finish does not reroute malformed JSON — only a truncation does"
@@ -1535,7 +1548,7 @@
 
 (deftest call-llm-structured-incomplete-without-tool-call-test
   (llm.tu/with-default-connections
-    (testing "a turn that stopped early without a tool call reports why, not a generic 'no tool call' error"
+    (testing "a turn that stopped early, with no tool call and no JSON in its text, reports why, not a generic 'no tool call' error"
       (doseq [[reason raw] [["length" "max_tokens"] ["content-filter" "refusal"]]]
         (testing reason
           (mt/with-dynamic-fn-redefs [self/retry-delay-ms   (constantly 0)
@@ -1585,6 +1598,113 @@
                                                               (usage-part "length" "max_tokens")]))]
           (structured-call-error)
           (is (= 1 @calls)))))))
+
+(deftest call-llm-structured-text-json-on-early-stop-test
+  (llm.tu/with-default-connections
+    (testing "a text reply with a closed JSON block that matches the schema is used, also after an early stop"
+      (doseq [[reason raw] [["length" "max_tokens"] ["content-filter" "refusal"]]]
+        (testing reason
+          (mt/with-dynamic-fn-redefs [self/retry-delay-ms   (constantly 0)
+                                      openrouter/openrouter (constantly
+                                                             (text-turn-response
+                                                              [answer-text more-text]
+                                                              (usage-part reason raw)))]
+            (is (= {:answer "42"} (structured-call-error)))))))))
+
+(deftest call-llm-structured-text-json-logs-finish-reason-test
+  (llm.tu/with-default-connections
+    (testing "a text JSON result after an early stop logs the finish reasons"
+      (mt/with-dynamic-fn-redefs [self/retry-delay-ms   (constantly 0)
+                                  openrouter/openrouter (constantly
+                                                         (text-turn-response
+                                                          [answer-text more-text]
+                                                          (usage-part "length" "max_tokens")))]
+        (log.capture/with-log-messages-for-level [messages [metabase.metabot.self :info]]
+          (structured-call-error)
+          (let [msg (some #(when (str/includes? (str (:message %)) "LLM answered in text") (:message %))
+                          (messages))]
+            (is (some? msg))
+            (is (re-find #":finish-reason \"?length" (str msg)))
+            (is (re-find #":raw-finish-reason \"?max_tokens" (str msg)))))))))
+
+(defn- empty-tool-call-response
+  "A reducible LLM stream for a turn that answers in `text`, then starts a `json` tool call and stops with a
+  `length` finish after the argument deltas `arg-deltas` (none by default)."
+  [text & arg-deltas]
+  (let [chunks (concat (test-util/parts->aisdk-chunks [{:type :start :id "m1"}
+                                                       {:type :text :id "t1" :text text}])
+                       [{:type :tool-input-start :toolCallId "c1" :toolName "json"}]
+                       (for [delta arg-deltas]
+                         {:type :tool-input-delta :toolCallId "c1" :inputTextDelta delta})
+                       (test-util/parts->aisdk-chunks [(usage-part "length" "max_tokens")]))]
+    (reify clojure.lang.IReduceInit
+      (reduce [_ rf init]
+        (reduce rf init chunks)))))
+
+(deftest call-llm-structured-empty-tool-call-on-length-stop-uses-text-json-test
+  (llm.tu/with-default-connections
+    (testing "a tool call cut off before its first argument byte has no arguments, so the text JSON is used"
+      (mt/with-dynamic-fn-redefs [self/retry-delay-ms   (constantly 0)
+                                  openrouter/openrouter (constantly (empty-tool-call-response answer-text))]
+        (is (= {:answer "42"} (structured-call-error)))))))
+
+(deftest call-llm-structured-truncated-tool-call-outranks-text-json-test
+  (llm.tu/with-default-connections
+    (testing "a tool call cut off after its first argument byte throws, even when the text holds valid JSON"
+      (mt/with-dynamic-fn-redefs [self/retry-delay-ms   (constantly 0)
+                                  openrouter/openrouter (constantly (empty-tool-call-response answer-text "{"))]
+        (is (=? {:error-code    "structured-output-incomplete"
+                 :finish-reason "length"}
+                (ex-data (structured-call-error))))))))
+
+(deftest call-llm-structured-draft-json-before-unclosed-block-test
+  (llm.tu/with-default-connections
+    (testing "a closed JSON block is used when an unclosed block after it was cut off by a length stop"
+      (mt/with-dynamic-fn-redefs [self/retry-delay-ms   (constantly 0)
+                                  openrouter/openrouter (constantly
+                                                         (text-turn-response
+                                                          ["Here you go:\n```json\n{\"answer\": \"draft\"}\n```"
+                                                           "\n\nRevised:\n```json\n{\"answer\": \"fin"]
+                                                          (usage-part "length" "max_tokens")))]
+        (is (= {:answer "draft"} (structured-call-error)))))))
+
+(deftest call-llm-structured-schema-invalid-text-json-on-length-stop-test
+  (llm.tu/with-default-connections
+    (testing "text JSON that does not match the schema is not used, so a length stop reports why"
+      (mt/with-dynamic-fn-redefs [self/retry-delay-ms   (constantly 0)
+                                  openrouter/openrouter (constantly
+                                                         (text-turn-response
+                                                          ["Here you go:\n```json\n{\"answer\": 42}\n```" more-text]
+                                                          (usage-part "length" "max_tokens")))]
+        (let [e (structured-call-error)]
+          (is (= "structured-output-incomplete" (:error-code (ex-data e))))
+          (is (= "length" (:finish-reason (ex-data e))))
+          (is (= "max_tokens" (:raw-finish-reason (ex-data e)))))))))
+
+(deftest call-llm-structured-error-part-outranks-text-json-test
+  (llm.tu/with-default-connections
+    (testing "a provider :error part outranks JSON in the text reply"
+      (mt/with-dynamic-fn-redefs [self/retry-delay-ms   (constantly 0)
+                                  openrouter/openrouter (constantly
+                                                         (text-turn-response
+                                                          [answer-text]
+                                                          {:type :error :errorText "content policy violation"}
+                                                          (usage-part "length" "max_tokens")))]
+        (mt/with-log-level [metabase.metabot.self :fatal]
+          (let [e (structured-call-error)]
+            (is (= "llm-stream-error" (:error-code (ex-data e))))))))))
+
+(deftest call-llm-structured-unclosed-json-on-length-stop-test
+  (llm.tu/with-default-connections
+    (testing "JSON in an unclosed block is never used, so a length stop reports why"
+      (mt/with-dynamic-fn-redefs [self/retry-delay-ms   (constantly 0)
+                                  openrouter/openrouter (constantly
+                                                         (text-turn-response
+                                                          ["Here you go:\n```json\n{\"answer\": \"4"]
+                                                          (usage-part "length" "max_tokens")))]
+        (let [e (structured-call-error)]
+          (is (= "structured-output-incomplete" (:error-code (ex-data e))))
+          (is (= "length" (:finish-reason (ex-data e)))))))))
 
 (deftest call-llm-does-not-replay-after-partial-emission-test
   (llm.tu/with-default-connections
