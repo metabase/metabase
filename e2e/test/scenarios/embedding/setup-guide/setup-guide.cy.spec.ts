@@ -1354,8 +1354,54 @@ describe("scenarios - setup guide", () => {
           .scrollIntoView()
           .click();
 
-        cy.log("select database");
+        cy.log("open the database picker dropdown");
         H.main().findByPlaceholderText("Pick a database").click();
+
+        H.popover().findByText("Sample Database").should("be.visible");
+
+        cy.log(
+          "sample database should have the info icon (does not support connection impersonation)",
+        );
+        H.popover()
+          .findByText("Sample Database")
+          .parent()
+          .icon("info")
+          .should("exist");
+
+        H.popover().findByText("QA Postgres12").should("be.visible");
+
+        cy.log(
+          "postgres should not have the info icon (supports connection impersonation)",
+        );
+        H.popover()
+          .findByText("QA Postgres12")
+          .parent()
+          .icon("info")
+          .should("not.exist");
+
+        cy.log("clicking disabled database should not close dropdown");
+        H.popover().findByText("Sample Database").click();
+        H.popover().should("be.visible");
+
+        cy.log("hover over the info icon to see tooltip");
+        H.popover()
+          .findByText("Sample Database")
+          .parent()
+          .icon("info")
+          .trigger("mouseenter");
+
+        H.tooltip()
+          .findByText("This database doesn't support connection impersonation")
+          .should("be.visible");
+
+        H.popover()
+          .findByText("Sample Database")
+          .parent()
+          .icon("info")
+          .trigger("mouseleave");
+        H.tooltip().should("not.exist");
+
+        cy.log("select database");
         H.popover().findByText("QA Postgres12").click();
 
         cy.log("database should be selected in the multi-select pill");
@@ -1430,62 +1476,6 @@ describe("scenarios - setup guide", () => {
       H.main()
         .findByRole("link", { name: "Add database" })
         .should("have.attr", "href", "/admin/databases/create");
-    });
-
-    it("should show disabled database with tooltip when database does not support connection impersonation", function () {
-      H.addPostgresDatabase("QA Postgres12");
-
-      cy.visit("/admin/embedding/setup-guide/permissions");
-
-      H.main()
-        .findByRole("radio", { name: /Connection impersonation/ })
-        .scrollIntoView()
-        .click();
-
-      H.main()
-        .findByRole("button", { name: "Use connection impersonation" })
-        .scrollIntoView()
-        .click();
-
-      cy.log("open the database picker dropdown");
-      H.main().findByPlaceholderText("Pick a database").click();
-
-      H.popover().findByText("Sample Database").should("be.visible");
-
-      cy.log(
-        "sample database should have the info icon (does not support connection impersonation)",
-      );
-      H.popover()
-        .findByText("Sample Database")
-        .parent()
-        .icon("info")
-        .should("exist");
-
-      H.popover().findByText("QA Postgres12").should("be.visible");
-
-      cy.log(
-        "postgres should not have the info icon (supports connection impersonation)",
-      );
-      H.popover()
-        .findByText("QA Postgres12")
-        .parent()
-        .icon("info")
-        .should("not.exist");
-
-      cy.log("clicking disabled database should not close dropdown");
-      H.popover().findByText("Sample Database").click();
-      H.popover().should("be.visible");
-
-      cy.log("hover over the info icon to see tooltip");
-      H.popover()
-        .findByText("Sample Database")
-        .parent()
-        .icon("info")
-        .trigger("mouseenter");
-
-      H.tooltip()
-        .findByText("This database doesn't support connection impersonation")
-        .should("be.visible");
     });
 
     it("creates a tenant with database_role attribute when using connection impersonation", () => {
