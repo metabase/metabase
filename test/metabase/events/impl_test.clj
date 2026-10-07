@@ -98,6 +98,27 @@
         (is (identical? failure (ex-cause e)))
         (is (empty? (.getSuppressed ^Throwable (ex-cause e))))))))
 
+(deftest publish-changes-no-throwable-of-a-listener-test
+  ;; A listener can throw one object on each publish, for example the cached exception of a failed `delay`. Its
+  ;; suppressed list must not grow by the throwables of the other listeners on each publish.
+  (doseq [[kind shared event] [["an Exception that is the cause"
+                                (ex-info "cached failure" {})
+                                (fn [shared] {::throwables {::throwing-topic shared}, ::throw #{::throwing-topics}})]
+                               ["an Error after an Exception"
+                                (AssertionError. "cached error")
+                                (fn [shared] {::throwables {::throwing-topics shared}, ::throw #{::throwing-topic}})]
+                               ["an InterruptedException after an Exception"
+                                (InterruptedException. "cached interrupt")
+                                (fn [shared] {::throwables {::throwing-topics shared}, ::throw #{::throwing-topic}})]]]
+    (testing (str "a listener throws one object of " kind " on two publishes")
+      (dotimes [_ 2]
+        (binding [*method-calls* (atom {})]
+          (is (identical? shared (ex-cause (publish-and-catch! (event shared)))))
+          ;; clears the interrupt flag that an InterruptedException sets
+          (Thread/interrupted)))
+      (is (= []
+             (map ex-message (.getSuppressed ^Throwable shared)))))))
+
 (deftest first-error-stops-the-listeners-inside-a-transaction-test
   ;; Inside a transaction, the first error stops the later listeners, even when the caller catches it.
   (binding [*method-calls* (atom {})]
