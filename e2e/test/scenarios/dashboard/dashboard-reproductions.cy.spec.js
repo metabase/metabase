@@ -96,76 +96,46 @@ describe("issue 12926", () => {
     }).as("dashcardQueryRestored");
   }
 
-  function removeCard() {
-    H.editDashboard();
-
-    H.showDashboardCardActions();
-
-    cy.findByTestId("dashboardcard-actions-panel")
-      .findByLabelText("close icon")
-      .click();
-  }
-
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
   });
 
-  describe("card removal while query is in progress", () => {
-    it("should stop the ongoing query when removing a card from a dashboard", () => {
-      slowDownDashcardQuery();
+  it("should stop the ongoing query when removing a card, re-fetch it on undo, and undo a virtual card removal (metabase#35545)", () => {
+    slowDownDashcardQuery();
 
-      H.createNativeQuestionAndDashboard({
-        questionDetails,
-      }).then(({ body: { dashboard_id } }) => {
-        cy.visit(`/dashboard/${dashboard_id}`);
-      });
-
-      // The query is deliberately slowed, so it is still in-flight here.
-      // The API client uses fetch, so cancelling the query aborts its
-      // AbortController rather than calling XMLHttpRequest.abort().
-      cy.window().then((win) => {
-        cy.spy(win.AbortController.prototype, "abort").as("queryAbort");
-      });
-
-      removeCard();
-
-      cy.get("@queryAbort").should("have.been.called");
+    H.createNativeQuestionAndDashboard({
+      questionDetails,
+    }).then(({ body: { dashboard_id } }) => {
+      cy.visit(`/dashboard/${dashboard_id}`);
     });
 
-    it("should re-fetch the query when doing undo on the removal", () => {
-      slowDownDashcardQuery();
-
-      H.createNativeQuestionAndDashboard({
-        questionDetails,
-      }).then(({ body: { dashboard_id } }) => {
-        cy.visit(`/dashboard/${dashboard_id}`);
-      });
-
-      removeCard();
-
-      restoreDashcardQuery();
-
-      H.undo();
-
-      cy.wait("@dashcardQueryRestored");
-
-      H.getDashboardCard().findByText(queryResult);
+    // The API client uses fetch, so cancelling the query aborts its
+    // AbortController rather than calling XMLHttpRequest.abort().
+    cy.window().then((win) => {
+      cy.spy(win.AbortController.prototype, "abort").as("queryAbort");
     });
 
-    it("should not break virtual cards (metabase#35545)", () => {
-      H.createDashboard().then(({ body: { id: dashboardId } }) => {
-        H.visitDashboard(dashboardId);
-      });
+    H.editDashboard();
+    H.showDashboardCardActions();
+    H.getDashboardCard().findByTestId("loading-indicator").should("exist");
+    cy.get("@queryAbort").invoke("resetHistory");
+    cy.findByTestId("dashboardcard-actions-panel")
+      .findByLabelText("close icon")
+      .click();
+    cy.get("@queryAbort").should("have.been.called");
 
-      H.addTextBox("Text card content");
+    restoreDashcardQuery();
+    H.undo();
+    cy.wait("@dashcardQueryRestored");
+    H.getDashboardCard().findByText(queryResult);
 
-      H.removeDashboardCard();
-
-      H.undo();
-
-      H.getDashboardCard().findByText("Text card content");
-    });
+    H.addTextBoxWhileEditing("Text card content");
+    H.getDashboardCards().should("have.length", 2);
+    H.removeDashboardCard(1);
+    H.getDashboardCards().should("have.length", 1);
+    H.undo();
+    H.getDashboardCard(1).findByText("Text card content");
   });
 
   describe("saving a dashboard that retriggers a non saved query (negative id)", () => {
@@ -733,27 +703,6 @@ describe("issue 31274", () => {
 
       cy.findAllByTestId("dashcard").should("have.length", 2);
     });
-  });
-
-  it("renders cross icon on the link card without clipping", () => {
-    H.createDashboard().then(({ body: dashboard }) => {
-      H.visitDashboard(dashboard.id);
-      H.editDashboard(dashboard.id);
-    });
-
-    cy.findByLabelText("Add a link or iframe").click();
-    H.popover().findByText("Link").click();
-    cy.findByPlaceholderText("https://example.com").realHover();
-
-    cy.log(
-      "Make sure cypress can click the element, which means it is not covered by another",
-    );
-
-    cy.findByTestId("dashboardcard-actions-panel").within(() => {
-      cy.icon("close").closest("a").click({ position: "bottom" });
-    });
-
-    cy.findByTestId("dashcard").should("not.exist");
   });
 });
 

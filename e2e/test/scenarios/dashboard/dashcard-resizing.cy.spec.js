@@ -451,7 +451,9 @@ describe("issue 31701", () => {
         "source-table": ORDERS_ID,
       },
     });
+  });
 
+  it("should prevent link dashboard card overflows and not clip the link card cross icon (metabase#31701, metabase#31274)", () => {
     H.createDashboard({
       name: TEST_DASHBOARD_NAME,
     }).then(({ body: { id: dashId } }) => {
@@ -459,6 +461,19 @@ describe("issue 31701", () => {
     });
 
     H.editDashboard();
+
+    cy.log("Remove an empty link card through its cross icon (metabase#31274)");
+    cy.findByLabelText("Add a link or iframe").click();
+    H.popover().findByText("Link").click();
+    cy.findByPlaceholderText("https://example.com").realHover();
+    H.getDashboardCards().should("have.length", 1);
+    cy.log(
+      "Make sure cypress can click the element, which means it is not covered by another",
+    );
+    cy.findByTestId("dashboardcard-actions-panel").within(() => {
+      cy.icon("close").closest("a").click({ position: "bottom" });
+    });
+    cy.findByTestId("dashcard").should("not.exist");
 
     cy.log("Add first link card (connected to an entity");
     cy.findByLabelText("Add a link or iframe").click();
@@ -477,9 +492,7 @@ describe("issue 31701", () => {
       .click()
       .type(TEST_QUESTION_NAME)
       .realPress("Tab");
-  });
 
-  it("should prevent link dashboard card overflows (metabase#31701)", () => {
     cy.log("when editing dashboard");
     viewports.forEach(([width, height]) => {
       cy.log(`Testing on resolution ${width} x ${height}`);
