@@ -72,7 +72,7 @@
      "Saved credentials encryption is DISABLED for this Metabase instance.")
    (u/emoji (if default-secret-key "🔐" "🔓"))
    "\n"
-   "For more information, see https://metabase.com/docs/latest/operations-guide/encrypting-database-details-at-rest.html"))
+   "For more information, see https://www.metabase.com/docs/latest/databases/encrypting-details-at-rest"))
 
 (defn- opts->secret-key
   "The 64-byte key `opts` name, or the hashed MB_ENCRYPTION_SECRET_KEY when they name none."

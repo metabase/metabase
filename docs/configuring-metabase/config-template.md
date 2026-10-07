@@ -163,7 +163,7 @@ config:
     gsheets: null
     health-check-logging-enabled: true
     help-link: metabase
-    help-link-custom-destination: https://www.metabase.com/help/premium
+    help-link-custom-destination: https://www.metabase.com/help-premium
     hide-stacktraces: false
     humanization-strategy: simple
     index-update-thread-count: 2
