@@ -736,11 +736,13 @@
     (mt/test-driver :clickhouse
       (let [details   (-> (mt/dbdef->connection-details :clickhouse :db {:database-name "uploads_schema"})
                           (assoc :enable-multiple-db false))
+            dbms-version (driver/dbms-version :clickhouse (mt/db))
             conn-spec (sql-jdbc.conn/connection-details->spec :clickhouse details)]
         (driver/create-schema-if-needed! :clickhouse conn-spec "uploads_schema")
         (try
           (mt/with-temp [:model/Database db {:engine  :clickhouse
-                                             :details details}]
+                                             :details details
+                                             :dbms_version dbms-version}]
             (is (true? (driver/database-supports? :clickhouse :uploads db)))
             (testing "an upload schema is required"
               (is (thrown-with-msg?
