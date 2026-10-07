@@ -21,7 +21,7 @@ import { channelTargetIsValid, dashboardPulseIsValid } from "metabase/pulse";
 import { useSelector } from "metabase/redux";
 import { getApplicationName } from "metabase/selectors/whitelabel";
 import { getSetting } from "metabase/settings";
-import { Icon, Stack, Switch, Text, Title } from "metabase/ui";
+import { Icon, Stack, Switch, Text, TextInput, Title } from "metabase/ui";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import {
   type Channel,
@@ -40,6 +40,8 @@ import DefaultParametersSection from "./DefaultParametersSection";
 import { DeleteSubscriptionAction } from "./DeleteSubscriptionAction";
 import { EmailAttachmentPicker } from "./EmailAttachmentPicker";
 import { getSubscriptionScheduleDescription } from "./utils";
+
+const SUBJECT_MAX_LENGTH = 255;
 
 interface AddEditEmailSidebarProps {
   pulse: DraftDashboardSubscription;
@@ -147,6 +149,19 @@ export const AddEditEmailSidebar = ({
             />
           </div>
         )}
+        <TextInput
+          mt="lg"
+          label={t`Subject`}
+          placeholder={dashboard.name}
+          value={channel.details?.subject ?? ""}
+          maxLength={SUBJECT_MAX_LENGTH}
+          onChange={({ target: { value } }) =>
+            onChannelPropertyChange("details", {
+              ...channel.details,
+              subject: value.trim() ? value : undefined,
+            })
+          }
+        />
         <Schedule
           mt="lg"
           value={_.pick(
