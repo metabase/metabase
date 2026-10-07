@@ -212,13 +212,17 @@
     (mt/with-no-data-perms-for-all-users!
       (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)
       (data-perms/set-table-permission! (perms-group/all-users) (mt/id :venues) :perms/create-queries :query-builder)
-      (testing (str "If someone doesn't have native query execution permissions, they shouldn't see the native version of "
-                    "the query in the error response")
-        (is (=? {:native nil, :preprocessed map?}
-                (test.users/with-test-user :rasta
-                  (qp/process-query
-                   (qp/userland-query
-                    (mt/mbql-query venues {:fields [!month.id]})))))))
+      (testing (str "If someone doesn't have native query execution permissions, they shouldn't see the native or "
+                    "preprocessed versions of the query, or ex-data that could include them, in the error response")
+        (let [response (test.users/with-test-user :rasta
+                         (qp/process-query
+                          (qp/userland-query
+                           (mt/mbql-query venues {:fields [!month.id]}))))]
+          (is (=? {:status :failed}
+                  response))
+          (is (not-any? #(contains? response %) [:native :preprocessed]))
+          (is (every? #(empty? (dissoc (:ex-data %) :type :status-code :is-curated))
+                      (cons response (:via response))))))
       (testing "They should see it if they have ad-hoc native query perms"
         (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)
         (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/create-queries :query-builder-and-native)

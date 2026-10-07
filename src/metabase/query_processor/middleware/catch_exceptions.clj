@@ -1,8 +1,9 @@
 (ns metabase.query-processor.middleware.catch-exceptions
   "Middleware for catching exceptions thrown by the query processor and returning them in a friendlier format."
-  (:refer-clojure :exclude [some get-in])
+  (:refer-clojure :exclude [some get-in select-keys mapv])
   (:require
    [clojure.string :as str]
+   [medley.core :as m]
    [metabase.analytics-interface.core :as analytics]
    [metabase.driver :as driver]
    [metabase.lib.schema.common :as lib.schema.common]
@@ -18,7 +19,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.performance :refer [some get-in]])
+   [metabase.util.performance :refer [some get-in select-keys mapv]])
   (:import
    (clojure.lang ExceptionInfo)
    (java.sql SQLException)))
@@ -113,8 +114,24 @@
    ;; useful for debugging purposes.
    (when (= (keyword query-type) :query)
      {:preprocessed preprocessed
-      :native       (when (qp.perms/current-user-has-adhoc-native-query-perms? query)
-                      native)})))
+      :native       native})))
+
+(def ^:private restricted-ex-data-keys
+  "The `:ex-data` keys returned to users without ad-hoc native query perms."
+  #{:type :status-code :is-curated})
+
+(defn- remove-query-details
+  "Remove anything from a formatted exception that could show more than the query the user submitted, for users without
+  ad-hoc native query perms: the preprocessed and native forms, and any `:ex-data` not in [[restricted-ex-data-keys]].
+  `:ex-data` can include e.g. the query as it stood when a middleware failed, with a sandbox applied, or the compiled
+  SQL and its params, which can include a sandbox Card's SQL and the user's login attribute values."
+  [formatted-exception]
+  (letfn [(restrict-ex-data [m]
+            (m/update-existing m :ex-data select-keys restricted-ex-data-keys))]
+    (-> formatted-exception
+        (dissoc :preprocessed :native)
+        restrict-ex-data
+        (m/update-existing :via #(mapv restrict-ex-data %)))))
 
 (mr/def ::query-execution-info
   "The in-flight QueryExecution info that userland query processing attaches to exceptions: the columns about to be saved, plus the query and start time."
@@ -169,7 +186,10 @@
           (catch Throwable e
             (analytics/inc! :metabase-query-processor/query {:driver driver/*driver* :status "failure"})
             ;; format the Exception and return it
-            (let [formatted-exception (format-exception* query e @extra-info)
+            (let [native-perms?       (u/ignore-exceptions
+                                        (qp.perms/current-user-has-adhoc-native-query-perms? query))
+                  formatted-exception (cond-> (format-exception* query e (when native-perms? @extra-info))
+                                        (not native-perms?) remove-query-details)
                   query-canceled?     (some (comp :query/query-canceled? ex-data)
                                             (u/full-exception-chain e))
                   pool-saturated?     (qp.error-type/connection-pool-saturated?
