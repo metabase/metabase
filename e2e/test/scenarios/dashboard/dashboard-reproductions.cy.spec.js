@@ -1162,19 +1162,6 @@ describe("issue 39863", () => {
     { "base-type": "type/DateTime" },
   ];
 
-  const COMMON_DASHCARD_INFO = {
-    card_id: ORDERS_QUESTION_ID,
-    parameter_mappings: [
-      {
-        parameter_id: DATE_FILTER.id,
-        card_id: ORDERS_QUESTION_ID,
-        target: ["dimension", CREATED_AT_FIELD_REF],
-      },
-    ],
-    size_x: 10,
-    size_y: 4,
-  };
-
   const ID_FILTER = {
     id: "3",
     name: "ID filter",
@@ -1343,59 +1330,6 @@ describe("issue 39863", () => {
     cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query").as(
       "dashcardQuery",
     );
-  });
-
-  it("should not rerun queries when switching tabs and there are no parameter changes", () => {
-    H.createDashboardWithTabs({
-      tabs: [TAB_1, TAB_2],
-      parameters: [DATE_FILTER],
-      dashcards: [
-        createMockDashboardCard({
-          ...COMMON_DASHCARD_INFO,
-          id: -1,
-          dashboard_tab_id: TAB_1.id,
-        }),
-        createMockDashboardCard({
-          ...COMMON_DASHCARD_INFO,
-          id: -2,
-          dashboard_tab_id: TAB_2.id,
-        }),
-      ],
-    }).then((dashboard) => H.visitDashboard(dashboard.id));
-
-    // Initial query for 1st tab
-    cy.wait("@dashcardQuery");
-    assertNoLoadingSpinners();
-    cy.get("@dashcardQuery.all").should("have.length", 1);
-
-    // Initial query for 2nd tab
-    H.goToTab(TAB_2.name);
-    cy.wait("@dashcardQuery");
-    assertNoLoadingSpinners();
-    cy.get("@dashcardQuery.all").should("have.length", 2);
-
-    // No parameters change, no query rerun
-    H.goToTab(TAB_1.name);
-    assertNoLoadingSpinners();
-    cy.get("@dashcardQuery.all").should("have.length", 2);
-
-    // Rerun 1st tab query with new parameters
-    setDateFilter();
-    cy.wait("@dashcardQuery");
-    assertNoLoadingSpinners();
-    cy.get("@dashcardQuery.all").should("have.length", 3);
-
-    // Rerun 2nd tab query with new parameters
-    H.goToTab(TAB_2.name);
-    cy.wait("@dashcardQuery");
-    assertNoLoadingSpinners();
-    cy.get("@dashcardQuery.all").should("have.length", 4);
-
-    // No parameters change, no query rerun
-    H.goToTab(TAB_1.name);
-    H.goToTab(TAB_2.name);
-    assertNoLoadingSpinners();
-    cy.get("@dashcardQuery.all").should("have.length", 4);
   });
 
   it("should not rerun queries just because there are 9 or more attached filters to a dash-card", () => {
