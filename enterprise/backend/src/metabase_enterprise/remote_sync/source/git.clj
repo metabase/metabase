@@ -10,14 +10,15 @@
   (:import
    (java.io File)
    (java.net URI)
-   (org.eclipse.jgit.api Git GitCommand TransportCommand TransportConfigCallback)
+   (org.eclipse.jgit.api Git GitCommand PushCommand TransportCommand TransportConfigCallback)
    (org.eclipse.jgit.dircache DirCache DirCacheBuilder DirCacheEditor DirCacheEditor$DeletePath
                               DirCacheEditor$DeleteTree DirCacheEditor$PathEdit DirCacheEntry)
    (org.eclipse.jgit.lib CommitBuilder Constants FileMode ObjectId PersonIdent ProgressMonitor Ref Repository)
    (org.eclipse.jgit.lib ObjectInserter ObjectReader)
    (org.eclipse.jgit.revwalk RevCommit RevTree RevWalk)
    (org.eclipse.jgit.transport PushResult RefSpec RemoteConfig RemoteRefUpdate
-                               RemoteRefUpdate$Status Transport URIish UsernamePasswordCredentialsProvider)
+                               RemoteRefUpdate$Status Transport Transport$Operation URIish
+                               UsernamePasswordCredentialsProvider)
    (org.eclipse.jgit.treewalk TreeWalk)
    (org.eclipse.jgit.treewalk.filter TreeFilter)
    (org.eclipse.jgit.util FS FS_POSIX FS_Win32_Cygwin ProcessResult ProcessResult$Status)))
@@ -34,7 +35,9 @@
   (let [root-ex (root-cause e)]
     ;; strip off the beginning URL that is often included and ends up being duplicated later
     (ex-info (format "Git %s failed: %s" (-> command .getClass .getSimpleName) (str/replace-first (ex-message root-ex) #"^[a-z]+://[a-zA-Z0-9\-\.]+: " ""))
-             {:remote remote?} root-ex)))
+             ;; the data of the root cause, for example a URL refusal, stays readable on the thrown exception
+             (merge (ex-data root-ex) {:remote remote?})
+             root-ex)))
 
 (defn- call-command [^GitCommand command]
   (let [analytics-labels {:operation (-> command .getClass .getSimpleName) :remote false}]
@@ -93,6 +96,18 @@
       (.setOptionUploadPack transport RemoteConfig/DEFAULT_UPLOAD_PACK)
       (.setOptionReceivePack transport RemoteConfig/DEFAULT_RECEIVE_PACK))))
 
+(defn- check-push-transports!
+  "Throws unless each transport that `command` pushes to goes to `remote-url`. Opens no connection. `clone-dir` is the
+  directory of the clone that runs the command."
+  [^PushCommand command ^String remote-url ^File clone-dir]
+  ;; A push goes to each push URL in turn, and JGit calls the transport callback just before each one. So the callback
+  ;; alone refuses a second push URL only after the push to the first one.
+  (let [transports (Transport/openAll (.getRepository command) (.getRemote command) Transport$Operation/PUSH)]
+    (try
+      (run! #(check-transport-url! % remote-url clone-dir) transports)
+      (finally
+        (run! #(.close ^Transport %) transports)))))
+
 (defn- call-remote-command [^TransportCommand command {:keys [^String token ^String remote-url]}]
   (let [analytics-labels {:operation (-> command .getClass .getSimpleName) :remote true}
         ;; GitHub convention: use "x-access-token" as username when authenticating with a personal access token
@@ -101,13 +116,15 @@
         clone-dir            (some-> (.getRepository command) .getDirectory)]
     (analytics/inc! :metabase-remote-sync/git-operations analytics-labels)
     (try
-      (-> (doto command
-            ;; bound the network operation so a stalled connection can't hang the sync forever (GHY-3727)
-            (.setTimeout (int (setting/get :remote-sync-git-timeout-seconds)))
-            (.setCredentialsProvider credentials-provider)
-            ;; remote sync uses no URL and runs no program that the git config names
-            (.setTransportConfigCallback (remote-transport-config remote-url clone-dir)))
-          (.call))
+      (doto command
+        ;; bound the network operation so a stalled connection can't hang the sync forever (GHY-3727)
+        (.setTimeout (int (setting/get :remote-sync-git-timeout-seconds)))
+        (.setCredentialsProvider credentials-provider)
+        ;; refuse a URL other than the setting, and run no program that the git config names
+        (.setTransportConfigCallback (remote-transport-config remote-url clone-dir)))
+      (when (instance? PushCommand command)
+        (check-push-transports! command remote-url clone-dir))
+      (.call command)
       (catch Exception e
         (analytics/inc! :metabase-remote-sync/git-operations-failed analytics-labels)
         (throw (clean-git-exception e command true))))))
@@ -432,11 +449,14 @@
   authentication. Uses the 'origin' remote of the clone.
 
   Returns the push response from JGit. Throws ExceptionInfo if the push operation fails or returns a
-  non-OK/UP_TO_DATE status, or if the git config sends it to a URL other than :remote-url."
+  non-OK/UP_TO_DATE status. Throws ExceptionInfo, and pushes to no URL, if the git config sends the push to any URL
+  other than :remote-url."
   ([git-source] (push-branch! git-source nil))
   ([{:keys [^Git git ^String branch] :as git-source} ^ProgressMonitor progress-monitor]
    (let [branch-name (qualify-branch branch)
          push-cmd    (cond-> (-> (.push git)
+                                 ;; with no remote, JGit takes the push remote from the git config
+                                 (.setRemote Constants/DEFAULT_REMOTE_NAME)
                                  (.setRefSpecs (doto (java.util.ArrayList.)
                                                  (.add (RefSpec. (str branch-name ":" branch-name))))))
                        progress-monitor (.setProgressMonitor progress-monitor))
