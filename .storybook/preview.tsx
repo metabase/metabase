@@ -22,15 +22,18 @@ require("metabase/visualizations/components/EChartsRenderer/EChartsRenderer");
 
 import "@mantine/core/styles.css";
 import "@mantine/dates/styles.css";
-import { Global, css, useTheme } from "@emotion/react";
-import { initialize, mswLoader } from "msw-storybook-addon";
 
 import { OverlayStackProvider } from "metabase/ui/components/overlays/overlay-stack";
 import { EmotionCacheProvider } from "metabase/ui/components/theme/EmotionCacheProvider";
+
+import { Global, css, useTheme } from "@emotion/react";
+
 import {
   getSaveDomImageStyles,
   loadVisualizationComponents,
 } from "metabase/viz-core";
+
+import { initialize, mswLoader } from "msw-storybook-addon";
 
 // Inject @font-face declarations synchronously at preview load so that bundled
 // fonts are registered with `document.fonts` before any story's loaders run.
