@@ -81,14 +81,14 @@ export function headingIds(markdown: string): Set<string> {
     if (!heading) {
       continue;
     }
-    const explicit = heading[1].match(/\{#([^}\s]+)\}\s*$/);
+    const explicit = heading[1].match(/\{#([^}\s]+)}\s*$/);
     if (explicit) {
       ids.add(explicit[1]);
       continue;
     }
     const base =
       heading[1]
-        .replace(/\[([^\]]*)\]\([^)]*\)/g, "$1")
+        .replace(/\[([^\]]*)]\([^)]*\)/g, "$1")
         .replace(/[`*]|\b_|_\b/g, "")
         .replace(/^[^a-zA-Z]+/, "")
         .replace(/[^a-zA-Z0-9 -]/g, "")
@@ -147,6 +147,6 @@ const main = () => {
   process.exit(broken ? 1 : 0);
 };
 
-if (import.meta.main) {
+if (require.main === module) {
   main();
 }
