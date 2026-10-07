@@ -44,6 +44,25 @@ export function apiKeyMatchesScope(
   );
 }
 
+type GroupFilterOption = { value: string; label: string };
+
+/**
+ * Narrows the Group selector's options to the selected key's one group — a key belongs to
+ * exactly one group, so once one is selected, the selector can't offer a group it isn't in.
+ * Otherwise picking an incompatible group would silently zero out every chart (see PR #83726
+ * review). With no key selected, `groupOptions` passes through unchanged.
+ */
+export function narrowGroupOptionsToSelectedKey(
+  selectedApiKey: Pick<ApiKey, "group"> | undefined,
+  groupOptions: GroupFilterOption[],
+): GroupFilterOption[] {
+  if (!selectedApiKey) {
+    return groupOptions;
+  }
+  const keyGroupValue = String(selectedApiKey.group.id);
+  return groupOptions.filter((option) => option.value === keyGroupValue);
+}
+
 type ApiKeyUsageDataSources = {
   provider: MetadataProvider;
   table: TableMetadata | CardMetadata;

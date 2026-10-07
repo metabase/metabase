@@ -63,5 +63,14 @@ const apiKeyUsageEventsUrlStateConfig: UrlStateConfig<ApiKeyUsageEventsUrlState>
     }),
   };
 
-export const apiKeyUsageUrlStateConfig: UrlStateConfig<ApiKeyUsageUrlState> =
-  mergeUrlStateConfig(filterUrlStateConfig, apiKeyUsageEventsUrlStateConfig);
+const mergedUrlStateConfig = mergeUrlStateConfig(
+  filterUrlStateConfig,
+  apiKeyUsageEventsUrlStateConfig,
+);
+
+export const apiKeyUsageUrlStateConfig: UrlStateConfig<ApiKeyUsageUrlState> = {
+  ...mergedUrlStateConfig,
+  // This page has no user/creator filter concept — "Created by" is just a column now — so a
+  // stray `?user=` query param must not silently scope every query (see PR #83726 review).
+  parse: (query) => ({ ...mergedUrlStateConfig.parse(query), user: null }),
+};

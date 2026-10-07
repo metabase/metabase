@@ -17,7 +17,49 @@ type DataSources = {
   provider: MetadataProvider | null;
   table: TableMetadata | CardMetadata | null;
   groupMembersTable: TableMetadata | CardMetadata | null;
+  /** Whether the `table`/`groupMembersTable` lookup itself (view name -> table metadata) is
+   * still resolving — distinct from the data queries below, which only start once this settles.
+   * Without this, a view the audit db hasn't synced yet would leave `table` null and `query`
+   * null forever, and the page would spin forever with no escape hatch. */
+  isLoadingTables: boolean;
 };
+
+type ResolvedArgs = {
+  /** Whether the `table`/`groupMembersTable` lookup itself is still resolving. */
+  isLoadingTables: boolean;
+  isFetching: boolean;
+  isFetchingKeys: boolean;
+  /** Null means either still loading the tables, or the tables were never found. */
+  query: unknown;
+  data: unknown;
+  apiKeys: unknown;
+  hasError: boolean;
+};
+
+/**
+ * Whether every input this hook depends on has settled, one way or another. Once the table
+ * lookup is done, a still-null `query` means the view genuinely isn't there to query (nothing
+ * more to wait for) rather than still loading — treated the same as a resolved, empty count.
+ * Without that distinction, a view the audit db hasn't synced yet would leave `query` null
+ * forever, and the page would spin forever with no escape hatch.
+ */
+export function isResolved({
+  isLoadingTables,
+  isFetching,
+  isFetchingKeys,
+  query,
+  data,
+  apiKeys,
+  hasError,
+}: ResolvedArgs): boolean {
+  return (
+    !isLoadingTables &&
+    !isFetching &&
+    !isFetchingKeys &&
+    apiKeys !== undefined &&
+    (query === null || data !== undefined || hasError)
+  );
+}
 
 type Result = {
   /** First load, before the count has ever resolved — show a loader, never the empty state. */
@@ -44,6 +86,7 @@ export function useApiKeyUsageHasData({
   provider,
   table,
   groupMembersTable,
+  isLoadingTables,
   dateFilter,
   apiKeyId,
   userId,
@@ -77,11 +120,15 @@ export function useApiKeyUsageHasData({
   const hasLoadedOnce = useRef(false);
   const combinedError = error ?? keysError;
   const hasError = combinedError != null;
-  const resolved =
-    query !== null &&
-    !isFetching &&
-    !isFetchingKeys &&
-    ((data !== undefined && apiKeys !== undefined) || hasError);
+  const resolved = isResolved({
+    isLoadingTables,
+    isFetching,
+    isFetchingKeys,
+    query,
+    data,
+    apiKeys,
+    hasError,
+  });
   if (resolved) {
     hasLoadedOnce.current = true;
   }

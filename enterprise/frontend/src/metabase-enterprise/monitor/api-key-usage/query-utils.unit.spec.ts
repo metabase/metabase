@@ -1,6 +1,10 @@
 import type { ApiKey } from "metabase-types/api";
 
-import { apiKeyMatchesScope, apiKeyUsageEventColumnKeys } from "./query-utils";
+import {
+  apiKeyMatchesScope,
+  apiKeyUsageEventColumnKeys,
+  narrowGroupOptionsToSelectedKey,
+} from "./query-utils";
 
 const apiKey: ApiKey = {
   id: 1,
@@ -36,6 +40,33 @@ describe("apiKeyMatchesScope", () => {
 
   it("requires every set filter to match", () => {
     expect(apiKeyMatchesScope(apiKey, { apiKeyId: 1, userId: 99 })).toBe(false);
+  });
+});
+
+describe("narrowGroupOptionsToSelectedKey", () => {
+  const groupOptions = [
+    { value: "1", label: "All Users" },
+    { value: "2", label: "Administrators" },
+    { value: "3", label: "Analysts" },
+  ];
+
+  it("passes options through unchanged when no key is selected", () => {
+    expect(narrowGroupOptionsToSelectedKey(undefined, groupOptions)).toBe(
+      groupOptions,
+    );
+  });
+
+  it("narrows to the selected key's one group", () => {
+    expect(narrowGroupOptionsToSelectedKey(apiKey, groupOptions)).toEqual([
+      { value: "2", label: "Administrators" },
+    ]);
+  });
+
+  it("returns no options when the key's group isn't in the list (e.g. deleted)", () => {
+    const keyInDeletedGroup = { group: { id: 404, name: "Gone" } };
+    expect(
+      narrowGroupOptionsToSelectedKey(keyInDeletedGroup, groupOptions),
+    ).toEqual([]);
   });
 });
 

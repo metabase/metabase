@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { useMemo } from "react";
 import { t } from "ttag";
 
+import { useListApiKeysQuery } from "metabase/admin/settings/api/api-key";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import {
   type PillTab,
@@ -25,6 +26,7 @@ import {
   VIEW_GROUP_MEMBERS,
 } from "metabase-enterprise/monitor/api-key-usage/constants";
 import { useApiKeyUsageHasData } from "metabase-enterprise/monitor/api-key-usage/hooks/useApiKeyUsageHasData";
+import { narrowGroupOptionsToSelectedKey } from "metabase-enterprise/monitor/api-key-usage/query-utils";
 import { apiKeyUsageUrlStateConfig } from "metabase-enterprise/monitor/api-key-usage/url-state";
 
 import { ApiKeyFilterSelect } from "./ApiKeyFilterSelect";
@@ -70,6 +72,18 @@ export function ApiKeyUsageSectionLayout() {
     { date, user, group, tenant, api_key, page, sort_column, sort_direction },
     { patchUrlState },
   ] = useUrlState(location, apiKeyUsageUrlStateConfig);
+  const apiKeyId = parseId(api_key);
+
+  const { data: apiKeys } = useListApiKeysQuery();
+  const selectedApiKey = useMemo(
+    () => apiKeys?.find((apiKey) => apiKey.id === apiKeyId),
+    [apiKeys, apiKeyId],
+  );
+  // A key belongs to exactly one group — once it's selected, that group is authoritative,
+  // overriding whatever `group` the URL separately carries (see PR #83726 review).
+  const effectiveGroup = selectedApiKey
+    ? String(selectedApiKey.group.id)
+    : group;
 
   const {
     dateFilter,
@@ -77,9 +91,12 @@ export function ApiKeyUsageSectionLayout() {
     groupId,
     groupNoFilterValue,
     userOptions,
-    groupOptions,
-  } = useFilterOptions({ date, user, group, tenant });
-  const apiKeyId = parseId(api_key);
+    groupOptions: allGroupOptions,
+  } = useFilterOptions({ date, user, group: effectiveGroup, tenant });
+  const groupOptions = useMemo(
+    () => narrowGroupOptionsToSelectedKey(selectedApiKey, allGroupOptions),
+    [selectedApiKey, allGroupOptions],
+  );
 
   const hasPii = useSetting("analytics-pii-retention-enabled") === true;
   const usageAudit = useAuditTable(VIEW_API_KEY_USAGE);
@@ -103,7 +120,11 @@ export function ApiKeyUsageSectionLayout() {
   );
 
   const { isInitialLoading, isRefetching, hasData, count, error } =
-    useApiKeyUsageHasData({ ...dataSources, ...chartFilters });
+    useApiKeyUsageHasData({
+      ...dataSources,
+      ...chartFilters,
+      isLoadingTables: usageAudit.isLoading || groupMembersAudit.isLoading,
+    });
   const showEmpty = !isInitialLoading && !isRefetching && !hasData;
 
   const usagePath = Urls.monitorApiKeyUsageOverview();
@@ -150,21 +171,19 @@ export function ApiKeyUsageSectionLayout() {
     ],
   );
 
-  const sectionContent = (
+  // Tabs + filters stay outside the scrollable area below (rendered once per branch, same
+  // elements, just never scrolled past) so they're always visible regardless of page length.
+  const tabsAndFilters = (
     <>
       <PillTabNavigation tabs={tabs} />
       <Flex gap="sm" wrap="wrap" align="center">
-        <ApiKeyFilterSelect
-          value={api_key}
-          onChange={(val) => patchUrlState({ api_key: val, page: 0 })}
-        />
         <ApiKeyUsageFilterBar
           date={date}
           onDateChange={(val) => patchUrlState({ date: val, page: 0 })}
           user={user}
           onUserChange={(val) => patchUrlState({ user: val, page: 0 })}
           userOptions={userOptions}
-          group={group}
+          group={effectiveGroup}
           onGroupChange={(val) => patchUrlState({ group: val, page: 0 })}
           groupOptions={groupOptions}
           groupNoFilterValue={groupNoFilterValue}
@@ -174,21 +193,29 @@ export function ApiKeyUsageSectionLayout() {
           onTenantChange={() => {}}
           tenantOptions={[]}
           hasTenants={false}
-          // The API key filter (above) is the primary way to scope this page; a separate user
+          // The API key filter (below) is the primary way to scope this page; a separate user
           // filter is redundant now that "Created by" is just a column.
           hasUsers={false}
         />
+        <ApiKeyFilterSelect
+          value={api_key}
+          onChange={(val) => patchUrlState({ api_key: val, page: 0 })}
+          groupId={groupId}
+        />
       </Flex>
-      <RouteContent error={error} isInitialLoading={isInitialLoading}>
-        {showEmpty ? (
-          <ApiKeyUsageEmptyState />
-        ) : (
-          <ApiKeyUsageContextProvider value={outletContext}>
-            <Outlet />
-          </ApiKeyUsageContextProvider>
-        )}
-      </RouteContent>
     </>
+  );
+
+  const pageContent = (
+    <RouteContent error={error} isInitialLoading={isInitialLoading}>
+      {showEmpty ? (
+        <ApiKeyUsageEmptyState />
+      ) : (
+        <ApiKeyUsageContextProvider value={outletContext}>
+          <Outlet />
+        </ApiKeyUsageContextProvider>
+      )}
+    </RouteContent>
   );
 
   if (isTableRoute) {
@@ -197,6 +224,7 @@ export function ApiKeyUsageSectionLayout() {
         <MonitorMain>
           <Stack gap="xl" flex={1} mih={0}>
             <MonitorHeaderTitle>{t`API key usage`}</MonitorHeaderTitle>
+            {tabsAndFilters}
             <Stack
               gap="lg"
               flex={1}
@@ -204,7 +232,7 @@ export function ApiKeyUsageSectionLayout() {
               display="flex"
               style={{ flexDirection: "column" }}
             >
-              {sectionContent}
+              {pageContent}
             </Stack>
           </Stack>
         </MonitorMain>
@@ -213,11 +241,16 @@ export function ApiKeyUsageSectionLayout() {
   }
 
   return (
-    <MonitorMain>
-      <Stack gap="xl">
-        <MonitorHeaderTitle>{t`API key usage`}</MonitorHeaderTitle>
-        <Stack gap="lg">{sectionContent}</Stack>
-      </Stack>
-    </MonitorMain>
+    <Flex h="100%" wrap="nowrap">
+      <MonitorMain>
+        <Stack gap="xl" flex={1} mih={0}>
+          <MonitorHeaderTitle>{t`API key usage`}</MonitorHeaderTitle>
+          {tabsAndFilters}
+          <Stack gap="lg" flex={1} mih={0} style={{ overflowY: "auto" }}>
+            {pageContent}
+          </Stack>
+        </Stack>
+      </MonitorMain>
+    </Flex>
   );
 }

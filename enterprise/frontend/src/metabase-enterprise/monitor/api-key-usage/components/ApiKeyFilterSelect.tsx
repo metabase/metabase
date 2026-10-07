@@ -3,6 +3,7 @@ import { t } from "ttag";
 
 import { useListApiKeysQuery } from "metabase/admin/settings/api/api-key";
 import { Select } from "metabase/ui";
+import { apiKeyMatchesScope } from "metabase-enterprise/monitor/api-key-usage/query-utils";
 
 // Matches the width of the shared ConversationFilters selects it sits alongside.
 const FILTER_WIDTH = 205;
@@ -10,6 +11,8 @@ const FILTER_WIDTH = 205;
 type Props = {
   value: string | null;
   onChange: (value: string | null) => void;
+  /** Narrows the options to keys in this group — a key belongs to exactly one group. */
+  groupId: number | undefined;
 };
 
 /**
@@ -17,16 +20,18 @@ type Props = {
  * discussion), kept separate from the shared `ConversationFilters` bar since that component is also
  * used by pages with no notion of an API key.
  */
-export function ApiKeyFilterSelect({ value, onChange }: Props) {
+export function ApiKeyFilterSelect({ value, onChange, groupId }: Props) {
   const { data: apiKeys } = useListApiKeysQuery();
 
   const options = useMemo(
     () =>
-      (apiKeys ?? []).map((apiKey) => ({
-        value: String(apiKey.id),
-        label: apiKey.name,
-      })),
-    [apiKeys],
+      (apiKeys ?? [])
+        .filter((apiKey) => apiKeyMatchesScope(apiKey, { groupId }))
+        .map((apiKey) => ({
+          value: String(apiKey.id),
+          label: apiKey.name,
+        })),
+    [apiKeys, groupId],
   );
 
   return (
