@@ -80,7 +80,6 @@ describe("scenarios > dashboard > filters > boolean", () => {
       cy.findByLabelText("Click behavior").click();
       H.sidebar().within(() => {
         cy.findByText(`${COLUMN_NAME} updates 1 filter`).click();
-        cy.findByText("Update a dashboard filter").click();
         cy.findByText("Go to a custom destination").click();
         cy.findByText("Saved question").click();
       });
