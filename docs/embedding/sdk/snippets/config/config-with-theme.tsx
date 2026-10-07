@@ -2,23 +2,21 @@ import type { PropsWithChildren } from "react";
 import {
   type MetabaseAuthConfig,
   MetabaseProvider,
-  type SdkDashboardLoadEvent,
+  defineMetabaseTheme,
 } from "@metabase/embedding-sdk-react";
 
 const authConfig = {} as MetabaseAuthConfig;
 
 const Example = ({ children }: PropsWithChildren) => {
   // [<snippet example>]
-  const handleDashboardLoad: SdkDashboardLoadEvent = (dashboard) => {
-    // Send analytics events, show notifications, etc.
-  };
-
-  const eventHandlers = {
-    onDashboardLoad: handleDashboardLoad,
-  };
+  const theme = defineMetabaseTheme({
+    colors: {
+      brand: "#509EE3",
+    },
+  });
 
   return (
-    <MetabaseProvider authConfig={authConfig} eventHandlers={eventHandlers}>
+    <MetabaseProvider authConfig={authConfig} theme={theme}>
       {children}
     </MetabaseProvider>
   );
