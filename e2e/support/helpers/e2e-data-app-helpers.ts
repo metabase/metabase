@@ -612,8 +612,8 @@ const isSyncedDataApp = (app: DataApp): app is SyncedDataApp =>
   typeof app.permission_group_id === "number";
 
 /**
- * Writes the app's manifest into the sync repository as `data_apps/<slug>`, and
- * its collection files under the repository's `collections/data_apps/`, and
+ * Writes the app's manifest into the sync repository as `data_apps/<slug>`, makes
+ * the repository's `collections/data_apps/` what the host app holds, and
  * commits them, as an author does. The bundle is a placeholder, since specs
  * serve the built one through `mockDataApp`. Pass `initializeRepo: false` to
  * write into the repository an earlier call set up.
@@ -624,14 +624,17 @@ function commitDataApp(
   { initializeRepo = true }: { initializeRepo?: boolean } = {},
 ) {
   const appDir = `${LOCAL_GIT_PATH}/data_apps/${slug}`;
+  const collectionsDir = `${LOCAL_GIT_PATH}/collections/data_apps`;
 
   if (initializeRepo) {
     setupGitSync();
     copySyncedCollectionFixture();
   }
+  // A copy only adds, so a file the author deleted would stay in the repository.
+  cy.task("removeDataAppPaths", { paths: [collectionsDir] });
   cy.task("copyDirectory", {
     source: `${appRoot}/collections/data_apps`,
-    destination: `${LOCAL_GIT_PATH}/collections/data_apps`,
+    destination: collectionsDir,
   });
   cy.readFile(`${appRoot}/data_app.yaml`).then((manifest: string) =>
     cy.task("writeDataAppFiles", {
