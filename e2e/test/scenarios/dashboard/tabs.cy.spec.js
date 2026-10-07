@@ -1186,16 +1186,23 @@ const createNumberFilterMapping = ({ card_id }) => {
 };
 
 function assertFiltersVisibility({ visible = [], hidden = [] }) {
+  // A filter with a value shows it next to its name, e.g. "Text filter: fa"
+  const nameMatcher = (filter) => new RegExp(`^${filter.name}`);
+
   cy.findByTestId("dashboard-parameters-widget-container").within(() => {
-    visible.forEach((filter) => cy.findByText(filter.name).should("exist"));
-    hidden.forEach((filter) => cy.findByText(filter.name).should("not.exist"));
+    visible.forEach((filter) =>
+      cy.findByText(nameMatcher(filter)).should("exist"),
+    );
+    hidden.forEach((filter) =>
+      cy.findByText(nameMatcher(filter)).should("not.exist"),
+    );
   });
 
   // Ensure all filters are visible in edit mode
   H.editDashboard();
   cy.findByTestId("edit-dashboard-parameters-widget-container").within(() => {
     [...visible, ...hidden].forEach((filter) =>
-      cy.findByText(filter.name).should("exist"),
+      cy.findByText(nameMatcher(filter)).should("exist"),
     );
   });
 
