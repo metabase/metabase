@@ -161,7 +161,12 @@
    {:type          "deepseek"
     :label         (deferred-tru "DeepSeek")
     :default-model "deepseek-v4-pro"
-    :mini-model    "deepseek-v4-flash"
+    :mini-model    "deepseek-flash"
+    ;; Ids of retired models, each mapped to the model that now serves it
+    ;; (https://api-docs.deepseek.com/quick_start/pricing). Saved selections may still name them, and they read as
+    ;; the successor. Treat an entry as permanent: nothing rewrites a value pinned by an environment variable, and a
+    ;; stored value converges only when the setting is next written.
+    :retired-models {"deepseek-v4-flash" "deepseek-flash"}
     :fields        [{:key         :api-key
                      :label       (deferred-tru "API key")
                      :type        :password
@@ -210,8 +215,10 @@
                     {:id "google/gemini-3.6-flash"             :display_name "Gemini 3.6 Flash"}
                     {:id "google/gemini-3.7-flash"             :display_name "Gemini 3.7 Flash"}
                     {:id "anthropic/claude-fable-5"            :display_name "Claude Fable 5"}
+                    {:id "anthropic/claude-opus-5-5"           :display_name "Claude Opus 5.5"}
                     {:id "anthropic/claude-opus-5"             :display_name "Claude Opus 5"}
                     {:id "anthropic/claude-opus-4-6"           :display_name "Claude Opus 4.6"}
+                    {:id "anthropic/claude-sonnet-5-5"         :display_name "Claude Sonnet 5.5"}
                     {:id "anthropic/claude-sonnet-5"           :display_name "Claude Sonnet 5"}
                     {:id "anthropic/claude-sonnet-4-6"         :display_name "Claude Sonnet 4.6"}
                     {:id "anthropic/claude-haiku-4-5@20251001" :display_name "Claude Haiku 4.5"}]
@@ -312,6 +319,8 @@
     :label         (deferred-tru "Amazon Bedrock")
     :default-model "anthropic.claude-opus-4-8"
     :mini-model    "anthropic.claude-haiku-4-5"
+    ;; A connection with a model ID serves that model instead of the catalog.
+    :model-fields  [:model-id]
     ;; Both keys together select explicit credentials, neither selects the AWS default credentials chain, and one
     ;; without the other authenticates nothing. A session token only extends the pair.
     :requires      {:access-key-id     [:secret-access-key]
@@ -336,6 +345,11 @@
                      :type    :select
                      :options aws-region-options
                      :default "us-east-1"}
+                    {:key         :model-id
+                     :label       (deferred-tru "Model ID")
+                     :type        :text
+                     :placeholder "global.anthropic.claude-sonnet-4-6"
+                     :help        (deferred-tru "Optional. Use an inference profile, or a model that isn''t listed for this region, by its ID or ARN.")}
                     {:key       :session-token
                      :label     (deferred-tru "Session token")
                      :type      :password
@@ -466,11 +480,23 @@
 
 (defn mini-model
   "The fastest and cheapest model `type-name` serves — what short utility calls such as conversation titles run on
-  when no model has been picked for them. Returns nil for the types that have no cheaper tier to fall back to: the
-  ones whose connection names the single model it serves rather than picking from a catalog, and the managed
-  provider, which serves one benchmarked model."
+  when no model has been picked for them and the connection's listing includes it. Returns nil for the types that
+  have no cheaper tier to fall back to: the ones whose connection names the single model it serves rather than
+  picking from a catalog, and the managed provider, which serves one benchmarked model."
   [type-name]
   (:mini-model (provider-type type-name)))
+
+(defn served-mini-model
+  "The `:config` entry recording `type-name`'s [[mini-model]] when `listed-models` includes it, and nil when it does
+  not."
+  [type-name listed-models]
+  (let [model (mini-model type-name)]
+    {:mini-model (when (some #(= model (:id %)) listed-models) model)}))
+
+(defn connection-mini-model
+  "The [[mini-model]] `conn`'s listing included when it was last saved, or nil."
+  [conn]
+  (get-in conn [:config :mini-model]))
 
 ;;; -------------------------------------------------- Validation --------------------------------------------------
 

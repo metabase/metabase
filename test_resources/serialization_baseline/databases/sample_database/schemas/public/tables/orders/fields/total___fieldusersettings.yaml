@@ -1,0 +1,13 @@
+created_at: '2025-06-13T12:52:06.383265Z'
+description: Total order amount including tax
+serdes/meta:
+- id: Sample Database
+  model: Database
+- id: PUBLIC
+  model: Schema
+- id: ORDERS
+  model: Table
+- id: TOTAL
+  model: Field
+- id: '1'
+  model: FieldUserSettings

@@ -16,7 +16,7 @@
    {:key conn-key :type type :name conn-key :config config}))
 
 (def ^:private configured-anthropic
-  (connection "anthropic" "anthropic" {:api-key "sk-ant-test"}))
+  (connection "anthropic" "anthropic" {:api-key "sk-ant-test" :mini-model "claude-haiku-4-5-20251001"}))
 
 (def ^:private configured-google
   (connection "google" "google" {:oauth-access-token "ya29.test" :project-id "my-project"}))
@@ -458,10 +458,10 @@
              (metabot.settings/llm-metabot-provider! "metabase/")))))))
 
 (deftest llm-mini-model-defaults-to-the-metabot-connections-mini-model-test
-  (testing "with nothing stored, quick tasks run on the fastest model of the connection Metabot uses"
+  (testing "with nothing stored, quick tasks run on the cheaper model the connection Metabot uses was listed as serving"
     (mt/with-temporary-raw-setting-values [llm-mini-model nil]
       (with-connections [configured-anthropic
-                         (connection "openai" "openai" {:api-key "sk-openai"})]
+                         (connection "openai" "openai" {:api-key "sk-openai" :mini-model "gpt-5.4-mini"})]
         (with-selected-model "anthropic/claude-sonnet-4-6"
           (is (= "anthropic/claude-haiku-4-5-20251001" (metabot.settings/llm-mini-model))))
         (testing "including a second connection of the same type, which keeps its own key"
@@ -470,6 +470,11 @@
 
 (deftest llm-mini-model-falls-back-to-the-metabot-model-test
   (mt/with-temporary-raw-setting-values [llm-mini-model nil]
+    (testing "a connection whose listing left out the cheaper model its type is known for falls through to the model
+              Metabot itself uses, rather than to a guess the account cannot serve"
+      (with-connections [(connection "anthropic" "anthropic" {:api-key "sk-ant-test"})]
+        (with-selected-model "anthropic/claude-sonnet-4-6"
+          (is (= "anthropic/claude-sonnet-4-6" (metabot.settings/llm-mini-model))))))
     (testing "provider types with no mini model fall through to the model Metabot itself uses"
       (with-connections [(connection "azure" "azure" {:api-key  "azure-key"
                                                       :base-url "https://my-resource.services.ai.azure.com/openai"})]
@@ -481,6 +486,14 @@
                                                         :endpoint-id        "1234567890123456789"})]
         (with-selected-model "google/endpoints/1234567890123456789"
           (is (= "google/endpoints/1234567890123456789" (metabot.settings/llm-mini-model))))))
+    (testing "so does a Bedrock connection that names its model, while one without a model ID keeps its mini model"
+      (with-connections [(connection "bedrock" "bedrock" {:model-id   "eu.anthropic.claude-sonnet-4-6"
+                                                          :mini-model "anthropic.claude-haiku-4-5"})]
+        (with-selected-model "bedrock/eu.anthropic.claude-sonnet-4-6"
+          (is (= "bedrock/eu.anthropic.claude-sonnet-4-6" (metabot.settings/llm-mini-model)))))
+      (with-connections [(connection "bedrock" "bedrock" {:mini-model "anthropic.claude-haiku-4-5"})]
+        (with-selected-model "bedrock/anthropic.claude-opus-4-8"
+          (is (= "bedrock/anthropic.claude-haiku-4-5" (metabot.settings/llm-mini-model))))))
     (testing "so does a model reference naming a connection that does not exist"
       (with-connections []
         (with-selected-model "gone/some-model"

@@ -32850,7 +32850,7 @@
       "post" : {
         "operationId" : "post-api-apps-slug-query-table-dependencies",
         "summary" : "POST /api/apps/{slug}/query-table-dependencies",
-        "description" : "Return the tables read by already-saved queries, including ones reached only through an implicit join.\n\n   Sync copies models, actions and metrics whose queries it never resolves through `/query`, and only\n   this metadata-based lookup sees an implicit join: the id of a table reached through a foreign key\n   appears nowhere in the query itself.",
+        "description" : "Return the tables read by already-saved queries, including ones reached only through an implicit join.\n\n   Sync copies actions and metrics whose queries it never resolves through `/query`, and only\n   this metadata-based lookup sees an implicit join: the id of a table reached through a foreign key\n   appears nowhere in the query itself.",
         "parameters" : [ {
           "in" : "path",
           "name" : "slug",
@@ -74289,7 +74289,7 @@
           "description" : "Whether to include the entire metric library."
         }, {
           "in" : "query",
-          "name" : "include-models",
+          "name" : "include-actions",
           "required" : false,
           "schema" : {
             "oneOf" : [ {
@@ -74298,7 +74298,7 @@
               "type" : "null"
             } ]
           },
-          "description" : "Include models with actions. Database scope filters models; library scope does not. Without a scope, returns models only."
+          "description" : "Include query actions that belong to no model. Database scope filters them; library scope does not. Without a scope, returns actions only."
         } ],
         "responses" : {
           "2XX" : {
