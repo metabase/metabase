@@ -7,12 +7,7 @@
    [metabase.revisions.models.revision :as revision]))
 
 (def ^:private excluded-columns-for-document-revision
-  "Columns to exclude from Document revision serialization.
-
-  Excludes metadata columns (timestamps, IDs, collection_id, creator_id, etc.)
-  following the same pattern established for Card revisions.
-
-  The :document field contains the actual content and is preserved."
+  "Keys that a Document revision does not store: metadata columns, and the keys that the API hydrates."
   #{:id
     :creator_id
     :created_at
@@ -24,7 +19,7 @@
     :public_uuid
     :public_uuid_prefix
     :made_public_by_id
-    ;; keys that the API hydrates onto the document it publishes; the Document hook publishes the plain row
+    ;; API-hydrated keys: the hook's event lacks them, so a stored copy would make one edit record two Revisions
     :creator
     :can_write
     :can_delete
@@ -34,6 +29,12 @@
 (defmethod revision/serialize-instance :model/Document
   [_model _id instance]
   (apply dissoc instance excluded-columns-for-document-revision))
+
+(defmethod revision/comparable-object :model/Document
+  [_model object]
+  ;; revisions stored by earlier versions can hold keys that [[revision/serialize-instance]] now drops, such as the
+  ;; hydrated keys
+  (apply dissoc object excluded-columns-for-document-revision))
 
 (defmethod revision/revert-to-revision! :model/Document
   [model id user-id serialized-document]

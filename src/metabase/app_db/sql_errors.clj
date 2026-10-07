@@ -1,6 +1,8 @@
 (ns metabase.app-db.sql-errors
   "Classification of SQL errors raised by the supported application databases.
   [[error-kind]] names the class of error an exception represents; [[table-not-found?]] is its common special case."
+  (:require
+   [clojure.string :as str])
   (:import
    (java.sql SQLException)))
 
@@ -50,7 +52,11 @@
       ;; Vendor codes are meaningful only after the SQLSTATE has matched.
       (and (= (sql-states :integrity-constraint-violation) state)
            (= (error-codes :mysql/duplicate-entry) (.getErrorCode e)))
-      :duplicate-key)))
+      :duplicate-key
+
+      ;; SQLSTATE class 40: the database ended the transaction (a deadlock or a serialization failure)
+      (some-> state (str/starts-with? "40"))
+      :transaction-rollback)))
 
 (defn- exception-chain
   "Every exception reachable from `e`, following causes and JDBC's next-exception links without revisiting cycles."
@@ -71,8 +77,8 @@
       found)))
 
 (defn error-kind
-  "The class of database error `e` represents: `:table-not-found`, `:duplicate-key`, or nil when unrecognized.
-  Walks the full cause and JDBC next-exception chains; the first recognized class wins."
+  "The class of database error `e` represents: `:table-not-found`, `:duplicate-key`, `:transaction-rollback`, or nil
+  when unrecognized. Walks the full cause and JDBC next-exception chains; the first recognized class wins."
   [e]
   (some #(when (instance? SQLException %)
            (sql-error-kind %))

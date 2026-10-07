@@ -1,6 +1,8 @@
 (ns metabase.revisions.events
   (:require
    [metabase.api.common :as api]
+   [metabase.app-db.core :as mdb]
+   [metabase.app-db.sql-errors :as sql-errors]
    [metabase.events.core :as events]
    [metabase.revisions.models.revision :as revision]
    [metabase.util.log :as log]
@@ -27,6 +29,11 @@
                                   :is-creation? is-creation?
                                   :message      (:revision-message event)}))
       (catch Throwable e
+        ;; the database ended the writer's transaction (e.g. a deadlock on MySQL or MariaDB): a writer that went on would
+        ;; run in autocommit, commit the rest of its work alone and report success
+        (when (and (mdb/in-transaction?)
+                   (= :transaction-rollback (sql-errors/error-kind e)))
+          (throw e))
         (log/warnf "Failed to process revision event for model %s: %s" model (ex-message e))))))
 
 (events/derive! ::card-event ::event)

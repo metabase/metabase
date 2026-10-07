@@ -3,6 +3,7 @@
   additional logic, so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`)."
   (:require
    [malli.core :as mc]
+   [metabase.app-db.core :as mdb]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
@@ -122,13 +123,15 @@
   (t2/select-pks-set :model/Card {:where [:and [:in :id card-ids] [:= :archived false]]}))
 
 (mu/defn lock-entity!
-  "Lock the row of `entity` with `id` for update."
-  [entity :- :keyword
-   id     :- ms/PositiveInt]
+  "Lock the `model` row with `id` for update. Returns the locked rows: none when the row does not exist."
+  [model :- :keyword
+   id    :- ms/PositiveInt]
   (t2/query {:select [:id]
-             :from   [(t2/table-name entity)]
+             :from   [(t2/table-name model)]
              :where  [:= :id id]
-             :for    :update}))
+             ;; the lock of an UPDATE that changes no key: on Postgres, FOR UPDATE also blocks the foreign-key checks
+             ;; of inserts that refer to the row
+             :for    (if (= :postgres (mdb/db-type)) :no-key-update :update)}))
 
 (mu/defn lock-revisions!
   "Lock the Revisions of the `model-name` row with `model-id` for update."
@@ -152,8 +155,7 @@
                                 [:id :desc]]}))
 
 (mu/defn revision-ids-after
-  "The ids of the Revisions of the `model-name` row with `model-id` that are newer than the Revision with
-  `revision-id`."
+  "The ids of the Revisions of the `model-name` row with `model-id` whose id is greater than `revision-id`."
   [model-name  :- :string
    model-id    :- ms/PositiveInt
    revision-id :- ms/PositiveInt]
@@ -164,16 +166,19 @@
   [ids :- [:sequential ms/PositiveInt]]
   (t2/delete! :model/Revision :id [:in ids]))
 
-(mu/defn unmark-most-recent-revisions!
-  "Clear `most_recent` on the Revisions of the `model-name` row with `model-id` other than `revision-id`, returning
-  the number updated."
+(mu/defn most-recent-revision-ids
+  "The ids of the Revisions of the `model-name` row with `model-id`, other than `revision-id`, that have `most_recent`
+  set."
   [model-name  :- :string
    model-id    :- ms/PositiveInt
    revision-id :- ms/PositiveInt]
+  (t2/select-pks-vec :model/Revision :model model-name :model_id model-id :most_recent true :id [:not= revision-id]))
+
+(mu/defn unmark-most-recent-revisions!
+  "Clear `most_recent` on the Revisions with `ids`, returning the number updated."
+  [ids :- [:sequential ms/PositiveInt]]
   ;; updates the table directly: revisions are otherwise immutable
-  (t2/update! (t2/table-name :model/Revision)
-              {:model model-name :model_id model-id :most_recent true :id [:not= revision-id]}
-              {:most_recent false}))
+  (t2/update! (t2/table-name :model/Revision) {:id [:in ids]} {:most_recent false}))
 
 (mu/defn revisions
   "The Revisions of the `model-name` row with `model-id`, newest first."
