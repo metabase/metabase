@@ -84,6 +84,7 @@ describe("scenarios > embedding > full app", () => {
 
       cy.log("hide the side nav by a param");
       H.visitFullAppEmbeddingUrl({ url: "/", qs: { side_nav: false } });
+      cy.wait("@getXrayDashboard");
       H.appBar().within(() => {
         cy.findByTestId("main-logo").should("be.visible");
         cy.button("Toggle sidebar").should("not.exist");
@@ -92,12 +93,14 @@ describe("scenarios > embedding > full app", () => {
 
       cy.log("show question creation controls by a param");
       H.visitFullAppEmbeddingUrl({ url: "/", qs: { new_button: true } });
+      cy.wait("@getXrayDashboard");
       H.appBar().within(() => {
         cy.button(/New/).should("be.visible");
       });
 
       cy.log("preserve params when navigating");
       H.visitFullAppEmbeddingUrl({ url: "/", qs: { search: true } });
+      cy.wait("@getXrayDashboard");
 
       H.appBar().within(() => {
         cy.findByPlaceholderText("Search…").should("be.visible");
