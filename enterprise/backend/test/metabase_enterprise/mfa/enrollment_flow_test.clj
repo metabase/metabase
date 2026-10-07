@@ -3,7 +3,9 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.mfa.management :as mfa.management]
+   [metabase-enterprise.mfa.test-helpers :as mfa.test]
    [metabase-enterprise.mfa.totp :as totp]
+   [metabase.analytics.snowplow-test :as snowplow-test]
    [metabase.auth-identity.core :as auth-identity]
    [metabase.sso.core :as sso]
    [metabase.test :as mt]
@@ -151,3 +153,49 @@
               (mt/client session-key :post 400 "ee/mfa/disable" {:code (wrong-code secret)}))
             (let [resp (mt/client session-key :post 400 "ee/mfa/disable" {:code (wrong-code secret)})]
               (is (re-find #"Too many attempts!" (str resp))))))))))
+
+(deftest ^:synchronized enrollment-lifecycle-emits-analytics-test
+  (testing "the voluntary funnel reports each step, tagged to separate it from enrollment forced at login"
+    (mt/with-premium-features #{:multi-factor-auth}
+      (mt/with-temporary-setting-values [mfa-enforcement :optional]
+        (with-fresh-user-session! [session-key _email password]
+          (snowplow-test/with-fake-snowplow-collector
+            (let [{:keys [secret]} (mt/client session-key :post 200 "ee/mfa/enroll" {:password password})]
+              (is (=? [{:event          "mfa_enroll_started"
+                        :event_detail   nil
+                        :triggered_from "account_settings"}]
+                      (mfa.test/mfa-events!)))
+              (let [{:keys [recovery_codes]} (mt/client session-key :post 200 "ee/mfa/enroll/confirm"
+                                                        {:code (totp/generate-code secret)})]
+                (is (=? [{:event          "mfa_enroll_completed"
+                          :event_detail   "totp"
+                          :triggered_from "account_settings"}]
+                        (mfa.test/mfa-events!)))
+                (let [{new-codes :recovery_codes} (mt/client session-key :post 200 "ee/mfa/recovery-codes"
+                                                             {:code (first recovery_codes)})]
+                  (is (=? [{:event          "mfa_recovery_codes_regenerated"
+                            :event_detail   nil
+                            :triggered_from nil}]
+                          (mfa.test/mfa-events!)))
+                  (testing "self-disable is distinguished from an admin removal"
+                    ;; a freshly-issued recovery code, not a TOTP code: `enroll/confirm` above already consumed the
+                    ;; current time step, so a TOTP code generated now would be rejected as a replay
+                    (mt/client session-key :post 204 "ee/mfa/disable" {:code (first new-codes)})
+                    (is (=? [{:event          "mfa_disabled"
+                              :event_detail   nil
+                              :triggered_from "self"}]
+                            (mfa.test/mfa-events!)))))))))))))
+
+(deftest ^:synchronized failed-enrollment-emits-no-completion-test
+  (testing "a rejected confirmation code reports the start but never a completion"
+    (mt/with-premium-features #{:multi-factor-auth}
+      (mt/with-temporary-setting-values [mfa-enforcement :optional]
+        (with-fresh-user-session! [session-key _email password]
+          (snowplow-test/with-fake-snowplow-collector
+            (let [{:keys [secret]} (mt/client session-key :post 200 "ee/mfa/enroll" {:password password})]
+              (is (=? [{:event          "mfa_enroll_started"
+                        :event_detail   nil
+                        :triggered_from "account_settings"}]
+                      (mfa.test/mfa-events!)))
+              (mt/client session-key :post 400 "ee/mfa/enroll/confirm" {:code (wrong-code secret)})
+              (is (empty? (mfa.test/mfa-events!))))))))))

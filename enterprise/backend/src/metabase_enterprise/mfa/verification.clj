@@ -78,18 +78,18 @@
 
 (defn- totp-attempt!
   "When `code` is a valid, not-yet-used TOTP code: consume its time step (RFC 6238 §5.2) and return
-  true."
+  `:totp`."
   [auth-identity code jti]
   (let [credentials (:credentials auth-identity)]
     (when-let [secret (stored-secret auth-identity)]
       (when-let [step (totp/matching-time-step secret code)]
         (when (> step (long (:last_used_step credentials 0)))
           (write-credentials! auth-identity (assoc credentials :last_used_step step) jti)
-          true)))))
+          :totp)))))
 
 (defn- recovery-attempt!
   "When `code` matches one of the stored (bcrypt-hashed) recovery codes: remove it — single-use —
-  and return true."
+  and return `:recovery`."
   [auth-identity code jti]
   (when (recovery-codes/recovery-code? code)
     (let [credentials (:credentials auth-identity)
@@ -98,11 +98,11 @@
         (write-credentials! auth-identity
                             (assoc credentials :recovery_codes (filterv #(not= used %) hashes))
                             jti)
-        true))))
+        :recovery))))
 
 (defn- email-otp-attempt!
   "When `code` matches the pending (bcrypt-hashed, 10-minute) emailed one-time code: consume it —
-  single-use — and return true."
+  single-use — and return `:email`."
   [auth-identity code jti]
   (let [{:keys [hash exp]} (get-in auth-identity [:credentials :email_otp])
         now                (quot (System/currentTimeMillis) 1000)]
@@ -114,7 +114,7 @@
       (write-credentials! auth-identity
                           (dissoc (:credentials auth-identity) :email_otp)
                           jti)
-      true)))
+      :email)))
 
 (defn verify-attempt!
   "Verify a second-factor `code` — a 6-digit TOTP code, a recovery code, or a pending emailed
@@ -126,16 +126,18 @@
   transaction with the enrollment row locked so a concurrently replayed code, recovery code, or
   token cannot pass twice.
 
-  On successful verification the AuthIdentity associated with the second factor is returned, else nil"
+  On successful verification the AuthIdentity associated with the second factor is returned, with
+  `:mfa/method` assoc'd as `:totp`, `:recovery`, or `:email` — which factor the caller actually used is
+  reported to analytics, since recovery-code and emailed-code rates are the lockout-pressure signal. Else nil."
   [user-id code jti]
   (t2/with-transaction [_conn]
     (when-let [auth-identity (mfa.db/lock-totp-identity user-id)]
       (when (and (confirmed? auth-identity)
                  (not (jti-used? (:credentials auth-identity) jti)))
-        (when (or (totp-attempt! auth-identity code jti)
-                  (recovery-attempt! auth-identity code jti)
-                  (email-otp-attempt! auth-identity code jti))
-          auth-identity)))))
+        (when-let [method (or (totp-attempt! auth-identity code jti)
+                              (recovery-attempt! auth-identity code jti)
+                              (email-otp-attempt! auth-identity code jti))]
+          (assoc auth-identity :mfa/method method))))))
 
 (defn set-email-otp!
   "Generate a 6-digit emailed one-time code for `user-id`'s confirmed enrollment, replacing any

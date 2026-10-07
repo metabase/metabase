@@ -4,6 +4,7 @@
    [java-time.api :as t]
    [metabase-enterprise.mfa.enrollment :as enrollment]
    [metabase-enterprise.mfa.totp :as totp]
+   [metabase.analytics.snowplow-test :as snowplow-test]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [toucan2.core :as t2]))
@@ -68,3 +69,20 @@
       (testing "unenrolled count covers active users without a confirmed enrollment"
         ;; both temp users are active + personal; only one is enrolled
         (is (pos? (:unenrolled_count overview)))))))
+
+(deftest ^:synchronized admin-remove-emits-analytics-test
+  (mt/with-temp [:model/User {user-id :id} {}
+                 :model/AuthIdentity _ {:user_id      user-id
+                                        :provider     "totp"
+                                        :confirmed_at (t/instant)
+                                        :credentials  {:secret (totp/generate-secret)}}]
+    (snowplow-test/with-fake-snowplow-collector
+      (mt/user-http-request :crowberto :post 204 "ee/mfa/admin/remove" {:user_id user-id})
+      (testing "an admin removal is tagged as such, carrying the affected user and the acting admin separately"
+        (is (=? [{:data    {"event"          "mfa_disabled"
+                            "triggered_from" "admin"
+                            "target_id"      user-id}
+                  ;; stringified: Snowplow carries the subject id as a string
+                  :user-id #(= (str (mt/user->id :crowberto)) (str %))}]
+                (filter #(= "mfa_disabled" (get (:data %) "event"))
+                        (snowplow-test/pop-event-data-and-user-id!))))))))
