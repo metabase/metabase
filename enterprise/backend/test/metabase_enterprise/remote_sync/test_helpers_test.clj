@@ -8,12 +8,15 @@
    [metabase-enterprise.remote-sync.test-helpers :as th]
    [metabase.actions.models :as action]
    [metabase.actions.schema :as actions.schema]
+   [metabase.app-db.core :as mdb]
    [metabase.lib.core :as lib]
    [metabase.search.core :as search]
    [metabase.settings.core :as setting]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [toucan2.core :as t2]))
+
+(set! *warn-on-reflection* true)
 
 (use-fixtures :once (fixtures/initialize :db))
 
@@ -271,3 +274,119 @@
        (let [before (transforms-state)]
          (test-vars [#'clean-remote-sync-state-removes-stored-transforms-setting-test])
          (is (= before (transforms-state))))))))
+
+(defn- remote-sync-delete-order
+  "The `remote-sync%` setting keys in the order in which the write-back's DELETE locks their rows."
+  []
+  ;; RETURNING gives the scan order of the plan Postgres picks; the throw rolls the delete back
+  (try
+    (t2/with-transaction [_conn]
+      (throw (ex-info "rollback" {::keys (mapv :key (t2/query {:delete-from :setting
+                                                               :where       [:like :key "remote-sync%"]
+                                                               :returning   [:key]}))})))
+    (catch clojure.lang.ExceptionInfo e
+      (or (::keys (ex-data e)) (throw e)))))
+
+(defn- sql-state-and-message
+  "The SQLState and message of the innermost cause of `e`, or nil when `e` is nil."
+  [^Throwable e]
+  (when e
+    (let [cause (last (take-while some? (iterate ex-cause e)))]
+      [(when (instance? java.sql.SQLException cause) (.getSQLState ^java.sql.SQLException cause))
+       (ex-message cause)])))
+
+(deftest clean-remote-sync-settings-write-back-does-not-deadlock-with-a-multi-row-settings-transaction-test
+  (testing (str "the write-back completes and restores the rows when another transaction updates two remote-sync "
+                "rows in the opposite order to its DELETE")
+    (when (= :postgres (mdb/db-type))
+      (do-with-remote-sync-state-restored!
+       (fn []
+         (t2/delete! :setting :key [:like "remote-sync%"])
+         (t2/insert! :setting [{:key "remote-sync-type" :value "read-write" :value_with_aad "read-write"}
+                               {:key "remote-sync-url" :value "https://example.com/a.git"
+                                :value_with_aad "https://example.com/a.git"}])
+         (setting/restore-cache!)
+         (let [order        (remote-sync-delete-order)
+               ;; the writer locks the row the DELETE reaches last, then the one it reaches first
+               [first-key last-key] [(first order) (last order)]
+               before       (remote-sync-setting-rows)
+               set-value!   (fn [k] (t2/query-one {:update :setting
+                                                   :set    {:value "w" :value_with_aad "w"}
+                                                   :where  [:= :key k]}))
+               writer-pid   (promise)
+               proceed      (promise)
+               writer       (future
+                              (try
+                                (t2/with-transaction [_conn]
+                                  ;; bounds every wait of the writer, so that it always ends and releases its locks
+                                  (t2/query-one ["SET LOCAL lock_timeout = '20s'"])
+                                  (set-value! last-key)
+                                  (deliver writer-pid (:pid (t2/query-one ["SELECT pg_backend_pid() AS pid"])))
+                                  (deref proceed 10000 ::timeout)
+                                  (set-value! first-key))
+                                (catch Throwable e e)
+                                (finally
+                                  (deliver writer-pid nil))))
+               pid          (deref writer-pid 10000 ::timeout)
+               watcher      (future
+                              (let [deadline (+ (System/currentTimeMillis) 10000)]
+                                (loop []
+                                  (cond
+                                    (realized? proceed)
+                                    nil
+
+                                    (pos? (:n (t2/query-one ["SELECT count(*) AS n FROM pg_stat_activity
+                                                              WHERE ? = ANY (pg_blocking_pids(pid))" pid])))
+                                    (deliver proceed ::write-back-blocked)
+
+                                    (< (System/currentTimeMillis) deadline)
+                                    (do (Thread/sleep 20) (recur))))))
+               error        (try
+                              (th/clean-remote-sync-settings (fn []))
+                              nil
+                              (catch Throwable e e))
+               after        (remote-sync-setting-rows)]
+           (deliver proceed ::write-back-done)
+           (is (= [2 :done :done]
+                  [(count (distinct order))
+                   (if (= ::timeout (deref writer 30000 ::timeout)) :timeout :done)
+                   (if (= ::timeout (deref watcher 30000 ::timeout)) :timeout :done)]))
+           (is (nil? (sql-state-and-message error)))
+           (is (= before after))))))))
+
+(deftest clean-remote-sync-state-does-not-reindex-when-the-test-writes-no-content-test
+  (testing "clean-remote-sync-state around a test that writes no content does not reindex search"
+    (do-with-remote-sync-state-restored!
+     (fn []
+       (let [calls (atom 0)]
+         (mt/with-dynamic-fn-redefs [search/reindex! (fn [& _] (swap! calls inc) nil)]
+           (th/clean-remote-sync-state (fn [])))
+         (is (zero? @calls)))))))
+
+(defn- run-vars-quietly
+  "Run the test vars `vs` with their namespace's `:each` fixtures. Returns their counts as `{:pass n :fail n :error n}`;
+  their failures are not reported to the calling test."
+  [vs]
+  (let [results (atom {:pass 0 :fail 0 :error 0})]
+    (binding [*test-out*        (java.io.StringWriter.)
+              *report-counters* (ref *initial-report-counters*)
+              report            (fn [m]
+                                  (when (#{:pass :fail :error} (:type m))
+                                    (swap! results update (:type m) inc)))]
+      (test-vars vs))
+    @results))
+
+(deftest clean-remote-sync-state-transforms-tests-pass-when-transforms-is-already-stored-test
+  (testing (str "the tests that keep the Transforms ledger row and the remote-sync-transforms value in step pass when "
+                "the app DB already stores remote-sync-transforms as true")
+    (do-with-remote-sync-state-restored!
+     (fn []
+       (#'th/remove-transforms-setting!)
+       ;; store the value behind the cache's back, as an earlier JVM on a persistent app DB does
+       (t2/insert! :setting {:key "remote-sync-transforms" :value "true" :value_with_aad "true"})
+       (setting/restore-cache!)
+       (#'th/delete-transforms-ledger-rows!)
+       (is (= {:fail 0 :error 0}
+              (select-keys (run-vars-quietly [#'clean-remote-sync-state-keeps-existing-transforms-ledger-row-test
+                                              #'clean-remote-sync-state-keeps-transforms-setting-and-ledger-in-step-test])
+                           [:fail :error])))))))
