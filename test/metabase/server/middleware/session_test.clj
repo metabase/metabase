@@ -4,6 +4,7 @@
    [clojure.test :refer :all]
    [environ.core :as env]
    [java-time.api :as t]
+   [metabase.analytics.db :as analytics.db]
    [metabase.api-keys.core :as api-key]
    [metabase.api.common :refer [*current-user* *current-user-id* *is-group-manager?* *is-superuser?*]]
    [metabase.app-db.core :as mdb]
@@ -912,12 +913,21 @@
                    (is ((if supports-mfa nil? some?) session))))))))))))
 
 (deftest mfa-providers-list-test
-  (testing "Ldap and password are the only ones that support mfa"
-    (is (= #{:provider/password :provider/ldap}
-           (auth-identity/descendants :metabase.auth-identity.provider/supports-mfa))))
-  (testing "and the hard-coded list the session query is compiled from says the same thing"
-    (is (= #{:provider/password :provider/ldap}
-           @#'server.db/mfa-supported-methods))))
+  (let [expected-providers #{:provider/password :provider/ldap}]
+    (testing "Ldap and password are the only ones that support mfa"
+      (is (= expected-providers
+             (auth-identity/descendants :metabase.auth-identity.provider/supports-mfa))))
+    (testing "and the hard-coded list the session query is compiled from says the same thing"
+      (is (= expected-providers
+             @#'server.db/mfa-supported-methods)))
+    (testing "as does the copy the analytics stats ping uses to count blocked sessions"
+      ;; `metabase.analytics.db` cannot share [[server.db/mfa-supported-methods]]: the `server` module already
+      ;; `:uses analytics`, so requiring it back would close a module cycle.
+      ;; A test can cross that boundary where `src` cannot, so the two literals are pinned together here instead.
+      ;; Note the shapes differ deliberately: analytics holds the strings we expect in `auth_identity.provider`.
+      (is (= expected-providers
+             (into #{} (map #(keyword "provider" %))
+                   @#'analytics.db/mfa-challenged-provider-names))))))
 
 (deftest mfa-session-preservation-test
   (init-status/set-complete!)

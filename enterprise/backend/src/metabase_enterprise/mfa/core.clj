@@ -20,7 +20,8 @@
 
 (p/import-vars
  [metabase-enterprise.mfa.settings
-  mfa-enabled?]
+  mfa-enabled?
+  mfa-requirement-deadline-state]
  [metabase.mfa.settings
   mfa-enforcement])
 

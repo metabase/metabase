@@ -579,6 +579,22 @@
     {:transforms               (analytics.db/transform-count)
      :transform_runs_last_24h  (analytics.db/transform-run-count-since one-day-ago)}))
 
+(defn- mfa-metrics
+  "Returns second-factor metrics for the Snowplow stats ping: adoption, recent use, and the number of live sessions
+  that turning `mfa-enforcement` to `:required` would invalidate.
+
+  `mfa_blocked_sessions` is a count of state rather than of events on purpose — enforcement is a `WHERE` clause in
+  [[metabase.server.db]]'s session lookup, so a session it rejects emits nothing to count. See
+  [[metabase.analytics.db/mfa-blocked-session-count]]."
+  [one-day-ago]
+  (let [now (t/offset-date-time)]
+    {:mfa_enrolled_users             (analytics.db/mfa-enrolled-user-count)
+     :mfa_unenrolled_users           (analytics.db/mfa-unenrolled-user-count)
+     :mfa_verified_sessions_last_24h (analytics.db/mfa-verified-session-count-since one-day-ago)
+     :mfa_blocked_sessions           (analytics.db/mfa-blocked-session-count
+                                      now
+                                      (t/minus now (t/minutes (config/config-int :max-session-age))))}))
+
 (defn- ->snowplow-metric-info
   "Collects Snowplow metrics data that is not in the legacy stats format. Also clears entity id translation count."
   []
@@ -591,6 +607,7 @@
       :pivot_tables                    (analytics.db/unarchived-pivot-table-count)
       :query_executions_last_24h       (analytics.db/query-execution-count-since one-day-ago)
       :entity_id_translations_last_24h total-translation-count}
+     (mfa-metrics one-day-ago)
      (transform-metrics))))
 
 (def ^:private string-keyed-int-histogram
@@ -743,6 +760,10 @@
                    [:pivot_tables :int]
                    [:query_executions_last_24h :int]
                    [:entity_id_translations_last_24h :int]
+                   [:mfa_blocked_sessions :int]
+                   [:mfa_enrolled_users :int]
+                   [:mfa_unenrolled_users :int]
+                   [:mfa_verified_sessions_last_24h :int]
                    [:transforms :int]
                    [:transform_runs_last_24h :int]]]
   (mapv
@@ -769,6 +790,10 @@
     [:library_metrics                 (get-in stats [:stats :library :library_metrics] 0)            #{"library"}]
     [:metabase_fields                 (get-in stats [:stats :field :fields] 0)                        #{"fields"}]
     [:metrics                         (get-in stats [:stats :metric :metrics] 0)                      #{"metrics"}]
+    [:mfa_blocked_sessions            (:mfa_blocked_sessions metric-info 0)                           #{"auth" "mfa"}]
+    [:mfa_enrolled_users              (:mfa_enrolled_users metric-info 0)                             #{"auth" "mfa" "users"}]
+    [:mfa_unenrolled_users            (:mfa_unenrolled_users metric-info 0)                           #{"auth" "mfa" "users"}]
+    [:mfa_verified_sessions_last_24h  (:mfa_verified_sessions_last_24h metric-info 0)                 #{"auth" "mfa"}]
     [:models                          (:models metric-info 0)                                         #{}]
     [:native_questions                (get-in stats [:stats :question :questions :native] 0)          #{"questions"}]
     [:new_embedded_dashboards         (:new_embedded_dashboards metric-info 0)                        #{}]
@@ -839,6 +864,20 @@
   metabase-enterprise.analytics.stats
   []
   (ee-snowplow-features-data'))
+
+(defenterprise ee-snowplow-settings-data
+  "OSS values for daily-ping settings whose `defsetting` lives in EE code. Returns none on OSS.
+
+  A setting is registered as a side effect of loading the namespace that defines it, and EE namespaces are absent
+  from an OSS classpath entirely (see [[metabase.config.core/ee-available?]], a classpath probe that gates the
+  `metabase-enterprise.core.init` require). So an EE-only setting is simply not registered on OSS, and
+  [[metabase.settings.models.setting/get]] throws `Unknown setting` for an unregistered name rather than returning
+  nil. Reading one from here would therefore abort [[snowplow-anonymous-usage-stats]] before anything is sent,
+  silently costing an OSS instance its entire daily ping — and it would pass CI, which runs on an EE classpath.
+  Hence this hook. Settings whose definition is in OSS `src/` stay in [[snowplow-settings-metric-defs]]."
+  metabase-enterprise.analytics.stats
+  []
+  [])
 
 (defn- snowplow-features-data
   []
@@ -1023,6 +1062,12 @@
    {:key "samesite"
     :value (fn [_] (str (or (setting/get :session-cookie-samesite) "lax")))
     :tags ["embedding" "auth"]}
+   ;; `mfa-enforcement` is OSS (`metabase.mfa.settings`, loaded by `metabase.mfa.init`), so it reads safely on every
+   ;; build. The `:required` deadline next to it in `metabase-enterprise.mfa.settings` is not — it goes through
+   ;; [[ee-snowplow-settings-data]].
+   {:key "mfa_enforcement"
+    :value (fn [_] (name (or (setting/get :mfa-enforcement) :off)))
+    :tags ["auth" "mfa"]}
    {:key "site_locale"
     :value (fn [_] (system/site-locale))
     :tags ["locale"]}
@@ -1037,7 +1082,9 @@
   [stats]
   (letfn [(update-setting-value [setting-value-getter]
             (setting-value-getter stats))]
-    (mapv #(update % :value update-setting-value) snowplow-settings-metric-defs)))
+    ;; EE entries arrive already resolved, so they are appended after the OSS getters are applied
+    (into (mapv #(update % :value update-setting-value) snowplow-settings-metric-defs)
+          (ee-snowplow-settings-data))))
 
 (defn- snowplow-anonymous-usage-stats
   "Send stats to Metabase's snowplow collector. Transforms stats into the format required by the Snowplow schema."

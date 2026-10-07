@@ -16,6 +16,7 @@
    [metabase-enterprise.mfa.settings :as mfa.settings]
    [metabase-enterprise.mfa.throttling :as mfa.throttling]
    [metabase-enterprise.mfa.verification :as verification]
+   [metabase.analytics.core :as analytics]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.channel.email.messages :as messages]
@@ -23,6 +24,7 @@
    [metabase.premium-features.core :as premium-features]
    [metabase.request.core :as request]
    [metabase.sso.core :as sso]
+   [metabase.util :as u]
    [metabase.util.encryption :as encryption]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
@@ -100,19 +102,25 @@
   (when-not (mfa.settings/mfa-enabled?)
     (throw (ex-info (tru "Two-factor authentication is not enabled on this instance.")
                     {:status-code 400})))
-  (throttled :enroll
-             (fn []
-               (when-not (verify-user-password api/*current-user-id* password)
-                 ;; 400, not 401: the session is fine, the re-auth input is wrong. The FE (and any
-                 ;; well-behaved client) treats a 401 as an expired session and bounces to login.
-                 (throw (ex-info (tru "Invalid password.")
-                                 {:status-code 400
-                                  :errors      {:password (tru "Invalid password.")}})))
-               ;; Precondition for [[enrollment/start-enrollment!]] is met: this user is logged in and we just
-               ;; re-validated their password.
-               (or (enrollment/start-enrollment! api/*current-user-id*)
-                   (throw (ex-info (tru "Two-factor authentication is already set up. Disable it before re-enrolling.")
-                                   {:status-code 400}))))))
+  (u/prog1 (throttled :enroll
+                      (fn []
+                        (when-not (verify-user-password api/*current-user-id* password)
+                          ;; 400, not 401: the session is fine, the re-auth input is wrong. The FE (and any
+                          ;; well-behaved client) treats a 401 as an expired session and bounces to login.
+                          (throw (ex-info (tru "Invalid password.")
+                                          {:status-code 400
+                                           :errors      {:password (tru "Invalid password.")}})))
+                        ;; Precondition for [[enrollment/start-enrollment!]] is met: this user is logged in and we just
+                        ;; re-validated their password.
+                        (or (enrollment/start-enrollment! api/*current-user-id*)
+                            (throw (ex-info (tru "Two-factor authentication is already set up. Disable it before re-enrolling.")
+                                            {:status-code 400})))))
+    ;; `triggered_from` separates this voluntary funnel from the one `:required` forces at login, which
+    ;; [[metabase.session.api]] emits. Unlike there, a session exists here, so `track-event!`'s 2-arity
+    ;; `api/*current-user-id*` default is already the right user.
+    (analytics/track-event! :snowplow/simple_event
+                            {:event          "mfa_enroll_started"
+                             :triggered_from "account_settings"})))
 
 (api.macros/defendpoint :post "/enroll/confirm" :- [:map
                                                     [:recovery_codes [:sequential ms/NonBlankString]]]
@@ -129,6 +137,10 @@
         user  (mfa.db/user api/*current-user-id*)]
     (messages/send-mfa-enabled-email! (:email user))
     (events/publish-event! :event/mfa-enrolled {:object user})
+    (analytics/track-event! :snowplow/simple_event
+                            {:event          "mfa_enroll_completed"
+                             :event_detail   "totp"
+                             :triggered_from "account_settings"})
     {:recovery_codes recovery-codes}))
 
 (api.macros/defendpoint :post "/disable" :- nil
@@ -146,7 +158,12 @@
                  (enrollment/disable! api/*current-user-id*))))
   (let [user (mfa.db/user api/*current-user-id*)]
     (messages/send-mfa-disabled-email! (:email user))
-    (events/publish-event! :event/mfa-disabled {:object user}))
+    (events/publish-event! :event/mfa-disabled {:object user})
+    ;; self vs admin removal share the `:event/mfa-disabled` audit topic (see UXW-5356); `triggered_from`
+    ;; distinguishes them here, because the admin-removal rate is a support-load signal on its own.
+    (analytics/track-event! :snowplow/simple_event
+                            {:event          "mfa_disabled"
+                             :triggered_from "self"}))
   api/generic-204-no-content)
 
 (api.macros/defendpoint :get "/status" :- [:map
@@ -188,7 +205,12 @@
   (when (enrollment/disable! user-id)
     (let [user (mfa.db/user user-id)]
       (messages/send-mfa-removed-by-admin-email! (:email user))
-      (events/publish-event! :event/mfa-disabled {:object user})))
+      (events/publish-event! :event/mfa-disabled {:object user})
+      ;; `target_id` is the user who lost the factor; the event's own user is the acting admin
+      (analytics/track-event! :snowplow/simple_event
+                              {:event          "mfa_disabled"
+                               :target_id      user-id
+                               :triggered_from "admin"})))
   api/generic-204-no-content)
 
 (api.macros/defendpoint :get "/admin/overview" :- [:map
@@ -280,9 +302,11 @@
   [_route-params
    _query-params
    {:keys [code]} :- [:map {:closed true} [:code ms/NonBlankString]]]
-  (throttled :regenerate
-             (fn []
-               (t2/with-transaction [_conn]
-                 (when-not (verification/verify-attempt! api/*current-user-id* code nil)
-                   (throw (invalid-code-ex)))
-                 {:recovery_codes (enrollment/reset-recovery-codes! api/*current-user-id*)}))))
+  (u/prog1 (throttled :regenerate
+                      (fn []
+                        (t2/with-transaction [_conn]
+                          (when-not (verification/verify-attempt! api/*current-user-id* code nil)
+                            (throw (invalid-code-ex)))
+                          {:recovery_codes (enrollment/reset-recovery-codes! api/*current-user-id*)})))
+    (analytics/track-event! :snowplow/simple_event
+                            {:event "mfa_recovery_codes_regenerated"})))

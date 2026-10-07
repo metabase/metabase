@@ -2,6 +2,7 @@
   "/api/session endpoints"
   (:require
    [java-time.api :as t]
+   [metabase.analytics.core :as analytics]
    [metabase.api-scope.data-app :as api-scope]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
@@ -227,6 +228,12 @@
   (let [enrollment-details (or (start-enrollment! user-id)
                                (throw (ex-info (tru "Two-factor authentication is already set up. Disable it before re-enrolling.")
                                                {:status-code 400})))]
+    ;; `user-id` is passed explicitly at every analytics call site in this namespace: the caller is mid-login, so
+    ;; `api/*current-user-id*` (which the 2-arity would use) is still nil.
+    (analytics/track-event! :snowplow/simple_event
+                            {:event          "mfa_enroll_started"
+                             :triggered_from "mandatory_login"}
+                            user-id)
     {:status 200
      :body   (assoc enrollment-details
                     :mfa_enrollment   true
@@ -580,6 +587,10 @@
                               (do
                                 (events/publish-event! :event/mfa-verification-failed
                                                        {:object (session.db/user user-id)})
+                                (analytics/track-event! :snowplow/simple_event
+                                                        {:event          "mfa_verification_failed"
+                                                         :triggered_from "login"}
+                                                        user-id)
                                 (throw (ex-info (tru "Invalid authentication code.") {:status-code 401}))))))
         user (session.db/user-login-status user-id)]
     ;; the account can be deactivated (or deleted) between the password step and here; a
@@ -587,6 +598,13 @@
     (when-not (:is_active user)
       (throw (ex-info (tru "Authentication session expired. Please log in again.")
                       {:status-code 401})))
+    ;; `:mfa/method` comes from `verify-second-factor!`; recovery-code and emailed-code rates are the
+    ;; lockout-pressure signal, so which factor actually completed the login is the point of this event.
+    (analytics/track-event! :snowplow/simple_event
+                            {:event          "mfa_verified"
+                             :event_detail   (some-> (:mfa/method mfa-auth-identity) name)
+                             :triggered_from "login"}
+                            user-id)
     (session-response (auth-identity/create-session-with-auth-tracking! user (request/device-info request) first-factor (:id mfa-auth-identity))
                       request)))
 
@@ -650,6 +668,11 @@
                                            (confirm-enrollment! user-id code jti)
                                            (do (events/publish-event! :event/mfa-required-enrollment-failed
                                                                       {:object (session.db/user user-id)})
+                                               (analytics/track-event! :snowplow/simple_event
+                                                                       {:event          "mfa_enroll_failed"
+                                                                        :result         "invalid_code"
+                                                                        :triggered_from "mandatory_login"}
+                                                                       user-id)
                                                (throw (ex-info (tru "Invalid authentication code.") {:status-code 401}))))))
         user           (session.db/user-login-status user-id)]
     ;; the account can be deactivated (or deleted) between the password step and here; an
@@ -657,6 +680,11 @@
     (when-not (:is_active user)
       (throw (ex-info (tru "Authentication session expired. Please log in again.")
                       {:status-code 401})))
+    (analytics/track-event! :snowplow/simple_event
+                            {:event          "mfa_enroll_completed"
+                             :event_detail   "totp"
+                             :triggered_from "mandatory_login"}
+                            user-id)
     (-> (auth-identity/create-session-with-auth-tracking! user (request/device-info request) first-factor mfa-auth-identity-id)
         (session-response request)
         (assoc-in [:body :recovery_codes] recovery-codes))))
@@ -685,7 +713,12 @@
       (throttle/check (email-otp-send-throttlers :user-id) user-id))
     (when-not (channel.settings/email-configured?)
       (throw (ex-info (tru "Email is not configured on this instance.") {:status-code 400})))
-    (send-mfa-email-otp! user-id jti))
+    (send-mfa-email-otp! user-id jti)
+    ;; after the send, so a failed send (which throws) is not counted
+    (analytics/track-event! :snowplow/simple_event
+                            {:event          "mfa_email_otp_sent"
+                             :triggered_from "login"}
+                            user-id))
   {:success true})
 
 (defn- +log-all-request-failures [handler]

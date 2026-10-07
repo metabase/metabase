@@ -7,6 +7,7 @@
    [medley.core :as m]
    [metabase.analytics.stats :as stats :refer [legacy-anonymous-usage-stats]]
    [metabase.app-db.core :as mdb]
+   [metabase.auth-identity.core :as auth-identity]
    [metabase.channel.settings :as channel.settings]
    [metabase.config.core :as config]
    [metabase.core.core :as mbc]
@@ -614,9 +615,13 @@
                      [:show_mb_links :boolean]
                      [:font :string]
                      [:samesite :string]
+                     [:mfa_enforcement [:enum "off" "optional" "required"]]
                      [:site_locale :string]
                      [:report_timezone :string]
-                     [:start_of_week :string]]
+                     [:start_of_week :string]
+                     ;; contributed by `ee-snowplow-settings-data`, so present only with EE on the classpath --
+                     ;; the OSS fallback deliberately contributes no settings at all
+                     [:mfa_requirement_deadline {:optional true} [:enum "unset" "pending" "passed"]]]
                     (zipmap (map (comp keyword :key) snowplow-settings) (map :value snowplow-settings)))))
       (testing "is_embedding_app_origin_sdk_set"
         (is (= false (get-in snowplow-settings [0 :value]))))
@@ -701,6 +706,52 @@
         (is (= {:library_data 1
                 :library_metrics 2}
                (#'stats/library-stats)))))))
+
+(deftest mfa-metrics-test
+  (let [one-day-ago (t/minus (t/offset-date-time) (t/days 1))
+        metrics     (fn [] (#'stats/mfa-metrics one-day-ago))]
+    (testing "every metric is reported as a non-negative integer"
+      (let [m (metrics)]
+        (is (= #{:mfa_enrolled_users :mfa_unenrolled_users
+                 :mfa_verified_sessions_last_24h :mfa_blocked_sessions}
+               (set (keys m))))
+        (is (every? (every-pred int? (complement neg?)) (vals m)))))
+    ;; Assertions below are deltas, never absolutes: this namespace runs against an app DB that other tests
+    ;; populate, so the standing counts are not ours to predict.
+    (mt/with-temp [:model/User {user-id :id} {}]
+      (auth-identity/set-password! user-id "test-password")
+      (let [password-identity (t2/select-one-pk :model/AuthIdentity :user_id user-id :provider "password")]
+        (testing "a live password session with no second factor is what `:required` would reject"
+          (let [before (metrics)]
+            (mt/with-temp [:model/Session _ {:id               "mfastats-blk"
+                                             :user_id          user-id
+                                             :session_key      "mfastats-blocked-key"
+                                             :auth_identity_id password-identity}]
+              (is (= (inc (:mfa_blocked_sessions before))
+                     (:mfa_blocked_sessions (metrics)))))))
+        (testing "a session that completed a second factor is verified, not blocked"
+          (let [before (metrics)]
+            ;; only the non-nullness of mfa_auth_identity_id decides either count, so this reuses the password
+            ;; identity rather than standing up a TOTP enrollment (an EE concern, covered in the EE stats tests)
+            (mt/with-temp [:model/Session _ {:id                   "mfastats-ver"
+                                             :user_id              user-id
+                                             :session_key          "mfastats-verified-key"
+                                             :auth_identity_id     password-identity
+                                             :mfa_auth_identity_id password-identity}]
+              (let [after (metrics)]
+                (is (= (:mfa_blocked_sessions before) (:mfa_blocked_sessions after)))
+                (is (= (inc (:mfa_verified_sessions_last_24h before))
+                       (:mfa_verified_sessions_last_24h after)))))))))))
+
+(deftest mfa-enforcement-setting-test
+  (testing "mfa_enforcement reports the enforcement tier, which the `features` entry alone cannot distinguish"
+    (doseq [tier [:off :optional :required]]
+      (testing tier
+        (mt/with-premium-features #{:multi-factor-auth}
+          (mt/with-temporary-setting-values [mfa-enforcement tier]
+            (let [settings (#'stats/snowplow-settings (#'stats/instance-settings))]
+              (is (= (name tier)
+                     (some #(when (= "mfa_enforcement" (:key %)) (:value %)) settings))))))))))
 
 (deftest transform-metrics-test
   (mt/with-empty-h2-app-db!

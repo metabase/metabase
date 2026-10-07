@@ -39,3 +39,16 @@
    {:name      :semantic-search
     :available (premium-features/enable-semantic-search?)
     :enabled   (semantic-search/supported?)}])
+
+(defenterprise ee-snowplow-settings-data
+  "Daily-ping settings whose `defsetting` lives in EE code, and so cannot be read from
+  [[metabase.analytics.stats/snowplow-settings-metric-defs]] — an unregistered setting name throws, and EE
+  namespaces are absent from an OSS classpath entirely. See the OSS fallback for the full reasoning.
+
+  `:feature :none` to match [[ee-snowplow-features-data]]: what an instance has configured is worth reporting
+  whether or not its token currently carries the feature, and a license lapse leaves `mfa-enforcement` in force."
+  :feature :none
+  []
+  [{:key   "mfa_requirement_deadline"
+    :value (name (mfa/mfa-requirement-deadline-state))
+    :tags  ["auth" "mfa"]}])
