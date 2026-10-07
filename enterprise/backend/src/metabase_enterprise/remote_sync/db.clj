@@ -58,6 +58,13 @@
    conditions :- Conditions]
   (apply t2/select-fn-set :id model-key (mapcat identity conditions)))
 
+(mu/defn instances-where
+  "The instances of `model-key` matching `conditions` (a map of column to value or Toucan 2 operator-vector value,
+  or nil for every instance)."
+  [model-key  :- :keyword
+   conditions :- Conditions]
+  (apply t2/select model-key (mapcat identity conditions)))
+
 (mu/defn entity-id-where :- [:maybe :string]
   "The `:entity_id` of the instance of `model-key` whose `column` equals `value`, or nil."
   [model-key :- :keyword
@@ -383,18 +390,6 @@
                                                       :where  [:and
                                                                [:= :remote_sync_object.model_type "Glossary"]
                                                                [:= :remote_sync_object.model_id :glossary.id]]}]]}))
-
-(mu/defn untracked-published-data-apps
-  "The `:id` and `:name` of every non-draft DataApp with no RemoteSyncObject."
-  []
-  (t2/select [:model/DataApp :id :name]
-             {:where [:and
-                      [:= :draft false]
-                      [:not [:exists ^:allow-subquery {:select [1]
-                                                       :from   [:remote_sync_object]
-                                                       :where  [:and
-                                                                [:= :remote_sync_object.model_type "DataApp"]
-                                                                [:= :remote_sync_object.model_id :data_app.id]]}]]]}))
 
 (defn- subtree-expr
   "Matches `collections` and all of their descendants."

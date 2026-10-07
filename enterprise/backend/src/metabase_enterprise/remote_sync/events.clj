@@ -91,13 +91,16 @@
 (defn backfill-data-app-tracking!
   "Insert a 'create' ledger row for every published DataApp that has none, returning the number of rows inserted."
   []
-  (let [timestamp (t/offset-date-time)
-        rows      (for [app (remote-sync.db/untracked-published-data-apps)]
-                    {:model_type        "DataApp"
-                     :model_id          (:id app)
-                     :model_name        (:name app)
-                     :status            "create"
-                     :status_changed_at timestamp})]
+  (let [data-app-spec (spec/spec-for-model-key :model/DataApp)
+        tracked       (remote-sync.db/tracked-model-ids "DataApp")
+        timestamp     (t/offset-date-time)
+        rows          (for [app (remote-sync.db/instances-where :model/DataApp (:conditions data-app-spec))
+                            :when (not (contains? tracked (:id app)))]
+                        (merge {:model_type        "DataApp"
+                                :model_id          (:id app)
+                                :status            "create"
+                                :status_changed_at timestamp}
+                               (spec/build-sync-object-fields data-app-spec app)))]
     (when (seq rows)
       (remote-sync.db/insert-rsos! rows))
     (count rows)))
