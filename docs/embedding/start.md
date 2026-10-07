@@ -70,6 +70,14 @@ Set, control, hide, and lock dashboard filters and SQL variables in embedded das
 
 Which attribute or prop to use for each task, how web components parse parameter attributes, the value formats each filter type accepts, and the rules for params in a signed token.
 
+### [Configure your embeds](./config.md)
+
+Set the configuration that every embed on a page shares, like your Metabase URL, authentication, language, and theme, with web components or the React SDK.
+
+### [Config reference](./config-reference.md)
+
+Every `defineMetabaseConfig()` setting for web components, and the `MetabaseProvider` props for the React SDK.
+
 ### [Guest embedding](./guest-embedding.md)
 
 Guest embedding is a secure way to embed charts and dashboards. Guest embeds are view-only; people won't be able to drill-through charts and tables.

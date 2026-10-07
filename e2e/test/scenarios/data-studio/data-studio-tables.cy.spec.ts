@@ -11,80 +11,26 @@ describe("scenarios > data studio > library > tables", () => {
     H.activateToken("pro-self-hosted");
   });
 
-  describe("header", () => {
-    it("should be able to change the name", () => {
-      H.createLibrary();
-      H.publishTables({ table_ids: [ORDERS_ID] });
-
-      H.DataStudio.Tables.visitOverviewPage(ORDERS_ID);
-      H.DataStudio.Tables.nameInput().should("have.value", "Orders");
-      H.DataStudio.Tables.nameInput().clear().type("Orders changed").blur();
-      H.undoToastList().contains("Table name updated").should("be.visible");
-    });
-
-    it("should be able to view the table in the query builder", () => {
-      H.createLibrary();
-      H.publishTables({ table_ids: [ORDERS_ID] });
-
-      H.DataStudio.Tables.visitOverviewPage(ORDERS_ID);
-      H.DataStudio.Tables.moreMenu().click();
-      H.DataStudio.Tables.moreMenuViewTable();
-
-      H.queryBuilderHeader().within(() => {
-        cy.icon("repository").should("be.visible");
-        cy.findByText("Data").should("be.visible");
-        cy.findByText("Orders").should("be.visible");
-      });
-    });
-
-    it("should be able to unpublish a table", () => {
-      H.createLibrary();
-      H.publishTables({ table_ids: [ORDERS_ID] });
-      H.DataStudio.Library.visit();
-      H.DataStudio.Library.tableItem("Orders").click();
-      H.DataStudio.Tables.moreMenu().click();
-      H.popover().findByText("Unpublish").click();
-      H.modal().findByText("Unpublish this table").click();
-      H.DataStudio.Library.allTableItems().should("have.length", 0);
-    });
-  });
-
   describe("overview", () => {
-    beforeEach(() => {
+    it("should show the table overview, edit its description and name, and unpublish it", () => {
       H.createLibrary();
       H.publishTables({ table_ids: [ORDERS_ID] });
       H.DataStudio.Tables.visitOverviewPage(ORDERS_ID);
-    });
 
-    it("should show page breadcrumbs", () => {
+      cy.log("Verify page breadcrumbs");
       H.DataStudio.breadcrumbs().within(() => {
         cy.findByRole("link", { name: "Semantic layer" }).should("be.visible");
         cy.findByRole("link", { name: "Data" }).should("be.visible");
         cy.findByText("Orders").should("be.visible");
       });
-    });
 
-    it("should be able to view the table data", () => {
+      cy.log("Verify the table data");
       H.queryVisualizationRoot().within(() => {
         cy.findByText("Subtotal").should("be.visible");
         cy.findByText("110.93").should("be.visible");
       });
-    });
 
-    it("should be able to change the description", () => {
-      H.DataStudio.Tables.Overview.descriptionText()
-        .should("contain.text", "orders for a product")
-        .click();
-      H.DataStudio.Tables.Overview.descriptionInput()
-        .clear()
-        .type("Description changed")
-        .blur();
-      H.undoToastList()
-        .contains("Table description updated")
-        .should("be.visible");
-    });
-
-    it("should be able to view additional properties in sidebar", () => {
+      cy.log("Verify additional properties in the sidebar");
       H.DataStudio.Tables.Overview.descriptionSidebar().within(() => {
         cy.findByText("Entity type").should("be.visible");
 
@@ -109,17 +55,78 @@ describe("scenarios > data studio > library > tables", () => {
 
         cy.findByText("Dependents").should("be.visible");
       });
+
+      cy.log("Change the description");
+      H.DataStudio.Tables.Overview.descriptionText()
+        .should("contain.text", "orders for a product")
+        .click();
+      H.DataStudio.Tables.Overview.descriptionInput()
+        .clear()
+        .type("Description changed")
+        .blur();
+      H.undoToastList()
+        .contains("Table description updated")
+        .should("be.visible");
+
+      cy.log("Change the name");
+      H.DataStudio.Tables.nameInput().should("have.value", "Orders");
+      H.DataStudio.Tables.nameInput().clear().type("Orders changed").blur();
+      H.undoToastList().contains("Table name updated").should("be.visible");
+
+      cy.log("Unpublish the table");
+      H.DataStudio.Library.visit();
+      H.DataStudio.Library.tableItem("Orders changed").click();
+      H.DataStudio.Tables.moreMenu().click();
+      H.popover().findByText("Unpublish").click();
+      H.modal().findByText("Unpublish this table").click();
+      H.DataStudio.Library.emptyStateRow(
+        "Cleaned, pre-transformed data sources ready for exploring",
+      ).should("be.visible");
+      H.DataStudio.Library.allTableItems().should("have.length", 0);
     });
   });
 
   describe("fields", () => {
-    beforeEach(() => {
+    it("should view table dependencies, close field panels, rename a field, and view the table in the query builder", () => {
       H.createLibrary();
       H.publishTables({ table_ids: [ORDERS_ID] });
-    });
+      H.createQuestion({
+        name: "Test question",
+        query: { "source-table": ORDERS_ID },
+      });
+      H.waitForBackfillComplete();
 
-    it("should be able to rename fields", () => {
+      cy.log("View the table dependencies");
       H.DataStudio.Tables.visitOverviewPage(ORDERS_ID);
+      H.DataStudio.Tables.dependenciesTab().click();
+      H.DependencyGraph.graph().within(() => {
+        cy.findByText("Orders").should("be.visible");
+        cy.findByText(/question/).click();
+      });
+      H.DependencyGraph.dependencyPanel()
+        .findByText("Test question")
+        .should("be.visible");
+
+      cy.log("Close the field details and preview panels");
+      H.DataStudio.Tables.visitFieldsPage(ORDERS_ID);
+      H.DataModel.TableSection.clickField("Total");
+      H.DataModel.FieldSection.getPreviewButton().click({
+        scrollBehavior: "center",
+      });
+      H.DataModel.PreviewSection.get().should("be.visible");
+      H.DataModel.FieldSection.get().should("be.visible");
+
+      H.DataModel.FieldSection.getCloseButton().click();
+
+      H.DataModel.PreviewSection.get().should("not.exist");
+      H.DataModel.FieldSection.get().should("not.exist");
+
+      H.DataModel.TableSection.clickField("Discount");
+      H.DataModel.FieldSection.get().should("exist");
+      H.DataModel.PreviewSection.get().should("not.exist");
+
+      cy.log("Rename a field");
+      H.DataStudio.Tables.overviewTab().click();
       H.tableHeaderColumn("Total").should("be.visible");
 
       H.DataStudio.Tables.fieldsTab().click();
@@ -132,44 +139,16 @@ describe("scenarios > data studio > library > tables", () => {
 
       H.DataStudio.Tables.overviewTab().click();
       H.tableHeaderColumn("Total changed").should("be.visible");
-    });
 
-    it("should allow you to close field details and preview panels", () => {
-      H.DataStudio.Tables.visitFieldsPage(ORDERS_ID);
-      H.DataModel.TableSection.clickField("Total");
-      H.DataModel.FieldSection.getPreviewButton().click({
-        scrollBehavior: "center",
-      });
+      cy.log("View the table in the query builder");
+      H.DataStudio.Tables.moreMenu().click();
+      H.DataStudio.Tables.moreMenuViewTable();
 
-      H.DataModel.FieldSection.getCloseButton().click();
-
-      H.DataModel.PreviewSection.get().should("not.exist");
-      H.DataModel.FieldSection.get().should("not.exist");
-
-      H.DataModel.TableSection.clickField("Discount");
-      H.DataModel.PreviewSection.get().should("not.exist");
-      H.DataModel.FieldSection.get().should("exist");
-    });
-  });
-
-  describe("dependencies", () => {
-    it("should be able to view dependencies for a table", () => {
-      H.createLibrary();
-      H.publishTables({ table_ids: [ORDERS_ID] });
-      H.createQuestion({
-        name: "Test question",
-        query: { "source-table": ORDERS_ID },
-      });
-      H.waitForBackfillComplete();
-      H.DataStudio.Tables.visitOverviewPage(ORDERS_ID);
-      H.DataStudio.Tables.dependenciesTab().click();
-      H.DependencyGraph.graph().within(() => {
+      H.queryBuilderHeader().within(() => {
+        cy.icon("repository").should("be.visible");
+        cy.findByText("Data").should("be.visible");
         cy.findByText("Orders").should("be.visible");
-        cy.findByText(/question/).click();
       });
-      H.DependencyGraph.dependencyPanel()
-        .findByText("Test question")
-        .should("be.visible");
     });
   });
 });

@@ -160,21 +160,13 @@
   (conj (serdes/table->path (serdes/*export-table-fk* table_id))
         {:model "TableUserSettings" :id "1"}))
 
-(defmethod serdes/deserialization-dependencies "TableUserSettings" [tus]
-  (let [db-path (first (serdes/path tus))]
-    (cond-> [[db-path]]
-      (:collection_id tus) (conj [{:model "Collection" :id (:collection_id tus)}]))))
+(defmethod serdes/deserialization-dependencies "TableUserSettings" [{:keys [collection_id]}]
+  (when collection_id
+    [[{:model "Collection" :id collection_id}]]))
 
 (defmethod serdes/load-find-local "TableUserSettings" [path]
   (let [found-table (serdes/load-find-local (pop path))]
     (warehouse-schema.db/table-user-settings (:id found-table))))
-
-(defn- table-path->table-ref [tus-path]
-  (let [[db schema table-name :as table-ref] (mapv :id (pop tus-path))]
-    (if table-name
-      table-ref
-      ;; It's too short, so no schema. Shift them over and add a nil schema.
-      [db nil schema])))
 
 (def ^:private legacy-fields
   "The FieldUserSettings a settings file carried before they got files of their own."
@@ -183,7 +175,7 @@
 
 (defmethod serdes/load-one! "TableUserSettings" [ingested maybe-local]
   (let [settings (serdes/default-load-one! ingested maybe-local)
-        table-id (serdes/*import-table-fk* (table-path->table-ref (serdes/path ingested)))]
+        table-id (serdes/*import-table-fk* (serdes/table-path->table-ref (pop (serdes/path ingested))))]
     (when (contains? ingested :fields)
       ((:import-with-context legacy-fields)
        (t2/instance :model/TableUserSettings {:table_id table-id}) :fields (:fields ingested)))
@@ -207,9 +199,12 @@
                :owner_user_id (serdes/fk :model/User)
                :data_layer    (serdes/optional-kw)
                :table_id      {::serdes/fk true
-                               :export     (constantly ::serdes/skip)
+                               :export     #(serdes/*export-table-fk* %)
                                :import-with-context (fn [current _ _]
-                                                      (serdes/*import-table-fk* (table-path->table-ref (serdes/path current))))}}})
+                                                      (serdes/*import-table-fk* (serdes/table-path->table-ref (pop (serdes/path current)))))}}})
+
+(defmethod serdes/ingested-path "TableUserSettings" [_ {:keys [table_id]}]
+  (conj (serdes/table->path table_id) {:model "TableUserSettings" :id "1"}))
 
 (def ^:private table-user-settings-slug "___tableusersettings")
 

@@ -560,8 +560,8 @@
   (warehouse-schema.db/database (:db_id table)))
 
 ;;; ------------------------------------------------- Serialization -------------------------------------------------
-(defmethod serdes/deserialization-dependencies "Table" [{:keys [db_id collection_id transform_id]}]
-  (cond-> [[{:model "Database" :id db_id}]]
+(defmethod serdes/deserialization-dependencies "Table" [{:keys [collection_id transform_id]}]
+  (cond-> []
     collection_id (conj [{:model "Collection" :id collection_id}])
     transform_id  (conj [{:model "Transform" :id transform_id}])))
 
@@ -587,6 +587,9 @@
                       {:model "Schema" :id (:schema table)})
                     {:model "Table" :id (:name table)}])))
 
+(defmethod serdes/ingested-path "Table" [_ {:keys [db_id schema name]}]
+  (serdes/table->path [db_id schema name]))
+
 (defmethod serdes/entity-id "Table" [_ {:keys [name]}]
   name)
 
@@ -597,7 +600,8 @@
                       (-> path second :id))
         table-name  (-> path last :id)
         db-id       (warehouse-schema.db/database-id-by-name db-name)]
-    (warehouse-schema.db/table-by-name db-id schema-name table-name)))
+    (when db-id
+      (warehouse-schema.db/table-by-name db-id schema-name table-name))))
 
 (defmethod serdes/make-spec "Table" [_model-name _opts]
   {:copy      [:name :description :entity_type :active :display_name :visibility_type :schema
