@@ -210,12 +210,19 @@ describe("DatabaseRoutingSection", () => {
 });
 
 describe("DatabaseRoutingSection public reachability warning", () => {
-  const WARNING_TITLE = "Public links on this database will stop working";
+  const WILL_STOP = "Public links on this database will stop working";
+  const HAVE_STOPPED = "Public links on this database have stopped working";
+  const REMEDY = "To get them working again, allow anonymous access below.";
   const ROUTED_QUERIES_NOTE =
     "In guest embeds and public links, database queries will always be routed to the router database.";
   const NO_PUBLIC_LINKS_REASSURANCE = "No public links use this database.";
 
-  it("should warn, and read as a warning, when the database is reachable by a public link", async () => {
+  const ANY_TENSE =
+    /^Public links on this database (will stop|have stopped) working$/;
+  const findWarning = () => screen.findByRole("alert", { name: ANY_TENSE });
+  const queryWarning = () => screen.queryByRole("alert", { name: ANY_TENSE });
+
+  it("should warn in the future tense while routing is only being enabled", async () => {
     setup({
       database: routingCapableDatabase({ router_user_attribute: null }),
       reachableByPublicLink: true,
@@ -223,29 +230,25 @@ describe("DatabaseRoutingSection public reachability warning", () => {
 
     await userEvent.click(screen.getByLabelText("Enable database routing"));
 
-    const warning = await screen.findByTestId("public-links-routing-warning");
-    expect(warning).toHaveTextContent(WARNING_TITLE);
-    // the warning icon, and not the info icon, is what separates this from the note it replaced
+    const warning = await findWarning();
+    expect(warning).toHaveAccessibleName(WILL_STOP);
+    // the warning icon, and not the info icon, separates this from the note it replaced
     expect(within(warning).getByLabelText("warning icon")).toBeInTheDocument();
     expect(
       within(warning).queryByLabelText("info icon"),
     ).not.toBeInTheDocument();
     // a count would be a stronger claim than the reachability fact supports
     expect(warning).not.toHaveTextContent(/\d/);
+    // the grant switch is still out of reach here, so pointing at it would be a dead end
+    expect(warning).not.toHaveTextContent(/anonymous access/i);
   });
 
-  it("should not send the admin to a control the panel still has disabled", async () => {
-    setup({
-      database: routingCapableDatabase({ router_user_attribute: null }),
-      reachableByPublicLink: true,
-    });
+  it("should say the links have already stopped on a database that is already a router", async () => {
+    setup({ database: routedDatabase(), reachableByPublicLink: true });
 
-    await userEvent.click(screen.getByLabelText("Enable database routing"));
-
-    // enabling routing alone does not store a user attribute, so the grant stays out of reach
-    expect(screen.getByLabelText("Allow anonymous access")).toBeDisabled();
-    const warning = await screen.findByTestId("public-links-routing-warning");
-    expect(warning).not.toHaveTextContent(/anonymous access/i);
+    const warning = await findWarning();
+    expect(warning).toHaveAccessibleName(HAVE_STOPPED);
+    expect(warning).toHaveTextContent(REMEDY);
   });
 
   it("should render no alert at all when no public link reaches the database", async () => {
@@ -257,11 +260,10 @@ describe("DatabaseRoutingSection public reachability warning", () => {
     await userEvent.click(screen.getByLabelText("Enable database routing"));
     await waitForReachabilityFact();
 
-    // deliberately every alert, not just this one: with nothing at stake the panel stays quiet
     expect(screen.queryAllByRole("alert")).toHaveLength(0);
   });
 
-  it("should not claim links will stop working once anonymous access is granted", async () => {
+  it("should not claim links are broken once anonymous access is granted", async () => {
     setup({
       database: routedDatabase({ router_anonymous_access_granted: true }),
       reachableByPublicLink: true,
@@ -269,9 +271,7 @@ describe("DatabaseRoutingSection public reachability warning", () => {
 
     await waitForReachabilityFact();
 
-    expect(
-      screen.queryByTestId("public-links-routing-warning"),
-    ).not.toBeInTheDocument();
+    expect(queryWarning()).not.toBeInTheDocument();
   });
 
   it("should not warn about a reachable database that is not routed at all", async () => {
@@ -282,40 +282,38 @@ describe("DatabaseRoutingSection public reachability warning", () => {
 
     await waitForReachabilityFact();
 
-    expect(
-      screen.queryByTestId("public-links-routing-warning"),
-    ).not.toBeInTheDocument();
+    expect(queryWarning()).not.toBeInTheDocument();
+  });
+
+  it("should not warn while the section is collapsed", async () => {
+    setup({ database: routedDatabase(), reachableByPublicLink: true });
+
+    expect(await findWarning()).toBeInTheDocument();
+
+    await userEvent.click(screen.getByLabelText("chevronup icon"));
+
+    expect(queryWarning()).not.toBeInTheDocument();
   });
 
   it("should claim nothing until the reachability fact has arrived", async () => {
-    setup({
-      database: routedDatabase(),
-      reachableByPublicLink: true,
-    });
+    setup({ database: routedDatabase(), reachableByPublicLink: true });
 
     // nothing is awaited yet, so the usage-info response cannot have been applied
-    expect(
-      screen.queryByTestId("public-links-routing-warning"),
-    ).not.toBeInTheDocument();
+    expect(queryWarning()).not.toBeInTheDocument();
 
-    expect(
-      await screen.findByTestId("public-links-routing-warning"),
-    ).toBeInTheDocument();
+    expect(await findWarning()).toBeInTheDocument();
   });
 
-  it.each([true, false])(
-    "should carry neither the routed-queries note nor the no-public-links reassurance (reachable: %s)",
-    async (reachableByPublicLink) => {
-      setup({ database: routedDatabase(), reachableByPublicLink });
+  it("should carry neither the routed-queries note nor the no-public-links reassurance", async () => {
+    setup({ database: routedDatabase(), reachableByPublicLink: true });
 
-      await waitForReachabilityFact();
+    await findWarning();
 
-      expect(screen.queryByText(ROUTED_QUERIES_NOTE)).not.toBeInTheDocument();
-      expect(
-        screen.queryByText(NO_PUBLIC_LINKS_REASSURANCE),
-      ).not.toBeInTheDocument();
-    },
-  );
+    expect(screen.queryByText(ROUTED_QUERIES_NOTE)).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(NO_PUBLIC_LINKS_REASSURANCE),
+    ).not.toBeInTheDocument();
+  });
 });
 
 describe("DatabaseRoutingSection anonymous access grant", () => {

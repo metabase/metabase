@@ -99,10 +99,12 @@ export const DatabaseRoutingSection = ({
     shouldHideSection || !isAdmin ? skipToken : database.id,
   );
 
-  // Routing refuses anonymous queries unless the grant lets them through, so public links
-  // break only where routing is on, the grant is off, and the public can already get here.
-  const publicLinksWillBreak =
+  // A granted router serves public links from the router database, so the claim would be false.
+  const publicLinksBreak =
     enabled && !anonymousAccessGranted && !!usageInfo?.reachable_by_public_link;
+  // Routing only takes effect once a user attribute is stored, which is also what makes the
+  // grant switch reachable, so that one fact decides both the tense and whether to name a remedy.
+  const routingAlreadyInEffect = hasDbRoutingEnabled(database);
 
   const disabledFeatMsg = getDisabledFeatureMessage(database, {
     hasTransforms,
@@ -214,16 +216,22 @@ export const DatabaseRoutingSection = ({
         <>
           <DatabaseInfoSectionDivider />
 
-          {publicLinksWillBreak && (
+          {publicLinksBreak && (
             <Alert
               size="compact"
               variant="light"
               color="warning"
               icon={<Icon name="warning" />}
-              title={t`Public links on this database will stop working`}
+              title={
+                routingAlreadyInEffect
+                  ? t`Public links on this database have stopped working`
+                  : t`Public links on this database will stop working`
+              }
               mb="lg"
-              data-testid="public-links-routing-warning"
-            />
+            >
+              {routingAlreadyInEffect &&
+                t`To get them working again, allow anonymous access below.`}
+            </Alert>
           )}
           <Stack mb="xxl" gap="sm">
             <Flex justify="space-between" align="center" gap="sm">
