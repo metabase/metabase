@@ -839,6 +839,7 @@ const fileCleanup = async (isolated) => {
   globalThis.__nodeTestSpike.restoreSharedPackages?.();
   globalThis.__nodeTestSpike.resetLets?.();
   restoreSetupMocks();
+  globalThis.__nodeTestSpike.betweenFiles?.();
   resetDayjsLocale();
   resetSettings();
   timerShape("after-realm");
@@ -1529,6 +1530,59 @@ globalThis.__nodeTestSpike.dumpState = (file) => {
   previousState = null;
   fs.writeFileSync(file, JSON.stringify(Object.fromEntries([...state].map(([key, print]) => [key, Object.fromEntries(print)])), null, 1));
 };
+// Three more things jest resets by giving each file a new environment.
+// The translation library is a shared package, so the locale a spec selects
+// would stay for every later file.
+const resetTranslationLocale = () => {
+  if (process.env.NT_NO_LOCALE_RESET) return;
+  try { Module.createRequire(abs("frontend/src/index.js"))("ttag").useLocale("en"); } catch {}
+};
+// One window serves every file, so a spec that navigates leaves its URL behind.
+const resetLocation = () => {
+  if (process.env.NT_NO_LOCATION_RESET) return;
+  try { if (globalThis.window.location.href !== "http://localhost/") dom.reconfigure({ url: "http://localhost/" }); } catch {}
+};
+// The chart library keeps one canvas context for measuring text. Its methods
+// are mocks from jest-canvas-mock, and a spec's resetAllMocks strips their
+// implementations for good. Each context's mocks are remembered as it is
+// handed out, and their implementations are put back between files.
+const canvasMocks = [];
+const seenContexts = new WeakSet();
+const rememberCanvasContext = (context) => {
+  if (context === null || typeof context !== "object" || seenContexts.has(context)) return;
+  seenContexts.add(context);
+  for (const key of Object.keys(context)) {
+    const method = context[key];
+    if (typeof method === "function" && method._isMockFunction && method.getMockImplementation()) canvasMocks.push([new WeakRef(method), method.getMockImplementation()]);
+  }
+};
+const wrapCanvasGetContext = () => {
+  if (process.env.NT_NO_CANVAS_MOCK_RESTORE) return;
+  const prototype = globalThis.window.HTMLCanvasElement.prototype;
+  const getContext = prototype.getContext;
+  if (typeof getContext !== "function" || getContext.__remembers) return;
+  const wrapped = function (...args) {
+    const context = getContext.apply(this, args);
+    rememberCanvasContext(context);
+    return context;
+  };
+  wrapped.__remembers = true;
+  Object.assign(wrapped, getContext);
+  prototype.getContext = wrapped;
+};
+const restoreCanvasMocks = () => {
+  let kept = 0;
+  for (const entry of canvasMocks) {
+    const method = entry[0].deref();
+    if (!method) continue;
+    if (!method.getMockImplementation()) method.mockImplementation(entry[1]);
+    canvasMocks[kept] = entry;
+    kept += 1;
+  }
+  canvasMocks.length = kept;
+};
+globalThis.__nodeTestSpike.betweenFiles = () => { resetTranslationLocale(); resetLocation(); restoreCanvasMocks(); wrapCanvasGetContext(); };
+wrapCanvasGetContext();
 let baselineVisualizations = null;
 try {
   baselineVisualizations = new Set(require("metabase/viz-core/lib/registry").visualizations.keys());
