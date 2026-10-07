@@ -679,15 +679,19 @@
   [registry]
   (clone-registry/acquire! registry (clone-registry/new-lease url) (fake-clone (atom []) (atom []))))
 
+(def ^:private two-hours-ms (* 2 3600000))
+
 (defn- plant-root!
-  "Makes a directory in `base` that looks like the process root of another process, with a lock file when `lock-file?`
-  is true, and a clone in it."
-  ^File [^File base & {:keys [lock-file?] :or {lock-file? true}}]
+  "Makes a directory in `base` that looks like the process root of another process, with a clone in it. When
+  `lock-file?` is true, the root has a lock file whose last write time is `lock-age-ms` before now."
+  ^File [^File base & {:keys [lock-file? lock-age-ms] :or {lock-file? true lock-age-ms two-hours-ms}}]
   (let [root (io/file base (str "p-" (random-uuid)))]
     (io/make-parents (io/file root (str (#'clone-registry/url-key url) "-1") "HEAD"))
     (spit (io/file root (str (#'clone-registry/url-key url) "-1") "HEAD") "ref: refs/heads/master")
     (when lock-file?
-      (spit (io/file root ".lock") ""))
+      (doto (io/file root ".lock")
+        (spit "")
+        (.setLastModified (ms-ago lock-age-ms))))
     root))
 
 (deftest sweep-keeps-roots-of-live-processes-and-deletes-roots-of-stopped-processes-test
@@ -696,6 +700,7 @@
      (fn [base make!]
        (let [dead    (plant-root! base)
              no-lock (plant-root! base :lock-file? false)
+             young   (plant-root! base :lock-age-ms 1000)
              live    (plant-root! base)
              holder  (hold-lock! (io/file live ".lock"))]
          (try
@@ -703,6 +708,7 @@
            (is (not (.exists dead)) "the sweep deletes a root whose lock is free")
            (is (.exists live) "the sweep keeps a root whose lock another process holds")
            (is (.exists no-lock) "the sweep keeps a root with no lock file: a process can make its root before its lock file")
+           (is (.exists young) "the sweep keeps a root whose lock file is new: a process can make its lock file before its lock")
            (finally
              (stop-process! holder)))
          ;; A second registry stands for the next process.
@@ -748,8 +754,6 @@
   "A random name of 40 lowercase hexadecimal characters."
   []
   (#'clone-registry/url-key (str (random-uuid))))
-
-(def ^:private two-hours-ms (* 2 3600000))
 
 (defn- make-old-clone!
   "Makes the directory `name` in `base` with the files of a bare clone. Sets the last write time of the directory and of
@@ -810,6 +814,24 @@
          (acquire! registry)
          (is (not (.exists dead)) "precondition: the later sweep ran")
          (is (.exists old) "the later sweep does not delete an old clone directory"))))))
+
+(deftest failed-read-of-the-idle-time-does-not-stop-the-old-clone-sweep-test
+  (testing "when the first sweep cannot read the idle time, a later sweep of the same registry deletes the old clone directories"
+    (do-with-registries!
+     (fn [^File base make!]
+       (let [reads    (atom 0)
+             registry (make! {:old-clone-idle-ms (fn []
+                                                   (when (= 1 (swap! reads inc))
+                                                     (throw (ex-info "The app DB is not reachable" {})))
+                                                   3600000)})
+             old      (make-old-clone! base (sha1-name) two-hours-ms)]
+         (acquire! registry)
+         (is (= 1 @reads) "precondition: the first sweep read the idle time")
+         (is (.exists old) "precondition: the first sweep did not delete the old clone directory")
+         ;; Without its lock file, the root is not intact, so the next acquire makes a new root and sweeps again.
+         (io/delete-file (io/file (root-dir registry) ".lock"))
+         (acquire! registry)
+         (is (not (.exists old)) "a later sweep deletes the old clone directory"))))))
 
 (deftest shutdown-test
   (testing "a shutdown closes every clone, releases the lock of the process root, and deletes the root"
