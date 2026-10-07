@@ -5,6 +5,7 @@
    [clojure.test :refer :all]
    [metabase-enterprise.remote-sync.source.clone-registry :as clone-registry]
    [metabase.test :as mt]
+   [metabase.util :as u]
    [metabase.util.log :as log])
   (:import
    (java.io File)
@@ -597,6 +598,211 @@
          (FileUtils/deleteDirectory dir-1)
          (is (= 2 (:id (clone-registry/acquire! registry (clone-registry/new-lease url) clone!))))
          (is (= 2 (count @clones))))))))
+
+;;; ------------------------------------------------ the start sweep ------------------------------------------------
+
+;; Java's file lock belongs to the process, not to the channel: two registries in one JVM cannot show what another
+;; process sees. So these tests hold and check locks in a second OS process.
+
+(def ^:private lock-program-source
+  "The source of a single-file Java program. `hold <file>` locks the file, prints \"locked\", and sleeps until it is
+  stopped. `check <file>` prints \"held\" when another process holds the lock of the existing file, else \"free\"."
+  (str "import java.nio.channels.*; import java.nio.file.*;\n"
+       "public class LockProgram {\n"
+       "  public static void main(String[] a) throws Exception {\n"
+       "    if (a[0].equals(\"hold\")) {\n"
+       "      FileChannel ch = FileChannel.open(Paths.get(a[1]), StandardOpenOption.CREATE, StandardOpenOption.WRITE);\n"
+       "      ch.lock(); System.out.println(\"locked\"); System.out.flush(); Thread.sleep(600000);\n"
+       "    } else {\n"
+       "      FileChannel ch = FileChannel.open(Paths.get(a[1]), StandardOpenOption.WRITE);\n"
+       "      System.out.println(ch.tryLock() == null ? \"held\" : \"free\");\n"
+       "    }\n"
+       "  }\n"
+       "}\n"))
+
+(def ^:private lock-program
+  (delay
+    (let [dir  (doto (io/file (System/getProperty "java.io.tmpdir") (str "clone-registry-test-lock-program-" (random-uuid)))
+                 .mkdirs
+                 .deleteOnExit)
+          file (doto (io/file dir "LockProgram.java") .deleteOnExit)]
+      (spit file lock-program-source)
+      file)))
+
+(defn- start-lock-program
+  "Starts the lock program in a new OS process with the java command of this JVM."
+  ^Process [mode ^File lock-file]
+  (.start (doto (ProcessBuilder. ^java.util.List (vector (str (io/file (System/getProperty "java.home") "bin" "java"))
+                                                         (str @lock-program) mode (str lock-file)))
+            (.redirectErrorStream true))))
+
+(defn- hold-lock!
+  "Starts a second OS process that holds the lock of `lock-file` until [[stop-process!]] stops it."
+  ^Process [^File lock-file]
+  (let [p    (start-lock-program "hold" lock-file)
+        line (.readLine ^java.io.BufferedReader (io/reader (.getInputStream p)))]
+    (is (= "locked" line) "precondition: the second process holds the lock")
+    p))
+
+(defn- stop-process! [^Process p]
+  (.destroy p)
+  (.waitFor p 30 TimeUnit/SECONDS))
+
+(defn- lock-seen-by-another-process
+  "\"held\" when a new OS process cannot take the lock of `lock-file`, else \"free\"."
+  [^File lock-file]
+  (let [p (start-lock-program "check" lock-file)]
+    (u/prog1 (str/trim (slurp (.getInputStream p)))
+      (.waitFor p 30 TimeUnit/SECONDS))))
+
+(defn- do-with-registries!
+  "Calls `(f base make!)` with a new temp directory `base`. `(make! opts)` returns a new registry under `base` with the
+  options `opts`. Shuts down each registry that `make!` made, then deletes `base`."
+  [f]
+  (let [base (io/file (System/getProperty "java.io.tmpdir") (str "clone-registry-test-" (random-uuid)))
+        made (atom [])]
+    (try
+      (.mkdirs base)
+      (f base (fn [opts] (u/prog1 (clone-registry/make-registry base opts) (swap! made conj <>))))
+      (finally
+        (run! clone-registry/shutdown! @made)
+        (FileUtils/deleteQuietly base)))))
+
+(defn- acquire!
+  "Acquires a clone of [[url]] in `registry` with a fake clone, and returns the generation."
+  [registry]
+  (clone-registry/acquire! registry (clone-registry/new-lease url) (fake-clone (atom []) (atom []))))
+
+(defn- plant-root!
+  "Makes a directory in `base` that looks like the process root of another process, with a lock file when `lock-file?`
+  is true, and a clone in it."
+  ^File [^File base & {:keys [lock-file?] :or {lock-file? true}}]
+  (let [root (io/file base (str "p-" (random-uuid)))]
+    (io/make-parents (io/file root (str (#'clone-registry/url-key url) "-1") "HEAD"))
+    (spit (io/file root (str (#'clone-registry/url-key url) "-1") "HEAD") "ref: refs/heads/master")
+    (when lock-file?
+      (spit (io/file root ".lock") ""))
+    root))
+
+(deftest sweep-keeps-roots-of-live-processes-and-deletes-roots-of-stopped-processes-test
+  (testing "the first use deletes each process root whose lock is free, and keeps a root whose lock another OS process holds; after that process stops, the next sweep deletes its root"
+    (do-with-registries!
+     (fn [base make!]
+       (let [dead    (plant-root! base)
+             no-lock (plant-root! base :lock-file? false)
+             live    (plant-root! base)
+             holder  (hold-lock! (io/file live ".lock"))]
+         (try
+           (acquire! (make! nil))
+           (is (not (.exists dead)) "the sweep deletes a root whose lock is free")
+           (is (.exists live) "the sweep keeps a root whose lock another process holds")
+           (is (.exists no-lock) "the sweep keeps a root with no lock file: a process can make its root before its lock file")
+           (finally
+             (stop-process! holder)))
+         ;; A second registry stands for the next process.
+         (acquire! (make! nil))
+         (is (not (.exists live)) "after the other process stopped, the next sweep deletes its root"))))))
+
+(deftest sweep-keeps-the-locks-of-the-roots-of-this-jvm-test
+  (testing "after a sweep in this JVM, another OS process still sees the lock of each process root of this JVM as held"
+    (do-with-registries!
+     (fn [_base make!]
+       (let [a      (make! nil)
+             _      (acquire! a)
+             lock-a (io/file (root-dir a) ".lock")]
+         (is (= "held" (lock-seen-by-another-process lock-a)) "precondition: the root of the first registry is locked")
+         (let [b      (make! nil)
+               _      (acquire! b)
+               lock-b (io/file (root-dir b) ".lock")]
+           (is (.exists (root-dir a)) "the sweep keeps the root of another registry of this JVM")
+           (is (= "held" (lock-seen-by-another-process lock-a)) "the sweep keeps the lock of another registry of this JVM")
+           (is (= "held" (lock-seen-by-another-process lock-b)) "the sweep keeps the lock of its own root")))))))
+
+(deftest registry-without-a-file-lock-test
+  (testing "when the lock call of the new process root throws, the registry clones, deletes no directory of another process, and logs a warning that names its root"
+    (do-with-registries!
+     (fn [base make!]
+       (let [dead     (plant-root! base)
+             old      (doto (io/file base (#'clone-registry/url-key "https://example.com/org/old.git")) .mkdirs)
+             _        (.setLastModified old (- (System/currentTimeMillis) (* 2 3600000)))
+             registry (make! {:old-clone-idle-ms (constantly 3600000)})]
+         (mt/with-log-messages-for-level [messages [metabase-enterprise.remote-sync.source.clone-registry :warn]]
+           (mt/with-dynamic-fn-redefs [clone-registry/lock-root! (fn [_] (throw (java.io.IOException. "No locks available")))]
+             (let [{:keys [^File dir]} (acquire! registry)
+                   root                (root-dir registry)]
+               (is (.isDirectory dir) "the registry clones")
+               (is (= 1 (:id (acquire! registry))) "a later acquire shares the clone")
+               (is (.exists dead) "no sweep deletes a root of another process")
+               (is (.exists old) "no sweep deletes an old clone directory")
+               (is (some #(str/includes? (str (:message %)) (str root)) (messages))
+                   "the warning names the root of this process")))))))))
+
+(defn- sha1-name
+  "A random name of 40 lowercase hexadecimal characters."
+  []
+  (#'clone-registry/url-key (str (random-uuid))))
+
+(def ^:private two-hours-ms (* 2 3600000))
+
+(defn- make-old-clone!
+  "Makes the directory `name` in `base` with the files of a bare clone. Sets the last write time of the directory and of
+  each file to `idle-ms` before now, except for the files in `recent`, whose time stays now."
+  ^File [^File base ^String name idle-ms & {:keys [recent]}]
+  (let [dir   (io/file base name)
+        files (map #(io/file dir %) ["HEAD" "FETCH_HEAD" "packed-refs" "refs/heads/master" "objects/pack/pack-1.pack"])
+        then  (- (System/currentTimeMillis) idle-ms)]
+    (doseq [^File f files]
+      (io/make-parents f)
+      (spit f "x"))
+    (doseq [^File f (reverse (file-seq dir))
+            :when (not (contains? (set recent) (str (.relativize (.toPath dir) (.toPath f)))))]
+      (.setLastModified f then))
+    dir))
+
+(deftest first-sweep-deletes-idle-old-clone-directories-test
+  (testing "the first sweep deletes each clone directory of an earlier version that nobody wrote to for longer than the task timeout"
+    (do-with-registries!
+     (fn [^File base make!]
+       (let [deleted [["a SHA-1 name" (make-old-clone! base (sha1-name) two-hours-ms)]
+                      ["a SHA-1 name and a UUID" (make-old-clone! base (str (sha1-name) "-" (random-uuid)) two-hours-ms)]]
+             kept    [["a recent FETCH_HEAD" (make-old-clone! base (sha1-name) two-hours-ms :recent ["FETCH_HEAD"])]
+                      ["a recent packed-refs" (make-old-clone! base (sha1-name) two-hours-ms :recent ["packed-refs"])]
+                      ["a recent ref" (make-old-clone! base (sha1-name) two-hours-ms :recent ["refs/heads/master"])]
+                      ["a recent directory" (make-old-clone! base (sha1-name) 0)]
+                      ["upper-case hexadecimal" (make-old-clone! base (u/upper-case-en (sha1-name)) two-hours-ms)]
+                      ["39 characters" (make-old-clone! base (subs (sha1-name) 1) two-hours-ms)]
+                      ["a SHA-1 name and a generation" (make-old-clone! base (str (sha1-name) "-1") two-hours-ms)]
+                      ["a SHA-1 name and no UUID" (make-old-clone! base (str (sha1-name) "-not-a-uuid") two-hours-ms)]
+                      ["a file" (doto (io/file base (sha1-name)) (spit "x") (.setLastModified 0))]]
+             live    (plant-root! base)
+             holder  (hold-lock! (io/file live ".lock"))]
+         (try
+           (doseq [^File f (file-seq live)]
+             (.setLastModified f (- (System/currentTimeMillis) two-hours-ms)))
+           (acquire! (make! {:old-clone-idle-ms (constantly 3600000)}))
+           (doseq [[what ^File dir] deleted]
+             (testing what
+               (is (not (.exists dir)) "the first sweep deletes it")))
+           (doseq [[what ^File dir] kept]
+             (testing what
+               (is (.exists dir) "the first sweep keeps it")))
+           (is (.exists live) "a process root never matches the rule of an old clone directory")
+           (finally
+             (stop-process! holder))))))))
+
+(deftest later-sweep-does-not-delete-old-clone-directories-test
+  (testing "a later sweep of the same registry deletes the roots of stopped processes, but not old clone directories"
+    (do-with-registries!
+     (fn [^File base make!]
+       (let [registry (make! {:old-clone-idle-ms (constantly 3600000)})
+             _        (acquire! registry)
+             old      (make-old-clone! base (sha1-name) two-hours-ms)
+             dead     (plant-root! base)]
+         ;; Without its lock file, the root is not intact, so the next acquire makes a new root and sweeps again.
+         (io/delete-file (io/file (root-dir registry) ".lock"))
+         (acquire! registry)
+         (is (not (.exists dead)) "precondition: the later sweep ran")
+         (is (.exists old) "the later sweep does not delete an old clone directory"))))))
 
 (deftest shutdown-test
   (testing "a shutdown closes every clone, releases the lock of the process root, and deletes the root"

@@ -2559,15 +2559,16 @@ serdes/meta:
              (is (empty? (test-helpers/leases url)) "no lease holds a clone after the request"))))))))
 
 (deftest import-task-that-throws-before-its-body-releases-its-lease-test
-  (testing "an import task that throws before its task body runs releases its lease"
+  (testing "an import task whose heartbeat does not start releases its lease, and its task row ends"
     (do-with-git-remote!
      (fn [url]
        (mt/with-dynamic-fn-redefs [impl/import!                      (fn [& _] {:status :success})
                                    remote-sync.task/start-heartbeat! (fn [_]
                                                                        (throw (ex-info "The heartbeat did not start" {})))]
-         (impl/async-import! "master" true {})
-         (is (some? (active-generation url)) "precondition: the request used a clone")
-         (is (wait-until #(empty? (test-helpers/leases url))) "no lease holds a clone after the task thread ends"))))))
+         (let [{task-id :id} (impl/async-import! "master" true {})]
+           (is (some? (active-generation url)) "precondition: the request used a clone")
+           (is (wait-until #(empty? (test-helpers/leases url))) "no lease holds a clone after the task thread ends")
+           (is (wait-until #(task-ended? task-id)) "the task row ends")))))))
 
 (defn- interruptible-import!
   "An [[impl/import!]] that sleeps for 5 s. When an interrupt stops the sleep, it delivers true to `interrupted` and
