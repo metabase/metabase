@@ -207,24 +207,30 @@
               metrics (atom {:metabase-search/semantic-fallback-results-usage 0
                              :metabase-search/semantic-fallback-triggered 0
                              :metabase-search/semantic-results-before-fallback 0})]
+          ;; `with-redefs` is process-wide, so the stubs ignore unrelated metrics emitted by background workers.
           (with-redefs [analytics/inc! (fn [metric & _args]
                                          (case metric
                                            :metabase-search/semantic-fallback-triggered
                                            (swap! metrics update
                                                   :metabase-search/semantic-fallback-triggered
-                                                  inc))
+                                                  inc)
+                                           nil)
                                          nil)
-                        analytics/observe! (fn [metric cnt]
-                                             (case metric
-                                               :metabase-search/semantic-fallback-results-usage
-                                               (swap! metrics update
-                                                      :metabase-search/semantic-fallback-results-usage
-                                                      + cnt)
-                                               :metabase-search/semantic-results-before-fallback
-                                               (swap! metrics update
-                                                      :metabase-search/semantic-results-before-fallback
-                                                      + cnt))
-                                             nil)]
+                        analytics/observe! (fn
+                                             ([_metric] nil)
+                                             ([metric cnt]
+                                              (case metric
+                                                :metabase-search/semantic-fallback-results-usage
+                                                (swap! metrics update
+                                                       :metabase-search/semantic-fallback-results-usage
+                                                       + cnt)
+                                                :metabase-search/semantic-results-before-fallback
+                                                (swap! metrics update
+                                                       :metabase-search/semantic-results-before-fallback
+                                                       + cnt)
+                                                nil)
+                                              nil)
+                                             ([_metric _labels _amount] nil))]
             (with-search-engine-mocks! [semantic-result] fallback-results
               (fn []
                 (let [results (semantic.core/results search-ctx)]

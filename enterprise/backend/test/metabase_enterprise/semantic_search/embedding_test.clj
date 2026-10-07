@@ -171,8 +171,13 @@
                                                      (assoc requested :model-name "local-model"))
       embeddings.provider/embed-text               (fn [_ text _] [text])
       embeddings.provider/embed-texts              (fn [_ texts _] (mapv vector texts))
-      analytics/inc!                               (fn [metric labels value]
-                                                     (swap! analytics-calls conj [metric labels value]))
+      ;; `with-redefs` is process-wide, so ignore unrelated metrics emitted by background workers.
+      analytics/inc!                               (fn
+                                                     ([_metric] nil)
+                                                     ([_metric _labels-or-amount] nil)
+                                                     ([metric labels value]
+                                                      (when (= metric :metabase-search/semantic-embedding-tokens)
+                                                        (swap! analytics-calls conj [metric labels value]))))
       semantic.models.token-tracking/record-tokens (fn [& args]
                                                      (swap! tracking-calls conj args))]
       (embedding/get-embedding model "Hello world" :type :query :record-tokens? true)
