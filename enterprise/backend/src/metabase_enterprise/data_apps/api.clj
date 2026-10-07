@@ -269,7 +269,7 @@
    _query-params
    body :- CreateDataAppRequest]
   (api/create-check :model/DataApp body)
-  (check-editable! (assoc body :draft false))
+  (check-editable! body)
   (let [app (data-apps.db/data-app (data-apps.apps/create-app! (with-bundle body)))]
     (events/publish-event! :event/data-app-create {:object app :user-id api/*current-user-id*})
     (data-app-response app)))

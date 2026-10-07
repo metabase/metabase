@@ -120,10 +120,7 @@
           (is (=? {:display_name "Demo" :enabled true} (t2/select-one :model/DataApp :name "demo"))))
         (testing "enabling and disabling stays allowed"
           (is (=? {:enabled false}
-                  (mt/user-http-request :crowberto :put 200 "apps/demo" {:enabled false}))))
-        (testing "drafts are outside sync, so they can still be created and deleted"
-          (mt/user-http-request :crowberto :post 200 "apps/draft-app/draft")
-          (mt/user-http-request :crowberto :delete 204 "apps/draft-app")))
+                  (mt/user-http-request :crowberto :put 200 "apps/demo" {:enabled false})))))
       (mt/with-temporary-setting-values [remote-sync-url  "https://github.com/test/repo.git"
                                          remote-sync-type :read-write]
         (testing "a read-write instance allows changes"

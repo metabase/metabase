@@ -433,12 +433,12 @@
   (testing "model-editable? returns true for every model while remote sync is not configured"
     (mt/with-temporary-setting-values [remote-sync-url  nil
                                        remote-sync-type :read-only]
-      (is (true? (spec/model-editable? :model/DataApp {:draft false})))
-      (is (= {1 true} (spec/batch-model-editable? :model/DataApp [{:id 1 :draft false}]))))
+      (is (true? (spec/model-editable? :model/DataApp {})))
+      (is (= {1 true} (spec/batch-model-editable? :model/DataApp [{:id 1}]))))
     (mt/with-temporary-setting-values [remote-sync-url  "https://github.com/test/repo.git"
                                        remote-sync-type :read-only]
-      (is (false? (spec/model-editable? :model/DataApp {:draft false})))
-      (is (= {1 false} (spec/batch-model-editable? :model/DataApp [{:id 1 :draft false}]))))))
+      (is (false? (spec/model-editable? :model/DataApp {})))
+      (is (= {1 false} (spec/batch-model-editable? :model/DataApp [{:id 1}]))))))
 
 (deftest model-editable?-read-write-mode-test
   (testing "model-editable? returns true in read-write mode regardless of eligibility"
