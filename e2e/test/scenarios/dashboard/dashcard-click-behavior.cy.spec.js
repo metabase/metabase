@@ -397,7 +397,6 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       H.createQuestionAndDashboard({ questionDetails }).then(
         ({ body: card }) => {
           H.visitDashboard(card.dashboard_id);
-          cy.wrap(card.dashboard_id).as("dashboardId");
         },
       );
 
@@ -1236,8 +1235,6 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
     });
 
     it("should allow setting dashboard tab with parameter for a column", () => {
-      H.createQuestion(TARGET_QUESTION);
-
       const dashboard = {
         ...TARGET_DASHBOARD,
         parameters: [DASHBOARD_FILTER_TEXT, DASHBOARD_FILTER_TIME],
@@ -1323,26 +1320,6 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
     });
 
     it("should allow setting URL as custom destination and updating dashboard filters for different columns", () => {
-      H.createQuestion(TARGET_QUESTION);
-      H.createDashboard(
-        {
-          ...TARGET_DASHBOARD,
-          parameters: [DASHBOARD_FILTER_TEXT, DASHBOARD_FILTER_TIME],
-          dashcards: [
-            createMockDashboardCard({
-              card_id: ORDERS_QUESTION_ID,
-              parameter_mappings: [
-                createTextFilterMapping({ card_id: ORDERS_QUESTION_ID }),
-                createTimeFilterMapping({ card_id: ORDERS_QUESTION_ID }),
-              ],
-            }),
-          ],
-        },
-        {
-          wrapId: true,
-          idAlias: "targetDashboardId",
-        },
-      );
       H.createQuestionAndDashboard({ questionDetails, dashboardDetails }).then(
         ({ body: dashcard }) => {
           H.addOrUpdateDashboardCard({
@@ -2953,17 +2930,8 @@ describe("issue 17160", () => {
         },
       },
     }).then(({ body: { id: questionId } }) => {
-      // Share the question
-      cy.request("POST", `/api/card/${questionId}/public_link`);
-
       H.createDashboard({ name: "17160D" }).then(
         ({ body: { id: dashboardId } }) => {
-          // Share the dashboard
-          cy.request("POST", `/api/dashboard/${dashboardId}/public_link`).then(
-            ({ body: { uuid } }) => {
-              cy.wrap(uuid).as("sourceDashboardUUID");
-            },
-          );
           cy.wrap(dashboardId).as("sourceDashboardId");
 
           // Add the question to the dashboard
@@ -3082,9 +3050,6 @@ describe("issue 17160", () => {
         },
       },
     }).then(({ body: { id, card_id, dashboard_id } }) => {
-      // Share the dashboard
-      cy.request("POST", `/api/dashboard/${dashboard_id}/public_link`);
-
       // Add a filter
       cy.request("PUT", `/api/dashboard/${dashboard_id}`, {
         parameters: [
