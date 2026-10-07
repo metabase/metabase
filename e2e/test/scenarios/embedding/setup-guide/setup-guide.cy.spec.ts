@@ -193,28 +193,7 @@ describe("scenarios - setup guide", () => {
       });
     });
 
-    it("overflow menu > customize homepage opens modal with correct title", () => {
-      cy.request("PUT", "/api/setting/embedding-homepage", {
-        value: "visible",
-      });
-
-      cy.visit("/");
-
-      cy.log("Click overflow menu button on the embedding homepage");
-      cy.get("main").within(() => {
-        cy.findByLabelText("More options").click();
-      });
-
-      H.menu().findByText("Customize homepage").click();
-
-      cy.findByRole("dialog").within(() => {
-        cy.findByText("Pick a dashboard to appear on the homepage").should(
-          "be.visible",
-        );
-      });
-    });
-
-    it("overflow menu > dismiss guide hides the embedding homepage", () => {
+    it("overflow menu > customize homepage opens a modal and dismiss guide hides the embedding homepage", () => {
       cy.log("embedding checklist should not show up if not enabled");
       cy.visit("/");
 
@@ -234,6 +213,21 @@ describe("scenarios - setup guide", () => {
       cy.get("main")
         .findByText("Get started with modular embedding")
         .should("be.visible");
+
+      cy.log("Click overflow menu button on the embedding homepage");
+      cy.get("main").within(() => {
+        cy.findByLabelText("More options").click();
+      });
+
+      H.menu().findByText("Customize homepage").click();
+
+      cy.findByRole("dialog").within(() => {
+        cy.findByText("Pick a dashboard to appear on the homepage").should(
+          "be.visible",
+        );
+        cy.findByRole("button", { name: "Cancel" }).click();
+      });
+      cy.findByRole("dialog").should("not.exist");
 
       cy.log("Click overflow menu button on the embedding homepage");
       cy.get("main").within(() => {
