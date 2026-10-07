@@ -337,7 +337,7 @@ describe("scenarios > dashboard > tabs", () => {
     });
   });
 
-  it("should only display and fetch cards on the current tab", () => {
+  it("should only display and fetch cards on the current tab, also in public and embedded dashboards", () => {
     cy.intercept("PUT", "/api/dashboard/*").as("saveDashboardCards");
     cy.intercept("POST", "/api/card/*/query").as("cardQuery");
 
@@ -491,39 +491,19 @@ describe("scenarios > dashboard > tabs", () => {
     H.goToTab("Tab 1");
     cy.get("@publicFirstTabQuerySpy").should("have.been.calledOnce");
     cy.get("@publicSecondTabQuerySpy").should("have.been.calledOnce");
-  });
 
-  it("should only fetch cards on the current tab of an embedded dashboard", () => {
-    cy.intercept("PUT", "/api/dashboard/*").as("saveDashboardCards");
-    cy.intercept("POST", "/api/card/*/query").as("cardQuery");
-
-    H.visitDashboardAndCreateTab({
-      dashboardId: ORDERS_DASHBOARD_ID,
-      save: false,
-    });
-
-    // Add card to second tab
-    cy.icon("pencil").click();
-    H.openQuestionsSidebar();
-    H.sidebar().within(() => {
-      cy.findByText("Orders, Count").click();
-    });
-    cy.wait("@cardQuery");
-    H.saveDashboard();
-    cy.wait("@saveDashboardCards").then(({ response }) => {
-      cy.wrap(response.body.dashcards[1].id).as("secondTabDashcardId");
-    });
-
+    cy.log("static embedding");
+    H.visitDashboard(ORDERS_DASHBOARD_ID);
     cy.intercept(
       "GET",
       `/api/embed/dashboard/*/dashcard/*/card/${ORDERS_QUESTION_ID}*`,
-      cy.spy().as("firstTabQuerySpy"),
-    ).as("firstTabQuery");
+      cy.spy().as("embedFirstTabQuerySpy"),
+    ).as("embedFirstTabQuery");
     cy.intercept(
       "GET",
       `/api/embed/dashboard/*/dashcard/*/card/${ORDERS_COUNT_QUESTION_ID}*`,
-      cy.spy().as("secondTabQuerySpy"),
-    ).as("secondTabQuery");
+      cy.spy().as("embedSecondTabQuerySpy"),
+    ).as("embedSecondTabQuery");
 
     H.openLegacyStaticEmbeddingModal({
       resource: "dashboard",
@@ -538,19 +518,19 @@ describe("scenarios > dashboard > tabs", () => {
     H.visitIframe();
     // wait for results
     cy.findAllByTestId("dashcard").contains("37.65");
-    cy.get("@firstTabQuerySpy").should("have.been.calledOnce");
-    cy.get("@secondTabQuerySpy").should("not.have.been.called");
+    cy.get("@embedFirstTabQuerySpy").should("have.been.calledOnce");
+    cy.get("@embedSecondTabQuerySpy").should("not.have.been.called");
 
-    cy.wait("@firstTabQuery");
+    cy.wait("@embedFirstTabQuery");
 
     H.goToTab("Tab 2");
-    cy.get("@secondTabQuerySpy").should("have.been.calledOnce");
-    cy.get("@firstTabQuerySpy").should("have.been.calledOnce");
-    cy.wait("@secondTabQuery");
+    cy.get("@embedSecondTabQuerySpy").should("have.been.calledOnce");
+    cy.get("@embedFirstTabQuerySpy").should("have.been.calledOnce");
+    cy.wait("@embedSecondTabQuery");
 
     H.goToTab("Tab 1");
-    cy.get("@firstTabQuerySpy").should("have.been.calledOnce");
-    cy.get("@secondTabQuerySpy").should("have.been.calledOnce");
+    cy.get("@embedFirstTabQuerySpy").should("have.been.calledOnce");
+    cy.get("@embedSecondTabQuerySpy").should("have.been.calledOnce");
   });
 
   it("should apply filter and show loading spinner when changing tabs (#33767)", () => {
@@ -692,7 +672,36 @@ describe("scenarios > dashboard > tabs", () => {
   });
 });
 
-describe("scenarios > dashboard > tabs", () => {
+const CATEGORY_PARAMETER = createMockParameter({
+  id: "2",
+  name: "Category",
+  type: "string/=",
+});
+
+const PRODUCTS_QUESTION_DETAILS = {
+  name: "Products",
+  query: { "source-table": PRODUCTS_ID },
+};
+
+function createMappedDashcard(mappedQuestionId) {
+  return createMockDashboardCard({
+    id: 1,
+    card_id: mappedQuestionId,
+    parameter_mappings: [
+      {
+        parameter_id: CATEGORY_PARAMETER.id,
+        card_id: mappedQuestionId,
+        target: ["dimension", ["field", PRODUCTS.CATEGORY, null]],
+      },
+    ],
+    row: 0,
+    col: 0,
+    size_x: 10,
+    size_y: 5,
+  });
+}
+
+describe("scenarios > dashboard > tabs > snowplow", () => {
   beforeEach(() => {
     H.restore();
     H.resetSnowplow();
@@ -704,23 +713,7 @@ describe("scenarios > dashboard > tabs", () => {
     H.expectNoBadSnowplowEvents();
   });
 
-  it("should send snowplow events when dashboard tabs are created and deleted", () => {
-    H.visitDashboard(ORDERS_DASHBOARD_ID);
-
-    H.editDashboard();
-    H.createNewTab();
-    H.saveDashboard();
-    H.expectUnstructuredSnowplowEvent({ event: "dashboard_saved" });
-    H.expectUnstructuredSnowplowEvent({ event: "dashboard_tab_created" });
-
-    H.editDashboard();
-    H.deleteTab("Tab 2");
-    H.saveDashboard();
-    H.expectUnstructuredSnowplowEvent({ event: "dashboard_saved" }, 2);
-    H.expectUnstructuredSnowplowEvent({ event: "dashboard_tab_deleted" });
-  });
-
-  it("should send snowplow events when cards are moved between tabs", () => {
+  it("should send snowplow events when tabs are created and deleted and cards are moved between them", () => {
     const cardMovedEventName = "card_moved_to_tab";
 
     H.visitDashboard(ORDERS_DASHBOARD_ID);
@@ -732,8 +725,75 @@ describe("scenarios > dashboard > tabs", () => {
     H.goToTab("Tab 1");
 
     H.moveDashCardToTab({ tabName: "Tab 2" });
-
     H.expectUnstructuredSnowplowEvent({ event: cardMovedEventName });
+
+    H.saveDashboard();
+    H.expectUnstructuredSnowplowEvent({ event: "dashboard_saved" });
+    H.expectUnstructuredSnowplowEvent({ event: "dashboard_tab_created" });
+
+    H.editDashboard();
+    H.deleteTab("Tab 1");
+    H.saveDashboard();
+    H.expectUnstructuredSnowplowEvent({ event: "dashboard_saved" }, 2);
+    H.expectUnstructuredSnowplowEvent({ event: "dashboard_tab_deleted" });
+  });
+
+  it("should allow the user to duplicate a dashcard and a tab", () => {
+    H.createQuestion(PRODUCTS_QUESTION_DETAILS).then(
+      ({ body: { id: mappedQuestionId } }) => {
+        H.createDashboard({ parameters: [CATEGORY_PARAMETER] }).then(
+          ({ body: { id: dashboardId } }) => {
+            cy.request("PUT", `/api/dashboard/${dashboardId}`, {
+              dashcards: [createMappedDashcard(mappedQuestionId)],
+            });
+            H.visitDashboard(dashboardId);
+          },
+        );
+      },
+    );
+
+    cy.log("duplicate a dashcard");
+    cy.findByLabelText("Edit dashboard").click();
+
+    H.getDashboardCard(0)
+      .realHover({ scrollBehavior: "bottom" })
+      .findByLabelText("Duplicate")
+      .click();
+    H.expectUnstructuredSnowplowEvent({ event: "dashboard_card_duplicated" });
+
+    // check that the new card loads _before_ saving
+    cy.findAllByText("Products").should("have.length", 2);
+    // Also confirm with the card content (VIZ-289)
+    cy.findAllByText("Small Marble Shoes").should("have.length", 2);
+
+    H.saveDashboard();
+    H.expectUnstructuredSnowplowEvent({ event: "dashboard_saved" });
+
+    cy.log("duplicate a tab");
+    cy.findByLabelText("Edit dashboard").click();
+
+    H.duplicateTab("Tab 1");
+    H.expectUnstructuredSnowplowEvent({ event: "dashboard_tab_duplicated" });
+    H.getDashboardCard().within(() => {
+      cy.findByText("Products").should("exist");
+      cy.findByText("Category").should("exist");
+      cy.findByText(/(Problem|Error)/i).should("not.exist");
+    });
+    H.saveDashboard();
+    H.expectUnstructuredSnowplowEvent({ event: "dashboard_saved" }, 2);
+
+    cy.log("the filter applies to the duplicated cards on both tabs");
+    H.assertTabSelected("Copy of Tab 1");
+    H.filterWidget().click();
+    H.popover().within(() => {
+      cy.findByText("Gadget").click();
+    });
+    cy.button("Add filter").click();
+
+    cy.findAllByText("Incredible Bronze Pants").should("have.length", 2);
+
+    H.goToTab("Tab 1");
+    cy.findAllByText("Incredible Bronze Pants").should("have.length", 2);
   });
 });
 
@@ -1065,134 +1125,6 @@ describe("issue 39863", () => {
     H.goToTab(TAB_2.name);
     assertNoLoadingSpinners();
     cy.get("@dashcardQuery.all").should("have.length", 4);
-  });
-});
-
-const PARAMETER = {
-  CATEGORY: createMockParameter({
-    id: "2",
-    name: "Category",
-    type: "string/=",
-  }),
-};
-
-const DASHBOARD_CREATE_INFO = {
-  parameters: Object.values(PARAMETER),
-};
-
-const MAPPED_QUESTION_CREATE_INFO = {
-  name: "Products",
-  query: { "source-table": PRODUCTS_ID },
-};
-
-function createMappedDashcard(mappedQuestionId) {
-  return createMockDashboardCard({
-    id: 1,
-    card_id: mappedQuestionId,
-    parameter_mappings: [
-      {
-        parameter_id: PARAMETER.CATEGORY.id,
-        card_id: mappedQuestionId,
-        target: ["dimension", ["field", PRODUCTS.CATEGORY, null]],
-      },
-    ],
-    row: 0,
-    col: 0,
-    size_x: 10,
-    size_y: 5,
-  });
-}
-
-const EVENTS = {
-  duplicateDashcard: { event: "dashboard_card_duplicated" },
-  duplicateTab: { event: "dashboard_tab_duplicated" },
-  saveDashboard: { event: "dashboard_saved" },
-};
-
-describe("scenarios > dashboard cards > duplicate", () => {
-  beforeEach(() => {
-    H.restore();
-    H.resetSnowplow();
-    cy.signInAsAdmin();
-    H.enableTracking();
-
-    H.createQuestion(MAPPED_QUESTION_CREATE_INFO).then(
-      ({ body: { id: mappedQuestionId } }) => {
-        H.createDashboard(DASHBOARD_CREATE_INFO).then(
-          ({ body: { id: dashboardId } }) => {
-            cy.request("PUT", `/api/dashboard/${dashboardId}`, {
-              dashcards: [createMappedDashcard(mappedQuestionId)],
-            }).then(() => {
-              cy.wrap(dashboardId).as("dashboardId");
-            });
-          },
-        );
-      },
-    );
-  });
-
-  afterEach(() => {
-    H.expectNoBadSnowplowEvents();
-  });
-
-  it("should allow the user to duplicate a dashcard", () => {
-    // 1. Confirm duplication works
-    H.visitDashboard("@dashboardId");
-    cy.findByLabelText("Edit dashboard").click();
-
-    H.getDashboardCard(0)
-      .realHover({ scrollBehavior: "bottom" })
-      .findByLabelText("Duplicate")
-      .click();
-    H.expectUnstructuredSnowplowEvent(EVENTS.duplicateDashcard);
-
-    // check that the new card loads _before_ saving
-    cy.findAllByText("Products").should("have.length", 2);
-    // Also confirm with the card content (VIZ-289)
-    cy.findAllByText("Small Marble Shoes").should("have.length", 2);
-
-    H.saveDashboard();
-    H.expectUnstructuredSnowplowEvent(EVENTS.saveDashboard);
-
-    // 2. Confirm filter still works
-    H.filterWidget().click();
-    H.popover().within(() => {
-      cy.findByText("Gadget").click();
-    });
-    cy.button("Add filter").click();
-
-    cy.findAllByText("Incredible Bronze Pants").should("have.length", 2);
-  });
-
-  it("should allow the user to duplicate a tab", () => {
-    // 1. Confirm duplication works
-    H.visitDashboard("@dashboardId");
-    cy.findByLabelText("Edit dashboard").click();
-
-    H.duplicateTab("Tab 1");
-    H.expectUnstructuredSnowplowEvent(EVENTS.duplicateTab);
-    H.getDashboardCard().within(() => {
-      cy.findByText("Products").should("exist");
-      cy.findByText("Category").should("exist");
-      cy.findByText(/(Problem|Error)/i).should("not.exist");
-    });
-    H.saveDashboard();
-    H.expectUnstructuredSnowplowEvent(EVENTS.saveDashboard);
-
-    H.dashboardCards().within(() => {
-      cy.findByText("Products");
-    });
-
-    // 2. Confirm filter still works
-    H.filterWidget().click();
-    H.popover().within(() => {
-      cy.findByText("Gadget").click();
-    });
-    cy.button("Add filter").click();
-
-    H.dashboardCards().within(() => {
-      cy.findByText("Incredible Bronze Pants");
-    });
   });
 });
 
