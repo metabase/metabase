@@ -707,3 +707,50 @@
           (is (not (t2/exists? :model/Collection :id beta)))
           (is (t2/exists? :model/Exploration :id explo))
           (is (t2/exists? :model/Document :id doc) "the Summary document stays"))))))
+
+;;; ------------------------------------- a remote-deleted transforms collection -------------------------------------
+
+(defn- transforms-collection-delete!
+  "A transforms collection TC with transform T is synced as the version v0. The remote deletes TC and T. With
+  `add-during?`, the user creates transform U in TC after the load. Returns `{:paths :result :tc? :t? :u?}`: the files of
+  TC and T in the tree, the pull result, and whether TC, T and U exist after the pull."
+  [add-during?]
+  (mt/with-premium-features #{:transforms-basic}
+    (with-sync-settings
+      (mt/with-temporary-setting-values [remote-sync-transforms true]
+        (mt/with-temp [:model/Collection {alpha :id} {:name "Alpha" :is_remote_synced true :location "/"}
+                       :model/Card _ {:name "Card A" :collection_id alpha}
+                       :model/Collection {tc :id} {:name "TC" :namespace "transforms" :location "/"}
+                       :model/Transform {t :id} {:name "Transform T" :collection_id tc}]
+          (mt/with-model-cleanup [:model/Transform]
+            (let [t0    (export-tree!)
+                  _     (pull-base! t0)
+                  paths (keep #(path-of t0 %) ["TC" "Transform T"])
+                  u-id  (atom nil)
+                  add!  #(reset! u-id (t2/insert-returning-pk! :model/Transform
+                                                               (merge (t2/select-one [:model/Transform :source :target]
+                                                                                     :id t)
+                                                                      {:name "Transform U" :collection_id tc})))
+                  {:keys [result]} (merge-pull! t0 (apply dissoc t0 paths)
+                                                :on-report (once-at! 0.75 #(when add-during? (add!))))]
+              {:paths  paths
+               :result result
+               :tc?    (t2/exists? :model/Collection :id tc)
+               :t?     (t2/exists? :model/Transform :id t)
+               :u?     (some->> @u-id (t2/exists? :model/Transform :id))})))))))
+
+(deftest remote-delete-of-a-transforms-collection-test
+  (testing "The remote deletes transforms collection TC and its transform T. The merge pull deletes both."
+    (let [{:keys [paths result tc? t?]} (transforms-collection-delete! false)]
+      (is (= 2 (count paths)) "precondition: the tree has the files of TC and T")
+      (is (= :success (:status result)) (pr-str result))
+      (is (not tc?))
+      (is (not t?))))
+  (testing "The remote deletes transforms collection TC and its transform T. After the load, the user creates transform
+            U in TC. The merge did not see U, so the pull stops, and TC, T and U stay."
+    (let [{:keys [result tc? t? u?]} (transforms-collection-delete! true)]
+      (is (= :conflict (:status result)) (pr-str result))
+      (is (= ["Transform U"] (:conflicts result)))
+      (is tc?)
+      (is t?)
+      (is (true? u?) "the new transform stays"))))
