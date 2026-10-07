@@ -24,10 +24,6 @@ export const TRANSFORMS_ROOT_ID = -1;
 const DATA_APPS_ROOT_ID = -2;
 
 /**
- * Configuration for how entities are grouped and displayed in the changes view.
- * Similar to the backend remote-sync-specs pattern.
- */
-/**
  * A synthetic root collection for a group whose entities have no real one.
  */
 export type VirtualRoot = {
@@ -39,6 +35,10 @@ export type VirtualRoot = {
   url: () => string;
 };
 
+/**
+ * Configuration for how entities are grouped and displayed in the changes view.
+ * Similar to the backend remote-sync-specs pattern.
+ */
 export type DisplayGroupSpec = {
   /** Unique identifier for this group */
   id: string;
