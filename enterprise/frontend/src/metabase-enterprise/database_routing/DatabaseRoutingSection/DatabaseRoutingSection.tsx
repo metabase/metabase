@@ -99,6 +99,11 @@ export const DatabaseRoutingSection = ({
     shouldHideSection || !isAdmin ? skipToken : database.id,
   );
 
+  // Routing refuses anonymous queries unless the grant lets them through, so public links
+  // break only where routing is on, the grant is off, and the public can already get here.
+  const publicLinksWillBreak =
+    enabled && !anonymousAccessGranted && !!usageInfo?.reachable_by_public_link;
+
   const disabledFeatMsg = getDisabledFeatureMessage(database, {
     hasTransforms,
   });
@@ -209,27 +214,16 @@ export const DatabaseRoutingSection = ({
         <>
           <DatabaseInfoSectionDivider />
 
-          {enabled && (
+          {publicLinksWillBreak && (
             <Alert
               size="compact"
               variant="light"
-              icon={<Icon name="info" />}
+              color="warning"
+              icon={<Icon name="warning" />}
+              title={t`Public links on this database will stop working`}
               mb="lg"
-            >
-              <Stack gap="xs">
-                <Text
-                  inherit
-                >{t`In guest embeds and public links, database queries will always be routed to the router database.`}</Text>
-                {/* until the fact has arrived, neither sentence is one we can stand behind */}
-                {usageInfo && (
-                  <Text inherit>
-                    {usageInfo.reachable_by_public_link
-                      ? t`This affects the public links that use this database.`
-                      : t`No public links use this database.`}
-                  </Text>
-                )}
-              </Stack>
-            </Alert>
+              data-testid="public-links-routing-warning"
+            />
           )}
           <Stack mb="xxl" gap="sm">
             <Flex justify="space-between" align="center" gap="sm">

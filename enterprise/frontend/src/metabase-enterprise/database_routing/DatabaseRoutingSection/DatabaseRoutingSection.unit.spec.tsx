@@ -10,7 +10,7 @@ import {
   setupUserAttributesEndpoint,
 } from "__support__/server-mocks";
 import { createMockSettingsState } from "__support__/state";
-import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
 import type { Database } from "metabase-types/api";
 import {
   createMockDatabase,
@@ -24,6 +24,23 @@ import {
 import { DatabaseRoutingSection } from "./DatabaseRoutingSection";
 
 const ROUTER_UPDATE_ERROR = "Could not update database routing";
+
+const routingCapableDatabase = (overrides: Partial<Database> = {}): Database =>
+  createMockDatabase({
+    engine: "postgres",
+    features: ["database-routing"],
+    ...overrides,
+  });
+
+const routedDatabase = (overrides: Partial<Database> = {}): Database =>
+  routingCapableDatabase({ router_user_attribute: "cool_guy", ...overrides });
+
+/** The reachability fact arrives asynchronously, and absence before it lands means nothing. */
+const waitForReachabilityFact = () =>
+  waitFor(async () => {
+    const gets = await findRequests("GET");
+    expect(gets.some(({ url }) => url.includes("usage_info"))).toBe(true);
+  });
 
 interface SetupOpts {
   database?: Database;
@@ -192,98 +209,116 @@ describe("DatabaseRoutingSection", () => {
   });
 });
 
-describe("DatabaseRoutingSection affected public links", () => {
-  const ROUTING_NOTE =
+describe("DatabaseRoutingSection public reachability warning", () => {
+  const WARNING_TITLE = "Public links on this database will stop working";
+  const ROUTED_QUERIES_NOTE =
     "In guest embeds and public links, database queries will always be routed to the router database.";
-  const AFFECTED_NOTE = "This affects the public links that use this database.";
-  const UNAFFECTED_NOTE = "No public links use this database.";
+  const NO_PUBLIC_LINKS_REASSURANCE = "No public links use this database.";
 
-  it("should state that public links are affected while routing is being enabled", async () => {
+  it("should warn, and read as a warning, when the database is reachable by a public link", async () => {
     setup({
-      database: createMockDatabase({
-        engine: "postgres",
-        features: ["database-routing"],
-        router_user_attribute: null,
-      }),
+      database: routingCapableDatabase({ router_user_attribute: null }),
       reachableByPublicLink: true,
     });
 
     await userEvent.click(screen.getByLabelText("Enable database routing"));
 
-    expect(await screen.findByText(ROUTING_NOTE)).toBeInTheDocument();
-    expect(await screen.findByText(AFFECTED_NOTE)).toBeInTheDocument();
-    expect(screen.queryByText(UNAFFECTED_NOTE)).not.toBeInTheDocument();
-    // reintroducing a count is what this copy exists to avoid
+    const warning = await screen.findByTestId("public-links-routing-warning");
+    expect(warning).toHaveTextContent(WARNING_TITLE);
+    // the warning icon, and not the info icon, is what separates this from the note it replaced
+    expect(within(warning).getByLabelText("warning icon")).toBeInTheDocument();
     expect(
-      screen.queryByText(/\d+ public (question|dashboard)/),
+      within(warning).queryByLabelText("info icon"),
     ).not.toBeInTheDocument();
+    // a count would be a stronger claim than the reachability fact supports
+    expect(warning).not.toHaveTextContent(/\d/);
   });
 
-  it("should state plainly that no public links use the database when none do", async () => {
+  it("should not send the admin to a control the panel still has disabled", async () => {
     setup({
-      database: createMockDatabase({
-        engine: "postgres",
-        features: ["database-routing"],
-        router_user_attribute: "cool_guy",
-      }),
+      database: routingCapableDatabase({ router_user_attribute: null }),
+      reachableByPublicLink: true,
+    });
+
+    await userEvent.click(screen.getByLabelText("Enable database routing"));
+
+    // enabling routing alone does not store a user attribute, so the grant stays out of reach
+    expect(screen.getByLabelText("Allow anonymous access")).toBeDisabled();
+    const warning = await screen.findByTestId("public-links-routing-warning");
+    expect(warning).not.toHaveTextContent(/anonymous access/i);
+  });
+
+  it("should render no alert at all when no public link reaches the database", async () => {
+    setup({
+      database: routingCapableDatabase({ router_user_attribute: null }),
       reachableByPublicLink: false,
     });
 
-    expect(await screen.findByText(ROUTING_NOTE)).toBeInTheDocument();
-    expect(await screen.findByText(UNAFFECTED_NOTE)).toBeInTheDocument();
-    expect(screen.queryByText(AFFECTED_NOTE)).not.toBeInTheDocument();
+    await userEvent.click(screen.getByLabelText("Enable database routing"));
+    await waitForReachabilityFact();
+
+    // deliberately every alert, not just this one: with nothing at stake the panel stays quiet
+    expect(screen.queryAllByRole("alert")).toHaveLength(0);
   });
 
-  it("should claim nothing about public links until the fact has arrived", async () => {
+  it("should not claim links will stop working once anonymous access is granted", async () => {
     setup({
-      database: createMockDatabase({
-        engine: "postgres",
-        features: ["database-routing"],
-        router_user_attribute: "cool_guy",
-      }),
+      database: routedDatabase({ router_anonymous_access_granted: true }),
       reachableByPublicLink: true,
     });
 
-    // nothing is awaited yet, so the usage-info response cannot have been applied. The first
-    // sentence is true whatever the answer turns out to be; neither of the others is yet.
-    expect(screen.getByText(ROUTING_NOTE)).toBeInTheDocument();
-    expect(screen.queryByText(AFFECTED_NOTE)).not.toBeInTheDocument();
-    expect(screen.queryByText(UNAFFECTED_NOTE)).not.toBeInTheDocument();
+    await waitForReachabilityFact();
 
-    expect(await screen.findByText(AFFECTED_NOTE)).toBeInTheDocument();
+    expect(
+      screen.queryByTestId("public-links-routing-warning"),
+    ).not.toBeInTheDocument();
   });
 
-  it("should not mention public links while the section is collapsed", async () => {
+  it("should not warn about a reachable database that is not routed at all", async () => {
     setup({
-      database: createMockDatabase({
-        engine: "postgres",
-        features: ["database-routing"],
-        router_user_attribute: null,
-      }),
+      database: routingCapableDatabase({ router_user_attribute: null }),
       reachableByPublicLink: true,
     });
 
-    // the fact has arrived, so the note's absence is the collapsed state and not a pending request
-    await waitFor(async () => {
-      const gets = await findRequests("GET");
-      expect(gets.some(({ url }) => url.includes("usage_info"))).toBe(true);
+    await waitForReachabilityFact();
+
+    expect(
+      screen.queryByTestId("public-links-routing-warning"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("should claim nothing until the reachability fact has arrived", async () => {
+    setup({
+      database: routedDatabase(),
+      reachableByPublicLink: true,
     });
 
-    expect(screen.getByText("Database routing")).toBeInTheDocument();
-    expect(screen.queryByText(ROUTING_NOTE)).not.toBeInTheDocument();
-    expect(screen.queryByText(AFFECTED_NOTE)).not.toBeInTheDocument();
+    // nothing is awaited yet, so the usage-info response cannot have been applied
+    expect(
+      screen.queryByTestId("public-links-routing-warning"),
+    ).not.toBeInTheDocument();
+
+    expect(
+      await screen.findByTestId("public-links-routing-warning"),
+    ).toBeInTheDocument();
   });
+
+  it.each([true, false])(
+    "should carry neither the routed-queries note nor the no-public-links reassurance (reachable: %s)",
+    async (reachableByPublicLink) => {
+      setup({ database: routedDatabase(), reachableByPublicLink });
+
+      await waitForReachabilityFact();
+
+      expect(screen.queryByText(ROUTED_QUERIES_NOTE)).not.toBeInTheDocument();
+      expect(
+        screen.queryByText(NO_PUBLIC_LINKS_REASSURANCE),
+      ).not.toBeInTheDocument();
+    },
+  );
 });
 
 describe("DatabaseRoutingSection anonymous access grant", () => {
-  const routedDatabase = (overrides: Partial<Database> = {}): Database =>
-    createMockDatabase({
-      engine: "postgres",
-      features: ["database-routing"],
-      router_user_attribute: "cool_guy",
-      ...overrides,
-    });
-
   it("should render the grant as an unchecked toggle when it is not granted", async () => {
     setup({
       database: routedDatabase({ router_anonymous_access_granted: false }),
