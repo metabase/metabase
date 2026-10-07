@@ -23,6 +23,7 @@ jobs:
             src
             enterprise/backend/src
             resources
+            modules
 
       - name: Cache lychee
         uses: actions/cache@v5

@@ -335,7 +335,7 @@
              (when-let [ips (warehouses/cloud-gateway-ips)]
                (str (deferred-tru
                      (str "If your database is behind a firewall, you may need to allow connections from our Metabase "
-                          "[Cloud IP addresses](https://www.metabase.com/cloud/docs/ip-addresses-to-whitelist.html):"))
+                          "[Cloud IP addresses](https://www.metabase.com/docs/latest/cloud/ip-addresses-to-whitelist):"))
                     "\n"
                     (str/join " - " ips))))})
 

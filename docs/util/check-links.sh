@@ -7,6 +7,7 @@
 #   docs/util/check-links.sh docs              # only the markdown under docs/
 #   docs/util/check-links.sh nav               # only nav.yml
 #   docs/util/check-links.sh src               # only the source code
+#   docs/util/check-links.sh site              # every metabase.com link against the live site (needs network)
 #   docs/util/check-links.sh --external [nav]  # also fetch external links (slow, needs network)
 #
 # Without --external, links to other sites are skipped, which is how CI runs it
@@ -30,8 +31,8 @@ what=all
 for arg in "$@"; do
   case "$arg" in
     --external) external=1 ;;
-    docs|nav|src) what=$arg ;;
-    *) echo "usage: $0 [--external] [docs|nav|src]" >&2; exit 2 ;;
+    docs|nav|src|site) what=$arg ;;
+    *) echo "usage: $0 [--external] [docs|nav|src|site]" >&2; exit 2 ;;
   esac
 done
 
@@ -110,16 +111,16 @@ check_src() {
 
   # path:line:url, one per line. Urls built with ${...} can't be checked, and trailing punctuation is
   # usually the end of a sentence in a docstring.
-  git grep -nIoE 'https://www\.metabase\.com/docs/latest/[^][:space:]"'"'"'`<>()\\]*' \
-    -- frontend/src enterprise/frontend/src src enterprise/backend/src resources \
+  git grep -nIoE 'https?://(www\.)?metabase\.com/docs/latest/[^][:space:]"'"'"'`<>()\\]*' \
+    -- frontend/src enterprise/frontend/src src enterprise/backend/src resources modules \
        ':!*.unit.spec.*' ':!resources/openapi' |
     grep -v '\${' | sed -E 's/[.,;:]+$//' > "$locations" || true
   sed -E 's/^[^:]+:[0-9]+:(.*)$/- [src](\1)/' "$locations" > "$rendered"
 
   # Same as check_nav: trust the report, not the exit code.
   report=$(lychee --config ./.lychee/config.toml --offline --include-fragments=full --no-progress \
-                  --format json --include '^https://www\.metabase\.com/docs/latest/' \
-                  --remap "^https://www\.metabase\.com/docs/latest/([^#?]+?)(\.html)?(\?[^#]*)?(#.*)?\$ file://$PWD/docs/\$1.md\$4" \
+                  --format json --include '^https?://(www\.)?metabase\.com/docs/latest/' \
+                  --remap "^https?://(www\.)?metabase\.com/docs/latest/([^#?]+?)(\.html)?(\?[^#]*)?(#.*)?\$ file://$PWD/docs/\$2.md\$5" \
                   "$rendered" || true)
   total=$(jq -e -r '.total' <<<"$report") || {
     echo "lychee produced no report (see errors above)" >&2
@@ -144,11 +145,67 @@ check_src() {
   [ "$count" -eq 0 ]
 }
 
+# The offline checks only see pages under docs/. The rest of metabase.com (/learn, /product, /cloud, and
+# redirects the site sets up itself) can only be checked live, so this fetches every metabase.com url in
+# the repo and fails on a redirect as well as a 404: a link that works only through a redirect breaks
+# silently when the site drops the redirect. Too slow and too dependent on the site for every PR, so CI
+# runs it on a schedule (.github/workflows/docs-links-site.yml).
+check_site() {
+  echo "Checking metabase.com links against the live site"
+  local tmpdir locations rendered report total failures count line url text location
+  tmpdir=$(mktemp -d)
+  trap 'rm -rf "$tmpdir"' RETURN
+  locations=$tmpdir/locations
+  rendered=$tmpdir/site-links.md
+
+  git grep -nIoE 'https?://(www\.)?metabase\.com(/[^][:space:]"'"'"'`<>()\\|]*)?' \
+    -- docs frontend/src enterprise/frontend/src src enterprise/backend/src resources modules \
+       ':!*.unit.spec.*' ':!resources/openapi' ':!docs/embedding/sdk/api' ':!docs/api.json' |
+    grep -v -e '\${' -e '{{' -e '{%' | sed -E 's/[.,;:]+$//' > "$locations" || true
+  sed -E 's/^[^:]+:[0-9]+:(.*)$/- [site](\1)/' "$locations" > "$rendered"
+
+  report=$(lychee --no-progress --format json --max-redirects 0 --max-concurrency 8 --max-retries 3 \
+                  --timeout 30 --accept '200..=204,429' \
+                  "${site_not_links[@]/#/--exclude=}" "$rendered" || true)
+  total=$(jq -e -r '.total' <<<"$report") || {
+    echo "lychee produced no report (see errors above)" >&2
+    return 1
+  }
+
+  failures=$(jq -r '.error_map[][] | "\(.span.line)\t\(.url)\t\(.status.text)"' <<<"$report")
+
+  count=0
+  while IFS=$'\t' read -r line url text; do
+    [ -n "$line" ] || continue
+    count=$((count + 1))
+    location=$(sed -n "${line}p" "$locations" | cut -d: -f1,2)
+    echo "$location: $url: $text"
+    if [ -n "${GITHUB_ACTIONS:-}" ]; then
+      echo "::error file=${location%:*},line=${location##*:}::$url: $text"
+    fi
+  done <<<"$failures"
+
+  echo "Checked $total metabase.com links, $count broken or redirected"
+  [ "$count" -eq 0 ]
+}
+
+# Strings that look like metabase.com links but aren't followed by anyone, as regexes for lychee's
+# --exclude. Fix a real link instead of adding it here.
+site_not_links=(
+  # Bare metabase.com: CSP origins, the OpenRouter attribution header, a dummy host for parsing paths.
+  '^https?://metabase\.com/?$'
+  # VersionUpdateNotice appends the version to this.
+  '^https://www\.metabase\.com/docs/$'
+  # Example data in the regexextract docs.
+  'utm_campaign=(alice|neo)$'
+)
+
 status=0
 case "$what" in
   all)  check_docs || status=1; echo; check_nav || status=1; echo; check_src || status=1 ;;
   docs) check_docs || status=1 ;;
   nav)  check_nav  || status=1 ;;
   src)  check_src  || status=1 ;;
+  site) check_site || status=1 ;;
 esac
 exit "$status"
