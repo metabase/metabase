@@ -19,6 +19,7 @@ export type RemoteSyncEntityModel =
   | "transform"
   | "transformtag"
   | "transformjob"
+  | "transformtest"
   | "pythonlibrary"
   | "glossary"
   | "dataapp";

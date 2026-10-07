@@ -838,6 +838,31 @@ describe("AllChangesView", () => {
       expect(screen.getByText("common.py")).toBeInTheDocument();
     });
 
+    it("should group transform tests under Transforms with the test tube icon and no link", async () => {
+      const transformTestEntity = createMockRemoteSyncEntity({
+        id: 500,
+        name: "Orders are deduplicated",
+        model: "transformtest",
+        collection_id: undefined,
+        sync_status: "update",
+      });
+
+      setup({
+        entities: [transformTestEntity],
+        isTransformsSyncEnabled: true,
+      });
+
+      expect(
+        await screen.findByRole("link", { name: "Transforms" }),
+      ).toBeInTheDocument();
+      expect(screen.queryByText("Root")).not.toBeInTheDocument();
+      expect(screen.getByText("Orders are deduplicated")).toBeInTheDocument();
+      expect(screen.getByLabelText("test_tube icon")).toBeInTheDocument();
+      expect(
+        screen.queryByRole("link", { name: /Orders are deduplicated/ }),
+      ).not.toBeInTheDocument();
+    });
+
     it("should group transforms-namespace collections under Transforms root", async () => {
       const transformsCollection = createMockCollection({
         id: 100,

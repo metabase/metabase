@@ -64,7 +64,12 @@ const displayGroupSpecs: DisplayGroupSpec[] = [
   {
     id: "transforms",
     namespace: "transforms",
-    models: new Set(["transform", "transformtag", "pythonlibrary"]),
+    models: new Set([
+      "transform",
+      "transformtag",
+      "transformtest",
+      "pythonlibrary",
+    ]),
     virtualRoot: {
       id: TRANSFORMS_ROOT_ID,
       name: () => t`Transforms`,
