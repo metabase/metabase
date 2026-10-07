@@ -204,14 +204,31 @@
   [url]
   {:id (random-uuid) :url url})
 
+(defn- deletable?
+  "True iff `dir` is a symbolic link, or the canonical path of `root` is that of a process root that this JVM made."
+  [^File dir ^File root]
+  (or (Files/isSymbolicLink (.toPath dir))
+      (contains? @own-roots (.getCanonicalPath root))))
+
+(defn- delete-in-root!
+  "Deletes `dir`, which is the process root `root` or a directory in it, when [[deletable?]]. Else logs and keeps it."
+  [^File dir ^File root]
+  ;; [[delete-dir!]] removes a link at `dir` itself. A link in a parent of `dir`, for example a base directory that was
+  ;; replaced by a link, makes the canonical path of `root` leave the roots that this JVM made.
+  (if (deletable? dir root)
+    (delete-dir! dir)
+    (log/warn "Did not delete a git clone directory whose path leads out of the git clone directory of this process"
+              {:path (str dir)})))
+
 (defn- close-generation!
-  "Closes the Git instance of `generation` and deletes its directory."
-  [{:keys [^java.lang.AutoCloseable git dir]}]
+  "Closes the Git instance of `generation` and deletes its directory, unless its path leads out of the process roots
+  that this JVM made."
+  [{:keys [^java.lang.AutoCloseable git ^File dir]}]
   (try
     (.close git)
     (catch Throwable e
       (log/warn e "Could not close a git clone" {:path (str dir)})))
-  (delete-dir! dir))
+  (delete-in-root! dir (.getParentFile dir)))
 
 (defn- delete-unleased!
   "Closes and deletes each retired generation of `url` that no lease holds."
@@ -324,7 +341,7 @@
                            git (try
                                  (clone! dir)
                                  (catch Throwable e
-                                   (delete-dir! dir)
+                                   (delete-in-root! dir (.getParentFile dir))
                                    (throw e)))]
                        (publish! {:id id :dir dir :git git :leases #{}})
                        (deliver job {:id id}))
@@ -393,7 +410,8 @@
 
 (defn shutdown!
   "Stops the clone jobs of `registry`, closes every clone, releases the lock of the process root, and deletes the root
-  and each retired root."
+  and each retired root. A root whose path leads through a symbolic link out of the roots that this JVM made is kept,
+  and logged."
   [{:keys [state root old-roots executor]}]
   (when (realized? executor)
     (.shutdownNow ^ExecutorService @executor))
@@ -405,8 +423,8 @@
         (log/warn e "Could not close a git clone" {:path (str dir)}))))
   (when-let [current @root]
     (close-root! current)
-    (delete-dir! (:dir current)))
-  (run! delete-dir! @old-roots))
+    (delete-in-root! (:dir current) (:dir current)))
+  (run! #(delete-in-root! % %) @old-roots))
 
 (defonce ^:private ^{:doc "The registry of this process, under `<java.io.tmpdir>/metabase-git`. Its shutdown hook
   runs [[shutdown!]]."}

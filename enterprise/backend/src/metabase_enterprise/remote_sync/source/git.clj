@@ -10,17 +10,17 @@
   (:import
    (java.io File)
    (java.net URI)
-   (org.eclipse.jgit.api Git GitCommand TransportCommand)
+   (org.eclipse.jgit.api Git GitCommand TransportCommand TransportConfigCallback)
    (org.eclipse.jgit.dircache DirCache DirCacheBuilder DirCacheEditor DirCacheEditor$DeletePath
                               DirCacheEditor$DeleteTree DirCacheEditor$PathEdit DirCacheEntry)
    (org.eclipse.jgit.lib CommitBuilder Constants FileMode ObjectId PersonIdent ProgressMonitor Ref Repository)
    (org.eclipse.jgit.lib ObjectInserter ObjectReader)
    (org.eclipse.jgit.revwalk RevCommit RevTree RevWalk)
-   (org.eclipse.jgit.transport PushResult RefSpec RemoteRefUpdate
+   (org.eclipse.jgit.transport PushResult RefSpec RemoteConfig RemoteRefUpdate
                                RemoteRefUpdate$Status UsernamePasswordCredentialsProvider)
    (org.eclipse.jgit.treewalk TreeWalk)
    (org.eclipse.jgit.treewalk.filter TreeFilter)
-   (org.eclipse.jgit.util FS FS_POSIX ProcessResult ProcessResult$Status)))
+   (org.eclipse.jgit.util FS FS_POSIX FS_Win32_Cygwin ProcessResult ProcessResult$Status)))
 
 (set! *warn-on-reflection* true)
 
@@ -64,6 +64,15 @@
   (when token
     (UsernamePasswordCredentialsProvider. "x-token-auth" token)))
 
+(def ^:private default-pack-programs
+  "A transport callback that sets the default upload-pack and receive-pack programs."
+  ;; JGit reads the remote.<name>.uploadpack and receivepack keys of the clone config when it opens a transport, and for
+  ;; a file:// remote or a plain path it runs any program other than the default. The callback runs after that read.
+  (reify TransportConfigCallback
+    (configure [_ transport]
+      (.setOptionUploadPack transport RemoteConfig/DEFAULT_UPLOAD_PACK)
+      (.setOptionReceivePack transport RemoteConfig/DEFAULT_RECEIVE_PACK))))
+
 (defn- call-remote-command [^TransportCommand command {:keys [^String token ^String remote-url]}]
   (let [analytics-labels {:operation (-> command .getClass .getSimpleName) :remote true}
         ;; GitHub convention: use "x-access-token" as username when authenticating with a personal access token
@@ -74,7 +83,9 @@
       (-> (doto command
             ;; bound the network operation so a stalled connection can't hang the sync forever (GHY-3727)
             (.setTimeout (int (setting/get :remote-sync-git-timeout-seconds)))
-            (.setCredentialsProvider credentials-provider))
+            (.setCredentialsProvider credentials-provider)
+            ;; remote sync runs no program that the config file of the clone names
+            (.setTransportConfigCallback default-pack-programs))
           (.call))
       (catch Exception e
         (analytics/inc! :metabase-remote-sync/git-operations-failed analytics-labels)
@@ -152,12 +163,14 @@
         (ProcessResult. ProcessResult$Status/NOT_PRESENT)))))
 
 (defn- no-hooks-fs-of
-  "For the JGit file system `fs`, the file system of the clones of remote sync."
+  "For the JGit file system `fs`, the file system of the clones of remote sync: a file system of the same class that
+  finds and runs no git hook."
   ^FS [^FS fs]
-  (if (instance? FS_POSIX fs)
-    (no-hooks-proxy FS_POSIX fs)
-    ;; Of the other JGit file systems, only FS_Win32_Cygwin runs hooks.
-    fs))
+  ;; FS_POSIX and FS_Win32_Cygwin are the JGit file systems that run hooks. FS_Win32 and the base FS run none.
+  (cond
+    (instance? FS_POSIX fs)        (no-hooks-proxy FS_POSIX fs)
+    (instance? FS_Win32_Cygwin fs) (no-hooks-proxy FS_Win32_Cygwin fs)
+    :else                          fs))
 
 (def ^:private no-hooks-fs
   "A delay of the JGit file system of the clones of remote sync. A repository with this file system runs no git hook."
