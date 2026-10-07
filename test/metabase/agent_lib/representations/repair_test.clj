@@ -9,6 +9,7 @@
    [metabase.agent-lib.representations.repair :as repair]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.test-util :as lib.tu]
+   [metabase.models.serialization.resolve :as resolve]
    [metabase.util.date-2 :as u.date]))
 
 (set! *warn-on-reflection* true)
@@ -2009,6 +2010,26 @@
                       [["field" {} ["Sample" "PUBLIC" "ORDERS" "ID"]]])
           out (repair/repair mp-fks q)]
       (is (= {} (get-in out ["stages" 0 "breakout" 0 1]))))))
+
+(deftest ^:parallel fill-from-candidates-unexportable-fk-test
+  (let [fill     #'repair/fill-from-candidates
+        unused   #(throw (ex-info "unexpected resolver call" {}))
+        resolver (reify resolve/SerdesExportResolver
+                   (export-fk [_ _ _] (unused))
+                   (export-fk-keyed [_ _ _ _] (unused))
+                   (export-user [_ _] (unused))
+                   (export-table-fk [_ _] (unused))
+                   (export-field-fk [_ _] (throw (ex-info "boom" {}))))
+        clause   ["field" {} ["DB" "PUBLIC" "PRODUCTS" "CATEGORY"]]
+        run      (fn [strict?]
+                   (fill clause {} (nth clause 2) resolver [{:source-field-id 1}]
+                         {:source-label "Orders by user" :target-table-id 2 :strict? strict?}))]
+    (testing "a single candidate whose FK cannot be exported is its own error on a strict stage, not :no-fk-path"
+      (let [e (try (run true) nil (catch clojure.lang.ExceptionInfo e e))]
+        (is (=? {:error :unexportable-fk, :agent-error? true, :target-table 2} (ex-data e)))
+        (is (re-find #"only through a foreign key that could not be resolved" (ex-message e)))))
+    (testing "and leaves the clause bare on a non-strict stage"
+      (is (= clause (run false))))))
 
 (deftest ^:parallel implicit-join-no-fk-path-test
   (testing "throws :no-fk-path when the target table isn't reachable via any FK"
