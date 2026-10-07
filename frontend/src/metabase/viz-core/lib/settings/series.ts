@@ -282,10 +282,15 @@ export function seriesSetting({
       }),
       getHidden: (single, seriesSettings, extra) =>
         isSeriesTrendLineCustomizationHidden(single, seriesSettings, extra),
-      getDefault: (_single, seriesSettings) =>
-        seriesSettings.color != null
-          ? deriveChartShadeColor(seriesSettings.color)
-          : color("brand"),
+      getDefault: (single, _seriesSettings, extra) => {
+        const seriesColor =
+          extra?.settings?.[SERIES_COLORS_SETTING_KEY]?.[
+            keyForSingleSeries(single)
+          ];
+        return seriesColor != null
+          ? deriveChartShadeColor(seriesColor)
+          : color("brand");
+      },
       readDependencies: [
         "color",
         "show_series_trendline",

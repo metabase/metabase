@@ -1,5 +1,6 @@
 import _ from "underscore";
 
+import { deriveChartShadeColor } from "metabase/ui/colors/accents";
 import { checkNotNull } from "metabase/utils/types";
 import type { Series, SingleSeries } from "metabase-types/api";
 import {
@@ -178,6 +179,21 @@ describe("series trend line settings", () => {
     );
 
   const trendLineEnabled = { show_series_trendline: true };
+
+  it("uses the current series color for the default trend line color", () => {
+    const series = multiMetricSeries();
+    const settings: ComputedVisualizationSettings = {
+      "graph.show_trendline": true,
+      "graph.dimensions": ["CREATED_AT"],
+      "series_settings.colors": { count: "#16618E" },
+    };
+    const definitions = getSeriesSettingDefinitions(series, settings);
+    const getDefault = checkNotNull(definitions["trendline.color"]?.getDefault);
+
+    expect(
+      getDefault(series[0], { color: "#CC1122" }, { series, settings }),
+    ).toBe(deriveChartShadeColor("#16618E"));
+  });
 
   it("should show the series trend line settings for multiple metrics with a single dimension", () => {
     const settings = {
