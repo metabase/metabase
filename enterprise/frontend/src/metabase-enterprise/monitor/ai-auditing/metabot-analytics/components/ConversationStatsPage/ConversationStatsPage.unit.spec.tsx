@@ -16,6 +16,7 @@ import { parseSearchQuery } from "metabase/utils/browser";
 import {
   AUDIT_DB_ID,
   VIEW_CONVERSATIONS,
+  VIEW_USAGE_LOG,
 } from "metabase-enterprise/monitor/ai-auditing/metabot-analytics/constants";
 import {
   ADMIN_GROUP,
@@ -225,21 +226,36 @@ type SetupOpts = {
   initialRoute?: string;
   hasTenants?: boolean;
   emptyViews?: string[];
+  heldMetadataView?: string;
 };
 
 function setup({
   initialRoute = STATS_PATH,
   hasTenants = false,
   emptyViews = [],
+  heldMetadataView,
 }: SetupOpts = {}) {
   setupEnterprisePlugins();
 
+  const heldMetadata = Promise.withResolvers<void>();
+
   fetchMock.get(`path:/api/database/${AUDIT_DB_ID}/metadata`, auditDatabase);
   // useAuditTable pulls the table's fields (and its FK targets') from here.
-  fetchMock.post("path:/api/dataset/query_metadata", {
-    databases: [auditDatabase],
-    tables: auditDatabase.tables ?? [],
-    fields: (auditDatabase.tables ?? []).flatMap((table) => table.fields ?? []),
+  fetchMock.post("path:/api/dataset/query_metadata", async (call) => {
+    const stage = parseStage(call.options.body);
+    if (
+      stage &&
+      TABLE_NAME_BY_ID.get(stage["source-table"]) === heldMetadataView
+    ) {
+      await heldMetadata.promise;
+    }
+    return {
+      databases: [auditDatabase],
+      tables: auditDatabase.tables ?? [],
+      fields: (auditDatabase.tables ?? []).flatMap(
+        (table) => table.fields ?? [],
+      ),
+    };
   });
   fetchMock.post(
     "path:/api/dataset",
@@ -250,7 +266,7 @@ function setup({
   setupGroupsEndpoint([ALL_USERS_GROUP, ADMIN_GROUP, DATA_GROUP]);
   setupTenantEntpoints([BOBBY_TENANT, ROBERT_TENANT]);
 
-  return renderWithProviders(
+  const view = renderWithProviders(
     <>
       <Route
         path={`${Urls.monitorAiAuditingUsage()}/:metric`}
@@ -275,6 +291,8 @@ function setup({
       }),
     },
   );
+
+  return { ...view, releaseHeldMetadata: heldMetadata.resolve };
 }
 
 async function findChartCard(title: string): Promise<HTMLElement> {
@@ -429,6 +447,23 @@ describe("ConversationStatsPage", () => {
       });
 
       expect(await screen.findByText("Tokens by day")).toBeInTheDocument();
+    });
+
+    it("waits for the token count before showing the Tokens empty state", async () => {
+      const { releaseHeldMetadata } = setup({
+        emptyViews: [VIEW_CONVERSATIONS, VIEW_USAGE_LOG],
+        heldMetadataView: VIEW_USAGE_LOG,
+      });
+
+      await screen.findByText("No conversations");
+      await userEvent.click(screen.getByRole("tab", { name: "Tokens" }));
+
+      expect(screen.getByTestId("loading-indicator")).toBeInTheDocument();
+      expect(screen.queryByText("No token usage")).not.toBeInTheDocument();
+
+      releaseHeldMetadata();
+
+      expect(await screen.findByText("No token usage")).toBeInTheDocument();
     });
   });
 

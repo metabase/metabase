@@ -5,7 +5,7 @@ import type { Query } from "metabase-lib";
 import { useAdhocBreakoutQuery } from "./useAdhocBreakoutQuery";
 
 type Result = {
-  /** First load, before the count has ever resolved: show a loader, never the empty state. */
+  /** No count has resolved yet, or the view's metadata is still loading: show a loader, never the empty state. */
   isInitialLoading: boolean;
   /** A later load triggered by a filter change: let the charts show their own skeletons. */
   isRefetching: boolean;
@@ -37,7 +37,7 @@ export function useHasData(countQuery: Query | null): Result {
   const count = Number(data?.data?.rows?.[0]?.[0] ?? 0);
 
   return {
-    isInitialLoading: !hasLoadedOnce.current,
+    isInitialLoading: !hasLoadedOnce.current || countQuery === null,
     isRefetching: hasLoadedOnce.current && isFetching,
     hasData: count > 0,
     count,
