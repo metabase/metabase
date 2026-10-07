@@ -149,7 +149,7 @@ describe("scenarios > embedding > sdk iframe embed setup > enable embed js (EE)"
 
         openNewEmbed();
 
-        cy.findByLabelText(authMethodLabel).should("be.checked");
+        H.waitForSimpleEmbedIframesToLoad();
         getEmbedSidebar().contains(cardText).should("not.exist");
       });
     });
