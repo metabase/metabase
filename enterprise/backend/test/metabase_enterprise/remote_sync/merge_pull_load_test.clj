@@ -8,6 +8,7 @@
    [clojure.test :refer :all]
    [metabase-enterprise.remote-sync.impl :as impl]
    [metabase-enterprise.remote-sync.models.remote-sync-task :as remote-sync.task]
+   [metabase-enterprise.remote-sync.save-rule :as save-rule]
    [metabase-enterprise.remote-sync.settings :as settings]
    [metabase-enterprise.remote-sync.source :as source]
    [metabase-enterprise.remote-sync.source.protocol :as source.p]
@@ -540,6 +541,45 @@
           (is (t2/exists? :model/Collection :id beta))
           (is (t2/exists? :model/Collection :id gamma))
           (is (t2/exists? :model/Card :id c-id))
+          (is (= "create" (:status (row "Card" c-id)))))))))
+
+(defn- card-added-in-a-remote-deleted-collection!
+  "Collections Alpha and Beta, each with a card, are synced as the version v0. The remote deletes Beta and its card. The
+  user adds card C to Beta at `at`: `:before-the-pre-check` (after the merge read ours) or `:after-the-load` (before
+  the reconcile). Returns `{:result :c-id :beta}`."
+  [at]
+  (with-sync-settings
+    (mt/with-temp [:model/Collection {alpha :id} {:name "Alpha" :is_remote_synced true :location "/"}
+                   :model/Card _ {:name "Card A" :collection_id alpha}
+                   :model/Collection {beta :id} {:name "Beta" :is_remote_synced true :location "/"}
+                   :model/Card _ {:name "Card B" :collection_id beta}]
+      (mt/with-model-cleanup [:model/Card]
+        (let [t0    (export-tree!)
+              _     (pull-base! t0)
+              c-id  (atom nil)
+              add!  #(reset! c-id (insert-card! "New card C" {:collection_id beta}))
+              real  (mt/original-fn #'save-rule/pre-check!)
+              {:keys [result]}
+              (mt/with-dynamic-fn-redefs [save-rule/pre-check! (fn [& args]
+                                                                 (when (= :before-the-pre-check at) (add!))
+                                                                 (apply real args))]
+                (merge-pull! t0 (without-beta t0)
+                             :on-report (once-at! 0.75 #(when (= :after-the-load at) (add!)))))]
+          {:result result :c-id @c-id :beta beta})))))
+
+(deftest card-added-in-a-remote-deleted-collection-during-the-pull-stops-the-pull-test
+  (testing "The remote deletes collection Beta and its card. During the pull, the user adds card C to Beta. The merge
+            did not see C, so the pull stops, and Beta and C stay."
+    (doseq [at [:before-the-pre-check :after-the-load]]
+      (testing at
+        (let [{:keys [result c-id beta]} (card-added-in-a-remote-deleted-collection! at)]
+          (is (= :conflict (:status result)) (pr-str result))
+          (is (= ["New card C"] (:conflicts result)) "the conflict names the new card")
+          (is (= (str "Import blocked: content was added locally during the pull under content that the remote "
+                      "branch deleted. Your local change is kept.")
+                 (:message result)))
+          (is (t2/exists? :model/Card :id c-id) "the new card stays")
+          (is (t2/exists? :model/Collection :id beta) "Beta stays")
           (is (= "create" (:status (row "Card" c-id)))))))))
 
 (deftest remote-delete-of-a-collection-with-unchanged-contents-deletes-all-test

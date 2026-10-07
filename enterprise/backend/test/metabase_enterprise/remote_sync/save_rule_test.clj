@@ -761,6 +761,7 @@
                 [_ result] (before-the-pre-check #(reset! action-id (add-action! model-id))
                                                  (merge-pull! t0 (-> t0 (dissoc (path-of t0 "Model M")) (edit "Card B" "remote edit B"))))]
             (is (= :conflict (:status result)) (pr-str (summary result)))
+            (is (= ["New action"] (:conflicts result)) "the conflict names the new action")
             (is (= (str "Import blocked: content was added locally during the pull under content that the remote "
                         "branch deleted. Your local change is kept.")
                    (:message result)))
@@ -790,6 +791,7 @@
                                (reset! action-id id)))
                 [_ result] (merge-pull! t0 (dissoc t0 (path-of t0 "Model M")) (once-at! 0.75 add!))]
             (is (= :conflict (:status result)) (pr-str (summary result)))
+            (is (= ["New action"] (:conflicts result)) "the conflict names the new action")
             (is (= (str "Import blocked: content was added locally during the pull under content that the remote "
                         "branch deleted. Your local change is kept.")
                    (:message result)))
@@ -818,3 +820,120 @@
           (is (not (t2/exists? :model/Card :id model-id)))
           (is (not (t2/exists? :model/Action :id action-id)))
           (is (nil? (row "Action" action-id))))))))
+
+;;; ------------------------------------------ a stop after the load wrote ------------------------------------------
+
+(defn- live-hash
+  "The content hash of the entity `model-type` `id` as it is now."
+  [model-type id]
+  (source/row->content-hash {:model_type model-type :model_id id}))
+
+(defn- do-with-a-stop-after-the-load!
+  "Model M and card B are synced as the version v0. The remote deletes M and edits B (v1). After the load and before
+  the reconcile, the user adds an action to M, and then `(at-the-stop b)` runs with the id `b` of B. So the reconcile
+  stops the pull after the load wrote B. Calls `(f {:t0 :t1 :b :action-id :result})`."
+  [at-the-stop f]
+  (with-sync-settings
+    (mt/with-temp [:model/Collection {coll-id :id}  {:name "Merge Test" :is_remote_synced true :location "/"}
+                   :model/Card       {model-id :id} {:name "Model M" :type :model :collection_id coll-id
+                                                     :dataset_query (venues-query)}
+                   :model/Card       {b :id}        {:name "Card B" :description "original" :collection_id coll-id}]
+      (mt/with-model-cleanup [:model/Action]
+        (let [t0         (export-and-pull!)
+              t1         (-> t0 (dissoc (path-of t0 "Model M")) (edit "Card B" "remote edit B"))
+              action-id  (atom nil)
+              [_ result] (merge-pull! t0 t1 (once-at! 0.75 #(do (reset! action-id (add-action! model-id))
+                                                                (at-the-stop b))))]
+          (f {:t0 t0 :t1 t1 :b b :action-id @action-id :result result}))))))
+
+(defn- merge-pull-over-v0!
+  "Merge-pull the files `t2` as the version \"v2\" over the base `t0` (the version \"v0\"), with the files `t1` as the
+  version \"v1\". Returns `[src result]`."
+  [t0 t1 t2]
+  (let [src (test-helpers/versioned-source :trees {"v0" t0 "v1" t1 "v2" t2} :current "v2")]
+    [src (sync! "import" #(impl/import! (source.p/snapshot src) % :merge? true
+                                        :base-snapshot (source.p/snapshot-at src "v0")))]))
+
+(deftest stop-after-the-load-wrote-restores-the-base-test
+  (testing "The remote deletes model M and edits card B. After the load wrote B, the user adds an action to M, so the
+            reconcile stops the pull. The pull gives B its text of the last sync again, and the row of B matches B."
+    (do-with-a-stop-after-the-load!
+     (constantly nil)
+     (fn [{:keys [b result]}]
+       (is (= :conflict (:status result)) (pr-str (summary result)))
+       (is (= ["New action"] (:conflicts result)))
+       (is (= "original" (desc b)) "B has its text of the last sync")
+       (is (= {:status "synced" :content_hash (live-hash "Card" b)}
+              (select-keys (row "Card" b) [:status :content_hash]))
+           "the row of B is synced and has the hash of B")))))
+
+(deftest stop-after-the-load-wrote-then-the-remote-reverts-test
+  (testing "After a stop after the load wrote B, the user archives the new action. The remote then sets B back to its
+            text of the last sync. The next pull succeeds, B has that text, and a push does not send the old remote
+            edit of B."
+    (do-with-a-stop-after-the-load!
+     (constantly nil)
+     (fn [{:keys [t0 t1 b action-id result]}]
+       (is (= :conflict (:status result)) (pr-str (summary result)))
+       (archive-action! action-id)
+       (let [t2           (dissoc t0 (path-of t0 "Model M"))
+             [src again]  (merge-pull-over-v0! t0 t1 t2)]
+         (is (= :success (:status again)) (pr-str (summary again)))
+         (is (= "original" (desc b)))
+         (publish-card-update! b)
+         (let [push (sync! "export" #(impl/export! (source.p/snapshot src) % "push" :source src))
+               tip  (tree (source.p/snapshot src))]
+           (is (= :success (:status push)) (pr-str (summary push)))
+           (is (str/includes? (get tip (path-of tip "Card B")) "description: original")
+               "the push does not send the old remote edit")))))))
+
+(deftest stop-after-the-load-wrote-then-the-remote-edits-again-test
+  (testing "After a stop after the load wrote B, the user archives the new action. The remote then edits B again. The
+            user did not change B, so the next pull succeeds with no conflict and loads the new edit."
+    (do-with-a-stop-after-the-load!
+     (constantly nil)
+     (fn [{:keys [t0 t1 b action-id result]}]
+       (is (= :conflict (:status result)) (pr-str (summary result)))
+       (archive-action! action-id)
+       (let [t2        (-> t0 (dissoc (path-of t0 "Model M")) (edit "Card B" "remote edit B2"))
+             [_ again] (merge-pull-over-v0! t0 t1 t2)]
+         (is (= :success (:status again)) (pr-str (summary again)))
+         (is (= "remote edit B2" (desc b))))))))
+
+(deftest stop-after-the-load-wrote-keeps-a-user-edit-made-after-the-load-test
+  (testing "After the load wrote B, the user edits B and adds an action to M, so the reconcile stops the pull. The pull
+            does not give B its old text: the edit of the user stays, and the row of B is dirty."
+    (do-with-a-stop-after-the-load!
+     #(save! % "edit after the load")
+     (fn [{:keys [b result]}]
+       (is (= :conflict (:status result)) (pr-str (summary result)))
+       (is (= "edit after the load" (desc b)))
+       (is (= "update" (:status (row "Card" b))))))))
+
+(deftest stop-after-the-load-wrote-deletes-an-entity-that-the-remote-added-test
+  (testing "The remote adds card N, deletes model M, and edits card B. After the load wrote N and B, the user adds an
+            action to M, so the reconcile stops the pull. The last sync has no N, so the pull deletes N again."
+    (with-sync-settings
+      (mt/with-temp [:model/Collection {coll-id :id}  {:name "Merge Test" :is_remote_synced true :location "/"}
+                     :model/Card       {model-id :id} {:name "Model M" :type :model :collection_id coll-id
+                                                       :dataset_query (venues-query)}
+                     :model/Card       {b :id}        {:name "Card B" :description "original" :collection_id coll-id}
+                     :model/Card       {n :id}        {:name "Card N" :collection_id coll-id}]
+        (mt/with-model-cleanup [:model/Action :model/Card]
+          (let [n-eid      (t2/select-one-fn :entity_id :model/Card n)
+                t-all      (export-and-pull!)
+                t0         (dissoc t-all (path-of t-all "Card N"))
+                _          (sync! "import" #(impl/import! (source.p/snapshot (test-helpers/versioned-source
+                                                                              :trees {"v0" t0} :current "v0"))
+                                                          % :force? true))
+                _          (is (not (t2/exists? :model/Card :entity_id n-eid)) "precondition: the last sync has no N")
+                t1         (-> t0
+                               (dissoc (path-of t0 "Model M"))
+                               (edit "Card B" "remote edit B")
+                               (assoc (path-of t-all "Card N") (get t-all (path-of t-all "Card N"))))
+                [_ result] (merge-pull! t0 t1 (once-at! 0.75 #(add-action! model-id)))]
+            (is (= :conflict (:status result)) (pr-str (summary result)))
+            (is (not (t2/exists? :model/Card :entity_id n-eid)) "the pull deletes the card that its load added")
+            (is (= "original" (desc b)))
+            (is (nil? (t2/select-one :model/RemoteSyncObject :model_type "Card" :file_path (path-of t-all "Card N")))
+                "N has no row")))))))
