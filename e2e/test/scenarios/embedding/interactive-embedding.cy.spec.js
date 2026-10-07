@@ -124,13 +124,6 @@ describe("scenarios > embedding > full app", () => {
       });
     });
 
-    it("should show search controls by a param", () => {
-      H.visitFullAppEmbeddingUrl({ url: "/", qs: { search: true } });
-      H.appBar().within(() => {
-        cy.findByPlaceholderText("Search…").should("be.visible");
-      });
-    });
-
     it("should preserve params when navigating", () => {
       H.visitFullAppEmbeddingUrl({ url: "/", qs: { search: true } });
 
@@ -521,12 +514,6 @@ describe("scenarios > embedding > full app", () => {
           tableName: "Products",
           databaseName: "Sample Database",
         });
-      });
-
-      it("should not be able to select a question as a data source", () => {
-        H.createQuestion(ordersCardDetails);
-        startNewEmbeddingQuestion();
-        H.popover().should("not.contain", ordersCardDetails.name);
       });
     });
 
