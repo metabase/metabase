@@ -1007,8 +1007,7 @@
                                         "scope=\"agent:content:read agent:sql:run\", "
                                         "resource_metadata=\"" metadata-url "/api/metabase-mcp\", "
                                         "error_description=\"execute_sql requires agent:sql:run "
-                                        "(" (registry/english-scope-label "agent:sql:run") ")")
-                                   )
+                                        "(" (registry/english-scope-label "agent:sql:run") ")"))
                  "scope is the held v2 scopes plus the required one; the legacy non-v2 scope is not echoed")
              (testing "the body is still the JSON-RPC error, for clients that read it"
                (is (= "application/json" (get-in response [:headers "Content-Type"])))
@@ -1380,7 +1379,7 @@
                (is (= 403 (:status response)))
                (is (str/starts-with?
                     (get-in response [:headers "WWW-Authenticate"])
-                    (sql-step-up-challenge tool-name) ))
+                    (sql-step-up-challenge tool-name)))
                (is (= -32600 (get-in response [:body :error :code])))
                (is (re-find #"agent:sql:run" (get-in response [:body :error :message]))))))
          (testing "and nothing was written"
@@ -1442,7 +1441,7 @@
                    (let [response (call! 403 tool-name handle)]
                      (is (str/starts-with?
                           (get-in response [:headers "WWW-Authenticate"])
-                          (sql-step-up-challenge tool-name) ))
+                          (sql-step-up-challenge tool-name)))
                      (is (= -32600 (get-in response [:body :error :code]))))))))
            (testing "the legacy shape never reaches those gates: the save path decodes serialized MBQL 5 only, so a
                      legacy `{type: native}` payload is refused as an invalid query, with no challenge"
