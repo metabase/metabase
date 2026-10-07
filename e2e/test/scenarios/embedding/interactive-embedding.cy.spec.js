@@ -421,16 +421,6 @@ describe("scenarios > embedding > full app", () => {
     });
 
     describe("table", () => {
-      it("should select a table in the only database", () => {
-        startNewEmbeddingQuestion();
-        selectDataSource("Products");
-        clickOnDataSource("Products");
-        verifyTableSelected({
-          tableName: "Products",
-          databaseName: "Sample Database",
-        });
-      });
-
       it(
         "should select a table when there are multiple databases",
         { tags: "@external" },
@@ -503,6 +493,9 @@ describe("scenarios > embedding > full app", () => {
       it("should be able to join a table when the data source is a table", () => {
         startNewEmbeddingQuestion();
         selectDataSource("Orders");
+        clickOnDataSource("Orders");
+        H.popover().findByRole("link", { name: "Products" }).should("exist");
+        cy.findByTestId("data-step-cell").click();
         H.getNotebookStep("data").button("Join data").click();
         H.popover().findByText("Products").click();
         verifyTableSelected({
@@ -516,7 +509,7 @@ describe("scenarios > embedding > full app", () => {
       });
     });
 
-    describe("collections", () => {
+    describe("card", () => {
       it("should only offer models as data sources in every collection the user can see", () => {
         createCollectionMatrixCards({ withQuestions: true }).then(
           (modelIds) => {
@@ -547,45 +540,36 @@ describe("scenarios > embedding > full app", () => {
           },
         );
       });
-    });
 
-    describe("question", () => {
-      const cardType = "question";
-
-      it("should not be able to join a card when the data source is a table", () => {
-        const cardDetails = {
+      it("should only offer models when joining a card to a table", () => {
+        const questionDetails = {
           ...ordersCardDetails,
-          type: cardType,
+          name: "Joined question",
+          type: "question",
           collection_id: FIRST_COLLECTION_ID,
         };
-        H.createQuestion(cardDetails);
+        const modelDetails = {
+          ...ordersCardDetails,
+          name: "Joined model",
+          type: "model",
+          collection_id: FIRST_COLLECTION_ID,
+        };
+        H.createQuestion(questionDetails);
+        H.createQuestion(modelDetails);
         startNewEmbeddingQuestion();
         selectDataSource("Products");
         H.getNotebookStep("data").button("Join data").click();
-        H.popover().should("not.contain", cardDetails.name);
-      });
-    });
-
-    describe("model", () => {
-      const cardType = "model";
-
-      it("should be able to join a card when the data source is a table", () => {
-        const cardDetails = {
-          ...ordersCardDetails,
-          type: cardType,
-          collection_id: FIRST_COLLECTION_ID,
-        };
-        H.createQuestion(cardDetails);
-        startNewEmbeddingQuestion();
-        selectDataSource("Products");
-        H.getNotebookStep("data").button("Join data").click();
-        selectDataSource(cardDetails.name);
+        H.popover()
+          .findByRole("link", { name: modelDetails.name })
+          .should("exist");
+        H.popover().should("not.contain", questionDetails.name);
+        selectDataSource(modelDetails.name);
         verifyTableSelected({
           tableName: "Products",
           databaseName: "Sample Database",
         });
         verifyTableSelected({
-          tableName: cardDetails.name,
+          tableName: modelDetails.name,
         });
       });
     });
@@ -725,7 +709,40 @@ describe("scenarios > embedding > full app", () => {
       cy.intercept("GET", "/api/table/*/query_metadata").as("getTableMetadata");
     });
 
-    it('should respect "entity_types" search parameter (EMB-228)', () => {
+    it('should respect "entity_types" search parameter and never offer questions or metrics (EMB-228)', () => {
+      H.createQuestion({
+        ...ordersCountCardDetails,
+        type: "metric",
+        collection_id: null,
+      });
+      cy.intercept({
+        method: "GET",
+        pathname: "/api/database",
+        query: {
+          saved: "true",
+        },
+      }).as("getDatabases");
+
+      cy.log("test not providing `entity_types`");
+      startNewEmbeddingQuestion({ isMultiStageDataPicker: true });
+      cy.wait("@getDatabases");
+      H.popover().within(() => {
+        cy.findByText("Models").should("be.visible");
+        cy.findByText("Raw Data").should("be.visible");
+        cy.findByText("Saved Questions").should("not.exist");
+        cy.findByText("Metrics").should("not.exist");
+      });
+
+      cy.log("test providing `entity_types` as an empty string");
+      startNewEmbeddingQuestion({
+        isMultiStageDataPicker: true,
+        searchParameters: { entity_types: "" },
+      });
+      H.popover().within(() => {
+        cy.findByText("Models").should("be.visible");
+        cy.findByText("Raw Data").should("be.visible");
+      });
+
       cy.log('test `entity_types=["table"]`');
       startNewEmbeddingQuestion({
         isMultiStageDataPicker: true,
@@ -738,22 +755,14 @@ describe("scenarios > embedding > full app", () => {
          */
         cy.findByText("Sample Database").should("be.visible");
         cy.findByRole("heading", { name: "Orders" }).should("be.visible");
+        cy.findByRole("option", { name: "Orders" }).should("be.visible");
+        cy.findByText("Models").should("not.exist");
       });
 
       // We don't have to test every permutations here because we already cover those cases in `EmbeddingDataPicker.unit.spec.tsx`
     });
 
     describe("table", () => {
-      it("should select a table in the only database", () => {
-        startNewEmbeddingQuestion({ isMultiStageDataPicker: true });
-        selectTable({ tableName: "Products" });
-        clickOnDataSource("Products");
-        verifyTableSelected({
-          tableName: "Products",
-          databaseName: "Sample Database",
-        });
-      });
-
       it(
         "should select a table when there are multiple databases (metabase#54127)",
         { tags: "@external" },
@@ -858,7 +867,24 @@ describe("scenarios > embedding > full app", () => {
         },
       );
 
-      it("should be able to join a table when the data source is a table", () => {
+      it("should join tables and models when the data source is a table", () => {
+        const cardDetails = {
+          ...ordersCardDetails,
+          type: "model",
+          collection_id: FIRST_COLLECTION_ID,
+        };
+        H.createQuestion(cardDetails);
+
+        cy.log("select a table in the only database");
+        startNewEmbeddingQuestion({ isMultiStageDataPicker: true });
+        selectTable({ tableName: "Products" });
+        clickOnDataSource("Products");
+        verifyTableSelected({
+          tableName: "Products",
+          databaseName: "Sample Database",
+        });
+
+        cy.log("join a table when the data source is a table");
         startNewEmbeddingQuestion({ isMultiStageDataPicker: true });
         selectTable({
           tableName: "Orders",
@@ -870,15 +896,8 @@ describe("scenarios > embedding > full app", () => {
           tableName: "Products",
           databaseName: "Sample Database",
         });
-      });
 
-      it("should be able to join a model when the data source is a table", () => {
-        const cardDetails = {
-          ...ordersCardDetails,
-          type: "model",
-          collection_id: FIRST_COLLECTION_ID,
-        };
-        H.createQuestion(cardDetails);
+        cy.log("join a model when the data source is a table");
         startNewEmbeddingQuestion({ isMultiStageDataPicker: true });
         selectTable({
           tableName: "Products",
@@ -894,28 +913,6 @@ describe("scenarios > embedding > full app", () => {
         verifyCardSelected({
           cardName: cardDetails.name,
           collectionName: "First collection",
-        });
-      });
-    });
-
-    describe("question", () => {
-      beforeEach(() => {
-        cy.intercept({
-          method: "GET",
-          pathname: "/api/database",
-          query: {
-            saved: "true",
-          },
-        }).as("getDatabases");
-      });
-
-      it("should not be able to select a question", () => {
-        startNewEmbeddingQuestion({ isMultiStageDataPicker: true });
-        cy.wait("@getDatabases");
-        H.popover().within(() => {
-          cy.findByText("Models").should("be.visible");
-          cy.findByText("Raw Data").should("be.visible");
-          cy.findByText("Saved Questions").should("not.exist");
         });
       });
     });
@@ -943,7 +940,7 @@ describe("scenarios > embedding > full app", () => {
         });
       });
 
-      it("should join a table when the data source is a model", () => {
+      it("should join tables and models when the data source is a model", () => {
         // Orders Model already exists
         const ordersModelName = "Orders Model";
         const ordersCountModelDetails = {
@@ -954,6 +951,7 @@ describe("scenarios > embedding > full app", () => {
         };
         H.createQuestion(ordersCountModelDetails);
 
+        cy.log("join a model when the data source is a model");
         startNewEmbeddingQuestion({ isMultiStageDataPicker: true });
         selectCard({
           cardName: ordersModelName,
@@ -978,12 +976,8 @@ describe("scenarios > embedding > full app", () => {
           cardName: ordersCountModelDetails.name,
           collectionName: "Our analytics",
         });
-      });
 
-      it("should join a model when the data source is a model", () => {
-        // Orders Model already exists
-        const ordersModelName = "Orders Model";
-
+        cy.log("join a table when the data source is a model");
         startNewEmbeddingQuestion({ isMultiStageDataPicker: true });
         selectCard({
           cardName: ordersModelName,
@@ -1002,73 +996,6 @@ describe("scenarios > embedding > full app", () => {
         verifyTableSelected({
           tableName: "Products",
           databaseName: "Sample Database",
-        });
-      });
-    });
-
-    describe("metric", () => {
-      beforeEach(() => {
-        const cardDetails = {
-          ...ordersCountCardDetails,
-          type: "metric",
-          collection_id: null,
-        };
-        H.createQuestion(cardDetails);
-        cy.intercept({
-          method: "GET",
-          pathname: "/api/database",
-          query: {
-            saved: "true",
-          },
-        }).as("getDatabases");
-      });
-
-      it("should not be able to select a metric", () => {
-        startNewEmbeddingQuestion({ isMultiStageDataPicker: true });
-        cy.wait("@getDatabases");
-        H.popover().within(() => {
-          cy.findByText("Models").should("be.visible");
-          cy.findByText("Raw Data").should("be.visible");
-          cy.findByText("Metrics").should("not.exist");
-        });
-      });
-    });
-
-    describe('"entity_types" query parameter', () => {
-      it('should show only the provided "entity_types"', () => {
-        startNewEmbeddingQuestion({
-          isMultiStageDataPicker: true,
-          searchParameters: {
-            entity_types: "table",
-          },
-        });
-        H.popover().within(() => {
-          cy.findByText("Models").should("not.exist");
-          cy.findByText("Sample Database").should("be.visible");
-          cy.findByRole("option", { name: "Orders" }).should("be.visible");
-        });
-      });
-
-      it('should show models and tables as a default value when not providing "entity_types"', () => {
-        cy.log("Test providing `entity_types` as an empty string");
-        startNewEmbeddingQuestion({
-          isMultiStageDataPicker: true,
-          searchParameters: {
-            entity_types: "",
-          },
-        });
-        H.popover().within(() => {
-          cy.findByText("Models").should("be.visible");
-          cy.findByText("Raw Data").should("be.visible");
-        });
-
-        cy.log("Test not providing `entity_types`");
-        startNewEmbeddingQuestion({
-          isMultiStageDataPicker: true,
-        });
-        H.popover().within(() => {
-          cy.findByText("Models").should("be.visible");
-          cy.findByText("Raw Data").should("be.visible");
         });
       });
     });
