@@ -1436,7 +1436,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
     });
   });
 
-  describe("interactive embedding", () => {
+  describe("static embedding", () => {
     const questionDetails = QUESTION_LINE_CHART;
 
     beforeEach(() => {
@@ -1685,9 +1685,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
         .should("contain.text", POINT_COUNT)
         .should("contain.text", POINT_CREATED_AT_FORMATTED);
     });
-  });
 
-  describe("static embedding", () => {
     it("should navigate to public link URL (metabase#38640)", () => {
       H.createDashboard(TARGET_DASHBOARD)
         .then(({ body: { id: dashboardId } }) => {
