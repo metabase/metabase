@@ -614,54 +614,6 @@ describe("scenarios > dashboard", () => {
   });
 
   describe("iframe cards", () => {
-    it("should handle various iframe and URL inputs", () => {
-      const testCases = [
-        {
-          input: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
-          expected: "https://www.youtube.com/embed/dQw4w9WgXcQ",
-        },
-        {
-          input: "https://youtu.be/dQw4w9WgXcQ",
-          expected: "https://www.youtube.com/embed/dQw4w9WgXcQ",
-        },
-        {
-          input: "https://www.loom.com/share/1234567890abcdef",
-          expected: "https://www.loom.com/embed/1234567890abcdef",
-        },
-        {
-          input: "https://vimeo.com/123456789",
-          expected: "https://player.vimeo.com/video/123456789",
-        },
-        {
-          input: "example.com",
-          expected: "https://example.com",
-        },
-        {
-          input: "https://example.com",
-          expected: "https://example.com",
-        },
-        {
-          input:
-            '<iframe src="https://example.com" onload="alert(\'XSS\')"></iframe>',
-          expected: "https://example.com",
-        },
-      ];
-
-      H.updateSetting("allowed-iframe-hosts", "*");
-
-      H.createDashboard().then(({ body: { id } }) => {
-        H.visitDashboard(id);
-      });
-
-      H.editDashboard();
-
-      testCases.forEach(({ input, expected }, index) => {
-        H.addIFrameWhileEditing(input);
-        cy.button("Done").click();
-        validateIFrame(expected, index);
-      });
-    });
-
     it("should respect allowed-iframe-hosts setting", () => {
       const errorMessage = /can not be embedded in iframe cards/;
 
@@ -1310,26 +1262,89 @@ describe("scenarios > dashboard", () => {
     H.expectNoBadSnowplowEvents();
   });
 
-  it("should be possible to add an iframe card", () => {
+  it("should be possible to add iframe cards from various iframe and URL inputs", () => {
+    const testCases = [
+      {
+        input: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+        expected: "https://www.youtube.com/embed/dQw4w9WgXcQ",
+      },
+      {
+        input: "https://youtu.be/dQw4w9WgXcQ",
+        expected: "https://www.youtube.com/embed/dQw4w9WgXcQ",
+      },
+      {
+        input: "https://www.loom.com/share/1234567890abcdef",
+        expected: "https://www.loom.com/embed/1234567890abcdef",
+      },
+      {
+        input: "https://vimeo.com/123456789",
+        expected: "https://player.vimeo.com/video/123456789",
+      },
+      {
+        input: "example.com",
+        expected: "https://example.com",
+      },
+      {
+        input: "https://example.com",
+        expected: "https://example.com",
+      },
+      {
+        input:
+          '<iframe src="https://example.com" onload="alert(\'XSS\')"></iframe>',
+        expected: "https://example.com",
+      },
+    ];
+
     H.updateSetting("allowed-iframe-hosts", "*");
     H.createDashboard({ name: "iframe card" }).then(({ body: { id } }) => {
       H.visitDashboard(id);
 
       H.editDashboard();
-      H.addIFrameWhileEditing("https://example.com");
-      cy.findByTestId("dashboardcard-actions-panel").should("not.exist");
-      cy.button("Done").click();
-      H.getDashboardCard(0).realHover();
-      cy.findByTestId("dashboardcard-actions-panel").should("be.visible");
-      validateIFrame("https://example.com");
-      H.saveDashboard();
-      validateIFrame("https://example.com");
-
-      H.expectUnstructuredSnowplowEvent({
-        event: "new_iframe_card_created",
-        target_id: id,
-        event_detail: "example.com",
+      testCases.forEach(({ input, expected }, index) => {
+        H.addIFrameWhileEditing(input);
+        H.getDashboardCard(index)
+          .findByTestId("dashboardcard-actions-panel")
+          .should("not.exist");
+        cy.button("Done").click();
+        H.getDashboardCard(index).realHover();
+        H.getDashboardCard(index)
+          .findByTestId("dashboardcard-actions-panel")
+          .should("be.visible");
+        validateIFrame(expected, index);
       });
+
+      H.saveDashboard();
+
+      // The saved dashcard order is not guaranteed, so compare sorted sources
+      H.getDashboardCards()
+        .find("iframe")
+        .should(($iframes) => {
+          const iframes = $iframes.toArray();
+          expect(
+            iframes.map((el) => el.getAttribute("src")).sort(),
+          ).to.deep.equal(testCases.map(({ expected }) => expected).sort());
+          iframes.forEach((el) => {
+            expect(el.getAttribute("sandbox")).to.equal(IFRAME_SANDBOX);
+            expect(el.hasAttribute("onload")).to.equal(false);
+          });
+        });
+
+      H.expectUnstructuredSnowplowEvent(
+        {
+          event: "new_iframe_card_created",
+          target_id: id,
+          event_detail: "example.com",
+        },
+        3,
+      );
+      ["www.youtube.com", "youtu.be", "www.loom.com", "vimeo.com"].forEach(
+        (domain) =>
+          H.expectUnstructuredSnowplowEvent({
+            event: "new_iframe_card_created",
+            target_id: id,
+            event_detail: domain,
+          }),
+      );
     });
   });
 
@@ -1753,16 +1768,15 @@ describe("scenarios > dashboard > entity id support", () => {
   });
 });
 
+const IFRAME_SANDBOX =
+  "allow-forms allow-popups allow-popups-to-escape-sandbox allow-presentation allow-same-origin allow-scripts";
+
 function validateIFrame(src, index = 0) {
   // eslint-disable-next-line metabase/no-unsafe-element-filtering
   H.getDashboardCards()
     .get("iframe")
     .eq(index)
     .should("have.attr", "src", src)
-    .and(
-      "have.attr",
-      "sandbox",
-      "allow-forms allow-popups allow-popups-to-escape-sandbox allow-presentation allow-same-origin allow-scripts",
-    )
+    .and("have.attr", "sandbox", IFRAME_SANDBOX)
     .and("not.have.attr", "onload");
 }

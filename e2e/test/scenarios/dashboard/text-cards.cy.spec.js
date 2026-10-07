@@ -116,28 +116,11 @@ describe("scenarios > dashboard > text and headings", () => {
       H.getDashboardCard(1).contains("Text text text").should("be.visible");
     });
 
-    it("should have a scroll bar for long text (metabase#8333)", () => {
+    it("should let you add a parameter to a dashboard with a long text box (metabase#8333, metabase#11927)", () => {
       H.addTextBox(
         "Lorem ipsum dolor sit amet,\n\nfoo\n\nbar\n\nbaz\n\nboo\n\nDonec quis enim porta.",
         { delay: 0.5 },
       );
-
-      H.expectUnstructuredSnowplowEvent({
-        event: "new_text_card_created",
-      });
-
-      cy.findByTestId("edit-bar").findByText("Save").click();
-
-      // The test fails if there is no scroll bar
-      H.getDashboardCard(1)
-        .get(".text-card-markdown")
-        .should("have.css", "overflow-x", "hidden")
-        .should("have.css", "overflow-y", "auto")
-        .scrollTo("bottom");
-    });
-
-    it("should let you add a parameter to a dashboard with a text box (metabase#11927)", () => {
-      H.addTextBox("text text text");
 
       H.setFilter("Text or Category", "Is");
 
@@ -145,10 +128,19 @@ describe("scenarios > dashboard > text and headings", () => {
       cy.findByTestId("edit-bar").findByText("Save").click();
 
       // confirm text box and filter are still there
-      H.getDashboardCard(1).contains("text text text").should("be.visible");
+      H.getDashboardCard(1)
+        .contains("Lorem ipsum dolor sit amet,")
+        .should("be.visible");
       cy.findByTestId("dashboard-parameters-widget-container")
         .findByText("Text")
         .should("be.visible");
+
+      // scrollTo fails if the text card has no scroll bar
+      H.getDashboardCard(1)
+        .find(".text-card-markdown")
+        .should("have.css", "overflow-x", "hidden")
+        .should("have.css", "overflow-y", "auto")
+        .scrollTo("bottom");
     });
   });
 
@@ -276,8 +268,8 @@ describe("scenarios > dashboard > parameters in text and heading cards", () => {
       H.fieldValuesCombobox().type("1"),
     );
     cy.button("Add filter").click();
-    H.getDashboardCard(0).findByText("Variable: 1").should("exist");
-    H.getDashboardCard(1).findByText("Variable: 1").should("exist");
+    H.getDashboardCard(0).findByText("Variable: 1").should("be.visible");
+    H.getDashboardCard(1).findByText("Variable: 1").should("be.visible");
 
     cy.findByTestId("dashboard-parameters-widget-container")
       .findByText("1")
@@ -291,42 +283,15 @@ describe("scenarios > dashboard > parameters in text and heading cards", () => {
 
     H.editDashboard();
 
+    // Edit mode shows the raw template (metabase#31626)
+    H.getDashboardCard(0).findByText("Variable: {{foo}}").should("be.visible");
+    H.getDashboardCard(1).findByText("Variable: {{foo}}").should("be.visible");
+
     cy.findByTestId("edit-dashboard-parameters-widget-container")
       .findByText("Equal to")
       .click();
     H.getDashboardCard(0).findByText("foo").should("exist");
     H.getDashboardCard(1).findByText("foo").should("exist");
-  });
-
-  it("should not transform text variables to plain text (metabase#31626)", () => {
-    H.editDashboard();
-
-    const textContent = "Variable: {{foo}}";
-    H.addTextBoxWhileEditing(textContent, { parseSpecialCharSequences: false });
-    H.addHeadingWhileEditing(textContent, { parseSpecialCharSequences: false });
-
-    H.setFilter("Number", "Equal to");
-
-    H.getDashboardCard(0).findByText("Select…").click();
-    H.popover().findByText("foo").click();
-
-    H.getDashboardCard(1).findByText("Select…").click();
-    H.popover().findByText("foo").click();
-
-    H.saveDashboard();
-
-    H.filterWidget().click();
-    cy.findByPlaceholderText("Enter a number").type("1{enter}");
-    cy.button("Add filter").click();
-
-    // view mode
-    H.getDashboardCard(0).findByText("Variable: 1").should("be.visible");
-    H.getDashboardCard(1).findByText("Variable: 1").should("be.visible");
-
-    H.editDashboard();
-
-    H.getDashboardCard(0).findByText(textContent).should("be.visible");
-    H.getDashboardCard(1).findByText(textContent).should("be.visible");
   });
 
   it("should translate parameter values into the instance language", () => {
