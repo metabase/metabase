@@ -11,6 +11,7 @@
    [metabase-enterprise.remote-sync.source.protocol :as source.p]
    [metabase-enterprise.remote-sync.test-helpers :as test-helpers]
    [metabase.actions.core :as actions]
+   [metabase.collections.models.collection :as collection]
    [metabase.driver :as driver]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -382,6 +383,9 @@
           (testing "with the library feature too, whose check runs in the same place"
             (mt/with-additional-premium-features #{:library}
               (card 400 "model")))
+          (testing "a question a load checks as a possible dashboard question, before its dashboard is known, is a question here"
+            (is (= (collection/check-allowed-content :question collection-id)
+                   (collection/check-allowed-content :dashboard-question collection-id))))
           (mt/with-temp [:model/Dashboard {dashboard-id :id} {:name "Elsewhere"}]
             (mt/user-http-request :crowberto :put 400 (str "dashboard/" dashboard-id) {:collection_id collection-id})))))))
 

@@ -607,11 +607,13 @@
   "Checks the content of a collection before saving it. Throws when the collection with `collection-id` can't hold
   content of `model-type`."
   [model-type collection-id]
-  ;; a data app's collection holds only what a pull of the app accepts; a bookmark is a user's pointer, not content
+  ;; a data app's collection holds only what a pull of the app accepts; a bookmark is a user's pointer, not content.
+  ;; A load checks every question as a possible dashboard question before its dashboard is known, so that is a
+  ;; question here.
   (when (and collection-id
              (some? model-type)
              (not= :model/CollectionBookmark model-type)
-             (not (contains? #{:question :metric :action} (keyword model-type)))
+             (not (contains? #{:question :dashboard-question :metric :action} (keyword model-type)))
              (contains? (set (perms/data-app-collection-ids)) collection-id))
     (throw (ex-info "A data app's collection can hold only questions, metrics, and query actions" {:status-code 400})))
   (check-library-content model-type collection-id))
