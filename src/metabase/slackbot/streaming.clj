@@ -263,7 +263,8 @@
   [conversation-id prompt thread bot-user-id channel-id extra-history
    {:keys [on-text on-tool-start on-tool-end on-data req-slack-msg-id get-res-slack-msg-id
            request-prompt team-id thread-ts]}]
-  (let [message         (metabot.envelope/user-message prompt)
+  (let [metabot         (metabot.config/resolve-metabot metabot.config/internal-metabot-id)
+        message         (metabot.envelope/user-message prompt)
         ai-proxy?       (llm.provider/managed-model-ref? (metabot.settings/llm-metabot-provider))
         ;; Persist a placeholder assistant row up front so its `created_at` pins
         ;; turn ordering before any retry can sneak in earlier-timestamped rows.
@@ -296,7 +297,7 @@
                          {:current_time_with_timezone (str (java.time.OffsetDateTime/now))
                           :capabilities               capabilities
                           :slack_channel_id           channel-id}
-                         {:metabot-id metabot.config/internal-metabot-id
+                         {:metabot metabot
                           :profile-id :slackbot})
         messages        (conj (vec history) request-message)
         parts-atom      (atom [])
@@ -342,6 +343,7 @@
                  (agent/run-agent-loop
                   {:messages        messages
                    :state           baseline-state
+                   :metabot         metabot
                    :profile-id      :slackbot
                    :conversation-id conversation-id
                    :context         context

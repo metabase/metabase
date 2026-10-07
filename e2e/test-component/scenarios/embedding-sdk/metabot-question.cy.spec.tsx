@@ -13,7 +13,7 @@ import { mockAuthProviderAndJwtSignIn } from "e2e/support/helpers/embedding-sdk-
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
-const metabot_id = "c61bf5f5-1025-47b6-9298-bf1827105bb6";
+const metabot_id = "embeddedmetabotmetabo";
 const query = {
   "source-table": ORDERS_ID,
   aggregation: [["max", ["field", ORDERS.QUANTITY, null]]],

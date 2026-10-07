@@ -1,18 +1,17 @@
 (ns metabase.metabot.config
   (:require
-   [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.llm.settings :as llm.settings]
    [metabase.metabot.db :as metabot.db]
    [metabase.metabot.settings :as metabot.settings]))
 
 (def internal-metabot-id
-  "The ID of the internal Metabot instance."
-  "b5716059-ad40-4d83-a4e1-673af020b2d8")
+  "The entity ID of the internal Metabot instance."
+  "metabotmetabotmetabot")
 
 (def embedded-metabot-id
-  "The ID of the embedded Metabot instance."
-  "c61bf5f5-1025-47b6-9298-bf1827105bb6")
+  "The entity ID of the embedded Metabot instance."
+  "embeddedmetabotmetabo")
 
 (defn any-metabot-enabled?
   "Returns true if at least one of the metabot instances (internal or embedded) is enabled."
@@ -23,51 +22,48 @@
 
 (defn check-metabot-enabled!
   "Throws a 403 if metabot is not enabled. When called with no arguments, checks that at least one metabot instance is
-   enabled. When called with a `metabot-id`, checks the specific instance's setting."
+   enabled. When called with a Metabot row, checks the specific instance's setting."
   ([]
    (api/check (llm.settings/ai-features-enabled?)
               [403 "AI features are not enabled."])
    (api/check (any-metabot-enabled?)
               [403 "Metabot is not enabled."]))
-  ([metabot-id]
+  ([metabot]
    (api/check (llm.settings/ai-features-enabled?)
               [403 "AI features are not enabled."])
-   (if (= metabot-id embedded-metabot-id)
+   (if (= (:entity_id metabot) embedded-metabot-id)
      (api/check (metabot.settings/embedded-metabot-enabled?)
                 [403 "Embedded Metabot is not enabled."])
      (api/check (metabot.settings/metabot-enabled?)
                 [403 "Metabot is not enabled."]))))
 
-(def metabot-config
-  "The name of the collection exposed by the answer-sources tool."
-  {internal-metabot-id {:profile-id "internal"
-                        :entity-id "metabotmetabotmetabot"}
-   embedded-metabot-id {:profile-id "embedding_next"
-                        :entity-id "embeddedmetabotmetabo"}})
-
 (defn metabot-id->profile-id
-  "Return the profile-id for the Metabot instance with ID `metabot-id` or \"default\" if no profile-id is configured."
+  "Return the configured profile ID for a Metabot entity ID, or nil."
   [metabot-id]
-  (or (get-in metabot-config [metabot-id :profile-id])
-      (:profile-id (m/find-first #(when (= (:entity-id %) metabot-id)
-                                    (:profile-id %))
-                                 (vals metabot-config)))))
-
-(defn normalize-metabot-id
-  "Return the primary key for the metabot instance identified by `metabot-id`.
-
-  Returns nil if no entry can be found.
-  The provided ID can be a UUID from [[metabot-config]] or an entity_id of a Metabot instance."
-  [metabot-id]
-  (metabot.db/metabot-id-by-entity-id (get-in metabot-config [metabot-id :entity-id] metabot-id)))
+  (get {internal-metabot-id "internal"
+        embedded-metabot-id "embedding_next"}
+       metabot-id))
 
 (defn resolve-dynamic-metabot-id
-  "Resolve dynamic metabot ID with logical fall backs
-   Precedence: explicit metabot-id > env metabot-id > default (internal)"
+  "Resolve an explicit ID, the configured ID, or the internal Metabot entity ID."
   [metabot-id]
-  (or metabot-id
-      (metabot.settings/metabot-id)
-      internal-metabot-id))
+  (let [metabot-id (or metabot-id
+                       (metabot.settings/metabot-id)
+                       internal-metabot-id)]
+    (get {"b5716059-ad40-4d83-a4e1-673af020b2d8" internal-metabot-id
+          "c61bf5f5-1025-47b6-9298-bf1827105bb6" embedded-metabot-id}
+         metabot-id metabot-id)))
+
+(defn resolve-metabot
+  "Return the Metabot row for an entity ID, a legacy UUID, or a numeric primary key.
+
+  A nil ID uses the configured or internal Metabot. Throws a 400 if the ID matches no Metabot."
+  [metabot-id]
+  (let [metabot (if (integer? metabot-id)
+                  (metabot.db/metabot metabot-id)
+                  (metabot.db/metabot-by-entity-id (resolve-dynamic-metabot-id metabot-id)))]
+    (api/check metabot [400 "Unknown Metabot."])
+    metabot))
 
 (defn resolve-dynamic-profile-id
   "Resolve the profile ID: explicit profile-id > metabot-id->profile-id > embedding_next.

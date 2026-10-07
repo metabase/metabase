@@ -7,8 +7,7 @@ import * as Urls from "metabase/urls";
 
 import {
   CONTEXT_WINDOW_WARNING_PERCENT,
-  FIXED_METABOT_IDS,
-  METABOT_REQUEST_IDS,
+  FIXED_METABOT_ENTITY_IDS,
 } from "../constants";
 import {
   getContextWindowPercentUsage,
@@ -47,7 +46,9 @@ export const getActiveMetabotAgentIds = createSelector(
 );
 
 export const getMetabotId = () =>
-  isEmbedding() ? FIXED_METABOT_IDS.EMBEDDED : FIXED_METABOT_IDS.DEFAULT;
+  isEmbedding()
+    ? FIXED_METABOT_ENTITY_IDS.EMBEDDED
+    : FIXED_METABOT_ENTITY_IDS.DEFAULT;
 
 export const getDebugMode = createSelector(
   getMetabotState,
@@ -296,8 +297,7 @@ export const getMetabotReqIdOverride = createSelector(
 );
 
 export const getMetabotRequestId = (state: State, conversationId: string) =>
-  getMetabotReqIdOverride(state, conversationId) ??
-  (isEmbedding() ? METABOT_REQUEST_IDS.EMBEDDED : undefined);
+  getMetabotReqIdOverride(state, conversationId) ?? getMetabotId();
 
 export const getProfileOverride = createSelector(
   getConversation,

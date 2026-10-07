@@ -11,6 +11,7 @@ import {
 } from "__support__/server-mocks";
 import { act, fireEvent, screen, waitFor, within } from "__support__/ui";
 import type { SSEEvent } from "metabase/api/ai-streaming/sse-types";
+import { FIXED_METABOT_ENTITY_IDS } from "metabase/metabot/constants";
 import { useMetabotAgent } from "metabase/metabot/hooks";
 import { metabotActions } from "metabase/metabot/state";
 import { getMetabotInitialState } from "metabase/metabot/state/reducer-utils";
@@ -480,7 +481,7 @@ describe("metabot > ui", () => {
       await waitFor(async () => {
         expect(
           fetchMock.callHistory.calls(
-            `path:/api/metabot/metabot/1/prompt-suggestions`,
+            `path:/api/metabot/metabot/${FIXED_METABOT_ENTITY_IDS.DEFAULT}/prompt-suggestions`,
           ),
         ).toHaveLength(1);
       });
@@ -490,7 +491,7 @@ describe("metabot > ui", () => {
       await waitFor(async () => {
         expect(
           fetchMock.callHistory.calls(
-            `path:/api/metabot/metabot/1/prompt-suggestions`,
+            `path:/api/metabot/metabot/${FIXED_METABOT_ENTITY_IDS.DEFAULT}/prompt-suggestions`,
           ),
         ).toHaveLength(2);
       });

@@ -31,8 +31,7 @@
     (metabot.settings/embedded-metabot-enabled?) (conj metabot.config/embedded-metabot-id)))
 
 (defn- generate-suggested-prompts-for-metabot! [config-id]
-  (let [metabot-eid (get-in metabot.config/metabot-config [config-id :entity-id])
-        metabot-id  (metabot.db/metabot-id-by-entity-id metabot-eid)]
+  (let [metabot-id (metabot.db/metabot-id-by-entity-id config-id)]
     (cond
       (nil? metabot-id)
       (log/warnf "No Metabot instance found for %s. Skipping suggested prompt generation." config-id)

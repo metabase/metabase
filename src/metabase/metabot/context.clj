@@ -14,6 +14,7 @@
    [metabase.metabot.curation :as curation]
    [metabase.metabot.db :as metabot.db]
    [metabase.metabot.metadata-perms :as metabot.perms]
+   [metabase.metabot.schema :as metabot.schema]
    [metabase.metabot.settings :as metabot.settings]
    [metabase.metabot.table-utils :as table-utils]
    [metabase.parameters.schema :as parameters.schema]
@@ -361,14 +362,6 @@
       (assoc context :user_is_viewing enhanced-viewing))
     context))
 
-(defn- get-metabot
-  "Look up the metabot row for the given UUID/entity-id, mirroring the resolution used by `metabase.metabot.tools.search`."
-  [metabot-id]
-  (when metabot-id
-    (metabot.db/metabot-by-entity-id (get-in metabot.config/metabot-config
-                                             [metabot-id :entity-id]
-                                             metabot-id))))
-
 (defn- filter-recents-to-curated
   "Keep only recents that are curated (verified, official-collection, library/published, or authoritative).
   Delegates to metabot.curation/curated-ids, the source-of-truth check, so recent-view filtering can't drift
@@ -392,12 +385,12 @@
   Includes the 5 most recent items across cards, datasets, metrics, dashboards, and tables.
   (Excludes collections and documents for now, which aren't searchable by Metabot.)
 
-  When `metabot-id` is provided and the metabot has `use_verified_content` enabled, filters recents down
+  When the Metabot has `use_verified_content` enabled, filters recents down
   to curated content (verified, official-collection, library/published, or authoritative) before taking
   the top 5, matching how search filters answer sources.
 
   Skips recents entirely for profiles in [[profiles-excluding-recent-views]]."
-  [context {:keys [metabot-id profile-id] :as _opts}]
+  [context {:keys [metabot profile-id] :as _opts}]
   (try
     ;; When disabled (or excluded for this profile), strip any preexisting :user_recently_viewed so recent
     ;; views never reach the prompt, even for a caller-supplied context that already carries the key.
@@ -409,7 +402,7 @@
                                                                 [:views :selections]
                                                                 {:models [:card :dataset :metric :dashboard :table]}))
                    recents (cond->> recents
-                             (:use_verified_content (get-metabot metabot-id))
+                             (:use_verified_content metabot)
                              filter-recents-to-curated)]
                (mapv (fn [item]
                        (let [item-type
@@ -439,11 +432,11 @@
    (create-context context nil))
   ([context :- ::context
     opts    :- [:maybe [:map {:closed true}
-                        [:metabot-id  {:optional true} [:maybe :string]]
+                        [:metabot     {:optional true} ::metabot.schema/metabot]
                         [:profile-id  {:optional true} [:maybe :keyword]]
                         [:date-format {:optional true} [:maybe (ms/InstanceOfClass DateTimeFormatter)]]]]]
    (metabot.perms/with-cache
      (-> context
          enhance-context-with-schema
-         (add-recent-views (or opts {}))
+         (add-recent-views (assoc opts :metabot (or (:metabot opts) (metabot.config/resolve-metabot nil))))
          (set-user-time opts)))))
