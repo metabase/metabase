@@ -272,8 +272,9 @@ describe("scenarios > schema-viewer (Sample Database happy path)", () => {
       "Search input filters by name; selecting an option triggers the camera",
     );
     searchInput().click().should("be.focused").type("ord");
-    cy.findByRole("option", { name: /Orders/i }).should("be.visible");
-    searchInput().type("{enter}");
+    cy.findByRole("option", { name: /Orders/i })
+      .should("be.visible")
+      .click();
     assertNodeFocused(ORDERS_ID);
 
     cy.log("Empty result shows 'No tables found'");
