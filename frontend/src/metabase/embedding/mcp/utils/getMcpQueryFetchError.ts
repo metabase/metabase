@@ -1,5 +1,3 @@
-/* eslint-disable metabase/no-literal-metabase-strings */
-
 import { match } from "ts-pattern";
 import { t } from "ttag";
 
@@ -42,6 +40,6 @@ export const getMcpQueryFetchErrorMessage = (
     .with(
       "network",
       () =>
-        t`Could not load this visualization. Make sure Metabase is reachable, then ask your MCP client to show this again.`,
+        t`Could not load this visualization. Ask your MCP client to show this again.`,
     )
     .exhaustive();

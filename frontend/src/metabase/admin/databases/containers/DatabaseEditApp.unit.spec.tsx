@@ -18,6 +18,7 @@ import {
 import { DatabaseEditApp } from "./DatabaseEditApp";
 
 const setup = ({ database }: { database: Database }) => {
+  setupEnginesEndpoint({});
   setupDatabaseEndpoints(database);
   setupEnginesEndpoint(createMockEngines());
   setupDatabaseUsageInfoEndpoint(database, {
