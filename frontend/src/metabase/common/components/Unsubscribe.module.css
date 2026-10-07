@@ -1,0 +1,12 @@
+.logo {
+  height: 4rem;
+}
+
+.shadow {
+  box-shadow: 0 1px 15px var(--mb-color-shadow-default);
+}
+
+/* The padding grows the circle around the icon instead of squeezing it */
+.contentBox {
+  box-sizing: content-box;
+}

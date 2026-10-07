@@ -13,19 +13,13 @@ import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { LighthouseIllustration } from "metabase/common/components/LighthouseIllustration";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { LogoIcon } from "metabase/common/components/LogoIcon";
+import { MetabotLogo } from "metabase/common/components/MetabotLogo";
 import { useSelector } from "metabase/redux";
 import { useSearchParams } from "metabase/router";
 import { getLoginPageIllustration } from "metabase/selectors/whitelabel";
-import { Button, Center, Stack, Text } from "metabase/ui";
+import { Box, Button, Center, Flex, Icon, Stack, Text } from "metabase/ui";
 
-import {
-  CheckmarkIcon,
-  LayoutBody,
-  LayoutCard,
-  LayoutIllustration,
-  LayoutRoot,
-  StyledMetabotLogo,
-} from "./Unsubscribe.styled";
+import S from "./Unsubscribe.module.css";
 
 const ERRORS = {
   MISSING_REQUIRED_PARAMETERS: "missing required parameters",
@@ -140,7 +134,15 @@ function SuccessfulRequestWrapper({
 }: SubscriptionWrapperProps) {
   return (
     <Stack align="center">
-      <CheckmarkIcon name="check" size={30} />
+      <Icon
+        className={S.contentBox}
+        name="check"
+        size={30}
+        c="core-brand"
+        bg="background_surface-brand-subtle"
+        p="lg"
+        bdrs="100%"
+      />
       <Text fw={700} c="text-secondary" mb="0.75rem" ta="center">
         {text}
       </Text>
@@ -226,32 +228,52 @@ function useUnsubscribeRequest({
 function UnsubscribeRoot({ children }: { children: JSX.Element }) {
   const loginPageIllustration = useSelector(getLoginPageIllustration);
   return (
-    <LayoutRoot>
+    <Flex pos="relative" mih="100%" bg="background_page-secondary">
       {loginPageIllustration &&
         (loginPageIllustration.isDefault ? (
           <LighthouseIllustration />
         ) : (
-          <LayoutIllustration
+          <Box
             data-testid="unsubscribe-page-illustration"
-            backgroundImageSrc={loginPageIllustration.src}
+            pos="absolute"
+            inset={0}
+            bgsz="100% auto"
+            bgr="no-repeat"
+            bgp="right bottom"
+            style={{ backgroundImage: `url("${loginPageIllustration.src}")` }}
           />
         ))}
-      <LayoutBody>
+      <Box pos="relative" flex={1}>
         <Center mih={"100%"} miw={"100%"}>
           <Stack>
             <LogoIcon height={65}></LogoIcon>
-            <LayoutCard>{children}</LayoutCard>
+            <Flex
+              className={S.shadow}
+              direction="column"
+              align="center"
+              justify="center"
+              w={{ base: "100%", sm: "30.875rem" }}
+              miw="35rem"
+              mih="20rem"
+              mt="xl"
+              py="xxxl"
+              px={{ base: "xl", sm: "3.5rem" }}
+              bg="background_page-primary"
+              bdrs="xs"
+            >
+              {children}
+            </Flex>
           </Stack>
         </Center>
-      </LayoutBody>
-    </LayoutRoot>
+      </Box>
+    </Flex>
   );
 }
 
 function ErrorDisplay() {
   return (
     <Stack align="center" gap="xxs" aria-label="error message">
-      <StyledMetabotLogo variant="sad" />
+      <MetabotLogo className={S.logo} variant="sad" />
       <Text
         fw={700}
         fz="md"
