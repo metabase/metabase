@@ -38,11 +38,17 @@
   255)
 
 (def ^:private unmatched-route-template
-  "Recorded in `route_template` when a request authenticated with an API key but matched no endpoint —
-  an absent template is a real, valid event (someone probing for routes, a client hitting a typo'd
-  URL), not something to discard. Distinguishable from a real template at a glance: a matched template
-  always starts with `/`."
+  "Recorded in `route_template` when a request authenticated with an API key reached routing but
+  matched no endpoint (a real 404) — an absent template here is a real, valid event (someone probing
+  for routes, a client hitting a typo'd URL), not something to discard. Distinguishable from a real
+  template at a glance: a matched template always starts with `/`."
   "(unmatched)")
+
+(def ^:private no-route-template
+  "Recorded in `route_template` when a request authenticated with an API key reached a handler that
+  isn't `defendpoint`-based (health checks, docs, a premium-feature 402 raised before routing) — nil
+  here, unlike [[unmatched-route-template]], doesn't mean someone probed for a nonexistent route."
+  "(no-template)")
 
 (def ^:private http-method-max-length
   "Cap on the stored http_method length, matching the `api_key_usage_log.http_method` column width."
@@ -223,8 +229,9 @@
   Takes the raw `request`/`response` and extracts everything itself, plus `extra-info` for the
   handful of values only the caller can supply: `route-template` (read from the carrier the caller
   installed before routing ran — see `metabase.api.macros/route-template-carrier-key`; nil for a
-  request that matched no endpoint, recorded as [[unmatched-route-template]] rather than dropping the
-  row — an unmatched route is a real event, not an incomplete one), `duration-ms` (measured by the
+  request that never reached a `defendpoint` handler, recorded as [[unmatched-route-template]] for a
+  real 404 or [[no-route-template]] otherwise (health checks, docs, a 402 raised before routing) —
+  rather than dropping the row, since neither case is an incomplete event), `duration-ms` (measured by the
   caller around the whole request), and `occurred-at` (captured on the request thread rather than left
   for the DB to fill in at INSERT time — the row lands via a scheduled flush, up to the flush interval
   later, so a DB-computed default would record when the flush ran, not when the request happened).
@@ -265,7 +272,9 @@
                         :user_id             (:metabase-user-id request)
                         :created_by_id       (:api-key-creator-id request)
                         :route_template      (or (some-> route-template (u/truncate route-template-max-length))
-                                                 unmatched-route-template)
+                                                 (if (= 404 (:status response))
+                                                   unmatched-route-template
+                                                   no-route-template))
                         :http_method         (some-> (:request-method request) name u/upper-case-en
                                                      (u/truncate http-method-max-length))
                         :status              (:status response)

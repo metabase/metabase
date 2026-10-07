@@ -232,15 +232,28 @@
             (finally (t2/delete! :model/ApiKeyUsageLog :route_template (subs route 0 255)))))))))
 
 (deftest record-api-key-usage!-unmatched-route-is-recorded-test
-  (testing "a nil route-template is recorded with the unmatched sentinel, not dropped"
+  (testing "a nil route-template on a 404 is recorded with the unmatched sentinel, not dropped"
     (mt/with-premium-features #{:audit-app}
       (mt/with-temporary-setting-values [synchronous-batch-updates true]
         ;; a dedicated api-key-id, since the stored route_template is the sentinel rather than
         ;; `route` — this test can't find its row by route like the others do
         (let [api-key-id 424242]
           (try
-            (record! (request-info (unique-route) :api-key-id api-key-id :route-template nil))
+            (record! (request-info (unique-route) :api-key-id api-key-id :route-template nil :status 404))
             (is (= "(unmatched)"
+                   (:route_template (t2/select-one :model/ApiKeyUsageLog :api_key_id api-key-id))))
+            (finally (t2/delete! :model/ApiKeyUsageLog :api_key_id api-key-id))))))))
+
+(deftest record-api-key-usage!-non-404-nil-route-template-is-recorded-test
+  (testing "a nil route-template on anything other than a 404 (health checks, docs, a 402 raised
+           before routing) is recorded with a different sentinel — it isn't someone probing for a
+           nonexistent route, so labeling it the same way would be misleading"
+    (mt/with-premium-features #{:audit-app}
+      (mt/with-temporary-setting-values [synchronous-batch-updates true]
+        (let [api-key-id 434343]
+          (try
+            (record! (request-info (unique-route) :api-key-id api-key-id :route-template nil :status 200))
+            (is (= "(no-template)"
                    (:route_template (t2/select-one :model/ApiKeyUsageLog :api_key_id api-key-id))))
             (finally (t2/delete! :model/ApiKeyUsageLog :api_key_id api-key-id))))))))
 

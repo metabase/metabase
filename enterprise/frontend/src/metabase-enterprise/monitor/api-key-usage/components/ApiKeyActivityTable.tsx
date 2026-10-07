@@ -35,6 +35,20 @@ const getNodeId = (apiKey: ApiKey) => String(apiKey.id);
 
 type ApiKeyActivityRow = ApiKey;
 
+/** Most recently active first, keys with no activity in the window last. */
+export function compareByLastUsedAtDesc(
+  a: ApiKeyActivityRow,
+  b: ApiKeyActivityRow,
+): number {
+  if (a.last_used_at == null) {
+    return b.last_used_at == null ? 0 : 1;
+  }
+  if (b.last_used_at == null) {
+    return -1;
+  }
+  return b.last_used_at.localeCompare(a.last_used_at);
+}
+
 type DataSources = {
   provider: MetadataProvider | null;
   table: TableMetadata | CardMetadata | null;
@@ -153,7 +167,8 @@ function ApiKeyActivityTableInner({
         .map((apiKey) => ({
           ...apiKey,
           last_used_at: lastActivityByKeyId.get(apiKey.id) ?? undefined,
-        })),
+        }))
+        .sort(compareByLastUsedAtDesc),
     [apiKeys, apiKeyId, userId, groupId, lastActivityByKeyId],
   );
 
