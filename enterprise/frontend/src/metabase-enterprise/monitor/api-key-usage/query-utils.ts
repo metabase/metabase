@@ -44,23 +44,22 @@ export function apiKeyMatchesScope(
   );
 }
 
-type GroupFilterOption = { value: string; label: string };
-
 /**
- * Narrows the Group selector's options to the selected key's one group — a key belongs to
- * exactly one group, so once one is selected, the selector can't offer a group it isn't in.
- * Otherwise picking an incompatible group would silently zero out every chart (see PR #83726
- * review). With no key selected, `groupOptions` passes through unchanged.
+ * Whether changing the Group filter to `newGroupId` should clear the currently selected API key.
+ * Soft-lock: picking a key shows its group but doesn't prevent picking a different one; picking a
+ * group the key isn't in clears the key instead, rather than leaving a selection the (now
+ * group-filtered) key list no longer offers. Picking "All groups" (`null`) never clears the key,
+ * since every key matches when no group filter is set.
  */
-export function narrowGroupOptionsToSelectedKey(
+export function shouldClearKeyOnGroupChange(
   selectedApiKey: Pick<ApiKey, "group"> | undefined,
-  groupOptions: GroupFilterOption[],
-): GroupFilterOption[] {
-  if (!selectedApiKey) {
-    return groupOptions;
-  }
-  const keyGroupValue = String(selectedApiKey.group.id);
-  return groupOptions.filter((option) => option.value === keyGroupValue);
+  newGroupId: number | null,
+): boolean {
+  return (
+    selectedApiKey != null &&
+    newGroupId != null &&
+    selectedApiKey.group.id !== newGroupId
+  );
 }
 
 type ApiKeyUsageDataSources = {

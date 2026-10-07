@@ -72,15 +72,21 @@ type Result = {
   count: number;
   /** Set when the count query itself failed (e.g. a 500) — the page should show an error, not spin forever. */
   error: unknown;
+  /** The table lookup settled, but found no table to query at all (the audit db hasn't synced the
+   * view). The charts and tables below this page can't do anything with a null table either — they
+   * just sit on their own skeletons forever — so the caller should show the empty/error state
+   * instead of rendering them, regardless of `hasData`. */
+  tablesMissing: boolean;
 };
 
 /**
  * Drives the page's load/empty/data states. "Has data" means at least one API key matches the
- * current API key/user/group filters — independent of whether those keys have any usage, so the
- * Key activity table can still show a key with no activity instead of the page going empty.
- * Still runs the filtered total-count query, since the Events tab's pagination needs it.
- * Distinguishes the initial load (loader) from a filter-change refetch (skeletons) so the page
- * never flashes the empty state before the first result has resolved.
+ * current API key/user/group filters, or the filtered call count is nonzero — independent of
+ * whether a *matching* key currently has usage, so the Key activity table can still show a key
+ * with no activity instead of the page going empty, and a deleted key's history stays reachable
+ * (see `count > 0` below). Still runs the filtered total-count query, since the Events tab's
+ * pagination needs it. Distinguishes the initial load (loader) from a filter-change refetch
+ * (skeletons) so the page never flashes the empty state before the first result has resolved.
  */
 export function useApiKeyUsageHasData({
   provider,
@@ -146,11 +152,16 @@ export function useApiKeyUsageHasData({
     ) ??
       false);
 
+  const tablesMissing =
+    !isLoadingTables &&
+    (provider == null || table == null || groupMembersTable == null);
+
   return {
     isInitialLoading: !hasLoadedOnce.current,
     isRefetching: hasLoadedOnce.current && (isFetching || isFetchingKeys),
     hasData,
     count,
     error: combinedError,
+    tablesMissing,
   };
 }

@@ -3,7 +3,7 @@ import type { ApiKey } from "metabase-types/api";
 import {
   apiKeyMatchesScope,
   apiKeyUsageEventColumnKeys,
-  narrowGroupOptionsToSelectedKey,
+  shouldClearKeyOnGroupChange,
 } from "./query-utils";
 
 const apiKey: ApiKey = {
@@ -43,30 +43,21 @@ describe("apiKeyMatchesScope", () => {
   });
 });
 
-describe("narrowGroupOptionsToSelectedKey", () => {
-  const groupOptions = [
-    { value: "1", label: "All Users" },
-    { value: "2", label: "Administrators" },
-    { value: "3", label: "Analysts" },
-  ];
-
-  it("passes options through unchanged when no key is selected", () => {
-    expect(narrowGroupOptionsToSelectedKey(undefined, groupOptions)).toBe(
-      groupOptions,
-    );
+describe("shouldClearKeyOnGroupChange", () => {
+  it("doesn't clear when no key is selected", () => {
+    expect(shouldClearKeyOnGroupChange(undefined, 5)).toBe(false);
   });
 
-  it("narrows to the selected key's one group", () => {
-    expect(narrowGroupOptionsToSelectedKey(apiKey, groupOptions)).toEqual([
-      { value: "2", label: "Administrators" },
-    ]);
+  it("doesn't clear when the new group is the key's own group", () => {
+    expect(shouldClearKeyOnGroupChange(apiKey, 2)).toBe(false);
   });
 
-  it("returns no options when the key's group isn't in the list (e.g. deleted)", () => {
-    const keyInDeletedGroup = { group: { id: 404, name: "Gone" } };
-    expect(
-      narrowGroupOptionsToSelectedKey(keyInDeletedGroup, groupOptions),
-    ).toEqual([]);
+  it("doesn't clear when the new group is All groups (null)", () => {
+    expect(shouldClearKeyOnGroupChange(apiKey, null)).toBe(false);
+  });
+
+  it("clears when the new group isn't the key's own group", () => {
+    expect(shouldClearKeyOnGroupChange(apiKey, 5)).toBe(true);
   });
 });
 

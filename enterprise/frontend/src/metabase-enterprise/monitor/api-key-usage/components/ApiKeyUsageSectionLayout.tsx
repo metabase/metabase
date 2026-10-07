@@ -26,7 +26,7 @@ import {
   VIEW_GROUP_MEMBERS,
 } from "metabase-enterprise/monitor/api-key-usage/constants";
 import { useApiKeyUsageHasData } from "metabase-enterprise/monitor/api-key-usage/hooks/useApiKeyUsageHasData";
-import { narrowGroupOptionsToSelectedKey } from "metabase-enterprise/monitor/api-key-usage/query-utils";
+import { shouldClearKeyOnGroupChange } from "metabase-enterprise/monitor/api-key-usage/query-utils";
 import { apiKeyUsageUrlStateConfig } from "metabase-enterprise/monitor/api-key-usage/url-state";
 
 import { ApiKeyFilterSelect } from "./ApiKeyFilterSelect";
@@ -79,8 +79,9 @@ export function ApiKeyUsageSectionLayout() {
     () => apiKeys?.find((apiKey) => apiKey.id === apiKeyId),
     [apiKeys, apiKeyId],
   );
-  // A key belongs to exactly one group — once it's selected, that group is authoritative,
-  // overriding whatever `group` the URL separately carries (see PR #83726 review).
+  // A key belongs to exactly one group, so selecting one shows its group here as a reflection of
+  // reality — but the Group select stays fully open (see `shouldClearKeyOnGroupChange` below for
+  // what happens if the user then picks a different one).
   const effectiveGroup = selectedApiKey
     ? String(selectedApiKey.group.id)
     : group;
@@ -91,12 +92,8 @@ export function ApiKeyUsageSectionLayout() {
     groupId,
     groupNoFilterValue,
     userOptions,
-    groupOptions: allGroupOptions,
+    groupOptions,
   } = useFilterOptions({ date, user, group: effectiveGroup, tenant });
-  const groupOptions = useMemo(
-    () => narrowGroupOptionsToSelectedKey(selectedApiKey, allGroupOptions),
-    [selectedApiKey, allGroupOptions],
-  );
 
   const hasPii = useSetting("analytics-pii-retention-enabled") === true;
   const usageAudit = useAuditTable(VIEW_API_KEY_USAGE);
@@ -119,13 +116,23 @@ export function ApiKeyUsageSectionLayout() {
     [sort_column, sort_direction],
   );
 
-  const { isInitialLoading, isRefetching, hasData, count, error } =
-    useApiKeyUsageHasData({
-      ...dataSources,
-      ...chartFilters,
-      isLoadingTables: usageAudit.isLoading || groupMembersAudit.isLoading,
-    });
-  const showEmpty = !isInitialLoading && !isRefetching && !hasData;
+  const {
+    isInitialLoading,
+    isRefetching,
+    hasData,
+    count,
+    error,
+    tablesMissing,
+  } = useApiKeyUsageHasData({
+    ...dataSources,
+    ...chartFilters,
+    isLoadingTables: usageAudit.isLoading || groupMembersAudit.isLoading,
+  });
+  // `tablesMissing` wins over `hasData`: the charts and tables below can't do anything useful
+  // with a null table either — they'd just sit on their own skeletons forever — so show the
+  // empty state instead of rendering them once the lookup has settled as missing.
+  const showEmpty =
+    !isInitialLoading && !isRefetching && (!hasData || tablesMissing);
 
   const usagePath = Urls.monitorApiKeyUsageOverview();
   const eventsPath = Urls.monitorApiKeyUsageEvents();
@@ -176,33 +183,44 @@ export function ApiKeyUsageSectionLayout() {
   const tabsAndFilters = (
     <>
       <PillTabNavigation tabs={tabs} />
-      <Flex gap="sm" wrap="wrap" align="center">
-        <ApiKeyUsageFilterBar
-          date={date}
-          onDateChange={(val) => patchUrlState({ date: val, page: 0 })}
-          user={user}
-          onUserChange={(val) => patchUrlState({ user: val, page: 0 })}
-          userOptions={userOptions}
-          group={effectiveGroup}
-          onGroupChange={(val) => patchUrlState({ group: val, page: 0 })}
-          groupOptions={groupOptions}
-          groupNoFilterValue={groupNoFilterValue}
-          // Tenants aren't a meaningful concept for API-key usage — see EMB-2391, which will make
-          // this shared filter bar's tenant support properly optional instead of hardcoded off here.
-          tenant={null}
-          onTenantChange={() => {}}
-          tenantOptions={[]}
-          hasTenants={false}
-          // The API key filter (below) is the primary way to scope this page; a separate user
-          // filter is redundant now that "Created by" is just a column.
-          hasUsers={false}
-        />
-        <ApiKeyFilterSelect
-          value={api_key}
-          onChange={(val) => patchUrlState({ api_key: val, page: 0 })}
-          groupId={groupId}
-        />
-      </Flex>
+      <ApiKeyUsageFilterBar
+        date={date}
+        onDateChange={(val) => patchUrlState({ date: val, page: 0 })}
+        user={user}
+        onUserChange={(val) => patchUrlState({ user: val, page: 0 })}
+        userOptions={userOptions}
+        group={effectiveGroup}
+        onGroupChange={(val) => {
+          const newGroupId = val == null ? null : Number(val);
+          patchUrlState({
+            group: val,
+            // Soft lock: picking a group the selected key isn't in clears the key, rather than
+            // leaving a selection the (now group-filtered) key list no longer offers.
+            ...(shouldClearKeyOnGroupChange(selectedApiKey, newGroupId)
+              ? { api_key: null }
+              : {}),
+            page: 0,
+          });
+        }}
+        groupOptions={groupOptions}
+        groupNoFilterValue={groupNoFilterValue}
+        // Tenants aren't a meaningful concept for API-key usage — see EMB-2391, which will make
+        // this shared filter bar's tenant support properly optional instead of hardcoded off here.
+        tenant={null}
+        onTenantChange={() => {}}
+        tenantOptions={[]}
+        hasTenants={false}
+        // The API key filter (below) is the primary way to scope this page; a separate user
+        // filter is redundant now that "Created by" is just a column.
+        hasUsers={false}
+        extraFilter={
+          <ApiKeyFilterSelect
+            value={api_key}
+            onChange={(val) => patchUrlState({ api_key: val, page: 0 })}
+            groupId={groupId}
+          />
+        }
+      />
     </>
   );
 

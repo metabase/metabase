@@ -316,7 +316,11 @@
         (#'ee-usage/offer-usage-log! {:dummy true})
         (is (= 2 @dropped) "two dropped rows are counted, not logged individually")
         (reset! pending [])
-        (#'ee-usage/flush-usage-logs!)
+        (mt/with-log-messages-for-level [messages [metabase-enterprise.api-keys.usage :warn]]
+          (#'ee-usage/flush-usage-logs!)
+          (is (=? [{:level :warn, :message #"^Dropped 2 API key usage log rows.*"}]
+                  (messages))
+              "the two drops are logged once, as a single total, not once per drop"))
         (is (= 0 @dropped) "flush takes and resets the counter after logging the total once")
         (finally
           (reset! pending original-pending)

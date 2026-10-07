@@ -71,6 +71,6 @@ const mergedUrlStateConfig = mergeUrlStateConfig(
 export const apiKeyUsageUrlStateConfig: UrlStateConfig<ApiKeyUsageUrlState> = {
   ...mergedUrlStateConfig,
   // This page has no user/creator filter concept — "Created by" is just a column now — so a
-  // stray `?user=` query param must not silently scope every query (see PR #83726 review).
+  // stray `?user=` query param must not silently scope every query.
   parse: (query) => ({ ...mergedUrlStateConfig.parse(query), user: null }),
 };
