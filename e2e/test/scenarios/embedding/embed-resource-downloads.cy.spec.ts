@@ -462,9 +462,6 @@ describe("scenarios > embedding > questions > downloads", () => {
   };
 
   beforeEach(() => {
-    cy.intercept("PUT", "/api/card/*").as("publishChanges");
-    cy.intercept("GET", "/api/embed/card/**/query").as("dl");
-
     H.restore();
     cy.signInAsAdmin();
 
