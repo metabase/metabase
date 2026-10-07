@@ -5,19 +5,24 @@ import { resolve } from "path";
 import { defineConfig } from "vite";
 import dts from "vite-plugin-dts";
 
+const STATIC_FILES = [
+  "templates/.claude",
+  "templates/dev-server-landing.html",
+  "skill",
+];
+
 const copyStaticFiles = () => ({
   name: "copy-static-files",
   closeBundle: () => {
-    cpSync(
-      resolve(__dirname, "src/templates"),
-      resolve(__dirname, "dist/templates"),
-      {
-        recursive: true,
-      },
+    STATIC_FILES.forEach((path) =>
+      cpSync(
+        resolve(__dirname, "src", path),
+        resolve(__dirname, "dist", path),
+        {
+          recursive: true,
+        },
+      ),
     );
-    cpSync(resolve(__dirname, "src/skill"), resolve(__dirname, "dist/skill"), {
-      recursive: true,
-    });
   },
 });
 
