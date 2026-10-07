@@ -286,7 +286,7 @@
 (deftest title-call-sets-neither-source-nor-model-test
   (testing "a title call logged before the agent's first call counts toward the tokens, not the source or model"
     (let [convo-id (str (random-uuid))
-          now      (java.time.OffsetDateTime/now)]
+          now      (t/offset-date-time)]
       (mt/with-temp [:model/User {user-id :id} {}
                      :model/MetabotConversation _ {:id convo-id :user_id user-id}
                      :model/AiUsageLog          _ {:source "conversation_title"
@@ -295,7 +295,7 @@
                                                    :prompt_tokens 900
                                                    :completion_tokens 30
                                                    :total_tokens 930
-                                                   :created_at (.minusSeconds now 5)}
+                                                   :created_at (t/minus now (t/seconds 5))}
                      :model/AiUsageLog          _ {:source "metabot_agent"
                                                    :model default-model
                                                    :conversation_id convo-id
