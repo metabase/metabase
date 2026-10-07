@@ -6,7 +6,6 @@ import {
   clickThemeMenuItem,
   createThemeViaApi,
   deleteAllThemes,
-  openThemeActionMenu,
 } from "./helpers";
 
 describe(
@@ -47,18 +46,6 @@ describe(
       });
 
       cy.url().should("match", /\/admin\/embedding\/themes\/new$/);
-    });
-
-    it("navigates to theme editor when clicking an existing theme card", () => {
-      createThemeViaApi("My theme");
-      cy.visit("/admin/embedding/themes");
-
-      H.main().within(() => {
-        cy.findByText("My theme").click();
-      });
-
-      cy.log("navigates to the theme editor page");
-      cy.url().should("match", /\/admin\/embedding\/themes\/\d+/);
     });
 
     it("uses white-labeled colors as a base for creating themes", () => {
@@ -137,7 +124,7 @@ describe(
       );
     });
 
-    it("can duplicate a theme", () => {
+    it("can duplicate and delete themes, and open a theme from its card", () => {
       createThemeViaApi("Untitled theme");
       cy.visit("/admin/embedding/themes");
 
@@ -155,16 +142,9 @@ describe(
         cy.findByText("Untitled theme").scrollIntoView().should("be.visible");
         cy.findByText("Copy of Untitled theme").should("be.visible");
       });
-    });
 
-    it("can delete a theme with confirmation", () => {
-      createThemeViaApi("Untitled theme");
-      cy.visit("/admin/embedding/themes");
-
-      H.main().findByText("Untitled theme").should("be.visible");
-
-      cy.log("delete a theme");
-      clickThemeMenuItem("Untitled theme", "Delete");
+      cy.log("delete the copy");
+      clickThemeMenuItem("Copy of Untitled theme", "Delete");
 
       cy.log("delete confirmation modal should appear");
       cy.findByRole("dialog").within(() => {
@@ -179,27 +159,32 @@ describe(
       });
 
       cy.log("theme should still exist");
-      H.main().findByText("Untitled theme").should("be.visible");
-
-      openThemeActionMenu("Untitled theme");
+      H.main().findByText("Copy of Untitled theme").should("be.visible");
 
       cy.log("confirm deletion");
-      cy.findByRole("menuitem", { name: /Delete/ }).click();
+      clickThemeMenuItem("Copy of Untitled theme", "Delete");
       cy.findByRole("dialog").within(() => {
         cy.findByRole("button", { name: /Delete/ }).click();
       });
 
-      H.undoToast().findByText("Theme deleted successfully").should("exist");
+      // The duplicate toast may still be on screen, so use the toast list
+      // (plural) and filter by text — `undoToast()` (singular) yields
+      // undefined when multiple toasts match.
+      H.undoToastList().contains("Theme deleted successfully").should("exist");
 
       H.main().within(() => {
-        cy.log(
-          "deleted theme is gone; default themes and new theme card remain",
-        );
-        cy.findByText("Untitled theme").should("not.exist");
+        cy.log("deleted theme is gone; other themes and new theme card remain");
+        cy.findByText("Copy of Untitled theme").should("not.exist");
+        cy.findByText("Untitled theme").should("be.visible");
         cy.findByText("Light").should("be.visible");
         cy.findByText("Dark").should("be.visible");
         cy.findByRole("button", { name: /New theme/ }).should("be.visible");
       });
+
+      cy.log("clicking a theme card opens the theme editor");
+      H.main().findByText("Untitled theme").click();
+      cy.url().should("match", /\/admin\/embedding\/themes\/\d+$/);
+      cy.findByLabelText("Theme name").should("have.value", "Untitled theme");
     });
   },
 );
