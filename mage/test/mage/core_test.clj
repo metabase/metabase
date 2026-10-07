@@ -17,6 +17,7 @@
    [mage.bot.repl-eval-test]
    [mage.doctor-test]
    [mage.fix-unused-requires-test]
+   [mage.generate-docs-test]
    [mage.kondo-ratchet-test]
    [mage.merge-kondo-ratchets-test]
    [mage.merge-yaml-migrations-test]

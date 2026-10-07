@@ -59,14 +59,20 @@ scan() { # scan <edition>: dependency root and aliases used by .github Clojure i
     | sed -e 's/:$//' -e 's#^#.|#'
 }
 
-scan_project_tests() { # scan_project_tests <function> <dependency-root>
-  # Mage shell commands are vectors split across lines, so flatten each function body before
-  # extracting its alias.
-  sed -n "/(defn- $1 /,/^(defn/p" mage/src/mage/project_tests.clj \
-    | tr '\n' ' ' \
+mage_aliases() { # mage_aliases <dependency-root>: aliases of the `"clojure"` commands in Mage source on stdin
+  # Mage shell commands are vectors split across lines, so flatten the source before extracting aliases.
+  tr '\n' ' ' \
     | grep -oE '"clojure"[[:space:]]+("-P"[[:space:]]+)?"-[XMATP]?:[A-Za-z0-9:_./-]+' \
     | grep -oE ':[A-Za-z0-9:_./-]+' \
-    | sed -e 's/:$//' -e "s#^#$2|#"
+    | sed -e 's/:$//' -e "s#^#$1|#"
+}
+
+scan_project_tests() { # scan_project_tests <function> <dependency-root>
+  sed -n "/(defn- $1 /,/^(defn/p" mage/src/mage/project_tests.clj | mage_aliases "$2"
+}
+
+scan_mage_file() { # scan_mage_file <file> <dependency-root>
+  mage_aliases "$2" < "$1"
 }
 
 # Check each scan separately. One scan still finding commands would otherwise conceal that another has
@@ -79,11 +85,13 @@ require_scan() { # require_scan <what> <result>
 workflow_checks=$( { scan ee; scan oss; } || true)
 clojure_checks=$(scan_project_tests run-clojure-checks! . || true)
 migration_checks=$(scan_project_tests run-migration-checks! bin/lint-migrations-file || true)
+docs_checks=$(scan_mage_file mage/src/mage/generate_docs.clj . || true)
 require_scan ".github/" "$workflow_checks"
 require_scan "run-clojure-checks! (mage/src/mage/project_tests.clj)" "$clojure_checks"
 require_scan "run-migration-checks! (mage/src/mage/project_tests.clj)" "$migration_checks"
+require_scan "mage/src/mage/generate_docs.clj" "$docs_checks"
 
-scanned="$(printf '%s\n' "$workflow_checks" "$clojure_checks" "$migration_checks" | sort -u)"
+scanned="$(printf '%s\n' "$workflow_checks" "$clojure_checks" "$migration_checks" "$docs_checks" | sort -u)"
 
 found="$( {
   printf '%s\n' "$scanned"

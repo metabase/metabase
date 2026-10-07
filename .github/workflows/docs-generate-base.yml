@@ -36,84 +36,15 @@ jobs:
       - name: Prepare frontend environment
         uses: ./.github/actions/prepare-frontend
 
-      - name: Set up Babashka
-        uses: turtlequeue/setup-babashka@d78ec6570aea3b614bc695cafcceb82eb45c2af9 # v1.8.0
-        with:
-          babashka-version: 1.12.197
-
-      - name: Generate environment variables documentation
-        id: generate_env_docs
+      - name: Generate documentation
+        id: generate_docs
+        # This reusable workflow always runs from master, so every target branch needs the `generate-docs` task.
+        env:
+          TARGET_BRANCH: ${{ inputs.target_branch }}
         run: |
-          set -e  # Exit on any error
-          # Ensure we're on the target branch for documentation generation
-          git checkout ${{ inputs.target_branch }}
-          echo "Generating environment variables documentation from branch: ${{ inputs.target_branch }}"
-          clojure -M:ee:doc environment-variables-documentation
-        continue-on-error: false
-
-      - name: Generate config template documentation
-        id: generate_config_docs
-        run: |
-          set -e  # Exit on any error
-          echo "Generating config template documentation..."
-          clojure -M:ee:doc config-template
-        continue-on-error: false
-
-      - name: Generate API documentation
-        id: generate_api_docs
-        run: |
-          set -e  # Exit on any error
-          echo "Generating API documentation..."
-          clojure -M:ee:doc api-documentation
-        continue-on-error: false
-
-      - name: Generate command documentation
-        id: generate_command_docs
-        run: |
-          set -e  # Exit on any error
-          echo "Generating API documentation..."
-          clojure -M:ee:doc command-documentation
-        continue-on-error: false
-
-      - name: Generate AI provider documentation
-        id: generate_ai_provider_docs
-        # The generator only exists on branches that ship the multi-provider registry (master / 64+), but
-        # this reusable workflow always runs from master, so skip the step on release branches without it.
-        if: hashFiles('src/metabase/cmd/ai_provider_dox.clj') != ''
-        run: |
-          set -e  # Exit on any error
-          echo "Generating AI provider documentation..."
-          clojure -M:ee:doc ai-providers-documentation
-        continue-on-error: false
-
-      - name: Generate MCP tool documentation
-        id: generate_mcp_tool_docs
-        # Same reason as the AI provider step: release branches without the generator would fail the command.
-        if: hashFiles('src/metabase/cmd/mcp_tools_dox.clj') != ''
-        run: |
-          set -e  # Exit on any error
-          echo "Generating MCP tool documentation..."
-          clojure -M:ee:doc mcp-tools-documentation
-        continue-on-error: false
-
-      - name: Generate usage analytics documentation
-        run: ./bin/generate-usage-analytics-docs.bb
-
-      - name: Generate embedding SDK documentation
-        id: generate_embedding_sdk_docs
-        run: |
-          set -e  # Exit on any error
-          echo "Generating embedding SDK documentation..."
-          bun run embedding-sdk:docs:generate
-        continue-on-error: false
-
-      - name: Generate embedding EAJS documentation
-        id: generate_embedding_eajs_docs
-        run: |
-          set -e  # Exit on any error
-          echo "Generating embedding EAJS documentation..."
-          bun run embedding-eajs:docs:generate
-        continue-on-error: false
+          git checkout "$TARGET_BRANCH"
+          echo "Generating documentation from branch: $TARGET_BRANCH"
+          ./bin/mage generate-docs
 
       - name: Check for changes
         id: check_changes
@@ -179,17 +110,8 @@ jobs:
           $CHANGES_SUMMARY
           $([ "$TOTAL_CHANGES" -gt 10 ] && echo "- ... and $((TOTAL_CHANGES - 10)) more files")
 
-          ## Generation commands
-          Documentation was generated using:
-          - \`clojure -M:ee:doc environment-variables-documentation\`
-          - \`clojure -M:ee:doc config-template\`
-          - \`clojure -M:ee:doc api-documentation\`
-          - \`clojure -M:ee:doc command-documentation\`
-          - \`clojure -M:ee:doc ai-providers-documentation\`
-          - \`clojure -M:ee:doc mcp-tools-documentation\`
-          - \`./bin/generate-usage-analytics-docs.bb\`
-          - \`bun run embedding-sdk:docs:generate\`
-          - \`bun run embedding-eajs:docs:generate\`
+          ## Generation command
+          Documentation was generated using \`./bin/mage generate-docs\`.
 
           Please review the changes and merge if they look correct." \
               --label "Type:Documentation" \

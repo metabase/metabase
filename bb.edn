@@ -382,6 +382,25 @@
    :requires [[mage.cursive-resolve-as :as cursive-resolve-as]]
    :task (task! (cursive-resolve-as/do-it))}
 
+  generate-docs
+  {:doc "Regenerate the docs that are built from source. The backend suite runs every Clojure generator in one JVM, at the same time as the other suites."
+   :examples [["./bin/mage generate-docs" "Regenerate every generated doc"]
+              ["./bin/mage generate-docs backend" "Environment variables, config template, API, AI providers, MCP tools, and CLI commands"]
+              ["./bin/mage generate-docs usage-analytics" "Usage analytics reference"]
+              ["./bin/mage generate-docs embedding-sdk" "Embedding SDK reference (builds the SDK package first)"]
+              ["./bin/mage generate-docs embedding-eajs" "Modular embedding (EAJS) reference"]]
+   :arg-schema [:or
+                [:tuple]
+                [:tuple [:enum {:name "suite"}
+                         "backend"
+                         "usage-analytics"
+                         "embedding-sdk"
+                         "embedding-eajs"]]]
+   :requires [[mage.generate-docs :as generate-docs]]
+   :task (task! (if-let [suite (first (:arguments parsed))]
+                  (generate-docs/run! suite)
+                  (generate-docs/run!)))}
+
   analytics:setup
   {:doc "Set up usage analytics development mode"
    :examples [["./bin/mage analytics:setup" "Enable usage analytics dev mode and import content"]]

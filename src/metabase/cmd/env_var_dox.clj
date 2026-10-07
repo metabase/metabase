@@ -24,13 +24,7 @@
   which are registered in an atom in the settings namespace. Once settings are registered,
   this function derefs that atom and puts the settings into a sorted map for processing."
   ([]
-   (doseq [ns-symb (ns.find/find-namespaces (classpath/system-classpath))
-           :when (and
-                  (str/includes? (name ns-symb) "metabase")
-                  (not (str/includes? (name ns-symb) "test")))]
-     ;; documentation generation deliberately loads every discovered Metabase namespace
-     #_{:clj-kondo/ignore [:metabase/modules]}
-     (require ns-symb))
+   (cmd.common/load-metabase-namespaces!)
    (prep-settings @setting/registered-settings))
   ;; Or supply a set of namespaces to load
   ;; Primarily used for testing
