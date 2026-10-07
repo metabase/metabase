@@ -104,11 +104,10 @@
         metabase-session-key-hashed (session/hash-session-key metabase-session-key)
         {:keys [email sso_source saml_session_index saml_name_id saml_name_id_format]}
         (sso.db/session-user-email-and-source metabase-session-key-hashed)]
-    ;; If a user doesn't have SLO setup on their IdP,
-    ;; they will never hit "/handle_slo" so we must delete the session here:
-    (when-not (sso-settings/saml-slo-enabled)
-      (sso.db/delete-session! metabase-session-key-hashed))
+    (sso.db/delete-session! metabase-session-key-hashed)
     {:saml-logout-url
+     ;; A SAML session also exists at the IdP; send the browser there to end it. The IdP calls back
+     ;; to "/handle_slo", which clears the cookie.
      (when (and (sso-settings/saml-slo-enabled)
                 (= sso_source "saml"))
        (saml/logout-redirect-location
