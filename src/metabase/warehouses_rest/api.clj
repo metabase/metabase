@@ -521,27 +521,28 @@
    [:transform
     {:description "Transforms reading from or writing to this database."}
     ms/IntGreaterThanOrEqualToZero]
-   [:reachable_by_public_link
-    {:description (str "Whether anything on this database can be reached through a public link: an unarchived card on"
-                       " this database with a public link, an unarchived public dashboard holding one through its"
-                       " dashboard cards or their series, or an unarchived public document owning one. Not covered:"
-                       " cards a public dashboard or document reaches only through a JSON-encoded reference --"
-                       " parameter mappings, parameter value sources, click-behaviour targets, link cards, and"
-                       " prose-mirror card embeds.")}
+   [:anonymously_reachable
+    {:description (str "Whether anything on this database can be reached by anonymous traffic. An unarchived card on"
+                       " this database counts when it carries a public link or is published as a guest embed; when an"
+                       " unarchived dashboard that carries a public link or is published as a guest embed holds it"
+                       " through its dashboard cards or their series; or when an unarchived document with a public"
+                       " link owns it. The dashboard and document paths ask nothing of the card itself beyond being"
+                       " unarchived and on this database. Not covered: cards a dashboard or document"
+                       " reaches only through a JSON-encoded reference -- parameter mappings, parameter value"
+                       " sources, click-behaviour targets, link cards, and prose-mirror card embeds.")}
     :boolean]])
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
 ;;
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case]}
 (api.macros/defendpoint :get "/:id/usage_info" :- ::usage-info
-  "Get usage info for a database: how many entities of each model use it, and whether it is reachable through a public
-  link."
+  "Get usage info for a database: how many entities of each model use it, and whether anonymous traffic can reach it."
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
   (api/check-superuser)
   (check-database-exists id)
   (assoc (first (warehouses-rest.db/database-usage-counts id))
-         :reachable_by_public_link (warehouses-rest.db/public-link-reachable? id)))
+         :anonymously_reachable (warehouses-rest.db/anonymously-reachable? id)))
 
 ;;; ----------------------------------------- GET /api/database/:id/metadata -----------------------------------------
 

@@ -46,21 +46,21 @@ interface SetupOpts {
   database?: Database;
   isAdmin?: boolean;
   routerUpdateStatus?: number;
-  reachableByPublicLink?: boolean;
+  anonymouslyReachable?: boolean;
 }
 
 const setup = ({
   database = createMockDatabase(),
   isAdmin = true,
   routerUpdateStatus = 200,
-  reachableByPublicLink = false,
+  anonymouslyReachable = false,
 }: SetupOpts = {}) => {
   setupUserAttributesEndpoint(["cool_guy", "boss_gal"]);
   setupDatabasesEndpoints([database]);
   setupDatabaseUsageInfoEndpoint(
     database,
     createMockDatabaseUsageInfo({
-      reachable_by_public_link: reachableByPublicLink,
+      anonymously_reachable: anonymouslyReachable,
     }),
   );
   fetchMock.put(
@@ -209,23 +209,25 @@ describe("DatabaseRoutingSection", () => {
   });
 });
 
-describe("DatabaseRoutingSection public reachability warning", () => {
-  const WILL_STOP = "Public links on this database will stop working";
-  const HAVE_STOPPED = "Public links on this database have stopped working";
+describe("DatabaseRoutingSection anonymous reachability warning", () => {
+  const WILL_STOP =
+    "This database will stop serving public links and guest embeds";
+  const HAVE_STOPPED =
+    "This database has stopped serving public links and guest embeds";
   const REMEDY = "To get them working again, allow anonymous access below.";
   const ROUTED_QUERIES_NOTE =
     "In guest embeds and public links, database queries will always be routed to the router database.";
   const NO_PUBLIC_LINKS_REASSURANCE = "No public links use this database.";
 
   const ANY_TENSE =
-    /^Public links on this database (will stop|have stopped) working$/;
+    /^This database (will stop|has stopped) serving public links and guest embeds$/;
   const findWarning = () => screen.findByRole("alert", { name: ANY_TENSE });
   const queryWarning = () => screen.queryByRole("alert", { name: ANY_TENSE });
 
   it("should warn in the future tense while routing is only being enabled", async () => {
     setup({
       database: routingCapableDatabase({ router_user_attribute: null }),
-      reachableByPublicLink: true,
+      anonymouslyReachable: true,
     });
 
     await userEvent.click(screen.getByLabelText("Enable database routing"));
@@ -243,18 +245,18 @@ describe("DatabaseRoutingSection public reachability warning", () => {
     expect(warning).not.toHaveTextContent(/anonymous access/i);
   });
 
-  it("should say the links have already stopped on a database that is already a router", async () => {
-    setup({ database: routedDatabase(), reachableByPublicLink: true });
+  it("should say it has already stopped serving them on a database that is already a router", async () => {
+    setup({ database: routedDatabase(), anonymouslyReachable: true });
 
     const warning = await findWarning();
     expect(warning).toHaveAccessibleName(HAVE_STOPPED);
     expect(warning).toHaveTextContent(REMEDY);
   });
 
-  it("should render no alert at all when no public link reaches the database", async () => {
+  it("should render no alert at all when nothing anonymous reaches the database", async () => {
     setup({
       database: routingCapableDatabase({ router_user_attribute: null }),
-      reachableByPublicLink: false,
+      anonymouslyReachable: false,
     });
 
     await userEvent.click(screen.getByLabelText("Enable database routing"));
@@ -263,10 +265,10 @@ describe("DatabaseRoutingSection public reachability warning", () => {
     expect(screen.queryAllByRole("alert")).toHaveLength(0);
   });
 
-  it("should not claim links are broken once anonymous access is granted", async () => {
+  it("should not claim anything is broken once anonymous access is granted", async () => {
     setup({
       database: routedDatabase({ router_anonymous_access_granted: true }),
-      reachableByPublicLink: true,
+      anonymouslyReachable: true,
     });
 
     await waitForReachabilityFact();
@@ -277,7 +279,7 @@ describe("DatabaseRoutingSection public reachability warning", () => {
   it("should not warn about a reachable database that is not routed at all", async () => {
     setup({
       database: routingCapableDatabase({ router_user_attribute: null }),
-      reachableByPublicLink: true,
+      anonymouslyReachable: true,
     });
 
     await waitForReachabilityFact();
@@ -286,7 +288,7 @@ describe("DatabaseRoutingSection public reachability warning", () => {
   });
 
   it("should not warn while the section is collapsed", async () => {
-    setup({ database: routedDatabase(), reachableByPublicLink: true });
+    setup({ database: routedDatabase(), anonymouslyReachable: true });
 
     expect(await findWarning()).toBeInTheDocument();
 
@@ -296,7 +298,7 @@ describe("DatabaseRoutingSection public reachability warning", () => {
   });
 
   it("should claim nothing until the reachability fact has arrived", async () => {
-    setup({ database: routedDatabase(), reachableByPublicLink: true });
+    setup({ database: routedDatabase(), anonymouslyReachable: true });
 
     // nothing is awaited yet, so the usage-info response cannot have been applied
     expect(queryWarning()).not.toBeInTheDocument();
@@ -305,7 +307,7 @@ describe("DatabaseRoutingSection public reachability warning", () => {
   });
 
   it("should carry neither the routed-queries note nor the no-public-links reassurance", async () => {
-    setup({ database: routedDatabase(), reachableByPublicLink: true });
+    setup({ database: routedDatabase(), anonymouslyReachable: true });
 
     await findWarning();
 

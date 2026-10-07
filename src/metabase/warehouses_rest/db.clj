@@ -333,30 +333,39 @@
                              [:= :database_id database-id]
                              [:= :type type-str]]})
 
-(def ^:private public-dashboard-id-subquery
+(def ^:private anonymously-published-clause
+  "Honey SQL for a Card or Dashboard anonymous traffic can open: it carries a public link, or it is published as a
+  guest embed."
+  [:or
+   [:not= :public_uuid nil]
+   [:= :enable_embedding true]])
+
+(def ^:private anonymous-dashboard-id-subquery
   "Subquery for the ids of the Dashboards an anonymous visitor can open."
-  ;; an archived Dashboard's public link no longer resolves
+  ;; an archived Dashboard neither resolves by its public link nor renders as a guest embed
   ^:allow-subquery {:select [:id]
                     :from   [(t2/table-name :model/Dashboard)]
                     :where  [:and
                              [:= :archived false]
-                             [:not= :public_uuid nil]]})
+                             anonymously-published-clause]})
 
-(defn- public-dashcard-subquery
-  "Subquery for `column` of the DashboardCards of every public Dashboard."
+(defn- anonymous-dashcard-subquery
+  "Subquery for `column` of the DashboardCards of every Dashboard an anonymous visitor can open."
   [column]
   ^:allow-subquery {:select [column]
                     :from   [(t2/table-name :model/DashboardCard)]
-                    :where  [:in :dashboard_id public-dashboard-id-subquery]})
+                    :where  [:in :dashboard_id anonymous-dashboard-id-subquery]})
 
-(def ^:private public-series-card-id-subquery
-  "Subquery for the ids of the Cards added as series to the DashboardCards of every public Dashboard."
+(def ^:private anonymous-series-card-id-subquery
+  "Subquery for the ids of the Cards added as series to the DashboardCards of every Dashboard an anonymous visitor can
+  open."
   ^:allow-subquery {:select [:card_id]
                     :from   [(t2/table-name :model/DashboardCardSeries)]
-                    :where  [:in :dashboardcard_id (public-dashcard-subquery :id)]})
+                    :where  [:in :dashboardcard_id (anonymous-dashcard-subquery :id)]})
 
 (def ^:private public-document-id-subquery
-  "Subquery for the ids of the Documents an anonymous visitor can open."
+  "Subquery for the ids of the Documents an anonymous visitor can open by public link. Documents carry no
+  `enable_embedding`, so a public link is the only way anonymous traffic reaches one."
   ;; an archived Document's public link no longer resolves
   ^:allow-subquery {:select [:id]
                     :from   [(t2/table-name :model/Document)]
@@ -364,24 +373,26 @@
                              [:= :archived false]
                              [:not= :public_uuid nil]]})
 
-(defn- public-link-reachable-query
-  "Honey SQL selecting the Cards on the Database with `database-id` that a public link reaches."
+(defn- anonymously-reachable-query
+  "Honey SQL selecting the Cards on the Database with `database-id` that anonymous traffic reaches."
   [database-id]
-  ;; an archived Card's public link no longer resolves, and nor does it render inside a public Dashboard or Document
+  ;; an archived Card's public link no longer resolves, nor does its guest embed render, and nor does the Card render
+  ;; inside a Dashboard or Document that anonymous traffic can open
   {:where [:and
            [:= :database_id [:auto/param database-id]]
            [:= :archived false]
            [:or
-            [:not= :public_uuid nil]
-            [:in :id (public-dashcard-subquery :card_id)]
-            [:in :id public-series-card-id-subquery]
+            anonymously-published-clause
+            [:in :id (anonymous-dashcard-subquery :card_id)]
+            [:in :id anonymous-series-card-id-subquery]
             [:in :document_id public-document-id-subquery]]]})
 
-(mu/defn public-link-reachable? :- :boolean
-  "Whether any Card on the Database with `database-id` can be reached through a public link: the Card has one itself,
-  a public Dashboard holds it through a DashboardCard or that DashboardCard's series, or a public Document owns it."
+(mu/defn anonymously-reachable? :- :boolean
+  "Whether any Card on the Database with `database-id` can be reached by anonymous traffic. The paths this answers
+  from are the response contract, and `:anonymously_reachable` on `metabase.warehouses-rest.api/usage-info` states
+  them."
   [database-id :- ::lib.schema.id/database]
-  (t2/exists? :model/Card (public-link-reachable-query database-id)))
+  (t2/exists? :model/Card (anonymously-reachable-query database-id)))
 
 (mu/defn database-usage-counts
   "A single row with the count of Questions (`:question`), Models (`:dataset`), Metrics (`:metric`), Segments

@@ -99,9 +99,9 @@ export const DatabaseRoutingSection = ({
     shouldHideSection || !isAdmin ? skipToken : database.id,
   );
 
-  // A granted router serves public links from the router database, so the claim would be false.
-  const publicLinksBreak =
-    enabled && !anonymousAccessGranted && !!usageInfo?.reachable_by_public_link;
+  // A granted router serves anonymous traffic from the router database, so the claim would be false.
+  const anonymousSurfacesBreak =
+    enabled && !anonymousAccessGranted && !!usageInfo?.anonymously_reachable;
   // Routing only takes effect once a user attribute is stored, which is also what makes the
   // grant switch reachable, so that one fact decides both the tense and whether to name a remedy.
   const routingAlreadyInEffect = hasDbRoutingEnabled(database);
@@ -216,7 +216,7 @@ export const DatabaseRoutingSection = ({
         <>
           <DatabaseInfoSectionDivider />
 
-          {publicLinksBreak && (
+          {anonymousSurfacesBreak && (
             <Alert
               size="compact"
               variant="light"
@@ -224,8 +224,8 @@ export const DatabaseRoutingSection = ({
               icon={<Icon name="warning" />}
               title={
                 routingAlreadyInEffect
-                  ? t`Public links on this database have stopped working`
-                  : t`Public links on this database will stop working`
+                  ? t`This database has stopped serving public links and guest embeds`
+                  : t`This database will stop serving public links and guest embeds`
               }
               mb="lg"
             >

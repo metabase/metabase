@@ -113,10 +113,10 @@ describe("DeleteDatabaseModal", () => {
     expect(onDelete).toHaveBeenCalled();
   });
 
-  it("should not ask for content removal when the only usage is public links", async () => {
+  it("should not ask for content removal when the only usage is anonymous reach", async () => {
     const { onDelete } = await setup({
       usageInfo: createMockDatabaseUsageInfo({
-        reachable_by_public_link: true,
+        anonymously_reachable: true,
       }),
     });
 

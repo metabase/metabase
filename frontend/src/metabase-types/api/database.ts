@@ -128,7 +128,7 @@ export interface DatabaseUsageInfo {
   metric: number;
   segment: number;
   transform: number;
-  reachable_by_public_link: boolean;
+  anonymously_reachable: boolean;
 }
 
 export interface GetDatabaseRequest {
