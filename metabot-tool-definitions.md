@@ -19,7 +19,7 @@ and two protocols, and gives batched tools a model that the original design did 
 | No model for batched tools | `BatchedTool` protocol | The original design asked whether declared errors can be rendered inside a successful result. They can. This is the model. |
 | `:needs #{:memory}` gates the memory atom | `ctx` always carries it | A per-tool allowlist only made the memory accessors return `nil` for anyone who forgot to add their tool. |
 | Strict-client checks run on `:args` | They do not | `search`, `construct` and `create_alert` fail that check today, and the adapters never apply the strict transform it exists for. |
-| `:output` is a string | `:output` is a renderable | MCP renders prose at the boundary. A renderable lets one tool concept serve either consumer later. |
+| `:output` is a string | `:output` is a renderable | MCP renders prose at the boundary. A renderable lets one tool concept serve either consumer later. A string is a renderable, so tool code does not change. |
 | Declaration keys are flat | Neutral core, namespaced extras | Same reason. A consumer reads its own namespace. |
 | `::handler-result` | `::result`, used for a whole call and for one item | One shape, not two. |
 
@@ -104,6 +104,9 @@ flowchart TD
 
 `around-batch` wraps everything inside it, including `compose`. `(with-cache (run))` is a whole
 implementation.
+
+`entry` renders each item's `:output` to a string, so `compose` never handles a renderable. The
+consumer renders whatever `compose` finally returns. See section 4.4.
 
 ### 3.3 Where a thrown error goes
 
@@ -196,17 +199,38 @@ different arguments, modes, projections and paging.
 
 But a tool can be **one concept** that either consumer uses. Three things make this work.
 
-**Text is a renderable, not a string.** MCP builds prose as message records and renders them at the
-boundary. It does this for locale and to keep untrusted text separate. Metabot uses plain English
-strings.
+**Text is a renderable, not a string.** MCP builds prose as message records and renders them at
+the boundary. It does this for locale and to keep untrusted text separate. Metabot uses plain
+English strings.
 
 ```clojure
 (defprotocol Renderable
   (render-text [this]))
+
+(extend-protocol Renderable
+  String
+  (render-text [this] this))
 ```
 
-`:output` holds a renderable. The consumer renders it. A string is the simple case. Neither
-consumer loses its text model.
+`:output` holds a renderable. A string is one, so every example in this document is already
+correct, and a Metabot tool author writes strings and never thinks about this. The protocol exists
+so that a consumer with its own text model does not force a change in tool code:
+
+```clojure
+;; a tool written for a consumer that renders late
+(handle [_ {:keys [term]} _ctx]
+  {:output (message/msg ["No glossary entry for %s."] term)})
+```
+
+There are two render points, and both are outside the tool:
+
+| Point | What it renders |
+|---|---|
+| `entry`, per item | that item's `:output`, so a composer always receives strings |
+| the consumer, at the end | the final `:output`, whatever the tool or the composer returned |
+
+`render-text` is deliberately not satisfied by every object. A result whose `:output` is a map or a
+keyword is a bug, and `::result` rejects it.
 
 **The declaration has a neutral core and namespaced extras.** `:name`, `:description`, `:args` and
 `:scope` are neutral. Both consumers need all four. MCP tools already declare scopes from the same
@@ -265,7 +289,7 @@ neutral. What a consumer does with an unrecoverable one is not.
 | Item count limit | hand-written check in the tool | the batched `:args` schema |
 | Model-facing description | Clojure docstring | `:description` field |
 | Declaration extras | flat keys | namespaced per consumer |
-| Result text | string | renderable |
+| Result text | string | renderable; rendered by the consumer, not the tool |
 | Scope check | wrapper function in `tools.clj` | the runtime, from the declaration |
 | Agent state | dynamic var | `ctx` |
 
@@ -556,14 +580,14 @@ Every entry has the same shape:
 
 ```clojure
 {:item              {:uri "metabase://table/9"}  ; the item's own args
- :output            "Table 9 was not found. ..."  ; always a string
+ :output            "Table 9 was not found. ..."  ; always a string, already rendered
  :failed?           true                          ; always a boolean
  :error             {...}                         ; present when it failed
  :structured-output {...}}                        ; present when it loaded
 ```
 
 A composer that joins outputs asks nothing. A composer that separates them asks a boolean. There is
-no key to probe for.
+no key to probe for, and no renderable to render.
 
 ---
 
