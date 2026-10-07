@@ -57,7 +57,7 @@ describe("Static embed dashboards/questions downloads (results and export as pdf
       cy.findByRole("button", { name: "Download results" }).should("not.exist");
     });
 
-    it("should be able to download a static embedded dashboard as PDF", () => {
+    it("should be able to download a static embedded dashboard as PDF and a dashcard as CSV", () => {
       H.visitEmbeddedPage(
         {
           resource: { dashboard: ORDERS_DASHBOARD_ID },
@@ -82,22 +82,6 @@ describe("Static embed dashboards/questions downloads (results and export as pdf
         dashboard_id: 0,
         dashboard_accessed_via: "static-embed",
       });
-    });
-
-    it("should be able to download a static embedded dashcard as CSV", () => {
-      H.visitEmbeddedPage(
-        {
-          resource: { dashboard: ORDERS_DASHBOARD_ID },
-          params: {},
-        },
-        {
-          pageStyle: {
-            downloads: true,
-          },
-        },
-      );
-
-      waitLoading();
 
       H.getDashboardCard().realHover();
       H.getEmbeddedDashboardCardMenu().click();
@@ -210,7 +194,7 @@ describe("Static embed dashboards/questions downloads (results and export as pdf
       cy.signOut();
     });
 
-    it("should be able to download the question as PNG", () => {
+    it("should be able to download a static embedded question as PNG and CSV", () => {
       H.visitEmbeddedPage(
         {
           resource: { question: ORDERS_BY_YEAR_QUESTION_ID },
@@ -239,22 +223,6 @@ describe("Static embed dashboards/questions downloads (results and export as pdf
         accessed_via: "static-embed",
         export_type: "png",
       });
-    });
-
-    it("should be able to download a static embedded card as CSV", () => {
-      H.visitEmbeddedPage(
-        {
-          resource: { question: ORDERS_BY_YEAR_QUESTION_ID },
-          params: {},
-        },
-        {
-          pageStyle: {
-            downloads: true,
-          },
-        },
-      );
-
-      waitLoading();
 
       cy.findByRole("button", { name: "Download results" }).click();
 
