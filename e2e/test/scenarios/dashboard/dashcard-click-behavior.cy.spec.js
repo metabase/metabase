@@ -144,17 +144,27 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
   });
 
   describe("dashcards without click behavior", () => {
-    it("does not allow to set click behavior for virtual dashcards", () => {
+    it("does not allow to set click behavior for virtual and object detail dashcards", () => {
       const textCard = H.getTextCardDetails({ size_y: 1 });
       const headingCard = H.getHeadingCardDetails({ text: "Heading card" });
       const actionCard = H.getActionCardDetails();
       const linkCard = H.getLinkCardDetails();
       const cards = [textCard, headingCard, actionCard, linkCard];
 
-      H.createDashboard().then(({ body: dashboard }) => {
-        H.updateDashboardCards({ dashboard_id: dashboard.id, cards });
-        H.visitDashboard(dashboard.id);
-      });
+      H.createQuestion(OBJECT_DETAIL_CHART).then(
+        ({ body: { id: objectDetailCardId } }) => {
+          H.createDashboard().then(({ body: dashboard }) => {
+            H.updateDashboardCards({
+              dashboard_id: dashboard.id,
+              cards: [
+                ...cards,
+                { card_id: objectDetailCardId, row: 12, col: 0 },
+              ],
+            });
+            H.visitDashboard(dashboard.id);
+          });
+        },
+      );
 
       H.editDashboard();
 
@@ -164,34 +174,17 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
 
         H.getDashboardCard(index).realHover().icon("click").should("not.exist");
       });
-    });
 
-    it("does not allow to set click behavior for object detail dashcard", () => {
-      H.createQuestionAndDashboard({
-        questionDetails: OBJECT_DETAIL_CHART,
-      }).then(({ body: card }) => {
-        H.visitDashboard(card.dashboard_id);
-      });
-
-      H.editDashboard();
-
-      H.getDashboardCard().realHover().icon("click").should("not.exist");
+      cy.log('does not allow to set click behavior for "object" card');
+      H.getDashboardCard(cards.length)
+        .realHover()
+        .icon("click")
+        .should("not.exist");
     });
   });
 
   describe("line chart", () => {
     const questionDetails = QUESTION_LINE_CHART;
-
-    it("should open drill-through menu as a default click-behavior", () => {
-      H.createQuestionAndDashboard({ questionDetails }).then(
-        ({ body: card }) => {
-          H.visitDashboard(card.dashboard_id);
-        },
-      );
-
-      clickLineChartPoint();
-      assertDrillThroughMenuOpen();
-    });
 
     it("should open drill-through menu for native query based dashcard", () => {
       H.createNativeQuestionAndDashboard({
@@ -234,6 +227,10 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
           H.visitDashboard(card.dashboard_id);
         },
       );
+
+      cy.log("drill-through menu is the default click behavior");
+      clickLineChartPoint();
+      assertDrillThroughMenuOpen();
 
       H.editDashboard();
 
@@ -413,77 +410,6 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       });
     });
 
-    it("should show error and disable the form after target dashboard tab has been removed and there is more than 1 tab left", () => {
-      const options = {
-        wrapId: true,
-        idAlias: "targetDashboardId",
-      };
-      const tabs = [FIRST_TAB, SECOND_TAB, THIRD_TAB];
-
-      createDashboardWithTabsLocal({
-        dashboard: TARGET_DASHBOARD,
-        tabs,
-        options,
-      });
-
-      const TAB_SLUG_MAP = {};
-      tabs.forEach((tab) => {
-        cy.get(`@${tab.name}-id`).then((tabId) => {
-          TAB_SLUG_MAP[tab.name] = `${tabId}-${tab.name}`;
-        });
-      });
-
-      cy.get("@targetDashboardId").then((targetDashboardId) => {
-        const inexistingTabId = 999;
-        const cardDetails = {
-          visualization_settings: {
-            click_behavior: {
-              parameterMapping: {},
-              targetId: targetDashboardId,
-              tabId: inexistingTabId,
-              linkType: "dashboard",
-              type: "link",
-            },
-          },
-        };
-        H.createQuestionAndDashboard({
-          questionDetails,
-          cardDetails,
-        }).then(({ body: card }) => {
-          H.visitDashboard(card.dashboard_id);
-        });
-      });
-
-      H.editDashboard();
-      H.getDashboardCard().realHover().icon("click").click();
-
-      cy.get("aside")
-        .findByText("The selected tab is no longer available")
-        .should("exist");
-      cy.button("Done").should("be.disabled");
-
-      cy.get("aside")
-        .findByLabelText("Select a dashboard tab")
-        .should("not.have.value")
-        .click();
-      cy.findByRole("listbox").findByText(SECOND_TAB.name).click();
-
-      cy.get("aside")
-        .findByText("The selected tab is no longer available")
-        .should("not.exist");
-      cy.button("Done").should("be.enabled").click();
-
-      H.saveDashboard();
-
-      clickLineChartPoint();
-      cy.get("@targetDashboardId").then((targetDashboardId) => {
-        cy.location().should(({ pathname, search }) => {
-          expect(pathname).to.equal(`/dashboard/${targetDashboardId}`);
-          expect(search).to.equal(`?tab=${TAB_SLUG_MAP[SECOND_TAB.name]}`);
-        });
-      });
-    });
-
     it("should fall back to the first tab after target dashboard tab has been removed and there is only 1 tab left", () => {
       H.createDashboard(TARGET_DASHBOARD, {
         wrapId: true,
@@ -537,7 +463,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       });
     });
 
-    it("dashboard click behavior works without tabId previously saved", () => {
+    it("dashboard click behavior works without tabId previously saved, and shows an error after target dashboard tab has been removed and there is more than 1 tab left", () => {
       const tabs = [FIRST_TAB, SECOND_TAB, THIRD_TAB];
 
       const options = {
@@ -575,7 +501,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
           cardDetails,
         }).then(({ body: card }) => {
           H.visitDashboard(card.dashboard_id);
-          cy.wrap(card.dashboard_id).as("dashboardId");
+          cy.wrap(card).as("sourceDashcard");
         });
       });
 
@@ -600,88 +526,62 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
           expect(search).to.equal(`?tab=${TAB_SLUG_MAP[FIRST_TAB.name]}`);
         });
       });
-    });
 
-    it("sets non-specified parameters to default values when accessed from a click action", () => {
-      H.createDashboard(
-        {
-          ...TARGET_DASHBOARD,
-          parameters: [
-            DASHBOARD_FILTER_TEXT,
-            DASHBOARD_FILTER_TEXT_WITH_DEFAULT,
-          ],
-        },
-        {
-          wrapId: true,
-          idAlias: "targetDashboardId",
-        },
-      )
-        .then((dashboardId) => {
-          return cy
-            .request("PUT", `/api/dashboard/${dashboardId}`, {
-              dashcards: [
-                createMockDashboardCard({
-                  card_id: ORDERS_QUESTION_ID,
-                  parameter_mappings: [
-                    createTextFilterMapping({ card_id: ORDERS_QUESTION_ID }),
-                    createTextFilterWithDefaultMapping({
-                      card_id: ORDERS_QUESTION_ID,
-                    }),
-                  ],
-                }),
-              ],
-            })
-            .then(() => dashboardId);
-        })
-        .then((dashboardId) => {
-          H.visitDashboard(dashboardId);
+      cy.log("target dashboard tab has been removed, more than 1 tab left");
+      cy.get("@sourceDashcard").then((dashcard) => {
+        cy.get("@targetDashboardId").then((targetDashboardId) => {
+          const inexistingTabId = 999;
+          H.addOrUpdateDashboardCard({
+            dashboard_id: dashcard.dashboard_id,
+            card_id: dashcard.card_id,
+            card: {
+              id: dashcard.id,
+              visualization_settings: {
+                click_behavior: {
+                  parameterMapping: {},
+                  targetId: targetDashboardId,
+                  tabId: inexistingTabId,
+                  linkType: "dashboard",
+                  type: "link",
+                },
+              },
+            },
+          });
+          H.visitDashboard(dashcard.dashboard_id);
         });
-
-      H.filterWidget().contains("Hello").click();
-      H.dashboardParametersPopover().within(() => {
-        H.fieldValuesCombobox().type("{backspace}World{enter}{esc}");
-        cy.button("Update filter").click();
       });
 
-      H.createQuestionAndDashboard({ questionDetails }).then(
-        ({ body: card }) => {
-          H.visitDashboard(card.dashboard_id);
-        },
-      );
-
       H.editDashboard();
-
       H.getDashboardCard().realHover().icon("click").click();
-      addDashboardDestination();
-      cy.get("aside").findByText("Select a dashboard tab").should("not.exist");
-      cy.get("aside").findByText("No available targets").should("not.exist");
-      addTextParameter();
-      cy.get("aside").button("Done").click();
+
+      cy.get("aside")
+        .findByText("The selected tab is no longer available")
+        .should("exist");
+      cy.button("Done").should("be.disabled");
+
+      cy.get("aside")
+        .findByLabelText("Select a dashboard tab")
+        .should("not.have.value")
+        .click();
+      cy.findByRole("listbox").findByText(SECOND_TAB.name).click();
+
+      cy.get("aside")
+        .findByText("The selected tab is no longer available")
+        .should("not.exist");
+      cy.button("Done").should("be.enabled").click();
 
       H.saveDashboard();
 
       clickLineChartPoint();
-
-      cy.findAllByTestId("parameter-widget")
-        .contains(DASHBOARD_FILTER_TEXT.name)
-        .parent()
-        .should("contain.text", POINT_COUNT);
-      cy.findAllByTestId("parameter-widget")
-        .contains(DASHBOARD_FILTER_TEXT_WITH_DEFAULT.name)
-        .parent()
-        .should("contain.text", DASHBOARD_FILTER_TEXT_WITH_DEFAULT.default);
-
       cy.get("@targetDashboardId").then((targetDashboardId) => {
         cy.location().should(({ pathname, search }) => {
           expect(pathname).to.equal(`/dashboard/${targetDashboardId}`);
-          expect(search).to.equal(
-            `?${DASHBOARD_FILTER_TEXT.slug}=${POINT_COUNT}&${DASHBOARD_FILTER_TEXT_WITH_DEFAULT.slug}=Hello`,
-          );
+          expect(search).to.equal(`?tab=${TAB_SLUG_MAP[SECOND_TAB.name]}`);
         });
       });
     });
 
-    it("sets parameters with default values to the correct value when accessed via click action", () => {
+    it("sets non-specified parameters to default values and parameters with default values to the mapped value when accessed from a click action", () => {
       H.createDashboard(
         {
           ...TARGET_DASHBOARD,
@@ -734,15 +634,27 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
         cy.button("Update filter").click();
       });
 
-      H.createQuestionAndDashboard({ questionDetails }).then(
-        ({ body: card }) => {
-          H.visitDashboard(card.dashboard_id);
-        },
-      );
+      H.createDashboardWithQuestions({
+        questions: [questionDetails, questionDetails],
+        cards: [
+          { row: 0, col: 0 },
+          { row: 0, col: 12 },
+        ],
+      }).then(({ dashboard }) => {
+        cy.wrap(dashboard.id).as("sourceDashboardId");
+        H.visitDashboard(dashboard.id);
+      });
 
       H.editDashboard();
 
-      H.getDashboardCard().realHover().icon("click").click();
+      H.getDashboardCard(0).realHover().icon("click").click();
+      addDashboardDestination();
+      cy.get("aside").findByText("Select a dashboard tab").should("not.exist");
+      cy.get("aside").findByText("No available targets").should("not.exist");
+      addTextParameter();
+      cy.get("aside").button("Done").click();
+
+      H.getDashboardCard(1).realHover().icon("click").click();
       addDashboardDestination();
       cy.get("aside").findByText("Select a dashboard tab").should("not.exist");
       cy.get("aside").findByText("No available targets").should("not.exist");
@@ -751,7 +663,34 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
 
       H.saveDashboard();
 
-      clickLineChartPoint();
+      cy.log("non-specified parameters get their default values");
+      clickLineChartPoint({ dashcardIndex: 0 });
+
+      cy.findAllByTestId("parameter-widget")
+        .contains(DASHBOARD_FILTER_TEXT.name)
+        .parent()
+        .should("contain.text", POINT_COUNT);
+      cy.findAllByTestId("parameter-widget")
+        .contains(DASHBOARD_FILTER_TEXT_WITH_DEFAULT.name)
+        .parent()
+        .should("contain.text", DASHBOARD_FILTER_TEXT_WITH_DEFAULT.default);
+
+      cy.get("@targetDashboardId").then((targetDashboardId) => {
+        cy.location().should(({ pathname, search }) => {
+          expect(pathname).to.equal(`/dashboard/${targetDashboardId}`);
+          expect(search).to.equal(
+            `?${DASHBOARD_FILTER_TEXT.slug}=${POINT_COUNT}&${DASHBOARD_FILTER_TEXT_WITH_DEFAULT.slug}=Hello`,
+          );
+        });
+      });
+
+      cy.go("back");
+      cy.get("@sourceDashboardId").then((sourceDashboardId) => {
+        cy.location("pathname").should("eq", `/dashboard/${sourceDashboardId}`);
+      });
+
+      cy.log("parameters with default values get the mapped value");
+      clickLineChartPoint({ dashcardIndex: 1 });
       cy.findAllByTestId("parameter-widget")
         .contains(DASHBOARD_FILTER_TEXT_WITH_DEFAULT.name)
         .parent()
@@ -767,7 +706,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       });
     });
 
-    it("does not allow setting dashboard as custom destination if user has no permissions to it", () => {
+    it("does not allow setting dashboard or saved question as custom destination if user has no permissions to it", () => {
       H.createCollection({ name: RESTRICTED_COLLECTION_NAME }).then(
         ({ body: restrictedCollection }) => {
           cy.updateCollectionGraph({
@@ -778,6 +717,10 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
 
           H.createDashboard({
             ...TARGET_DASHBOARD,
+            collection_id: restrictedCollection.id,
+          });
+          H.createQuestion({
+            ...TARGET_QUESTION,
             collection_id: restrictedCollection.id,
           });
         },
@@ -799,9 +742,21 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       cy.get("aside").findByText("Dashboard").click();
 
       H.modal().findByText(RESTRICTED_COLLECTION_NAME).should("not.exist");
+
+      cy.log("reset the link type and pick a saved question");
+      cy.realPress("Escape");
+      cy.get("aside")
+        .findByText("Pick a dashboard…")
+        .closest("button")
+        .parent()
+        .icon("close")
+        .click();
+      cy.get("aside").findByText("Saved question").click();
+
+      H.modal().findByText(RESTRICTED_COLLECTION_NAME).should("not.exist");
     });
 
-    it("allows setting saved question as custom destination and changing it back to default click behavior", () => {
+    it("allows setting saved question as custom destination and changing it back to default click behavior, but not updating dashboard filters if there are none", () => {
       H.createQuestion(TARGET_QUESTION, { wrapId: true });
       H.createQuestionAndDashboard({ questionDetails }).then(
         ({ body: card }) => {
@@ -812,6 +767,11 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       H.editDashboard();
 
       H.getDashboardCard().realHover().icon("click").click();
+      cy.log("does not allow updating dashboard filters if there are none");
+      cy.get("aside")
+        .findByText("Update a dashboard filter")
+        .invoke("css", "pointer-events")
+        .should("equal", "none");
       addSavedQuestionDestination();
       cy.get("aside").button("Done").click();
 
@@ -892,70 +852,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       testChangingBackToDefaultBehavior();
     });
 
-    it("does not allow setting saved question as custom destination if user has no permissions to it", () => {
-      H.createCollection({ name: RESTRICTED_COLLECTION_NAME }).then(
-        ({ body: restrictedCollection }) => {
-          cy.updateCollectionGraph({
-            [USER_GROUPS.COLLECTION_GROUP]: {
-              [restrictedCollection.id]: "none",
-            },
-          });
-
-          H.createQuestion({
-            ...TARGET_QUESTION,
-            collection_id: restrictedCollection.id,
-          });
-        },
-      );
-
-      cy.signOut();
-      cy.signInAsNormalUser();
-
-      H.createQuestionAndDashboard({ questionDetails }).then(
-        ({ body: card }) => {
-          H.visitDashboard(card.dashboard_id);
-        },
-      );
-
-      H.editDashboard();
-
-      H.getDashboardCard().realHover().icon("click").click();
-      cy.get("aside").findByText("Go to a custom destination").click();
-      cy.get("aside").findByText("Saved question").click();
-
-      H.modal().findByText(RESTRICTED_COLLECTION_NAME).should("not.exist");
-    });
-
-    it("allows setting URL as custom destination and changing it back to default click behavior", () => {
-      H.createQuestionAndDashboard({ questionDetails }).then(
-        ({ body: card }) => {
-          H.visitDashboard(card.dashboard_id);
-        },
-      );
-
-      H.editDashboard();
-
-      H.getDashboardCard().realHover().icon("click").click();
-      addUrlDestination();
-      H.modal().within(() => {
-        cy.findByRole("textbox").type(URL_BASE);
-        cy.button("Done").click();
-      });
-      cy.get("aside").button("Done").click();
-
-      H.saveDashboard();
-
-      H.onNextAnchorClick((anchor) => {
-        expect(anchor).to.have.attr("href", URL_BASE);
-        expect(anchor).to.have.attr("rel", "noopener");
-        expect(anchor).to.have.attr("target", "_blank");
-      });
-      clickLineChartPoint();
-
-      testChangingBackToDefaultBehavior();
-    });
-
-    it("allows setting URL with parameters as custom destination", () => {
+    it("allows setting URL with parameters as custom destination and changing it back to default click behavior", () => {
       const dashboardDetails = {
         parameters: [DASHBOARD_FILTER_TEXT],
       };
@@ -1008,22 +905,9 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
         expect(anchor).to.have.attr("target", "_blank");
       });
       clickLineChartPoint();
-    });
 
-    it("does not allow updating dashboard filters if there are none", () => {
-      H.createQuestionAndDashboard({ questionDetails }).then(
-        ({ body: card }) => {
-          H.visitDashboard(card.dashboard_id);
-        },
-      );
-
-      H.editDashboard();
-
-      H.getDashboardCard().realHover().icon("click").click();
-      cy.get("aside")
-        .findByText("Update a dashboard filter")
-        .invoke("css", "pointer-events")
-        .should("equal", "none");
+      H.clearFilterWidget();
+      testChangingBackToDefaultBehavior();
     });
 
     it("allows updating single dashboard filter and changing it back to default click behavior", () => {
@@ -1078,7 +962,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       testChangingBackToDefaultBehavior();
     });
 
-    it("behavior is updated after linked dashboard filter has been removed", () => {
+    it("allows updating multiple dashboard filters and updates behavior after a linked dashboard filter has been removed", () => {
       const dashboardDetails = {
         parameters: [DASHBOARD_FILTER_TEXT, DASHBOARD_FILTER_TIME],
       };
@@ -1115,6 +999,24 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
 
       H.saveDashboard();
 
+      clickLineChartPoint();
+      cy.findAllByTestId("parameter-widget")
+        .should("have.length", 2)
+        .should("contain.text", POINT_COUNT)
+        .should("contain.text", POINT_CREATED_AT_FORMATTED);
+      cy.get("@originalPathname").then((originalPathname) => {
+        cy.location().should(({ pathname, search }) => {
+          expect(pathname).to.equal(originalPathname);
+          expect(search).to.equal(
+            `?${DASHBOARD_FILTER_TEXT.slug}=${POINT_COUNT}&${DASHBOARD_FILTER_TIME.slug}=${POINT_CREATED_AT}`,
+          );
+        });
+      });
+
+      H.clearFilterWidget(0);
+      H.clearFilterWidget(1);
+      cy.location("search").should("eq", "");
+
       H.editDashboard();
       cy.findByTestId("edit-dashboard-parameters-widget-container")
         .findByText(DASHBOARD_FILTER_TEXT.name)
@@ -1143,55 +1045,6 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
         .should("not.contain.text", DASHBOARD_FILTER_TEXT.name)
         .should("not.contain.text", COUNT_COLUMN_NAME);
     });
-
-    it("allows updating multiple dashboard filters", () => {
-      const dashboardDetails = {
-        parameters: [DASHBOARD_FILTER_TEXT, DASHBOARD_FILTER_TIME],
-      };
-
-      H.createQuestionAndDashboard({ questionDetails, dashboardDetails }).then(
-        ({ body: dashcard }) => {
-          H.addOrUpdateDashboardCard({
-            dashboard_id: dashcard.dashboard_id,
-            card_id: dashcard.card_id,
-            card: {
-              parameter_mappings: [
-                createTextFilterMapping({ card_id: dashcard.card_id }),
-                createTimeFilterMapping({ card_id: dashcard.card_id }),
-              ],
-            },
-          });
-          H.visitDashboard(dashcard.dashboard_id);
-          cy.location().then(({ pathname }) => {
-            cy.wrap(pathname).as("originalPathname");
-          });
-        },
-      );
-
-      H.editDashboard();
-
-      H.getDashboardCard().realHover().icon("click").click();
-      cy.get("aside").findByText("Update a dashboard filter").click();
-      addTextParameter();
-      addTimeParameter();
-      cy.get("aside").button("Done").click();
-
-      H.saveDashboard();
-
-      clickLineChartPoint();
-      cy.findAllByTestId("parameter-widget")
-        .should("have.length", 2)
-        .should("contain.text", POINT_COUNT)
-        .should("contain.text", POINT_CREATED_AT_FORMATTED);
-      cy.get("@originalPathname").then((originalPathname) => {
-        cy.location().should(({ pathname, search }) => {
-          expect(pathname).to.equal(originalPathname);
-          expect(search).to.equal(
-            `?${DASHBOARD_FILTER_TEXT.slug}=${POINT_COUNT}&${DASHBOARD_FILTER_TIME.slug}=${POINT_CREATED_AT}`,
-          );
-        });
-      });
-    });
   });
 
   describe("table", () => {
@@ -1200,28 +1053,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       parameters: [DASHBOARD_FILTER_TEXT],
     };
 
-    it("should open drill-through menu as a default click-behavior", () => {
-      H.createQuestionAndDashboard({ questionDetails }).then(
-        ({ body: card }) => {
-          H.visitDashboard(card.dashboard_id);
-        },
-      );
-
-      getTableCell(COLUMN_INDEX.COUNT).click();
-      H.popover().should("contain.text", "Filter by this value");
-
-      getTableCell(COLUMN_INDEX.CREATED_AT).click();
-      H.popover().should("contain.text", "Filter by this date and time");
-
-      H.editDashboard();
-
-      H.getDashboardCard().realHover().icon("click").click();
-      H.getDashboardCard()
-        .button()
-        .should("have.text", "Open the drill-through menu");
-    });
-
-    it("should allow setting dashboard and saved question as custom destination for different columns", () => {
+    it("should open drill-through menu by default and allow setting dashboard and saved question as custom destination for different columns", () => {
       H.createQuestion(TARGET_QUESTION);
       H.createDashboard(
         {
@@ -1248,9 +1080,19 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
         },
       );
 
+      cy.log("drill-through menu is the default click behavior");
+      getTableCell(COLUMN_INDEX.COUNT).click();
+      H.popover().should("contain.text", "Filter by this value");
+
+      getTableCell(COLUMN_INDEX.CREATED_AT).click();
+      H.popover().should("contain.text", "Filter by this date and time");
+
       H.editDashboard();
 
       H.getDashboardCard().realHover().icon("click").click();
+      H.getDashboardCard()
+        .button()
+        .should("have.text", "Open the drill-through menu");
 
       (function addCustomDashboardDestination() {
         cy.log("custom destination (dashboard) behavior for 'Count' column");
@@ -1587,7 +1429,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       cy.intercept("GET", "/api/embed/dashboard/**/card/*").as("cardQuery");
     });
 
-    it("does not allow opening custom dashboard destination", () => {
+    it("does not allow opening custom dashboard and question destinations", () => {
       const dashboardDetails = {
         enable_embedding: true,
         embedding_params: {},
@@ -1604,49 +1446,6 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
           idAlias: "targetDashboardId",
         },
       );
-      cy.get("@targetDashboardId").then((targetDashboardId) => {
-        H.createQuestionAndDashboard({
-          questionDetails,
-          dashboardDetails,
-        }).then(({ body: card }) => {
-          H.addOrUpdateDashboardCard({
-            dashboard_id: card.dashboard_id,
-            card_id: card.card_id,
-            card: {
-              id: card.id,
-              visualization_settings: {
-                click_behavior: {
-                  parameterMapping: {},
-                  targetId: targetDashboardId,
-                  linkType: "dashboard",
-                  type: "link",
-                },
-              },
-            },
-          });
-
-          H.visitEmbeddedPage({
-            resource: { dashboard: card.dashboard_id },
-            params: {},
-          });
-          cy.wait("@dashboard");
-          cy.wait("@cardQuery");
-        });
-      });
-
-      cy.url().then((originalUrl) => {
-        clickLineChartPoint();
-        cy.url().should("eq", originalUrl);
-      });
-      cy.get("header").findByText(TARGET_DASHBOARD.name).should("not.exist");
-    });
-
-    it("does not allow opening custom question destination", () => {
-      const dashboardDetails = {
-        enable_embedding: true,
-        embedding_params: {},
-      };
-
       H.createQuestion(
         {
           ...TARGET_QUESTION,
@@ -1658,38 +1457,59 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
           idAlias: "targetQuestionId",
         },
       );
-      cy.get("@targetQuestionId").then((targetQuestionId) => {
-        H.createQuestionAndDashboard({
-          questionDetails,
-          dashboardDetails,
-        }).then(({ body: card }) => {
-          H.addOrUpdateDashboardCard({
-            dashboard_id: card.dashboard_id,
-            card_id: card.card_id,
-            card: {
-              id: card.id,
-              visualization_settings: {
-                click_behavior: {
-                  parameterMapping: {},
-                  targetId: targetQuestionId,
-                  linkType: "question",
-                  type: "link",
+
+      cy.get("@targetDashboardId").then((targetDashboardId) => {
+        cy.get("@targetQuestionId").then((targetQuestionId) => {
+          H.createDashboardWithQuestions({
+            dashboardDetails,
+            questions: [questionDetails, questionDetails],
+            cards: [
+              {
+                row: 0,
+                col: 0,
+                visualization_settings: {
+                  click_behavior: {
+                    parameterMapping: {},
+                    targetId: targetDashboardId,
+                    linkType: "dashboard",
+                    type: "link",
+                  },
                 },
               },
-            },
+              {
+                row: 0,
+                col: 12,
+                visualization_settings: {
+                  click_behavior: {
+                    parameterMapping: {},
+                    targetId: targetQuestionId,
+                    linkType: "question",
+                    type: "link",
+                  },
+                },
+              },
+            ],
+          }).then(({ dashboard }) => {
+            H.visitEmbeddedPage({
+              resource: { dashboard: dashboard.id },
+              params: {},
+            });
+            cy.wait("@dashboard");
+            cy.wait(["@cardQuery", "@cardQuery"]);
           });
-
-          H.visitEmbeddedPage({
-            resource: { dashboard: card.dashboard_id },
-            params: {},
-          });
-          cy.wait("@dashboard");
-          cy.wait("@cardQuery");
         });
       });
 
+      cy.log("dashboard destination");
       cy.url().then((originalUrl) => {
-        clickLineChartPoint();
+        clickLineChartPoint({ dashcardIndex: 0 });
+        cy.url().should("eq", originalUrl);
+      });
+      cy.get("header").findByText(TARGET_DASHBOARD.name).should("not.exist");
+
+      cy.log("question destination");
+      cy.url().then((originalUrl) => {
+        clickLineChartPoint({ dashcardIndex: 1 });
         cy.url().should("eq", originalUrl);
       });
       cy.get("header").findByText(TARGET_QUESTION.name).should("not.exist");
@@ -3837,10 +3657,20 @@ describe("issue 15368", () => {
   });
 });
 
-const clickLineChartPoint = () => {
-  // eslint-disable-next-line metabase/no-unsafe-element-filtering
-  H.cartesianChartCircle()
-    .eq(POINT_INDEX)
+const clickLineChartPoint = ({ dashcardIndex } = {}) => {
+  if (dashcardIndex === undefined) {
+    // eslint-disable-next-line metabase/no-unsafe-element-filtering
+    H.cartesianChartCircle().eq(POINT_INDEX).as("linePoint");
+  } else {
+    H.getDashboardCard(dashcardIndex)
+      .scrollIntoView()
+      .within(() => {
+        // eslint-disable-next-line metabase/no-unsafe-element-filtering
+        H.cartesianChartCircle().eq(POINT_INDEX).as("linePoint");
+      });
+  }
+
+  cy.get("@linePoint")
     /**
      * calling .click() here will result in clicking both
      *     g.voronoi > path[POINT_INDEX]
