@@ -177,14 +177,19 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
         const display = card.visualization_settings.virtual_card.display;
         cy.log(`does not allow to set click behavior for "${display}" card`);
 
-        H.getDashboardCard(index).realHover().icon("click").should("not.exist");
+        H.getDashboardCard(index).realHover();
+        H.getDashboardCard(index)
+          .findByLabelText("Duplicate")
+          .should("be.visible");
+        H.getDashboardCard(index).icon("click").should("not.exist");
       });
 
       cy.log('does not allow to set click behavior for "object" card');
+      H.getDashboardCard(cards.length).realHover();
       H.getDashboardCard(cards.length)
-        .realHover()
-        .icon("click")
-        .should("not.exist");
+        .findByLabelText("Duplicate")
+        .should("be.visible");
+      H.getDashboardCard(cards.length).icon("click").should("not.exist");
     });
   });
 
@@ -259,8 +264,8 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
         .should("have.css", "background-color", "rgb(80, 158, 226)");
 
       addDashboardDestination();
-      cy.get("aside").findByText("Select a dashboard tab").should("not.exist");
       cy.get("aside").findByText("No available targets").should("exist");
+      cy.get("aside").findByText("Select a dashboard tab").should("not.exist");
       cy.get("aside").button("Done").click();
 
       H.saveDashboard();
@@ -330,9 +335,9 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
 
       H.getDashboardCard().realHover().icon("click").click();
       addDashboardDestination();
+      addTextParameter();
       cy.get("aside").findByText("Select a dashboard tab").should("not.exist");
       cy.get("aside").findByText("No available targets").should("not.exist");
-      addTextParameter();
       addTimeParameter();
       cy.get("aside").button("Done").click();
 
@@ -681,16 +686,16 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
 
       H.getDashboardCard(0).realHover().icon("click").click();
       addDashboardDestination();
+      addTextParameter();
       cy.get("aside").findByText("Select a dashboard tab").should("not.exist");
       cy.get("aside").findByText("No available targets").should("not.exist");
-      addTextParameter();
       cy.get("aside").button("Done").click();
 
       H.getDashboardCard(1).realHover().icon("click").click();
       addDashboardDestination();
+      addTextWithDefaultParameter();
       cy.get("aside").findByText("Select a dashboard tab").should("not.exist");
       cy.get("aside").findByText("No available targets").should("not.exist");
-      addTextWithDefaultParameter();
       cy.get("aside").button("Done").click();
 
       H.saveDashboard();
@@ -773,6 +778,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       cy.get("aside").findByText("Go to a custom destination").click();
       cy.get("aside").findByText("Dashboard").click();
 
+      H.modal().findByText("Orders in a dashboard").should("be.visible");
       H.modal().findByText(RESTRICTED_COLLECTION_NAME).should("not.exist");
 
       cy.log("reset the link type and pick a saved question");
@@ -785,6 +791,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
         .click();
       cy.get("aside").findByText("Saved question").click();
 
+      H.modal().findByText("Orders").should("be.visible");
       H.modal().findByText(RESTRICTED_COLLECTION_NAME).should("not.exist");
     });
 
@@ -1071,6 +1078,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
 
       H.getDashboardCard().realHover().icon("click").click();
       cy.get("aside")
+        .should("contain.text", DASHBOARD_FILTER_TIME.name)
         .should("not.contain.text", DASHBOARD_FILTER_TEXT.name)
         .should("not.contain.text", COUNT_COLUMN_NAME);
     });
@@ -1126,14 +1134,15 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       (function addCustomDashboardDestination() {
         cy.log("custom destination (dashboard) behavior for 'Count' column");
 
+        cy.get("aside").findByText(COUNT_COLUMN_NAME).should("be.visible");
         getCountToDashboardMapping().should("not.exist");
         cy.get("aside").findByText(COUNT_COLUMN_NAME).click();
         addDashboardDestination();
+        addTextParameter();
         cy.get("aside")
           .findByText("Select a dashboard tab")
           .should("not.exist");
         cy.get("aside").findByText("No available targets").should("not.exist");
-        addTextParameter();
         addTimeParameter();
         customizeLinkText(`Count: {{${COUNT_COLUMN_ID}}}`);
 
@@ -1150,6 +1159,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
           "custom destination (question) behavior for 'Created at' column",
         );
 
+        cy.get("aside").findByText(CREATED_AT_COLUMN_NAME).should("be.visible");
         getCreatedAtToQuestionMapping().should("not.exist");
         cy.get("aside").findByText(CREATED_AT_COLUMN_NAME).click();
         addSavedQuestionDestination();
@@ -1359,6 +1369,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       (function addUpdateDashboardFilters() {
         cy.log("update dashboard filters behavior for 'Count' column");
 
+        cy.get("aside").findByText(COUNT_COLUMN_NAME).should("be.visible");
         getCountToDashboardFilterMapping().should("not.exist");
         cy.get("aside").findByText(COUNT_COLUMN_NAME).click();
         cy.get("aside").findByText("Update a dashboard filter").click();
@@ -1379,6 +1390,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
           "custom destination (URL_BASE) behavior for 'Created At' column",
         );
 
+        cy.get("aside").findByText(CREATED_AT_COLUMN_NAME).should("be.visible");
         getCreatedAtToUrlMapping().should("not.exist");
         cy.get("aside").findByText(CREATED_AT_COLUMN_NAME).click();
         addUrlDestination();
@@ -1457,6 +1469,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
 
     it("does not allow opening custom dashboard and question destinations", () => {
       const dashboardDetails = {
+        name: "Embedded dashboard",
         enable_embedding: true,
         embedding_params: {},
       };
@@ -1531,6 +1544,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
         clickLineChartPoint({ dashcardIndex: 0 });
         cy.url().should("eq", originalUrl);
       });
+      cy.get("header").findByText(dashboardDetails.name).should("be.visible");
       cy.get("header").findByText(TARGET_DASHBOARD.name).should("not.exist");
 
       cy.log("question destination");
@@ -1538,6 +1552,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
         clickLineChartPoint({ dashcardIndex: 1 });
         cy.url().should("eq", originalUrl);
       });
+      cy.get("header").findByText(dashboardDetails.name).should("be.visible");
       cy.get("header").findByText(TARGET_QUESTION.name).should("not.exist");
     });
 
@@ -1932,10 +1947,10 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
         `Started from ${targetQuestion.name}`,
       );
 
+      H.queryBuilderMain().findByText("No results").should("be.visible");
       H.queryBuilderMain()
         .findByText("There was a problem with your question")
         .should("not.exist");
-      H.queryBuilderMain().findByText("No results").should("be.visible");
 
       H.openNotebook();
       H.verifyNotebookQuery("Orders", [
