@@ -108,14 +108,14 @@ window.SAMPLE_CONTEXTS = {
     logoHeader: true,
     heading: "We hope you've been enjoying Metabase.",
     callToAction: "Would you mind taking a quick 5 minute survey to tell us how it's going?",
-    link: "https://metabase.com/feedback/active",
+    link: "https://www.metabase.com/feedback/active",
   },
 
   creator_sentiment_email: {
     emailType: "notification",
     logoHeader: true,
     "first-name": "Meredith",
-    link: "https://metabase.com/feedback/creator",
+    link: "https://www.metabase.com/feedback/creator",
     "self-hosted": "http://localhost:3000",
   },
 

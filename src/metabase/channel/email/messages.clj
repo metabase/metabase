@@ -313,7 +313,7 @@
                         :logoHeader   true
                         :heading      (trs "We hope you''ve been enjoying Metabase.")
                         :callToAction (trs "Would you mind taking a quick 5 minute survey to tell us how it’s going?")
-                        :link         "https://metabase.com/feedback/active"})
+                        :link         "https://www.metabase.com/feedback/active"})
         email-msg {:subject      (trs "[{0}] Tell us how things are going." (app-name-trs))
                    :recipients   [email]
                    :message-type :html
@@ -334,7 +334,7 @@
                        {:emailType  "notification"
                         :logoHeader true
                         :first-name first_name
-                        :link       (cond-> "https://metabase.com/feedback/creator"
+                        :link       (cond-> "https://www.metabase.com/feedback/creator"
                                       encoded-info (str "?context=" encoded-info))}
                        (when-not (premium-features/is-hosted?)
                          {:self-hosted (system/site-url)}))

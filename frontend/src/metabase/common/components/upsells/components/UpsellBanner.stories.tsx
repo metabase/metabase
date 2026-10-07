@@ -59,7 +59,7 @@ const SecondaryTemplate = ({ children, ...args }: UpsellBannerProps) => (
         {children}
         <ExternalLink
           className={S.SecondaryCTALink}
-          href="https://www.metabase.com/docs"
+          href="https://www.metabase.com/docs/latest/"
         >
           Learn more
         </ExternalLink>
