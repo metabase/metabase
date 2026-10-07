@@ -15,12 +15,16 @@
    [metabase.search.core :as search]
    [metabase.search.spec :as search.spec]
    [metabase.settings.core :as setting]
+   [metabase.task.core :as task]
    [metabase.test :as mt]
    [metabase.test.initialize :as initialize]
    [metabase.test.util :as tu]
    [metabase.test.util.thread-local :as tu.thread-local]
    [metabase.util :as u]
+   [metabase.util.log :as log]
    [toucan2.core :as t2]))
+
+(set! *warn-on-reflection* true)
 
 (defn generate-collection-yaml
   "Generate YAML content for a collection with the given `entity-id` and `name`.
@@ -615,17 +619,45 @@ width: fixed
 (defonce ^:private another-writer-warning-logged?
   (atom false))
 
+(defn- started-scheduler?
+  "Whether the Quartz scheduler that [[task/scheduler]] returns runs jobs: it is started, not in standby, and not shut
+  down."
+  []
+  (when-let [^org.quartz.Scheduler scheduler (task/scheduler)]
+    (and (.isStarted scheduler)
+         (not (.isInStandbyMode scheduler))
+         (not (.isShutdown scheduler)))))
+
+(defn- warn-when-another-writer-can-be-active
+  "Test fixture that logs one WARN line per JVM when a started Quartz scheduler can run jobs that write the app DB
+  during the test, for example after `dev/start!`. The line names what [[clean-remote-sync-state]] deletes and writes
+  back. It does not stop the test."
+  [f]
+  ;; the test runner starts its own Jetty server with the handler of `dev/start!`, so a Jetty instance does not show
+  ;; another writer; `dev/start!` also starts the scheduler, and the test runner does not
+  (when (and (started-scheduler?)
+             (compare-and-set! another-writer-warning-logged? false true))
+    (log/warnf (str "A started Quartz scheduler can run jobs that write the app DB during a remote-sync test. After "
+                    "each test, clean-remote-sync-state deletes the %s rows that any writer added during the test. It "
+                    "replaces the RemoteSyncObject, RemoteSyncTask, Transform, PythonLibrary and TransformTag rows "
+                    "(not the built-in TransformTags) and the Collections of the transforms and snippets namespaces "
+                    "with the rows from before the test. It writes back each remote-sync%% setting row that changed "
+                    "during the test. This warning is logged once per JVM.")
+               (str/join ", " (map name imported-content-models))))
+  (f))
+
 (def clean-remote-sync-state
   "Composed test fixture that ensures RemoteSyncObject, RemoteSyncTask, and optional feature
   model tables (Transform, TransformTag, PythonLibrary) are clean, that no stored `remote-sync-transforms` value
   adds a ledger row, that the stored `remote-sync%` setting rows after the test equal the rows before it, and that
-  content the test imported (Dashboards, Cards, Actions, Documents, DataApps, Collections) does not outlive it.
+  content the test imported (Dashboards, Cards, Actions, Documents, DataApps, Collections) does not outlive it. Logs
+  one WARN line per JVM when a started Quartz scheduler can write the app DB during the test.
 
   Use as the first `:each` fixture, so that a setting binding in a later fixture ends before the write-back; a `:once`
   fixture must bind no remote-sync setting. Carries `{::shared-fixture true}`."
   (with-meta
-   (t/join-fixtures [clean-imported-content clean-object clean-remote-sync-settings clean-task-table
-                     clean-optional-feature-models])
+   (t/join-fixtures [warn-when-another-writer-can-be-active clean-imported-content clean-object
+                     clean-remote-sync-settings clean-task-table clean-optional-feature-models])
    {::shared-fixture true}))
 
 (def clean-remote-sync-state-without-reindex
