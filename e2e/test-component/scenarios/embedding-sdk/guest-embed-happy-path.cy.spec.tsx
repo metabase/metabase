@@ -13,7 +13,7 @@ import {
   mountGuestEmbedQuestion,
 } from "e2e/support/helpers/embedding-sdk-component-testing";
 import { signInAsAdminAndSetupGuestEmbedding } from "e2e/support/helpers/embedding-sdk-testing";
-import { questionAsPinMapWithTiles } from "e2e/test/scenarios/embedding/shared/embedding-questions";
+import { questionAsPinMapWithTiles } from "e2e/test/scenarios/embedding/static/shared/embedding-questions";
 import type { Card } from "metabase-types/api";
 
 const { ORDERS, ORDERS_ID, PEOPLE_ID } = SAMPLE_DATABASE;

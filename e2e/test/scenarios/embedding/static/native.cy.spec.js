@@ -1,7 +1,7 @@
 import { clone } from "metabase/utils/clone";
 const { H } = cy;
 
-import * as SQLFilter from "../native/helpers/e2e-sql-filter-helpers";
+import * as SQLFilter from "../../native/helpers/e2e-sql-filter-helpers";
 
 import {
   questionDetails as questionDetails2,

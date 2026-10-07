@@ -3,7 +3,7 @@ import {
   ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
 
-import { getEmbedSidebar } from "../embedding/sdk-iframe-embedding-setup/helpers";
+import { getEmbedSidebar } from "../embedding/setup-wizard/helpers";
 
 const { H } = cy;
 

@@ -7,7 +7,7 @@ import {
 import { createMockParameter } from "metabase-types/api/mocks";
 
 const { PRODUCTS, PRODUCTS_ID, PEOPLE } = SAMPLE_DATABASE;
-import * as DateFilter from "../native/helpers/e2e-date-filter-helpers";
+import * as DateFilter from "../../native/helpers/e2e-date-filter-helpers";
 
 /** These tests are about the `downloads` flag for static embeds, both dashboards and questions.
  *  Unless the product changes, these should test the same things as `public-resource-downloads.cy.spec.ts`

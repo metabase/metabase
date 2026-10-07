@@ -3,7 +3,7 @@ import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
 import { createMockParameter } from "metabase-types/api/mocks";
 
-import { addWidgetStringFilter } from "../native/helpers/e2e-field-filter-helpers";
+import { addWidgetStringFilter } from "../../native/helpers/e2e-field-filter-helpers";
 
 import {
   dashboardDetails,
@@ -1091,7 +1091,7 @@ describe("scenarios > embedding > dashboard appearance", () => {
         const baseUrl = Cypress.config("baseUrl");
         Cypress.config("baseUrl", null);
         cy.visit(
-          `e2e/test/scenarios/embedding/embedding-dashboard.html?iframeUrl=${baseUrl + urlOptions.url}`,
+          `e2e/test/scenarios/embedding/static/embedding-dashboard.html?iframeUrl=${baseUrl + urlOptions.url}`,
         );
       });
 
