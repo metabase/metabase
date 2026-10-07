@@ -67,6 +67,17 @@
                     [:user-message {:optional true} :string]
                     [:data         {:optional true} :map]]]])
 
+(mr/def ::recoverable
+  "The recoverable branch of [[::tool-error]], on its own. Referenced where only a recoverable error
+  is admissible — a batched tool's failed entry, for instance: a validation error cannot arise
+  inside a handler, and an unrecoverable one by definition cannot be survived."
+  [:map {:closed true}
+   [:class    [:= :recoverable]]
+   [:code     :qualified-keyword]
+   [:message  :string]
+   [:recovery [:sequential ::recovery-step]]
+   [:data     :map]])
+
 (mr/def ::recoverable-body
   "What a [[defrecoverable]] body returns: the model-facing text for this failure."
   [:map {:closed true}
@@ -277,6 +288,37 @@
                               :payload-schema ~(:payload opts)
                               :status-code    ~(:status-code opts 400)
                               :build-fn       (fn ~argv ~@body)}))))
+
+;;; ------------------------------------------ Reading a recoverable error -----------------------------------------
+
+;;; A recoverable error becomes model-facing text in two places — a call that failed outright, and
+;;; one item of a batched call that mostly worked. Both go through [[recoverable-text]], so the
+;;; agent cannot tell the two apart from the wording, only from where it appears. Tool code does not
+;;; call these; the framework does.
+
+(defn recovery-steps-for-tools
+  "The subset of `recovery` whose steps only name tools in `tool-names`.
+
+  A step naming a tool the profile lacks is dropped, not rewritten: half a sentence about
+  `read_resource` is worse than silence."
+  [recovery tool-names]
+  (let [available (set tool-names)]
+    (filterv #(every? available (:uses %)) recovery)))
+
+(defn names-a-tool?
+  "Whether `text` names a tool in backticks, e.g. \"call `read_resource`\". Used by the runtime's
+  dev/test assertions, which hold that only recovery steps name tools and only ones they declare."
+  [text tool-name]
+  (str/includes? (str text) (str "`" tool-name "`")))
+
+(defn recoverable-text
+  "A recoverable `error` as the lines the model reads: the message, then each recovery step the
+  tools in `tool-names` can act on."
+  [{:keys [message recovery]} tool-names]
+  (->> (recovery-steps-for-tools recovery tool-names)
+       (map :text)
+       (cons message)
+       (str/join "\n")))
 
 ;;; ------------------------------------------ Classification ------------------------------------------------------
 

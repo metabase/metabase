@@ -23,7 +23,6 @@
    [malli.transform :as mtx]
    [metabase.api-scope.core :as api-scope]
    [metabase.config.core :as config]
-   [metabase.metabot.schema.v2 :as schema.v2]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.tools.core :as tools]
    [metabase.metabot.tools.error :as tools.error]
@@ -63,28 +62,6 @@
    [:tool-names  [:set :string]]
    [:memory-atom {:optional true} :any]])
 
-(def ^:private DataPart
-  "One entry of a handler's `:data-parts`: `metabase.metabot.agent.streaming`'s `{:type :data, …}`
-  constructors."
-  [:map {:closed true}
-   [:type      [:= :data]]
-   [:data-type :string]
-   [:data      {:optional true} [:maybe ::schema.v2/tool-io]]])
-
-(mr/def ::handler-result
-  "What a handler returns. Success only — a failure is thrown.
-
-  `:output` is required and is the whole of what the model reads, so instructions belong in it
-  rather than in a separate key. `:structured-output` is not a success signal and is not a second
-  copy of the output: include it only when a named consumer reads it (the agent loop's query and
-  chart memory and its markdown link buffer, `metabase.metabot.used-tables`, the document API's
-  chart draft, `metabase.metabot.agent.user-context`, and EE analytics persistence)."
-  [:map {:closed true}
-   [:output            :string]
-   [:structured-output {:optional true} ::schema.v2/tool-io]
-   [:data-parts        {:optional true} [:sequential DataPart]]
-   [:resources         {:optional true} [:sequential ::schema.v2/tool-io]]])
-
 (mr/def ::outcome
   "What [[invoke]] returns to `self/` and the agent loop.
 
@@ -92,7 +69,7 @@
   to the machine-readable `:error`. Success is the absence of `:error`; nothing has to inspect
   `:structured-output` to tell the two apart."
   [:multi {:dispatch #(if (:error %) :failure :success)}
-   [:success ::handler-result]
+   [:success ::tools/result]
    [:failure [:map {:closed true}
               [:output :string]
               [:error  [:map {:closed true}
@@ -212,14 +189,14 @@
   and test only."
   [{:keys [message recovery]} tool-names]
   (doseq [tool-name tool-names
-          :when     (tools/names-a-tool? message tool-name)]
+          :when     (tools.error/names-a-tool? message tool-name)]
     (throw (ex-info (str "A recoverable error's :message names the tool `" tool-name
                          "`. Only recovery steps name tools, so that a profile without the tool "
                          "loses the advice instead of the whole message.")
                     {:tool-name tool-name})))
   (doseq [{:keys [uses text]} recovery
           tool-name           tool-names
-          :when               (and (tools/names-a-tool? text tool-name)
+          :when               (and (tools.error/names-a-tool? text tool-name)
                                    (not (contains? uses tool-name)))]
     (throw (ex-info (str "A recovery step names the tool `" tool-name "` without declaring it in "
                          ":uses, so it would survive into a profile that has no such tool.")
@@ -244,9 +221,10 @@
   [{:keys [class code message recovery user-message]} tool-names]
   (let [output (case class
                  :validation  message
-                 ;; The same assembly a tool uses for an `attempt`ed failure, so that a `not-found!`
-                 ;; reads identically whether it ended the call or was one of several things tried.
-                 :recoverable (tools/recoverable-text {:message message :recovery recovery} tool-names)
+                 ;; The same assembly an item's failure gets, so a `not-found!` reads identically
+                 ;; whether it ended the call or was one of several things the call tried.
+                 :recoverable (tools.error/recoverable-text {:message message :recovery recovery}
+                                                            tool-names)
                  (unrecoverable-output code))]
     (when (or config/is-dev? config/is-test?)
       (assert-authored! output (str class " " code))
@@ -272,7 +250,8 @@
                       (str/join ", " (sort (keys entries))) ".")))
 
 (defn- check-scope!
-  "Throw an unrecoverable `:scope-denied` error when the current user's scope does not cover `entry`.
+  "Throw an unrecoverable `:scope-denied` error when the current user's scope does not cover the
+  tool's declaration.
 
   Unrecoverable rather than recoverable: the agent cannot acquire a scope, so there is no alternative
   path to offer it, and a profile that lists a tool the user may not call is a configuration problem
@@ -288,8 +267,9 @@
                                  :data         {:tool-name tool-name :scope scope}})))
 
 (defn- validated-args
-  "`args` coerced and checked against `entry`'s `:args` schema. Throws a validation error otherwise."
-  [{:keys [args] :as _entry} arguments]
+  "`args` coerced and checked against the declaration's `:args` schema. Throws a validation error
+  otherwise."
+  [{:keys [args]} arguments]
   (when (and (map? arguments) (contains? arguments raw-arguments-key))
     (throw (validation-ex :invalid-json invalid-json-message)))
   (let [coerced (coerce-stringified-scalars args arguments)]
@@ -297,17 +277,21 @@
       (throw (validation-ex :invalid-arguments message)))
     coerced))
 
-(defn- call-handler
-  "Call `entry`'s handler with `args` and `ctx`, with the dynamic vars bound from `ctx`.
+(defn- call-tool
+  "Call `tool`'s `handle` with `args` and `ctx`, with the dynamic vars bound from `ctx`.
 
-  The vars are bound as well as the ctx passed because code the handler reaches *through* does not
-  take a ctx — `metabase.metabot.tools.shared.content-store`, which the representations pipeline
-  uses, reads the vars. Handlers themselves read ctx."
-  [{:keys [handler]} args {:keys [metabot-id profile-id memory-atom] :as ctx}]
+  `handle` is the only thing the runtime asks of a tool. Whether that tool does one thing or one
+  thing per item is its own business, decided by what its `handle` delegates to — see
+  `tools.core/BatchedTool`.
+
+  The vars are bound as well as the ctx passed because code a tool reaches *through* does not take a
+  ctx — `metabase.metabot.tools.shared.content-store`, which the representations pipeline uses, reads
+  the vars. Tools themselves read ctx."
+  [tool args {:keys [metabot-id profile-id memory-atom] :as ctx}]
   (binding [shared/*metabot-id*  metabot-id
             shared/*profile-id*  profile-id
             shared/*memory-atom* memory-atom]
-    (handler args ctx)))
+    (tools/handle tool args ctx)))
 
 (defn- checked-result
   "`result` if it is a valid [[::handler-result]]; otherwise an unrecoverable `:internal` error.
@@ -315,11 +299,11 @@
   A handler that returns the wrong shape is a bug in our code, not something to teach the model
   about, so the explanation goes to the log and the model is told only that the call failed."
   [tool-name result]
-  (if (mr/validate ::handler-result result)
+  (if (mr/validate ::tools/result result)
     result
     (do
       (log/errorf "Tool %s returned an invalid result: %s"
-                  tool-name (some-> (mr/explain ::handler-result result) me/humanize pr-str))
+                  tool-name (some-> (mr/explain ::tools/result result) me/humanize pr-str))
       (tools.error/unrecoverable! :internal {:data {:tool-name tool-name}}))))
 
 (defn- log-failure!
@@ -333,8 +317,8 @@
 (defn invoke
   "Run the tool `tool-name` from `entries` with `args`, and return an [[::outcome]].
 
-  `entries` is one profile's map of tool name to `tools.core/entry`; `args` are the arguments after
-  JSON parsing. Never throws — every failure comes back as a failure outcome, because the caller has
+  `entries` is one profile's map of tool name to `{:declaration … :tool …}` (see
+  `tools.core/entries`); `args` are the arguments after JSON parsing. Never throws — every failure comes back as a failure outcome, because the caller has
   to pair each `tool_use` with a `tool_result` and an escaping exception would break that pairing.
 
   In order:
@@ -342,17 +326,17 @@
   2. arguments that were not valid JSON are a validation error (see [[raw-arguments-key]]);
   3. stringified scalars are coerced, then the arguments are validated against `:args`;
   4. the scope is checked, and a denial is unrecoverable;
-  5. the handler runs, with the dynamic vars bound from `ctx`;
-  6. its result is validated;
+  5. the tool's `handle` runs, with the dynamic vars bound from `ctx`;
+  6. its result is validated against `tools.core/result`;
   7. any exception is classified, logged in full, and rendered for its audience."
   [entries ctx tool-name args]
   (let [tool-names (:tool-names ctx)]
     (try
-      (let [entry   (or (get entries tool-name)
-                        (throw (unknown-tool-ex tool-name entries)))
-            checked (validated-args entry args)]
-        (check-scope! entry)
-        (->> (call-handler entry checked ctx)
+      (let [{:keys [declaration tool]} (or (get entries tool-name)
+                                           (throw (unknown-tool-ex tool-name entries)))
+            checked                     (validated-args declaration args)]
+        (check-scope! declaration)
+        (->> (call-tool tool checked ctx)
              (checked-result tool-name)))
       (catch Throwable e
         (let [error (tools.error/classify e)]
