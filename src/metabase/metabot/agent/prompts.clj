@@ -162,6 +162,12 @@
             has-sql?             (and (= :yes (:permission/metabot-sql-generation perms))
                                       (boolean (some sql-generation-tool-names (keys tools))))
             has-nlq?             (= :yes (:permission/metabot-nlq perms))
+            ;; The NLQ permission does not by itself give the model the notebook builder (:internal-sql omits
+            ;; it), so guidance that names the builder needs the tool too, as the SQL guidance does.
+            has-notebook?        (and has-nlq? (contains? tools "construct_notebook_query"))
+            has-sql-execution?   (and (contains? tools "run_query")
+                                      has-sql?
+                                      (scope/sql-execution-allowed?))
             template-context     {:metabot_name              (metabot.settings/metabot-name)
                                   :sql_dialect              sql-dialect
                                   :sql_dialect_loaded       (some? (skills/dialect-skill sql-dialect))
@@ -173,14 +179,16 @@
                                   :skill_always_on          (mapv :body always-on)
                                   :has_sql_generation       has-sql?
                                   :has_nlq                  has-nlq?
-                                  :has_query_tools          (or has-sql? has-nlq?)
+                                  :has_notebook_query       has-notebook?
+                                  :has_query_tools          (or has-sql? has-notebook?)
                                   :has_other_tools          (= :yes (:permission/metabot-other-tools perms))
-                                  :has_query_execution      (contains? tools "run_query")
+                                  ;; run_query reads values only from a query the model can build and run: a
+                                  ;; notebook query, or SQL where run_query may run it.
+                                  :has_query_execution      (and (contains? tools "run_query")
+                                                                 (or has-notebook? has-sql-execution?))
                                   ;; The SQL guidance tells the model to write SQL and run it, so it needs the
                                   ;; SQL tools as well as everything run_query checks before it runs SQL.
-                                  :has_sql_execution        (and (contains? tools "run_query")
-                                                                 has-sql?
-                                                                 (scope/sql-execution-allowed?))
+                                  :has_sql_execution        has-sql-execution?
                                   :custom_instructions      (not-empty
                                                              (case template-name
                                                                ;; both nlq templates (curated + general-search

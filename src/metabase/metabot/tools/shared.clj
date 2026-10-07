@@ -68,6 +68,14 @@
   []
   (get-in (current-memory) [:state :chart-configs] {}))
 
+(defn tool-available?
+  "Whether the current agent session offers the tool named `tool-name`. Without a session, or one that did not record
+  its tools, every tool counts as offered."
+  [tool-name]
+  (let [tool-names (:tool-names (current-memory))]
+    (or (nil? tool-names)
+        (contains? tool-names tool-name))))
+
 (defn current-context
   "Returns the current agent context from memory."
   []

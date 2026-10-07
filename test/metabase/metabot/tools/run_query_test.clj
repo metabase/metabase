@@ -5,6 +5,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.metabot.scope :as scope]
+   [metabase.metabot.tools :as tools]
    [metabase.metabot.tools.run-query :as run-query]
    [metabase.metabot.tools.shared :as shared]
    [metabase.permissions.core :as perms]
@@ -625,3 +626,52 @@
             (is (= {:output (not-read-only-output "It writes, takes a lock, or advances a sequence.")}
                    (run-sql-tool! {"q1" query} {:query_id "q1"})))))
         (is (= [] @driver-ran-sql))))))
+
+(defn- run-sql-only-tool!
+  "[[run-sql-tool!]] in a session whose tools, as the agent loop records them, lack construct_notebook_query. SQL
+  execution is on unless `sql-execution?` says otherwise."
+  ([queries args]
+   (run-sql-only-tool! true queries args))
+  ([sql-execution? queries args]
+   (mt/with-temporary-setting-values [metabot-query-execution-enabled? true
+                                      metabot-sql-execution-enabled?   sql-execution?]
+     (binding [scope/*current-user-metabot-permissions* scope/all-yes-permissions
+               scope/*current-user-scope*               (scope/user-metabot-perms->scopes scope/all-yes-permissions)]
+       (mt/with-current-user (mt/user->id :rasta)
+         (binding [shared/*memory-atom* (atom {:state      {:queries queries}
+                                               :tool-names #{"create_sql_query" "run_query"}})]
+           (run-query/run-query-tool args)))))))
+
+(deftest run-query-without-notebook-builder-test
+  (testing "without construct_notebook_query, refusals point at SQL or at telling the user, never at the builder"
+    (testing "an unknown id"
+      (is (= {:output (str "No query with id nope. Known query ids: [q1]. A saved question or model has no query id: "
+                           "to run one, write SQL that reads it using create_sql_query, then run that query.")}
+             (run-sql-only-tool! {"q1" (venues-by-id)} {:query_id "nope"}))))
+    (testing "SQL while SQL execution is off"
+      (is (= {:output (str "run_query can't run SQL here, and this one is a SQL query. "
+                           "Tell the user you can't read its results.")}
+             (run-sql-only-tool! false {"q1" (mt/native-query {:query "SELECT 1"})} {:query_id "q1"}))))
+    (testing "SQL that is not a single read-only SELECT"
+      (is (= {:output (str "run_query only runs a single read-only SELECT statement, and query q1 is not one. "
+                           "It is not a SELECT. Rewrite it as one SELECT that changes and locks nothing.")}
+             (run-sql-only-tool! {"q1" (mt/native-query {:query "DELETE FROM VENUES"})} {:query_id "q1"})))))
+  (testing "a read-only SELECT still runs"
+    (is (=? {:structured-output {:query-id "q1" :returned 1}}
+            (run-sql-only-tool! {"q1" (mt/native-query {:query "SELECT COUNT(*) FROM VENUES"})} {:query_id "q1"})))))
+
+(deftest run-query-description-test
+  (let [description (fn [tool-names]
+                      (-> (tools/wrap-tools-with-state (select-keys {"run_query"                #'tools/run-query-tool
+                                                                     "construct_notebook_query" #'tools/construct-notebook-query-tool}
+                                                                    tool-names)
+                                                       (atom nil) nil :internal)
+                          (get-in ["run_query" :doc])))]
+    (testing "with the notebook builder the description is the docstring"
+      (is (= (:doc (meta #'tools/run-query-tool))
+             (description ["run_query" "construct_notebook_query"]))))
+    (testing "without it the description points at SQL only"
+      (let [doc (description ["run_query"])]
+        (is (str/includes? doc "write SQL that reads it with create_sql_query"))
+        (is (not (str/includes? doc "construct_notebook_query")))
+        (is (not (str/includes? doc "notebook")))))))
