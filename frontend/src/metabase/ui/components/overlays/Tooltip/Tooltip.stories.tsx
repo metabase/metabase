@@ -84,6 +84,7 @@ export default {
 
 export const Default = {
   render: DefaultTemplate,
+  tags: ["no-visual"],
   parameters: { loki: { skip: true } },
 };
 

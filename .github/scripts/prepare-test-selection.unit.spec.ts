@@ -228,6 +228,13 @@ describe("test selection workflow steps", () => {
     expect(jobs["visual-test"].if).not.toMatch(/outputs\.[\w-]+ *[!=]= *'\d+'/);
   });
 
+  it("skips Playwright visual tests for an empty story selection unless the runner changed", () => {
+    const { jobs } = loadWorkflow("loki.yml");
+    expect(jobs["playwright-visual-test"].if).toContain(
+      "(contains(fromJSON(needs.gate.outputs.matched), 'frontend_visual_infra') || needs.story-selection.outputs.selection != 'empty')",
+    );
+  });
+
   it.each(Object.entries(CONSUMERS))(
     "selects tests through the composite action in %s",
     (file, { suite, ...inputs }) => {
