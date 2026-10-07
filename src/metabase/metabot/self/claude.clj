@@ -475,8 +475,7 @@
   restrictions, which the model-id-derived config and the suppression rules below cannot describe."
   [{:keys [model system input tools schema tool_choice temperature max-tokens reasoning? reasoning-config fast? ai-proxy?]
     :or   {model default-model reasoning? true}} :- core/LLMRequestOpts]
-  (let [;; models that reject a forced tool choice get "auto"; the model can then answer without a tool call
-        force-ok? (supports-forced-tool-choice? model)
+  (let [force-ok? (supports-forced-tool-choice? model)
         ;; forced tool choice (structured output, or "required") is incompatible
         ;; with thinking — suppress it there.
         forced?   (and force-ok? (or (some? schema) (= "required" (some-> tool_choice name))))
