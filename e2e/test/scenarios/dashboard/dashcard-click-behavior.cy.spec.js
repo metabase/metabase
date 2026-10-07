@@ -284,60 +284,6 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       cy.get("@collections").should("not.have.been.called");
     });
 
-    it("allows setting dashboard with single parameter as custom destination", () => {
-      H.createDashboard(
-        {
-          ...TARGET_DASHBOARD,
-          parameters: [DASHBOARD_FILTER_TEXT],
-        },
-        {
-          wrapId: true,
-          idAlias: "targetDashboardId",
-        },
-      ).then((dashboardId) => {
-        cy.request("PUT", `/api/dashboard/${dashboardId}`, {
-          dashcards: [
-            createMockDashboardCard({
-              card_id: ORDERS_QUESTION_ID,
-              parameter_mappings: [
-                createTextFilterMapping({ card_id: ORDERS_QUESTION_ID }),
-              ],
-            }),
-          ],
-        });
-      });
-
-      H.createQuestionAndDashboard({ questionDetails }).then(
-        ({ body: card }) => {
-          H.visitDashboard(card.dashboard_id);
-        },
-      );
-
-      H.editDashboard();
-
-      H.getDashboardCard().realHover().icon("click").click();
-      addDashboardDestination();
-      cy.get("aside").findByText("Select a dashboard tab").should("not.exist");
-      cy.get("aside").findByText("No available targets").should("not.exist");
-      addTextParameter();
-      cy.get("aside").button("Done").click();
-
-      H.saveDashboard();
-
-      clickLineChartPoint();
-      cy.findAllByTestId("parameter-widget")
-        .should("have.length", 1)
-        .should("contain.text", POINT_COUNT);
-      cy.get("@targetDashboardId").then((targetDashboardId) => {
-        cy.location().should(({ pathname, search }) => {
-          expect(pathname).to.equal(`/dashboard/${targetDashboardId}`);
-          expect(search).to.equal(
-            `?${DASHBOARD_FILTER_TEXT.slug}=${POINT_COUNT}`,
-          );
-        });
-      });
-    });
-
     it("allows setting dashboard with multiple parameters as custom destination", () => {
       H.createDashboard(
         {
@@ -899,52 +845,6 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       testChangingBackToDefaultBehavior();
     });
 
-    it("allows setting saved question with single parameter as custom destination", () => {
-      H.createQuestion(TARGET_QUESTION);
-      H.createQuestionAndDashboard({ questionDetails }).then(
-        ({ body: card }) => {
-          H.visitDashboard(card.dashboard_id);
-        },
-      );
-
-      H.editDashboard();
-
-      H.getDashboardCard().realHover().icon("click").click();
-      addSavedQuestionDestination();
-      addSavedQuestionCreatedAtParameter();
-      cy.get("aside").button("Done").click();
-
-      H.saveDashboard();
-
-      clickLineChartPoint();
-      cy.findByTestId("qb-filters-panel").should(
-        "have.text",
-        "Created At is Jul 1–31, 2025",
-      );
-
-      cy.location("pathname").should("equal", "/question");
-      cy.findByTestId("app-bar").should(
-        "contain.text",
-        `Started from ${TARGET_QUESTION.name}`,
-      );
-      verifyVizTypeIsLine();
-
-      H.openNotebook();
-      H.verifyNotebookQuery("Orders", [
-        {
-          filters: ["Created At is Jul 1–31, 2025"],
-          aggregations: ["Count"],
-          breakouts: ["Created At: Month"],
-          limit: 5,
-        },
-      ]);
-
-      cy.go("back");
-      cy.log("return to the dashboard");
-      cy.go("back");
-      testChangingBackToDefaultBehavior();
-    });
-
     it("allows setting saved question with multiple parameters as custom destination", () => {
       H.createQuestion(TARGET_QUESTION);
       H.createQuestionAndDashboard({ questionDetails }).then(
@@ -985,6 +885,11 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
           limit: 5,
         },
       ]);
+
+      cy.go("back");
+      cy.log("return to the dashboard");
+      cy.go("back");
+      testChangingBackToDefaultBehavior();
     });
 
     it("does not allow setting saved question as custom destination if user has no permissions to it", () => {
@@ -2704,6 +2609,25 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
 
       H.popover().findByText("Count").click();
       H.saveDashboard();
+
+      clickLineChartPoint();
+      cy.findAllByTestId("parameter-widget")
+        .should("have.length", 1)
+        .should("contain.text", POINT_COUNT);
+      cy.get("@targetDashboardId").then((targetDashboardId) => {
+        cy.location().should(({ pathname, search }) => {
+          expect(pathname).to.equal(`/dashboard/${targetDashboardId}`);
+          expect(search).to.equal(
+            `?${DASHBOARD_FILTER_TEXT.slug}=${POINT_COUNT}`,
+          );
+        });
+      });
+
+      cy.go("back");
+      cy.location("pathname").should(
+        "equal",
+        `/dashboard/${card.dashboard_id}`,
+      );
     });
 
     cy.get("@targetDashboardId").then((targetDashboardId) => {
