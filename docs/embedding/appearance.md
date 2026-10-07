@@ -2,7 +2,7 @@
 title: "Customizing the appearance of modular embeds"
 summary: "Style your embedded Metabase components using themes to customize colors, backgrounds, and more."
 redirect_from:
-- /docs/latest/embedding/sdk/appearance
+  - /docs/latest/embedding/sdk/appearance
 ---
 
 # Customizing the appearance of modular embeds
@@ -42,17 +42,19 @@ A theme is a named set of colors and fonts that the embed wizard can copy into e
 
 ### Manage themes
 
-Go to **Admin settings > Embedding > Themes**.
+Go to **Embedding hub > Appearance**.
 
 Metabase ships with light and dark themes that pick up any appearance settings you've set on your Metabase (though you can tinker with these default themes as well, including removing them like you can any other custom theme).
 
-From the Themes tab, you can:
+In the **Themes** section, you can:
 
-- **Create a theme.** Click **+ New theme**, then set a name, colors, and font.
+- **Create a theme.** Click **New theme**, then set a name, colors, and font.
 - **Edit a theme.** Click a theme card to open the editor. Changes show up in the live preview.
 - **Choose what the preview renders.** Pick the dashboard or question used to preview the theme.
 - **Duplicate a theme.** Handy if you want to vary an existing theme.
 - **Delete a theme.** This deletion is eternal.
+
+**Branding elements**, on the same page, sets the [loading message](../configuring-metabase/appearance.md#loading-message) and the [illustrations](../configuring-metabase/appearance.md#metabase-illustrations) Metabase shows for empty results. These are the same settings as [Admin > Settings > Appearance](../configuring-metabase/appearance.md). That page also controls your logo, colors, and fonts, and it's what [full-app embeds](./full-app-embedding.md) use instead of embedding themes.
 
 ![Theme editor](./images/theme-editor.png)
 
@@ -70,7 +72,7 @@ The theme you pick is inlined into the generated `defineMetabaseConfig({ theme: 
 
 ### Reuse a saved theme in the SDK
 
-If you're using the [SDK](./sdk/introduction.md), pass a theme to `MetabaseProvider` with `defineMetabaseTheme`, which accepts the same theme shape that you configure in the Themes admin UI. You can copy a saved theme's values into your code:
+If you're using the [SDK](./sdk/introduction.md), pass a theme to `MetabaseProvider` with `defineMetabaseTheme`, which accepts the same theme shape that you configure in **Embedding hub > Appearance**. You can copy a saved theme's values into your code:
 
 ```tsx
 import {
