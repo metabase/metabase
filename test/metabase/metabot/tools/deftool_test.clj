@@ -2,29 +2,27 @@
   (:require
    [clojure.set :as set]
    [clojure.test :refer [deftest is testing]]
-   [metabase.metabot.config :as metabot.config]
    [metabase.metabot.tools.deftool :as deftool]
-   [metabase.test :as mt]
    [metabase.util.malli.registry :as mr]))
 
 ;;; ---------------------------------------------------- invoke-tool tests ----------------------------------------------------
 
 (deftest ^:parallel invoke-tool-no-args-test
-  (testing "tools receive the resolved Metabot"
+  (testing "invoke-tool with no arguments schema passes metabot-id in args"
     (let [received-args (atom nil)
           handler       (fn [args]
                           (reset! received-args args)
                           {:structured_output {:message "hello"}})
           body          {:conversation_id "conv-123"}
-          request       {:metabot/metabot {:id 456 :entity_id "bot-456"}}
+          request       {:metabot/metabot-id "bot-456"}
           opts          {:api-name      :test-tool
                          :handler       handler
                          :result-schema nil}
           result (deftool/invoke-tool body request opts)]
-      (is (= {:metabot {:id 456 :entity_id "bot-456"}} @received-args) "Handler receives the Metabot row")
+      (is (= {:metabot-id "bot-456"} @received-args) "Handler should receive metabot-id in args")
       (is (= "conv-123" (:conversation_id result)))
       (is (= {:message "hello"} (:structured_output result)))))
-  (testing "An omitted id uses the default Metabot"
+  (testing "invoke-tool with no arguments schema and no metabot-id"
     (let [received-args (atom nil)
           handler       (fn [args]
                           (reset! received-args args)
@@ -35,7 +33,7 @@
                          :handler       handler
                          :result-schema nil}
           result (deftool/invoke-tool body request opts)]
-      (is (= {:metabot (metabot.config/resolve-metabot nil)} @received-args))
+      (is (= {} @received-args) "Handler should receive empty args when no metabot-id")
       (is (= "conv-123" (:conversation_id result))))))
 
 (deftest ^:parallel invoke-tool-with-args-test
@@ -49,14 +47,14 @@
                           {:structured_output {:processed true}})
           body          {:arguments       {:user_id 42}
                          :conversation_id "conv-456"}
-          request       {:metabot/metabot {:id 789 :entity_id "bot-789"}}
+          request       {:metabot/metabot-id "bot-789"}
           opts          {:api-name      :test-tool
                          :args-schema   ::test-args
                          :handler       handler
                          :result-schema nil}
           result (deftool/invoke-tool body request opts)]
-      (is (= {:user-id 42, :metabot {:id 789 :entity_id "bot-789"}} @received-args)
-          "Arguments include the Metabot row")
+      (is (= {:user-id 42, :metabot-id "bot-789"} @received-args)
+          "Arguments should be encoded with schema transformer and include metabot-id")
       (is (= "conv-456" (:conversation_id result))))))
 
 (deftest ^:parallel invoke-tool-with-result-decoding-test
@@ -74,21 +72,6 @@
           result (deftool/invoke-tool body request opts)]
       (is (= "Alice" (:user_name result)) "Result should be decoded with schema transformer")
       (is (= "conv-789" (:conversation_id result))))))
-
-(deftest invoke-tool-metabot-resolution-test
-  (mt/with-temp [:model/Metabot metabot {:name "Tool sources"}]
-    (doseq [metabot-id [nil metabot.config/internal-metabot-id (:entity_id metabot)]]
-      (let [received (atom nil)]
-        (deftool/invoke-tool {:conversation_id "conv-123" :metabot_id metabot-id}
-                             {}
-                             {:api-name :test-tool :handler #(do (reset! received %) {})})
-        (is (= (metabot.config/resolve-metabot metabot-id) (:metabot @received))))))
-  (is (= 400
-         (try
-           (deftool/invoke-tool {:conversation_id "conv-123" :metabot_id "nonexistent-entity-id"}
-                                {} {:api-name :test-tool :handler identity})
-           (catch clojure.lang.ExceptionInfo e
-             (:status-code (ex-data e)))))))
 
 ;;; ---------------------------------------------------- deftool macro tests ----------------------------------------------------
 
