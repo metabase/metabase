@@ -354,7 +354,7 @@ describe("scenarios > organization > timelines > question persistence", () => {
     expectEvents(["Swallows return"], ["Swifts return", "Rare visitor"]);
   });
 
-  it("should not save collection-default events when saving an unrelated chart change", () => {
+  it("shows no events and does not record collection-default events when saving an unrelated chart change", () => {
     H.createTimelineWithEvents({
       timeline: { name: "Migration seasons" },
       events: EVENTS,
@@ -362,7 +362,8 @@ describe("scenarios > organization > timelines > question persistence", () => {
     createTimeSeries();
 
     H.visitQuestion("@questionId");
-    expectEvents(EVENT_NAMES);
+    expectTimelineOff("Migration seasons");
+    expectEvents([], EVENT_NAMES);
     H.openVizSettingsSidebar();
     H.vizSettingsSidebar().within(() => {
       cy.findByText("Display").click();
@@ -385,10 +386,12 @@ describe("scenarios > organization > timelines > question persistence", () => {
         });
     });
     cy.reload();
-    expectEvents(EVENT_NAMES);
+    expectTimelineOff("Migration seasons");
+    expectEvents([], EVENT_NAMES);
 
     cy.log("the dashboard only shows events saved on the question");
     H.visitDashboard("@dashboardId");
+    H.waitForDashcardsToLoad();
     expectEvents([], EVENT_NAMES);
   });
 });
@@ -437,6 +440,13 @@ function createTimeSeriesWithHiddenTimeline() {
 function openQuestionEvents() {
   cy.findByTestId("view-footer").icon("calendar").click();
   H.rightSidebar().should("be.visible");
+}
+
+function expectTimelineOff(timelineName: string) {
+  openQuestionEvents();
+  H.rightSidebar().within(() =>
+    H.timelineVisibility(timelineName).should("not.be.checked"),
+  );
 }
 
 function expectEvents(visible: string[], hidden: string[] = []) {

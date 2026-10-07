@@ -79,6 +79,7 @@ import {
   getSubmittableQuestion,
   isBasedOnExistingQuestion,
 } from "../../store/selectors";
+import { isLegacyTimelineEventsSource } from "../../utils/timeline-events";
 import { runDirtyQuestionQuery, runQuestionQuery } from "../querying";
 import { updateUrl } from "../url";
 import { zoomInRow } from "../zoom";
@@ -244,6 +245,34 @@ export const setDatasetQuery =
 export type OnCreateOptions = {
   dashboardTabId?: DashboardTabId | undefined;
   sourceCardId?: CardId | undefined;
+  sourceQuestion?: Question | undefined;
+};
+
+// Record the displayed selection so the saved question shows the same events on a dashboard.
+const needsTimelineEventsRecording = (question: Question) =>
+  getRecordedTimelineEventsVisibility(question.settings()) == null &&
+  canDisplayTimelineEvents(question.display());
+
+const recordCollectionTimelineEvents = async (
+  question: Question,
+  dispatch: Dispatch,
+  getState: GetState,
+) => {
+  await dispatch(
+    timelineApi.endpoints.listTimelines.initiate(LIST_TIMELINES_REQUEST, {
+      forceRefetch: false,
+      subscribe: false,
+    }),
+  );
+  // Record an empty collection too, only a failed request leaves the selection unrecorded.
+  return selectListTimelines(getState()).isSuccess
+    ? question.updateSettings(
+        getCollectionTimelinesVisibility(
+          getTransformedTimelines(getState()),
+          question.collectionId(),
+        ),
+      )
+    : question;
 };
 
 export const apiCreateQuestion = (
@@ -252,31 +281,19 @@ export const apiCreateQuestion = (
 ) => {
   return async (dispatch: Dispatch, getState: GetState) => {
     let submittableQuestion = getSubmittableQuestion(getState(), question);
-    // A new time series shows its collection's timelines before it is saved, so record that selection — otherwise
-    // the saved question shows no events on a dashboard. The defaults come from the collection it is being saved
-    // into, which the Save modal may have changed. Questions that recorded a selection, and charts that draw no
-    // events, keep their settings untouched.
-    if (
-      getRecordedTimelineEventsVisibility(submittableQuestion.settings()) ==
-        null &&
-      canDisplayTimelineEvents(submittableQuestion.display())
-    ) {
-      await dispatch(
-        timelineApi.endpoints.listTimelines.initiate(LIST_TIMELINES_REQUEST, {
-          forceRefetch: false,
-          subscribe: false,
-        }),
-      );
-      // An empty collection must still be recorded, or the query builder would later pick up timelines the
-      // dashboard never shows; only a failed request leaves the selection unrecorded.
-      if (selectListTimelines(getState()).isSuccess) {
-        submittableQuestion = submittableQuestion.updateSettings(
-          getCollectionTimelinesVisibility(
-            getTransformedTimelines(getState()),
-            submittableQuestion.collectionId(),
-          ),
-        );
-      }
+    if (needsTimelineEventsRecording(submittableQuestion)) {
+      submittableQuestion = isLegacyTimelineEventsSource(
+        options?.sourceQuestion ?? submittableQuestion,
+      )
+        ? submittableQuestion.updateSettings({
+            "timeline.selected_timeline_ids": [],
+            "timeline.excluded_timeline_event_ids": [],
+          })
+        : await recordCollectionTimelineEvents(
+            submittableQuestion,
+            dispatch,
+            getState,
+          );
     }
     // Saving models with list view setting as a question in not allowed for now,
     // so we change it back to table.
@@ -350,7 +367,17 @@ export const apiUpdateQuestion = (
       rerunQuery = rerunQuery ?? isResultDirty ?? false;
     }
 
-    const submittableQuestion = getSubmittableQuestion(getState(), question);
+    let submittableQuestion = getSubmittableQuestion(getState(), question);
+    if (
+      needsTimelineEventsRecording(submittableQuestion) &&
+      !isLegacyTimelineEventsSource(originalQuestion)
+    ) {
+      submittableQuestion = await recordCollectionTimelineEvents(
+        submittableQuestion,
+        dispatch,
+        getState,
+      );
+    }
 
     // When viewing a dataset, its dataset_query is swapped with a clean query using the dataset as a source table
     // (it's necessary for datasets to behave like tables opened in simple mode)

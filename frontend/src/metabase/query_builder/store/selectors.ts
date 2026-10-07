@@ -50,10 +50,12 @@ import type {
   DatasetQuery,
   Field,
   Series,
+  TimelineEventsVisibility,
 } from "metabase-types/api";
 
 import { cleanIndexFlags } from "../model-indexes/actions";
 import { getWritableColumnProperties } from "../utils";
+import { isLegacyTimelineEventsSource } from "../utils/timeline-events";
 import { getQuestionWithDefaultVisualizationSettings } from "../utils/viz-settings";
 
 import {
@@ -824,16 +826,24 @@ const getFilteredTimelines = createSelector(
     filterTimelinesByXAxes(timelines, xAxis ? [xAxis] : null),
 );
 
+const NO_TIMELINE_EVENTS_VISIBILITY: TimelineEventsVisibility = {};
+
 export const getTimelineEventsVisibility = createSelector(
   [
     (state: QueryBuilderStoreState) =>
       getRecordedTimelineEventsVisibility(getQuestion(state)?.settings()),
+    (state: QueryBuilderStoreState) =>
+      isLegacyTimelineEventsSource(
+        getOriginalQuestion(state) ?? getQuestion(state),
+      ),
     (state: QueryBuilderStoreState) => getQuestion(state)?.collectionId(),
     getTransformedTimelines,
   ],
-  (savedVisibility, collectionId, timelines) =>
+  (savedVisibility, isLegacySource, collectionId, timelines) =>
     savedVisibility ??
-    getCollectionTimelinesVisibility(timelines, collectionId),
+    (isLegacySource
+      ? NO_TIMELINE_EVENTS_VISIBILITY
+      : getCollectionTimelinesVisibility(timelines, collectionId)),
 );
 
 export const getVisibleTimelineEvents = createSelector(

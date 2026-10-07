@@ -74,8 +74,14 @@ const updateQuestion = async (options: UpdateQuestionOptions) => {
 };
 
 export const createQuestion = async (options: CreateQuestionOptions) => {
-  const { details, question, sourceCardId, onCreate, targetCollection } =
-    options;
+  const {
+    details,
+    question,
+    sourceCardId,
+    sourceQuestion,
+    onCreate,
+    targetCollection,
+  } = options;
 
   if (details.saveType !== "create") {
     return;
@@ -108,6 +114,7 @@ export const createQuestion = async (options: CreateQuestionOptions) => {
     const result = await onCreate(newQuestion, {
       dashboardTabId,
       sourceCardId,
+      sourceQuestion,
     });
 
     if (isMetric) {
@@ -146,6 +153,7 @@ export async function submitQuestion(options: SubmitQuestionOptions) {
       question,
       details,
       sourceCardId: originalQuestion?.id(),
+      sourceQuestion: originalQuestion ?? undefined,
       onCreate,
       targetCollection,
     });

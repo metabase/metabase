@@ -28,7 +28,7 @@ Timelines are groups of events associated with a [collection](collections.md).
 
 For example, you may want to have a timeline that contains important email or sales dates, or an outages timeline that tracks downtime. You can move events between timelines, and move timelines from collection to collection.
 
-Collections can have timelines, and timelines can contain events. In practice what this means is that events you've added to a timeline will show up by default on new or unsaved time series questions in the same collection as that timeline. A saved question shows only the timelines and events it was saved with, with one exception: a question saved before Metabase started recording that selection still shows its collection's timelines in the query builder.
+Collections can have timelines, and timelines can contain events. In practice what this means is that events you've added to a timeline will show up by default on new or unsaved time series questions in the same collection as that timeline. A saved question shows only the timelines and events it was saved with.
 
 - If you don't explicitly create a timeline yet, but you do create events, Metabase will automatically create a timeline for you (which acts as the default timeline for the collection).
 - You can have multiple timelines for the same collection.

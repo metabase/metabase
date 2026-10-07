@@ -317,7 +317,7 @@ describe("scenarios > organization > timelines > question", () => {
           events: [
             { name: "RC1", timestamp: "2027-10-20T00:00:00Z", icon: "cloud" },
           ],
-        });
+        }).then(({ timeline }) => createQuestionWithTimeline(timeline.id));
 
         H.createTimelineWithEvents({
           timeline: {
@@ -329,7 +329,7 @@ describe("scenarios > organization > timelines > question", () => {
           ],
         });
 
-        H.visitQuestion(ORDERS_BY_YEAR_QUESTION_ID);
+        H.visitQuestion("@questionId");
 
         cy.findByTestId("view-footer")
           .findByText("Visualization")
@@ -443,9 +443,9 @@ describe("scenarios > organization > timelines > question", () => {
         events: [
           { name: "RC1", timestamp: "2027-10-20T00:00:00Z", icon: "star" },
         ],
-      });
+      }).then(({ timeline }) => createQuestionWithTimeline(timeline.id));
 
-      H.visitQuestion(ORDERS_BY_YEAR_QUESTION_ID);
+      H.visitQuestion("@questionId");
 
       H.timelineEventChip("RC1").should("be.visible").realHover();
 
@@ -675,9 +675,9 @@ describe("scenarios > organization > timelines > question", () => {
       H.createTimelineWithEvents({
         timeline: { name: "Releases" },
         events: [{ name: "RC1", timestamp: "2027-01-01T00:00:00Z" }],
-      });
+      }).then(({ timeline }) => createQuestionWithTimeline(timeline.id));
 
-      H.visitQuestion(ORDERS_BY_YEAR_QUESTION_ID);
+      H.visitQuestion("@questionId");
 
       H.timelineEventChip("RC1").should("be.visible").click();
 
@@ -904,9 +904,9 @@ describe("scenarios > organization > timelines > question", () => {
       H.createTimelineWithEvents({
         timeline: { name: "Releases" },
         events: [{ name: "RC1", timestamp: "2027-10-20T00:00:00Z" }],
-      });
+      }).then(({ timeline }) => createQuestionWithTimeline(timeline.id));
 
-      H.visitQuestion(ORDERS_BY_YEAR_QUESTION_ID);
+      H.visitQuestion("@questionId");
       H.timelineEventChip("RC1").should("be.visible");
 
       cy.icon("calendar").click();
@@ -919,10 +919,30 @@ describe("scenarios > organization > timelines > question", () => {
       H.timelineEventChip("RC1").should("not.exist");
       H.saveSavedQuestion();
 
-      H.expectUnstructuredSnowplowEvent({
-        event: "question_timeline_events_saved",
-        target_id: ORDERS_BY_YEAR_QUESTION_ID,
-      });
+      cy.get("@questionId").then((questionId) =>
+        H.expectUnstructuredSnowplowEvent({
+          event: "question_timeline_events_saved",
+          target_id: questionId,
+        }),
+      );
     });
   });
 });
+
+function createQuestionWithTimeline(timelineId) {
+  return H.createQuestion(
+    {
+      name: "Orders by year",
+      display: "line",
+      query: {
+        "source-table": ORDERS_ID,
+        aggregation: [["count"]],
+        breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "year" }]],
+      },
+      visualization_settings: {
+        "timeline.selected_timeline_ids": [timelineId],
+      },
+    },
+    { wrapId: true },
+  );
+}
