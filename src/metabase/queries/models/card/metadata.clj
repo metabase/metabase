@@ -252,7 +252,6 @@ saved later when it is ready."
     infers them with the given columns as overrides; if the inference fails, keeps the given columns.
   - An update that does not change the query keeps the card.
   - Given metadata (an insert with it, or an update of it) is kept.
-  - While deserializing, a change of a native query keeps the given columns.
   - Otherwise, infers the metadata from the query; nil if the inference fails."
   ([card :- ::queries.schema/card]
    (populate-result-metadata card nil))
@@ -279,13 +278,6 @@ saved later when it is ready."
              (and (empty? changes) metadata))
          (do
            (log/debug "Not inferring result metadata for Card: metadata was passed in to insert!/update!")
-           card)
-
-         ;; A native card's export keeps its full columns. A load that changes only the SQL gives them again, so
-         ;; `changes` lacks result_metadata. Keep them: the columns of a native query cannot be inferred.
-         (and mi/*deserializing?* (seq metadata) (contains? changes :dataset_query) (lib/native-only-query? query))
-         (do
-           (log/debug "Not inferring result metadata for Card: a load changed its native query")
            card)
 
          ;; query has changed (or new Card) and this is a native query => set metadata to nil

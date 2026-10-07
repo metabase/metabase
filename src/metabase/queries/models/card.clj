@@ -1555,6 +1555,24 @@
 (defmethod serdes/deserialization-dependencies "Card" [card]
   (card-deps false card))
 
+(def ^:private load-update-multifn
+  ;; The MultiFn, not the var: tests redefine the var with a plain fn that delegates to the MultiFn.
+  serdes/load-update!)
+
+(defmethod serdes/load-update! "Card" [model-name ingested local]
+  ;; The export writes the columns of a native card, and they hold for the query in the same file. A load that changes
+  ;; only the SQL then gives the stored columns again, and the columns of a native query cannot be inferred: mark them
+  ;; verified, so the before-update hook keeps them. A file without columns gets no mark, and the hook acts as on any
+  ;; other update.
+  ((get-method load-update-multifn :default)
+   model-name
+   (cond-> ingested
+     (and (seq (:result_metadata ingested))
+          (seq (:dataset_query ingested))
+          (lib/native? (:dataset_query ingested)))
+     (assoc :verified-result-metadata? true))
+   local))
+
 (defmethod serdes/descendants "Card" [_model-name id _opts]
   (let [card               (queries.db/card id)
         query              (not-empty (:dataset_query card))
