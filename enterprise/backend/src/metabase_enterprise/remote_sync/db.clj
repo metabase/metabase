@@ -378,11 +378,13 @@
    entity-ids :- [:or [:set :string] [:sequential :string]]]
   (t2/select-fn-set :entity_id model :entity_id [:in entity-ids]))
 
-(mu/defn ids-by-entity-ids
+(mu/defn ids-by-entity-ids :- [:sequential ms/PositiveInt]
   "The IDs of the instances of `model` with `entity-ids`."
   [model      :- :keyword
    entity-ids :- [:set :string]]
-  (t2/select-pks-vec model :entity_id [:in entity-ids]))
+  (into []
+        (mapcat #(t2/select-pks-vec model :entity_id [:in %]))
+        (partition-all ids-per-query entity-ids)))
 
 (defn- path-expr
   "Matches the Tables (aliased `t` in a Database aliased `db`) at `paths`, and their Fields (aliased `f`) when
@@ -531,6 +533,29 @@
   "The IDs of `collections` and all of their descendants."
   [collections :- [:sequential ::collections.schema/collection]]
   (t2/select-pks-set :model/Collection {:where (subtree-expr collections)}))
+
+(mu/defn subtree-collection-ids-of-ids :- [:set ms/PositiveInt]
+  "The IDs of the Collections with `collection-ids` and of all of their descendants."
+  [collection-ids :- [:sequential ::lib.schema.id/collection]]
+  (into #{}
+        (mapcat (fn [chunk]
+                  (when-let [collections (seq (t2/select [:model/Collection :id :location] :id [:in chunk]))]
+                    (t2/select-pks-set :model/Collection {:where (subtree-expr collections)}))))
+        (partition-all ids-per-query collection-ids)))
+
+(mu/defn ids-in-collections :- [:set ms/PositiveInt]
+  "The IDs of the instances of `model` whose `collection_id` is one of `collection-ids` and that match the
+  removal-conditions map `conditions` of a spec (nil matches every instance)."
+  ([model          :- :keyword
+    collection-ids :- [:sequential ::lib.schema.id/collection]]
+   (ids-in-collections model collection-ids nil))
+  ([model          :- :keyword
+    collection-ids :- [:sequential ::lib.schema.id/collection]
+    conditions     :- Conditions]
+   (into #{}
+         (mapcat #(t2/select-pks-vec model {:where (into [:and [:in :collection_id %]]
+                                                         (removal-condition-exprs conditions))}))
+         (partition-all ids-per-query collection-ids))))
 
 (mu/defn remote-synced-subtree-collection-ids
   "The IDs of the remote-synced Collections among `collections` and their descendants."
