@@ -110,6 +110,19 @@ Changing a `:saved-class` deletes the jobs stored under the old name, and their 
 The tests in `metabase.app-db.quartz-test` fail with instructions when a job's class name changes, or a job
 is added.
 
+## ClojureScript type declarations
+
+TypeScript resolves `cljs/*` imports to declarations generated from the cljs source of each `:entries`
+namespace in `shadow-cljs.edn`, written to `frontend/src/types/cljs/`, which is gitignored.
+`bun run type-check` and the frontend dev scripts on startup regenerate them, so type-checking doesn't need
+a cljs build. `bun install` and the `post-checkout`, `post-merge`, and `post-rewrite` git hooks regenerate them
+too, and only warn if the generator fails. Editing an `^:export`, `git stash pop`, and `git reset --hard` don't
+regenerate them, so if the editor looks stale after one of those, run this or `bun run type-check`:
+
+```bash
+bun run generate:cljs-types
+```
+
 ## Ratchets
 
 After changing Clojure suppressions or module-boundary escape hatches, run `./bin/mage kondo-ratchets`.

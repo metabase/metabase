@@ -17,6 +17,8 @@ Most of our widely-used types are located in [metabase-types](https://github.com
 
 In cases where types are only used by some local components, they should be defined locally in a `types.ts` file. (see e.g. [DataGrid](https://github.com/metabase/metabase/blob/master/frontend/src/metabase/data-grid/types.ts) types)
 
+TypeScript resolves `cljs/*` imports to declarations generated from the ClojureScript source into `frontend/src/types/cljs/`, which git ignores, so type-checking doesn't need a ClojureScript build. `bun run type-check` and the dev scripts on startup regenerate them. So do `bun install` and the git hooks after a checkout, merge, or rebase, which only print a warning if the generator fails. Editing an `^:export` in one of the `:entries` namespaces in `shadow-cljs.edn`, `git stash pop`, and `git reset --hard` don't regenerate them, so if your editor looks out of date after one of those, run `bun run generate:cljs-types` or `bun run type-check`.
+
 ## Redux
 
 We use Redux for global state. You will find domain-specific actions, reducers, and selectors generally grouped with the components that use them. e.g:
