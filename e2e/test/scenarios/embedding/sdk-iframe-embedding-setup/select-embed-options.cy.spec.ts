@@ -485,14 +485,14 @@ describe(suiteTitle, () => {
       .click()
       .should("not.be.checked");
 
+    cy.log("allow downloads should be visible when drills are off (EMB-712)");
+    getEmbedSidebar().findByLabelText("Allow downloads").should("be.visible");
+
     cy.log("drill-through should be disabled in chart preview");
     H.getSimpleEmbedIframeContent().within(() => {
       cy.findByText("18,760").should("be.visible").click();
       cy.findByText("See these Orders").should("not.exist");
     });
-
-    cy.log("allow downloads should be visible when drills are off (EMB-712)");
-    getEmbedSidebar().findByLabelText("Allow downloads").should("be.visible");
 
     cy.log("chart title state should remain unchecked");
     getEmbedSidebar()
