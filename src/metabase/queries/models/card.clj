@@ -876,7 +876,7 @@
   malformed value counts as no ids rather than throwing — otherwise the card could never be repaired."
   [visibility k]
   (let [ids (get visibility k)]
-    (if (sequential? ids) (filter pos-int? ids) [])))
+    (if (sequential? ids) (into #{} (filter pos-int?) ids) #{})))
 
 (defn- selected-timeline-ids [visibility]
   (setting-ids visibility :timeline.selected_timeline_ids))
@@ -886,11 +886,11 @@
 
 (defn- newly-revealed-timeline-ids
   [visibility previous-visibility reveals-all?]
-  (let [selected-ids (set (selected-timeline-ids visibility))]
+  (let [selected-ids (selected-timeline-ids visibility)]
     (if reveals-all?
       selected-ids
-      (let [added-ids    (set/difference selected-ids (set (selected-timeline-ids previous-visibility)))
-            hidden-ids   (set (excluded-event-ids visibility))
+      (let [added-ids    (set/difference selected-ids (selected-timeline-ids previous-visibility))
+            hidden-ids   (excluded-event-ids visibility)
             unhidden-ids (into [] (remove hidden-ids) (excluded-event-ids previous-visibility))]
         (into added-ids
               (filter selected-ids)
@@ -925,20 +925,16 @@
             (api/read-check timeline)))))))
 
 (defn card-exposed-timeline-ids
-  "The ids of the timelines whose events `card` shows on a dashboard. The public payload and the checks guarding it
-  both read this, so they cannot drift apart."
+  "The ids of the timelines whose events `card` shows on a dashboard."
   [{:keys [display] settings :visualization_settings}]
   ;; Archived cards count too: archiving is undone by a plain `archived: false`, which runs no timeline check.
-  (let [timeline-ids (:timeline.selected_timeline_ids settings)]
-    (when (and (timeline-events-supported-display? display)
-               (events-enabled? settings)
-               (sequential? timeline-ids))
-      (filter pos-int? timeline-ids))))
+  (when (and (timeline-events-supported-display? display)
+             (events-enabled? settings))
+    (selected-timeline-ids settings)))
 
 (defn dashcard-hides-card-events?
   "Whether `dashcard` never shows its card's timeline events, whatever the card selects: a visualizer dashcard renders
-  its own visualization, an action dashcard renders a button, and a virtual dashcard has no card of its own. The
-  public payload and the checks guarding it both read this, so they cannot drift apart."
+  its own visualization, an action dashcard renders a button, and a virtual dashcard has no card of its own."
   [dashcard]
   (let [settings (:visualization_settings dashcard)]
     (or (contains? settings :visualization)

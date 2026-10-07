@@ -308,7 +308,7 @@
   (when (and (pos-int? (:id card))
              (false? (:archived card))
              (not (queries/dashcard-hides-card-events? dashcard)))
-    (not-empty (set (queries/card-exposed-timeline-ids card)))))
+    (not-empty (queries/card-exposed-timeline-ids card))))
 
 (defn- public-timeline-events
   [timeline-ids]
