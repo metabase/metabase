@@ -1,64 +1,60 @@
 import { useClipboard } from "@mantine/hooks";
 import cx from "classnames";
-import { useCallback } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import { t } from "ttag";
 
 import Styles from "metabase/css/core/index.css";
-import { Icon, Text, Tooltip } from "metabase/ui";
-import { isPlainKey } from "metabase/utils/keyboard";
+import visuallyHidden from "metabase/css/core/visually-hidden.module.css";
+import { Icon, Text, Tooltip, UnstyledButton } from "metabase/ui";
 
-import CopyButtonStyles from "./CopyButton.module.css";
+import S from "./CopyButton.module.css";
 
-export const COPY_BUTTON_ICON = (
-  <Icon className={CopyButtonStyles.CopyButton} tabIndex={0} name="copy" />
-);
+export const COPY_BUTTON_ICON = <Icon name="copy" aria-hidden />;
 
 type CopyButtonProps = {
   value: string;
   onCopy?: () => void;
   className?: string;
-  style?: object;
+  style?: CSSProperties;
   "aria-label"?: string;
-  target?: React.ReactNode;
+  target?: ReactNode;
 };
 
 export const CopyButton = ({
   value,
   onCopy,
-  className = cx(Styles.textBrandHover, Styles.cursorPointer),
+  className = Styles.textBrandHover,
   style,
-  target = COPY_BUTTON_ICON,
+  "aria-label": ariaLabel,
+  target,
 }: CopyButtonProps) => {
   const clipboard = useClipboard({ timeout: 2000 });
+  const accessibleName = ariaLabel ?? (target ? undefined : t`Copy`);
 
-  const onCopyValue = useCallback(() => {
+  const handleClick = () => {
     clipboard.copy(value);
     onCopy?.();
-  }, [clipboard, value, onCopy]);
-
-  const copyOnEnter = useCallback(
-    (e: React.KeyboardEvent<HTMLElement>) => {
-      if (isPlainKey(e, "Enter")) {
-        onCopyValue();
-      }
-    },
-    [onCopyValue],
-  );
+  };
 
   return (
-    <div
-      className={className}
-      data-testid="copy-button"
-      onClick={onCopyValue}
-      onKeyDown={copyOnEnter}
-      style={style}
-    >
-      <Tooltip
-        label={<Text fw={700} c="inherit">{t`Copied!`}</Text>}
-        opened={clipboard.copied}
+    <>
+      <UnstyledButton
+        className={cx(S.CopyButton, className)}
+        data-testid="copy-button"
+        aria-label={accessibleName}
+        onClick={handleClick}
+        style={style}
       >
-        <span>{target}</span>
-      </Tooltip>
-    </div>
+        <Tooltip
+          label={<Text fw={700} c="inherit">{t`Copied!`}</Text>}
+          opened={clipboard.copied}
+        >
+          <span>{target ?? COPY_BUTTON_ICON}</span>
+        </Tooltip>
+      </UnstyledButton>
+      <span role="status" className={visuallyHidden.visuallyHidden}>
+        {clipboard.copied ? t`Copied!` : ""}
+      </span>
+    </>
   );
 };
