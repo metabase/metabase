@@ -164,3 +164,13 @@ export const FETCH_DASHBOARD_FULFILLED =
 export const fetchDashboardFulfilled = createAction<
   ReturnType<typeof fetchDashboard.fulfilled>["payload"]
 >(FETCH_DASHBOARD_FULFILLED);
+
+/**
+ * Dispatched by `fetchDashboard` as soon as the dashboard definition arrives,
+ * before the slower query-metadata request finishes. It carries the same
+ * normalized entities the fulfilled action will, so the loading skeleton can
+ * draw the dashboard's real card layout without waiting for the full load.
+ */
+export const dashboardLayoutFetched = createAction<
+  ReturnType<typeof fetchDashboard.fulfilled>["payload"]["entities"]
+>("metabase/dashboard/DASHBOARD_LAYOUT_FETCHED");
