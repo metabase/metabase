@@ -6,9 +6,12 @@
    [java-time.api :as t]
    [metabase-enterprise.remote-sync.guards :as guards]
    [metabase-enterprise.remote-sync.impl :as impl]
+   [metabase-enterprise.remote-sync.models.remote-sync-object :as remote-sync.object]
    [metabase-enterprise.remote-sync.models.remote-sync-task :as remote-sync.task]
    [metabase-enterprise.remote-sync.settings :as remote-sync.settings]
    [metabase-enterprise.remote-sync.source :as source]
+   [metabase-enterprise.remote-sync.source.clone-registry :as clone-registry]
+   [metabase-enterprise.remote-sync.source.git :as git]
    [metabase-enterprise.remote-sync.source.protocol :as source.p]
    [metabase-enterprise.remote-sync.spec :as spec]
    [metabase-enterprise.remote-sync.test-helpers :as test-helpers]
@@ -2413,3 +2416,139 @@ serdes/meta:
       (is (= "main" (remote-sync.settings/remote-sync-branch)))
       (impl/run-task-body! (new-task-id) "feature" (fn [_] {:status :success}))
       (is (= "feature" (remote-sync.settings/remote-sync-branch))))))
+
+;; ---------- the holders of a source release the lease of its clone ----------------------------
+
+(defn- do-with-git-remote
+  "Calls `(f url)` with the remote-sync settings of a new local git remote at `url`, whose `master` branch has one
+  commit. Then deletes the clones of `url`."
+  [f]
+  (mt/with-temp-dir [remote-dir nil]
+    (let [url (test-helpers/init-local-git-remote! remote-dir)]
+      (mt/with-temporary-setting-values [remote-sync-url    url
+                                         remote-sync-token  nil
+                                         remote-sync-branch "master"
+                                         remote-sync-type   :read-write]
+        (try
+          (f url)
+          (finally (test-helpers/forget-clones! url)))))))
+
+(defn- wait-until
+  "Calls `pred` every 50 ms until it returns a true value, for at most 10 s. Returns the last value."
+  [pred]
+  (loop [n 0]
+    (or (pred)
+        (when (< n 200)
+          (Thread/sleep 50)
+          (recur (inc n))))))
+
+(defn- active-generation
+  "The active generation of `url` in the clone registry of this process: its `:dir` and its `:git`."
+  [url]
+  (let [{:keys [active generations]} (get @(:state (clone-registry/process-registry)) url)]
+    (get generations active)))
+
+(defn- recover-in-request!
+  "Runs [[impl/has-remote-changes?]] with one \"Missing commit\" error, so that the request recovers from a stale clone."
+  []
+  (let [real-snapshot* (mt/original-fn #'git/snapshot*)
+        thrown?        (atom false)]
+    (mt/with-dynamic-fn-redefs [git/snapshot* (fn [s]
+                                                (if (compare-and-set! thrown? false true)
+                                                  (throw (ex-info "Missing commit 0123456789abcdef" {}))
+                                                  (real-snapshot* s)))]
+      (impl/has-remote-changes? {:force-refresh? true})
+      (is @thrown? "precondition: the request recovered from a stale clone"))))
+
+(defn- task-ended?
+  "True iff the task `task-id` recorded its end, and its worker in this JVM ended."
+  [task-id]
+  ;; The worker ends its row, then leaves the running tasks at its exit. A task that did not start yet is in neither.
+  (and (some? (:ended_at (t2/select-one :model/RemoteSyncTask :id task-id)))
+       (not (contains? (impl/running-task-ids) task-id))))
+
+(deftest recoveries-while-an-import-holds-a-clone-keep-at-most-two-clones-test
+  (testing "three stale-clone recoveries while an import task holds the first clone: at most two clones after each
+            recovery, and one clone after the import ends"
+    (do-with-git-remote
+     (fn [url]
+       (let [in-task (promise)
+             proceed (promise)]
+         (mt/with-dynamic-fn-redefs [impl/import! (fn [& _]
+                                                    (deliver in-task true)
+                                                    (deref proceed 30000 nil)
+                                                    {:status :success})]
+           (try
+             (let [{task-id :id} (impl/async-import! "master" true {})]
+               (is (true? (deref in-task 10000 false)) "precondition: the import task runs")
+               (dotimes [i 3]
+                 (recover-in-request!)
+                 (is (<= (count (test-helpers/clone-dirs url)) 2)
+                     (str "after recovery " (inc i) ": the clone of the import and the active clone")))
+               (deliver proceed true)
+               (is (wait-until #(task-ended? task-id)) "precondition: the import task ended")
+               (is (= 1 (count (test-helpers/clone-dirs url))) "only the active clone stays after the import"))
+             (finally (deliver proceed true)))))))))
+
+(deftest import-that-throws-in-its-task-releases-its-lease-test
+  (testing "an import task that throws releases its lease: the clone that a recovery retired during the task is
+            deleted, and its Git instance is closed"
+    (do-with-git-remote
+     (fn [url]
+       (let [in-task (promise)
+             proceed (promise)]
+         (mt/with-dynamic-fn-redefs [impl/import! (fn [& _]
+                                                    (deliver in-task true)
+                                                    (deref proceed 30000 nil)
+                                                    (throw (ex-info "The import failed" {})))]
+           (try
+             (let [{task-id :id}     (impl/async-import! "master" true {})
+                   _                 (is (true? (deref in-task 10000 false)) "precondition: the import task runs")
+                   {:keys [dir git]} (active-generation url)]
+               (recover-in-request!)
+               (is (.exists ^java.io.File dir) "precondition: the retired clone stays while the import holds it")
+               (deliver proceed true)
+               (is (wait-until #(task-ended? task-id)) "precondition: the import task ended")
+               (is (=? {:error_message #".*The import failed.*"} (t2/select-one :model/RemoteSyncTask :id task-id))
+                   "precondition: the task failed")
+               (is (not (.exists ^java.io.File dir)) "the retired clone is deleted")
+               (is (not (test-helpers/repository-open? git)) "the Git instance of the retired clone is closed"))
+             (finally (deliver proceed true)))))))))
+
+(deftest refused-sync-requests-release-their-leases-test
+  (testing "an import or an export that is refused before its task starts releases the lease of its source"
+    (do-with-git-remote
+     (fn [url]
+       (doseq [[refusal message request!]
+               [["dirty changes" #"unsaved changes"
+                 #(mt/with-dynamic-fn-redefs [remote-sync.object/dirty?        (constantly true)
+                                              remote-sync.object/dirty-objects (constantly [])]
+                    (impl/async-import! "master" false {}))]
+                ["an import while a task runs" #"Remote sync in progress"
+                 #(mt/with-dynamic-fn-redefs [impl/create-task-with-lock! (constantly {:id 0 :existing? true})]
+                    (impl/async-import! "master" true {}))]
+                ["an export while a task runs" #"Remote sync in progress"
+                 #(mt/with-dynamic-fn-redefs [impl/create-task-with-lock! (constantly {:id 0 :existing? true})]
+                    (impl/async-export! "master" true "message"))]
+                ["a missing branch" #"Invalid branch"
+                 #(impl/async-import! "no-such-branch" true {})]]]
+         (testing refusal
+           (is (thrown-with-msg? Exception message (request!)) "precondition: the request is refused")
+           (is (some? (active-generation url)) "precondition: the request used a clone")
+           (is (empty? (test-helpers/leases url)) "no lease holds a clone after the refusal")))))))
+
+(deftest requests-release-their-leases-test
+  (testing "each request that reads the clone releases the lease of its source when it ends"
+    (do-with-git-remote
+     (fn [url]
+       (mt/with-dynamic-fn-redefs [impl/export! (fn [& _] {:status :success})]
+         (doseq [[request request!] [["has-remote-changes?" #(impl/has-remote-changes? {:force-refresh? true})]
+                                     ["preview-export-merge" #(impl/preview-export-merge "master")]
+                                     ["stash!" #(let [{task-id :id} (impl/stash! "stash-branch" "message")]
+                                                  (is (wait-until (fn [] (task-ended? task-id)))
+                                                      "precondition: the export task of the stash ended"))]
+                                     ["create-branch!" #(impl/create-branch! "feature-x" "master")]]]
+           (testing request
+             (request!)
+             (is (some? (active-generation url)) "precondition: the request used a clone")
+             (is (empty? (test-helpers/leases url)) "no lease holds a clone after the request"))))))))

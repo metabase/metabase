@@ -1,12 +1,17 @@
 (ns metabase-enterprise.remote-sync.task.import-test
   (:require
+   [clojure.java.io :as io]
    [clojure.test :refer :all]
+   [metabase-enterprise.remote-sync.impl :as impl]
+   [metabase-enterprise.remote-sync.models.remote-sync-task :as remote-sync.task]
    [metabase-enterprise.remote-sync.source :as source]
    [metabase-enterprise.remote-sync.task.import :as task.import]
    [metabase-enterprise.remote-sync.test-helpers :as test-helpers]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2])
+  (:import
+   (org.eclipse.jgit.api Git)))
 
 (use-fixtures :once
   (fixtures/initialize :db)
@@ -43,3 +48,34 @@
           (testing "a no-op run (source version unchanged) does not log another entry"
             (#'task.import/auto-import!)
             (is (= (inc before) (t2/count :model/AuditLog :topic "remote-sync-import")))))))))
+
+(deftest auto-import-releases-its-lease-test
+  (testing "the auto-import job releases the lease of its source when it imports, when it skips, and when it fails"
+    (mt/with-temp-dir [remote-dir nil]
+      (let [url     (test-helpers/init-local-git-remote! remote-dir)
+            version (with-open [git (Git/open (io/file remote-dir))]
+                      (.name (.resolve (.getRepository git) "refs/heads/master")))
+            import! (fn [branch]
+                      (mt/with-temporary-setting-values [remote-sync-branch branch]
+                        (#'task.import/auto-import!)))]
+        (mt/with-temporary-setting-values [remote-sync-url         url
+                                           remote-sync-token       nil
+                                           remote-sync-type        :read-only
+                                           remote-sync-auto-import true]
+          (try
+            (mt/with-dynamic-fn-redefs [impl/import! (fn [& _] {:status :success})]
+              (testing "an import"
+                (import! "master")
+                (is (t2/exists? :model/RemoteSyncTask :sync_task_type "import") "precondition: the job ran an import task")
+                (is (empty? (test-helpers/leases url)) "no lease holds a clone after the job"))
+              (testing "a skip, because the version is the same"
+                (let [tasks (t2/count :model/RemoteSyncTask)]
+                  (mt/with-dynamic-fn-redefs [remote-sync.task/last-version (constantly version)]
+                    (import! "master"))
+                  (is (= tasks (t2/count :model/RemoteSyncTask)) "precondition: the job skipped"))
+                (is (empty? (test-helpers/leases url)) "no lease holds a clone after the job"))
+              (testing "a failure, because the branch is missing"
+                (is (thrown-with-msg? Exception #"Invalid branch" (import! "no-such-branch"))
+                    "precondition: the job fails")
+                (is (empty? (test-helpers/leases url)) "no lease holds a clone after the job")))
+            (finally (test-helpers/forget-clones! url))))))))

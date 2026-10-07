@@ -1115,6 +1115,56 @@
               (is (= "File in master" (source.p/read-file (source.p/snapshot later) "master.txt")))))
           (finally (forget-clones! url)))))))
 
+(deftest close-of-a-source-releases-every-generation-of-its-lease-test
+  (testing "a source still reads the clone that its own recovery retired after another holder closes; its close then
+            deletes that clone and closes its Git instance; a second close does nothing"
+    (mt/with-temp-dir [remote-dir nil]
+      (let [[source remote] (init-source! "master" remote-dir :files {"master.txt" "File in master"})
+            url             (:remote-url source)
+            other           (->source! "master" remote)
+            version         (:version (source.p/snapshot source))
+            retired-dir     (clone-dir source)
+            retired-git     (:git source)
+            state           (:state (clone-registry/process-registry))]
+        (try
+          (let [recovered (recover-stale-clone! source)]
+            (is (not= retired-dir (clone-dir recovered)) "precondition: the recovery made a new clone")
+            (.close ^java.io.Closeable other)
+            (is (.exists retired-dir) "the retired clone stays while the source whose recovery retired it holds it")
+            (is (= "File in master" (source.p/read-file (source.p/snapshot-at source version) "master.txt"))
+                "the source reads the retired clone")
+            (.close ^java.io.Closeable source)
+            (is (not (.exists retired-dir)) "the close of the last holder deletes the retired clone")
+            (is (not (test-helpers/repository-open? retired-git)) "the close of the last holder closes its Git instance")
+            (is (.exists (clone-dir recovered)) "the active clone stays for the next source")
+            (let [before @state]
+              (.close ^java.io.Closeable source)
+              (is (= before @state) "a second close does nothing")))
+          (finally (forget-clones! url)))))))
+
+(deftest lease-older-than-the-task-timeout-is-logged-once-test
+  (testing "a lease that is older than the task timeout is logged one time with its holder, and its clone stays"
+    (mt/with-temp-dir [remote-dir nil]
+      (let [[source remote] (init-source! "master" remote-dir :files {"master.txt" "File in master"})
+            url             (:remote-url source)
+            lease-id        (str (get-in source [:lease :id]))]
+        (try
+          (mt/with-temporary-setting-values [remote-sync-task-time-limit-ms 1]
+            ;; The task timeout is 10 times the setting.
+            (Thread/sleep 50)
+            (mt/with-log-messages-for-level [messages [metabase-enterprise.remote-sync.source.clone-registry :warn]]
+              ;; Each acquire and each retire of the URL checks the age of its leases.
+              (let [later (->source! "master" remote)
+                    _     (recover-stale-clone! later)
+                    _     (->source! "master" remote)
+                    [log :as logs] (filter #(str/includes? (:message %) lease-id) (messages))]
+                (is (= 1 (count logs)) "the old lease is logged one time")
+                (is (str/includes? (str (:message log)) (.getName (Thread/currentThread)))
+                    "the log names the thread that made the source")
+                (is (some? (:e log)) "the log has the stack trace of the place that made the source")
+                (is (.exists (clone-dir source)) "nothing releases the old lease, so the clone that it holds stays"))))
+          (finally (forget-clones! url)))))))
+
 (deftest ^:parallel credentials-provider-test
   (testing "GitHub URL uses x-access-token"
     (let [provider (git/credentials-provider "https://github.com/org/repo.git" "my-token")]

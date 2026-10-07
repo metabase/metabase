@@ -15,8 +15,9 @@
   (:import
    (java.io File)
    (org.apache.commons.io FileUtils)
+   (java.util.concurrent.atomic AtomicInteger)
    (org.eclipse.jgit.api Git)
-   (org.eclipse.jgit.lib PersonIdent)))
+   (org.eclipse.jgit.lib PersonIdent Repository)))
 
 (set! *warn-on-reflection* true)
 
@@ -882,3 +883,15 @@ serdes/meta:
     (doseq [[_ {:keys [^java.lang.AutoCloseable git dir]}] (get-in old [url :generations])]
       (.close git)
       (FileUtils/deleteQuietly dir))))
+
+(defn leases
+  "The ids of the leases that hold a clone of `url` in the clone registry of this process."
+  [url]
+  (into #{} (mapcat :leases) (vals (get-in @(:state (clone-registry/process-registry)) [url :generations]))))
+
+(defn repository-open?
+  "True iff the repository of the Git instance `git` is open."
+  [^Git git]
+  ;; JGit counts the users of a repository, and closes it when the count goes to 0.
+  (let [use-count (doto (.getDeclaredField Repository "useCnt") (.setAccessible true))]
+    (pos? (.get ^AtomicInteger (.get use-count (.getRepository git))))))
