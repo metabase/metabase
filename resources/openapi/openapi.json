@@ -35711,6 +35711,7 @@
           "content" : {
             "application/json" : {
               "schema" : {
+                "additionalProperties" : false,
                 "properties" : {
                   "freeform_feedback" : {
                     "oneOf" : [ {
@@ -35731,9 +35732,13 @@
                     "type" : "string"
                   },
                   "metabot_id" : {
-                    "description" : "value must be an integer greater than zero.",
-                    "minimum" : 1,
-                    "type" : "integer"
+                    "anyOf" : [ {
+                      "description" : "value must be an integer greater than zero.",
+                      "minimum" : 1,
+                      "type" : "integer"
+                    }, {
+                      "type" : "string"
+                    } ]
                   },
                   "positive" : {
                     "type" : "boolean"
@@ -35901,15 +35906,19 @@
         "tags" : [ "/api/metabot/metabot" ]
       },
       "get" : {
-        "description" : "Return the prompt suggestions for the metabot instance with `id`.",
+        "description" : "Return the prompt suggestions for a Metabot primary key or entity ID.",
         "operationId" : "get-api-metabot-metabot-id-prompt-suggestions",
         "parameters" : [ {
           "in" : "path",
           "name" : "id",
           "required" : true,
           "schema" : {
-            "minimum" : 1,
-            "type" : "integer"
+            "anyOf" : [ {
+              "minimum" : 1,
+              "type" : "integer"
+            }, {
+              "type" : "string"
+            } ]
           }
         }, {
           "in" : "query",
@@ -36463,15 +36472,20 @@
           "content" : {
             "application/json" : {
               "schema" : {
+                "additionalProperties" : false,
                 "properties" : {
                   "message_id" : {
                     "minLength" : 1,
                     "type" : "string"
                   },
                   "metabot_id" : {
-                    "description" : "value must be an integer greater than zero.",
-                    "minimum" : 1,
-                    "type" : "integer"
+                    "anyOf" : [ {
+                      "description" : "value must be an integer greater than zero.",
+                      "minimum" : 1,
+                      "type" : "integer"
+                    }, {
+                      "type" : "string"
+                    } ]
                   },
                   "positive" : {
                     "type" : "boolean"
