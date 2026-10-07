@@ -96,8 +96,7 @@ describe("SavedEntityPicker", () => {
   it("sorts saved questions case-insensitive (metabase#23693)", async () => {
     await setup();
 
-    expect(
-      screen.getAllByTestId("option-text").map((node) => node.textContent),
-    ).toEqual(["a", "A", "B"]);
+    const options = await screen.findAllByTestId("option-text");
+    expect(options.map((node) => node.textContent)).toEqual(["a", "A", "B"]);
   });
 });
