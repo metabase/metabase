@@ -1108,37 +1108,46 @@
   (testing "Upload to fully `:unrestricted` schema doesn't get `:blocked`, so uploads keep working (UXW-3217)"
     (mt/test-drivers (mt/normal-drivers-with-feature :uploads :schemas)
       (mt/with-additional-premium-features #{:advanced-permissions}
-        (let [db-id        (mt/id)
-              schema-name  (sql.tx/session-schema driver/*driver*)
-              all-users-id (u/the-id (perms-group/all-users))]
-          (mt/with-restored-data-perms-for-group! all-users-id
-            ;; Grant the whole DB, then carve out a :blocked table in a *different* schema. This is the corrupting
-            ;; condition in UXW-3217: the group now has a blocked view-data row *anywhere* in the DB, so any new table
-            ;; would be forced to `:blocked`, except for the special handling of uploads being tested here.
-            (data-perms/set-database-permission! all-users-id db-id :perms/view-data :unrestricted)
-            (data-perms/set-database-permission! all-users-id db-id :perms/create-queries :query-builder)
-            (mt/with-temp [:model/Table {blocked-table :id} {:db_id  db-id
-                                                             :schema "uxw3217_other_schema"
-                                                             :active true}]
-              (data-perms/set-table-permission! all-users-id blocked-table :perms/view-data :blocked)
-              (is (= {all-users-id :blocked}
-                     (advanced-permissions.common/new-table-view-data-permission-levels db-id [all-users-id]))
-                  "precondition: the DB-wide override would block a new table for All Users")
-              (upload-test/do-with-uploaded-example-csv!
-               {:grant-permission? false
-                :schema-name       schema-name
-                :table-prefix      "uxw3217_"}
-               (fn [model]
-                 (let [uploaded-table  (t2/select-one [:model/Table :id :schema] :id (:table_id model))
-                       uploaded-schema (:schema uploaded-table)]
-                   (is (= :unrestricted
-                          (data-perms/table-permission-for-groups #{all-users-id} :perms/view-data
-                                                                  db-id (:id uploaded-table)))
-                       "uploaded table in the granted schema must stay :unrestricted")
-                   (testing "so the user's effective schema permission stays :unrestricted and they can upload again"
+        ;; An empty, *dynamic* dataset: the upload physically creates a table, which drivers like Snowflake refuse
+        ;; to do in a shared static dataset (see `metabase.test.data.snowflake/create-table!`).
+        (mt/dataset (mt/dataset-definition "advanced_permissions" [])
+          (let [db-id        (mt/id)
+                schema-name  (sql.tx/session-schema driver/*driver*)
+                all-users-id (u/the-id (perms-group/all-users))]
+            (mt/with-restored-data-perms-for-group! all-users-id
+              ;; Grant the whole DB, then carve out a :blocked table in a *different* schema. This is the corrupting
+              ;; condition in UXW-3217: the group now has a blocked view-data row *anywhere* in the DB, so any new
+              ;; table would be forced to `:blocked`, except for the special handling of uploads being tested here.
+              (data-perms/set-database-permission! all-users-id db-id :perms/view-data :unrestricted)
+              (data-perms/set-database-permission! all-users-id db-id :perms/create-queries :query-builder)
+              (mt/with-temp [:model/Table {granted-table :id} {:db_id  db-id
+                                                               :schema schema-name
+                                                               :active true}
+                             :model/Table {blocked-table :id} {:db_id  db-id
+                                                               :schema "uxw3217_other_schema"
+                                                               :active true}]
+                ;; Set both rows explicitly rather than relying on the going-granular expansion to cover the upload
+                ;; target schema: the dataset is empty, so there is no other table there to make it unanimous.
+                (data-perms/set-table-permission! all-users-id granted-table :perms/view-data :unrestricted)
+                (data-perms/set-table-permission! all-users-id blocked-table :perms/view-data :blocked)
+                (is (= {all-users-id :blocked}
+                       (advanced-permissions.common/new-table-view-data-permission-levels db-id [all-users-id]))
+                    "precondition: the DB-wide override would block a new table for All Users")
+                (upload-test/do-with-uploaded-example-csv!
+                 {:grant-permission? false
+                  :schema-name       schema-name
+                  :table-prefix      "uxw3217_"}
+                 (fn [model]
+                   (let [uploaded-table  (t2/select-one [:model/Table :id :schema] :id (:table_id model))
+                         uploaded-schema (:schema uploaded-table)]
                      (is (= :unrestricted
-                            (data-perms/full-schema-permission-for-user
-                             (mt/user->id :rasta) :perms/view-data db-id uploaded-schema))))))))))))))
+                            (data-perms/table-permission-for-groups #{all-users-id} :perms/view-data
+                                                                    db-id (:id uploaded-table)))
+                         "uploaded table in the granted schema must stay :unrestricted")
+                     (testing "so the user's effective schema permission stays :unrestricted and they can upload again"
+                       (is (= :unrestricted
+                              (data-perms/full-schema-permission-for-user
+                               (mt/user->id :rasta) :perms/view-data db-id uploaded-schema)))))))))))))))
 
 (deftest update-csv-data-perms-test
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
