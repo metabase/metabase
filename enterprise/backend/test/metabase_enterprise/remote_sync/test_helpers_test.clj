@@ -357,96 +357,22 @@
       [(when (instance? java.sql.SQLException cause) (.getSQLState ^java.sql.SQLException cause))
        (ex-message cause)])))
 
-(defn- write-back-against-a-two-row-writer!
-  "Store two remote-sync setting rows, and run `clean-remote-sync-settings` around a body that changes both rows. While
-  the write-back runs, a transaction on another thread updates `writer-first`, waits until the write-back waits for
-  it, then updates `writer-second`. Returns `{:proceed :write-back :writer :writer-first}`."
-  [writer-first writer-second]
-  (t2/delete! :setting :key [:like "remote-sync%"])
-  (t2/insert! :setting [{:key "remote-sync-type" :value "read-write" :value_with_aad "read-write"}
-                        {:key "remote-sync-url" :value "https://example.com/a.git" :value_with_aad "https://example.com/a.git"}])
-  (setting/restore-cache!)
-  (let [saved      (into {} (map (juxt first second)) (remote-sync-setting-rows))
-        set-value! (fn [k v] (t2/query-one {:update :setting :set {:value v :value_with_aad v} :where [:= :key k]}))
-        writer-pid (promise)
-        proceed    (promise)
-        writer     (atom nil)
-        watcher    (atom nil)
-        error      (try
-                     (th/clean-remote-sync-settings
-                      (fn []
-                        ;; the test changes both rows, so the write-back must write both keys. An update moves the
-                        ;; row, so this order sets the scan order of a statement over both rows; it is the same for
-                        ;; both writer orders, so one writer order is opposite to the scan order.
-                        (set-value! "remote-sync-type" "t")
-                        (set-value! "remote-sync-url" "t")
-                        (reset! writer
-                                (future
-                                  (try
-                                    (t2/with-transaction [_conn]
-                                      ;; bounds every wait of the writer, so that it always ends and releases its locks
-                                      (t2/query-one ["SET LOCAL lock_timeout = '20s'"])
-                                      (set-value! writer-first "w")
-                                      (deliver writer-pid (:pid (t2/query-one ["SELECT pg_backend_pid() AS pid"])))
-                                      (deref proceed 10000 ::timeout)
-                                      (set-value! writer-second "w"))
-                                    :committed
-                                    (catch Throwable e e)
-                                    (finally
-                                      (deliver writer-pid nil)))))
-                        (let [pid (deref writer-pid 10000 ::timeout)]
-                          (reset! watcher
-                                  (future
-                                    (let [deadline (+ (System/currentTimeMillis) 10000)]
-                                      (loop []
-                                        (cond
-                                          (realized? proceed)
-                                          nil
-
-                                          (pos? (:n (t2/query-one ["SELECT count(*) AS n FROM pg_stat_activity
-                                                                    WHERE ? = ANY (pg_blocking_pids(pid))" pid])))
-                                          (deliver proceed ::write-back-blocked)
-
-                                          (< (System/currentTimeMillis) deadline)
-                                          (do (Thread/sleep 20) (recur))))))))))
-                     nil
-                     (catch Throwable e e))]
-    (deliver proceed ::write-back-done)
-    (let [writer-result (deref @writer 30000 ::timeout)
-          _             (deref @watcher 30000 ::timeout)
-          after         (into {} (map (juxt first second)) (remote-sync-setting-rows))]
-      {:proceed      @proceed
-       :write-back   (sql-state-and-message error)
-       :writer       (if (instance? Throwable writer-result) (sql-state-and-message writer-result) writer-result)
-       ;; the write-back waited for the writer's lock on this row, so it wrote the saved value after the writer
-       :writer-first (= (get saved writer-first) (get after writer-first))})))
-
-(deftest clean-remote-sync-settings-write-back-of-two-changed-rows-does-not-deadlock-test
-  (testing (str "the write-back of two changed remote-sync rows completes while another transaction updates the same "
-                "two rows, in each order")
-    (when (= :postgres (mdb/db-type))
-      (doseq [[a b] [["remote-sync-type" "remote-sync-url"] ["remote-sync-url" "remote-sync-type"]]]
-        (testing (str "the other transaction updates " a ", then " b)
-          (do-with-remote-sync-state-restored!
-           (fn []
-             (is (= {:proceed      ::write-back-blocked
-                     :write-back   nil
-                     :writer       :committed
-                     :writer-first true}
-                    (write-back-against-a-two-row-writer! a b))))))))))
-
 (defn- session-id
   "The app DB session id of the connection that the calling thread uses."
   []
   (case (mdb/db-type)
+    :h2               (:id (t2/query-one ["SELECT SESSION_ID() AS id"]))
     :postgres         (:id (t2/query-one ["SELECT pg_backend_pid() AS id"]))
     (:mysql :mariadb) (:id (t2/query-one ["SELECT CONNECTION_ID() AS id"]))))
 
 (defn- session-blocks-another?
-  "Whether another app DB session waits for a lock. On Postgres, the lock must be one that the session `id` holds; on
-  MySQL and MariaDB, the session `id` must have an open transaction."
+  "Whether another app DB session waits for a lock. On H2 and Postgres, the lock must be one that the session `id`
+  holds; on MySQL and MariaDB, the session `id` must have an open transaction."
   [id]
   (case (mdb/db-type)
+    :h2
+    (pos? (:n (t2/query-one ["SELECT count(*) AS n FROM INFORMATION_SCHEMA.SESSIONS WHERE BLOCKER_ID = ?" id])))
+
     :postgres
     (pos? (:n (t2/query-one ["SELECT count(*) AS n FROM pg_stat_activity WHERE ? = ANY (pg_blocking_pids(pid))" id])))
 
@@ -457,11 +383,12 @@
                              id id])))))
 
 (defn- cleanup-against-a-two-row-writer!
-  "Run the cleanup fixture `fixture` around a body that inserts two rows with `insert-two!`, which returns their ids
+  "Run the cleanup fixture `fixture` around a body that runs `write-two!`, which writes two rows and returns their ids
   `[a b]`. While the cleanup runs, a transaction on another thread runs `(lock-first! x)`, waits until the cleanup
   waits for it, then runs `(lock-second! y)`; `[x y]` is `[a b]` for `order` `:a-first` and `[b a]` for `:b-first`.
-  Deletes the two rows after the fixture. Returns `{:proceed :cleanup :writer :rows-left}`."
-  [fixture table insert-two! lock-first! lock-second! order]
+  After the writer ends, calls `(after! [x y])`. Returns `{:proceed :cleanup :writer :after}`, where `:after` is the
+  value of `after!`."
+  [fixture write-two! lock-first! lock-second! after! order]
   (let [writer-id (promise)
         proceed   (promise)
         writer    (atom nil)
@@ -470,15 +397,15 @@
         error     (try
                     (fixture
                      (fn []
-                       (let [[a b] (reset! ids (insert-two!))
-                             [x y] (if (= :a-first order) [a b] [b a])]
+                       (let [[a b] (write-two!)
+                             [x y] (reset! ids (if (= :a-first order) [a b] [b a]))]
                          (reset! writer
                                  (future
                                    (try
                                      (t2/with-transaction [_conn]
                                        (when (= :postgres (mdb/db-type))
                                          ;; bounds every wait of the writer, so that it always ends and releases its
-                                         ;; locks; MySQL and MariaDB detect a deadlock at once
+                                         ;; locks; H2, MySQL and MariaDB detect a deadlock at once
                                          (t2/query-one ["SET LOCAL lock_timeout = '20s'"]))
                                        (lock-first! x)
                                        (deliver writer-id (session-id))
@@ -508,14 +435,21 @@
                     (catch Throwable e e))]
     (deliver proceed ::cleanup-done)
     (let [writer-result (deref @writer 30000 ::timeout)
-          _             (deref @watcher 30000 ::timeout)
-          rows-left     (set (t2/select-fn-vec :id table :id [:in @ids]))]
+          _             (deref @watcher 30000 ::timeout)]
+      {:proceed @proceed
+       :cleanup (sql-state-and-message error)
+       :writer  (if (instance? Throwable writer-result) (sql-state-and-message writer-result) writer-result)
+       :after   (some-> @ids after!)})))
+
+(defn- delete-rows-left!
+  "A function of ids that deletes the rows of `table` with those ids, one row per statement, and returns the set of
+  the ids that it deleted."
+  [table]
+  (fn [ids]
+    (let [rows-left (set (t2/select-fn-vec :id table :id [:in ids]))]
       (doseq [id rows-left]
         (t2/query-one {:delete-from table :where [:= :id id]}))
-      {:proceed   @proceed
-       :cleanup   (sql-state-and-message error)
-       :writer    (if (instance? Throwable writer-result) (sql-state-and-message writer-result) writer-result)
-       :rows-left rows-left})))
+      rows-left)))
 
 (defn- insert-two-ledger-rows!
   "Insert two RemoteSyncObject rows. Returns their ids."
@@ -540,27 +474,107 @@
 (deftest clean-object-and-clean-task-table-do-not-deadlock-with-a-two-row-writer-test
   (testing (str "the cleanups of the RemoteSyncObject and RemoteSyncTask tables complete while another transaction "
                 "locks two rows of the table in two statements, in each order")
-    (when (#{:postgres :mysql :mariadb} (mdb/db-type))
-      (mt/with-dynamic-fn-redefs [search/reindex! (constantly nil)]
+    (mt/with-dynamic-fn-redefs [search/reindex! (constantly nil)]
+      (do-with-remote-sync-state-restored!
+       (fn []
+         (doseq [order [:a-first :b-first]]
+           (testing (str "the cleanup of RemoteSyncObject, against the ledger statements of an export: delete a "
+                         "departed row, then mark a written row synced; order " order)
+             (is (= {:proceed ::cleanup-blocked :cleanup nil :writer :committed :after #{}}
+                    (cleanup-against-a-two-row-writer!
+                     th/clean-object insert-two-ledger-rows!
+                     #(remote-sync.db/delete-rsos! [%])
+                     #(remote-sync.db/set-rsos-status! [%] "synced" (t/offset-date-time))
+                     (delete-rows-left! :remote_sync_object)
+                     order))))
+           (testing (str "the cleanup of RemoteSyncTask, against a transaction that updates two task rows; order "
+                         order)
+             (is (= {:proceed ::cleanup-blocked :cleanup nil :writer :committed :after #{}}
+                    (cleanup-against-a-two-row-writer!
+                     th/clean-task-table insert-two-task-rows!
+                     #(remote-sync.db/update-task! % {:progress 0.5})
+                     #(remote-sync.db/update-task! % {:progress 0.5})
+                     (delete-rows-left! :remote_sync_task)
+                     order))))))))))
+
+(defn- setting-values
+  "The stored `value` of each remote-sync setting row, by key."
+  []
+  (into {} (map (juxt first second)) (remote-sync-setting-rows)))
+
+(defn- set-setting-value!
+  "Set the stored `value` and `value_with_aad` of the setting row `k` to `v`, with one statement."
+  [k v]
+  (t2/query-one {:update :setting :set {:value v :value_with_aad v} :where [:= :key k]}))
+
+(deftest clean-remote-sync-settings-write-back-of-two-changed-rows-does-not-deadlock-test
+  (testing (str "the write-back of two changed remote-sync rows completes while another transaction updates the same "
+                "two rows, in each order")
+    (doseq [order [:a-first :b-first]]
+      (testing (str "order " order)
         (do-with-remote-sync-state-restored!
          (fn []
-           (doseq [order [:a-first :b-first]]
-             (testing (str "the cleanup of RemoteSyncObject, against the ledger statements of an export: delete a "
-                           "departed row, then mark a written row synced; order " order)
-               (is (= {:proceed ::cleanup-blocked :cleanup nil :writer :committed :rows-left #{}}
-                      (cleanup-against-a-two-row-writer!
-                       th/clean-object :remote_sync_object insert-two-ledger-rows!
-                       #(remote-sync.db/delete-rsos! [%])
-                       #(remote-sync.db/set-rsos-status! [%] "synced" (t/offset-date-time))
-                       order))))
-             (testing (str "the cleanup of RemoteSyncTask, against a transaction that updates two task rows; order "
-                           order)
-               (is (= {:proceed ::cleanup-blocked :cleanup nil :writer :committed :rows-left #{}}
-                      (cleanup-against-a-two-row-writer!
-                       th/clean-task-table :remote_sync_task insert-two-task-rows!
-                       #(remote-sync.db/update-task! % {:progress 0.5})
-                       #(remote-sync.db/update-task! % {:progress 0.5})
-                       order)))))))))))
+           (t2/delete! :setting :key [:like "remote-sync%"])
+           (t2/insert! :setting [{:key "remote-sync-type" :value "read-write" :value_with_aad "read-write"}
+                                 {:key            "remote-sync-url"
+                                  :value          "https://example.com/a.git"
+                                  :value_with_aad "https://example.com/a.git"}])
+           (setting/restore-cache!)
+           (let [saved (setting-values)]
+             (is (= {:proceed ::cleanup-blocked :cleanup nil :writer :committed :after true}
+                    (cleanup-against-a-two-row-writer!
+                     th/clean-remote-sync-settings
+                     (fn []
+                       ;; the test changes both rows, so the write-back must write both keys. Both writer orders run,
+                       ;; so one of them is opposite to the order in which a statement over both rows locks them.
+                       (set-setting-value! "remote-sync-type" "t")
+                       (set-setting-value! "remote-sync-url" "t")
+                       ["remote-sync-type" "remote-sync-url"])
+                     #(set-setting-value! % "w")
+                     #(set-setting-value! % "w")
+                     ;; the write-back waited for the writer's lock on the first row of the writer, so it wrote the
+                     ;; saved value after the writer
+                     (fn [[x _]] (= (get saved x) (get (setting-values) x)))
+                     order))))))))))
+
+(defn- raw-rows
+  "Every row of `table`, every column as stored, sorted by id."
+  [table]
+  (->> (t2/select table) (map #(into {} %)) (sort-by :id) vec))
+
+(deftest clean-object-and-clean-task-table-restore-the-rows-from-before-test
+  (testing (str "clean-object and clean-task-table put back every column of the rows that existed before the test, "
+                "and remove the rows that the test added")
+    (let [ts   (t/offset-date-time 2024 5 6 7 8 9 123456000 (t/zone-offset 0))
+          user (mt/user->id :rasta)]
+      (doseq [[fixture table rows change!]
+              [[th/clean-task-table :remote_sync_task
+                [{:id 900001 :sync_task_type "import" :progress 0.25 :cancelled true :started_at ts :ended_at ts
+                  :last_progress_report_at ts :initiated_by user :error_message "failed" :version "abc123"
+                  :conflicts "[\"a\"]" :outcome "{\"x\":1}" :last_heartbeat_at ts}
+                 {:id 900002 :sync_task_type "export" :progress 0.5 :cancelled false :started_at ts
+                  :initiated_by user}]
+                (fn []
+                  (t2/query-one {:update :remote_sync_task :set {:progress 0.9} :where [:= :id 900001]})
+                  (t2/query-one {:delete-from :remote_sync_task :where [:= :id 900002]})
+                  (t2/insert! :model/RemoteSyncTask {:sync_task_type "import" :initiated_by user}))]
+               [th/clean-object :remote_sync_object
+                [{:id 900001 :model_type "Card" :model_id 7 :status "synced" :status_changed_at ts :model_name "C"
+                  :model_collection_id 3 :model_display "table" :model_table_id 4 :model_table_name "T"
+                  :file_path "collections/x/cards/c.yaml" :content_hash (apply str (repeat 64 "a"))}]
+                (fn []
+                  (t2/query-one {:update :remote_sync_object :set {:status "update"} :where [:= :id 900001]})
+                  (t2/insert! :model/RemoteSyncObject {:model_type "Card" :model_id 8 :model_name "D"
+                                                       :status "create" :status_changed_at ts}))]]]
+        (testing table
+          ;; the outer fixture run empties the table for the test and puts back its rows after it
+          (fixture
+           (fn []
+             (doseq [row rows]
+               (t2/query-one {:insert-into table :values [row]}))
+             (let [before (raw-rows table)]
+               (fixture change!)
+               (is (= before (raw-rows table)))))))))))
 
 (deftest clean-remote-sync-state-does-not-reindex-when-the-test-writes-no-content-test
   (testing "clean-remote-sync-state around a test that writes no content does not reindex search"
