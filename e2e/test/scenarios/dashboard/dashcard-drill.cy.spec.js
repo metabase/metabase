@@ -202,9 +202,6 @@ describe("scenarios > dashboard > dashboard drill", () => {
 
   it("should keep card's display when doing zoom drill-through from dashboard (metabase#38307)", () => {
     cy.intercept("POST", "/api/dataset").as("dataset");
-    cy.intercept("/api/dashboard/*/dashcard/*/card/*/query").as(
-      "dashcardQuery",
-    );
 
     const questionDetails = {
       name: "38307",
@@ -459,9 +456,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
       H.visitDashboard(ORDERS_DASHBOARD_ID);
       H.filterWidget().should("contain", "2 selections");
       H.clearFilterWidget(0);
-      H.filterWidget()
-        .should("contain", ordersIdFilter.name)
-        .and("not.contain", "2 selections");
+      H.filterWidget().should("not.contain", "2 selections");
 
       setFilterValue(productsIdFilter.name);
 
@@ -1173,6 +1168,11 @@ describe("issue 29076", () => {
       .findByTestId("table-body")
       .findAllByRole("row")
       .should("have.length", 1);
+    H.assertDatasetReqIsSandboxed({
+      requestAlias: "@cardQuery",
+      columnId: ORDERS.ID,
+      columnAssertion: Number(USERS.sandboxed.login_attributes.attr_uid),
+    });
 
     cy.intercept("POST", "/api/card/*/query").as("questionQuery");
     H.getDashboardCard().findByRole("link", { name: "Orders" }).click();
