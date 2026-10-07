@@ -129,7 +129,7 @@ describe("managing dashboard from the dashboard's edit menu", () => {
               });
             });
 
-            it("should deep duplicate a dashboard and its cards", () => {
+            it("should deep duplicate a dashboard and its cards to the same and to a new collection", () => {
               cy.get("@originalDashboardId").then((id) => {
                 cy.intercept("POST", `/api/dashboard/${id}/copy`).as(
                   "copyDashboard",
@@ -174,19 +174,13 @@ describe("managing dashboard from the dashboard's edit menu", () => {
                   .and("contain", newDashboardName)
                   .and("contain", originalQuestionName)
                   .and("contain", newQuestionName);
-              });
-            });
 
-            it("should deep duplicate a dashboard and its cards to a collection created on the go", () => {
-              cy.get("@originalDashboardId").then((id) => {
-                cy.intercept("POST", `/api/dashboard/${id}/copy`).as(
-                  "copyDashboard",
-                );
-                const newDashboardName = `${dashboardName} - Duplicate`;
-                const { name: originalQuestionName } = questionDetails;
-                const newQuestionName = originalQuestionName;
-                const newDashboardId = id + 1;
+                cy.log("deep duplicate to a collection created on the go");
+                const newCollectionDashboardId = id + 2;
+                const newCollectionQuestionName = originalQuestionName;
 
+                H.visitDashboard(id);
+                H.openDashboardMenu();
                 H.popover()
                   .findByText("Duplicate")
                   .should("be.visible")
@@ -216,16 +210,17 @@ describe("managing dashboard from the dashboard's edit menu", () => {
                 cy.button("Duplicate").click();
                 assertOnRequest("copyDashboard");
 
-                cy.url().should("contain", `/dashboard/${newDashboardId}`);
+                cy.url().should(
+                  "contain",
+                  `/dashboard/${newCollectionDashboardId}`,
+                );
 
                 cy.findByDisplayValue(newDashboardName);
                 H.appBar().findByText(NEW_COLLECTION).click();
                 H.collectionTable().within(() => {
                   cy.findByText(newDashboardName).should("be.visible");
-                  cy.findByText(newQuestionName).should("be.visible");
-                  cy.findByText(`${newQuestionName} - Duplicate`).should(
-                    "not.exist",
-                  );
+                  cy.findByText(newCollectionQuestionName).should("be.visible");
+                  cy.findByText(newQuestionName).should("not.exist");
                 });
 
                 H.openNavigationSidebar();
@@ -319,17 +314,15 @@ describe("managing dashboard from the dashboard's edit menu", () => {
             });
           });
 
-          it("should not be offered to edit dashboard details or archive the dashboard for dashboard in collections they have `read` access to (metabase#15280)", () => {
+          it("should only be offered to duplicate dashboard in collections they have `read` access to (metabase#15280)", () => {
+            const { first_name, last_name } = USERS[user];
+
             H.popover().within(() => {
               cy.findByText("Duplicate").should("be.visible");
               cy.findByText("Edit settings").should("not.exist");
               cy.findByText("Move").should("not.exist");
               cy.findByText("Move to trash").should("not.exist");
             });
-          });
-
-          it("should be offered to duplicate dashboard in collections they have `read` access to", () => {
-            const { first_name, last_name } = USERS[user];
 
             H.popover().findByText("Duplicate").click();
             cy.findByTestId("collection-picker-button").should(
