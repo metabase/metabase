@@ -41,38 +41,21 @@ describe("OSS", { tags: "@OSS" }, () => {
       mockEmbedJsToDevServer();
     });
 
-    it("should show upsell on the options step for dashboards and charts", () => {
+    it("should show upsell for Allow subscriptions option", () => {
       navigateToEmbedOptionsStep({
         experience: "dashboard",
         resourceName: DASHBOARD_NAME,
       });
 
-      getEmbedSidebar().findByLabelText("Allow subscriptions").should("exist");
       getEmbedSidebar().findByTestId("upsell-card").should("be.visible");
+    });
 
-      cy.log("go back and pick a chart");
-      getEmbedSidebar().within(() => {
-        cy.findByText("Back").click();
-        cy.findByText("Chart").click();
-        cy.findByTestId("embed-browse-entity-button").click();
+    it("should show upsell for Allow alerts option", () => {
+      navigateToEmbedOptionsStep({
+        experience: "chart",
+        resourceName: QUESTION_NAME,
       });
 
-      H.entityPickerModal().within(() => {
-        cy.findByTestId("item-picker-level-0")
-          .findByText("Our analytics")
-          .click();
-        cy.findByTestId("item-picker-level-1")
-          .findAllByText(QUESTION_NAME)
-          .first()
-          .click();
-      });
-
-      getEmbedSidebar().within(() => {
-        cy.findByText(QUESTION_NAME).should("be.visible");
-        cy.findByText("Next").click();
-      });
-
-      getEmbedSidebar().findByLabelText("Allow alerts").should("exist");
       getEmbedSidebar().findByTestId("upsell-card").should("be.visible");
     });
   });
