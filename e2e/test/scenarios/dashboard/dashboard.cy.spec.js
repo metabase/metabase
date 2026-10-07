@@ -182,9 +182,11 @@ describe("scenarios > dashboard", () => {
     });
 
     context("add a question (dashboard card)", () => {
-      it("should be possible via questions sidebar", () => {
-        H.editDashboard();
-        H.openQuestionsSidebar();
+      it("should be possible via questions sidebar from an empty state (metabase#29450)", () => {
+        cy.findByTestId("dashboard-empty-state").within(() => {
+          cy.findByText("This dashboard is empty").should("be.visible");
+          cy.findByText("Add a chart").click();
+        });
 
         cy.log("The list of saved questions");
         H.sidebar().findByText("Orders, Count").click();
@@ -279,22 +281,6 @@ describe("scenarios > dashboard", () => {
         });
       });
 
-      it("should save a dashboard after adding a saved question from an empty state (metabase#29450)", () => {
-        cy.findByTestId("dashboard-empty-state").within(() => {
-          cy.findByText("This dashboard is empty");
-          cy.findByText("Add a chart").click();
-        });
-
-        H.sidebar().findByText("Orders, Count").click();
-
-        H.saveDashboard();
-
-        H.getDashboardCards()
-          .should("have.length", 1)
-          .and("contain", "Orders, Count")
-          .and("contain", "18,760");
-      });
-
       it("should save changes to a dashboard after using the 'Add a chart' button from an empty tab (metabase#53132)", () => {
         cy.log("add an existing card");
         H.editDashboard();
@@ -321,65 +307,6 @@ describe("scenarios > dashboard", () => {
         );
         cy.findAllByRole("tab", { name: /Tab \d/ }).should("have.length", 2);
         H.getDashboardCards().should("have.length", 2);
-      });
-
-      it("should allow navigating to the notebook editor directly from a dashboard card", () => {
-        H.visitDashboard(ORDERS_DASHBOARD_ID);
-        H.showDashboardCardActions();
-        H.getDashboardCardMenu().click();
-        H.popover().findByText("Edit question").should("be.visible").click();
-        cy.findByRole("button", { name: "Visualize" }).should("be.visible");
-      });
-
-      it("should allow navigating to the model editor directly from a dashboard card", () => {
-        H.createQuestionAndDashboard({
-          questionDetails: {
-            name: "orders",
-            type: "model",
-            query: {
-              "source-table": ORDERS_ID,
-            },
-          },
-          dashboardDetails: {
-            name: "Dashboard",
-          },
-        }).then(({ body: { dashboard_id, card } }) => {
-          cy.wrap(`${card.id}-${card.name}`).as("slug");
-          H.visitDashboard(dashboard_id);
-        });
-
-        H.showDashboardCardActions();
-        H.getDashboardCardMenu().click();
-        H.popover().findByText("Edit model").should("be.visible").click();
-        cy.get("@slug").then((slug) => {
-          cy.location("pathname").should("eq", `/model/${slug}/query`);
-        });
-      });
-
-      it("should allow navigating to the metric editor directly from a dashboard card", () => {
-        H.createQuestionAndDashboard({
-          questionDetails: {
-            name: "orders",
-            type: "metric",
-            query: {
-              "source-table": ORDERS_ID,
-              aggregation: [["count"]],
-            },
-          },
-          dashboardDetails: {
-            name: "Dashboard",
-          },
-        }).then(({ body: { dashboard_id, card } }) => {
-          cy.wrap(`${card.id}-${card.name}`).as("slug");
-          H.visitDashboard(dashboard_id);
-        });
-
-        H.showDashboardCardActions();
-        H.getDashboardCardMenu().click();
-        H.popover().findByText("Edit metric").should("be.visible").click();
-        cy.get("@slug").then((slug) => {
-          cy.location("pathname").should("eq", `/metric/${slug}/query`);
-        });
       });
     });
 
@@ -610,6 +537,66 @@ describe("scenarios > dashboard", () => {
 
       cy.log("Verify changes were not saved");
       cy.findByTestId("dashboard-empty-state").should("exist");
+    });
+  });
+
+  it("should allow navigating to the notebook, model and metric editors directly from a dashboard card", () => {
+    cy.log("notebook editor");
+    H.visitDashboard(ORDERS_DASHBOARD_ID);
+    H.showDashboardCardActions();
+    H.getDashboardCardMenu().click();
+    H.popover().findByText("Edit question").should("be.visible").click();
+    cy.findByRole("button", { name: "Visualize" }).should("be.visible");
+
+    cy.log("model editor");
+    H.createQuestionAndDashboard({
+      questionDetails: {
+        name: "orders",
+        type: "model",
+        query: {
+          "source-table": ORDERS_ID,
+        },
+      },
+      dashboardDetails: {
+        name: "Model dashboard",
+      },
+    }).then(({ body: { dashboard_id, card } }) => {
+      cy.wrap(`${card.id}-${card.name}`).as("modelSlug");
+      H.visitDashboard(dashboard_id);
+    });
+
+    H.showDashboardCardActions();
+    H.getDashboardCardMenu().click();
+    H.popover().findByText("Edit model").should("be.visible").click();
+    H.datasetEditBar().should("be.visible");
+    cy.get("@modelSlug").then((slug) => {
+      cy.location("pathname").should("eq", `/model/${slug}/query`);
+    });
+
+    cy.log("metric editor");
+    H.createQuestionAndDashboard({
+      questionDetails: {
+        name: "orders",
+        type: "metric",
+        query: {
+          "source-table": ORDERS_ID,
+          aggregation: [["count"]],
+        },
+      },
+      dashboardDetails: {
+        name: "Metric dashboard",
+      },
+    }).then(({ body: { dashboard_id, card } }) => {
+      cy.wrap(`${card.id}-${card.name}`).as("metricSlug");
+      H.visitDashboard(dashboard_id);
+    });
+
+    H.showDashboardCardActions();
+    H.getDashboardCardMenu().click();
+    H.popover().findByText("Edit metric").should("be.visible").click();
+    H.MetricPage.queryEditor().should("be.visible");
+    cy.get("@metricSlug").then((slug) => {
+      cy.location("pathname").should("eq", `/metric/${slug}/query`);
     });
   });
 
