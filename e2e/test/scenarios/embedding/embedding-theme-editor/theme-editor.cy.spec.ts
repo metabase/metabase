@@ -280,7 +280,9 @@ describe(
     });
 
     describe("additional colors", () => {
-      it("shows additional colors section when expanded", () => {
+      it("shows, reverts, edits, and saves additional colors", () => {
+        cy.intercept("PUT", "/api/embed-theme/*").as("updateTheme");
+
         createThemeViaApi("Colors test").then((theme) => {
           visitThemeEditor(theme.id);
         });
@@ -301,15 +303,7 @@ describe(
           cy.log("collapse additional colors");
           cy.findByText("Show fewer colors").click();
           cy.findByText("Secondary text").should("not.be.visible");
-        });
-      });
 
-      it("can revert additional colors back to defaults", () => {
-        createThemeViaApi("Revert colors").then((theme) => {
-          visitThemeEditor(theme.id);
-        });
-
-        H.main().within(() => {
           cy.findByText("Show more colors").click();
 
           cy.log(
@@ -324,18 +318,6 @@ describe(
 
           cy.log("revert button should disappear after resetting");
           cy.findByLabelText("Regenerate from brand color").should("not.exist");
-        });
-      });
-
-      it("can edit additional colors and save them", () => {
-        cy.intercept("PUT", "/api/embed-theme/*").as("updateTheme");
-
-        createThemeViaApi("Edit colors").then((theme) => {
-          visitThemeEditor(theme.id);
-        });
-
-        H.main().within(() => {
-          cy.findByText("Show more colors").click();
         });
 
         cy.log("edit the border color via its inline input");
