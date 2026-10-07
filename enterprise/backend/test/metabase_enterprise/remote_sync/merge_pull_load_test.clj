@@ -544,13 +544,14 @@
           (is (= "create" (:status (row "Card" c-id)))))))))
 
 (defn- card-added-in-a-remote-deleted-collection!
-  "Collections Alpha and Beta, each with a card, are synced as the version v0. The remote deletes Beta and its card. The
-  user adds card C to Beta at `at`: `:before-the-pre-check` (after the merge read ours) or `:after-the-load` (before
-  the reconcile). Returns `{:result :c-id :beta}`."
+  "Collections Alpha (with card A) and Beta (with card B) are synced as the version v0. The remote edits A and deletes
+  Beta and B. The user adds card C to Beta at `at`: `:before-the-pre-check` (after the merge read ours) or
+  `:after-the-load` (before the reconcile). Returns `{:result :a :c-exists? :beta-exists? :c-row}`: `:a` is the
+  description of A after the pull."
   [at]
   (with-sync-settings
     (mt/with-temp [:model/Collection {alpha :id} {:name "Alpha" :is_remote_synced true :location "/"}
-                   :model/Card _ {:name "Card A" :collection_id alpha}
+                   :model/Card {a :id} {:name "Card A" :description "original" :collection_id alpha}
                    :model/Collection {beta :id} {:name "Beta" :is_remote_synced true :location "/"}
                    :model/Card _ {:name "Card B" :collection_id beta}]
       (mt/with-model-cleanup [:model/Card]
@@ -563,24 +564,29 @@
               (mt/with-dynamic-fn-redefs [save-rule/pre-check! (fn [& args]
                                                                  (when (= :before-the-pre-check at) (add!))
                                                                  (apply real args))]
-                (merge-pull! t0 (without-beta t0)
+                (merge-pull! t0 (-> t0 without-beta (edit "Card A" "remote edit A"))
                              :on-report (once-at! 0.75 #(when (= :after-the-load at) (add!)))))]
-          {:result result :c-id @c-id :beta beta})))))
+          {:result       result
+           :a            (t2/select-one-fn :description :model/Card a)
+           :c-exists?    (t2/exists? :model/Card :id @c-id)
+           :beta-exists? (t2/exists? :model/Collection :id beta)
+           :c-row        (row "Card" @c-id)})))))
 
 (deftest card-added-in-a-remote-deleted-collection-during-the-pull-stops-the-pull-test
-  (testing "The remote deletes collection Beta and its card. During the pull, the user adds card C to Beta. The merge
-            did not see C, so the pull stops, and Beta and C stay."
+  (testing "The remote edits card A and deletes collection Beta and its card. During the pull, the user adds card C to
+            Beta. The merge did not see C, so the pull stops. Beta and C stay, and A keeps its text of the last sync."
     (doseq [at [:before-the-pre-check :after-the-load]]
       (testing at
-        (let [{:keys [result c-id beta]} (card-added-in-a-remote-deleted-collection! at)]
+        (let [{:keys [result a c-exists? beta-exists? c-row]} (card-added-in-a-remote-deleted-collection! at)]
           (is (= :conflict (:status result)) (pr-str result))
           (is (= ["New card C"] (:conflicts result)) "the conflict names the new card")
           (is (= (str "Import blocked: content was added locally during the pull under content that the remote "
                       "branch deleted. Your local change is kept.")
                  (:message result)))
-          (is (t2/exists? :model/Card :id c-id) "the new card stays")
-          (is (t2/exists? :model/Collection :id beta) "Beta stays")
-          (is (= "create" (:status (row "Card" c-id)))))))))
+          (is c-exists? "the new card stays")
+          (is beta-exists? "Beta stays")
+          (is (= "create" (:status c-row)))
+          (is (= "original" a) "A has its text of the last sync"))))))
 
 (deftest remote-delete-of-a-collection-with-unchanged-contents-deletes-all-test
   (testing "The remote deletes collection Beta, its child collection Gamma and their contents, which nobody changed
