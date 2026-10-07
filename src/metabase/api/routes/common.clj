@@ -22,21 +22,17 @@
      (fn [prefix]
        (open-api/open-api-spec handler prefix)))))
 
+;; Public and embedded endpoints replace error text with something generic, so whoever holds a public URL learns
+;; nothing about how the instance is configured. An exception opts out of that by putting `:message-for-viewer` in its
+;; `ex-data`, which asserts it has already decided -- from the viewer, not from the kind of error -- that this
+;; particular text is one they may read. For a viewer with no claim on an explanation the key is simply absent, so a
+;; layer that forgets to consult it costs a diagnosis rather than disclosing one.
+;;
+;; A refusal reaches a route either raised through exceptions or caught by the query processor and re-thrown as a
+;; formatted error in `ex-data`, which is what the map-tile endpoints do -- hence the one level of nesting below.
 (defn message-for-viewer
-  "The error message whoever made this request is allowed to read, taken from the first of `maps` that carries one, or
-  nil when none does. Each of `maps` is either an exception's `ex-data` or a formatted query-processor error.
-
-  Public and embedded endpoints replace error text with something generic, so a stranger holding a public URL learns
-  nothing about how the instance is configured. An exception opts out of that by putting `:message-for-viewer` in its
-  `ex-data`, which asserts that it has already decided -- from the viewer, not from the kind of error -- that this
-  particular text is one they may read. Set it only after making that decision: for an anonymous visitor there is no
-  such text, so the key is simply absent. The database-routing anonymous-access refusal is the only thing that sets
-  it today.
-
-  A map that is itself a formatted query-processor error is searched one level down too, under the `ex-data` it
-  carries for the innermost exception and under `:via` for each enclosing one. A refusal reaches the route either way:
-  raised through exceptions, or caught by the query processor and re-thrown as a formatted error in `ex-data`, which
-  is what the map-tile endpoints do."
+  "The first `:message-for-viewer` found in `maps`, in their `:ex-data`, or in their `:via` entries' `:ex-data`; nil
+  when there is none. Each of `maps` is an exception's `ex-data` or a formatted query-processor error."
   [maps]
   (some (fn [m]
           (when (map? m)

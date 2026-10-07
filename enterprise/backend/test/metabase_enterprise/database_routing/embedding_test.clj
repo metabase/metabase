@@ -4,10 +4,9 @@
   anonymous surfaces, and the same grant gates both -- see
   [[metabase-enterprise.database-routing.public-sharing-test]], whose shape this namespace follows.
 
-  `/api/embed` is wrapped in `+message-only-exceptions` rather than `+public-exceptions`, so the refusal's own message
-  reaches the viewer rather than being replaced. That makes this the other half of the contract the refusal has to
-  satisfy: the message an anonymous viewer gets names neither the database nor the setting, and only a signed-in one
-  gets the diagnosis. `/api/preview_embed` is superuser-only, so its viewer always gets the diagnosis.
+  A refusal here also has to say the right thing to the right viewer: nothing about the configuration to a viewer who
+  may not manage the routed database, and which database and which setting to one who may. `/api/preview_embed` is
+  superuser-only, so its viewer is always the latter.
 
   See [[metabase-enterprise.database-routing.common]] for where that decision is made and why."
   (:require
@@ -54,11 +53,11 @@
 (defn- do-with-embed-routing-setup!
   "Publishes guest embeds on the routed database [[routing.tu/do-with-routed-warehouse!]] stands up, whose
   anonymous-access grant is `granted?`, and calls `f` with a map of the URLs to visit plus the router database's
-  `:db-name`, which a refusal names."
+  `:db-id` and `:db-name`."
   [granted? f]
   (routing.tu/do-with-routed-warehouse!
    granted?
-   (fn [{:keys [db-name str-dimension str-query pivot-query param-query tile-query lat-field lon-field]}]
+   (fn [{:keys [db-id db-name str-dimension str-query pivot-query param-query tile-query lat-field lon-field]}]
      (let [embedded {:enable_embedding true}]
        (mt/with-temp [:model/Card card
                       (merge embedded {:dataset_query str-query})
@@ -98,7 +97,8 @@
                  card-id   (u/the-id card)
                  pivot-dc  [(u/the-id pivot-dashcard) (u/the-id pivot-card)]
                  tile-dc   [(u/the-id tile-dashcard) (u/the-id tile-card)]]
-             (f {:db-name            db-name
+             (f {:db-id              db-id
+                 :db-name            db-name
                  :card-query         (str "embed/card/" card-tok "/query")
                  :card-csv           (str "embed/card/" card-tok "/query/csv")
                  :card-pivot         (str "embed/pivot/card/" pivot-tok "/query")
@@ -126,10 +126,23 @@
                  :lat-field          lat-field
                  :lon-field          lon-field}))))))))
 
-(defn- names?
+(defn- body-mentions?
   "True when an /api/embed response body contains `message`, whatever prefix the layer that caught the refusal added."
   [body message]
   (str/includes? (str body) message))
+
+(defn- message-paths
+  "The refused `/api/embed` paths that raise instead of failing as a query, as `[endpoint & request-args]`."
+  [urls]
+  [[:card-param-remap  (:card-param-remap urls)]
+   [:dash-param-values (:dash-param-values urls)]
+   [:dash-param-search (:dash-param-search urls)]
+   [:dash-param-remap  (:dash-param-remap urls)]
+   [:card-tile         (:card-tile urls) :latField (:lat-field urls) :lonField (:lon-field urls)]
+   [:dash-tile         (:dash-tile urls) :latField (:lat-field urls) :lonField (:lon-field urls)]])
+
+(def ^:private query-failure-keys
+  [:status :error :error_type :error_is_curated])
 
 ;;; --------------------------------------------- Grant in place ----------------------------------------------------
 
@@ -222,24 +235,18 @@
            (testing endpoint
              (is (= routing.tu/generic-query-failure
                     (-> (apply client/client :get url args)
-                        (select-keys [:status :error :error_type :error_is_curated])))))))
+                        (select-keys query-failure-keys)))))))
        (testing "the remapping and map-tile endpoints refuse with a 400, carrying the refusal's own message"
-         (doseq [[endpoint url & args] [[:card-param-remap  (:card-param-remap urls)]
-                                        [:dash-param-values (:dash-param-values urls)]
-                                        [:dash-param-search (:dash-param-search urls)]
-                                        [:dash-param-remap  (:dash-param-remap urls)]
-                                        [:card-tile         (:card-tile urls)
-                                         :latField (:lat-field urls) :lonField (:lon-field urls)]
-                                        [:dash-tile         (:dash-tile urls)
-                                         :latField (:lat-field urls) :lonField (:lon-field urls)]]]
+         (doseq [[endpoint url & args] (message-paths urls)]
            (testing endpoint
-             (let [body (apply client/client :get 400 url args)]
-               (is (names? body routing.tu/anonymous-refusal-message) (pr-str body))
-               (doseq [secret [(:db-name urls) "routing" "anonymous_access_granted"]]
-                 (is (not (names? body secret))
-                     (str (pr-str secret) " leaked in " (pr-str body)))))
-             (let [body (apply mt/user-http-request :rasta :get 400 url args)]
-               (is (names? body (routing.tu/viewer-refusal-message (:db-name urls))) (pr-str body))))))
+             (doseq [[requester request] [[:anonymous           (fn [& args] (apply client/client args))]
+                                          [:signed-in-non-admin (fn [& args] (apply mt/user-http-request :rasta args))]]]
+               (testing requester
+                 (let [body (apply request :get 400 url args)]
+                   (is (body-mentions? body routing.tu/plain-refusal-message) (pr-str body))
+                   (doseq [disclosure (routing.tu/configuration-disclosures (:db-name urls))]
+                     (is (not (body-mentions? body disclosure))
+                         (str (pr-str disclosure) " leaked in " (pr-str body))))))))))
        ;; `metabase.parameters.field/search-values-from-field-id` logs and returns `[]` when the underlying fetch
        ;; throws -- long-standing behaviour it shares with sandbox errors and warehouse timeouts -- so these two come
        ;; back empty instead of raising. No destination data reaches the viewer either way.
@@ -248,10 +255,28 @@
                                  [:card-param-search (:card-param-search urls)]]]
            (testing endpoint
              (is (=? {:values empty?} (client/client :get 200 url))))))
-       (testing "a signed-in non-admin is refused too, and told what to change"
-         (is (= (routing.tu/query-failure-for-viewer (:db-name urls))
+       (testing "a signed-in non-admin is refused in the same way"
+         (is (= routing.tu/generic-query-failure
                 (-> (mt/user-http-request :rasta :get (:card-query urls))
-                    (select-keys [:status :error :error_type :error_is_curated])))))))))
+                    (select-keys query-failure-keys)))))))))
+
+(deftest guest-embed-refusal-explains-itself-to-a-database-manager-test
+  (testing "a viewer holding manage-database permission on the routed database is told which database and which
+           setting, on both of /api/embed's refusal contracts"
+    (do-with-embed-routing-setup!
+     false
+     (fn [{:keys [db-id db-name] :as urls}]
+       (routing.tu/do-as-database-manager!
+        db-id
+        (fn []
+          (testing "GET /api/embed/card/:token/query"
+            (is (= (routing.tu/query-failure-for-manager db-name)
+                   (-> (mt/user-http-request :rasta :get (:card-query urls))
+                       (select-keys query-failure-keys)))))
+          (doseq [[endpoint url & args] (message-paths urls)]
+            (testing endpoint
+              (let [body (apply mt/user-http-request :rasta :get 400 url args)]
+                (is (body-mentions? body (routing.tu/manager-refusal-message db-name)) (pr-str body)))))))))))
 
 (deftest preview-embed-refused-without-the-grant-test
   (testing "an embed preview refuses too, so an admin previewing an ungranted routed database sees what the published
@@ -260,15 +285,15 @@
      false
      (fn [urls]
        ;; the preview endpoints share the public-sharing execution helpers, which replace the text of any error type
-       ;; not marked safe for embeds -- but the refusal writes its own message for a signed-in viewer, and nobody but
-       ;; a superuser can reach a preview, so the previewing admin is told which database and which setting rather
-       ;; than being handed the generic failure an embedded stranger gets.
+       ;; not marked safe for embeds -- but nobody except a superuser can reach a preview, and a superuser may manage
+       ;; every database, so the previewing admin is told which database and which setting rather than being handed
+       ;; the generic failure an embedded stranger gets.
        (doseq [[endpoint url] [[:preview-card-query (:preview-card-query urls)]
                                [:preview-dash-query (:preview-dash-query urls)]]]
          (testing endpoint
-           (is (= (routing.tu/query-failure-for-viewer (:db-name urls))
+           (is (= (routing.tu/query-failure-for-manager (:db-name urls))
                   (-> (mt/user-http-request :crowberto :get url)
-                      (select-keys [:status :error :error_type :error_is_curated]))))))))))
+                      (select-keys query-failure-keys))))))))))
 
 ;;; ------------------------------------------ Publishing is not refused --------------------------------------------
 
