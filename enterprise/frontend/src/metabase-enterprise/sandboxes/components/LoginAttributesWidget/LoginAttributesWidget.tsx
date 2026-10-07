@@ -3,7 +3,7 @@ import { type HTMLAttributes, useMemo } from "react";
 import { t } from "ttag";
 
 import { skipToken, useGetUserQuery } from "metabase/api";
-import { FormField } from "metabase/common/components/FormField";
+import { FormField, type FormFieldProps } from "metabase/forms";
 import { Accordion, Box, Loader, Text } from "metabase/ui";
 import { useGetTenantQuery } from "metabase-enterprise/api";
 import { getExtraAttributes } from "metabase-enterprise/sandboxes/utils";
@@ -18,6 +18,8 @@ import type {
 import { LoginAttributeMappingEditor } from "./LoginAttributeMappingEditor";
 
 interface Props extends HTMLAttributes<HTMLDivElement> {
+  mt?: FormFieldProps["mt"];
+  mb?: FormFieldProps["mb"];
   name?: string;
   title?: string;
   description?: string;
@@ -47,6 +49,8 @@ export const LoginAttributesWidget = ({
   description,
   className,
   style,
+  mt,
+  mb,
   userId,
 }: Props) => {
   const [{ value }, , { setValue, setError }] = useField(name);
@@ -78,8 +82,8 @@ export const LoginAttributesWidget = ({
   };
 
   return (
-    <FormField className={className} style={style}>
-      <Accordion mt="xxl">
+    <FormField className={className} style={style} mt={mt} mb={mb}>
+      <Accordion>
         <Accordion.Item value="login-attributes">
           <Accordion.Control>
             <Text fz="md">{title}</Text>

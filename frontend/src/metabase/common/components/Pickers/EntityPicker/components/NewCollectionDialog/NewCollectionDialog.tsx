@@ -4,7 +4,6 @@ import * as Yup from "yup";
 
 import { useCreateCollectionMutation } from "metabase/api";
 import { canPlaceEntityInCollection } from "metabase/common/collections/utils";
-import { FormFooter } from "metabase/common/components/FormFooter";
 import {
   Form,
   FormErrorMessage,
@@ -13,7 +12,7 @@ import {
   FormTextInput,
 } from "metabase/forms";
 import { PLUGIN_TENANTS } from "metabase/plugins";
-import { Button, Flex, Modal } from "metabase/ui";
+import { Button, Modal } from "metabase/ui";
 import * as Errors from "metabase/utils/errors";
 
 import { useOmniPickerContext } from "../../context";
@@ -130,22 +129,19 @@ export const NewCollectionDialog = () => {
                 name="name"
                 label={t`Give it a name`}
                 placeholder={t`My new collection`}
-                mb="1rem"
                 labelProps={{ my: "0.5rem" }}
                 data-autofocus
               />
-              <FormFooter>
-                <FormErrorMessage inline />
-                <Flex style={{ flexShrink: 1 }} justify="flex-end" gap="sm">
-                  <Button type="button" onClick={close}>{t`Cancel`}</Button>
-                  <FormSubmitButton
-                    type="submit"
-                    label={t`Create`}
-                    disabled={!dirty}
-                    variant="filled"
-                  />
-                </Flex>
-              </FormFooter>
+              <Modal.Footer>
+                <FormErrorMessage flex={1} />
+                <Button type="button" onClick={close}>{t`Cancel`}</Button>
+                <FormSubmitButton
+                  type="submit"
+                  label={t`Create`}
+                  disabled={!dirty}
+                  variant="filled"
+                />
+              </Modal.Footer>
             </Form>
           )}
         </FormProvider>

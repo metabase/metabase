@@ -9,7 +9,7 @@ import {
   FormSubmitButton,
   FormTextInput,
 } from "metabase/forms";
-import { Box, Button, Group, Modal, Stack, Text } from "metabase/ui";
+import { Box, Button, Modal, Stack, Text } from "metabase/ui";
 import * as Errors from "metabase/utils/errors";
 import {
   useConfirmMfaEnrollmentMutation,
@@ -120,12 +120,12 @@ function ConfirmPasswordForm({ onEnroll, onCancel }: ConfirmPasswordFormProps) {
             label={t`Confirm your password to begin`}
             data-autofocus
           />
-          <FormErrorMessage />
-          <Group justify="flex-end">
-            <Button onClick={onCancel}>{t`Cancel`}</Button>
-            <FormSubmitButton label={t`Continue`} variant="filled" />
-          </Group>
         </Stack>
+        <Modal.Footer>
+          <FormErrorMessage flex={1} />
+          <Button onClick={onCancel}>{t`Cancel`}</Button>
+          <FormSubmitButton label={t`Continue`} variant="filled" />
+        </Modal.Footer>
       </Form>
     </FormProvider>
   );
@@ -179,15 +179,12 @@ function EnrollForm({ enrollment, onSuccess, onCancel }: EnrollFormProps) {
             inputMode="numeric"
             autoFocus
           />
-          <FormErrorMessage />
-          <Group justify="flex-end">
-            <Button onClick={onCancel}>{t`Cancel`}</Button>
-            <FormSubmitButton
-              label={t`Set up authentication`}
-              variant="filled"
-            />
-          </Group>
         </Stack>
+        <Modal.Footer>
+          <FormErrorMessage flex={1} />
+          <Button onClick={onCancel}>{t`Cancel`}</Button>
+          <FormSubmitButton label={t`Set up authentication`} variant="filled" />
+        </Modal.Footer>
       </Form>
     </FormProvider>
   );

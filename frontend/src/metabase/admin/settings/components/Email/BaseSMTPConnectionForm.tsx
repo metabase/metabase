@@ -18,7 +18,7 @@ import {
   useGetSettingsQuery,
 } from "metabase/settings";
 import { SetByEnvVarWrapper } from "metabase/settings-components";
-import { Box, Button, Chip, Flex, Modal, Stack } from "metabase/ui";
+import { Box, Button, Chip, Modal, Stack } from "metabase/ui";
 import * as Errors from "metabase/utils/errors";
 import type { SettingDefinitionMap, SettingKey } from "metabase-types/api";
 
@@ -191,13 +191,13 @@ export const BaseSMTPConnectionForm = ({
 
   return (
     <Modal
+      density="relaxed"
       title={t`SMTP Configuration`}
       opened
       onClose={onClose}
-      padding="xxl"
       data-testid={dataTestId}
     >
-      <Box data-testid="settings-updates" pt="xl">
+      <Box data-testid="settings-updates">
         <FormProvider
           initialValues={initialValues}
           validationSchema={getFormValueSchema(
@@ -233,7 +233,6 @@ export const BaseSMTPConnectionForm = ({
                     <FormChipGroup
                       name={getFullFormKey("port")}
                       label={t`SMTP Port`}
-                      groupProps={{ mt: "0.5rem" }}
                     >
                       <Chip value={"465"} variant="filled">
                         465
@@ -261,7 +260,6 @@ export const BaseSMTPConnectionForm = ({
                   <FormChipGroup
                     name={getFullFormKey("security")}
                     label={t`SMTP Security`}
-                    groupProps={{ mt: "0.5rem" }}
                   >
                     {securityOptions.map(({ value, label }) => (
                       <Chip key={value} value={value} variant="filled">
@@ -293,22 +291,21 @@ export const BaseSMTPConnectionForm = ({
                     placeholder={"Shhh..."}
                   />
                 </SetByEnvVarWrapper>
-
-                <Flex mt="1rem" gap="lg" justify="end">
-                  <Button
-                    onClick={handleClearEmailSettings}
-                    disabled={allSetByEnvVars || isSubmitting}
-                  >
-                    {t`Clear`}
-                  </Button>
-                  <FormSubmitButton
-                    label={t`Save changes`}
-                    disabled={!dirty || !isValid || isSubmitting}
-                    loading={isSubmitting}
-                    variant="filled"
-                  />
-                </Flex>
               </Stack>
+              <Modal.Footer>
+                <Button
+                  onClick={handleClearEmailSettings}
+                  disabled={allSetByEnvVars || isSubmitting}
+                >
+                  {t`Clear`}
+                </Button>
+                <FormSubmitButton
+                  label={t`Save changes`}
+                  disabled={!dirty || !isValid || isSubmitting}
+                  loading={isSubmitting}
+                  variant="filled"
+                />
+              </Modal.Footer>
             </Form>
           )}
         </FormProvider>

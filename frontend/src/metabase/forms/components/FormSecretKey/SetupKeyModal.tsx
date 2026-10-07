@@ -9,7 +9,6 @@ import {
   Alert,
   Button,
   Flex,
-  Group,
   Icon,
   Loader,
   Modal,
@@ -105,18 +104,17 @@ export const SetupKeyModal = (props: SetupKeyDialogProps) => {
             </Alert>
           )}
         </Stack>
-
-        <Group justify="flex-end" gap="sm" mt="sm">
-          <Button onClick={onClose} variant="subtle">{t`Cancel`}</Button>
-          <Button
-            disabled={secretValue.length < MIN_SECRET_LENGTH}
-            onClick={() => onConfirm(secretValue)}
-            variant="filled"
-          >
-            {t`Done`}
-          </Button>
-        </Group>
       </Stack>
+      <Modal.Footer>
+        <Button onClick={onClose} variant="subtle">{t`Cancel`}</Button>
+        <Button
+          disabled={secretValue.length < MIN_SECRET_LENGTH}
+          onClick={() => onConfirm(secretValue)}
+          variant="filled"
+        >
+          {t`Done`}
+        </Button>
+      </Modal.Footer>
     </Modal>
   );
 };

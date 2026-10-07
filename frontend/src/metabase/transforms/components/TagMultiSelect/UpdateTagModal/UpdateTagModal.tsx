@@ -10,7 +10,7 @@ import {
   FormSubmitButton,
   FormTextInput,
 } from "metabase/forms";
-import { Box, Button, FocusTrap, Group, Modal, Stack } from "metabase/ui";
+import { Button, FocusTrap, Modal } from "metabase/ui";
 import * as Errors from "metabase/utils/errors";
 import type { TransformTag } from "metabase-types/api";
 
@@ -26,12 +26,7 @@ export function UpdateTagModal({
   onClose,
 }: UpdateTagModalProps) {
   return (
-    <Modal
-      title={t`Rename the ${tag.name} tag`}
-      opened
-      padding="xxl"
-      onClose={onClose}
-    >
+    <Modal title={t`Rename the ${tag.name} tag`} opened onClose={onClose}>
       <FocusTrap.InitialFocus />
       <UpdateTagForm tag={tag} onUpdate={onUpdate} onClose={onClose} />
     </Modal>
@@ -73,24 +68,16 @@ function UpdateTagForm({ tag, onUpdate, onClose }: UpdateTagFormProps) {
     >
       {({ dirty }) => (
         <Form>
-          <Stack gap="xl">
-            <FormTextInput
-              name="name"
-              label={t`Name`}
-              placeholder={t`My tag`}
+          <FormTextInput name="name" label={t`Name`} placeholder={t`My tag`} />
+          <Modal.Footer>
+            <FormErrorMessage flex={1} />
+            <Button onClick={onClose}>{t`Cancel`}</Button>
+            <FormSubmitButton
+              label={t`Save`}
+              variant="filled"
+              disabled={!dirty}
             />
-            <Group>
-              <Box flex={1}>
-                <FormErrorMessage />
-              </Box>
-              <Button onClick={onClose}>{t`Cancel`}</Button>
-              <FormSubmitButton
-                label={t`Save`}
-                variant="filled"
-                disabled={!dirty}
-              />
-            </Group>
-          </Stack>
+          </Modal.Footer>
         </Form>
       )}
     </FormProvider>

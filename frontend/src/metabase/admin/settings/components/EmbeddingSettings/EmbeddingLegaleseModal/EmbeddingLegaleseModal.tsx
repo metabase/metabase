@@ -3,7 +3,7 @@ import { match } from "ts-pattern";
 import { t } from "ttag";
 
 import { useUpdateSettingsMutation } from "metabase/settings";
-import { Button, Group, List, Modal, type ModalProps, Text } from "metabase/ui";
+import { Button, List, Modal, type ModalProps, Text } from "metabase/ui";
 
 type SettingKey = "enable-embedding-sdk" | "enable-embedding-simple";
 
@@ -35,11 +35,10 @@ export const EmbeddingLegaleseModal = ({
       onClose={onClose}
       opened={opened}
       size={670}
-      padding="xxl"
       withCloseButton={false}
       closeOnClickOutside={false}
     >
-      <Text mt="xxs">{getTitle(setting)}</Text>
+      <Text>{getTitle(setting)}</Text>
       <List mt="xxs">
         <List.Item mr="lg">
           <Text>{t`Sharing Metabase accounts is a security risk. Even if you filter data on the client side, each user could use their token to view any data visible to that shared user account.`}</Text>
@@ -48,7 +47,7 @@ export const EmbeddingLegaleseModal = ({
           <Text>{t`That, and we consider shared accounts to be unfair usage. Fair usage involves giving each end-user of the embedded analytics their own Metabase account.`}</Text>
         </List.Item>
       </List>
-      <Group justify="right" mt="xl">
+      <Modal.Footer>
         <Button
           onClick={onClose}
           variant="default"
@@ -60,7 +59,7 @@ export const EmbeddingLegaleseModal = ({
           data-is-loading={loading}
           loading={loading}
         >{t`Agree and continue`}</Button>
-      </Group>
+      </Modal.Footer>
     </Modal>
   );
 };

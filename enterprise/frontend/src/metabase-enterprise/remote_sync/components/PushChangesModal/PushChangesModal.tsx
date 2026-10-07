@@ -1,16 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 
-import {
-  Alert,
-  Box,
-  Button,
-  Divider,
-  Group,
-  Icon,
-  Modal,
-  Stack,
-} from "metabase/ui";
+import { Alert, Button, Icon, Modal, Stack } from "metabase/ui";
 import { useExportChangesMutation } from "metabase-enterprise/api";
 
 import { trackPushChanges } from "../../analytics";
@@ -69,54 +60,42 @@ export const PushChangesModal = ({
   }, [commitMessage, exportChanges, currentBranch]);
 
   return (
-    <Modal
-      opened
-      title={t`Push to Git`}
-      onClose={onClose}
-      size="lg"
-      padding="xxl"
-    >
-      <Box pt="lg">
-        {errorMessage && (
-          <Alert
-            size="compact"
-            mb="lg"
-            color="error"
-            icon={<Icon name="warning" />}
-          >
-            {errorMessage}
-          </Alert>
-        )}
+    <Modal opened title={t`Push to Git`} onClose={onClose} size="lg">
+      {errorMessage && (
+        <Alert
+          size="compact"
+          mb="lg"
+          color="error"
+          icon={<Icon name="warning" />}
+        >
+          {errorMessage}
+        </Alert>
+      )}
 
-        <Stack gap="xl">
-          <ChangesLists title={t`Changes to push`} />
+      <Stack gap="xl">
+        <ChangesLists title={t`Changes to push`} />
 
-          <CommitMessageSection
-            value={commitMessage}
-            onChange={setCommitMessage}
-          />
-        </Stack>
-      </Box>
+        <CommitMessageSection
+          value={commitMessage}
+          onChange={setCommitMessage}
+        />
+      </Stack>
 
-      <Divider my="xl" />
-
-      <Box>
-        <Group gap="sm" justify="end">
-          <Button variant="subtle" color="neutral" onClick={onClose}>
-            {t`Cancel`}
-          </Button>
-          <Button
-            color="brand"
-            disabled={isPushing}
-            leftSection={<Icon name="upload" />}
-            loading={isPushing}
-            onClick={handlePush}
-            variant="filled"
-          >
-            {t`Push changes`}
-          </Button>
-        </Group>
-      </Box>
+      <Modal.Footer>
+        <Button variant="subtle" color="neutral" onClick={onClose}>
+          {t`Cancel`}
+        </Button>
+        <Button
+          color="brand"
+          disabled={isPushing}
+          leftSection={<Icon name="upload" />}
+          loading={isPushing}
+          onClick={handlePush}
+          variant="filled"
+        >
+          {t`Push changes`}
+        </Button>
+      </Modal.Footer>
     </Modal>
   );
 };

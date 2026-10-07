@@ -3,13 +3,11 @@ import { t } from "ttag";
 
 import {
   Button,
-  Group,
   Modal,
   Stack,
   Text,
   TextInput,
   Textarea,
-  Title,
   rem,
 } from "metabase/ui";
 
@@ -34,13 +32,13 @@ export const FeedbackModal = ({
 
   return (
     <Modal
+      density="relaxed"
       size={rem(530)}
-      padding="xxl"
+      title={t`How can we improve embedding?`}
       opened={opened}
       withCloseButton={false}
       onClose={onClose}
     >
-      <Title pb="sm" order={2}>{t`How can we improve embedding?`}</Title>
       <Stack gap="xl">
         {/* eslint-disable-next-line metabase/no-literal-metabase-strings -- only admins can see this component */}
         <Text>{t`Please let us know what happened. We’re always looking for ways to improve Metabase.`}</Text>
@@ -60,16 +58,13 @@ export const FeedbackModal = ({
           placeholder={t`Leave your email if you want us to follow up with you`}
           onChange={(e) => setEmail(e.currentTarget.value)}
         />
-
-        <Group justify="flex-end">
-          <Button onClick={onClose}>{t`Cancel`}</Button>
-          <Button variant="filled" onClick={handleSubmit}>
-            {comment.trim().length + email.trim().length > 0
-              ? t`Send`
-              : t`Skip`}
-          </Button>
-        </Group>
       </Stack>
+      <Modal.Footer>
+        <Button onClick={onClose}>{t`Cancel`}</Button>
+        <Button variant="filled" onClick={handleSubmit}>
+          {comment.trim().length + email.trim().length > 0 ? t`Send` : t`Skip`}
+        </Button>
+      </Modal.Footer>
     </Modal>
   );
 };

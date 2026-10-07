@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
 import { useNavigate } from "metabase/router";
-import { Button, Group, Modal, Stack, Text } from "metabase/ui";
+import { Button, Modal, Text } from "metabase/ui";
 
 // Path to the admin embedding setup guide. Inlined here (rather than
 // imported from admin/) so this modal can live at the shared tier and be
@@ -29,20 +29,18 @@ export const ReturnToSetupGuideModal = ({
 
   return (
     <Modal opened={opened} onClose={onClose} title={title} size="md">
-      <Stack>
-        <Text>{message}</Text>
-        <Group justify="flex-end">
-          <Button variant="subtle" onClick={onClose}>
-            {t`Stay here`}
-          </Button>
-          <Button
-            variant="filled"
-            onClick={() => navigate(EMBEDDING_SETUP_GUIDE_PATH)}
-          >
-            {t`Return to the setup guide`}
-          </Button>
-        </Group>
-      </Stack>
+      <Text>{message}</Text>
+      <Modal.Footer>
+        <Button variant="subtle" onClick={onClose}>
+          {t`Stay here`}
+        </Button>
+        <Button
+          variant="filled"
+          onClick={() => navigate(EMBEDDING_SETUP_GUIDE_PATH)}
+        >
+          {t`Return to the setup guide`}
+        </Button>
+      </Modal.Footer>
     </Modal>
   );
 };

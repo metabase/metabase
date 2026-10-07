@@ -7,7 +7,7 @@ import type {
   CollectionInstanceAnaltyicsConfig,
 } from "metabase/common/collections/types";
 import { PluginPlaceholder } from "metabase/plugins/components/PluginPlaceholder";
-import type { IconProps } from "metabase/ui";
+import type { BoxProps, IconProps } from "metabase/ui";
 import type {
   BaseEntityId,
   Bookmark,
@@ -46,7 +46,11 @@ type CollectionInstanceAnalyticsIcon = React.ComponentType<
 >;
 
 type FormCollectionAuthorityLevelPicker = React.ComponentType<
-  React.HTMLAttributes<HTMLDivElement> & { name: string; title?: string }
+  React.HTMLAttributes<HTMLDivElement> & {
+    name: string;
+    title?: string;
+    mb?: BoxProps["mb"];
+  }
 >;
 
 const AUTHORITY_LEVEL_REGULAR: CollectionAuthorityLevelConfig = {

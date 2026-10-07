@@ -332,25 +332,23 @@ const SourceFeedbackModal = ({
     title={t`Give feedback`}
     data-testid="metabot-source-feedback-modal"
   >
-    <Stack gap="lg">
-      <Stack
-        gap={0}
-        bdrs="sm"
-        bd="1px solid var(--mb-color-border-neutral)"
-        className={S.feedbackList}
-      >
-        {sources.map((source) => (
-          <SourceFeedbackRow
-            key={`${source.model}-${source.id}`}
-            messageId={messageId}
-            source={source}
-          />
-        ))}
-      </Stack>
-      <Group justify="flex-end">
-        <Button variant="filled" onClick={onClose}>{t`Done`}</Button>
-      </Group>
+    <Stack
+      gap={0}
+      bdrs="sm"
+      bd="1px solid var(--mb-color-border-neutral)"
+      className={S.feedbackList}
+    >
+      {sources.map((source) => (
+        <SourceFeedbackRow
+          key={`${source.model}-${source.id}`}
+          messageId={messageId}
+          source={source}
+        />
+      ))}
     </Stack>
+    <Modal.Footer>
+      <Button variant="filled" onClick={onClose}>{t`Done`}</Button>
+    </Modal.Footer>
   </Modal>
 );
 

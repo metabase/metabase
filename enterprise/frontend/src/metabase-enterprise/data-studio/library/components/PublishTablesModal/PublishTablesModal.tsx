@@ -13,16 +13,7 @@ import {
 } from "metabase/forms";
 import { PLUGIN_LIBRARY, type PublishTablesModalProps } from "metabase/plugins";
 import { useNavigate } from "metabase/router";
-import {
-  Box,
-  Button,
-  FocusTrap,
-  Group,
-  List,
-  Modal,
-  Stack,
-  Text,
-} from "metabase/ui";
+import { Button, FocusTrap, List, Modal, Stack, Text } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { usePublishTablesMutation } from "metabase-enterprise/api";
 import type {
@@ -186,10 +177,8 @@ function ModalBody({
             }}
           />
         </Stack>
-        <Group mt="xxl" gap="sm" wrap="nowrap">
-          <Box flex={1}>
-            <FormErrorMessage />
-          </Box>
+        <Modal.Footer>
+          <FormErrorMessage flex={1} />
           <Button
             variant="subtle"
             color="neutral"
@@ -202,7 +191,7 @@ function ModalBody({
             )}
             variant="filled"
           />
-        </Group>
+        </Modal.Footer>
       </Form>
     </FormProvider>
   );

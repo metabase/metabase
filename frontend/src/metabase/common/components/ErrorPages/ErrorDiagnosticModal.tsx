@@ -12,7 +12,7 @@ import { addUndo } from "metabase/redux/undo";
 import { getIsErrorDiagnosticModalOpen } from "metabase/selectors/app";
 import { getApplicationName } from "metabase/selectors/whitelabel";
 import { useSetting } from "metabase/settings";
-import { Button, Flex, Icon, Loader, Modal, Stack, Text } from "metabase/ui";
+import { Button, Icon, Loader, Modal, Stack, Text } from "metabase/ui";
 import { downloadObjectAsJson } from "metabase/utils/download";
 import { isWithinIframe } from "metabase/utils/iframe";
 
@@ -267,17 +267,17 @@ export const ErrorExplanationModal = ({
       opened={isModalOpen}
       onClose={onClose}
     >
-      <Text my="lg">
+      <Text>
         {t`We’ve run into an error, try to refresh the page or go back.`}
       </Text>
-      <Text my="lg">
+      <Text mt="lg">
         {t`If the error persists, you can download diagnostic information`}
       </Text>
-      <Flex justify="flex-end">
+      <Modal.Footer>
         <Button variant="filled" onClick={openDiagnosticModal}>
           {t`Download diagnostic info`}
         </Button>
-      </Flex>
+      </Modal.Footer>
     </Modal>
   );
 };

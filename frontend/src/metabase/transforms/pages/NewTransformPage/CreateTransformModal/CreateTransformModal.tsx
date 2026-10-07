@@ -20,7 +20,7 @@ import {
   FormTextInput,
 } from "metabase/forms";
 import { IncrementalTransformSettings } from "metabase/transforms/components/IncrementalTransform/IncrementalTransformSettings";
-import { Box, Button, Group, Modal, Stack } from "metabase/ui";
+import { Button, Modal, Stack } from "metabase/ui";
 import type {
   SchemaName,
   Transform,
@@ -120,9 +120,9 @@ export function CreateTransformModal({
 
   return (
     <Modal
+      density="relaxed"
       title={t`Save your transform`}
       opened
-      padding="xxl"
       closeOnEscape={closeOnEscape}
       onClose={onClose}
     >
@@ -171,7 +171,7 @@ function CreateTransformForm({
 
   return (
     <Form>
-      <Stack gap="xl" mt="sm">
+      <Stack gap="xl">
         <FormTextInput
           name="name"
           label={t`Name`}
@@ -190,7 +190,6 @@ function CreateTransformForm({
           name="collection_id"
           title={t`Collection`}
           collectionPickerModalProps={{ namespaces: ["transforms"] }}
-          style={{ marginBottom: 0 }}
         />
         {showIncrementalSettings && (
           <IncrementalTransformSettings
@@ -199,14 +198,12 @@ function CreateTransformForm({
             onIncrementalChange={handleIncrementalChange}
           />
         )}
-        <Group>
-          <Box flex={1}>
-            <FormErrorMessage />
-          </Box>
-          <Button onClick={onClose}>{t`Back`}</Button>
-          <FormSubmitButton label={t`Save`} variant="filled" />
-        </Group>
       </Stack>
+      <Modal.Footer>
+        <FormErrorMessage flex={1} />
+        <Button onClick={onClose}>{t`Back`}</Button>
+        <FormSubmitButton label={t`Save`} variant="filled" />
+      </Modal.Footer>
     </Form>
   );
 }
