@@ -49,30 +49,6 @@ describe(
       cy.url().should("match", /\/admin\/embedding\/themes\/new$/);
     });
 
-    it("does not create a theme when cancelling from the draft editor", () => {
-      cy.intercept("POST", "/api/embed-theme").as("createTheme");
-      cy.visit("/admin/embedding/themes");
-
-      H.main()
-        .findByRole("button", { name: /New theme/ })
-        .click();
-
-      cy.url().should("match", /\/admin\/embedding\/themes\/new$/);
-
-      cy.findByRole("button", { name: /Cancel/ }).click();
-
-      cy.log("navigates back to the listing");
-      cy.url().should("match", /\/admin\/embedding\/themes$/);
-
-      cy.log("new theme card is still visible");
-      H.main()
-        .findByRole("button", { name: /New theme/ })
-        .should("be.visible");
-
-      cy.log("no POST was issued");
-      cy.get("@createTheme.all").should("have.length", 0);
-    });
-
     it("navigates to theme editor when clicking an existing theme card", () => {
       createThemeViaApi("My theme");
       cy.visit("/admin/embedding/themes");
@@ -99,6 +75,43 @@ describe(
 
       cy.intercept("POST", "/api/embed-theme").as("createTheme");
       cy.visit("/admin/embedding/themes");
+
+      cy.log("nav label has no upsell gem");
+      cy.findByTestId("admin-layout-sidebar")
+        .findByRole("link", { name: /Themes/ })
+        .within(() => {
+          cy.icon("gem").should("not.exist");
+        });
+
+      H.main().within(() => {
+        cy.log("theme listing is rendered");
+        cy.findByRole("heading", { name: "Themes" }).should("be.visible");
+
+        cy.log("upsell copy is absent");
+        cy.findByText("Metabase Pro").should("not.exist");
+        cy.findByRole("heading", { name: "Create custom themes" }).should(
+          "not.exist",
+        );
+
+        cy.findByRole("button", { name: /New theme/ }).click();
+      });
+
+      cy.url().should("match", /\/admin\/embedding\/themes\/new$/);
+
+      cy.log("the draft editor has no delete button");
+      cy.findByLabelText("Theme name").should("be.visible");
+      cy.findByRole("button", { name: /Delete theme/ }).should("not.exist");
+
+      cy.findByRole("button", { name: /Cancel/ }).click();
+
+      cy.log("navigates back to the listing");
+      cy.url().should("match", /\/admin\/embedding\/themes$/);
+
+      cy.log("cancelling does not create a theme");
+      H.main()
+        .findByRole("button", { name: /New theme/ })
+        .should("be.visible");
+      cy.get("@createTheme.all").should("have.length", 0);
 
       H.main()
         .findByRole("button", { name: /New theme/ })

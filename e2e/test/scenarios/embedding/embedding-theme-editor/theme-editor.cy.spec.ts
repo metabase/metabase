@@ -152,13 +152,6 @@ describe(
       H.main().findByText("We're a little lost...").should("not.exist");
     });
 
-    it("does not show the delete button when creating a new theme", () => {
-      cy.visit("/admin/embedding/themes/new");
-
-      cy.findByLabelText("Theme name").should("be.visible");
-      cy.findByRole("button", { name: /Delete theme/ }).should("not.exist");
-    });
-
     describe("font settings", () => {
       it("can edit font settings and save them", () => {
         cy.intercept("PUT", "/api/embed-theme/*").as("updateTheme");

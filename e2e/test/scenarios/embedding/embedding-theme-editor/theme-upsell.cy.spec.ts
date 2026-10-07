@@ -164,35 +164,4 @@ describe("scenarios > embedding > themes > upsell", () => {
       });
     });
   });
-
-  describe("Pro", { tags: "@EE" }, () => {
-    beforeEach(() => {
-      H.restore();
-      cy.signInAsAdmin();
-      H.activateToken("pro-self-hosted");
-    });
-
-    it("does not show the upsell and renders the themes listing", () => {
-      cy.visit("/admin/embedding/themes");
-
-      cy.log("nav label has no upsell gem");
-      cy.findByTestId("admin-layout-sidebar")
-        .findByRole("link", { name: /Themes/ })
-        .within(() => {
-          cy.icon("gem").should("not.exist");
-        });
-
-      H.main().within(() => {
-        cy.log("upsell copy is absent");
-        cy.findByText("Metabase Pro").should("not.exist");
-        cy.findByRole("heading", { name: "Create custom themes" }).should(
-          "not.exist",
-        );
-
-        cy.log("theme listing is rendered");
-        cy.findByRole("heading", { name: "Themes" }).should("be.visible");
-        cy.findByRole("button", { name: /New theme/ }).should("be.visible");
-      });
-    });
-  });
 });
