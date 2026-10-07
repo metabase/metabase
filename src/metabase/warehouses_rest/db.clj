@@ -333,10 +333,47 @@
                              [:= :database_id database-id]
                              [:= :type type-str]]})
 
+(def ^:private public-dashboard-id-subquery
+  "Subquery for the ids of the Dashboards an anonymous visitor can open."
+  ;; an archived Dashboard's public link no longer resolves
+  ^:allow-subquery {:select [:id]
+                    :from   [(t2/table-name :model/Dashboard)]
+                    :where  [:and
+                             [:= :archived false]
+                             [:not= :public_uuid nil]]})
+
+(defn- public-dashcard-subquery
+  "Subquery for `column` of the DashboardCards of every public Dashboard."
+  [column]
+  ^:allow-subquery {:select [column]
+                    :from   [(t2/table-name :model/DashboardCard)]
+                    :where  [:in :dashboard_id public-dashboard-id-subquery]})
+
+(def ^:private public-series-card-id-subquery
+  "Subquery for the ids of the Cards added as series to the DashboardCards of every public Dashboard."
+  ^:allow-subquery {:select [:card_id]
+                    :from   [(t2/table-name :model/DashboardCardSeries)]
+                    :where  [:in :dashboardcard_id (public-dashcard-subquery :id)]})
+
+(mu/defn public-link-reachable?
+  "Whether any Card on the Database with `database-id` can be reached through a public link: the Card has one itself,
+  or a public Dashboard holds it through a DashboardCard or through that DashboardCard's series. The union of the
+  paths, so a path added later can only turn this from false to true. Cards referenced only from JSON -- parameter
+  mappings, parameter value sources, click behaviour targets, and link cards -- are not walked."
+  [database-id :- ::lib.schema.id/database]
+  ;; an archived Card's public link no longer resolves, and nor does it render inside a public Dashboard
+  (t2/exists? :model/Card
+              {:where [:and
+                       [:= :database_id [:auto/param database-id]]
+                       [:= :archived false]
+                       [:or
+                        [:not= :public_uuid nil]
+                        [:in :id (public-dashcard-subquery :card_id)]
+                        [:in :id public-series-card-id-subquery]]]}))
+
 (mu/defn database-usage-counts
   "A single row with the count of Questions (`:question`), Models (`:dataset`), Metrics (`:metric`), Segments
-  (`:segment`), Transforms (`:transform`), and public links (`:public_link`) that use the Database with `database-id`.
-  `:public_link` counts unarchived Cards with a public link."
+  (`:segment`), and Transforms (`:transform`) that use the Database with `database-id`."
   [database-id :- ::lib.schema.id/database]
   (mdb/query
    {:select [:*]
@@ -354,12 +391,4 @@
                                 :where  [:or
                                          [:= :source_database_id database-id]
                                          [:= :target_db_id database-id]]}
-              :transform]
-             [^:allow-subquery {:select [[:%count.* :public_link]]
-                                :from   [:report_card]
-                                :where  [:and
-                                         [:= :database_id database-id]
-                                         ;; an archived Card's public link no longer resolves
-                                         [:= :archived false]
-                                         [:not= :public_uuid nil]]}
-              :public_link]]}))
+              :transform]]}))

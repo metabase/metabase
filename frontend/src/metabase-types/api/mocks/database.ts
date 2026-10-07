@@ -34,7 +34,7 @@ export const createMockDatabaseUsageInfo = (
   metric: 0,
   segment: 0,
   transform: 0,
-  public_link: 0,
+  reachable_by_public_link: false,
   ...opts,
 });
 

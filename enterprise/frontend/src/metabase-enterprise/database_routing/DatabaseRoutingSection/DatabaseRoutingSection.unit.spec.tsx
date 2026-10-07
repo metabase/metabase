@@ -29,20 +29,22 @@ interface SetupOpts {
   database?: Database;
   isAdmin?: boolean;
   routerUpdateStatus?: number;
-  publicLinkCount?: number;
+  reachableByPublicLink?: boolean;
 }
 
 const setup = ({
   database = createMockDatabase(),
   isAdmin = true,
   routerUpdateStatus = 200,
-  publicLinkCount = 0,
+  reachableByPublicLink = false,
 }: SetupOpts = {}) => {
   setupUserAttributesEndpoint(["cool_guy", "boss_gal"]);
   setupDatabasesEndpoints([database]);
   setupDatabaseUsageInfoEndpoint(
     database,
-    createMockDatabaseUsageInfo({ public_link: publicLinkCount }),
+    createMockDatabaseUsageInfo({
+      reachable_by_public_link: reachableByPublicLink,
+    }),
   );
   fetchMock.put(
     "express:/api/ee/database-routing/router-database/:id",
@@ -193,60 +195,55 @@ describe("DatabaseRoutingSection", () => {
 describe("DatabaseRoutingSection affected public links", () => {
   const ROUTING_NOTE =
     "In guest embeds and public links, database queries will always be routed to the router database.";
+  const AFFECTED_NOTE = "This affects the public links that use this database.";
+  const UNAFFECTED_NOTE = "No public links use this database.";
 
-  it("should count the affected public questions while routing is being enabled", async () => {
+  it("should state that public links are affected while routing is being enabled", async () => {
     setup({
       database: createMockDatabase({
         engine: "postgres",
         features: ["database-routing"],
         router_user_attribute: null,
       }),
-      publicLinkCount: 4,
+      reachableByPublicLink: true,
     });
 
     await userEvent.click(screen.getByLabelText("Enable database routing"));
 
     expect(await screen.findByText(ROUTING_NOTE)).toBeInTheDocument();
-    expect(
-      await screen.findByText(
-        "This affects 4 public questions on this database, and any public dashboard that uses it.",
-      ),
-    ).toBeInTheDocument();
+    expect(await screen.findByText(AFFECTED_NOTE)).toBeInTheDocument();
+    expect(screen.queryByText(UNAFFECTED_NOTE)).not.toBeInTheDocument();
   });
 
-  it("should count a single affected public question in the singular", async () => {
+  it("should state plainly that no public links use the database when none do", async () => {
     setup({
       database: createMockDatabase({
         engine: "postgres",
         features: ["database-routing"],
         router_user_attribute: "cool_guy",
       }),
-      publicLinkCount: 1,
-    });
-
-    expect(
-      await screen.findByText(
-        "This affects 1 public question on this database, and any public dashboard that uses it.",
-      ),
-    ).toBeInTheDocument();
-  });
-
-  it("should still describe public dashboards when no public question is affected", async () => {
-    setup({
-      database: createMockDatabase({
-        engine: "postgres",
-        features: ["database-routing"],
-        router_user_attribute: "cool_guy",
-      }),
-      publicLinkCount: 0,
+      reachableByPublicLink: false,
     });
 
     expect(await screen.findByText(ROUTING_NOTE)).toBeInTheDocument();
+    expect(await screen.findByText(UNAFFECTED_NOTE)).toBeInTheDocument();
+    expect(screen.queryByText(AFFECTED_NOTE)).not.toBeInTheDocument();
+  });
+
+  it("should not count the public links it reports", async () => {
+    setup({
+      database: createMockDatabase({
+        engine: "postgres",
+        features: ["database-routing"],
+        router_user_attribute: "cool_guy",
+      }),
+      reachableByPublicLink: true,
+    });
+
+    expect(await screen.findByText(AFFECTED_NOTE)).toBeInTheDocument();
     expect(
-      await screen.findByText(
-        "This affects any public dashboard that uses this database.",
-      ),
-    ).toBeInTheDocument();
+      screen.queryByText(/\d+ public (question|dashboard)/),
+    ).not.toBeInTheDocument();
   });
 
   it("should not mention public links while the section is collapsed", async () => {
@@ -256,10 +253,10 @@ describe("DatabaseRoutingSection affected public links", () => {
         features: ["database-routing"],
         router_user_attribute: null,
       }),
-      publicLinkCount: 4,
+      reachableByPublicLink: true,
     });
 
-    // the count has arrived, so the note's absence is the collapsed state and not a pending request
+    // the fact has arrived, so the note's absence is the collapsed state and not a pending request
     await waitFor(async () => {
       const gets = await findRequests("GET");
       expect(gets.some(({ url }) => url.includes("usage_info"))).toBe(true);
@@ -267,6 +264,7 @@ describe("DatabaseRoutingSection affected public links", () => {
 
     expect(screen.getByText("Database routing")).toBeInTheDocument();
     expect(screen.queryByText(ROUTING_NOTE)).not.toBeInTheDocument();
+    expect(screen.queryByText(AFFECTED_NOTE)).not.toBeInTheDocument();
   });
 });
 

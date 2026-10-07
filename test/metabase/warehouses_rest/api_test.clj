@@ -312,12 +312,12 @@
       (is (= "You don't have permissions to do that."
              (mt/user-http-request :rasta :get 403 (format "database/%d/usage_info" db-id)))))
     (testing "return the correct usage info"
-      (is (= {:question    1
-              :dataset     2
-              :metric      3
-              :segment     1
-              :transform   2
-              :public_link 1}
+      (is (= {:question                 1
+              :dataset                  2
+              :metric                   3
+              :segment                  1
+              :transform                2
+              :reachable_by_public_link true}
              (mt/user-http-request :crowberto :get 200 (format "database/%d/usage_info" db-id)))))
     (testing "404 if db does not exist"
       (let [non-existing-db-id (inc (t2/select-one-pk :model/Database {:order-by [[:id :desc]]}))]
@@ -325,14 +325,17 @@
                (mt/user-http-request :crowberto :get 404
                                      (format "database/%d/usage_info" non-existing-db-id))))))))
 
-(deftest get-database-usage-info-unshared-cards-are-not-public-links-test
+(defn- reachable-by-public-link? [db-id]
+  (:reachable_by_public_link (mt/user-http-request :crowberto :get 200
+                                                   (format "database/%d/usage_info" db-id))))
+
+(deftest get-database-usage-info-unshared-cards-are-not-reachable-test
   (mt/with-temp
     [:model/Database {db-id :id}    {}
      :model/Table    {table-id :id} {:db_id db-id}
      :model/Card     _              {:database_id db-id, :table_id table-id, :type :question}]
-    (testing "a database whose cards are not shared has no public links"
-      (is (= 0 (:public_link (mt/user-http-request :crowberto :get 200
-                                                   (format "database/%d/usage_info" db-id))))))))
+    (testing "a database whose cards are not shared is not reachable by a public link"
+      (is (false? (reachable-by-public-link? db-id))))))
 
 (deftest get-database-usage-info-public-links-on-another-database-test
   (mt/with-temp
@@ -343,20 +346,75 @@
                                         :table_id    table-id
                                         :type        :question
                                         :public_uuid (str (random-uuid))}]
-    (testing "a public link on another database is not counted"
-      (is (= 0 (:public_link (mt/user-http-request :crowberto :get 200
-                                                   (format "database/%d/usage_info" db-id))))))))
+    (testing "a public link on another database does not make this one reachable"
+      (is (false? (reachable-by-public-link? db-id))))))
 
-(deftest get-database-usage-info-public-dashboards-are-not-counted-test
+(deftest get-database-usage-info-public-dashboard-reaches-database-test
   (mt/with-temp
     [:model/Database      {db-id :id}        {}
      :model/Table         {table-id :id}     {:db_id db-id}
      :model/Card          {card-id :id}      {:database_id db-id, :table_id table-id, :type :question}
      :model/Dashboard     {dashboard-id :id} {:public_uuid (str (random-uuid))}
      :model/DashboardCard _                  {:dashboard_id dashboard-id, :card_id card-id}]
-    (testing "a public dashboard holding a card on this database is not counted"
-      (is (= 0 (:public_link (mt/user-http-request :crowberto :get 200
-                                                   (format "database/%d/usage_info" db-id))))))))
+    (testing "a public dashboard holding a card on this database makes it reachable"
+      (is (true? (reachable-by-public-link? db-id))))))
+
+(deftest get-database-usage-info-public-dashboard-series-reaches-database-test
+  (mt/with-temp
+    [:model/Database            {db-id :id}        {}
+     :model/Table               {table-id :id}     {:db_id db-id}
+     :model/Card                {series-id :id}    {:database_id db-id, :table_id table-id, :type :question}
+     :model/Dashboard           {dashboard-id :id} {:public_uuid (str (random-uuid))}
+     :model/DashboardCard       {dashcard-id :id}  {:dashboard_id dashboard-id, :card_id nil}
+     :model/DashboardCardSeries _                  {:dashboardcard_id dashcard-id, :card_id series-id}]
+    (testing "a card reached only as a series of a public dashboard's card makes this database reachable"
+      (is (true? (reachable-by-public-link? db-id))))))
+
+(deftest get-database-usage-info-public-dashboard-on-another-database-test
+  (mt/with-temp
+    [:model/Database      {db-id :id}        {}
+     :model/Database      {other-db-id :id}  {}
+     :model/Table         {table-id :id}     {:db_id other-db-id}
+     :model/Card          {card-id :id}      {:database_id other-db-id, :table_id table-id, :type :question}
+     :model/Dashboard     {dashboard-id :id} {:public_uuid (str (random-uuid))}
+     :model/DashboardCard _                  {:dashboard_id dashboard-id, :card_id card-id}]
+    (testing "a public dashboard holding no card on this database leaves it unreachable"
+      (is (false? (reachable-by-public-link? db-id))))))
+
+(deftest get-database-usage-info-archived-public-card-is-not-reachable-test
+  (mt/with-temp
+    [:model/Database {db-id :id}    {}
+     :model/Table    {table-id :id} {:db_id db-id}
+     :model/Card     _              {:database_id db-id
+                                     :table_id    table-id
+                                     :type        :question
+                                     :archived    true
+                                     :public_uuid (str (random-uuid))}]
+    (testing "an archived card's public link no longer resolves, so it does not make this database reachable"
+      (is (false? (reachable-by-public-link? db-id))))))
+
+(deftest get-database-usage-info-archived-public-dashboard-is-not-reachable-test
+  (mt/with-temp
+    [:model/Database      {db-id :id}        {}
+     :model/Table         {table-id :id}     {:db_id db-id}
+     :model/Card          {card-id :id}      {:database_id db-id, :table_id table-id, :type :question}
+     :model/Dashboard     {dashboard-id :id} {:public_uuid (str (random-uuid)), :archived true}
+     :model/DashboardCard _                  {:dashboard_id dashboard-id, :card_id card-id}]
+    (testing "an archived dashboard's public link no longer resolves, so it does not make this database reachable"
+      (is (false? (reachable-by-public-link? db-id))))))
+
+(deftest get-database-usage-info-archived-card-in-public-dashboard-is-not-reachable-test
+  (mt/with-temp
+    [:model/Database      {db-id :id}        {}
+     :model/Table         {table-id :id}     {:db_id db-id}
+     :model/Card          {card-id :id}      {:database_id db-id
+                                              :table_id    table-id
+                                              :type        :question
+                                              :archived    true}
+     :model/Dashboard     {dashboard-id :id} {:public_uuid (str (random-uuid))}
+     :model/DashboardCard _                  {:dashboard_id dashboard-id, :card_id card-id}]
+    (testing "an archived card in a public dashboard does not make this database reachable"
+      (is (false? (reachable-by-public-link? db-id))))))
 
 (defn- find-in-clauses
   "Walk a HoneySQL map and return any [:in ...] clauses where the value is a collection."
@@ -395,12 +453,12 @@
   (mt/with-temp
     [:model/Database {db-id :id} {}]
     (testing "should work with DB that has no tables"
-      (is (= {:question    0
-              :dataset     0
-              :metric      0
-              :segment     0
-              :transform   0
-              :public_link 0}
+      (is (= {:question                 0
+              :dataset                  0
+              :metric                   0
+              :segment                  0
+              :transform                0
+              :reachable_by_public_link false}
              (mt/user-http-request :crowberto :get 200 (format "database/%d/usage_info" db-id)))))))
 
 (defn- create-db-via-api! [& [m]]

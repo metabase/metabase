@@ -521,22 +521,26 @@
    [:transform
     {:description "Transforms reading from or writing to this database."}
     ms/IntGreaterThanOrEqualToZero]
-   [:public_link
-    {:description (str "Unarchived cards on this database that have a public link. Public dashboards are not counted:"
-                       " a dashboard carries no database.")}
-    ms/IntGreaterThanOrEqualToZero]])
+   [:reachable_by_public_link
+    {:description (str "Whether anything on this database can be reached through a public link: an unarchived card on"
+                       " this database with a public link, or an unarchived public dashboard holding such a card"
+                       " through its dashboard cards or their series. Cards referenced only from JSON -- parameter"
+                       " mappings, parameter value sources, click behaviour targets, and link cards -- are not walked,"
+                       " so false means no public link was found rather than that none can exist.")}
+    :boolean]])
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
 ;;
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case]}
 (api.macros/defendpoint :get "/:id/usage_info" :- ::usage-info
-  "Get usage info for a database.
-  Returns a map with keys are models and values are the number of entities that use this database."
+  "Get usage info for a database: how many entities of each model use it, and whether it is reachable through a public
+  link."
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
   (api/check-superuser)
   (check-database-exists id)
-  (first (warehouses-rest.db/database-usage-counts id)))
+  (assoc (first (warehouses-rest.db/database-usage-counts id))
+         :reachable_by_public_link (warehouses-rest.db/public-link-reachable? id)))
 
 ;;; ----------------------------------------- GET /api/database/:id/metadata -----------------------------------------
 

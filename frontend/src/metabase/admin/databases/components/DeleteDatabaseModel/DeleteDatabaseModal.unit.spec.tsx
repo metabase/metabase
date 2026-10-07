@@ -115,7 +115,9 @@ describe("DeleteDatabaseModal", () => {
 
   it("should not ask for content removal when the only usage is public links", async () => {
     const { onDelete } = await setup({
-      usageInfo: createMockDatabaseUsageInfo({ public_link: 3 }),
+      usageInfo: createMockDatabaseUsageInfo({
+        reachable_by_public_link: true,
+      }),
     });
 
     const deleteButton = screen.getByRole("button", {

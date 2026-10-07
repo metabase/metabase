@@ -3338,6 +3338,9 @@
            warehouses.secrets}
    :model-imports #{:model/Card
                     :model/Collection
+                    :model/Dashboard
+                    :model/DashboardCard
+                    :model/DashboardCardSeries
                     :model/Database
                     :model/Field
                     :model/Table}}

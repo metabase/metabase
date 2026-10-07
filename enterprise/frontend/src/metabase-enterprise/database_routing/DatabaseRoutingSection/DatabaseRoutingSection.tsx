@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { msgid, ngettext, t } from "ttag";
+import { t } from "ttag";
 
 import {
   Error,
@@ -94,11 +94,12 @@ export const DatabaseRoutingSection = ({
   const transforms = transformsQuery.data ?? [];
   const hasTransforms = transforms.length > 0;
 
-  // usage info is admin-only, and the count is only there to inform the admin making the decision
+  // usage info is admin-only, and the fact is only there to inform the admin making the decision
   const usageInfoQuery = useGetDatabaseUsageInfoQuery(
     shouldHideSection || !isAdmin ? skipToken : database.id,
   );
-  const publicQuestionCount = usageInfoQuery.data?.public_link ?? 0;
+  const reachableByPublicLink =
+    usageInfoQuery.data?.reachable_by_public_link ?? false;
 
   const disabledFeatMsg = getDisabledFeatureMessage(database, {
     hasTransforms,
@@ -222,13 +223,9 @@ export const DatabaseRoutingSection = ({
                   inherit
                 >{t`In guest embeds and public links, database queries will always be routed to the router database.`}</Text>
                 <Text inherit>
-                  {publicQuestionCount > 0
-                    ? ngettext(
-                        msgid`This affects ${publicQuestionCount} public question on this database, and any public dashboard that uses it.`,
-                        `This affects ${publicQuestionCount} public questions on this database, and any public dashboard that uses it.`,
-                        publicQuestionCount,
-                      )
-                    : t`This affects any public dashboard that uses this database.`}
+                  {reachableByPublicLink
+                    ? t`This affects the public links that use this database.`
+                    : t`No public links use this database.`}
                 </Text>
               </Stack>
             </Alert>
