@@ -17,17 +17,11 @@ describe("scenarios > admin > transforms incremental", () => {
     H.updateSetting("transforms-enabled", true);
     H.resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: SOURCE_TABLE });
 
-    cy.intercept("PUT", "/api/field/*").as("updateField");
     cy.intercept("POST", "/api/transform").as("createTransform");
-    cy.intercept("PUT", "/api/transform/*").as("updateTransform");
-    cy.intercept("DELETE", "/api/transform/*").as("deleteTransform");
-    cy.intercept("DELETE", "/api/transform/*/table").as("deleteTransformTable");
-    cy.intercept("POST", "/api/transform-tag").as("createTag");
-    cy.intercept("PUT", "/api/transform-tag/*").as("updateTag");
-    cy.intercept("DELETE", "/api/transform-tag/*").as("deleteTag");
     cy.intercept("POST", "/api/transform/*/reset-checkpoint").as(
       "resetCheckpoint",
     );
+    cy.intercept("POST", "/api/transform/*/run").as("runTransform");
   });
 
   afterEach(() => {
@@ -68,15 +62,10 @@ describe("scenarios > admin > transforms incremental", () => {
         }).click({ force: true });
 
         cy.button("Save").click();
-        cy.wait("@createTransform").then(({ response }) => {
-          const transformId = response?.body?.id;
-          if (transformId != null) {
-            cy.wrap(transformId).as("transformId");
-          }
-        });
+        cy.wait("@createTransform");
       });
 
-      cy.log("run the transform and make sure its table can be queried");
+      cy.log("run the transform");
       H.DataStudio.Transforms.runTab().click();
       runTransformAndWaitForSuccess();
       H.expectUnstructuredSnowplowEvent({
@@ -116,6 +105,9 @@ describe("scenarios > admin > transforms incremental", () => {
           .click();
       });
       cy.findByRole("region", { name: "Info" }).within(() => {
+        cy.findByRole("group", { name: "Checkpoint from" }).within(() => {
+          cy.findByText(/30/).should("be.visible");
+        });
         cy.findByRole("group", { name: "Checkpoint to" }).within(() => {
           cy.findByText(/31/).should("be.visible");
         });
@@ -132,6 +124,7 @@ describe("scenarios > admin > transforms incremental", () => {
         cy.button("Reprocess on next run").click();
       });
       cy.wait("@resetCheckpoint");
+      H.undoToast().should("contain.text", "Checkpoint has been reset");
 
       cy.log(
         "go to Runs tab, run transform again and check new run has checkpoint to 31",
@@ -148,6 +141,7 @@ describe("scenarios > admin > transforms incremental", () => {
         cy.findByRole("group", { name: "Checkpoint to" }).within(() => {
           cy.findByText(/31/).should("be.visible");
         });
+        cy.findByRole("group", { name: "Checkpoint from" }).should("not.exist");
       });
     });
 
@@ -200,7 +194,7 @@ def transform(animals):
           });
         });
 
-        cy.log("run the transform and make sure its table can be queried");
+        cy.log("run the transform");
         H.DataStudio.Transforms.runTab().click();
         runTransformAndWaitForSuccess();
         H.expectUnstructuredSnowplowEvent({
@@ -240,6 +234,9 @@ def transform(animals):
             .click();
         });
         cy.findByRole("region", { name: "Info" }).within(() => {
+          cy.findByRole("group", { name: "Checkpoint from" }).within(() => {
+            cy.findByText(/30/).should("be.visible");
+          });
           cy.findByRole("group", { name: "Checkpoint to" }).within(() => {
             cy.findByText(/31/).should("be.visible");
           });
@@ -256,6 +253,7 @@ def transform(animals):
           cy.button("Reprocess on next run").click();
         });
         cy.wait("@resetCheckpoint");
+        H.undoToast().should("contain.text", "Checkpoint has been reset");
 
         cy.log(
           "go to Runs tab, run transform again and check new run has checkpoint to 31",
@@ -272,6 +270,9 @@ def transform(animals):
           cy.findByRole("group", { name: "Checkpoint to" }).within(() => {
             cy.findByText(/31/).should("be.visible");
           });
+          cy.findByRole("group", { name: "Checkpoint from" }).should(
+            "not.exist",
+          );
         });
       },
     );
@@ -314,7 +315,7 @@ def transform(animals):
         cy.wait("@createTransform");
       });
 
-      cy.log("run the transform and make sure its table can be queried");
+      cy.log("run the transform");
       H.DataStudio.Transforms.runTab().click();
       runTransformAndWaitForSuccess();
       H.expectUnstructuredSnowplowEvent({
@@ -353,6 +354,9 @@ def transform(animals):
           .click();
       });
       cy.findByRole("region", { name: "Info" }).within(() => {
+        cy.findByRole("group", { name: "Checkpoint from" }).within(() => {
+          cy.findByText(/30/).should("be.visible");
+        });
         cy.findByRole("group", { name: "Checkpoint to" }).within(() => {
           cy.findByText(/31/).should("be.visible");
         });
@@ -369,6 +373,7 @@ def transform(animals):
         cy.button("Reprocess on next run").click();
       });
       cy.wait("@resetCheckpoint");
+      H.undoToast().should("contain.text", "Checkpoint has been reset");
 
       cy.log(
         "go to Runs tab, run transform again and check new run has checkpoint to 31",
@@ -385,6 +390,7 @@ def transform(animals):
         cy.findByRole("group", { name: "Checkpoint to" }).within(() => {
           cy.findByText(/31/).should("be.visible");
         });
+        cy.findByRole("group", { name: "Checkpoint from" }).should("not.exist");
       });
     });
   });
@@ -396,6 +402,7 @@ function visitTransformListPage() {
 
 function runTransformAndWaitForSuccess() {
   getRunButton().click();
+  cy.wait("@runTransform").its("response.statusCode").should("eq", 202);
   getRunButton().should("have.text", "Ran successfully");
 }
 
