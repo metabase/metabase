@@ -227,6 +227,7 @@
     ;; https://docs.cloud.google.com/gemini-enterprise-agent-platform/models/partner-models/claude/haiku-4-5
     ;; Treat an entry as permanent: nothing rewrites a value pinned by an environment variable, and a stored value
     ;; converges only when the setting is next written.
+    ;; A connection's stored `:probed-model` converges only when a probe next verifies the connection.
     :retired-models {"anthropic/claude-haiku-4-5@20251001" "anthropic/claude-haiku-4-5"}
     ;; A connection with an endpoint ID serves that Model Garden endpoint instead of the catalog.
     :model-fields  ["endpoints" :endpoint-id]
@@ -936,7 +937,7 @@
   "Every model id some provider type has retired, so a reference naming none of them needs no connection lookup."
   (into #{} (mapcat (comp keys :retired-models)) provider-type-registry))
 
-(defn- current-model
+(defn current-model
   "The model now serving `model` on provider type `type-name`.
 
   Its successor when the type retired it, otherwise `model` itself. Read from the raw registry, like

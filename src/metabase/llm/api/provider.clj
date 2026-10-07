@@ -16,6 +16,7 @@
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.settings.core :as setting]
+   [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli.schema :as ms]))
@@ -124,6 +125,9 @@
    :fields        (mapv field-response fields)})
 
 (defn- connection-response
+  "The API view of `conn`: its secret fields masked, and a retired `:probed-model` read as the model now serving it.
+
+  The edit form preselects `probed-model` only when that id is on the type's catalog, and a retired id is not."
   [{conn-key :key conn-name :name :keys [type source config env-vars env-fields] :as conn}]
   {:key        conn-key
    :type       type
@@ -133,7 +137,8 @@
    :env_vars   (vec env-vars)
    ;; the config keys the environment owns; the form disables exactly these inputs
    :env_fields (mapv name env-fields)
-   :config     (or (:config (llm.provider/redact conn)) {})})
+   :config     (u/update-if-exists (or (:config (llm.provider/redact conn)) {})
+                                   :probed-model #(llm.provider/current-model type %))})
 
 ;;; ------------------------------------------------ Model listing -------------------------------------------------
 
@@ -168,8 +173,8 @@
   comes from the registry, and the call is made against the model this connection is known to serve.
 
   `:model` is a request the type must honour or fail. `:proposed-model` is only our guess at what this connection
-  serves — the `:probed-model` an earlier probe recorded, or the catalog's first entry — which a type is free to
-  ignore.
+  serves. It is the model now serving the `:probed-model` an earlier probe recorded, or else the catalog's first
+  entry. A type is free to ignore it.
 
   A connection that names its model in `:config` (an Azure deployment or a Google Model Garden endpoint, which no
   listing returns) makes the call for the same reason. That model is the one verified, whichever model the caller or
@@ -186,7 +191,8 @@
       (let [config           (llm.provider/with-field-defaults type (or config-override config))
             configured-model (llm.provider/connection-model type config)
             ;; Our best guess at the model to try if caller did not specify a model.
-            proposed-model   (or (:probed-model config) (:id (first fixed)))
+            proposed-model   (or (some->> (:probed-model config) (llm.provider/current-model type))
+                                 (:id (first fixed)))
             model            (or configured-model model (selected-model conn-key))
             config-models    (cond
                                configured-model [{:id           configured-model

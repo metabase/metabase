@@ -1345,6 +1345,30 @@
                   (mt/user-http-request :crowberto :get 200 "llm/models")))
           (is (= "anthropic/claude-sonnet-4-6" @probed)))))))
 
+(deftest models-propose-a-retired-probed-model-as-its-successor-test
+  (testing "a connection last probed with a model its provider has since retired proposes the model now serving it"
+    (let [config      {:oauth-access-token "ya29.token"
+                       :project-id         "my-project"
+                       :probed-model       "anthropic/claude-haiku-4-5@20251001"}
+          listed-with (atom nil)]
+      (mt/with-temporary-setting-values [llm-providers [(connection "google" "google" config)]]
+        (mt/with-temporary-raw-setting-values [llm-metabot-provider "anthropic/claude-sonnet-4-6"]
+          (mt/with-dynamic-fn-redefs [metabot.self/list-models (fn [_provider opts]
+                                                                 (reset! listed-with opts)
+                                                                 {:models []})]
+            (mt/user-http-request :crowberto :get 200 "llm/models")
+            (is (= "anthropic/claude-haiku-4-5" (:proposed-model @listed-with)))))))))
+
+(deftest list-providers-shows-a-retired-probed-model-as-its-successor-test
+  (testing "the edit form gets the model now serving a retired probed model, so it can find it on the catalog"
+    (mt/with-temporary-setting-values [llm-providers [(connection "google" "google"
+                                                                  {:oauth-access-token "ya29.token"
+                                                                   :project-id         "my-project"
+                                                                   :probed-model
+                                                                   "anthropic/claude-haiku-4-5@20251001"})]]
+      (is (= "anthropic/claude-haiku-4-5"
+             (-> (mt/user-http-request :crowberto :get 200 "llm/providers") first :config :probed-model))))))
+
 (deftest models-listing-probes-the-model-metabot-is-pointed-at-test
   (testing (str "an environment-configured connection is never written back to, so it carries no probed model — the "
                 "selection Metabot runs on names it instead")
