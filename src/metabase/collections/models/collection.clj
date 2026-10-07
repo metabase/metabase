@@ -99,6 +99,10 @@
   "Namespace for snippets"
   :snippets)
 
+(def data-apps-ns
+  "Namespace for the resource collections of data apps"
+  :data-apps)
+
 (defn- trash-collection* []
   (collections.db/collection-of-type trash-collection-type))
 
@@ -2291,9 +2295,13 @@
   {:arglists '([model])}
   t2.protocols/dispatch-value)
 
+(def default-allowed-namespaces
+  "The Collection namespaces most models may go in: the default namespace and the ones that hold the same content."
+  #{nil :analytics :shared-tenant-collection :tenant-specific})
+
 (defmethod allowed-namespaces :default
   [_]
-  #{nil :analytics :shared-tenant-collection :tenant-specific})
+  default-allowed-namespaces)
 
 (defn check-collection-namespace
   "Check that object's `:collection_id` refers to a Collection in an allowed namespace (see

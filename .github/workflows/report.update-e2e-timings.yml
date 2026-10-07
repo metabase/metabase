@@ -13,8 +13,8 @@ on:
         default: 7
         required: false
   schedule:
-    # Run weekly on Sundays at 6 AM UTC
-    - cron: "0 6 * * 0"
+    # Run daily at 6 AM UTC
+    - cron: "0 6 * * *"
 
 jobs:
   collect-and-average-timings:
@@ -22,7 +22,7 @@ jobs:
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 30
     env:
-      DAYS_BACK: ${{ inputs.days_back || 7 }}
+      DAYS_BACK: ${{ inputs.days_back || 1 }}
     steps:
       - name: Generate GitHub App Token
         uses: actions/create-github-app-token@v1

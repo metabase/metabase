@@ -44,6 +44,8 @@
   remote-synced-collection?
   remote-synced-dependents
   shared-tenant-collection?
-  transforms-ns]
+  transforms-ns
+  data-apps-ns
+  default-allowed-namespaces]
  [metabase.collections.util
   annotate-dashboards])

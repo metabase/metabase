@@ -1626,6 +1626,23 @@
                    :content "11 = 11"}
                   (t2/select-one :model/NativeQuerySnippet :entity_id (:entity_id snippet)))))))))
 
+(deftest snippet-referencing-snippet-round-trip-test
+  (testing "A snippet tag referencing another snippet exports its entity_id and imports the local id"
+    (let [serialized (atom nil)]
+      (ts/with-dbs [source-db dest-db]
+        (ts/with-db source-db
+          (let [a (ts/create! :model/NativeQuerySnippet :name "A" :content "1 = 1")
+                b (ts/create! :model/NativeQuerySnippet :name "B" :content "{{snippet: A}} AND 2 = 2")]
+            (reset! serialized [(serdes/extract-one "NativeQuerySnippet" {} b)
+                                (serdes/extract-one "NativeQuerySnippet" {} a)])
+            (is (=? {"snippet: A" {:snippet-id (:entity_id a)}}
+                    (:template_tags (first @serialized))))))
+        (ts/with-db dest-db
+          (ts/create! :model/NativeQuerySnippet :name "Unrelated" :content "3 = 3")
+          (serdes.load/load-metabase! (ingestion-in-memory @serialized))
+          (is (=? {"snippet: A" {:snippet-id (t2/select-one-pk :model/NativeQuerySnippet :name "A")}}
+                  (t2/select-one-fn :template_tags :model/NativeQuerySnippet :name "B"))))))))
+
 (deftest snippet-template-tags-import-test
   (testing "Template tags import preserves nil, empty, and populated values"
     (testing "Missing template_tags field -> {} when selected"
