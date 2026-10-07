@@ -1,3 +1,4 @@
+import { useDisclosure } from "@mantine/hooks";
 import cx from "classnames";
 import type { ReactNode } from "react";
 import { t } from "ttag";
@@ -6,7 +7,9 @@ import { useUpdateDashboardMutation } from "metabase/api";
 import { DateTime } from "metabase/common/components/DateTime";
 import { EditableText } from "metabase/common/components/EditableText";
 import { useMetadataToasts } from "metabase/common/hooks";
+import { isDashboardCacheable } from "metabase/dashboard/utils";
 import { UserInput } from "metabase/metadata/components";
+import { PLUGIN_CACHING } from "metabase/plugins";
 import {
   Box,
   Card,
@@ -15,7 +18,9 @@ import {
   Icon,
   Loader,
   Stack,
+  Switch,
   Text,
+  UnstyledButton,
   rem,
 } from "metabase/ui";
 import { getUserName } from "metabase/utils/user";
@@ -64,6 +69,32 @@ export function LibraryDashboardDescriptionSection({
     }
   };
 
+  // The main app hides "Edit settings" for Library dashboards; these two
+  // settings are edited here instead
+  const handleAutoApplyFiltersChange = async (autoApplyFilters: boolean) => {
+    const { error } = await updateDashboard({
+      id: dashboard.id,
+      auto_apply_filters: autoApplyFilters,
+    });
+    if (error) {
+      sendErrorToast(t`Failed to update auto-apply filters`);
+    } else {
+      sendSuccessToast(
+        autoApplyFilters
+          ? t`Filters will be applied automatically`
+          : t`Filters will no longer be applied automatically`,
+      );
+    }
+  };
+
+  const [
+    isCachingFormOpen,
+    { open: openCachingForm, close: closeCachingForm },
+  ] = useDisclosure(false);
+  const canEditCaching =
+    (dashboard.can_set_cache_policy ?? dashboard.can_write) &&
+    PLUGIN_CACHING.isGranularCachingEnabled();
+
   const lastEditInfo = dashboard["last-edit-info"];
   const averageLoadingTime = useAverageLoadingTime(dashboard);
   const cachingLabel = useCachingLabel(dashboard);
@@ -71,7 +102,8 @@ export function LibraryDashboardDescriptionSection({
 
   return (
     <Stack gap={0} align="stretch" data-testid="dashboard-description-sidebar">
-      <Box p={rem(20)}>
+      {/* no bottom padding, so 24px separates it from the card below */}
+      <Box pt={rem(20)} px={rem(20)}>
         <EditableText
           initialValue={dashboard.description ?? ""}
           placeholder={t`No description`}
@@ -145,13 +177,45 @@ export function LibraryDashboardDescriptionSection({
             )
           }
         />
-        <Statistic label={t`Caching policy`} value={cachingLabel ?? "—"} />
+        <Statistic
+          label={t`Caching policy`}
+          value={
+            canEditCaching ? (
+              <UnstyledButton fw={600} c="core-brand" onClick={openCachingForm}>
+                {cachingLabel ?? "—"}
+              </UnstyledButton>
+            ) : (
+              (cachingLabel ?? "—")
+            )
+          }
+        />
         <Statistic
           label={t`Auto-apply filters`}
-          value={dashboard.auto_apply_filters ? t`On` : t`Off`}
+          value={
+            <Switch
+              aria-label={t`Auto-apply filters`}
+              checked={dashboard.auto_apply_filters}
+              disabled={!dashboard.can_write}
+              onChange={(event) =>
+                handleAutoApplyFiltersChange(event.currentTarget.checked)
+              }
+            />
+          }
         />
         {tabCount > 1 && <Statistic label={t`Tabs`} value={tabCount} />}
       </Card>
+      {canEditCaching && isDashboardCacheable(dashboard) && (
+        <PLUGIN_CACHING.SidebarCacheForm
+          item={dashboard}
+          model="dashboard"
+          isOpen={isCachingFormOpen}
+          withOverlay
+          onClose={closeCachingForm}
+          onBack={closeCachingForm}
+          // opened on its own here, not from a settings sidebar to go back to
+          showBackButton={false}
+        />
+      )}
     </Stack>
   );
 }

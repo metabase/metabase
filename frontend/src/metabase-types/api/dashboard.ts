@@ -346,6 +346,7 @@ export type UpdateDashboardRequest = {
     | "width"
     | "embedding_params"
     | "cache_ttl"
+    | "auto_apply_filters"
   >
 >;
 

@@ -67,12 +67,11 @@ const DashboardActionMenuInner = ({
     parameterQueryParams,
   });
 
-  // PROTOTYPE: link Library dashboards back to Data Studio
+  // PROTOTYPE: Library dashboards are managed from Data Studio. Its settings,
+  // Move, Duplicate, and Move to trash live there instead of in this menu.
   const canUseLibraryDashboards = useCanUseLibraryDashboards();
-  const isInLibrary = useIsInLibraryDashboards(dashboard?.collection, {
-    skip: !canUseLibraryDashboards,
-  });
-  const isLibraryDashboard = canUseLibraryDashboards && isInLibrary;
+  const isInLibrary = useIsInLibraryDashboards(dashboard?.collection);
+  const showViewInDataStudio = canUseLibraryDashboards && isInLibrary;
 
   const moderationItems = PLUGIN_MODERATION.useDashboardMenuItems(
     dashboard ?? undefined,
@@ -86,13 +85,13 @@ const DashboardActionMenuInner = ({
       {
         id: "dashboard-send-to-trash",
         perform: () => {
-          if (pathname) {
+          if (pathname && !isInLibrary) {
             onChangeLocation(`${pathname}/archive`);
           }
         },
       },
     ],
-    [pathname],
+    [pathname, isInLibrary],
   );
 
   if (!dashboard) {
@@ -118,7 +117,7 @@ const DashboardActionMenuInner = ({
           <AutoRefreshMenuOptions onSelect={() => handleOpenChange(false)} />
         ) : (
           <>
-            {isLibraryDashboard && (
+            {showViewInDataStudio && (
               <>
                 <Menu.Item
                   leftSection={<Icon name="table" />}
@@ -151,7 +150,7 @@ const DashboardActionMenuInner = ({
               onClick={() => setShowAutoRefreshOptions(true)}
             />
 
-            {(canEdit || canConfigureCaching) && (
+            {(canEdit || canConfigureCaching) && !isInLibrary && (
               <Menu.Item
                 leftSection={<Icon name="gear" />}
                 onClick={openSettingsSidebar}
@@ -162,7 +161,7 @@ const DashboardActionMenuInner = ({
 
             {canEdit && moderationItems}
 
-            {canEdit && (
+            {canEdit && !isInLibrary && (
               <>
                 <Menu.Divider />
 
@@ -174,13 +173,15 @@ const DashboardActionMenuInner = ({
               </>
             )}
 
-            <Menu.Item
-              leftSection={<Icon name="clone" />}
-              component={ForwardRefLink}
-              to={`${location?.pathname}/copy`}
-            >{c("A verb, not a noun").t`Duplicate`}</Menu.Item>
+            {!isInLibrary && (
+              <Menu.Item
+                leftSection={<Icon name="clone" />}
+                component={ForwardRefLink}
+                to={`${location?.pathname}/copy`}
+              >{c("A verb, not a noun").t`Duplicate`}</Menu.Item>
+            )}
 
-            {canEdit && (
+            {canEdit && !isInLibrary && (
               <>
                 <Menu.Divider />
                 <Menu.Item

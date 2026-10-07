@@ -64,6 +64,8 @@ export type SidebarCacheFormProps = {
   overlayProps?: ModalOverlayProps;
   onClose: () => void;
   onBack: () => void;
+  /** When false, the panel isn't shown as a sub-page with a "back" title */
+  showBackButton?: boolean;
 } & StackProps;
 
 export type PreemptiveCachingSwitchProps = {

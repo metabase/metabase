@@ -8,6 +8,7 @@ import { isPublicCollection } from "metabase/common/collections/utils";
 import { Breadcrumbs } from "metabase/common/components/Breadcrumbs";
 import { SelectList } from "metabase/common/components/SelectList";
 import type { BaseSelectListItemProps } from "metabase/common/components/SelectList/BaseSelectListItem";
+import { useIsInLibraryDashboards } from "metabase/common/data-studio/library-dashboards";
 import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
 import { getCollectionBreadCrumbs } from "metabase/common/utils/collections";
 import {
@@ -19,7 +20,7 @@ import { useDashboardContext } from "metabase/dashboard/context";
 import { getDashboard } from "metabase/dashboard/selectors";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { useGetIcon } from "metabase/hooks/use-icon";
-import { PLUGIN_COLLECTIONS } from "metabase/plugins";
+import { PLUGIN_COLLECTIONS, PLUGIN_LIBRARY } from "metabase/plugins";
 import { useDispatch, useSelector } from "metabase/redux";
 import { Button, Flex, Icon, Input, TextInput } from "metabase/ui";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/utils/constants";
@@ -51,7 +52,7 @@ export function QuestionPicker({ onSelect }: QuestionPickerProps) {
   const dispatch = useDispatch();
   const dashboard = useSelector(getDashboard);
   const dashboardCollection = dashboard?.collection ?? ROOT_COLLECTION;
-  const [currentCollectionId, setCurrentCollectionId] = useState<CollectionId>(
+  const [selectedCollectionId, setCurrentCollectionId] = useState<CollectionId>(
     dashboardCollection.id,
   );
   const [searchText, setSearchText] = useState("");
@@ -71,17 +72,47 @@ export function QuestionPicker({ onSelect }: QuestionPickerProps) {
     canReadRootCollection,
   );
 
+  // PROTOTYPE: Library dashboards can only show content from the Library, so
+  // browsing and search are limited to the Library collection's subtree
+  const isLibraryDashboard = useIsInLibraryDashboards(dashboard?.collection);
+  const { data: libraryCollection } = PLUGIN_LIBRARY.useGetLibraryCollection({
+    skip: !isLibraryDashboard,
+  });
+  const libraryRootId = isLibraryDashboard ? libraryCollection?.id : undefined;
+  const isInLibrary = (collectionId: CollectionId | null | undefined) =>
+    libraryRootId != null &&
+    collectionId != null &&
+    (collectionId === libraryRootId ||
+      (collectionsById[collectionId]?.path?.includes(libraryRootId) ?? false));
+  const currentCollectionId =
+    libraryRootId != null && !isInLibrary(selectedCollectionId)
+      ? libraryRootId
+      : selectedCollectionId;
+
   const isAtTopLevel = currentCollectionId === COLLECTIONS_TOP_LEVEL_ID;
   const isAtSharedTenantRoot =
     currentCollectionId === SHARED_TENANT_COLLECTIONS_ROOT_ID;
   const isAtTenantSpecificRoot =
     currentCollectionId === TENANT_SPECIFIC_COLLECTIONS_ROOT_ID;
   const collection = collectionsById[currentCollectionId];
-  const crumbs = getCollectionBreadCrumbs(
+  const allCrumbs = getCollectionBreadCrumbs(
     collection,
     collectionsById,
     setCurrentCollectionId,
   );
+  // in a Library dashboard, the trail starts at the Library
+  const libraryCrumbIndex =
+    libraryRootId != null
+      ? (collection?.path?.indexOf(libraryRootId) ?? -1)
+      : -1;
+  const crumbs =
+    libraryRootId == null
+      ? allCrumbs
+      : allCrumbs.slice(
+          libraryCrumbIndex >= 0
+            ? libraryCrumbIndex
+            : (collection?.path?.length ?? 0),
+        );
 
   const handleSearchTextChange: React.ChangeEventHandler<HTMLInputElement> = (
     e,
@@ -118,7 +149,7 @@ export function QuestionPicker({ onSelect }: QuestionPickerProps) {
         onChange={handleSearchTextChange}
       />
 
-      {(hasDataAccess || hasNativeWrite) && (
+      {(hasDataAccess || hasNativeWrite) && !isLibraryDashboard && (
         <Flex gap="sm" mb="lg" data-testid="new-button-bar">
           {hasDataAccess && (
             <Button
@@ -188,6 +219,11 @@ export function QuestionPicker({ onSelect }: QuestionPickerProps) {
           collectionId={currentCollectionId}
           onSelect={onSelect}
           showOnlyPublicCollections={showOnlyPublicCollections}
+          isSearchResultVisible={
+            libraryRootId != null
+              ? (result) => isInLibrary(result.collection?.id)
+              : undefined
+          }
         />
       )}
     </div>

@@ -24,6 +24,8 @@ import { Badge, Button, Group, Icon } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type { Dashboard } from "metabase-types/api";
 
+import { LibraryDashboardMoreMenu } from "./LibraryDashboardMoreMenu";
+
 type LibraryDashboardHeaderProps = {
   dashboard: Dashboard;
 };
@@ -85,6 +87,7 @@ export function LibraryDashboardHeader({
               {t`Edit`}
             </Button>
           )}
+          <LibraryDashboardMoreMenu dashboard={dashboard} />
         </Group>
       }
       breadcrumbs={
@@ -129,10 +132,6 @@ function getTabs(
 
   tabs.push(
     {
-      label: t`Usage stats`,
-      to: Urls.dataStudioLibraryDashboardUsageStats(dashboard.id),
-    },
-    {
       label: t`Subscriptions`,
       to: Urls.dataStudioLibraryDashboardSubscriptions(dashboard.id),
       badge: subscriptionCount != null && (
@@ -140,6 +139,14 @@ function getTabs(
           {subscriptionCount}
         </Badge>
       ),
+    },
+    {
+      label: t`History`,
+      to: Urls.dataStudioLibraryDashboardHistory(dashboard.id),
+    },
+    {
+      label: t`Usage stats`,
+      to: Urls.dataStudioLibraryDashboardUsageStats(dashboard.id),
     },
   );
 

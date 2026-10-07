@@ -52,6 +52,13 @@ const libraryDashboardSubscriptionsPage = () =>
     Component: LibraryDashboardSubscriptionsPage,
   }));
 
+const libraryDashboardHistoryPage = () =>
+  import(
+    /* webpackChunkName: "data-studio-library" */ "./dashboards/pages/LibraryDashboardHistoryPage"
+  ).then(({ LibraryDashboardHistoryPage }) => ({
+    Component: LibraryDashboardHistoryPage,
+  }));
+
 const libraryDashboardUsageStatsPage = () =>
   import(
     /* webpackChunkName: "data-studio-library" */ "./dashboards/pages/LibraryDashboardUsageStatsPage"
@@ -74,6 +81,7 @@ export const getDataStudioLibraryRoutes = (IsAdmin: ComponentType) => {
           path=":dashboardId/subscriptions"
           lazy={libraryDashboardSubscriptionsPage}
         />
+        <Route path=":dashboardId/history" lazy={libraryDashboardHistoryPage} />
         <Route
           path=":dashboardId/usage"
           lazy={libraryDashboardUsageStatsPage}

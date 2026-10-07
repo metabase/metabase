@@ -104,3 +104,10 @@
 .usageStats {
   margin-bottom: 1.5rem;
 }
+
+/* Like the metric History tab */
+.history {
+  overflow: auto;
+  min-height: 0;
+  margin-bottom: 1.5rem;
+}

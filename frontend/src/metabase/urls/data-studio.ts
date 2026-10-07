@@ -124,6 +124,10 @@ export function dataStudioLibraryDashboardSubscriptions(
   return `${dataStudioLibraryDashboard(dashboardId)}/subscriptions`;
 }
 
+export function dataStudioLibraryDashboardHistory(dashboardId: DashboardId) {
+  return `${dataStudioLibraryDashboard(dashboardId)}/history`;
+}
+
 export function dataStudioLibraryDashboardUsageStats(dashboardId: DashboardId) {
   return `${dataStudioLibraryDashboard(dashboardId)}/usage`;
 }
