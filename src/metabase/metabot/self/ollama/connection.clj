@@ -14,6 +14,7 @@
    [metabase.metabot.self.adapter :as adapter]
    [metabase.metabot.self.core :as core]
    [metabase.util :as u]
+   [metabase.util.http :as u.http]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]))
 
@@ -52,9 +53,7 @@
 (defn- cloud-address?
   "Whether `url` is Ollama Cloud's own API, `https://ollama.com/v1`, rather than a server of the operator's."
   [url]
-  (let [host (when url
-               (try (some-> (java.net.URI. ^String url) .getHost u/lower-case-en)
-                    (catch Exception _ nil)))]
+  (let [host (some-> (u.http/->hostname url) u/lower-case-en)]
     (boolean (and host (or (= "ollama.com" host) (str/ends-with? host ".ollama.com"))))))
 
 (defn- cloud-tag?

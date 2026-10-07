@@ -524,6 +524,23 @@
   [type-name field-key]
   (u/find-first-map (:fields (provider-type type-name)) [:key] field-key))
 
+(defn with-field-defaults
+  "Fill in each field's registry `:default` wherever `config` left it blank, and run each field's `:normalize` over
+  the value that results, so a resolved connection carries everything the adapter needs in the shape it needs it.
+  Normalizing here rather than on write covers every source of a value — the stored config, an environment
+  variable, and the default itself — so a base URL entered with a trailing slash cannot double up the `/` when a
+  path is joined onto it."
+  [type-name config]
+  (reduce (fn [config {:keys [key default normalize]}]
+            (let [config (cond-> config
+                           (and default (not (u/trimmed-string (get config key))))
+                           (assoc key default))]
+              (cond-> config
+                (and normalize (u/trimmed-string (get config key)))
+                (update key normalize))))
+          (or config {})
+          (:fields (provider-type type-name))))
+
 (defn- validate-field!
   [type-name {:keys [key label required? prefix default options] :as field} config]
   (let [value (u/trimmed-string (get config key))]
@@ -760,12 +777,6 @@
                     [conn-key (assoc supplied :type (:type spec))]))))
         single-provider-settings))
 
-(defn- env-overlay
-  "The environment's overlay for a connection of `type-name` stored under `conn-key`, or nil where it supplies
-  nothing for it — see [[applicable-overlay]] for which overlay reaches it."
-  [conn-key type-name]
-  (applicable-overlay (get (env-overlays) conn-key) type-name))
-
 (defn- env-managed-connection
   "The managed connection `MB_LLM_METABOT_PROVIDER` demands: a `metabase/...` reference pinned by the environment
   has to resolve even though the managed connection holds no credentials a variable could supply."
@@ -808,26 +819,8 @@
   credentials and address tied together."
   #{"anthropic" "azure" "deepseek" "google" "mistral" "moonshot" "openai" "openrouter" "vllm" "zai"})
 
-(defonce ^:private warned-captured-fields
-  ;; hashed, not held: a credential this decided not to use has no business outliving the read
+(defonce ^:private warned-captured-base-urls
   (atom #{}))
-
-(defn- drop-fields-warning-once!
-  "Take fields out of a connection, telling the operator once about each value that goes.
-
-  That log line is the only sign an instance holds something it will not use, so it has to survive
-  being read a thousand times without becoming noise, and one rule's warning must not stand in for
-  another's."
-  [{conn-key :key :keys [config] :as conn} reason captured warn!]
-  (if (empty? captured)
-    conn
-    (do
-      (doseq [field captured
-              :let  [seen [reason conn-key field (hash (get config field))]]
-              :when (not (contains? @warned-captured-fields seen))]
-        (swap! warned-captured-fields conj seen)
-        (warn! field))
-      (update conn :config #(apply dissoc % captured)))))
 
 (defn- drop-captured-base-url
   "Drop `conn`'s stored base URL when layering `env-config` over it would send an environment-supplied secret to a
@@ -845,27 +838,27 @@
   Warned about once per value rather than on every read: it is the only trace an operator gets of a base URL their
   instance is configured with but is not using."
   [{conn-key :key :keys [type source config] :as conn} env-config]
-  (drop-fields-warning-once!
-   conn :base-url
-   (when (and (= :db source)
-              (u/trimmed-string (:base-url config))
-              (not (contains? env-config :base-url))
-              (some #(contains? env-config %) (secret-field-keys type)))
-     [:base-url])
-   (fn [_field]
-     (log/warnf (str "Ignoring the stored base URL of the %s LLM connection: its credentials come from the "
-                     "environment, so its base URL has to as well. Set %s to keep using it.")
-                conn-key (get (connection-env-vars type) :base-url "the matching base URL variable")))))
+  (if-not (and (= :db source)
+               (u/trimmed-string (:base-url config))
+               (not (contains? env-config :base-url))
+               (some #(contains? env-config %) (secret-field-keys type)))
+    conn
+    (do
+      (when-not (contains? @warned-captured-base-urls [conn-key (:base-url config)])
+        (swap! warned-captured-base-urls conj [conn-key (:base-url config)])
+        (log/warnf (str "Ignoring the stored base URL of the %s LLM connection: its credentials come from the "
+                        "environment, so its base URL has to as well. Set %s to keep using it.")
+                   conn-key (get (connection-env-vars type) :base-url "the matching base URL variable")))
+      (update conn :config dissoc :base-url))))
 
 (defn- base-url-choice
-  "Where `config` points a connection of `type-name`: its base URL, or the type's default when it stores none.
+  "Where `config` points a connection of `type-name`: its base URL, or the type's default when it stores none, as
+  [[with-field-defaults]] resolves it for the adapter.
 
   A blank address still goes somewhere — the vendor's own — so an overlay replacing it moves the
   connection just as replacing a typed one does. Normalized, so a trailing slash is not a move."
   [type-name config]
-  (let [{:keys [default normalize]} (field-descriptor type-name :base-url)]
-    (when-let [chosen (or (u/trimmed-string (:base-url config)) default)]
-      (cond-> chosen normalize normalize))))
+  (u/trimmed-string (:base-url (with-field-defaults type-name config))))
 
 (defn- env-moves-base-url?
   "Whether an environment overlay's base URL sends a connection somewhere other than where it was pointing.
@@ -878,6 +871,19 @@
         (when-let [chosen (base-url-choice type-name config)]
           (not= chosen (base-url-choice type-name env-config))))))
 
+(defn- captured-secret-fields
+  "The secret fields of `type-name` that `env-config` has moved away from, among those `present?` says the
+  connection carries — none unless `env-config` moves the connection at all. Sorted, so the fields are warned about
+  in a stable order and a type with several secrets always names the same one first."
+  [type-name config env-config present?]
+  (when (env-moves-base-url? type-name config env-config)
+    (filterv #(and (present? %) (not (contains? env-config %)))
+             (sort (secret-field-keys type-name)))))
+
+(defonce ^:private warned-captured-secrets
+  ;; hashed, not held: a credential this decided not to use has no business outliving the read
+  (atom #{}))
+
 (defn- drop-captured-secrets
   "Keep a credential from following a connection the environment has moved, leaving it unusable rather
   than sent somewhere it was never meant for.
@@ -889,22 +895,21 @@
   address was typed or left at the vendor's default. Only an overlay naming where the connection already points
   moves nothing, and the base-URL variables of [[env-base-url-shadowing-types]] are exempt.
 
-  A connection the `MB_LLM_PROVIDERS` JSON supplies is the operator's own, so nothing is taken from it."
+  A connection the `MB_LLM_PROVIDERS` JSON supplies is the operator's own, so nothing is taken from it. Warned
+  about once per value, like [[drop-captured-base-url]]."
   [{conn-key :key :keys [type source config] :as conn} env-config]
-  (drop-fields-warning-once!
-   conn :secret
-   (when (and (= :db source)
-              (env-moves-base-url? type config env-config))
-     (filterv #(and (u/trimmed-string (get config %))
-                    (not (contains? env-config %)))
-              ;; sorted so the fields leave in the order they are warned about
-              (sort (secret-field-keys type))))
-   (fn [field]
-     (log/warnf (str "Ignoring the stored %s of the %s LLM connection: %s points it at another server, so "
-                     "its credentials have to come from the environment as well. Set %s to keep using it.")
-                (name field) conn-key
-                (get (connection-env-vars type) :base-url "the environment")
-                (get (connection-env-vars type) field "the matching environment variable")))))
+  (let [captured (when (= :db source)
+                   (captured-secret-fields type config env-config #(u/trimmed-string (get config %))))]
+    (doseq [field captured
+            :let  [seen [conn-key field (hash (get config field))]]
+            :when (not (contains? @warned-captured-secrets seen))]
+      (swap! warned-captured-secrets conj seen)
+      (log/warnf (str "Ignoring the stored %s of the %s LLM connection: %s points it at another server, so "
+                      "its credentials have to come from the environment as well. Set %s to keep using it.")
+                 (name field) conn-key
+                 (get (connection-env-vars type) :base-url "the environment")
+                 (get (connection-env-vars type) field "the matching environment variable")))
+    (update conn :config #(apply dissoc % captured))))
 
 (defn assert-credentials-not-captured!
   "Reject a credential the caller has just typed for a connection the environment points at another server.
@@ -918,19 +923,14 @@
   already stored, so neither is anyone asking for a credential to be sent anywhere. `conn` carries the config the
   credential would land in, which is what decides whether the connection moved."
   [{type-name :type :keys [config]} submitted env-config]
-  (when (env-moves-base-url? type-name config env-config)
-    (when-let [field (first (filter (fn [field-key]
-                                      (and (typed-value submitted field-key)
-                                           (not (contains? env-config field-key))))
-                                    ;; sorted so a type with several secrets always names the same one
-                                    (sort (secret-field-keys type-name))))]
-      (throw (ex-info (tru "{0} points this connection at another server, so its credentials have to come from the environment as well. Set {1} to keep using it."
-                           (get (connection-env-vars type-name) :base-url "The environment")
-                           (get (connection-env-vars type-name) field "the matching environment variable"))
-                      {:status-code 400
-                       :api-error   true
-                       :error-code  :llm-credentials-must-come-from-env
-                       :field       field})))))
+  (when-let [field (first (captured-secret-fields type-name config env-config #(typed-value submitted %)))]
+    (throw (ex-info (tru "{0} points this connection at another server, so its credentials have to come from the environment as well. Set {1} to keep using it."
+                         (get (connection-env-vars type-name) :base-url "The environment")
+                         (get (connection-env-vars type-name) field "the matching environment variable"))
+                    {:status-code 400
+                     :api-error   true
+                     :error-code  :llm-credentials-must-come-from-env
+                     :field       field}))))
 
 (defn env-overlay-config
   "What the environment supplies for a connection of `type-name` stored under `conn-key`, or nil where it
@@ -939,7 +939,7 @@
   For a writer deciding about a connection that does not exist yet, which cannot read the overlay off a
   stored one — see [[applicable-overlay]] for which overlay reaches it."
   [conn-key type-name]
-  (:config (env-overlay conn-key type-name)))
+  (:config (applicable-overlay (get (env-overlays) conn-key) type-name)))
 
 (defn effective-config
   "What the stored connection `conn` will run on once `env-config` is layered over it.
@@ -1126,23 +1126,6 @@
   (if (managed-model-ref? model-ref)
     (str/replace-first model-ref (str managed-connection-key "/") "")
     model-ref))
-
-(defn with-field-defaults
-  "Fill in each field's registry `:default` wherever `config` left it blank, and run each field's `:normalize` over
-  the value that results, so a resolved connection carries everything the adapter needs in the shape it needs it.
-  Normalizing here rather than on write covers every source of a value — the stored config, an environment
-  variable, and the default itself — so a base URL entered with a trailing slash cannot double up the `/` when a
-  path is joined onto it."
-  [type-name config]
-  (reduce (fn [config {:keys [key default normalize]}]
-            (let [config (cond-> config
-                           (and default (not (u/trimmed-string (get config key))))
-                           (assoc key default))]
-              (cond-> config
-                (and normalize (u/trimmed-string (get config key)))
-                (update key normalize))))
-          (or config {})
-          (:fields (provider-type type-name))))
 
 (defn resolve-model-ref
   "Resolve a `connection-key/model` string against the configured connections.

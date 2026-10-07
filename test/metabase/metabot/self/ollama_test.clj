@@ -15,6 +15,7 @@
    [metabase.metabot.self.ollama.capabilities :as ollama.capabilities]
    [metabase.metabot.self.ollama.connection :as ollama.connection]
    [metabase.test :as mt]
+   [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.util.log.capture :as log.capture])
   (:import
@@ -1137,7 +1138,7 @@
       (is (nil? (llm.provider/default-model "ollama"))))))
 
 (deftest ollama-form-asks-for-an-address-and-a-key-test
-  (let [by-key   (into {} (map (juxt :key identity)) (:fields (llm.provider/provider-type "ollama")))
+  (let [by-key   (u/index-by :key (:fields (llm.provider/provider-type "ollama")))
         base-url (:base-url by-key)]
     (testing "two fields, and nothing that says which kind of server is behind them: the address does"
       (is (= #{:base-url :api-key} (set (keys by-key)))))
