@@ -816,6 +816,7 @@ const MOCKING_API = /\bjest\.(mock|doMock|unmock|resetModules|isolateModules)\(/
 // Every file gets a fresh registry, which is jest's model on Node's own loader.
 const ISOLATE_ALL = process.env.NT_ISOLATE_ALL === "1";
 const sharedGlobalKeys = new Set();
+const CLOCK_GLOBALS = ["setTimeout", "clearTimeout", "setInterval", "clearInterval", "setImmediate", "clearImmediate", "requestAnimationFrame", "cancelAnimationFrame", "requestIdleCallback", "cancelIdleCallback", "Date", "performance", "queueMicrotask"];
 // Mantine keeps a module-level theme whose component overrides close over project
 // components, so leaving it cached hands the next file's tree the old graph's ones.
 const EVICTABLE_PACKAGES = process.env.NT_SHARE_UI_PACKAGES === "1" ? /$^/ : /\/node_modules\/(@mantine|@emotion)\//;
@@ -1004,6 +1005,7 @@ let filesRunHere = 0;
 let fileStarted = 0;
 globalThis.__nodeTestSpike.runFile = async (t, file) => {
   fileStarted = Date.now();
+  if (process.env.NT_DEBUG_FRAMES) { const at = Date.now(); const name = path.basename(file); console.error(`[frames] start ${name} same=${globalThis.requestAnimationFrame === requestFrame} type=${typeof globalThis.requestAnimationFrame} realClock=${clockIsReal()} perf=${performance.now().toFixed(0)} date=${Date.now()}`); globalThis.requestAnimationFrame(() => console.error(`[frames] fired in ${name} after ${Date.now() - at} ms`)); }
   if (process.env.NT_DEBUG_WINKEY) { const k = process.env.NT_DEBUG_WINKEY; console.error(`[winkey] start ${path.basename(file)} win=${JSON.stringify(Object.keys(Object.getOwnPropertyDescriptor(win, k) ?? {}))} global=${JSON.stringify(Object.keys(Object.getOwnPropertyDescriptor(globalThis, k) ?? {}))} same=${win === globalThis.window}`); }
   preloadMocks ??= new Map(mocks);
   currentFile = path.relative(root, file);
@@ -1428,9 +1430,23 @@ globalThis.__nodeTestSpike.trackLets = (file, read, write) => { trackedLets.set(
       // A package or the cljs build loads once per process, so a global that it
       // installs has to outlive the file that happened to load it.
       const before = new Set(Reflect.ownKeys(globalThis));
+      // It also keeps whatever clock functions it reads while it loads
+      // (Mantine: `const raf = window.requestAnimationFrame`), so it must not
+      // load under a file's fake clock.
+      const faked = [];
+      if (!clockIsReal() && !process.env.NT_NO_REAL_CLOCK_LOAD) {
+        for (const name of CLOCK_GLOBALS) {
+          const real = globalBaseline.get(name);
+          const current = Object.getOwnPropertyDescriptor(globalThis, name);
+          if (!real || !current || sameDescriptor(current, real)) continue;
+          faked.push([name, current]);
+          Object.defineProperty(globalThis, name, real);
+        }
+      }
       try {
         return compileAny.call(this, content, filename, ...rest);
       } finally {
+        for (const [name, descriptor] of faked) Object.defineProperty(globalThis, name, descriptor);
         for (const key of Reflect.ownKeys(globalThis)) if (!before.has(key)) sharedGlobalKeys.add(key);
       }
     };
