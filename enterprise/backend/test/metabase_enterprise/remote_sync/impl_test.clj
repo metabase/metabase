@@ -2419,7 +2419,7 @@ serdes/meta:
 
 ;; ---------- the holders of a source release the lease of its clone ----------------------------
 
-(defn- do-with-git-remote
+(defn- do-with-git-remote!
   "Calls `(f url)` with the remote-sync settings of a new local git remote at `url`, whose `master` branch has one
   commit. Then deletes the clones of `url`."
   [f]
@@ -2470,7 +2470,7 @@ serdes/meta:
 (deftest recoveries-while-an-import-holds-a-clone-keep-at-most-two-clones-test
   (testing "three stale-clone recoveries while an import task holds the first clone: at most two clones after each
             recovery, and one clone after the import ends"
-    (do-with-git-remote
+    (do-with-git-remote!
      (fn [url]
        (let [in-task (promise)
              proceed (promise)]
@@ -2493,7 +2493,7 @@ serdes/meta:
 (deftest import-that-throws-in-its-task-releases-its-lease-test
   (testing "an import task that throws releases its lease: the clone that a recovery retired during the task is
             deleted, and its Git instance is closed"
-    (do-with-git-remote
+    (do-with-git-remote!
      (fn [url]
        (let [in-task (promise)
              proceed (promise)]
@@ -2517,7 +2517,7 @@ serdes/meta:
 
 (deftest refused-sync-requests-release-their-leases-test
   (testing "an import or an export that is refused before its task starts releases the lease of its source"
-    (do-with-git-remote
+    (do-with-git-remote!
      (fn [url]
        (doseq [[refusal message request!]
                [["dirty changes" #"unsaved changes"
@@ -2539,7 +2539,7 @@ serdes/meta:
 
 (deftest requests-release-their-leases-test
   (testing "each request that reads the clone releases the lease of its source when it ends"
-    (do-with-git-remote
+    (do-with-git-remote!
      (fn [url]
        (mt/with-dynamic-fn-redefs [impl/export! (fn [& _] {:status :success})]
          (doseq [[request request!] [["has-remote-changes?" #(impl/has-remote-changes? {:force-refresh? true})]

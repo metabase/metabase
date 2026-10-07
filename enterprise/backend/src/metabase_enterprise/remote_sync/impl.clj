@@ -1368,11 +1368,14 @@
      (if (cache-valid? cache-state current-branch force-refresh?)
        (assoc cache-state :cached? true)
        (let [last-imported (remote-sync.task/last-version)
-             source (source/source-from-settings current-branch)
-             snapshot (snapshot-or-missing-branch source)]
-         (if (= ::missing-branch snapshot)
-           (branch-missing-result current-branch last-imported)
-           (fresh-result! current-branch last-imported snapshot)))))))
+             source        (source/source-from-settings current-branch)]
+         (try
+           (let [snapshot (snapshot-or-missing-branch source)]
+             (if (= ::missing-branch snapshot)
+               (branch-missing-result current-branch last-imported)
+               (fresh-result! current-branch last-imported snapshot)))
+           (finally
+             (source/close! source))))))))
 
 ;;; ------------------------------------------- Task Result Handling -------------------------------------------
 
@@ -1470,13 +1473,14 @@
 (defn run-task-body!
   "Run `sync-fn` (a fn of task-id returning a result map) for the already-created RemoteSyncTask `task-id` on the
   current thread, recording the outcome on the row. `branch` is written to the remote-sync-branch setting on
-  success when non-nil; `:on-success` receives [task-id result] after a successful result is recorded.
+  success when non-nil; `:on-success` receives [task-id result] after a successful result is recorded. `:source`, when
+  given, is the source that the task reads; the task owns it and closes it with [[source/close!]] on exit.
 
   Guarantees, whatever `sync-fn` or the bookkeeping does: a heartbeat runs on the row for the duration, the task
-  is registered in [[running-task-ids]] for the duration, and the row is ended on exit. Any `Throwable` from
-  `sync-fn` becomes an `:error` result; an `Error` must not escape the worker thread, where nothing would log it
-  and the row would stay open."
-  [task-id branch sync-fn & {:keys [on-success]}]
+  is registered in [[running-task-ids]] for the duration, the source is closed, and the row is ended on exit. Any
+  `Throwable` from `sync-fn` becomes an `:error` result; an `Error` must not escape the worker thread, where nothing
+  would log it and the row would stay open."
+  [task-id branch sync-fn & {:keys [on-success source]}]
   (let [stop-heartbeat! (remote-sync.task/start-heartbeat! task-id)]
     (swap! running-tasks conj task-id)
     (try
@@ -1496,6 +1500,7 @@
         (log/errorf t "Remote sync task %d bookkeeping failed" task-id))
       (finally
         (stop-heartbeat!)
+        (source/close! source)
         (swap! running-tasks disj task-id)
         (ensure-task-ended! task-id)))))
 
@@ -1503,19 +1508,30 @@
   "Executes a remote sync task asynchronously in a virtual thread.
 
   Takes a task-type string ('import' or 'export'), a branch name to update in settings upon completion, a
-  sync-fn function that takes a task-id and performs the sync operation, and an optional :on-success callback
-  that receives [task-id result] after a successful sync. Creates a new task (or errors if one is already
-  running), then runs [[run-task-body!]] in a virtual thread with a timeout.
+  sync-fn function that takes a task-id and performs the sync operation, an optional :on-success callback
+  that receives [task-id result] after a successful sync, and an optional :source that the task owns (see
+  [[run-task-body!]]). Creates a new task (or errors if one is already running), then runs [[run-task-body!]] in a
+  virtual thread with a timeout.
 
-  Returns a RemoteSyncTask. Throws ExceptionInfo with status 400 if a sync task is already in progress."
-  [task-type branch sync-fn & {:keys [on-success]}]
+  Returns a RemoteSyncTask. Throws ExceptionInfo with status 400 if a sync task is already in progress; the caller
+  then still owns the source."
+  [task-type branch sync-fn & {:keys [on-success source]}]
   (let [{task-id :id existing? :existing? :as task} (create-task-with-lock! task-type)]
     (api/check-400 (not existing?) "Remote sync in progress")
     (u.jvm/in-virtual-thread*
      (dh/with-timeout {:interrupt? true
                        :timeout-ms (* (settings/remote-sync-task-time-limit-ms) 10)}
-       (run-task-body! task-id branch sync-fn :on-success on-success)))
+       (run-task-body! task-id branch sync-fn :on-success on-success :source source)))
     task))
+
+(defn- close-on-throw!
+  "Calls `thunk`. When it throws, closes `source` with [[source/close!]] and throws again."
+  [source thunk]
+  (try
+    (thunk)
+    (catch Throwable t
+      (source/close! source)
+      (throw t))))
 
 (defn async-import!
   "Imports remote-synced collections from a remote source repository asynchronously.
@@ -1532,41 +1548,46 @@
   are unsaved changes and neither force? nor merge? is set."
   [branch force? import-args & {:keys [on-success merge? force-deletion?]}]
   (guards/ensure-no-active-task!)
-  (let [pre-task-branch        (settings/remote-sync-branch)
-        source                 (source/source-from-settings branch)
-        has-dirty?             (remote-sync.object/dirty?)
-        snapshot               (source.p/snapshot source)
-        ;; the merge base for a merge pull. When the remote has not advanced it is the remote tip itself
-        ;; (base == theirs, so import-merged! no-ops and keeps local dirty). When the remote has advanced
-        ;; it's the last-synced commit, which may be nil if orphaned by a force-push/rebase (→ conflict).
-        ;; nil also when there's no prior sync. Resolved only for a merge.
-        last-task-version      (remote-sync.task/last-version)
-        base-snapshot          (when (and merge? (some? last-task-version))
+  (let [pre-task-branch (settings/remote-sync-branch)
+        source          (source/source-from-settings branch)]
+    ;; The request owns the source until the task starts; then the task closes it.
+    (close-on-throw!
+     source
+     (fn []
+       (let [has-dirty?        (remote-sync.object/dirty?)
+             snapshot          (source.p/snapshot source)
+             ;; the merge base for a merge pull. When the remote has not advanced it is the remote tip itself
+             ;; (base == theirs, so import-merged! no-ops and keeps local dirty). When the remote has advanced
+             ;; it's the last-synced commit, which may be nil if orphaned by a force-push/rebase (→ conflict).
+             ;; nil also when there's no prior sync. Resolved only for a merge.
+             last-task-version (remote-sync.task/last-version)
+             base-snapshot     (when (and merge? (some? last-task-version))
                                  (if (= last-task-version (source.p/version snapshot))
                                    snapshot
                                    (source.p/snapshot-at source last-task-version)))]
-    (when (and has-dirty? (not force?) (not merge?))
-      (throw (ex-info "There are unsaved changes in the Remote Sync collection which will be overwritten by the import. Force the import to discard these changes."
-                      {:status-code 400
-                       :conflicts true
-                       ;; The un-pushed local changes a switch would discard, so the client can name exactly
-                       ;; what would be lost without a second round-trip to /dirty.
-                       :dirty_objects (remote-sync.object/dirty-objects)})))
-    (run-async! "import" branch
-                (fn [task-id]
-                  (when (branch-changed-since-scheduling? pre-task-branch)
-                    (log/warnf "Aborting import: remote-sync-branch changed from %s to %s since task was scheduled"
-                               pre-task-branch (settings/remote-sync-branch))
-                    (throw (ex-info "Branch setting changed since task was scheduled; aborting to protect data integrity"
-                                    {:pre-task-branch pre-task-branch
-                                     :current-branch  (settings/remote-sync-branch)})))
-                  (import! snapshot task-id
-                           (assoc import-args
-                                  :force?           force?
-                                  :force-deletion?  force-deletion?
-                                  :merge?           merge?
-                                  :base-snapshot    base-snapshot)))
-                :on-success on-success)))
+         (when (and has-dirty? (not force?) (not merge?))
+           (throw (ex-info "There are unsaved changes in the Remote Sync collection which will be overwritten by the import. Force the import to discard these changes."
+                           {:status-code 400
+                            :conflicts true
+                            ;; The un-pushed local changes a switch would discard, so the client can name exactly
+                            ;; what would be lost without a second round-trip to /dirty.
+                            :dirty_objects (remote-sync.object/dirty-objects)})))
+         (run-async! "import" branch
+                     (fn [task-id]
+                       (when (branch-changed-since-scheduling? pre-task-branch)
+                         (log/warnf "Aborting import: remote-sync-branch changed from %s to %s since task was scheduled"
+                                    pre-task-branch (settings/remote-sync-branch))
+                         (throw (ex-info "Branch setting changed since task was scheduled; aborting to protect data integrity"
+                                         {:pre-task-branch pre-task-branch
+                                          :current-branch  (settings/remote-sync-branch)})))
+                       (import! snapshot task-id
+                                (assoc import-args
+                                       :force?           force?
+                                       :force-deletion?  force-deletion?
+                                       :merge?           merge?
+                                       :base-snapshot    base-snapshot)))
+                     :on-success on-success
+                     :source     source))))))
 
 (defn async-export!
   "Exports the remote-synced collections to the remote source repository asynchronously.
@@ -1589,30 +1610,35 @@
   (when-not (settings/remote-sync-enabled)
     (throw (ex-info "Remote sync source is not enabled. Please configure MB_GIT_SOURCE_REPO_URL environment variable."
                     {:status-code 400})))
-  (let [pre-task-branch        (settings/remote-sync-branch)
-        source                 (source/source-from-settings branch)
-        last-task-version      (remote-sync.task/last-version)
-        snapshot               (source.p/snapshot source)
-        current-source-version (source.p/version snapshot)
-        ;; the merge base, resolved only when the remote has advanced; nil here means a 3-way merge isn't
-        ;; possible (no prior sync, or the base commit was orphaned by a force-push/rebase)
-        base-snapshot          (when (and (some? last-task-version)
-                                          (not= last-task-version current-source-version))
-                                 (source.p/snapshot-at source last-task-version))]
-    (run-async! "export" branch
-                (fn [task-id]
-                  (when (branch-changed-since-scheduling? pre-task-branch)
-                    (log/warnf "Aborting export: remote-sync-branch changed from %s to %s since task was scheduled"
-                               pre-task-branch (settings/remote-sync-branch))
-                    (throw (ex-info "Branch setting changed since task was scheduled; aborting to protect data integrity"
-                                    {:pre-task-branch pre-task-branch
-                                     :current-branch  (settings/remote-sync-branch)})))
-                  (export! snapshot task-id message
-                           :force?          force?
-                           :merge?          merge?
-                           :source          source
-                           :base-snapshot   base-snapshot))
-                :on-success on-success)))
+  (let [pre-task-branch (settings/remote-sync-branch)
+        source          (source/source-from-settings branch)]
+    ;; The request owns the source until the task starts; then the task closes it.
+    (close-on-throw!
+     source
+     (fn []
+       (let [last-task-version      (remote-sync.task/last-version)
+             snapshot               (source.p/snapshot source)
+             current-source-version (source.p/version snapshot)
+             ;; the merge base, resolved only when the remote has advanced; nil here means a 3-way merge isn't
+             ;; possible (no prior sync, or the base commit was orphaned by a force-push/rebase)
+             base-snapshot          (when (and (some? last-task-version)
+                                               (not= last-task-version current-source-version))
+                                      (source.p/snapshot-at source last-task-version))]
+         (run-async! "export" branch
+                     (fn [task-id]
+                       (when (branch-changed-since-scheduling? pre-task-branch)
+                         (log/warnf "Aborting export: remote-sync-branch changed from %s to %s since task was scheduled"
+                                    pre-task-branch (settings/remote-sync-branch))
+                         (throw (ex-info "Branch setting changed since task was scheduled; aborting to protect data integrity"
+                                         {:pre-task-branch pre-task-branch
+                                          :current-branch  (settings/remote-sync-branch)})))
+                       (export! snapshot task-id message
+                                :force?          force?
+                                :merge?          merge?
+                                :source          source
+                                :base-snapshot   base-snapshot))
+                     :on-success on-success
+                     :source     source))))))
 
 (defn preview-export-merge
   "Dry-run preview of what exporting the current state would do given the live remote, without writing
@@ -1629,29 +1655,32 @@
   [branch]
   (let [no-changes {:diverged? false :clean? true :conflicts [] :summary {:added 0 :updated 0 :removed 0}
                     :force-push-casualties {:deleted [] :overwritten []}}
-        source         (source/source-from-settings branch)
-        snapshot       (source.p/snapshot source)
-        remote-version (source.p/version snapshot)
-        base-version   (remote-sync.task/last-version)]
-    (if (or (nil? base-version) (= base-version remote-version))
-      no-changes
-      (if-let [base-snapshot (source.p/snapshot-at source base-version)]
-        (serdes/with-cache
-          (let [targets (spec/exportable-entities)]
-            (if (seq targets)
-              (assoc (source/preview-merge (spec/extract-entities-for-export targets) snapshot base-snapshot nil)
-                     :diverged? true)
-              (assoc no-changes :diverged? true))))
-        ;; No merge base — the remote history was rewritten. A merge is impossible, but a force push is
-        ;; still offered, so surface what it would discard (every remote entity not identical to ours).
-        {:diverged? true :clean? false :reason :history-rewritten
-         :conflicts [] :summary {:added 0 :updated 0 :removed 0}
-         :force-push-casualties (serdes/with-cache
-                                  (let [targets (spec/exportable-entities)]
-                                    (if (seq targets)
-                                      (source/force-push-casualties-no-base
-                                       (spec/extract-entities-for-export targets) snapshot)
-                                      {:deleted [] :overwritten []})))}))))
+        source     (source/source-from-settings branch)]
+    (try
+      (let [snapshot       (source.p/snapshot source)
+            remote-version (source.p/version snapshot)
+            base-version   (remote-sync.task/last-version)]
+        (if (or (nil? base-version) (= base-version remote-version))
+          no-changes
+          (if-let [base-snapshot (source.p/snapshot-at source base-version)]
+            (serdes/with-cache
+              (let [targets (spec/exportable-entities)]
+                (if (seq targets)
+                  (assoc (source/preview-merge (spec/extract-entities-for-export targets) snapshot base-snapshot nil)
+                         :diverged? true)
+                  (assoc no-changes :diverged? true))))
+            ;; No merge base — the remote history was rewritten. A merge is impossible, but a force push is
+            ;; still offered, so surface what it would discard (every remote entity not identical to ours).
+            {:diverged? true :clean? false :reason :history-rewritten
+             :conflicts [] :summary {:added 0 :updated 0 :removed 0}
+             :force-push-casualties (serdes/with-cache
+                                      (let [targets (spec/exportable-entities)]
+                                        (if (seq targets)
+                                          (source/force-push-casualties-no-base
+                                           (spec/extract-entities-for-export targets) snapshot)
+                                          {:deleted [] :overwritten []})))})))
+      (finally
+        (source/close! source)))))
 
 (defn create-branch!
   "Creates a new remote branch from `base-branch` and switches `remote-sync-branch`
@@ -1660,8 +1689,11 @@
   [name base-branch]
   (guards/ensure-no-active-task!)
   (let [source (source/source-from-settings)]
-    (source.p/create-branch source name base-branch)
-    (settings/remote-sync-branch! name)))
+    (try
+      (source.p/create-branch source name base-branch)
+      (finally
+        (source/close! source))))
+  (settings/remote-sync-branch! name))
 
 (defn stash!
   "Creates a new remote branch from the current `remote-sync-branch` and starts an
@@ -1669,8 +1701,12 @@
   [new-branch message & {:keys [on-success]}]
   (guards/ensure-no-active-task!)
   (let [source (source/source-from-settings)]
-    (source.p/create-branch source new-branch (settings/remote-sync-branch))
-    (async-export! new-branch false message :on-success on-success)))
+    (try
+      (source.p/create-branch source new-branch (settings/remote-sync-branch))
+      (finally
+        (source/close! source))))
+  ;; the export makes and owns its own source
+  (async-export! new-branch false message :on-success on-success))
 
 (defn finish-remote-config!
   "Based on the current configuration, fill in any missing settings and finalize remote sync setup.

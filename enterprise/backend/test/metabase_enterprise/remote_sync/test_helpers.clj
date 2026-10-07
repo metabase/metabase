@@ -14,8 +14,8 @@
    [toucan2.core :as t2])
   (:import
    (java.io File)
-   (org.apache.commons.io FileUtils)
    (java.util.concurrent.atomic AtomicInteger)
+   (org.apache.commons.io FileUtils)
    (org.eclipse.jgit.api Git)
    (org.eclipse.jgit.lib PersonIdent Repository)))
 

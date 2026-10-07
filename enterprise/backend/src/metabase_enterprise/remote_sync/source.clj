@@ -12,6 +12,7 @@
    [metabase-enterprise.serialization.core :as serialization]
    [metabase.models.serialization :as serdes]
    [metabase.settings.core :as setting]
+   [metabase.util.log :as log]
    [metabase.util.yaml :as yaml]
    [methodical.core :as methodical]))
 
@@ -286,7 +287,8 @@
 
   Takes an optional branch name to use. If not provided, uses the configured remote-sync-branch setting.
 
-  Returns a GitSource instance configured with the remote-sync-url, branch, and remote-sync-token from settings."
+  Returns a GitSource instance configured with the remote-sync-url, branch, and remote-sync-token from settings. The
+  caller closes it with [[close!]]."
   ([branch]
    (git/git-source
     (setting/get :remote-sync-url)
@@ -295,3 +297,14 @@
     serialization/replaced-top-level-paths))
   ([]
    (source-from-settings (setting/get :remote-sync-branch))))
+
+(defn close!
+  "Closes `source` when it is a `java.io.Closeable`, as a GitSource is. Does nothing for another source. Logs a failure
+  of the close, and does not throw it."
+  [source]
+  ;; A close runs in a `finally`, so a throw would hide the result or the error of the operation.
+  (when (instance? java.io.Closeable source)
+    (try
+      (.close ^java.io.Closeable source)
+      (catch Throwable t
+        (log/error t "Could not close a remote-sync source")))))

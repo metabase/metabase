@@ -13,6 +13,8 @@
   (:import
    (org.eclipse.jgit.api Git)))
 
+(set! *warn-on-reflection* true)
+
 (use-fixtures :once
   (fixtures/initialize :db)
   ;; the mock source's card yaml references the test-data database, so it must exist for import to succeed

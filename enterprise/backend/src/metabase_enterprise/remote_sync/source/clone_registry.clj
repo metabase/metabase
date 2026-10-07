@@ -11,11 +11,15 @@
     clone job of that URL.
   - [[retire!]] retires a stale generation: no later [[acquire!]] gets it.
   - [[release!]] ends a lease. A retired generation that no lease holds is closed and deleted.
-  - [[shutdown!]] closes every clone and deletes the process root. The [[process-registry]] runs it at exit."
+  - [[shutdown!]] closes every clone and deletes the process root. The [[process-registry]] runs it at exit.
+
+  Nothing ends a lease but [[release!]]. A lease that is older than the age limit of the registry is logged one time,
+  with its holder."
   (:require
    [buddy.core.codecs :as codecs]
    [buddy.core.hash :as buddy-hash]
    [clojure.java.io :as io]
+   [metabase.settings.core :as setting]
    [metabase.util :as u]
    [metabase.util.log :as log])
   (:import
@@ -191,18 +195,57 @@
           (.setDaemon true))))))
 
 (defn make-registry
-  "A registry whose process root is a new directory under `base-dir`. It makes nothing on disk before its first clone."
-  [^File base-dir]
-  {:base-dir  base-dir
-   :root      (atom nil)
-   :old-roots (atom [])
-   :state     (atom {})
-   :executor  (delay (Executors/newCachedThreadPool (clone-thread-factory)))})
+  "A registry whose process root is a new directory under `base-dir`. It makes nothing on disk before its first clone.
+
+  `max-lease-age-ms`, when given, is a function of no arguments that returns the age limit of a lease in ms. Each
+  [[acquire!]] and [[retire!]] of a URL logs each lease of that URL that is older than the limit, one time."
+  ([^File base-dir]
+   (make-registry base-dir nil))
+  ([^File base-dir {:keys [max-lease-age-ms]}]
+   {:base-dir         base-dir
+    :root             (atom nil)
+    :old-roots        (atom [])
+    :state            (atom {})
+    :executor         (delay (Executors/newCachedThreadPool (clone-thread-factory)))
+    :max-lease-age-ms max-lease-age-ms}))
 
 (defn new-lease
-  "A new lease on the clones of `url`. It holds no generation before [[acquire!]]."
+  "A new lease on the clones of `url`, held by the caller. It holds no generation before [[acquire!]]."
   [url]
-  {:id (random-uuid) :url url})
+  {:id     (random-uuid)
+   :url    url
+   ;; The log of a lease that is too old names the thread and the place that made it.
+   :holder (.getName (Thread/currentThread))
+   :trace  (ex-info "The holder of a git clone lease made the lease here" {})})
+
+(defn- lease-paths
+  "The directories of the generations of `url` in `state` that lease `lease-id` holds."
+  [state url lease-id]
+  (for [[_ {:keys [dir leases]}] (get-in state [url :generations])
+        :when                     (contains? leases lease-id)]
+    (str dir)))
+
+(defn- log-old-leases!
+  "Logs each lease of `url` that is older than the age limit of `registry`, one time."
+  [{:keys [state max-lease-age-ms]} url]
+  ;; The log does not release the lease: a forced release would delete a clone that its holder can still read.
+  (when max-lease-age-ms
+    (let [now       (System/nanoTime)
+          limit-ns  (* 1000000 (long (max-lease-age-ms)))
+          too-old?  (fn [{:keys [since logged?]}] (and (not logged?) (> (- now since) limit-ns)))
+          [old new] (swap-vals! state (fn [s]
+                                        (cond-> s
+                                          (seq (get-in s [url :leases]))
+                                          (update-in [url :leases] update-vals
+                                                     #(cond-> % (too-old? %) (assoc :logged? true))))))]
+      (doseq [[id {:keys [holder trace since logged?]}] (get-in new [url :leases])
+              :when (and logged? (not (get-in old [url :leases id :logged?])))]
+        (log/warn trace (str "A source holds a git clone for longer than the task timeout. Nothing releases the clone"
+                             " until the holder closes the source. The stack trace shows where the holder made the source.")
+                  {:lease  id
+                   :holder holder
+                   :age-ms (quot (- now (long since)) 1000000)
+                   :paths  (vec (lease-paths new url id))})))))
 
 (defn- deletable?
   "True iff `dir` is a symbolic link, or the canonical path of `root` is that of a process root that this JVM made."
@@ -255,6 +298,7 @@
                        (update url dissoc :active)
                        (assoc-in [url :generations id :retired?] true))
                    s)))
+  (log-old-leases! registry url)
   (delete-unleased! registry url))
 
 (defn release!
@@ -264,7 +308,8 @@
   (swap! state (fn [s]
                  (cond-> s
                    (contains? s url)
-                   (update-in [url :generations] update-vals #(update % :leases disj lease-id)))))
+                   (-> (update-in [url :generations] update-vals #(update % :leases disj lease-id))
+                       (update-in [url :leases] dissoc lease-id)))))
   (delete-unleased! registry url))
 
 (defn- retire-missing!
@@ -360,10 +405,11 @@
     (throw e)))
 
 (defn- take-generation
-  "The state `entry` of a URL after an acquire by lease `lease-id`. The lease is added to the active generation. When
-  the active generation is not in the current process root of the `root` atom, it is retired instead. When the URL then
-  has no active generation and no clone job, `entry` gets a new `:job` promise and the next generation id in `:next`."
-  [{:keys [active] :as entry} root lease-id]
+  "The state `entry` of a URL after an acquire by `lease`. The lease is added to the active generation, and to the
+  `:leases` of `entry` with the time of its first generation. When the active generation is not in the current process
+  root of the `root` atom, it is retired instead. When the URL then has no active generation and no clone job, `entry`
+  gets a new `:job` promise and the next generation id in `:next`."
+  [{:keys [active] :as entry} root {lease-id :id :keys [holder trace]}]
   ;; A clone job writes into the directory that it got before it started. If an acquire retires that root in the
   ;; meantime, the job publishes a generation in a retired root. The swap reads the root, so that it never takes a
   ;; generation in a root that was retired before the swap.
@@ -372,7 +418,9 @@
                                          (-> (dissoc :active)
                                              (assoc-in [:generations active :retired?] true)))]
     (cond
-      active (update-in entry [:generations active :leases] (fnil conj #{}) lease-id)
+      active (-> entry
+                 (update-in [:generations active :leases] (fnil conj #{}) lease-id)
+                 (update-in [:leases lease-id] #(or % {:since (System/nanoTime) :holder holder :trace trace})))
       job    entry
       :else  (-> entry
                  (update :next (fnil inc 0))
@@ -388,12 +436,13 @@
   its own wait. A failure of the job goes to every caller that waits for it, and the next call starts a new job.
   Throws when [[check-own-directory!]] refuses the base directory or the current process root, also when the URL has an
   active generation. After the removal of the refused path, the next call makes a new root."
-  [{:keys [root state] :as registry} {lease-id :id url :url} clone!]
+  [{:keys [root state] :as registry} {url :url :as lease} clone!]
+  (log-old-leases! registry url)
   (loop []
     (retire-broken-root! registry)
     (check-current-root! registry)
     (retire-missing! registry url)
-    (let [[old new]                         (swap-vals! state update url take-generation root lease-id)
+    (let [[old new]                         (swap-vals! state update url take-generation root lease)
           {old-active :active old-job :job} (get old url)
           {:keys [active job next]}         (get new url)]
       (when (and old-active (not= old-active active))
@@ -430,7 +479,9 @@
   runs [[shutdown!]]."}
   process-registry*
   (delay
-    (let [registry (make-registry (io/file (System/getProperty "java.io.tmpdir") "metabase-git"))]
+    (let [registry (make-registry (io/file (System/getProperty "java.io.tmpdir") "metabase-git")
+                                  ;; the task timeout: a task runs at most this long
+                                  {:max-lease-age-ms #(* 10 (setting/get :remote-sync-task-time-limit-ms))})]
       (.addShutdownHook (Runtime/getRuntime)
                         (Thread. ^Runnable (fn [] (shutdown! registry)) "remote-sync-git-clones-shutdown"))
       registry)))

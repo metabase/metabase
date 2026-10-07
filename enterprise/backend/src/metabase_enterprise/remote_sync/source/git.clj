@@ -728,8 +728,13 @@
       (->GitSnapshot (:git source) (:remote-url source) (:branch source) sha (:token source) (:managed-dirs source)))))
 
 ;; A GitSource also answers the remote questions, from its URL and token, as a GitRemote does. `lease` is its lease in
-;; the clone registry, and `generation` is the id of the generation whose Git instance is `git`.
+;; the clone registry, and `generation` is the id of the generation whose Git instance is `git`. A recovery returns a
+;; copy with the same lease, so a close of either one releases every generation of the lease.
 (defrecord GitSource [git remote-url branch token managed-dirs lease generation]
+  java.io.Closeable
+  (close [_]
+    (clone-registry/release! (clone-registry/process-registry) lease))
+
   source.p/Remote
   (branches [this]
     (branches this))
@@ -756,7 +761,10 @@
   are fully replaced during writes — any existing file not in the write set is removed.
 
   Returns a GitSource record implementing the Source protocol. Its lease holds a clone of `url` in the clone registry
-  of this process. The first use of `url` in the process clones the repository."
+  of this process. The first use of `url` in the process clones the repository.
+
+  The caller closes the source when it reads neither the source nor a snapshot of it any more. The close releases the
+  lease. A clone that a stale-cache recovery retired is deleted when no lease holds it. A second close does nothing."
   [url branch token managed-dirs]
   (let [lease            (clone-registry/new-lease url)
         {:keys [id git]} (clone-registry/acquire! (clone-registry/process-registry) lease (clone-job url token))]
