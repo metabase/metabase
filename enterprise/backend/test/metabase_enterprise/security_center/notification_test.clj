@@ -5,6 +5,8 @@
    [metabase-enterprise.security-center.notification :as notification]
    [metabase-enterprise.security-center.settings :as settings]
    [metabase-enterprise.security-center.task.sync-advisories :as task.sync]
+   [metabase.analytics.core :as analytics]
+   [metabase.channel.core :as channel]
    [metabase.channel.settings :as channel.settings]
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
@@ -441,3 +443,72 @@
             (is (= :active (:match_status obj)))
             (is (= "RCE in widget parser" (:title obj)))
             (is (= "Remote code execution" (:description obj)))))))))
+
+;;; ------------------------------------------- Partial delivery (GDGT-3144) -------------------------------------------
+
+(defn- delivery-failure
+  "The exception that `send-notification!` throws when the given channel types did not deliver."
+  [& channel-types]
+  (ex-info "Failed to deliver"
+           {:error-code      :notification/delivery-failed
+            :status-code     502
+            :failed-handlers (for [channel-type channel-types]
+                               {:handler_id nil :channel_type channel-type :channel_id nil :error_type "x"})}))
+
+(defn- tracked-results!
+  "Run `thunk` and return the Snowplow `security_advisory_notification_sent` results as {channel result}."
+  [thunk]
+  (let [events (atom [])]
+    (with-redefs [analytics/track-event! (fn [_schema data & _] (swap! events conj data))]
+      (thunk))
+    (into {} (for [{:keys [event event_detail result]} @events
+                   :when (= "security_advisory_notification_sent" event)]
+               [event_detail result]))))
+
+(deftest notify-advisory-partial-delivery-test
+  (testing "when email delivers and Slack fails, the advisory counts as notified and the channels are tracked apart"
+    (mt/with-temp [:model/SecurityAdvisory advisory
+                   (advisory-fixture {:advisory_id  "SC-PARTIAL-001"
+                                      :severity     "critical"
+                                      :match_status "active"})]
+      (mt/with-temporary-setting-values [slack-token-valid? true]
+        (mt/with-dynamic-fn-redefs [settings/security-center-slack-channel (constantly "#security-alerts")]
+          (with-send-redef (fn [& _] (throw (delivery-failure :channel/slack)))
+            (is (= {"email" "success" "slack" "failure"}
+                   (tracked-results! #(notification/notify-advisory! advisory))))))
+        (is (some? (:last_notified_at (t2/select-one :model/SecurityAdvisory (:id advisory)))))))))
+
+(deftest notify-advisory-every-channel-failed-test
+  (testing "when no channel delivers, notify-advisory! throws and last_notified_at stays unset, so the next sync retries"
+    (mt/with-temp [:model/SecurityAdvisory advisory
+                   (advisory-fixture {:advisory_id  "SC-PARTIAL-002"
+                                      :severity     "critical"
+                                      :match_status "active"})]
+      (mt/with-temporary-setting-values [slack-token-valid? true]
+        (mt/with-dynamic-fn-redefs [settings/security-center-slack-channel (constantly "#security-alerts")]
+          (with-send-redef (fn [& _] (throw (delivery-failure :channel/email :channel/slack)))
+            (is (= {"email" "failure" "slack" "failure"}
+                   (tracked-results! #(is (thrown-with-msg? Exception #"Failed to deliver"
+                                                            (notification/notify-advisory! advisory)))))))))
+      (is (nil? (:last_notified_at (t2/select-one :model/SecurityAdvisory (:id advisory))))))))
+
+(deftest notify-advisory-partial-delivery-through-the-pipeline-test
+  (testing "the real send: email delivers, the Slack post fails, and the advisory counts as notified"
+    (mt/with-temp [:model/SecurityAdvisory advisory
+                   (advisory-fixture {:advisory_id  "SC-PARTIAL-003"
+                                      :severity     "critical"
+                                      :match_status "active"})]
+      (mt/with-temporary-setting-values [slack-token-valid? true]
+        (mt/with-dynamic-fn-redefs [settings/security-center-slack-channel (constantly "#security-alerts")
+                                    notification.send/should-skip-retry? (constantly true)]
+          (let [sent (atom [])]
+            (with-redefs [events/publish-event!             (constantly nil)
+                          channel.settings/email-configured? (constantly true)
+                          channel/render-notification        (fn [channel-type & _] [{:channel channel-type}])
+                          channel/send!                      (fn [{channel-type :type} _message]
+                                                               (when (= :channel/slack channel-type)
+                                                                 (throw (ex-info "channel_not_found" {})))
+                                                               (swap! sent conj channel-type))]
+              (notification/notify-advisory! advisory))
+            (is (= [:channel/email] @sent)))))
+      (is (some? (:last_notified_at (t2/select-one :model/SecurityAdvisory (:id advisory))))))))
