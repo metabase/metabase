@@ -39,7 +39,7 @@ describe("scenarios > embedding > full app", () => {
         .within(() => {
           cy.findByTestId("main-logo").should("be.visible");
           cy.button(/New/).should("not.exist");
-          cy.findByPlaceholderText("Search").should("not.exist");
+          cy.findByPlaceholderText("Search…").should("not.exist");
         });
 
       sideNav().should("be.visible");
@@ -69,9 +69,7 @@ describe("scenarios > embedding > full app", () => {
 
       H.appBar().within(() => {
         cy.findByTestId("main-logo").should("be.visible");
-        cy.findByRole("treeitem", { name: "Our analytics" }).should(
-          "not.exist",
-        );
+        cy.findByText("Our analytics").should("not.exist");
       });
     });
 
@@ -150,10 +148,7 @@ describe("scenarios > embedding > full app", () => {
         qs: { side_nav: false, logo: false },
       });
       cy.findByRole("heading", { name: /Databases/ }).should("be.visible");
-      cy.findByRole("treeitem", { name: /Browse databases/ }).should(
-        "not.exist",
-      );
-      cy.findByRole("treeitem", { name: "Our analytics" }).should("not.exist");
+      sideNav().should("not.exist");
       H.appBar().should("not.exist");
     });
   });
@@ -1009,9 +1004,10 @@ describe("scenarios > embedding > full app", () => {
       cy.button(/Edited.*by/).should("be.visible");
 
       H.dashboardHeader().findByRole("img", { name: /info/i }).click();
-      H.modal()
-        .findByRole("heading", { name: /entity id/i })
-        .should("not.exist");
+      H.sidesheet().within(() => {
+        cy.findByRole("heading", { name: "Description" }).should("be.visible");
+        cy.findByRole("heading", { name: /entity id/i }).should("not.exist");
+      });
     });
 
     it("should hide the dashboard header by a param", () => {
@@ -1019,12 +1015,10 @@ describe("scenarios > embedding > full app", () => {
         url: `/dashboard/${ORDERS_DASHBOARD_ID}`,
         qs: { header: false },
       });
-      cy.findByRole("heading", { name: "Orders in a dashboard" }).should(
-        "not.exist",
-      );
       H.dashboardGrid().within(() => {
         H.assertTableRowsCount(2000);
       });
+      cy.findByTestId("dashboard-header").should("not.exist");
     });
 
     it("should hide the dashboard with multiple tabs header by a param and allow selecting tabs (metabase#38429, metabase#39002)", () => {
@@ -1049,12 +1043,10 @@ describe("scenarios > embedding > full app", () => {
           qs: { header: false },
         });
       });
-      cy.findByRole("heading", { name: "Orders in a dashboard" }).should(
-        "not.exist",
-      );
       H.dashboardGrid().within(() => {
         H.assertTableRowsCount(2000);
       });
+      cy.findByTestId("dashboard-header").should("not.exist");
       H.goToTab(SECOND_TAB.name);
       cy.findByTestId("dashboard-empty-state").should("be.visible");
     });
@@ -1438,6 +1430,7 @@ describe("scenarios > embedding > full app", () => {
       });
 
       cy.wait("@documentGet");
+      H.documentContent().should("contain.text", "Lorem ipsum dolor sit amet.");
 
       cy.findByLabelText("Show all comments").should("not.exist");
 

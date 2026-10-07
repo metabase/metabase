@@ -101,7 +101,6 @@ describe("scenarios > sidecar > tenant users", () => {
 
       // No "internal/external" naming or sections
       cy.findByText(/External collections/).should("not.exist");
-      cy.findByText(/Internal collections/).should("not.exist");
     });
   });
 
@@ -157,6 +156,10 @@ describe("scenarios > sidecar > tenant users", () => {
           "remote-sync-url": H.LOCAL_GIT_PATH + "/.git",
           "remote-sync-enabled": true,
         });
+
+        cy.request("GET", `/api/collection/${id1}`)
+          .its("body.is_remote_synced")
+          .should("eq", true);
       });
     });
 
