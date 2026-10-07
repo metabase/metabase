@@ -20,82 +20,74 @@
    :recovery [{:uses #{"search"}        :text "Call `search` to find a widget id."}
               {:uses #{"read_resource"} :text "Or call `read_resource` on the widget collection."}]})
 
-(tools/deftool happy-tool
-  "Always works."
-  {:name "happy" :args [:map {:closed true} [:n :int]]}
-  [{:keys [n]} ctx]
-  {:output (str "got " n " in " (:profile-id ctx))})
+(defn- tool
+  "A one-off `Tool` with `declared` and a body of `f`, for the runtime to drive."
+  [declared f]
+  (reify tools/Tool
+    (declaration [_] declared)
+    (handle [_ args ctx] (f args ctx))))
 
-(tools/deftool recoverable-tool
-  "Raises a declared recoverable error."
-  {:name "boom" :args [:map {:closed true} [:id :int]]}
-  [{:keys [id]} _ctx]
-  (runtime-test-no-widget! {:id id}))
+(def ^:private happy-tool
+  (tool {:name "happy" :description "Always works."
+         :args [:map {:closed true} [:n :int]]}
+        (fn [{:keys [n]} ctx] {:output (str "got " n " in " (:profile-id ctx))})))
 
-(tools/deftool unrecoverable-tool
-  "Gives up in a way only the user can act on."
-  {:name "give_up" :args [:map {:closed true}]}
-  [_args _ctx]
-  (tools.error/unrecoverable! ::out-of-cheese {:user-message "Out of cheese. Redo from start."}))
+(def ^:private recoverable-tool
+  (tool {:name "boom" :description "Raises a declared recoverable error."
+         :args [:map {:closed true} [:id :int]]}
+        (fn [{:keys [id]} _] (runtime-test-no-widget! {:id id}))))
 
-(tools/deftool silent-unrecoverable-tool
-  "Gives up without a user-facing message."
-  {:name "give_up_quietly" :args [:map {:closed true}]}
-  [_args _ctx]
-  (tools.error/unrecoverable! ::no-comment))
+(def ^:private unrecoverable-tool
+  (tool {:name "give_up" :description "Gives up in a way only the user can act on."
+         :args [:map {:closed true}]}
+        (fn [_ _] (tools.error/unrecoverable!
+                   ::out-of-cheese {:user-message "Out of cheese. Redo from start."}))))
 
-(tools/deftool crashing-tool
-  "Throws an undeclared exception whose message must never reach the model."
-  {:name "crash" :args [:map {:closed true}]}
-  [_args _ctx]
-  (throw (ex-info "SELECT * FROM secrets failed: clojure.lang.ExceptionInfo at line 1"
-                  {:password "hunter2"})))
+(def ^:private silent-unrecoverable-tool
+  (tool {:name "give_up_quietly" :description "Gives up without a user-facing message."
+         :args [:map {:closed true}]}
+        (fn [_ _] (tools.error/unrecoverable! ::no-comment))))
 
-(tools/deftool bad-shape-tool
-  "Returns something that is not a handler-result."
-  {:name "bad_shape" :args [:map {:closed true}]}
-  [_args _ctx]
-  {:outputs "a typo for :output"})
+(def ^:private crashing-tool
+  (tool {:name "crash" :description "Throws an undeclared exception."
+         :args [:map {:closed true}]}
+        (fn [_ _] (throw (ex-info "SELECT * FROM secrets failed: clojure.lang.ExceptionInfo at line 1"
+                                  {:password "hunter2"})))))
 
-(tools/deftool scoped-tool
-  "Needs a scope."
-  {:name "scoped" :args [:map {:closed true}] :scope "agent:sql:create"}
-  [_args _ctx]
-  {:output "ok"})
+(def ^:private bad-shape-tool
+  (tool {:name "bad_shape" :description "Returns something that is not a result."
+         :args [:map {:closed true}]}
+        (fn [_ _] {:outputs "a typo for :output"})))
 
-(tools/deftool partial-failure-tool
-  "Survives a declared sub-failure and reports it beside the successes."
-  {:name "read_many" :args [:map {:closed true} [:ids [:sequential :int]]]}
-  [{:keys [ids]} ctx]
-  (let [{:keys [ok failed]} (->> (for [id ids]
-                                   (assoc (tools/attempt
-                                           (tools/with-entity {:kind :card :id id}
-                                             (if (even? id)
-                                               (str "card " id " contents")
-                                               (throw (ex-info "nope" {:status-code 404})))))
-                                          :id id))
-                                 (group-by #(if (:error %) :failed :ok)))]
-    {:output (str/join "\n"
-                       (concat (map :value ok)
-                               (for [{:keys [error]} failed]
-                                 (tools/recoverable-text error (:tool-names ctx)))))}))
+(def ^:private scoped-tool
+  (tool {:name "scoped" :description "Needs a scope."
+         :args [:map {:closed true}] :scope "agent:sql:create"}
+        (fn [_ _] {:output "ok"})))
 
-(tools/deftool attempted-crash-tool
-  "Wraps an undeclared exception in `attempt`, which must not swallow it."
-  {:name "attempted_crash" :args [:map {:closed true}]}
-  [_args _ctx]
-  {:output (str (tools/attempt (throw (ex-info "a real bug: hunter2" {:password "hunter2"}))))})
+(def ^:private memory-tool
+  (tool {:name "memory" :description "Reads the memory atom out of ctx."
+         :args [:map {:closed true}]}
+        (fn [_ ctx] {:output (str "memory: " (pr-str (some-> (:memory-atom ctx) deref)))})))
 
-(tools/deftool memory-tool
-  "Reads the memory atom out of ctx."
-  {:name "memory" :args [:map {:closed true}]}
-  [_args ctx]
-  {:output (str "memory: " (pr-str (some-> (:memory-atom ctx) deref)))})
+(def ^:private multi-item-tool
+  "A batched tool: the runtime does not know it is one. It calls `handle` like any other."
+  (reify
+    tools/Tool
+    (declaration [_] {:name "read_many" :description "Resolves several items."
+                      :args [:map {:closed true} [:ids [:sequential :int]]]})
+    (handle [this args ctx] (tools/handle-each this args ctx))
+    tools/BatchedTool
+    (items [_ {:keys [ids]} _ctx] ids)
+    (load-item [_ id _ctx]
+      (tools/with-entity {:kind :card :id id}
+        (if (even? id)
+          {:output (str "card " id " contents")}
+          (throw (ex-info "nope" {:status-code 404})))))
+    (compose [_ entries _ctx] (tools/concatenated entries))))
 
 (def ^:private entries
-  (tools/entries [#'happy-tool #'recoverable-tool #'unrecoverable-tool #'silent-unrecoverable-tool
-                  #'crashing-tool #'bad-shape-tool #'scoped-tool #'memory-tool
-                  #'partial-failure-tool #'attempted-crash-tool]))
+  (tools/entries [happy-tool recoverable-tool unrecoverable-tool silent-unrecoverable-tool
+                  crashing-tool bad-shape-tool scoped-tool memory-tool multi-item-tool]))
 
 (def ^:private all-tool-names
   (into #{"search" "read_resource"} (keys entries)))
@@ -234,33 +226,34 @@
           (is (mr/validate ::tools.runtime/outcome outcome)
               (pr-str outcome)))))))
 
-;;; --------------------------------------------- Partial failure --------------------------------------------------
+;;; --------------------------------------------- Multiple items ---------------------------------------------------
 
-(deftest ^:parallel an-attempted-failure-is-a-successful-call-test
-  (testing "a tool that decided to survive a sub-failure reports it and the call still succeeds"
+(deftest ^:parallel the-runtime-does-not-know-about-batching-test
+  (testing "it calls `handle`; whether that does one thing or one per item is the tool's business"
     (let [outcome (invoke "read_many" {:ids [2 3 4]})]
-      (is (nil? (:error outcome)))
+      (is (nil? (:error outcome)) "a partial failure is not a failed call")
       (is (= ["card 2 contents"
-              "card 4 contents"
               "Card 3 was not found. It may not exist, or you may not have access to it."
-              "Call `search` to find the entity you want and use an id from the results."]
-             (str/split-lines (:output outcome))))))
-  (testing "the captured error reads identically to one that ended the call, so the agent cannot
-           tell the difference from the text"
-    (let [whole-call (:output (invoke (ctx {:tool-names #{"boom" "search"}}) "boom" {:id 9}))
-          captured   (:output (invoke (ctx {:tool-names #{"read_many" "search"}}) "read_many" {:ids [3]}))]
-      (is (= 2 (count (str/split-lines whole-call))))
-      (is (= 2 (count (str/split-lines captured))))
-      (testing "and both drop the step the profile cannot act on"
-        (is (not (str/includes? captured "read_resource")))))))
+              "Call `search` to find the entity you want and use an id from the results."
+              "card 4 contents"]
+             (str/split-lines (:output outcome))))
+      (is (mr/validate ::tools.runtime/outcome outcome)))))
 
-(deftest ^:parallel attempt-does-not-swallow-an-undeclared-exception-test
-  (testing "wrapping a bug in `attempt` does not turn it into a half-answer the model reports as fact"
-    (let [outcome (invoke "attempted_crash" {})]
-      (is (= {:class :unrecoverable :code :internal} (:error outcome)))
-      (doseq [secret ["hunter2" "a real bug"]]
-        (is (not (str/includes? (:output outcome) secret))
-            (str "leaked " secret))))))
+(deftest ^:parallel item-failures-are-profile-filtered-test
+  (testing "the same step filtering as a failed call, in the same place"
+    (is (= ["card 2 contents"
+            "Card 3 was not found. It may not exist, or you may not have access to it."]
+           (str/split-lines
+            (:output (invoke (ctx {:tool-names #{"read_many"}}) "read_many" {:ids [2 3]})))))))
+
+(deftest ^:parallel everything-failed-is-still-a-success-test
+  (testing "OPEN QUESTION — nothing was delivered, yet the call succeeds and its whole output is
+           failure text. See the note in metabase.metabot.tools.protocols-spike-test."
+    (let [outcome (invoke "read_many" {:ids [3]})]
+      (is (nil? (:error outcome)))
+      (is (= ["Card 3 was not found. It may not exist, or you may not have access to it."
+              "Call `search` to find the entity you want and use an id from the results."]
+             (str/split-lines (:output outcome)))))))
 
 ;;; ------------------------------------------------- render -------------------------------------------------------
 

@@ -140,6 +140,34 @@
   (is (thrown-with-msg? clojure.lang.ExceptionInfo #"without a payload schema"
                         (tools.error/declare-recoverable! {:code ::x :var #'test-no-widget!}))))
 
+;;; ------------------------------------- Reading a recoverable error ----------------------------------------------
+
+(deftest ^:parallel recovery-steps-for-tools-test
+  (let [steps [{:uses #{} :text "Always applies."}
+               {:uses #{"search"} :text "Call `search`."}
+               {:uses #{"search" "read_resource"} :text "Call `search` then `read_resource`."}]]
+    (is (= [(first steps)] (tools.error/recovery-steps-for-tools steps #{})))
+    (is (= (take 2 steps)  (tools.error/recovery-steps-for-tools steps #{"search"})))
+    (is (= steps (tools.error/recovery-steps-for-tools steps #{"search" "read_resource" "widget"})))))
+
+(deftest ^:parallel names-a-tool?-test
+  (testing "only a backticked name counts, so prose mentioning a word is not a tool reference"
+    (is (tools.error/names-a-tool? "Call `search` first." "search"))
+    (is (not (tools.error/names-a-tool? "Use the search results." "search")))
+    (is (not (tools.error/names-a-tool? nil "search")))))
+
+(deftest ^:parallel recoverable-text-test
+  (testing "one function for both places a recoverable error becomes text — a failed call, and one
+           item of a batched call — so the wording cannot drift between them"
+    (let [error {:message  "Widget 7 does not exist."
+                 :recovery [{:uses #{"search"}        :text "Call `search` to find one."}
+                            {:uses #{"read_resource"} :text "Or call `read_resource`."}]}]
+      (is (= "Widget 7 does not exist.\nCall `search` to find one.\nOr call `read_resource`."
+             (tools.error/recoverable-text error #{"search" "read_resource"})))
+      (is (= "Widget 7 does not exist.\nCall `search` to find one."
+             (tools.error/recoverable-text error #{"search"})))
+      (is (= "Widget 7 does not exist." (tools.error/recoverable-text error #{}))))))
+
 ;;; ------------------------------------------- The catalog --------------------------------------------------------
 
 (def ^:private catalog-sample-count

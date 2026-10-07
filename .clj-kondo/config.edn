@@ -210,6 +210,9 @@
      metabase.metabot.tools.error-test/test-custom-status!
      metabase.metabot.tools.error-test/test-no-widget!
      metabase.metabot.tools.recoverable.pipeline/unknown-table!
+     ;; Constructs a BatchedTool over a fixed item list; the `!` is for the declared error its
+     ;; loader throws, not for a mutation.
+     metabase.metabot.tools.core-test/batched!
      metabase.channel.core/send!
      metabase.channel.render.pdf/draw-too-large!
      metabase.channel.render.pdf/draw-no-results!
@@ -527,7 +530,6 @@
   metabase.driver-api.core/defsetting                                                   hooks.metabase.settings.models.setting/defsetting
   metabase.mcp.v2.registry/deftool                                                      clojure.core/defn
   metabase.metabot.tools.core/defrecoverable                                            clojure.core/defn
-  metabase.metabot.tools.core/deftool                                                   clojure.core/defn
   metabase.metabot.tools.error/defrecoverable                                           clojure.core/defn
   metabase.metabot.tools.recoverable.pipeline/defpipeline-error                         clojure.core/def
   metabase.models.json-migration/def-json-migration                                     clj-kondo.lint-as/def-catch-all

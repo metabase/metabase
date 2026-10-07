@@ -1,32 +1,39 @@
 (ns metabase.metabot.tools.core
   "The API a Metabot tool author writes against.
 
-  A tool is declared with [[deftool]] and reports failure by throwing: [[defrecoverable]] for a
-  failure the agent can work around, [[unrecoverable!]] for one only the user can act on. Nothing
-  here decides where an error goes or what text each audience sees — that is
-  `metabase.metabot.tools.runtime`'s job, so a tool says what happened exactly once and the runtime
-  stays the only place that knows about profiles, rendering and the wire.
+  A tool is a record implementing [[Tool]]. It says what it is ([[declaration]]) and what it does
+  ([[handle]]), and it reports failure by throwing: `defrecoverable` for a failure the agent can work
+  around, `unrecoverable!` for one only the user can act on. Nothing here decides where an error goes
+  or what text each audience sees — that is `metabase.metabot.tools.runtime`'s job, so a tool says
+  what happened exactly once.
+
+  A record rather than a function because several of our tools are the *same* tool under different
+  configuration, and a record says so. The four `search` tools share a scope, a title function and a
+  body, and differ only in their name, description, argument schema, allowed entity types and an
+  options map — four instances of one type, not four functions that happen to resemble each other.
 
   Handlers return success only. There is no error-shaped success value and no `{:output \"Failed
   to …\"}` convention: a failure is thrown, so forgetting to handle one cannot silently hand the
   model a sentence nobody wrote.
 
-  Everything a tool does about a failure is an explicit decision written at the call site, and the
-  default — doing nothing — is that the failure bubbles out and ends the turn. There are three such
-  decisions, each needing its own form:
+  Everything a tool does about a failure is written at the call site, and the default — doing
+  nothing — is that the failure ends the turn:
 
   - *relay a foreign error*: a converter ([[with-entity]], [[with-pipeline-errors]]) turns one known
-    shape into a declared recoverable error. They are deliberately narrow: a shape a converter does
-    not recognise passes through unchanged and ends up unrecoverable.
-  - *survive a sub-failure*: [[attempt]] captures a declared recoverable error as data, so a tool
-    that does several things can report the ones that failed beside the ones that worked. It catches
-    *only* declared recoverable errors — anything else still bubbles.
+    shape into a declared recoverable error. A shape a converter does not recognise passes through
+    unchanged and is therefore unrecoverable.
+  - *do one thing per item*: implement [[BatchedTool]] as well, and let [[handle]] delegate to
+    [[handle-each]]. A declared recoverable error then becomes that item's contribution instead of
+    ending the turn.
   - *give up on the user's behalf*: `unrecoverable!`, with a `:user-message`.
 
-  None of them is applied automatically, and there is no blanket \"keep going\" mode. A tool that has
-  not thought about a partial failure gets the safe behaviour rather than a silent half-answer."
+  Note what is deliberately absent: the runtime knows only [[Tool]]. It calls [[handle]] and that is
+  all. [[BatchedTool]] is a contract between a tool and [[handle-each]], not something the runtime
+  branches on, so there is no `satisfies?` test anywhere in the invocation path and a reader can
+  follow one tool's behaviour without knowing which other shapes exist."
   (:require
    [clojure.string :as str]
+   [metabase.metabot.schema.v2 :as schema.v2]
    [metabase.metabot.tools.error :as tools.error]
    [metabase.metabot.tools.recoverable.common :as recoverable.common]
    [metabase.metabot.tools.recoverable.pipeline :as recoverable.pipeline]
@@ -40,219 +47,214 @@
   defrecoverable
   unrecoverable!])
 
-;;; ------------------------------------------------ deftool -------------------------------------------------------
+;;; ------------------------------------------------ Schemas -------------------------------------------------------
 
-(def tool-key
-  "The var-metadata key a tool definition lives under.
+(def ^:private DataPart
+  "One entry of a result's `:data-parts`: `metabase.metabot.agent.streaming`'s `{:type :data, …}`
+  constructors."
+  [:map {:closed true}
+   [:type      [:= :data]]
+   [:data-type :string]
+   [:data      {:optional true} [:maybe ::schema.v2/tool-io]]])
 
-  The runtime accepts an entry only when this key is present, so a function that merely looks like a
-  tool handler cannot be dispatched to by name."
-  ::tool)
+(mr/def ::declaration
+  "What a tool tells the runtime and the providers about itself.
 
-(mr/def ::tool
-  "A tool declaration, as [[deftool]] records it in the handler var's metadata.
+  Closed on purpose: a misspelled key (`:capability`, `:scopes`) would otherwise read as \"this tool
+  needs nothing\" and quietly drop a gate.
 
-  Closed on purpose: a misspelled option (`:capability`, `:scopes`) would otherwise read as \"this
-  tool needs nothing\" and quietly drop a gate."
+  `:description` is the model-facing text. It is a field rather than a docstring because a tool that
+  exists in several configurations should be able to build it — the four `search` tools each hardcode
+  theirs today precisely because a docstring cannot be computed."
   [:map {:closed true}
    [:name         :string]
+   [:description  :string]
    ;; `:any` rather than a schema-of-schemas: this is a Malli schema in any of its forms — a
-   ;; registry keyword, a vector form, or a compiled Schema. `deftool` checks separately that it
-   ;; compiles.
+   ;; registry keyword, a vector form, or a compiled Schema. `validate-tool!` checks it compiles.
    [:args         :any]
    [:scope        {:optional true} [:maybe :string]]
    [:capabilities {:optional true} [:maybe [:set :keyword]]]
    [:title-fn     {:optional true} [:maybe fn?]]])
 
+(mr/def ::result
+  "What [[handle]] returns. Success only — a failure is thrown.
+
+  `:output` is required and is the whole of what the model reads, so instructions belong in it rather
+  than in a separate key. `:structured-output` is not a success signal and is not a second copy of
+  the output: include it only when a named consumer reads it (the agent loop's query and chart memory
+  and its markdown link buffer, `metabase.metabot.used-tables`, the document API's chart draft,
+  `metabase.metabot.agent.user-context`, and EE analytics persistence)."
+  [:map {:closed true}
+   [:output            :string]
+   [:structured-output {:optional true} ::schema.v2/tool-io]
+   [:data-parts        {:optional true} [:sequential DataPart]]
+   [:resources         {:optional true} [:sequential ::schema.v2/tool-io]]])
+
+(mr/def ::item-result
+  "What [[load-item]] returns: a [[::result]] whose `:output` is optional.
+
+  Optional rather than required because the two composition styles want different things from an
+  item. A tool whose output is a concatenation of its items (`read_resource` wraps each in its own
+  element) formats per item, so each item carries its own `:output`. A tool whose output is one
+  document over the whole set (`list_available_fields` groups by kind) formats in [[compose]], so its
+  items carry only `:structured-output`.
+
+  This is the one place the \"an item is just a smaller tool\" equivalence loosens: a tool must
+  produce `:output`, an item need not."
+  [:map {:closed true}
+   [:output            {:optional true} :string]
+   [:structured-output {:optional true} ::schema.v2/tool-io]
+   [:data-parts        {:optional true} [:sequential DataPart]]
+   [:resources         {:optional true} [:sequential ::schema.v2/tool-io]]])
+
+(mr/def ::entry
+  "One item's contribution, as [[compose]] sees it.
+
+  Uniform whether the item loaded or failed: `:output` is always a string — the item's own text, or
+  its failure rendered — and `:failed?` is always a boolean. A composer that concatenates therefore
+  never asks which happened, and one that separates them asks a boolean rather than probing for a
+  key."
+  [:map {:closed true}
+   [:item              :any]
+   [:output            :string]
+   [:failed?           :boolean]
+   [:error             {:optional true} ::tools.error/recoverable]
+   [:structured-output {:optional true} ::schema.v2/tool-io]
+   [:data-parts        {:optional true} [:sequential DataPart]]
+   [:resources         {:optional true} [:sequential ::schema.v2/tool-io]]])
+
+;;; ------------------------------------------------ Protocols -----------------------------------------------------
+
+(defprotocol Tool
+  "Every Metabot tool. The runtime knows this protocol and nothing else."
+  (declaration [this]
+    "This tool's [[::declaration]] — what the model is told it is, and what the runtime gates it on.
+
+    Written out as a literal map rather than derived from the record's fields, because it is the
+    tool's contract with the model and a reader should be able to see all of it in one place.")
+  (handle [this args ctx]
+    "Do the work. `args` have already been coerced and validated against the declaration's `:args`,
+    so destructure them without re-checking.
+
+    Returns a [[::result]] or throws. A tool that works item by item implements [[BatchedTool]] too
+    and delegates here: `(handle-each this args ctx)`."))
+
+(defprotocol BatchedTool
+  "A tool whose arguments name several things the agent wants, done one at a time.
+
+  Not a protocol the runtime looks for: [[handle-each]] is what calls these, and a tool reaches
+  [[handle-each]] from its own [[handle]]. So implementing this changes nothing until the tool says
+  so, and the delegating line in `handle` is where a reader finds out.
+
+  Batching in the database sense belongs in `handle`, before the delegation — warm whatever cache
+  [[load-item]] reads (`metabase.metabot.metadata-perms/with-cache` is the existing example). A
+  prefetch that fails fails the whole call, which is the right answer: five \"not found\"s thrown by a
+  dead connection teach the agent the wrong thing. Keeping it out of the per-item path is also what
+  lets [[load-item]] throw, since a batch loader would have to report several failures at once and a
+  `defrecoverable` constructor can only throw one."
+  (items [this args ctx]
+    "The things the agent asked for, in the order it asked. These are the units of partial failure —
+    whatever this returns is what a failure can be attributed to.")
+  (load-item [this item ctx]
+    "One item's [[::item-result]], or throw. A *declared recoverable* error becomes this item's
+    contribution; anything else ends the turn, discarding the items that did load. That is the point:
+    a bug is not a partial result.")
+  (compose [this entries ctx]
+    "The [[::result]] for the whole call, from one [[::entry]] per item in item order.
+
+    The only thing that decides where a failure appears. [[concatenated]] leaves failures in position
+    and is what most tools want: `(compose [_ entries _] (concatenated entries))`. A tool whose
+    output is one document over the whole set has no positions to put them in and will separate them
+    out by `:failed?`."))
+
+;;; ------------------------------------------------ Composition ---------------------------------------------------
+
+(defn concatenated
+  "The ordinary composition: the entries' `:output`s joined in order, their `:structured-output`s
+  collected into a vector, their `:data-parts` and `:resources` concatenated.
+
+  Failures land in position, because a failed entry's `:output` is its rendered failure text and this
+  joins what it is given. Delegate to it explicitly from [[compose]] — Clojure gives a protocol no
+  way to supply a default, and spelling the delegation out is clearer than any of the ways around
+  that."
+  [entries]
+  (cond-> {:output (str/join "\n" (map :output entries))}
+    (some :structured-output entries) (assoc :structured-output (mapv :structured-output entries))
+    (some :data-parts entries)        (assoc :data-parts (vec (mapcat :data-parts entries)))
+    (some :resources entries)         (assoc :resources (vec (mapcat :resources entries)))))
+
+(defn- entry
+  "One item's [[::entry]]: its [[load-item]] result, or its declared failure rendered."
+  [tool item ctx]
+  (try
+    (let [result (load-item tool item ctx)]
+      (when-not (mr/validate ::item-result result)
+        (throw (ex-info (str "load-item returned an invalid result for " (pr-str item))
+                        {:item item :result result})))
+      (assoc result :item item :failed? false :output (:output result "")))
+    (catch Throwable e
+      (let [error (tools.error/classify e)]
+        (if (= :recoverable (:class error))
+          {:item    item
+           :error   error
+           :output  (tools.error/recoverable-text error (:tool-names ctx))
+           :failed? true}
+          (throw e))))))
+
+(defn handle-each
+  "Run `tool`'s [[load-item]] over its [[items]] and [[compose]] the results.
+
+  What a [[BatchedTool]]'s [[handle]] delegates to. Kept as an ordinary function rather than wired
+  into the runtime so that a tool's `handle` still shows its whole shape: the prefetch, then this."
+  [tool args ctx]
+  (compose tool (mapv #(entry tool % ctx) (items tool args ctx)) ctx))
+
+;;; ------------------------------------------------ Registration --------------------------------------------------
+
 (def ^:private tool-name-pattern
-  "Model-facing tool names are snake_case. Providers differ on what they accept, and a name that one
+  "Model-facing tool names are snake_case. Providers differ on what they accept, and a name one
   rejects fails the whole turn, so the declaration is the place to find out."
   #"^[a-z][a-z0-9_]*$")
 
 (defn validate-tool!
-  "Check a tool declaration, throwing on anything a load-time check can catch, and return it.
-  [[deftool]] calls this."
-  [definition]
-  (when-not (mr/validate ::tool definition)
-    (throw (ex-info (str "Invalid tool declaration: " (pr-str definition))
-                    {:definition definition
-                     :explain    (mr/explain ::tool definition)})))
-  (let [{tool-name :name :keys [args]} definition]
+  "Check `tool`'s declaration, throwing on anything a load-time check can catch, and return the
+  declaration."
+  [tool]
+  (let [{tool-name :name :keys [args] :as declared} (declaration tool)]
+    (when-not (mr/validate ::declaration declared)
+      (throw (ex-info (str "Invalid tool declaration: " (pr-str declared))
+                      {:declaration declared
+                       :explain     (mr/explain ::declaration declared)})))
     (when-not (re-matches tool-name-pattern tool-name)
       (throw (ex-info (str "Tool name " (pr-str tool-name) " is not snake_case") {:name tool-name})))
     ;; Build the validator now rather than on the first model call. `mr/schema` on an unregistered
     ;; keyword comes back without complaint, so an `:args` schema with a typo'd registry reference
-    ;; would pass a load-time check and then turn every call of this tool into an
-    ;; argument-validation failure in production, with nothing to say the declaration was at fault.
-    ;; Building the validator is also exactly what the runtime does, and it is cached, so this
-    ;; checks the real thing and costs nothing later.
+    ;; would pass a weaker check and then turn every call of this tool into an argument-validation
+    ;; failure in production, with nothing to say the declaration was at fault. Building the
+    ;; validator is what the runtime does, and it is cached, so this checks the real thing.
     (try
       (mr/validator args)
       (catch Throwable e
         (throw (ex-info (str "Tool " tool-name " has an :args schema that does not compile")
-                        {:name tool-name} e)))))
-  definition)
-
-(defmacro deftool
-  "Define a Metabot tool handler and record its declaration.
-
-    (deftool edit-sql-query-tool
-      \"Edit an existing SQL query using structured edits.\"
-      {:name         \"edit_sql_query\"
-       :scope        scope/agent-sql-edit
-       :capabilities #{:permission-write-sql-queries}
-       :args         edit-sql-schema}
-      [args ctx]
-      …)
-
-  `opts` is a map of:
-  - `:name` - *required* - the model-facing tool name, snake_case.
-  - `:args` - *required* - Malli schema for the arguments. The runtime validates against it once,
-    before the handler runs, so the handler can destructure without re-checking.
-  - `:scope` - *optional* - the API scope a caller must hold. Without one the tool is reachable by
-    anyone who has the profile.
-  - `:capabilities` - *optional* - capabilities the tool requires.
-  - `:title-fn` - *optional* - builds the title shown on the tool-input part.
-
-  The handler takes `[args ctx]` and returns `::runtime/handler-result` — `{:output \"…\"}` plus the
-  optional keys a concrete consumer reads. It returns success only: a failure is thrown. A handler
-  that does several things and should survive one of them failing says so with [[attempt]] at that
-  call site, and renders what it captured into its own `:output`; see the namespace docstring.
-
-  The var is the handler, so profiles keep referring to `#'tools/x-tool` and tests can call it
-  directly. Expands to a plain `defn`, not `mu/defn`: the runtime validates the arguments in every
-  environment, and a second instrumented check in dev only would make dev and prod disagree about
-  which error the model sees.
-
-  There is no registry keyed by tool name, because a name legitimately belongs to more than one var
-  — `search` has four, one per profile. Uniqueness is a per-profile property, checked where profiles
-  are assembled."
-  {:style/indent [:defn]}
-  [sym docstring opts argv & body]
-  (assert (string? docstring) "deftool requires a docstring")
-  (assert (map? opts) "deftool requires an options map")
-  (assert (and (vector? argv) (= 2 (count argv)))
-          "a deftool handler takes exactly two arguments, [args ctx]")
-  `(let [definition# (validate-tool! ~opts)]
-     (doto (defn ~sym ~docstring ~argv ~@body)
-       (alter-meta! assoc tool-key definition#))))
-
-(defn definition
-  "The tool declaration on `handler` (a var defined by [[deftool]]), or nil if it has none."
-  [handler]
-  (when (var? handler)
-    (get (meta handler) tool-key)))
-
-(defn entry
-  "The runtime entry for a [[deftool]] var: its declaration plus the `:doc` the model is shown and
-  the `:handler` to call.
-
-  Throws when `handler` carries no declaration. The runtime dispatches by name, so a var that
-  slipped into a profile without going through `deftool` would otherwise be called with no argument
-  validation and no scope check."
-  [handler]
-  (let [definition (definition handler)]
-    (when-not definition
-      (throw (ex-info (str "Not a deftool var: " handler) {:handler handler})))
-    (assoc definition
-           :doc     (:doc (meta handler))
-           :handler handler)))
+                        {:name tool-name} e))))
+    declared))
 
 (defn entries
-  "The runtime's `entries` map — tool name to [[entry]] — for one profile's `handlers`.
+  "The runtime's `entries` map — tool name to `{:declaration … :tool …}` — for one profile's `tools`.
 
-  Rejects two handlers claiming the same name: within a profile the name is how the model and the
+  Rejects two tools claiming the same name: within a profile the name is how the model and the
   runtime address a tool, so a collision means one of them is unreachable and which one depends on
-  the order of the seq."
-  [handlers]
-  (reduce (fn [acc handler]
-            (let [{tool-name :name :as e} (entry handler)]
-              (when-let [existing (get acc tool-name)]
-                (throw (ex-info (str "Two handlers claim the tool name " tool-name)
-                                {:name tool-name
-                                 :handlers [(:handler existing) handler]})))
-              (assoc acc tool-name e)))
+  the order of the seq. Across profiles a name legitimately belongs to several tools — `search` has
+  four — which is why there is no global registry."
+  [tools]
+  (reduce (fn [acc tool]
+            (let [{tool-name :name :as declared} (validate-tool! tool)]
+              (when (contains? acc tool-name)
+                (throw (ex-info (str "Two tools claim the tool name " tool-name)
+                                {:name tool-name})))
+              (assoc acc tool-name {:declaration declared :tool tool})))
           {}
-          handlers))
-
-;;; ------------------------------------------------ Recovery steps ------------------------------------------------
-
-(defn recovery-steps-for-tools
-  "The subset of `recovery` whose steps only name tools in `tool-names`.
-
-  Shared with the runtime so that a step's `:uses` has exactly one meaning. A step naming a tool the
-  profile lacks is dropped, not rewritten: half a sentence about `read_resource` is worse than
-  silence."
-  [recovery tool-names]
-  (let [available (set tool-names)]
-    (filterv #(every? available (:uses %)) recovery)))
-
-(defn names-a-tool?
-  "Whether `text` names a tool in backticks, e.g. \"call `read_resource`\". Used by the runtime's
-  dev/test assertions, which hold that only recovery steps name tools and only ones they declare."
-  [text tool-name]
-  (str/includes? (str text) (str "`" tool-name "`")))
-
-;;; ------------------------------------------------ Partial failure -----------------------------------------------
-
-(defn do-attempt
-  "Implementation of [[attempt]]."
-  [thunk]
-  (try
-    {:value (thunk)}
-    (catch Throwable e
-      (let [error (tools.error/classify e)]
-        ;; Only a declared recoverable error can be captured. Its text was written for the model and
-        ;; is covered by the catalog test; an undeclared exception has no such text, and swallowing
-        ;; it here would turn a bug into a half-answer the model reports as fact.
-        (if (= :recoverable (:class error))
-          {:error error}
-          (throw e))))))
-
-(defmacro attempt
-  "Run `body` and capture a declared recoverable failure instead of letting it end the turn.
-
-  Returns `{:value <result>}` or `{:error <ToolError>}` — the same \"success is the absence of
-  `:error`\" shape as `runtime/outcome`. Anything that is not a declared recoverable error is
-  rethrown, so a real bug still bubbles out.
-
-  This is how a tool that does several things reports the parts that failed beside the parts that
-  worked. It is per call site on purpose: a tool only survives a sub-failure if its author decided it
-  should, and the error it survives has to be one somebody wrote text for.
-
-    (let [{:keys [ok failed]} (->> (for [uri uris]
-                                     (assoc (attempt (read-one uri)) :uri uri))
-                                   (group-by #(if (:error %) :failed :ok)))]
-      {:output (str (render-resources (map :value ok))
-                    (when (seq failed)
-                      (str \"\\n\\nThese could not be read:\\n\"
-                           (str/join \"\\n\"
-                                     (for [{:keys [uri error]} failed]
-                                       (str uri \": \" (recoverable-text error (:tool-names ctx))))))))})
-
-  Note what the handler still owes the model: a failure captured this way is *its* text to place.
-  The runtime never sees it, so a captured error that is never rendered is a failure the model is
-  never told about."
-  {:style/indent 0}
-  [& body]
-  `(do-attempt (fn [] ~@body)))
-
-(defn recoverable-text
-  "A declared recoverable `error` as the lines the model reads: the message, then each recovery step
-  the current profile can act on.
-
-  The same assembly the runtime uses for a failed call, exposed so that a tool rendering an
-  [[attempt]]ed failure into its own `:output` produces identical text — the agent should not be able
-  to tell whether a `not-found!` ended the call or was one of five things the call tried.
-
-  Not re-checked against `runtime/render`'s authored-text assertions: the text comes from a
-  declaration, and `metabase.metabot.tools.error-test` already renders every declaration in the
-  catalog through those assertions."
-  [{:keys [message recovery]} tool-names]
-  (->> (recovery-steps-for-tools recovery tool-names)
-       (map :text)
-       (cons message)
-       (str/join "\n")))
+          tools))
 
 ;;; ------------------------------------------------ Converters ----------------------------------------------------
 
@@ -290,10 +292,10 @@
 (def ^:private pipeline-ns
   "The namespace holding the pipeline declarations.
 
-  Read off one of the declarations rather than written as a string, because the conversion finds
-  them through the catalog by code: renaming the namespace would otherwise leave this mapping
-  pointing at codes nothing declares, and every pipeline error would quietly become unrecoverable
-  with no failing test to say so."
+  Read off one of the declarations rather than written as a string, because the conversion finds them
+  through the catalog by code: renaming the namespace would otherwise leave this mapping pointing at
+  codes nothing declares, and every pipeline error would quietly become unrecoverable with no failing
+  test to say so."
   (str (ns-name (:ns (meta #'recoverable.pipeline/unknown-table!)))))
 
 (defn- pipeline-error-code
