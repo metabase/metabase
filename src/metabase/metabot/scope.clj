@@ -6,9 +6,11 @@
   scopes used by metabot tools and maps metabot permission types to wildcard
   scope grants."
   (:require
+   [malli.error :as me]
    [metabase.api-scope.core :as api-scope]
    [metabase.premium-features.core :refer [defenterprise]]
-   [metabase.util.i18n :refer [deferred-tru]]))
+   [metabase.util.i18n :refer [deferred-tru]]
+   [metabase.util.malli.registry :as mr]))
 
 (set! *warn-on-reflection* true)
 
@@ -170,12 +172,77 @@
 ;;; Metabot permission type definitions
 ;;; ──────────────────────────────────────────────────────────────────
 
+(mr/def ::permission-type
+  "One Metabot permission type. Each key is required, so a new type must state every fact that the derived maps
+  below give to superusers, to group seeding and to scope grants."
+  [:and
+   [:map {:closed true}
+    [:values  {:description "Ordered from most permissive to least permissive."}
+     [:sequential {:min 1} :keyword]]
+    [:default {:description "The value of a group that has no stored row."}
+     :keyword]
+    [:scopes  {:description "Wildcard scopes that the type grants when its value is `:yes`."}
+     [:set :string]]]
+   [:fn {:error/message ":default must be one of :values"}
+    (fn [{:keys [values default]}]
+      (boolean (some #{default} values)))]])
+
+(mr/def ::permission-registry
+  [:map-of [:qualified-keyword {:namespace :permission}] ::permission-type])
+
+(defn- validate-permission-registry
+  "Return `registry`, or throw when it does not match `::permission-registry`. This runs when the namespace loads, in
+  every environment."
+  [registry]
+  (when-let [error (mr/explain ::permission-registry registry)]
+    (throw (ex-info (str "Invalid Metabot permission registry: " (pr-str (me/humanize error)))
+                    {:error (me/humanize error)})))
+  registry)
+
 (def metabot-permissions
-  "Metabot permission definitions. Values are ordered from most permissive to least permissive."
-  {:permission/metabot                  {:values [:yes :no]}
-   :permission/metabot-sql-generation   {:values [:yes :no]}
-   :permission/metabot-nlq              {:values [:yes :no]}
-   :permission/metabot-other-tools      {:values [:yes :no]}})
+  "Metabot permission definitions, one `::permission-type` entry for each type. [[perm-types]],
+  [[perm-type-defaults]], [[all-yes-permissions]] and the scope grants all come from this map."
+  (validate-permission-registry
+   {;; The base gate opens Metabot. It grants no scopes of its own.
+    :permission/metabot
+    {:values [:yes :no], :default :no, :scopes #{}}
+
+    :permission/metabot-sql-generation
+    {:values [:yes :no], :default :no, :scopes #{"agent:sql:*" "agent:transforms:*" "agent:snippets:*"}}
+
+    ;; NLQ grants `agent:content:read` (not the `agent:content:*` wildcard): an NLQ-only user reads
+    ;; content and data structure, but content *writes* are an other-tools capability. Granting the
+    ;; wildcard here would satisfy `agent:content:write` too, over-granting NLQ-only users.
+    ;;
+    ;; `agent:timelines:*` and `agent:explorations:*` are granted under nlq: the
+    ;; NLQ-gated :explorations profile offers the exploration + read-only timeline
+    ;; tools (and its prompt instructs their use), so NLQ-only users must not have
+    ;; them silently scope-filtered away.
+    :permission/metabot-nlq
+    {:values  [:yes :no]
+     :default :no
+     :scopes  #{"agent:notebook:*"
+                "agent:query:*"
+                "agent:question:*"
+                "agent:metric:*"
+                "agent:timelines:*"
+                "agent:explorations:*"
+                "agent:content:read"}}
+
+    ;; `agent:content:*` (the full read+write wildcard) rides other-tools, which owns content writes.
+    ;; `agent:delivery:*` covers `agent:delivery:write`, the v2 scope that gates scheduled-delivery
+    ;; setup — no other bucket's wildcard reaches it, so without this the scope would be dead config.
+    :permission/metabot-other-tools
+    {:values  [:yes :no]
+     :default :no
+     :scopes  #{"agent:viz:*"
+                "agent:dashboard:*"
+                "agent:document:*"
+                "agent:alert:*"
+                "agent:delivery:*"
+                "agent:timelines:*"
+                "agent:collection:*"
+                "agent:content:*"}}}))
 
 (def perm-types
   "The set of defined metabot permission types."
@@ -183,10 +250,7 @@
 
 (def perm-type-defaults
   "Default values for each metabot permission type."
-  {:permission/metabot                  :no
-   :permission/metabot-sql-generation   :no
-   :permission/metabot-nlq              :no
-   :permission/metabot-other-tools      :no})
+  (update-vals metabot-permissions :default))
 
 ;;; ──────────────────────────────────────────────────────────────────
 ;;; Metabot-specific scope state
@@ -228,44 +292,15 @@
 (def ^:private perm-type->scopes
   "Map from metabot permission type to the wildcard scope strings granted when
   that permission is `:yes`."
-  {:permission/metabot-sql-generation #{"agent:sql:*" "agent:transforms:*" "agent:snippets:*"}
-   ;; NLQ grants `agent:content:read` (not the `agent:content:*` wildcard): an NLQ-only user reads
-   ;; content and data structure, but content *writes* are an other-tools capability. Granting the
-   ;; wildcard here would satisfy `agent:content:write` too, over-granting NLQ-only users.
-   ;;
-   ;; `agent:timelines:*` and `agent:explorations:*` are granted under nlq: the
-   ;; NLQ-gated :explorations profile offers the exploration + read-only timeline
-   ;; tools (and its prompt instructs their use), so NLQ-only users must not have
-   ;; them silently scope-filtered away.
-   :permission/metabot-nlq            #{"agent:notebook:*"
-                                        "agent:query:*"
-                                        "agent:question:*"
-                                        "agent:metric:*"
-                                        "agent:timelines:*"
-                                        "agent:explorations:*"
-                                        "agent:content:read"}
-   ;; `agent:content:*` (the full read+write wildcard) rides other-tools, which owns content writes.
-   ;; `agent:delivery:*` covers `agent:delivery:write`, the v2 scope that gates scheduled-delivery
-   ;; setup — no other bucket's wildcard reaches it, so without this the scope would be dead config.
-   :permission/metabot-other-tools    #{"agent:viz:*"
-                                        "agent:dashboard:*"
-                                        "agent:document:*"
-                                        "agent:alert:*"
-                                        "agent:delivery:*"
-                                        "agent:timelines:*"
-                                        "agent:collection:*"
-                                        "agent:content:*"}})
+  (update-vals metabot-permissions :scopes))
 
 (def always-granted-scopes
   "Scopes granted to every user regardless of permissions."
   #{"agent:search" "agent:resource:*" "agent:todo:*" "agent:metadata:*"})
 
 (def all-yes-permissions
-  "Permissions map granting all permissions. Used for superuser context."
-  {:permission/metabot                :yes
-   :permission/metabot-sql-generation :yes
-   :permission/metabot-nlq            :yes
-   :permission/metabot-other-tools    :yes})
+  "Permissions map that gives each type its most permissive value. Used for superuser context."
+  (update-vals metabot-permissions (comp first :values)))
 
 ;;; ──────────────────────────────────────────────────────────────────
 ;;; Permission resolution

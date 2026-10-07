@@ -106,6 +106,44 @@
                              granted)]
       (is (= [] (vec dead))))))
 
+(deftest ^:parallel derived-permission-maps-test
+  (testing "the maps derived from `metabot-permissions` keep their values"
+    (is (= #{:permission/metabot :permission/metabot-sql-generation
+             :permission/metabot-nlq :permission/metabot-other-tools}
+           scope/perm-types))
+    (is (= {:permission/metabot                :no
+            :permission/metabot-sql-generation :no
+            :permission/metabot-nlq            :no
+            :permission/metabot-other-tools    :no}
+           scope/perm-type-defaults))
+    (is (= {:permission/metabot                :yes
+            :permission/metabot-sql-generation :yes
+            :permission/metabot-nlq            :yes
+            :permission/metabot-other-tools    :yes}
+           scope/all-yes-permissions))
+    (is (= #{} (get @#'scope/perm-type->scopes :permission/metabot)))))
+
+(deftest ^:parallel validate-permission-registry-test
+  (let [validate @#'scope/validate-permission-registry
+        entry  {:values [:yes :no], :default :no, :scopes #{}}]
+    (testing "a complete entry passes"
+      (is (= {:permission/metabot-x entry}
+             (validate {:permission/metabot-x entry}))))
+    (testing "an entry without a fact throws"
+      (doseq [k [:values :default :scopes]]
+        (testing k
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Invalid Metabot permission registry"
+                                (validate {:permission/metabot-x (dissoc entry k)}))))))
+    (testing "a default that is not one of the values throws"
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #":default must be one of :values"
+                            (validate {:permission/metabot-x (assoc entry :default :maybe)}))))
+    (testing "an unknown key throws"
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Invalid Metabot permission registry"
+                            (validate {:permission/metabot-x (assoc entry :scope #{})}))))
+    (testing "a type outside the `permission` namespace throws"
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Invalid Metabot permission registry"
+                            (validate {:metabot-x entry}))))))
+
 (deftest ^:parallel perms->scopes-all-yes-test
   (let [scopes (scope/user-metabot-perms->scopes scope/all-yes-permissions)]
     (is (contains? scopes "agent:sql:*"))
