@@ -2251,245 +2251,129 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
     });
   });
 
-  it("should allow click behavior on left/top header rows on a pivot table (metabase#25203)", () => {
-    const QUESTION_NAME = "Cypress Pivot Table";
-    const DASHBOARD_NAME = "Pivot Table Dashboard";
-    const testQuery = {
-      type: "query",
-      query: {
-        "source-table": ORDERS_ID,
-        aggregation: [["count"]],
-        breakout: [
-          [
-            "field",
-            PEOPLE.SOURCE,
-            { "base-type": "type/Text", "source-field": ORDERS.USER_ID },
-          ],
-          [
-            "field",
-            PRODUCTS.CATEGORY,
-            { "base-type": "type/Text", "source-field": ORDERS.PRODUCT_ID },
-          ],
+  it("should pass pivot headers and non-null values to custom URL click behavior (metabase#25203)", () => {
+    const pivotQuery = {
+      "source-table": ORDERS_ID,
+      aggregation: [["count"]],
+      breakout: [
+        [
+          "field",
+          PEOPLE.SOURCE,
+          { "base-type": "type/Text", "source-field": ORDERS.USER_ID },
         ],
-      },
-      database: SAMPLE_DB_ID,
+        [
+          "field",
+          PRODUCTS.CATEGORY,
+          { "base-type": "type/Text", "source-field": ORDERS.PRODUCT_ID },
+        ],
+      ],
     };
 
-    H.createQuestionAndDashboard({
-      questionDetails: {
-        name: QUESTION_NAME,
-        query: testQuery.query,
-        display: "pivot",
-      },
-      dashboardDetails: {
-        name: DASHBOARD_NAME,
-      },
-      cardDetails: {
-        size_x: 16,
-        size_y: 8,
-      },
-    }).then(({ body: { dashboard_id } }) => {
-      cy.wrap(dashboard_id).as("targetDashboardId");
-      H.visitDashboard(dashboard_id);
+    H.createDashboardWithQuestions({
+      dashboardName: "Click Behavior Custom URL Dashboard",
+      questions: [
+        {
+          name: "Cypress Pivot Table",
+          query: pivotQuery,
+          display: "pivot",
+        },
+        {
+          name: "Cypress Table Pivoted",
+          query: pivotQuery,
+          display: "table",
+        },
+        {
+          name: "Orders",
+          query: {
+            "source-table": ORDERS_ID,
+            aggregation: [
+              ["sum", ["field", ORDERS.TOTAL, null]],
+              ["sum", ["field", ORDERS.DISCOUNT, null]],
+            ],
+            breakout: [
+              ["field", ORDERS.CREATED_AT, { "temporal-unit": "year" }],
+            ],
+            filter: ["=", ["field", ORDERS.USER_ID, null], 1],
+          },
+          display: "bar",
+        },
+      ],
+      cards: [
+        { row: 0, col: 0, size_x: 16, size_y: 8 },
+        { row: 8, col: 0, size_x: 16, size_y: 8 },
+        { row: 16, col: 0, size_x: 16, size_y: 8 },
+      ],
+    }).then(({ dashboard }) => {
+      cy.wrap(dashboard.id).as("targetDashboardId");
+      H.visitDashboard(dashboard.id);
     });
 
-    H.editDashboard();
+    const setUrl = (template) => {
+      addUrlDestination();
+      H.modal().within(() => {
+        cy.get("@targetDashboardId").then((targetDashboardId) => {
+          cy.findAllByRole("textbox")
+            .eq(0)
+            .type(
+              `http://localhost:4000/dashboard/${targetDashboardId}${template}`,
+              {
+                parseSpecialCharSequences: false,
+              },
+            );
+        });
+        cy.button("Done").click();
+      });
+      cy.get("aside").button("Done").click();
+    };
 
-    H.getDashboardCard().realHover().icon("click").click();
-    addUrlDestination();
-
-    H.modal().within(() => {
+    const assertLocationSearch = (expectedSearch) => {
       cy.get("@targetDashboardId").then((targetDashboardId) => {
-        cy.findAllByRole("textbox")
-          .eq(0)
-          .as("urlInput")
-          .type(
-            `http://localhost:4000/dashboard/${targetDashboardId}?source={{source}}&category={{category}}&count={{count}}`,
-            {
-              parseSpecialCharSequences: false,
-            },
-          );
+        cy.location().should(({ pathname, search }) => {
+          expect(pathname).to.equal(`/dashboard/${targetDashboardId}`);
+          expect(search).to.equal(expectedSearch);
+        });
       });
-      cy.button("Done").click();
-    });
-
-    cy.get("aside").button("Done").click();
-
-    H.saveDashboard();
-
-    // test top header row
-    H.getDashboardCard().findByText("Doohickey").click();
-    cy.get("@targetDashboardId").then((targetDashboardId) => {
-      cy.location().should(({ pathname, search }) => {
-        expect(pathname).to.equal(`/dashboard/${targetDashboardId}`);
-        expect(search).to.equal("?category=Doohickey&count=&source=");
-      });
-    });
-
-    // test left header row
-    H.getDashboardCard().findByText("Affiliate").click();
-    cy.get("@targetDashboardId").then((targetDashboardId) => {
-      cy.location().should(({ pathname, search }) => {
-        expect(pathname).to.equal(`/dashboard/${targetDashboardId}`);
-        expect(search).to.equal("?category=&count=&source=Affiliate");
-      });
-    });
-  });
-
-  it("should allow click through on the pivot column of a regular table that has been pivoted (metabase#25203)", () => {
-    const QUESTION_NAME = "Cypress Table Pivoted";
-    const DASHBOARD_NAME = "Table Pivoted Dashboard";
-    const testQuery = {
-      type: "query",
-      query: {
-        "source-table": ORDERS_ID,
-        aggregation: [["count"]],
-        breakout: [
-          [
-            "field",
-            PEOPLE.SOURCE,
-            { "base-type": "type/Text", "source-field": ORDERS.USER_ID },
-          ],
-          [
-            "field",
-            PRODUCTS.CATEGORY,
-            { "base-type": "type/Text", "source-field": ORDERS.PRODUCT_ID },
-          ],
-        ],
-      },
-      database: SAMPLE_DB_ID,
     };
-
-    H.createQuestionAndDashboard({
-      questionDetails: {
-        name: QUESTION_NAME,
-        query: testQuery.query,
-        display: "table",
-      },
-      dashboardDetails: {
-        name: DASHBOARD_NAME,
-      },
-      cardDetails: {
-        size_x: 16,
-        size_y: 8,
-      },
-    }).then(({ body: { dashboard_id } }) => {
-      cy.wrap(dashboard_id).as("targetDashboardId");
-      H.visitDashboard(dashboard_id);
-    });
 
     H.editDashboard();
 
-    H.getDashboardCard().realHover().icon("click").click();
+    H.getDashboardCard(0).realHover().icon("click").click();
+    setUrl("?source={{source}}&category={{category}}&count={{count}}");
+
+    H.getDashboardCard(1).realHover().icon("click").click();
     cy.get("aside").findByText("User → Source").click();
-    addUrlDestination();
+    setUrl("?source={{source}}");
 
-    H.modal().within(() => {
-      cy.get("@targetDashboardId").then((targetDashboardId) => {
-        cy.findAllByRole("textbox")
-          .eq(0)
-          .as("urlInput")
-          .type(
-            `http://localhost:4000/dashboard/${targetDashboardId}?source={{source}}`,
-            {
-              parseSpecialCharSequences: false,
-            },
-          );
-      });
-      cy.button("Done").click();
-    });
-
-    cy.get("aside").button("Done").click();
+    H.getDashboardCard(2).realHover().icon("click").click();
+    setUrl("?discount={{sum_2}}&total={{sum}}");
 
     H.saveDashboard();
 
-    // test pivoted column
-    H.getDashboardCard().findByText("Organic").click();
-    cy.get("@targetDashboardId").then((targetDashboardId) => {
-      cy.location().should(({ pathname, search }) => {
-        expect(pathname).to.equal(`/dashboard/${targetDashboardId}`);
-        expect(search).to.equal("?source=Organic");
-      });
-    });
-  });
+    cy.log("pivot table: top header row");
+    H.getDashboardCard(0).findByText("Doohickey").click();
+    assertLocationSearch("?category=Doohickey&count=&source=");
 
-  it("should not pass through null values to filters in custom url click behavior (metabase#25203)", () => {
-    const DASHBOARD_NAME = "Click Behavior Custom URL Dashboard";
-    const questionDetails = {
-      name: "Orders",
-      query: {
-        "source-table": ORDERS_ID,
-        aggregation: [
-          ["sum", ["field", ORDERS.TOTAL, null]],
-          ["sum", ["field", ORDERS.DISCOUNT, null]],
-        ],
-        breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "year" }]],
-        filter: ["=", ["field", ORDERS.USER_ID, null], 1],
-      },
-      display: "bar",
-    };
+    cy.log("pivot table: left header row");
+    H.getDashboardCard(0).findByText("Affiliate").click();
+    assertLocationSearch("?category=&count=&source=Affiliate");
 
-    H.createQuestionAndDashboard({
-      questionDetails,
-      dashboardDetails: {
-        name: DASHBOARD_NAME,
-      },
-      cardDetails: {
-        size_x: 16,
-        size_y: 8,
-      },
-    }).then(({ body: { dashboard_id } }) => {
-      cy.wrap(dashboard_id).as("targetDashboardId");
-      H.visitDashboard(dashboard_id);
-    });
+    cy.log("pivoted regular table: pivot column");
+    H.getDashboardCard(1).findByText("Organic").click();
+    assertLocationSearch("?source=Organic");
 
-    H.editDashboard();
-
-    H.getDashboardCard().realHover().icon("click").click();
-    addUrlDestination();
-
-    H.modal().within(() => {
-      cy.get("@targetDashboardId").then((targetDashboardId) => {
-        cy.findAllByRole("textbox")
-          .eq(0)
-          .as("urlInput")
-          .type(
-            `http://localhost:4000/dashboard/${targetDashboardId}?discount={{sum_2}}&total={{sum}}`,
-            {
-              parseSpecialCharSequences: false,
-            },
-          );
-      });
-      cy.button("Done").click();
-    });
-
-    cy.get("aside").button("Done").click();
-
-    H.saveDashboard();
-
-    // test that normal values still work properly
-    H.getDashboardCard().within(() => {
+    cy.log("bar chart: normal values still work properly");
+    H.getDashboardCard(2).within(() => {
       H.chartPathWithFillColor("#88BF4D").eq(2).click();
     });
-    cy.get("@targetDashboardId").then((targetDashboardId) => {
-      cy.location().should(({ pathname, search }) => {
-        expect(pathname).to.equal(`/dashboard/${targetDashboardId}`);
-        expect(search).to.equal(
-          "?discount=15.070632139056723&total=298.9195210424866",
-        );
-      });
-    });
+    assertLocationSearch(
+      "?discount=15.070632139056723&total=298.9195210424866",
+    );
 
-    // test that null and "empty"s do not get passed through
-    H.getDashboardCard().within(() => {
+    cy.log("bar chart: null and empty values do not get passed through");
+    H.getDashboardCard(2).within(() => {
       H.chartPathWithFillColor("#88BF4D").eq(1).click();
     });
-    cy.get("@targetDashboardId").then((targetDashboardId) => {
-      cy.location().should(({ pathname, search }) => {
-        expect(pathname).to.equal(`/dashboard/${targetDashboardId}`);
-        expect(search).to.equal("?discount=&total=420.3189231596888");
-      });
-    });
+    assertLocationSearch("?discount=&total=420.3189231596888");
   });
 
   it("should navigate to correct dashboard tab via custom destination click behavior (metabase#34447 metabase#44106)", () => {
@@ -3444,62 +3328,35 @@ describe("issue 23137", () => {
     cy.intercept("POST", "/api/card/*/query").as("cardQuery");
   });
 
-  it("should navigate to a target from a gauge card (metabase#23137)", () => {
-    const target_id = ORDERS_QUESTION_ID;
+  it("should navigate to a target from gauge and progress cards (metabase#23137)", () => {
+    const visualization_settings = {
+      click_behavior: {
+        type: "link",
+        linkType: "question",
+        targetId: ORDERS_QUESTION_ID,
+        parameterMapping: {},
+      },
+    };
 
-    H.createQuestionAndDashboard({
-      questionDetails: GAUGE_QUESTION_DETAILS,
-    }).then(({ body: { id, card_id, dashboard_id } }) => {
-      H.addOrUpdateDashboardCard({
-        card_id,
-        dashboard_id,
-        card: {
-          id,
-          visualization_settings: {
-            click_behavior: {
-              type: "link",
-              linkType: "question",
-              targetId: target_id,
-              parameterMapping: {},
-            },
-          },
-        },
-      });
-
-      H.visitDashboard(dashboard_id);
+    H.createDashboardWithQuestions({
+      questions: [GAUGE_QUESTION_DETAILS, PROGRESS_QUESTION_DETAILS],
+      cards: [
+        { row: 0, col: 0, visualization_settings },
+        { row: 0, col: 12, visualization_settings },
+      ],
+    }).then(({ dashboard }) => {
+      H.visitDashboard(dashboard.id);
     });
 
-    cy.findByTestId("gauge-arc-1").click();
+    cy.log("gauge");
+    H.getDashboardCard(0).findByTestId("gauge-arc-1").click();
     cy.wait("@cardQuery");
     H.queryBuilderHeader().findByDisplayValue("Orders").should("be.visible");
-  });
 
-  it("should navigate to a target from a progress card (metabase#23137)", () => {
-    const target_id = ORDERS_QUESTION_ID;
+    cy.go("back");
 
-    H.createQuestionAndDashboard({
-      questionDetails: PROGRESS_QUESTION_DETAILS,
-    }).then(({ body: { id, card_id, dashboard_id } }) => {
-      H.addOrUpdateDashboardCard({
-        card_id,
-        dashboard_id,
-        card: {
-          id,
-          visualization_settings: {
-            click_behavior: {
-              type: "link",
-              linkType: "question",
-              targetId: target_id,
-              parameterMapping: {},
-            },
-          },
-        },
-      });
-
-      H.visitDashboard(dashboard_id);
-    });
-
-    cy.findByTestId("progress-bar").click();
+    cy.log("progress");
+    H.getDashboardCard(1).findByTestId("progress-bar").click();
     cy.wait("@cardQuery");
     H.queryBuilderHeader().findByDisplayValue("Orders").should("be.visible");
   });
@@ -3584,126 +3441,110 @@ SELECT 'group_2', 'sub_group_2', 52, 'group_2__sub_group_2';
 });
 
 describe("issue 17879", () => {
-  function setupDashcardAndDrillToQuestion({
-    sourceDateUnit,
-    expectedFilterText,
-    targetDateUnit = "default",
-  }) {
-    if (targetDateUnit === "default") {
-      H.createQuestion({
-        name: "Q1 - 17879",
-        query: {
-          "source-table": ORDERS_ID,
-          limit: 5,
-        },
-      });
-    } else {
-      H.createQuestion({
-        name: "Q1 - 17879",
-        query: {
-          "source-table": ORDERS_ID,
-          aggregation: [["count"]],
-          breakout: [
-            ["field", ORDERS.CREATED_AT, { "temporal-unit": targetDateUnit }],
-          ],
-          limit: 5,
-        },
-      });
-    }
+  const RAW_TARGET_NAME = "Q1 raw - 17879";
+  const MONTH_TARGET_NAME = "Q1 month - 17879";
 
-    H.createDashboardWithQuestions({
-      dashboardName: "Dashboard with aggregated Q2",
-      questions: [
-        {
-          name: "Q2",
-          display: "line",
-          query: {
-            "source-table": ORDERS_ID,
-            aggregation: [["count"]],
-            breakout: [
-              ["field", ORDERS.CREATED_AT, { "temporal-unit": sourceDateUnit }],
-            ],
-            limit: 5,
-          },
-        },
-      ],
-    }).then(({ dashboard }) => {
-      cy.intercept(
-        "POST",
-        `/api/dashboard/${dashboard.id}/dashcard/*/card/*/query`,
-      ).as("getCardQuery");
-
-      H.visitDashboard(dashboard.id);
-      H.editDashboard(dashboard.id);
-
-      H.showDashboardCardActions();
-      cy.findByTestId("dashboardcard-actions-panel").icon("click").click();
-
-      cy.findByText("Go to a custom destination").click();
-      cy.findByText("Saved question").click();
-      cy.findByText("Q1 - 17879").click();
-      cy.findByText("Created At").click();
-
-      H.popover().within(() => {
-        cy.findByText(
-          "Created At: " + capitalize(sourceDateUnit.replace(/-/g, " ")),
-        ).click();
-      });
-
-      cy.findByText("Done").click();
-
-      H.saveDashboard();
-
-      cy.wait("@getCardQuery");
-
-      cy.findByTestId("visualization-root").within(() => {
-        H.cartesianChartCircle().first().click({ force: true });
-      });
-
-      cy.url().should("include", "/question");
-
-      cy.findByTestId("qb-filters-panel").should(
-        "have.text",
-        expectedFilterText,
-      );
-    });
-  }
+  const CASES = [
+    {
+      sourceDateUnit: "month",
+      targetName: RAW_TARGET_NAME,
+      expectedFilterText: "Created At is Apr 1–30, 2025",
+    },
+    {
+      sourceDateUnit: "week",
+      targetName: RAW_TARGET_NAME,
+      expectedFilterText: "Created At is Apr 27 – May 3, 2025",
+    },
+    {
+      sourceDateUnit: "year",
+      targetName: RAW_TARGET_NAME,
+      expectedFilterText: "Created At is Jan 1 – Dec 31, 2025",
+    },
+    {
+      sourceDateUnit: "year",
+      targetName: MONTH_TARGET_NAME,
+      expectedFilterText: "Created At is Jan 1 – Dec 31, 2025",
+    },
+  ];
 
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
-
-    cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query").as(
-      "dashcardQuery",
-    );
   });
 
-  it("should map dashcard date parameter to correct date range filter in target question - month -> day (metabase#17879)", () => {
-    setupDashcardAndDrillToQuestion({
-      sourceDateUnit: "month",
-      expectedFilterText: "Created At is Apr 1–30, 2025",
+  it("should map dashcard date parameter to correct date range filter in target question (metabase#17879)", () => {
+    H.createQuestion({
+      name: RAW_TARGET_NAME,
+      query: {
+        "source-table": ORDERS_ID,
+        limit: 5,
+      },
     });
-  });
-
-  it("should map dashcard date parameter to correct date range filter in target question - week -> day (metabase#17879)", () => {
-    setupDashcardAndDrillToQuestion({
-      sourceDateUnit: "week",
-      expectedFilterText: "Created At is Apr 27 – May 3, 2025",
+    H.createQuestion({
+      name: MONTH_TARGET_NAME,
+      query: {
+        "source-table": ORDERS_ID,
+        aggregation: [["count"]],
+        breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }]],
+        limit: 5,
+      },
     });
-  });
 
-  it("should map dashcard date parameter to correct date range filter in target question - year -> day (metabase#17879)", () => {
-    setupDashcardAndDrillToQuestion({
-      sourceDateUnit: "year",
-      expectedFilterText: "Created At is Jan 1 – Dec 31, 2025",
+    H.createDashboardWithQuestions({
+      dashboardName: "Dashboard with aggregated Q2",
+      questions: CASES.map(({ sourceDateUnit, targetName }) => ({
+        name: `Q2 ${sourceDateUnit} to ${targetName}`,
+        display: "line",
+        query: {
+          "source-table": ORDERS_ID,
+          aggregation: [["count"]],
+          breakout: [
+            ["field", ORDERS.CREATED_AT, { "temporal-unit": sourceDateUnit }],
+          ],
+          limit: 5,
+        },
+      })),
+      cards: [
+        { row: 0, col: 0 },
+        { row: 0, col: 12 },
+        { row: 8, col: 0 },
+        { row: 8, col: 12 },
+      ],
+    }).then(({ dashboard }) => {
+      H.visitDashboard(dashboard.id);
     });
-  });
 
-  it("should map dashcard date parameter to correct date range filter in target question - year -> month (metabase#17879)", () => {
-    setupDashcardAndDrillToQuestion({
-      sourceDateUnit: "year",
-      expectedFilterText: "Created At is Jan 1 – Dec 31, 2025",
-      targetDateUnit: "month",
+    H.editDashboard();
+
+    CASES.forEach(({ sourceDateUnit, targetName }, index) => {
+      H.clickBehaviorSidebar(index).within(() => {
+        cy.findByText("Go to a custom destination").click();
+        cy.findByText("Saved question").click();
+      });
+      H.entityPickerModal().findByText(targetName).click();
+      H.sidebar().findByText("Created At").click();
+      H.popover()
+        .findByText(`Created At: ${capitalize(sourceDateUnit)}`)
+        .click();
+      H.sidebar().button("Done").click();
+    });
+
+    H.saveDashboard();
+
+    CASES.forEach(({ expectedFilterText }, index) => {
+      H.getDashboardCard(index)
+        .scrollIntoView()
+        .within(() => {
+          H.cartesianChartCircle().first().click({ force: true });
+        });
+
+      cy.url().should("include", "/question");
+      cy.findByTestId("qb-filters-panel").should(
+        "have.text",
+        expectedFilterText,
+      );
+
+      cy.go("back");
     });
   });
 });
@@ -3821,31 +3662,41 @@ describe("issue 58556, issue 66277", () => {
       cy.request("GET", `/api/dashboard/${dashboard.id}`).then(
         ({ body: dashboard }) => {
           const [dashcard] = dashboard.dashcards;
+          const parameter_mappings = [
+            {
+              card_id: dashcard.card_id,
+              parameter_id: PARAMETER.id,
+              target: [
+                "dimension",
+                [
+                  "field",
+                  "CREATED_AT",
+                  {
+                    "base-type": "type/DateTime",
+                    "inherited-temporal-unit": "hour",
+                  },
+                ],
+                {
+                  "stage-number": 1,
+                },
+              ],
+            },
+          ];
 
           cy.request("PUT", `/api/dashboard/${dashboard.id}`, {
             dashcards: [
               {
                 ...dashcard,
-                parameter_mappings: [
-                  {
-                    card_id: dashcard.card_id,
-                    parameter_id: PARAMETER.id,
-                    target: [
-                      "dimension",
-                      [
-                        "field",
-                        "CREATED_AT",
-                        {
-                          "base-type": "type/DateTime",
-                          "inherited-temporal-unit": "hour",
-                        },
-                      ],
-                      {
-                        "stage-number": 1,
-                      },
-                    ],
-                  },
-                ],
+                col: 0,
+                size_x: 12,
+                parameter_mappings,
+              },
+              {
+                ...dashcard,
+                id: -1,
+                col: 12,
+                size_x: 12,
+                parameter_mappings,
               },
             ],
           });
@@ -3856,38 +3707,11 @@ describe("issue 58556, issue 66277", () => {
     });
 
     H.editDashboard();
-    H.showDashboardCardActions();
   });
 
-  it("should be possible to add a click action on a time column with hour granularity and have the time be present in the resulting parameter (metabase#58556)", () => {
-    H.clickBehaviorSidebar().within(() => {
-      cy.findByText("Created At: Hour").click();
-      cy.findByText("Update a dashboard filter").click();
-      cy.findByText("Date").click();
-    });
-
-    H.popover().findByText("Created At: Hour").click();
-    H.sidebar().button("Done").click();
-
-    H.saveDashboard();
-
-    cy.log("click a row");
-    H.dashboardCards()
-      .findByTestId("table-body")
-      .findAllByTestId("link-formatted-text")
-      .eq(0)
-      .click();
-
-    cy.log("ensure the filter contains a time value");
-    cy.location().then((location) => {
-      const url = new URL(location.href);
-      const date = url.searchParams.get("date");
-      cy.wrap(date).should("match", /\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/);
-    });
-  });
-
-  it("should pass hour or minutes to linked questions from click actions (metabase#66277)", () => {
-    H.clickBehaviorSidebar().within(() => {
+  it("should keep the time of an hour column in click behavior parameters (metabase#58556, metabase#66277)", () => {
+    cy.log("metabase#66277: go to a saved question");
+    H.clickBehaviorSidebar(1).within(() => {
       cy.findByText("Created At: Hour").click();
       cy.findByText("Go to a custom destination").click();
       cy.findByText("Saved question").click();
@@ -3900,10 +3724,20 @@ describe("issue 58556, issue 66277", () => {
     H.popover().findByText("Created At: Hour").click();
     H.sidebar().button("Done").click();
 
+    cy.log("metabase#58556: update a dashboard filter");
+    H.clickBehaviorSidebar(0).within(() => {
+      cy.findByText("Created At: Hour").click();
+      cy.findByText("Update a dashboard filter").click();
+      cy.findByText("Date").click();
+    });
+
+    H.popover().findByText("Created At: Hour").click();
+    H.sidebar().button("Done").click();
+
     H.saveDashboard();
 
-    cy.log("click a row");
-    H.dashboardCards()
+    cy.log("metabase#66277: click a row of the second card");
+    H.getDashboardCard(1)
       .findByTestId("table-body")
       .findAllByTestId("link-formatted-text")
       .eq(0)
@@ -3914,6 +3748,22 @@ describe("issue 58556, issue 66277", () => {
         /Created At is .* \d{1,2}:\d{2} (AM|PM) – \d{1,2}:\d{2} (AM|PM)/,
       )
       .should("be.visible");
+
+    cy.go("back");
+
+    cy.log("metabase#58556: click a row of the first card");
+    H.getDashboardCard(0)
+      .findByTestId("table-body")
+      .findAllByTestId("link-formatted-text")
+      .eq(0)
+      .click();
+
+    cy.log("ensure the filter contains a time value");
+    cy.location("search").should((search) => {
+      expect(new URLSearchParams(search).get("date")).to.match(
+        /\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/,
+      );
+    });
   });
 });
 
