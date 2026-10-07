@@ -4,7 +4,9 @@
 (def data-model
   "Schema model types"
   ["Database"
+   "Dimension"
    "Field"
+   "FieldUserSettings"
    "Measure"
    "Segment"
    "Table"
@@ -17,6 +19,8 @@
   ["Table"
    "TableUserSettings"
    "Field"
+   "FieldUserSettings"
+   "Dimension"
    "Segment"])
 
 (def content
@@ -35,6 +39,7 @@
   (concat data-model
           content
           ["CustomVizPlugin"
+           "DataApp"
            "EmbeddingTheme"
            "FieldValues"
            "Metabot"
@@ -43,7 +48,8 @@
            "Setting"
            "Transform"
            "TransformJob"
-           "TransformTag"]))
+           "TransformTag"
+           "TransformTest"]))
 
 (def inlined-models
   "An additional list of models which are inlined into parent entities for serialization.
@@ -51,8 +57,6 @@
   For example, the models should also have their entity_id fields populated (if they have one)."
   ["DashboardCard"
    "DashboardTab"
-   "Dimension"
-   "FieldUserSettings"
    "ParameterCard"
    "DashboardCardSeries"
    "MetabotPrompt"
@@ -83,7 +87,6 @@
    "ConnectionImpersonation"
    "ContentTranslation"
    "DashboardBookmark"
-   "DataApp"
    "DataComplexityScore"
    "DataPermissions"
    "DatabaseRouter"
@@ -98,7 +101,6 @@
    "ExplorationQueryResult"
    "ExplorationThread"
    "ExplorationThreadTimeline"
-   "HTTPAction"
    "ImplicitAction"
    "LoginHistory"
    "McpFeedback"
@@ -169,6 +171,7 @@
    "TransformJobRun"
    "TransformRun"
    "TransformRunCancelation"
+   "TransformTestRun"
    "Undo"
    "User"
    "UserKeyValue"

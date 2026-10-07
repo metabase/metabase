@@ -6,12 +6,17 @@
    [clojure.test :refer :all]
    [iapetos.registry :as registry]
    [metabase.analytics.prometheus :as prometheus]
+   [metabase.app-db.connection-pool-setup :as mdb.connection-pool-setup]
+   [metabase.app-db.data-source :as mdb.data-source]
+   [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.search.engine :as search.engine]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u])
   (:import
-   (io.prometheus.client Collector GaugeMetricFamily)))
+   (com.mchange.v2.c3p0 DataSources)
+   (io.prometheus.client Collector GaugeMetricFamily)
+   (java.lang.management ManagementFactory)))
 
 (set! *warn-on-reflection* true)
 
@@ -143,6 +148,73 @@
                                    (metric-lines port))]
         (is (seq (set/intersection expected-lines actual-lines))
             "Registry does not have c3p0 metrics in it")))))
+
+(defn- start-daemon-thread! ^Thread [^String thread-name f]
+  (doto (Thread. ^Runnable f thread-name)
+    (.setDaemon true)
+    (.start)))
+
+(deftest connection-pool-info-does-not-deadlock-pool-construction-test
+  (testing "reading pool stats while another thread builds a pool must not deadlock (swaldman/c3p0#95)"
+    ;; The application, Quartz and semantic-search pools are built outside the warehouse pool guard. A scrape that
+    ;; overlapped one of those constructions used to deadlock inside c3p0 (JMX read locks the pool MBean then the
+    ;; pool; construction locks them the other way round) and then hold the guard forever, so no warehouse pool could
+    ;; be built afterwards. One thread scrapes continuously, one builds and destroys a fixed number of pools through
+    ;; the app-db path, and a third builds a warehouse pool through the guarded path. All three must finish.
+    (let [num-builds      25
+          timeout-ms      10000
+          stop?           (atom false)
+          errors          (atom [])
+          scrapes         (atom 0)
+          first-scrape    (promise)
+          builds-done     (promise)
+          warehouse-built (promise)]
+      (mt/with-temp [:model/Database db {:engine :h2, :details {:db (str "mem:" (mt/random-name))}}]
+        (try
+          (start-daemon-thread!
+           "prometheus-test-scraper"
+           (fn []
+             (while (not @stop?)
+               (try
+                 (prometheus/connection-pool-info)
+                 (swap! scrapes inc)
+                 (deliver first-scrape true)
+                 (catch Exception e
+                   (swap! errors conj e))))))
+          (start-daemon-thread!
+           "prometheus-test-app-pool-builder"
+           (fn []
+             (dotimes [_ num-builds]
+               (try
+                 (let [pool (mdb.connection-pool-setup/connection-pool-data-source
+                             :h2
+                             (mdb.data-source/raw-connection-string->DataSource
+                              (format "jdbc:h2:mem:%s" (mt/random-name))))]
+                   (DataSources/destroy pool))
+                 (catch Exception e
+                   (swap! errors conj e))))
+             (deliver builds-done true)))
+          (start-daemon-thread!
+           "prometheus-test-warehouse-pool-builder"
+           (fn []
+             ;; start once scraping is under way, so a wedged guard is what this thread would run into
+             (when (true? (deref first-scrape timeout-ms false))
+               (try
+                 (sql-jdbc.conn/db->pooled-connection-spec db)
+                 (deliver warehouse-built true)
+                 (catch Exception e
+                   (swap! errors conj e))))))
+          (is (true? (deref builds-done timeout-ms false))
+              "the pool-building thread did not finish its builds: a build deadlocked with a scrape")
+          (is (nil? (.findDeadlockedThreads (ManagementFactory/getThreadMXBean)))
+              "a scrape deadlocked with a pool construction")
+          (is (pos? @scrapes) "the scrape thread never completed a read")
+          (is (true? (deref warehouse-built timeout-ms false))
+              "the warehouse pool build did not complete: the pool guard is wedged")
+          (is (empty? @errors))
+          (finally
+            (reset! stop? true)
+            (sql-jdbc.conn/invalidate-pool-for-db! db)))))))
 
 (deftest email-collector-test
   (testing "Registry has email metrics registered"

@@ -4,8 +4,8 @@
   (:require
    [metabase.collections.models.collection :as collection]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.queries.core :as queries]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]
    [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [toucan2.core :as t2]))
 
@@ -29,7 +29,7 @@
   unscoped), in name then id order."
   [card-type      :- [:enum :model :question :metric]
    database-ids   :- [:maybe [:set ::lib.schema.id/database]]
-   collection-ids :- [:maybe [:sequential ::lib.schema.id/collection]]]
+   collection-ids :- [:maybe [:set ::lib.schema.id/collection]]]
   (t2/select :model/Card
              {:where    [:and
                          [:= :type (name card-type)]
@@ -45,22 +45,36 @@
   (t2/select [:model/Field :id :table_id] :id [:in field-ids] {:from [(warehouse-schema-overlay/field-query {:user-settings? false})]}))
 
 (mu/defn card-dimensions
-  "The dimensions and dimension mappings of the Card with `card-id`, or nil."
+  "The query-relevant columns (`:dimensions` and `:dimension_mappings` among them) of the Card with `card-id`,
+  or nil."
   [card-id :- ::lib.schema.id/card]
-  (t2/select-one [:model/Card :dimensions :dimension_mappings] :id card-id))
+  (queries/card-query-info card-id))
 
 (mu/defn table-names
   "The id, database id, name, and display name of the Tables with `table-ids`."
   [table-ids :- [:sequential ::lib.schema.id/table]]
   (t2/select [:model/Table :id :db_id :name :display_name] :id [:in table-ids] {:from [(warehouse-schema-overlay/table-query)]}))
 
-(mu/defn model-actions
-  "The id, model id, name, and type of the unarchived non-HTTP Actions of the model Cards with `model-ids`."
-  [model-ids :- [:set ms/PositiveInt]]
-  (t2/select [:model/Action :id :model_id :name :type]
-             :model_id [:in model-ids]
-             :archived false
-             :type [:not= "http"]))
+(mu/defn model-less-query-action-ids
+  "The ids of the unarchived query Actions without a model in collections the current user can see, outside
+  `excluded-collection-ids`, among `database-ids` (nil for unscoped), in name then id order."
+  [database-ids            :- [:maybe [:set ::lib.schema.id/database]]
+   excluded-collection-ids :- [:set ::lib.schema.id/collection]]
+  (t2/select-pks-vec :model/Action
+                     {:where    [:and
+                                 [:= :model_id nil]
+                                 [:= :type "query"]
+                                 [:= :archived false]
+                                 (collection/visible-collection-filter-clause :collection_id)
+                                 (when (seq excluded-collection-ids)
+                                   [:or [:= :collection_id nil] [:not-in :collection_id excluded-collection-ids]])
+                                 (when database-ids
+                                   [:exists ^:allow-subquery {:select [1]
+                                                              :from   [[(t2/table-name :model/QueryAction) :qa]]
+                                                              :where  [:and
+                                                                       [:= :qa.action_id :action.id]
+                                                                       (scope-filter-clause database-ids :qa.database_id)]}])]
+                      :order-by [[:name :asc] [:id :asc]]}))
 
 (mu/defn field-table-id
   "The Table id of the Field with `field-id`, or nil."

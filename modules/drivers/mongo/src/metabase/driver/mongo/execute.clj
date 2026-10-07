@@ -171,6 +171,7 @@
         aggregate (.aggregate db session pipe)]
     (init-aggregate! aggregate timeout-ms)))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (defn- ^:dynamic *aggregate*
   [^MongoDatabase db
    ^String coll

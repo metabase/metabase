@@ -7,12 +7,14 @@
    [metabase-enterprise.audit-app.audit :as ee-audit]
    [metabase-enterprise.audit-app.settings :as ee.audit.settings]
    [metabase-enterprise.serialization.cmd :as serialization.cmd]
+   [metabase.app-db.core :as mdb]
    [metabase.audit-app.core :as audit]
    [metabase.core.core :as mbc]
    [metabase.lib.core :as lib]
    [metabase.permissions-rest.data-permissions.graph :as data-perms.graph]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.plugins.core :as plugins]
+   [metabase.queries.card-schema :as card-schema]
    [metabase.sync.core :as sync.core]
    [metabase.sync.sync :as sync]
    [metabase.sync.task.sync-databases :as task.sync-databases]
@@ -66,8 +68,7 @@
       (is (not= 0 (t2/count :model/Card {:where [:= :database_id audit/audit-db-id]}))
           "Cards should be created for Audit DB when the content is there."))
     (testing "Cards in the audit collection have non-empty :result_metadata after installation"
-      (let [audit-cards             (t2/select [:model/Card :id :name :result_metadata :card_schema]
-                                               :database_id audit/audit-db-id)
+      (let [audit-cards             (t2/select (card-schema/selection [:name]) :database_id audit/audit-db-id)
             audit-cards-no-metadata (filter (comp empty? :result_metadata) audit-cards)]
         (is (seq audit-cards))
         (is (empty? audit-cards-no-metadata)
@@ -224,6 +225,21 @@
                                                         (throw (Exception. "sync failed")))]
         (is (nil? (#'ee-audit/maybe-sync-audit-db! audit-db false)))
         (is (= 0 (ee.audit.settings/last-analytics-views-checksum)))))))
+
+(deftest install-sync-records-views-checksum-test
+  (testing "the sync after install/update records the views checksum, so the views-stale sync does not repeat it"
+    (with-audit-db-restoration!
+      (let [audit-db (t2/select-one :model/Database :is_audit true)
+            syncs    (atom 0)]
+        (ee.audit.settings/last-analytics-views-checksum! 0)
+        ;; any engine other than the host's takes the ::updated path
+        (t2/update! :model/Database (:id audit-db) {:engine (if (= :postgres (mdb/db-type)) "h2" "postgres")})
+        (mt/with-dynamic-fn-redefs [ee-audit/views-checksum (constantly 12345)
+                                    sync.core/sync-database! (fn [& _] (swap! syncs inc))]
+          (is (= ::ee-audit/updated (#'ee-audit/maybe-install-audit-db!)))
+          (is (= 12345 (ee.audit.settings/last-analytics-views-checksum)))
+          (#'ee-audit/maybe-sync-audit-db! audit-db false)
+          (is (= 1 @syncs)))))))
 
 (deftest adjust-audit-db-to-source-test
   (testing "adjust-audit-db-to-source! correctly handles tables and fields with mixed case"

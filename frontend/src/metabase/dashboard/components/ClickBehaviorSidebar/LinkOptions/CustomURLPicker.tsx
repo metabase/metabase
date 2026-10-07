@@ -4,7 +4,7 @@ import { useCallback, useState } from "react";
 import { t } from "ttag";
 
 import CS from "metabase/css/core/index.css";
-import { isTableDisplay } from "metabase/dashboard/utils";
+import { hasColumnLevelClickBehavior } from "metabase/dashboard/utils";
 import {
   Button,
   Flex,
@@ -21,7 +21,6 @@ import type {
 } from "metabase-types/api";
 import { clickBehaviorIsValid } from "metabase-types/guards";
 
-import LinkOptionsS from "../LinkOptions/LinkOptions.module.css";
 import { SidebarItem } from "../SidebarItem";
 
 import { CustomLinkText } from "./CustomLinkText";
@@ -79,9 +78,7 @@ export function CustomURLPicker({
           leftSection={<Icon name="link" />}
           size="lg"
           variant="filled"
-          classNames={{
-            root: LinkOptionsS.ButtonRoot,
-          }}
+          flex="1 1 auto"
           onClick={openModal}
         >
           <SidebarItem.Name>
@@ -113,7 +110,7 @@ export function CustomURLPicker({
             onChange={handleLinkTemplateChange}
             className={cx(CS.block, CS.full)}
           />
-          {isTableDisplay(dashcard) && (
+          {hasColumnLevelClickBehavior(dashcard) && (
             <CustomLinkText
               updateSettings={updateSettings}
               clickBehavior={clickBehavior}

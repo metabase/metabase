@@ -2,53 +2,6 @@ name: Driver Tests
 
 on:
   workflow_call:
-    inputs:
-      skip:
-        type: boolean
-        default: false
-      force-run:
-        description: Run the full suite regardless of the diff (master / release branches, ci:run-all label).
-        type: boolean
-        default: false
-  # Run one driver job on demand, against the ref you dispatch on, optionally under a profiler.
-  # Everything else about the job -- credentials, services, test args, quarantine gating -- is
-  # whatever the normal CI run uses, because it is the same job.
-  workflow_dispatch:
-    inputs:
-      driver:
-        description: 'Which driver job to run. Only this one runs; the usual decision rules are bypassed.'
-        type: choice
-        required: true
-        options:
-          - athena
-          - bigquery
-          - clickhouse
-          - databricks
-          - druid-jdbc
-          - h2
-          - mongo
-          - mongo-sharded-cluster
-          - mongo-ssl
-          - mysql-mariadb
-          - oracle
-          - postgres
-          - presto-jdbc
-          - redshift
-          - snowflake
-          - sparksql
-          - sqlite
-          - sqlserver
-          - vertica
-      tests:
-        description: 'Optional: run only these tests, comma- or space-separated, e.g. metabase.driver.bigquery-cloud-sdk-test/sync-test. Bare namespaces work too. Blank runs the job''s usual set.'
-        type: string
-        required: false
-        default: ''
-      profile:
-        description: 'Profile the test run and attach a flamegraph to the job. Adds sampling overhead.'
-        type: boolean
-        required: false
-        default: false
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref && github.ref || github.run_id }}-drivers
@@ -60,19 +13,21 @@ concurrency:
 env:
   CI_CONDUCTOR_BASE_URL: ${{ vars.CI_CONDUCTOR_BASE_URL }}
   CI_CONDUCTOR_WEBHOOK_SECRET: ${{ secrets.CI_CONDUCTOR_WEBHOOK_SECRET }}
-  # Both read by the test-driver action, which is what actually runs the tests. Set here rather than
-  # passed as inputs to each job so that turning either on is one line, not one line per driver.
-  # Empty (and so off) on workflow_call, where neither input exists.
-  #
-  # ONLY_TESTS replaces the job's own test selection, so every matrix leg of the chosen driver runs
-  # the whole list -- BigQuery, for instance, has three legs.
-  PROFILE_TESTS: ${{ inputs.profile }}
-  ONLY_TESTS: ${{ inputs.tests }}
+  # Read by the test-driver action. This suite is only ever dispatched by test.profile-backend.yml,
+  # so a dispatch is a profiling run.
+  PROFILE_TESTS: ${{ github.event_name == 'workflow_dispatch' }}
 
 jobs:
+  gate:
+    uses: ./.github/workflows/test.gate.yml
+    with:
+      filters: backend_all
+
   # This job determines which driver tests should run based on PR context.
   # All decision logic is consolidated in mage driver-decisions.
   determine-driver-skips:
+    needs: gate
+    if: ${{ needs.gate.outputs.run == 'true' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 10
     outputs:
@@ -99,7 +54,7 @@ jobs:
       vertica-should-run: ${{ steps.driver-decisions.outputs.vertica-should-run }}
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
       - name: Prepare back-end environment
         uses: ./.github/actions/prepare-backend
       - name: Fetch base branch
@@ -116,8 +71,6 @@ jobs:
             --git-ref="${BASE_REF}"
             --force-run="${FORCE_RUN}"
             --pr-labels="${{ join(github.event.pull_request.labels.*.name, ',') }}"
-            --skip="${{ inputs.skip }}"
-            --only-driver="${ONLY_DRIVER}"
           )
           echo "Running:"
           echo "./bin/mage -driver-decisions ${MAGE_ARGS[*]}"
@@ -131,8 +84,7 @@ jobs:
           ./bin/mage -driver-decisions "${MAGE_ARGS[@]}" --github-output-only >> "$GITHUB_OUTPUT"
         env:
           BASE_REF: ${{ github.event.pull_request.base.ref || github.ref_name }}
-          FORCE_RUN: ${{ inputs.force-run }}
-          ONLY_DRIVER: ${{ inputs.driver }}
+          FORCE_RUN: ${{ needs.gate.outputs.force-run == 'true' }}
         shell: bash
 
   be-tests-athena-ee:
@@ -140,6 +92,10 @@ jobs:
     if: ${{ needs.determine-driver-skips.outputs.athena-should-run == 'true' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        runner-index: [0, 1]
     env:
       CI: 'true'
       DRIVERS: athena
@@ -152,9 +108,9 @@ jobs:
       # These credentials are used to test the driver when the user does not have the athena:GetTableMetadata permission
       MB_ATHENA_TEST_WITHOUT_GET_TABLE_METADATA_ACCESS_KEY: ${{ secrets.MB_ATHENA_TEST_WITHOUT_GET_TABLE_METADATA_ACCESS_KEY }}
       MB_ATHENA_TEST_WITHOUT_GET_TABLE_METADATA_SECRET_KEY: ${{ secrets.MB_ATHENA_TEST_WITHOUT_GET_TABLE_METADATA_SECRET_KEY }}
-    name: Athena
+    name: Athena Driver Tests ${{ matrix.runner-index }}
     steps:
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@v7
     - name: Test Athena driver
       id: test-driver
       uses: ./.github/actions/test-driver
@@ -163,6 +119,11 @@ jobs:
         test-args: >-
           :only-tags [:mb/driver-tests]
           :exclude-tags [:mb/transforms-python-test]
+        runner-index: ${{ matrix.runner-index }}
+        runner-count: ${{ strategy.job-total }}
+        jvms-per-runner: '2'
+        heap-per-jvm: '4g'
+        artifact-suffix: runner-${{ matrix.runner-index }}
 
   be-tests-bigquery-cloud-sdk-ee:
     needs: determine-driver-skips
@@ -185,7 +146,7 @@ jobs:
       MB_BIGQUERY_CLOUD_SDK_TEST_SERVICE_ACCOUNT_JSON_ROUTING: ${{ secrets.MB_BIGQUERY_CLOUD_SDK_TEST_SERVICE_ACCOUNT_JSON_ROUTING }}
     name: BigQuery Driver Tests ${{ matrix.runner-index }}
     steps:
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@v7
     - name: Test BigQuery Cloud SDK driver
       id: test-driver
       uses: ./.github/actions/test-driver
@@ -218,7 +179,7 @@ jobs:
       MB_BIGQUERY_CLOUD_SDK_TEST_SERVICE_ACCOUNT_JSON_ROUTING: ${{ secrets.MB_BIGQUERY_CLOUD_SDK_TEST_SERVICE_ACCOUNT_JSON_ROUTING }}
     name: BigQuery Transforms Python Tests
     steps:
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@v7
     - name: Setup python-runner
       uses: ./.github/actions/setup-python-runner
       with:
@@ -265,7 +226,7 @@ jobs:
       MB_CLICKHOUSE_TEST_NGINX_PORT: 8127
     name: Clickhouse ${{ matrix.job.name }}
     steps:
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@v7
     - name: Setup python-runner
       if: ${{ matrix.job.needs-python-runner == true }}
       uses: ./.github/actions/setup-python-runner
@@ -318,7 +279,7 @@ jobs:
           CLUSTER_SIZE: nano-quickstart
     name: Druid (JDBC)
     steps:
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@v7
     - name: Test Druid JDBC driver
       id: test-driver
       uses: ./.github/actions/test-driver
@@ -381,7 +342,7 @@ jobs:
           fi
           echo "MB_DATABRICKS_TEST_${name}=${!var}" >> "$GITHUB_ENV"
         done
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@v7
     - name: Test Databricks driver
       id: test-driver
       uses: ./.github/actions/test-driver
@@ -399,7 +360,7 @@ jobs:
       CI: 'true'
     name: H2
     steps:
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@v7
     - name: Test H2 driver
       id: test-driver
       uses: ./.github/actions/test-driver
@@ -418,7 +379,7 @@ jobs:
       CI: 'true'
     name: H2 (OSS)
     steps:
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@v7
     - name: Test H2 driver (OSS)
       id: test-driver
       uses: ./.github/actions/test-driver
@@ -531,7 +492,7 @@ jobs:
     # "be-tests-mariadb-10-2-ee (0)"
     name: "${{ matrix.version.name }} ${{ matrix.job.name }}"
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: Setup python-runner
         if: ${{ matrix.job.needs-python-runner == true }}
         uses: ./.github/actions/setup-python-runner
@@ -592,7 +553,7 @@ jobs:
           MONGO_INITDB_ROOT_PASSWORD: metasample123
     name: ${{ matrix.version.name }} ${{ matrix.job.name }}
     steps:
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@v7
     - name: Setup python-runner
       if: ${{ matrix.job.needs-python-runner == true }}
       uses: ./.github/actions/setup-python-runner
@@ -632,7 +593,7 @@ jobs:
       MB_TEST_MONGO_REQUIRES_SSL: true
     name: "${{ matrix.version.name }} (SSL)"
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: Spin up Mongo docker container
         run: >-
           docker run -d
@@ -682,7 +643,7 @@ jobs:
           - "27017:17017"
     name: MongoDB Sharded Cluster
     steps:
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@v7
     - name: Test MongoDB driver (Sharded cluster)
       id: test-driver
       uses: ./.github/actions/test-driver
@@ -744,7 +705,7 @@ jobs:
           - "1521:${{ matrix.version.port }}"
     name: ${{ matrix.version.name }}
     steps:
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@v7
     - name: Test ${{ matrix.version.name }}
       id: test-driver
       uses: ./.github/actions/test-driver
@@ -831,7 +792,7 @@ jobs:
           POSTGRES_DB: mb_test
           POSTGRES_HOST_AUTH_METHOD: trust
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: Setup python-runner
         if: ${{ matrix.job.needs-python-runner == true }}
         uses: ./.github/actions/setup-python-runner
@@ -878,7 +839,7 @@ jobs:
         env:
           JAVA_TOOL_OPTIONS: "-Xmx2g"
     steps:
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@v7
     - uses: ./.github/actions/await-port
       with:
          port: ${{ env.MB_PRESTO_JDBC_TEST_PORT }}
@@ -987,7 +948,7 @@ jobs:
       MB_REDSHIFT_TEST_PASSWORD: ${{ secrets.MB_REDSHIFT_TEST_PASSWORD }}
     name: ${{ matrix.job.name }}
     steps:
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@v7
     - name: Setup python-runner
       if: ${{ matrix.job.needs-python-runner == true }}
       uses: ./.github/actions/setup-python-runner
@@ -1014,6 +975,10 @@ jobs:
     if: ${{ needs.determine-driver-skips.outputs.snowflake-should-run == 'true' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 70
+    permissions:
+      # Required to mint a GitHub Actions OIDC token for the Snowflake WIF live test.
+      id-token: write
+      contents: read
     strategy:
       fail-fast: false
       matrix:
@@ -1049,9 +1014,19 @@ jobs:
       MB_SNOWFLAKE_TEST_RSA_ROLE_TEST_CUSTOM_USER: RSA_ROLE_TEST_CUSTOM_USER
       MB_SNOWFLAKE_TEST_RSA_ROLE_TEST_ROLE: RSA_ROLE_TEST_ROLE
       MB_SNOWFLAKE_TEST_RSA_ROLE_TEST_DB: RSA_ROLE_TEST_DB
+
+      # Workload Identity Federation live test. USER is picked by event/ref so the GH OIDC `sub`
+      # claim matches a WORKLOAD_IDENTITY subject on the Snowflake side. Contexts that no
+      # WORKLOAD_IDENTITY user matches (release-** pushes, dispatches from feature branches)
+      # opt out via the explicit 'skip' sentinel.
+      MB_SNOWFLAKE_TEST_WIF_ACCOUNT:   ${{ secrets.MB_SNOWFLAKE_TEST_ACCOUNT }}
+      MB_SNOWFLAKE_TEST_WIF_WAREHOUSE: ${{ secrets.MB_SNOWFLAKE_TEST_WAREHOUSE }}
+      MB_SNOWFLAKE_TEST_WIF_USER:      ${{ github.event_name == 'pull_request' && 'METABASE WIF' || (github.ref == 'refs/heads/master' && 'METABASE WIF MAIN' || 'skip') }}
+      MB_SNOWFLAKE_TEST_WIF_DB:        SNOWFLAKE_SAMPLE_DATA
+      MB_SNOWFLAKE_TEST_WIF_ROLE:      PUBLIC
     name: Snowflake ${{ matrix.job.name }}
     steps:
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@v7
     - name: Setup python-runner
       if: ${{ matrix.job.needs-python-runner == true }}
       uses: ./.github/actions/setup-python-runner
@@ -1086,7 +1061,7 @@ jobs:
           - "10000:10000"
     name: Spark SQL
     steps:
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@v7
     - name: Test Spark driver
       id: test-driver
       uses: ./.github/actions/test-driver
@@ -1106,7 +1081,7 @@ jobs:
       DRIVERS: sqlite
     name: SQLite
     steps:
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@v7
     - name: Test SQLite driver
       id: test-driver
       uses: ./.github/actions/test-driver
@@ -1157,7 +1132,7 @@ jobs:
           MSSQL_MEMORY_LIMIT_MB: 1024
     name: ${{ matrix.version.name }} ${{ matrix.job.name }}
     steps:
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@v7
     - name: Setup python-runner
       if: ${{ matrix.job.needs-python-runner == true }}
       uses: ./.github/actions/setup-python-runner
@@ -1195,7 +1170,7 @@ jobs:
   #         - "8080:8080"
   #   name: Starburst
   #   steps:
-  #   - uses: actions/checkout@v6
+  #   - uses: actions/checkout@v7
   #   - name: Make plugins directory
   #     run: mkdir plugins
   #   - name: Test Starburst driver
@@ -1255,7 +1230,7 @@ jobs:
           password: ${{ needs.login-to-ecr.outputs.docker_password }}
     name: Vertica
     steps:
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@v7
     - name: Make plugins directory
       run: mkdir plugins
     - name: Test Vertica driver
@@ -1269,6 +1244,7 @@ jobs:
 
   drivers-tests-result:
     needs:
+      - gate
       - determine-driver-skips
       # if you add a driver job, you must add it to this list for it to be a required check
       - be-tests-athena-ee
@@ -1296,7 +1272,7 @@ jobs:
     runs-on: ${{ vars.SLIM_RUNNER_KEY }}
     timeout-minutes: 5
     name: drivers-tests-result
-    if: always() && !cancelled()
+    if: ${{ !cancelled() }}
     steps:
       - name: Check job status
         uses: actions/github-script@v9
@@ -1306,8 +1282,8 @@ jobs:
           script: | # js
             const needs = JSON.parse(process.env.needs);
 
-            // Drop the determine-driver-skips bookkeeping job; every remaining job is a driver
-            // job whose result gates this check.
+            // Drop the determine-driver-skips bookkeeping job; the rest -- the gate and the
+            // driver jobs -- gate this check.
             const jobs = Object.entries(needs)
               .filter(([jobName]) => jobName !== 'determine-driver-skips')
               .map(([jobName, jobValues]) => ({

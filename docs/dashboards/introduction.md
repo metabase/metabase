@@ -167,6 +167,8 @@ src="https://www.youtube.com/embed/{{video_id}}
 
 To provide values for the variable, you'll need to add a filter to the dashboard, and connect that filter to the card's variable (in this case `video_id`). You can optionally set a default value for the variable. See [Connecting a filter or parameter widget to dashboard cards](./filters.md#connecting-a-filter-or-parameter-widget-to-dashboard-cards).
 
+If Metabase blocks the iframe, an admin needs to [allow iframes from that site](../configuring-metabase/domains.md#allow-iframes-from-a-site-in-dashboards).
+
 ## Dashboard tabs
 
 You can add multiple tabs to a dashboard to keep your cards organized.
@@ -343,11 +345,12 @@ To configure a dashboard using its URL, you can add the following optional keywo
 
 - `fullscreen`
 - `refresh`
+- `theme`
 
 Here's an example URL:
 
 ```
-https://metabase.mydomain.com/dash/2#refresh=60&fullscreen&night
+https://metabase.mydomain.com/dash/2#refresh=60&fullscreen&theme=night
 ```
 
 The part that says `refresh=60` sets the dashboard to automatically refresh every 60 seconds, `fullscreen` sets it to fullscreen mode. Use an ampersand, `&`, in between keywords, and make sure there's a hash, `#`, after the dashboard's ID number.

@@ -15,6 +15,7 @@
    [metabase.mcp.v2.message :as message]
    [metabase.mcp.v2.queries :as v2.queries]
    [metabase.mcp.v2.registry :as registry]
+   [metabase.mcp.v2.test-util :as v2.tu]
    [metabase.mcp.v2.tools.content]
    [metabase.mcp.v2.tools.query :as tools.query]
    [metabase.query-processor.core :as qp]
@@ -48,9 +49,14 @@
   (boolean (or error (:isError result))))
 
 (defn- response-text
-  "The outcome's text block, or a registry-level rejection's message."
+  "A registry-level rejection's message, an `:isError` result's raw text, or a successful result's text with its
+   data boundary stripped (throws when that boundary is missing)."
   [{:keys [result error]}]
-  (if error (message/render (:message error)) (-> result :content first :text)))
+  (let [text (-> result :content first :text)]
+    (cond
+      error             (message/render (:message error))
+      (:isError result) text
+      :else             (v2.tu/strip-data-boundary text))))
 
 (defn- payload
   "Parse the JSON payload line of a successful execute_query response. Throws if the call
@@ -966,7 +972,7 @@
 ;;; ------------------------------------------- QP input whitelist -------------------------------------------------
 
 ;;; GHY-4313: the QP only ever sees the keys MCP forwards
-;;; ([[metabase.mcp.v2.tools.query/query-passthrough-keys]]). A fresh `query` is additionally
+;;; ([[metabase.metabot.query-execution/query-passthrough-keys]]). A fresh `query` is additionally
 ;;; rejected outright by the closed `:metabase.lib.schema/query`, but the handle path skips that
 ;;; schema — `resolve-query-handle!` checks only that stages are non-empty and the last one has a
 ;;; positive limit, and `POST /drills` stores a caller-supplied query verbatim. So an unknown key

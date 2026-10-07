@@ -17,8 +17,7 @@
    [metabase.mcp.v2.message :as message]
    [metabase.mcp.v2.queries :as v2.queries]
    [metabase.mcp.v2.registry :as registry]
-   [metabase.mcp.v2.resources :as v2.resources]
-   [metabase.util.json :as json]))
+   [metabase.mcp.v2.resources :as v2.resources]))
 
 (set! *warn-on-reflection* true)
 
@@ -86,7 +85,7 @@
    it resolves the handle at `GET /api/embed-mcp/queries/:handle`; the text mirrors it so the model
    is never told less than the iframe was."
   [payload]
-  (common/success-content (message/msg ["%s" "%s"] (message/raw (json/encode payload)) visualize-steering) payload))
+  (common/success-content (message/msg ["%s" "%s"] (message/data payload) visualize-steering) payload))
 
 ;;; ---------------------------------------------- visualize_query -------------------------------------------------
 

@@ -1,17 +1,11 @@
 import type { HTMLAttributes, ReactNode } from "react";
 
 import { EntityIcon } from "metabase/common/components/EntityIcon";
-import { Group, Tooltip } from "metabase/ui";
+import { MarkdownPreview } from "metabase/common/components/MarkdownPreview";
+import { Box, Ellipsified, Group, Icon, Tooltip, rem } from "metabase/ui";
 import type { IconName } from "metabase-types/api";
 
-import {
-  SkeletonDescription,
-  SkeletonIconContainer,
-  SkeletonRoot,
-  SkeletonTitle,
-  SkeletonTooltipIcon,
-  SkeletonTooltipIconContainer,
-} from "./StaticSkeleton.styled";
+import S from "./StaticSkeleton.module.css";
 
 export interface StaticSkeletonProps extends HTMLAttributes<HTMLDivElement> {
   name?: string | null;
@@ -37,10 +31,16 @@ const StaticSkeleton = ({
   const defaultedDescription = description || "";
 
   return (
-    <SkeletonRoot {...props}>
+    <Box pos="relative" {...props}>
       {icon && (
         <Tooltip label={tooltip} disabled={!tooltip}>
-          <SkeletonIconContainer>
+          <Box
+            className={S.iconContainer}
+            pos="relative"
+            w="xl"
+            mt="sm"
+            mb="lg"
+          >
             <EntityIcon
               {...icon}
               size="1.5rem"
@@ -51,20 +51,36 @@ const StaticSkeleton = ({
               style={{ display: "block" }}
             />
             {tooltip && (
-              <SkeletonTooltipIconContainer>
-                <SkeletonTooltipIcon name="eye_crossed_out" />
-              </SkeletonTooltipIconContainer>
+              <Box
+                className={S.tooltipIconContainer}
+                pos="absolute"
+                right={-8}
+                bottom={-8}
+                p="xxxs"
+                bg="background_page-primary"
+              >
+                <Icon
+                  className={S.tooltipIcon}
+                  name="eye_crossed_out"
+                  size={12}
+                  display="block"
+                />
+              </Box>
             )}
-          </SkeletonIconContainer>
+          </Box>
         </Tooltip>
       )}
       <Group gap="0.5rem">
-        <SkeletonTitle>{name}</SkeletonTitle>
+        <Ellipsified c="text-primary" fw="bold">
+          {name}
+        </Ellipsified>
         {nameRightSection}
       </Group>
 
-      <SkeletonDescription>{defaultedDescription}</SkeletonDescription>
-    </SkeletonRoot>
+      <Box c="text-secondary" lh={rem(24)}>
+        <MarkdownPreview>{defaultedDescription}</MarkdownPreview>
+      </Box>
+    </Box>
   );
 };
 

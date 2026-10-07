@@ -24,8 +24,6 @@
    [metabase.api.macros.scope :as scope]
    [metabase.config.core :as config]
    [metabase.initialization-status.core :as init-status]
-   [metabase.mcp.core :as mcp]
-   [metabase.oauth-server.core :as oauth-server]
    [metabase.premium-features.core :as premium-features]
    [metabase.request.core :as request]
    [metabase.request.schema :as request.schema]
@@ -39,6 +37,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
+   [metabase.util.malli.schema :as ms]
    [metabase.util.password :as u.password]
    [metabase.util.string :as string]))
 
@@ -162,6 +161,22 @@
           (-> user-info
               (dissoc :api-key)))))))
 
+(mr/def ::oauth-bearer
+  "Fns that authenticate a request by its OAuth bearer token, and the scope that grants full access."
+  [:map
+   {:closed true}
+   [:extract-token     ifn?]
+   [:resolve-token     ifn?]
+   [:full-access-scope ms/NonBlankString]])
+
+(mr/def ::mcp-ui-credentials
+  "Fns that authenticate a request by the credential an MCP App UI carries."
+  [:map
+   {:closed true}
+   [:on-surface?        ifn?]
+   [:resolve-credential ifn?]
+   [:scope-satisfied?   ifn?]])
+
 (def ^:private full-access-token-scopes
   "The `:token-scopes` value that grants a bearer-authenticated request access to the general
    REST API as its user. The `::scope/unrestricted` keyword sentinel (not the `\"*\"` string)
@@ -179,8 +194,8 @@
    This mapping is the single trust hinge for OAuth bearer auth on the general API; keep it here
    and unit-test the two directions (full ⇒ unrestricted, narrow ⇒ passed through) so the
    security invariant can't silently regress."
-  [granted-scopes]
-  (if (contains? granted-scopes oauth-server/full-access-scope)
+  [full-access-scope granted-scopes]
+  (if (contains? granted-scopes full-access-scope)
     full-access-token-scopes
     granted-scopes))
 
@@ -190,15 +205,16 @@
    merged request carries both the user identity and the access the token was granted, and marks it
    `:authenticated-via-oauth?`. A token with no scopes does not authenticate. This is the only place an
    OAuth access token authenticates a request to the general (`/api/*`) API."
-  [request :- ::request.schema/request]
-  (when (init-status/complete?)
-    (when-let [token (oauth-server/extract-bearer-token request)]
-      (when-let [{:keys [user-id scopes]} (oauth-server/resolve-access-token token)]
+  [{:keys [extract-token resolve-token full-access-scope]} :- [:maybe ::oauth-bearer]
+   request                                                :- ::request.schema/request]
+  (when (and extract-token (init-status/complete?))
+    (when-let [token (extract-token request)]
+      (when-let [{:keys [user-id scopes]} (resolve-token token)]
         ;; Downstream, nil `:token-scopes` passes as scope-unaware auth, so a scope-less token is refused here.
         (when (seq scopes)
           (some-> (server.db/oauth-user-info user-id (premium-features/enable-advanced-permissions?))
                   (m/update-existing :is-group-manager? boolean)
-                  (assoc :token-scopes             (oauth-token->token-scopes scopes)
+                  (assoc :token-scopes             (oauth-token->token-scopes full-access-scope scopes)
                          :authenticated-via-oauth? true)))))))
 
 (defn- current-user-info-for-mcp-ui-credential
@@ -223,16 +239,16 @@
    the decision on its own: `ensure-scopes-checked` passes anything whose `:token-scopes` is nil. Drop the
    stamp and an unsatisfied route is served rather than refused. `dataset-routes-cost-the-query-scope-test`
    is what catches that."
-  [request]
-  (when (and (init-status/complete?)
-             (mcp/ui-credential-on-surface? (:request-method request) (:uri request)))
+  [{:keys [on-surface? resolve-credential scope-satisfied?]} request]
+  (when (and on-surface?
+             (init-status/complete?)
+             (on-surface? (:request-method request) (:uri request)))
     (when-let [{:keys [uid sid] :as claims}
-               (mcp/resolve-ui-credential (get-in request [:headers "x-metabase-mcp-ui-auth"]))]
+               (resolve-credential (get-in request [:headers "x-metabase-mcp-ui-auth"]))]
       (some-> (server.db/oauth-user-info uid (premium-features/enable-advanced-permissions?))
               (m/update-existing :is-group-manager? boolean)
               (assoc :token-scopes #{::scope/mcp-ui}
-                     :token-scopes-checked (mcp/ui-credential-scope-satisfied?
-                                            (:request-method request) (:uri request) claims)
+                     :token-scopes-checked (scope-satisfied? (:request-method request) (:uri request) claims)
                      :mcp-ui-session-id sid
                      :mcp-ui-credential claims)))))
 
@@ -245,14 +261,15 @@
             mcp-ui-info  "mcp-ui")))
 
 (defn- merge-current-user-info
-  [{:keys [metabase-session-key anti-csrf-token], {:strs [x-metabase-locale x-api-key]} :headers, :as request}]
+  [{:keys [oauth-bearer mcp-ui-credentials]}
+   {:keys [metabase-session-key anti-csrf-token], {:strs [x-metabase-locale x-api-key]} :headers, :as request}]
   (let [session-info (current-user-info-for-session metabase-session-key anti-csrf-token)
         api-key-info (when-not session-info (current-user-info-for-api-key x-api-key))
         ;; Bearer and MCP UI credentials are consulted only when no normal session/API key authenticated.
         oauth-info   (when-not (or session-info api-key-info)
-                       (current-user-info-for-oauth-token request))
+                       (current-user-info-for-oauth-token oauth-bearer request))
         mcp-ui-info  (when-not (or session-info api-key-info oauth-info)
-                       (current-user-info-for-mcp-ui-credential request))
+                       (current-user-info-for-mcp-ui-credential mcp-ui-credentials request))
         embedding-route (analytics/get-route)
         auth-method (auth-method session-info api-key-info oauth-info mcp-ui-info embedding-route)]
     (merge
@@ -268,13 +285,17 @@
 (defn wrap-current-user-info
   "Add `:metabase-user-id`, `:is-superuser?`, `:is-group-manager?` and `:user-locale` to the request if a valid session
   token, API key, OAuth bearer access token, OR MCP UI credential was passed. A bearer token additionally sets
-  `:token-scopes` (the access it was granted); precedence is session > API key > bearer > MCP UI credential."
-  [handler]
-  (fn [request respond raise]
-    (let [request' (tracing/with-span :db-app "db-app.session-lookup" {}
-                     (merge-current-user-info request))]
-      (analytics/with-auth-method! (:embedding/auth-method request')
-        (handler request' respond raise)))))
+  `:token-scopes` (the access it was granted); precedence is session > API key > bearer > MCP UI credential.
+  Bearer tokens and MCP UI credentials authenticate only when `options` supplies their `:oauth-bearer` and
+  `:mcp-ui-credentials` fns."
+  ([handler]
+   (wrap-current-user-info handler nil))
+  ([handler options]
+   (fn [request respond raise]
+     (let [request' (tracing/with-span :db-app "db-app.session-lookup" {}
+                      (merge-current-user-info options request))]
+       (analytics/with-auth-method! (:embedding/auth-method request')
+         (handler request' respond raise))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                               bind-current-user                                                |

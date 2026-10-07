@@ -100,7 +100,7 @@ export function EditDevCustomVizForm({ plugin }: Props) {
               <Group justify="flex-end">
                 <Button
                   variant="subtle"
-                  color="feedback-negative"
+                  color="negative"
                   onClick={handleRemove}
                 >
                   {t`Disable`}

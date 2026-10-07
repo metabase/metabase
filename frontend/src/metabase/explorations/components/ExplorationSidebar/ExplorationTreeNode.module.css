@@ -65,6 +65,10 @@
   margin-top: 0.75rem;
 }
 
+li:first-child > .treeRowThreadSeparated {
+  margin-top: 0;
+}
+
 /* Group headings stick while their group is scrolled through, and the whole
  * ancestor hierarchy stays visible: each heading pins just below its ancestors'
  * pinned headings (top = depth × row height). Each node and its subtree are

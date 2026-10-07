@@ -10,7 +10,6 @@ database_type: TIMESTAMP WITH TIME ZONE
 base_type: type/DateTimeWithLocalTZ
 effective_type: type/DateTimeWithLocalTZ
 semantic_type: type/CreationTimestamp
-dimensions: []
 position: 5
 database_position: 5
 serdes/meta:

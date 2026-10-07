@@ -25,7 +25,6 @@
    [metabase.server.streaming-response :as streaming-response]
    [metabase.system.core :as system]
    [metabase.util :as u]
-   [metabase.util.json :as json]
    [metabase.util.log :as log]
    [throttle.core :as throttle])
   (:import
@@ -168,18 +167,18 @@
   "Format a sequence of JSON-RPC messages as SSE event text."
   [messages]
   (str/join (for [message messages]
-              (str "event: message\ndata: " (json/encode message) "\n\n"))))
+              (str "event: message\ndata: " (message/json-text message) "\n\n"))))
 
 ;;; -------------------------------------------------- Responses ---------------------------------------------------
 
 (defn- json-response
-  "Build a Ring response with a JSON-encoded `body`."
+  "Build a Ring response with `body` as [[message/json-text]]."
   ([status body]
    (json-response status body nil))
   ([status body extra-headers]
    {:status  status
     :headers (merge {"Content-Type" "application/json"} extra-headers)
-    :body    (json/encode body)}))
+    :body    (message/json-text body)}))
 
 (defn- sse-response
   "Return a plain Ring response with SSE-formatted body for POST requests."
@@ -372,7 +371,9 @@
       ;; Initialize: create session and return response with session header
       (and (not batch?) (valid-message? body) (= "initialize" (:method body)))
       (let [params           (:params body)
-            supports-mcp-ui? (mcp-app-ui-capability? params)
+            ;; A client the admin switched off would only get a broken card: its iframe is blocked by CORS.
+            supports-mcp-ui? (and (mcp-app-ui-capability? params)
+                                  (mcp/inline-ui-enabled-for-client? (get-in params [:clientInfo :name])))
             session-id       (mcp.session/create! user-id {:supports-mcp-ui?
                                                            supports-mcp-ui?})
             init-response (handle-initialize (:id body) params capabilities instructions)]

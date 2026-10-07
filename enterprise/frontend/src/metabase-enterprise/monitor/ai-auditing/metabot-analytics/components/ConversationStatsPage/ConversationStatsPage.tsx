@@ -459,7 +459,6 @@ export function DataComplexityHeader() {
 
       <Flex gap="sm" wrap="wrap" align="center">
         <Button
-          variant="default"
           onClick={handleRecompute}
           loading={refreshDataComplexityScoresLoading}
           disabled={refreshDataComplexityScoresLoading}

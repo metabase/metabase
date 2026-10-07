@@ -8,9 +8,9 @@
    [toucan2.core :as t2]))
 
 (mu/defn card-collection-id
-  "The `:collection_id` and `:card_schema` of the Card with `card-id`, or nil."
+  "The `:collection_id` of the Card with `card-id`, or nil."
   [card-id :- ::lib.schema.id/card]
-  (t2/select-one [:model/Card :collection_id :card_schema] :id card-id))
+  (t2/select-one [:model/Card :collection_id] :id card-id))
 
 (mu/defn card-not-in-database
   "The Card with `card-id` if it does not belong to the Database with `database-id`, or nil."

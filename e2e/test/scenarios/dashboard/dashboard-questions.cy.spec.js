@@ -821,7 +821,9 @@ describe("Dashboard > Dashboard Questions", () => {
 
       H.modal().within(() => {
         H.switchToAddMoreData();
-        H.selectDataset("Blue Question");
+        H.selectDataset("Blue Question", {
+          searchAlias: "searchBlueQuestion",
+        });
         cy.button("Save").click();
       });
 
@@ -846,9 +848,17 @@ describe("Dashboard > Dashboard Questions", () => {
       });
 
       cy.log("Move the question to an entirely different dashboard");
+      cy.intercept("GET", "/api/collection/root/items*").as(
+        "getMoveDestinations",
+      );
       H.openQuestionActions("Move");
 
-      H.entityPickerModal().findByText("Orders in a dashboard").click();
+      cy.wait("@getMoveDestinations")
+        .its("response.statusCode")
+        .should("eq", 200);
+      H.entityPickerModal()
+        .findByText("Orders in a dashboard", { timeout: 10_000 })
+        .click();
       H.entityPickerModal().button("Move").click();
 
       cy.log("Should warn about removing from 2 dashboards");

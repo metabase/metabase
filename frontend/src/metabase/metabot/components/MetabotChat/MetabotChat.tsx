@@ -8,12 +8,21 @@ import { AIProviderConfigurationModal } from "metabase/metabot/components/AIProv
 import { AIProviderConfigurationNotice } from "metabase/metabot/components/AIProviderConfigurationNotice";
 import { MetabotLongChatNotice } from "metabase/metabot/components/MetabotChat/MetabotLongChatNotice";
 import { useSetting } from "metabase/settings";
-import { Box, Button, Flex, Paper, Stack, Text } from "metabase/ui";
+import {
+  Box,
+  Flex,
+  Icon,
+  Paper,
+  Stack,
+  Text,
+  UnstyledButton,
+} from "metabase/ui";
 
 import { useGetSuggestedMetabotPromptsQuery } from "../../api";
 import { useMetabotConversation, useUserMetabotPermissions } from "../../hooks";
 import type { MetabotAgentId } from "../../state";
 import type { MetabotChatConfig } from "../Metabot";
+import { METABOT_HOVER_CARD_BOUNDARY_ATTR } from "../MetabotHoverCard";
 
 import Styles from "./MetabotChat.module.css";
 import { MetabotChatEditor } from "./MetabotChatEditor";
@@ -39,6 +48,7 @@ export const MetabotChat = ({
   config = defaultConfig,
   className,
   headerActions,
+  size = "md",
 }: {
   conversationId: string;
   agentId?: MetabotAgentId;
@@ -46,6 +56,7 @@ export const MetabotChat = ({
   config?: MetabotChatConfig;
   className?: string;
   headerActions?: ReactNode;
+  size?: "md" | "lg";
 }) => {
   const [
     isAiProviderConfigurationModalOpen,
@@ -88,7 +99,10 @@ export const MetabotChat = ({
   const shouldShowHeader = headerActions || title;
 
   return (
-    <Box className={cx(Styles.container, className)} data-testid="metabot-chat">
+    <Box
+      className={cx(Styles.container, size === "lg" && Styles.large, className)}
+      data-testid="metabot-chat"
+    >
       {shouldShowHeader && (
         <Box className={Styles.header} data-testid="metabot-chat-header">
           {title && (
@@ -115,6 +129,7 @@ export const MetabotChat = ({
           ref={scrollContainerRef}
           className={Styles.messagesContainer}
           data-testid="metabot-chat-messages"
+          {...{ [METABOT_HOVER_CARD_BOUNDARY_ATTR]: "" }}
         >
           {!hasMessages && !metabot.isDoingScience && (
             <>
@@ -147,21 +162,34 @@ export const MetabotChat = ({
               {isConfigured && (
                 <Stack
                   gap="sm"
-                  className={Styles.promptSuggestionsContainer}
+                  className={cx(
+                    Styles.promptSuggestionsContainer,
+                    metabot.prompt.length > 0 && Styles.promptSuggestionsHidden,
+                  )}
                   data-testid="metabot-prompt-suggestions"
                 >
                   <>
                     {suggestedPrompts.map(({ prompt }, index) => (
-                      <Box key={index}>
-                        <Button
-                          fz="sm"
-                          size="xs"
-                          onClick={() => metabot.submitInput(prompt)}
-                          className={Styles.promptSuggestionButton}
-                        >
-                          {prompt}
-                        </Button>
-                      </Box>
+                      <UnstyledButton
+                        key={index}
+                        fz="sm"
+                        onClick={() => metabot.submitInput(prompt)}
+                        className={Styles.promptSuggestionButton}
+                        bg="background_surface-brand-subtle"
+                        bdrs="sm"
+                        lh="xl"
+                      >
+                        <Flex gap="sm">
+                          <Icon
+                            name="bolt"
+                            size={16}
+                            c="icon-brand"
+                            flex="0 0 auto"
+                            style={{ transform: "translateY(1px)" }}
+                          />
+                          <Box>{prompt}</Box>
+                        </Flex>
+                      </UnstyledButton>
                     ))}
                   </>
                 </Stack>
@@ -178,7 +206,7 @@ export const MetabotChat = ({
               <Messages
                 messages={metabot.messages}
                 onRetryMessage={metabot.retryMessage}
-                onContinueMessage={metabot.submitInput}
+                onContinueMessage={metabot.continueResponse}
                 onRefreshConversation={() => {
                   metabot.setPrompt("");
                   metabot.reloadConversation();
@@ -188,6 +216,7 @@ export const MetabotChat = ({
                 debug={metabot.debugMode}
                 agentId={agentId}
                 conversationId={metabot.conversationId}
+                size={size}
               />
               {/* filler - height gets set via ref mutation */}
               <div ref={fillerRef} data-testid="metabot-message-filler" />
@@ -217,7 +246,6 @@ export const MetabotChat = ({
                   value={metabot.prompt}
                   autoFocus
                   isResponding={metabot.isDoingScience}
-                  placeholder={t`How can I help? Type @ to mention items.`}
                   onChange={metabot.setPrompt}
                   onSubmit={() => metabot.submitInput(metabot.prompt)}
                   onStop={metabot.cancelRequest}
@@ -229,7 +257,7 @@ export const MetabotChat = ({
             )}
           </Box>
           <Box className={Styles.footerRow}>
-            <Text fz="sm" c="text-secondary" ta="center">
+            <Text fz="sm" c="text-disabled" ta="center">
               {t`${metabotName} isn't perfect. Double-check results.`}
             </Text>
             {metabot.contextWindowPercentUsage > 50 &&

@@ -21,10 +21,16 @@
    [:id pos-int?]
    [:sync_task_type TaskType]
    [:initiated_by {:optional true} [:maybe pos-int?]]
+   [:initiated_by_user {:optional true} [:maybe [:map
+                                                 [:id pos-int?]
+                                                 [:first_name [:maybe :string]]
+                                                 [:last_name [:maybe :string]]
+                                                 [:email :string]]]]
    [:progress [:maybe [:float {:min 0.0 :max 1.0}]]]
    [:started_at :any]
    [:ended_at {:optional true} [:maybe :any]]
    [:last_progress_report_at {:optional true} [:maybe :any]]
+   [:last_heartbeat_at {:optional true} [:maybe :any]]
    [:version {:optional true} [:maybe :string]]
    [:cancelled {:optional true} [:maybe :boolean]]
    [:error_message {:optional true} [:maybe :string]]
@@ -210,7 +216,12 @@
                     [:kind   [:= "merged"]]
                     [:pulled :int]
                     [:pushed :int]
-                    [:branch [:maybe :string]]]]])
+                    [:branch [:maybe :string]]]]
+   ;; Conflict outcomes: why a task stopped when the cause is not a collision (its `:conflicts` say what collided).
+   ["remote-changed"    [:map {:closed true}
+                         [:kind [:= "remote-changed"]]]]
+   ["history-rewritten" [:map {:closed true}
+                         [:kind [:= "history-rewritten"]]]]])
 
 (mr/def ::remote-sync-task
   "A RemoteSyncTask as selected from the app DB: every column of `:remote_sync_task`."
@@ -228,6 +239,7 @@
    [:started_at              {:optional true} [:maybe ms/TemporalInstant]]
    [:ended_at                {:optional true} [:maybe ms/TemporalInstant]]
    [:last_progress_report_at {:optional true} [:maybe ms/TemporalInstant]]
+   [:last_heartbeat_at       {:optional true} [:maybe ms/TemporalInstant]]
    [:initiated_by            {:optional true} [:maybe ::lib.schema.id/user]]
    [:error_message           {:optional true} [:maybe :string]]
    [:version                 {:optional true} [:maybe :string]]

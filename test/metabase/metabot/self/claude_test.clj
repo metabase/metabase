@@ -325,6 +325,7 @@
   (let [input [{:role :user :content "hi"}]
         speed #(:speed (claude/claude-request-body (merge {:input input} %)))]
     (testing ":fast? requests fast mode on models that support it"
+      (is (= "fast" (speed {:model "claude-opus-5-5" :fast? true})))
       (is (= "fast" (speed {:model "claude-opus-5" :fast? true})))
       (is (= "fast" (speed {:model "claude-opus-4-8" :fast? true}))))
     (testing "no speed without :fast?"
@@ -645,6 +646,33 @@
                              :tools       [(metabot.tu/get-time-tool)]
                              :tool_choice "required"})))))))
 
+(deftest ^:parallel forced-tool-choice-test
+  (let [schema {:type "object" :properties {:answer {:type "string"}}}
+        tools  [(metabot.tu/get-time-tool)]
+        body   #(claude/claude-request-body (merge {:input [{:role :user :content "hi"}]} %))]
+    (testing "structured output and a required tool choice force the call, including on date-suffixed 5.0 names"
+      (doseq [model ["claude-opus-5" "claude-sonnet-5" "claude-opus-5-20261005" "claude-sonnet-5-2026-10-05"]]
+        (testing model
+          (is (=? {:tool_choice {:type "tool" :name "structured_output"} :max_tokens 512}
+                  (body {:model model :schema schema :max-tokens 512})))
+          (is (=? {:tool_choice {:type "any"}}
+                  (body {:model model :tools tools :tool_choice "required"}))))))
+    (testing "Opus and Sonnet from 5.5 reject a forced tool choice, so they get auto and keep thinking"
+      (doseq [model ["claude-opus-5-5" "claude-sonnet-5-5" "anthropic.claude-sonnet-5-5" "claude-opus-5.5"
+                     "claude-opus-5-5-20261005" "claude-sonnet-5-5-2026-10-05"]]
+        (testing model
+          (is (=? {:tool_choice {:type "auto"}
+                   :tools       [{:name "structured_output"}]
+                   :thinking    {:type "adaptive"}}
+                  (body {:model model :schema schema})))
+          (is (=? {:tool_choice {:type "auto"} :thinking {:type "adaptive"}}
+                  (body {:model model :tools tools :tool_choice "required"}))))))
+    (testing "their structured-output cap is floored, since the thinking bills against it"
+      (are [expected opts] (= expected (:max_tokens (body (assoc opts :model "claude-opus-5-5"))))
+        2048 {:schema schema :max-tokens 512}
+        4096 {:schema schema :max-tokens 4096}
+        512  {:max-tokens 512}))))
+
 (deftest ^:parallel every-supported-model-has-a-ceiling-test
   (doseq [[id {:keys [display-name max-tokens]}] @#'claude/supported-models]
     (is (pos-int? max-tokens) id)
@@ -747,7 +775,7 @@
                                                               :headers {"anthropic-version" "2023-06-01"
                                                                         "x-api-key"        "sk-ant-byok"}}
                                                              req))
-                                                     {:body "{\"data\":[]}"})]
+                                                     {:status 200 :body {:data []}})]
             (is (= {:models []}
                    (claude/list-models {:credentials byok-credentials})))))
         (testing "Uses ai proxy when explicitly requested"
@@ -757,7 +785,7 @@
                                                               :headers {"anthropic-version"         "2023-06-01"
                                                                         "x-metabase-instance-token" "proxy-token"}}
                                                              req))
-                                                     {:body "{\"data\":[]}"})]
+                                                     {:status 200 :body {:data []}})]
             (is (= {:models []}
                    (claude/list-models {:ai-proxy? true})))))
         (testing "Does not fall back to ai proxy when the connection carries no key"
@@ -794,7 +822,7 @@
       (mt/with-dynamic-fn-redefs [http/request (fn [req]
                                                  (is (=? {:headers {"x-api-key" "sk-ant-explicit"}}
                                                          req))
-                                                 {:body "{\"data\":[]}"})]
+                                                 {:status 200 :body {:data []}})]
         (is (= {:models []}
                (claude/list-models {:credentials {:api-key "sk-ant-explicit"}})))))))
 
@@ -814,22 +842,24 @@
            #"No Anthropic API key is set"
            (claude/list-models {:credentials {:api-key ""}}))))))
 
-(deftest ^:parallel supported-model?-test
+(deftest ^:parallel supported-models-test
   (testing "whitelisted models are supported"
-    (doseq [id ["claude-fable-5" "claude-opus-5" "claude-opus-4-8" "claude-sonnet-5" "claude-haiku-4-5-20251001"]]
-      (is (true? (#'claude/supported-model? {:id id})) id)))
+    (doseq [id ["claude-fable-5" "claude-opus-5-5" "claude-opus-5" "claude-opus-4-8" "claude-sonnet-5-5" "claude-sonnet-5"
+                "claude-haiku-4-5-20251001"]]
+      (is (contains? claude/supported-models id) id)))
   (testing "non-whitelisted models are not supported"
     (doseq [id ["claude-3-5-sonnet-20241022" "claude-opus-4-0" "claude-sonnet-4-20250514"]]
-      (is (false? (#'claude/supported-model? {:id id})) id))))
+      (is (not (contains? claude/supported-models id)) id))))
 
 (deftest list-models-filters-catalog-to-whitelist-test
   (testing "list-models keeps only whitelisted models sorted by id, preserving display_name"
+    ;; the catalog request is `:as :json`, so clj-http hands the adapter an already-decoded body
     (with-redefs [http/request (fn [_]
-                                 {:body (json/encode
-                                         {:data [{:id "claude-sonnet-5"            :display_name "Claude Sonnet 5"  :created_at "2026-01-01"}
-                                                 {:id "claude-opus-4-8"            :display_name "Claude Opus 4.8"  :created_at "2026-02-01"}
-                                                 {:id "claude-3-5-sonnet-20241022" :display_name "Claude 3.5"       :created_at "2024-10-22"}
-                                                 {:id "claude-fable-5"             :display_name "Claude Fable 5"   :created_at "2026-03-01"}]})})]
+                                 {:status 200
+                                  :body   {:data [{:id "claude-sonnet-5"            :display_name "Claude Sonnet 5"  :created_at "2026-01-01"}
+                                                  {:id "claude-opus-4-8"            :display_name "Claude Opus 4.8"  :created_at "2026-02-01"}
+                                                  {:id "claude-3-5-sonnet-20241022" :display_name "Claude 3.5"       :created_at "2024-10-22"}
+                                                  {:id "claude-fable-5"             :display_name "Claude Fable 5"   :created_at "2026-03-01"}]}})]
       (is (= [{:id "claude-fable-5" :display_name "Claude Fable 5"}
               {:id "claude-opus-4-8" :display_name "Claude Opus 4.8"}
               {:id "claude-sonnet-5" :display_name "Claude Sonnet 5"}]
@@ -838,13 +868,13 @@
 (deftest ^:parallel model-supports-temperature?-test
   (testing "models that accept an explicit temperature"
     (doseq [model ["claude-haiku-4-5" "claude-sonnet-4-6" "claude-sonnet-4-5"
-                   "claude-opus-4-5" "claude-opus-4-6" "claude-opus-4-1"]]
+                   "claude-opus-4-5" "claude-opus-4-6" "claude-opus-4-1" "claude-opus-4-20250514"]]
       (is (true? (#'claude/model-supports-temperature? model))
           model)))
   (testing "sampling parameters were removed starting with Opus 4.7, Sonnet 5, and on Fable models"
     (doseq [model ["claude-opus-4-7" "claude-opus-4-8" "claude-opus-4-8-20260415"
-                   "claude-opus-5" "claude-opus-5-0"
-                   "claude-sonnet-5" "claude-sonnet-5-0" "claude-sonnet-6"
+                   "claude-opus-5" "claude-opus-5-0" "claude-opus-5-5"
+                   "claude-sonnet-5" "claude-sonnet-5-0" "claude-sonnet-5-5" "claude-sonnet-6"
                    "claude-fable-5"]]
       (is (false? (#'claude/model-supports-temperature? model))
           model))))

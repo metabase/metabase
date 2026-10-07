@@ -2,9 +2,11 @@
   "/api/session endpoints"
   (:require
    [java-time.api :as t]
+   [metabase.api-scope.data-app :as api-scope]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.open-api :as open-api]
+   [metabase.appearance.core :as appearance]
    [metabase.auth-identity.core :as auth-identity]
    [metabase.channel.email.messages :as messages]
    [metabase.channel.settings :as channel.settings]
@@ -459,8 +461,31 @@
 (api.macros/defendpoint :get "/properties"
   "Get all properties and their values. These are the specific `Settings` that are readable by the current user, or are
   public if no user is logged in."
+  {:scope api-scope/data-app}
   []
   (setting/user-readable-values-map (setting/current-user-readable-visibilities)))
+
+(api.macros/defendpoint :get "/illustration/:key" :- :any
+  "Fetch the uploaded image of a custom illustration setting, e.g. `login-page-illustration-custom`."
+  [{setting-name :key} :- [:map {:closed true}
+                           [:key ms/NonBlankString]]
+   {:keys [v]} :- [:map {:closed true}
+                   [:v {:optional true} :string]]]
+  (let [setting-key (keyword setting-name)
+        _           (api/check-404 (contains? appearance/custom-illustration-settings setting-key))
+        _           (api/check (setting/can-read-setting? setting-key (setting/current-user-readable-visibilities))
+                               [401 (tru "Unauthenticated")])
+        {:keys [content-type media-type], image-bytes :bytes, image-hash :hash}
+        (api/check-404 (appearance/illustration-image setting-key))
+        headers (cond-> {"Content-Type"  content-type
+                         ;; `v` is the hash in the URL the setting getter returns, so that URL can be cached forever.
+                         ;; `private` because middleware adds cookies to the response.
+                         "Cache-Control" (if (= v image-hash)
+                                           "private, max-age=31536000, immutable"
+                                           "private, no-cache")}
+                  (= media-type "image/svg+xml")
+                  (assoc "Content-Security-Policy" "default-src 'none'; style-src 'unsafe-inline'; sandbox"))]
+    {:status 200, :headers headers, :body image-bytes}))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
 ;;

@@ -26,25 +26,25 @@
   "The AuthIdentity of the User with `user-id` at `provider`, or nil."
   [user-id  :- ::lib.schema.id/user
    provider :- :string]
-  (t2/select-one :model/AuthIdentity :user_id user-id :provider provider))
+  (t2/select-one :model/AuthIdentity :user_id (long user-id) :provider [:auto/param provider]))
 
 (mu/defn auth-identity-id
   "The id of the AuthIdentity of the User with `user-id` at `provider`, or nil."
   [user-id  :- ::lib.schema.id/user
    provider :- :string]
-  (t2/select-one-pk :model/AuthIdentity :user_id user-id :provider provider))
+  (t2/select-one-pk :model/AuthIdentity :user_id (long user-id) :provider [:auto/param provider]))
 
 (mu/defn auth-identity-expiry
   "The id and expiry of the AuthIdentity of the User with `user-id` at `provider`, or nil."
   [user-id  :- ::lib.schema.id/user
    provider :- :string]
-  (t2/select-one [:model/AuthIdentity :id :expires_at] :user_id user-id :provider provider))
+  (t2/select-one [:model/AuthIdentity :id :expires_at] :user_id (long user-id) :provider [:auto/param provider]))
 
 (mu/defn auth-identity-exists?
   "Whether the User with `user-id` has an AuthIdentity at `provider`."
   [user-id  :- ::lib.schema.id/user
    provider :- :string]
-  (t2/exists? :model/AuthIdentity :user_id user-id :provider provider))
+  (t2/exists? :model/AuthIdentity :user_id (long user-id) :provider [:auto/param provider]))
 
 (mu/defn insert-auth-identity!
   "Insert the AuthIdentity `row`, returning the number inserted."
@@ -67,14 +67,14 @@
   "Delete the AuthIdentities of the User with `user-id` at `provider`, returning the number deleted."
   [user-id  :- ::lib.schema.id/user
    provider :- :string]
-  (t2/delete! :model/AuthIdentity :user_id user-id :provider provider))
+  (t2/delete! :model/AuthIdentity :user_id (long user-id) :provider [:auto/param provider]))
 
 (mu/defn delete-sessions-for-user!
   "Delete every Session of the User with `user-id`, returning the number deleted. Duplicates
   `metabase.session.db/delete-sessions-for-user!`; can't delegate to it because the `session` module already depends
   on `auth-identity`, so the reverse dependency would be a module cycle."
   [user-id :- ::lib.schema.id/user]
-  (t2/delete! :model/Session :user_id user-id))
+  (t2/delete! :model/Session :user_id (long user-id)))
 
 (mu/defn user
   "The User with `user-id`, or nil."
@@ -89,7 +89,7 @@
 (mu/defn user-login-columns
   "The id, active flag, last login, and tenant id of the User with `user-id`, or nil."
   [user-id :- ::lib.schema.id/user]
-  (t2/select-one [:model/User :id :is_active :last_login :tenant_id] :id user-id))
+  (t2/select-one [:model/User :id :is_active :last_login :tenant_id] :id (long user-id)))
 
 (mu/defn user-login-columns-by-email
   "The id, active flag, last login, and tenant id of the User whose email matches `email` case-insensitively, or
@@ -105,7 +105,7 @@
 (mu/defn user-active?
   "Whether the User with `user-id` is active."
   [user-id :- ::lib.schema.id/user]
-  (t2/select-one-fn :is_active :model/User :id user-id))
+  (t2/select-one-fn :is_active :model/User :id (long user-id)))
 
 (mu/defn update-user!
   "Apply `changes` to the User with `user-id`, returning the number updated."
@@ -133,14 +133,16 @@
                             [:saml-session-index  {:optional true} [:maybe :string]]
                             [:saml-name-id        {:optional true} [:maybe :string]]
                             [:saml-name-id-format {:optional true} [:maybe :string]]]]
+  ;; `:id` and `:session_key` stay unmarked: the before-insert hook checks the id is not a UUID and hashes the key,
+  ;; and both need the plain string. The key itself never reaches SQL, only its hash.
   (t2/insert-returning-instance! :model/Session
                                  ;; Without setting the ID here we can't return an instance on MySQL
                                  :id session-id
-                                 :user_id user-id
-                                 :auth_identity_id auth-identity-id
+                                 :user_id (long user-id)
+                                 :auth_identity_id (some-> auth-identity-id long)
                                  :session_key session-key
-                                 :expires_at expires-at
-                                 :mfa_auth_identity_id mfa-auth-identity-id
-                                 :saml_session_index (:saml-session-index opts)
-                                 :saml_name_id (:saml-name-id opts)
-                                 :saml_name_id_format (:saml-name-id-format opts)))
+                                 :expires_at [:auto/param expires-at]
+                                 :mfa_auth_identity_id (some-> mfa-auth-identity-id long)
+                                 :saml_session_index [:auto/param (:saml-session-index opts)]
+                                 :saml_name_id [:auto/param (:saml-name-id opts)]
+                                 :saml_name_id_format [:auto/param (:saml-name-id-format opts)]))

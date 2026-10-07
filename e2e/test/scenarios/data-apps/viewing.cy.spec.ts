@@ -3,7 +3,6 @@ import {
   DATA_APP_NAME as APP_NAME,
   visitDataAppRoute as visitAppRoute,
 } from "e2e/support/helpers";
-import type { DataApp } from "metabase-types/api";
 
 import { DATA_APP_TEST_ENV as TEST_ENV } from "./helpers";
 
@@ -57,45 +56,6 @@ describe("scenarios > data apps > viewing & routing", () => {
           "have.text",
           "—",
         );
-      });
-    });
-
-    it("shows unpublished app error when opening an app without a resource collection", () => {
-      cy.request<DataApp>("POST", `/api/apps/${APP_NAME}/draft`)
-        .its("body.resource_collection_id")
-        .as("resourceCollectionId");
-
-      cy.log("archive and delete the data app collection");
-      cy.get<number>("@resourceCollectionId").then((collectionId) => {
-        cy.request("PUT", `/api/collection/${collectionId}`, {
-          archived: true,
-        });
-
-        cy.request("DELETE", `/api/collection/${collectionId}`);
-      });
-
-      cy.log("fetching bundle should return 409 error");
-      cy.request({
-        url: `/api/apps/${APP_NAME}/bundle`,
-        failOnStatusCode: false,
-      })
-        .its("status")
-        .should("eq", 409);
-
-      cy.intercept("GET", `/api/apps/${APP_NAME}`).as("getUnpublishedApp");
-      H.openDataApp(APP_NAME);
-
-      cy.log("fetching data app metadata should return 409 error");
-      cy.wait("@getUnpublishedApp")
-        .its("response.statusCode")
-        .should("eq", 409);
-
-      H.main().within(() => {
-        cy.findByText("This data app isn’t published yet").should("be.visible");
-
-        cy.findByText(
-          "An administrator needs to publish this data app before it can be opened.",
-        ).should("be.visible");
       });
     });
 
@@ -189,6 +149,36 @@ describe("scenarios > data apps > viewing & routing", () => {
         cy.findByTestId("current-pathname").should("have.text", "/details");
       });
       cy.location("pathname").should("eq", `/apps/${APP_NAME}/details`);
+    });
+  });
+
+  describe("outdated apps", () => {
+    it("tells a non-admin why an outdated app won't open", () => {
+      H.mockDataApp(APP_NAME, { displayName: APP_DISPLAY_NAME });
+
+      // The metadata endpoint refuses an outdated app to non-admins with this
+      // exact shape (see `check-not-outdated` in data_apps/api.clj).
+      cy.intercept(
+        { method: "GET", pathname: `/api/apps/${APP_NAME}` },
+        {
+          statusCode: 409,
+          body: {
+            "error-code": "data-app-outdated",
+            message: "This app was built for version 1 of data apps.",
+          },
+        },
+      );
+
+      cy.signInAsNormalUser();
+      H.openDataApp(APP_NAME);
+
+      H.main().within(() => {
+        cy.findByText("This data app is outdated").should("be.visible");
+        cy.findByText("This app was built for version 1 of data apps.").should(
+          "be.visible",
+        );
+      });
+      cy.get("iframe").should("not.exist");
     });
   });
 

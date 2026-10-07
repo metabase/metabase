@@ -289,6 +289,7 @@ describe("MonitorLayout", () => {
 
   it("hides the migrated Tools tabs for an analyst without the monitoring permission", async () => {
     setup({
+      tokenFeatures: { advanced_permissions: true },
       user: createMockUser({
         is_superuser: false,
         is_data_analyst: true,
@@ -350,6 +351,7 @@ describe("MonitorLayout", () => {
 
   it("hides Alerts management for an analyst even with the monitoring permission", async () => {
     setup({
+      tokenFeatures: { advanced_permissions: true },
       user: createMockUser({
         is_superuser: false,
         is_data_analyst: true,

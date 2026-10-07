@@ -3,6 +3,7 @@ import { useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
+import { ForwardRefLink } from "metabase/common/components/Link";
 import { AIProviderConfigurationModal } from "metabase/metabot/components/AIProviderConfigurationModal";
 import { AIProviderConfigurationNotice } from "metabase/metabot/components/AIProviderConfigurationNotice";
 import { MetabotPromptInput } from "metabase/metabot/components/MetabotPromptInput";
@@ -14,6 +15,7 @@ import type { SuggestionModel } from "metabase/rich_text_editing/tiptap/extensio
 import {
   ActionIcon,
   Box,
+  Button,
   Flex,
   Icon,
   Paper,
@@ -21,6 +23,7 @@ import {
   Text,
   UnstyledButton,
 } from "metabase/ui";
+import * as Urls from "metabase/urls";
 
 import { useGetSuggestedMetabotPromptsQuery } from "../../api";
 
@@ -65,6 +68,7 @@ export const MetabotGreeting = ({
     { skip: !canUseNlq },
   );
   const suggestedPrompts = suggestedPromptsReq.currentData?.prompts;
+  const showSuggestions = canUseNlq && suggestedPrompts?.length !== 0;
 
   const handleSubmit = () => metabot.submitInput(metabot.prompt);
   const inputDisabled =
@@ -77,6 +81,14 @@ export const MetabotGreeting = ({
           <Text fz="xl" fw={600} c="text-primary">
             {title}
           </Text>
+          <Button
+            component={ForwardRefLink}
+            to={Urls.newExploration()}
+            bd="none"
+            leftSection={<Icon name="telescope" c="brand" />}
+          >
+            {t`Research`}
+          </Button>
         </Flex>
         <Paper className={S.inputContainer}>
           <Box className={S.editorWrapper}>
@@ -95,7 +107,6 @@ export const MetabotGreeting = ({
                 value={metabot.prompt}
                 autoFocus
                 disabled={metabot.isDoingScience}
-                placeholder={t`Ask about your data, and type @ to mention an item`}
                 onChange={metabot.setPrompt}
                 onSubmit={handleSubmit}
                 onStop={metabot.cancelRequest}
@@ -120,23 +131,37 @@ export const MetabotGreeting = ({
           </Box>
         </Paper>
 
-        <Box
-          className={S.promptSuggestionsContainer}
-          data-testid="metabot-prompt-suggestions"
-        >
-          {canUseNlq
-            ? suggestedPrompts?.map(({ prompt }, index) => (
+        {showSuggestions && (
+          <Stack gap="md">
+            <Text fz="xs" c="text-secondary" mt="1.5rem">
+              {t`Suggestions`}
+            </Text>
+            <Box
+              className={S.promptSuggestionsContainer}
+              data-testid="metabot-prompt-suggestions"
+            >
+              {suggestedPrompts?.map(({ prompt }, index) => (
                 <UnstyledButton
                   key={index}
                   className={S.promptSuggestion}
                   style={{ animationDelay: `${index * 75}ms` }}
                   onClick={() => metabot.submitInput(prompt)}
                 >
-                  <Text>{prompt}</Text>
+                  <Flex align="flex-start" gap="sm">
+                    <Icon
+                      name="bolt"
+                      size={16}
+                      c="icon-brand"
+                      flex="0 0 auto"
+                      style={{ marginTop: "4px" }}
+                    />
+                    <Text>{prompt}</Text>
+                  </Flex>
                 </UnstyledButton>
-              ))
-            : null}
-        </Box>
+              ))}
+            </Box>
+          </Stack>
+        )}
       </Stack>
       <AIProviderConfigurationModal
         opened={isAiProviderConfigurationModalOpen}

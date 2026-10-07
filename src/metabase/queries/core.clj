@@ -3,6 +3,7 @@
    [metabase.queries.cached-result]
    [metabase.queries.card]
    [metabase.queries.card-write-checks]
+   [metabase.queries.db]
    [metabase.queries.metadata]
    [metabase.queries.models.card]
    [metabase.queries.models.card.metadata]
@@ -30,6 +31,10 @@
   card-param-constraints
   card-param-values
   card-param-remapped-value]
+ [metabase.queries.db
+  card-query-info
+  cards-queries-info
+  move-actions-of-models!]
  [metabase.queries.models.card
   create-card!]
  [metabase.queries.card-write-checks
@@ -47,7 +52,6 @@
  [metabase.queries.models.card
   fully-parameterized?
   maybe-unverify!
-  model-supports-implicit-actions?
   model?
   sole-dashboard-id
   starting-card-schema-version
@@ -78,20 +82,12 @@
  [metabase.query-processor.card
   parameter-template-tag?])
 
-;; the re-exported var carries the docstring; kondo can't see through import-def
-#_{:clj-kondo/ignore [:missing-docstring]}
 (p/import-def metabase.queries.models.card/populate-query-fields populate-card-query-fields)
 
-;; the re-exported var carries the docstring; kondo can't see through import-def
-#_{:clj-kondo/ignore [:missing-docstring]}
 (p/import-def metabase.query-processor.card/template-tag-parameters card-template-tag-parameters)
 
-;; the re-exported var carries the docstring; kondo can't see through import-def
-#_{:clj-kondo/ignore [:missing-docstring]}
 (p/import-def metabase.queries.models.parameter-card/delete-all-for-parameterized-object!
               delete-all-parameter-cards-for-parameterized-object!)
 
-;; the re-exported var carries the docstring; kondo can't see through import-def
-#_{:clj-kondo/ignore [:missing-docstring]}
 (p/import-def metabase.queries.models.parameter-card/upsert-or-delete-from-parameters!
               upsert-or-delete-parameter-cards-from-parameters!)

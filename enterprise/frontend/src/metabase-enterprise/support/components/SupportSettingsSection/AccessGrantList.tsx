@@ -25,7 +25,7 @@ export const AccessGrantList = (props: AccessGrantListProps) => {
       title: t`Revoke access grant?`,
       message: t`This will immediately revoke the support agent's access to your instance.`,
       confirmButtonText: t`Revoke`,
-      confirmButtonProps: { color: "feedback-negative" },
+      confirmButtonProps: { color: "negative" },
       size: "sm",
       onConfirm: async () => {
         try {

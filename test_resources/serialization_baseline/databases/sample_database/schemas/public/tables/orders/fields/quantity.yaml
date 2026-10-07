@@ -10,7 +10,6 @@ database_type: INTEGER
 base_type: type/Integer
 effective_type: type/Integer
 semantic_type: type/Quantity
-dimensions: []
 position: 8
 database_position: 8
 has_field_values: auto-list

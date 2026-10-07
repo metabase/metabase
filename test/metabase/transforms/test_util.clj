@@ -3,8 +3,8 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.api.common :as api]
+   [metabase.config.core :as config]
    [metabase.driver :as driver]
-   [metabase.driver.sql :as driver.sql]
    [metabase.driver.util :as driver.u]
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
@@ -20,6 +20,25 @@
   "How long tests wait for a transform run to finish execution and sync."
   ;; BigQuery runs routinely take 50-70s in CI.
   120)
+
+(defn do-with-transforms-api-users!
+  "Implementation of [[with-transforms-api-users!]]."
+  [f]
+  ;; a data analyst only reaches the transforms API with `advanced-permissions`, which no OSS build can
+  ;; have — so under OSS only the superuser drives these endpoints
+  (doseq [user (cond-> [:crowberto] config/ee-available? (conj :lucky))]
+    (testing (str "as " (name user))
+      (if (= user :crowberto)
+        (f user)
+        (mt/with-data-analyst-role! (mt/user->id user)
+          (f user))))))
+
+(defmacro with-transforms-api-users!
+  "Runs `body` once per user who may drive the transforms API, with `user` bound to the test-user keyword:
+  `:crowberto` in every edition, and `:lucky` as a data analyst when EE is available. Every assertion in
+  `body` must hold for both."
+  [[user] & body]
+  `(do-with-transforms-api-users! (^:once fn* [~user] ~@body)))
 
 (defn seconds-from-now-ns
   "Returns a deadline `seconds` from now in nanoseconds, for use with `System/nanoTime`.
@@ -68,7 +87,7 @@
                          ;; assume this is just a plain table name
                          {:type :table, :name target})
                  (and (nil? (:schema target)) (isa? driver/hierarchy driver/*driver* :sql))
-                 (assoc :schema (driver.sql/default-schema driver)))]
+                 (assoc :schema (:default_schema (mt/db))))]
     (binding [api/*is-superuser?* true
               api/*current-user-id* (mt/user->id :crowberto)]
       ;; Drop the actual table/view from the database
@@ -251,8 +270,7 @@
   "Returns the driver's default schema (e.g., 'dbo' for SQL Server) or 'public' as fallback.
    Useful for tests that need to create tables with a schema matching transform targets."
   []
-  (or (when (get-method driver.sql/default-schema driver/*driver*)
-        (driver.sql/default-schema driver/*driver*))
+  (or (:default_schema (mt/db))
       (if (= :bigquery-cloud-sdk driver/*driver*)
         (t2/select-one-fn :schema :model/Table :db_id (mt/id))
         "public")))

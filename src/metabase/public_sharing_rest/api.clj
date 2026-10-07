@@ -157,14 +157,24 @@
     [:json_query :parameters]
     :status]))
 
-(defmethod transform-qp-result :failed
-  [{error-type :error_type, :as results}]
-  ;; if the query failed instead, unless the error type is specified and is EXPLICITLY allowed to be shown for embeds,
-  ;; instead of returning anything about the query just return a generic error message
+(defn error-response
+  "Reduce a query `error` -- the QP's formatted error response, or the `Throwable->map` of an exception that escaped
+  it -- to what public and embedded endpoints are allowed to return: the status and error type, and a generic message
+  in place of the original unless the error type is EXPLICITLY allowed to be shown in embeds. Nothing about the query
+  itself gets through.
+
+  [[metabase.api-routes.routes]] applies this to every error written by a streaming response under the public and
+  embedding routes."
+  [{error-type :error_type, :as error}]
   (merge
-   (select-keys results [:status :error :error_type])
+   {:status :failed}
+   (select-keys error [:status :error :error_type])
    (when-not (qp.error-type/show-in-embeds? error-type)
      {:error (tru "An error occurred while running the query.")})))
+
+(defmethod transform-qp-result :failed
+  [results]
+  (error-response results))
 
 (defn- process-query-for-card-with-id-run-fn
   "Create the `:make-run` function used for [[process-query-for-card-with-id]] and [[process-query-for-dashcard]]."
@@ -506,8 +516,7 @@
             (actions/execute-dashcard! dashboard-id dashcard-id (update-keys parameters name)
                                        ;; `as-admin` grants perms but leaves the user nil, so the audit row has no
                                        ;; executor; the context is what says the run came from a public link
-                                       {:allow-http-actions? false
-                                        :context             :public-action-execute})))))))
+                                       {:context :public-action-execute})))))))
 
 (defn- iframe
   "Return an `<iframe>` HTML fragment to embed a public page."
@@ -553,7 +562,7 @@
                       [:uuid ms/UUIDString]]]
   (public-sharing.validation/check-public-sharing-enabled)
   (let [action (api/check-404 (actions/select-action :id (public-sharing/public-uuid->id :model/Action uuid)))]
-    (actions/check-actions-enabled! action)
+    (actions/check-actions-enabled action)
     (public-action action)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -743,7 +752,7 @@
         ;; you're by definition allowed to run it without a perms check anyway
         (request/as-admin
           (let [action (api/check-404 (actions/select-action :id (public-sharing/public-uuid->id :model/Action uuid)))]
-            (actions/check-actions-enabled! action)
+            (actions/check-actions-enabled action)
             (analytics/track-event! :snowplow/action
                                     {:event     :action-executed
                                      :source    :public_form
@@ -752,8 +761,7 @@
             ;; Undo middleware string->keyword coercion
             (actions/execute-action! action (update-keys parameters name)
                                      ;; see the note on the public dashcard endpoint above
-                                     {:allow-http-actions? false
-                                      :context             :public-action-execute})))))))
+                                     {:context :public-action-execute})))))))
 
 ;;; ----------------------------------------------------- Map Tiles --------------------------------------------------
 

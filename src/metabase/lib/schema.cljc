@@ -233,6 +233,7 @@
                  acc))
              stage stage))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *HACK-disable-ref-validation*
   "Whether to validate join aliases in field refs and expression refs. This is only disable-able as a hack to support
   X-Rays code which generates fragments of stages that drop joins and expressions and then adds them again after the
@@ -573,6 +574,23 @@
   "The legacy columns a query was expected to return before sandboxes replaced its source tables, stashed on the query by the enterprise sandboxing middleware and merged into the sandboxed results."
   [:sequential [:ref :metabase.legacy-mbql.schema/legacy-column-metadata]])
 
+(mr/def ::sandboxing.details.entry
+  "Audit-log entry describing one applied sandbox (row-level restriction): which Table it sandboxes, which sandbox/group/Card it came from, and which login attributes were remapped to which Fields. An attribute's `:value` is the user's actual attribute value, recorded only when `analytics-pii-retention-enabled` is set."
+  [:map {:closed true}
+   [:table_id   [:ref ::id/table]]
+   [:sandbox_id [:maybe :int]]
+   [:group_id   [:maybe :int]]
+   [:card_id    [:maybe [:ref ::id/card]]]
+   [:attributes [:map-of
+                 #_attribute-name :string
+                 #_remapping      [:map {:closed true}
+                                   [:field_id [:maybe [:ref ::id/field]]]
+                                   [:value    {:optional true} [:maybe [:ref ::lib.schema.parameter/parameter.value]]]]]]])
+
+(mr/def ::sandboxing.details
+  "Audit-log details for the sandboxes (row-level restrictions) applied to a query, keyed by the Table ID each one sandboxes. Stashed on the query by the enterprise sandboxing middleware and copied into the results metadata so the restrictions can be recorded in the QueryExecution log."
+  [:map-of [:ref ::id/table] [:ref ::sandboxing.details.entry]])
+
 (mr/def ::query.snapshot
   "A whole copy of a query stashed on the query itself under one of the internal keys below: the same shape as
   [[::query]] minus the `:and`-level constraints, so validating the stashed copy does not re-run uniqueness checks
@@ -731,6 +749,9 @@
    [:metabase-enterprise.sandbox.query-processor.middleware.sandboxing/original-metadata
     {:optional true}
     [:ref ::sandboxing.original-metadata]]
+   [:metabase-enterprise.sandbox.query-processor.middleware.sandboxing/details
+    {:optional true}
+    [:ref ::sandboxing.details]]
    ;;
    ;; INFO
    ;;

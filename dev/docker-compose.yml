@@ -39,8 +39,8 @@ services:
     image: clojure
     container_name: metabase-app
     ports:
-      - "3001:3000"
-      - "50505:50505"
+      - "127.0.0.1:3001:3000"
+      - "127.0.0.1:50505:50505"
     working_dir: /dev/metabase
     volumes:
       - ../:/dev/metabase
@@ -58,7 +58,10 @@ services:
       MB_POSTGRESQL_TEST_PASSWORD: password
       MB_POSTGRESQL_TEST_PORT: 5432
       MB_POSTGRESQL_TEST_USER: user
-    command: ["clojure", "-M:run:dev:drivers:drivers-dev:ee:ee-dev:socket"]
+    # The :socket alias binds the REPL to loopback inside the container, which docker's port
+    # forwarding can't reach, so bind it to all container interfaces here instead. The host
+    # side stays loopback-only via the 127.0.0.1: prefix in `ports` above.
+    command: ["clojure", "-J-Dclojure.server.repl={:address,\"0.0.0.0\",:port,50505,:accept,clojure.core.server/repl}", "-M:run:dev:drivers:drivers-dev:ee:ee-dev"]
     profiles:
       - dev-app
     networks:
@@ -79,10 +82,14 @@ services:
     # the browser loads the bundle from the host's :8080 — it must be
     # published, not just exposed on the docker network.
     ports:
-      - "8080:8080"
+      - "127.0.0.1:8080:8080"
     volumes:
       - ../:/dev/metabase
       - ~/.bun/install/cache:/root/.bun/install/cache
+    environment:
+      # rspack binds to loopback by default; inside the container it must listen on all
+      # interfaces for docker's port forwarding to reach it.
+      MB_FRONTEND_DEV_HOST: 0.0.0.0
     command:
       - /bin/sh
       - -c
@@ -99,7 +106,7 @@ services:
     container_name: metabase-postgres-app-db
     restart: always
     ports:
-      - "5432:5432"
+      - "127.0.0.1:5432:5432"
     environment:
       POSTGRES_USER: mbuser
       POSTGRES_PASSWORD: password
@@ -116,7 +123,7 @@ services:
     container_name: metabase-mysql57-app-db
     restart: always
     ports:
-      - "3306:3306"
+      - "127.0.0.1:3306:3306"
     environment:
       MYSQL_USER: mbuser
       MYSQL_PASSWORD: password
@@ -138,7 +145,7 @@ services:
     image: metabase/qa-databases:postgres-sample-14
     container_name: metabasedb_postgres_14_data
     ports:
-      - "15432:5432"
+      - "127.0.0.1:15432:5432"
     restart: always
     profiles:
       - postgres14data
@@ -149,7 +156,7 @@ services:
     image: metabase/qa-databases:mysql-sample-5.7
     container_name: metabasedb_mysql_5_7_data
     ports:
-      - "23306:3306"
+      - "127.0.0.1:23306:3306"
     restart: always
     profiles:
       - mysql57data
@@ -160,7 +167,7 @@ services:
     image: metabase/qa-databases:mysql-sample-8
     container_name: metabasedb_mysql_8_data
     ports:
-      - "13306:3306"
+      - "127.0.0.1:13306:3306"
     restart: always
     profiles:
       - mysql8data
@@ -172,7 +179,7 @@ services:
     container_name: metabasedb_mongo_6_data
     restart: always
     ports:
-      - "27017:27017"
+      - "127.0.0.1:27017:27017"
     profiles:
       - mongodata
     networks:
@@ -183,7 +190,7 @@ services:
     container_name: vertica_data
     restart: always
     ports:
-      - "5433:5433"
+      - "127.0.0.1:5433:5433"
     profiles:
       - verticadata
     networks:
@@ -195,8 +202,8 @@ services:
     image: maildev/maildev:latest
     container_name: maildev
     ports:
-      - "1080:1080"
-      - "1025:1025"
+      - "127.0.0.1:1080:1080"
+      - "127.0.0.1:1025:1025"
     profiles:
       - pulse
     networks:
@@ -209,7 +216,7 @@ services:
       - ./idp-private-key.pem:/idp-private-key.pem
       - ./idp-public-cert.pem:/idp-public-cert.pem
     ports:
-      - "7000:7000"
+      - "127.0.0.1:7000:7000"
     entrypoint:
       - node
       - app.js

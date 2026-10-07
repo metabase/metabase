@@ -18,11 +18,21 @@ import type {
   VisualizationDisplay,
 } from "metabase-types/api";
 
+import { getBoxPlotModel } from "../../echarts/boxplot/model";
 import {
   getCardsColumns,
   getCardsReferencedColumns,
+  getChartSeriesModels,
 } from "../../echarts/cartesian/model";
+import { getYAxisSplit } from "../../echarts/cartesian/model/axis";
+import { getJoinedCardsDataset } from "../../echarts/cartesian/model/dataset";
 import { getCardsSeriesModels } from "../../echarts/cartesian/model/series";
+import { getStackModels } from "../../echarts/cartesian/model/stack";
+import type {
+  DataKey,
+  YAxisSeriesNames,
+} from "../../echarts/cartesian/model/types";
+import { hasValidColumnsSelected } from "../../lib/graph/columns";
 import {
   getMaxDimensionsSupported,
   getMaxMetricsSupported,
@@ -276,6 +286,84 @@ export const getDefaultIsHistogram = (dimensionColumn: DatasetColumn) => {
 };
 
 export const getDefaultIsAutoSplitEnabled = () => true;
+
+const getSeriesNamesBySide = (
+  seriesModels: { dataKey: DataKey; name: string }[],
+  leftAxisSeriesKeys: Set<DataKey>,
+  rightAxisSeriesKeys: Set<DataKey>,
+): YAxisSeriesNames => {
+  const getNames = (keys: Set<DataKey>) =>
+    keys.size > 0
+      ? seriesModels
+          .filter(({ dataKey }) => keys.has(dataKey))
+          .map(({ name }) => name)
+      : null;
+
+  return {
+    left: getNames(leftAxisSeriesKeys),
+    right: getNames(rightAxisSeriesKeys),
+  };
+};
+
+/** Series names on each y-axis, split the way the renderer splits them. */
+export function getYAxisSeriesNames(
+  rawSeries: RawSeries,
+  settings: ComputedVisualizationSettings,
+): YAxisSeriesNames {
+  const [firstSeries] = rawSeries;
+
+  if (
+    firstSeries == null ||
+    !hasValidColumnsSelected(settings, firstSeries.data)
+  ) {
+    return { left: null, right: null };
+  }
+
+  const display = firstSeries.card.display;
+
+  // A waterfall has one axis and no automatic label.
+  if (display === "waterfall") {
+    return { left: [], right: null };
+  }
+
+  // Box plots split on the extents of the computed boxes.
+  if (display === "boxplot") {
+    const { seriesModels, leftAxisSeriesKeys, rightAxisSeriesKeys } =
+      getBoxPlotModel(rawSeries, settings);
+    return getSeriesNamesBySide(
+      seriesModels,
+      leftAxisSeriesKeys,
+      rightAxisSeriesKeys,
+    );
+  }
+
+  const cardsColumns = getCardsColumns(rawSeries, settings);
+  const { seriesModels } = getChartSeriesModels(
+    rawSeries,
+    cardsColumns,
+    [],
+    settings,
+  );
+  const stackModels = getStackModels(seriesModels, settings);
+
+  // Scatter plots never auto-split, see `getScatterPlotModel`.
+  const isAutoSplitSupported = display !== "scatter";
+
+  const [leftAxisSeriesKeys, rightAxisSeriesKeys] = getYAxisSplit(
+    seriesModels,
+    stackModels,
+    // Unsorted is fine: sorting doesn't change a min or a max.
+    getJoinedCardsDataset(rawSeries, cardsColumns),
+    settings,
+    isAutoSplitSupported,
+  );
+
+  return getSeriesNamesBySide(
+    seriesModels,
+    leftAxisSeriesKeys,
+    rightAxisSeriesKeys,
+  );
+}
 
 export const getDefaultXAxisScale = (
   vizSettings: ComputedVisualizationSettings,

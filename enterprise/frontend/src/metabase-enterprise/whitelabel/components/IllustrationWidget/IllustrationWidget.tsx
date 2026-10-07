@@ -19,11 +19,7 @@ import type {
 
 import { ImageUploadInfoDot } from "../ImageUploadInfoDot";
 
-import { PreviewImage, SailboatImage } from "./IllustrationWidget.styled";
-export interface StringSetting {
-  value: IllustrationSettingValue | null;
-  default: IllustrationSettingValue;
-}
+import S from "./IllustrationWidget.module.css";
 
 type IllustrationType = "background" | "icon";
 
@@ -188,11 +184,11 @@ export function IllustrationWidget({
       <Paper withBorder shadow="none">
         <Flex>
           <Flex
+            className={S.borderRight}
             align="center"
             justify="center"
             w="7.5rem"
             pos="relative"
-            style={{ borderRight: "1px solid var(--mb-color-border-neutral)" }}
           >
             {getPreviewImage({
               value: localValue,
@@ -246,13 +242,14 @@ export function IllustrationWidget({
                         ? fileName
                         : t`Remove uploaded image`}
                   </Text>
+                  {/* TODO: replace with ActionIcon (GDGT-2457) */}
                   {customIllustrationSource && (
                     <Button
-                      leftSection={<Icon name="close" />}
                       variant="subtle"
-                      c="text-primary"
+                      color="neutral"
+                      size="sm"
+                      leftSection={<Icon name="close" />}
                       ml="lg"
-                      size="compact-md"
                       onClick={handleRemoveCustomIllustration}
                       aria-label={t`Remove custom illustration`}
                     />
@@ -277,7 +274,7 @@ async function isFileIntact(dataUri: string) {
 
 const PREVIEW_ELEMENTS: Record<IllustrationType, JSX.Element> = {
   background: <LighthouseIllustrationThumbnail />,
-  icon: <SailboatImage />,
+  icon: <Box className={S.sailboat} w="6.25rem" h="5.625rem" />,
 };
 
 interface GetPreviewImageProps {
@@ -300,7 +297,15 @@ function getPreviewImage({
   }
 
   if (value === "custom" && customSource) {
-    return <PreviewImage src={customSource} />;
+    return (
+      <Box
+        component="img"
+        className={S.previewImage}
+        src={customSource}
+        w="6.25rem"
+        h="5.625rem"
+      />
+    );
   }
 
   return null;

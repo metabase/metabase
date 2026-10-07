@@ -65,6 +65,7 @@
   :metabase/check-testing-not-empty                          {:level :warning}
   :metabase/defsetting-must-specify-export                   {:level :warning}
   :metabase/defsetting-namespace                             {:level :warning}
+  :metabase/discourage-dynamic-vars                          {:level :warning}
   :metabase/discourage-millis-duration                       {:level :warning}
   :metabase/mbql-query-first-arg                             {:level :warning}
   :metabase/missing-test-expr-requires-in-cljs               {:level :warning}
@@ -320,6 +321,12 @@
   {metabase-enterprise.entity-retrieval.core/search-unfiltered {:message "Permission bypass risk: library-index hits are unfiltered — resolve each entity and drop what the current user can't read"}
    metabase.entity-retrieval.core/search-unfiltered            {:message "Permission bypass risk: library-index hits are unfiltered — resolve each entity and drop what the current user can't read"}
    metabase.entity-retrieval.mirror/search-unfiltered          {:message "Permission bypass risk: library-index hits are unfiltered — resolve each entity and drop what the current user can't read"}
+   metabase-enterprise.transform-testing.expectations.equals/->EqualsRows    {:message "Build an expectation with metabase-enterprise.transform-testing.expectations.protocol/build, over a value the schema has passed — the generated constructors skip validation"}
+   metabase-enterprise.transform-testing.expectations.equals/map->EqualsRows {:message "Build an expectation with metabase-enterprise.transform-testing.expectations.protocol/build, over a value the schema has passed — the generated constructors skip validation"}
+   metabase-enterprise.transform-testing.expectations.equals/->EqualsSql     {:message "Build an expectation with metabase-enterprise.transform-testing.expectations.protocol/build, over a value the schema has passed — the generated constructors skip validation"}
+   metabase-enterprise.transform-testing.expectations.equals/map->EqualsSql  {:message "Build an expectation with metabase-enterprise.transform-testing.expectations.protocol/build, over a value the schema has passed — the generated constructors skip validation"}
+   metabase-enterprise.transform-testing.expectations.empty/->Empty          {:message "Build an expectation with metabase-enterprise.transform-testing.expectations.protocol/build, over a value the schema has passed — the generated constructors skip validation"}
+   metabase-enterprise.transform-testing.expectations.empty/map->Empty       {:message "Build an expectation with metabase-enterprise.transform-testing.expectations.protocol/build, over a value the schema has passed — the generated constructors skip validation"}
    clojure.core/print                                 {:message "Use metabase.util.log instead of clojure.core/print"}
    clojure.core/println                               {:message "Use metabase.util.log instead of clojure.core/println"}
    clojure.core/printf                                {:message "Use metabase.util.log instead of clojure.core/printf"}
@@ -417,6 +424,7 @@
     metabase.analyze.classifiers.core         classifiers
     metabase.channel.core                     channel
     metabase.channel.render.core              channel.render
+    metabase.channel.render.markdown          markdown
     metabase.cloud-migration.core             cloud-migration
     metabase.eid-translation.core             eid-translation
     metabase.llm.test-util                    llm.tu
@@ -453,7 +461,6 @@
     metabase.util.macros                      u.macros
     metabase.util.malli                       mu
     metabase.util.malli.schema                ms
-    metabase.util.markdown                    markdown
     metabase.util.password                    u.password
     metabase.util.ui-logic                    ui-logic
     metabase.xrays.core                       xrays
@@ -488,6 +495,7 @@
   metabase-enterprise.workspaces.test-util/with-workspaces!                             clojure.core/let
   metabase.actions.test-util/with-actions                                               clojure.core/let
   metabase.transforms.test-util/with-transform-cleanup!                                 clojure.core/let
+  metabase.transforms.test-util/with-transforms-api-users!                              clojure.core/fn
   metabase.api.common/let-404                                                           clojure.core/let
   metabase.app-db.connection/with-unshared-connection                                   clojure.core/fn
   metabase.app-db.core/with-unshared-connection                                         clojure.core/fn
@@ -582,7 +590,11 @@
 
  :hooks
  {:analyze-call
-  {cljs.test/deftest                                                                                                         hooks.clojure.test/deftest
+  {cljs.core/def                                                                                                             hooks.clojure.core.def/lint-dynamic
+   cljs.core/defn                                                                                                            hooks.clojure.core.def/lint-dynamic
+   cljs.core/defn-                                                                                                           hooks.clojure.core.def/lint-dynamic
+   cljs.core/defonce                                                                                                         hooks.clojure.core.def/lint-dynamic
+   cljs.test/deftest                                                                                                         hooks.clojure.test/deftest
    cljs.test/is                                                                                                              hooks.clojure.test/is
    cljs.test/testing                                                                                                         hooks.clojure.test/testing
    cljs.test/use-fixtures                                                                                                    hooks.clojure.test/use-fixtures
@@ -612,6 +624,7 @@
    metabase-enterprise.cache.config-test/with-temp-persist-models                                                            hooks.common/with-seven-bindings
    metabase-enterprise.dependencies.api-test/with-dependents-test!                                                           hooks.common/with-two-bindings
    metabase-enterprise.metabot-v3.tools.dependencies-test/with-dependent-transforms!                                         hooks.common/with-two-bindings
+   metabase-enterprise.remote-sync.metric-dimension-api-test/with-synced-metric                                              hooks.common/with-one-binding
    metabase-enterprise.semantic-search.db.connection/with-migrate-tx                                                         hooks.common/let-one-with-optional-value
    metabase-enterprise.serialization.api-test/with-serialization-test-data!                                                  hooks.common/with-three-bindings
    metabase-enterprise.serialization.test-util/with-temp-dpc                                                                 hooks.toucan2.tools.with-temp/with-temp
@@ -797,7 +810,11 @@
    metabase.util.log/tracef                                                                                                  hooks.metabase.util.log/infof
    metabase.util.log/warn                                                                                                    hooks.metabase.util.log/info
    metabase.util.log/warnf                                                                                                   hooks.metabase.util.log/infof
+   metabase.util.malli.defn/defn                                                                                             hooks.clojure.core.def/lint-dynamic
+   metabase.util.malli.defn/defn-                                                                                            hooks.clojure.core.def/lint-dynamic
    metabase.util.malli.registry/def                                                                                          hooks.metabase.util.malli.registry/def
+   metabase.util.malli/defn                                                                                                  hooks.clojure.core.def/lint-dynamic
+   metabase.util.malli/defn-                                                                                                 hooks.clojure.core.def/lint-dynamic
    metabase.util.match/match-one                                                                                             hooks.metabase.util.match/match-one
    metabase.util.match/match-many                                                                                            hooks.metabase.util.match/match-many
    metabase.util.match/matches?                                                                                              hooks.metabase.util.match/matches?
@@ -848,7 +865,13 @@
    metabase.users.models.user-test/with-groups!                                                 macros.metabase.users.models.user-test/with-groups!
    metabase.util.namespaces/import-fn                                                           macros.metabase.util.namespaces/import-fn
    metabase.util.namespaces/import-macro                                                        macros.metabase.util.namespaces/import-macro
-   metabase.xrays.related-test/with-world                                                       macros.metabase.xrays.related-test/with-world}}
+   metabase.xrays.related-test/with-world                                                       macros.metabase.xrays.related-test/with-world
+   potemkin/import-def                                                                          macros.potemkin.namespaces/import-def
+   potemkin/import-fn                                                                           macros.potemkin.namespaces/import-fn
+   potemkin/import-macro                                                                        macros.potemkin.namespaces/import-macro
+   potemkin.namespaces/import-def                                                               macros.potemkin.namespaces/import-def
+   potemkin.namespaces/import-fn                                                                macros.potemkin.namespaces/import-fn
+   potemkin.namespaces/import-macro                                                             macros.potemkin.namespaces/import-macro}}
 
  :config-in-comment
  {:linters {:unresolved-symbol {:level :off}}}
@@ -939,6 +962,10 @@
     :private-call                                        {:level :off}
     :metabase/defsetting-must-specify-export             {:level :off}
     :metabase/defsetting-namespace                       {:level :off}
+    ;; Test fixtures and per-test overrides use `binding`-scoped dynamic vars legitimately; this ratchet
+    ;; isn't aimed at that pattern. Mocking functions that way is the narrower case
+    ;; `:metabase/prefer-with-dynamic-fn-redefs` already covers.
+    :metabase/discourage-dynamic-vars                    {:level :off}
     :metabase/t2-query-namespace                         {:level :off}
     :metabase/test-helpers-use-non-thread-safe-functions {:level :warning} ; more config in `.clj-kondo/config/test-helpers/config.edn`
 
@@ -959,6 +986,20 @@
   ;; Namespaces whose values are marked. Adding one here is what keeps it that way; see
   ;; `metabase.app-db.value-guard`.
   metabase.content-translation.db
+  {:linters {:metabase/unsafe-app-db-query {:level :warning}}}
+  metabase.settings.db
+  {:linters {:metabase/unsafe-app-db-query {:level :warning}}}
+
+  metabase.auth-identity.db
+  {:linters {:metabase/unsafe-app-db-query {:level :warning}}}
+
+  metabase.usage-metadata.db
+  {:linters {:metabase/unsafe-app-db-query {:level :warning}}}
+
+  metabase.user-key-value.db
+  {:linters {:metabase/unsafe-app-db-query {:level :warning}}}
+
+  metabase.public-sharing.db
   {:linters {:metabase/unsafe-app-db-query {:level :warning}}}
 
   ;; .cljc tests run in both Clojure and ClojureScript — `with-dynamic-fn-redefs` is JVM-only,

@@ -1,7 +1,8 @@
-// eslint-disable-next-line no-restricted-imports
+// eslint-disable-next-line eslint-js/no-restricted-imports
 import styled from "@emotion/styled";
 import { t } from "ttag";
 
+import staticEmbeddingExampleImage from "assets/img/static-embedding-example.png";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { Link } from "metabase/common/components/Link";
 import { Box, Button, Group, Text } from "metabase/ui";
@@ -33,7 +34,7 @@ export const StaticEmbedContent = ({
     </Text>
     {showImage && (
       <StaticEmbedImage
-        src="/app/assets/img/static-embedding-example.png"
+        src={staticEmbeddingExampleImage}
         alt="Static embedding example"
       />
     )}
@@ -43,7 +44,7 @@ export const StaticEmbedContent = ({
           to={exampleDashboardLink}
           onClick={trackEmbeddingHomepageExampleDashboardClick}
         >
-          <Button variant="outline">{t`Embed an example dashboard`}</Button>
+          <Button>{t`Embed an example dashboard`}</Button>
         </Link>
       )}
       <ExternalLink href={learnMoreStaticEmbedUrl}>
