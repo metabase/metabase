@@ -191,19 +191,19 @@
             ::transform-testing.errors/missing-inputs
             (tru "The transform reads table(s) with no declared test input: {0}. Add an input for each."
                  (str/join ", " (map table-label missing)))
-            (api-error/expose {:tables (mapv table-label missing)} :tables))))
+            (api-error/extend-response-keys {:tables (mapv table-label missing)} :tables))))
   (when-let [unused (seq (unused-inputs inputs referenced-tables default-schema))]
     (throw (transform-testing.errors/ex
             ::transform-testing.errors/unused-inputs
             (tru "Test input(s) declared for table(s) the transform does not read: {0}. Remove them."
                  (str/join ", " (map table-label unused)))
-            (api-error/expose {:tables (mapv table-label unused)} :tables))))
+            (api-error/extend-response-keys {:tables (mapv table-label unused)} :tables))))
   (when-let [colliding (seq (colliding-inputs inputs default-schema))]
     (throw (transform-testing.errors/ex
             ::transform-testing.errors/duplicate-input-table
             (tru "Duplicate test inputs; each input table may be declared only once: {0}"
                  (str/join ", " colliding))
-            (api-error/expose {:tables (vec colliding)} :tables))))
+            (api-error/extend-response-keys {:tables (vec colliding)} :tables))))
   (let [temp-tables (into #{} (map :table) (vals replacements))]
     (check-rewrite driver rewritten-transform temp-tables nil)
     (doseq [{:keys [name sql]} expectations

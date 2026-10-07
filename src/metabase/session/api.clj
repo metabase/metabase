@@ -71,7 +71,7 @@
         ;; `:status-code` (unlike `throttle/check`'s), which would surface as a 500
         (let [data (ex-data e)]
           (if (and (:errors data) (nil? (:status-code data)))
-            (throw (api-error/ex-info (ex-message e) (assoc data :status-code 400) #{:errors} e))
+            (throw (api-error/ex-info (ex-message e) (assoc data :status-code 400) e :response/keys #{:errors}))
             (throw e)))))))
 
 (def ^:private password-fail-message (deferred-tru "Password did not match stored password."))
@@ -94,18 +94,18 @@
         nil
 
         (= (:error result) :invalid-credentials)
-        (throw (api-error/ex-info (str password-fail-message)
-                                  {:status-code 401
-                                   :errors      {:password password-fail-snippet}}
-                                  #{:errors}))
+        (throw (ex-info (str password-fail-message)
+                        {:status-code   401
+                         :errors        {:password password-fail-snippet}
+                         :response/keys #{:errors}}))
 
         (:success? result)
         (if (:mfa/pending? result) result (:session result))
 
         :else
-        (throw (api-error/ex-info (str (:message result)) {:errors {:_error (:error result)}
-                                                           :status-code 401}
-                                  #{:errors}))))))
+        (throw (ex-info (str (:message result)) {:errors {:_error (:error result)}
+                                                 :status-code 401
+                                                 :response/keys #{:errors}}))))))
 
 (mu/defn- email-login :- [:maybe [:or session.schema/SessionSchema [:map [:mfa/pending? [:= true]]]]]
   "Find a matching `User` if one exists and return a new Session for them (or an MFA-pending result
@@ -120,9 +120,9 @@
     (cond
       (contains? #{:invalid-credentials :server-error :authentication-expired} (:error result)) nil
       (:success? result) (if (:mfa/pending? result) result (:session result))
-      :else (throw (api-error/ex-info (str (:message result)) {:errors {:_error (:error result)}
-                                                               :status-code 401}
-                                      #{:errors})))))
+      :else (throw (ex-info (str (:message result)) {:errors {:_error (:error result)}
+                                                     :status-code 401
+                                                     :response/keys #{:errors}})))))
 
 (defn- throttle-check
   "Pass through to `throttle/check` but will not check if `throttling-disabled?` is true"
@@ -143,10 +143,10 @@
       ;; If nothing succeeded complain about it
       ;; Don't leak whether the account doesn't exist or the password was incorrect
       (throw
-       (api-error/ex-info (str password-fail-message)
-                          {:status-code 401
-                           :errors      {:password password-fail-snippet}}
-                          #{:errors}))))
+       (ex-info (str password-fail-message)
+                {:status-code   401
+                 :errors        {:password password-fail-snippet}
+                 :response/keys #{:errors}}))))
 
 (defn- session-response
   "Ring response that sets the session cookies for a freshly created `session`.
@@ -527,10 +527,10 @@
 
                 ;; Login failed
                 :else
-                (throw (api-error/ex-info (or (str (:message login-result)) "Authentication failed")
-                                          {:status-code 401
-                                           :errors {:_error (or (:error login-result) "Authentication failed")}}
-                                          #{:errors})))))]
+                (throw (ex-info (or (str (:message login-result)) "Authentication failed")
+                                {:status-code 401
+                                 :errors {:_error (or (:error login-result) "Authentication failed")}
+                                 :response/keys #{:errors}})))))]
     (http-401-on-error
       (call-with-failure-throttling [[(login-throttlers :ip-address) (request/ip-address request)]]
                                     do-login))))

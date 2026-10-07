@@ -26,7 +26,6 @@
    [metabase.query-processor.schema :as qp.schema]
    [metabase.request.core :as request]
    [metabase.util :as u]
-   [metabase.util.api-error :as api-error]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [metabase.warehouses.models.database :as database]
@@ -72,14 +71,14 @@
     (let [col-base-type ((some-fn :base-type :base_type) col)]
       (when-not (isa? col-base-type table-col-base-type)
         (let [msg (tru "Sandbox Questions can''t return columns that have different types than the Table they are sandboxing.")]
-          (throw (api-error/ex-info msg
-                                    {:type        qp.error-type/bad-configuration
-                                     :status-code 400
-                                     :message     msg
-                                     :new-col     col
-                                     :expected    table-col-base-type
-                                     :actual      (:base_type col)}
-                                    #{:message :expected :actual})))))))
+          (throw (ex-info msg
+                          {:type          qp.error-type/bad-configuration
+                           :status-code   400
+                           :message       msg
+                           :new-col       col
+                           :expected      table-col-base-type
+                           :actual        (:base_type col)
+                           :response/keys #{:message :expected :actual}})))))))
 
 (defn- merge-sandbox-into-graph
   "Merges a single sandboxing policy into the permissions graph. Adjusts permissions at the database or schema level,

@@ -36,7 +36,6 @@
    [metabase.events.core :as events]
    [metabase.request.schema :as request.schema]
    [metabase.util :as u]
-   [metabase.util.api-error :as api-error]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.describe :as umd]
@@ -532,22 +531,22 @@
         decoded ((decoder schema) params)]
     (when-not (mr/validate schema decoded)
       (let [explanation (mr/explain schema decoded)]
-        (throw (api-error/ex-info (format "Invalid %s" (case params-type
-                                                         :route   "route parameters"
-                                                         :query   "query parameters"
-                                                         :body    "body"
-                                                         :request "request"
-                                                         ;; fall back to the keyword name for any other validated
-                                                         ;; params-type so we never throw "No matching clause" here
-                                                         (name params-type)))
-                                  {:status-code     400
-                                   #_:api/debug     #_{:params-type params-type
-                                                       :schema  (mc/form schema)
-                                                       :params  params
-                                                       :decoded decoded}
-                                   :specific-errors (invalid-params-specific-errors explanation)
-                                   :errors          (invalid-params-errors explanation)}
-                                  #{:specific-errors :errors}))))
+        (throw (ex-info (format "Invalid %s" (case params-type
+                                               :route   "route parameters"
+                                               :query   "query parameters"
+                                               :body    "body"
+                                               :request "request"
+                                               ;; fall back to the keyword name for any other validated
+                                               ;; params-type so we never throw "No matching clause" here
+                                               (name params-type)))
+                        {:status-code     400
+                         #_:api/debug     #_{:params-type params-type
+                                             :schema  (mc/form schema)
+                                             :params  params
+                                             :decoded decoded}
+                         :specific-errors (invalid-params-specific-errors explanation)
+                         :errors          (invalid-params-errors explanation)
+                         :response/keys   #{:specific-errors :errors}}))))
     decoded))
 
 (mu/defn- decode-and-validate-params-form

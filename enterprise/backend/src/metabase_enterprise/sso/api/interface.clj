@@ -1,7 +1,6 @@
 (ns metabase-enterprise.sso.api.interface
   (:require
    [metabase-enterprise.sso.settings :as ee-sso-settings]
-   [metabase.util.api-error :as api-error]
    [metabase.util.i18n :refer [tru]]))
 
 (defn request-jwt
@@ -65,10 +64,10 @@
 
 (defn- throw-not-configured-error []
   (throw
-   (api-error/ex-info (tru "SSO has not been enabled and/or configured")
-                      {:status-code 400
-                       :status      "error-sso-disabled"}
-                      #{:status})))
+   (ex-info (tru "SSO has not been enabled and/or configured")
+            {:status-code   400
+             :status        "error-sso-disabled"
+             :response/keys #{:status}})))
 
 (defmethod sso-get :default
   [_]

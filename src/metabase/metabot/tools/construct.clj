@@ -650,7 +650,7 @@
         data   (cond-> base
                  (nil? (:status-code base)) (assoc :status-code 400))]
     ;; HTTP callers also get the machine-readable error code, on top of whatever `e` already exposes
-    (api-error/ex-info (ex-message e) data #{:error} e)))
+    (api-error/ex-info (ex-message e) data e :response/keys #{:error})))
 
 (defn- query-not-runnable-explanation
   "When `pmbql-query` would make the FE's `canRun` gate return false, return a humanized Malli

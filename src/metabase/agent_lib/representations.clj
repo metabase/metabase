@@ -29,7 +29,6 @@
    [malli.transform :as mtx]
    [metabase.lib.schema :as lib.schema]
    [metabase.models.serialization.resolve :as serdes.resolve]
-   [metabase.util.api-error :as api-error]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli.humanize :as mu.humanize]
    [metabase.util.malli.registry :as mr]
@@ -83,13 +82,13 @@
   (let [schema  (mr/schema ::lib.schema/external-query)
         decoded (mc/decode schema external-query mtx/string-transformer)]
     (when-let [error (mr/explain ::lib.schema/external-query decoded)]
-      (throw (api-error/ex-info (tru "External query has an invalid structure.")
-                                {:status-code 400
-                                 :error       :invalid-external-query
-                                 :humanized   (mu.humanize/humanize error)
-                                 :details     (pr-str (mu.humanize/humanize error))
-                                 :schema      ::lib.schema/external-query}
-                                #{:humanized :details})))
+      (throw (ex-info (tru "External query has an invalid structure.")
+                      {:status-code   400
+                       :error         :invalid-external-query
+                       :humanized     (mu.humanize/humanize error)
+                       :details       (pr-str (mu.humanize/humanize error))
+                       :schema        ::lib.schema/external-query
+                       :response/keys #{:humanized :details}})))
     decoded))
 
 (def ^:private known-stage-keys
@@ -116,16 +115,16 @@
             :when (map? stage)
             :let [unknown (remove known-stage-keys (keys stage))]
             :when (seq unknown)]
-      (throw (api-error/ex-info (tru "Stage {0} has unknown key(s): {1}. Valid stage keys are: {2}."
-                                     stage-idx
-                                     (pr-str (vec unknown))
-                                     (pr-str (vec (sort known-stage-keys))))
-                                {:status-code  400
-                                 :error        :unknown-stage-key
-                                 :agent-error? true
-                                 :stage-index  stage-idx
-                                 :unknown-keys (vec unknown)}
-                                #{:unknown-keys})))))
+      (throw (ex-info (tru "Stage {0} has unknown key(s): {1}. Valid stage keys are: {2}."
+                           stage-idx
+                           (pr-str (vec unknown))
+                           (pr-str (vec (sort known-stage-keys))))
+                      {:status-code   400
+                       :error         :unknown-stage-key
+                       :agent-error?  true
+                       :stage-index   stage-idx
+                       :unknown-keys  (vec unknown)
+                       :response/keys #{:unknown-keys}})))))
 
 ;;; ============================================================
 ;;; Repair-pipeline schema (string-keyed portable form)
@@ -233,11 +232,11 @@
   Used as a sanity check between the repair and resolve passes."
   [parsed]
   (when-let [error (mr/explain query-schema parsed)]
-    (throw (api-error/ex-info (tru "Representations query has an invalid structure.")
-                              {:status-code 400
-                               :error       :invalid-representations-query
-                               :humanized   (mu.humanize/humanize error)
-                               :details     (pr-str (mu.humanize/humanize error))
-                               :schema      ::query}
-                              #{:humanized :details})))
+    (throw (ex-info (tru "Representations query has an invalid structure.")
+                    {:status-code   400
+                     :error         :invalid-representations-query
+                     :humanized     (mu.humanize/humanize error)
+                     :details       (pr-str (mu.humanize/humanize error))
+                     :schema        ::query
+                     :response/keys #{:humanized :details}})))
   parsed)

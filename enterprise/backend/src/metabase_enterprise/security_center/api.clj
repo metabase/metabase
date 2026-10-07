@@ -13,7 +13,6 @@
    [metabase.notification.models :as models.notification]
    [metabase.premium-features.core :as premium-features]
    [metabase.security-center.schema :as security-center.schema]
-   [metabase.util.api-error :as api-error]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2])
@@ -143,9 +142,8 @@
    (fn [handler]
      (fn [request respond raise]
        (when-not (premium-features/security-center-enabled?)
-         (throw (api-error/ex-info (tru "Security Center is not available on this instance.")
-                                   {:status-code 402 :status "error-premium-feature-not-available"}
-                                   #{:status})))
+         (throw (ex-info (tru "Security Center is not available on this instance.")
+                         {:status-code 402 :status "error-premium-feature-not-available" :response/keys #{:status}})))
        (handler request respond raise)))))
 
 (def ^{:arglists '([request respond raise])} routes

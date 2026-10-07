@@ -6,7 +6,6 @@
    [medley.core :as m]
    [metabase.driver :as driver]
    [metabase.util :as u]
-   [metabase.util.api-error :as api-error]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli.registry :as mr])
@@ -21,8 +20,7 @@
   [schema value]
   (when-let [errors (some-> (mr/explain schema value)
                             me/humanize)]
-    (throw (api-error/ex-info (tru "Invalid channel details") {:errors errors}
-                              #{:errors}))))
+    (throw (ex-info (tru "Invalid channel details") {:errors errors :response/keys #{:errors}}))))
 
 (defn- maybe-deref
   [x]

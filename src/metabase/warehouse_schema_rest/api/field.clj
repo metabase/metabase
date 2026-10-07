@@ -12,7 +12,6 @@
    [metabase.sync.core :as sync]
    [metabase.types.core :as types]
    [metabase.util :as u]
-   [metabase.util.api-error :as api-error]
    [metabase.util.i18n :as i18n]
    [metabase.util.malli.schema :as ms]
    [metabase.util.quick-task :as quick-task]
@@ -179,12 +178,12 @@
                 (let [effective (types/effective-type-for-coercion coercion-strategy)]
                   (if (types/is-coercible? coercion-strategy (:base_type field) effective)
                     [effective coercion-strategy]
-                    (throw (api-error/ex-info (i18n/tru "Incompatible coercion strategy.")
-                                              {:status-code 400
-                                               :base-type (:base_type field)
-                                               :coercion-strategy coercion-strategy
-                                               :effective-type effective}
-                                              #{:base-type :coercion-strategy :effective-type}))))))
+                    (throw (ex-info (i18n/tru "Incompatible coercion strategy.")
+                                    {:status-code 400
+                                     :base-type (:base_type field)
+                                     :coercion-strategy coercion-strategy
+                                     :effective-type effective
+                                     :response/keys #{:base-type :coercion-strategy :effective-type}}))))))
         removed-fk?        (removed-fk-semantic-type? (:semantic_type field) new-semantic-type)
         fk-target-field-id (get body :fk_target_field_id (:fk_target_field_id field))]
     ;; validate that fk_target_field_id is a valid Field in the same database

@@ -12,7 +12,6 @@
    [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.startup.core :as startup]
    [metabase.util :as u]
-   [metabase.util.api-error :as api-error]
    [metabase.util.http :as u.http]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.log :as log])
@@ -137,14 +136,14 @@
   ([message host]
    (url-not-allowed-ex message host nil))
   ([message host cause]
-   (api-error/ex-info message
-                      {:status-code 400
-                       :status      400
-                       :api-error   true
-                       :error-code  :llm-host-not-allowed
-                       :llm-host    host}
-                      #{:error-code}
-                      cause)))
+   (ex-info message
+            {:status-code   400
+             :status        400
+             :api-error     true
+             :error-code    :llm-host-not-allowed
+             :llm-host      host
+             :response/keys #{:error-code}}
+            cause)))
 
 (defn llm-url-syntax-problem
   "Why `url` cannot be an LLM provider base URL under any policy, or nil when it can: it must be an `http` or
@@ -247,11 +246,11 @@
                 ;; or prove that secrets accompanying a base-URL change were freshly supplied.
                 (when (and (request.current/current-request)
                            (not *allow-llm-provider-write*))
-                  (throw (api-error/ex-info (tru "Manage LLM provider connections through the provider connection settings.")
-                                            {:status-code 400
-                                             :api-error   true
-                                             :error-code  :llm-providers-direct-write-forbidden}
-                                            #{:error-code})))
+                  (throw (ex-info (tru "Manage LLM provider connections through the provider connection settings.")
+                                  {:status-code   400
+                                   :api-error     true
+                                   :error-code    :llm-providers-direct-write-forbidden
+                                   :response/keys #{:error-code}})))
                 ((requiring-resolve 'metabase.llm.provider/validate-changed-connections!) new-value)
                 (setting/set-value-of-type! :json :llm-providers new-value))
   :doc        "Connections are normally managed from the admin AI settings page. Setting this environment variable puts the whole list under environment control and makes it read-only in the UI.

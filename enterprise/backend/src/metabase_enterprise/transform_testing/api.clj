@@ -28,7 +28,7 @@
                                   (assoc (dissoc (ex-data e) :error-type)
                                          :status-code (transform-testing.errors/status-code error-type)
                                          :error-code  (transform-testing.errors/code error-type))
-                                  #{:error-code}))
+                                  :response/keys #{:error-code}))
         (throw e)))))
 
 (api.macros/defendpoint :get "/" :- [:sequential ::transform-testing.schema/transform-test]

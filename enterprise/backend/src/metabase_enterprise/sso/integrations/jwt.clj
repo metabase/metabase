@@ -11,7 +11,6 @@
    [metabase.embedding.util :as embed.util]
    [metabase.premium-features.core :as premium-features]
    [metabase.request.core :as request]
-   [metabase.util.api-error :as api-error]
    [metabase.util.i18n :refer [tru]]
    [ring.util.response :as response]))
 
@@ -45,18 +44,18 @@
 (defn- throw-react-sdk-embedding-disabled
   []
   (throw
-   (api-error/ex-info (tru "Embedding SDK for React is disabled. Enable it in the embedding settings.")
-                      {:status      "error-embedding-sdk-disabled"
-                       :status-code 402}
-                      #{:status})))
+   (ex-info (tru "Embedding SDK for React is disabled. Enable it in the embedding settings.")
+            {:status        "error-embedding-sdk-disabled"
+             :status-code   402
+             :response/keys #{:status}})))
 
 (defn- throw-simple-embedding-disabled
   []
   (throw
-   (api-error/ex-info (tru "You need to turn on modular embedding in the embedding settings.")
-                      {:status      "error-embedding-simple-disabled"
-                       :status-code 402}
-                      #{:status})))
+   (ex-info (tru "You need to turn on modular embedding in the embedding settings.")
+            {:status        "error-embedding-simple-disabled"
+             :status-code   402
+             :response/keys #{:status}})))
 
 (defn ^:private generate-response-token
   [session jwt-data]

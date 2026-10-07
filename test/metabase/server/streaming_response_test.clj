@@ -17,7 +17,6 @@
    [metabase.test :as mt]
    [metabase.test.http-client :as client]
    [metabase.util :as u]
-   [metabase.util.api-error :as api-error]
    [metabase.util.json :as json]
    [metabase.util.malli.registry :as mr])
   (:import
@@ -388,7 +387,7 @@
   (testing "write-error! includes stacktrace and exception chain when hide-stacktraces is false"
     (mt/with-temporary-setting-values [hide-stacktraces false]
       (with-open [os (java.io.ByteArrayOutputStream.)]
-        (let [exception (api-error/ex-info "Test error message" {:custom-data "test-value", :query "SELECT secret"} #{:custom-data})]
+        (let [exception (ex-info "Test error message" {:custom-data "test-value", :query "SELECT secret", :response/keys #{:custom-data}})]
           (#'streaming-response/write-error! os exception :api)
           (let [error-response (json/decode (String. (.toByteArray os) "UTF-8") true)]
             (is (= "Test error message" (:cause error-response))
@@ -408,7 +407,7 @@
   (testing "write-error! omits stacktrace and exception chain when hide-stacktraces is true"
     (mt/with-temporary-setting-values [hide-stacktraces true]
       (with-open [os (java.io.ByteArrayOutputStream.)]
-        (let [exception (api-error/ex-info "Test error message with sensitive info" {:custom-data "test-value", :query "SELECT secret"} #{:custom-data})]
+        (let [exception (ex-info "Test error message with sensitive info" {:custom-data "test-value", :query "SELECT secret", :response/keys #{:custom-data}})]
           (#'streaming-response/write-error! os exception :api)
           (let [error-response (json/decode (String. (.toByteArray os) "UTF-8") true)]
             (is (= "Test error message with sensitive info" (:cause error-response))

@@ -96,7 +96,7 @@
                                           :hm/response (loggable-response hm-response)
                                           :message message
                                           :error_message ((comp :status-reason :body) hm-response)})
-                             #{:errors :message :error_message}))))
+                             :response/keys #{:errors :message :error_message}))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; MB <-> HM APIs

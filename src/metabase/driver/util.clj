@@ -19,7 +19,6 @@
    ;; the legacy QP pipeline still conveys the metadata provider via the ambient store; no MBQL 5 path yet
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
-   [metabase.util.api-error :as api-error]
    [metabase.util.http :as u.http]
    [metabase.util.i18n :refer [deferred-tru trs]]
    [metabase.util.log :as log]
@@ -154,20 +153,20 @@
 
 (defn- blocked-network-address-exception []
   (let [message (str (deferred-tru "Cannot connect to a private or internal network address."))]
-    (api-error/ex-info message
-                       {:status-code 400
-                        :message     message
-                        :errors      {:host (str (deferred-tru "check your host settings"))}}
-                       #{:message :errors})))
+    (ex-info message
+             {:status-code   400
+              :message       message
+              :errors        {:host (str (deferred-tru "check your host settings"))}
+              :response/keys #{:message :errors}})))
 
 (defn- unknown-connection-hosts-exception [cause]
   (let [message (str (deferred-tru "Error resolving hosts: could not apply security policy."))]
-    (api-error/ex-info message
-                       {:status-code 400
-                        :message     message
-                        :errors      {:host (str (deferred-tru "check your host settings"))}}
-                       #{:message :errors}
-                       cause)))
+    (ex-info message
+             {:status-code   400
+              :message       message
+              :errors        {:host (str (deferred-tru "check your host settings"))}
+              :response/keys #{:message :errors}}
+             cause)))
 
 #_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic *allow-private-connection-hosts*

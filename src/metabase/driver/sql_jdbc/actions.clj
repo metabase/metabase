@@ -78,7 +78,7 @@
                                                    (m/update-existing :errors perf/update-keys u/slugify))
                                            (assoc (ex-data e) :message (ex-message e)))
                                        {:status-code 400})
-                                #{:message :errors})))))
+                                :response/keys #{:message :errors})))))
 
 (defmacro ^:private with-auto-parse-sql-exception
   "Execute body and if there is an exception, try to parse the error message to search for known sql errors then throw a regular (and easier to understand/process) exception."
@@ -581,11 +581,11 @@
           :inputs     inputs
           :input-fn   row-create-input-fn})]
     (when (seq errors)
-      (throw (api-error/ex-info (tru "Error(s) inserting rows.")
-                                {:status-code 400
-                                 :errors      errors
-                                 :results     results}
-                                #{:errors})))
+      (throw (ex-info (tru "Error(s) inserting rows.")
+                      {:status-code   400
+                       :errors        errors
+                       :results       results
+                       :response/keys #{:errors}})))
     {:context (record-mutations context results)
      :outputs (mapv (fn [{:keys [table-id after]}]
                       {:table-id table-id
@@ -697,11 +697,11 @@
                                                         :filter       (row->mbql-filter-clause
                                                                        (table-id->pk-field-name->id db-id table-id) row)}})})]
     (when (seq errors)
-      (throw (api-error/ex-info (tru "Error(s) deleting rows.")
-                                {:status-code 400
-                                 :errors      errors
-                                 :results     results}
-                                #{:errors})))
+      (throw (ex-info (tru "Error(s) deleting rows.")
+                      {:status-code   400
+                       :errors        errors
+                       :results       results
+                       :response/keys #{:errors}})))
     {:context (record-mutations context results)
      :outputs (for [{:keys [table-id before]} results]
                 {:table-id table-id
@@ -771,11 +771,11 @@
                              (check-row-has-some-non-pk-columns row pk-names))))
           :input-fn   update-input-fn})]
     (when (seq errors)
-      (throw (api-error/ex-info (tru "Error(s) updating rows.")
-                                {:status-code 400
-                                 :errors      errors
-                                 :results     results}
-                                #{:errors})))
+      (throw (ex-info (tru "Error(s) updating rows.")
+                      {:status-code   400
+                       :errors        errors
+                       :results       results
+                       :response/keys #{:errors}})))
     {:context (record-mutations context results)
      :outputs (mapv (fn [{:keys [table-id after]}]
                       {:table-id table-id

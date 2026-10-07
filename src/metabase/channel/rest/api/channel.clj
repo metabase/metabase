@@ -74,10 +74,10 @@
                                        [:active      {:optional true} [:maybe {:default true} :boolean]]])]
   (perms/check-has-application-permission :setting)
   (when (channel.db/channel-name-exists? channel-name)
-    (throw (api-error/ex-info "Channel with that name already exists"
-                              {:status-code 409
-                               :errors      {:name "Channel with that name already exists"}}
-                              #{:errors})))
+    (throw (ex-info "Channel with that name already exists"
+                    {:status-code   409
+                     :errors        {:name "Channel with that name already exists"}
+                     :response/keys #{:errors}})))
   (u/prog1 (channel.db/insert-channel! body)
     (events/publish-event! :event/channel-create {:object <> :user-id api/*current-user-id*})))
 

@@ -12,7 +12,6 @@
    [metabase.remote-sync.core :as remote-sync]
    [metabase.search.spec :as search.spec]
    [metabase.util :as u]
-   [metabase.util.api-error :as api-error]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
@@ -113,11 +112,11 @@
           (when (some? value)
             (let [kw (keyword value)]
               (when-not (contains? writable-data-authority-types kw)
-                (throw (api-error/ex-info (str "Illegal value for data_authority: " kw)
-                                          {:field       :data_authority
-                                           :value       value
-                                           :status-code 400}
-                                          #{:field})))
+                (throw (ex-info (str "Illegal value for data_authority: " kw)
+                                {:field         :data_authority
+                                 :value         value
+                                 :status-code   400
+                                 :response/keys #{:field}})))
               (name kw))))})
 
 (def legacy-data-layer->current

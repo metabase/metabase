@@ -39,5 +39,5 @@
         ;; `:status-code` (unlike `throttle/check`'s), which would surface as a 500
         (let [data (ex-data e)]
           (if (and (:errors data) (nil? (:status-code data)))
-            (throw (api-error/ex-info (ex-message e) (assoc data :status-code 400) #{:errors} e))
+            (throw (api-error/ex-info (ex-message e) (assoc data :status-code 400) e :response/keys #{:errors}))
             (throw e)))))))

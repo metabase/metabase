@@ -13,7 +13,6 @@
    [metabase.events.core :as events]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.util :as u]
-   [metabase.util.api-error :as api-error]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [potemkin :as p]
@@ -425,18 +424,18 @@
   (let [{::keys [unsynced-dependencies remote-synced-dependents]} (ex-data e)]
     (cond
       unsynced-dependencies
-      (api-error/ex-info (ex-message e)
-                         {:status-code 400
-                          :error_code  "unsynced-dependencies"
-                          :errors      {:required (describe-required-syncs unsynced-dependencies)}}
-                         #{:error_code :errors})
+      (ex-info (ex-message e)
+               {:status-code   400
+                :error_code    "unsynced-dependencies"
+                :errors        {:required (describe-required-syncs unsynced-dependencies)}
+                :response/keys #{:error_code :errors}})
 
       remote-synced-dependents
-      (api-error/ex-info (ex-message e)
-                         {:status-code 400
-                          :error_code  "remote-synced-dependents"
-                          :errors      {:collections [(describe-dependent-failure remote-synced-dependents)]}}
-                         #{:error_code :errors}))))
+      (ex-info (ex-message e)
+               {:status-code   400
+                :error_code    "remote-synced-dependents"
+                :errors        {:collections [(describe-dependent-failure remote-synced-dependents)]}
+                :response/keys #{:error_code :errors}}))))
 
 (mu/defn bulk-set-remote-sync :- :nil
   "Sets remote sync to true/false on one or collections in a single transaction. Checks that the remote sync state

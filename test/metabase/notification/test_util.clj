@@ -32,7 +32,7 @@
   [_channel-type {:keys [return-type return-value] :as _details}]
   (case return-type
     "throw"
-    (throw (api-error/ex-info "Test error" return-value (keys return-value)))
+    (throw (api-error/ex-info "Test error" return-value :response/keys (keys return-value)))
 
     "return-value"
     return-value))

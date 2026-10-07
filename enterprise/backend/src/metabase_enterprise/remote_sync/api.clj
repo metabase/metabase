@@ -35,12 +35,12 @@
   [requested-branch]
   (let [current (settings/remote-sync-branch)]
     (when-not (= requested-branch current)
-      (throw (api-error/ex-info (format "The sync branch changed to '%s' in another session. Refresh and try again."
-                                        current)
-                                {:status-code     409
-                                 :branch_mismatch true
-                                 :current_branch  current}
-                                #{:branch_mismatch :current_branch})))
+      (throw (ex-info (format "The sync branch changed to '%s' in another session. Refresh and try again."
+                              current)
+                      {:status-code     409
+                       :branch_mismatch true
+                       :current_branch  current
+                       :response/keys   #{:branch_mismatch :current_branch}})))
     requested-branch))
 
 (api.macros/defendpoint :post "/import" :- remote-sync.schema/ImportResponse
@@ -300,11 +300,11 @@
     (try
       (settings/check-and-update-remote-settings! (dissoc settings :collections))
       (catch Exception e
-        (throw (api-error/ex-info (or (ex-message e) "Invalid settings")
-                                  {:error       (ex-message e)
-                                   :status-code 400}
-                                  #{:error}
-                                  e))))
+        (throw (ex-info (or (ex-message e) "Invalid settings")
+                        {:error         (ex-message e)
+                         :status-code   400
+                         :response/keys #{:error}}
+                        e))))
     (when (seq collections)
       (try
         (remote-sync.core/bulk-set-remote-sync collections)
@@ -313,8 +313,8 @@
                                     (assoc (ex-data e)
                                            :error       (ex-message e)
                                            :status-code 400)
-                                    #{:error}
-                                    e)))))
+                                    e
+                                    :response/keys #{:error})))))
     (events/publish-event! :event/remote-sync-settings-update
                            {:details {:remote-sync-type remote-sync-type}
                             :user-id api/*current-user-id*})

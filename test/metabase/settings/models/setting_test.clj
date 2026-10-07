@@ -16,7 +16,6 @@
    [metabase.test.fixtures :as fixtures]
    [metabase.test.util :as tu]
    [metabase.util :as u]
-   [metabase.util.api-error :as api-error]
    [metabase.util.encryption :as encryption]
    [metabase.util.encryption-test :as encryption-test]
    [metabase.util.i18n :refer [deferred-tru]]
@@ -1321,7 +1320,7 @@
                 :setting     "test-feature-setting"
                 :feature     :test-feature}
                (try (test-feature-setting! "custom")
-                    (catch ExceptionInfo e (dissoc (ex-data e) ::api-error/keys)))))))
+                    (catch ExceptionInfo e (dissoc (ex-data e) :response/keys)))))))
     (testing ":enabled? returns false"
       (is (= {:status-code 400
               :setting     "test-enabled-setting-default"}

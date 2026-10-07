@@ -15,7 +15,6 @@
    [metabase.permissions.schema :as permissions.schema]
    [metabase.users.schema :as users.schema]
    [metabase.util :as u]
-   [metabase.util.api-error :as api-error]
    [metabase.util.i18n :as i18n]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -115,12 +114,12 @@
 
 (defn- throw-scim-error
   [status message]
-  (throw (api-error/ex-info message
-                            {:schemas     [error-schema-uri]
-                             :detail      message
-                             :status      status
-                             :status-code status}
-                            #{:schemas :detail :status})))
+  (throw (ex-info message
+                  {:schemas       [error-schema-uri]
+                   :detail        message
+                   :status        status
+                   :status-code   status
+                   :response/keys #{:schemas :detail :status}})))
 
 (defn- scim-response
   "Wraps an object in a response with the correct SCIM content-type. Status defaults to 200 unless otherwise specified."
@@ -304,12 +303,12 @@
               (scim-response user)))
           (catch Exception e
             (let [message (format "Error updating user: %s" (ex-message e))]
-              (throw (api-error/ex-info message
-                                        {:schemas     [error-schema-uri]
-                                         :detail      message
-                                         :status      400
-                                         :status-code 400}
-                                        #{:schemas :detail :status})))))))))
+              (throw (ex-info message
+                              {:schemas       [error-schema-uri]
+                               :detail        message
+                               :status        400
+                               :status-code   400
+                               :response/keys #{:schemas :detail :status}})))))))))
 
 (defn- patch->boolean
   "SCIM sends `active` as a JSON boolean, but clients in the wild send the strings \"true\"/\"false\" too. Anything

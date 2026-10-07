@@ -40,13 +40,14 @@
 (deftest api-exception-response-includes-only-exposed-ex-data-test
   (testing "When hide-stacktraces is false, exception response includes the ex-data keys the throw site listed"
     (mt/with-temporary-setting-values [server.settings/hide-stacktraces false]
-      (let [exception (api-error/ex-info "Test error message" {:custom-data "secret", :shown "test-value"} #{:shown}
-                                         (api-error/ex-info "cause" {:cause-data "secret", :cause-shown 1} #{:cause-shown}))
+      (let [exception (ex-info "Test error message"
+                               {:custom-data "secret", :shown "test-value", :response/keys #{:shown}}
+                               (ex-info "cause" {:cause-data "secret", :cause-shown 1, :response/keys #{:cause-shown}}))
             response  (mw.exceptions/api-exception-response exception nil)]
         (is (= "test-value" (get-in response [:body :shown])))
         (testing "nothing unlisted is sent, anywhere in the body, nor the list itself"
           (is (not (str/includes? (pr-str (:body response)) "secret")))
-          (is (not (str/includes? (pr-str (:body response)) "api-error"))))))))
+          (is (not (str/includes? (pr-str (:body response)) "response/keys"))))))))
 
 (deftest api-exception-response-does-not-leak-ex-data-test
   (testing "a 4xx whose ex-data carries server-side context (e.g. a preprocessed query) does not send it (SEC-1173)"
@@ -76,20 +77,20 @@
   (testing "a non-500 that exposes an :error-code returns its structured body without a stacktrace, whatever hide-stacktraces says"
     (doseq [hide? [false true]]
       (mt/with-temporary-setting-values [server.settings/hide-stacktraces hide?]
-        (let [exception (api-error/ex-info "You are out of tokens."
-                                           {:status-code 402
-                                            :message     "You are out of tokens."
-                                            :error-code  "metabase_ai_managed_locked"}
-                                           #{:message :error-code})
+        (let [exception (ex-info "You are out of tokens."
+                                 {:status-code   402
+                                  :message       "You are out of tokens."
+                                  :error-code    "metabase_ai_managed_locked"
+                                  :response/keys #{:message :error-code}})
               response  (mw.exceptions/api-exception-response exception nil)]
           (is (= 402 (:status response)))
           (is (= {:message    "You are out of tokens."
                   :error-code "metabase_ai_managed_locked"}
                  (:body response))))
-        (let [exception (api-error/ex-info "Slack API error: ratelimited"
-                                           {:status-code 502
-                                            :error-code  "ratelimited"}
-                                           #{:error-code})
+        (let [exception (ex-info "Slack API error: ratelimited"
+                                 {:status-code   502
+                                  :error-code    "ratelimited"
+                                  :response/keys #{:error-code}})
               response  (mw.exceptions/api-exception-response exception nil)]
           (is (= 502 (:status response)))
           (is (= {:message    "Slack API error: ratelimited"
@@ -97,8 +98,8 @@
                  (:body response)))))))
   (testing "a 500, or the legacy :error_code spelling, keeps the full stacktrace body"
     (mt/with-temporary-setting-values [server.settings/hide-stacktraces false]
-      (doseq [data [(api-error/expose {:status-code 500, :error-code "boom"} :error-code)
-                    (api-error/expose {:status-code 404, :error_code "archived"} :error_code)]]
+      (doseq [data [(api-error/extend-response-keys {:status-code 500, :error-code "boom"} :error-code)
+                    (api-error/extend-response-keys {:status-code 404, :error_code "archived"} :error_code)]]
         (let [response (mw.exceptions/api-exception-response (ex-info "boom" data) nil)]
           (is (= (:status-code data) (:status response)))
           (is (contains? (:body response) :trace)))))))
@@ -175,12 +176,12 @@
 (deftest api-exception-response-validation-errors-with-stacktraces-disabled-test
   (testing "Validation errors with :errors key are returned when hide-stacktraces is false"
     (mt/with-temporary-setting-values [server.settings/hide-stacktraces false]
-      (let [exception (api-error/ex-info "Validation failed"
-                                         {:status-code 400
-                                          :params {:password "hunter2"}
-                                          :errors {:email    "Invalid email format"
-                                                   :password "Password too short"}}
-                                         #{:errors})
+      (let [exception (ex-info "Validation failed"
+                               {:status-code 400
+                                :params {:password "hunter2"}
+                                :errors {:email    "Invalid email format"
+                                         :password "Password too short"}
+                                :response/keys #{:errors}})
             response (mw.exceptions/api-exception-response exception nil)]
         (is (= 400 (:status response)))
         (is (= {:email "Invalid email format"
@@ -192,12 +193,12 @@
 (deftest api-exception-response-validation-errors-with-stacktraces-enabled-test
   (testing "Validation errors with :errors key are returned even when hide-stacktraces is true"
     (mt/with-temporary-setting-values [server.settings/hide-stacktraces true]
-      (let [exception (api-error/ex-info "Validation failed"
-                                         {:status-code 400
-                                          :params {:password "hunter2"}
-                                          :errors {:email    "Invalid email format"
-                                                   :password "Password too short"}}
-                                         #{:errors})
+      (let [exception (ex-info "Validation failed"
+                               {:status-code 400
+                                :params {:password "hunter2"}
+                                :errors {:email    "Invalid email format"
+                                         :password "Password too short"}
+                                :response/keys #{:errors}})
             response (mw.exceptions/api-exception-response exception nil)]
         (is (= 400 (:status response)))
         (is (= {:email "Invalid email format"
