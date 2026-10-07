@@ -454,7 +454,7 @@
   (fast-mode-model? model ai-proxy?))
 
 (def ^:private forced-tool-choice-unsupported-models
-  "Model ids that reject a forced tool choice (`{:type \"any\"}` or `{:type \"tool\"}`) with a 400:
+  "These model ids reject a forced tool choice (`{:type \"any\"}` or `{:type \"tool\"}`) with a 400.
   https://platform.claude.com/docs/en/api/errors#forced-tool-use-not-supported
   Some of these ids are not in [[supported-models]]: Azure deployments, Bedrock runtime ids and Vertex ids reach
   [[claude-request-body]] without a catalog lookup."
