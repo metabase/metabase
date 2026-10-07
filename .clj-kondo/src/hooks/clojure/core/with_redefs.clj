@@ -3,12 +3,11 @@
    [clj-kondo.hooks-api :as hooks]))
 
 (defn- ns-analysis
-  "Like `hooks/ns-analysis`, but nil when kondo has no readable cache entry for the namespace."
+  "Like `hooks/ns-analysis`, but nil when kondo can't read the namespace's cache entry."
   [ns-sym]
-  ;; kondo returns `{}` on a cache miss, and throws on the cache of a cljc namespace with `:deprecated` metadata, e.g.
-  ;; `metabase.legacy-mbql.util`.
+  ;; kondo throws on the cache of a cljc namespace with `:deprecated` metadata, e.g. `metabase.legacy-mbql.util`.
   (try
-    (not-empty (hooks/ns-analysis ns-sym))
+    (hooks/ns-analysis ns-sym)
     (catch Exception _ nil)))
 
 (defn- defn-arity?
