@@ -610,7 +610,7 @@
     (do-with-remote-sync-state-restored!
      (fn []
        (is (=? [{:level   :warn
-                 :message #"(?s)scheduler.*Dashboard, Card, Action, Document, DataApp, Collection.*remote-sync%"}]
+                 :message #"(?s).*scheduler.*Dashboard, Card, Action, Document, DataApp, Collection.*remote-sync%.*"}]
                (shared-fixture-warnings
                 (fn []
                   (mt/with-temp-scheduler!
