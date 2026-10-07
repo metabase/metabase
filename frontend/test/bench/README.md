@@ -58,17 +58,24 @@ it.
 Each state reports the readings of a single load. It does not take a separate
 median for each reading.
 
-For cold and steady, the harness runs the page several times and then picks the
-run whose DOMContentLoaded is the median of that series. Every reading in the
-state comes from that one run. The second visit happens once per browser
-profile, so that state is the run itself.
+For cold, the harness runs the page several times and then picks the run whose
+DOMContentLoaded is the median of that series. Every cold reading comes from
+that one run.
 
 A separate median per reading describes a load that never happened. It can also
 put the readings out of order, and print a page-ready that precedes the TTFB
 beside it.
 
-`Cold spread %` still comes from all the cold runs, because a spread is a
-property of the series rather than of one load.
+A second visit happens once per browser profile, so one cache-kept series can
+only ever produce one of them. The harness therefore runs several short
+cache-kept series, each in its own profile, and picks the series whose reading is
+the median of the batch. The warm and the steady state pick their series
+independently, because they are different loads already. Three profiles of three
+loads cost about what one series of eight did.
+
+The spreads come from every run or series behind a state, because a spread is a
+property of the batch rather than of one load. All three states carry one, so a
+reading can be told from noise without a second run of the job.
 
 ## How the network is shaped
 
@@ -177,6 +184,9 @@ does not create one on demand, and a push to a table it does not know returns a
 missing table shows up as an empty chart rather than a red build.
 
 The conditions are a fast and a slow network crossed with a fast and a slow CPU.
+Neither CPU condition runs unthrottled: a throttle of 1 leaves the reading at the
+mercy of whichever CPU the runner drew, which is the largest source of spread in
+this table.
 The split matters: a slow network dominates the cold reading, because that is
 bytes on the wire, and a slow CPU dominates the warm one, because that is parse
 and execute. A change that trades bytes for execution moves one and not the
@@ -184,6 +194,7 @@ other.
 
 Times are relative to the machine that runs them. A CI runner is slower than a
 laptop, so read a number against the same runner's history and not against a
-number from anywhere else. Each row carries `Cold spread %`, the interquartile
+number from anywhere else. Each row carries `Cold spread %`, `Warm spread %` and
+`Steady spread %`, the interquartile
 spread of its cold runs, which is what tells a real regression from a busy
 runner.

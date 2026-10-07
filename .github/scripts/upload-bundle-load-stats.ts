@@ -17,6 +17,8 @@ interface Condition {
   warmMs: number;
   steadyMs: number;
   coldSpreadPercent: number;
+  warmSpreadPercent: number;
+  steadySpreadPercent: number;
   coldTtfbMs: number;
   coldFirstPaintMs: number;
   coldAppMountedMs: number;
@@ -65,6 +67,10 @@ function buildRows(
     "Warm ms": condition.warmMs,
     "Steady ms": condition.steadyMs,
     "Cold spread %": condition.coldSpreadPercent,
+    // The returning-user readings carry their own spread, because each comes
+    // from a batch of short series rather than from one load.
+    "Warm spread %": condition.warmSpreadPercent,
+    "Steady spread %": condition.steadySpreadPercent,
     // The cold load broken up. A zero means the browser or the route never
     // reported that one, rather than that it happened at time zero.
     "Cold ttfb ms": condition.coldTtfbMs,
@@ -93,7 +99,9 @@ async function main() {
   const rows = buildRows(conditions, {
     sha: process.env.HEAD_SHA || "",
     subject: process.env.COMMIT_MESSAGE || "",
-    timestamp: new Date(process.env.COMMIT_TIMESTAMP || Date.now()).toISOString(),
+    timestamp: new Date(
+      process.env.COMMIT_TIMESTAMP || Date.now(),
+    ).toISOString(),
   });
 
   console.table(rows);

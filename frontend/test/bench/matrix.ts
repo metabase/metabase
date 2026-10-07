@@ -51,6 +51,8 @@ interface Conditions {
   throttle: number;
   warm: boolean;
   offset: number;
+  /** Loads in this series. Defaults to the run count on the command line. */
+  loads?: number;
 }
 
 const url = process.argv[2];
@@ -75,8 +77,20 @@ const NETWORKS = {
   slow: { mbps: 5, latency: 150 },
 };
 
-/** CPU slowdown, where 1 leaves the runner at its own speed. */
-const CPUS = { fast: 1, slow: 4 };
+/**
+ * CPU slowdown. Neither condition is 1, because 1 leaves the reading at the
+ * mercy of whichever CPU the runner happened to draw, and a throttle absorbs
+ * some of that spread rather than passing it straight through.
+ */
+const CPUS = { fast: 2, slow: 4 };
+
+/**
+ * A second visit happens once per browser profile, so one cache-kept series can
+ * only ever produce one of them. Several short series in their own profiles give
+ * that reading a median and a spread for about the loads one long series costs.
+ */
+const WARM_PROFILES = 3;
+const WARM_LOADS = 3;
 
 function measure({
   mbps,
@@ -84,11 +98,16 @@ function measure({
   throttle,
   warm,
   offset,
+  loads,
 }: Conditions): Promise<Series> {
   return new Promise<Series>((resolve, reject) => {
     const child = spawn(
       process.execPath,
-      [path.join(import.meta.dirname, "measure.ts"), url, String(runs)],
+      [
+        path.join(import.meta.dirname, "measure.ts"),
+        url,
+        String(loads ?? runs),
+      ],
       {
         stdio: ["ignore", "pipe", "inherit"],
         env: {
@@ -133,6 +152,23 @@ function required(timings: Timings | null, name: string): Timings {
   return timings;
 }
 
+/**
+ * The series whose reading is the median of the batch.
+ *
+ * Picking a series rather than averaging each reading keeps a state's readings
+ * in order with each other, the same reason `measure.ts` reports one load per
+ * state instead of a median per reading.
+ */
+function representativeSeries(
+  batch: Series[],
+  of: (series: Series) => Timings,
+): Series {
+  const sorted = [...batch].sort(
+    (a, b) => of(a).domContentLoadedMs - of(b).domContentLoadedMs,
+  );
+  return sorted[Math.floor(sorted.length / 2)];
+}
+
 function spreadPercent(values: number[]) {
   const sorted = [...values].sort((a, b) => a - b);
   const at = (fraction: number) => sorted[Math.floor(sorted.length * fraction)];
@@ -159,13 +195,28 @@ function spreadPercent(values: number[]) {
         warm: false,
         offset: offset++,
       });
-      const warm = await measure({
-        mbps,
-        latency,
-        throttle,
-        warm: true,
-        offset: offset++,
-      });
+      const warmBatch = [];
+      for (let profile = 0; profile < WARM_PROFILES; profile++) {
+        warmBatch.push(
+          await measure({
+            mbps,
+            latency,
+            throttle,
+            warm: true,
+            offset: offset++,
+            loads: WARM_LOADS,
+          }),
+        );
+      }
+
+      // Each state picks its own series, because the second visit and the
+      // steady state are different loads already.
+      const warm = representativeSeries(warmBatch, (series) =>
+        required(series.secondLoad, "secondLoad"),
+      );
+      const steadiest = representativeSeries(warmBatch, (series) =>
+        required(series.steady, "steady"),
+      );
 
       // Every cold reading in the row comes from `cold.median`, and every warm
       // reading from `warm.secondLoad`. Each is one load, so the readings in a
@@ -179,8 +230,19 @@ function spreadPercent(values: number[]) {
         cpuThrottle: throttle,
         coldMs: cold.median.domContentLoadedMs,
         warmMs: required(warm.secondLoad, "secondLoad").domContentLoadedMs,
-        steadyMs: required(warm.steady, "steady").domContentLoadedMs,
+        steadyMs: required(steadiest.steady, "steady").domContentLoadedMs,
         coldSpreadPercent: spreadPercent(cold.everyRunMs),
+        warmSpreadPercent: spreadPercent(
+          warmBatch.map(
+            (series) =>
+              required(series.secondLoad, "secondLoad").domContentLoadedMs,
+          ),
+        ),
+        steadySpreadPercent: spreadPercent(
+          warmBatch.map(
+            (series) => required(series.steady, "steady").domContentLoadedMs,
+          ),
+        ),
         // The cold load broken up, in the order a user meets it: bytes start
         // arriving, something is drawn, the shell commits, the page has its
         // data.
@@ -195,9 +257,9 @@ function spreadPercent(values: number[]) {
         // DOMContentLoaded alone.
         warmLargestPaintMs: required(warm.secondLoad, "secondLoad")
           .largestContentfulPaintMs,
-        steadyLargestPaintMs: required(warm.steady, "steady")
+        steadyLargestPaintMs: required(steadiest.steady, "steady")
           .largestContentfulPaintMs,
-        steadyPageReadyMs: required(warm.steady, "steady").pageReadyMs,
+        steadyPageReadyMs: required(steadiest.steady, "steady").pageReadyMs,
         locale: cold.locale,
         scripts: cold.scripts,
         scriptKb: cold.scriptKb,
