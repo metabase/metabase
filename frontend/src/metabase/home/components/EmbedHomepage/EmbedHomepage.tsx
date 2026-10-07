@@ -20,7 +20,7 @@ export const EmbedHomepage = () => {
 
   const learnMoreInteractiveEmbedding = useSelector((state) =>
     // eslint-disable-next-line metabase/no-unconditional-metabase-links-render -- this is only visible to admins
-    getDocsUrl(state, { page: "embedding/interactive-embedding" }),
+    getDocsUrl(state, { page: "embedding/full-app-embedding" }),
   );
 
   const learnMoreStaticEmbedding = useSelector((state) =>
@@ -30,7 +30,7 @@ export const EmbedHomepage = () => {
 
   const embedJsDocsUrl = useSelector((state) =>
     // eslint-disable-next-line metabase/no-unconditional-metabase-links-render -- this is only visible to admins
-    getDocsUrl(state, { page: "embedding/embedded-analytics-js" }),
+    getDocsUrl(state, { page: "embedding/modular-embedding" }),
   );
 
   const plan = useSelector((state) =>

@@ -41,6 +41,8 @@ jobs:
 
       - name: Find CSS variables that are used but never defined
         run: bun run find-never-defined-css-variables
+      - name: Check in-product docs links
+        run: bun bin/verify-doc-links/verify-doc-links.ts
       - name: Run oxfmt formatting linter
         run: bun run lint-format-pure
       - name: Run oxlint linter (including module boundaries)
