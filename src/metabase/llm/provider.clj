@@ -817,7 +817,7 @@
   an operator routes a connection through a gateway, and an upgrade must not drop the key it relies on.
   Holding them to the rule needs an upgrade note of its own. A type added from now on starts with its
   credentials and address tied together."
-  #{"anthropic" "azure" "deepseek" "google" "mistral" "moonshot" "openai" "openrouter" "vllm" "zai"})
+  #{"anthropic" "azure" "deepseek" "google" "mistral" "moonshot" "openai" "openrouter" "vllm" "xai" "zai"})
 
 (defonce ^:private warned-captured-base-urls
   (atom #{}))

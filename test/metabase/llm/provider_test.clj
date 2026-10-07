@@ -821,7 +821,7 @@
 (deftest ^:parallel env-base-url-shadowing-types-test
   (testing (str "The types whose base-URL variable is exempt from tying credentials to their address. A type "
                 "added from now on starts outside it, so growing this set is a decision, not an accident.")
-    (is (= #{"anthropic" "azure" "deepseek" "google" "mistral" "moonshot" "openai" "openrouter" "vllm" "zai"}
+    (is (= #{"anthropic" "azure" "deepseek" "google" "mistral" "moonshot" "openai" "openrouter" "vllm" "xai" "zai"}
            @#'llm.provider/env-base-url-shadowing-types))))
 
 (deftest per-setting-write-refuses-a-key-the-environment-moved-away-from-test
