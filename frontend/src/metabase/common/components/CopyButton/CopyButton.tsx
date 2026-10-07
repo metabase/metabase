@@ -1,6 +1,6 @@
 import { useClipboard } from "@mantine/hooks";
 import cx from "classnames";
-import type { ReactNode } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import { t } from "ttag";
 
 import Styles from "metabase/css/core/index.css";
@@ -15,7 +15,7 @@ type CopyButtonProps = {
   value: string;
   onCopy?: () => void;
   className?: string;
-  style?: React.CSSProperties;
+  style?: CSSProperties;
   "aria-label"?: string;
   target?: ReactNode;
 };
