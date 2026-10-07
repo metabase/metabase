@@ -84,19 +84,19 @@
           (testing "every listener ran"
             (is (= {::throwing-topic event, ::throwing-topics event}
                    @*method-calls*)))
-          (testing "publish-event! throws the first error, with the others as suppressed"
+          (testing "publish-event! throws the first error as the cause, with the others as suppressed"
             (is (= {:topic ::throwing-topic, :event event} (ex-data e)))
             (is (= {:listener first-thrower} (ex-data cause)))
             (is (= (disj throwers first-thrower)
-                   (into #{} (map (comp :listener ex-data)) (.getSuppressed cause))))))))))
+                   (into #{} (map (comp :listener ex-data)) (.getSuppressed ^Throwable e))))))))))
 
 (deftest listeners-that-throw-one-exception-test
-  (testing "when two listeners throw the same exception object, publish-event! throws it, not a self-suppression error"
+  (testing "when two listeners throw the same exception object, it is the cause, and not also suppressed"
     (binding [*method-calls* (atom {})]
       (let [failure (ex-info "shared failure" {})
             e       (publish-and-catch! {::throwables {::throwing-topic failure, ::throwing-topics failure}})]
         (is (identical? failure (ex-cause e)))
-        (is (empty? (.getSuppressed ^Throwable (ex-cause e))))))))
+        (is (empty? (.getSuppressed ^Throwable e)))))))
 
 (deftest publish-changes-no-throwable-of-a-listener-test
   ;; A listener can throw one object on each publish, for example the cached exception of a failed `delay`. Its
@@ -136,12 +136,12 @@
   (binding [*method-calls* (atom {})]
     (let [event {::throw      #{::throwing-topic}
                  ::throwables {::throwing-topics (AssertionError. "error ::throwing-topics")}}
-          cause ^Throwable (ex-cause (publish-and-catch! event))]
+          e     ^Throwable (publish-and-catch! event)]
       (testing "the Error of the later listener is the cause"
-        (is (instance? AssertionError cause)))
-      (testing "the exception of the first listener is suppressed on the Error"
+        (is (instance? AssertionError (ex-cause e))))
+      (testing "the exception of the first listener is suppressed"
         (is (= [{:listener ::throwing-topic}]
-               (map ex-data (.getSuppressed cause))))))))
+               (map ex-data (.getSuppressed e))))))))
 
 (deftest interrupted-listener-stops-the-later-listeners-test
   (binding [*method-calls* (atom {})]

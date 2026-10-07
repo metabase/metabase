@@ -37,19 +37,16 @@
     {:error/message "Events should derive from :metabase/event"}
     #(events.hierarchy/isa? % :metabase/event)]])
 
-(defn- add-suppressed!
-  "Add each of `others` to `e` as suppressed, and return `e`."
-  ^Throwable [^Throwable e others]
-  (doseq [^Throwable other others
-          ;; two listeners can throw one object (for example, a failed `delay`), and `(.addSuppressed e e)` throws
-          :when (not (identical? e other))]
-    (.addSuppressed e other))
-  e)
+(defn- listeners-threw
+  "A new `ex-info` that carries `throwables`, the throwables of the listeners of one publish, cause first, under
+  `::listener-throwables`."
+  [throwables]
+  (ex-info "Listeners threw" {::listener-throwables (vec throwables)} (first throwables)))
 
 (defn- invoke-all!
-  "Call `invoke` on each of `methods`. If calls throw Exceptions, throw the first after all calls ran, with the others
-  added to it as suppressed. An Error or an InterruptedException propagates at once, with the Exceptions before it
-  added to it as suppressed; an InterruptedException also sets the interrupt flag of the thread again."
+  "Call `invoke` on each of `methods`. If calls throw Exceptions, throw [[listeners-threw]] of them after all calls
+  ran. An Error or an InterruptedException propagates at once as [[listeners-threw]] of it and the Exceptions before
+  it; an InterruptedException also sets the interrupt flag of the thread again. Changes no throwable of a call."
   [methods invoke]
   (let [errors (reduce (fn [errors method]
                          (try
@@ -57,15 +54,28 @@
                            errors
                            (catch InterruptedException e
                              (.interrupt (Thread/currentThread))
-                             (throw (add-suppressed! e errors)))
+                             (throw (listeners-threw (cons e errors))))
                            (catch Exception e
                              (conj errors e))
                            (catch Error e
-                             (throw (add-suppressed! e errors)))))
+                             (throw (listeners-threw (cons e errors))))))
                        []
                        methods)]
-    (when-let [[e & more] (seq errors)]
-      (throw (add-suppressed! e more)))))
+    (when (seq errors)
+      (throw (listeners-threw errors)))))
+
+(defn- publish-failure
+  "A new `ex-info` for a failed publish of `event` to `topic`. Its cause is the first of `throwables`; the others are
+  added to it as suppressed."
+  [topic event [cause & others]]
+  (let [e (ex-info (i18n/tru "Error publishing {0} event: {1}" topic (ex-message cause))
+                   {:topic topic, :event event}
+                   cause)]
+    (doseq [^Throwable other others
+            ;; two listeners can throw one object, for example the cached exception of a failed `delay`
+            :when (not (identical? cause other))]
+      (.addSuppressed e other))
+    e))
 
 ;; Inside an open app-DB transaction, the first throw stops the listeners after it, as with `:do`: the transaction
 ;; rolls back, and a later listener must not act on rows that never commit (for example, send the invite email of a
@@ -90,11 +100,12 @@
   that matches the topic. A listener on the topic runs before the listeners of its ancestors; the order of the other
   listeners is not defined. Return values are ignored.
 
-  Outside an app-DB transaction, a listener that throws an `Exception` does not stop the others: after all ran,
-  `publish-event!` throws an `ex-info` whose cause is the first exception, with the others added to it as suppressed.
-  An `Error` or an `InterruptedException` stops the listeners after it, and is the cause, with the earlier exceptions
-  added to it as suppressed; an `InterruptedException` also sets the interrupt flag of the thread again. Inside an
-  app-DB transaction, the first throw stops the listeners after it.
+  Outside an app-DB transaction, a listener that throws an `Exception` other than an `InterruptedException` does not
+  stop the others: after all ran, `publish-event!` throws an `ex-info` whose cause is the first exception, with the
+  others added to the `ex-info` as suppressed. An `Error` or an `InterruptedException` stops the listeners after it,
+  and is the cause, with the earlier exceptions added to the `ex-info` as suppressed; an `InterruptedException` also
+  sets the interrupt flag of the thread again. Inside an app-DB transaction, the first throw stops the listeners after
+  it. `publish-event!` changes no throwable that a listener throws.
 
   Don't write method implementations for the event names themselves, e.g. `:event/database-create`, because these will
   stomp on other methods with the same key:
@@ -153,9 +164,9 @@
       (mu/validate-throw schema event))
     (next-method topic event)
     (catch Throwable e
-      (throw (ex-info (i18n/tru "Error publishing {0} event: {1}" topic (ex-message e))
-                      {:topic topic, :event event}
-                      e))))
+      ;; the suppressed throwables go on an `ex-info` that is new for each publish: a listener can throw one object
+      ;; on each publish, and its suppressed list must not grow
+      (throw (publish-failure topic event (::listener-throwables (ex-data e) [e])))))
   event)
 
 (defn object->metadata
