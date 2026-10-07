@@ -143,6 +143,12 @@
         (catch Throwable e
           (log/warn e "Could not make the git clone directory owner-only" {:path (str base-dir)}))))))
 
+(defn- lock-root!
+  "Takes the OS file lock of the lock file of a new process root, on its open `channel`. Returns the lock, or nil when
+  another process holds it."
+  ^FileLock [^FileChannel channel]
+  (.tryLock channel))
+
 (defn- make-root!
   "Creates a new process root under `base-dir` and locks its lock file. Returns the root: its `:dir`, and the `:channel`
   and `:lock` of its lock file. Throws when [[check-own-directory!]] refuses `base-dir` or the root. On a failure, no
@@ -159,7 +165,7 @@
                                       ^"[Ljava.nio.file.OpenOption;"
                                       (into-array OpenOption [StandardOpenOption/CREATE StandardOpenOption/WRITE]))]
         (try
-          (u/prog1 {:dir dir :channel channel :lock (.tryLock channel)}
+          (u/prog1 {:dir dir :channel channel :lock (lock-root! channel)}
             (swap! own-roots conj (.getCanonicalPath dir))
             (log/info "Created the git clone directory of this process" {:path (str dir)}))
           (catch Throwable e
