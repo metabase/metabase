@@ -98,11 +98,8 @@ const setup = ({
 };
 
 describe("ManageDataAppGroupsPage", () => {
-  it.each([
-    ["disabled", { enabled: false }],
-    ["missing its resource collection", { resource_collection_id: null }],
-  ])("manages assignments when the app is %s", async (_state, overrides) => {
-    setup({ app: createMockDataApp(overrides) });
+  it("manages assignments when the app is disabled", async () => {
+    setup({ app: createMockDataApp({ enabled: false }) });
 
     await openGroupAssignmentPicker();
 

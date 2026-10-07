@@ -72,7 +72,7 @@
   "Reconcile grants for an existing resource collection without creating or restoring it."
   [app]
   (perms/with-global-permissions-lock
-    (when-let [collection (some-> (:id app) data-apps.db/non-blob-data-app :resource_collection_id
+    (when-let [collection (some-> (:id app) data-apps.db/data-app :resource_collection_id
                                   data-apps.db/resource-collection)]
       (reconcile-collection-permissions! app collection))))
 

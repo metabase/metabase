@@ -34,14 +34,14 @@
   (mt/with-temp [:model/DataApp app {:name "birds" :display_name "Birds" :bundle_path "birds.js"}
                  :model/DataApp disabled {:name "disabled" :display_name "Disabled" :bundle_path "disabled.js"
                                           :enabled false}
-                 :model/DataApp failed {:name "failed" :display_name "Failed" :bundle_path "failed.js"
-                                        :sync_error "Bundle unavailable"}
+                 :model/DataApp draft {:name "draft" :display_name "Draft" :bundle_path "draft.js"
+                                       :draft true}
                  :model/DataApp _ {:name "hidden" :display_name "Hidden" :bundle_path "hidden.js"}
                  :model/PermissionsGroup finches {}
                  :model/PermissionsGroup owls {}]
     (group-access/add-groups! app [(:id finches) (:id owls)])
     (group-access/add-groups! disabled [(:id finches)])
-    (group-access/add-groups! failed [(:id finches)])
+    (group-access/add-groups! draft [(:id finches)])
     (perms/add-user-to-group! (mt/user->id :rasta) (:id finches))
     (perms/add-user-to-group! (mt/user->id :rasta) (:id owls))
     (let [list-apps (api.macros/find-route-fn 'metabase-enterprise.data-apps.api :get "/")]
@@ -49,7 +49,7 @@
         (list-apps {} {})
         (doseq [[query expected] [[{} [{:name "birds" :display_name "Birds"}
                                        {:name "disabled" :display_name "Disabled"}
-                                       {:name "failed" :display_name "Failed"}]]
+                                       {:name "draft" :display_name "Draft"}]]
                                   [{:available true} [{:name "birds" :display_name "Birds"}]]]]
           (t2/with-call-count [call-count]
             (is (= expected (list-apps {} query)))
@@ -121,17 +121,17 @@
       (mt/user-http-request :crowberto :post 400 "apps/birds/groups"
                             {:group_ids [(:id group)] :user_ids [(mt/user->id :rasta)]})
       (is (empty? (t2/select :model/DataAppGroupAssignment :data_app_id (:id app))))
-      (is (nil? (t2/select-one-fn :resource_collection_id :model/DataApp :id (:id app)))))))
+      (is (= (:resource_collection_id app)
+             (t2/select-one-fn :resource_collection_id :model/DataApp :id (:id app)))))))
 
-(deftest assignment-does-not-publish-app-without-collection-test
+(deftest assignment-does-not-recreate-deleted-collection-test
   (mt/with-premium-features #{:data-apps}
     (mt/with-temp [:model/DataApp app {:name "birds" :display_name "Birds" :bundle_path "birds.js"}
                    :model/PermissionsGroup group {}]
-      (perms/add-user-to-group! (mt/user->id :rasta) (:id group))
+      (t2/delete! :model/Collection :id (:resource_collection_id app))
       (mt/user-http-request :crowberto :post 200 "apps/birds/groups" {:group_ids [(:id group)]})
       (is (t2/exists? :model/DataAppGroupAssignment :data_app_id (:id app) :permission_group_id (:id group)))
-      (is (nil? (t2/select-one-fn :resource_collection_id :model/DataApp :id (:id app))))
-      (mt/user-http-request :rasta :get 409 "apps/birds"))))
+      (is (nil? (t2/select-one-fn :resource_collection_id :model/DataApp :id (:id app)))))))
 
 (deftest assigned-group-display-name-test
   (mt/with-premium-features #{:data-apps :tenants}
@@ -273,7 +273,7 @@
       (is (= [(:id group)]
              (mapv :id (mt/user-http-request :crowberto :get 200 "apps/birds/groups")))))))
 
-(deftest assignment-remains-canonical-after-collection-drift-test
+(deftest collection-drift-denies-access-until-grants-are-reconciled-test
   (mt/with-premium-features #{:data-apps}
     (mt/with-temp [:model/DataApp app {:name "birds" :display_name "Birds" :bundle_path "birds.js"}]
       (resources/ensure-resources! app)
@@ -281,6 +281,8 @@
         (group-access/add-groups! app [group-id])
         (let [collection-id (t2/select-one-fn :resource_collection_id :model/DataApp :id (:id app))]
           (perms/revoke-collection-permissions! group-id collection-id)
+          (mt/user-http-request :rasta :get 403 "apps/birds")
+          (resources/ensure-resources! app)
           (is (= {:name "birds" :display_name "Birds"}
                  (mt/user-http-request :rasta :get 200 "apps/birds"))))))))
 
