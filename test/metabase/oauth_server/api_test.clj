@@ -2383,6 +2383,21 @@
                          "agent:delivery:write" [false false]})
                  (checkbox-states (consent-page-at! :crowberto client_id redirect)))))))))
 
+(deftest consent-page-pre-ticks-requested-scopes-test
+  (testing (str "GHY-4826: every scope the MCP client requests starts ticked on the consent page. Claude and ChatGPT "
+                "do not notice when a token carries fewer scopes than they asked for, so an unticked default silently "
+                "grants less than requested. The baseline stays locked; the user can still untick the others.")
+    (mt/with-temporary-setting-values [site-url                                  "http://localhost:3000"
+                                       oauth-server-dynamic-registration-enabled true]
+      (t2/with-transaction [_conn nil {:rollback-only true}]
+        (let [redirect            "https://example.com/callback"
+              {:keys [client_id]} (register-app-client! "MCP Client" redirect)]
+          (is (= (merge baseline-locked
+                        {"agent:content:write"  [true false]
+                         "agent:sql:run"        [true false]
+                         "agent:delivery:write" [true false]})
+                 (checkbox-states (consent-page-at! :crowberto client_id redirect)))))))))
+
 (defn- authorize-at!
   "Run the consent flow as crowberto for the registered `client` at `redirect-uri`, requesting `scope` and ticking
   exactly `granted`, then exchange the code. Returns the token response."
