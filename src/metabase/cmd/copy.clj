@@ -70,7 +70,6 @@
     :model/ModerationReview
     :model/Revision
     :model/ViewLog
-    :model/Session
     :model/Collection
     :model/CollectionPermissionGraphRevision
     :model/Dashboard
@@ -257,6 +256,10 @@
     ;; unique_perms_helper is a computed/generated column
     (map #(dissoc % :unique_perms_helper))
 
+    :model/LoginHistory
+    ;; Sessions are no longer copied, and a session deleted while dumping could leave a dangling reference (UXW-5258).
+    (map #(dissoc % :session_id))
+
     ;; else
     identity))
 
@@ -406,7 +409,6 @@
 (def ^:private entities-without-autoinc-ids
   "Entities that do NOT use an auto incrementing ID column."
   #{:model/Setting
-    :model/Session
     :model/ImplicitAction
     :model/FieldUserSettings
     :model/TableUserSettings
