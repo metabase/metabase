@@ -531,7 +531,12 @@
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
            #"qwen3:0\.6b answered with text instead of calling a tool"
-           (probe-by-model! models by-model {:model "qwen3:0.6b"})))))
+           (probe-by-model! models by-model {:model "qwen3:0.6b"}))))
+    (testing "an edit's `:proposed-model` is a guess, not a request: a stored model that no longer passes
+             hands over to the next chat model as on connect, since the form offers no picker"
+      (is (= "qwen3:14b"
+             (get-in (probe-by-model! models by-model {:proposed-model "qwen3:0.6b"})
+                     [:connection-info :probed-model])))))
   (testing "when every model tried fails, the error names them and gives the newest one's reason"
     (let [ids (map #(str "m" %) (range 5))]
       (is (thrown-with-msg?

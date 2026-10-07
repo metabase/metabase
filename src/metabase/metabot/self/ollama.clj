@@ -442,16 +442,15 @@
 
   `:probe?` also runs [[preflight!]] and returns what it learned as `:connection-info` for the connect
   path to store. Reserved for connect and edit: probing on every listing would stall the model picker
-  behind a full model load. A `:proposed-model` is re-probed only while the server still has it."
+  behind a full model load. `:proposed-model` is ignored: an edit falls back over the chat models as a
+  connect does, so a stored model that no longer passes cannot block it."
   ([] (list-models {}))
-  ([{:keys [credentials ai-proxy? model proposed-model probe?]} :- adapter/ListOpts]
+  ([{:keys [credentials ai-proxy? model probe?]} :- adapter/ListOpts]
    (let [req      {:credentials credentials :ai-proxy? ai-proxy?}
          catalog  (tag-chat-capable credentials (list-all-models req))
          entries  (filterv ::chat? catalog)
-         proposed (when (some #(= proposed-model (:id %)) entries)
-                    proposed-model)
          probed   (when probe?
-                    (preflight! req catalog (or model proposed)))
+                    (preflight! req catalog model))
          models   (mapv (fn [{:keys [id] :as entry}]
                           {:id id :display_name (or (:name entry) id)})
                         entries)]
