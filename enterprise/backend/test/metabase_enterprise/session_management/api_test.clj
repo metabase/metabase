@@ -666,7 +666,7 @@
             (mt/user-http-request :crowberto :post 200 "ee/session-management/revoke" {:ids [session-id]})
             (let [line   (some #(when (str/includes? (:message %) "revoked") (:message %)) (messages))
                   hashes (t2/select-fn-set :key_hashed (t2/table-name :model/Session)
-                                           :user_id (mt/user->id :crowberto))]
+                                           :user_id (mt/user->id :crowberto) :ended_at nil)]
               (is (some? line) "an info line is written whatever the token allows")
               (is (str/includes? line (format "User %d revoked 1 session" (mt/user->id :crowberto)))
                   "the actor and the count, not just some digits")

@@ -81,13 +81,11 @@
   #{:ended_at :end_reason :ended_by_user_id :key_hashed})
 
 (t2/define-before-update :model/Session [session]
-  (let [changed (set (keys (t2/changes session)))]
-    (when-not (every? ending-columns changed)
-      (throw (RuntimeException. "You cannot update a Session.")))
-    ;; a recorded ending is final: nothing may revive the session by clearing it, or move it
-    (when (and (contains? changed :ended_at)
-               (some? (:ended_at (t2/original session))))
-      (throw (RuntimeException. "You cannot change when a Session ended."))))
+  (when-not (every? ending-columns (keys (t2/changes session)))
+    (throw (RuntimeException. "You cannot update a Session.")))
+  ;; a recorded ending is final
+  (when (some? (:ended_at (t2/original session)))
+    (throw (RuntimeException. "You cannot change a Session that has ended.")))
   session)
 
 (t2/define-before-insert :model/Session
