@@ -649,11 +649,10 @@
                                                            :type "number"
                                                            :display-name "Id"}}})
                                     :type name)]
-                  (mt/with-actions [{card-id :id} {:type :model
-                                                   :dataset_query (mt/mbql-query categories)}
+                  (mt/with-actions [_ {:type :model
+                                       :dataset_query (mt/mbql-query categories)}
                                     {action-id :action-id} {:name                   "Query example"
                                                             :type                   :query
-                                                            :model_id               card-id
                                                             :dataset_query          query
                                                             :database_id            (mt/id)
                                                             :parameters             [{:id "id"
