@@ -54,7 +54,7 @@
            (= (error-codes :mysql/duplicate-entry) (.getErrorCode e)))
       :duplicate-key
 
-      ;; SQLSTATE class 40: the database ended the transaction (a deadlock or a serialization failure)
+      ;; SQLSTATE class 40 (transaction rollback): a deadlock or a serialization failure; the transaction cannot commit
       (some-> state (str/starts-with? "40"))
       :transaction-rollback)))
 
