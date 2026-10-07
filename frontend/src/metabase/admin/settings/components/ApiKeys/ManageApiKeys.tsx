@@ -3,6 +3,7 @@ import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import ApiKeysEmptyIllustration from "assets/img/api-keys-empty.svg?component";
+import { DateTime } from "metabase/common/components/DateTime";
 import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
 import { SettingsPageWrapper } from "metabase/settings-components";
 import {
@@ -22,7 +23,6 @@ import {
   type TreeTableColumnDef,
   useTreeTableInstance,
 } from "metabase/ui";
-import { formatDateTimeWithUnit } from "metabase/value-formatting";
 import type { ApiKey } from "metabase-types/api";
 
 import { useListApiKeysQuery } from "../../api/api-key";
@@ -149,8 +149,9 @@ function useApiKeyColumns({
         enableSorting: true,
         sortDescFirst: true,
         accessorFn: (apiKey) => apiKey.updated_at,
-        cell: ({ row }) =>
-          formatDateTimeWithUnit(row.original.updated_at, "minute"),
+        cell: ({ row }) => (
+          <DateTime value={row.original.updated_at} unit="minute" />
+        ),
       },
       {
         id: "actions",

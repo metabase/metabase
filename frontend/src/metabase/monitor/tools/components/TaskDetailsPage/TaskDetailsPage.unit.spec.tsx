@@ -11,6 +11,7 @@ import {
   waitForLoaderToBeRemoved,
   within,
 } from "__support__/ui";
+import { dayjs } from "metabase/dayjs";
 import { Route } from "metabase/router";
 import * as Urls from "metabase/urls";
 import type { Task } from "metabase-types/api";
@@ -73,9 +74,11 @@ describe("TaskDetailsPage", () => {
   });
 
   it("should display formatted datetime for started_at and ended_at", async () => {
+    const startedAt = "2023-03-04T01:45:26.005475-08:00";
+    const endedAt = "2023-03-04T01:46:26.518597-08:00";
     const task = createMockTask({
-      started_at: "2023-03-04T01:45:26.005475-08:00",
-      ended_at: "2023-03-04T01:46:26.518597-08:00",
+      started_at: startedAt,
+      ended_at: endedAt,
     });
 
     setup({ task });
@@ -84,8 +87,12 @@ describe("TaskDetailsPage", () => {
 
     const startedAtElement = screen.getByTestId("started-at");
     const endedAtElement = screen.getByTestId("ended-at");
-    expect(startedAtElement).toHaveTextContent("March 4, 2023, 1:45 AM");
-    expect(endedAtElement).toHaveTextContent("March 4, 2023, 1:46 AM");
+    expect(startedAtElement).toHaveTextContent(
+      dayjs(startedAt).format("MMMM D, YYYY, h:mm A"),
+    );
+    expect(endedAtElement).toHaveTextContent(
+      dayjs(endedAt).format("MMMM D, YYYY, h:mm A"),
+    );
   });
 
   it("should show raw ISO timestamp in tooltip on hover", async () => {

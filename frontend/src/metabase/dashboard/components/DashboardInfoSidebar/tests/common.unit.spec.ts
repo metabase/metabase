@@ -1,6 +1,7 @@
 import userEvent from "@testing-library/user-event";
 
 import { screen } from "__support__/ui";
+import { dayjs } from "metabase/dayjs";
 import type { Dashboard } from "metabase-types/api";
 import {
   createMockCollection,
@@ -108,10 +109,11 @@ describe("DashboardInfoSidebar", () => {
   });
 
   it("should show last edited info", async () => {
+    const lastEditedAt = "1793-09-22T12:00:00Z";
     await setup({
       dashboard: createMockDashboard({
         "last-edit-info": {
-          timestamp: "1793-09-22T00:00:00",
+          timestamp: lastEditedAt,
           first_name: "Frodo",
           last_name: "Baggins",
           email: "dontlikejewelry@example.com",
@@ -120,16 +122,20 @@ describe("DashboardInfoSidebar", () => {
       }),
     });
     expect(screen.getByText("Creator and last editor")).toBeInTheDocument();
-    expect(screen.getByText("September 22, 1793")).toBeInTheDocument();
+    expect(
+      screen.getByText(dayjs(lastEditedAt).format("MMMM D, YYYY")),
+    ).toBeInTheDocument();
     expect(screen.getByText("by Frodo Baggins")).toBeInTheDocument();
   });
 
   it("should show creator info", async () => {
+    const createdAt = "2024-01-01T12:00:00Z";
     await setup({
       dashboard: createMockDashboard({
         creator_id: 1,
+        created_at: createdAt,
         "last-edit-info": {
-          timestamp: "1793-09-22T00:00:00",
+          timestamp: "1793-09-22T12:00:00Z",
           first_name: "Frodo",
           last_name: "Baggins",
           email: "dontlikejewelry@example.com",
@@ -139,7 +145,9 @@ describe("DashboardInfoSidebar", () => {
     });
 
     expect(screen.getByText("Creator and last editor")).toBeInTheDocument();
-    expect(await screen.findByText("January 1, 2024")).toBeInTheDocument();
+    expect(
+      await screen.findByText(dayjs(createdAt).format("MMMM D, YYYY")),
+    ).toBeInTheDocument();
     expect(screen.getByText("by Testy Tableton")).toBeInTheDocument();
   });
 

@@ -154,7 +154,8 @@ function gerRangeAndAverages(node: FieldTreeNode) {
     }
     const isDateOnly = isDateWithoutTime(node.original);
     const unit = isDateOnly ? "day" : undefined;
-    return `${getFormattedTime(earliest, unit)} – ${getFormattedTime(latest, unit)}`;
+    const options = { local: false };
+    return `${getFormattedTime(earliest, unit, options)} – ${getFormattedTime(latest, unit, options)}`;
   }
 
   if (isString(node.original)) {

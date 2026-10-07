@@ -329,7 +329,7 @@ export function useDocumentEditor({
         const documentAst = editorInstance.getJSON();
         const name =
           documentTitle ||
-          t`Untitled document - ${getFormattedTime(new Date(), "day", { local: true })}`;
+          t`Untitled document - ${getFormattedTime(new Date(), "day")}`;
 
         const newDocumentData = {
           name,

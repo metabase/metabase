@@ -2,6 +2,7 @@ import userEvent from "@testing-library/user-event";
 
 import { testDataset } from "__support__/testDataset";
 import { screen, within } from "__support__/ui";
+import { dayjs } from "metabase/dayjs";
 import * as Urls from "metabase/urls";
 import * as Lib from "metabase-lib";
 import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
@@ -105,22 +106,26 @@ describe("QuestionInfoSidebar", () => {
 
   describe("question details", () => {
     it("should show last edited", () => {
+      const lastEditedAt = "2024-04-11T12:00:00Z";
       const card = createMockCard({
         name: "Question",
         "last-edit-info": {
           first_name: "Ash",
           last_name: "Ketchum",
-          timestamp: "2024-04-11T00:00:00Z",
+          timestamp: lastEditedAt,
           email: "Ashboy@example.com",
           id: 19,
         },
       });
       setup({ card });
-      expect(screen.getByText("April 11, 2024")).toBeInTheDocument();
+      expect(
+        screen.getByText(dayjs(lastEditedAt).format("MMMM D, YYYY")),
+      ).toBeInTheDocument();
       expect(screen.getByText("by Ash Ketchum")).toBeInTheDocument();
     });
 
     it("should show creation information", () => {
+      const createdAt = "2024-04-13T12:00:00Z";
       const card = createMockCard({
         name: "Question",
         creator: createMockUserInfo({
@@ -130,10 +135,12 @@ describe("QuestionInfoSidebar", () => {
           common_name: "Ash Ketchum",
           id: 19,
         }),
-        created_at: "2024-04-13T00:00:00Z",
+        created_at: createdAt,
       });
       setup({ card });
-      expect(screen.getByText("April 13, 2024")).toBeInTheDocument();
+      expect(
+        screen.getByText(dayjs(createdAt).format("MMMM D, YYYY")),
+      ).toBeInTheDocument();
       expect(screen.getByText("by Ash Ketchum")).toBeInTheDocument();
     });
 
