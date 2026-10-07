@@ -26,9 +26,20 @@ on:
         type: string
         required: false
         default: ""
+      commits:
+        description: "Full 40 character SHAs to measure instead of sampling by day, comma or space separated."
+        type: string
+        required: false
+        default: ""
+      upload:
+        description: "Append the rows to the table. Turn this off to smoke test the path without recording anything."
+        type: boolean
+        required: false
+        default: true
 
 # One backfill at a time. Each measured commit is a row, and a second run would
-# append a duplicate for every commit the first one already recorded.
+# append a duplicate for every commit the first one already recorded. Dispatch
+# with `upload` off to exercise the path without recording anything.
 concurrency:
   group: bundle-load-stats-backfill
   cancel-in-progress: false
@@ -46,19 +57,31 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           DAYS: ${{ inputs.days }}
+          COMMITS: ${{ inputs.commits }}
         run: |
           set -euo pipefail
-          since=$(date -u -d "${DAYS} days ago" +%Y-%m-%dT%H:%M:%SZ)
-          echo "Sampling master since ${since}"
 
-          # An ISO timestamp sorts chronologically as text, so sorting and then
-          # keeping the first row per date gives the earliest commit of each day.
-          gh api --paginate \
-            "repos/${GITHUB_REPOSITORY}/commits?sha=master&since=${since}&per_page=100" \
-            --jq '.[] | "\(.commit.committer.date) \(.sha)"' \
-            | sort \
-            | awk '{ day = substr($1, 1, 10) } !seen[day]++ { print $2 }' > sampled.txt
-          echo "Sampled $(wc -l < sampled.txt) commits, one per day"
+          if [ -n "${COMMITS}" ]; then
+            # Named on dispatch, which is how a couple of commits get measured
+            # without waiting on a window. Anything that is not a full SHA is
+            # dropped rather than reaching the API, and `fetch-artifact` needs
+            # the full 40 characters to name the artifact anyway.
+            printf '%s' "${COMMITS}" | tr ',' ' ' | tr -s ' ' '\n' \
+              | grep -E '^[0-9a-f]{40}$' > sampled.txt || true
+            echo "Measuring $(wc -l < sampled.txt) commits named on dispatch"
+          else
+            since=$(date -u -d "${DAYS} days ago" +%Y-%m-%dT%H:%M:%SZ)
+            echo "Sampling master since ${since}"
+
+            # An ISO timestamp sorts chronologically as text, so sorting and then
+            # keeping the first row per date gives the earliest commit of each day.
+            gh api --paginate \
+              "repos/${GITHUB_REPOSITORY}/commits?sha=master&since=${since}&per_page=100" \
+              --jq '.[] | "\(.commit.committer.date) \(.sha)"' \
+              | sort \
+              | awk '{ day = substr($1, 1, 10) } !seen[day]++ { print $2 }' > sampled.txt
+            echo "Sampled $(wc -l < sampled.txt) commits, one per day"
+          fi
 
           : > kept.txt
           while read -r sha; do
@@ -91,5 +114,5 @@ jobs:
     with:
       commit: ${{ matrix.commit }}
       harness_ref: ${{ inputs.harness_ref || github.ref_name }}
-      upload: true
+      upload: ${{ inputs.upload }}
     secrets: inherit
