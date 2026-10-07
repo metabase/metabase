@@ -50,10 +50,20 @@
    'example.real-ns  {:clj proxied-vars}
    'example.other-ns {:clj other-proxied-vars}})
 
-(defn- stub-ns-analysis
-  "Like kondo, return `{}` for a namespace that has no cache entry."
-  [ns-sym]
-  (get stub-analyses ns-sym {}))
+(defn- analyses
+  "A stand-in for `hooks/ns-analysis` that serves `stub-analyses` with `overrides` merged in, both keyed by namespace.
+   Like kondo, it returns `{}` for a namespace that has no cache entry."
+  [overrides]
+  (let [by-ns (merge stub-analyses overrides)]
+    #(get by-ns % {})))
+
+(def ^:private stub-ns-analysis
+  (analyses nil))
+
+(defn- cljs-defn
+  "How kondo records a defn, for the `:cljs` side of a namespace's analysis."
+  [ns-sym var-sym]
+  {:ns ns-sym, :name var-sym, :fixed-arities #{1}})
 
 (defn- lint
   "Run the hook on the given source. Pass a string to preserve reader-macro literals like
@@ -64,10 +74,11 @@
   ([src] (lint src stub-ns-analysis))
   ([src analysis-fn] (lint src analysis-fn :clj))
   ([src analysis-fn lang]
-   (binding [clj-kondo.impl.utils/*ctx* {:config     {:linters {:metabase/prefer-with-dynamic-fn-redefs {:level :warning}}}
-                                         :ignores    (atom nil)
-                                         :findings   (atom [])
-                                         :namespaces (atom {})}]
+   (binding [clj-kondo.impl.utils/*ctx*
+             {:config     {:linters {:metabase/prefer-with-dynamic-fn-redefs {:level :warning}}}
+              :ignores    (atom nil)
+              :findings   (atom [])
+              :namespaces (atom {})}]
      (with-redefs [hooks/resolve     stub-resolve
                    hooks/ns-analysis analysis-fn]
        (hooks.clojure.core.with-redefs/lint-with-redefs
@@ -122,7 +133,22 @@
   (testing "mixed bindings — even one non-defn LHS suppresses the nudge"
     (is (= [] (lint '(with-redefs [plain-fn      (fn [x] x)
                                    a-multimethod (fn [& _] nil)]
-                       :body)))))
+                       :body))))))
+
+(deftest ^:synchronized judges-vars-by-their-clj-definition-test
+  (testing "a cljc var that is a defn only on the cljs side"
+    (is (= [] (lint '(with-redefs [a-multimethod (fn [& _] nil)] :body)
+                    (analyses {'example.ns {:clj  stub-vars
+                                            :cljs {'a-multimethod (cljs-defn 'example.ns 'a-multimethod)}}})))))
+  (testing "a cljc re-export source that is a defn only on the cljs side"
+    (is (= [] (lint '(with-redefs [proxied-multi (fn [& _] nil)] :body)
+                    (analyses {'example.real-ns
+                               {:clj  proxied-vars
+                                :cljs {'proxied-multi (cljs-defn 'example.real-ns 'proxied-multi)}}})))))
+  (testing "a form kondo lints as cljs, where `with-dynamic-fn-redefs` doesn't exist"
+    (is (= [] (lint '(with-redefs [plain-fn (fn [x] x)] :body) stub-ns-analysis :cljs)))))
+
+(deftest ^:synchronized skips-uncertain-re-exports-test
   (testing "a defmulti re-exported with potemkin/import-vars"
     (is (= [] (lint '(with-redefs [proxied-multi (fn [& _] nil)] :body)))))
   (testing "a name defined by two re-export sources, only one of them a defn"
@@ -135,146 +161,117 @@
                       (stub-ns-analysis ns-sym))))))
   (testing "a re-export source missing from the cache might be where the var comes from"
     (is (= [] (lint '(with-redefs [proxied-clash (fn [& _] nil)] :body)
-                    #(stub-ns-analysis (when-not (= 'example.other-ns %) %))))))
-  (testing "a cljc var that is a defn only on the cljs side"
-    (is (= [] (lint '(with-redefs [a-multimethod (fn [& _] nil)] :body)
-                    #(if (= 'example.ns %)
-                       {:clj  stub-vars
-                        :cljs {'a-multimethod {:ns 'example.ns, :name 'a-multimethod, :fixed-arities #{1}}}}
-                       (stub-ns-analysis %))))))
-  (testing "a form kondo lints as cljs, where `with-dynamic-fn-redefs` doesn't exist"
-    (is (= [] (lint '(with-redefs [plain-fn (fn [x] x)] :body) stub-ns-analysis :cljs))))
+                    (analyses {'example.other-ns {}})))))
   (testing "a re-export source with no clj cache entry might be where the var comes from"
     (is (= [] (lint '(with-redefs [proxied-clash (fn [& _] nil)] :body)
-                    #(if (= 'example.other-ns %)
-                       {:cljs other-proxied-vars}
-                       (stub-ns-analysis %))))))
-  (testing "a cljc re-export source that is a defn only on the cljs side"
-    (is (= [] (lint '(with-redefs [proxied-multi (fn [& _] nil)] :body)
-                    #(if (= 'example.real-ns %)
-                       {:clj  proxied-vars
-                        :cljs {'proxied-multi {:ns 'example.real-ns, :name 'proxied-multi, :fixed-arities #{1}}}}
-                       (stub-ns-analysis %))))))
+                    (analyses {'example.other-ns {:cljs other-proxied-vars}})))))
   (testing "a private defn in a re-export source can't be what a var of the same name was imported from"
     (is (= [] (lint '(with-redefs [proxied-fn (fn [& _] nil)] :body)
-                    #(if (= 'example.real-ns %)
-                       {:clj (assoc-in proxied-vars ['proxied-fn :private] true)}
-                       (stub-ns-analysis %)))))))
+                    (analyses {'example.real-ns {:clj (assoc-in proxied-vars ['proxied-fn :private] true)}}))))))
 
 (deftest ^:synchronized follows-nested-re-exports-test
   (testing "a defn reached both directly and through a second re-export"
     (is (=? [{:type :metabase/prefer-with-dynamic-fn-redefs}]
             (lint '(with-redefs [proxied-fn (fn [& _] nil)] :body)
-                  {'example.ns     {:clj (assoc stub-vars :proxied-namespaces '(example.facade example.real-ns))}
-                   'example.facade {:clj {'proxied-fn          {:ns 'example.facade, :name 'proxied-fn}
-                                          :proxied-namespaces '(example.real-ns)}}
-                   'example.real-ns {:clj proxied-vars}})))))
+                  (analyses
+                   {'example.ns     {:clj (assoc stub-vars :proxied-namespaces '(example.facade example.real-ns))}
+                    'example.facade {:clj {'proxied-fn          {:ns 'example.facade, :name 'proxied-fn}
+                                           :proxied-namespaces '(example.real-ns)}}}))))))
 
 (deftest ^:synchronized terminates-on-cyclic-re-exports-test
   (testing "two namespaces that re-export from each other"
     (is (= [] (lint '(with-redefs [proxied-fn (fn [& _] nil)] :body)
-                    {'example.ns     {:clj (assoc stub-vars :proxied-namespaces '(example.cyclic))}
-                     'example.cyclic {:clj {'proxied-fn          {:ns 'example.cyclic, :name 'proxied-fn}
-                                            :proxied-namespaces '(example.ns)}}})))))
-
-(defn- spit-fixture! [^java.io.File f content]
-  (.mkdirs (.getParentFile f))
-  (spit f content))
+                    (analyses {'example.ns     {:clj (assoc stub-vars :proxied-namespaces '(example.cyclic))}
+                               'example.cyclic {:clj {'proxied-fn          {:ns 'example.cyclic, :name 'proxied-fn}
+                                                      :proxied-namespaces '(example.ns)}}}))))))
 
 (defn- delete-tree! [^java.io.File f]
   (when (.isDirectory f)
     (run! delete-tree! (.listFiles f)))
   (.delete f))
 
-(defn- run-kondo-twice
-  "Lint `src` first to populate `cache-dir` (mirroring the real `kondo --lint src test`
-   pipeline), then lint `test-file` against that cache and return its findings. The
-   two-pass shape is required because the hook reads its decisions from the cache, which
-   is only written *after* a file is analysed."
-  [cache-dir src-file test-file]
-  (kondo/run! {:lint [(.getPath src-file)] :cache-dir cache-dir :config-dir ".clj-kondo"})
-  (:findings (kondo/run! {:lint [(.getPath test-file)] :cache-dir cache-dir :config-dir ".clj-kondo"})))
+(defn- kondo-findings
+  "Findings from a real kondo run over `test-files`, each a map of relative path to content.
+   Lints `src-files` first to fill the cache, as `kondo --lint src test` does.
+   The hook reads its decisions from the cache, which is only written after a file is analysed."
+  [src-files test-files]
+  (let [tmp-dir (.toFile (java.nio.file.Files/createTempDirectory
+                          "with-redefs-smoke" (into-array java.nio.file.attribute.FileAttribute [])))
+        lint!   (fn [dir files]
+                  (doseq [[path content] files]
+                    (io/make-parents tmp-dir dir path)
+                    (spit (io/file tmp-dir dir path) content))
+                  (kondo/run! {:lint       [(str (io/file tmp-dir dir))]
+                               :cache-dir  (str (io/file tmp-dir "cache"))
+                               :config-dir ".clj-kondo"}))]
+    (try
+      (lint! "src" src-files)
+      (:findings (lint! "test" test-files))
+      (finally (delete-tree! tmp-dir)))))
 
 (deftest ^:synchronized integration-arities-iff-defn-smoke-test
   (testing "real kondo run validates the load-bearing invariant: only `defn`-style vars
             get arities recorded — `defmulti` and plain `def` do not. If a future kondo
             release breaks this, the smoke test fails here rather than the hook silently
             producing wrong nudges."
-    (let [tmp-dir   (.toFile (java.nio.file.Files/createTempDirectory
-                              "with-redefs-smoke" (into-array java.nio.file.attribute.FileAttribute [])))
-          cache-dir (str tmp-dir "/cache")
-          src       (io/file tmp-dir "smoke_fixture.clj")
-          tst       (io/file tmp-dir "smoke_fixture_test.clj")]
-      (try
-        (spit-fixture! src "(ns smoke-fixture)
+    (let [findings   (kondo-findings
+                      {"smoke_fixture.clj" "(ns smoke-fixture)
 (defmulti the-multi {:arglists '([x])} (fn [x] x))
 (defn the-defn [x] x)
 (def the-value 42)
-")
-        (spit-fixture! tst "(ns smoke-fixture-test
+"}
+                      {"smoke_fixture_test.clj" "(ns smoke-fixture-test
   (:require [smoke-fixture :as f]))
 (with-redefs [f/the-multi (constantly nil)] :a)
 (with-redefs [f/the-defn  (constantly nil)] :b)
 (with-redefs [f/the-value (constantly nil)] :c)
-")
-        (let [findings   (run-kondo-twice cache-dir src tst)
-              nudges     (filter #(= :metabase/prefer-with-dynamic-fn-redefs (:type %)) findings)
-              nudge-rows (set (map :row nudges))]
-          ;; Row 3 = the-multi, row 4 = the-defn, row 5 = the-value (matches the
-          ;; with-redefs lines in the test fixture above).
-          (testing "the defn binding gets nudged"
-            (is (contains? nudge-rows 4)))
-          (testing "the defmulti and def bindings do not get nudged"
-            (is (not (contains? nudge-rows 3)))
-            (is (not (contains? nudge-rows 5)))))
-        (finally (delete-tree! tmp-dir))))))
+"})
+          nudges     (filter #(= :metabase/prefer-with-dynamic-fn-redefs (:type %)) findings)
+          nudge-rows (set (map :row nudges))]
+      ;; Row 3 = the-multi, row 4 = the-defn, row 5 = the-value (matches the
+      ;; with-redefs lines in the test fixture above).
+      (testing "the defn binding gets nudged"
+        (is (contains? nudge-rows 4)))
+      (testing "the defmulti and def bindings do not get nudged"
+        (is (not (contains? nudge-rows 3)))
+        (is (not (contains? nudge-rows 5)))))))
 
 (deftest ^:synchronized integration-follows-potemkin-import-vars-smoke-test
-  (testing "real kondo run: a re-exported defn gets nudged, a re-exported defmulti does not"
-    (let [tmp-dir   (.toFile (java.nio.file.Files/createTempDirectory
-                              "with-redefs-potemkin-smoke" (into-array java.nio.file.attribute.FileAttribute [])))
-          cache-dir (str tmp-dir "/cache")
-          src       (io/file tmp-dir "src")
-          tst       (io/file tmp-dir "smoke_core_test.clj")]
-      (try
-        (spit-fixture! (io/file src "smoke_impl.clj") "(ns smoke-impl)
+  (testing "real kondo run: only the re-exported defn (row 4) gets nudged"
+    ;; Row 5 is a re-exported defmulti. Row 6 is a defmulti imported under the name of a private defn in its source.
+    (is (=? [{:type :metabase/prefer-with-dynamic-fn-redefs, :row 4}]
+            (kondo-findings
+             {"smoke_impl.clj" "(ns smoke-impl)
 (defn the-defn [x] x)
 (defmulti the-multi {:arglists '([x])} (fn [x] x))
-")
-        (spit-fixture! (io/file src "smoke_core.clj") "(ns smoke-core
+(defn- renamed [x] x)
+"
+              "smoke_core.clj" "(ns smoke-core
   (:require [potemkin :as p]
             [smoke-impl]))
 (p/import-vars
  [smoke-impl
   the-defn
   the-multi])
-")
-        (spit-fixture! tst "(ns smoke-core-test
+(p/import-def smoke-impl/the-multi renamed)
+"}
+             {"smoke_core_test.clj" "(ns smoke-core-test
   (:require
    [smoke-core :as core]))
 (with-redefs [core/the-defn (constantly nil)] :a)
 (with-redefs [core/the-multi (constantly nil)] :b)
-")
-        (is (=? [{:type :metabase/prefer-with-dynamic-fn-redefs, :row 4}]
-                (run-kondo-twice cache-dir src tst)))
-        (finally (delete-tree! tmp-dir))))))
+(with-redefs [core/renamed (constantly nil)] :c)
+"})))))
 
 (deftest ^:synchronized integration-deprecated-cljc-namespace-smoke-test
   (testing "real kondo run: a var in a deprecated cljc namespace is skipped without a hook error"
-    (let [tmp-dir   (.toFile (java.nio.file.Files/createTempDirectory
-                              "with-redefs-deprecated-smoke" (into-array java.nio.file.attribute.FileAttribute [])))
-          cache-dir (str tmp-dir "/cache")
-          src       (io/file tmp-dir "smoke_deprecated.cljc")
-          tst       (io/file tmp-dir "smoke_deprecated_test.clj")]
-      (try
-        (spit-fixture! src "(ns smoke-deprecated {:deprecated \"use something else\"})
+    (is (= [] (kondo-findings
+               {"smoke_deprecated.cljc" "(ns smoke-deprecated {:deprecated \"use something else\"})
 (defn the-defn [x] x)
-")
-        (spit-fixture! tst "(ns smoke-deprecated-test
+"}
+               {"smoke_deprecated_test.clj" "(ns smoke-deprecated-test
   {:clj-kondo/config '{:linters {:deprecated-namespace {:level :off}}}}
   (:require
    [smoke-deprecated :as dep]))
 (with-redefs [dep/the-defn (constantly nil)] :a)
-")
-        (is (= [] (run-kondo-twice cache-dir src tst)))
-        (finally (delete-tree! tmp-dir))))))
+"})))))
