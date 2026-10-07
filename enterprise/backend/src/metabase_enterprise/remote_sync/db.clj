@@ -356,12 +356,15 @@
   (t2/select-one-fn :entity_id model :id id))
 
 (mu/defn archived-ids :- [:set ms/PositiveInt]
-  "The IDs of the instances of `model` with `ids` whose boolean column `archived-key` is true."
+  "The IDs of the instances of `model` with `ids` whose column `archived-key` is true. An instance of a model whose
+  table has no column `archived-key` (a Transform) is not archived."
   [model        :- :keyword
    archived-key :- :keyword
    ids          :- [:sequential ms/PositiveInt]]
   (into #{}
-        (mapcat #(t2/select-pks-vec model :id [:in %] archived-key true))
+        ;; whole rows, because a condition on a column that the table does not have fails
+        (mapcat #(keep (fn [[id archived]] (when (true? archived) id))
+                       (t2/select-pk->fn archived-key model :id [:in %])))
         (partition-all ids-per-query ids)))
 
 (mu/defn entity-ids-by-id
