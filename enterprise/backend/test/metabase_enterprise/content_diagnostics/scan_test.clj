@@ -255,6 +255,7 @@
             (let [by-entity  (t2/select-fn->fn :entity_id :entity_collection_name
                                                :model/ContentDiagnosticsFinding
                                                :finding_type :duplicate_name
+                                               :entity_type :card
                                                :entity_id [:in [in-a in-b root-a root-b]])
                   ;; queried separately (entity_type-scoped) so a collection id can't collide with a card
                   ;; id from a different sequence
