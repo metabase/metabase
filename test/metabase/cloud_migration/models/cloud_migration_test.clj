@@ -7,7 +7,10 @@
    [metabase.config.core :as config]
    [metabase.task.core :as task]
    [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
    [toucan2.core :as t2]))
+
+(use-fixtures :once (fixtures/initialize :test-users))
 
 (use-fixtures :each (fn [thunk]
                       (mt/discard-setting-changes [read-only-mode]
