@@ -1,8 +1,8 @@
 /*
- * Two classes on each selector so these outrank react-grid-layout's own
- * single-class transition rules regardless of stylesheet order.
+ * A state override: transitions must stay off whatever react-grid-layout's
+ * stylesheet, or the dashcards' reduced-motion rule, would otherwise set.
  */
-.withoutTransitions:global(.react-grid-layout),
+.withoutTransitions,
 .withoutTransitions :global(.react-grid-item) {
-  transition: none;
+  transition: none !important;
 }
