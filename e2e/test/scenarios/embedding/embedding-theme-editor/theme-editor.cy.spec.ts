@@ -63,6 +63,8 @@ describe(
     });
 
     it("loads the theme editor page and shows the theme name", () => {
+      H.updateSetting("enable-embedding-simple", false);
+
       createThemeViaApi("My custom theme").then((theme) => {
         visitThemeEditor(theme.id);
       });
@@ -75,6 +77,22 @@ describe(
 
       cy.log("save button should be disabled when no changes");
       cy.findByRole("button", { name: /Save theme/ }).should("be.disabled");
+
+      cy.log("should show prompt to enable embedding");
+      H.main().findByText("Theme preview").should("be.visible");
+      H.main()
+        .findByText(
+          "Enable modular embedding to see a live preview of your theme.",
+        )
+        .should("be.visible");
+      H.main()
+        .findByRole("button", { name: /Enable modular embedding/ })
+        .should("be.visible");
+
+      cy.log("cancel should navigate back to the themes listing");
+      cy.findByRole("button", { name: /Cancel/ }).click();
+      cy.url().should("match", /\/admin\/embedding\/themes$/);
+      H.main().findByText("My custom theme").should("be.visible");
     });
 
     it("can edit and save a theme name", () => {
@@ -95,18 +113,6 @@ describe(
       // (plural) and filter by text — `undoToast()` (singular) yields
       // undefined when multiple toasts match.
       H.undoToastList().contains("Theme saved").should("be.visible");
-    });
-
-    it("can cancel and navigate back to listing", () => {
-      createThemeViaApi("A theme").then((theme) => {
-        visitThemeEditor(theme.id);
-      });
-
-      cy.findByRole("button", { name: /Cancel/ }).click();
-
-      cy.log("should navigate back to the themes listing");
-      cy.url().should("include", "/admin/embedding/themes");
-      cy.url().should("not.match", /\/themes\/\d+/);
     });
 
     it("shows not found for invalid theme id", () => {
@@ -360,39 +366,6 @@ describe(
         // screen, so use the toast list (plural) and filter by text — using
         // `undoToast()` (singular) yields undefined when multiple toasts match.
         H.undoToastList().contains("Theme saved").should("be.visible");
-      });
-    });
-
-    describe("preview panel", () => {
-      it("shows enable embedding prompt when embedding is not enabled", () => {
-        H.updateSetting("enable-embedding-simple", false);
-
-        createThemeViaApi("Preview test").then((theme) => {
-          visitThemeEditor(theme.id);
-        });
-
-        cy.log("should show prompt to enable embedding");
-        H.main()
-          .findByText(
-            "Enable modular embedding to see a live preview of your theme.",
-          )
-          .should("be.visible");
-
-        H.main()
-          .findByRole("button", { name: /Enable modular embedding/ })
-          .should("be.visible");
-      });
-
-      it("shows theme preview when embedding is enabled", () => {
-        H.updateSetting("enable-embedding-simple", true);
-        H.updateSetting("show-simple-embed-terms", false);
-
-        createThemeViaApi("Preview test").then((theme) => {
-          visitThemeEditor(theme.id);
-        });
-
-        cy.log("should show the theme preview heading");
-        H.main().findByText("Theme preview").should("be.visible");
       });
     });
 
