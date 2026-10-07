@@ -20,7 +20,7 @@
 
   When the pipeline needs to read something new, add a protocol method and its
   [[app-db-source]] implementation here — do not call `t2`/`metabot` directly
-  from `metabase.typed-schemas.core` or anything downstream of it. That keeps
+  from `metabase.typed-schemas.build` or anything downstream of it. That keeps
   the module's data-access surface enumerable and every downstream stage
   testable with literal values."
   (:require

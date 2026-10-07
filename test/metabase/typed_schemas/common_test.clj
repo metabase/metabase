@@ -91,7 +91,7 @@
   (let [cards [{:id 1 :database_id (mt/id)}
                {:id 2 :database_id audit/audit-db-id}
                {:id 3 :database_id (mt/id) :collection_id 7}]]
-    (with-redefs [audit/is-collection-id-audit? #(= % 7)]
+    (mt/with-dynamic-fn-redefs [audit/is-collection-id-audit? #(= % 7)]
       (testing "a card in the audit collection 403s on its details lookup and one on the audit database has no table
                 while the feature is off, so the schema leaves both out rather than fail an unscoped request"
         (mt/with-premium-features #{}
