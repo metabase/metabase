@@ -6,10 +6,17 @@ import {
   QUERY_DEFINITIONS,
   discoverActions,
   discoverQueries,
+  getRelativeDefinitionLocation,
 } from "./discover";
 import { getMetabaseCredentials } from "./env";
 import { isObject } from "./guards";
 import { COLLECTIONS_DIR } from "./resources";
+import type { DiscoveredQuery } from "./types";
+
+type IdentifiedQuery = DiscoveredQuery & { savedQuestionEntityId: string };
+
+const isIdentified = (query: DiscoveredQuery): query is IdentifiedQuery =>
+  query.savedQuestionEntityId !== undefined;
 
 interface ExportedResources {
   queries: Record<string, unknown>[];
@@ -84,9 +91,25 @@ export async function exportResources(appDirectory: string, file?: string) {
     );
   }
 
+  // The saved question is printed with the definition's entity ID, so the file is complete as printed.
+  const unidentified = queries.filter((query) => !isIdentified(query));
+
+  if (unidentified.length > 0) {
+    throw new Error(
+      unidentified
+        .map(
+          (query) =>
+            `${getRelativeDefinitionLocation(appRoot, query)} has no savedQuestionEntityId. Generate one with \`npx representations generate-entity-id\` and set it first: its saved question is printed with it.`,
+        )
+        .join("\n"),
+    );
+  }
+
+  const identified = queries.filter(isIdentified);
+
   const exported = await requestExport(appRoot, {
     collection,
-    queries: queries.map(({ exportName, query, savedQuestionEntityId }) => {
+    queries: identified.map(({ exportName, query, savedQuestionEntityId }) => {
       const { [QUERY_DEFINITIONS.idKey]: _entityId, ...definition } = query;
       return {
         export: exportName,
@@ -101,9 +124,9 @@ export async function exportResources(appDirectory: string, file?: string) {
     exported.actions.map((action) => [action.id, action]),
   );
 
-  if (exported.queries.length !== queries.length) {
+  if (exported.queries.length !== identified.length) {
     throw new Error(
-      `The export response holds ${exported.queries.length} queries; ${queries.length} were requested.`,
+      `The export response holds ${exported.queries.length} queries; ${identified.length} were requested.`,
     );
   }
 
@@ -119,10 +142,10 @@ export async function exportResources(appDirectory: string, file?: string) {
 
   return JSON.stringify(
     {
-      queries: queries.map((query, index) => ({
+      queries: identified.map((query, index) => ({
         export: query.exportName,
         file: path.relative(appRoot, query.filePath),
-        savedQuestionEntityId: query.savedQuestionEntityId ?? null,
+        savedQuestionEntityId: query.savedQuestionEntityId,
         ...exported.queries[index],
       })),
       actions: actions.map((action) => ({

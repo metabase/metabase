@@ -95,8 +95,9 @@ Anything that isn't a definition is rejected by the export endpoint's schema, no
 Discovery refuses what makes a definition unusable on its own or against the others: an action that
 doesn't reference a generated action, two definitions of one source action, two claiming one entity
 ID. Every command needs that, `print-resources` included. What a definition lacks against the app's
-collection files, its entity ID first of all, is `check-resources`' to report: `print-resources` is the
-command an author runs to get that ID, so it must work without one.
+collection files is `check-resources`' to report. A definition's own entity ID is the exception: the saved
+question is printed with it, so `print-resources` refuses a `defineQuery` without `savedQuestionEntityId`
+and names it, and the author generates the ID with `npx representations generate-entity-id` first.
 
 ## Dev preview vs production build
 

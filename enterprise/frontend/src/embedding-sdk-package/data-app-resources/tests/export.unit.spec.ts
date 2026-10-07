@@ -69,6 +69,20 @@ describe("exporting what resources are written from", () => {
     expect(fetchSpy).not.toHaveBeenCalled();
   });
 
+  it("refuses to print a query that has no saved question ID yet", async () => {
+    const appRoot = appWithDefinitions();
+    fs.appendFileSync(
+      path.join(appRoot, "queries/orders.query.ts"),
+      `export const Products = defineQuery({ source: { type: "table", id: 2 } });\n`,
+    );
+    const fetchSpy = mockExport(new Response(JSON.stringify(EXPORTED)));
+
+    await expect(exportResources(appRoot)).rejects.toThrow(
+      "queries/orders.query.ts:Products has no savedQuestionEntityId.",
+    );
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
   it("sends the definitions with their IDs, the app's collection, and the action IDs in one request, and prints the export beside each definition", async () => {
     const appRoot = appWithDefinitions();
     const fetchSpy = mockExport(new Response(JSON.stringify(EXPORTED)));
