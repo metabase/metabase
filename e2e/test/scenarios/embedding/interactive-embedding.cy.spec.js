@@ -1392,7 +1392,7 @@ describe("scenarios > embedding > full app", () => {
 
       cy.intercept({
         method: "GET",
-        path: "/api/comment/*",
+        pathname: "/api/comment",
       }).as("commentGet");
 
       H.visitFullAppEmbeddingUrl({
