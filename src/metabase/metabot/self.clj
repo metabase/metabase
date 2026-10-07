@@ -347,6 +347,54 @@
                (recur (inc attempt)))
            (:ok result)))))))
 
+(def ^:private provider-billing-error-codes
+  "Codes Anthropic and OpenAI put in an error body when the account is out of credit or over a spend limit."
+  #{"billing_error" "enforced_spend_limit_reached" "insufficient_quota" "credit_balance_exhausted"
+    "organization_spend_limit_exceeded" "project_spend_limit_exceeded" "organization_usage_limit_exceeded"})
+
+(defn- provider-failure
+  "Classify a provider API error's ex-data as `:billing`, `:rate-limit` or `:auth`, or nil for any other failure."
+  [{:keys [status body]}]
+  (let [{error-type :type error-code :code :keys [message details]} (:error body)]
+    (cond
+      (or (= status 402)
+          (some provider-billing-error-codes [error-type error-code (:error_code details)])
+          ;; Anthropic reports a used-up credit balance or spend limit as a plain invalid_request_error
+          (and (= status 400) (re-find #"credit balance|API usage limits" (str message))))
+      :billing
+
+      (= status 429)
+      :rate-limit
+
+      (or (= status 401) (= "permission_error" error-type))
+      :auth)))
+
+(defn byok-provider-error
+  "A user-facing `{:message :error-code}` for a provider failure that the customer can fix on their side, or nil.
+  Always nil on the managed provider, where these failures are Metabase's to fix. Only admins are told which
+  provider failed and where to fix it."
+  [e]
+  (let [{:keys [api-error provider] :as data} (ex-data e)]
+    (when-let [failure (and api-error
+                            provider
+                            (not (llm.provider/managed-model-ref? (metabot.settings/llm-metabot-provider)))
+                            (provider-failure data))]
+      (let [admin?        api/*is-superuser?*
+            provider-name (or (some-> (llm.provider/provider-type provider) :label str) provider)]
+        (case failure
+          :billing    {:error-code "ai_provider_billing"
+                       :message    (if admin?
+                                     (tru "{0} rejected the request because of a billing issue, such as running out of credits. Check the billing settings for your account." provider-name)
+                                     (tru "The AI provider rejected the request because of a billing issue. Please contact your administrator."))}
+          :rate-limit {:error-code "ai_provider_rate_limit"
+                       :message    (if admin?
+                                     (tru "{0} is rate limiting requests from Metabase. Try again in a moment, and if it keeps happening, check the rate limits for your account." provider-name)
+                                     (tru "The AI provider is rate limiting requests right now. Please try again in a moment."))}
+          :auth       {:error-code "ai_provider_auth"
+                       :message    (if admin?
+                                     (tru "{0} rejected the API key or credentials that Metabase sent. Check them in the AI settings." provider-name)
+                                     (tru "The AI provider rejected the credentials that Metabase sent. Please contact your administrator."))})))))
+
 (defn- missing-required-permission
   "Returns the metabot permission keyword that the current user is missing
   (the base `:permission/metabot` or `required-perm`), or nil when granted.

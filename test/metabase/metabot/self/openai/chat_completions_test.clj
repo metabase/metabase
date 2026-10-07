@@ -4,6 +4,8 @@
    [metabase.metabot.self.core :as self.core]
    [metabase.metabot.self.mistral :as mistral]
    [metabase.metabot.self.openai.chat-completions :as chat-completions]
+   [metabase.metabot.self.openrouter :as openrouter]
+   [metabase.metabot.self.zai :as zai]
    [metabase.metabot.test-util :as metabot.tu]
    [metabase.util.json :as json]))
 
@@ -574,7 +576,7 @@
               {:error {:message "Internal server error" :type "InternalServerError" :param nil :code 500}}
               "Internal server error"]
              ["OpenRouter's error on a chunk that finishes the choice"
-              (chat-completions/chat-completions->aisdk-chunks-xf)
+              (openrouter/openrouter->aisdk-chunks-xf)
               {:id       "cmpl-abc123"
                :object   "chat.completion.chunk"
                :created  1234567890
@@ -590,6 +592,10 @@
                :created 1702256327
                :model   "mistral-medium-3-5"
                :choices [{:index 0 :delta {:content ""} :finish_reason "error"}]}
+              "The model provider failed to complete the response"]
+             ["Z.AI's network_error finish reason"
+              (zai/zai->aisdk-chunks-xf)
+              {:choices [{:index 0 :delta {} :finish_reason "network_error"}]}
               "The model provider failed to complete the response"]]]
       (testing shape
         (testing "after closing the open text block"

@@ -1,5 +1,6 @@
 import type { MouseEvent } from "react";
 import { useState } from "react";
+
 import { type CustomVisualizationProps, formatValue } from "../../../src/index";
 
 type Settings = {

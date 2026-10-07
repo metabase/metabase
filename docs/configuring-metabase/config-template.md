@@ -247,6 +247,8 @@ config:
     llm-vllm-api-base-url: null
     llm-vllm-api-key: null
     llm-vllm-request-timeout-ms: 300000
+    llm-xai-api-base-url: https://api.x.ai/v1
+    llm-xai-api-key: null
     llm-zai-api-base-url: https://api.z.ai/api/paas/v4
     llm-zai-api-key: null
     loading-message: doing-science
