@@ -184,7 +184,7 @@
                                 (throw (ex-info "Failed to send" {:metadata 42})))]
               (with-redefs [notification.send/should-skip-retry? (constantly true)
                             channel/send!                        send!]
-                (#'notification.send/send-notification-sync! n))
+                (is (thrown? clojure.lang.ExceptionInfo (#'notification.send/send-notification-sync! n))))
               (is (=? {:task "channel-send"
                        :status       :failed
                        :task_details {:attempted_retries 0
@@ -193,7 +193,11 @@
                                       :retry_errors      (mt/malli=? [:sequential [:map {:closed true}
                                                                                    [:timestamp :string]
                                                                                    [:message :string]]])}}
-                      (latest-task-history-entry "channel-send"))))))))))
+                      (latest-task-history-entry "channel-send")))
+              (testing "the parent notification-send is also marked failed, not just the nested channel-send (metabase#80740)"
+                (is (=? {:task "notification-send"
+                         :status :failed}
+                        (latest-task-history-entry "notification-send"))))))))))
 
 (deftest notification-send-inactive-channel-humanized-error-test
   (notification.tu/with-notification-testing-setup!
@@ -208,7 +212,7 @@
           (t2/update! :model/Channel (:id chn) {:active false})
           (let [send-count (atom 0)]
             (with-redefs [channel/send! (fn [& _] (swap! send-count inc))]
-              (#'notification.send/send-notification-sync! n))
+              (is (thrown? clojure.lang.ExceptionInfo (#'notification.send/send-notification-sync! n))))
             (testing "channel/send! is never invoked"
               (is (zero? @send-count))))
           (is (=? {:task         "channel-send"
@@ -422,7 +426,7 @@
             (with-redefs [notification.send/default-retry-config (assoc @#'notification.send/default-retry-config :max-retries 1)
                           channel/send! (fn [& _]
                                           (throw (Exception. "test-channel-exception")))]
-              (#'notification.send/send-notification-sync! n)
+              (is (thrown? clojure.lang.ExceptionInfo (#'notification.send/send-notification-sync! n)))
               (is (prometheus-test/approx= 1 (mt/metric-value system :metabase-notification/channel-send-error
                                                               {:payload-type "notification/testing"
                                                                :channel-type "channel/metabase-test"}))))))))))

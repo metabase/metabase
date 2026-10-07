@@ -97,10 +97,12 @@
           (log/info "Sent successfully")))
       (analytics/inc! :metabase-notification/channel-send-ok {:payload-type payload-type
                                                               :channel-type channel-type})
+      true
       (catch Throwable e
         (analytics/inc! :metabase-notification/channel-send-error {:payload-type payload-type
                                                                    :channel-type channel-type})
-        (log/warnf "Failed to send: %s" (ex-message e))))))
+        (log/warnf "Failed to send: %s" (ex-message e))
+        false))))
 
 (defn- hydrate-notification
   [notification-info]
@@ -173,7 +175,8 @@
             (let [notification-payload (-> hydrated-notification
                                            notification.payload/notification-payload
                                            (dissoc :handlers))
-                  skip-reason          (notification.payload/skip-reason notification-payload)]
+                  skip-reason          (notification.payload/skip-reason notification-payload)
+                  any-channel-failed?  (volatile! false)]
               (if skip-reason
                 (log/info "Skipping" {:skip-reason skip-reason})
                 (do
@@ -192,12 +195,17 @@
                                       (handler->channel-name handler)
                                       (-> handler :template :id))
                           (doseq [message messages]
-                            (channel-send-retrying! id payload_type handler message)))
+                            (when-not (channel-send-retrying! id payload_type handler message)
+                              (vreset! any-channel-failed? true))))
                         (catch Exception e
+                          (vreset! any-channel-failed? true)
                           (log/errorf "Error sending to channel %s: %s" (handler->channel-name handler) (ex-message e))))))
                   (log/info "Done processing notification")))
               (do-after-notification-sent hydrated-notification notification-payload (some? skip-reason))
-              (analytics/inc! :metabase-notification/send-ok {:payload-type payload_type}))))
+              (if @any-channel-failed?
+                (throw (ex-info (tru "One or more channels failed to deliver this notification")
+                                {:notification-id id}))
+                (analytics/inc! :metabase-notification/send-ok {:payload-type payload_type})))))
         (catch Exception e
           (log/errorf "Failed to send: %s" (ex-message e))
           (analytics/inc! :metabase-notification/send-error {:payload-type payload_type})
