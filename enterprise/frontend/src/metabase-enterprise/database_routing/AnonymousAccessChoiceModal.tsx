@@ -1,4 +1,4 @@
-import { type ReactNode, useState } from "react";
+import type { ReactNode } from "react";
 import { t } from "ttag";
 
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
@@ -65,18 +65,10 @@ const GrantChoiceModal = ({
   onAnswer: (granted: boolean) => void | Promise<void>;
   onCancel: () => void;
 }) => {
-  const [answering, setAnswering] = useState(false);
-
+  // Awaited, not floated. Not disabled in flight as ConfirmModal's is: chooseGrant clears
+  // mustAnswerBeforeStoring on the same flush, so this question closes before the store resolves.
   const answer = async (granted: boolean) => {
-    const applied = onAnswer(granted);
-    try {
-      if (applied instanceof Promise) {
-        setAnswering(true);
-        await applied;
-      }
-    } finally {
-      setAnswering(false);
-    }
+    await onAnswer(granted);
   };
 
   return (
@@ -93,13 +85,12 @@ const GrantChoiceModal = ({
         <Flex align="center" justify="space-between" gap="lg">
           <Button variant="subtle" onClick={onCancel}>{t`Cancel`}</Button>
           <Flex align="center" gap="lg">
-            <Button disabled={answering} onClick={() => answer(false)}>
+            <Button onClick={() => answer(false)}>
               {t`Stop serving them`}
             </Button>
             <Button
               variant="filled"
               data-autofocus
-              disabled={answering}
               onClick={() => answer(true)}
             >
               {t`Keep serving them`}
