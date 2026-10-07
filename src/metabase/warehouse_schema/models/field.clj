@@ -448,6 +448,9 @@
                (map (fn [n] {:model "Field" :id n}) fields))
          (filterv some?))))
 
+(defmethod serdes/ingested-path "Field" [_ {:keys [table_id parent_id name]}]
+  (serdes/field->path (conj (or parent_id table_id) name)))
+
 (defmethod serdes/entity-id "Field" [_ {:keys [name]}]
   name)
 

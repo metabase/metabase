@@ -525,6 +525,19 @@
                   {:type :reasoning-delta :id "r1" :delta "c"}
                   {:type :reasoning-end :id "r1" :providerMetadata {:anthropic {:signature "sig"}}}])))))
 
+(deftest ^:parallel aisdk-xf-orphan-chunk-test
+  (testing "a group that does not open with its start chunk fails with an error naming the chunk"
+    (doseq [[mode xf] [["aisdk-xf" (self.core/aisdk-xf)]
+                       ["lite-aisdk-xf" (self.core/lite-aisdk-xf)]]]
+      (testing mode
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"Model stream sent a :tool-input-delta chunk for \"call-1\" without its start chunk"
+             (into [] xf
+                   [{:type :start :messageId "msg-1"}
+                    {:type :tool-input-delta :toolCallId "call-1" :inputTextDelta "{}"}
+                    {:type :tool-input-available :toolCallId "call-1" :toolName "search"}])))))))
+
 ;;; tool executor
 
 (deftest ^:parallel tool-executor-xf-test
