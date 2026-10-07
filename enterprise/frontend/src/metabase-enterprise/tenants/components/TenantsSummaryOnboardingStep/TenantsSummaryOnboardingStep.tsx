@@ -74,12 +74,12 @@ export const TenantsSummaryOnboardingStep = ({
   const fieldConfig = getIsolationFieldConfig(strategy);
 
   return (
-    <Stack gap="lg">
+    <Stack gap="xl">
       <Title order={3} c="text-primary">
         {t`You created the following tenants`}
       </Title>
 
-      <Stack gap="md">
+      <Stack gap="lg">
         {tenantsToShow.map((tenant) => (
           <TenantSummaryCard
             key={tenant.slug}
@@ -118,7 +118,7 @@ export const TenantsSummaryOnboardingStep = ({
 };
 
 const RelatedSettingsSection = () => (
-  <SimpleGrid cols={2} spacing="md">
+  <SimpleGrid cols={2} spacing="lg">
     <RelatedSettingCard
       name={t`Tenants`}
       icon="globe"

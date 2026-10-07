@@ -2,7 +2,7 @@ import cx from "classnames";
 
 import CS from "metabase/css/core/index.css";
 import { type Dayjs, dayjs } from "metabase/dayjs";
-import { NULL_DISPLAY_VALUE } from "metabase/utils/constants";
+import { getNullDisplayValue } from "metabase/utils/constants";
 import { formatNumber, removeNewLines } from "metabase/utils/formatting";
 import { parseNumber } from "metabase/utils/number";
 import {
@@ -31,6 +31,76 @@ export type FormatValueOptions = ColumnSettings & {
   copyLinkUrl?: boolean;
 };
 
+type ColumnTypePredicates = {
+  isURL: boolean;
+  isEmail: boolean;
+  isTime: boolean;
+  isDate: boolean;
+  isNumber: boolean;
+  isCoordinate: boolean;
+  isBoolean: boolean;
+};
+
+const NO_COLUMN_PREDICATES: ColumnTypePredicates = {
+  isURL: false,
+  isEmail: false,
+  isTime: false,
+  isDate: false,
+  isNumber: false,
+  isCoordinate: false,
+  isBoolean: false,
+};
+
+type ColumnPredicatesEntry = {
+  base_type: DatasetColumn["base_type"];
+  effective_type: DatasetColumn["effective_type"];
+  semantic_type: DatasetColumn["semantic_type"];
+  predicates: ColumnTypePredicates;
+};
+
+// each predicate fans out into several type-hierarchy lookups, and formatting a
+// table re-checks the same column for every cell, so compute them once per column.
+// Cache entries also snapshot the type fields they were computed from because
+// the custom-viz API hands third-party code mutable column objects,
+// so identity alone can go stale.
+const columnPredicatesCache = new WeakMap<
+  DatasetColumn,
+  ColumnPredicatesEntry
+>();
+
+export function getColumnTypePredicates(
+  column: DatasetColumn | null | undefined,
+): ColumnTypePredicates {
+  if (!column || typeof column !== "object") {
+    return NO_COLUMN_PREDICATES;
+  }
+  const entry = columnPredicatesCache.get(column);
+  if (
+    entry &&
+    entry.base_type === column.base_type &&
+    entry.effective_type === column.effective_type &&
+    entry.semantic_type === column.semantic_type
+  ) {
+    return entry.predicates;
+  }
+  const predicates = {
+    isURL: isURL(column),
+    isEmail: isEmail(column),
+    isTime: isTime(column),
+    isDate: isDate(column),
+    isNumber: isNumber(column),
+    isCoordinate: isCoordinate(column),
+    isBoolean: isBoolean(column),
+  };
+  columnPredicatesCache.set(column, {
+    base_type: column.base_type,
+    effective_type: column.effective_type,
+    semantic_type: column.semantic_type,
+    predicates,
+  });
+  return predicates;
+}
+
 export function formatValue(value: unknown, _options: FormatValueOptions = {}) {
   let { prefix, suffix, ...options } = _options;
   // avoid rendering <ExternalLink> if we have click_behavior set
@@ -45,18 +115,19 @@ export function formatValue(value: unknown, _options: FormatValueOptions = {}) {
     };
   }
   const formatted = formatValueRaw(value, options);
-  let maybeJson = {};
-  try {
-    // Unjustified type cast. FIXME
-    maybeJson = JSON.parse(value as string);
-  } catch {
-    // do nothing
-  }
   if (options.markdown_template) {
     const renderJsxMarkdown = options.jsx
       ? getJsxMarkdownRenderer()
       : undefined;
     if (renderJsxMarkdown) {
+      let maybeJson = {};
+      if (typeof value === "string") {
+        try {
+          maybeJson = JSON.parse(value);
+        } catch {
+          // do nothing
+        }
+      }
       // inject the formatted value as "value" and the unformatted value as "raw"
       return renderJsxMarkdown(options.markdown_template, {
         value: formatted,
@@ -88,7 +159,7 @@ export function formatValue(value: unknown, _options: FormatValueOptions = {}) {
 }
 
 export function getRemappedValue(
-  value: string | number,
+  value: unknown,
   { remap, column }: ColumnSettings = {},
 ) {
   if (remap && column) {
@@ -131,15 +202,15 @@ export function formatValueRaw(
   };
 
   const { column } = options;
+  const columnPredicates = getColumnTypePredicates(column);
 
-  // Unjustified type cast. FIXME
-  const remapped = getRemappedValue(value as string | number, options);
+  const remapped = getRemappedValue(value, options);
   if (remapped !== undefined && options.view_as !== "link") {
     value = remapped;
   }
 
   if (value == null) {
-    return options.stringifyNull ? NULL_DISPLAY_VALUE : null;
+    return options.stringifyNull ? getNullDisplayValue() : null;
   } else if (
     options.view_as !== "image" &&
     options.click_behavior &&
@@ -166,15 +237,14 @@ export function formatValueRaw(
       getDataFromClicked(options.clicked),
     );
   } else if (
-    (isURL(column) && options.view_as == null) ||
+    (columnPredicates.isURL && options.view_as == null) ||
     options.view_as === "link"
   ) {
-    // Unjustified type cast. FIXME
-    return formatUrl(value as string, options);
-  } else if (isEmail(column)) {
+    return formatUrl(value, options);
+  } else if (columnPredicates.isEmail) {
     // Unjustified type cast. FIXME
     return formatEmail(value as string, options);
-  } else if (isTime(column)) {
+  } else if (columnPredicates.isTime) {
     // Unjustified type cast. FIXME
     return formatTime(value as Dayjs, column.unit, options);
   } else if (column && column.unit != null) {
@@ -185,11 +255,9 @@ export function formatValueRaw(
       options,
     );
   } else if (
-    isDate(column) ||
+    columnPredicates.isDate ||
     isDateValue(value) ||
-    dayjs.isDayjs(value) ||
-    // Unjustified type cast. FIXME
-    dayjs(value as string, ["YYYY-MM-DD'T'HH:mm:ss.SSSZ"], true).isValid()
+    dayjs.isDayjs(value)
   ) {
     // Unjustified type cast. FIXME
     return formatDateTimeWithUnit(value as string | number, "minute", options);
@@ -199,7 +267,7 @@ export function formatValueRaw(
     // it could be a remap
     // TODO(eric, 2025-12-23): The second check should probably be in parseNumber(),
     // but it caused tests to fail so I put it here.
-    if (isNumber(column) && Number.isFinite(Number(value))) {
+    if (columnPredicates.isNumber && Number.isFinite(Number(value))) {
       const number = parseNumber(value);
       if (number != null) {
         return formatNumber(number, options);
@@ -212,23 +280,23 @@ export function formatValueRaw(
       return options.collapseNewlines ? removeNewLines(value) : value;
     }
     return formatStringFallback(value, options);
-  } else if (typeof value === "number" && isCoordinate(column)) {
+  } else if (typeof value === "number" && columnPredicates.isCoordinate) {
     const range = rangeForValue(value, column);
     if (range && !options.noRange) {
       return formatRange(range, formatCoordinate, options);
     } else {
       return formatCoordinate(value, options);
     }
-  } else if (typeof value === "number" && isNumber(column)) {
+  } else if (typeof value === "number" && columnPredicates.isNumber) {
     const range = rangeForValue(value, column);
     if (range && !options.noRange) {
       return formatRange(range, formatNumber, options);
     } else {
       return formatNumber(value, options);
     }
-  } else if (typeof value === "bigint" && isNumber(column)) {
+  } else if (typeof value === "bigint" && columnPredicates.isNumber) {
     return formatNumber(value, options);
-  } else if (typeof value === "boolean" && isBoolean(column)) {
+  } else if (typeof value === "boolean" && columnPredicates.isBoolean) {
     return JSON.stringify(value);
   } else if (typeof value === "object") {
     // no extra whitespace for table cells

@@ -19,7 +19,6 @@
    [metabase.driver.settings :as driver.settings]
    [metabase.driver.util :as driver.u]
    [metabase.lib.schema :as lib.schema]
-   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.json :as json]
@@ -240,6 +239,7 @@
   ;;  > If people have problems with that, I think we can make it configurable.
   7)
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (mu/defn- ^:dynamic *sample-stages*
   "Stages to get sample of a collection in [[describe-table-pipeline]]. Dynamic for testing purposes."
   [collection-name :- :string
@@ -487,17 +487,15 @@
 
   Each row represents leaf in sampled documents, its type and indices of keys present in the path of mongo of nested
   object."
-  [database :- [:map
-                [:id ::lib.schema.id/database]]
-   table    :- [:map
-                [:name :string]]]
-  (let [pipeline (describe-table-pipeline {:collection-name       (:name table)
+  [database        :- :metabase.warehouses.schema/database
+   collection-name :- :string]
+  (let [pipeline (describe-table-pipeline {:collection-name       collection-name
                                            :sample-size           (* table-rows-sample/nested-field-sample-limit 2)
                                            :document-sample-depth describe-table-query-depth
                                            :leaf-limit            (driver.settings/sync-leaf-fields-limit)})
         query    {:database (:id database)
                   :type     "native"
-                  :native   {:collection (:name table)
+                  :native   {:collection collection-name
                              :query      (json/encode pipeline)}}]
     (driver-api/process-query query fetch-dbfields-rff)))
 
@@ -505,7 +503,7 @@
   [_driver database table]
   {:schema nil
    :name (:name table)
-   :fields (-> (fetch-dbfields database table)
+   :fields (-> (fetch-dbfields database (:name table))
                (dbfields->ftree (driver.settings/sync-max-fields-per-table))
                ftree->nested-fields)})
 

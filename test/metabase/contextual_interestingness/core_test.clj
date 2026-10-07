@@ -9,6 +9,7 @@
    [metabase.metabot.self :as metabot.self]
    [metabase.metabot.settings :as metabot.settings]
    [metabase.metabot.usage :as usage]
+   [metabase.test :as mt]
    [metabase.util.log.capture :as log.capture]))
 
 (def ^:private chart-config
@@ -25,10 +26,11 @@
 (defn- with-llm-configured! [thunk]
   ;; the LLM gate checks usage limits and user permissions in addition to the settings,
   ;; so stub all four for tests that want the gate open.
-  (with-redefs [metabot.settings/metabot-enabled?        (constantly true)
-                metabot.settings/llm-metabot-configured? (constantly true)
-                usage/check-usage-limits!                (constantly nil)
-                scope/resolve-user-permissions           (constantly scope/all-yes-permissions)]
+  (mt/with-dynamic-fn-redefs
+    [metabot.settings/metabot-enabled?        (constantly true)
+     metabot.settings/llm-metabot-configured? (constantly true)
+     usage/check-usage-limits!                (constantly nil)
+     scope/resolve-user-permissions           (constantly scope/all-yes-permissions)]
     (thunk)))
 
 (defn- call
@@ -42,8 +44,9 @@
 (deftest score-and-describe-blank-context-test
   (testing "blank or nil context returns nil without invoking the LLM"
     (let [calls (atom 0)]
-      (with-redefs [metabot.self/call-llm-structured
-                    (fn [& _] (swap! calls inc) {:score 1.0 :chart_description "c" :reasoning "x"})]
+      (mt/with-dynamic-fn-redefs
+        [metabot.self/call-llm-structured
+         (fn [& _] (swap! calls inc) {:score 1.0 :chart_description "c" :reasoning "x"})]
         (with-llm-configured!
           (fn []
             (is (nil? (call {:context-string nil})))
@@ -54,8 +57,9 @@
 (deftest score-and-describe-nil-config-test
   (testing "nil chart-config returns nil without invoking the LLM"
     (let [calls (atom 0)]
-      (with-redefs [metabot.self/call-llm-structured
-                    (fn [& _] (swap! calls inc) {:score 1.0 :chart_description "c" :reasoning "x"})]
+      (mt/with-dynamic-fn-redefs
+        [metabot.self/call-llm-structured
+         (fn [& _] (swap! calls inc) {:score 1.0 :chart_description "c" :reasoning "x"})]
         (with-llm-configured!
           (fn []
             (is (nil? (call {:chart-config nil})))
@@ -64,9 +68,10 @@
 (deftest score-and-describe-unconfigured-llm-test
   (testing "returns nil and skips the LLM call when no provider is configured"
     (let [calls (atom 0)]
-      (with-redefs [metabot.settings/llm-metabot-configured? (constantly false)
-                    metabot.self/call-llm-structured
-                    (fn [& _] (swap! calls inc) {:score 1.0 :chart_description "c" :reasoning "x"})]
+      (mt/with-dynamic-fn-redefs
+        [metabot.settings/llm-metabot-configured? (constantly false)
+         metabot.self/call-llm-structured
+         (fn [& _] (swap! calls inc) {:score 1.0 :chart_description "c" :reasoning "x"})]
         (is (nil? (call {})))
         (is (zero? @calls))))))
 
@@ -112,11 +117,12 @@
 
 (deftest score-and-describe-happy-path-test
   (testing "valid LLM response returns score + descriptions; metric description is generated when card-description is blank"
-    (with-redefs [metabot.self/call-llm-structured
-                  (constantly {:score              0.85
-                               :chart_description  "Monthly revenue trend over the past year"
-                               :metric_description "Total monthly revenue from completed orders"
-                               :reasoning          "directly addresses revenue trend"})]
+    (mt/with-dynamic-fn-redefs
+      [metabot.self/call-llm-structured
+       (constantly {:score              0.85
+                    :chart_description  "Monthly revenue trend over the past year"
+                    :metric_description "Total monthly revenue from completed orders"
+                    :reasoning          "directly addresses revenue trend"})]
       (with-llm-configured!
         (fn []
           (let [out (call {})]
@@ -126,10 +132,11 @@
 
 (deftest score-and-describe-with-card-description-test
   (testing "When card-description is provided, the schema does not require metric_description and parse-response surfaces it as nil"
-    (with-redefs [metabot.self/call-llm-structured
-                  (constantly {:score             0.6
-                               :chart_description "Monthly revenue"
-                               :reasoning         "related"})]
+    (mt/with-dynamic-fn-redefs
+      [metabot.self/call-llm-structured
+       (constantly {:score             0.6
+                    :chart_description "Monthly revenue"
+                    :reasoning         "related"})]
       (with-llm-configured!
         (fn []
           (let [out (call {:card-description "Sum of completed order totals"})]
@@ -141,31 +148,36 @@
   (testing "scores outside [0,1] are clamped"
     (with-llm-configured!
       (fn []
-        (with-redefs [metabot.self/call-llm-structured
-                      (constantly {:score 1.5 :chart_description "c" :reasoning "over"})]
+        (mt/with-dynamic-fn-redefs
+          [metabot.self/call-llm-structured
+           (constantly {:score 1.5 :chart_description "c" :reasoning "over"})]
           (is (= 1.0 (:score (call {})))))
-        (with-redefs [metabot.self/call-llm-structured
-                      (constantly {:score -0.2 :chart_description "c" :reasoning "under"})]
+        (mt/with-dynamic-fn-redefs
+          [metabot.self/call-llm-structured
+           (constantly {:score -0.2 :chart_description "c" :reasoning "under"})]
           (is (= 0.0 (:score (call {})))))))))
 
 (deftest score-and-describe-malformed-response-test
   (testing "missing or non-numeric :score → nil (caller-visible failure mode)"
     (with-llm-configured!
       (fn []
-        (with-redefs [metabot.self/call-llm-structured
-                      (constantly {:chart_description "c" :reasoning "no score"})]
+        (mt/with-dynamic-fn-redefs
+          [metabot.self/call-llm-structured
+           (constantly {:chart_description "c" :reasoning "no score"})]
           (is (nil? (call {}))))
-        (with-redefs [metabot.self/call-llm-structured
-                      (constantly {:score "not a number" :chart_description "c" :reasoning "wrong type"})]
+        (mt/with-dynamic-fn-redefs
+          [metabot.self/call-llm-structured
+           (constantly {:score "not a number" :chart_description "c" :reasoning "wrong type"})]
           (is (nil? (call {}))))))))
 
 (deftest score-and-describe-empty-descriptions-test
   (testing "blank/whitespace descriptions parse to nil"
-    (with-redefs [metabot.self/call-llm-structured
-                  (constantly {:score              0.5
-                               :chart_description  "   "
-                               :metric_description ""
-                               :reasoning          "x"})]
+    (mt/with-dynamic-fn-redefs
+      [metabot.self/call-llm-structured
+       (constantly {:score              0.5
+                    :chart_description  "   "
+                    :metric_description ""
+                    :reasoning          "x"})]
       (with-llm-configured!
         (fn []
           (let [out (call {})]
@@ -175,15 +187,17 @@
 
 (deftest score-and-describe-llm-throws-test
   (testing "transport / API errors are caught and surfaced as nil — never thrown"
-    (with-redefs [metabot.self/call-llm-structured (fn [& _] (throw (ex-info "boom" {:status 503})))]
+    (mt/with-dynamic-fn-redefs
+      [metabot.self/call-llm-structured (fn [& _] (throw (ex-info "boom" {:status 503})))]
       (with-llm-configured!
         (fn []
           (is (nil? (call {}))))))))
 
 (deftest score-and-describe-llm-error-code-logged-test
   (testing "a failure surfaces the ex-data :error-code in the warn log so nil scores are diagnosable"
-    (with-redefs [metabot.self/call-llm-structured
-                  (fn [& _] (throw (ex-info "bad json" {:error-code "structured-output-invalid"})))]
+    (mt/with-dynamic-fn-redefs
+      [metabot.self/call-llm-structured
+       (fn [& _] (throw (ex-info "bad json" {:error-code "structured-output-invalid"})))]
       (with-llm-configured!
         (fn []
           (let [msgs (log.capture/with-log-messages-for-level
@@ -206,8 +220,9 @@
 
 (deftest score-and-describe-surfaces-reasoning-test
   (testing "the LLM's reasoning flows all the way through to the public result map"
-    (with-redefs [metabot.self/call-llm-structured
-                  (constantly {:score 0.7 :chart_description "c" :reasoning "because revenue"})]
+    (mt/with-dynamic-fn-redefs
+      [metabot.self/call-llm-structured
+       (constantly {:score 0.7 :chart_description "c" :reasoning "because revenue"})]
       (with-llm-configured!
         (fn []
           (is (= "because revenue" (:reasoning (call {})))))))))
@@ -233,10 +248,11 @@
   "Run the scorer with the LLM stubbed out and return the `messages` vector it was handed."
   [overrides]
   (let [captured (atom nil)]
-    (with-redefs [metabot.self/call-llm-structured
-                  (fn [_model messages _schema _temp _max-tokens _opts]
-                    (reset! captured messages)
-                    {:score 0.7 :chart_description "c" :reasoning "x"})]
+    (mt/with-dynamic-fn-redefs
+      [metabot.self/call-llm-structured
+       (fn [_model messages _schema _temp _max-tokens _opts]
+         (reset! captured messages)
+         {:score 0.7 :chart_description "c" :reasoning "x"})]
       (with-llm-configured! (fn [] (call overrides))))
     @captured))
 

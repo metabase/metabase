@@ -1934,102 +1934,6 @@ describe("issue 56716", () => {
     H.getDashboardCard().findByText("200 rows").should("be.visible");
   });
 });
-
-describe("Issue 46337", () => {
-  const MODEL_NAME = "Model 46337";
-
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-    H.createQuestion({
-      type: "model",
-      name: MODEL_NAME,
-      query: {
-        "source-table": ORDERS_ID,
-        fields: [
-          [
-            "field",
-            ORDERS.ID,
-            {
-              "base-type": "type/BigInteger",
-            },
-          ],
-          [
-            "field",
-            ORDERS.TAX,
-            {
-              "base-type": "type/Float",
-            },
-          ],
-          [
-            "field",
-            ORDERS.TOTAL,
-            {
-              "base-type": "type/Float",
-            },
-          ],
-          [
-            "field",
-            ORDERS.DISCOUNT,
-            {
-              "base-type": "type/Float",
-            },
-          ],
-          [
-            "field",
-            ORDERS.QUANTITY,
-            {
-              "base-type": "type/Integer",
-            },
-          ],
-          [
-            "field",
-            ORDERS.CREATED_AT,
-            {
-              "base-type": "type/DateTime",
-            },
-          ],
-          [
-            "field",
-            ORDERS.PRODUCT_ID,
-            {
-              "base-type": "type/Integer",
-            },
-          ],
-        ],
-        joins: [
-          {
-            fields: "all",
-            alias: "Products",
-            "source-table": PEOPLE_ID,
-            strategy: "left-join",
-            condition: [
-              "=",
-              ["field", ORDERS.USER_ID, {}],
-              ["field", PEOPLE.ID, { "join-alias": "Products" }],
-            ],
-          },
-        ],
-      },
-    }).then(({ body: model }) => {
-      cy.visit(`/auto/dashboard/model/${model.id}`);
-    });
-  });
-
-  // TODO: unskip when metabase#46337 is fixed
-  // See: https://github.com/metabase/metabase/issues/46337
-  it("should (metabase#46337)", { tags: "@skip" }, () => {
-    cy.log("ensure the dashcards render data not errors");
-
-    cy.findByTestId("dashboard-grid").within(() => {
-      cy.findByText("There was a problem displaying this chart.").should(
-        "not.exist",
-      );
-      cy.findByText(`Total ${MODEL_NAME}`).should("be.visible");
-    });
-  });
-});
-
 function slowDownCardQuery() {
   return cy.intercept("POST", "/api/card/*/query", (req) => {
     req.on("response", (res) => {
@@ -2246,7 +2150,9 @@ describe("issue 64138", () => {
       })
       .within(() => {
         cy.findByLabelText("Zoom in").should("not.exist");
-        cy.findByText("Set as default view").should("be.visible").click();
+        // the update button is disabled until the map is panned, so only
+        // assert that it is shown while the zoom controls are hidden
+        cy.findByText("Set as default view").should("be.visible");
       });
 
     cy.log("hovering marker icons should not open their tooltips");
@@ -2391,5 +2297,120 @@ describe("issue 58556, issue 66277", () => {
         /Created At is .* \d{1,2}:\d{2} (AM|PM) – \d{1,2}:\d{2} (AM|PM)/,
       )
       .should("be.visible");
+  });
+});
+
+describe("issue 65908", () => {
+  const dateParameters = {
+    default: "2030-01-01~",
+    id: "d3b78b27",
+    name: "Date Filter",
+    slug: "date_filter",
+    type: "date/all-options",
+  };
+
+  function createDashcard({
+    index,
+    questionId,
+    hideEmptyResults,
+    withParameterMappings,
+  }) {
+    const cardHeightInRows = 10;
+
+    return {
+      col: 0,
+      row: cardHeightInRows * index,
+      size_x: 24,
+      size_y: cardHeightInRows,
+      card_id: questionId,
+      visualization_settings: {
+        "card.hide_empty": hideEmptyResults,
+      },
+      parameter_mappings: withParameterMappings
+        ? [
+            {
+              parameter_id: dateParameters.id,
+              card_id: questionId,
+              target: ["dimension", ["field", ORDERS.CREATED_AT, null]],
+            },
+          ]
+        : undefined,
+    };
+  }
+
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+
+    const dashboardDetails = {
+      name: "Dashboard with empty result cards",
+      parameters: [dateParameters],
+    };
+
+    const questionDetails = {
+      name: "Orders question",
+      query: {
+        "source-table": ORDERS_ID,
+        limit: 5,
+      },
+    };
+
+    H.createDashboardWithQuestions({
+      dashboardDetails,
+      questions: [questionDetails],
+    }).then(({ dashboard, questions }) => {
+      const [question] = questions;
+      H.updateDashboardCards({
+        dashboard_id: dashboard.id,
+        cards: [
+          createDashcard({
+            index: 0,
+            questionId: question.id,
+            hideEmptyResults: true,
+            withParameterMappings: true,
+          }),
+          createDashcard({
+            index: 1,
+            questionId: question.id,
+            hideEmptyResults: true,
+            withParameterMappings: true,
+          }),
+          createDashcard({
+            index: 2,
+            questionId: question.id,
+            hideEmptyResults: true,
+            withParameterMappings: true,
+          }),
+          createDashcard({
+            index: 3,
+            questionId: question.id,
+            hideEmptyResults: false,
+            withParameterMappings: false,
+          }),
+        ],
+      });
+      cy.wrap(dashboard.id).as("dashboardId");
+    });
+  });
+
+  it("should not take into account the height of cards with no results when calculating dashboard height (metabase#65908)", () => {
+    cy.get("@dashboardId").then((dashboardId) => {
+      H.visitDashboard(dashboardId);
+
+      cy.findByDisplayValue("Dashboard with empty result cards").should(
+        "be.visible",
+      );
+
+      H.getDashboardCard().within(() => {
+        cy.findByText("Orders question").should("be.visible");
+        cy.log("Checks for the subtotal value from the first row");
+        cy.findByText("37.65").should("be.visible");
+      });
+
+      cy.findByRole("main").should(($main) => {
+        // 4 cards take about 2000px in height, so only 1 card should definitely take less than 1000px
+        expect($main[0].scrollHeight).to.be.lessThan(1000);
+      });
+    });
   });
 });

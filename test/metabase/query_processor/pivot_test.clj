@@ -28,6 +28,7 @@
    [metabase.query-processor.pivot.common :as pivot.common]
    [metabase.query-processor.pivot.test-util :as qp.pivot.test-util]
    [metabase.query-processor.settings :as qp.settings]
+   ;; binds mock metadata providers via the ambient store, which the code under test reads
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.test :as qp]
    [metabase.test :as mt]
@@ -143,6 +144,25 @@
     (is (= (mt/rows (qp.pivot/run-pivot-query (test-query)))
            (mt/rows (qp.pivot/run-pivot-query (set/rename-keys (test-query)
                                                                {:pivot-rows :pivot_rows, :pivot-cols :pivot_cols})))))))
+
+(deftest ^:parallel error-generating-pivot-queries-test
+  (testing "An error thrown while generating the pivot sub-queries, i.e. before the QP proper (and its error-handling middleware) runs"
+    ;; the native path silently drops out-of-range pivot indexes rather than throwing, so parity would disagree here
+    (qp.pivot.test-util/without-pivot-parity-check
+     (let [query (assoc (test-query) :pivot-rows [0 1 2 3])]
+       (testing "is thrown as-is for a non-userland query"
+         (is (thrown-with-msg?
+              clojure.lang.ExceptionInfo
+              #"Error generating pivot queries"
+              (qp.pivot/run-pivot-query query))))
+       (testing "is returned in the usual formatted error shape for a userland query, like any other QP error"
+         (doseq [userland-query [(qp.core/userland-query query)
+                                 (assoc query :info {:context :ad-hoc})]]
+           (is (=? {:status     :failed
+                    :error      #"Invalid pivot-rows: specified breakout at index 3, but we only have 3 breakouts"
+                    :error_type :invalid-query
+                    :json_query map?}
+                   (qp.pivot/run-pivot-query userland-query)))))))))
 
 (deftest ^:parallel generate-queries-test
   (mt/test-drivers (qp.pivot.test-util/applicable-drivers)
@@ -537,6 +557,40 @@
           (is (pos? (:row_count result)))
           (is (= (sort pgs) pgs)
               "rows should appear in non-decreasing pivot-grouping order"))))))
+
+(deftest ^:parallel pivot-with-fields-and-summary-in-same-stage-test
+  (testing "Pivot completes when the summary stage also carries an explicit :fields clause (#81203)"
+    (let [mp        (mt/metadata-provider)
+          orders    (lib.metadata/table mp (mt/id :orders))
+          created   (lib.metadata/field mp (mt/id :orders :created_at))
+          product   (lib.metadata/field mp (mt/id :orders :product_id))
+          total     (lib.metadata/field mp (mt/id :orders :total))
+          ;; :fields carries a subset of stage-0 columns (what the notebook column picker leaves behind
+          ;; when some columns are unselected); :aggregation + :breakout are added on the same stage.
+          query     (-> (lib/query mp orders)
+                        (lib/with-fields [created product total])
+                        (lib/aggregate (lib/count))
+                        (lib/breakout (lib/with-temporal-bucket created :month))
+                        (lib/breakout product))
+          bo-names  (mapv :name (filter :lib/breakout? (lib/returned-columns query)))
+          count-nm  (:name (first (filter #(= (:lib/source %) :source/aggregations)
+                                          (lib/returned-columns query))))
+          viz       {:pivot_table.column_split {:rows    [(first bo-names)]
+                                                :columns [(second bo-names)]
+                                                :values  [count-nm]}}]
+      (testing "sanity: the QP drops :fields on summary stages, so regular execution returns breakouts + agg"
+        (is (=? {:status :completed
+                 :data   {:cols [{:name (first bo-names)}
+                                 {:name (second bo-names)}
+                                 {:name count-nm}]}}
+                (qp.core/process-query query))))
+      (testing "pivot returns breakouts + pivot-grouping + aggregation"
+        (is (=? {:status :completed
+                 :data   {:cols [{:name (first bo-names)}
+                                 {:name (second bo-names)}
+                                 {:name "pivot-grouping"}
+                                 {:name count-nm}]}}
+                (qp.pivot/run-pivot-query (assoc query :info {:visualization-settings viz}))))))))
 
 ;;; ---- wrap-nested-field-breakouts ----
 

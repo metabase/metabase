@@ -61,7 +61,7 @@ export const TaskDetailsPage = () => {
 
   return (
     <Flex h="100%" wrap="nowrap">
-      <MonitorMain gap="lg">
+      <MonitorMain gap="xl">
         <MonitorBackLink
           to={Urls.monitorTasksList()}
           label={t`Back to Tasks`}
@@ -70,20 +70,20 @@ export const TaskDetailsPage = () => {
         <MonitorPageContent className={S.content}>
           <Stack gap="sm">
             <MonitorHeaderTitle>{t`Task details`}</MonitorHeaderTitle>
-            <Flex gap="md">
+            <Flex gap="lg">
               <Text fw="bold" w={120}>{t`ID`}</Text>
               <Text>{task.id}</Text>
             </Flex>
-            <Flex gap="md">
+            <Flex gap="lg">
               <Text fw="bold" w={120}>{t`Task`}</Text>
               <Text>{task.task}</Text>
             </Flex>
-            <Flex gap="md" align="center">
+            <Flex gap="lg" align="center">
               <Text fw="bold" w={120}>{t`Status`}</Text>
               <TaskStatusBadge task={task} />
             </Flex>
             {task.run_id !== null && (
-              <Flex gap="md" align="baseline">
+              <Flex gap="lg" align="baseline">
                 <Text fw="bold" w={120}>{t`Task run`}</Text>
                 <Anchor
                   component={Link}
@@ -93,7 +93,7 @@ export const TaskDetailsPage = () => {
                 </Anchor>
               </Flex>
             )}
-            <Flex gap="md">
+            <Flex gap="lg">
               <Text fw="bold" w={120}>{t`DB Name`}</Text>
               <Text>
                 {isLoadingDatabases ? (
@@ -105,7 +105,7 @@ export const TaskDetailsPage = () => {
                 )}
               </Text>
             </Flex>
-            <Flex gap="md">
+            <Flex gap="lg">
               <Text fw="bold" w={120}>{t`DB Engine`}</Text>
               <Text>
                 {isLoadingDatabases ? (
@@ -117,7 +117,7 @@ export const TaskDetailsPage = () => {
                 )}
               </Text>
             </Flex>
-            <Flex gap="md" align="baseline">
+            <Flex gap="lg" align="baseline">
               <Text fw="bold" w={120}>{t`Started at`}</Text>
               <Tooltip label={task.started_at}>
                 <DateTime
@@ -128,7 +128,7 @@ export const TaskDetailsPage = () => {
               </Tooltip>
               <CopyButton value={task.started_at} />
             </Flex>
-            <Flex gap="md">
+            <Flex gap="lg">
               <Text fw="bold" w={120}>{t`Ended at`}</Text>
               {task.ended_at ? (
                 <Tooltip label={task.ended_at}>
@@ -143,7 +143,7 @@ export const TaskDetailsPage = () => {
               )}
               {task.ended_at && <CopyButton value={task.ended_at} />}
             </Flex>
-            <Flex gap="md">
+            <Flex gap="lg">
               <Text fw="bold" w={120}>{t`Duration (ms)`}</Text>
               <Text>{task.duration}</Text>
             </Flex>
@@ -157,9 +157,9 @@ export const TaskDetailsPage = () => {
             </Flex>
             <Box
               className={S.codeContainer}
-              p={linesCount > 1 ? 0 : "xs"}
+              p={linesCount > 1 ? 0 : "xxs"}
               pos="relative"
-              mt="md"
+              mt="lg"
               data-testid="code-container"
             >
               <CodeEditor

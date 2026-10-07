@@ -3,6 +3,7 @@
    [java-time.api :as t]
    [medley.core :as m]
    [metabase-enterprise.gsheets.constants :as gsheets.constants]
+   [metabase-enterprise.gsheets.db :as gsheets.db]
    [metabase-enterprise.gsheets.settings
     :as gsheets.settings
     :refer [gsheets gsheets!]]
@@ -18,8 +19,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2])
+   [metabase.util.malli.schema :as ms])
   (:import (java.time Instant)))
 
 ;; # Google Sheets Integration
@@ -152,7 +152,7 @@
 
 (mu/defn- hm-delete-conn! :- :hm-client/http-reply
   "Delete (presumably a gdrive) connection on HM."
-  [conn-id]
+  [conn-id :- ms/NonBlankString]
   (hm.client/make-request :delete (str "/api/v2/mb/connections/" conn-id)))
 
 (defn- reset-gsheets-status!
@@ -175,7 +175,7 @@
 
 (mu/defn hm-get-gdrive-conn :- :hm-client/http-reply
   "Get a specific gdrive connection by id."
-  [id]
+  [id :- ms/NonBlankString]
   (when-not id
     (throw (ex-info "Cannot fetch Google Drive connection: ID is nil" {})))
   (hm.client/make-request :get (str "/api/v2/mb/connections/" id)))
@@ -196,7 +196,7 @@
 
 (mu/defn- hm-create-gdrive-conn! :- :hm-client/http-reply
   "Creating a gdrive connection on HM starts the sync w/ drive folder or sheet."
-  [resource-url]
+  [resource-url :- ms/NonBlankString]
   (hm.client/make-request :post "/api/v2/mb/connections" {:type (url-type resource-url) :secret {:resources [resource-url]}}))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -226,8 +226,8 @@
 
 (api.macros/defendpoint :post "/connection" :- :gsheets/response
   "Hook up a new google drive folder or sheet that will be watched and have its content ETL'd into Metabase."
-  [{} {} {:keys [url]} :- [:map [:url ms/NonBlankString]]]
-  (let [attached-dwh (t2/select-one-fn :id :model/Database :is_attached_dwh true)]
+  [{} {} {:keys [url]} :- [:map {:closed true} [:url ms/NonBlankString]]]
+  (let [attached-dwh (gsheets.db/attached-dwh-database-id)]
     (when-not (some? attached-dwh)
       (analytics.event/track-event! :snowplow/simple_event {:event "sheets_connected" :event_detail "fail - no dwh"})
       (throw-error 400 (tru "No attached dwh found.") nil))
@@ -256,7 +256,7 @@
   []
   (or (gsheets)
       (do (log/warn "CACHE MISS ON GSHEETS")
-          (some-> (t2/select-one :model/Setting :key "gsheets")
+          (some-> (gsheets.db/setting "gsheets")
                   :value
                   json/decode+kw))))
 
@@ -343,7 +343,7 @@
 
 (mu/defn- hm-sync-conn! :- :hm-client/http-reply
   "Sync a (presumably a gdrive) connection on HM."
-  [conn-id]
+  [conn-id :- ms/NonBlankString]
   (hm.client/make-request :put (str "/api/v2/mb/connections/" conn-id "/sync")))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
@@ -390,15 +390,15 @@
 (comment
 
   ;; need an "attached dwh" locally?
-  (t2/update! :model/Database 1
-              {:is_attached_dwh true
-               :settings
-               (str "{\"auto-cruft-tables\":[\".*_dlt_loads$\",\".*_dlt_pipeline_state$\",\".*_dlt_sentinel_table$\",\".*_dlt_spreadsheet_info$\",\".*_dlt_version$\"],"
-                    "\"auto-cruft-columns\":[\"^_dlt_id$\",\"^_dlt_load_id$\"]}")})
+  (gsheets.db/update-database! 1
+                               {:is_attached_dwh true
+                                :settings
+                                (str "{\"auto-cruft-tables\":[\".*_dlt_loads$\",\".*_dlt_pipeline_state$\",\".*_dlt_sentinel_table$\",\".*_dlt_spreadsheet_info$\",\".*_dlt_version$\"],"
+                                     "\"auto-cruft-columns\":[\"^_dlt_id$\",\"^_dlt_load_id$\"]}")})
 
   (do
     ;; This is what the notify endpoint calls to do a sync on the attached dwh:
     #_{:clj-kondo/ignore [:metabase/modules]}
     (require '[metabase.sync.sync-metadata :as sync-metadata])
     (sync-metadata/sync-db-metadata!
-     (t2/select-one :model/Database :is_attached_dwh true))))
+     (gsheets.db/attached-dwh-database))))

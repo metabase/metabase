@@ -12,8 +12,8 @@ export const MetabotLayoutSetting = () => {
   }
 
   return (
-    <Stack gap="xs">
-      <Group align="center" gap="xs" mb="sm">
+    <Stack gap="xxs">
+      <Group align="center" gap="xxs" mb="sm">
         <Text fw="bold">{t`Layout`}</Text>
 
         <HoverCard position="right-start">
@@ -22,7 +22,7 @@ export const MetabotLayoutSetting = () => {
           </HoverCard.Target>
 
           <HoverCard.Dropdown>
-            <Text size="sm" p="md" style={{ width: 300 }}>
+            <Text size="sm" p="lg" style={{ width: 300 }}>
               {t`Auto layout adapts to screen sizes. Stacked and sidebar layout uses the same layout on all screen sizes.`}
             </Text>
           </HoverCard.Dropdown>
@@ -39,7 +39,7 @@ export const MetabotLayoutSetting = () => {
           })
         }
       >
-        <Group gap="md">
+        <Group gap="lg">
           <Radio value="auto" label={t`Auto`} />
           <Radio value="stacked" label={t`Stacked`} />
           <Radio value="sidebar" label={t`Sidebar`} />

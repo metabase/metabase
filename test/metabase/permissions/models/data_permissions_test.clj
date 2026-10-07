@@ -1,4 +1,4 @@
-(ns metabase.permissions.models.data-permissions-test
+(ns ^:mb/app-db-migrations-test metabase.permissions.models.data-permissions-test
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]

@@ -1,6 +1,6 @@
 import { mockSettings } from "__support__/settings";
+import { createMockState } from "__support__/state";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
-import { createMockState } from "metabase/redux/store/mocks";
 import type * as Router from "metabase/router";
 import { Route } from "metabase/router";
 import * as Urls from "metabase/urls";
@@ -101,7 +101,9 @@ describe("AI Auditing routes", () => {
 
       await waitFor(() => {
         expect(router?.location).toMatchObject({
-          pathname: Urls.monitorAiAuditingUsage(),
+          pathname: upsell
+            ? Urls.monitorAiAuditingUsage()
+            : Urls.monitorAiAuditingUsageMetric("conversations"),
           search: "?date=past7days~",
         });
       });
@@ -141,10 +143,36 @@ describe("AI Auditing routes", () => {
     },
   );
 
-  it("renders Usage stats at the canonical route", async () => {
-    setup({ route: Urls.monitorAiAuditingUsage() });
+  it("redirects Usage stats to its Conversations tab, preserving the query", async () => {
+    const { router } = setup({
+      route: `${Urls.monitorAiAuditingUsage()}?date=past7days~`,
+    });
 
+    await waitFor(() => {
+      expect(router?.location).toMatchObject({
+        pathname: Urls.monitorAiAuditingUsageMetric("conversations"),
+        search: "?date=past7days~",
+      });
+    });
     expect(await screen.findByText("Usage stats page")).toBeInTheDocument();
+  });
+
+  it.each(["conversations", "tokens", "messages"])(
+    "renders Usage stats at the %s tab route",
+    async (metric) => {
+      setup({ route: Urls.monitorAiAuditingUsageMetric(metric) });
+
+      expect(await screen.findByText("Usage stats page")).toBeInTheDocument();
+    },
+  );
+
+  it("renders the upsell at a Usage stats tab route", async () => {
+    setup({
+      route: Urls.monitorAiAuditingUsageMetric("tokens"),
+      upsell: true,
+    });
+
+    expect(await screen.findByText("Usage stats upsell")).toBeInTheDocument();
   });
 
   it("renders full Metabot analytics when enabled and configured", async () => {

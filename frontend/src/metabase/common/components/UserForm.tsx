@@ -180,7 +180,7 @@ export const UserForm = ({
                 title={t`First name`}
                 placeholder={t`Johnny`}
                 label={t`First name`}
-                mb="md"
+                mb="lg"
                 nullable
               />
               <FormTextInput
@@ -188,7 +188,7 @@ export const UserForm = ({
                 title={t`Last name`}
                 placeholder={t`Appleseed`}
                 label={t`Last name`}
-                mb="md"
+                mb="lg"
                 nullable
               />
             </>
@@ -200,7 +200,7 @@ export const UserForm = ({
             placeholder="nicetoseeyou@email.com"
             label={t`Email`}
             required
-            mb="md"
+            mb="lg"
           />
           <FormGroupsWidget
             name="user_group_memberships"

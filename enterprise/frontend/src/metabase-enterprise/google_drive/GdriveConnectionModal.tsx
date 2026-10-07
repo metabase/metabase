@@ -45,11 +45,13 @@ export function GdriveConnectionModal({
   const { data: { email: serviceAccountEmail } = {} } =
     useGetServiceAccountQuery(shouldShow ? undefined : skipToken);
 
-  const { data: gSheetData, error } = useGetGsheetsFolderQuery(
-    shouldShow ? undefined : skipToken,
-  );
+  const {
+    data: gSheetData,
+    error,
+    isLoading,
+  } = useGetGsheetsFolderQuery(shouldShow ? undefined : skipToken);
 
-  if (!shouldShow) {
+  if (!shouldShow || isLoading) {
     return null;
   }
 
@@ -79,7 +81,7 @@ const ModalWrapper = ({
   onClose: () => void;
 }) => (
   <Modal opened onClose={onClose} padding="3rem" title={title} size="44rem">
-    <Flex gap="md" pt="xl" direction="column" justify="center">
+    <Flex gap="lg" pt="xxl" direction="column" justify="center">
       {children}
     </Flex>
   </Modal>
@@ -135,9 +137,6 @@ function GoogleSheetsConnectModal({
     <ModalWrapper onClose={onClose} title={t`Import Google Sheets`}>
       <SegmentedControl<UploadType>
         fullWidth
-        autoContrast
-        color="core-brand"
-        c="text-primary-inverse"
         value={linkType}
         onChange={setLinkType}
         data={
@@ -151,9 +150,9 @@ function GoogleSheetsConnectModal({
       <Flex
         bg="background_page-secondary"
         style={{ borderRadius: "0.5rem" }}
-        p="md"
+        p="lg"
         direction="column"
-        gap="md"
+        gap="lg"
       >
         <Box>
           <Text>1.{" " + clickInstruction}</Text>
@@ -195,7 +194,7 @@ function GoogleSheetsConnectModal({
             {copyInstruction}
           </Text>
         </Box>
-        <Flex justify="space-between" align="center" mt="sm" gap="md">
+        <Flex justify="space-between" align="center" mt="sm" gap="lg">
           <Text c="feedback-negative" lh="1.2rem">
             {errorMessage}
           </Text>
@@ -235,26 +234,22 @@ function GoogleSheetsDisconnectModal({
 
   return (
     <ModalWrapper onClose={onClose} title={title}>
-      <Stack gap="md">
+      <Stack gap="lg">
         <DriveConnectionDisplay />
-        <Text c="text-secondary" pb="md">
+        <Text c="text-secondary" pb="lg">
           {bodyCopy}
         </Text>
         <Flex w="100%" gap="sm" justify="space-between">
           <Text c="feedback-negative" ta="start">
             {errorMessage}
           </Text>
-          <Flex justify="flex-end" gap="md">
-            <Button
-              variant="outline"
-              onClick={onClose}
-              disabled={isDeletingFolderLink}
-            >
+          <Flex justify="flex-end" gap="lg">
+            <Button onClick={onClose} disabled={isDeletingFolderLink}>
               {connectButtonText}
             </Button>
             <Button
               variant="filled"
-              color="feedback-negative"
+              color="negative"
               loading={isDeletingFolderLink}
               onClick={onDelete}
             >
@@ -303,10 +298,10 @@ export const DriveConnectionDisplay = () => {
         bg="background_page-secondary"
         w="100%"
         gap="sm"
-        p="md"
+        p="lg"
         style={{ borderRadius: "0.5rem" }}
       >
-        <Icon name="google_drive" mt="xs" />
+        <Icon name="google_drive" mt="xxs" />
         <Box>
           <Text fw="bold">{t`Google Drive connected`}</Text>
           {!!userName && (

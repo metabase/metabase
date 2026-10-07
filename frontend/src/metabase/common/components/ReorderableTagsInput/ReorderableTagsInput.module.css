@@ -1,11 +1,11 @@
 .pillsRow {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--mantine-spacing-xs);
+  gap: var(--mantine-spacing-xxs);
   align-items: center;
   border: 1px dashed var(--mb-color-core-blue-saturated) !important;
   background-color: var(--mb-color-background_surface-brand-subtle);
-  border-radius: var(--mantine-radius-md);
+  border-radius: var(--mantine-radius-sm);
   transition: box-shadow 250ms ease;
   min-height: 3.25rem;
 }

@@ -1,4 +1,4 @@
-(ns metabase.app-db.custom-migrations.llm-providers-test
+(ns ^:mb/app-db-migrations-test metabase.app-db.custom-migrations.llm-providers-test
   "Tests for the v64.7qmx3p migration that moves the per-provider LLM credential settings onto the `llm-providers`
   connection list. The migration itself is [[metabase.app-db.custom-migrations.llm-providers]], reached through the
   `MigrateLlmProviderSettings` custom change."
@@ -13,7 +13,7 @@
 (defn- llm-setting-values
   [setting-keys]
   (into {}
-        (map (fn [{:keys [key value]}] [key (encryption/maybe-decrypt value)]))
+        (map (fn [{:keys [key value]}] [key (encryption/maybe-decrypt-accepting-plaintext value)]))
         (t2/query {:select [:key :value] :from :setting :where [:in :key setting-keys]})))
 
 (defn- insert-llm-settings!
@@ -184,7 +184,7 @@
                                                       "llm-metabot-provider"]]}))]
           (testing "the API key is sensitive, so it comes back as ciphertext"
             (is (not= "sk-ant-stored" (get raw "llm-anthropic-api-key")))
-            (is (= "sk-ant-stored" (encryption/maybe-decrypt (get raw "llm-anthropic-api-key")))))
+            (is (= "sk-ant-stored" (encryption/maybe-decrypt-accepting-plaintext (get raw "llm-anthropic-api-key")))))
           (testing "settings declared :encryption :no come back as the plaintext they were declared to hold"
             (is (= "https://self-hosted.example" (get raw "llm-anthropic-api-base-url")))
             (is (= "anthropic/claude-opus-4-1" (get raw "llm-metabot-provider")))))))))

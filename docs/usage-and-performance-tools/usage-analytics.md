@@ -19,7 +19,7 @@ These resources are useful for:
 
 - **Understanding Usage**: Understand how people use your Metabase (e.g., new questions, most active people and groups, and so on).
 - **Auditing activity**: Know who viewed or did what and when, including tracking dashboard and question views, queries, downloads, and other activity like changing settings or inviting people to your Metabase.
-- **Improving operations**: Know the slowest dashboards and questions, how your database's are performing, who's consuming the most resources, and so on.
+- **Improving operations**: Know the slowest dashboards and questions, how your databases are performing, who's consuming the most resources, and so on.
 
 > Metabase creates some default user accounts that you might see in your usage analytics, like `internal@metabase.com`. See [Default accounts](../people-and-groups/managing.md#default-user-accounts).
 
@@ -49,7 +49,7 @@ Metabase will take you to the relevant usage dashboard and plug in the item's ID
 
 By default, Metabase will keep the data about [activity](./usage-analytics-reference.md#activity-log), [views](./usage-analytics-reference.md#view-log), and [query execution](./usage-analytics-reference.md#query-log) for **720 days**. Twice a day, Metabase will delete rows older than this threshold. You can change this limit by adjusting the environment variable [`MB_AUDIT_MAX_RETENTION_DAYS`](../configuring-metabase/environment-variables.md#mb_audit_max_retention_days).
 
-If you're on the Metabase Open Source Edition, or on the [Metabase Cloud Starter plan](https://www.metabase.com/pricing/), Metabase doesn't collect [Activity](./usage-analytics-reference.md#activity-log) and [View](./usage-analytics-reference.md#view-log) data. If you upgrade to a Pro or Enterprise plan, either self-hosted or Cloud, you'll only see View and Activity data in Usage Analytics _starting from the time when you upgraded_.
+If you're on the Metabase Open Source Edition, or on the [Metabase Cloud Starter plan](https://www.metabase.com/pricing), Metabase doesn't collect [Activity](./usage-analytics-reference.md#activity-log) and [View](./usage-analytics-reference.md#view-log) data. If you upgrade to a Pro or Enterprise plan, either self-hosted or Cloud, you'll only see View and Activity data in Usage Analytics _starting from the time when you upgraded_.
 
 ## Creating custom reports
 

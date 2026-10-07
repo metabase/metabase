@@ -2173,11 +2173,10 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
         `Started from ${targetQuestion.name}`,
       );
 
-      // TODO: https://github.com/metabase/metabase/issues/46774
-      // queryBuilderMain()
-      //   .findByText("There was a problem with your question")
-      //   .should("not.exist");
-      // queryBuilderMain().findByText("No results").should("be.visible");
+      H.queryBuilderMain()
+        .findByText("There was a problem with your question")
+        .should("not.exist");
+      H.queryBuilderMain().findByText("No results").should("be.visible");
 
       H.openNotebook();
       H.verifyNotebookQuery("Orders", [
@@ -2608,9 +2607,13 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
             size_x: 12,
             size_y: 6,
             visualization_settings: {
-              click_behavior: {
-                ...baseClickBehavior,
-                tabId: firstTab.id,
+              column_settings: {
+                '["name","PRODUCT_ID"]': {
+                  click_behavior: {
+                    ...baseClickBehavior,
+                    tabId: firstTab.id,
+                  },
+                },
               },
             },
           }),
@@ -2620,9 +2623,13 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
             size_x: 12,
             size_y: 6,
             visualization_settings: {
-              click_behavior: {
-                ...baseClickBehavior,
-                tabId: secondTab.id,
+              column_settings: {
+                '["name","PRODUCT_ID"]': {
+                  click_behavior: {
+                    ...baseClickBehavior,
+                    tabId: secondTab.id,
+                  },
+                },
               },
             },
           }),

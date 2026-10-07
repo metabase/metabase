@@ -1,8 +1,7 @@
 .membershipSelectItem {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 0.5rem 1.5rem;
+  padding-right: 1rem;
   background-color: var(--mb-color-background_page-primary);
   color: var(--mb-color-text-secondary);
   font-weight: bold;
@@ -14,5 +13,24 @@
     :global(.Icon) {
       color: var(--mb-color-text-primary-inverse) !important;
     }
+  }
+}
+
+/* The row-wide membership toggle; the group-manager toggle sits beside it. */
+.membershipToggle {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.5rem;
+  padding: 0.5rem 0.5rem 0.5rem 1.5rem;
+
+  &[aria-disabled="true"] {
+    cursor: not-allowed;
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--mb-color-focus);
+    outline-offset: -2px;
   }
 }

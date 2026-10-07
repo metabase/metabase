@@ -1,4 +1,4 @@
-// eslint-disable-next-line no-restricted-imports
+// eslint-disable-next-line eslint-js/no-restricted-imports
 import styled from "@emotion/styled";
 
 import SidebarContentS from "metabase/common/components/SidebarContent/SidebarContent.module.css";
@@ -21,7 +21,7 @@ export const EditorContainer = styled.div`
   background-color: var(--mb-color-background_page-secondary);
 
   .ace_editor {
-    margin-left: var(--mantine-spacing-md);
+    margin-left: var(--mantine-spacing-lg);
   }
 `;
 

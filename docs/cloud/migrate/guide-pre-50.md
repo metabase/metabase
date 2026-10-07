@@ -67,13 +67,13 @@ Before executing the migration script, you may need to set the environment varia
 
 The script will upload your application data to your new Metabase Cloud instance. If all goes well, the script will print `Done!`.
 
-If anything goes sideways, follow any prompts the script outputs. If you're still stuck, [send us an email](https://www.metabase.com/help/) and we'll help you troubleshoot.
+If anything goes sideways, follow any prompts the script outputs. If you're still stuck, [send us an email](https://www.metabase.com/help) and we'll help you troubleshoot.
 
 ## After migrating to Metabase Cloud
 
-After a successful upload, some finishing touches and a restart is done automatically in a couple of minutes, and then you can log into your shiny new Metabase Cloud instance. You should see all of your questions and dashboards just as you did in your self-hosted instance.
+After a successful upload, some finishing touches and a restart are done automatically in a couple of minutes, and then you can log into your shiny new Metabase Cloud instance. You should see all of your questions and dashboards just as you did in your self-hosted instance.
 
-- **If you're using Google Sign-in**, you'll need to go to [Google Developers Console](https://console.developers.google.com/) and add your new Metabase Cloud URL to the Authorized JavaScript Origins of the Google Auth Client ID.
+- **If you're using Google Sign-in**, you'll need to go to [Google Developers Console](https://console.cloud.google.com/apis/dashboard) and add your new Metabase Cloud URL to the Authorized JavaScript Origins of the Google Auth Client ID.
 - **For Pro and Enterprise customers using SAML SSO**, you'll need to update your settings with your identity provider to change the Redirect URL and the Base URL to your new Metabase Cloud URL, otherwise your identity provider will still redirect people to your old (and shut down) Metabase instance. See [Authenticating with SAML](../../people-and-groups/authenticating-with-saml.md).
 
 ## Tell your team about the new Metabase address
@@ -92,4 +92,4 @@ We'll take care of your Metabase and keep it up to date from here on out. Welcom
 
 ## Need help?
 
-If you have any questions, just [send us an email](https://www.metabase.com/help/).
+If you have any questions, just [send us an email](https://www.metabase.com/help).

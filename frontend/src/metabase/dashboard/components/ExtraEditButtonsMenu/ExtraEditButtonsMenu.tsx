@@ -7,8 +7,7 @@ import { getDashboard, getDashboardId } from "metabase/dashboard/selectors";
 import { useDispatch, useSelector } from "metabase/redux";
 import { Box, Popover, Stack, Switch } from "metabase/ui";
 
-// eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-const EXTRA_BUTTONS_DESCRIPTION = t`Toggle width`;
+const getExtraButtonsDescription = () => t`Toggle width`;
 
 export function ExtraEditButtonsMenu() {
   const dispatch = useDispatch();
@@ -28,17 +27,16 @@ export function ExtraEditButtonsMenu() {
       <Popover.Target>
         <Box>
           <ToolbarButton
-            tooltipLabel={EXTRA_BUTTONS_DESCRIPTION}
-            aria-label={EXTRA_BUTTONS_DESCRIPTION}
+            tooltipLabel={getExtraButtonsDescription()}
+            aria-label={getExtraButtonsDescription()}
             icon="ellipsis"
           />
         </Box>
       </Popover.Target>
       <Popover.Dropdown>
         <Stack>
-          <Box px="md" py="sm">
+          <Box px="lg" py="sm">
             <Switch
-              size="sm"
               checked={dashboard?.width === "full"}
               onChange={handleToggleWidth}
               label={t`Full width`}

@@ -2,7 +2,7 @@ import { t } from "ttag";
 
 import { useUpdateCardMutation } from "metabase/api";
 import { PaneHeaderInput } from "metabase/common/data-studio/components/PaneHeader";
-import { useMetadataToasts } from "metabase/metadata/hooks";
+import { useMetadataToasts } from "metabase/common/hooks";
 import type { Card } from "metabase-types/api";
 
 import { NAME_MAX_LENGTH } from "../../../constants";

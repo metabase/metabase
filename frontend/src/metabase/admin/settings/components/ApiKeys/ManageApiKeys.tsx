@@ -3,8 +3,8 @@ import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import ApiKeysEmptyIllustration from "assets/img/api-keys-empty.svg?component";
-import { SettingsPageWrapper } from "metabase/admin/components/SettingsSection";
 import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
+import { SettingsPageWrapper } from "metabase/settings-components";
 import {
   ActionIcon,
   Box,
@@ -22,7 +22,6 @@ import {
   type TreeTableColumnDef,
   useTreeTableInstance,
 } from "metabase/ui";
-import { getThemeOverrides } from "metabase/ui/theme";
 import { formatDateTimeWithUnit } from "metabase/value-formatting";
 import type { ApiKey } from "metabase-types/api";
 
@@ -33,8 +32,6 @@ import { DeleteApiKeyModal } from "./DeleteApiKeyModal";
 import { EditApiKeyModal } from "./EditApiKeyModal";
 import S from "./ManageApiKeys.module.css";
 import { formatMaskedKey } from "./utils";
-
-const { fontFamilyMonospace } = getThemeOverrides();
 
 type Modal = null | "create" | "edit" | "delete";
 
@@ -68,7 +65,7 @@ function ApiKeyActionsMenu({
   onDelete: (apiKey: ApiKey) => void;
 }) {
   return (
-    <Menu shadow="md" position="bottom-end">
+    <Menu shadow="sm" position="bottom-end">
       <Menu.Target>
         <ActionIcon
           variant="subtle"
@@ -128,7 +125,7 @@ function useApiKeyColumns({
         enableSorting: false,
         accessorFn: (apiKey) => apiKey.masked_key,
         cell: ({ row }) => (
-          <Text ff={fontFamilyMonospace}>
+          <Text ff="var(--mb-default-monospace-font-family)">
             {formatMaskedKey(row.original.masked_key)}
           </Text>
         ),
@@ -254,7 +251,7 @@ export const ManageApiKeys = () => {
       <Group
         justify="space-between"
         align="flex-start"
-        gap="xl"
+        gap="xxl"
         data-testid="api-keys-settings-header"
       >
         <Box>
@@ -267,9 +264,9 @@ export const ManageApiKeys = () => {
           {t`Create an API key`}
         </Button>
       </Group>
-      <Card withBorder radius="md" p={0} style={{ overflow: "hidden" }}>
+      <Card withBorder radius="sm" p={0} style={{ overflow: "hidden" }}>
         {showLoadingOrError ? (
-          <Box p="xl" mih="20rem">
+          <Box p="xxl" mih="20rem">
             <DelayedLoadingAndErrorWrapper loading={isLoading} error={error} />
           </Box>
         ) : hasKeys ? (

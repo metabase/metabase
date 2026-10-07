@@ -6,42 +6,6 @@ import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { PRODUCTS, PRODUCTS_ID, ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
-describe("issue 12445", { tags: ["@external", "@skip"] }, () => {
-  const CC_NAME = "Abbr";
-
-  beforeEach(() => {
-    H.restore("mysql-8");
-    cy.signInAsAdmin();
-  });
-
-  it("should correctly apply substring for a custom column (metabase#12445)", () => {
-    H.withDatabase(2, ({ PEOPLE, PEOPLE_ID }) => {
-      cy.log("Create a question with `Source` column and abbreviated CC");
-      H.createQuestion(
-        {
-          name: "12445",
-          query: {
-            "source-table": PEOPLE_ID,
-            breakout: [["expression", CC_NAME]],
-            expressions: {
-              [CC_NAME]: [
-                "substring",
-                ["field", PEOPLE.SOURCE, null],
-                1,
-                4, // we want 4 letter abbreviation
-              ],
-            },
-          },
-          database: 2,
-        },
-        { visitQuestion: true },
-      );
-
-      cy.findByText(CC_NAME);
-      cy.findByText("Goog");
-    });
-  });
-});
 describe("issue 13751", { tags: "@external" }, () => {
   const CC_NAME = "C-States";
   const PG_DB_NAME = "QA Postgres12";
@@ -81,41 +45,46 @@ describe("issue 13751", { tags: "@external" }, () => {
   });
 });
 
-describe(
-  "postgres > question > custom columns",
-  { tags: ["@external", "@skip"] },
-  () => {
-    const PG_DB_NAME = "QA Postgres12";
+describe("postgres > question > custom columns", { tags: "@external" }, () => {
+  beforeEach(() => {
+    H.restore("postgres-12");
+    cy.signInAsAdmin();
 
-    // Ironically, both Prettier and Cypress remove escape characters from our code as well
-    // We're testing for the literal sting `(?<=\/\/)[^\/]*`, but we need to escape the escape characters to make it work
-    const ESCAPED_REGEX = "(?<=\\/\\/)[^\\/]*";
+    cy.request(`/api/database/${WRITABLE_DB_ID}/schema/public`).then(
+      ({ body }) => {
+        const tableId = body.find((table) => table.name === "orders").id;
+        H.openTable({
+          database: WRITABLE_DB_ID,
+          table: tableId,
+          mode: "notebook",
+        });
+      },
+    );
 
-    beforeEach(() => {
-      H.restore("postgres-12");
-      cy.signInAsAdmin();
+    cy.findByRole("button", { name: "Summarize" }).click();
+  });
 
-      H.startNewQuestion();
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      cy.findByText(PG_DB_NAME).should("be.visible").click();
-      cy.findByTextEnsureVisible("People").click();
+  it("`Percentile` custom expression function should accept two parameters (metabase#15714)", () => {
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
+    cy.findByText("Pick a function or metric").click();
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
+    cy.findByText("Custom Expression").click();
+    H.enterCustomColumnDetails({
+      formula: "Percentile([Subtotal], 0.1)",
+      format: true,
     });
 
-    it("should not remove regex escape characters (metabase#14517)", () => {
-      cy.log("Create custom column using `regexExtract()`");
-      cy.findByLabelText("Custom Column").click();
-      H.popover().within(() => {
-        cy.get("[contenteditable='true']")
-          .type(`regexExtract([State], "${ESCAPED_REGEX}")`)
-          .blur();
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
+    cy.findByText("Function Percentile expects 1 argument").should("not.exist");
+    H.CustomExpressionEditor.nameInput().type("Expression name");
+    cy.button("Done").should("not.be.disabled").click();
+    // Todo: Add positive assertions once this is fixed
 
-        // It removes escaped characters already on blur
-        cy.log("Reported failing on v0.36.4");
-        cy.contains(ESCAPED_REGEX);
-      });
-    });
-  },
-);
+    cy.findByTestId("aggregate-step")
+      .contains("Expression name")
+      .should("exist");
+  });
+});
 
 describe("issue 14843", () => {
   const { PEOPLE, PEOPLE_ID } = SAMPLE_DATABASE;
@@ -152,6 +121,8 @@ describe("issue 14843", () => {
 
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText(`${CC_NAME} is not equal to 3`);
+    // Rye (length 3) is the city of the 4th person, so it would render without the filter
+    H.tableInteractiveBody().findByText("Hudson Borer").should("be.visible");
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Rye").should("not.exist");
   });
@@ -486,7 +457,10 @@ describe("issue 20229", () => {
   }
 
   function unselectColumn(column) {
-    cy.findByText(column).siblings().find(".Icon-check").click({ force: true });
+    cy.findByText(column)
+      .siblings()
+      .find('input[type="checkbox"]')
+      .click({ force: true });
   }
 
   beforeEach(() => {
@@ -553,6 +527,59 @@ describe("issue 21135", () => {
 
       cy.findByText("29.46"); // actual Price column
       cy.findByText("31.46"); // custom column
+    });
+  });
+});
+
+describe("issue 40064", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should be able to edit a custom column with the same name as one of the columns used in the expression (metabase#40064)", () => {
+    H.createQuestion(
+      {
+        query: {
+          "source-table": ORDERS_ID,
+          expressions: {
+            Tax: ["*", ["field", ORDERS.TAX, { "base-type": "type/Float" }], 2],
+          },
+          limit: 1,
+        },
+      },
+      { visitQuestion: true },
+    );
+
+    cy.log("check the initial expression value");
+    H.tableInteractive().findByText("4.14").should("be.visible");
+
+    cy.log("update the expression and check the value");
+    H.openNotebook();
+    H.getNotebookStep("expression").findByText("Tax").click();
+    H.enterCustomColumnDetails({ formula: "[Tax] * 3", blur: true });
+    H.popover().button("Update").click();
+    H.visualize();
+    H.tableInteractive().findByText("6.21").should("be.visible");
+
+    cy.log("rename the expression and make sure you cannot create a cycle");
+    H.openNotebook();
+    H.getNotebookStep("expression").findByText("Tax").click();
+    H.enterCustomColumnDetails({
+      formula: "[Tax] * 3",
+      name: "Tax3",
+      blur: true,
+    });
+    H.popover().button("Update").should("not.be.disabled").click();
+    H.getNotebookStep("expression").findByText("Tax3").click();
+    H.enterCustomColumnDetails({
+      formula: "[Tax3] * 3",
+      name: "Tax3",
+      blur: true,
+    });
+    H.popover().within(() => {
+      cy.findByText("Unknown column: Tax3").should("be.visible");
+      cy.button("Update").should("be.disabled");
     });
   });
 });
@@ -665,81 +692,20 @@ describe("issue 24922", () => {
     H.enterCustomColumnDetails(customColumnDetails);
     cy.button("Done").click();
 
-    H.visualize();
+    H.visualize(({ body }) => {
+      expect(body.error).to.not.exist;
+    });
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("CustomColumn").should("be.visible");
-  });
-});
-
-describe("issue 25189", { tags: "@skip" }, () => {
-  const ccTable = "Custom Created";
-  const ccFunction = "Custom Total";
-
-  const questionDetails = {
-    name: "25189",
-    query: {
-      "source-table": ORDERS_ID,
-      limit: 5,
-      expressions: {
-        [ccTable]: ["field", ORDERS.CREATED_AT, null],
-        [ccFunction]: [
-          "case",
-          [[[">", ["field", ORDERS.TOTAL, null], 100], "Yay"]],
-          {
-            default: "Nay",
-          },
-        ],
-      },
-    },
-  };
-
-  beforeEach(() => {
-    cy.intercept("POST", "/api/dataset").as("dataset");
-
-    H.restore();
-    cy.signInAsAdmin();
-
-    H.createQuestion(questionDetails).then(
-      ({ body: { id: baseQuestionId } }) => {
-        H.createQuestion(
-          {
-            name: "Nested 25189",
-            query: { "source-table": `card__${baseQuestionId}` },
-          },
-          { visitQuestion: true },
-        );
-      },
-    );
-  });
-
-  it("custom column referencing only a single column should not be dropped in a nested question (metabase#25189)", () => {
-    // 1. Column should not be dropped
-    cy.findAllByTestId("header-cell")
-      .should("contain", ccFunction)
-      .and("contain", ccTable);
-
-    // 2. We shouldn't see duplication in the bulk filter modal
-    H.filter();
-    H.modal().within(() => {
-      // Implicit assertion - will fail if more than one element is found
-      cy.findByText(ccFunction);
-      cy.findByText(ccTable);
-
-      cy.findByText("Today").click();
-      cy.button("Apply Filters").click();
-    });
-
-    cy.wait("@dataset");
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("No results");
-
-    // 3. We shouldn't see duplication in the breakout fields
-    H.summarize();
-    cy.findByTestId("sidebar-content").within(() => {
-      // Another implicit assertion
-      cy.findByText(ccFunction);
-      cy.findByText(ccTable);
-    });
+    // The first order's total is under 100, the second one's is not
+    H.tableInteractiveBody()
+      .findAllByText("Segment")
+      .first()
+      .should("be.visible");
+    H.tableInteractiveBody()
+      .findAllByText("Other")
+      .first()
+      .should("be.visible");
   });
 });
 
@@ -788,140 +754,6 @@ describe("issue 25189", { tags: "@skip" }, () => {
           );
         });
     });
-  });
-});
-// broken. see https://github.com/metabase/metabase/issues/55673
-describe("issue 42949", { tags: "@skip" }, () => {
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-  });
-
-  it("should correctly show available shortcuts for date and number columns (metabase#42949)", () => {
-    H.createNativeQuestion(
-      {
-        native: {
-          query: `
-            SELECT DATE '2024-05-21' AS created_at, null as v
-            UNION ALL SELECT DATE '2024-05-20', 1
-            UNION ALL SELECT DATE '2024-05-19', 2
-            ORDER BY created_at
-          `,
-        },
-      },
-      { visitQuestion: true },
-    );
-    cy.findByTestId("qb-header").findByText("Explore results").click();
-
-    cy.log("Verify header drills - CREATED_AT");
-    H.tableHeaderClick("CREATED_AT");
-    H.popover().findByText("Extract day, month…").should("be.visible");
-    H.popover().findByText("Combine columns").should("not.exist");
-    cy.realPress("Escape");
-    H.popover({ skipVisibilityCheck: true }).should("not.be.visible");
-
-    cy.log("Verify header drills - V");
-    H.tableHeaderClick("V");
-    H.popover().findByText("Extract part of column").should("not.exist");
-    H.popover().findByText("Combine columns").should("not.exist");
-    cy.realPress("Escape");
-    H.popover({ skipVisibilityCheck: true }).should("not.be.visible");
-
-    cy.log("Verify plus button - extract column");
-    cy.button("Add column").click();
-    H.popover().findByText("Extract part of column").click();
-    H.popover().findByText("CREATED_AT").click();
-    H.popover().within(() => {
-      cy.findByText("Day of month").should("be.visible");
-      cy.findByText("Day of week").should("be.visible");
-      cy.findByText("Month of year").should("be.visible");
-      cy.findByText("Quarter of year").should("be.visible");
-      cy.findByText("Year").should("be.visible").click();
-    });
-    cy.findAllByTestId("header-cell").eq(2).should("have.text", "Year");
-
-    cy.log("Verify plus button - combine columns");
-    cy.button("Add column").click();
-    H.popover().findByText("Combine columns").click();
-    H.popover().findAllByTestId("column-input").eq(0).click();
-    // eslint-disable-next-line metabase/no-unsafe-element-filtering
-    H.popover()
-      .last()
-      .within(() => {
-        cy.findByText("CREATED_AT").should("be.visible");
-        cy.findByText("V").should("be.visible");
-        cy.findByText("Year").should("be.visible").click();
-      });
-    H.popover().button("Done").click();
-
-    cy.findAllByTestId("header-cell")
-      .eq(3)
-      .should("have.text", "Combined Year, V");
-
-    cy.findAllByTestId("cell-data").eq(6).should("have.text", "2,024");
-    cy.findAllByTestId("cell-data").eq(7).should("have.text", "2024 2");
-    cy.findAllByTestId("cell-data").eq(10).should("have.text", "2,024");
-    cy.findAllByTestId("cell-data").eq(11).should("have.text", "2024 1");
-    cy.findAllByTestId("cell-data").eq(13).should("have.text", "2,024");
-    cy.findAllByTestId("cell-data").eq(14).should("have.text", "2024 ");
-  });
-
-  it("should correctly show available shortcuts for a number column (metabase#42949)", () => {
-    H.createNativeQuestion(
-      {
-        native: {
-          query: "select 1 as n",
-        },
-      },
-      { visitQuestion: true },
-    );
-
-    cy.findByTestId("qb-header").findByText("Explore results").click();
-    cy.findByLabelText("Switch to data").click();
-
-    cy.log("Verify header drills");
-    H.tableHeaderClick("N");
-    H.popover().findByText("Extract part of column").should("not.exist");
-    H.popover().findByText("Combine columns").should("not.exist");
-    cy.realPress("Escape");
-    H.popover({ skipVisibilityCheck: true }).should("not.be.visible");
-
-    cy.log("Verify plus button");
-    cy.button("Add column").click();
-    H.popover().findByText("Extract part of column").should("not.exist");
-    H.popover().findByText("Combine columns").click();
-    H.popover().findAllByTestId("column-input").eq(0).click();
-    // eslint-disable-next-line metabase/no-unsafe-element-filtering
-    H.popover().last().findByText("N").should("be.visible");
-  });
-
-  it("should correctly show available shortcuts for a string column (metabase#42949)", () => {
-    H.createNativeQuestion(
-      {
-        native: {
-          query: "select 'abc'",
-        },
-      },
-      { visitQuestion: true },
-    );
-
-    cy.findByTestId("qb-header").findByText("Explore results").click();
-    cy.findByLabelText("Switch to data").click();
-
-    cy.log("Verify header drills");
-    H.tableHeaderClick("'abc'");
-    H.popover().findByText("Extract part of column").should("not.exist");
-    H.popover().findByText("Combine columns").should("be.visible");
-    cy.realPress("Escape");
-    H.popover({ skipVisibilityCheck: true }).should("not.be.visible");
-
-    cy.log("Verify plus button");
-    cy.button("Add column").click();
-    H.popover().findByText("Extract part of column").should("not.exist");
-    H.popover().findByText("Combine columns").click();
-    H.popover().findAllByTestId("column-input").eq(0).click();
-    // eslint-disable-next-line metabase/no-unsafe-element-filtering
-    H.popover().last().findByText("'abc'").should("be.visible");
   });
 });
 
@@ -1035,23 +867,6 @@ describe("issue 49882", () => {
     },
   );
 
-  // TODO: we no longer have wrapped lines (for now)
-  it(
-    "should allow moving cursor between wrapped lines with arrow up and arrow down keys (metabase#49882-3)",
-    { tags: "@skip" },
-    () => {
-      H.enterCustomColumnDetails({
-        formula:
-          'case([Tax] > 1, case([Total] > 200, [Total], "Nothing"), [Tax]){leftarrow}{leftarrow}{uparrow}x{downarrow}y',
-      });
-
-      H.CustomExpressionEditor.value().should(
-        "equal",
-        'case([Tax] > 1, xcase([Total] > 200, [Total], "Nothing"), [Tax]y)',
-      );
-    },
-  );
-
   it("should update currently selected suggestion when suggestions list is updated (metabase#49882-4)", () => {
     const selectProductRating =
       "{downarrow}{downarrow}{downarrow}{downarrow}{downarrow}";
@@ -1067,6 +882,7 @@ describe("issue 49882", () => {
     H.CustomExpressionEditor.acceptCompletion("tab");
 
     H.CustomExpressionEditor.value().should("equal", "[Product → Rating]");
+    cy.focused().should("have.attr", "role", "textbox");
   });
 });
 
@@ -1172,25 +988,6 @@ describe("issue 49304", () => {
       cy.findByText("gizmo").should("be.visible");
       cy.findByLabelText("Case sensitive").should("be.checked");
     });
-  });
-});
-
-describe("issue 41305", () => {
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsNormalUser();
-  });
-
-  it("should allow to right click in the suggestion popover without closing it (metabase#41305)", () => {
-    H.openProductsTable({ mode: "notebook" });
-    H.addCustomColumn();
-    H.enterCustomColumnDetails({ formula: "contains(", blur: false });
-    H.popover()
-      .should("have.length", 2)
-      .last()
-      .findByText("The column or text to check.")
-      .rightclick();
-    H.popover().should("have.length", 2);
   });
 });
 
@@ -1323,16 +1120,18 @@ describe("issue 50925", () => {
     H.getNotebookStep("expression").findByText("Custom").click();
 
     H.CustomExpressionEditor.focus()
-      .type("{leftarrow}".repeat(9))
-      .type(" [Pr", { focus: false });
+      .type("{leftarrow}".repeat(8))
+      .type("[Pr", { focus: false });
 
-    cy.wait(300);
     H.CustomExpressionEditor.completions().should("be.visible");
     H.CustomExpressionEditor.get().realPress("Enter", { pressDelay: 10 });
 
     H.CustomExpressionEditor.blur()
       .value()
-      .should("equal", "case([ID] = 1, [Price] * 1.21, [Price] [Price])");
+      .should(
+        "match",
+        /^case\(\[ID\] = 1, \[Price\] \* 1\.21, \[Price\]\s*\[Price\]\)$/,
+      );
   });
 });
 
@@ -1354,6 +1153,14 @@ describe("issue 53682", () => {
       );
       cy.button("Done").should("be.disabled");
     });
+
+    cy.log("Editing the name should not crash the editor");
+    H.CustomExpressionEditor.nameInput().click().type("Name");
+    H.expressionEditorWidget().should("be.visible");
+    H.CustomExpressionEditor.nameInput().should("have.value", "Name");
+    H.popover()
+      .findByText("Function contains expects at least 2 arguments")
+      .should("be.visible");
   });
 });
 

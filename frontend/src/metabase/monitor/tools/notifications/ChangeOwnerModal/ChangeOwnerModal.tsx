@@ -48,13 +48,11 @@ export const ChangeOwnerModal = ({
 
   return (
     <Modal opened={opened} onClose={onClose} title={title} size="md">
-      <Flex direction="column" gap="md">
+      <Flex direction="column" gap="lg">
         <UserPicker value={selectedCreator} onChange={setSelectedCreator} />
 
         <Flex justify="flex-end" gap="sm">
-          <Button variant="default" onClick={onClose}>
-            {t`Cancel`}
-          </Button>
+          <Button onClick={onClose}>{t`Cancel`}</Button>
           <Button
             variant="filled"
             disabled={selectedCreator === null || isSubmitting}

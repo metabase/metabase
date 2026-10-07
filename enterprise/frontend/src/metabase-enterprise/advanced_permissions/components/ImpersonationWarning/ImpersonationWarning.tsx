@@ -57,7 +57,7 @@ export const ImpersonationWarning = ({
   const warningText = isRedshift ? redshiftWarning : regularWarning;
 
   return (
-    <Box mb="md">
+    <Box mb="lg">
       <Alert size="compact" icon={<Icon name="warning" />} color="warning">
         {isEmpty(databaseUser) ? emptyText : warningText}{" "}
         <Link

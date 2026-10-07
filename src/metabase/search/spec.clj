@@ -90,7 +90,7 @@
   ;; `:document` is the document model's prose-mirror body: it's indexed as searchable text (via
   ;; ast->text) but the raw JSON should never be echoed back in the search response or bloat the index row.
   ;; `:data_layer` also stays IN: Metabot surfaces it on table results so the LLM sees a table's data layer.
-  #{:pinned :view_count :last_viewed_at :native_query :dataset_query :document})
+  #{:pinned :view_count :last_viewed_at :native_query :dataset_query :document :exploration_id})
 
 (def attr-types
   "The abstract types of each attribute."
@@ -101,6 +101,7 @@
    :dashboard-id            :int
    :dashboardcard-count     :int
    :database-id             :pk
+   :exploration-id          :int
    :id                      :text
    :last-edited-at          :timestamp
    :last-editor-id          :pk
@@ -139,6 +140,7 @@
          :official-collection
          :dashboard-id
          :dashboardcard-count
+         :exploration-id
          :last-viewed-at
          :pinned
          :verified                                          ;;  in addition to being a filter, this is also a ranker
@@ -197,6 +199,7 @@
                    [:map-of :keyword [:or fn? true?]]]]
    [:embedding-exclude {:optional true} [:set :keyword]]
    [:render-terms [:map-of NonAttrKey AttrValue]]
+   [:source {:optional true} fn?]
    [:where {:optional true} vector?]
    [:bookmark {:optional true} vector?]
    [:joins {:optional true} JoinMap]])
@@ -397,6 +400,10 @@
    Spec keys:
    - `:model` - Toucan model keyword (required)
    - `:attrs` - Map of search index attributes (required)
+   - `:source` - A thunk returning what `:this` reads from, as a `[source :this]` pair, when the indexable rows are
+     not simply the model's own table -- a Table, whose user-set values live in a side-car. A thunk because the spec
+     map is evaluated as the namespace loads, and resolving another model there would be a load cycle. Defaults to
+     the model's own table.
    - `:search-terms` - Searchable text fields: a vector of column keywords, or a map of
      column keyword to either `true` (use the raw value) or a transform fn applied for
      full-text search (required)
@@ -449,8 +456,11 @@
   "Given a transformed toucan map, get back a mapping to the raw db values that we can use in a query."
   [instance]
   (let [xforms (try
-                 (#'t2.transformed/in-transforms (t2/model instance))
-                 (catch Exception _     ; this happens for :model/ModelIndexValue, which has no transforms
+                 (let [model (t2/model instance)]
+                   ;; We know ModelIndexValue to have no transforms.
+                   (when-not (and (keyword? model) (= (name model) "ModelIndexValue"))
+                     (#'t2.transformed/in-transforms model)))
+                 (catch Exception _     ; may happen for other models that have no transforms
                    nil))]
     (reduce-kv
      (fn [m k v]
@@ -475,7 +485,6 @@
   (doseq [d (keys (model-hooks))]
     (derive d :hook/search-index))
 
-  (search-models-to-update (t2/select-one :model/Card))
   (methods spec)
   (model-hooks)
 
@@ -504,6 +513,7 @@
     (sequential? form) (mapv canonicalize form)
     :else form))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *testing-only-index-version-hash*
   "Override for tests that need a specific index version."
   nil)

@@ -1,0 +1,7 @@
+.sectionContainer {
+  border-bottom: 1px solid var(--mb-color-border-neutral);
+}
+
+.listContainer {
+  overflow: auto;
+}

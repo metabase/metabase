@@ -4,12 +4,6 @@ import _ from "underscore";
 
 import type { VisualizerVizDefinitionWithColumns } from "metabase/redux/store/visualizer";
 import { isNotNull } from "metabase/utils/types";
-import { isCartesianChart } from "metabase/visualizations";
-import {
-  getDefaultDimensionFilter,
-  getDefaultMetricFilter,
-} from "metabase/visualizations/shared/settings/cartesian-chart";
-import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
 import { DROPPABLE_ID } from "metabase/visualizer/constants";
 import {
   copyColumn,
@@ -20,6 +14,12 @@ import {
   shouldSplitVisualizerSeries,
   updateVizSettingsWithRefs,
 } from "metabase/visualizer/utils";
+import {
+  type ComputedVisualizationSettings,
+  getDefaultDimensionFilter,
+  getDefaultMetricFilter,
+  isCartesianChart,
+} from "metabase/viz-core";
 import {
   isDate,
   isDimension,

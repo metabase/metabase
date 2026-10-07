@@ -42,7 +42,7 @@ export function LandingPageUrlField() {
   };
 
   return (
-    <Stack gap="xs">
+    <Stack gap="xxs">
       <TextInput
         id="landing-page"
         data-testid="landing-page"

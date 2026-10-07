@@ -3,8 +3,8 @@ import { c, t } from "ttag";
 
 import { getFormattedTime } from "metabase/common/components/DateTime";
 import { formatNumber } from "metabase/static-viz/lib/numbers";
-import { Ellipsified } from "metabase/ui";
 import {
+  Ellipsified,
   EntityNameCell,
   Flex,
   Text,
@@ -63,7 +63,7 @@ export function getColumns(): TreeTableColumnDef<FieldTreeNode>[] {
             <EntityNameCell
               icon="table"
               name={
-                <Flex align="center" gap="xs">
+                <Flex align="center" gap="xxs">
                   <Text fw="bold">{node.tableName}</Text>{" "}
                   <Text c="text-secondary">({node.fieldCount})</Text>
                 </Flex>

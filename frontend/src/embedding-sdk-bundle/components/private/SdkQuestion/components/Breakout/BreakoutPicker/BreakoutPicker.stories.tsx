@@ -19,7 +19,7 @@ export default {
 export const BreakoutPickerMainComponent = {
   render() {
     return (
-      <Box p="lg">
+      <Box p="xl">
         <SdkQuestion questionId={QUESTION_ID}>
           <Box>
             <BreakoutPicker />

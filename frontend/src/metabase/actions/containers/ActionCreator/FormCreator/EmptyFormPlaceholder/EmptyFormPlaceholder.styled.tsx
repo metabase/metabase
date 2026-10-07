@@ -1,4 +1,4 @@
-// eslint-disable-next-line no-restricted-imports
+// eslint-disable-next-line eslint-js/no-restricted-imports
 import styled from "@emotion/styled";
 
 import { ExternalLink } from "metabase/common/components/ExternalLink";
@@ -38,7 +38,7 @@ export const ExplainerList = styled.ul`
 
 export const ExplainerLink = styled(ExternalLink)`
   font-weight: 700;
-  margin-top: var(--mantine-spacing-md);
+  margin-top: var(--mantine-spacing-lg);
   color: var(--mb-color-core-brand);
 
   &:hover {

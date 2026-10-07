@@ -12,47 +12,67 @@
    [metabase.util.json :as json]
    [ring.mock.request :as ring.mock]))
 
-(deftest ^:parallel cacheable?-test
-  (testing "JS/CSS with cache-busting hash are cacheable"
-    (is (some? (req.util/cacheable? {:request-method :get :uri "/app/dist/main.abc123def.js"})))
-    (is (some? (req.util/cacheable? {:request-method :get :uri "/app/dist/styles.abc123def.css"}))))
-  (testing "Resources in /app/dist/ with hex hash prefix are cacheable"
-    (is (some? (req.util/cacheable? {:request-method :get :uri "/app/dist/abc123def456.png"}))))
-  (testing "Font files are cacheable"
-    (is (some? (req.util/cacheable? {:request-method :get :uri "/app/fonts/Lato/lato-v16-latin-regular.woff2"})))
-    (is (some? (req.util/cacheable? {:request-method :get :uri "/app/fonts/Lato/lato-v16-latin-regular.woff"})))
-    (is (some? (req.util/cacheable? {:request-method :get :uri "/app/fonts/CustomFont/custom.ttf"})))
-    (is (some? (req.util/cacheable? {:request-method :get :uri "/app/fonts/CustomFont/custom.otf"})))
-    (is (some? (req.util/cacheable? {:request-method :get :uri "/app/fonts/CustomFont/custom.eot"}))))
-  (testing "Non-GET requests are not cacheable"
-    (is (not (req.util/cacheable? {:request-method :post :uri "/app/fonts/Lato/lato.woff2"}))))
-  (testing "Other paths are not cacheable"
-    (is (not (req.util/cacheable? {:request-method :get :uri "/api/dashboard/1"})))
-    (is (not (req.util/cacheable? {:request-method :get :uri "/app/dist/main.js"})))))
+(defn- cacheable? [uri]
+  (req.util/cacheable? {:request-method :get :uri uri}))
 
-(deftest ^:parallel https?-test
-  (doseq [[headers expected] {{"x-forwarded-proto" "https"}    true
-                              {"x-forwarded-proto" "http"}     false
-                              {"x-forwarded-protocol" "https"} true
-                              {"x-forwarded-protocol" "http"}  false
-                              {"x-url-scheme" "https"}         true
-                              {"x-url-scheme" "http"}          false
-                              {"x-forwarded-ssl" "on"}         true
-                              {"x-forwarded-ssl" "off"}        false
-                              {"front-end-https" "on"}         true
-                              {"front-end-https" "off"}        false
-                              {"origin" "https://mysite.com"}  true
-                              {"origin" "http://mysite.com"}   false
+(deftest ^:parallel cacheable?-test
+  (testing "a content hash in the name makes an asset cacheable, whatever its extension"
+    (are [uri] (true? (cacheable? uri))
+      "/app/dist/main.abc123def.js"
+      "/app/dist/styles.abc123def.css"
+      "/app/dist/abc123def456.png"
+      "/app/dist/abc123def456.svg"
+      "/app/dist/e6cb5532b88aec25.gif"
+      ;; the build emits bare `<hash>.<ext>` today, but a named variant must stay cacheable
+      "/app/dist/embed-js-example.a1b2c3d4e5f6.png"
+      ;; compressed and sourcemap companions keep the hash of the file they belong to
+      "/app/dist/home.713b08815fb2dac3.js.map"
+      "/app/dist/0f617f82e97365e8.svg.br"))
+  (testing "fonts are cacheable"
+    (are [uri] (true? (cacheable? uri))
+      "/app/fonts/Lato/lato-v16-latin-regular.woff2"
+      "/app/fonts/Lato/lato-v16-latin-regular.woff"
+      "/app/fonts/CustomFont/custom.ttf"
+      "/app/fonts/CustomFont/custom.otf"
+      "/app/fonts/CustomFont/custom.eot"))
+  (testing "a name without a content hash is never cacheable, even when it starts with hex digits"
+    (are [uri] (false? (cacheable? uri))
+      "/app/dist/main.js"
+      "/app/dist/favicon.png"
+      "/app/dist/abc.png"
+      "/app/dist/deadbee.css"))
+  (testing "only GETs are cacheable"
+    (is (false? (req.util/cacheable? {:request-method :post :uri "/app/dist/abc123def456.png"}))))
+  (testing "other paths are not cacheable"
+    (are [uri] (false? (cacheable? uri))
+      "/api/dashboard/1"
+      "/app/assets/img/logo.svg")))
+
+(deftest ^:parallel https-state-test
+  (doseq [[headers expected] {{"x-forwarded-proto" "https"}    :https
+                              {"x-forwarded-proto" "http"}     :http
+                              {"x-forwarded-protocol" "https"} :https
+                              {"x-forwarded-protocol" "http"}  :http
+                              {"x-url-scheme" "https"}         :https
+                              {"x-url-scheme" "http"}          :http
+                              {"x-forwarded-ssl" "on"}         :https
+                              {"x-forwarded-ssl" "off"}        :http
+                              {"front-end-https" "on"}         :https
+                              {"front-end-https" "off"}        :http
+                              ;; `Origin` names the page that issued the request, not the transport it arrived on,
+                              ;; and the client picks it, so it can only leave the transport unknown
+                              {"origin" "https://mysite.com"}  :unknown
+                              {"origin" "http://mysite.com"}   :http
                               ;; a blank proto header must fall through to the boolean HTTPS indicators (BOT-1617)
-                              {"x-forwarded-proto" "" "x-forwarded-ssl" "on"}          true
-                              {"x-forwarded-proto" "" "front-end-https" "on"}          true
-                              {"x-forwarded-proto" "  " "origin" "https://mysite.com"} true
+                              {"x-forwarded-proto" "" "x-forwarded-ssl" "on"}          :https
+                              {"x-forwarded-proto" "" "front-end-https" "on"}          :https
+                              {"x-forwarded-proto" "  " "origin" "https://mysite.com"} :unknown
                               ;; the first hop of a comma-separated chain wins
-                              {"x-forwarded-proto" "https, http"} true
-                              {"x-forwarded-proto" "HTTPS"}       true}]
-    (testing (pr-str (list 'https? {:headers headers}))
+                              {"x-forwarded-proto" "https, http"} :https
+                              {"x-forwarded-proto" "HTTPS"}       :https}]
+    (testing (pr-str (list 'https-state {:headers headers}))
       (is (= expected
-             (req.util/https? {:headers headers}))))))
+             (req.util/https-state {:headers headers}))))))
 
 (def ^:private mock-request
   (delay (edn/read-string (slurp "test/metabase/server/request/sample-request.edn"))))

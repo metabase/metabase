@@ -15,7 +15,7 @@ import { t } from "ttag";
 
 import { Sortable } from "metabase/common/components/Sortable";
 import { Stack } from "metabase/ui";
-import type { SmartScalarComparisonWidgetProps } from "metabase/visualizations/types";
+import type { SmartScalarComparisonWidgetProps } from "metabase/viz-core";
 import type { SmartScalarComparison } from "metabase-types/api";
 
 import { getDefaultComparison } from "../utils";
@@ -121,6 +121,8 @@ export function SmartScalarComparisonWidget({
         </SortableContext>
       </DndContext>
       <AddComparisonButton
+        variant="transparent"
+        size="compact-md"
         disabled={!canAddComparison}
         onClick={handleAddComparison}
       >{t`Add comparison`}</AddComparisonButton>

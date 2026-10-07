@@ -1,5 +1,5 @@
 import type * as Lib from "metabase-lib";
-import type Metadata from "metabase-lib/v1/metadata/Metadata";
+import type { Database } from "metabase-types/api";
 
 import { checkArgCount } from "./check-arg-count";
 import { checkArgValidators } from "./check-arg-validators";
@@ -28,7 +28,7 @@ export function diagnoseExpression(options: {
   expressionClause: Lib.ExpressionClause;
   expressionParts: Lib.ExpressionParts | Lib.ExpressionArg;
   expressionIndex?: number;
-  metadata?: Metadata;
+  database?: Pick<Database, "features">;
 }) {
   expressionChecks.forEach((check) => check(options));
 }

@@ -14,7 +14,7 @@ title: Troubleshooting SQL questions
 
 ## SQL variables and field filters
 
-- [Filter widget doesn't display a dropdown menu of values](../data-modeling/metadata-editing.md#changing-a-search-box-filter-to-a-dropdown-filter).
+- [Filter widget doesn't display a dropdown menu of values](../data-modeling/metadata/metadata-editing.md#changing-a-search-box-filter-to-a-dropdown-filter).
 - [SQL query contains table aliases](../questions/native-editor/field-filters.md#specifying-the-table-and-field-alias).
 - [SQL syntax error: missing `FROM` clause](../questions/native-editor/field-filters.md#field-filters-must-be-connected-to-database-fields-included-in-the-query).
 - [I don't know the SQL variable type](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/sql-in-metabase/sql-variables)
@@ -33,4 +33,4 @@ If you can’t solve your problem using the troubleshooting guides:
 
 - Search or ask the [Metabase community](https://discourse.metabase.com/).
 - Search for [known bugs or limitations](./known-issues.md).
-- Hire a [Metabase Expert](https://www.metabase.com/partners/){:target="\_blank"}.
+- Hire a [Metabase Expert](https://www.metabase.com/partners){:target="\_blank"}.

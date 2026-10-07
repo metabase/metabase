@@ -145,6 +145,64 @@
                        (update :visibility_type keyword)
                        (update :base_type       keyword))))))))))
 
+(deftest field-data-sensitivity-yaml-test
+  (ts/with-random-dump-dir [dump-dir "serdesv2-"]
+    (mt/with-empty-h2-app-db!
+      (ts/with-temp-dpc [:model/Database          db    {:name "My Company Data"}
+                         :model/Table             table {:name "Customers" :db_id (:id db)}
+                         :model/Field             email {:name             "Email"
+                                                         :table_id         (:id table)
+                                                         :data_sensitivity :PII}
+                         :model/Field             _     {:name "Id" :table_id (:id table)}
+                         :model/FieldUserSettings _     {:field_id (:id email) :data_sensitivity :PII}]
+        (storage/store! (into [] (extract/extract {})) (storage.files/file-writer dump-dir))
+        (let [fields-dir (io/file dump-dir "databases" "my_company_data" "tables" "customers" "fields")
+              read-yaml  (fn [file-name] (yaml/from-file (io/file fields-dir file-name)))]
+          (testing "the label is written as the bare enum string on the Field and its settings"
+            (is (= "PII" (:data_sensitivity (read-yaml "email.yaml"))))
+            (is (= "PII" (:data_sensitivity (read-yaml "email___fieldusersettings.yaml")))))
+          (testing "an unlabeled field's file has no data_sensitivity line"
+            (is (not (contains? (read-yaml "id.yaml") :data_sensitivity)))))))))
+
+(deftest user-settings-storage-test
+  (ts/with-random-dump-dir [dump-dir "serdesv2-"]
+    (mt/with-empty-h2-app-db!
+      (ts/with-temp-dpc [:model/Database          db    {:name "My Company Data"}
+                         :model/Table             table {:name "Customers" :db_id (:id db)}
+                         :model/Field             email {:name "Email" :table_id (:id table)}
+                         :model/Field             _     {:name "Id" :table_id (:id table)}
+                         :model/TableUserSettings _     {:table_id (:id table) :display_name "Clients"}
+                         :model/FieldUserSettings _     {:field_id (:id email) :description "edited"}
+                         :model/Dimension         _     {:field_id (:id email) :name "Email" :type :internal}]
+        (storage/store! (into [] (extract/extract {})) (storage.files/file-writer dump-dir))
+        (testing "each settings entity is a file beside its Table's or Field's, only where one exists"
+          (is (= #{["customers.yaml"]
+                   ["customers___tableusersettings.yaml"]
+                   ["fields" "email.yaml"]
+                   ["fields" "email___fieldusersettings.yaml"]
+                   ["fields" "email___dimension.yaml"]
+                   ["fields" "id.yaml"]}
+                 (file-set (io/file dump-dir "databases" "my_company_data" "tables" "customers")))))))))
+
+(deftest long-field-name-user-settings-storage-test
+  (testing "a long Field name keeps the settings, Dimension and values suffixes, so their files don't replace the Field's"
+    (ts/with-random-dump-dir [dump-dir "serdesv2-"]
+      (mt/with-empty-h2-app-db!
+        (let [field-name (apply str (repeat 150 "x"))
+              slug       (apply str (repeat 100 "x"))]
+          (ts/with-temp-dpc [:model/Database          db    {:name "My Company Data"}
+                             :model/Table             table {:name "Customers" :db_id (:id db)}
+                             :model/Field             field {:name field-name :table_id (:id table)}
+                             :model/FieldUserSettings _     {:field_id (:id field) :description "edited"}
+                             :model/Dimension         _     {:field_id (:id field) :name "Long" :type :internal}
+                             :model/FieldValues       _     {:field_id (:id field)}]
+            (storage/store! (into [] (extract/extract {:include-field-values true})) (storage.files/file-writer dump-dir))
+            (is (= #{[(str slug ".yaml")]
+                     [(str slug "___fieldusersettings.yaml")]
+                     [(str slug "___dimension.yaml")]
+                     [(str slug "___fieldvalues.yaml")]}
+                   (file-set (io/file dump-dir "databases" "my_company_data" "tables" "customers" "fields"))))))))))
+
 (deftest entity-counts-report-test
   (ts/with-random-dump-dir [dump-dir "serdesv2-"]
     (mt/with-empty-h2-app-db!

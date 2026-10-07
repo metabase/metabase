@@ -1,7 +1,7 @@
 import type { ContentTranslationFunction } from "metabase/content-translation/types";
-import type * as VisualizationsTable from "metabase/visualizations/lib/table";
-import { getTableClickedObjectRowData } from "metabase/visualizations/lib/table";
 import { registerVisualizations } from "metabase/visualizations/register";
+import type * as VizCore from "metabase/viz-core";
+import { getTableClickedObjectRowData } from "metabase/viz-core";
 import type {
   Card,
   DatasetData,
@@ -18,10 +18,8 @@ import {
   getResultsClipboardContent,
 } from "./results-clipboard";
 
-jest.mock("metabase/visualizations/lib/table", () => {
-  const actual = jest.requireActual<typeof VisualizationsTable>(
-    "metabase/visualizations/lib/table",
-  );
+jest.mock("metabase/viz-core", () => {
+  const actual = jest.requireActual<typeof VizCore>("metabase/viz-core");
   return {
     ...actual,
     getTableClickedObjectRowData: jest.fn(actual.getTableClickedObjectRowData),

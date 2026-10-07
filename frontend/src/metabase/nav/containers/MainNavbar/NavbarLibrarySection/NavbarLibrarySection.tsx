@@ -1,7 +1,6 @@
 import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
-import ErrorBoundary from "metabase/ErrorBoundary";
 import type { CollectionTreeItem } from "metabase/common/collections/utils";
 import {
   buildCollectionTree,
@@ -9,6 +8,7 @@ import {
   isLibraryCollection,
 } from "metabase/common/collections/utils";
 import { CollapseSection } from "metabase/common/components/CollapseSection";
+import ErrorBoundary from "metabase/common/components/ErrorBoundary";
 import { Tree } from "metabase/common/components/tree";
 import {
   SidebarHeading,

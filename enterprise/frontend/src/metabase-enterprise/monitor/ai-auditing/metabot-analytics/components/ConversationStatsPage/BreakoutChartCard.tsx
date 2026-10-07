@@ -45,13 +45,13 @@ export function BreakoutChartCard({
       })}
       withBorder
       shadow="none"
-      px="lg"
-      pt="md"
-      pb={display === "row" ? "md" : "0"}
+      px="xl"
+      pt="lg"
+      pb={display === "row" ? "lg" : "0"}
       h={h}
     >
       {title && (
-        <Text fw="bold" mb="md">
+        <Text fw="bold" mb="lg">
           {title}
         </Text>
       )}

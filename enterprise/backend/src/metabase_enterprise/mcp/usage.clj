@@ -8,12 +8,12 @@
   best-effort: a failure is logged and swallowed so logging never fails the MCP request and
   adds negligible latency."
   (:require
+   [metabase-enterprise.mcp.db :as mcp.db]
    [metabase.analytics.core :as analytics]
    [metabase.analytics.settings :as analytics.settings]
    [metabase.mcp.usage :as mcp.usage]
    [metabase.premium-features.core :refer [defenterprise]]
-   [metabase.util.log :as log]
-   [toucan2.core :as t2]))
+   [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
 
@@ -52,7 +52,7 @@
     (when (and session-id
                ;; mcp-remote fires a throwaway transport-probe handshake; never record it
                (not (mcp.usage/proxy-probe? (:name client-info)))
-               (not (t2/exists? :model/McpSessionLog :id session-id)))
+               (not (mcp.db/session-log-exists? session-id)))
       (let [;; `pii-fields-from` returns the gated PII columns only when
             ;; `analytics-pii-retention-enabled` is on (nil otherwise). Allowlist the two columns
             ;; `mcp_session_log` actually has — selecting explicitly (rather than dissoc-ing the
@@ -61,13 +61,13 @@
             pii (select-keys (analytics/pii-fields-from {:user-agent user-agent
                                                          :ip-address ip-address})
                              [:user_agent :ip_address])]
-        (t2/insert! :model/McpSessionLog
-                    (merge {:id             session-id
-                            :user_id        user-id
-                            :tenant_id      tenant-id
-                            :client_name    (mcp.usage/detect-client (:name client-info))
-                            :client_version (truncate (:version client-info) client-version-max-length)}
-                           pii))))
+        (mcp.db/insert-session-log!
+         (merge {:id             session-id
+                 :user_id        user-id
+                 :tenant_id      tenant-id
+                 :client_name    (mcp.usage/detect-client (:name client-info))
+                 :client_version (truncate (:version client-info) client-version-max-length)}
+                pii))))
     (catch Throwable e
       (log/warnf "Failed to record MCP session: %s" (ex-message e)))))
 
@@ -78,7 +78,7 @@
   [session-id]
   (try
     (when session-id
-      (t2/update! :model/McpSessionLog :id session-id {:ended_at :%now}))
+      (mcp.db/end-session-log! session-id))
     (catch Throwable e
       (log/warnf "Failed to record MCP session end: %s" (ex-message e)))))
 
@@ -96,7 +96,7 @@
      :client_version (truncate (:version client-info) client-version-max-length)}
 
     session-id
-    (t2/select-one [:model/McpSessionLog :client_name :client_version] :id session-id)
+    (mcp.db/session-client-identity session-id)
 
     :else nil))
 
@@ -118,18 +118,18 @@
           pii (select-keys (analytics/pii-fields-from {:user-agent user-agent
                                                        :ip-address ip-address})
                            [:user_agent :ip_address :sanitized_user_agent])]
-      (t2/insert! :model/McpToolCallLog
-                  (merge {:tool_name       (or (not-empty (truncate tool-name tool-name-max-length))
-                                               unknown-tool-name)
-                          :user_id         user-id
-                          :client_name     client_name
-                          :client_version  client_version
-                          :tenant_id       tenant-id
-                          :status          status
-                          :duration_ms     duration-ms
-                          :error_code      error-code
-                          :error_message   (when (analytics.settings/analytics-pii-retention-enabled)
-                                             (truncate error-message error-message-max-length))}
-                         pii)))
+      (mcp.db/insert-tool-call-log!
+       (merge {:tool_name       (or (not-empty (truncate tool-name tool-name-max-length))
+                                    unknown-tool-name)
+               :user_id         user-id
+               :client_name     client_name
+               :client_version  client_version
+               :tenant_id       tenant-id
+               :status          status
+               :duration_ms     duration-ms
+               :error_code      error-code
+               :error_message   (when (analytics.settings/analytics-pii-retention-enabled)
+                                  (truncate error-message error-message-max-length))}
+              pii)))
     (catch Throwable e
       (log/warnf "Failed to record MCP tool call: %s" (ex-message e)))))

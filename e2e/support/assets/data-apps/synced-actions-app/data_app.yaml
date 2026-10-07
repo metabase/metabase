@@ -1,0 +1,9 @@
+version: 1
+name: Synced Actions App
+slug: synced-actions-app
+path: ./dist/index.js
+entity_id: nPu5r1EndcM_D8TQfLk9c
+serdes/meta:
+- model: DataApp
+  id: nPu5r1EndcM_D8TQfLk9c
+  label: synced-actions-app

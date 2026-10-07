@@ -2,23 +2,26 @@ import { useState } from "react";
 import { msgid, ngettext, t } from "ttag";
 
 import { AdminPaneLayout } from "metabase/admin/components/AdminPaneLayout";
-import { SettingsSection } from "metabase/admin/components/SettingsSection";
 import {
   useCreateMembershipMutation,
   useDeleteMembershipMutation,
   useUpdateMembershipMutation,
 } from "metabase/api";
+import { getErrorMessage } from "metabase/api/utils";
+import { useHasTokenFeature } from "metabase/common/hooks";
 import { useConfirmation } from "metabase/common/hooks/use-confirmation";
 import { useToast } from "metabase/common/hooks/use-toast";
 import {
   canEditMembership,
+  getAddMembersDisabledReason,
   getGroupNameLocalized,
   isAdminGroup,
   isDefaultGroup,
 } from "metabase/common/utils/groups";
 import { PLUGIN_GROUP_MANAGERS, PLUGIN_TENANTS } from "metabase/plugins";
 import { useDispatch } from "metabase/redux";
-import { Box, Button, Text } from "metabase/ui";
+import { SettingsSection } from "metabase/settings-components";
+import { Box, Button, Text, Tooltip } from "metabase/ui";
 import type { Group, Member, Membership, User } from "metabase-types/api";
 
 import { Alert } from "./Alert";
@@ -37,6 +40,11 @@ export const GroupDetail = ({
 }: GroupDetailProps) => {
   const dispatch = useDispatch();
   const [sendToast] = useToast();
+  const hasAdvancedPermissions = useHasTokenFeature("advanced_permissions");
+  const addMembersDisabledReason = getAddMembersDisabledReason(
+    group,
+    hasAdvancedPermissions,
+  );
 
   const [createMembership] = useCreateMembershipMutation();
   const [updateMembership] = useUpdateMembershipMutation();
@@ -57,9 +65,7 @@ export const GroupDetail = ({
         ),
       );
     } catch (error) {
-      const errorMessage =
-        error instanceof Error ? error.message : String(error);
-      setAlertMessage(errorMessage);
+      setAlertMessage(getErrorMessage(error));
     }
   };
 
@@ -125,11 +131,11 @@ export const GroupDetail = ({
         )}
         titleActions={
           canEditMembership(group) && (
-            <Button
-              variant="filled"
+            <AddMembersButton
+              disabledReason={addMembersDisabledReason}
+              isAddingUsers={addUserVisible}
               onClick={onAddUsersClicked}
-              disabled={addUserVisible}
-            >{t`Add members`}</Button>
+            />
           )
         }
       >
@@ -149,6 +155,40 @@ export const GroupDetail = ({
   );
 };
 
+interface AddMembersButtonProps {
+  disabledReason: string | null;
+  isAddingUsers: boolean;
+  onClick: () => void;
+}
+
+const AddMembersButton = ({
+  disabledReason,
+  isAddingUsers,
+  onClick,
+}: AddMembersButtonProps) => {
+  const button = (
+    <Button
+      variant="filled"
+      onClick={onClick}
+      disabled={isAddingUsers || disabledReason != null}
+    >{t`Add members`}</Button>
+  );
+
+  if (disabledReason == null) {
+    return button;
+  }
+
+  return (
+    <Tooltip label={disabledReason}>
+      {/* Wrapper so the tooltip still shows over the disabled button,
+          which itself does not emit pointer events. */}
+      <Box component="span" display="inline-flex">
+        {button}
+      </Box>
+    </Tooltip>
+  );
+};
+
 const GroupDescription = ({ group }: { group: Group }) => {
   // Let plugin handle tenant-specific descriptions first
   const tenantDescription = PLUGIN_TENANTS.GroupDescription({ group });
@@ -158,7 +198,7 @@ const GroupDescription = ({ group }: { group: Group }) => {
 
   if (isDefaultGroup(group)) {
     return (
-      <Box maw="38rem" mb="md">
+      <Box maw="38rem" mb="lg">
         <Text>
           {t`All users belong to the ${getGroupNameLocalized(
             group,
@@ -171,7 +211,7 @@ const GroupDescription = ({ group }: { group: Group }) => {
 
   if (isAdminGroup(group)) {
     return (
-      <Box maw="38rem" mb="md">
+      <Box maw="38rem" mb="lg">
         <Text>
           {t`This is a special group whose members can see everything in the Metabase instance, and who can access and make changes to the
         settings in the Admin Panel, including changing permissions! So, add people to this group with care.`}

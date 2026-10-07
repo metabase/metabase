@@ -21,6 +21,7 @@
      acc)
 
     ([row-count row]
+     ;; the printed rows ARE the behavior under test, asserted via with-out-str
      #_{:clj-kondo/ignore [:discouraged-var]}
      (printf "ROW %d -> %s\n" (inc row-count) (pr-str row))
      (inc row-count))))

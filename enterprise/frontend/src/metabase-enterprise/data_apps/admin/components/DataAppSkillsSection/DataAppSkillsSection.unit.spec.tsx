@@ -1,10 +1,7 @@
 import userEvent from "@testing-library/user-event";
 
+import { createMockSettingsState, createMockState } from "__support__/state";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
-import {
-  createMockSettingsState,
-  createMockState,
-} from "metabase/redux/store/mocks";
 import { createMockVersion } from "metabase-types/api/mocks";
 
 import { DataAppSkillsSection } from "./DataAppSkillsSection";
@@ -34,6 +31,7 @@ const DATA_APP_SKILLS = [
   "metabase-data-app-routing",
   "metabase-data-app-actions",
   "metabase-data-app-semantic-layer",
+  "metabase-data-app-migrate",
 ];
 
 describe("DataAppSkillsSection", () => {

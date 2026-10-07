@@ -38,22 +38,12 @@
    "sqlserver" "tsql",
    ;; Embedded/lightweight
    "sqlite" "sqlite",
-   ;; H2 uses PostgreSQL compatibility mode in sqlglot but this causes incorrect identifier
-   ;; quoting (H2 folds to UPPERCASE internally, postgres quoting forces lowercase), so we
-   ;; skip validation. Vertica is not supported by sqlglot.
+   ;; sqlglot has no H2 dialect, and its nearest stand-in, postgres mode, folds the other
+   ;; way (H2 folds unquoted identifiers to uppercase, postgres to lowercase), so anything
+   ;; the transpiler folds or quotes comes out wrong for H2; skip validation. Vertica is
+   ;; not supported by sqlglot.
    "h2" nil
    "vertica" nil})
-
-;; Dialects where the Python transpilation layer (`sql_tools.py`) passes `identify=True` to
-;; sqlglot, quoting all identifiers. These dialects fold unquoted identifiers to a specific case
-;; and need quoting to preserve the LLM's intended casing. This set is defined in Python's
-;; `CASE_SENSITIVE_DIALECTS`; it is documented here so that any future pure-JVM replacement
-;; knows to replicate the behavior.
-;;
-;;   "snowflake"  — folds unquoted to UPPERCASE
-;;   "oracle"     — folds unquoted to UPPERCASE
-;;   "redshift"   — PostgreSQL-based, folds to lowercase
-;;   "postgres"   — folds unquoted to lowercase
 
 (defn database-id->dialect
   "Get dialect for database id."

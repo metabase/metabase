@@ -1,44 +1,37 @@
-import { createMockMetadata } from "__support__/metadata";
-import {
-  createMockDatabase,
-  createMockSchema,
-  createMockTable,
-} from "metabase-types/api/mocks";
+import { createMockDatabase, createMockTable } from "metabase-types/api/mocks";
 
 import { getGroupsDataEditorBreadcrumbs } from "./breadcrumbs";
 
 describe("admin > permissions > data > breadcrumbs", () => {
   describe("getGroupsDataEditorBreadcrumbs", () => {
-    const schema = createMockSchema({
-      id: "100:myschema",
-      name: "myschema",
-    });
-
-    const schema2 = createMockSchema({
-      id: "100:myschema2",
-      name: "myschema2",
-    });
-
-    const metadata = createMockMetadata({
-      databases: [
-        createMockDatabase({
-          id: 100,
-          name: "myDatabase",
-          // @ts-expect-error - we have to set this manually for this test to work due to circular object nonsense
-          schemas: [schema, schema2],
+    const multiSchemaDatabase = createMockDatabase({
+      id: 100,
+      name: "myDatabase",
+      tables: [
+        createMockTable({
+          id: 300,
+          db_id: 100,
+          schema: "public",
+          display_name: "myTable",
         }),
-        createMockDatabase({
-          id: 101,
-          name: "mySchemalessDatabase",
-          engine: "mysql",
+        createMockTable({
+          id: 302,
+          db_id: 100,
+          schema: "myschema2",
+          display_name: "myOtherTable",
         }),
       ],
-      schemas: [schema, schema2],
+    });
+
+    const singleSchemaDatabase = createMockDatabase({
+      id: 101,
+      name: "mySchemalessDatabase",
+      engine: "mysql",
       tables: [
-        createMockTable({ id: 300, db_id: 100, display_name: "myTable" }),
         createMockTable({
           id: 301,
           db_id: 101,
+          schema: "public",
           display_name: "mySchemalessTable",
         }),
       ],
@@ -51,7 +44,7 @@ describe("admin > permissions > data > breadcrumbs", () => {
           schemaName: "public",
           tableId: 300,
         },
-        metadata,
+        multiSchemaDatabase,
       );
 
       expect(breadcrumbs).toEqual([
@@ -81,7 +74,7 @@ describe("admin > permissions > data > breadcrumbs", () => {
           schemaName: "public",
           tableId: 301,
         },
-        metadata,
+        singleSchemaDatabase,
       );
 
       expect(breadcrumbs).toEqual([

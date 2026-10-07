@@ -69,7 +69,7 @@
   [{:keys [series correlations], :as _stats}]
   (if (empty? series)
     0.0
-    (let [per-series (for [[_ s] series]
+    (let [per-series (for [s series]
                        (let [has-trend   (some-> (:trend s) trend-interesting?)
                              has-outlier (seq (:outliers s))
                              has-change  (seq (:significant-changes s))
@@ -88,7 +88,7 @@
   [{:keys [series]}]
   (if (empty? series)
     0.0
-    (let [scores (for [[_ s] series]
+    (let [scores (for [s series]
                    (let [cc          (:category-count s 0)
                          has-outlier (seq (:outliers s))
                          range-ratio (when-let [{:keys [min max]} (:summary s)]
@@ -106,7 +106,7 @@
   [{:keys [series]}]
   (if (empty? series)
     0.0
-    (let [scores (for [[_ s] series]
+    (let [scores (for [s series]
                    (let [coef (some-> s :correlation :coefficient double abs)
                          r2   (some-> s :regression :r-squared double)
                          has-outlier (seq (:outliers s))]
@@ -121,7 +121,7 @@
   [{:keys [series]}]
   (if (empty? series)
     0.0
-    (let [scores (for [[_ s] series]
+    (let [scores (for [s series]
                    (let [{:keys [peak-count concentration-top3]} (:structure s)
                          skew (some-> s :distribution :weighted-skewness double abs)]
                      (cond-> 0.0

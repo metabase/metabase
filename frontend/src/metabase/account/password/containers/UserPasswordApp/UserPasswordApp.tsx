@@ -14,9 +14,9 @@ const UserPasswordApp = () => {
   const validatePassword = useValidatePassword();
 
   return (
-    <Stack gap="xl">
+    <Stack gap="xxl">
       {!isSsoUser && (
-        <Stack gap="md">
+        <Stack gap="lg">
           <UserPasswordForm user={user} onValidatePassword={validatePassword} />
         </Stack>
       )}

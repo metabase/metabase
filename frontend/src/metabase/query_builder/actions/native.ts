@@ -3,16 +3,6 @@ import { createAction } from "redux-actions";
 import { cardApi } from "metabase/api";
 import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
 import { createThunkAction } from "metabase/redux";
-import {
-  OPEN_DATA_REFERENCE_AT_QUESTION,
-  SET_DATA_REFERENCE_STACK,
-  SET_MODAL_SNIPPET,
-  SET_NATIVE_EDITOR_SELECTED_RANGE,
-  SET_SNIPPET_COLLECTION_ID,
-  TOGGLE_DATA_REFERENCE,
-  TOGGLE_SNIPPET_SIDEBAR,
-  TOGGLE_TEMPLATE_TAGS_EDITOR,
-} from "metabase/redux/query-builder";
 import type { Dispatch, GetState } from "metabase/redux/store";
 import { settingsApi } from "metabase/settings";
 import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
@@ -25,12 +15,22 @@ import type {
 } from "metabase-types/api";
 
 import {
+  OPEN_DATA_REFERENCE_AT_QUESTION,
+  SET_DATA_REFERENCE_STACK,
+  SET_MODAL_SNIPPET,
+  SET_NATIVE_EDITOR_SELECTED_RANGE,
+  SET_SNIPPET_COLLECTION_ID,
+  TOGGLE_DATA_REFERENCE,
+  TOGGLE_SNIPPET_SIDEBAR,
+  TOGGLE_TEMPLATE_TAGS_EDITOR,
+} from "../store/actions";
+import {
   getDataReferenceStack,
   getNativeEditorCursorOffset,
   getNativeEditorSelectedText,
   getQuestion,
   getSnippetCollectionId,
-} from "../selectors";
+} from "../store/selectors";
 
 import { updateQuestion } from "./core/updateQuestion";
 

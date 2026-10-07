@@ -1,9 +1,11 @@
+import { EditorView } from "@codemirror/view";
+import { useMemo } from "react";
 import { t } from "ttag";
 
-import { SettingsPageWrapper } from "metabase/admin/components/SettingsSection";
+import { CodeEditor } from "metabase/common/components/CodeEditor";
 import { useSelector } from "metabase/redux";
 import { getApplicationName } from "metabase/selectors/whitelabel";
-import { Textarea } from "metabase/ui";
+import { SettingsPageWrapper } from "metabase/settings-components";
 import { useAdminSettingWithBlurInput } from "metabase-enterprise/ai-controls/hooks";
 
 import S from "./MetabotSystemPromptsPage.module.css";
@@ -24,22 +26,28 @@ function SystemPromptPage(props: SystemPromptPageProps) {
   const { handleInputChange, handleBlur, inputValue } =
     useAdminSettingWithBlurInput(settingKey);
 
+  const extensions = useMemo(
+    () => [
+      EditorView.lineWrapping,
+      EditorView.contentAttributes.of({ "aria-label": title }),
+    ],
+    [title],
+  );
+
   return (
     <SettingsPageWrapper
       title={title}
       description={description}
       className={S.wrapper}
     >
-      <Textarea
+      <CodeEditor
         aria-label={title}
-        autosize={false}
-        classNames={{
-          root: S.textareaRoot,
-          wrapper: S.textareaWrapper,
-          input: S.textareaInput,
-        }}
+        className={S.editor}
+        extensions={extensions}
+        language="markdown"
+        lineNumbers={false}
         onBlur={handleBlur}
-        onChange={(e) => handleInputChange(e.target.value)}
+        onChange={handleInputChange}
         placeholder={getPlaceholder()}
         value={inputValue || ""}
       />
@@ -65,7 +73,7 @@ export function MetabotChatPromptPage() {
   return (
     <SystemPromptPage
       title={t`AI chat prompt instructions`}
-      description={t`Add instructions here for the sidebar AI chat experience in ${applicationName}. You might want to give instructions about tone, types of entities to prefer, and things like that.`}
+      description={t`Add instructions here for the sidebar AI chat experience in ${applicationName} and for Metabot in Slack. You might want to give instructions about tone, types of entities to prefer, and things like that.`}
       settingKey="metabot-chat-system-prompt"
     />
   );

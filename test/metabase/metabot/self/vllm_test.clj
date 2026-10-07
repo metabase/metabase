@@ -4,13 +4,15 @@
    [clojure.test :refer :all]
    [metabase.llm.settings :as llm.settings]
    [metabase.metabot.self :as self]
+   [metabase.metabot.self.adapter :as adapter]
    [metabase.metabot.self.core :as self.core]
    [metabase.metabot.self.debug :as debug]
    [metabase.metabot.self.openai.chat-completions :as chat-completions]
    [metabase.metabot.self.vllm :as vllm]
    [metabase.metabot.test-util :as metabot.tu]
    [metabase.test :as mt]
-   [metabase.util.json :as json])
+   [metabase.util.json :as json]
+   [metabase.util.malli.registry :as mr])
   (:import
    (java.net ConnectException SocketTimeoutException)
    (java.util.concurrent CountDownLatch TimeUnit)))
@@ -560,7 +562,7 @@
           (is (false? (#'self/retryable-error? e))))))))
 
 (deftest vllm-http-errors-still-reach-the-status-specific-message-test
-  (testing "the IOException catch runs first, so a non-2xx must still be translated by `vllm-error-msg`"
+  (testing "the IOException catch runs first, so a non-2xx must still be translated by the descriptor's `:errors`"
     (with-redefs [http/request (fn [_] (throw (ex-info "clj-http: status 401"
                                                        {:status 401 :body "{\"message\":\"Unauthorized\"}"})))]
       (is (thrown-with-msg?
@@ -753,11 +755,18 @@
   [models chat-message]
   (probe-choice! models {:message chat-message :finish_reason "tool_calls"}))
 
+(deftest probe-return-conforms-to-the-listing-schema-test
+  (testing "a probing listing still validates against [[adapter/ModelListing]] — `:connection-info` is a
+            declared key, not an undeclared extra the closed schema would reject"
+    (let [listing (probe! [{:id "vllm-test" :max_model_len 32768}] tool-calling-message)]
+      (is (contains? listing :connection-info))
+      (is (nil? (mr/explain adapter/ModelListing listing))))))
+
 (deftest preflight-passes-on-a-correctly-configured-server-test
   (testing "a server that returns a well-formed tool call passes and still lists its models"
-    (is (= {:models         [{:id "vllm-test" :display_name "vllm-test"}]
-            :probed-model   "vllm-test"
-            :learned-config {vllm/reasoning-config-key "false"}}
+    (is (= {:models          [{:id "vllm-test" :display_name "vllm-test"}]
+            :connection-info {vllm/reasoning-config-key "false"
+                              :probed-model             "vllm-test"}}
            (probe! [{:id "vllm-test" :max_model_len 32768}] tool-calling-message)))))
 
 (deftest preflight-reports-the-model-it-probed-test
@@ -765,10 +774,12 @@
            the connect path must adopt the model the contract checks actually ran against"
     (testing "the first catalog entry, in the order the server lists it"
       (is (= "vllm-test"
-             (:probed-model (probe! recorded-multi-model-catalog tool-calling-message)))))
+             (get-in (probe! recorded-multi-model-catalog tool-calling-message)
+                     [:connection-info :probed-model]))))
     (testing "including a slash-bearing repo id, which the connect path stores as `vllm/{id}`"
       (is (= "mlx-community/Qwen3-14B-4bit"
-             (:probed-model (probe! recorded-no-alias-catalog tool-calling-message))))))
+             (get-in (probe! recorded-no-alias-catalog tool-calling-message)
+                     [:connection-info :probed-model])))))
   (testing "and a listing that did not probe reports nothing"
     (mt/with-dynamic-fn-redefs [http/request (fn [_] {:status 200 :body {:data [{:id "vllm-test"}]}})]
       (is (= [:models] (keys (vllm/list-models {:credentials credentials})))))))
@@ -788,7 +799,7 @@
                                                                      :max_model_len 32768}]}}
                                                    (do (reset! probed (:model (json/decode+kw (str body))))
                                                        {:status 200 :body {:choices [{:message tool-calling-message}]}})))]
-        (is (= "vllm-test" (:probed-model (vllm/list-models {:credentials credentials :probe? true}))))
+        (is (= "vllm-test" (get-in (vllm/list-models {:credentials credentials :probe? true}) [:connection-info :probed-model])))
         (is (= "vllm-test" @probed)))))
   (testing "an explicitly requested adapter is still honoured — the filter only picks the default"
     (mt/with-dynamic-fn-redefs [http/request (fn [{:keys [url]}]
@@ -797,9 +808,10 @@
                                                   :body   {:data [{:id "sql-lora" :parent "vllm-test" :max_model_len 32768}
                                                                   {:id "vllm-test" :max_model_len 32768}]}}
                                                  {:status 200 :body {:choices [{:message tool-calling-message}]}}))]
-      (is (= "sql-lora" (:probed-model (vllm/list-models {:credentials credentials
-                                                          :probe?      true
-                                                          :model       "sql-lora"})))))))
+      (is (= "sql-lora" (get-in (vllm/list-models {:credentials credentials
+                                                   :probe?      true
+                                                   :model       "sql-lora"})
+                                [:connection-info :probed-model]))))))
 
 (deftest preflight-skipped-without-probe-flag-test
   (testing "without :probe? no generation request is made at all — listing models must stay cheap"
@@ -862,6 +874,39 @@
                                                        {:status 200 :body {:choices [{:message tool-calling-message}]}})))]
         (vllm/list-models {:credentials credentials :probe? true :model "second"})
         (is (= "second" @probed))))))
+
+(deftest preflight-prefers-a-proposed-model-that-is-still-served-test
+  (testing "an edit without an explicit model re-probes the model previously verified for the connection"
+    (let [probed (atom #{})]
+      (mt/with-dynamic-fn-redefs [http/request (fn [{:keys [url body]}]
+                                                 (if (re-find #"/models$" (str url))
+                                                   {:status 200 :body {:data [{:id "first" :max_model_len 32768}
+                                                                              {:id "previous" :max_model_len 32768}]}}
+                                                   (do (swap! probed conj (:model (json/decode+kw (str body))))
+                                                       {:status 200 :body {:choices [{:message tool-calling-message}]}})))]
+        (is (= "previous"
+               (get-in (vllm/list-models {:credentials    credentials
+                                          :probe?         true
+                                          :proposed-model "previous"})
+                       [:connection-info :probed-model])))
+        (is (= #{"previous"} @probed))))))
+
+(deftest preflight-falls-back-when-the-proposed-model-is-no-longer-served-test
+  (testing "a stale proposal does not become a hard request and the normal candidate selection still applies"
+    (let [probed (atom #{})]
+      (mt/with-dynamic-fn-redefs [http/request (fn [{:keys [url body]}]
+                                                 (if (re-find #"/models$" (str url))
+                                                   {:status 200
+                                                    :body   {:data [{:id "sql-lora" :parent "first" :max_model_len 32768}
+                                                                    {:id "first" :max_model_len 32768}]}}
+                                                   (do (swap! probed conj (:model (json/decode+kw (str body))))
+                                                       {:status 200 :body {:choices [{:message tool-calling-message}]}})))]
+        (is (= "first"
+               (get-in (vllm/list-models {:credentials    credentials
+                                          :probe?         true
+                                          :proposed-model "removed"})
+                       [:connection-info :probed-model])))
+        (is (= #{"first"} @probed))))))
 
 (deftest preflight-rejects-a-model-the-server-does-not-serve-test
   (testing "a requested model absent from the catalog fails and names what is served, rather than probing something else"
@@ -958,22 +1003,22 @@
   (testing "the probe is the only place this is knowable — /v1/models carries no reasoning field, so what it
            saw is reported back for the connection to record"
     ;; Recorded shape: vLLM 0.26 puts it on the non-streaming message under `reasoning`.
-    (is (= {vllm/reasoning-config-key "true"}
-           (:learned-config
-            (probe-choice! [{:id "vllm-test" :max_model_len 32768}]
-                           {:message       (assoc tool-calling-message
-                                                  :reasoning "\nOkay, the user wants me to record \"orders\".")
-                            :finish_reason "tool_calls"})))))
+    (is (=? {vllm/reasoning-config-key "true"}
+            (:connection-info
+             (probe-choice! [{:id "vllm-test" :max_model_len 32768}]
+                            {:message       (assoc tool-calling-message
+                                                   :reasoning "\nOkay, the user wants me to record \"orders\".")
+                             :finish_reason "tool_calls"})))))
   (testing "and under the deprecated spelling older servers still use"
-    (is (= {vllm/reasoning-config-key "true"}
-           (:learned-config
-            (probe-choice! [{:id "vllm-test" :max_model_len 32768}]
-                           {:message       (assoc tool-calling-message
-                                                  :reasoning_content "Older vLLM builds spell it this way.")
-                            :finish_reason "tool_calls"})))))
+    (is (=? {vllm/reasoning-config-key "true"}
+            (:connection-info
+             (probe-choice! [{:id "vllm-test" :max_model_len 32768}]
+                            {:message       (assoc tool-calling-message
+                                                   :reasoning_content "Older vLLM builds spell it this way.")
+                             :finish_reason "tool_calls"})))))
   (testing "a model that answers without reasoning reports false"
-    (is (= {vllm/reasoning-config-key "false"}
-           (:learned-config (probe! [{:id "vllm-test" :max_model_len 32768}] tool-calling-message)))))
+    (is (=? {vllm/reasoning-config-key "false"}
+            (:connection-info (probe! [{:id "vllm-test" :max_model_len 32768}] tool-calling-message)))))
   (testing "and a connection carrying the flag is what the request body reads it from"
     (is (true? (vllm/reasoning-connection? {vllm/reasoning-config-key "true"})))
     (is (false? (vllm/reasoning-connection? {vllm/reasoning-config-key "false"})))
@@ -1022,15 +1067,19 @@
   (testing "the first verdict returns immediately and its sibling is cancelled — an abandoned future would
            keep generating against the operator's server after the admin already has a 400"
     (let [interrupted (promise)
+          started     (CountDownLatch. 1)
           never       (CountDownLatch. 1)]
       (mt/with-dynamic-fn-redefs [http/request (fn [{:keys [url body]}]
                                                  (if (re-find #"/models$" (str url))
                                                    {:status 200 :body {:data [{:id "vllm-test" :max_model_len 32768}]}}
                                                    (case (:tool_choice (json/decode+kw (str body)))
-                                                     "auto"     {:status 200
-                                                                 :body   {:choices [{:message {:content    "I'll record orders."
-                                                                                               :tool_calls []}}]}}
+                                                     "auto"     (do
+                                                                  (.await started 10 TimeUnit/SECONDS)
+                                                                  {:status 200
+                                                                   :body   {:choices [{:message {:content    "I'll record orders."
+                                                                                                 :tool_calls []}}]}})
                                                      "required" (try
+                                                                  (.countDown started)
                                                                   (.await never 10 TimeUnit/SECONDS)
                                                                   (deliver interrupted false)
                                                                   {:status 200 :body {:choices [{:message tool-calling-message}]}}
@@ -1085,9 +1134,9 @@
 (deftest preflight-accepts-a-catalog-without-a-context-window-test
   (testing "`max_model_len` is vLLM's own field: Ollama, LM Studio, and TGI omit it. The floor is
            best-effort, so a catalog without it connects rather than being rejected on a missing field"
-    (is (= {:models         [{:id "vllm-test" :display_name "vllm-test"}]
-            :probed-model   "vllm-test"
-            :learned-config {vllm/reasoning-config-key "false"}}
+    (is (= {:models          [{:id "vllm-test" :display_name "vllm-test"}]
+            :connection-info {vllm/reasoning-config-key "false"
+                              :probed-model             "vllm-test"}}
            (probe! [{:id "vllm-test"}] tool-calling-message)))))
 
 (deftest preflight-does-not-leak-the-context-window-to-the-client-test

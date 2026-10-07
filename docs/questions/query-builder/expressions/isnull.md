@@ -42,7 +42,7 @@ case(isNull([Discount]), true, false)
 
 Combine `isNull` with the [`case` expression](./case.md) to replace missing information with something more descriptive:
 
-For example, you can create a new custom column that will contain `"Unknown feedback"` when the original `[Feedback]` column is null, and the actual feedback value when `[Feedback]` is has a value. The custom expression to do it is:
+For example, you can create a new custom column that will contain `"Unknown feedback"` when the original `[Feedback]` column is null, and the actual feedback value when `[Feedback]` has a value. The custom expression to do it is:
 
 ```
 case(isNull([Feedback]), "Unknown feedback.", [Feedback])

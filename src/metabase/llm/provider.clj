@@ -18,10 +18,13 @@
   [[resolve-model-ref]] turns one into the provider type, model, and credentials an adapter needs."
   (:require
    [clojure.string :as str]
-   [metabase.llm.settings :as llm.settings]
+   [metabase.llm.provider.settings :as llm.provider.settings]
+   [metabase.premium-features.core :as premium-features]
+   [metabase.request.current :as request.current]
    [metabase.settings.core :as setting]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [deferred-tru tru]]))
+   [metabase.util.i18n :refer [deferred-tru tru]]
+   [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
 
@@ -35,7 +38,7 @@
 
 (def ^:private aws-region-options
   (mapv (fn [region] {:value region :label region})
-        (sort llm.settings/known-aws-regions)))
+        (sort llm.provider.settings/known-aws-regions)))
 
 (def ^:private provider-type-registry
   "Every provider type Metabase can connect to, in the order the admin UI offers them.
@@ -52,9 +55,10 @@
                      :required?   true
                      :placeholder "sk-ant-api03-..."
                      :prefix      "sk-ant-"
-                     :docs-url    "https://console.anthropic.com/settings/keys"}
+                     :docs-url    "https://platform.claude.com/settings/keys"}
                     {:key       :base-url
                      :normalize strip-trailing-slashes
+                     :validate  llm.provider.settings/llm-url-problem
                      :label     (deferred-tru "API base URL")
                      :type      :text
                      :advanced? true
@@ -72,6 +76,7 @@
                      :docs-url    "https://platform.openai.com/api-keys"}
                     {:key       :base-url
                      :normalize strip-trailing-slashes
+                     :validate  llm.provider.settings/llm-url-problem
                      :label     (deferred-tru "API base URL")
                      :type      :text
                      :advanced? true
@@ -80,6 +85,11 @@
     :label         (deferred-tru "OpenRouter")
     :default-model "anthropic/claude-sonnet-4.6"
     :mini-model    "anthropic/claude-haiku-4.5"
+    ;; Ids of retired models, each mapped to the model that now serves it. OpenRouter lists only the dated
+    ;; `qwen/qwen3.8-max-0902` (https://openrouter.ai/api/v1/models). Saved selections may still name a retired id,
+    ;; and they read as the successor. Treat an entry as permanent: nothing rewrites a value pinned by an environment
+    ;; variable, and a stored value converges only when the setting is next written.
+    :retired-models {"qwen/qwen3.8-max" "qwen/qwen3.8-max-0902"}
     :fields        [{:key         :api-key
                      :label       (deferred-tru "API key")
                      :type        :password
@@ -89,6 +99,7 @@
                      :docs-url    "https://openrouter.ai/keys"}
                     {:key       :base-url
                      :normalize strip-trailing-slashes
+                     :validate  llm.provider.settings/llm-url-problem
                      :label     (deferred-tru "API base URL")
                      :type      :text
                      :advanced? true
@@ -106,6 +117,7 @@
                      :docs-url    "https://console.mistral.ai/api-keys"}
                     {:key       :base-url
                      :normalize strip-trailing-slashes
+                     :validate  llm.provider.settings/llm-url-problem
                      :label     (deferred-tru "API base URL")
                      :type      :text
                      :advanced? true
@@ -123,6 +135,7 @@
                      :docs-url    "https://z.ai/manage-apikey/apikey-list"}
                     {:key       :base-url
                      :normalize strip-trailing-slashes
+                     :validate  llm.provider.settings/llm-url-problem
                      :label     (deferred-tru "API base URL")
                      :type      :text
                      :advanced? true
@@ -139,6 +152,7 @@
                      :docs-url    "https://platform.kimi.ai/console/api-keys"}
                     {:key       :base-url
                      :normalize strip-trailing-slashes
+                     :validate  llm.provider.settings/llm-url-problem
                      :label     (deferred-tru "API base URL")
                      :type      :text
                      :advanced? true
@@ -147,7 +161,12 @@
    {:type          "deepseek"
     :label         (deferred-tru "DeepSeek")
     :default-model "deepseek-v4-pro"
-    :mini-model    "deepseek-v4-flash"
+    :mini-model    "deepseek-flash"
+    ;; Ids of retired models, each mapped to the model that now serves it
+    ;; (https://api-docs.deepseek.com/quick_start/pricing). Saved selections may still name them, and they read as
+    ;; the successor. Treat an entry as permanent: nothing rewrites a value pinned by an environment variable, and a
+    ;; stored value converges only when the setting is next written.
+    :retired-models {"deepseek-v4-flash" "deepseek-flash"}
     :fields        [{:key         :api-key
                      :label       (deferred-tru "API key")
                      :type        :password
@@ -158,11 +177,30 @@
                      :docs-url    "https://platform.deepseek.com/api_keys"}
                     {:key       :base-url
                      :normalize strip-trailing-slashes
+                     :validate  llm.provider.settings/llm-url-problem
                      :label     (deferred-tru "API base URL")
                      :type      :text
                      :advanced? true
                      :default   "https://api.deepseek.com"
                      :help      (deferred-tru "The root both surfaces hang off; leave off any /anthropic or /v1 path.")}]}
+   {:type          "xai"
+    :label         (deferred-tru "xAI")
+    :default-model "grok-4.7"
+    :mini-model    "grok-4.3"
+    :fields        [{:key         :api-key
+                     :label       (deferred-tru "API key")
+                     :type        :password
+                     :required?   true
+                     :placeholder "xai-..."
+                     :prefix      "xai-"
+                     :docs-url    "https://console.x.ai/team/default/api-keys"}
+                    {:key       :base-url
+                     :normalize strip-trailing-slashes
+                     :validate  llm.provider.settings/llm-url-problem
+                     :label     (deferred-tru "API base URL")
+                     :type      :text
+                     :advanced? true
+                     :default   "https://api.x.ai/v1"}]}
    {:type          "google"
     ;; "Google Gemini Enterprise" (nearly the official "Gemini Enterprise Agent Platform" name), not "Google
     ;; Gemini": the Gemini API is a separate surface with its own credentials, and may become a provider type of
@@ -171,11 +209,21 @@
     :default-model "google/gemini-3.5-flash"
     ;; The Gemini Enterprise Agent Platform has no listing endpoint we can trust — the one it exposes reports models
     ;; that are not really available and omits ones that are — so the models Metabot is known to work with are fixed
-    ;; here, and connecting validates the credentials against the model chosen in the connection form with a free
-    ;; `countTokens` probe. Which of them a project can actually reach depends on its location.
-    :models        [{:id "google/gemini-3.5-flash" :display_name "gemini-3.5-flash"}
-                    {:id "google/gemini-3.6-flash" :display_name "gemini-3.6-flash"}
-                    {:id "google/gemini-3.7-flash" :display_name "gemini-3.7-flash"}]
+    ;; here, and connecting validates the credentials against the model chosen in the connection form with a probe.
+    ;; Which of them a project can actually reach depends on its location.
+    :models        [{:id "google/gemini-3.5-flash"             :display_name "Gemini 3.5 Flash"}
+                    {:id "google/gemini-3.6-flash"             :display_name "Gemini 3.6 Flash"}
+                    {:id "google/gemini-3.7-flash"             :display_name "Gemini 3.7 Flash"}
+                    {:id "anthropic/claude-fable-5"            :display_name "Claude Fable 5"}
+                    {:id "anthropic/claude-opus-5-5"           :display_name "Claude Opus 5.5"}
+                    {:id "anthropic/claude-opus-5"             :display_name "Claude Opus 5"}
+                    {:id "anthropic/claude-opus-4-6"           :display_name "Claude Opus 4.6"}
+                    {:id "anthropic/claude-sonnet-5-5"         :display_name "Claude Sonnet 5.5"}
+                    {:id "anthropic/claude-sonnet-5"           :display_name "Claude Sonnet 5"}
+                    {:id "anthropic/claude-sonnet-4-6"         :display_name "Claude Sonnet 4.6"}
+                    {:id "anthropic/claude-haiku-4-5@20251001" :display_name "Claude Haiku 4.5"}]
+    ;; A connection with an endpoint ID serves that Model Garden endpoint instead of the catalog.
+    :model-fields  ["endpoints" :endpoint-id]
     ;; A service account key authenticates on its own (it can carry the project); an OAuth token needs the project
     ;; named beside it.
     :required-any  [[:service-account-key] [:oauth-access-token :project-id]]
@@ -184,7 +232,7 @@
                      :type        :text
                      :placeholder (deferred-tru "my-project")
                      :validate    (fn [value]
-                                    (when-not (llm.settings/valid-google-project-id? value)
+                                    (when-not (llm.provider.settings/valid-google-project-id? value)
                                       (tru "\"{0}\" is not a valid Google Cloud project ID. Use the project ID — 6 to 30 lowercase letters, digits and hyphens — rather than the project name or number." value)))
                      :help        (deferred-tru "The Google Cloud project to use. Optional if the service account key provides it.")
                      :docs-url    "https://docs.cloud.google.com/resource-manager/docs/creating-managing-projects"}
@@ -193,7 +241,7 @@
                      :type      :text
                      :placeholder "global"
                      :validate  (fn [value]
-                                  (when-not (llm.settings/valid-google-location? value)
+                                  (when-not (llm.provider.settings/valid-google-location? value)
                                     (tru "\"{0}\" is not a valid Google Cloud location." value)))
                      :help      (deferred-tru "Optional. Defaults to global.")}
                     {:key       :auth-method
@@ -220,12 +268,18 @@
                      :show-when   {:field :auth-method :value "oauth-token"}
                      :placeholder "ya29..."
                      :help        (deferred-tru "A short-lived token, e.g. the output of gcloud auth print-access-token. Useful for testing.")}
+                    {:key         :endpoint-id
+                     :label       (deferred-tru "Model Garden endpoint ID")
+                     :type        :text
+                     :placeholder "1234567890123456789"
+                     :help        (deferred-tru "Optional. Use an open model you deployed from Model Garden instead of one Google hosts. Set the location to the region you deployed it to.")}
                     {:key       :base-url
                      :normalize strip-trailing-slashes
+                     :validate  llm.provider.settings/llm-url-problem
                      :label     (deferred-tru "API base URL")
                      :type      :text
                      :advanced? true
-                     :default   llm.settings/google-global-api-base-url
+                     :default   llm.provider.settings/google-global-api-base-url
                      :help      (deferred-tru "Derived from the location when left at the global host.")}]}
    {:type          "azure"
     :label         (deferred-tru "Microsoft Azure")
@@ -242,6 +296,7 @@
                      :docs-url    "https://ai.azure.com"}
                     {:key         :base-url
                      :normalize   strip-trailing-slashes
+                     :validate    llm.provider.settings/llm-url-problem
                      :label       (deferred-tru "API base URL")
                      :type        :text
                      :required?   true
@@ -264,21 +319,37 @@
     :label         (deferred-tru "Amazon Bedrock")
     :default-model "anthropic.claude-opus-4-8"
     :mini-model    "anthropic.claude-haiku-4-5"
-    :fields        [{:key         :access-key-id
-                     :label       (deferred-tru "Access key ID")
-                     :type        :password
-                     :required?   true
-                     :placeholder "AKIA..."
-                     :docs-url    "https://docs.aws.amazon.com/IAM/latest/UserGuide/id_credentials_access-keys.html"}
-                    {:key       :secret-access-key
-                     :label     (deferred-tru "Secret access key")
-                     :type      :password
-                     :required? true}
+    ;; A connection with a model ID serves that model instead of the catalog.
+    :model-fields  [:model-id]
+    ;; Both keys together select explicit credentials, neither selects the AWS default credentials chain, and one
+    ;; without the other authenticates nothing. A session token only extends the pair.
+    :requires      {:access-key-id     [:secret-access-key]
+                    :secret-access-key [:access-key-id]
+                    :session-token     [:access-key-id :secret-access-key]}
+    :fields        [{:key              :access-key-id
+                     :label            (deferred-tru "Access key ID")
+                     :type             :password
+                     :placeholder      "AKIA..."
+                     :help             (deferred-tru "Leave the keys blank to authenticate with the AWS default credentials chain (IRSA, EKS Pod Identity, or instance profile).")
+                     ;; The default chain resolves the instance's own AWS identity, which on Metabase Cloud belongs
+                     ;; to the operator rather than the tenant, so hosted deployments must bring explicit keys.
+                     :hosted-required? true
+                     :hosted-help      (deferred-tru "On Metabase Cloud, Bedrock always authenticates with your own AWS keys.")
+                     :docs-url         "https://docs.aws.amazon.com/IAM/latest/UserGuide/id_credentials_access-keys.html"}
+                    {:key              :secret-access-key
+                     :label            (deferred-tru "Secret access key")
+                     :type             :password
+                     :hosted-required? true}
                     {:key     :region
                      :label   (deferred-tru "Region")
                      :type    :select
                      :options aws-region-options
                      :default "us-east-1"}
+                    {:key         :model-id
+                     :label       (deferred-tru "Model ID")
+                     :type        :text
+                     :placeholder "global.anthropic.claude-sonnet-4-6"
+                     :help        (deferred-tru "Optional. Use an inference profile, or a model that isn''t listed for this region, by its ID or ARN.")}
                     {:key       :session-token
                      :label     (deferred-tru "Session token")
                      :type      :password
@@ -286,17 +357,23 @@
                      :help      (deferred-tru "Only needed for temporary credentials.")}]}
    {:type          "vllm"
     :label         (deferred-tru "vLLM")
+    ;; The probe adds :model-reasoning to the stored config. It is learned rather than entered in the form, but
+    ;; stored-config validation must allow it.
+    :stored-config-fields [:model-reasoning]
     ;; A vLLM server serves whatever the operator loaded it with, so there is no model to default to: the one a
     ;; new connection starts on comes from the catalog that connecting fetches (see
     ;; [[metabase.metabot.self.vllm/list-models]]).
     :default-model nil
     :fields        [{:key         :base-url
                      :normalize   strip-trailing-slashes
+                     :validate    llm.provider.settings/llm-url-problem
                      :label       (deferred-tru "API base URL")
                      :type        :text
                      :required?   true
-                     :placeholder "http://vllm.internal:8000/v1"
-                     :help        (deferred-tru "Your server''s OpenAI-compatible API. It should end in /v1.")}
+                     :placeholder "https://vllm.example.com/v1"
+                     :help        (deferred-tru (str "Your server''s OpenAI-compatible API. It should end in /v1. "
+                                                     "Metabase must be able to reach it: self-hosted, a server on your "
+                                                     "private network or on this machine needs MB_LLM_ALLOWED_NETWORKS."))}
                     {:key      :api-key
                      :label    (deferred-tru "API key")
                      :type     :password
@@ -316,15 +393,41 @@
 (def ^:private provider-type-by-name
   (into {} (map (juxt :type identity)) provider-type-registry))
 
+(defn- hosted-provider-type
+  "`entry` adjusted for a hosted deployment: a field's `:hosted-required?` makes it required and its `:hosted-help`
+  replaces its `:help`. Everything downstream (validation, completeness, the connection form) reads the entry
+  through [[provider-type]], so this is the one place hosted policy is applied."
+  [entry]
+  (update entry :fields
+          (partial mapv (fn [{:keys [hosted-help hosted-required?] :as field}]
+                          (cond-> field
+                            hosted-help      (assoc :help hosted-help)
+                            hosted-required? (assoc :required? true))))))
+
+(defn hosted?
+  "Whether hosted credential policy applies. [[premium-features/is-hosted?]] reads the `:hosting` license feature,
+  which reads as absent while the token service is unreachable, so an indeterminate token status counts as hosted
+  too: on Cloud a keyless Bedrock connection would otherwise sign as the operator."
+  []
+  (or (premium-features/is-hosted?)
+      (nil? (premium-features/canonically-has-feature? :hosting))))
+
+(defn config-field-keys
+  "Every key a connection's `:config` may carry: the `:fields` of every registered provider type, taken together. Which
+  of them a given connection may use depends on its type; [[validate-config!]] checks that."
+  []
+  (into (sorted-set) (comp (mapcat :fields) (map :key)) provider-type-registry))
+
 (defn provider-type
   "The registry entry for `type-name`, or nil when it is not a known provider type."
   [type-name]
-  (get provider-type-by-name type-name))
+  (when-let [entry (get provider-type-by-name type-name)]
+    (cond-> entry (hosted?) hosted-provider-type)))
 
 (defn provider-types
   "Every registered provider type."
   []
-  provider-type-registry)
+  (mapv (comp provider-type :type) provider-type-registry))
 
 (defn managed-type?
   "Whether `type-name` is the Metabase-managed provider, which authenticates with the instance token through the LLM
@@ -337,7 +440,7 @@
   everything else is always available."
   [type-name]
   (if (managed-type? type-name)
-    (some? (llm.settings/llm-proxy-base-url))
+    (some? (llm.provider.settings/llm-proxy-base-url))
     (some? (provider-type type-name))))
 
 (defn secret-field-keys
@@ -363,8 +466,9 @@
   (:models (provider-type type-name)))
 
 (defn model-fields
-  "The `:config` keys whose values compose the model a connection of `type-name` serves, for types whose models
-  cannot be listed from the provider. Returns nil for types whose catalog is fetched or fixed."
+  "The parts that compose the model a connection names in its own `:config`, for models the provider cannot list.
+  Each part is a `:config` key, or a string that stands for itself like the `endpoints` in Google's `endpoints/{id}`.
+  Returns nil for types whose connections only serve a fetched or fixed catalog."
   [type-name]
   (:model-fields (provider-type type-name)))
 
@@ -376,26 +480,44 @@
 
 (defn mini-model
   "The fastest and cheapest model `type-name` serves — what short utility calls such as conversation titles run on
-  when no model has been picked for them. Returns nil for the types that have no cheaper tier to fall back to: the
-  ones whose connection names the single model it serves rather than picking from a catalog, and the managed
-  provider, which serves one benchmarked model."
+  when no model has been picked for them and the connection's listing includes it. Returns nil for the types that
+  have no cheaper tier to fall back to: the ones whose connection names the single model it serves rather than
+  picking from a catalog, and the managed provider, which serves one benchmarked model."
   [type-name]
   (:mini-model (provider-type type-name)))
+
+(defn served-mini-model
+  "The `:config` entry recording `type-name`'s [[mini-model]] when `listed-models` includes it, and nil when it does
+  not."
+  [type-name listed-models]
+  (let [model (mini-model type-name)]
+    {:mini-model (when (some #(= model (:id %)) listed-models) model)}))
+
+(defn connection-mini-model
+  "The [[mini-model]] `conn`'s listing included when it was last saved, or nil."
+  [conn]
+  (get-in conn [:config :mini-model]))
 
 ;;; -------------------------------------------------- Validation --------------------------------------------------
 
 (defn connection-model
-  "The model `config` names, composed from its type's [[model-fields]] — Azure's `{family}/{deployment}` comes from
-  two inputs so the admin picks the family rather than typing it as a prefix. Returns nil for types that list their
-  models, and for a connection that has not filled every part in yet."
+  "The model `config` names, composed from its type's [[model-fields]], or nil when it names none.
+  Azure's `{family}/{deployment}` comes from two inputs so the admin picks the family rather than typing it as a
+  prefix. A connection that leaves a part blank names no model, which for Google means it serves the catalog."
   [type-name config]
   (when-let [field-keys (seq (model-fields type-name))]
-    (let [parts (map #(u/trimmed-string (get config %)) field-keys)]
+    (let [parts (map #(if (string? %) % (u/trimmed-string (get config %))) field-keys)]
       (when (every? some? parts)
         (str/join "/" parts)))))
 
+(defn- validate-field-value!
+  "Run one field's `:validate` hook against the value `config` supplies for it, if it has both."
+  [{:keys [key validate]} config]
+  (when-let [problem (and validate (some-> (u/trimmed-string (get config key)) validate))]
+    (throw (ex-info (str problem) {:status-code 400 :field key}))))
+
 (defn- validate-field!
-  [type-name {:keys [key label required? prefix default options validate]} config]
+  [type-name {:keys [key label required? prefix default options] :as field} config]
   (let [value (u/trimmed-string (get config key))]
     (when (and required? (not value) (not default))
       (throw (ex-info (tru "{0} is required for {1}." (str label) type-name)
@@ -406,8 +528,7 @@
     (when (and value (seq options) (not-any? #(= value (:value %)) options))
       (throw (ex-info (tru "Invalid {0} for {1}." (str label) type-name)
                       {:status-code 400 :field key})))
-    (when-let [problem (and value validate (validate value))]
-      (throw (ex-info (str problem) {:status-code 400 :field key})))))
+    (validate-field-value! field config)))
 
 (defn- validate-config-field!
   "Run [[validate-field!]]'s checks for the single field `field-key` of `type-name` against `config`."
@@ -421,8 +542,8 @@
   [type-name config]
   (let [{:keys [required-any fields]} (provider-type type-name)
         label-for                     (into {} (map (juxt :key :label)) fields)
-        carried?                      (fn [group] (every? #(u/trimmed-string (get config %)) group))]
-    (when (and (seq required-any) (not-any? carried? required-any))
+        group-carried?                (fn [group] (every? #(u/trimmed-string (get config %)) group))]
+    (when (and (seq required-any) (not-any? group-carried? required-any))
       (throw (ex-info (tru "{0} needs one of: {1}."
                            type-name
                            (str/join (str " " (tru "or") " ")
@@ -430,17 +551,34 @@
                                           required-any)))
                       {:status-code 400 :required-any required-any})))))
 
+(defn- validate-requires!
+  "Throw a 400 when `config` carries a field without the fields its `:requires` entry names: for Bedrock, half an
+  access key pair, or a session token without the pair."
+  [type-name config]
+  (let [{:keys [requires fields]} (provider-type type-name)
+        label-for                 (into {} (map (juxt :key :label)) fields)
+        carried?                  #(u/trimmed-string (get config %))]
+    (doseq [[field-key deps] requires]
+      (when (and (carried? field-key) (not-every? carried? deps))
+        (throw (ex-info (tru "{0} takes {1} only together with {2}."
+                             type-name
+                             (str (label-for field-key))
+                             (str/join " + " (map (comp str label-for) deps)))
+                        {:status-code 400 :requires {field-key deps}}))))))
+
 (defn validate-config!
   "Check a connection's `:config` against its provider type's field descriptors: required fields are present, fields
   that declare a `:prefix` start with it, `:options` values are among the options, per-field `:validate` hooks pass,
-  and one of the type's `:required-any` credential groups is carried. Throws a 400 on the first problem."
+  one of the type's `:required-any` credential groups is carried, and no field is carried without the fields its
+  `:requires` entry names. Throws a 400 on the first problem."
   [type-name config]
   (when-not (provider-type type-name)
     (throw (ex-info (tru "Unknown provider type {0}." (pr-str type-name))
                     {:status-code 400 :type type-name})))
   (doseq [field (:fields (provider-type type-name))]
     (validate-field! type-name field config))
-  (validate-required-any! type-name config))
+  (validate-required-any! type-name config)
+  (validate-requires! type-name config))
 
 (defn credentials-complete?
   "Whether `config` carries the credentials a request needs.
@@ -448,24 +586,31 @@
   A required field the registry gives a `:default` counts as carried: [[with-field-defaults]] supplies it when the
   connection is resolved, so leaving it untouched is the admin accepting the value its form showed. A type with
   `:required-any` groups additionally needs one of them carried in full — Google's fields are individually optional
-  because either credential will do, which without the groups would make an empty config count as complete.
+  because either credential will do, which without the groups would make an empty config count as complete. A field
+  with a `:requires` entry needs the fields it names: Bedrock's key pair is optional because a keyless connection
+  signs with the AWS default credentials chain, but half a pair authenticates nothing.
 
   [[model-fields]] are exempt: they name what to call, not what authenticates the call, and a connection can
   legitimately take its model from the `connection-key/model` reference instead — which is where an Azure
   deployment configured before the connection list existed still lives. [[validate-config!]] still requires them
   of anything saved through the API, so only the environment and a hand-written `llm-providers` can omit them."
   [type-name config]
-  (let [{:keys [fields required-any]} (provider-type type-name)
-        model-keys                    (set (model-fields type-name))]
+  (let [{:keys [fields required-any requires]} (provider-type type-name)
+        model-keys                              (set (model-fields type-name))
+        carried?                                #(u/trimmed-string (get config %))]
     (and (every? (fn [{:keys [key required? default]}]
                    (or (not required?)
                        default
                        (contains? model-keys key)
-                       (u/trimmed-string (get config key))))
+                       (carried? key)))
                  fields)
          (or (empty? required-any)
-             (boolean (some (fn [group] (every? #(u/trimmed-string (get config %)) group))
-                            required-any))))))
+             (boolean (some (fn [group] (every? carried? group))
+                            required-any)))
+         (every? (fn [[field-key deps]]
+                   (or (not (carried? field-key))
+                       (every? carried? deps)))
+                 requires))))
 
 (defn config-complete?
   "Whether a connection of `type-name` can make requests: [[credentials-complete?]], or for the Metabase-managed
@@ -473,7 +618,7 @@
   proxy is configured."
   [type-name config]
   (if (managed-type? type-name)
-    (some? (llm.settings/llm-proxy-base-url))
+    (some? (llm.provider.settings/llm-proxy-base-url))
     (credentials-complete? type-name config)))
 
 ;;; ---------------------------------------- Connections configured by env var ------------------------------------
@@ -511,6 +656,9 @@
    "deepseek"   {:type     "deepseek"
                  :settings {:api-key  {:setting :llm-deepseek-api-key :credential? true}
                             :base-url {:setting :llm-deepseek-api-base-url}}}
+   "xai"        {:type     "xai"
+                 :settings {:api-key  {:setting :llm-xai-api-key :credential? true}
+                            :base-url {:setting :llm-xai-api-base-url}}}
    "google"     {:type     "google"
                  :settings {:service-account-key {:setting :llm-google-service-account-key :credential? true}
                             :oauth-access-token  {:setting :llm-google-oauth-access-token :credential? true}
@@ -525,15 +673,32 @@
                             :model-family    {:setting :llm-azure-model-family}
                             :deployment-name {:setting :llm-azure-deployment-name}}}
    "bedrock"    {:type     "bedrock"
+                 ;; the region counts as a credential here: with no key pair the AWS default credentials chain
+                 ;; signs the requests, so the region alone brings a usable connection into existence
                  :settings {:access-key-id     {:setting :llm-bedrock-access-key-id :credential? true}
                             :secret-access-key {:setting :llm-bedrock-secret-access-key :credential? true}
                             :session-token     {:setting :llm-bedrock-session-token}
-                            :region            {:setting :llm-bedrock-region}}}
+                            :region            {:setting :llm-bedrock-region :credential? true}}}
    "vllm"       {:type     "vllm"
                  ;; the base URL is the credential here, unlike Azure's: a server started without --api-key takes
                  ;; no key, so the URL alone brings a usable connection into existence
                  :settings {:base-url {:setting :llm-vllm-api-base-url :credential? true}
                             :api-key  {:setting :llm-vllm-api-key}}}})
+
+(defn connection-env-vars
+  "The environment variables that configure a connection of `type-name`, as `{config-field \"MB_LLM_...\"}`.
+
+  Returns nil for a type no per-provider variable configures — the managed provider, which holds no credentials of
+  its own, is the only one today. Setting these is the supported way to configure a single connection without writing
+  JSON into [[metabase.llm.provider.settings/llm-providers]]."
+  [type-name]
+  (when-let [{:keys [settings]} (get single-provider-settings type-name)]
+    (not-empty
+     (into {}
+           (keep (fn [{field-key :key}]
+                   (when-let [setting-kw (get-in settings [field-key :setting])]
+                     [field-key (setting/env-var-name setting-kw)])))
+           (:fields (provider-type type-name))))))
 
 (defn- env-supplied-fields
   "The `:config` fields the environment supplies for one [[single-provider-settings]] group:
@@ -584,7 +749,7 @@
   from [[connections]], so rebuilding the list from there would drop it from the setting the next time an admin
   saved anything — the credentials would be gone for good once the env var came back off."
   []
-  (vec (llm.settings/llm-providers)))
+  (vec (llm.provider.settings/llm-providers)))
 
 (defn- annotated-stored-connections
   []
@@ -593,6 +758,38 @@
                        (cond-> (assoc conn :source (if env-managed? :env :db))
                          env-managed? (assoc :env-vars #{(setting/env-var-name :llm-providers)})))]
     (into [] (map annotate) (stored-connections))))
+
+(defonce ^:private warned-captured-base-urls
+  (atom #{}))
+
+(defn- drop-captured-base-url
+  "Drop `conn`'s stored base URL when layering `env-config` over it would send an environment-supplied secret to a
+  URL that came from the app DB, leaving the type's default to stand in.
+
+  [[assert-base-url-change-authorized!]] refuses to point a connection somewhere new while carrying a secret the API
+  caller did not freshly supply, and a secret the environment supplies can never be re-supplied through the API at
+  all. That check runs when the base URL is written, so it cannot account for a variable set afterwards.
+  Deciding it again here makes the rule hold whichever order the two arrived in.
+
+  A connection the `MB_LLM_PROVIDERS` JSON supplies is exempt: it is `:source :env`, written by the operator
+  rather than through the API, so its base URL is as trusted as the variable holding the secret. A type whose base
+  URL has no default — Azure, vLLM — is left incomplete, and so unusable, rather than pointed anywhere.
+
+  Warned about once per value rather than on every read: it is the only trace an operator gets of a base URL their
+  instance is configured with but is not using."
+  [{conn-key :key :keys [type source config] :as conn} env-config]
+  (if-not (and (= :db source)
+               (u/trimmed-string (:base-url config))
+               (not (contains? env-config :base-url))
+               (some #(contains? env-config %) (secret-field-keys type)))
+    conn
+    (do
+      (when-not (contains? @warned-captured-base-urls [conn-key (:base-url config)])
+        (swap! warned-captured-base-urls conj [conn-key (:base-url config)])
+        (log/warnf (str "Ignoring the stored base URL of the %s LLM connection: its credentials come from the "
+                        "environment, so its base URL has to as well. Set %s to keep using it.")
+                   conn-key (get (connection-env-vars type) :base-url "the matching base URL variable")))
+      (update conn :config dissoc :base-url))))
 
 (defn connections
   "Every connection this instance can use, in admin-facing order.
@@ -604,6 +801,9 @@
   config keys the environment owns, and `:env-vars` the variables supplying them, so the form can disable exactly
   those inputs.
 
+  The one field that does not simply stay editable is a stored base URL the environment's secret would travel to:
+  see [[drop-captured-base-url]].
+
   A standalone `:env` connection is synthesized only when a variable marked `:credential?` is set — credentials are
   what bring a connection into existence; a base URL alone shadows but does not create. The managed connection is
   synthesized whenever `MB_LLM_METABOT_PROVIDER` pins a `metabase/...` reference, so that reference resolves."
@@ -614,6 +814,7 @@
                              ;; only a same-typed overlay applies: the fields describe this provider type's config
                              (if (and overlay (= type (:type overlay)))
                                (-> conn
+                                   (drop-captured-base-url env-config)
                                    (update :config merge env-config)
                                    (update :env-vars (fnil into (sorted-set)) (vals vars))
                                    (assoc :env-fields (set (keys env-config))))
@@ -654,10 +855,33 @@
    (when-let [{:keys [type config]} (connection conn-key)]
      (config-complete? type config))))
 
+(defn validate-changed-connections!
+  "Run the per-field `:validate` hooks over the fields `conns` changes. This is the
+  [[metabase.llm.settings/llm-providers]] setter, so trusted provisioning such as `config.yml` also validates base URLs.
+  Direct generic settings API writes are forbidden by that setter.
+
+  Only the `:validate` hooks: required fields, prefixes and options are the connection API's business, and demanding
+  them of every write here would break `config.yml` provisioning and the single-provider settings, which
+  legitimately fill a connection in one field at a time.
+
+  Only the fields that changed, too, so that a base URL saved before this check existed -- or before the policy was
+  tightened around it -- does not make the connection holding it unwritable. Rotating its API key has to keep
+  working.
+
+  A connection of an unknown type has no fields to check, the same as everywhere else a hand-written list is read."
+  [conns]
+  (let [stored (into {} (map (juxt (juxt :key :type) :config)) (stored-connections))]
+    (doseq [conn (filter map? conns)
+            :let [config   (:config conn)
+                  previous (get stored ((juxt :key :type) conn))]
+            {field-key :key :as field} (:fields (provider-type (:type conn)))
+            :when (not= (get config field-key) (get previous field-key))]
+      (validate-field-value! field config))))
+
 (defn set-connections!
   "Persist `conns` as the stored connection list, dropping the derived annotation keys."
   [conns]
-  (llm.settings/llm-providers! (mapv #(dissoc % :source :env-vars :env-fields) conns)))
+  (llm.provider.settings/set-llm-providers! (mapv #(dissoc % :source :env-vars :env-fields) conns)))
 
 ;;; --------------------------------------------------- Slugs ------------------------------------------------------
 
@@ -702,6 +926,33 @@
   (when model-ref
     (second (str/split model-ref #"/" 2))))
 
+(def ^:private retired-model-ids
+  "Every model id some provider type has retired, so a reference naming none of them needs no connection lookup."
+  (into #{} (mapcat (comp keys :retired-models)) provider-type-registry))
+
+(defn- current-model
+  "The model now serving `model` on provider type `type-name`.
+
+  Its successor when the type retired it, otherwise `model` itself. Read from the raw registry, like
+  [[retired-model-ids]]: retirement is not hosted policy, so it needs no [[provider-type]] lookup.
+
+    \"openrouter\" \"qwen/qwen3.8-max\" => \"qwen/qwen3.8-max-0902\""
+  [type-name model]
+  (get-in provider-type-by-name [type-name :retired-models model] model))
+
+(defn canonical-model-ref
+  "`model-ref` with any retired model id replaced by its successor.
+
+  A selection saved before a rename reads as the current model. Returns any other `model-ref` unchanged.
+
+    \"openrouter/qwen/qwen3.8-max\" => \"openrouter/qwen/qwen3.8-max-0902\""
+  [model-ref]
+  (let [model (model-ref->model model-ref)]
+    (if-let [{:keys [key type]} (when (contains? retired-model-ids model)
+                                  (connection (model-ref->connection-key model-ref)))]
+      (str key "/" (current-model type model))
+      model-ref)))
+
 (defn strip-managed-prefix
   "Drop the `metabase/` routing prefix from a model reference, leaving the `provider/model` pair the proxy forwards.
   Returns `model-ref` unchanged when it has no such prefix."
@@ -733,7 +984,8 @@
   Returns `{:connection-key :type :model :credentials :ai-proxy?}`, or nil when no such connection exists. `:type`
   is the provider type whose adapter should serve the request: for the managed connection that is the wire family
   named by the model's own first segment (`metabase/anthropic/claude-...` is served by the Anthropic adapter over
-  the proxy), and `:model` is what remains."
+  the proxy), and `:model` is what remains. A retired model id resolves to the model that now serves it, as
+  in [[canonical-model-ref]]."
   [model-ref]
   (let [conn-key (model-ref->connection-key model-ref)
         model    (model-ref->model model-ref)]
@@ -746,7 +998,7 @@
          :ai-proxy?      true}
         {:connection-key conn-key
          :type           type
-         :model          model
+         :model          (current-model type model)
          :credentials    (with-field-defaults type config)
          :ai-proxy?      false}))))
 
@@ -775,6 +1027,67 @@
       (or (u/trimmed-string (setting/env-var-value setting-kw))
           (get (with-field-defaults group-type {}) field)))))
 
+(defn assert-base-url-change-authorized!
+  "Reject moving a connection while carrying a secret that the API caller did not freshly supply.
+
+  `old-config` and `new-config` are the effective configs before and after the edit, including environment overlays;
+  registry defaults and normalization are applied here before comparing their base URLs. `submitted-config` is the
+  unmerged client input, so an omitted secret or one echoed back masked does not count as fresh. `env-fields` names
+  values the client cannot re-supply and gets a more actionable error. `legacy-setting?` says the caller is a
+  one-setting-at-a-time API that cannot submit the URL and credentials together."
+  ([type-name old-config new-config submitted-config env-fields]
+   (assert-base-url-change-authorized! type-name old-config new-config submitted-config env-fields nil))
+  ([type-name old-config new-config submitted-config env-fields {:keys [legacy-setting?]}]
+   (let [old-config      (with-field-defaults type-name old-config)
+         new-config      (with-field-defaults type-name new-config)
+         secret-keys     (secret-field-keys type-name)
+         carried-secrets (filter #(u/trimmed-string (get new-config %)) secret-keys)
+         env-fields      (set env-fields)
+         fresh-secret?   (fn [field]
+                           (let [value (u/trimmed-string (get submitted-config field))]
+                             (and (not (contains? env-fields field))
+                                  value
+                                  (not (setting/obfuscated-value? value)))))
+         missing-secrets (remove fresh-secret? carried-secrets)]
+     (when (and (not= (:base-url old-config) (:base-url new-config))
+                (seq missing-secrets))
+       (let [env-secret? (some env-fields missing-secrets)]
+         (throw (ex-info (cond
+                           env-secret?
+                           (tru "This connection''s credentials come from environment variables. Change its base URL there too.")
+
+                           legacy-setting?
+                           (tru "Use the provider connection settings to change the base URL and enter the credentials again.")
+
+                           :else
+                           (tru "Enter this connection''s credentials again to point it at a different base URL."))
+                         {:status-code 400
+                          :api-error   true
+                          :error-code  :llm-base-url-change-requires-credentials
+                          :field       :base-url
+                          :secrets     (mapv name missing-secrets)})))))))
+
+(defn- assert-credential-write-authorized!
+  "Reject adding a secret to a connection sitting on a base URL this API cannot show the caller.
+
+  [[assert-base-url-change-authorized!]] binds the two together from the base URL's side. This is the other side:
+  the per-provider settings write one field at a time, so a credential entered here arrives with no sight of where
+  it will be sent. The connection settings submit the whole connection, base URL included, so they are where a
+  connection on a custom URL takes its credentials.
+
+  A base URL the environment supplies needs no such treatment: the operator chose it."
+  [type-name field {:keys [config env-fields]}]
+  (when (contains? (secret-field-keys type-name) field)
+    (let [base-url (:base-url (with-field-defaults type-name config))]
+      (when (and base-url
+                 (not= base-url (:base-url (with-field-defaults type-name {})))
+                 (not (contains? (set env-fields) :base-url)))
+        (throw (ex-info (tru "This connection has its own base URL. Use the provider connection settings to enter its credentials.")
+                        {:status-code 400
+                         :api-error   true
+                         :error-code  :llm-credential-change-requires-connection-settings
+                         :field       field}))))))
+
 (defn set-single-provider-setting!
   "Write `new-value` for the per-provider credential setting `setting-kw` into the connection its settings group
   configures, creating the connection when a non-blank value arrives for one that does not exist yet; blank clears
@@ -787,20 +1100,46 @@
         group-type       (:type (get single-provider-settings conn-key))
         value            (u/trimmed-string new-value)
         stored           (stored-connections)
-        idx              (first (keep-indexed (fn [i conn] (when (= conn-key (:key conn)) i)) stored))]
+        idx              (first (keep-indexed (fn [i conn] (when (= conn-key (:key conn)) i)) stored))
+        live             (connection conn-key)]
     ;; a client echoing back the mask [[metabase.settings.core/obfuscate-value]] handed it is not entering a new
-    ;; value, the same way [[metabase.settings.core/set!]] treats sensitive settings
-    (when-not (setting/obfuscated-value? value)
-      (when value
-        (validate-config-field! group-type field {field value}))
-      (cond
-        idx   (set-connections! (update-in stored [idx :config]
-                                           (fn [config]
-                                             (if value (assoc config field value) (dissoc config field)))))
-        value (set-connections! (conj stored {:key    conn-key
-                                              :type   group-type
-                                              :name   (str (:label (provider-type group-type)))
-                                              :config {field value}}))))))
+    ;; value, the same way [[metabase.settings.core/set!]] treats sensitive settings. Both forms are checked: the
+    ;; mask of a newline-terminated secret (a JSON key file) matches only untrimmed, while a mask that picked up
+    ;; padding in transit matches only trimmed
+    (if (or (setting/obfuscated-value? new-value)
+            (setting/obfuscated-value? value))
+      (log/infof "Attempted to set %s to an obfuscated value. Ignoring change." (name setting-kw))
+      (do
+        (when (request.current/current-request)
+          (if (= field :base-url)
+            (do
+              (when (contains? (:env-fields live) field)
+                ;; Persisting an inert value underneath the environment overlay would make it live if the operator
+                ;; later removed that variable, carrying any stored credentials to a URL the API caller planted
+                ;; earlier.
+                (throw (ex-info (tru "This connection''s base URL comes from an environment variable. Change it there.")
+                                {:status-code 400
+                                 :api-error   true
+                                 :error-code  :llm-base-url-is-env-managed
+                                 :field       :base-url})))
+              (let [current-config (or (:config live) {})
+                    new-config     (if value
+                                     (assoc current-config field value)
+                                     (dissoc current-config field))]
+                (assert-base-url-change-authorized! group-type current-config new-config {field value}
+                                                    (:env-fields live) {:legacy-setting? true})))
+            (when value
+              (assert-credential-write-authorized! group-type field live))))
+        (when value
+          (validate-config-field! group-type field {field value}))
+        (cond
+          idx   (set-connections! (update-in stored [idx :config]
+                                             (fn [config]
+                                               (if value (assoc config field value) (dissoc config field)))))
+          value (set-connections! (conj stored {:key    conn-key
+                                                :type   group-type
+                                                :name   (str (:label (provider-type group-type)))
+                                                :config {field value}})))))))
 
 ;;; -------------------------------------------------- Redaction ----------------------------------------------------
 

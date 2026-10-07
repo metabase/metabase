@@ -188,7 +188,7 @@
   "DEPRECATED: Use Lib to generate MBQL queries instead of hand-rolling legacy MBQL queries in new tests.
 
   Like `mbql-query`, but for native queries."
-  [inner-native-query :- :map]
+  [inner-native-query :- :metabase.lib.util/query-like]
   {:deprecated "0.61.0"}
   {:database (id)
    :type     :native
@@ -210,6 +210,7 @@
   Like `mbql-query`, but runs the query as well."
   {:style/indent :defn, :deprecated "0.61.0"}
   [table-name & [query]]
+  ;; deprecated shim expands to the equally-deprecated mbql-query; they'll be removed together
   #_{:clj-kondo/ignore [:deprecated-var]}
   `(run-mbql-query* (mbql-query ~table-name ~(or query {}))))
 
@@ -320,7 +321,9 @@
   `(schema-migrations-test.impl/with-temp-empty-app-db [conn# :h2]
      (next.jdbc/execute! conn# ["RUNSCRIPT FROM ?" (str @h2-app-db-script)])
      (mdb/finish-db-setup!)
-     ~@body))
+     ;; This app DB must remain empty, so `with-temp` must not materialize the test-data Database in it.
+     (binding [data.impl/*skip-dataset-prewarm?* true]
+       ~@body)))
 
 ;; Non-"normal" timeseries drivers are tested in [[metabase.query-processor.timeseries-test]] and elsewhere
 (def timeseries-drivers
@@ -334,8 +337,8 @@
    [:+conn-props {:optional true} [:sequential :string]]
    [:-conn-props {:optional true} [:sequential :string]]
    [:+parent {:optional true} :keyword]
-   [:+fns {:optional true} [:sequential [:function [:=> [:cat :keyword] :any]]]]
-   [:-fns {:optional true} [:sequential [:function [:=> [:cat :keyword] :any]]]]])
+   [:+fns {:optional true} [:sequential [:function [:=> [:cat :keyword] [:or :boolean [:maybe :keyword]]]]]]
+   [:-fns {:optional true} [:sequential [:function [:=> [:cat :keyword] [:or :boolean [:maybe :keyword]]]]]]])
 
 (mu/defn driver-select :- [:set :keyword]
   "Select drivers to be tested.

@@ -1,5 +1,6 @@
 (ns metabase.pulse.models.pulse-card
   (:require
+   [metabase.pulse.db :as pulse.db]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -16,7 +17,7 @@
   "Return the next available `pulse_card.position` for the given `pulse`"
   [pulse-id]
   {:pre [(integer? pulse-id)]}
-  (-> (t2/select-one [:model/PulseCard [:%max.position :max]] :pulse_id pulse-id)
+  (-> (pulse.db/max-pulse-card-position pulse-id)
       :max
       (some-> inc)
       (or 0)))
@@ -36,13 +37,13 @@
   "Creates new PulseCards, joining the given card, pulse, and dashboard card and setting appropriate defaults for other
   values if they're not provided."
   [new-pulse-cards :- [:sequential NewPulseCard]]
-  (t2/insert! :model/PulseCard
-              (for [{:keys [card_id pulse_id dashboard_card_id position include_csv include_xls format_rows pivot_results]} new-pulse-cards]
-                {:card_id           card_id
-                 :pulse_id          pulse_id
-                 :dashboard_card_id dashboard_card_id
-                 :position          (u/or-with some? position (next-position-for pulse_id))
-                 :include_csv       (boolean include_csv)
-                 :include_xls       (boolean include_xls)
-                 :format_rows       (boolean format_rows)
-                 :pivot_results     (boolean pivot_results)})))
+  (pulse.db/insert-pulse-cards!
+   (for [{:keys [card_id pulse_id dashboard_card_id position include_csv include_xls format_rows pivot_results]} new-pulse-cards]
+     {:card_id           card_id
+      :pulse_id          pulse_id
+      :dashboard_card_id dashboard_card_id
+      :position          (u/or-with some? position (next-position-for pulse_id))
+      :include_csv       (boolean include_csv)
+      :include_xls       (boolean include_xls)
+      :format_rows       (boolean format_rows)
+      :pivot_results     (boolean pivot_results)})))

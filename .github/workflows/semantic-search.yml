@@ -2,36 +2,6 @@ name: Semantic Search Tests
 
 on:
   workflow_call:
-    inputs:
-      skip:
-        type: boolean
-        default: false
-
-  # Run one semantic-search job on demand, against the ref you dispatch on, optionally under a
-  # profiler. Everything else about the job -- services, matrix legs, test args, quarantine gating --
-  # is whatever the normal CI run uses, because it is the same job.
-  workflow_dispatch:
-    inputs:
-      suite:
-        description: 'Which semantic-search job to run. Only this one runs; the others are skipped.'
-        type: choice
-        required: true
-        options:
-          - h2
-          - mariadb
-          - mysql
-          - postgres
-          - appdb-mode
-      tests:
-        description: 'Optional: run only these tests, comma- or space-separated, e.g. metabase-enterprise.semantic-search.index-test/some-test. Bare namespaces work too. Blank runs the job''s usual set.'
-        type: string
-        required: false
-        default: ''
-      profile:
-        description: 'Profile the test run and attach a flamegraph to the job. Adds sampling overhead.'
-        type: boolean
-        required: false
-        default: false
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref && github.ref || github.run_id }}-semantic-search
@@ -43,18 +13,21 @@ concurrency:
 env:
   CI_CONDUCTOR_BASE_URL: ${{ vars.CI_CONDUCTOR_BASE_URL }}
   CI_CONDUCTOR_WEBHOOK_SECRET: ${{ secrets.CI_CONDUCTOR_WEBHOOK_SECRET }}
-  # Both read by the test-driver action, which is what actually runs the tests. Set here rather than
-  # passed as inputs to each job so that turning either on is one line, not one line per job.
-  # Empty (and so off) on workflow_call, where neither input exists.
-  #
-  # ONLY_TESTS replaces the job's own test selection, so every matrix leg of the chosen job runs the
-  # whole list.
-  PROFILE_TESTS: ${{ inputs.profile }}
-  ONLY_TESTS: ${{ inputs.tests }}
+  # Read by the test-driver action. This suite is only ever dispatched by test.profile-backend.yml,
+  # so a dispatch is a profiling run.
+  PROFILE_TESTS: ${{ github.event_name == 'workflow_dispatch' }}
 
 jobs:
+  # A CI run is a smoke run -- Postgres Latest alone, to keep PRs cheap -- unless the whole suite is
+  # forced to run (master, release branches, `ci:run-all`).
+  gate:
+    uses: ./.github/workflows/test.gate.yml
+    with:
+      filters: backend_all
+
   semantic-search-tests-h2:
-    if: ${{ !inputs.skip && (inputs.suite == '' || inputs.suite == 'h2') }}
+    needs: gate
+    if: ${{ needs.gate.outputs.force-run == 'true' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 40
     strategy:
@@ -85,7 +58,7 @@ jobs:
       CI: 'true'
     name: "${{ matrix.version.name }} ${{ matrix.job.name }}"
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: Test ${{ matrix.version.name }}
         id: test-driver
         uses: ./.github/actions/test-driver
@@ -96,10 +69,10 @@ jobs:
           test-args: >-
             ${{ matrix.job.test-args }}
             :exclude-tags '[${{ matrix.job.exclude-tag }}]'
-          quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
 
   semantic-search-tests-mariadb:
-    if: ${{ !inputs.skip && (inputs.suite == '' || inputs.suite == 'mariadb') }}
+    needs: gate
+    if: ${{ needs.gate.outputs.force-run == 'true' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 40
     strategy:
@@ -151,7 +124,7 @@ jobs:
       MB_PGVECTOR_DB_URL: 'jdbc:postgres://localhost:5432/mb_semantic_search?user=postgres&password=postgres'
     name: "${{ matrix.version.name }} ${{ matrix.job.name }}"
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: Test ${{ matrix.version.name }}
         id: test-driver
         uses: ./.github/actions/test-driver
@@ -162,10 +135,10 @@ jobs:
           test-args: >-
             ${{ matrix.job.test-args }}
             :exclude-tags '[${{ matrix.job.exclude-tag }}]'
-          quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
 
   semantic-search-tests-mysql:
-    if: ${{ !inputs.skip && (inputs.suite == '' || inputs.suite == 'mysql') }}
+    needs: gate
+    if: ${{ needs.gate.outputs.force-run == 'true' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 40
     strategy:
@@ -224,7 +197,7 @@ jobs:
       MB_PGVECTOR_DB_URL: 'jdbc:postgres://localhost:5432/mb_semantic_search?user=postgres&password=postgres'
     name: "${{ matrix.version.name }} ${{ matrix.job.name }}"
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: Test ${{ matrix.version.name }}
         id: test-driver
         uses: ./.github/actions/test-driver
@@ -235,10 +208,10 @@ jobs:
           test-args: >-
             ${{ matrix.job.test-args }}
             :exclude-tags '[${{ matrix.job.exclude-tag }}]'
-          quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
 
   semantic-search-tests-postgres:
-    if: ${{ !inputs.skip && (inputs.suite == '' || inputs.suite == 'postgres') }}
+    needs: gate
+    if: ${{ needs.gate.outputs.run == 'true' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 40
     strategy:
@@ -253,6 +226,10 @@ jobs:
             junit-name: semantic-search-tests-postgres-latest
             postgres-image: postgres:latest
             pgvector-image: pgvector/pgvector:pg17
+        exclude: >-
+          ${{ needs.gate.outputs.force-run != 'true'
+          && fromJSON('[{"version":{"name":"Postgres 14.x with pgvector pg17"}}]')
+          || fromJSON('[]') }}
         job:
           - name: Semantic Search Tests
             build-static-viz: false
@@ -289,7 +266,7 @@ jobs:
       MB_PGVECTOR_DB_URL: 'jdbc:postgres://localhost:5432/mb_semantic_search?user=postgres&password=postgres'
     name: "${{ matrix.version.name }} ${{ matrix.job.name }}"
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: Test ${{ matrix.version.name }}
         id: test-driver
         uses: ./.github/actions/test-driver
@@ -300,13 +277,13 @@ jobs:
           test-args: >-
             ${{ matrix.job.test-args }}
             :exclude-tags '[${{ matrix.job.exclude-tag }}]'
-          quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
 
   # pgvector-on-the-app-db mode: the app db itself is a pgvector-capable Postgres and
   # MB_PGVECTOR_DB_URL is deliberately unset. The dedicated-harness tests gate themselves off; the
   # appdb-pgvector-mode round trip (and the URL-independent unit tests) run for real.
   semantic-search-tests-appdb-mode:
-    if: ${{ !inputs.skip && (inputs.suite == '' || inputs.suite == 'appdb-mode') }}
+    needs: gate
+    if: ${{ needs.gate.outputs.force-run == 'true' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 40
     strategy:
@@ -344,7 +321,7 @@ jobs:
       MB_APPDB_PGVECTOR_MODE_TEST: 'true'
     name: "${{ matrix.version.name }} ${{ matrix.job.name }}"
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: Test ${{ matrix.version.name }}
         id: test-driver
         uses: ./.github/actions/test-driver
@@ -355,10 +332,10 @@ jobs:
           test-args: >-
             ${{ matrix.job.test-args }}
             :exclude-tags '[${{ matrix.job.exclude-tag }}]'
-          quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
 
   semantic-search-tests-result:
     needs:
+      - gate
       - semantic-search-tests-h2
       - semantic-search-tests-mariadb
       - semantic-search-tests-mysql
@@ -367,7 +344,7 @@ jobs:
     runs-on: ${{ vars.SLIM_RUNNER_KEY }}
     timeout-minutes: 5
     name: semantic-search-tests-result
-    if: always() && !cancelled()
+    if: ${{ !cancelled() }}
     steps:
       - name: Check job status
         uses: actions/github-script@v9

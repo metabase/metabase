@@ -7,6 +7,7 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.schema.validate :as lib.schema.validate]
+   [metabase.transforms-base.util :as transforms-base.u]
    [metabase.util.malli :as mu]))
 
 (mu/defn returned-columns
@@ -45,27 +46,27 @@
         driver (:engine (lib.metadata/database query))]
     (check-query driver query)))
 
-(mu/defmethod -check-entity :transform :- [:set [:ref ::lib.schema.validate/error-with-source]]
+(mu/defmethod -check-entity :transform :- [:maybe [:set [:ref ::lib.schema.validate/error-with-source]]]
   [metadata-provider :- ::lib.schema.metadata/metadata-provider
    _entity-type
    transform-id      :- ::lib.schema.id/transform]
-  (let [{{query :query} :source
-         :as _transform}  (lib.metadata/transform metadata-provider transform-id)
-        driver            (:engine (lib.metadata/database metadata-provider))
-        query             (lib/query metadata-provider query)
-        output-fields     (returned-columns driver query)
-        ;; Group by the user-visible column name (the alias when present),
-        ;; not the underlying column's `:name` — otherwise `t1.name AS a` and
-        ;; `t2.name AS b` look like duplicates because both have `:name "name"`.
-        output-name       #(or (:lib/desired-column-alias %) (:name %))
-        duplicated-fields (->> output-fields
-                               (group-by output-name)
-                               vals
-                               (keep #(when (> (count %) 1)
-                                        (lib/duplicate-column-error (output-name (first %)))))
-                               seq)]
-    (cond-> (check-query driver query)
-      duplicated-fields (into duplicated-fields))))
+  (let [transform (lib.metadata/transform metadata-provider transform-id)]
+    (when (transforms-base.u/query-transform? transform)
+      (let [query             (lib/query metadata-provider (-> transform :source :query))
+            driver            (:engine (lib.metadata/database metadata-provider))
+            output-fields     (returned-columns driver query)
+            ;; Group by the user-visible column name (the alias when present),
+            ;; not the underlying column's `:name` — otherwise `t1.name AS a` and
+            ;; `t2.name AS b` look like duplicates because both have `:name "name"`.
+            output-name       #(or (:lib/desired-column-alias %) (:name %))
+            duplicated-fields (->> output-fields
+                                   (group-by output-name)
+                                   vals
+                                   (keep #(when (> (count %) 1)
+                                            (lib/duplicate-column-error (output-name (first %)))))
+                                   seq)]
+        (cond-> (check-query driver query)
+          duplicated-fields (into duplicated-fields))))))
 
 (mu/defmethod -check-entity :segment :- [:set [:ref ::lib.schema.validate/error-with-source]]
   [metadata-provider :- ::lib.schema.metadata/metadata-provider

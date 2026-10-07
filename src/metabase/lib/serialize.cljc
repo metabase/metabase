@@ -28,13 +28,19 @@
   (mr/cached ::deserializer
              schema
              (fn []
-               (mc/decoder schema (mtx/transformer {:name :api})))))
+               (mc/decoder schema (mtx/transformer
+                                   {:name :api}
+                                   (mtx/strip-extra-keys-transformer))))))
 
 (defn prepare-after-deserialization
   "Inverse of [[prepare-for-serialization]]: run on a query `x` right after it is decoded from JSON coming in from a
   REST API request or the application database, to strip the internal query-processor keys that the query processor adds
   itself during preprocessing -- after this runs -- so stripping them here has no effect on legitimately-added keys.
-  Stripping logic is defined in the schemas; grep for `:decode/api` in the `metabase.lib.schema*` namespaces."
+  Stripping logic is defined in the schemas; grep for `:decode/api` in the `metabase.lib.schema*` namespaces.
+
+  Also drops, from every `{:closed true}` map the schema reaches, the keys the schema does not declare, the same way the
+  request decoder in `metabase.api.macros` does: a key some older release or client once wrote into a stored query is
+  ignored rather than left to fail validation when the query runs."
   ([x]
    (prepare-after-deserialization ::lib.schema/query x))
 

@@ -1,7 +1,6 @@
 import type {
   DimensionId,
   ExplorationDimensionGroup,
-  ExplorationMetric,
   MetricDimension,
 } from "metabase-types/api";
 
@@ -57,18 +56,4 @@ export function indexDimensionsById(
       group.dimensions.map((dimension) => [dimension.id, dimension] as const),
     ),
   );
-}
-
-export function groupMetricsByDimension(
-  metrics: ExplorationMetric[],
-): Map<DimensionId, ExplorationMetric[]> {
-  const map = new Map<DimensionId, ExplorationMetric[]>();
-  for (const metric of metrics) {
-    for (const id of metric.dimension_ids) {
-      const list = map.get(id) ?? [];
-      list.push(metric);
-      map.set(id, list);
-    }
-  }
-  return map;
 }

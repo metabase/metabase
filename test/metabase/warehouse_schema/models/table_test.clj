@@ -14,35 +14,35 @@
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
    [metabase.warehouse-schema.models.field-values :as field-values]
-   [metabase.warehouse-schema.models.table :as table]
+   [metabase.warehouse-schema.models.table-user-settings :as table-user-settings]
    [toucan2.core :as t2]))
 
 (use-fixtures :once (fixtures/initialize :db :test-users))
 
 (deftest valid-field-order?-test
   (testing "A valid field ordering is a set IDs  of all active fields in a given table"
-    (is (#'table/valid-field-order? (mt/id :venues)
-                                    [(mt/id :venues :name)
-                                     (mt/id :venues :category_id)
-                                     (mt/id :venues :latitude)
-                                     (mt/id :venues :longitude)
-                                     (mt/id :venues :price)
-                                     (mt/id :venues :id)])))
+    (is (#'table-user-settings/valid-field-order? (mt/id :venues)
+                                                  [(mt/id :venues :name)
+                                                   (mt/id :venues :category_id)
+                                                   (mt/id :venues :latitude)
+                                                   (mt/id :venues :longitude)
+                                                   (mt/id :venues :price)
+                                                   (mt/id :venues :id)])))
   (testing "Field ordering is invalid if some fields are missing"
-    (is (false? (#'table/valid-field-order? (mt/id :venues)
-                                            [(mt/id :venues :category_id)
-                                             (mt/id :venues :latitude)
-                                             (mt/id :venues :longitude)
-                                             (mt/id :venues :price)
-                                             (mt/id :venues :id)]))))
+    (is (false? (#'table-user-settings/valid-field-order? (mt/id :venues)
+                                                          [(mt/id :venues :category_id)
+                                                           (mt/id :venues :latitude)
+                                                           (mt/id :venues :longitude)
+                                                           (mt/id :venues :price)
+                                                           (mt/id :venues :id)]))))
   (testing "Field ordering is invalid if some fields are from a differnt table"
-    (is (false? (#'table/valid-field-order? (mt/id :venues)
-                                            [(mt/id :venues :name)
-                                             (mt/id :venues :category_id)
-                                             (mt/id :venues :latitude)
-                                             (mt/id :venues :longitude)
-                                             (mt/id :venues :price)
-                                             (mt/id :checkins :id)]))))
+    (is (false? (#'table-user-settings/valid-field-order? (mt/id :venues)
+                                                          [(mt/id :venues :name)
+                                                           (mt/id :venues :category_id)
+                                                           (mt/id :venues :latitude)
+                                                           (mt/id :venues :longitude)
+                                                           (mt/id :venues :price)
+                                                           (mt/id :checkins :id)]))))
   (testing "Only active fields should be considerd when checking field order"
     (one-off-dbs/with-blank-db
       (doseq [statement [;; H2 needs that 'guest' user for QP purposes. Set that up
@@ -59,13 +59,13 @@
                               "('Chicken', 'Colin Fowl');")]]
         (jdbc/execute! one-off-dbs/*conn* [statement]))
       (sync/sync-database! (mt/db))
-      (is (#'table/valid-field-order? (mt/id :birds)
-                                      [(mt/id :birds :species)
-                                       (mt/id :birds :example_name)]))
+      (is (#'table-user-settings/valid-field-order? (mt/id :birds)
+                                                    [(mt/id :birds :species)
+                                                     (mt/id :birds :example_name)]))
       (jdbc/execute! one-off-dbs/*conn* ["ALTER TABLE \"BIRDS\" DROP COLUMN \"EXAMPLE_NAME\";"])
       (sync/sync-database! (mt/db))
-      (is (#'table/valid-field-order? (mt/id :birds)
-                                      [(mt/id :birds :species)])))))
+      (is (#'table-user-settings/valid-field-order? (mt/id :birds)
+                                                    [(mt/id :birds :species)])))))
 
 (deftest slashes-in-schema-names-test
   (testing "Schema names should allow forward or back slashes (#8693, #12450)"
@@ -160,7 +160,16 @@
            (mt/id :venues :name)  (mt/malli=? [:sequential {:min 1} :any])}
           (-> (t2/select-one :model/Table (mt/id :venues))
               (t2/hydrate :field_values)
-              :field_values))))
+              :field_values)))
+  (testing "batched hydration of several tables"
+    (field-values/get-or-create-full-field-values! (t2/select-one :model/Field :id (mt/id :categories :name)))
+    (is (=? {(mt/id :venues)     {(mt/id :venues :price)    (mt/malli=? [:sequential {:min 1} :any])
+                                  (mt/id :venues :name)     (mt/malli=? [:sequential {:min 1} :any])}
+             (mt/id :categories) {(mt/id :categories :name) (mt/malli=? [:sequential {:min 1} :any])}}
+            (->> (t2/select :model/Table :id [:in [(mt/id :venues) (mt/id :categories)]])
+                 (#(t2/hydrate % :field_values))
+                 (map (juxt :id :field_values))
+                 (into {}))))))
 
 (deftest pk-field-hydration-test
   (is (= (mt/id :venues :id)

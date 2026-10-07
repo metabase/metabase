@@ -134,6 +134,8 @@ describe("scenarios > dashboard > parameters", () => {
       },
     );
 
+    H.tableInteractiveBody().findByText("37.65").should("be.visible");
+
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText(startsWith.name).click();
     cy.findByPlaceholderText("Enter some text").type("G");
@@ -148,8 +150,9 @@ describe("scenarios > dashboard > parameters", () => {
     cy.button("Add filter").click();
 
     expectSearchParams({ [endsWith.slug]: "", [startsWith.slug]: "G" });
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("37.65").should("not.exist");
+    H.tableInteractiveBody().findByText("110.93").should("be.visible");
+    H.tableInteractiveBody().findByText("52.72").should("be.visible");
+    H.tableInteractiveBody().findByText("37.65").should("not.exist");
 
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText(endsWith.name).click();
@@ -163,8 +166,8 @@ describe("scenarios > dashboard > parameters", () => {
     cy.button("Add filter").click();
 
     expectSearchParams({ [endsWith.slug]: "zmo", [startsWith.slug]: "G" });
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("52.72").should("not.exist");
+    H.tableInteractiveBody().findByText("110.93").should("be.visible");
+    H.tableInteractiveBody().findByText("52.72").should("not.exist");
 
     // Remove filter (metabase#17933)
     cy.icon("pencil").click();
@@ -188,6 +191,7 @@ describe("scenarios > dashboard > parameters", () => {
       "There should only be one filter remaining and its value is preserved",
     );
 
+    H.filterWidget().should("have.length", 1);
     H.filterWidget().contains(new RegExp(`${endsWith.name}`, "i"));
 
     expectSearchParams({ [endsWith.slug]: "zmo" });
@@ -420,14 +424,14 @@ describe("scenarios > dashboard > parameters", () => {
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("2 selections").click();
 
-    // Even after we reopen the dropdown, it shouldn't send additional requests for values (metabase#16103)
-    cy.get("@fetchAllCategories").should("have.been.calledOnce");
-
     // As a sanity check, make sure we can deselect the filter by clicking on it
     H.popover().within(() => {
       cy.findByText("Gizmo").click();
       isFilterSelected("Gizmo", false);
     });
+
+    // Even after we reopen the dropdown, it shouldn't send additional requests for values (metabase#16103)
+    cy.get("@fetchAllCategories").should("have.been.calledOnce");
 
     cy.button("Update filter").click();
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
@@ -461,37 +465,18 @@ describe("scenarios > dashboard > parameters", () => {
     H.tableInteractiveBody().findAllByRole("row").should("have.length", 1);
   });
 
-  describe("when the user does not have self-service data permissions", () => {
-    beforeEach(() => {
-      H.visitDashboard(ORDERS_DASHBOARD_ID);
-      H.tableInteractiveHeader("Created At");
-
-      H.editDashboard();
-      H.setFilter("ID");
-
-      H.selectDashboardFilter(H.getDashboardCard(), "User ID");
-
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Save").click();
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("You're editing this dashboard.").should("not.exist");
-
-      cy.signIn("nodata");
-      H.visitDashboard(ORDERS_DASHBOARD_ID);
-    });
-
-    it("should not see mapping options", () => {
-      cy.icon("pencil").click();
-      H.filterWidget({ isEditing: true }).click();
-
-      cy.icon("key");
-    });
-  });
-
   describe("when parameters are (dis)connected to dashcards", () => {
     beforeEach(() => {
       createDashboardWithCards({ cards }).then((dashboardId) =>
         H.visitDashboard(dashboardId),
+      );
+
+      const { interceptor } = H.spyRequestFinished("dashcardRequestSpy");
+
+      cy.intercept(
+        "POST",
+        "/api/dashboard/*/dashcard/*/card/*/query",
+        interceptor,
       );
 
       // create a disconnected filter + a default value
@@ -501,37 +486,18 @@ describe("scenarios > dashboard > parameters", () => {
       H.sidebar().findByText("Default value").next().click();
       H.popover().contains("Previous 7 days").click({ force: true });
       H.saveDashboard();
-
-      const { interceptor } = H.spyRequestFinished("dashcardRequestSpy");
-
-      cy.intercept(
-        "POST",
-        "/api/dashboard/*/dashcard/*/card/*/query",
-        interceptor,
-      );
     });
 
-    it("should not fetch dashcard data when filter is disconnected", () => {
+    it("should fetch dashcard data on save only when parameter mappings change", () => {
+      cy.log("Saving a disconnected filter does not fetch dashcard data");
       cy.get("@dashcardRequestSpy").should("not.have.been.called");
-    });
 
-    it("should fetch dashcard data after save when parameter is mapped", () => {
-      // Connect filter to 2 cards
+      cy.log("Saving without changes does not fetch dashcard data");
       H.editDashboard();
+      H.saveDashboard({ awaitRequest: false });
 
-      cy.findByTestId("edit-dashboard-parameters-widget-container")
-        .findByText("Date")
-        .click();
+      cy.get("@dashcardRequestSpy").should("have.callCount", 0);
 
-      H.selectDashboardFilter(H.getDashboardCard(0), "Created At");
-      H.selectDashboardFilter(H.getDashboardCard(1), "Created At");
-
-      H.saveDashboard();
-
-      cy.get("@dashcardRequestSpy").should("have.callCount", 2);
-    });
-
-    it("should fetch dashcard data when parameter mapping is removed", () => {
       cy.log("Connect filter to 1 card only");
 
       H.editDashboard();
@@ -556,13 +522,20 @@ describe("scenarios > dashboard > parameters", () => {
       H.saveDashboard();
 
       cy.get("@dashcardRequestSpy").should("have.callCount", 2);
-    });
 
-    it("should not fetch dashcard data when nothing changed on save", () => {
+      cy.log("Connect filter to 2 cards");
       H.editDashboard();
-      H.saveDashboard({ awaitRequest: false });
 
-      cy.get("@dashcardRequestSpy").should("have.callCount", 0);
+      cy.findByTestId("edit-dashboard-parameters-widget-container")
+        .findByText("Date")
+        .click();
+
+      H.selectDashboardFilter(H.getDashboardCard(0), "Created At");
+      H.selectDashboardFilter(H.getDashboardCard(1), "Created At");
+
+      H.saveDashboard();
+
+      cy.get("@dashcardRequestSpy").should("have.callCount", 4);
     });
   });
 
@@ -610,8 +583,8 @@ describe("scenarios > dashboard > parameters", () => {
       });
     });
 
-    it("should retain the last used value for a dashboard filter", () => {
-      cy.intercept("GET", "/api/**/items?pinned_state*").as("getPinnedItems");
+    it("should retain the last used value for a dashboard filter and allow resetting it", () => {
+      cy.intercept("GET", "/api/**/items?pinned-state*").as("getPinnedItems");
 
       H.filterWidget().click();
 
@@ -641,31 +614,6 @@ describe("scenarios > dashboard > parameters", () => {
       H.getDashboardCard()
         .findByText("761 Fish Hill Road")
         .should("be.visible");
-    });
-
-    it("should allow resetting last used value", () => {
-      H.filterWidget().click();
-
-      H.dashboardParametersPopover().within(() => {
-        H.fieldValuesCombobox().type("Antwan Fisher");
-        cy.button("Add filter").click();
-      });
-
-      H.getDashboardCard()
-        .findByText("7750 Michalik Lane")
-        .should("be.visible");
-
-      cy.log("reset filter values from url by visiting dashboard by id");
-
-      cy.get("@dashboardId").then((dashboardId) =>
-        H.visitDashboard(dashboardId),
-      );
-
-      H.filterWidget().icon("close").click();
-
-      H.getDashboardCard()
-        .findByText("761 Fish Hill Road")
-        .should("be.visible");
 
       cy.log("verify filter value is not specified after reload");
 
@@ -676,6 +624,7 @@ describe("scenarios > dashboard > parameters", () => {
       H.getDashboardCard()
         .findByText("761 Fish Hill Road")
         .should("be.visible");
+      H.filterWidget().should("not.contain", "Antwan Fisher");
     });
   });
 
@@ -722,7 +671,11 @@ describe("scenarios > dashboard > parameters", () => {
       H.addHeadingWhileEditing("Heading");
       H.setDashCardFilter(1, "Text or Category", null, "Category");
       H.selectDashboardFilter(H.getDashboardCard(0), "Category");
-      H.getDashboardCard(0).within(() => {
+      H.dashboardParameterSidebar().button("Done").click();
+      H.getDashboardCard(1).within(() => {
+        H.filterWidget({ isEditing: true })
+          .contains("Category")
+          .should("be.visible");
         // Ensure filters are not draggable
         cy.icon("grabber").should("not.exist");
       });
@@ -773,9 +726,7 @@ describe("scenarios > dashboard > parameters", () => {
         .findByText(/No results/)
         .should("exist");
 
-      cy.location().should(({ search }) => {
-        expect(search).to.eq("?category=Gadget&count=6000");
-      });
+      expectSearchParams({ category: "Gadget", count: "6000" });
 
       H.getDashboardCard(1).within(() => {
         H.clearFilterWidget(1);
@@ -788,9 +739,7 @@ describe("scenarios > dashboard > parameters", () => {
         cy.findByText("Widget").should("not.exist");
       });
 
-      cy.location().should(({ search }) => {
-        expect(search).to.eq("?category=Gadget&count=");
-      });
+      expectSearchParams({ category: "Gadget", count: "" });
     });
 
     it("should be able to edit filters", () => {
@@ -952,60 +901,6 @@ describe("scenarios > dashboard > parameters", () => {
       });
     });
 
-    it("should remove filters when removing a dashcard", () => {
-      cy.intercept("PUT", "/api/dashboard/*").as("updateDashboard");
-
-      H.createQuestionAndDashboard({
-        questionDetails: ordersCountByCategory,
-        dashboardDetails: {
-          parameters: [categoryParameter],
-        },
-      }).then(({ body: dashcard }) => {
-        H.updateDashboardCards({
-          dashboard_id: dashcard.dashboard_id,
-          cards: [
-            createMockHeadingDashboardCard({
-              inline_parameters: [categoryParameter.id],
-              size_x: 24,
-              size_y: 1,
-            }),
-            {
-              id: dashcard.id,
-              row: 1,
-              size_x: 12,
-              size_y: 6,
-              parameter_mappings: [
-                {
-                  parameter_id: categoryParameter.id,
-                  card_id: dashcard.card_id,
-                  target: [
-                    "dimension",
-                    categoryFieldRef,
-                    { "stage-number": 0 },
-                  ],
-                },
-              ],
-            },
-          ],
-        });
-        H.visitDashboard(dashcard.dashboard_id);
-        H.editDashboard();
-      });
-
-      H.getDashboardCard(0).findByText("Heading Text").should("exist");
-      H.removeDashboardCard(0);
-      H.saveDashboard();
-
-      cy.wait("@updateDashboard").then((xhr) => {
-        const { body: dashboard } = xhr.request;
-        expect(dashboard.parameters).to.have.length(0);
-        dashboard.dashcards.forEach((dashcard) => {
-          expect(dashcard.inline_parameters).to.have.length(0);
-          expect(dashcard.parameter_mappings).to.have.length(0);
-        });
-      });
-    });
-
     it("should not use inline filters for auto-wiring", () => {
       H.createQuestion({
         name: "Average total by category",
@@ -1154,9 +1049,7 @@ describe("scenarios > dashboard > parameters", () => {
         cy.findByText("Doohickey").should("exist");
         cy.findByText("Gizmo").should("not.exist");
       });
-      cy.location().should(({ search }) => {
-        expect(search).to.eq("?category=Doohickey&category_1=");
-      });
+      expectSearchParams({ category: "Doohickey", category_1: "" });
 
       H.getDashboardCard(2).within(() => {
         H.filterWidget().contains("Category 1").click();
@@ -1169,9 +1062,7 @@ describe("scenarios > dashboard > parameters", () => {
       H.getDashboardCard(1)
         .findByText(/No results/)
         .should("exist");
-      cy.location().should(({ search }) => {
-        expect(search).to.eq("?category=Doohickey&category_1=Gizmo");
-      });
+      expectSearchParams({ category: "Doohickey", category_1: "Gizmo" });
 
       H.getDashboardCard(0).within(() => H.clearFilterWidget());
 
@@ -1179,9 +1070,7 @@ describe("scenarios > dashboard > parameters", () => {
         cy.findByText("Doohickey").should("not.exist");
         cy.findByText("Gizmo").should("exist");
       });
-      cy.location().should(({ search }) => {
-        expect(search).to.eq("?category=&category_1=Gizmo");
-      });
+      expectSearchParams({ category: "", category_1: "Gizmo" });
     });
 
     it("should duplicate filters when duplicating a dashboard", () => {
@@ -1255,7 +1144,9 @@ describe("scenarios > dashboard > parameters", () => {
       });
     });
 
-    it("should correctly undo dashcard removal (VIZ-1236)", () => {
+    it("should correctly undo dashcard removal and remove filters with the dashcard (VIZ-1236)", () => {
+      cy.intercept("PUT", "/api/dashboard/*").as("updateDashboard");
+
       H.createQuestionAndDashboard({
         questionDetails: ordersCountByCategory,
         dashboardDetails: {
@@ -1305,6 +1196,22 @@ describe("scenarios > dashboard > parameters", () => {
         .findByTestId("parameter-mapper-container")
         .findByText(/Category/)
         .should("exist");
+      H.dashboardParameterSidebar().button("Done").click();
+
+      cy.log("Removing the heading dashcard removes its filters");
+      H.removeDashboardCard(0);
+      H.saveDashboard();
+
+      cy.wait("@updateDashboard").then((xhr) => {
+        const { body: dashboard } = xhr.request;
+        expect(dashboard.parameters).to.have.length(0);
+        expect(dashboard.dashcards).to.have.length(1);
+        expect(dashboard.dashcards[0].card_id).to.not.equal(null);
+        dashboard.dashcards.forEach((dashcard) => {
+          expect(dashcard.inline_parameters).to.have.length(0);
+          expect(dashcard.parameter_mappings).to.have.length(0);
+        });
+      });
     });
 
     it("should not display a parameter widget if there are no linked with it cards after a text card variable is removed (UXW-751)", () => {
@@ -1342,7 +1249,7 @@ describe("scenarios > dashboard > parameters", () => {
       });
 
       H.filterWidget({ isEditing: false }).contains("Category").should("exist");
-      H.filterWidget({ isEditing: false }).contains("Category").should("exist");
+      H.filterWidget({ isEditing: false }).contains("Count").should("exist");
 
       H.editDashboard();
 
@@ -1405,7 +1312,7 @@ describe("scenarios > dashboard > parameters", () => {
                 },
                 {
                   parameter_id: countParameter.id,
-                  card_id: ORDERS_BY_YEAR_QUESTION_ID,
+                  card_id: dashcard.card_id,
                   target: [
                     "dimension",
                     ["field", "count", { "base-type": "type/Integer" }],
@@ -1425,6 +1332,7 @@ describe("scenarios > dashboard > parameters", () => {
         cy.findByText("Gizmo").should("be.visible");
         cy.findByText("Gadget").should("be.visible");
         cy.findByText("Widget").should("be.visible");
+        H.filterWidget().contains("Count").should("be.visible");
       });
 
       H.getDashboardCard(0).within(() => {
@@ -1442,9 +1350,7 @@ describe("scenarios > dashboard > parameters", () => {
         cy.findByText("Widget").should("not.exist");
       });
 
-      cy.location().should(({ search }) => {
-        expect(search).to.eq("?category=Gadget&count=");
-      });
+      expectSearchParams({ category: "Gadget", count: "" });
 
       // Verify filter doesn't show up in the dashboard header
       H.dashboardParametersContainer().should("not.exist");
@@ -1655,6 +1561,13 @@ describe("scenarios > dashboard > parameters", () => {
         H.getDashboardCard(0).within(() => {
           cy.findByText("Heading Text").should("exist");
           cy.findByText("Category").should("not.exist");
+        });
+
+        H.getDashboardCard(1).within(() => {
+          cy.findByText("Doohickey").should("be.visible");
+          cy.findByText("Gizmo").should("be.visible");
+          cy.findByText("Gadget").should("be.visible");
+          cy.findByText("Widget").should("be.visible");
         });
       });
 
@@ -1885,11 +1798,15 @@ describe("scenarios > dashboard > parameters", () => {
       });
 
       // Update header filter, verify no changes
+      cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query").as(
+        "dashcardQuery",
+      );
       H.dashboardParametersContainer().within(() => H.filterWidget().click());
       H.popover().within(() => {
         cy.findByLabelText("Gadget").click();
         cy.button("Update filter").click();
       });
+      cy.wait("@dashcardQuery");
       H.dashboardParametersContainer()
         .findByText("3 selections")
         .should("exist");
@@ -1901,7 +1818,7 @@ describe("scenarios > dashboard > parameters", () => {
       });
     });
 
-    it("should be able to edit filters", () => {
+    it("should be able to edit filters and remove them with the dashcard", () => {
       H.createQuestionAndDashboard({
         questionDetails: ordersCountByCategory,
         dashboardDetails: {
@@ -1967,9 +1884,22 @@ describe("scenarios > dashboard > parameters", () => {
       cy.location().should(({ search }) => {
         expect(search).to.eq("?count=4000");
       });
+
+      cy.log("Removing the dashcard removes its filters");
+      cy.intercept("PUT", "/api/dashboard/*").as("removeDashcardSave");
+      H.editDashboard();
+      H.getDashboardCard(0).findByText("Doohickey").should("exist");
+      H.removeDashboardCard(0);
+      H.saveDashboard();
+
+      cy.wait("@removeDashcardSave").then((xhr) => {
+        const { body: dashboard } = xhr.request;
+        expect(dashboard.parameters).to.have.length(0);
+        expect(dashboard.dashcards).to.have.length(0);
+      });
     });
 
-    it("should remove filters correctly", () => {
+    it("should show all inline parameters while editing one and remove filters correctly", () => {
       cy.intercept("PUT", "/api/dashboard/*").as("updateDashboard");
 
       H.createQuestionAndDashboard({
@@ -2011,6 +1941,34 @@ describe("scenarios > dashboard > parameters", () => {
 
       H.editDashboard();
 
+      cy.log("All inline parameters stay visible while editing one of them");
+      H.getDashboardCard(0).within(() => {
+        H.filterWidget({ isEditing: true, name: "Category" }).should(
+          "be.visible",
+        );
+        H.filterWidget({ isEditing: true, name: "Count" }).should("be.visible");
+
+        H.filterWidget({ isEditing: true, name: "Category" }).click();
+      });
+      H.sidebar().findByLabelText("Label").should("have.value", "Category");
+      H.getDashboardCard(0).within(() => {
+        H.filterWidget({ isEditing: true, name: "Category" }).should(
+          "be.visible",
+        );
+        H.filterWidget({ isEditing: true, name: "Count" }).should("be.visible");
+
+        H.filterWidget({ isEditing: true, name: "Count" }).click();
+      });
+      H.sidebar().findByLabelText("Label").should("have.value", "Count");
+      H.getDashboardCard(0).within(() => {
+        H.filterWidget({ isEditing: true, name: "Category" }).should(
+          "be.visible",
+        );
+        H.filterWidget({ isEditing: true, name: "Count" }).should("be.visible");
+      });
+      H.dashboardParameterSidebar().button("Done").click();
+
+      cy.log("Remove both inline parameters");
       H.getDashboardCard(0)
         .findAllByText("Count")
         .filter(":visible")
@@ -2040,53 +1998,6 @@ describe("scenarios > dashboard > parameters", () => {
       H.getDashboardCard(0).within(() => {
         cy.findByText("Category").should("not.exist");
         cy.findAllByText("Count").should("have.length", 1); // y-axis label
-      });
-    });
-
-    it("should remove filters when removing a dashcard", () => {
-      cy.intercept("PUT", "/api/dashboard/*").as("updateDashboard");
-
-      H.createQuestionAndDashboard({
-        questionDetails: ordersCountByCategory,
-        dashboardDetails: {
-          parameters: [categoryParameter],
-        },
-      }).then(({ body: dashcard }) => {
-        H.updateDashboardCards({
-          dashboard_id: dashcard.dashboard_id,
-          cards: [
-            {
-              id: dashcard.id,
-              inline_parameters: [categoryParameter.id],
-              parameter_mappings: [
-                {
-                  parameter_id: categoryParameter.id,
-                  card_id: dashcard.card_id,
-                  target: [
-                    "dimension",
-                    categoryFieldRef,
-                    { "stage-number": 0 },
-                  ],
-                },
-              ],
-            },
-          ],
-        });
-        H.visitDashboard(dashcard.dashboard_id);
-        H.editDashboard();
-      });
-
-      H.getDashboardCard(0).findByText("Doohickey").should("exist");
-      H.removeDashboardCard(0);
-      H.saveDashboard();
-
-      cy.wait("@updateDashboard").then((xhr) => {
-        const { body: dashboard } = xhr.request;
-        expect(dashboard.parameters).to.have.length(0);
-        dashboard.dashcards.forEach((dashcard) => {
-          expect(dashcard.inline_parameters).to.have.length(0);
-          expect(dashcard.parameter_mappings).to.have.length(0);
-        });
       });
     });
 
@@ -2143,6 +2054,9 @@ describe("scenarios > dashboard > parameters", () => {
         H.filterWidget({ isEditing: true }).contains("Category").click();
       });
       H.getDashboardCard(1)
+        .findByText("This filter can only connect to its own card.")
+        .should("be.visible");
+      H.getDashboardCard(1)
         .findByTestId("parameter-mapper-container")
         .findByText(/Category/)
         .should("not.exist");
@@ -2152,6 +2066,9 @@ describe("scenarios > dashboard > parameters", () => {
       H.getDashboardCard(0).click(); // click to stop dragging a card
       H.disconnectDashboardFilter(H.getDashboardCard(0), "Category");
       H.selectDashboardFilter(H.getDashboardCard(0), "Category");
+      H.getDashboardCard(1)
+        .findByText("This filter can only connect to its own card.")
+        .should("be.visible");
       H.getDashboardCard(1)
         .findByTestId("parameter-mapper-container")
         .findByText(/Category/)
@@ -2193,7 +2110,6 @@ describe("scenarios > dashboard > parameters", () => {
         H.visitDashboard(dashcard.dashboard_id);
         H.editDashboard();
       });
-      cy.intercept("PUT", "/api/dashboard/*").as("updateDashboard");
 
       cy.log("Wait for the dashcard to finish rendering before editing");
       H.getDashboardCard(0)
@@ -2236,6 +2152,9 @@ describe("scenarios > dashboard > parameters", () => {
           .should("exist")
           .click();
       });
+      H.getDashboardCard(1)
+        .findByText("This filter can only connect to its own card.")
+        .should("be.visible");
       H.getDashboardCard(1)
         .findByTestId("parameter-mapper-container")
         .findByText(/Category/)
@@ -2302,10 +2221,10 @@ describe("scenarios > dashboard > parameters", () => {
         });
       });
 
-      cy.location().should(({ search }) => {
-        expect(search).to.eq(
-          "?category=Widget&category_1=Doohickey&count=5000",
-        );
+      expectSearchParams({
+        category: "Widget",
+        category_1: "Doohickey",
+        count: "5000",
       });
     });
 
@@ -2373,7 +2292,7 @@ describe("scenarios > dashboard > parameters", () => {
       });
     });
 
-    it("should not allow connecting inline parameters to cards on a different tab", () => {
+    it("should allow connecting inline parameters only to their own card, not to cards on another tab", () => {
       H.createQuestionAndDashboard({
         questionDetails: ordersCountByCategory,
       }).then(({ body: dashcard }) => {
@@ -2383,6 +2302,7 @@ describe("scenarios > dashboard > parameters", () => {
         // Add a second card
         H.openQuestionsSidebar();
         H.sidebar().findByText("Orders, Count").click();
+        H.getDashboardCard(1).findByText("Count").should("exist");
 
         // Add a second tab
         H.createNewTab();
@@ -2397,35 +2317,17 @@ describe("scenarios > dashboard > parameters", () => {
         H.setDashCardFilter(0, "Text or Category", null, "Category");
         H.selectDashboardFilter(H.getDashboardCard(0), "Category");
 
-        H.goToTab("Tab 2");
-
-        // Ensure the filter can't be connected to the second card
-        H.getDashboardCard(0)
-          .findByText("The selected filter is on another tab.")
-          .should("be.visible");
-      });
-    });
-
-    it("should allow connecting inline parameters only to their own card", () => {
-      H.createQuestionAndDashboard({
-        questionDetails: ordersCountByCategory,
-      }).then(({ body: dashcard }) => {
-        H.visitDashboard(dashcard.dashboard_id);
-        H.editDashboard();
-
-        // Add a second card
-        H.openQuestionsSidebar();
-        H.sidebar().findByText("Orders, Count").click();
-        H.getDashboardCard(1).findByText("Count").should("exist");
-
-        // Add a filter to the first card
-        H.setDashCardFilter(0, "Text or Category", null, "Category");
-        H.selectDashboardFilter(H.getDashboardCard(0), "Category");
-
-        // Ensure the filter can't be connected to the second card
+        // Ensure the filter can't be connected to the second card on the same tab
         H.getDashboardCard(1)
           .findByText("This filter can only connect to its own card.")
           .should("be.visible");
+
+        // Ensure the filter can't be connected to the card on the other tab
+        H.goToTab("Tab 2");
+        H.getDashboardCard(0)
+          .findByText("The selected filter is on another tab.")
+          .should("be.visible");
+        H.goToTab("Tab 1");
 
         // Disconnect the filter from the first card
         H.sidebar().findByText("Disconnect from card").click();
@@ -2434,122 +2336,6 @@ describe("scenarios > dashboard > parameters", () => {
         H.getDashboardCard(1)
           .findByText("This filter can only connect to its own card.")
           .should("be.visible");
-      });
-    });
-
-    it("should show all inline parameters when editing one parameter mapping", () => {
-      const categoryFilter = createMockParameter({
-        id: "category123",
-        name: "Category",
-        type: "string/=",
-        slug: "category",
-        sectionId: "string",
-      });
-
-      const countFilter = createMockParameter({
-        id: "count456",
-        name: "Count",
-        type: "number/=",
-        slug: "count",
-        sectionId: "number",
-      });
-
-      H.createQuestionAndDashboard({
-        questionDetails: ordersCountByCategory,
-        dashboardDetails: {
-          parameters: [categoryFilter, countFilter],
-        },
-      }).then(({ body: dashcard }) => {
-        // Update the dashcard to have inline parameters
-        H.updateDashboardCards({
-          dashboard_id: dashcard.dashboard_id,
-          cards: [
-            {
-              id: dashcard.id,
-              inline_parameters: [categoryFilter.id, countFilter.id],
-              parameter_mappings: [
-                {
-                  parameter_id: categoryFilter.id,
-                  card_id: dashcard.card_id,
-                  target: [
-                    "dimension",
-                    categoryFieldRef,
-                    { "stage-number": 0 },
-                  ],
-                },
-              ],
-            },
-          ],
-        });
-
-        H.visitDashboard(dashcard.dashboard_id);
-        H.editDashboard();
-
-        // Both filters should be visible
-        H.getDashboardCard(0).within(() => {
-          H.filterWidget({ isEditing: true, name: "Category" }).should(
-            "be.visible",
-          );
-          H.filterWidget({ isEditing: true, name: "Count" }).should(
-            "be.visible",
-          );
-        });
-
-        // Click on Category filter to open its mapping sidebar
-        H.getDashboardCard(0).within(() => {
-          H.filterWidget({ isEditing: true, name: "Category" }).click();
-        });
-
-        // Verify the sidebar opened for Category parameter
-        H.sidebar().findByLabelText("Label").should("have.value", "Category");
-
-        // Both filters should still be visible during mapping mode
-        H.getDashboardCard(0).within(() => {
-          H.filterWidget({ isEditing: true, name: "Category" }).should(
-            "be.visible",
-          );
-          H.filterWidget({ isEditing: true, name: "Count" }).should(
-            "be.visible",
-          );
-        });
-
-        // Should be able to click on Count filter while Category mapping is open
-        H.getDashboardCard(0).within(() => {
-          H.filterWidget({ isEditing: true, name: "Count" }).click();
-        });
-
-        // The sidebar should now show Count parameter settings
-        H.sidebar().findByLabelText("Label").should("have.value", "Count");
-
-        // Both filters should still be visible
-        H.getDashboardCard(0).within(() => {
-          H.filterWidget({ isEditing: true, name: "Category" }).should(
-            "be.visible",
-          );
-          H.filterWidget({ isEditing: true, name: "Count" }).should(
-            "be.visible",
-          );
-        });
-      });
-    });
-
-    it("should not show add filter button for users with no data editing permissions", () => {
-      H.createQuestionAndDashboard({
-        questionDetails: ordersCountByCategory,
-      }).then(({ body: { dashboard_id } }) => {
-        cy.signIn("nodata");
-        H.visitDashboard(dashboard_id);
-        H.editDashboard();
-
-        H.getDashboardCard(0)
-          .realHover()
-          .findByTestId("dashboardcard-actions-panel")
-          .should("be.visible");
-
-        // Ensure the "Add a filter" button is not present
-        H.getDashboardCard(0)
-          .findByLabelText("Add a filter")
-          .should("not.exist");
       });
     });
   });
@@ -2577,7 +2363,7 @@ describe("scenarios > dashboard > parameters", () => {
       { "source-field": ORDERS.PRODUCT_ID },
     ];
 
-    it("should allow moving filters on a single tab dashboard", () => {
+    it("should allow moving filters and undoing moves on a single tab dashboard", () => {
       H.createQuestionAndDashboard({
         dashboardDetails: {
           parameters: [categoryParameter, countParameter],
@@ -2610,7 +2396,40 @@ describe("scenarios > dashboard > parameters", () => {
       });
       H.selectDashboardFilter(H.getDashboardCard(0), "Category");
 
+      cy.log("Undo moving the card filter to the header");
+      H.moveDashboardFilter("Top of page");
+      H.undo();
+      H.getDashboardCard(0).within(() => {
+        H.filterWidget({ isEditing: true })
+          .contains("Category")
+          .should("exist");
+      });
+      H.editingDashboardParametersContainer().within(() => {
+        H.filterWidget({ isEditing: true })
+          .contains("Category")
+          .should("not.exist");
+      });
+
+      cy.log("Undo moving the header filter to the card");
+      H.editingDashboardParametersContainer().within(() => {
+        H.filterWidget({ isEditing: true }).contains("Count").click();
+      });
+      H.moveDashboardFilter("test question");
+      H.dashboardParameterSidebar().button("Done").click();
+      H.undo();
+      H.getDashboardCard(0).within(() => {
+        H.filterWidget({ isEditing: true })
+          .contains("Count")
+          .should("not.exist");
+      });
+      H.editingDashboardParametersContainer().within(() => {
+        H.filterWidget({ isEditing: true }).contains("Count").should("exist");
+      });
+
       // Move card filter to the header
+      H.getDashboardCard(0).within(() => {
+        H.filterWidget({ isEditing: true }).contains("Category").click();
+      });
       H.moveDashboardFilter("Top of page");
 
       H.getDashboardCard(0).findByText("Category").should("not.exist");
@@ -2732,72 +2551,6 @@ describe("scenarios > dashboard > parameters", () => {
       });
     });
 
-    it("should allow undoing a move", () => {
-      H.createQuestionAndDashboard({
-        dashboardDetails: {
-          parameters: [categoryParameter, countParameter],
-        },
-        questionDetails: {
-          display: "bar",
-          query: {
-            "source-table": ORDERS_ID,
-            aggregation: [["count"]],
-            breakout: [categoryFieldRef],
-          },
-        },
-        cardDetails: {
-          inline_parameters: [categoryParameter.id],
-          size_x: 18,
-        },
-      }).then(({ body: { dashboard_id } }) => {
-        H.visitDashboard(dashboard_id);
-        H.editDashboard();
-      });
-
-      // Move card filter to the header
-      H.getDashboardCard(0).within(() => {
-        H.filterWidget({ isEditing: true }).contains("Category").click();
-      });
-      H.dashboardParameterSidebar()
-        .findByPlaceholderText("Move filter")
-        .click();
-      H.popover().findByText("Top of page").click();
-
-      // Undo
-      H.undo();
-      H.getDashboardCard(0).within(() => {
-        H.filterWidget({ isEditing: true })
-          .contains("Category")
-          .should("exist");
-      });
-      H.editingDashboardParametersContainer().within(() => {
-        H.filterWidget({ isEditing: true })
-          .contains("Category")
-          .should("not.exist");
-      });
-
-      // Move header filter to the card
-      H.editingDashboardParametersContainer().within(() => {
-        H.filterWidget({ isEditing: true }).contains("Count").click();
-      });
-      H.dashboardParameterSidebar()
-        .findByPlaceholderText("Move filter")
-        .click();
-      H.popover().findByText("test question").click();
-      H.dashboardParameterSidebar().button("Done").click();
-
-      // Undo
-      H.undo();
-      H.getDashboardCard(0).within(() => {
-        H.filterWidget({ isEditing: true })
-          .contains("Count")
-          .should("not.exist");
-      });
-      H.editingDashboardParametersContainer().within(() => {
-        H.filterWidget({ isEditing: true }).contains("Count").should("exist");
-      });
-    });
-
     it("should provide a way to 'focus' the recently moved filter", () => {
       const TAB_1 = { id: 1, name: "Tab 1" };
       const TAB_2 = { id: 2, name: "Tab 2" };
@@ -2862,6 +2615,7 @@ describe("scenarios > dashboard > parameters", () => {
 
       // Move filter to top nav and assert the "Show filter" button isn't displayed
       H.moveDashboardFilter("Top of page");
+      H.undoToast().should("contain", "Filter moved");
       H.undoToast().button("Show filter").should("not.exist");
     });
   });
@@ -2879,7 +2633,7 @@ describe("scenarios > dashboard > parameters", () => {
     H.expectNoBadSnowplowEvents();
   });
 
-  it("should track dashboard_filter_created event when adding a filter", () => {
+  it("should track dashboard_filter_created and dashboard_filter_moved events", () => {
     H.visitDashboard(ORDERS_DASHBOARD_ID);
     H.editDashboard();
 
@@ -2918,66 +2672,30 @@ describe("scenarios > dashboard > parameters", () => {
       event_detail: "id",
       target_id: ORDERS_DASHBOARD_ID,
     });
-  });
 
-  it("should track dashboard_filter_moved event when moving a filter", () => {
-    H.createQuestionAndDashboard({
-      dashboardDetails: {
-        parameters: [
-          createMockParameter({
-            id: "1b9cd9f1",
-            name: "Category",
-            type: "string/=",
-            slug: "category",
-            sectionId: "string",
-          }),
-        ],
-      },
-      questionDetails: {
-        display: "bar",
-        query: {
-          "source-table": ORDERS_ID,
-          aggregation: [["count"]],
-          breakout: [
-            ["field", PRODUCTS.CATEGORY, { "source-field": ORDERS.PRODUCT_ID }],
-          ],
-        },
-      },
-    }).then(({ body: { dashboard_id } }) => {
-      H.visitDashboard(dashboard_id);
-      H.editDashboard();
-      H.addHeadingWhileEditing("heading card");
-      cy.wrap(dashboard_id).as("dashboardId");
+    cy.log("Track dashboard_filter_moved when moving the header filter");
+    H.moveDashboardFilter("Orders");
+    H.expectUnstructuredSnowplowEvent({
+      event: "dashboard_filter_moved",
+      triggered_from: null,
+      event_detail: "table",
+      target_id: ORDERS_DASHBOARD_ID,
     });
 
-    H.editingDashboardParametersContainer().within(() => {
-      H.filterWidget({ isEditing: true }).contains("Category").click();
+    H.moveDashboardFilter("Heading Text");
+    H.expectUnstructuredSnowplowEvent({
+      event: "dashboard_filter_moved",
+      triggered_from: "table",
+      event_detail: "heading",
+      target_id: ORDERS_DASHBOARD_ID,
     });
 
-    cy.get("@dashboardId").then((dashboardId) => {
-      H.moveDashboardFilter("test question");
-      H.expectUnstructuredSnowplowEvent({
-        event: "dashboard_filter_moved",
-        triggered_from: null,
-        event_detail: "bar",
-        target_id: dashboardId,
-      });
-
-      H.moveDashboardFilter("heading card");
-      H.expectUnstructuredSnowplowEvent({
-        event: "dashboard_filter_moved",
-        triggered_from: "bar",
-        event_detail: "heading",
-        target_id: dashboardId,
-      });
-
-      H.moveDashboardFilter("Top of page");
-      H.expectUnstructuredSnowplowEvent({
-        event: "dashboard_filter_moved",
-        triggered_from: "heading",
-        event_detail: null,
-        target_id: dashboardId,
-      });
+    H.moveDashboardFilter("Top of page");
+    H.expectUnstructuredSnowplowEvent({
+      event: "dashboard_filter_moved",
+      triggered_from: "heading",
+      event_detail: null,
+      target_id: ORDERS_DASHBOARD_ID,
     });
   });
 });

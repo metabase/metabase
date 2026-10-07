@@ -1,48 +1,62 @@
-import { useDisclosure } from "@mantine/hooks";
-import { useCallback, useEffect, useMemo, useRef } from "react";
+import type { FormikHelpers } from "formik";
+import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 import * as Yup from "yup";
 
 import {
-  SettingsPageWrapper,
-  SettingsSection,
-} from "metabase/admin/components/SettingsSection";
-import { AdminSettingInput } from "metabase/admin/settings/components/widgets/AdminSettingInput";
-import { GroupMappingsWidgetView } from "metabase/admin/settings/components/widgets/GroupMappingsWidget/GroupMappingsWidgetView";
-import {
-  useClearGroupMembershipMutation,
-  useDeletePermissionsGroupMutation,
-  useListPermissionsGroupsQuery,
-} from "metabase/api";
+  SETTINGS_FIELD_DESCRIPTION_PROPS,
+  resetFieldsToInitial,
+} from "metabase/admin/settings/utils";
 import { getErrorMessage } from "metabase/api/utils/errors";
-import { ConfirmModal } from "metabase/common/components/ConfirmModal";
+import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { SetByEnvVar } from "metabase/common/components/SetByEnvVar";
 import { useToast } from "metabase/common/hooks";
 import {
   Form,
   FormErrorMessage,
   FormProvider,
-  FormSection,
   FormSubmitButton,
   FormTextInput,
 } from "metabase/forms";
 import { useSelector } from "metabase/redux";
 import { getApplicationName } from "metabase/selectors/whitelabel";
-import { useSetting } from "metabase/settings";
-import { Button, Flex, Stack, Text } from "metabase/ui";
+import {
+  useGetAdminSettingsDetailsQuery,
+  useGetSettingsQuery,
+  useSetting,
+} from "metabase/settings";
+import {
+  CollapsibleSettingsSection,
+  SETTINGS_CARD_STACK_PROPS,
+  SETTINGS_CARD_TITLE_PROPS,
+  SettingsPageWrapper,
+  SettingsSection,
+} from "metabase/settings-components";
+import { Button, Flex, Stack } from "metabase/ui";
 import {
   type CustomOidcConfig,
   type OidcCheckRequest,
   useCheckOidcConnectionMutation,
   useCreateCustomOidcMutation,
-  useDeleteCustomOidcMutation,
   useGetCustomOidcProvidersQuery,
   useUpdateCustomOidcMutation,
 } from "metabase-enterprise/api";
-import { provisioningOptions } from "metabase-enterprise/auth/utils";
-import type { Group, GroupId } from "metabase-types/api";
+import { UserProvisioningSection } from "metabase-enterprise/auth/components/UserProvisioningSection";
 
-function getOidcFormSchema() {
+import { OidcGroupMappingSection } from "./OidcGroupMappingSection";
+import {
+  DEFAULT_GROUP_ATTRIBUTE,
+  type OidcGroupSync,
+  toGroupSync,
+} from "./group-sync";
+
+const DEFAULT_SCOPES = ["openid", "email", "profile"];
+const DEFAULT_FIRST_NAME_ATTRIBUTE = "given_name";
+const DEFAULT_LAST_NAME_ATTRIBUTE = "family_name";
+
+// the API keeps an existing provider's secret when none is sent, but a new provider needs one
+function getOidcFormSchema({ isExisting }: { isExisting: boolean }) {
   return Yup.object({
     "login-prompt": Yup.string().required(t`Login prompt is required`),
     key: Yup.string()
@@ -53,13 +67,13 @@ function getOidcFormSchema() {
       ),
     "issuer-uri": Yup.string().required(t`Issuer URI is required`),
     "client-id": Yup.string().required(t`Client ID is required`),
-    "client-secret": Yup.string().nullable().default(null),
-    scopes: Yup.string().nullable().default("openid, email, profile"),
-    "attribute-email": Yup.string().nullable().default("email"),
-    "attribute-firstname": Yup.string().nullable().default("given_name"),
-    "attribute-lastname": Yup.string().nullable().default("family_name"),
-    "group-sync-enabled": Yup.boolean().default(false),
-    "group-attribute": Yup.string().nullable().default("groups"),
+    "client-secret": isExisting
+      ? Yup.string().nullable().default(null)
+      : Yup.string().required(t`Client secret is required`),
+    scopes: Yup.string().nullable().default(null),
+    "attribute-firstname": Yup.string().nullable().default(null),
+    "attribute-lastname": Yup.string().nullable().default(null),
+    "group-attribute": Yup.string().nullable().default(null),
   });
 }
 
@@ -70,12 +84,15 @@ interface OIDCFormValues {
   "client-id": string;
   "client-secret": string | null;
   scopes: string | null;
-  "attribute-email": string | null;
   "attribute-firstname": string | null;
   "attribute-lastname": string | null;
-  "group-sync-enabled": boolean;
   "group-attribute": string | null;
 }
+
+const withoutDefault = (
+  value: string | undefined,
+  defaultValue: string,
+): string | null => (value == null || value === defaultValue ? null : value);
 
 function providerToFormValues(
   provider: CustomOidcConfig | null,
@@ -87,17 +104,14 @@ function providerToFormValues(
       "issuer-uri": "",
       "client-id": "",
       "client-secret": null,
-      scopes: "openid, email, profile",
-      "attribute-email": "email",
-      "attribute-firstname": "given_name",
-      "attribute-lastname": "family_name",
-      "group-sync-enabled": false,
-      "group-attribute": "groups",
+      scopes: null,
+      "attribute-firstname": null,
+      "attribute-lastname": null,
+      "group-attribute": null,
     };
   }
 
   const attributeMap = provider["attribute-map"] ?? {};
-  const groupSync = provider["group-sync"] ?? {};
 
   return {
     "login-prompt": provider["login-prompt"] ?? "",
@@ -105,30 +119,37 @@ function providerToFormValues(
     "issuer-uri": provider["issuer-uri"] ?? "",
     "client-id": provider["client-id"] ?? "",
     "client-secret": null,
-    scopes: (provider.scopes ?? ["openid", "email", "profile"]).join(", "),
-    "attribute-email": attributeMap["email"] ?? "email",
-    "attribute-firstname": attributeMap["first_name"] ?? "given_name",
-    "attribute-lastname": attributeMap["last_name"] ?? "family_name",
-    "group-sync-enabled": groupSync.enabled ?? false,
-    "group-attribute": groupSync["group-attribute"] ?? "groups",
+    scopes: withoutDefault(
+      provider.scopes?.join(", "),
+      DEFAULT_SCOPES.join(", "),
+    ),
+    "attribute-firstname": withoutDefault(
+      attributeMap["first_name"],
+      DEFAULT_FIRST_NAME_ATTRIBUTE,
+    ),
+    "attribute-lastname": withoutDefault(
+      attributeMap["last_name"],
+      DEFAULT_LAST_NAME_ATTRIBUTE,
+    ),
+    "group-attribute": withoutDefault(
+      provider["group-sync"]?.["group-attribute"],
+      DEFAULT_GROUP_ATTRIBUTE,
+    ),
   };
 }
 
 function formValuesToProvider(
   values: OIDCFormValues,
-  groupMappings: Record<string, number[]>,
+  groupSync: Partial<OidcGroupSync> | undefined,
 ): Partial<CustomOidcConfig> {
   const scopes = values.scopes
     ? values.scopes
         .split(",")
         .map((s) => s.trim())
         .filter(Boolean)
-    : ["openid", "email", "profile"];
+    : DEFAULT_SCOPES;
 
   const attributeMap: Record<string, string> = {};
-  if (values["attribute-email"]) {
-    attributeMap["email"] = values["attribute-email"];
-  }
   if (values["attribute-firstname"]) {
     attributeMap["first_name"] = values["attribute-firstname"];
   }
@@ -144,11 +165,9 @@ function formValuesToProvider(
     scopes,
     enabled: true,
     "attribute-map": attributeMap,
-    "group-sync": {
-      enabled: values["group-sync-enabled"],
-      "group-attribute": values["group-attribute"] ?? undefined,
-      "group-mappings": groupMappings,
-    },
+    "group-sync": toGroupSync(groupSync, {
+      "group-attribute": values["group-attribute"] ?? DEFAULT_GROUP_ATTRIBUTE,
+    }),
   };
 
   if (values["client-secret"]) {
@@ -161,33 +180,42 @@ function formValuesToProvider(
 export function SettingsOIDCForm() {
   const applicationName = useSelector(getApplicationName);
   const siteUrl = useSetting("site-url");
-  const { data: providers, isLoading } = useGetCustomOidcProvidersQuery();
+  const { data: settingDetails, isLoading: isLoadingDetails } =
+    useGetAdminSettingsDetailsQuery();
+  const { data: settingValues, isLoading: isLoadingValues } =
+    useGetSettingsQuery();
+  const { data: providers, isLoading: isLoadingProviders } =
+    useGetCustomOidcProvidersQuery();
   const [createProvider] = useCreateCustomOidcMutation();
   const [updateProvider] = useUpdateCustomOidcMutation();
-  const [deleteProvider] = useDeleteCustomOidcMutation();
   const [checkConnection, { isLoading: isChecking }] =
     useCheckOidcConnectionMutation();
   const [sendToast] = useToast();
+  const [isGroupMappingSaving, setIsGroupMappingSaving] = useState(false);
 
   const existingProvider =
     providers && providers.length > 0 ? providers[0] : null;
-  const isExisting = existingProvider !== null;
+  const isExisting = existingProvider != null;
+  const isConfigured = settingValues?.["oidc-configured"] ?? false;
+  const providersSetting = settingDetails?.["oidc-providers"];
+  const lockedEnvName = providersSetting?.is_env_setting
+    ? providersSetting.env_name
+    : undefined;
+  const isLocked = lockedEnvName != null;
   const isEnabled = existingProvider?.enabled ?? false;
-
-  const providerMappings = useMemo(
-    () => existingProvider?.["group-sync"]?.["group-mappings"] ?? {},
-    [existingProvider],
-  );
-  const groupMappingsRef = useRef<Record<string, number[]>>(providerMappings);
-
-  useEffect(() => {
-    groupMappingsRef.current = providerMappings;
-  }, [providerMappings]);
 
   const initialValues = useMemo(
     () => providerToFormValues(existingProvider),
     [existingProvider],
   );
+  const validationSchema = useMemo(
+    () => getOidcFormSchema({ isExisting }),
+    [isExisting],
+  );
+  const hasCustomAttributes = [
+    initialValues["attribute-firstname"],
+    initialValues["attribute-lastname"],
+  ].some((value) => value != null);
 
   const runCheck = useCallback(
     async (values: OIDCFormValues) => {
@@ -197,12 +225,12 @@ export function SettingsOIDCForm() {
       };
       if (values["client-secret"]) {
         req["client-secret"] = values["client-secret"];
-      } else if (isExisting && existingProvider) {
+      } else if (existingProvider) {
         req.key = existingProvider.key;
       }
       return await checkConnection(req).unwrap();
     },
-    [checkConnection, isExisting, existingProvider],
+    [checkConnection, existingProvider],
   );
 
   const handleCheckConnection = useCallback(
@@ -231,16 +259,16 @@ export function SettingsOIDCForm() {
   );
 
   const handleSubmit = useCallback(
-    async (values: OIDCFormValues) => {
-      // Run the connection check before saving — will throw on failure
+    async (values: OIDCFormValues, helpers: FormikHelpers<OIDCFormValues>) => {
       await runCheck(values);
 
+      // the card and the save button hold each other, so no card write can be in flight here
       const providerData = formValuesToProvider(
         values,
-        groupMappingsRef.current,
+        existingProvider?.["group-sync"],
       );
 
-      if (isExisting && existingProvider) {
+      if (existingProvider) {
         const { key: _key, ...updateData } = providerData;
         await updateProvider({
           key: existingProvider.key,
@@ -250,289 +278,180 @@ export function SettingsOIDCForm() {
         // Unjustified type cast. FIXME
         await createProvider(providerData as CustomOidcConfig).unwrap();
       }
+      // the saved values become the baseline, so the form is clean before the refetch lands
+      helpers.resetForm({ values });
     },
-    [
-      isExisting,
-      existingProvider,
-      createProvider,
-      updateProvider,
-      runCheck,
-      groupMappingsRef,
-    ],
+    [existingProvider, createProvider, updateProvider, runCheck],
   );
 
-  const { data: allGroupsData } = useListPermissionsGroupsQuery(undefined);
-  // Unjustified type cast. FIXME
-  const allGroups = (allGroupsData ?? []) as Group[];
-  const [deleteGroupMutation] = useDeletePermissionsGroupMutation();
-  const [clearGroupMembershipMutation] = useClearGroupMembershipMutation();
-
-  const handleDeleteGroup = useCallback(
-    async ({ id }: { id: number }) => {
-      await deleteGroupMutation(id).unwrap();
-    },
-    [deleteGroupMutation],
-  );
-
-  const handleClearGroupMember = useCallback(
-    async ({ id }: { id: number }) => {
-      await clearGroupMembershipMutation(id).unwrap();
-    },
-    [clearGroupMembershipMutation],
-  );
-
-  const handleUpdateGroupMappings = useCallback(
-    async ({ value }: { key: string; value: Record<string, GroupId[]> }) => {
-      if (!existingProvider) {
-        return;
-      }
-      groupMappingsRef.current = value;
-      const existingGroupSync = existingProvider["group-sync"] ?? {};
-      await updateProvider({
-        key: existingProvider.key,
-        provider: {
-          "group-sync": {
-            enabled: existingGroupSync.enabled ?? false,
-            "group-attribute": existingGroupSync["group-attribute"],
-            "group-mappings": value,
-          },
-        },
-      }).unwrap();
-    },
-    [existingProvider, updateProvider],
-  );
-
-  const handleToggleEnabled = useCallback(async () => {
-    if (!existingProvider) {
-      return;
-    }
-    try {
-      await updateProvider({
-        key: existingProvider.key,
-        provider: { enabled: !isEnabled },
-      }).unwrap();
-      sendToast({
-        message: isEnabled
-          ? t`OIDC provider disabled`
-          : t`OIDC provider enabled`,
-        icon: "check",
-      });
-    } catch {
-      sendToast({
-        message: t`Failed to update OIDC provider`,
-        icon: "warning",
-      });
-    }
-  }, [existingProvider, isEnabled, updateProvider, sendToast]);
-
-  const [isDeleteModalOpen, deleteModal] = useDisclosure(false);
-
-  const handleDelete = useCallback(async () => {
-    if (!existingProvider) {
-      return;
-    }
-    try {
-      await deleteProvider(existingProvider.key).unwrap();
-      sendToast({
-        message: t`OIDC provider deleted`,
-        icon: "check",
-      });
-    } catch (error) {
-      sendToast({
-        message: t`Failed to delete OIDC provider`,
-        icon: "warning",
-      });
-    } finally {
-      deleteModal.close();
-    }
-  }, [existingProvider, deleteProvider, sendToast, deleteModal]);
-
-  if (isLoading) {
+  if (isLoadingDetails || isLoadingValues || isLoadingProviders) {
     return <LoadingAndErrorWrapper loading />;
+  }
+
+  if (settingDetails == null || settingValues == null || providers == null) {
+    return (
+      <LoadingAndErrorWrapper error={t`Error loading OIDC configuration`} />
+    );
   }
 
   return (
     <SettingsPageWrapper title={t`OpenID Connect`}>
-      <Stack gap="lg">
-        <SettingsSection>
-          <AdminSettingInput
-            name="oidc-user-provisioning-enabled?"
-            title={t`User provisioning`}
-            inputType="radio"
-            options={provisioningOptions("OIDC")}
-          />
-        </SettingsSection>
+      <FormProvider
+        initialValues={initialValues}
+        onSubmit={handleSubmit}
+        validationSchema={validationSchema}
+        enableReinitialize
+      >
+        {({ dirty, values, initialValues, isSubmitting, setFieldValue }) => (
+          <Form>
+            <Stack gap="xl">
+              <UserProvisioningSection
+                settingKey="oidc-user-provisioning-enabled?"
+                providerName="OIDC"
+              />
+              {/* provisioning is its own setting, so the banner heads the cards it locks */}
+              {lockedEnvName != null && <SetByEnvVar varName={lockedEnvName} />}
 
-        <FormProvider
-          initialValues={initialValues}
-          onSubmit={handleSubmit}
-          validationSchema={getOidcFormSchema()}
-          enableReinitialize
-        >
-          {({ dirty, values }) => (
-            <Form>
-              <SettingsSection>
-                <FormSection title={t`Server settings`}>
-                  <Stack gap="md">
-                    <FormTextInput
-                      name="key"
-                      label={t`Key`}
-                      description={t`Provider identifier. Your OIDC redirect URI will be "${siteUrl}/auth/sso/${values.key || "{key}"}/callback"`}
-                      placeholder={t`e.g. okta`}
-                      required
-                      disabled={isExisting}
-                    />
-                    <FormTextInput
-                      name="login-prompt"
-                      label={t`Login prompt`}
-                      description={t`Button text on the ${applicationName} sign-in screen`}
-                      placeholder={t`e.g. Sign in with Okta`}
-                      required
-                    />
-                    <FormTextInput
-                      name="issuer-uri"
-                      label={t`Issuer URI`}
-                      description={t`The OIDC issuer URI. The discovery endpoint "${(values["issuer-uri"] || "{url}").replace(/\/+$/, "")}/.well-known/openid-configuration" should be accessible.`}
-                      placeholder="https://your-idp.example.com"
-                      required
-                    />
-                    <FormTextInput
-                      name="client-id"
-                      label={t`Client ID`}
-                      description={t`The Client ID configured for ${applicationName} in your OIDC provider.`}
-                      required
-                    />
-                    <FormTextInput
-                      name="client-secret"
-                      label={t`Client Secret`}
-                      description={t`The Client secret configured in your OIDC provider.`}
-                      type="password"
-                      placeholder={
-                        isExisting ? t`Leave blank to keep current value` : ""
-                      }
-                    />
-                  </Stack>
-                </FormSection>
-
-                {isExisting && (
-                  <FormSection
-                    title={t`Synchronize group membership with your SSO`}
-                  >
-                    <Text c="text-secondary" mb="lg">
-                      {t`To enable this, you'll need to create mappings to tell ${applicationName} which group(s) your users should be added to based on the SSO group they're in.`}
-                    </Text>
-                    <Stack gap="md">
-                      <GroupMappingsWidgetView
-                        setting={{ key: "group-sync-enabled" }}
-                        mappings={
-                          existingProvider?.["group-sync"]?.[
-                            "group-mappings"
-                          ] ?? {}
-                        }
-                        updateSetting={handleUpdateGroupMappings}
-                        allGroups={allGroups}
-                        deleteGroup={handleDeleteGroup}
-                        clearGroupMember={handleClearGroupMember}
-                        mappingSetting="oidc-group-mappings"
-                        groupHeading={t`Group name`}
-                        groupPlaceholder={t`Group name`}
-                      />
-                      <FormTextInput
-                        name="group-attribute"
-                        label={t`Group attribute name`}
-                        description={t`The OIDC claim that contains group membership information.`}
-                        nullable
-                      />
-                    </Stack>
-                  </FormSection>
-                )}
-
-                <FormSection title={t`Optional settings`} collapsible>
-                  <Stack gap="md">
-                    <FormTextInput
-                      name="scopes"
-                      label={t`Scopes`}
-                      description={t`Comma-separated list of OIDC scopes to request.`}
-                      nullable
-                    />
-                  </Stack>
-                </FormSection>
-
-                <FormSection title={t`Attribute mapping`} collapsible>
-                  <Text c="text-secondary" mb="md">
-                    {t`Map OIDC claims to user attributes. Use standard OIDC claim names or your provider's custom claims.`}
-                  </Text>
-                  <Stack gap="md">
-                    <FormTextInput
-                      name="attribute-email"
-                      label={t`Email attribute`}
-                      nullable
-                    />
-                    <FormTextInput
-                      name="attribute-firstname"
-                      label={t`First name attribute`}
-                      nullable
-                    />
-                    <FormTextInput
-                      name="attribute-lastname"
-                      label={t`Last name attribute`}
-                      nullable
-                    />
-                  </Stack>
-                </FormSection>
-
-                <FormErrorMessage />
-                <Flex justify="space-between">
-                  {isExisting ? (
-                    <>
-                      <Flex gap="md">
-                        <Button variant="outline" onClick={handleToggleEnabled}>
-                          {isEnabled ? t`Disable` : t`Enable`}
-                        </Button>
-                        <Button
-                          variant="filled"
-                          color="feedback-negative"
-                          onClick={deleteModal.open}
-                        >
-                          {t`Delete configuration`}
-                        </Button>
-                      </Flex>
-                      <ConfirmModal
-                        opened={isDeleteModalOpen}
-                        title={t`Delete this OIDC provider?`}
-                        message={t`Users will no longer be able to sign in with this provider. This can't be undone.`}
-                        onClose={deleteModal.close}
-                        onConfirm={handleDelete}
-                      />
-                    </>
-                  ) : (
-                    <span />
-                  )}
-                  <Flex gap="md">
-                    <Button
-                      variant="outline"
-                      loading={isChecking}
-                      disabled={!values["issuer-uri"] || !values["client-id"]}
-                      onClick={() => handleCheckConnection(values)}
-                    >
-                      {t`Check connection`}
-                    </Button>
-                    <FormSubmitButton
-                      disabled={!dirty}
-                      label={
-                        isExisting && isEnabled
-                          ? t`Save changes`
-                          : t`Save and enable`
-                      }
-                      variant="filled"
-                    />
-                  </Flex>
-                </Flex>
+              <SettingsSection
+                title={t`Server settings`}
+                titleProps={SETTINGS_CARD_TITLE_PROPS}
+                stackProps={SETTINGS_CARD_STACK_PROPS}
+              >
+                <Stack gap="lg">
+                  <FormTextInput
+                    name="key"
+                    label={t`Key`}
+                    description={t`Provider identifier. Your OIDC redirect URI will be "${siteUrl}/auth/sso/${values.key || "{key}"}/callback"`}
+                    descriptionProps={SETTINGS_FIELD_DESCRIPTION_PROPS}
+                    placeholder="okta"
+                    required
+                    disabled={isExisting}
+                    readOnly={isLocked}
+                  />
+                  <FormTextInput
+                    name="login-prompt"
+                    label={t`Login prompt`}
+                    description={t`Button text on the ${applicationName} sign-in screen`}
+                    descriptionProps={SETTINGS_FIELD_DESCRIPTION_PROPS}
+                    placeholder={t`Sign in with Okta`}
+                    required
+                    readOnly={isLocked}
+                  />
+                  <FormTextInput
+                    name="issuer-uri"
+                    label={t`Issuer URI`}
+                    description={t`The discovery endpoint "${(values["issuer-uri"] || "{url}").replace(/\/+$/, "")}/.well-known/openid-configuration" should be accessible`}
+                    descriptionProps={SETTINGS_FIELD_DESCRIPTION_PROPS}
+                    placeholder="https://your-idp.example.com"
+                    required
+                    readOnly={isLocked}
+                  />
+                  <FormTextInput
+                    name="client-id"
+                    label={t`Client ID`}
+                    description={t`This is configured for ${applicationName} in your OIDC provider`}
+                    descriptionProps={SETTINGS_FIELD_DESCRIPTION_PROPS}
+                    placeholder="metabase-client-id"
+                    required
+                    readOnly={isLocked}
+                  />
+                  <FormTextInput
+                    name="client-secret"
+                    label={t`Client secret`}
+                    description={t`This is configured in your OIDC provider`}
+                    descriptionProps={SETTINGS_FIELD_DESCRIPTION_PROPS}
+                    type="password"
+                    required={!isExisting}
+                    placeholder={
+                      existingProvider
+                        ? t`Leave blank to keep current value`
+                        : "your-client-secret"
+                    }
+                    readOnly={isLocked}
+                  />
+                  <FormTextInput
+                    name="scopes"
+                    label={t`Scopes`}
+                    description={t`Comma-separated list of OIDC scopes to request`}
+                    descriptionProps={SETTINGS_FIELD_DESCRIPTION_PROPS}
+                    placeholder={DEFAULT_SCOPES.join(", ")}
+                    nullable
+                    readOnly={isLocked}
+                  />
+                </Stack>
               </SettingsSection>
-            </Form>
-          )}
-        </FormProvider>
-      </Stack>
+
+              <CollapsibleSettingsSection
+                title={t`Attributes`}
+                description={t`Map OIDC claims to the first name and last name fields in ${applicationName}. The email always comes from the standard email claim.`}
+                defaultOpened={hasCustomAttributes}
+              >
+                <Stack gap="lg">
+                  <FormTextInput
+                    name="attribute-firstname"
+                    label={t`First name attribute key`}
+                    placeholder={DEFAULT_FIRST_NAME_ATTRIBUTE}
+                    nullable
+                    readOnly={isLocked}
+                  />
+                  <FormTextInput
+                    name="attribute-lastname"
+                    label={t`Last name attribute key`}
+                    placeholder={DEFAULT_LAST_NAME_ATTRIBUTE}
+                    nullable
+                    readOnly={isLocked}
+                  />
+                </Stack>
+              </CollapsibleSettingsSection>
+
+              <OidcGroupMappingSection
+                provider={existingProvider}
+                onSavingChange={setIsGroupMappingSaving}
+                disabled={!isConfigured}
+                lockedEnvName={lockedEnvName}
+                isPageSaving={isSubmitting}
+                data-testid="oidc-group-mapping-section"
+                onToggle={(enabled) => {
+                  if (!enabled) {
+                    resetFieldsToInitial(setFieldValue, initialValues, [
+                      "group-attribute",
+                    ]);
+                  }
+                }}
+              >
+                <FormTextInput
+                  name="group-attribute"
+                  label={t`Group attribute name`}
+                  description={t`The OIDC claim that contains group membership information.`}
+                  descriptionProps={SETTINGS_FIELD_DESCRIPTION_PROPS}
+                  placeholder={DEFAULT_GROUP_ATTRIBUTE}
+                  nullable
+                  readOnly={isLocked}
+                />
+              </OidcGroupMappingSection>
+
+              <FormErrorMessage />
+              <Flex gap="lg" wrap="wrap" justify="end">
+                <Button
+                  loading={isChecking}
+                  disabled={!values["issuer-uri"] || !values["client-id"]}
+                  onClick={() => handleCheckConnection(values)}
+                >
+                  {t`Check connection`}
+                </Button>
+                {!isLocked && (
+                  <FormSubmitButton
+                    disabled={!dirty || isGroupMappingSaving}
+                    label={isEnabled ? t`Save changes` : t`Save and enable`}
+                    variant="filled"
+                  />
+                )}
+              </Flex>
+            </Stack>
+            <LeaveRouteConfirmModal isEnabled={dirty && !isSubmitting} />
+          </Form>
+        )}
+      </FormProvider>
     </SettingsPageWrapper>
   );
 }

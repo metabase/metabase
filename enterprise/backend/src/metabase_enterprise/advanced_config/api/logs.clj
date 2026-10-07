@@ -9,28 +9,18 @@
    [clojure.string :as str]
    [malli.core :as mc]
    [malli.transform :as mtx]
+   [metabase-enterprise.advanced-config.db :as advanced-config.db]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
-   [metabase.app-db.core :as mdb]
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2]))
+   [metabase.util.malli.schema :as ms]))
 
 (mu/defn query-execution-logs
   "Query to fetch the rows within the specified `month` of `year` from the `query_execution` table."
   [year :- ms/PositiveInt
    month :- ms/PositiveInt]
-  (let [date-part (fn [part-key part-value]
-                    (if (= (mdb/db-type) :postgres)
-                      [:= [:date_part ^:allow-raw-sql [:inline (name part-key)] :started_at] [:inline part-value]]
-                      [:= [part-key :started_at] [:inline part-value]]))
-        results   (t2/select :query_execution
-                             {:order-by [[:started_at :desc]]
-                              :where    [:and
-                                         (date-part :year year)
-                                         (date-part :month month)]})]
-    results))
+  (advanced-config.db/query-executions-in-month year month))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
 ;;
@@ -41,7 +31,7 @@
 (api.macros/defendpoint :get "/query_execution/:yyyy-mm"
   "Fetch rows for the month specified by `:yyyy-mm` from the query_execution logs table.
   Must be a superuser."
-  [{:keys [yyyy-mm]} :- [:map
+  [{:keys [yyyy-mm]} :- [:map {:closed true}
                          [:yyyy-mm (mu/with-api-error-message [:re #"\d{4}-\d{2}"]
                                                               (deferred-tru "Must be a string like 2020-04 or 2222-11."))]]]
   (let [[year month] (mc/coerce [:tuple

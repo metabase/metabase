@@ -108,7 +108,7 @@ export function AddTimelinesModal({
       selectedKeys={selectedKeys}
       emptyState={
         hasTimelines ? undefined : (
-          <Box mt="md">
+          <Box mt="lg">
             <TimelineEmptyState
               collection={timelineCollection}
               shouldOpenLinkInNewTab

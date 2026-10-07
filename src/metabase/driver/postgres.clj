@@ -99,6 +99,7 @@
                               :transforms/index-ddl           true
                               :transforms/python              true
                               :transforms/table               true
+                              :transforms/testing             true
                               :uploads                        true
                               :uuid-type                      true}]
   (defmethod driver/database-supports? [:postgres feature] [_driver _feature _db] supported?))
@@ -492,6 +493,10 @@
   [_ json-field-identifier]
   [:length [:cast json-field-identifier :text]])
 
+(defmethod sql.qp/use-ctes-for-stages? :postgres
+  [_driver]
+  true)
+
 (defmethod sql.qp/add-interval-honeysql-form :postgres
   [driver hsql-form amount unit]
   (h2x/add-interval-honeysql-form driver hsql-form amount unit))
@@ -537,7 +542,7 @@
 
 (mu/defn- date-trunc
   [unit :- driver-api/schema.temporal-bucketing.unit.date-time.truncate
-   expr]
+   expr :- ::h2x/expr]
   ;; Branches are ordered most-specific-first because `database-or-effective-type-isa?` checks `isa?` on the effective
   ;; type fallback: `:type/TimeWithTZ` is a descendant of `:type/Time`, so the timetz branch must run first to avoid a
   ;; nested-source-query `timetz` column being routed to the plain-time path (#75193, #68065).
@@ -556,8 +561,8 @@
 
     :else
     (let [expr' (h2x/->pg-timestamp expr)]
-      (-> [:date_trunc (h2x/literal unit) expr']
-          (h2x/with-database-type-info (h2x/database-type expr'))))))
+      (cond-> [:date_trunc (h2x/literal unit) expr']
+        (h2x/type-info expr') (h2x/with-type-info (h2x/type-info expr'))))))
 
 (defn- extract-from-timestamp [unit expr]
   (extract unit (h2x/->pg-timestamp expr)))
@@ -609,7 +614,7 @@
 
 (mu/defn- enum-cast
   [database-type :- driver-api/schema.common.non-blank-string
-   raw-value]
+   raw-value      :- ::h2x/expr]
   (-> [:cast raw-value (apply h2x/identifier :type-name (enum-type-components database-type))]
       (h2x/with-database-type-info database-type)))
 
@@ -625,10 +630,39 @@
                          (h2x/is-of-type? expr "timestamptz")
                          (h2x/is-of-type? expr "timestamp with time zone"))
         _            (sql.u/validate-convert-timezone-args timestamptz? target-timezone source-timezone)
+        ;; `TIMEZONE(zone, date)` implicitly promotes a `DATE` to `TIMESTAMPTZ` using the session (report) time zone
+        ;; before converting. Cast dates to a plain `TIMESTAMP` first so the source timezone gets applied (#27186).
+        expr (cond-> expr
+               (or (instance? java.time.LocalDate expr)
+                   (h2x/is-of-type? expr "date"))
+               h2x/->timestamp)
         expr         [:timezone target-timezone (if (not timestamptz?)
                                                   [:timezone source-timezone expr]
                                                   expr)]]
-    (h2x/with-database-type-info expr "timestamp")))
+    (h2x/with-type-info expr {:database-type "timestamp"
+                              ::target-timezone target-timezone})))
+
+(defn- current-datetime-in-parent-lhs-timezone
+  "Return a HoneySQL form for the current datetime that shares the wall-clock frame of the enclosing filter's LHS.
+  When the LHS is a convertTimezone expression targeting `target-tz`, wrap the driver's default NOW() with
+  `TIMEZONE(target-tz, ...)` so both sides compare as plain timestamps in the same zone (#80155). Otherwise
+  return the driver's default unchanged."
+  [driver]
+  (let [now (sql.qp/current-datetime-honeysql-form driver)]
+    (if-let [target-tz (::target-timezone sql.qp/*parent-honeysql-col-type-info*)]
+      (h2x/with-database-type-info [:timezone target-tz now] "timestamp")
+      now)))
+
+(defmethod sql.qp/->honeysql [:postgres :relative-datetime]
+  [driver [_ _opts amount unit]]
+  (let [now (current-datetime-in-parent-lhs-timezone driver)]
+    (sql.qp/date driver unit (if (zero? amount)
+                               now
+                               (sql.qp/add-interval-honeysql-form driver now amount unit)))))
+
+(defmethod sql.qp/->honeysql [:postgres :now]
+  [driver _clause]
+  (current-datetime-in-parent-lhs-timezone driver))
 
 (defmethod sql.qp/->honeysql [:postgres :value]
   [driver [_ {:keys [base-type database-type] :as opts} raw-value]]
@@ -1498,7 +1532,3 @@
 
 (defmethod driver/llm-sql-dialect-resource :postgres [_]
   "metabot/prompts/dialects/postgresql.md")
-
-(defmethod driver/validate-impersonated-query :postgres
-  [driver query]
-  (driver.sql/validate-impersonated-query* driver query))

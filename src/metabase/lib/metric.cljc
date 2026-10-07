@@ -4,6 +4,7 @@
   (:refer-clojure :exclude [select-keys some not-empty])
   (:require
    [clojure.string :as str]
+   ;; metric definitions may still be stored as legacy MBQL; normalize before lib.convert/->mbql5
    ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.aggregation :as lib.aggregation]
    [metabase.lib.convert :as lib.convert]
@@ -102,7 +103,7 @@
 
 (mu/defn available-metrics :- [:maybe [:sequential {:min 1} ::lib.schema.metadata/metric]]
   "Get a list of Metrics that you may consider using as aggregations for a query."
-  ([query]
+  ([query :- ::lib.schema/query]
    (available-metrics query -1))
   ([query :- ::lib.schema/query
     stage-number :- :int]
@@ -141,6 +142,7 @@
     (#{:query :native} (lib.util/normalized-query-type query))
     mbql.normalize/normalize))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic *metric-expansion-path*
   "Metric card IDs whose [[lib.metadata.calculation/metadata-method]] `:metric` expansion is in flight on this
   thread/binding, outermost first. A metric's metadata is computed from its inner aggregation, which may itself be a

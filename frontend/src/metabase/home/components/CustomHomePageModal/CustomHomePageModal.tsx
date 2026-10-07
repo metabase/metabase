@@ -42,12 +42,12 @@ export const CustomHomePageModal = ({
           <Box ml="0.5rem" mr="2.5rem">
             <Text
               span
-              c="text-primary-inverse"
+              c="inherit"
               fw={700}
             >{t`This dashboard has been set as your homepage.`}</Text>
             <Text
               span
-              c="text-primary-inverse"
+              c="inherit"
             >{t`You can change this in Admin > Settings > General.`}</Text>
           </Box>
         ),
@@ -90,7 +90,7 @@ export const CustomHomePageModal = ({
           {t`If anyone lacks permission to see the dashboard you pick, they'll be redirected to the default homepage.`}
         </Text>
         <Text mt="sm">{jt`You can always change the homepage in ${<Link key="link" className={CS.link} to="/admin/settings/general" style={{ textDecoration: "underline" }}>{t`admin settings`}</Link>} under General.`}</Text>
-        <Box mt="lg">
+        <Box mt="xl">
           <DashboardSelector
             value={dashboardId}
             fullWidth={false}
@@ -99,8 +99,8 @@ export const CustomHomePageModal = ({
         </Box>
       </Box>
 
-      <Flex mt="lg" justify="flex-end" gap="0.5rem">
-        <Button variant="subtle" onClick={handleClose}>
+      <Flex mt="xl" justify="flex-end" gap="0.5rem">
+        <Button variant="subtle" color="neutral" onClick={handleClose}>
           {t`Cancel`}
         </Button>
         <Button variant="filled" disabled={!dashboardId} onClick={handleSave}>

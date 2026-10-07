@@ -7,6 +7,7 @@ import {
   renderWithProviders,
   screen,
   waitFor,
+  within,
 } from "__support__/ui";
 import {
   createBlock,
@@ -511,5 +512,40 @@ describe("ExplorationPage thread-ready toasts", () => {
         (call) => call[0]?.message === "Added Thread A",
       ),
     ).toHaveLength(1);
+  });
+});
+
+describe("archived exploration", () => {
+  it("shows the trash banner and restores the exploration from it", async () => {
+    explorationData = {
+      ...makeMultiPageExploration(),
+      archived: true,
+      can_restore: true,
+      can_delete: true,
+    };
+    const updateUrl = `path:/api/exploration/${explorationData.id}`;
+    fetchMock.put(updateUrl, { ...explorationData, archived: false });
+
+    renderExplorationPage();
+
+    const banner = await screen.findByTestId("archive-banner");
+    expect(banner).toHaveTextContent("This research is in the trash.");
+
+    fireEvent.click(within(banner).getByText("Restore"));
+
+    await waitFor(() => {
+      expect(fetchMock.callHistory.called(updateUrl)).toBe(true);
+    });
+    expect(
+      await fetchMock.callHistory.lastCall(updateUrl)?.request?.json(),
+    ).toEqual({ archived: false });
+  });
+
+  it("does not show the trash banner for an exploration that is not archived", () => {
+    explorationData = makeMultiPageExploration();
+
+    renderExplorationPage();
+
+    expect(screen.queryByTestId("archive-banner")).not.toBeInTheDocument();
   });
 });

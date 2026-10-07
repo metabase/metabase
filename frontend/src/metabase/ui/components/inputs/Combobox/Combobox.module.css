@@ -19,6 +19,10 @@
   padding: 1.5rem 0.5rem;
 }
 
+.groupLabel::after {
+  margin-inline-start: var(--mantine-spacing-xxs);
+}
+
 .chevron {
   color: inherit;
   width: 1rem !important;

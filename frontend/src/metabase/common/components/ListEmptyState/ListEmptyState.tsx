@@ -10,7 +10,7 @@ type ListEmptyStateProps = {
 
 export function ListEmptyState({ label }: ListEmptyStateProps) {
   return (
-    <Box p="xl">
+    <Box p="xxl">
       <EmptyState
         message={label}
         spacing="sm"

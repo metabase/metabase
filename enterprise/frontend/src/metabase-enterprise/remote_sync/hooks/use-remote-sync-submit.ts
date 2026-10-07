@@ -154,7 +154,7 @@ export const useRemoteSyncSubmit = ({
           confirmButtonText: t`Continue`,
           confirmButtonProps: {
             variant: "filled",
-            color: "feedback-negative",
+            color: "negative",
           },
           onConfirm: async () => {
             if (pendingConfirmationSettingsRef.current) {

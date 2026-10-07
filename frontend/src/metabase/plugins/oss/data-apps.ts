@@ -2,10 +2,13 @@ import type { ComponentType, ReactNode } from "react";
 
 import { PluginPlaceholder } from "metabase/plugins/components/PluginPlaceholder";
 
+import { definePluginSlot } from "../slot";
+
 export type DataAppsPlugin = {
   isEnabled: boolean;
   getRoutes: () => ReactNode | null;
   ManageDataAppsPage: ComponentType;
+  ManageDataAppUsersPage: ComponentType;
   MainNavbarSection: ComponentType<{ onItemSelect: () => void }>;
 };
 
@@ -13,14 +16,10 @@ const getDefaultPluginDataApps = (): DataAppsPlugin => ({
   isEnabled: false,
   getRoutes: () => null,
   ManageDataAppsPage: PluginPlaceholder,
+  ManageDataAppUsersPage: PluginPlaceholder,
   MainNavbarSection: PluginPlaceholder,
 });
 
-export const PLUGIN_DATA_APPS: DataAppsPlugin = getDefaultPluginDataApps();
-
-/**
- * @internal Do not call directly. Use the main reinitialize function from metabase/plugins instead.
- */
-export function reinitialize() {
-  Object.assign(PLUGIN_DATA_APPS, getDefaultPluginDataApps());
-}
+export const PLUGIN_DATA_APPS: DataAppsPlugin = definePluginSlot(
+  getDefaultPluginDataApps,
+);

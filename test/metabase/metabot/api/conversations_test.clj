@@ -468,6 +468,7 @@
                      :model/MetabotMessage _a1 {:conversation_id convo-id :user_id user-id :role "assistant"
                                                 :external_id a1 :finished true :total_tokens 100
                                                 :usage {"gpt" {:prompt 60 :completion 40}}
+                                                :context_tokens 60
                                                 :data [{:type "text" :text "hello"}]
                                                 :created_at (seconds-ago 50)}
                      :model/MetabotMessage _u2 {:conversation_id convo-id :user_id user-id :role "user"
@@ -491,7 +492,8 @@
                 (is (= convo-id (:forked_from_conversation_id response))))
               (is (= user-id (:user_id response))))
             (testing "only the thread up to and including the target is copied"
-              (is (= ["hi" "hello"] (mapv :message (:messages response)))))
+              (is (= ["hi" "hello"]
+                     (mapv #(-> % :parts first :message) (:messages response)))))
             (let [rows        (metabot.persistence/live-messages new-id)
                   orig-a1-at  (t2/select-one-fn :created_at :model/MetabotMessage :external_id a1)]
               (testing "cloned rows are fresh copies"
@@ -503,7 +505,10 @@
                   (is (every? #(t/after? (t/instant (:created_at %)) (t/instant orig-a1-at)) rows))))
               (testing "token usage is zeroed so forks don't double-count in analytics"
                 (is (every? #(zero? (:total_tokens %)) rows))
-                (is (every? #(nil? (:usage %)) rows))))
+                (is (every? #(nil? (:usage %)) rows)))
+              (testing "context size carries over so the fork is as full as the thread it copied"
+                (is (= [nil 60] (mapv :context_tokens rows)))
+                (is (= [nil 60] (mapv :contextTokens (:messages response))))))
             (testing "the original conversation is untouched"
               (is (= 4 (count (metabot.persistence/live-messages convo-id)))))
             (finally
@@ -664,7 +669,7 @@
                                 body))))))
 
 (deftest record-saved-entity-strips-extra-query-keys-test
-  (testing "POST /api/metabot/conversations/:id/saved-entity validates and strips undeclared keys from :dataset_query"
+  (testing "POST /api/metabot/conversations/:id/saved-entity strips the query processor's internal keys from :dataset_query"
     (let [user-id (mt/user->id :crowberto)]
       (mt/with-model-cleanup [:model/Card]
         (mt/with-temp [:model/MetabotConversation {convo-id :id} {:user_id user-id}
@@ -673,9 +678,13 @@
                                               (str "metabot/conversations/" convo-id "/saved-entity")
                                               {:chart_id "chart-1"
                                                :card     {:name          "Venues"
-                                                          :dataset_query (assoc (venues-query) :a 1 :a/b 2)
+                                                          ;; internal keys the QP adds while a query runs; a client
+                                                          ;; must not be able to smuggle them in through a save
+                                                          :dataset_query (-> (venues-query)
+                                                                             (assoc :qp/source-card-id 1)
+                                                                             (assoc-in [:stages 0 :qp/stage-had-source-card] 1))
                                                           :display       "bar"}})
                 stored  (:dataset_query (t2/select-one :model/Card :id (:id created)))]
             (is (= :mbql/query (:lib/type stored)))
-            (is (not (contains? stored :a)))
-            (is (not (contains? stored :a/b)))))))))
+            (is (not (contains? stored :qp/source-card-id)))
+            (is (not (contains? (first (:stages stored)) :qp/stage-had-source-card)))))))))

@@ -1,13 +1,13 @@
 (ns metabase-enterprise.cache.strategies
   (:require
    [java-time.api :as t]
+   [metabase-enterprise.cache.db :as cache.db]
    [metabase.cache.api]
    [metabase.cache.core :as cache]
    [metabase.premium-features.core :refer [defenterprise defenterprise-schema]]
    [metabase.query-processor.middleware.cache-backend.db :as backend.db]
    [metabase.util.log :as log]
-   [metabase.util.malli.registry :as mr]
-   [toucan2.core :as t2]))
+   [metabase.util.malli.registry :as mr]))
 
 (set! *warn-on-reflection* true)
 
@@ -41,24 +41,7 @@
   :feature :cache-granular-controls
   [card         :- :metabase.queries.schema/card
    dashboard-id :- [:maybe :metabase.lib.schema.id/dashboard]]
-  (let [qs   (for [[i model model-id] [[1 "question"   (:id card)]
-                                       [2 "dashboard"  dashboard-id]
-                                       [3 "database"   (:database_id card)]
-                                       [4 "root"       0]]
-                   :when              model-id]
-               ^:allow-subquery
-               {:from   [:cache_config]
-                :select [:id
-                         [[:inline i] :ordering]]
-                :where  [:and
-                         [:= :model model]
-                         [:= :model_id model-id]]})
-        q    ^:allow-subquery
-        {:from     [[^:allow-subquery {:union-all qs} :unused_alias]]
-         :select   [:id]
-         :order-by :ordering
-         :limit    [:inline 1]}
-        item (t2/select-one :model/CacheConfig :id q)]
+  (let [item (cache.db/card-cache-config (:id card) dashboard-id (:database_id card))]
     (cache/card-strategy item card)))
 
 ;;; Strategy execution

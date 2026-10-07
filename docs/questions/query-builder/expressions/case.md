@@ -206,7 +206,7 @@ is equivalent to the `case` expression:
 sum(case([Status] = "Shipped", [Amount]))
 ```
 
-`sumif` is equivalent to `case` when you sum a single column for single condition.
+`sumif` is equivalent to `case` when you sum a single column for a single condition.
 
 You should use `case` if you want to sum a second column under a second, separate condition. For example, if you want to sum the **Amount** column when **Status** = "Shipped" and another (hypothetical) column like **Refunded Amount** when **Status** = "Refunded".
 

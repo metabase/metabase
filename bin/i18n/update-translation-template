@@ -57,4 +57,4 @@ clojure -M:generate-automagic-dashboards-pot
 # merge all pots #
 ##################
 
-msgcat --add-location=file "$POT_FRONTEND_NAME" "$POT_BACKEND_NAME" "$POT_AUTODASH_NAME" > "$POT_NAME"
+msgcat --add-location=file -F "$POT_FRONTEND_NAME" "$POT_BACKEND_NAME" "$POT_AUTODASH_NAME" > "$POT_NAME"

@@ -9,7 +9,6 @@ effective_type: type/Integer
 semantic_type: type/PK
 dimensions: []
 position: 0
-custom_position: 0
 database_position: 0
 has_field_values: none
 serdes/meta:

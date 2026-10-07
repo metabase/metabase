@@ -1,6 +1,7 @@
 (ns metabase.transforms.models.transform-job-transform-tag
   (:require
    [metabase.models.serialization :as serdes]
+   [metabase.transforms.schema]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 

@@ -61,6 +61,18 @@
   (is (= [] (mapv-via-run! inc [])))
   (is (= [1 2 3 4 5] (mapv-via-run! inc (range 5)))))
 
+(deftest dropv-test
+  (is (= [3 4 5] (perf/dropv 2 [1 2 3 4 5])))
+  (is (= [1 2 3] (perf/dropv 0 [1 2 3])))
+  (is (= [] (perf/dropv 3 [1 2 3])))
+  (is (= [] (perf/dropv 5 [1 2 3])))
+  (testing "nil input"
+    (is (= [] (perf/dropv 0 nil)))
+    (is (= [] (perf/dropv 5 nil))))
+  (testing "non-vectors"
+    (is (= [3 4 5] (perf/dropv 2 '(1 2 3 4 5))))
+    (is (vector? (perf/dropv 2 '(1 2 3 4 5))))))
+
 #?(:clj
    (deftest ^:parallel transpose-test
      (is (= [[1 2 3 4] [1 2 3 4] [1 2 3 4] [1 2 3 4] [1 2 3 4]]

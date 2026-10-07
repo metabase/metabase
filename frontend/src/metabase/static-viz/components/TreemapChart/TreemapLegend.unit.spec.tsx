@@ -1,7 +1,7 @@
 import { render, screen } from "@testing-library/react";
 
 import { measureTextWidth } from "metabase/static-viz/lib/text";
-import type { RenderingContext } from "metabase/visualizations/types";
+import type { RenderingContext } from "metabase/viz-core";
 
 import { TreemapLegend } from "./TreemapLegend";
 import type { TreemapLegendModel } from "./legend";

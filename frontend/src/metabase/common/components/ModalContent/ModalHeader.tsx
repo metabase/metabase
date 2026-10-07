@@ -22,7 +22,7 @@ export interface ModalHeaderProps extends CommonModalProps {
 export const ModalHeader = ({
   children,
   className,
-  py = "xl",
+  py = "xxl",
   fullPageModal,
   centeredTitle,
   headerActions,
@@ -36,7 +36,7 @@ export const ModalHeader = ({
     <Flex
       gap="sm"
       align="center"
-      px="xl"
+      px="xxl"
       py={py}
       flex="0 0 auto"
       className={className}

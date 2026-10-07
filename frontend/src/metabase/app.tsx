@@ -1,26 +1,21 @@
 import "@mantine/core/styles.css";
 import "@mantine/dates/styles.css";
-
 // This is conditionally aliased in the webpack config.
 // If EE isn't enabled, it loads an empty file.
 // Should be imported before any other metabase import
 import "ee-overrides";
-
 // set the locale before loading anything else
 import "metabase/utils/i18n";
-
 // NOTE: why do we need to load this here?
 import "metabase/ui/colors";
-
 // NOTE: this loads all builtin plugins
 import "metabase/auth/plugins";
-
 // This is conditionally aliased in the webpack config.
 // If EE isn't enabled, it loads an empty file.
 // Set CSP nonce for dynamic style injection (e.g. CodeMirror)
 import "metabase/utils/csp-setup";
-
 import { type Middleware, isAction } from "@reduxjs/toolkit";
+import { useLayoutEffect } from "react";
 import { DragDropContextProvider } from "react-dnd";
 import { createPortal } from "react-dom";
 import { createRoot } from "react-dom/client";
@@ -47,10 +42,12 @@ import { refetchSiteSettings } from "metabase/settings";
 import { GlobalStyles } from "metabase/styled-components/containers/GlobalStyles";
 import { PortalContainer } from "metabase/ui";
 import { EmotionCacheProvider } from "metabase/ui/components/theme/EmotionCacheProvider";
+import { captureClickModifierKeys } from "metabase/urls";
 import { setBasename } from "metabase/utils/basename";
 import { captureConsoleErrors } from "metabase/utils/errors";
 import { initMetaplow } from "metabase/utils/metaplow";
 import { initTracing, rotateTraceId } from "metabase/utils/otel";
+import { PERFORMANCE_MARKS, markOnce } from "metabase/utils/performance-marks";
 import MetabaseSettings from "metabase/utils/settings";
 import { registerVisualizations } from "metabase/visualizations/register";
 
@@ -62,6 +59,18 @@ setBasename(window.MetabaseRoot);
 initializePlugins();
 
 type Store = ReturnType<typeof getStore>;
+
+/**
+ * Marks the commit of the app shell. A layout effect runs after React has
+ * committed, so this is the first moment the app is on screen, and it sits
+ * inside the tree so every entry records it.
+ */
+function AppMountedMark() {
+  useLayoutEffect(() => {
+    markOnce(PERFORMANCE_MARKS.appMounted);
+  }, []);
+  return null;
+}
 
 function isLocationChangeAction(
   action: unknown,
@@ -104,6 +113,7 @@ function _init(
   });
 
   initializeInteractiveEmbedding(store.dispatch);
+  captureClickModifierKeys();
 
   const rootElement = document.getElementById("root");
   if (!rootElement) {
@@ -113,6 +123,7 @@ function _init(
 
   root.render(
     <MetabaseReduxProvider store={store}>
+      <AppMountedMark />
       <EmotionCacheProvider>
         <DragDropContextProvider backend={ModifiedBackend} context={{ window }}>
           <OverlayStackProvider>

@@ -67,7 +67,7 @@ export function DetailViewPage({
           bg="background_page-primary"
           className={S.header}
           pl={rem(paddingLeft)}
-          pr="xl"
+          pr="xxl"
           py={rem(64)}
         >
           <Box
@@ -91,7 +91,7 @@ export function DetailViewPage({
           align="flex-start"
           bg="background_page-primary"
           flex="1"
-          p="xl"
+          p="xxl"
           pl={rem(paddingLeft)}
           w={isMediumBreakpoint ? "100%" : undefined}
         >
@@ -112,7 +112,7 @@ export function DetailViewPage({
             flex={isMediumBreakpoint ? undefined : "0 0 auto"}
             pl={rem(isMediumBreakpoint ? paddingLeft : 40)}
             pr={rem(40)}
-            py="xl"
+            py="xxl"
             w={isMediumBreakpoint ? "100%" : rem(440)}
           >
             <Relationships

@@ -19,6 +19,11 @@ export const SYNCED_COLLECTION_FIXTURE_PATH =
 export const SYNCED_TRANSFORMS_COLLECTION_FIXTURE_PATH =
   Cypress.config("projectRoot") +
   "/e2e/support/assets/example_synced_transforms_collection";
+export const SYNCED_LIBRARY_FIXTURE_PATH =
+  Cypress.config("projectRoot") + "/e2e/support/assets/example_synced_library";
+export const SYNCED_STUB_DATABASE_FIXTURE_PATH =
+  Cypress.config("projectRoot") +
+  "/e2e/support/assets/example_synced_stub_database";
 
 // Copy the sample synced collection from the fixture folder to the working directory
 export const copySyncedCollectionFixture = () => {
@@ -31,6 +36,21 @@ export const copySyncedCollectionFixture = () => {
 export const copySyncedTransformsCollectionFixture = () => {
   cy.task("copyDirectory", {
     source: SYNCED_TRANSFORMS_COLLECTION_FIXTURE_PATH,
+    destination: LOCAL_GIT_PATH,
+  });
+};
+// Copy the sample remote-synced Library (with one glossary entry) from the fixture folder to the working directory
+export const copySyncedLibraryFixture = () => {
+  cy.task("copyDirectory", {
+    source: SYNCED_LIBRARY_FIXTURE_PATH,
+    destination: LOCAL_GIT_PATH,
+  });
+};
+
+// Copy a synced collection whose card references a database the instance doesn't have
+export const copySyncedStubDatabaseFixture = () => {
+  cy.task("copyDirectory", {
+    source: SYNCED_STUB_DATABASE_FIXTURE_PATH,
     destination: LOCAL_GIT_PATH,
   });
 };
@@ -328,7 +348,7 @@ export const interceptTask = () =>
  * renders from the same task poll that `waitForTask` observes.
  */
 export const closeSyncResultModal = () => {
-  cy.findByTestId("sync-success-close-button", { timeout: 10000 }).click();
+  cy.findByTestId("sync-success-close-button").click();
 };
 
 const TASK_POLL_LIMIT = 30;
@@ -337,10 +357,11 @@ export const waitForTask = (
   { taskName }: { taskName: "import" | "export" },
   retries = 0,
 ): Cypress.Chainable => {
-  if (retries > 3) {
+  if (retries > TASK_POLL_LIMIT) {
     throw Error(`Too many retries waiting for ${taskName}`);
   }
-  return cy.wait("@currentTask").then(({ response }) => {
+
+  return cy.wait("@currentTask", { timeout: 10000 }).then(({ response }) => {
     const { body } = response || {};
     if (body?.sync_task_type !== taskName) {
       return waitForTask({ taskName });

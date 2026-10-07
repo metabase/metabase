@@ -6,7 +6,7 @@ redirect_from:
 
 # Developer Guide
 
-This guide contains detailed information on how to work on Metabase codebase.
+This guide contains detailed information on how to work on the Metabase codebase.
 
 ## Contributing
 

@@ -7,7 +7,9 @@
    [clojurewerkz.quartzite.triggers :as triggers]
    [java-time.api :as t]
    [metabase.app-db.core :as mdb]
+   [metabase.audit-app.db :as audit-app.db]
    [metabase.audit-app.settings :as audit-app.settings]
+   [metabase.audit-app.task.partitions :as partitions]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.task-history.core :as task-history]
    [metabase.task.core :as task]
@@ -19,26 +21,14 @@
 
 (defn- truncate-table-batched!
   [table-name time-column]
-  (t2/query-one
-   (case (mdb/db-type)
-     (:postgres :h2)
-     {:delete-from (keyword table-name)
-      :where [:in
-              :id
-              ^:allow-subquery {:select [:id]
-                                :from (keyword table-name)
-                                :where [:<=
-                                        (keyword time-column)
-                                        (t/minus (t/offset-date-time) (t/days (audit-app.settings/audit-max-retention-days)))]
-                                :order-by [[:id :asc]]
-                                :limit (audit-app.settings/audit-table-truncation-batch-size)}]}
+  (let [cutoff     (t/minus (t/offset-date-time) (t/days (audit-app.settings/audit-max-retention-days)))
+        batch-size (audit-app.settings/audit-table-truncation-batch-size)]
+    (case (mdb/db-type)
+      (:postgres :h2)
+      (audit-app.db/delete-oldest-by-id-subquery! (keyword table-name) (keyword time-column) cutoff batch-size)
 
-     (:mysql :mariadb)
-     {:delete-from (keyword table-name)
-      :where [:<=
-              (keyword time-column)
-              (t/minus (t/offset-date-time) (t/days (audit-app.settings/audit-max-retention-days)))]
-      :limit (audit-app.settings/audit-table-truncation-batch-size)})))
+      (:mysql :mariadb)
+      (audit-app.db/delete-oldest-with-limit! (keyword table-name) (keyword time-column) cutoff batch-size))))
 
 (defn- truncate-table!
   "Given a model, deletes all rows older than the configured threshold"
@@ -66,7 +56,7 @@
   metabase-enterprise.audit-app.task.truncate-audit-tables
   []
   ;; postgres has partitioned query_execution; we detach partitions instead of deleting
-  (if (= :postgres (mdb/db-type))
+  (if (partitions/fully-on-partitions?)
     []
     [{:model :model/QueryExecution :timestamp-col :started_at}]))
 

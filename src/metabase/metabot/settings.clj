@@ -3,10 +3,8 @@
    [clojure.string :as str]
    [metabase.llm.provider :as llm.provider]
    [metabase.llm.settings :as llm.settings]
-   [metabase.metabot.self.claude :as claude]
-   [metabase.metabot.self.deepseek :as deepseek]
-   [metabase.metabot.self.openai :as openai]
-   [metabase.metabot.self.vllm :as vllm]
+   [metabase.metabot.self.google :as google]
+   [metabase.metabot.self.registry :as registry]
    [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.log :as log]))
@@ -56,31 +54,34 @@
   :feature    :ai-controls)
 
 (defsetting metabot-chat-system-prompt
-  (deferred-tru "Custom instructions appended to Metabot''s system prompt for the chat experience (the AI sidebar and embedded Metabot).")
+  (deferred-tru "Custom instructions appended to Metabot''s system prompt for the chat experience (the AI sidebar, embedded Metabot, and Metabot in Slack).")
   :type       :string
   :default    ""
   :visibility :admin
-  :encryption :no
+  :encryption :when-encryption-key-set
   :export?    true
-  :feature    :ai-controls)
+  :feature    :ai-controls
+  :can-read-from-env? false)
 
 (defsetting metabot-nlq-system-prompt
   (deferred-tru "Custom instructions appended to Metabot''s system prompt for the natural language query (AI exploration) experience.")
   :type       :string
   :default    ""
   :visibility :admin
-  :encryption :no
+  :encryption :when-encryption-key-set
   :export?    true
-  :feature    :ai-controls)
+  :feature    :ai-controls
+  :can-read-from-env? false)
 
 (defsetting metabot-sql-system-prompt
   (deferred-tru "Custom instructions appended to Metabot''s system prompt for the SQL generation experience.")
   :type       :string
   :default    ""
   :visibility :admin
-  :encryption :no
+  :encryption :when-encryption-key-set
   :export?    true
-  :feature    :ai-controls)
+  :feature    :ai-controls
+  :can-read-from-env? false)
 
 (defsetting embedded-metabot-enabled?
   (deferred-tru "Whether Metabot is enabled for embedding.")
@@ -128,6 +129,21 @@
                       {:status-code 400
                        :value       value})))))
 
+(defn- validate-google-model!
+  "Validate the model segment of a google connection's `{publisher}/{model-id}` model.
+  A publisher this provider serves followed by a non-blank model ID without slashes (the ID is one path segment of the
+  request URL).  Throws on invalid input."
+  [value model]
+  (let [[publisher model-id] (str/split (str model) #"/" 2)]
+    (when-not (and (contains? google/model-publishers publisher)
+                   (not (str/blank? model-id))
+                   (not (str/includes? model-id "/")))
+      (throw (ex-info (tru "Invalid Google model {0}. Expected format: <connection>/<publisher>/<model> where <publisher> is one of: {1}"
+                           (pr-str value)
+                           (str/join ", " (sort google/model-publishers)))
+                      {:status-code 400
+                       :value       value})))))
+
 (defn- validate-managed-model!
   "Check `model` against the fixed catalog the Metabase AI proxy serves (see the `metabase` entry in
   [[metabase.llm.provider/provider-types]])."
@@ -158,6 +174,7 @@
                       {:status-code 400 :value value})))
     (case (:type (llm.provider/connection (llm.provider/model-ref->connection-key value)))
       "azure"    (validate-azure-model! value model)
+      "google"   (validate-google-model! value model)
       "metabase" (validate-managed-model! model)
       nil)))
 
@@ -169,32 +186,37 @@
   :visibility       :settings-manager
   :export?          false
   :deprecated-name  :ee-ai-metabot-provider
+  :getter           #(llm.provider/canonical-model-ref (setting/get-value-of-type :string :llm-metabot-provider))
   :setter           (fn [new-value]
                       (when new-value
                         (validate-model-ref! new-value))
-                      (setting/set-value-of-type! :string :llm-metabot-provider new-value)))
+                      (setting/set-value-of-type! :string :llm-metabot-provider
+                                                  (llm.provider/canonical-model-ref new-value))))
 
 (defn- mini-model-ref
-  "The model reference for the fastest model of the connection `model-ref` names, or nil when that connection's
-  provider type has no such model."
+  "The model reference for the mini model the connection `model-ref` names was listed as serving, or nil when it
+  names the one model it serves."
   [model-ref]
-  (let [conn-key (llm.provider/model-ref->connection-key model-ref)]
-    (when-let [model (llm.provider/mini-model (:type (llm.provider/connection conn-key)))]
+  (let [conn-key                       (llm.provider/model-ref->connection-key model-ref)
+        {:keys [type config] :as conn} (llm.provider/connection conn-key)]
+    (when-let [model (and (not (llm.provider/connection-model type config))
+                          (llm.provider/connection-mini-model conn))]
       (str conn-key "/" model))))
 
 (defn explicit-mini-model
-  "The model reference [[llm-mini-model]] was explicitly set to, or nil while it is being derived
-  from [[llm-metabot-provider]]. Callers that act on the admin's choice rather than on the model quick tasks happen
-  to run on want this: [[llm-mini-model]] itself resolves, so it names a connection even when none was ever picked."
+  "The model reference [[llm-mini-model]] was explicitly set to, or nil when derived from [[llm-metabot-provider]].
+
+  Callers that act on the admin's choice rather than on the model quick tasks happen to run on want this:
+  [[llm-mini-model]] itself resolves, so it names a connection even when none was ever picked.
+  A retired model id reads as the model that now serves it (see [[llm.provider/canonical-model-ref]])."
   []
-  (setting/get-value-of-type :string :llm-mini-model))
+  (llm.provider/canonical-model-ref (setting/get-value-of-type :string :llm-mini-model)))
 
 (defn- -llm-mini-model
   "Quick background tasks — naming a conversation, and whatever short, high-volume calls come next — do not need the
-  model Metabot chats on, so with nothing stored this resolves to the fastest model of the
-  connection [[llm-metabot-provider]] names. Connections whose provider type has no such model — the ones that name
-  the single model they serve, and the managed provider — fall through to the Metabot model itself, so this always
-  names a model as long as Metabot does."
+  model Metabot chats on, so with nothing stored this resolves to the fastest model the
+  connection [[llm-metabot-provider]] names was listed as serving. Connections with no such model fall through to
+  the Metabot model itself, so this always names a model as long as Metabot does."
   []
   (or (explicit-mini-model)
       (let [metabot-ref (llm-metabot-provider)]
@@ -210,7 +232,7 @@
   :setter     (fn [new-value]
                 (when new-value
                   (validate-model-ref! new-value))
-                (setting/set-value-of-type! :string :llm-mini-model new-value)))
+                (setting/set-value-of-type! :string :llm-mini-model (llm.provider/canonical-model-ref new-value))))
 
 (defsetting llm-metabot-configured?
   "Whether the connection selected for Metabot has the credentials it needs."
@@ -222,29 +244,32 @@
                 (llm.provider/model-ref->connection-key (llm-metabot-provider)))
   :doc        false)
 
-(defn- llm-provider-streams-reasoning?
-  "Whether a model reference names a model that streams its reasoning back to us.
-
-  Anthropic and OpenAI answer from the model name, because thinking is requested in the request body. vLLM answers
-  from what its connect-time probe observed and recorded on the connection — the flag depends on the operator's
-  `--reasoning-parser` as well as on the model, so the name cannot settle it."
-  [model-ref]
-  (let [{:keys [type model credentials]} (llm.provider/resolve-model-ref model-ref)]
-    (case type
-      "anthropic" (claude/reasoning-model? model)
-      "deepseek"  (deepseek/reasoning-model? model)
-      "openai"    (openai/reasoning-model? model)
-      "vllm"      (vllm/reasoning-connection? credentials)
-      false)))
-
 (defsetting llm-metabot-supports-reasoning?
   "Whether the selected Metabot model streams its reasoning."
   :type       :boolean
   :visibility :public
   :setter     :none
   :export?    false
-  :getter     #(llm-provider-streams-reasoning? (llm-metabot-provider))
+  :getter     #(registry/streams-reasoning? (llm-metabot-provider))
   :doc        false)
+
+(defsetting llm-metabot-supports-fast-mode?
+  "Whether the selected Metabot model can run in fast mode. Settings-manager rather than public:
+  only the admin page reads it, and a public value would tell unauthenticated callers which
+  provider and model tier serves Metabot."
+  :type       :boolean
+  :visibility :settings-manager
+  :setter     :none
+  :export?    false
+  :getter     #(registry/supports-fast-mode? (llm-metabot-provider))
+  :doc        false)
+
+(defsetting llm-fast-mode
+  (deferred-tru "Run Metabot in the provider''s fast mode when the selected model supports it. Fast mode responds faster at a higher price per token; on Anthropic it requires an account enrolled in the fast-mode research preview and is not available with a Priority Tier commitment.")
+  :type       :boolean
+  :default    false
+  :visibility :settings-manager
+  :export?    false)
 
 (def ^:private metabot-llm-setting-keys
   #{:metabot-enabled? :embedded-metabot-enabled? :llm-metabot-provider})
@@ -253,13 +278,16 @@
   "True when changing `setting-key` could change whether Metabot can reach an LLM — i.e. it
   feeds [[llm-metabot-configured?]] or one of the Metabot enable settings.
 
-  Matches all of [[metabase.llm.settings]] rather than a hand-listed key set: being broad
-  costs a redundant re-check, while missing a key silently strands callers that wake on it."
+  Matches every setting the `llm` module defines, rather than a hand-listed key set or a single
+  namespace: the module spreads its settings over several namespaces, and being broad costs a
+  redundant re-check while missing a key silently strands callers that wake on it."
   [setting-key]
   (boolean
    (or (contains? metabot-llm-setting-keys setting-key)
-       (= 'metabase.llm.settings
-          (:namespace (get @setting/registered-settings setting-key))))))
+       (some-> (get @setting/registered-settings setting-key)
+               :namespace
+               str
+               (str/starts-with? "metabase.llm.")))))
 
 ;;; ------------------------------------------------- AI Data Retention ------------------------------------------------
 

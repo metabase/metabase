@@ -36,7 +36,6 @@ import {
 } from "@uiw/react-codemirror";
 import { useMemo } from "react";
 
-import { monospaceFontFamily } from "metabase/styled-components/theme";
 import { metabaseSyntaxHighlighting } from "metabase/ui/syntax";
 import { isMac } from "metabase/utils/browser";
 import { getCspNonce } from "metabase/utils/csp";
@@ -128,7 +127,7 @@ function fonts() {
   const shared = {
     fontSize: "12px",
     lineHeight: "normal",
-    fontFamily: monospaceFontFamily,
+    fontFamily: "var(--mb-default-monospace-font-family)",
   };
 
   return EditorView.theme({

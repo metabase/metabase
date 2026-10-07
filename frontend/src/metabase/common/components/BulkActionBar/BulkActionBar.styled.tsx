@@ -1,4 +1,4 @@
-// eslint-disable-next-line no-restricted-imports
+// eslint-disable-next-line eslint-js/no-restricted-imports
 import styled from "@emotion/styled";
 
 import { NAV_SIDEBAR_WIDTH } from "metabase/nav/constants";
@@ -10,16 +10,16 @@ export const BulkActionsToast = styled.div<{ isNavbarOpen: boolean }>`
   left: 50%;
   margin-left: ${(props) =>
     props.isNavbarOpen ? `${parseInt(NAV_SIDEBAR_WIDTH) / 2}px` : "0"};
-  margin-bottom: var(--mantine-spacing-md);
+  margin-bottom: var(--mantine-spacing-lg);
   transform: translateX(-50%);
   z-index: 150;
 `;
 
 // Unjustified type cast. FIXME
 export const ToastCard = styled(Card)`
-  background-color: var(--mb-color-background_page-primary-inverse);
-  color: var(--mb-color-text-primary-inverse);
-  padding: 0.75rem var(--mantine-spacing-md);
+  background-color: var(--mb-color-tooltip-background);
+  color: var(--mb-color-tooltip-text);
+  padding: 0.75rem var(--mantine-spacing-lg);
   display: flex;
   flex-direction: row;
   align-items: center;

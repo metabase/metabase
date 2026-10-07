@@ -1,4 +1,5 @@
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
+import type { DocumentId } from "metabase-types/api";
 
 const { H } = cy;
 
@@ -32,40 +33,15 @@ function createTestDocumentWithCard(name = "Test Document") {
   });
 }
 
-// Helper function to create a test document with custom content
-function createTestDocument(name: string, content: string) {
-  return H.createDocument({
-    name,
-    document: {
-      content: [
-        {
-          type: "paragraph",
-          content: [{ type: "text", text: content }],
-          attrs: { _id: "1" },
-        },
-      ],
-      type: "doc",
-    },
-    collection_id: null,
-    idAlias: "documentId",
-  });
+// Helper function to visit a public document
+function createPublicLink() {
+  cy.get("@documentId")
+    .then((documentId) => H.createPublicDocumentLink(documentId))
+    .then(({ body: { uuid } }) => cy.wrap(uuid).as("publicUuid"));
 }
 
-// Helper function to visit a public document
-function visitPublicDocument(
-  documentIdAlias = "@documentId",
-  options?: { signOut?: boolean },
-) {
-  cy.get(documentIdAlias)
-    .then((documentId) => {
-      return H.createPublicDocumentLink(documentId);
-    })
-    .then(({ body: { uuid } }) => {
-      if (options?.signOut) {
-        cy.signOut();
-      }
-      cy.visit(`/public/document/${uuid}`);
-    });
+function visitPublicDocument() {
+  cy.get("@publicUuid").then((uuid) => cy.visit(`/public/document/${uuid}`));
 }
 
 // Helper function to verify document is read-only
@@ -79,7 +55,6 @@ function verifyDocumentIsReadOnly() {
 // Helper function to verify comments are hidden
 function verifyCommentsAreHidden() {
   H.Comments.getDocumentNodeButtons().should("not.exist");
-  cy.findByTestId("comments-sidebar").should("not.exist");
   cy.findByRole("link", { name: "Show all comments" }).should("not.exist");
 }
 
@@ -97,11 +72,46 @@ describe("scenarios > documents > public", () => {
     H.updateSetting("enable-public-sharing", true);
   });
 
-  it("should not show comments in public documents", () => {
-    // Create a document with content and an embedded card
-    createTestDocument("Test Public Document", "This is a test paragraph");
+  it("should restrict comments, header menu, editing, metabot blocks and the card menu in public view, and show an error after the document is trashed", () => {
+    const metabotPrompt = "Some metabot prompt";
+    H.createDocument({
+      name: "Test Public Document",
+      document: {
+        content: [
+          {
+            type: "paragraph",
+            content: [{ type: "text", text: "This is a test paragraph" }],
+            attrs: { _id: "1" },
+          },
+          {
+            type: "metabot",
+            content: [{ type: "text", text: metabotPrompt }],
+          },
+        ],
+        type: "doc",
+      },
+      collection_id: null,
+      idAlias: "documentId",
+    });
 
-    cy.log("Visit the document as admin to verify comments exist");
+    cy.get<DocumentId>("@documentId").then((documentId) => {
+      H.createComment({
+        target_type: "document",
+        target_id: documentId,
+        child_target_id: "1",
+        content: {
+          type: "doc",
+          content: [
+            {
+              type: "paragraph",
+              content: [{ type: "text", text: "A test comment" }],
+            },
+          ],
+        },
+      });
+    });
+
+    cy.log("Visit the document as admin");
     H.visitDocument("@documentId");
 
     // Verify the document content loaded
@@ -109,71 +119,6 @@ describe("scenarios > documents > public", () => {
 
     // Verify comment buttons exist for authenticated users
     H.Comments.getDocumentNodeButtons().should("exist");
-
-    cy.log("Create public link and visit public document");
-    visitPublicDocument();
-
-    cy.log("Verify document content is visible");
-    H.documentContent().should("contain", "This is a test paragraph");
-
-    cy.log("Verify comment buttons do not exist in public view");
-    verifyCommentsAreHidden();
-  });
-
-  it("should only show 'Download results' in card menu for public documents", () => {
-    // Create a document with an embedded card
-    createTestDocumentWithCard("Test Document with Card");
-
-    cy.log("Visit document as admin to verify full menu exists");
-    H.visitDocument("@documentId");
-
-    // Wait for card to load
-    H.getDocumentCard("Orders").should("exist");
-
-    // Open card menu as admin and verify multiple options exist
-    H.openDocumentCardMenu("Orders");
-    H.popover().within(() => {
-      cy.findByText("Edit Visualization").should("exist");
-      cy.findByText("Edit Query").should("exist");
-      cy.findByText("Replace").should("exist");
-    });
-
-    // Close the popover by clicking outside
-    H.documentContent().click();
-
-    cy.log("Create public link and visit public document");
-    visitPublicDocument();
-
-    cy.log("Verify card is visible in public view");
-    H.getDocumentCard("Orders").should("exist");
-
-    cy.log("Open card menu in public view");
-    H.openDocumentCardMenu("Orders");
-
-    cy.log("Verify only 'Download results' option is present");
-    H.popover().within(() => {
-      cy.findByText("Download results").should("exist");
-      cy.findByText("Edit Visualization").should("not.exist");
-      cy.findByText("Edit Query").should("not.exist");
-      cy.findByText("Replace").should("not.exist");
-
-      // Verify there's only one menu item
-      cy.findAllByRole("menuitem").should("have.length", 1);
-    });
-  });
-
-  it("should restrict document header menu in public view", () => {
-    // Create a document
-    createTestDocument(
-      "Test Document Header",
-      "Testing header menu restrictions",
-    );
-
-    cy.log("Visit document as admin to verify full menu exists");
-    H.visitDocument("@documentId");
-
-    // Verify the document content loaded
-    H.documentContent().should("contain", "Testing header menu restrictions");
 
     // Check that "More options" menu exists with admin options
     cy.findByRole("button", { name: "More options" }).click();
@@ -186,89 +131,68 @@ describe("scenarios > documents > public", () => {
     // Close the popover
     H.documentContent().click();
 
-    cy.log("Create public link and visit public document");
-    visitPublicDocument();
-
-    cy.log("Verify document content is visible in public view");
-    H.documentContent().should("contain", "Testing header menu restrictions");
-
-    cy.log("Verify 'More options' menu is either hidden or restricted");
-    // In public view, the "More options" button should not exist or should have limited options
-    cy.findByRole("button", { name: "More options" }).should("not.exist");
-  });
-
-  it("should be read-only in public view", () => {
-    // Create a document
-    createTestDocument(
-      "Read-only Test Document",
-      "This content should not be editable",
-    );
-
-    cy.log("Visit document as admin to verify it's editable");
-    H.visitDocument("@documentId");
-
     // Verify the document content is editable
     H.documentContent()
       .findByRole("textbox")
       .should("have.attr", "contenteditable", "true");
 
+    // Verify the metabot block shows its Run button
+    H.documentContent().findByRole("button", { name: "Run" }).should("exist");
+
+    // Verify the comments link and sidebar are available
+    cy.findByRole("link", { name: "Show all comments" }).should("be.visible");
+    H.Comments.openAllComments();
+    H.Comments.getSidebar().should("be.visible");
+
     cy.log("Create public link and visit public document");
+    createPublicLink();
     visitPublicDocument();
 
     cy.log("Verify document content is visible");
-    H.documentContent().should(
-      "contain",
-      "This content should not be editable",
-    );
+    H.documentContent().should("contain", "This is a test paragraph");
+
+    cy.log("Verify comment buttons do not exist in public view");
+    verifyCommentsAreHidden();
+
+    cy.log("Verify 'More options' menu is hidden");
+    cy.findByRole("button", { name: "More options" }).should("not.exist");
 
     cy.log("Verify document is read-only");
     verifyDocumentIsReadOnly();
-  });
 
-  it("should display metabot blocks in a read-only state", () => {
-    const text = "Some metabot prompt";
-    H.createDocument({
-      name: "Document with metabot block",
-      document: {
-        content: [
-          {
-            type: "metabot",
-            content: [{ type: "text", text }],
-          },
-        ],
-        type: "doc",
-      },
-      collection_id: null,
-      idAlias: "documentId",
-    });
-    visitPublicDocument();
-
-    cy.log("Click the metabot block and enter text");
-    H.documentContent().findByText(text).click();
+    cy.log("Metabot block is read-only");
+    H.documentContent().findByText(metabotPrompt).click();
     cy.realType("a");
 
     cy.log("Verify the text wasn't updated");
-    H.documentContent().findByText(text).should("exist");
+    H.documentContent().findByText(metabotPrompt).should("exist");
 
-    cy.log("Verify that run/close buttons don't exist but a metabot icon does");
+    cy.log("Verify that run/close buttons don't exist");
     H.documentContent().find("button").should("not.exist");
-    H.documentContent().icon("metabot").should("exist");
-  });
 
-  it("should allow downloading results from embedded cards", () => {
-    // Create a document with an embedded card
-    createTestDocumentWithCard("Download Test Document");
+    cy.log(
+      "Public card menu only offers downloads; trashing the document breaks its public link",
+    );
+    // Re-points @documentId and @publicUuid at the document with a card
+    createTestDocumentWithCard("Test Document with Card");
 
     cy.log("Create public link and visit public document");
+    createPublicLink();
     visitPublicDocument();
 
-    cy.log("Verify card is visible");
+    cy.log("Verify document and card are visible in public view");
+    H.documentContent().should("contain", "Test content");
     H.getDocumentCard("Orders").should("exist");
 
-    cy.log("Open card menu and verify download option");
+    cy.log("Open card menu in public view");
     H.openDocumentCardMenu("Orders");
+
+    cy.log("Verify only 'Download results' option is present");
     H.popover().within(() => {
       cy.findByText("Download results").should("exist");
+
+      // Verify there's only one menu item
+      cy.findAllByRole("menuitem").should("have.length", 1);
     });
 
     cy.log("Click 'Download results' to show format options");
@@ -281,109 +205,38 @@ describe("scenarios > documents > public", () => {
       cy.findByText(".json").should("exist");
       cy.findByTestId("download-results-button").should("exist");
     });
+
+    cy.log("Move the document to trash");
+    cy.intercept("PUT", "/api/document/*").as("updateDocument");
+    H.visitDocument("@documentId");
+    cy.findByRole("button", { name: "More options" }).click();
+    H.popover().findByText("Move to trash").click();
+    cy.wait("@updateDocument");
+
+    cy.log("Try to access public link after document deletion");
+    visitPublicDocument();
+
+    cy.log("Verify error message is shown");
+    verifyErrorMessage("Not found");
   });
 
-  it("should be accessible without authentication", () => {
-    // Create a document with public link
-    createTestDocumentWithCard("Public Anonymous Document");
-
-    cy.log("Sign out and visit public document as anonymous user");
-    visitPublicDocument("@documentId", { signOut: true });
-
-    cy.log("Verify document content is visible without authentication");
-    H.documentContent().should("contain", "Test content");
-    H.getDocumentCard("Orders").should("exist");
-
-    cy.log("Verify document is read-only");
-    verifyDocumentIsReadOnly();
-
-    cy.log("Verify no authentication UI is shown");
-    cy.findByRole("button", { name: "Sign in" }).should("not.exist");
-  });
-
-  it("should become inaccessible when public sharing is disabled", () => {
+  it("should be accessible anonymously with branding, inaccessible once public sharing is disabled, and unbranded on premium", () => {
     // Create a document with public link
     createTestDocumentWithCard("Document for Disabling Test");
 
     cy.log("Create public link while sharing is enabled");
-    cy.get("@documentId")
-      .then((documentId) => {
-        return H.createPublicDocumentLink(documentId);
-      })
-      .then(({ body: { uuid } }) => {
-        cy.wrap(uuid).as("publicUuid");
+    createPublicLink();
 
-        cy.log("Verify document is accessible with sharing enabled");
-        cy.signOut();
-        cy.visit(`/public/document/${uuid}`);
-        H.documentContent().should("contain", "Test content");
-      });
-
-    cy.log("Disable public sharing");
-    cy.signInAsAdmin();
-    H.updateSetting("enable-public-sharing", false);
+    cy.log("Verify document is accessible with sharing enabled");
     cy.signOut();
+    visitPublicDocument();
+    H.documentContent().should("contain", "Test content");
 
-    cy.log("Try to access public document after disabling sharing");
-    cy.get("@publicUuid").then((uuid) => {
-      cy.visit(`/public/document/${uuid}`);
-
-      cy.log("Verify document is no longer accessible");
-      verifyErrorMessage("An error occurred.");
-    });
-
-    // Cleanup: Re-enable public sharing for subsequent tests
-    cy.signInAsAdmin();
-    H.updateSetting("enable-public-sharing", true);
-  });
-
-  it("should show error when accessing public link of deleted document", () => {
-    // Create a document with public link
-    createTestDocumentWithCard("Document to be Deleted");
-
-    cy.log("Create public link");
-    cy.get("@documentId")
-      .then((documentId) => {
-        return H.createPublicDocumentLink(documentId);
-      })
-      .then(({ body: { uuid } }) => {
-        cy.wrap(uuid).as("publicUuid");
-
-        cy.log("Verify document is accessible before deletion");
-        cy.visit(`/public/document/${uuid}`);
-        H.documentContent().should("contain", "Test content");
-      });
-
-    cy.log("Delete the document");
-    cy.get("@documentId").then((documentId) => {
-      H.visitDocument(documentId);
-    });
-
-    // Move document to trash
-    cy.findByRole("button", { name: "More options" }).click();
-    H.popover().findByText("Move to trash").click();
-
-    cy.log("Try to access public link after document deletion");
-    cy.get("@publicUuid").then((uuid) => {
-      cy.visit(`/public/document/${uuid}`);
-
-      cy.log("Verify error message is shown");
-      verifyErrorMessage("Not found");
-    });
-  });
-
-  it("should display 'Powered by Metabase' link in footer", () => {
-    // Create a document
-    createTestDocument(
-      "Test Document with Footer",
-      "Testing footer branding link",
-    );
-
-    cy.log("Create public link and visit public document");
-    visitPublicDocument("@documentId", { signOut: true });
-
-    cy.log("Verify document content is visible");
-    H.documentContent().should("contain", "Testing footer branding link");
+    cy.log("Verify the document is read-only without authentication");
+    H.getDocumentCard("Orders").should("exist");
+    verifyDocumentIsReadOnly();
+    cy.location("pathname").should("match", /^\/public\/document\//);
+    cy.findByRole("button", { name: "Sign in" }).should("not.exist");
 
     cy.log("Verify 'Powered by Metabase' link exists in footer");
     cy.findByRole("link", { name: "Powered by Metabase" })
@@ -391,23 +244,28 @@ describe("scenarios > documents > public", () => {
       .should("be.visible")
       .should("have.attr", "href")
       .and("contain", "https://www.metabase.com?");
-  });
 
-  it("should not display footer for premium", () => {
+    cy.log("Disable public sharing");
+    cy.signInAsAdmin();
+    H.updateSetting("enable-public-sharing", false);
+    cy.signOut();
+
+    cy.log("Try to access public document after disabling sharing");
+    visitPublicDocument();
+
+    cy.log("Verify document is no longer accessible");
+    verifyErrorMessage("An error occurred.");
+
+    cy.log("Re-enable public sharing with a premium token");
+    cy.signInAsAdmin();
+    H.updateSetting("enable-public-sharing", true);
     H.activateToken("pro-self-hosted");
+    cy.signOut();
 
-    // Create a document
-    createTestDocument(
-      "Test Document with Footer",
-      "Testing footer branding link",
-    );
+    visitPublicDocument();
+    H.documentContent().should("contain", "Test content");
 
-    cy.log("Create public link and visit public document");
-    visitPublicDocument("@documentId", { signOut: true });
-
-    cy.log("Verify document content is visible");
-    H.documentContent().should("contain", "Testing footer branding link");
-
-    cy.findByTestId("embed-frame-footer").should("not.exist");
+    cy.log("Verify 'Powered by Metabase' link is hidden for premium");
+    cy.findByRole("link", { name: "Powered by Metabase" }).should("not.exist");
   });
 });

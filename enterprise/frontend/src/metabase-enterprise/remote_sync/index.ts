@@ -17,6 +17,7 @@ import {
 } from "./components/SyncedCollectionsSidebarSection";
 import { REMOTE_SYNC_INVALIDATION_TAGS } from "./constants";
 import { useGitSyncVisible } from "./hooks/use-git-sync-visible";
+import { useHasGlossaryDirtyChanges } from "./hooks/use-has-glossary-dirty-changes";
 import { useHasLibraryDirtyChanges } from "./hooks/use-has-library-dirty-changes";
 import { useHasTransformDirtyChanges } from "./hooks/use-has-transform-dirty-changes";
 import { useRemoteSyncDirtyState } from "./hooks/use-remote-sync-dirty-state";
@@ -47,6 +48,7 @@ export function initializePlugin() {
     PLUGIN_REMOTE_SYNC.useHasLibraryDirtyChanges = useHasLibraryDirtyChanges;
     PLUGIN_REMOTE_SYNC.useHasTransformDirtyChanges =
       useHasTransformDirtyChanges;
+    PLUGIN_REMOTE_SYNC.useHasGlossaryDirtyChanges = useHasGlossaryDirtyChanges;
     PLUGIN_REMOTE_SYNC.getIsRemoteSyncReadOnly = getIsRemoteSyncReadOnly;
     PLUGIN_REMOTE_SYNC.useRemoteSyncDirtyState = useRemoteSyncDirtyState;
 

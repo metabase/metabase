@@ -4,6 +4,7 @@
    [buddy.core.codecs :as codecs]
    [buddy.core.mac :as mac]
    [clojure.string :as str]
+   [metabase.app-db.encryption-test-util :as encryption-tu]
    [metabase.channel.slack :as channel.slack]
    [metabase.metabot.agent.core :as agent]
    [metabase.slackbot.api :as slackbot]
@@ -52,17 +53,19 @@
   "Alias for [[metabase.slackbot.channel/section-text-limit]]."
   slackbot.channel/section-text-limit)
 
-(def oversized-answer
-  "An answer comfortably past [[slack-section-text-limit]].
-   Numbered line by line, so a truncated copy can be checked against the original."
-  (str/join "\n" (map #(format "Line %04d of a rather long answer." %) (range 200))))
+(def slack-markdown-text-limit
+  "Alias for [[metabase.slackbot.channel/markdown-text-limit]]."
+  slackbot.channel/markdown-text-limit)
 
-(defn oversized-section-error
-  "The `chat.postMessage` rejection Slack returns for an oversized `section` block in `blocks`.
-   Nil when every block is within [[slack-section-text-limit]]. Models that one rule -- the one
-   BOT-1606 is about -- not Block Kit validation at large."
+(def oversized-answer
+  "An answer comfortably past [[slack-markdown-text-limit]].
+   Numbered line by line, so a truncated copy can be checked against the original."
+  (str/join "\n" (map #(format "Line %04d of a rather long answer." %) (range 400))))
+
+(defn- oversized-section-error
+  "Returns Slack's `invalid_blocks` rejection for an over-long `section`, or nil when every one fits.
+   Slack names the offending block and its limit, which the messages here reproduce."
   [blocks]
-  ;; The mocked client accepts anything, so tests that care about this rule come through here.
   (when-let [idx (first (keep-indexed (fn [idx block]
                                         (when (and (= "section" (:type block))
                                                    (> (count (get-in block [:text :text] ""))
@@ -76,14 +79,37 @@
                  (format "[ERROR] must be less than %d characters [json-pointer:/blocks/%d/text/text]"
                          (inc slack-section-text-limit) idx)]}}))
 
+(defn- oversized-markdown-error
+  "Returns Slack's `msg_too_long` rejection for over-long `markdown` text, or nil when it fits.
+   The budget is charged across every `markdown` block at once, matching what
+   [[slack-markdown-text-limit]] documents rather than the per-block enforcement seen today."
+  [blocks]
+  (let [total (->> blocks
+                   (filter #(= "markdown" (:type %)))
+                   (map #(count (:text % "")))
+                   (reduce + 0))]
+    (when (> total slack-markdown-text-limit)
+      ;; A bare error, carrying none of the per-block detail the `section` case does (measured).
+      {:ok false :error "msg_too_long"})))
+
+(defn oversized-block-error
+  "Returns the `chat.postMessage` rejection Slack would send for `blocks`, or nil when it accepts them.
+   Models two rules only, the `section` and `markdown` text limits BOT-1606 and BOT-2010 are about,
+   not Block Kit validation at large."
+  [blocks]
+  ;; The mocked client accepts anything, so tests that care about these rules come through here.
+  (or (oversized-section-error blocks)
+      (oversized-markdown-error blocks)))
+
 (defmacro with-ensure-encryption
-  "Use the existing encryption key if one is configured, otherwise set a test key.
-   Avoids conflicts with encrypted settings in the DB that were written with the real key."
+  "Use the existing encryption key if one is configured, otherwise run against the namespace's prepared encrypted app
+   DB (see [[metabase.app-db.encryption-test-util/with-encrypted-app-db]]). Reading a setting under an active key
+   strictly decrypts it, so an isolated, already-encrypted app DB keeps that read from tripping over a plaintext
+   setting left in the shared app DB by another namespace."
   [& body]
   `(if (encryption/default-encryption-enabled?)
      (do ~@body)
-     (with-redefs [encryption/default-secret-key test-encryption-key]
-       ~@body)))
+     (encryption-tu/with-encrypted-app-db ~@body)))
 
 (defmacro with-slackbot-setup
   "Wrap body with all required settings for slackbot to be fully configured.
@@ -118,6 +144,7 @@
     {:request-options {:headers {"x-slack-signature" signature
                                  "x-slack-request-timestamp" timestamp}}}))
 
+;; flagged for the `!` vars it rebinds, not calls; with-dynamic-fn-redefs keeps the redefs thread-safe
 #_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
 (defn with-slackbot-mocks
   "Helper to set up common mocks for slackbot tests.

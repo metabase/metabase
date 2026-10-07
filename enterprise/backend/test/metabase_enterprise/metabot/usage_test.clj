@@ -43,7 +43,9 @@
           (let [before-count (t2/count :model/AiUsageLog :user_id user-id :source "metabot_agent")]
             (usage/log-ai-usage!
              {:source            "metabot_agent"
-              :model             "anthropic/claude-test"
+              :model             "openrouter-1/anthropic/claude-test"
+              :provider          "openrouter"
+              :model-name        "anthropic/claude-test"
               :prompt-tokens     100
               :completion-tokens 50
               :ai-proxied        true})
@@ -52,7 +54,9 @@
                      (t2/count :model/AiUsageLog :user_id user-id :source "metabot_agent")))
               (let [row (t2/select-one :model/AiUsageLog :user_id user-id :source "metabot_agent"
                                        {:order-by [[:id :desc]]})]
-                (is (= "anthropic/claude-test" (:model row)))
+                (is (= "openrouter-1/anthropic/claude-test" (:model row)))
+                (is (= "openrouter" (:provider row)))
+                (is (= "anthropic/claude-test" (:model_name row)))
                 (is (= 100 (:prompt_tokens row)))
                 (is (= 50 (:completion_tokens row)))
                 (is (= 150 (:total_tokens row)))

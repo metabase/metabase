@@ -6,7 +6,7 @@
   );
   padding: var(
     --notification-warning-padding,
-    var(--mantine-spacing-md) var(--mantine-spacing-xl)
+    var(--mantine-spacing-lg) var(--mantine-spacing-xxl)
   );
 }
 

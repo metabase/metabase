@@ -1,7 +1,6 @@
-import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
-import { createMockMetadata } from "__support__/metadata";
+import { renderWithProviders, screen } from "__support__/ui";
 import MetabaseSettings from "metabase/utils/settings";
 import { createMockVisualizationProps } from "metabase/visualizations/types/mocks";
 import type {
@@ -15,11 +14,7 @@ import {
   createMockSingleSeries,
   createMockStructuredDatasetQuery,
 } from "metabase-types/api/mocks";
-import {
-  ORDERS_ID,
-  SAMPLE_DB_ID,
-  createSampleDatabase,
-} from "metabase-types/api/mocks/presets";
+import { ORDERS_ID, SAMPLE_DB_ID } from "metabase-types/api/mocks/presets";
 
 import { PinMap, getPoints } from "./PinMap";
 
@@ -277,13 +272,14 @@ describe("PinMap", () => {
       data: series[0].data,
       card: series[0].card,
       settings,
-      metadata: createMockMetadata({ databases: [createSampleDatabase()] }),
       isDashboard,
       height: 300,
       onRender,
     });
 
-    const { rerender } = render(<PinMap {...props} token={token} />);
+    const { rerender } = renderWithProviders(
+      <PinMap {...props} token={token} />,
+    );
 
     return { onRender, props, rerender };
   };
@@ -304,14 +300,16 @@ describe("PinMap", () => {
   it("should render the 'Set as default view' button with the PinMapUpdateButton class", () => {
     setup();
 
-    const button = screen.getByText("Set as default view");
+    const button = screen.getByRole("button", { name: "Set as default view" });
     expect(button).toHaveClass("PinMapUpdateButton");
   });
 
   it("should render the 'Draw box to filter' button outside dashboards", async () => {
     setup();
 
-    const button = await screen.findByText("Draw box to filter");
+    const button = await screen.findByRole("button", {
+      name: "Draw box to filter",
+    });
     expect(button).toHaveClass("PinMapUpdateButton");
   });
 

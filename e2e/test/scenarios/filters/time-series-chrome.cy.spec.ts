@@ -27,7 +27,7 @@ describe("time-series chrome filter widget", () => {
       });
     });
 
-    it("should properly display the component and all its operators", () => {
+    it("should display all operators and stay in sync with the relative date filter", () => {
       const operators = [
         "Previous",
         "Next",
@@ -67,11 +67,10 @@ describe("time-series chrome filter widget", () => {
         cy.findByLabelText(/^Include/).should("not.exist");
         cy.button("Apply").should("not.be.disabled");
       });
-    });
 
-    it("should stay in sync with the relative date filter", () => {
-      cy.findByTestId("timeseries-filter-button").click();
-      updateOperator("All time", "Previous");
+      cy.findByRole("listbox")
+        .findByRole("option", { name: "Previous" })
+        .click();
 
       cy.log("Check the state of the time-series chrome");
       cy.findByTestId("date-filter-picker").within(() => {
@@ -206,9 +205,10 @@ describe("time-series chrome filter widget", () => {
       });
 
       updateOperator("Next", "Current");
-      cy.findByTestId("date-filter-picker")
-        .findByLabelText("Include today")
-        .should("not.exist");
+      cy.findByTestId("date-filter-picker").within(() => {
+        cy.findByDisplayValue("Current").should("be.visible");
+        cy.findByLabelText("Include this year").should("not.exist");
+      });
 
       updateOperator("Current", "Previous");
       cy.findByTestId("date-filter-picker").within(() => {

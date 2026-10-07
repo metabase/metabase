@@ -3,7 +3,6 @@ import type { Draft } from "immer";
 import _ from "underscore";
 
 import type { VisualizerVizDefinitionWithColumns } from "metabase/redux/store/visualizer";
-import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
 import { DROPPABLE_ID } from "metabase/visualizer/constants";
 import {
   addColumnMapping,
@@ -13,6 +12,7 @@ import {
 } from "metabase/visualizer/utils/column";
 import { createDataSourceNameRef } from "metabase/visualizer/utils/data-source";
 import { isDraggedColumnItem } from "metabase/visualizer/utils/drag-and-drop";
+import type { ComputedVisualizationSettings } from "metabase/viz-core";
 import {
   isDimension,
   isMetric,

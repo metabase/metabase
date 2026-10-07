@@ -26,7 +26,8 @@
 
 (mu/defn column-with-unique-key :- [:maybe ::lib.metadata.calculation/returned-column]
   "Get metadata for the returned column with `unique-key`."
-  ([query unique-key]
+  ([query      :- ::lib.schema/query
+    unique-key :- ::lib.schema/column-unique-key]
    (column-with-unique-key query -1 unique-key))
   ([query        :- ::lib.schema/query
     stage-number :- :int

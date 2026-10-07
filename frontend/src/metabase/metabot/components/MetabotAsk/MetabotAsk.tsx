@@ -65,7 +65,7 @@ export const MetabotAsk = () => {
       {showGreeting ? (
         <>
           {historyAction && (
-            <Flex justify="flex-end" px="md" pt="md">
+            <Flex justify="flex-end" px="lg" pt="lg">
               {historyAction}
             </Flex>
           )}
@@ -76,10 +76,10 @@ export const MetabotAsk = () => {
         </>
       ) : (
         <Box pos="relative" h="100%" w="100%">
-          <Box className={S.topFade} />
           <MetabotChat
             conversationId={conversationId}
             agentId="ask"
+            size="lg"
             onNewConversation={() =>
               navigate(Urls.newQuestion({ mode: "ask" }))
             }

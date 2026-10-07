@@ -2,11 +2,12 @@
   "Utility functions used by the Queries in metabase-lib."
   (:require
    #?@(:cljs ([metabase.xrays.domain-entities.converters :as converters]))
+   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.util.malli :as mu]))
 
 (def Expression
   "Schema for an Expression that's part of a query filter."
-  :any)
+  ::lib.schema.common/possibly-unnormalized-clause)
 
 (def ExpressionMap
   "Malli schema for a map of expressions by name."

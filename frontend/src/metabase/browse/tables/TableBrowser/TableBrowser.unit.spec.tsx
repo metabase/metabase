@@ -1,12 +1,21 @@
 import fetchMock from "fetch-mock";
 
+import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
+import { mockSettings } from "__support__/settings";
+import { createMockState } from "__support__/state";
 import {
   renderWithProviders,
   screen,
   waitFor,
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
-import { createMockDatabase, createMockTable } from "metabase-types/api/mocks";
+import { SAVED_QUESTIONS_VIRTUAL_DB_ID } from "metabase-lib/v1/metadata/utils/saved-questions";
+import {
+  createMockDatabase,
+  createMockTable,
+  createMockTokenFeatures,
+  createMockUser,
+} from "metabase-types/api/mocks";
 
 import { TableBrowser } from "./TableBrowser";
 
@@ -82,5 +91,62 @@ describe("TableBrowser", () => {
     expect(
       fetchMock.callHistory.calls("path:/api/database/1/schema/"),
     ).toHaveLength(0);
+  });
+
+  it("links a saved-question virtual table to an ad-hoc question", async () => {
+    const table = createMockTable({
+      id: "card__17",
+      db_id: 1,
+      name: "My question",
+      display_name: "My question",
+      initial_sync_status: "complete",
+    });
+    fetchMock.get(
+      `path:/api/database/${SAVED_QUESTIONS_VIRTUAL_DB_ID}/schema/Everything else`,
+      [table],
+    );
+
+    renderWithProviders(
+      <TableBrowser
+        dbId={SAVED_QUESTIONS_VIRTUAL_DB_ID}
+        schemaName="Everything else"
+      />,
+    );
+
+    const link = await screen.findByRole("link", { name: /My question/ });
+    expect(link).toHaveAttribute("href", expect.stringMatching(/^\/question#/));
+  });
+  it("offers the edit action when the database allows table editing", async () => {
+    const table = createMockTable({
+      id: 123,
+      name: "foo",
+      display_name: "foo",
+      initial_sync_status: "complete",
+      is_writable: true,
+    });
+    const database = createMockDatabase({
+      id: 1,
+      tables: [table],
+      settings: { "database-enable-table-editing": true },
+    });
+    fetchMock.get(`path:/api/database/${database.id}`, database);
+    fetchMock.get(`path:/api/database/${database.id}/schema/public`, [table]);
+
+    const state = createMockState({
+      currentUser: createMockUser({ is_superuser: true }),
+      settings: mockSettings({
+        "token-features": createMockTokenFeatures({
+          table_data_editing: true,
+        }),
+      }),
+    });
+    setupEnterpriseOnlyPlugin("table-editing");
+
+    renderWithProviders(<TableBrowser dbId={1} schemaName="public" />, {
+      storeInitialState: state,
+    });
+
+    expect(await screen.findByText("foo")).toBeInTheDocument();
+    expect(await screen.findByTestId("edit-table-icon")).toBeInTheDocument();
   });
 });

@@ -1,5 +1,6 @@
 import { t } from "ttag";
 
+import upsellAiUsageAuditingImage from "assets/img/upsell-ai-usage-auditing.png";
 import { DottedBackground } from "metabase/common/components/upsells/components/DottedBackground";
 import { LineDecorator } from "metabase/common/components/upsells/components/LineDecorator";
 import { useUpgradeAction } from "metabase/common/components/upsells/components/UpgradeModal";
@@ -31,7 +32,7 @@ export function MetabotAnalyticsUpsellPage() {
               description={t`Track trends of token use, conversations, and messages, and understand what your team is doing with AI in Metabase.`}
               upgradeOnClick={upgradeOnClick}
               upgradeUrl={upgradeUrl}
-              image="app/assets/img/upsell-ai-usage-auditing.png"
+              image={upsellAiUsageAuditingImage}
             />
           </LineDecorator>
         </Stack>

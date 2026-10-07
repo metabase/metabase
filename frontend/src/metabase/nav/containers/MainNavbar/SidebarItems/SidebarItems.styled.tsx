@@ -1,13 +1,12 @@
-// eslint-disable-next-line no-restricted-imports
+// eslint-disable-next-line eslint-js/no-restricted-imports
 import { css } from "@emotion/react";
-// eslint-disable-next-line no-restricted-imports
+// eslint-disable-next-line eslint-js/no-restricted-imports
 import styled from "@emotion/styled";
 import type { ComponentProps } from "react";
 import { forwardRef } from "react";
 
 import { Link } from "metabase/common/components/Link";
 import { TreeNode } from "metabase/common/components/tree/TreeNode";
-import { NAV_SIDEBAR_WIDTH } from "metabase/nav/constants";
 import type { IconProps } from "metabase/ui";
 import { Icon, Tooltip } from "metabase/ui";
 import { alpha } from "metabase/ui/colors";
@@ -96,6 +95,7 @@ const itemContentStyle = css`
   display: flex;
   align-items: center;
   width: 100%;
+  min-width: 0;
 `;
 
 export const FullWidthButton = styled.button<{ isSelected: boolean }>`
@@ -134,10 +134,9 @@ export const FullWidthContainer = styled.div`
 `;
 
 const ITEM_NAME_LENGTH_TOOLTIP_THRESHOLD = 35;
-const ITEM_NAME_LABEL_WIDTH = Math.round(parseInt(NAV_SIDEBAR_WIDTH, 10) * 0.7);
 
 export const ItemName = styled(TreeNode.NameContainer)`
-  width: ${ITEM_NAME_LABEL_WIDTH}px;
+  min-width: 0;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;

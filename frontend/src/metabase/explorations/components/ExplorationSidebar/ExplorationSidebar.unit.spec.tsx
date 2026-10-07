@@ -157,8 +157,9 @@ describe("ExplorationSidebar", () => {
             selectedSidebarTab={selectedSidebarTab}
             getSelectedSidebarTabUrl={getSelectedSidebarTabUrl}
             tree={tree}
-            selectedPageId="2"
+            selectedEntity={{ type: "page", id: "2" }}
             getSelectedPageUrl={(pageId) => `${path}/page/${pageId}`}
+            getSelectedSummaryUrl={() => path}
             shouldScrollSelectionRef={{ current: false }}
             isOpen
             readPageIds={readPageIds}
@@ -519,8 +520,9 @@ describe("ExplorationSidebar", () => {
         selectedSidebarTab={selectedSidebarTab}
         getSelectedSidebarTabUrl={getSelectedSidebarTabUrl}
         tree={tree}
-        selectedPageId={String(REVENUE_PAGE_ID)}
+        selectedEntity={{ type: "page", id: String(REVENUE_PAGE_ID) }}
         getSelectedPageUrl={() => path}
+        getSelectedSummaryUrl={() => path}
         shouldScrollSelectionRef={shouldScrollSelectionRef}
         isOpen
         readPageIds={new Set<string>()}
@@ -628,8 +630,9 @@ describe("ExplorationSidebar", () => {
           selectedSidebarTab={selectedSidebarTab}
           getSelectedSidebarTabUrl={getSelectedSidebarTabUrl}
           tree={tree}
-          selectedPageId={selectedId}
+          selectedEntity={{ type: "page", id: selectedId }}
           getSelectedPageUrl={() => path}
+          getSelectedSummaryUrl={() => path}
           shouldScrollSelectionRef={shouldScrollSelectionRef}
           isOpen
           readPageIds={new Set<string>()}
@@ -1155,8 +1158,9 @@ describe("ExplorationSidebar", () => {
               selectedSidebarTab={selectedSidebarTab}
               getSelectedSidebarTabUrl={getSelectedSidebarTabUrl}
               tree={tree}
-              selectedPageId={String(PAGE_ID)}
+              selectedEntity={{ type: "page", id: String(PAGE_ID) }}
               getSelectedPageUrl={() => path}
+              getSelectedSummaryUrl={() => path}
               shouldScrollSelectionRef={shouldScrollSelectionRef}
               isOpen
               readPageIds={new Set<string>()}

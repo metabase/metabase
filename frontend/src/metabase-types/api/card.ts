@@ -28,6 +28,7 @@ import type { DownloadPermission } from "./permissions";
 import type { DatasetQuery, FieldReference, PublicDatasetQuery } from "./query";
 import type { CollectionEssentials } from "./search";
 import type { Table, TableId } from "./table";
+import type { TimelineEventId, TimelineId } from "./timeline";
 import type { UserInfo } from "./user";
 import type { CardDisplayType, VisualizationDisplay } from "./visualization";
 import type {
@@ -138,6 +139,8 @@ export type LineSize = "S" | "M" | "L";
 export type SeriesSettings = {
   title?: string;
   color?: string;
+  /** Palette color the series was given, so it can follow the active palette */
+  color_name?: string;
   show_series_values?: boolean;
   display?: VisualizationDisplay;
   axis?: string;
@@ -359,8 +362,11 @@ export type VisualizationSettings = {
   /** Let Metabase choose the y-axis bounds automatically. */
   "graph.y_axis.auto_range"?: boolean;
 
-  /** Override the y-axis label. */
+  /** Override the y-axis label. On a split chart this labels the left axis. */
   "graph.y_axis.title_text"?: string;
+
+  /** Override the right y-axis label on a split chart. Falls back to `graph.y_axis.title_text`. */
+  "graph.y_axis.right.title_text"?: string;
 
   /** Y-axis numeric scale, such as linear, pow, or log. */
   "graph.y_axis.scale"?: YAxisScale;
@@ -407,6 +413,10 @@ export type VisualizationSettings = {
   /** Explicit order, labels, colors, and enabled state for breakout series. */
   "graph.series_order"?: SeriesOrderSetting[];
 
+  // Timeline events settings
+  "timeline.selected_timeline_ids"?: TimelineId[];
+  "timeline.excluded_timeline_event_ids"?: TimelineEventId[];
+
   /** Result numeric column name used to size scatter plot bubbles. */
   "scatter.bubble"?: string;
 
@@ -445,6 +455,9 @@ export type VisualizationSettings = {
 
   /** Use compact formatting for the primary scalar number. */
   "scalar.compact_primary_number"?: boolean;
+
+  /** Show the absolute comparison value next to the percent change in trend cards. */
+  "scalar.show_comparison_value"?: boolean;
 
   /** Segment configuration for scalar visualizations. */
   "scalar.segments"?: ScalarSegment[];
@@ -576,6 +589,7 @@ export type CardFilterOption =
   | "recent"
   | "popular"
   | "using_model"
+  | "using_segment"
   | "archived";
 
 export type CardQueryMetadata = {
@@ -681,12 +695,20 @@ export type InvalidCardRequest = {
   collection_id?: CollectionId | null;
 } & PaginationRequest;
 
+export type StoredResultSort =
+  | "value_asc"
+  | "value_desc"
+  | "label_asc"
+  | "label_desc";
+
 export type CardQueryRequest = {
   cardId: CardId;
   dashboardId?: DashboardId;
   collection_preview?: boolean;
   ignore_cache?: boolean;
   parameters?: unknown[];
+  stored_result_id?: number;
+  sort?: StoredResultSort;
 };
 
 export type GetPublicCard = Pick<Card, "id" | "name" | "public_uuid">;

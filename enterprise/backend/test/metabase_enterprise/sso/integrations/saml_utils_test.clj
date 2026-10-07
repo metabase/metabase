@@ -3,6 +3,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase-enterprise.sso.integrations.saml-utils :as saml-utils]
+   [metabase.server.middleware.security :as mw.security]
    [metabase.util.json :as json]))
 
 (set! *warn-on-reflection* true)
@@ -17,7 +18,9 @@
       (is (= 200 (:status response)))
       (is (= "text/html" (get-in response [:headers "Content-Type"])))
       (is (str/includes? (:body response)
-                         (str "<script nonce=\"" nonce "\">"))))))
+                         (str "<script nonce=\"" nonce "\">")))
+      (testing "and opts into a script-src nonce, since the script body varies per request"
+        (is (true? (get response mw.security/script-nonce-response-key)))))))
 
 (deftest ^:parallel popup-values-are-json-encoded-test
   (testing "the popup script uses JSON-encoded values"

@@ -14,7 +14,10 @@
 (p/import-vars
  [metabase.pulse.models.pulse
   card->ref
+  maybe-filter-pulse-recipients
+  maybe-strip-sensitive-metadata
   retrieve-alerts-for-cards
+  retrieve-pulse
   update-pulse!]
  [metabase.pulse.update-alerts
   delete-alerts-if-needed!])

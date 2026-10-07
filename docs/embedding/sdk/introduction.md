@@ -105,7 +105,7 @@ Start with one of the quickstarts, then see these pages for more info on compone
 
 - [Authentication](../authentication.md)
 - [Embed a chart](../chart.md)
-- [AI chat](./ai-chat.md)
+- [Embed an AI chat](../ai-chat.md)
 - [Embed a dashboard](../dashboard.md)
 - [Actions](./actions.md)
 - [Appearance](../appearance.md)
@@ -113,12 +113,13 @@ Start with one of the quickstarts, then see these pages for more info on compone
 - [Custom visualizations](../custom-visualizations.md)
 - [Plugins](./plugins.md)
 - [Config](./config.md)
+- [Customize loading, error, and empty states](./loading-and-errors.md)
 - [Versioning](./version.md)
 - [Notes on Next.js](./next-js.md)
 
 ## Modular embedding SDK source code
 
-You can find the [Modular embedding SDK source code in the Metabase repo](https://github.com/metabase/metabase/tree/master/enterprise/frontend/src/embedding-sdk).
+You can find the [Modular embedding SDK source code in the Metabase repo](https://github.com/metabase/metabase/tree/master/enterprise/frontend/src/embedding-sdk-package).
 
 ## Modular embedding SDK on npm
 

@@ -13,8 +13,10 @@ import {
   COLUMN_SPLIT_SETTING,
   isPivotGroupColumn,
 } from "metabase/visualizations/lib/data_grid";
-import { columnSettings } from "metabase/visualizations/lib/settings/column";
-import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
+import {
+  type ComputedVisualizationSettings,
+  columnSettings,
+} from "metabase/viz-core";
 import {
   getFieldRefForComparison,
   migratePivotColumnSplitSetting,
@@ -30,7 +32,7 @@ import type {
   VisualizationSettings,
 } from "metabase-types/api";
 
-import { partitions } from "./partitions";
+import { getPartitions } from "./partitions";
 import {
   addMissingCardBreakouts,
   isColumnValid,
@@ -88,7 +90,7 @@ export const settings = {
         settings[COLUMN_SPLIT_SETTING] ?? { rows: [], columns: [], values: [] },
         data?.cols ?? [],
       ),
-      partitions,
+      partitions: getPartitions(),
       columns: data == null ? [] : data.cols,
       settings,
       getColumnTitle: (column: DatasetColumn) => {

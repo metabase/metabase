@@ -6,7 +6,10 @@
    [metabase.search.core :as search]
    [metabase.search.test-util :as search.tu]
    [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
    [toucan2.core :as t2]))
+
+(use-fixtures :once (fixtures/initialize :db))
 
 (deftest curated-ids-consistent-with-index-test
   (testing "curated-ids reads the same verdict from source-of-truth tables that the search index

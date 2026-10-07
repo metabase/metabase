@@ -46,27 +46,34 @@ export function ProviderConnectionForm({
   onCancel?: () => void;
 }) {
   const isEditing = connection != null;
-  const [typeName, setTypeName] = useState<string | undefined>(
-    connection?.type,
+  const [providerType, setProviderType] = useState(() =>
+    providerTypes.find((option) => option.type === connection?.type),
   );
   const [name, setName] = useState(connection?.name ?? "");
   const [config, setConfig] = useState<LlmProviderConfig>(
     connection?.config ?? {},
   );
-  // On edit, start the picker on the model the connection is actually serving Metabot, not the type default.
+  // On edit, start the picker on the model the connection is actually serving, not the type default.
   const modelRef = useSetting("llm-metabot-provider");
   const [model, setModel] = useState<string | undefined>(() => {
     const type = providerTypes.find(
       (option) => option.type === connection?.type,
     );
+    const isOnCatalog = (id?: string | null): id is string =>
+      type?.models.some((typeModel) => typeModel.id === id) ?? false;
     const [refKey, ...refModelParts] = (modelRef ?? "").split("/");
     const refModel = refModelParts.join("/");
     if (
       connection != null &&
       refKey === connection.key &&
-      type?.models.some((typeModel) => typeModel.id === refModel)
+      isOnCatalog(refModel)
     ) {
       return refModel;
+    }
+    // Metabot points elsewhere: fall back to the model this connection was last verified against.
+    const probedModel = connection?.config?.["probed-model"];
+    if (isOnCatalog(probedModel)) {
+      return probedModel;
     }
     return type?.default_model ?? undefined;
   });
@@ -75,11 +82,6 @@ export function ProviderConnectionForm({
   const [createProvider, createResult] = useCreateLlmProviderMutation();
   const [updateProvider, updateResult] = useUpdateLlmProviderMutation();
   const isSaving = createResult.isLoading || updateResult.isLoading;
-
-  const providerType = useMemo(
-    () => providerTypes.find((option) => option.type === typeName),
-    [providerTypes, typeName],
-  );
 
   const [primaryFields, advancedFields] = useMemo(() => {
     const fields = providerType?.fields ?? [];
@@ -95,7 +97,7 @@ export function ProviderConnectionForm({
 
   const selectProviderType = useCallback(
     (selected: LlmProviderType, nextConfig: LlmProviderConfig = {}) => {
-      setTypeName(selected.type);
+      setProviderType(selected);
       setName(selected.label);
       setConfig(nextConfig);
       setModel(selected.default_model ?? undefined);
@@ -133,7 +135,7 @@ export function ProviderConnectionForm({
   }, [isPickingType, providerTypes, selectProviderType]);
 
   const handleBack = () => {
-    setTypeName(undefined);
+    setProviderType(undefined);
     setName("");
     setConfig({});
     setModel(undefined);
@@ -143,7 +145,9 @@ export function ProviderConnectionForm({
   // A required field the registry gives a default is already satisfied — the form shows that value pre-selected,
   // and the backend fills it in for a connection that never touched it. A type with alternative credential
   // groups (Google: a service account key, or an OAuth token with a project ID) additionally needs one group
-  // filled in full; its fields are individually optional because either group will do.
+  // filled in full; its fields are individually optional because either group will do. A type with paired
+  // credential groups (Bedrock: the AWS key pair) needs each filled in full or left empty in full, and a
+  // dependent field (Bedrock: the session token) only counts filled when the fields it requires are too.
   const hasValue = (key: string) => (config[key] ?? "").trim() !== "";
   const isComplete =
     providerType != null &&
@@ -156,7 +160,14 @@ export function ProviderConnectionForm({
       )
       .every((field) => hasValue(field.key)) &&
     (providerType.required_any.length === 0 ||
-      providerType.required_any.some((group) => group.every(hasValue)));
+      providerType.required_any.some((group) => group.every(hasValue))) &&
+    Object.entries(providerType.requires).every(
+      ([key, deps]) => !hasValue(key) || deps.every(hasValue),
+    );
+  const hasConfiguredModel =
+    providerType != null &&
+    providerType.model_fields.length > 0 &&
+    providerType.model_fields.every(hasValue);
 
   const handleSave = async () => {
     if (!providerType) {
@@ -172,19 +183,20 @@ export function ProviderConnectionForm({
       ...config,
       ...Object.fromEntries(cleared.map((key) => [key, ""])),
     };
+    const savedModel = hasConfiguredModel ? undefined : model;
     try {
       const saved = isEditing
         ? await updateProvider({
             key: connection.key,
             name,
             config: savedConfig,
-            model,
+            model: savedModel,
           }).unwrap()
         : await createProvider({
             type: providerType.type,
             name,
             config: savedConfig,
-            model,
+            model: savedModel,
           }).unwrap();
       onSaved(saved);
     } catch (caught) {
@@ -200,7 +212,7 @@ export function ProviderConnectionForm({
   const MetabaseAIProviderSetup = PLUGIN_METABOT.MetabaseAIProviderSetup;
 
   return (
-    <Stack gap="lg">
+    <Stack gap="xl">
       {match({ isEditing, providerType })
         .with({ isEditing: false, providerType: P.nullish }, () => (
           <ProviderTypePicker
@@ -211,7 +223,7 @@ export function ProviderConnectionForm({
         .with(
           { providerType: { managed: true } },
           ({ providerType: selected }) => (
-            <Stack gap="lg">
+            <Stack gap="xl">
               {!isEditing && <SelectedProvider providerType={selected} />}
               <MetabaseAIProviderSetup
                 isConnected={isEditing}
@@ -223,7 +235,7 @@ export function ProviderConnectionForm({
         )
         .with({ providerType: P.nonNullable }, ({ providerType: selected }) => (
           <form onSubmit={handleSubmit}>
-            <Stack gap="lg">
+            <Stack gap="xl">
               {!isEditing && <SelectedProvider providerType={selected} />}
               <ProviderConfigFields
                 fields={primaryFields}
@@ -235,7 +247,7 @@ export function ProviderConnectionForm({
                 disabledFields={connection?.env_fields}
                 autoFocusFirstField
               />
-              {selected.models.length > 0 && (
+              {selected.models.length > 0 && !hasConfiguredModel && (
                 <Select
                   label={t`Model`}
                   description={t`Connecting checks your credentials against this model, and Metabot starts on it.`}
@@ -333,11 +345,11 @@ function AdvancedSettings({
   children: ReactNode;
 }) {
   return (
-    <Stack gap="md">
+    <Stack gap="lg">
       <Button
         type="button"
-        variant="subtle"
-        p={0}
+        variant="transparent"
+        size="compact-md"
         w="fit-content"
         aria-expanded={isOpened}
         onClick={onToggle}
@@ -348,7 +360,7 @@ function AdvancedSettings({
         {t`Advanced settings`}
       </Button>
       <Collapse in={isOpened}>
-        <Stack gap="lg">{children}</Stack>
+        <Stack gap="xl">{children}</Stack>
       </Collapse>
     </Stack>
   );

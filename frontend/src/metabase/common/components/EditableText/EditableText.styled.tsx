@@ -1,6 +1,6 @@
-// eslint-disable-next-line no-restricted-imports
+// eslint-disable-next-line eslint-js/no-restricted-imports
 import { css } from "@emotion/react";
-// eslint-disable-next-line no-restricted-imports
+// eslint-disable-next-line eslint-js/no-restricted-imports
 import styled from "@emotion/styled";
 
 interface EditableTextRootProps {
@@ -11,6 +11,7 @@ interface EditableTextRootProps {
 
 export const EditableTextRoot = styled.div<EditableTextRootProps>`
   position: relative;
+  margin: 0;
   color: var(--mb-color-text-primary);
   padding: 0.25rem;
   border: 1px solid transparent;

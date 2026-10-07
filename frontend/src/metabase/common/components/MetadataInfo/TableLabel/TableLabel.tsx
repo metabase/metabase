@@ -1,20 +1,25 @@
-import type Table from "metabase-lib/v1/metadata/Table";
+import type { ColorName } from "metabase/ui/colors/types";
+import type { NormalizedTable } from "metabase-types/api";
 
-import { Label, LabelContainer } from "../MetadataInfo.styled";
+import {
+  Label,
+  LabelContainer,
+  RelativeSizeIcon,
+} from "../MetadataInfo.styled";
 
-import { TableIcon } from "./TableLabel.styled";
+import S from "./TableLabel.module.css";
 
-export function TableLabel({
-  className,
-  table,
-}: {
+type TableLabelProps = {
   className?: string;
-  table: Table;
-}) {
+  table: Pick<NormalizedTable, "display_name">;
+  color?: ColorName;
+};
+
+export function TableLabel({ className, table, color }: TableLabelProps) {
   return (
-    <LabelContainer className={className}>
-      <TableIcon name="table" />
-      <Label>{table.displayName()}</Label>
+    <LabelContainer className={className} color={color}>
+      <RelativeSizeIcon className={S.icon} name="table" />
+      <Label>{table.display_name}</Label>
     </LabelContainer>
   );
 }

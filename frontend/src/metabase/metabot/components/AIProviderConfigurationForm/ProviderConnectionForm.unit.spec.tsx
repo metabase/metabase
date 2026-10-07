@@ -124,9 +124,14 @@ const GOOGLE_TYPE = createMockLlmProviderType({
   label: "Google Gemini Enterprise",
   default_model: "google/gemini-3.5-flash",
   models: [
-    { id: "google/gemini-3.5-flash", display_name: "gemini-3.5-flash" },
-    { id: "google/gemini-3.6-flash", display_name: "gemini-3.6-flash" },
+    { id: "google/gemini-3.5-flash", display_name: "Gemini 3.5 Flash" },
+    { id: "google/gemini-3.6-flash", display_name: "Gemini 3.6 Flash" },
+    {
+      id: "anthropic/claude-sonnet-4-6",
+      display_name: "Claude Sonnet 4.6",
+    },
   ],
+  model_fields: ["endpoint-id"],
   required_any: [["service-account-key"], ["oauth-access-token", "project-id"]],
   fields: [
     createMockLlmProviderField({
@@ -160,6 +165,12 @@ const GOOGLE_TYPE = createMockLlmProviderType({
       type: "password",
       required: false,
       show_when: { field: "auth-method", value: "oauth-token" },
+    }),
+    createMockLlmProviderField({
+      key: "endpoint-id",
+      label: "Model Garden endpoint ID",
+      type: "text",
+      required: false,
     }),
   ],
 });
@@ -312,7 +323,7 @@ describe("ProviderConnectionForm with fields behind a choice", () => {
     await pickGoogle();
     await userEvent.click(screen.getByLabelText("Model"));
     await userEvent.click(
-      await screen.findByRole("option", { name: "gemini-3.6-flash" }),
+      await screen.findByRole("option", { name: "Gemini 3.6 Flash" }),
     );
     await userEvent.upload(
       screen.getByLabelText("Service account key file file input"),
@@ -334,6 +345,43 @@ describe("ProviderConnectionForm with fields behind a choice", () => {
       model: "google/gemini-3.6-flash",
     });
   });
+
+  it("connects to a Model Garden endpoint in place of a catalog model", async () => {
+    const { onSaved } = setupGoogle();
+    const key = '{"type":"service_account"}';
+
+    await pickGoogle();
+    await userEvent.upload(
+      screen.getByLabelText("Service account key file file input"),
+      new File([key], "key.json", { type: "application/json" }),
+    );
+    expect(screen.getByLabelText("Model")).toBeInTheDocument();
+
+    await userEvent.type(
+      screen.getByLabelText("Model Garden endpoint ID"),
+      "1234567890123456789",
+    );
+
+    expect(screen.queryByLabelText("Model")).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: "Connect" }));
+
+    await waitFor(() => {
+      expect(onSaved).toHaveBeenCalled();
+    });
+    expect(
+      await fetchMock.callHistory
+        .lastCall("path:/api/llm/providers", { method: "POST" })
+        ?.request?.json(),
+    ).toEqual({
+      type: "google",
+      name: "Google Gemini Enterprise",
+      config: {
+        "service-account-key": key,
+        "endpoint-id": "1234567890123456789",
+      },
+    });
+  });
 });
 
 describe("ProviderConnectionForm editing a fixed-catalog connection", () => {
@@ -353,8 +401,101 @@ describe("ProviderConnectionForm editing a fixed-catalog connection", () => {
     );
 
     expect(await screen.findByLabelText("Model")).toHaveValue(
-      "gemini-3.6-flash",
+      "Gemini 3.6 Flash",
     );
+  });
+
+  it("starts the model picker on the probed model when Metabot points at another connection", async () => {
+    setupGoogle(
+      createMockLlmProviderConnection({
+        key: "google",
+        type: "google",
+        name: "Google Gemini Enterprise",
+        config: {
+          "auth-method": "oauth-token",
+          "oauth-access-token": "**********en",
+          "project-id": "my-project",
+          "probed-model": "anthropic/claude-sonnet-4-6",
+        },
+      }),
+      { modelRef: "anthropic/claude-sonnet-4-6" },
+    );
+
+    expect(await screen.findByLabelText("Model")).toHaveValue(
+      "Claude Sonnet 4.6",
+    );
+  });
+
+  it("starts the model picker on the type default when there is no probed model", async () => {
+    setupGoogle(
+      createMockLlmProviderConnection({
+        key: "google",
+        type: "google",
+        name: "Google Gemini Enterprise",
+        config: {
+          "auth-method": "oauth-token",
+          "oauth-access-token": "**********en",
+          "project-id": "my-project",
+        },
+      }),
+    );
+
+    expect(await screen.findByLabelText("Model")).toHaveValue(
+      "Gemini 3.5 Flash",
+    );
+  });
+
+  it("starts the model picker on the type default when the probed model left the catalog", async () => {
+    setupGoogle(
+      createMockLlmProviderConnection({
+        key: "google",
+        type: "google",
+        name: "Google Gemini Enterprise",
+        config: {
+          "auth-method": "oauth-token",
+          "oauth-access-token": "**********en",
+          "project-id": "my-project",
+          "probed-model": "google/gemini-2.0-flash",
+        },
+      }),
+    );
+
+    expect(await screen.findByLabelText("Model")).toHaveValue(
+      "Gemini 3.5 Flash",
+    );
+  });
+
+  it("saves a connection that names an endpoint without picking a catalog model", async () => {
+    const { onSaved } = setupGoogle(
+      createMockLlmProviderConnection({
+        key: "google",
+        type: "google",
+        name: "Google Gemini Enterprise",
+        config: {
+          "auth-method": "oauth-token",
+          "oauth-access-token": "**********en",
+          "project-id": "my-project",
+          "endpoint-id": "1234567890123456789",
+        },
+      }),
+      { modelRef: "google/endpoints/1234567890123456789" },
+    );
+
+    expect(
+      await screen.findByLabelText("Model Garden endpoint ID"),
+    ).toHaveValue("1234567890123456789");
+    expect(screen.queryByLabelText("Model")).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    await waitFor(() => {
+      expect(onSaved).toHaveBeenCalled();
+    });
+    expect(
+      await fetchMock.callHistory
+        .lastCall("express:/api/llm/providers/:key", { method: "PUT" })
+        ?.request?.json(),
+    ).not.toHaveProperty("model");
   });
 
   it("disables the fields the environment owns and leaves the rest editable", async () => {

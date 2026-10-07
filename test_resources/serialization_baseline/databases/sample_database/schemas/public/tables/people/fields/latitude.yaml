@@ -10,9 +10,7 @@ database_type: DOUBLE PRECISION
 base_type: type/Float
 effective_type: type/Float
 semantic_type: type/Latitude
-dimensions: []
 position: 11
-custom_position: 0
 database_position: 11
 serdes/meta:
 - id: Sample Database

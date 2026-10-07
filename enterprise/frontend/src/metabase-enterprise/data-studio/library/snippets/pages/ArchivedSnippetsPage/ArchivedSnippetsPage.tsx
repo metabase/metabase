@@ -7,9 +7,9 @@ import { Link } from "metabase/common/components/Link";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { DataStudioBreadcrumbs } from "metabase/common/data-studio/components/DataStudioBreadcrumbs";
 import { PaneHeader } from "metabase/common/data-studio/components/PaneHeader";
+import { useMetadataToasts } from "metabase/common/hooks";
 import { SectionLayout } from "metabase/data-studio/app/components/SectionLayout";
 import { useBuildSnippetTree } from "metabase/data-studio/common/hooks/use-build-snippet-tree";
-import { useMetadataToasts } from "metabase/metadata/hooks";
 import {
   Card,
   Center,
@@ -75,6 +75,7 @@ export function ArchivedSnippetsPage() {
       <PaneHeader
         breadcrumbs={
           <DataStudioBreadcrumbs>
+            <Link to={Urls.dataStudioLibrary()}>{t`Semantic layer`}</Link>
             <Link to={Urls.dataStudioLibrary()}>{t`SQL snippets`}</Link>
             {t`Archived snippets`}
           </DataStudioBreadcrumbs>
@@ -92,7 +93,7 @@ export function ArchivedSnippetsPage() {
         <TextInput
           placeholder={t`Search...`}
           leftSection={<Icon name="search" />}
-          bdrs="md"
+          bdrs="sm"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
         />

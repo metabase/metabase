@@ -28,6 +28,7 @@ import {
   GRID_ASPECT_RATIO,
   GRID_BREAKPOINTS,
   GRID_COLUMNS,
+  GRID_MARGINS,
   GRID_WIDTH,
   MIN_ROW_HEIGHT,
 } from "metabase/utils/dashboard_grid";
@@ -143,7 +144,7 @@ type DashboardGridContext = {
   | "isEditingParameter"
   | "isFullscreen"
   | "clickBehaviorSidebarDashcard"
-  | "getClickActionMode"
+  | "clickActionMode"
   | "navigateToNewCardFromDashboard"
   | "downloadsEnabled"
   | "autoScrollToDashcardId"
@@ -647,7 +648,7 @@ class DashboardGridInner extends Component<
         breakpoints={GRID_BREAKPOINTS}
         cols={GRID_COLUMNS}
         width={width}
-        margin={{ desktop: [6, 6], mobile: [6, 10] }}
+        margin={GRID_MARGINS}
         containerPadding={[0, 0]}
         rowHeight={rowHeight}
         onLayoutChange={this.onLayoutChange}
@@ -724,7 +725,7 @@ const DashboardGrid = forwardRef<
     isEditingParameter = false,
     isFullscreen,
     clickBehaviorSidebarDashcard,
-    getClickActionMode,
+    clickActionMode,
     navigateToNewCardFromDashboard,
     downloadsEnabled,
     autoScrollToDashcardId,
@@ -748,7 +749,7 @@ const DashboardGrid = forwardRef<
       isEditingParameter={isEditingParameter}
       isFullscreen={isFullscreen}
       clickBehaviorSidebarDashcard={clickBehaviorSidebarDashcard}
-      getClickActionMode={getClickActionMode}
+      clickActionMode={clickActionMode}
       navigateToNewCardFromDashboard={navigateToNewCardFromDashboard}
       downloadsEnabled={downloadsEnabled}
       autoScrollToDashcardId={autoScrollToDashcardId}

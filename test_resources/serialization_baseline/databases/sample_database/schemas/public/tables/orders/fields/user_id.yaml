@@ -15,9 +15,7 @@ fk_target_field_id:
 - PUBLIC
 - PEOPLE
 - ID
-dimensions: []
 position: 1
-custom_position: 0
 database_position: 1
 serdes/meta:
 - id: Sample Database

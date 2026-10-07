@@ -12,49 +12,33 @@ import type {
   DatasetColumn,
 } from "metabase-types/api";
 
-const COMMON_OPERATOR_NAMES = {
-  // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
+const commonOperatorNames = () => ({
   "is-null": t`is null`,
-  // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
   "not-null": t`is not null`,
-};
+});
 
-const NUMBER_OPERATOR_NAMES = {
-  // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
+const numberOperatorNames = () => ({
   "=": t`is equal to`,
-  // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
   "!=": t`is not equal to`,
-  // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
   "<": t`is less than`,
-  // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
   ">": t`is greater than`,
-  // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
   "<=": t`is less than or equal to`,
-  // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
   ">=": t`is greater than or equal to`,
-};
+});
 
-const STRING_OPERATOR_NAMES = {
-  // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
+const stringOperatorNames = () => ({
   "=": t`is equal to`,
-  // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
   "!=": t`is not equal to`,
-  // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
   contains: t`contains`,
-  // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
   "does-not-contain": t`does not contain`,
-  // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
   "starts-with": t`starts with`,
-  // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
   "ends-with": t`ends with`,
-};
+});
 
-const BOOLEAN_OPERATOR_NAMES = {
-  // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
+const booleanOperatorNames = () => ({
   "is-true": t`is true`,
-  // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
   "is-false": t`is false`,
-};
+});
 
 const not =
   (...fns: ((field: DatasetColumn) => boolean)[]) =>
@@ -66,12 +50,15 @@ const or =
   (field: DatasetColumn) =>
     fns.some((fn) => fn(field));
 
-export const ALL_OPERATOR_NAMES: Record<ColumnFormattingOperator, string> = {
-  ...NUMBER_OPERATOR_NAMES,
-  ...STRING_OPERATOR_NAMES,
-  ...BOOLEAN_OPERATOR_NAMES,
-  ...COMMON_OPERATOR_NAMES,
-};
+export const getAllOperatorNames = (): Record<
+  ColumnFormattingOperator,
+  string
+> => ({
+  ...numberOperatorNames(),
+  ...stringOperatorNames(),
+  ...booleanOperatorNames(),
+  ...commonOperatorNames(),
+});
 
 export function getOperatorsForColumns(
   columns: (DatasetColumn | undefined)[],
@@ -103,7 +90,7 @@ export function getOperatorsForColumns(
     return {
       ...defaultResult,
       isBooleanRule: true,
-      operators: { ...COMMON_OPERATOR_NAMES, ...BOOLEAN_OPERATOR_NAMES },
+      operators: { ...commonOperatorNames(), ...booleanOperatorNames() },
       isFieldDisabled: not(isBoolean),
     };
   }
@@ -114,7 +101,7 @@ export function getOperatorsForColumns(
       ...defaultResult,
       isKeyRule: true,
       isStringRule: true,
-      operators: { ...COMMON_OPERATOR_NAMES, ...STRING_OPERATOR_NAMES },
+      operators: { ...commonOperatorNames(), ...stringOperatorNames() },
       isFieldDisabled: not(isPK, isFK),
     };
   }
@@ -124,7 +111,7 @@ export function getOperatorsForColumns(
     return {
       ...defaultResult,
       isStringRule: true,
-      operators: { ...COMMON_OPERATOR_NAMES, ...STRING_OPERATOR_NAMES },
+      operators: { ...commonOperatorNames(), ...stringOperatorNames() },
       isFieldDisabled: or(not(isString), isBoolean),
     };
   }
@@ -134,7 +121,7 @@ export function getOperatorsForColumns(
     return {
       ...defaultResult,
       isNumericRule: true,
-      operators: { ...COMMON_OPERATOR_NAMES, ...NUMBER_OPERATOR_NAMES },
+      operators: { ...commonOperatorNames(), ...numberOperatorNames() },
       isFieldDisabled: or(not(isNumeric), isPK, isFK),
     };
   }

@@ -18,13 +18,13 @@
   (mt/with-premium-features #{:library}
     (mt/with-temp [:model/Collection no-allowed-content {:name "Test No Content" :type collection/library-collection-type}]
       (testing "Cannot add anything to library collections"
-        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Cannot add anything to the Library collection"
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Cannot add anything to the semantic layer"
                               (t2/insert! :model/Collection (merge (mt/with-temp-defaults :model/Collection) {:location (str "/" (:id no-allowed-content) "/")}))))
-        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Cannot add anything to the Library collection"
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Cannot add anything to the semantic layer"
                               (t2/insert! :model/Card (merge (mt/with-temp-defaults :model/Card) {:type :model, :collection_id (:id no-allowed-content)}))))
-        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Cannot add anything to the Library collection"
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Cannot add anything to the semantic layer"
                               (t2/insert! :model/Card (merge (mt/with-temp-defaults :model/Card) {:type :metric :collection_id (:id no-allowed-content)}))))
-        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Cannot add anything to the Library collection"
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Cannot add anything to the semantic layer"
                               (t2/insert! :model/Dashboard (merge (mt/with-temp-defaults :model/Dashboard) {:collection_id (:id no-allowed-content)}))))))))
 
 (deftest check-allowed-content-table
@@ -91,11 +91,11 @@
     (mt/with-temp [:model/Collection library {:name "Test Library" :type collection/library-collection-type}
                    :model/Collection models {:name "Test Semantic Model Layer" :type collection/library-data-collection-type}
                    :model/Collection metrics {:name "Test Semantic Metrics Layer" :type collection/library-metrics-collection-type}]
-      (with-redefs [collection/library-root-collection? (constantly true)]
+      (mt/with-dynamic-fn-redefs [collection/library-root-collection? (constantly true)]
         (doseq [col [library models metrics]]
           (testing (str "Checking type " (:type col))
             (is (thrown-with-msg? clojure.lang.ExceptionInfo
-                                  #"Cannot update properties on a Library collection"
+                                  #"Cannot update properties on a semantic layer collection"
                                   (t2/update! :model/Collection (:id col) {:name "New Name"})))))))))
 
 (deftest unpublish-tables-in-archived-collection-test
@@ -196,21 +196,21 @@
                                                      :location (str "/" (:id library-root) "/" (:id metrics-root) "/")}
                    :model/Collection vanilla        {:name "Vanilla Collection" :type nil}]
       (let [vanilla-location (str "/" (:id vanilla) "/")]
-        (with-redefs [collection/library-root-collection? (fn [coll]
-                                                            (contains? #{(:id library-root) (:id data-root) (:id metrics-root)}
-                                                                       (:id coll)))]
+        (mt/with-dynamic-fn-redefs [collection/library-root-collection? (fn [coll]
+                                                                          (contains? #{(:id library-root) (:id data-root) (:id metrics-root)}
+                                                                                     (:id coll)))]
           (testing "Cannot move the Library collection itself into a vanilla collection"
-            (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Cannot update properties on a Library collection"
+            (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Cannot update properties on a semantic layer collection"
                                   (t2/update! :model/Collection (:id library-root) {:location vanilla-location}))))
           (testing "Cannot move a top-level Data collection into a vanilla collection"
-            (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Cannot update properties on a Library collection"
+            (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Cannot update properties on a semantic layer collection"
                                   (t2/update! :model/Collection (:id data-root) {:location vanilla-location}))))
           (testing "Cannot move a top-level Metrics collection into a vanilla collection"
-            (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Cannot update properties on a Library collection"
+            (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Cannot update properties on a semantic layer collection"
                                   (t2/update! :model/Collection (:id metrics-root) {:location vanilla-location})))))
         (testing "Cannot move a Data subcollection into a vanilla collection"
-          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Cannot move a Library collection outside the Library"
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Cannot move a semantic layer collection outside the semantic layer"
                                 (t2/update! :model/Collection (:id data-sub) {:location vanilla-location}))))
         (testing "Cannot move a Metrics subcollection into a vanilla collection"
-          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Cannot move a Library collection outside the Library"
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Cannot move a semantic layer collection outside the semantic layer"
                                 (t2/update! :model/Collection (:id metrics-sub) {:location vanilla-location}))))))))

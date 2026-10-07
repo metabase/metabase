@@ -1,21 +1,25 @@
 import { t } from "ttag";
 
-import { Button, Ellipsified, Icon } from "metabase/ui";
-import type { ColorName } from "metabase/ui/colors/types";
+import {
+  Button,
+  type ButtonColor,
+  type ButtonVariant,
+  Ellipsified,
+  Icon,
+} from "metabase/ui";
 import type { VisualizationProps } from "metabase/visualizations/types";
 import type { IconName } from "metabase-types/api";
 
 import S from "./ActionButton.module.css";
-import { StyledButtonContent } from "./ActionButton.styled";
 
 const BUTTON_VARIANT_PROPS: Record<
   string,
-  { variant: string; color?: ColorName }
+  { variant: ButtonVariant; color?: ButtonColor }
 > = {
   default: { variant: "default" },
   primary: { variant: "filled" },
-  danger: { variant: "filled", color: "feedback-negative" },
-  success: { variant: "filled", color: "feedback-positive" },
+  danger: { variant: "filled", color: "negative" },
+  success: { variant: "filled", color: "positive" },
   borderless: { variant: "subtle" },
 };
 
@@ -54,11 +58,9 @@ function ActionButtonView({
       onClick={onClick}
       fullWidth
       aria-label={tooltip}
+      leftSection={icon ? <Icon name={icon} /> : undefined}
     >
-      <StyledButtonContent>
-        {icon && <Icon name={icon} />}
-        <Ellipsified>{label ?? t`Click me`}</Ellipsified>
-      </StyledButtonContent>
+      <Ellipsified>{label ?? t`Click me`}</Ellipsified>
     </Button>
   );
 }

@@ -1,10 +1,10 @@
-// eslint-disable-next-line no-restricted-imports
+// eslint-disable-next-line eslint-js/no-restricted-imports
 import styled from "@emotion/styled";
 
 export const OptionEditorContainer = styled.div`
   display: flex;
   flex-direction: column;
-  padding: var(--mantine-spacing-md);
+  padding: var(--mantine-spacing-lg);
   gap: var(--mantine-spacing-sm);
 `;
 

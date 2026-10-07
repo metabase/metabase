@@ -39,7 +39,7 @@ You'll also have the option to **Use a secure connection (SSL)**. Enable SSL and
 
 ### Using a connection string
 
-If you'd prefer to connect to MongoDB using a [connection string](https://docs.mongodb.com/manual/reference/connection-string/), click on **Paste a connection string**. The Metabase user interface will update with a field to paste your connection string.
+If you'd prefer to connect to MongoDB using a [connection string](https://www.mongodb.com/docs/manual/reference/connection-string/), click on **Paste a connection string**. The Metabase user interface will update with a field to paste your connection string.
 
 Metabase currently does NOT support the following connection string parameters:
 

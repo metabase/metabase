@@ -15,65 +15,65 @@ import { RequireMetabotConfigured } from "./components/RequireMetabotConfigured"
  * renders nothing.
  */
 const metabotFeatureAccessPage = () =>
-  import("./pages/MetabotFeatureAccessPage").then(
-    ({ MetabotFeatureAccessPage }) => ({
-      Component: MetabotFeatureAccessPage,
-    }),
-  );
+  import(
+    /* webpackChunkName: "metabot-feature-access" */ "./pages/MetabotFeatureAccessPage"
+  ).then(({ MetabotFeatureAccessPage }) => ({
+    Component: MetabotFeatureAccessPage,
+  }));
 
 const metabotFeatureAccessUpsellPage = () =>
-  import("./pages/MetabotFeatureAccessPage").then(
-    ({ MetabotFeatureAccessUpsellPage }) => ({
-      Component: MetabotFeatureAccessUpsellPage,
-    }),
-  );
+  import(
+    /* webpackChunkName: "metabot-feature-access" */ "./pages/MetabotFeatureAccessPage"
+  ).then(({ MetabotFeatureAccessUpsellPage }) => ({
+    Component: MetabotFeatureAccessUpsellPage,
+  }));
 
 const metabotUsageLimitsPage = () =>
-  import("./pages/MetabotUsageLimitsPage").then(
-    ({ MetabotUsageLimitsPage }) => ({
-      Component: MetabotUsageLimitsPage,
-    }),
-  );
+  import(
+    /* webpackChunkName: "metabot-usage-limits" */ "./pages/MetabotUsageLimitsPage"
+  ).then(({ MetabotUsageLimitsPage }) => ({
+    Component: MetabotUsageLimitsPage,
+  }));
 
 const metabotCustomizationPage = () =>
-  import("./pages/MetabotCustomizationPage").then(
-    ({ MetabotCustomizationPage }) => ({
-      Component: MetabotCustomizationPage,
-    }),
-  );
+  import(
+    /* webpackChunkName: "metabot-customization" */ "./pages/MetabotCustomizationPage"
+  ).then(({ MetabotCustomizationPage }) => ({
+    Component: MetabotCustomizationPage,
+  }));
 
 const metabotCustomizationUpsellPage = () =>
-  import("./pages/MetabotCustomizationPage").then(
-    ({ MetabotCustomizationUpsellPage }) => ({
-      Component: MetabotCustomizationUpsellPage,
-    }),
-  );
+  import(
+    /* webpackChunkName: "metabot-customization" */ "./pages/MetabotCustomizationPage"
+  ).then(({ MetabotCustomizationUpsellPage }) => ({
+    Component: MetabotCustomizationUpsellPage,
+  }));
 
 const metabotChatPromptPage = () =>
-  import("./pages/MetabotSystemPromptsPage").then(
-    ({ MetabotChatPromptPage }) => ({ Component: MetabotChatPromptPage }),
-  );
+  import(
+    /* webpackChunkName: "metabot-system-prompts" */ "./pages/MetabotSystemPromptsPage"
+  ).then(({ MetabotChatPromptPage }) => ({ Component: MetabotChatPromptPage }));
 
 const naturalLanguagePromptPage = () =>
-  import("./pages/MetabotSystemPromptsPage").then(
-    ({ NaturalLanguagePromptPage }) => ({
-      Component: NaturalLanguagePromptPage,
-    }),
-  );
+  import(
+    /* webpackChunkName: "metabot-system-prompts" */ "./pages/MetabotSystemPromptsPage"
+  ).then(({ NaturalLanguagePromptPage }) => ({
+    Component: NaturalLanguagePromptPage,
+  }));
 
 const sqlGenerationPromptPage = () =>
-  import("./pages/MetabotSystemPromptsPage").then(
-    ({ SqlGenerationPromptPage }) => ({
-      Component: SqlGenerationPromptPage,
-    }),
-  );
+  import(
+    /* webpackChunkName: "metabot-system-prompts" */ "./pages/MetabotSystemPromptsPage"
+  ).then(({ SqlGenerationPromptPage }) => ({
+    Component: SqlGenerationPromptPage,
+  }));
 
 const metabotSystemPromptsUpsellPage = () =>
-  import("./pages/MetabotSystemPromptsPage").then(
-    ({ MetabotSystemPromptsUpsellPage }) => ({
-      Component: MetabotSystemPromptsUpsellPage,
-    }),
-  );
+  import(
+    /* webpackChunkName: "metabot-system-prompts" */ "./pages/MetabotSystemPromptsPage"
+  ).then(({ MetabotSystemPromptsUpsellPage }) => ({
+    Component: MetabotSystemPromptsUpsellPage,
+  }));
 
 /**
  * One spelling of each path, used by the routes below and by the prefetch
@@ -97,28 +97,44 @@ const adminAiPath = (path: string) => `${Urls.adminAiSettings()}/${path}`;
  * Hovering an AI settings tab starts its fetch, so the chunk is usually in hand
  * by the time the click lands.
  *
- * The pages that differ only by license come from one module, so a registration
- * covers both. The three system prompt tabs are one module too, which is why the
- * prefix they share is registered once.
+ * Called from the licensed branch of `initializePlugin`, so only the pages this
+ * instance mounts are registered. A registration is also what the background pass
+ * reads, and fetching a page nobody can reach would spend a download on nothing.
+ *
+ * The three system prompt tabs are one module, which is why the prefix they share
+ * is registered once.
  */
-registerPagePrefetch(
-  adminAiPath(PATHS.featureAccess),
-  metabotFeatureAccessPage,
-);
-registerPagePrefetch(
-  adminAiPath(PATHS.featureAccess),
-  metabotFeatureAccessUpsellPage,
-);
-registerPagePrefetch(adminAiPath(PATHS.usageLimits), metabotUsageLimitsPage);
-registerPagePrefetch(
-  adminAiPath(PATHS.customization),
-  metabotCustomizationPage,
-);
-registerPagePrefetch(
-  adminAiPath(PATHS.customization),
-  metabotCustomizationUpsellPage,
-);
-registerPagePrefetch(adminAiPath(PATHS.systemPrompts), metabotChatPromptPage);
+export function registerAiControlsPagePrefetch(): void {
+  registerPagePrefetch(
+    adminAiPath(PATHS.featureAccess),
+    metabotFeatureAccessPage,
+  );
+  registerPagePrefetch(adminAiPath(PATHS.usageLimits), metabotUsageLimitsPage);
+  registerPagePrefetch(
+    adminAiPath(PATHS.customization),
+    metabotCustomizationPage,
+  );
+  registerPagePrefetch(adminAiPath(PATHS.systemPrompts), metabotChatPromptPage);
+}
+
+/**
+ * The tabs an instance without the license mounts. There is no usage limits tab
+ * among them, so nothing registers that path here.
+ */
+export function registerAiControlsUpsellPagePrefetch(): void {
+  registerPagePrefetch(
+    adminAiPath(PATHS.featureAccess),
+    metabotFeatureAccessUpsellPage,
+  );
+  registerPagePrefetch(
+    adminAiPath(PATHS.customization),
+    metabotCustomizationUpsellPage,
+  );
+  registerPagePrefetch(
+    adminAiPath(PATHS.systemPrompts),
+    metabotSystemPromptsUpsellPage,
+  );
+}
 
 export function getAiControlsRoutes() {
   return (

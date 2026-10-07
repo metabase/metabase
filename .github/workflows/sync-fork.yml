@@ -50,7 +50,7 @@ jobs:
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           ref: master
           fetch-depth: 0
@@ -109,7 +109,7 @@ jobs:
       branches: ${{ steps.discover.outputs.branches }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
           token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
@@ -147,7 +147,7 @@ jobs:
         branch: ${{ fromJson(needs.list-release-branches.outputs.branches) }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
           token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}

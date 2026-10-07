@@ -4,6 +4,7 @@
    [clojure.java.io :as io]
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [malli.core :as mc]
    [metabase.analytics-interface.core :as analytics]
    [metabase.analytics.snowplow-test :as snowplow-test]
    [metabase.llm.provider :as llm.provider]
@@ -11,19 +12,25 @@
    [metabase.metabot.schema.v2 :as schema.v2]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.self :as self]
+   [metabase.metabot.self.adapter :as adapter]
    [metabase.metabot.self.bedrock :as bedrock]
    [metabase.metabot.self.claude :as self.claude]
    [metabase.metabot.self.core :as self.core]
+   [metabase.metabot.self.deepseek :as deepseek]
    [metabase.metabot.self.mistral :as mistral]
    [metabase.metabot.self.moonshot :as moonshot]
    [metabase.metabot.self.openai :as openai]
    [metabase.metabot.self.openrouter :as openrouter]
+   [metabase.metabot.self.registry :as registry]
+   [metabase.metabot.self.xai :as xai]
    [metabase.metabot.self.zai :as zai]
    [metabase.metabot.settings :as metabot.settings]
    [metabase.metabot.test-util :as test-util]
    [metabase.metabot.usage :as usage]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
+   [metabase.tracing.test-util :as tracing.tu]
+   [metabase.util.http :as u.http]
    [metabase.util.json :as json]
    [metabase.util.log.capture :as log.capture]
    [metabase.util.malli :as mu]
@@ -39,10 +46,12 @@
 (def ^:private supported-models-by-provider-type
   {"anthropic"  #'self.claude/supported-models
    "bedrock"    #'bedrock/supported-models
+   "deepseek"   #'deepseek/supported-models
    "mistral"    #'mistral/supported-models
    "moonshot"   #'moonshot/supported-models
    "openai"     #'openai/supported-models
    "openrouter" #'openrouter/supported-models
+   "xai"        #'xai/supported-models
    "zai"        #'zai/supported-models})
 
 (deftest ^:parallel registry-models-are-listable-test
@@ -53,7 +62,10 @@
     (doseq [[provider-type supported] supported-models-by-provider-type]
       (testing provider-type
         (is (contains? @supported (llm.provider/default-model provider-type)))
-        (is (contains? @supported (llm.provider/mini-model provider-type)))))))
+        (is (contains? @supported (llm.provider/mini-model provider-type)))
+        (testing "and a retired model reads as one the picker offers"
+          (doseq [successor (vals (:retired-models (llm.provider/provider-type provider-type)))]
+            (is (contains? @supported successor))))))))
 
 (deftest parse-provider-model-test
   (llm.tu/with-default-connections
@@ -72,10 +84,19 @@
               (#'self/parse-provider-model "mistral/mistral-medium-3-5")))
       (is (=? {:provider "moonshot" :model "kimi-k3" :ai-proxy? false}
               (#'self/parse-provider-model "moonshot/kimi-k3")))
-      (is (=? {:provider "deepseek" :model "deepseek-v4-flash" :ai-proxy? false}
-              (#'self/parse-provider-model "deepseek/deepseek-v4-flash")))
+      (is (=? {:provider "deepseek" :model "deepseek-flash" :ai-proxy? false}
+              (#'self/parse-provider-model "deepseek/deepseek-flash")))
+      (is (=? {:provider "xai" :model "grok-4.7" :ai-proxy? false}
+              (#'self/parse-provider-model "xai/grok-4.7")))
       (is (=? {:provider "google" :model "google/gemini-3.5-flash" :ai-proxy? false}
               (#'self/parse-provider-model "google/google/gemini-3.5-flash"))))
+    (testing "resolves the provider type, not the admin's name for the connection"
+      (llm.tu/with-connections [{:key    "openrouter-1"
+                                 :type   "openrouter"
+                                 :name   "openrouter-1"
+                                 :config {:api-key "sk-or-v1-test"}}]
+        (is (=? {:provider "openrouter" :model "anthropic/claude-sonnet-4.6" :ai-proxy? false}
+                (#'self/parse-provider-model "openrouter-1/anthropic/claude-sonnet-4.6")))))
     (testing "a vLLM served model is often a Hugging Face repo id, so the model segment keeps its slashes"
       (llm.tu/with-connections [(llm.tu/connection "vllm")]
         (is (=? {:provider "vllm" :model "mlx-community/Qwen3-14B-4bit" :ai-proxy? false}
@@ -89,23 +110,58 @@
               (#'self/parse-provider-model "metabase/openrouter/anthropic/claude-haiku-4-5"))))
     (testing "throws when the string names no configured connection"
       (doseq [model-ref ["no-slash" "" "/leading-slash" "nonexistent/some-model"]]
-        (is (thrown-with-msg? Exception #"No LLM provider connection named"
-                              (#'self/parse-provider-model model-ref)))))))
+        (let [e (is (thrown-with-msg? Exception #"No LLM provider connection named"
+                                      (#'self/parse-provider-model model-ref)))]
+          (is (= :llm-not-configured (:error-code (ex-data e)))))))))
 
-(deftest ^:parallel resolve-adapter-test
-  (testing "resolves known providers to adapter functions"
-    (is (fn? (#'self/resolve-adapter "anthropic")))
-    (is (fn? (#'self/resolve-adapter "openai")))
-    (is (fn? (#'self/resolve-adapter "openrouter")))
-    (is (fn? (#'self/resolve-adapter "zai")))
-    (is (fn? (#'self/resolve-adapter "mistral")))
-    (is (fn? (#'self/resolve-adapter "moonshot")))
-    (is (fn? (#'self/resolve-adapter "deepseek")))
-    (is (fn? (#'self/resolve-adapter "google")))
-    (is (fn? (#'self/resolve-adapter "vllm"))))
-  (testing "throws for unknown provider"
+(deftest ^:parallel registry-test
+  (testing "every registered provider resolves to an adapter and a listing"
+    ;; derived from the rows rather than listed here, so a provider added to the platform and the registry
+    ;; with an empty row fails this instead of going unchecked. The managed connection is excluded because it
+    ;; is served by the wire family its model names and so has no adapter of its own — asked of the platform
+    ;; rather than named, for the same reason.
+    (let [serving (remove (comp llm.provider/managed-type? key) @#'registry/adapters)]
+      (is (seq serving))
+      (doseq [[provider _row] serving]
+        (is (ifn? (registry/required provider :stream)) provider)
+        (is (ifn? (registry/required provider :list-models)) provider))))
+  (testing "a capability a provider does not have is absent, not a default"
+    (is (nil? (registry/optional "vllm" :supported-models)))
+    (is (nil? (registry/optional "deepseek" :context-window)))
+    (is (some? (registry/optional "anthropic" :supported-models))))
+  (testing "the registry covers exactly the provider types the platform knows about"
+    (is (= (set (map :type (llm.provider/provider-types)))
+           (set (keys @#'registry/adapters)))))
+  (testing "every row conforms to the schema, so a mistyped capability key cannot read as an absent one"
+    (doseq [[provider row] @#'registry/adapters]
+      (is (nil? (mr/explain registry/AdapterRow row)) provider)))
+  (testing "an adapter's own schema and the schema its row declares are the same contract, so a change to
+            one without the other fails here rather than at a call site"
+    ;; compared rather than exercised: the row's `:=>` forms are documentation — Malli checks one no further
+    ;; than `ifn?` — and `mu/defn` already validates each implementation against its own schema on every
+    ;; call. What nothing else covers is the two declarations drifting apart.
+    ;; Skipped: `:stream` is registered as a plain `defn` and carries no schema to compare, and
+    ;; `:supported-models` is a var holding a map rather than a function.
+    (let [declared (into {} (map (fn [[capability _props schema]] [capability (mc/form schema)]))
+                         (mc/children (mc/schema registry/AdapterRow)))]
+      (doseq [[provider row]              @#'registry/adapters
+              [capability implementation] (dissoc row :stream :supported-models)]
+        (is (= (declared capability)
+               (some-> (:schema (meta implementation)) mc/form))
+            (str provider " " capability)))))
+  (testing "every `:supported-models` allow-list conforms to the schema the shared listing helper takes."
+    (doseq [[provider row] @#'registry/adapters
+            :let  [models (some-> (:supported-models row) deref)]
+            :when models]
+      (is (nil? (mr/explain adapter/SupportedModels models)) provider)))
+  (testing "the capability enum and the row schema name the same capabilities, so the two hand-written
+            lists cannot drift apart — a capability in one but not the other would either be unlookupable
+            or unstorable"
+    (is (= (set (mc/children (mc/schema registry/Capability)))
+           (set (map first (mc/children (mc/schema registry/AdapterRow)))))))
+  (testing "throws for an unknown provider"
     (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Unknown LLM provider"
-                          (#'self/resolve-adapter "unknown")))))
+                          (registry/required "unknown" :stream)))))
 
 (deftest call-llm-tool-choice-test
   (llm.tu/with-default-connections
@@ -137,6 +193,44 @@
                       (throw e))))
                 (is (= expected (:tool_choice @captured)))))))))))
 
+(deftest call-llm-fast-mode-test
+  (llm.tu/with-default-connections
+    (testing "the llm-fast-mode setting reaches the Anthropic wire for a fast-capable model"
+      (let [captured (atom nil)]
+        (mt/with-dynamic-fn-redefs [http/request (fn [opts]
+                                                   (when (:body opts)
+                                                     (reset! captured {:body    (json/decode+kw (:body opts))
+                                                                       :headers (:headers opts)}))
+                                                   (throw (ex-info "stop" {::skip true :api-error true})))]
+          (mt/with-temporary-setting-values [llm-anthropic-api-key "sk-ant-test-key"]
+            (doseq [fast? [true false]]
+              (testing (str "llm-fast-mode " fast?)
+                (mt/with-temporary-setting-values [llm-fast-mode fast?]
+                  (try
+                    (run! identity (self/call-llm "anthropic/claude-opus-5" nil [] {} {:tag "agent"}))
+                    (catch Exception e
+                      (when-not (::skip (ex-data e))
+                        (throw e))))
+                  (is (= (when fast? "fast") (get-in @captured [:body :speed])))
+                  (is (= (when fast? "fast-mode-2026-02-01")
+                         (get-in @captured [:headers "anthropic-beta"]))))))))))))
+
+(deftest call-llm-serves-azure-and-google-connections-test
+  (testing "the Azure and Google adapters accept their connection's resolved config, registry defaults included"
+    (llm.tu/with-default-connections
+      (doseq [[model-ref url-part] [["azure/openai/gpt-4.1-mini"                 "/v1/responses"]
+                                    ["azure/anthropic/claude-deployment"         "/v1/messages"]
+                                    ["google/google/gemini-3.5-flash"            "projects/my-project/locations/global"]
+                                    ["google/anthropic/claude-haiku-4-5@20251001" "/publishers/anthropic/models/claude-haiku-4-5@20251001"]]]
+        (testing model-ref
+          (let [captured (atom nil)]
+            (mt/with-dynamic-fn-redefs [self.core/sse-reducible identity
+                                        http/request            (fn [req]
+                                                                  (reset! captured req)
+                                                                  {:status 200 :body []})]
+              (run! identity (self/call-llm model-ref nil [{:role :user :content "hi"}] {} {:tag "agent"}))
+              (is (str/includes? (str (:url @captured)) url-part)))))))))
+
 (deftest request-timeout-settings-test
   (testing "request seeds timeouts from the llm-*-timeout-ms settings, read at call time"
     (let [captured (atom nil)]
@@ -154,6 +248,70 @@
                                {:connection-timeout 100 :socket-timeout 200})
             (is (= 100 (:connection-timeout @captured)))
             (is (= 200 (:socket-timeout @captured)))))))))
+
+(deftest request-enforces-llm-allowed-networks-test
+  ;; IP literals throughout: the resolver goes through real DNS. `resolving` stands in for clj-http far enough to
+  ;; run the request's `:dns-resolver` on its host, which is where the policy is enforced.
+  (let [captured  (atom nil)
+        resolving (fn [{:keys [url] :as opts}]
+                    (some-> ^org.apache.http.conn.DnsResolver (:dns-resolver opts) (.resolve (u.http/->hostname url)))
+                    (reset! captured opts)
+                    {:status 200 :body ""})
+        req       {:method :get :url "/v1/models"}
+        rejected  (fn [auth]
+                    (try (self.core/request auth req)
+                         nil
+                         (catch clojure.lang.ExceptionInfo e (ex-data e))))]
+    (testing "under :external-only"
+      (mt/with-temp-env-var-value! [mb-llm-allowed-networks "external-only"]
+        (mt/with-dynamic-fn-redefs [http/request resolving]
+          (testing "a base URL on an internal network is refused when the connection resolves it"
+            (is (=? {:status-code 400
+                     :status      400
+                     :api-error   true
+                     :error-code  :llm-host-not-allowed
+                     :llm-host    "127.0.0.1"}
+                    (rejected {:url "http://127.0.0.1:9" :headers {}}))))
+          (testing "a public base URL goes out with the policy resolver on the connection"
+            (self.core/request {:url "https://8.8.8.8" :headers {}} req)
+            (is (= "https://8.8.8.8/v1/models" (:url @captured)))
+            (is (= :none (:redirect-strategy @captured)))
+            (is (instance? org.apache.http.conn.DnsResolver (:dns-resolver @captured))))
+          (testing "the managed AI proxy's floor allows private addresses under the default policy"
+            (self.core/request {:url "http://10.0.0.1:9" :headers {} :network-policy-floor :allow-private} req)
+            (is (= "http://10.0.0.1:9/v1/models" (:url @captured))))
+          (testing "but still refuses loopback"
+            (is (=? {:status-code 400 :error-code :llm-host-not-allowed}
+                    (rejected {:url "http://127.0.0.1:9" :headers {} :network-policy-floor :allow-private})))))
+        (testing "a URL that is not http(s) is refused before any request is made"
+          (mt/with-dynamic-fn-redefs [http/request (fn [_] (is false "http/request should not be called"))]
+            (is (=? {:status-code 400 :error-code :llm-host-not-allowed :llm-host "8.8.8.8"}
+                    (rejected {:url "8.8.8.8" :headers {}})))))))
+    (testing "under :allow-all an internal base URL goes out on clj-http's default resolver"
+      (mt/with-temp-env-var-value! [mb-llm-allowed-networks "allow-all"]
+        (mt/with-dynamic-fn-redefs [http/request resolving]
+          (self.core/request {:url "http://127.0.0.1:9" :headers {}} req)
+          (is (= "http://127.0.0.1:9/v1/models" (:url @captured)))
+          (is (not (contains? @captured :dns-resolver)))
+          (testing "and the AI proxy's floor does not tighten that: a proxy on this machine is reachable"
+            (self.core/request {:url "http://127.0.0.1:9" :headers {} :network-policy-floor :allow-private} req)
+            (is (= "http://127.0.0.1:9/v1/models" (:url @captured)))
+            (is (not (contains? @captured :dns-resolver)))))))))
+
+(deftest resolve-auth-tags-proxy-auth-test
+  (mt/with-premium-features #{:metabot-v3}
+    (testing "an environment-supplied proxy URL carries the private-network floor"
+      (mt/with-temp-env-var-value! [mb-llm-proxy-base-url "http://proxy.internal/"]
+        (is (=? {:url                  "http://proxy.internal/anthropic"
+                 :network-policy-floor :allow-private}
+                (self.core/resolve-auth "anthropic" "Anthropic" {:url "https://api.anthropic.com"} true)))))
+    (testing "a stored proxy URL gets the default policy: no floor"
+      (mt/with-temporary-setting-values [llm-proxy-base-url "http://proxy.internal/"]
+        (let [auth (self.core/resolve-auth "anthropic" "Anthropic" {:url "https://api.anthropic.com"} true)]
+          (is (= "http://proxy.internal/anthropic" (:url auth)))
+          (is (not (contains? auth :network-policy-floor))))
+        (is (= {:url "https://api.anthropic.com"}
+               (self.core/resolve-auth "anthropic" "Anthropic" {:url "https://api.anthropic.com"} false)))))))
 
 (deftest call-llm-prompt-cache-key-test
   (llm.tu/with-default-connections
@@ -443,6 +601,21 @@
                             :type    string?}}
               (last result))))))
 
+(deftest ^:parallel tool-failure-log-level-test
+  (let [run-failing (fn [e]
+                      (into [] (self.core/tool-executor-xf {"failing" {:fn (fn [_] (throw e))}})
+                            (test-util/parts->aisdk-chunks
+                             [{:type :tool-input :id "call-f" :function "failing" :arguments {}}])))]
+    (testing "an unexpected tool failure is logged at error with its exception"
+      (let [e (ex-info "boom" {})]
+        (log.capture/with-log-messages-for-level [messages [metabase.metabot.self.core :error]]
+          (run-failing e)
+          (is (= [[:error e]] (map (juxt :level :e) (messages)))))))
+    (testing "an agent error is not"
+      (log.capture/with-log-messages-for-level [messages [metabase.metabot.self.core :error]]
+        (run-failing (ex-info "No such field" {:agent-error? true}))
+        (is (empty? (messages)))))))
+
 (deftest ^:parallel tool-executor-xf-test-6
   (testing "tool-executor-xf handles nil arguments for no-arg tools"
     (let [chunks (test-util/parts->aisdk-chunks
@@ -456,13 +629,92 @@
               (last result))))))
 
 (deftest ^:parallel tool-executor-xf-test-7
-  (testing "tool-executor-xf ignores unknown tool names"
+  (testing "tool-executor-xf answers a call to an unknown tool with an error listing the tools it can call"
     (let [chunks (test-util/parts->aisdk-chunks
                   [{:type :start :id "msg-789"}
-                   {:type :tool-input :id "call-1" :function "unknown-tool" :arguments {:foo :bar}}])
+                   {:type :tool-input :id "call-1" :function "analyze_chart" :arguments {:chart_config_id "abc"}}])
           result (into [] (self.core/tool-executor-xf test-util/TOOLS) chunks)]
-      (is (= chunks result)
-          "Unknown tools should be ignored, chunks pass through unchanged"))))
+      (is (=? (conj (vec chunks)
+                    {:type       :tool-output-available
+                     :toolCallId "call-1"
+                     :toolName   "analyze_chart"
+                     :error      {:message (str "Tool `analyze_chart` does not exist. "
+                                                "Available tools: convert-currency, get-time, mock-llm, no-arg.")}})
+              result)))))
+
+(deftest ^:parallel tool-executor-xf-stream-error-test
+  (testing "once an :error chunk comes through, a call still streaming never runs and a running one keeps its result"
+    (let [running  (test-util/parts->aisdk-chunks
+                    [{:type :tool-input :id "call-1" :function "get-time" :arguments {:tz "Europe/Kyiv"}}])
+          cut-off  (test-util/parts->aisdk-chunks
+                    [{:type :tool-input :id "call-2" :function "get-time" :arguments {:tz "Europe/Paris"}}])
+          streamed (concat running (butlast cut-off) [{:type :error :errorText "Overloaded"}])]
+      (log.capture/with-log-messages-for-level [messages [metabase.metabot.self.core :warn]]
+        (is (=? (conj (vec streamed) {:type :tool-output-available :toolCallId "call-1"})
+                (into [] (self.core/tool-executor-xf test-util/TOOLS) (concat streamed [(last cut-off)]))))
+        (testing "and a warning names the call that never ran"
+          (is (=? [{:level :warn :message #".*call-2.*"}] (messages))))))))
+
+;;; tool argument validation tests
+
+(defn- schema-tool
+  [args-schema]
+  {:fn     (fn [_args] {:output "ok"})
+   :doc    "validation test tool"
+   :schema [:=> [:cat args-schema] :any]})
+
+(defn- validation-error
+  [args-schema arguments]
+  (let [tools  {"validated" (schema-tool args-schema)}
+        chunks (test-util/parts->aisdk-chunks
+                [{:type :start :id "msg-v"}
+                 {:type :tool-input :id "call-v" :function "validated" :arguments arguments}])]
+    (-> (into [] (self.core/tool-executor-xf tools) chunks) last :error :message)))
+
+(deftest ^:parallel tool-argument-validation-test
+  (let [schema [:map {:closed true}
+                [:names {:optional true} [:sequential {:error/message "must be an array of strings"} :string]]
+                [:limit {:optional true} [:int {:min 1 :max 50}]]]]
+    (testing "a well-formed call is accepted"
+      (is (nil? (validation-error schema {:names ["orders"] :limit 10}))))
+    (testing "a scalar where an array is declared names the field and what it received"
+      (is (= "Invalid tool arguments: `names` must be an array of strings; received a string."
+             (validation-error schema {:names "orders"}))))
+    (testing "the received type reflects the value the model actually sent"
+      (is (= "Invalid tool arguments: `names` must be an array of strings; received a number."
+             (validation-error schema {:names 5})))
+      (is (= "Invalid tool arguments: `names` must be an array of strings; received an object."
+             (validation-error schema {:names {:a 1}}))))
+    (testing "a bad element reports the element's constraint without a received clause"
+      (is (= "Invalid tool arguments: `names` should be a string."
+             (validation-error schema {:names ["ok" 5]}))))
+    (testing "an unsupported key is called out as such"
+      (is (= "Invalid tool arguments: `nope` is not a supported argument."
+             (validation-error schema {:names ["ok"] :nope 1}))))
+    (testing "constraint violations on scalars are reported too"
+      (is (= "Invalid tool arguments: `limit` should be at most 50; received a number."
+             (validation-error schema {:limit 999}))))
+    (testing "arguments that aren't an object at all"
+      (is (= "Invalid tool arguments: expected an object of named arguments; received an array."
+             (validation-error schema ["orders"]))))))
+
+(deftest ^:parallel tool-unparseable-arguments-test
+  (testing "arguments the provider streamed as invalid JSON are reported as such"
+    (let [tools  {"validated" (schema-tool [:map {:closed true} [:names {:optional true} [:sequential :string]]])}
+          chunks (concat [{:type :tool-input-start :toolName "validated" :toolCallId "call-j"}]
+                         [{:type :tool-input-delta :toolCallId "call-j" :inputTextDelta "{\"names\": ["}]
+                         [{:type :tool-input-available :toolName "validated" :toolCallId "call-j"}])]
+      (is (= "Invalid tool arguments: the arguments were not valid JSON. Send the call again as a JSON object."
+             (-> (into [] (self.core/tool-executor-xf tools) chunks) last :error :message))))))
+
+(deftest ^:parallel tool-without-schema-is-not-validated-test
+  (testing "a tool with no declared argument schema is left alone"
+    (let [tools  {"anything" {:fn (fn [_args] {:output "ok"}) :doc "d" :schema nil}}
+          chunks (test-util/parts->aisdk-chunks
+                  [{:type :start :id "msg-ns"}
+                   {:type :tool-input :id "call-ns" :function "anything" :arguments {:whatever "x"}}])]
+      (is (=? {:type :tool-output-available :toolCallId "call-ns" :result {:output "ok"}}
+              (last (into [] (self.core/tool-executor-xf tools) chunks)))))))
 
 ;;; tool :decode tests
 
@@ -476,7 +728,7 @@
             {:output "ok"})]
     (cond-> {:fn f
              :doc (str tool-name " test tool")
-             :schema [:=> [:cat [:map [:x :any]]] :any]}
+             :schema [:=> [:cat [:map]] :any]}
       decode-fn (assoc :decode decode-fn))))
 
 (deftest ^:parallel tool-decode-var-test
@@ -641,10 +893,11 @@
                                {:keyword_queries ["15"]
                                 :entity_types    ["table"]})))))
 
-(deftest ^:parallel tool-args-unparseable-scalar-left-alone-test
-  (testing "a string that isn't a number is passed through so the tool still reports the error"
-    (is (= {:limit "abc"}
-           (tool-received-args [:map [:limit [:maybe :int]]] {:limit "abc"})))))
+(deftest ^:parallel tool-args-unparseable-scalar-rejected-test
+  (testing "a string that isn't a number is rejected at the boundary instead of reaching the tool"
+    (is (nil? (tool-received-args [:map [:limit [:maybe :int]]] {:limit "abc"})))
+    (is (= "Invalid tool arguments: `limit` should be an integer; received a string."
+           (validation-error [:map [:limit [:maybe :int]]] {:limit "abc"})))))
 
 (deftest ^:parallel tool-args-coercion-tolerates-unusable-schema-test
   (testing "a tool without a usable schema still receives its arguments"
@@ -855,10 +1108,16 @@
                                 :arguments {} :title "Inspecting [Orders](metabase://dashboard/5)"}]))))))
 
 (deftest ^:parallel stamp-tool-titles-xf-test
-  (let [tools {"greet" {:tool-name "greet" :title-fn (fn [{:keys [who]}] (str "Greeting " who))}
-               "boom"  {:tool-name "boom"  :title-fn (fn [_] (throw (ex-info "nope" {})))}
-               "num"   {:tool-name "num"   :title-fn (fn [_] 42)}
-               "plain" {:tool-name "plain"}}
+  (let [tools {"greet"   {:tool-name "greet" :title-fn (fn [{:keys [who]}] (str "Greeting " who))}
+               "boom"    {:tool-name "boom"  :title-fn (fn [_] (throw (ex-info "nope" {})))}
+               "num"     {:tool-name "num"   :title-fn (fn [_] 42)}
+               "plain"   {:tool-name "plain"}
+               "decoded" {:tool-name "decoded"
+                          :decode    (fn [args] (update args :who (fn [who] (if (string? who) [who] who))))
+                          :title-fn  (fn [{:keys [who]}] (str "Greeting " (str/join ", " who)))}
+               "badcode" {:tool-name "badcode"
+                          :decode    (fn [_] (throw (ex-info "nope" {})))
+                          :title-fn  (fn [_] "never")}}
         stamp #(into [] (self.core/stamp-tool-titles-xf tools) [%])]
     (testing "title-fn result becomes :title"
       (is (= [{:type :tool-input :id "c1" :function "greet" :arguments {:who "Sam"}
@@ -873,6 +1132,17 @@
     (testing "a tool without a title-fn is untouched"
       (is (= [{:type :tool-input :id "c4" :function "plain" :arguments {}}]
              (stamp {:type :tool-input :id "c4" :function "plain" :arguments {}}))))
+    (testing "the tool's :decode runs first, so the title describes the arguments the tool will run with"
+      (is (= [{:type :tool-input :id "c5" :function "decoded" :arguments {:who "Sam"}
+               :title "Greeting Sam"}]
+             (stamp {:type :tool-input :id "c5" :function "decoded" :arguments {:who "Sam"}}))))
+    (testing "a throwing :decode leaves the part untitled"
+      (is (= [{:type :tool-input :id "c6" :function "badcode" :arguments {}}]
+             (stamp {:type :tool-input :id "c6" :function "badcode" :arguments {}}))))
+    (testing "a double-encoded argument is coerced before :decode, as it is before the tool runs"
+      (is (= [{:type :tool-input :id "c7" :function "decoded" :arguments {:who "[\"Sam\",\"Kim\"]"}
+               :title "Greeting Sam, Kim"}]
+             (stamp {:type :tool-input :id "c7" :function "decoded" :arguments {:who "[\"Sam\",\"Kim\"]"}}))))
     (testing "non-tool-input parts pass through"
       (is (= [{:type :text :id "t1" :text "hi"}]
              (stamp {:type :text :id "t1" :text "hi"}))))))
@@ -980,6 +1250,8 @@
       "metabase/anthropic/claude-sonnet-4-6" 1000000 ; proxy prefix is stripped
       "azure/openai/gpt-5.4-mini-prod"       272000  ; longest model-id prefix wins
       "google/google/gemini-3.6-flash"       1048576 ; publisher-qualified model reaches Google adapter
+      "zai/glm-5.3"                          1048576 ; Z.AI direct
+      "openrouter/z-ai/glm-5.3"              1048576 ; OpenRouter serving limit
       "azure/openai/my-deployment"           nil     ; unmatched deployment
       "anthropic/some-future-model"          nil     ; unknown model
       "unknown"                              nil)))  ; no such connection
@@ -1144,6 +1416,58 @@
                 "the provider error message is surfaced, not hidden behind 'no tool call'")
             (is (= "llm-stream-error" (:error-code (ex-data e))))))))))
 
+(deftest call-llm-structured-text-reply-test
+  (llm.tu/with-default-connections
+    (let [schema {:type                 "object"
+                  :properties           {"title" {:type "string"}
+                                         "tags"  {:type "array" :items {:type "string"}}
+                                         "score" {:type "number" :minimum 0 :maximum 1}}
+                  :required             ["title"]
+                  :additionalProperties false}
+          answer {:title "Q2 revenue" :tags ["revenue"] :score 0.5}
+          reply  (fn [text] {:type :text :id "t1" :text text})
+          fenced (fn [json-text] (str "Here you go:\n```json\n" json-text "\n```"))
+          call!  (fn [& parts]
+                   (mt/with-dynamic-fn-redefs [openrouter/openrouter
+                                               (constantly (test-util/mock-llm-response
+                                                            (cons {:type :start :id "m1"} parts)))]
+                     (self/call-llm-structured "openrouter/test-model" [{:role "user" :content "test"}]
+                                               schema 0.3 1024 {:tag "metabot_agent"})))]
+      (testing "a model that answers in text instead of calling the tool has its JSON used"
+        (are [text] (= answer (call! (reply text)))
+          (json/encode answer)
+          (fenced (json/encode answer))))
+      (testing "the last fenced code block that matches the schema is used"
+        (are [text] (= answer (call! (reply text)))
+          (str (fenced (json/encode {:title "Draft"})) "\n" (fenced (json/encode answer)))
+          (str (fenced (json/encode answer)) "\n" (fenced (json/encode {:title 42})))))
+      (testing "a line break the model left unescaped inside a string doesn't stop the JSON from being used"
+        (are [text] (= {:title "Q2 revenue\nby region"} (call! (reply text)))
+          "{\"title\": \"Q2 revenue\nby region\"}"
+          (fenced "{\"title\": \"Q2 revenue\nby region\"}")))
+      (testing "a text reply without JSON matching the schema still fails"
+        (are [text] (thrown-with-msg? clojure.lang.ExceptionInfo #"no tool call" (call! (reply text)))
+          "Q2 revenue"
+          "{\"title\": \"Q2 revenue\""
+          (json/encode {:tags ["revenue"]})
+          (json/encode {:title "Q2 revenue" :note "x"})
+          (json/encode {:title 42})
+          (json/encode {:title "Q2 revenue" :tags [1]})
+          (json/encode {:title "Q2 revenue" :score 2})))
+      (testing "JSON followed by anything but whitespace is not used, in the whole reply or in a fence"
+        (are [text] (thrown-with-msg? clojure.lang.ExceptionInfo #"no tool call" (call! (reply text)))
+          (str (json/encode answer) " Hope that helps!")
+          (str (json/encode answer) (json/encode {:title "Other"}))
+          (fenced (str (json/encode answer) " Hope that helps!"))
+          (fenced (str (json/encode answer) (json/encode {:title "Other"})))))
+      (testing "a tool call is used as is, whatever text comes with it"
+        (is (= {:title "From the tool"}
+               (call! (reply (json/encode answer))
+                      {:type      :tool-input
+                       :id        "c1"
+                       :function  "structured_output"
+                       :arguments {:title "From the tool"}})))))))
+
 (deftest call-llm-does-not-replay-after-partial-emission-test
   (llm.tu/with-default-connections
     (testing "a retryable failure AFTER parts were emitted does not replay the stream (no duplicate output / re-run tools)"
@@ -1189,7 +1513,7 @@
   (llm.tu/with-default-connections
     (mt/with-prometheus-system! [_ system]
       (mt/with-dynamic-fn-redefs [self/retry-delay-ms (constantly 0)]
-        (let [labels {:model "openrouter/test-model" :source "metabot_agent"}]
+        (let [labels {:model "openrouter/test-model" :source "metabot_agent" :provider "openrouter"}]
           (testing "increments llm-requests and observes duration on success"
             (mt/with-dynamic-fn-redefs [openrouter/openrouter (constantly (test-util/mock-llm-response [{:type :start :id "m1"}]))]
               (run! identity (self/call-llm "openrouter/test-model" nil [] {} {:tag "metabot_agent"})))
@@ -1285,13 +1609,22 @@
                                                        :model "test-model"}]))]
               (run! identity (self/call-llm "openrouter/test-model" nil [] {} {:tag "metabot_agent"})))
             (is (zero? (mt/metric-value system :metabase-metabot/llm-cache-creation-tokens labels)))
-            (is (zero? (mt/metric-value system :metabase-metabot/llm-cache-read-tokens labels)))))))))
+            (is (zero? (mt/metric-value system :metabase-metabot/llm-cache-read-tokens labels))))
+          (testing "labels a managed-proxy call with the metabase provider"
+            (mt/with-dynamic-fn-redefs [self.claude/claude
+                                        (constantly (test-util/mock-llm-response
+                                                     [{:type :start :id "m1"}
+                                                      {:type :usage :usage {:promptTokens 10 :completionTokens 5}}]))]
+              (run! identity (self/call-llm "metabase/anthropic/claude-haiku-4-5" nil [] {} {:tag "metabot_agent"})))
+            (let [managed-labels (assoc labels :model "metabase/anthropic/claude-haiku-4-5" :provider "metabase")]
+              (is (== 1 (mt/metric-value system :metabase-metabot/llm-requests managed-labels)))
+              (is (== 10 (mt/metric-value system :metabase-metabot/llm-input-tokens managed-labels))))))))))
 
 (deftest call-llm-structured-prometheus-test
   (llm.tu/with-default-connections
     (mt/with-prometheus-system! [_ system]
       (mt/with-dynamic-fn-redefs [self/retry-delay-ms (constantly 0)]
-        (let [labels        {:model "openrouter/test-model" :source "metabot_agent"}
+        (let [labels        {:model "openrouter/test-model" :source "metabot_agent" :provider "openrouter"}
               success-mock  (test-util/mock-llm-response
                              [{:type :start :id "m1"}
                               {:type :tool-input :id "call-1" :function "json"
@@ -1371,7 +1704,7 @@
 
 (deftest call-llm-snowplow-test
   (llm.tu/with-default-connections
-    (testing "fires :snowplow/token_usage and :snowplow/ai_service_event for call-llm with a tool call"
+    (testing "fires :snowplow/token_usage and :snowplow/ai_service_event for call-llm with tool calls"
       (let [rasta-id (mt/user->id :rasta)]
         ;; The adapter pre-sums input + cache_creation + cache_read into :promptTokens,
         ;; so the mock supplies the already-summed value (950 = 100 fresh + 50 cache_creation + 800 cache_read).
@@ -1381,6 +1714,8 @@
                                                  [{:type :start :id "msg-1"}
                                                   {:type :tool-input :id "call-1" :function "get-time"
                                                    :arguments {:tz "UTC"}}
+                                                  {:type :tool-input :id "call-2" :function "lookup_jane_doe_4165551234"
+                                                   :arguments {}}
                                                   {:type :usage :usage {:promptTokens        950
                                                                         :completionTokens    20
                                                                         :cacheCreationTokens 50
@@ -1388,8 +1723,11 @@
                                                    :model "test-model" :id "msg-1"}]))]
           (mt/with-current-user rasta-id
             (snowplow-test/with-fake-snowplow-collector
-              (run! identity (self/call-llm "openrouter/test-model" nil [] test-util/TOOLS snowplow-tracking-opts))
-              (let [events       (snowplow-test/pop-event-data-and-user-id!)
+              (let [[spans logs] (tracing.tu/with-span-exporter [exporter]
+                                   (log.capture/with-log-messages-for-level [messages [metabase.metabot.self.core :debug]]
+                                     (run! identity (self/call-llm "openrouter/test-model" nil [] test-util/TOOLS snowplow-tracking-opts))
+                                     [(tracing.tu/finished-spans exporter) (messages)]))
+                    events       (snowplow-test/pop-event-data-and-user-id!)
                     token-events (filter #(contains? (:data %) "total_tokens") events)
                     tool-events  (filter #(= "agent_used_tool" (get-in % [:data "event"])) events)]
                 (is (=? [{:user-id (str rasta-id)
@@ -1411,8 +1749,15 @@
                                     "result"        "success"
                                     "duration_ms"   nat-int?
                                     "session_id"    "00000000-0000-0000-0000-000000000002"
-                                    "event_details" {"tool_name" "get-time"}}}]
-                        tool-events))))))))))
+                                    "event_details" {"tool_name" "get-time"}}}
+                         {:data {"event"         "agent_used_tool"
+                                 "result"        "error"
+                                 "event_details" {"tool_name" "unknown"}}}]
+                        tool-events))
+                (is (= 2 (count (filter #(= ":metabot.agent/run-tool" (:name %)) spans))))
+                (is (some #(str/includes? (:message %) "call-2") logs))
+                (is (not (str/includes? (pr-str [events spans logs]) "jane_doe"))
+                    "a name the model made up never reaches analytics, spans or logs")))))))))
 
 (deftest call-llm-structured-snowplow-test
   (llm.tu/with-default-connections
@@ -1447,6 +1792,35 @@
                                     "session_id"           "00000000-0000-0000-0000-000000000002"}}]
                         token-events))))))))))
 
+;;; ===================== Usage Log Tests =====================
+
+(deftest call-llm-usage-log-test
+  (testing "call-llm and call-llm-structured log the provider type and the model as the provider names it"
+    (llm.tu/with-connections [(assoc (llm.tu/connection "openrouter") :key "openrouter-1")
+                              (llm.tu/connection "metabase")]
+      (let [model-ref "openrouter-1/anthropic/claude-sonnet-4.6"
+            response  (test-util/mock-llm-response
+                       [{:type :start :id "m1"}
+                        {:type :tool-input :id "call-1" :function "json" :arguments {:answer "42"}}
+                        {:type :usage :usage {:promptTokens 10 :completionTokens 5}}])
+            logged    (atom [])]
+        (mt/with-dynamic-fn-redefs [openrouter/openrouter (constantly response)
+                                    self.claude/claude    (constantly response)
+                                    usage/log-ai-usage!   #(swap! logged conj %)]
+          (run! identity (self/call-llm model-ref nil [] {} {:tag "metabot_agent"}))
+          (self/call-llm-structured model-ref [{:role "user" :content "test"}]
+                                    {:type "object" :properties {:answer {:type "string"}}} 0.3 1024
+                                    {:tag "metabot_agent"})
+          (run! identity (self/call-llm "metabase/anthropic/claude-haiku-4-5" nil [] {} {:tag "metabot_agent"})))
+        (is (=? (concat (repeat 2 {:model      model-ref
+                                   :provider   "openrouter"
+                                   :model-name "anthropic/claude-sonnet-4.6"})
+                        [{:model      "metabase/anthropic/claude-haiku-4-5"
+                          :provider   "anthropic"
+                          :model-name "claude-haiku-4-5"
+                          :ai-proxied true}])
+                @logged))))))
+
 ;;; ----- gating: usage-limit + permission checks in call-llm-structured-with-trace -----
 ;;; (UXW-4126) The structured-with-trace path enforces usage limits unconditionally and
 ;;; an optional `:required-permission` against the current user's metabot perms.
@@ -1466,10 +1840,11 @@
   (testing "When check-usage-limits! returns a message, the call throws an ex-info with
             :type :metabot/usage-limit-reached *before* hitting the provider adapter."
     (let [adapter-calls (atom 0)]
-      (with-redefs [usage/check-usage-limits!
-                    (fn [] "you've used all of your AI tokens")
-                    self.claude/claude
-                    (fn [& _] (swap! adapter-calls inc) [])]
+      (mt/with-dynamic-fn-redefs
+        [usage/check-usage-limits!
+         (fn [] "you've used all of your AI tokens")
+         self.claude/claude
+         (fn [& _] (swap! adapter-calls inc) [])]
         (let [ex (try-structured-call {})]
           (is (= :metabot/usage-limit-reached (:type (ex-data ex))))
           (is (= "ai_usage_limit_reached" (:error-code (ex-data ex))))
@@ -1480,14 +1855,15 @@
   (testing ":required-permission is checked against the caller's metabot perms; a missing
             grant throws :metabot/permission-denied before the provider adapter is hit."
     (let [adapter-calls (atom 0)]
-      (with-redefs [usage/check-usage-limits! (constantly nil)
-                    scope/resolve-user-permissions
-                    (fn [_uid] {:permission/metabot                :yes
-                                :permission/metabot-sql-generation :yes
-                                :permission/metabot-nlq            :yes
-                                :permission/metabot-other-tools    :no})
-                    self.claude/claude
-                    (fn [& _] (swap! adapter-calls inc) [])]
+      (mt/with-dynamic-fn-redefs
+        [usage/check-usage-limits! (constantly nil)
+         scope/resolve-user-permissions
+         (fn [_uid] {:permission/metabot                :yes
+                     :permission/metabot-sql-generation :yes
+                     :permission/metabot-nlq            :yes
+                     :permission/metabot-other-tools    :no})
+         self.claude/claude
+         (fn [& _] (swap! adapter-calls inc) [])]
         (let [ex (try-structured-call {:required-permission :permission/metabot-other-tools})]
           (is (= :metabot/permission-denied (:type (ex-data ex))))
           (is (= :permission/metabot-other-tools (:required-permission (ex-data ex))))
@@ -1496,12 +1872,13 @@
 (deftest call-llm-structured-with-trace-throws-on-base-permission-denied-test
   (testing "When `:required-permission` is set but the base :permission/metabot is denied,
             the call throws with :required-permission :permission/metabot."
-    (with-redefs [usage/check-usage-limits! (constantly nil)
-                  scope/resolve-user-permissions
-                  (fn [_uid] {:permission/metabot                :no
-                              :permission/metabot-sql-generation :yes
-                              :permission/metabot-nlq            :yes
-                              :permission/metabot-other-tools    :yes})]
+    (mt/with-dynamic-fn-redefs
+      [usage/check-usage-limits! (constantly nil)
+       scope/resolve-user-permissions
+       (fn [_uid] {:permission/metabot                :no
+                   :permission/metabot-sql-generation :yes
+                   :permission/metabot-nlq            :yes
+                   :permission/metabot-other-tools    :yes})]
       (let [ex (try-structured-call {:required-permission :permission/metabot-other-tools})]
         (is (= :metabot/permission-denied (:type (ex-data ex))))
         (is (= :permission/metabot (:required-permission (ex-data ex)))
@@ -1512,16 +1889,17 @@
             Granting the base perm lets the call proceed to the adapter."
     (let [resolve-calls (atom 0)
           adapter-calls (atom 0)]
-      (with-redefs [usage/check-usage-limits! (constantly nil)
-                    scope/resolve-user-permissions
-                    (fn [_uid]
-                      (swap! resolve-calls inc)
-                      {:permission/metabot :yes})
-                    ;; Throw inside the adapter so we don't depend on parts-shape details —
-                    ;; we just want to verify the base perm check passed and the call
-                    ;; reached the provider.
-                    self.claude/claude
-                    (fn [& _] (swap! adapter-calls inc) (throw (ex-info "adapter reached" {})))]
+      (mt/with-dynamic-fn-redefs
+        [usage/check-usage-limits! (constantly nil)
+         scope/resolve-user-permissions
+         (fn [_uid]
+           (swap! resolve-calls inc)
+           {:permission/metabot :yes})
+         ;; Throw inside the adapter so we don't depend on parts-shape details —
+         ;; we just want to verify the base perm check passed and the call
+         ;; reached the provider.
+         self.claude/claude
+         (fn [& _] (swap! adapter-calls inc) (throw (ex-info "adapter reached" {})))]
         (try-structured-call {})
         (is (pos? @resolve-calls)
             "the base :permission/metabot check resolves perms even when no :required-permission is set")
@@ -1532,11 +1910,12 @@
   (testing "Without `:required-permission`, the base :permission/metabot is still enforced;
             a denial throws :metabot/permission-denied."
     (let [adapter-calls (atom 0)]
-      (with-redefs [usage/check-usage-limits! (constantly nil)
-                    scope/resolve-user-permissions
-                    (fn [_uid] {:permission/metabot :no})
-                    self.claude/claude
-                    (fn [& _] (swap! adapter-calls inc) [])]
+      (mt/with-dynamic-fn-redefs
+        [usage/check-usage-limits! (constantly nil)
+         scope/resolve-user-permissions
+         (fn [_uid] {:permission/metabot :no})
+         self.claude/claude
+         (fn [& _] (swap! adapter-calls inc) [])]
         (let [ex (try-structured-call {})]
           (is (= :metabot/permission-denied (:type (ex-data ex))))
           (is (= :permission/metabot (:required-permission (ex-data ex))))
@@ -1547,10 +1926,11 @@
             that yields a single :error part with error-code ai_usage_limit_reached
             and never opens the provider stream."
     (let [adapter-calls (atom 0)]
-      (with-redefs [usage/check-usage-limits!
-                    (fn [] "you've used all of your AI tokens")
-                    self.claude/claude
-                    (fn [& _] (swap! adapter-calls inc) [])]
+      (mt/with-dynamic-fn-redefs
+        [usage/check-usage-limits!
+         (fn [] "you've used all of your AI tokens")
+         self.claude/claude
+         (fn [& _] (swap! adapter-calls inc) [])]
         (let [parts (into [] (self/call-llm "anthropic/claude-haiku-4-5"
                                             nil [] {} {} nil))]
           (is (= 1 (count parts)))
@@ -1563,14 +1943,15 @@
             grant yields a single :error part with error-code permission_denied,
             without opening the provider stream."
     (let [adapter-calls (atom 0)]
-      (with-redefs [usage/check-usage-limits! (constantly nil)
-                    scope/resolve-user-permissions
-                    (fn [_uid] {:permission/metabot                :yes
-                                :permission/metabot-sql-generation :yes
-                                :permission/metabot-nlq            :yes
-                                :permission/metabot-other-tools    :no})
-                    self.claude/claude
-                    (fn [& _] (swap! adapter-calls inc) [])]
+      (mt/with-dynamic-fn-redefs
+        [usage/check-usage-limits! (constantly nil)
+         scope/resolve-user-permissions
+         (fn [_uid] {:permission/metabot                :yes
+                     :permission/metabot-sql-generation :yes
+                     :permission/metabot-nlq            :yes
+                     :permission/metabot-other-tools    :no})
+         self.claude/claude
+         (fn [& _] (swap! adapter-calls inc) [])]
         (let [parts (into [] (self/call-llm "anthropic/claude-haiku-4-5"
                                             nil [] {}
                                             {:required-permission :permission/metabot-other-tools}
@@ -1585,39 +1966,44 @@
 (deftest llm-call-unavailable-reason-test
   (let [perm :permission/metabot-other-tools]
     (testing "nil (and llm-call-available? true) when every check passes"
-      (with-redefs [metabot.settings/metabot-enabled?        (constantly true)
-                    metabot.settings/llm-metabot-configured? (constantly true)
-                    usage/check-usage-limits!                (constantly nil)
-                    scope/resolve-user-permissions           (constantly scope/all-yes-permissions)]
+      (mt/with-dynamic-fn-redefs
+        [metabot.settings/metabot-enabled?        (constantly true)
+         metabot.settings/llm-metabot-configured? (constantly true)
+         usage/check-usage-limits!                (constantly nil)
+         scope/resolve-user-permissions           (constantly scope/all-yes-permissions)]
         (is (nil? (self/llm-call-unavailable-reason perm)))
         (is (true? (self/llm-call-available? perm)))))
     (testing ":metabot-disabled when Metabot is off"
-      (with-redefs [metabot.settings/metabot-enabled? (constantly false)]
+      (mt/with-dynamic-fn-redefs [metabot.settings/metabot-enabled? (constantly false)]
         (is (= :metabot-disabled (self/llm-call-unavailable-reason perm)))
         (is (false? (self/llm-call-available? perm)))))
     (testing ":no-llm when no provider is configured"
-      (with-redefs [metabot.settings/metabot-enabled?        (constantly true)
-                    metabot.settings/llm-metabot-configured? (constantly false)]
+      (mt/with-dynamic-fn-redefs
+        [metabot.settings/metabot-enabled?        (constantly true)
+         metabot.settings/llm-metabot-configured? (constantly false)]
         (is (= :no-llm (self/llm-call-unavailable-reason perm)))))
     (testing ":usage-limit when over the AI usage limit"
-      (with-redefs [metabot.settings/metabot-enabled?        (constantly true)
-                    metabot.settings/llm-metabot-configured? (constantly true)
-                    usage/check-usage-limits!                (constantly "You've used all your tokens")]
+      (mt/with-dynamic-fn-redefs
+        [metabot.settings/metabot-enabled?        (constantly true)
+         metabot.settings/llm-metabot-configured? (constantly true)
+         usage/check-usage-limits!                (constantly "You've used all your tokens")]
         (is (= :usage-limit (self/llm-call-unavailable-reason perm)))))
     (testing ":permission-denied when the current user lacks the required permission"
-      (with-redefs [metabot.settings/metabot-enabled?        (constantly true)
-                    metabot.settings/llm-metabot-configured? (constantly true)
-                    usage/check-usage-limits!                (constantly nil)
-                    scope/resolve-user-permissions           (constantly (assoc scope/all-yes-permissions
-                                                                                perm :no))]
+      (mt/with-dynamic-fn-redefs
+        [metabot.settings/metabot-enabled?        (constantly true)
+         metabot.settings/llm-metabot-configured? (constantly true)
+         usage/check-usage-limits!                (constantly nil)
+         scope/resolve-user-permissions           (constantly (assoc scope/all-yes-permissions
+                                                                     perm :no))]
         (is (= :permission-denied (self/llm-call-unavailable-reason perm)))
         (is (false? (self/llm-call-available? perm)))))
     (testing "checks short-circuit in order: disabled before usage/permission"
-      (with-redefs [metabot.settings/metabot-enabled?        (constantly false)
-                    metabot.settings/llm-metabot-configured? (constantly false)
-                    usage/check-usage-limits!                (constantly "limit")
-                    scope/resolve-user-permissions           (constantly (assoc scope/all-yes-permissions
-                                                                                perm :no))]
+      (mt/with-dynamic-fn-redefs
+        [metabot.settings/metabot-enabled?        (constantly false)
+         metabot.settings/llm-metabot-configured? (constantly false)
+         usage/check-usage-limits!                (constantly "limit")
+         scope/resolve-user-permissions           (constantly (assoc scope/all-yes-permissions
+                                                                     perm :no))]
         (is (= :metabot-disabled (self/llm-call-unavailable-reason perm)))))))
 
 (deftest ^:parallel body-preview-test
@@ -1945,3 +2331,93 @@
             "a warn with provider and status is still emitted for server-side debugging")
         (is (not (str/includes? (:message entry) secret))
             "the secret-bearing body never appears in the warn log")))))
+
+(defn- provider-api-error!
+  "What an adapter throws when `provider` answers with an HTTP error `status` and a JSON `body`."
+  [provider status body]
+  (mt/with-log-level [metabase.metabot.self.core :fatal]
+    (caught #(self.core/rethrow-api-error! provider
+                                           (constantly "API error")
+                                           (ex-info "clj-http error"
+                                                    {:status  status
+                                                     :headers {"content-type" "application/json"}
+                                                     :body    (json/encode body)})))))
+
+(def ^:private anthropic-credit-balance-body
+  {:type  "error"
+   :error {:type    "invalid_request_error"
+           :message "Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}})
+
+(deftest byok-provider-error-test
+  (mt/with-temporary-setting-values [llm-providers        llm.tu/default-connections
+                                     llm-metabot-provider "anthropic/claude-sonnet-4-6"]
+    (testing "classifies the failures that the customer can fix on their side"
+      (are [code provider status body]
+           (= code (:error-code (mt/as-admin (self/byok-provider-error (provider-api-error! provider status body)))))
+        "ai_provider_billing"    "anthropic"  400 anthropic-credit-balance-body
+        "ai_provider_billing"    "anthropic"  400 {:error {:type    "invalid_request_error"
+                                                           :message "You have reached your specified API usage limits."}}
+        "ai_provider_billing"    "anthropic"  402 {:error {:type "billing_error" :message "Check your payment details."}}
+        "ai_provider_billing"    "anthropic"  429 {:error {:type    "rate_limit_error"
+                                                           :message "You have reached your API usage limits."
+                                                           :details {:error_code "enforced_spend_limit_reached"}}}
+        "ai_provider_billing"    "openai"     429 {:error {:type    "insufficient_quota"
+                                                           :code    "insufficient_quota"
+                                                           :message "You exceeded your current quota."}}
+        "ai_provider_billing"    "openrouter" 402 {:error {:code 402 :message "Insufficient credits"}}
+        "ai_provider_rate_limit" "anthropic"  429 {:error {:type "rate_limit_error" :message "Too many requests."}}
+        "ai_provider_rate_limit" "openai"     429 {:error {:code "rate_limit_exceeded" :message "Rate limit reached."}}
+        "ai_provider_auth"       "anthropic"  401 {:error {:type "authentication_error" :message "invalid x-api-key"}}
+        "ai_provider_auth"       "anthropic"  403 {:error {:type    "permission_error"
+                                                           :message "Your API key does not have permission to use the specified resource."}}
+        nil                      "openai"     403 {:error {:type    "request_forbidden"
+                                                           :code    "unsupported_country_region_territory"
+                                                           :message "Country, region, or territory not supported"}}
+        nil                      "anthropic"  400 {:error {:type    "invalid_request_error"
+                                                           :message "max_tokens: Input should be greater than 0"}}
+        nil                      "anthropic"  529 {:error {:type "overloaded_error" :message "Overloaded"}}))
+    (testing "admins are told which provider failed, everyone else is not"
+      (doseq [status [402 429 401]]
+        (let [e (provider-api-error! "anthropic" status {})]
+          (is (str/includes? (:message (mt/as-admin (self/byok-provider-error e)))
+                             "Anthropic"))
+          (is (not (str/includes? (:message (mt/with-current-user (mt/user->id :rasta)
+                                              (self/byok-provider-error e)))
+                                  "Anthropic"))))))
+    (testing "the managed provider keeps the generic error, since its failures are Metabase's to fix"
+      (mt/with-temporary-setting-values [llm-metabot-provider "metabase/anthropic/claude-sonnet-4-6"]
+        (is (nil? (mt/as-admin
+                    (self/byok-provider-error (provider-api-error! "anthropic" 400 anthropic-credit-balance-body)))))))))
+
+(deftest known-models-normalization-test
+  (testing "adapters that key model id to a map are passed through"
+    (let [models (self/known-models "anthropic")]
+      (is (seq models))
+      (is (every? (comp :display-name val) models))))
+  (testing "DeepSeek records only a display name, and still comes back in the same shape"
+    (let [models (self/known-models "deepseek")]
+      (is (seq models))
+      (is (every? (comp string? :display-name val) models))))
+  (testing "the types with no allow-list return nil rather than an empty map"
+    (doseq [provider ["azure" "google" "vllm" "metabase"]]
+      (is (nil? (self/known-models provider)) provider)))
+  (testing "an unregistered provider throws instead of reading as one with no models"
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                          #"Unknown LLM provider"
+                          (self/known-models "brand-new"))))
+  (testing "an entry that is not a map throws"
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                          #"Unrecognized supported-models entry"
+                          (#'self/normalize-known-model "anthropic" "some-model" 42))))
+  (testing "so does a map with no display name — the dox table would print the model id as its name"
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                          #"Unrecognized supported-models entry"
+                          (#'self/normalize-known-model "anthropic" "some-model" {})))
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                          #"Unrecognized supported-models entry"
+                          (#'self/normalize-known-model "anthropic" "some-model" {:context-window 200000}))))
+  (testing "every provider that publishes an allow-list names every model in it"
+    (doseq [provider ["anthropic" "bedrock" "deepseek" "mistral" "moonshot" "openai" "openrouter" "xai" "zai"]]
+      (let [models (self/known-models provider)]
+        (is (seq models) provider)
+        (is (every? (comp string? :display-name val) models) provider)))))

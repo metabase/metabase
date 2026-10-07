@@ -1,4 +1,4 @@
-(ns metabase.app-db.force-migration-test
+(ns ^:mb/app-db-migrations-test metabase.app-db.force-migration-test
   (:require
    [clojure.test :refer :all]
    [metabase.app-db.core :as mdb]

@@ -6,13 +6,13 @@ import {
   setupMfaEnrolledUsersEndpoint,
   setupMfaEnrolledUsersEndpointError,
 } from "__support__/server-mocks";
+import { createMockState } from "__support__/state";
 import {
   mockGetBoundingClientRect,
   renderWithProviders,
   screen,
   waitFor,
 } from "__support__/ui";
-import { createMockState } from "metabase/redux/store/mocks";
 import type { MfaEnrolledUser } from "metabase-types/api";
 import {
   createMockMfaEnrolledUser,

@@ -1,0 +1,10 @@
+.root {
+  float: left;
+  opacity: 0;
+  transition: none;
+}
+
+.visible {
+  opacity: 1;
+  transition: opacity 500ms linear;
+}

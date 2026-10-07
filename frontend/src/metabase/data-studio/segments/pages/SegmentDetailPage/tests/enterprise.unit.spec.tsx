@@ -49,7 +49,10 @@ describe("SegmentDetailPage", () => {
         });
 
         expect(screen.getByDisplayValue("High Value Orders")).toBeEnabled();
-        expect(screen.getByLabelText("Give it a description")).toBeEnabled();
+        await userEvent.click(screen.getByLabelText("Give it a description"));
+        expect(
+          screen.getByPlaceholderText("Only if it really needs it"),
+        ).toBeEnabled();
 
         await userEvent.click(screen.getByLabelText("Segment actions"));
 

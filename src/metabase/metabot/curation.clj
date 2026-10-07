@@ -9,7 +9,7 @@
   (:require
    [metabase.collections.curation :as curation]
    [metabase.collections.models.collection :as collection]
-   [toucan2.core :as t2]))
+   [metabase.metabot.db :as metabot.db]))
 
 (def ^:private report-card-models
   "Search-model strings backed by `report_card`, moderated as \"card\"."
@@ -20,18 +20,14 @@
   [ids item-type]
   (if (empty? ids)
     #{}
-    (t2/select-fn-set :moderated_item_id :model/ModerationReview
-                      :moderated_item_id   [:in ids]
-                      :moderated_item_type item-type
-                      :most_recent         true
-                      :status              "verified")))
+    (metabot.db/verified-item-ids ids item-type)))
 
 (defn- collection-info
   "`collection-id → {:authority_level :location :type}` for the given ids."
   [coll-ids]
   (when (seq coll-ids)
-    (t2/select-pk->fn #(select-keys % [:authority_level :location :type])
-                      :model/Collection :id [:in coll-ids])))
+    (update-vals (metabot.db/collection-curation-info-by-id coll-ids)
+                 #(select-keys % [:authority_level :location :type]))))
 
 (defn- root-collection-type-of
   [coll-id->info coll-id]
@@ -43,7 +39,9 @@
 (defn- moderatable-curation-signals
   "`[id signal-map]` pairs for collection-housed, moderatable models (report_card-backed and dashboards)."
   [search-model t2-model item-type ids]
-  (let [rows     (t2/select [t2-model :id :collection_id] :id [:in ids])
+  (let [rows     (case t2-model
+                   :model/Card      (metabot.db/card-collection-ids ids)
+                   :model/Dashboard (metabot.db/dashboard-collection-ids ids))
         coll     (collection-info (into #{} (keep :collection_id) rows))
         verified (verified-item-ids ids item-type)]
     (for [{:keys [id collection_id]} rows]
@@ -62,7 +60,7 @@
   curated? coerce is_published consistently (only true/1 count)."
   [ids]
   (for [{:keys [id is_published data_layer data_authority]}
-        (t2/select [:model/Table :id :is_published :data_layer :data_authority] :id [:in ids])]
+        (metabot.db/table-curation-rows ids)]
     [id {:model          "table"
          :is_published   is_published
          :data_layer     data_layer

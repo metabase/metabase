@@ -3,10 +3,8 @@ name: E2E Tests
 on:
   workflow_call:
     inputs:
-      skip:
-        type: boolean
-        default: false
-      specs:
+      test-plan-artifact-id:
+        description: "ID of this run's test-plan.json artifact, '' to run the full suite."
         type: string
         required: false
         default: ""
@@ -16,11 +14,18 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  gate:
+    uses: ./.github/workflows/test.gate.yml
+    with:
+      filters: e2e_all
+
   e2e-matrix-builder:
+    needs: gate
+    if: ${{ needs.gate.outputs.run == 'true' }}
     uses: ./.github/workflows/e2e-matrix-builder.yml
     with:
       chunks: 50
-      specs: ${{ inputs.specs }}
+      test-plan-artifact-id: ${{ inputs.test-plan-artifact-id }}
 
   reset-e2e-test-comment:
     if: ${{ github.event_name == 'pull_request' }}
@@ -58,8 +63,9 @@ jobs:
     uses: ./.github/workflows/e2e-test.yml
     needs:
       - e2e-matrix-builder
-    if: |
-      !cancelled() && !inputs.skip
+    # No status function, so a skipped or failed matrix builder keeps this out: the strategy below
+    # cannot parse a matrix it never produced. The builder itself only runs when the gate says so.
+    if: ${{ needs.e2e-matrix-builder.outputs.hasTests == 'true' }}
     strategy:
       fail-fast: false
       matrix: ${{ fromJson(needs.e2e-matrix-builder.outputs.matrix) }}
@@ -68,6 +74,7 @@ jobs:
       name: ${{ matrix.name }}
       edition: ${{ matrix.edition }}
       specs: ${{ matrix.specs }}
+      test-plan-artifact-id: ${{ needs.e2e-matrix-builder.outputs.test-plan-artifact-id }}
       total_chunks: ${{ fromJson(needs.e2e-matrix-builder.outputs.regularChunks) }}
       split_index: ${{ strategy.job-index }}
       tags: ${{ matrix.tags }}
@@ -78,9 +85,9 @@ jobs:
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 10
     needs: e2e-tests
-    if: always() && !cancelled() && github.ref == 'refs/heads/master'
+    if: ${{ !cancelled() && github.ref == 'refs/heads/master' }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           sparse-checkout: |
             .github
@@ -137,24 +144,35 @@ jobs:
 
   e2e-tests-result:
     needs:
+      - gate
+      - e2e-matrix-builder
       - e2e-tests
     runs-on: ${{ vars.SLIM_RUNNER_KEY }}
     timeout-minutes: 5
     name: e2e-tests-result
-    if: always() && !cancelled()
+    if: ${{ !cancelled() }}
     env:
       E2E_TESTS_RESULT: ${{ needs.e2e-tests.result }}
+      MATRIX_RESULT: ${{ needs.e2e-matrix-builder.result }}
+      HAS_TESTS: ${{ needs.e2e-matrix-builder.outputs.hasTests }}
+      GATE_RESULT: ${{ needs.gate.result }}
+      RUN: ${{ needs.gate.outputs.run }}
     steps:
-      - name: Stub
-        if: ${{ needs.e2e-tests.result == 'skipped' }}
-        run: |
-          echo "Didn't run due to conditional filtering"
       - name: Test results
-        if: ${{ needs.e2e-tests.result != 'skipped' }}
         run: | # sh
-          echo "E2E Tests: ${{ needs.e2e-tests.result }}"
-
-          if [ "${{ needs.e2e-tests.result }}" != "success" ]; then
+          if [ "$GATE_RESULT" != "success" ]; then
+            echo "The test gate failed, so the suite never ran"
+            exit 1
+          elif [ "$RUN" != "true" ]; then
+            echo "Didn't run due to conditional filtering"
+          elif [ "$MATRIX_RESULT" != "success" ]; then
+            echo "E2E matrix builder failed"
+            exit 1
+          elif [ "$HAS_TESTS" = "false" ]; then
+            echo "The plan selected no E2E specs"
+          elif [ "$E2E_TESTS_RESULT" != "success" ]; then
             echo "E2E Tests failed"
             exit 1
+          else
+            echo "E2E Tests passed"
           fi

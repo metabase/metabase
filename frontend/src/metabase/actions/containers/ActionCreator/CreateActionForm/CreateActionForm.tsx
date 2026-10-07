@@ -65,14 +65,14 @@ function CreateActionForm({
             label={t`Name`}
             placeholder={t`My new fantastic action`}
             data-autofocus
-            mb="md"
+            mb="lg"
           />
           <FormTextarea
             name="description"
             label={t`Description`}
             placeholder={t`It's optional but oh, so helpful`}
             minRows={5}
-            mb="md"
+            mb="lg"
             nullable
           />
           <FormModelPicker name="model_id" title={t`Model it's saved in`} />

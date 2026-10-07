@@ -14,22 +14,18 @@ import { connect, useSelector } from "metabase/redux";
 import type { State } from "metabase/redux/store";
 import { Flex, Loader, Text } from "metabase/ui";
 import MetabaseSettings from "metabase/utils/settings";
+import type { VisualizationProps } from "metabase/visualizations/types";
 import {
   HEAT_MAP_ZERO_COLOR,
+  MinColumnsError,
+  type VisualizationDefinition,
   buildColorScale,
-  getLegendTitles,
-} from "metabase/visualizations/lib/choropleth";
-import { MinColumnsError } from "metabase/visualizations/lib/errors";
-import { getCanonicalRowKey } from "metabase/visualizations/lib/region-codes";
-import { unaggregatedDataWarningMap } from "metabase/visualizations/lib/warnings";
-import {
+  getCanonicalRowKey,
   getDefaultSize,
+  getLegendTitles,
   getMinSize,
-} from "metabase/visualizations/shared/utils/sizes";
-import type {
-  VisualizationDefinition,
-  VisualizationProps,
-} from "metabase/visualizations/types";
+  unaggregatedDataWarningMap,
+} from "metabase/viz-core";
 import { isMetric, isString } from "metabase-lib/v1/types/utils/isa";
 import type {
   CustomGeoJSONMap,
@@ -409,7 +405,9 @@ function ChoroplethMapInner(props: ChoroplethMapProps) {
     return value == null ? HEAT_MAP_ZERO_COLOR : colorScale(value);
   };
 
-  const isSeriesHighlighted = card.id === highlighted?.cardId;
+  const isSeriesHighlighted =
+    highlighted != null &&
+    (highlighted.cardId == null || highlighted.cardId === card.id);
   const highlightedDimension = highlighted?.dimensions?.find(
     (d) => d.columnName === dimensionColumn?.name,
   );

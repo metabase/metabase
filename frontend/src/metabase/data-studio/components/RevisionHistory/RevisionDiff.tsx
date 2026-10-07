@@ -2,7 +2,7 @@ import { diffWords } from "diff";
 import { t } from "ttag";
 
 import { Box, Flex, Icon, Text } from "metabase/ui";
-import type { DatasetQuery, FieldDiff, TableId } from "metabase-types/api";
+import type { DatasetQuery, FieldDiff } from "metabase-types/api";
 
 import { QueryClauseDisplay } from "./QueryClauseDisplay";
 import type { DefinitionType } from "./types";
@@ -15,7 +15,6 @@ type DiffValue = {
 type RevisionDiffProps = {
   property: string;
   diff: DiffValue | undefined;
-  tableId: TableId;
   definitionLabel: string;
   definitionType: DefinitionType;
 };
@@ -23,7 +22,6 @@ type RevisionDiffProps = {
 export function RevisionDiff({
   property,
   diff,
-  tableId,
   definitionLabel,
   definitionType,
 }: RevisionDiffProps) {
@@ -35,7 +33,7 @@ export function RevisionDiff({
   const label = getPropertyLabel(property, definitionLabel);
 
   return (
-    <Box p="md" bg="background_page-secondary" bd="1px solid border-neutral">
+    <Box p="lg" bg="background_page-secondary" bd="1px solid border-neutral">
       <Flex align="center" gap="sm" mb="sm">
         <DiffIcon before={before} after={after} />
         <Text size="sm" fw={400} c="text-secondary">
@@ -47,7 +45,6 @@ export function RevisionDiff({
         <DefinitionDiff
           before={before}
           after={after}
-          tableId={tableId}
           definitionType={definitionType}
         />
       ) : (
@@ -121,7 +118,6 @@ function TextDiff({ before, after }: FieldDiff) {
 type DefinitionDiffProps = {
   before: unknown;
   after: unknown;
-  tableId: TableId;
   definitionType: DefinitionType;
 };
 
@@ -132,7 +128,6 @@ function isDatasetQuery(value: unknown): value is DatasetQuery {
 function DefinitionDiff({
   before,
   after,
-  tableId,
   definitionType,
 }: DefinitionDiffProps) {
   const definition = after ?? before;
@@ -142,10 +137,6 @@ function DefinitionDiff({
   }
 
   return (
-    <QueryClauseDisplay
-      definition={definition}
-      tableId={tableId}
-      clauseType={definitionType}
-    />
+    <QueryClauseDisplay definition={definition} clauseType={definitionType} />
   );
 }

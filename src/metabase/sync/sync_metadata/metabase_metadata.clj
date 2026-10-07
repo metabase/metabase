@@ -9,17 +9,17 @@
    [clojure.string :as str]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
+   [metabase.sync.db :as sync.db]
    [metabase.sync.fetch-metadata :as fetch-metadata]
    [metabase.sync.interface :as i]
    [metabase.sync.util :as sync-util]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2]))
+   [metabase.util.malli.schema :as ms]))
 
 (def ^:private KeypathComponents
-  [:map
+  [:map {:closed true}
    [:table-name [:maybe ms/NonBlankString]]
    [:field-name [:maybe ms/NonBlankString]]
    [:k          :keyword]])
@@ -41,21 +41,18 @@
   "Set a property for a Field or Table in `database`. Returns `true` if a property was successfully set."
   [database                          :- i/DatabaseInstance
    {:keys [table-name field-name k]} :- KeypathComponents
-   value]
+   value                             :- [:maybe :string]]
   (boolean
    ;; ignore legacy entries that try to set field_type since it's no longer part of Field
    (when-not (= k :field_type)
      ;; fetch the corresponding Table, then set the Table or Field property
      (if table-name
-       (when-let [table-id (t2/select-one-pk :model/Table
-                                             ;; TODO: this needs to support schemas
-                                             :db_id  (u/the-id database)
-                                             :name   table-name
-                                             :active true)]
+       ;; TODO: this needs to support schemas
+       (when-let [table-id (sync.db/active-table-id-by-name (u/the-id database) table-name)]
          (if field-name
-           (t2/update! :model/Field {:name field-name, :table_id table-id} {k value})
-           (t2/update! :model/Table table-id {k value})))
-       (t2/update! :model/Database (u/the-id database) {k value})))))
+           (sync.db/update-field-by-name! table-id field-name {k value})
+           (sync.db/update-table! table-id {k value})))
+       (sync.db/update-database! (u/the-id database) {k value})))))
 
 (mu/defn- sync-metabase-metadata-table!
   "Databases may include a table named `_metabase_metadata` (case-insensitive) which includes descriptions or other
@@ -75,7 +72,7 @@
 
   This functionality is currently only used by the Sample Database. In order to use this functionality, drivers *must*
   implement optional fn `:table-rows-seq`."
-  [driver
+  [driver                  :- :keyword
    database                :- i/DatabaseInstance
    metabase-metadata-table :- i/DatabaseMetadataTable]
   (doseq [{:keys [keypath value]} (driver/table-rows-seq driver database metabase-metadata-table)]

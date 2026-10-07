@@ -15,7 +15,7 @@ export function McpUsagePage() {
   } = useMcpAnalyticsContext();
 
   return (
-    <Stack gap="lg">
+    <Stack gap="xl">
       <McpCallsTimelineChart
         provider={provider}
         table={table}
@@ -26,7 +26,7 @@ export function McpUsagePage() {
         tenantId={tenantId}
         title={t`Calls by client over time`}
       />
-      <SimpleGrid cols={2} spacing="lg">
+      <SimpleGrid cols={2} spacing="xl">
         <McpBreakoutChart
           provider={provider}
           table={table}
@@ -57,7 +57,7 @@ export function McpUsagePage() {
 
       {hasErrors && (
         <>
-          <Title order={3} mt="md">{t`Errors`}</Title>
+          <Title order={3} mt="lg">{t`Errors`}</Title>
           <McpCallsTimelineChart
             provider={provider}
             table={table}
@@ -69,7 +69,7 @@ export function McpUsagePage() {
             title={t`Calls by status over time`}
             buildQuery={buildCallsByDayByStatusQuery}
           />
-          <SimpleGrid cols={2} spacing="lg">
+          <SimpleGrid cols={2} spacing="xl">
             <McpBreakoutChart
               provider={provider}
               table={table}

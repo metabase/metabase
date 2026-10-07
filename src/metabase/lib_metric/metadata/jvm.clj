@@ -5,17 +5,16 @@
    It fetches metrics from the Card table (type='metric') without database scoping,
    and routes table/column metadata requests to database-specific providers."
   (:require
-   [honey.sql.helpers :as sql.helpers]
    [medley.core :as m]
    [metabase.lib-be.core :as lib-be]
+   [metabase.lib-metric.db :as lib-metric.db]
    [metabase.lib-metric.dimension :as lib-metric.dimension]
    [metabase.lib-metric.dimension.jvm :as lib-metric.dimension.jvm]
    [metabase.lib-metric.metadata.provider :as provider]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.settings.core :as setting]
    [metabase.util.malli :as mu]
-   [metabase.util.memoize :as memoize]
-   [toucan2.core :as t2]))
+   [metabase.util.memoize :as memoize]))
 
 (set! *warn-on-reflection* true)
 
@@ -24,34 +23,19 @@
   []
   (memoize/lru
    (fn [table-id]
-     (t2/select-one-fn :db_id :model/Table table-id))
+     (lib-metric.db/table-database-id table-id))
    :lru/threshold 1000))
-
-(defn- metric-spec->honey-sql
-  "Build HoneySQL WHERE clause for fetching metrics.
-   Metrics are Cards with type='metric' - not scoped to any database."
-  [{id-set :id, name-set :name, :keys [table-ids card-ids], :as _metadata-spec}]
-  (let [active-only? (not (or id-set name-set))
-        where-clauses (cond-> [[:= :type "metric"]]
-                        id-set       (conj [:in :id id-set])
-                        name-set     (conj [:in :name name-set])
-                        table-ids    (conj [:in :table_id table-ids])
-                        table-ids    (conj [:= :source_card_id nil])
-                        card-ids     (conj [:in :source_card_id card-ids])
-                        active-only? (conj [:= :archived false]))]
-    (reduce sql.helpers/where {} where-clauses)))
 
 (defn- fetch-metrics
   "Fetch metrics matching spec, not scoped to any database.
    Returns metrics as metadata objects with :lib/type :metadata/metric."
   [metadata-spec]
-  (let [query (metric-spec->honey-sql metadata-spec)]
-    (try
-      (t2/select :metadata/metric query)
-      (catch Throwable e
-        (throw (ex-info "Error fetching metrics with spec"
-                        {:metadata-spec metadata-spec, :query query}
-                        e))))))
+  (try
+    (lib-metric.db/metrics metadata-spec)
+    (catch Throwable e
+      (throw (ex-info "Error fetching metrics with spec"
+                      {:metadata-spec metadata-spec}
+                      e)))))
 
 ;;; ------------------------------------------------- Dimension Fetching -------------------------------------------------
 
@@ -74,27 +58,15 @@
            (get mappings-by-dim-id (:id dim))
             (assoc :dimension-mapping (get mappings-by-dim-id (:id dim))))))))
 
-(defn- measure-spec->honey-sql
-  "Build HoneySQL WHERE clause for fetching measures."
-  [{id-set :id, name-set :name, :keys [table-ids], :as _metadata-spec}]
-  (let [active-only? (not (or id-set name-set))
-        where-clauses (cond-> []
-                        id-set       (conj [:in :measure/id id-set])
-                        name-set     (conj [:in :measure/name name-set])
-                        table-ids    (conj [:in :measure/table_id table-ids])
-                        active-only? (conj [:= :measure/archived false]))]
-    (reduce sql.helpers/where {} where-clauses)))
-
 (defn- fetch-measures-for-dimensions
   "Fetch measures matching spec for dimension extraction."
   [metadata-spec]
-  (let [query (measure-spec->honey-sql metadata-spec)]
-    (try
-      (t2/select :metadata/measure query)
-      (catch Throwable e
-        (throw (ex-info "Error fetching measures for dimensions"
-                        {:metadata-spec metadata-spec, :query query}
-                        e))))))
+  (try
+    (lib-metric.db/measures metadata-spec)
+    (catch Throwable e
+      (throw (ex-info "Error fetching measures for dimensions"
+                      {:metadata-spec metadata-spec}
+                      e)))))
 
 (defn- fetch-dimensions
   "Fetch dimensions by aggregating from metrics and measures.

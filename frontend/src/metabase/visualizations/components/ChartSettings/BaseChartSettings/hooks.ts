@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { t } from "ttag";
 
-import type { Widget } from "metabase/visualizations/types";
+import type { Widget } from "metabase/viz-core";
 
 import type { BaseChartSettingsProps } from "./types";
 

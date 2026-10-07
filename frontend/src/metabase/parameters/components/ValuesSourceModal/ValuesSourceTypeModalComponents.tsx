@@ -29,7 +29,7 @@ export const ModalMain = (props: BoxPropsWithChildren) => {
 };
 
 export const ModalSection = (props: BoxPropsWithChildren) => {
-  return <Box mb="md" {...props} />;
+  return <Box mb="lg" {...props} />;
 };
 
 export const ModalLabel = (props: BoxPropsWithChildren) => {

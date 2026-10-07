@@ -1,0 +1,46 @@
+.mappingRow {
+  border: 1px solid var(--mb-color-border-neutral);
+  border-radius: var(--mantine-radius-sm);
+  padding: var(--mantine-spacing-lg);
+}
+
+.mappingRow:hover {
+  background-color: var(--mb-color-background_surface-hover);
+}
+
+.wrappableText {
+  overflow-wrap: anywhere;
+}
+
+.rowActions {
+  opacity: 0;
+}
+
+.mappingRow:hover .rowActions,
+.mappingRow:focus-within .rowActions {
+  opacity: 1;
+}
+
+/* no hover on touch devices, so the actions stay visible there */
+@media (hover: none) {
+  .rowActions {
+    opacity: 1;
+  }
+}
+
+/* Mantine reserves 100px for the search field, which pushes it under the first pill in a narrow picker */
+.groupsSearchField {
+  min-width: 3rem;
+}
+
+/* the editor row measures itself, so the arrow can go before the picker has to wrap under the name */
+.editorRow {
+  container-type: inline-size;
+}
+
+/* the name field, the arrow, the picker and their gaps need 27rem to share a line */
+@container (max-width: 27rem) {
+  .editorArrow {
+    display: none;
+  }
+}

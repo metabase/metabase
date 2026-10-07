@@ -19,7 +19,7 @@ export function NewThemeCard({ onClick }: NewThemeCardProps) {
       className={S.card}
       h={301}
     >
-      <Stack className={S.overlay} align="center" justify="center" gap="xs">
+      <Stack className={S.overlay} align="center" justify="center" gap="xxs">
         <Icon name="add" c="core-brand" size={24} />
         <Text c="core-brand" fw={500}>{t`New theme`}</Text>
       </Stack>

@@ -184,13 +184,13 @@
   [port]
   (let [url        (str "http://localhost:" port "/api/health")
         timeout-ms (* 5 60 1000)
-        interval   10000
-        start      (System/currentTimeMillis)]
+        interval   (* 10 1000)
+        start      (System/nanoTime)]
     (loop []
       (let [{:keys [exit out]} (shell/sh* {:quiet? true}
                                           "curl" "-s" "-o" "/dev/null" "-w" "%{http_code}" url)
             healthy? (and (zero? exit) (= (str/trim (str/join out)) "200"))
-            elapsed  (- (System/currentTimeMillis) start)]
+            elapsed  (quot (- (System/nanoTime) start) 1000000)] ; nanos -> millis
         (cond
           healthy?
           (println (c/green (str "Backend healthy on port " port)))
@@ -234,4 +234,3 @@
     (check-playwright!)
     (check-node-modules!)
     (println (c/green "All preflight checks passed."))))
-

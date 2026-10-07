@@ -17,8 +17,8 @@ export const TenantSummaryCard = ({
   dataPermissionsDescription: ReactNode;
 }) => {
   return (
-    <Paper withBorder p="lg" radius="md">
-      <Stack gap="md">
+    <Paper withBorder p="xl" radius="sm">
+      <Stack gap="lg">
         <Title order={4} c="text-primary">
           {name}
         </Title>

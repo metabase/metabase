@@ -10,6 +10,7 @@ import {
   setupDatabasesEndpoints,
   setupModelActionsEndpoints,
 } from "__support__/server-mocks";
+import { createMockSettingsState, createMockState } from "__support__/state";
 import {
   renderWithProviders,
   screen,
@@ -18,10 +19,6 @@ import {
   within,
 } from "__support__/ui";
 import { modalRoute } from "metabase/common/components/ModalRoute";
-import {
-  createMockSettingsState,
-  createMockState,
-} from "metabase/redux/store/mocks";
 import { Route, redirect } from "metabase/router";
 import * as Urls from "metabase/urls";
 import { checkNotNull } from "metabase/utils/types";
@@ -197,6 +194,11 @@ async function setup({
   );
 
   setupDatabasesEndpoints(databases);
+  if (databases.length === 0) {
+    // The page reads the model's source table to decide whether to load its
+    // foreign keys. With no data permissions the server refuses it.
+    fetchMock.get(`path:/api/table/${TEST_TABLE_ID}`, 403);
+  }
   setupCardsUsingModelEndpoint(card, usedBy);
   setupCardsEndpoints([card]);
   setupCardQueryMetadataEndpoint(

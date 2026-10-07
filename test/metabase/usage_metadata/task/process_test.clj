@@ -26,6 +26,8 @@
   (mt/with-temp-scheduler!
     (task/init! ::usage-metadata.task.process/UsageMetadataProcess)
     (let [ran? (promise)]
+      ;; the job body runs on a Quartz scheduler thread, which doesn't inherit *local-redefs*
+      #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
       (with-redefs [metabase.usage-metadata.batch/run-batch! (fn []
                                                                (deliver ran? true))]
         (mt/with-temporary-setting-values [usage-metadata-enabled? false]

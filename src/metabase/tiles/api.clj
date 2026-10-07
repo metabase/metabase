@@ -5,6 +5,7 @@
    [metabase.api.macros :as api.macros]
    ;; TODO (Cam 10/10/25) -- update the tile API to use MBQL 5
    ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.normalize :as mbql.normalize]
+   ;; tile API field refs are still legacy MBQL; keep the legacy schema until the MBQL 5 port above
    ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
@@ -15,14 +16,14 @@
    [metabase.query-processor.card :as qp.card]
    [metabase.query-processor.core :as qp]
    [metabase.query-processor.dashboard :as qp.dashboard]
+   [metabase.tiles.db :as tiles.db]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
-   [metabase.util.web-mercator :as mercator]
-   [toucan2.core :as t2])
+   [metabase.util.web-mercator :as mercator])
   (:import
    (java.awt Color)
    (java.awt.image BufferedImage)
@@ -69,7 +70,9 @@
   [query     :- ::lib.schema/query
    lat-field :- ::lib.schema.metadata/column
    lon-field :- ::lib.schema.metadata/column
-   x y zoom]
+   x :- ms/Int
+   y :- ms/Int
+   zoom :- ms/Int]
   (let [top-left      (x+y+zoom->lat-lon      x       y  zoom)
         bottom-right  (x+y+zoom->lat-lon (inc x) (inc y) zoom)
         inside-filter (lib/inside
@@ -149,10 +152,10 @@
   - add [:inside lat lon bounding-region coordings] filter
   - limit query results to `tile-coordinate-limit` number of results
   - only select lat and lon fields rather than entire query's fields"
-  [query                :- :map
-   zoom
-   x
-   y
+  [query                :- [:maybe [:or [:= {} {}] ::mbql.s/Query ::lib.schema/query]]
+   zoom                 :- ms/Int
+   x                    :- ms/Int
+   y                    :- ms/Int
    lat-field-legacy-ref :- ::legacy-ref
    lon-field-legacy-ref :- ::legacy-ref]
   (let [query     (-> query
@@ -221,13 +224,13 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/:zoom/:x/:y"
   "Generates a single tile image for an ad-hoc query."
-  [{:keys [zoom x y]} :- [:map
+  [{:keys [zoom x y]} :- [:map {:closed true}
                           [:zoom ms/Int]
                           [:x ms/Int]
                           [:y ms/Int]]
    {:keys     [query]
     lat-field :latField
-    lon-field :lonField} :- [:map
+    lon-field :lonField} :- [:map {:closed true}
                              [:query    ::query]
                              [:latField ::legacy-ref]
                              [:lonField ::legacy-ref]]]
@@ -291,17 +294,17 @@
 (api.macros/defendpoint :get "/:card-id/:zoom/:x/:y"
   "Generates a single tile image for a saved Card."
   [{:keys [card-id zoom x y]}
-   :- [:map
+   :- [:map {:closed true}
        [:card-id ::lib.schema.id/card]
        [:zoom ms/Int]
        [:x ms/Int]
        [:y ms/Int]]
    {:keys [parameters], lat-field :latField lon-field :lonField}
-   :- [:map
+   :- [:map {:closed true}
        [:parameters {:optional true} ::parameters.schema/api.parameter-values]
        [:latField ::legacy-ref]
        [:lonField ::legacy-ref]]]
-  (process-tiles-query-for-card (api/check-404 (t2/select-one :model/Card card-id))
+  (process-tiles-query-for-card (api/check-404 (tiles.db/card card-id))
                                 parameters zoom x y lat-field lon-field))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
@@ -311,7 +314,7 @@
 (api.macros/defendpoint :get "/:dashboard-id/dashcard/:dashcard-id/card/:card-id/:zoom/:x/:y"
   "Generates a single tile image for a dashcard."
   [{:keys [dashboard-id dashcard-id card-id zoom x y], :as _route-params}
-   :- [:map
+   :- [:map {:closed true}
        [:dashboard-id ::lib.schema.id/dashboard]
        [:dashcard-id ::lib.schema.id/dashcard]
        [:card-id ::lib.schema.id/card]
@@ -319,11 +322,11 @@
        [:x ms/Int]
        [:y ms/Int]]
    {:keys [parameters] lat-field :latField, lon-field :lonField, :as _query-params}
-   :- [:map
+   :- [:map {:closed true}
        [:parameters {:optional true} ::parameters.schema/api.parameter-values]
        [:latField ::legacy-ref]
        [:lonField ::legacy-ref]]]
-  (process-tiles-query-for-dashcard (api/check-404 (t2/select-one :model/Dashboard dashboard-id))
-                                    (api/check-404 (t2/select-one :model/DashboardCard dashcard-id))
-                                    (api/check-404 (t2/select-one :model/Card card-id))
+  (process-tiles-query-for-dashcard (api/check-404 (tiles.db/dashboard dashboard-id))
+                                    (api/check-404 (tiles.db/dashcard dashcard-id))
+                                    (api/check-404 (tiles.db/card card-id))
                                     parameters zoom x y lat-field lon-field))

@@ -20,7 +20,7 @@ For significant feature additions, it is expected that discussion will have take
 
 ## Contributor License Agreement
 
-We don't like getting sued, so before merging any pull request, we'll need each person contributing code to sign a [Contributor License Agreement](https://docs.google.com/a/metabase.com/forms/d/1oV38o7b9ONFSwuzwmERRMi9SYrhYeOrkbmNaq9pOJ_E/viewform).
+We don't like getting sued, so before merging any pull request, we'll need each person contributing code to sign a [Contributor License Agreement](https://docs.google.com/a/metabase.com/forms/d/e/1FAIpQLSfc9GWyJ3F9U_4NzHLeTblgtog1FKtG3CjLshE4FAAKSdvNoQ/viewform).
 
 ## What we're trying to build
 
@@ -69,7 +69,7 @@ If there are tests missing, code style concerns or specific architectural issues
 
 ## Ways to help
 
-The starting point would be to get familiar with Metabase the product, and know your way around. If you're using it at work, that's great! If not, [download Metabase](https://www.metabase.com/start/oss/) and play around with it. Read the docs and generally get a feel for the flow of the product.
+The starting point would be to get familiar with Metabase the product, and know your way around. If you're using it at work, that's great! If not, [download Metabase](https://www.metabase.com/start/oss) and play around with it. Read the docs and generally get a feel for the flow of the product.
 
 Here are some ways you can help, in order of increasing coordination + interaction with us:
 

@@ -6,23 +6,20 @@
 (deftest ^:parallel query-params->options-test
   (is (= {:database                 {:name "Boba"}
           :library-collection-refs  [{:id 10} {:id 20}]
-          :question-collection-refs [{:entity-id "question-entity-id-1"}]
           :include-data-library?    false
           :include-metric-library?  false
-          :include-models?          true}
+          :include-actions?         true}
          (query-params/query-params->options
           {:database             " Boba "
            :library-collections  " 10, 20 "
-           :question-collections " question-entity-id-1 "
-           :include-models       true}))))
+           :include-actions      true}))))
 
 (deftest ^:parallel query-params->options-coerces-values-and-applies-defaults-test
   (is (= {:database                 {:id 1}
           :library-collection-refs  [{:id 3}]
-          :question-collection-refs []
           :include-data-library?    true
           :include-metric-library?  true
-          :include-models?          false}
+          :include-actions?         false}
          (query-params/query-params->options
           {:database               "1"
            :library-collections    "3"

@@ -1,6 +1,6 @@
 .markdown {
   line-height: 1.5;
-  margin-top: var(--mantine-spacing-md);
+  margin-top: var(--mantine-spacing-lg);
 
   ul {
     list-style: disc;

@@ -1,5 +1,5 @@
 (ns metabase.auth-identity.providers.emailed-secret-test
-  "Tests for emailed_secret provider functionality and AuthIdentity to User sync."
+  "Tests for emailed_secret provider functionality."
   (:require
    [clojure.test :refer :all]
    [java-time.api :as t]
@@ -8,52 +8,6 @@
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
-
-(deftest auth-identity-to-user-sync-test
-  (testing "When reset token is created in AuthIdentity, it syncs to User model"
-    (mt/with-temp [:model/User {user-id :id} {}]
-      (emailed-secret/create-password-reset! user-id)
-      (let [auth-identity (t2/select-one :model/AuthIdentity
-                                         :user_id user-id
-                                         :provider "emailed-secret-password-reset")
-            user (t2/select-one [:model/User :reset_token :reset_triggered] :id user-id)]
-        (is (some? auth-identity))
-        (is (= (get-in auth-identity [:credentials :token_hash]) (:reset_token user)))
-        (is (int? (:reset_triggered user)))
-        (is (pos? (:reset_triggered user)))))))
-
-(deftest auth-identity-token-update-sync-test
-  (testing "When reset token is updated in AuthIdentity, it syncs to User model"
-    (mt/with-temp [:model/User {user-id :id} {}]
-      (emailed-secret/create-password-reset! user-id)
-      (let [first-auth-identity (t2/select-one :model/AuthIdentity
-                                               :user_id user-id
-                                               :provider "emailed-secret-password-reset")
-            first-token-hash (get-in first-auth-identity [:credentials :token_hash])]
-        (Thread/sleep 10)
-        (emailed-secret/create-password-reset! user-id)
-        (let [updated-auth-identity (t2/select-one :model/AuthIdentity
-                                                   :user_id user-id
-                                                   :provider "emailed-secret-password-reset")
-              updated-token-hash (get-in updated-auth-identity [:credentials :token_hash])
-              user (t2/select-one [:model/User :reset_token :reset_triggered] :id user-id)]
-          (is (not= first-token-hash updated-token-hash))
-          (is (= updated-token-hash (:reset_token user)))
-          (is (int? (:reset_triggered user))))))))
-
-(deftest auth-identity-token-consumed-sync-test
-  (testing "When token is marked consumed in AuthIdentity, User model is cleared"
-    (mt/with-temp [:model/User {user-id :id} {}]
-      (emailed-secret/create-password-reset! user-id)
-      (let [auth-identity (t2/select-one :model/AuthIdentity
-                                         :user_id user-id
-                                         :provider "emailed-secret-password-reset")]
-        (is (some? (:reset_token (t2/select-one [:model/User :reset_token] :id user-id))))
-        (t2/update! :model/AuthIdentity (:id auth-identity)
-                    {:credentials (assoc (:credentials auth-identity) :consumed_at (t/instant))})
-        (let [user (t2/select-one [:model/User :reset_token :reset_triggered] :id user-id)]
-          (is (nil? (:reset_token user)))
-          (is (nil? (:reset_triggered user))))))))
 
 (deftest create-password-reset-creates-auth-identity-test
   (testing "create-password-reset! creates AuthIdentity with correct structure"

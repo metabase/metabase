@@ -8,7 +8,7 @@ import { IconButtonWrapper } from "metabase/common/components/IconButtonWrapper"
 import CS from "metabase/css/core/index.css";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { Menu, Stack, Text, rem } from "metabase/ui";
-import type { ComparisonMenuOption } from "metabase/visualizations/types";
+import type { ComparisonMenuOption } from "metabase/viz-core";
 import type {
   DatasetColumn,
   SmartScalarComparison,
@@ -171,7 +171,7 @@ export function ComparisonPicker({
               </IconButtonWrapper>
             )
           }
-          px="1rem"
+          size="lg"
           fullWidth
           data-testid="comparisons-widget-button"
           styles={{

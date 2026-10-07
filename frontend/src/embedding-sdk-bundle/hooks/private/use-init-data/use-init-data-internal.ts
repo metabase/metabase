@@ -3,6 +3,10 @@ import { useMount } from "react-use";
 import _ from "underscore";
 
 import {
+  isHostReactVersionSupported,
+  useLogUnsupportedReactVersion,
+} from "embedding-sdk-bundle/lib/host-react-version";
+import {
   ensureMetabaseProviderPropsStore,
   useMetabaseProviderPropsStore,
 } from "embedding-sdk-bundle/lib/provider-props-store";
@@ -19,14 +23,14 @@ import type { MetabaseAuthConfig } from "embedding-sdk-bundle/types";
 import { getSdkPackageVersion } from "embedding-sdk-shared/lib/get-build-info";
 import { PLUGIN_API, type RequestClientInfo, api } from "metabase/api/client";
 import { registerDashboardVisualizations } from "metabase/dashboard/visualizations/register";
-import { setDataApp } from "metabase/embedding/config";
-import { setEmbedPreviewHeader } from "metabase/embedding/lib/auth/set-embed-preview-header";
-import { setReactSdkEmbedReferrerHeader } from "metabase/embedding/lib/auth/set-react-sdk-embed-referrer-header";
-import { setRequestClientHeaders } from "metabase/embedding/lib/auth/set-request-client-headers";
 import {
   EMBEDDING_SDK_CONFIG,
   isEmbeddingEajs,
 } from "metabase/embedding-sdk/config";
+import { setDataApp } from "metabase/embedding/config";
+import { setEmbedPreviewHeader } from "metabase/embedding/lib/auth/set-embed-preview-header";
+import { setReactSdkEmbedReferrerHeader } from "metabase/embedding/lib/auth/set-react-sdk-embed-referrer-header";
+import { setRequestClientHeaders } from "metabase/embedding/lib/auth/set-request-client-headers";
 import { setBasename } from "metabase/utils/basename";
 import { registerVisualizations } from "metabase/visualizations/register";
 
@@ -69,7 +73,7 @@ interface InitDataLoaderParameters {
   isLocalHost?: boolean;
 }
 
-export const useInitData = () => {
+const useInitDataOnSupportedReact = () => {
   const {
     state: { props, internalProps },
   } = useMetabaseProviderPropsStore();
@@ -100,6 +104,10 @@ export const useInitData = () => {
     authConfig,
   });
 };
+
+export const useInitData = isHostReactVersionSupported()
+  ? useInitDataOnSupportedReact
+  : useLogUnsupportedReactVersion;
 
 export const useInitDataInternal = ({
   reduxStore,

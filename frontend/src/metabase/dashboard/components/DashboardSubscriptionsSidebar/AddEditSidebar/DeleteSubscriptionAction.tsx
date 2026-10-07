@@ -91,7 +91,7 @@ export function DeleteSubscriptionAction({
         size="lg"
         data-testid="delete-confirmation-modal-pulse"
       >
-        <Flex direction="column" gap="md" mt="md">
+        <Flex direction="column" gap="lg" mt="lg">
           <ul>
             {confirmItems.map((item, index) => (
               <li
@@ -120,7 +120,7 @@ export function DeleteSubscriptionAction({
           <Flex justify="flex-end" gap="sm">
             <Button onClick={closeModal}>{t`Cancel`}</Button>
             <Button
-              color={confirmed ? "feedback-negative" : undefined}
+              color={confirmed ? "negative" : undefined}
               variant="filled"
               onClick={handleDelete}
               disabled={!confirmed}

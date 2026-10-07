@@ -9,9 +9,7 @@ table_id:
 database_type: DOUBLE PRECISION
 base_type: type/Float
 effective_type: type/Float
-dimensions: []
 position: 4
-custom_position: 0
 database_position: 4
 serdes/meta:
 - id: Sample Database

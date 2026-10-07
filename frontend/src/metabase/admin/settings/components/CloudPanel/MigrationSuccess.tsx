@@ -6,7 +6,8 @@ import { Box, Button, Flex, Icon, Text } from "metabase/ui";
 import { color } from "metabase/ui/colors";
 import type { CloudMigration } from "metabase-types/api/cloud-migration";
 
-import { LargeIconContainer, MigrationCard } from "./CloudPanel.styled";
+import { LargeIconContainer } from "./LargeIconContainer";
+import { MigrationCard } from "./MigrationCard";
 import { getMigrationEventTime, getMigrationUrl } from "./utils";
 
 interface MigrationSuccessProps {
@@ -30,7 +31,7 @@ export const MigrationSuccess = ({
   return (
     <>
       <MigrationCard>
-        <Flex gap="md">
+        <Flex gap="lg">
           <LargeIconContainer color={color("feedback-positive")}>
             <Icon size="1.5rem" name="check" />
           </LargeIconContainer>
@@ -54,10 +55,10 @@ export const MigrationSuccess = ({
       </MigrationCard>
 
       <Button
-        variant="subtle"
+        variant="transparent"
+        size="compact-md"
         onClick={restartMigration}
         disabled={isRestarting}
-        px="0"
         mt="1rem"
       >{t`Restart the process`}</Button>
     </>

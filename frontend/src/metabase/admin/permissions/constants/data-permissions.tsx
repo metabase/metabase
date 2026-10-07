@@ -1,41 +1,52 @@
-/* eslint-disable ttag/no-module-declaration -- see metabase#55045 */
 import { t } from "ttag";
 
 import { DataPermissionValue, type PermissionOption } from "../types";
 
 export const DATA_PERMISSION_OPTIONS: Record<string, PermissionOption> = {
   unrestricted: {
-    label: t`Can view`,
+    get label() {
+      return t`Can view`;
+    },
     value: DataPermissionValue.UNRESTRICTED,
     icon: "eye",
     iconColor: "feedback-positive",
   },
   controlled: {
-    label: t`Granular`,
+    get label() {
+      return t`Granular`;
+    },
     value: DataPermissionValue.CONTROLLED,
     icon: "permissions_limited",
     iconColor: "feedback-warning",
   },
   noSelfServiceDeprecated: {
-    label: t`No self-service (Deprecated)`,
+    get label() {
+      return t`No self-service (Deprecated)`;
+    },
     value: DataPermissionValue.LEGACY_NO_SELF_SERVICE,
     icon: "eye_crossed_out",
     iconColor: "accent5",
   },
   no: {
-    label: t`No`,
+    get label() {
+      return t`No`;
+    },
     value: DataPermissionValue.NO,
     icon: "close",
     iconColor: "feedback-negative",
   },
   queryBuilder: {
-    label: t`Query builder only`,
+    get label() {
+      return t`Query builder only`;
+    },
     value: DataPermissionValue.QUERY_BUILDER,
     icon: "permissions_limited",
     iconColor: "feedback-warning",
   },
   queryBuilderAndNative: {
-    label: t`Query builder and native`,
+    get label() {
+      return t`Query builder and native`;
+    },
     value: DataPermissionValue.QUERY_BUILDER_AND_NATIVE,
     icon: "check",
     iconColor: "feedback-positive",

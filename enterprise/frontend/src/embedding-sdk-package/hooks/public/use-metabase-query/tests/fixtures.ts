@@ -105,6 +105,7 @@ export const TEST_SCHEMA = {
           type: "measure" as const,
           id: 21,
           tableId: 1,
+          name: "Revenue",
           columns: [{ name: "sum", displayName: "Sum", jsType: "number" }],
         },
       },
@@ -132,6 +133,7 @@ export const TEST_SCHEMA = {
     revenue: {
       type: "metric" as const,
       id: 31,
+      name: "Revenue",
       sourceTableId: 1,
       mappedTableIds: [1, 2],
       columns: [{ name: "sum", displayName: "Revenue", jsType: "number" }],
@@ -156,6 +158,35 @@ export const TEST_SCHEMA = {
       type: "metric" as const,
       id: 33,
       sourceCardId: 41,
+    },
+  },
+  actions: {
+    createOrder: {
+      kind: "action" as const,
+      id: 51,
+      name: "Create Order",
+      type: "query" as const,
+      parameters: [
+        {
+          slug: "status",
+          displayName: "Status",
+          jsType: "string" as const,
+        },
+      ],
+    },
+    updateOrder: {
+      kind: "action" as const,
+      id: 52,
+      name: "Update Order",
+      type: "query" as const,
+      parameters: [
+        {
+          slug: "id",
+          displayName: "ID",
+          jsType: "number" as const,
+          required: true,
+        },
+      ],
     },
   },
   questions: {

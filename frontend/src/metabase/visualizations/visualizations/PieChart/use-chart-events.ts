@@ -5,34 +5,27 @@ import { t } from "ttag";
 import { formatPercent } from "metabase/utils/formatting";
 import { checkNotNull } from "metabase/utils/types";
 import type {
-  EChartsTooltipModel,
-  EChartsTooltipRow,
-} from "metabase/visualizations/components/ChartTooltip/EChartsTooltip";
-import type { PieChartFormatters } from "metabase/visualizations/echarts/pie/format";
-import type {
-  PieChartModel,
-  SliceTreeNode,
-} from "metabase/visualizations/echarts/pie/model/types";
-import type { EChartsSunburstSeriesMouseEvent } from "metabase/visualizations/echarts/pie/types";
-import {
-  getArrayFromMapValues,
-  getSliceKeyPath,
-  getSliceTreeNodesFromPath,
-} from "metabase/visualizations/echarts/pie/util";
-import {
-  getMarkerColorClass,
-  useClickedStateTooltipSync,
-} from "metabase/visualizations/echarts/tooltip";
-import { getValueFromDimensionKey } from "metabase/visualizations/shared/settings/pie";
-import type {
   ClickObject,
   VisualizationProps,
 } from "metabase/visualizations/types";
-import type { EChartsEventHandler } from "metabase/visualizations/types/echarts";
+import {
+  type EChartsEventHandler,
+  type EChartsSunburstSeriesMouseEvent,
+  type EChartsTooltipModel,
+  type EChartsTooltipRow,
+  type PieChartFormatters,
+  type PieChartModel,
+  type SliceTreeNode,
+  getArrayFromMapValues,
+  getMarkerColorClass,
+  getSliceKeyPath,
+  getSliceTreeNodesFromPath,
+  getTotalValue,
+  getValueFromDimensionKey,
+  useClickedStateTooltipSync,
+} from "metabase/viz-core";
 import type { ClickObjectDimension } from "metabase-lib";
 import type { DatasetColumn, RowValue } from "metabase-types/api";
-
-import { getTotalValue } from "../../echarts/tooltip/utils";
 
 export const getTooltipModel = (
   sliceKeyPath: string[],

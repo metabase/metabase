@@ -2,8 +2,12 @@
   (:require
    [clojure.test :refer :all]
    [metabase.metabot.self.core :as self.core]
+   [metabase.metabot.self.mistral :as mistral]
    [metabase.metabot.self.openai.chat-completions :as chat-completions]
-   [metabase.metabot.test-util :as metabot.tu]))
+   [metabase.metabot.self.openrouter :as openrouter]
+   [metabase.metabot.self.zai :as zai]
+   [metabase.metabot.test-util :as metabot.tu]
+   [metabase.util.json :as json]))
 
 (set! *warn-on-reflection* true)
 
@@ -20,7 +24,8 @@
               {:type :text :text "Hi there!"}])))))
 
 (deftest ^:parallel parts->cc-messages-drops-reasoning-test
-  (testing "reasoning parts are dropped, not turned into empty user messages"
+  (testing "without a replay hook — every dialect but Mistral and Moonshot — reasoning parts are dropped,
+           not turned into empty user messages"
     (is (=? [{:role "user" :content "Hello"}
              {:role "assistant" :content "Hi there!"}]
             (chat-completions/parts->cc-messages
@@ -28,6 +33,86 @@
               {:type :reasoning :id "r1" :text "thinking"}
               {:type :reasoning :id "r1" :text "" :provider-metadata {:anthropic {:signature "abc"}}}
               {:type :text :text "Hi there!"}])))))
+
+(deftest ^:parallel parts->cc-messages-reasoning-replay-hook-test
+  (let [think-hook (fn [part]
+                     {:role    "assistant"
+                      :content [{:type "thinking" :thinking [(:text part)]}]})]
+    (testing "a dialect's replay hook turns each coalesced reasoning block into its message,
+             merged with the step's text and tool calls as chunk-array content"
+      (is (= [{:role "user" :content "Hello"}
+              {:role       "assistant"
+               :content    [{:type "thinking" :thinking ["thinking"]}
+                            {:type "text" :text "Hi there!"}]
+               :tool_calls [{:id       "call-1"
+                             :type     "function"
+                             :function {:name "f" :arguments "{}"}}]}]
+             (chat-completions/parts->cc-messages
+              [{:role :user :content "Hello"}
+               ;; a block streams as small parts plus an empty-text metadata carrier;
+               ;; the hook must see ONE coalesced part
+               {:type :reasoning :id "r1" :text "think"}
+               {:type :reasoning :id "r1" :text "ing"}
+               {:type :reasoning :id "r1" :text "" :provider-metadata {:mistral {:signature "abc"}}}
+               {:type :text :text "Hi there!"}
+               {:type :tool-input :id "call-1" :function "f" :arguments {}}]
+              {:reasoning-part->message think-hook}))))
+    (testing "the coalesced part carries the block's metadata for the hook to use"
+      (let [seen (atom nil)]
+        (chat-completions/parts->cc-messages
+         [{:type :reasoning :id "r1" :text "a"}
+          {:type :reasoning :id "r1" :text "" :provider-metadata {:mistral {:signature "abc"}}}]
+         {:reasoning-part->message (fn [part] (reset! seen part) nil)})
+        (is (= {:type              :reasoning
+                :id                "r1"
+                :text              "a"
+                :provider-metadata {:mistral {:signature "abc"}}}
+               @seen))))
+    (testing "string-only assistant groups fold exactly as they do without a hook"
+      (is (= (chat-completions/parts->cc-messages
+              [{:type :text :text "Hi"}
+               {:type :tool-input :id "c1" :function "f" :arguments {}}])
+             (chat-completions/parts->cc-messages
+              [{:type :text :text "Hi"}
+               {:type :tool-input :id "c1" :function "f" :arguments {}}]
+              {:reasoning-part->message think-hook}))))))
+
+(deftest ^:parallel parts->cc-messages-top-level-reasoning-hook-test
+  ;; the Moonshot-shaped replay channel: reasoning rides as a top-level :reasoning_content
+  ;; sibling of :content/:tool_calls rather than as a content chunk
+  (let [top-level-hook (fn [part] {:role "assistant" :content "" :reasoning_content (:text part)})]
+    (testing "a hook message's :reasoning_content lands on the round's merged assistant message"
+      (is (= [{:role "user" :content "q"}
+              {:role              "assistant"
+               :content           ""
+               :tool_calls        [{:id "c1" :type "function" :function {:name "f" :arguments "{}"}}]
+               :reasoning_content "thinking"}]
+             (chat-completions/parts->cc-messages
+              [{:role :user :content "q"}
+               {:type :reasoning :id "r1" :text "think"}
+               {:type :reasoning :id "r1" :text "ing"}
+               {:type :tool-input :id "c1" :function "f" :arguments {}}]
+              {:reasoning-part->message top-level-hook}))))
+    (testing "multiple reasoning blocks in one assistant group join in part order"
+      ;; the wire has a single :reasoning_content field per message, so order is the only
+      ;; fidelity available — reasoning emitted after a tool call joins after, not before
+      (is (= [{:role              "assistant"
+               :content           "answer"
+               :tool_calls        [{:id "c1" :type "function" :function {:name "f" :arguments "{}"}}]
+               :reasoning_content "firstsecond"}]
+             (chat-completions/parts->cc-messages
+              [{:type :reasoning :id "r1" :text "first"}
+               {:type :tool-input :id "c1" :function "f" :arguments {}}
+               {:type :reasoning :id "r2" :text "second"}
+               {:type :text :text "answer"}]
+              {:reasoning-part->message top-level-hook}))))
+    (testing "a lone reasoning part passes through as the hook's own message"
+      ;; a reasoning-only assistant message is a shape Moonshot itself never emits; unprobed
+      ;; whether the API accepts it — pinned so a change here is deliberate
+      (is (= [{:role "assistant" :content "" :reasoning_content "alone"}]
+             (chat-completions/parts->cc-messages
+              [{:type :reasoning :id "r1" :text "alone"}]
+              {:reasoning-part->message top-level-hook}))))))
 
 (deftest ^:parallel parts->cc-messages-tool-call-test
   (testing "text + tool call merges into single assistant message"
@@ -151,6 +236,42 @@
                                             :temperature 0.2
                                             :max-tokens  128})))))
 
+(deftest ^:parallel request-body-replays-nested-tool-arguments-test
+  (testing "a streamed tool call whose arguments nest objects replays into the next request"
+    (let [query {:lib/type "mbql/query"
+                 :stages   [{:lib/type "mbql.stage/mbql", :source-table ["Sample Database" nil "ORDERS"]}]}
+          call  {:type      :tool-input
+                 :id        "call-1"
+                 :function  "construct_notebook_query"
+                 :arguments {:query query}}
+          ;; the stream parser decodes the arguments with keyword keys at every depth
+          parts (into [] (self.core/aisdk-xf) (metabot.tu/parts->aisdk-chunks [call]))]
+      (is (=? {:messages [{:role       "assistant"
+                           :tool_calls [{:function {:name      "construct_notebook_query"
+                                                    :arguments #(= {:query query} (json/decode+kw %))}}]}]}
+              (chat-completions/request-body {:model "some/model" :input parts}))))))
+
+(deftest ^:parallel request-body-tool-arguments-schema-test
+  (let [replay (fn [arguments]
+                 (chat-completions/request-body
+                  {:model "some/model"
+                   :input [{:type      :tool-input
+                            :id        "call-1"
+                            :function  "f"
+                            :arguments arguments}]}))]
+    (testing "decoded JSON replays at any depth, keyed by strings, keywords or both"
+      (are [arguments] (=? {:messages [{:tool_calls [{:function {:arguments string?}}]}]}
+                           (replay arguments))
+        ;; keyword keys, as the stream decodes them
+        {:a {:b {:c [{:d [1 nil true "x" :kw]}]}}}
+        ;; string keys, as replayed history decodes them
+        {"a" {"b" {"c" [{"d" [1.5 [[]] {}]}]}}}
+        ;; both
+        {:a {"b" [{:c {"d" [{:e 1}]}}]}}))
+    (testing "a value JSON cannot hold is rejected, however deep"
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Invalid input"
+                            (replay {:a {"b" [{:c (java.time.Instant/now)}]}}))))))
+
 ;;; ──────────────────────────────────────────────────────────────────
 ;;; Streaming chunk conversion tests
 ;;;
@@ -266,9 +387,35 @@
                    {:choices [{:index 0 :delta {} :finish_reason "tool_calls"}]}
                    {:choices [] :usage {:prompt_tokens 138 :completion_tokens 36}}])))))
 
+(deftest ^:parallel chunks-xf-combined-reasoning-and-tool-call-delta-test
+  (testing "a delta carrying both reasoning and a tool call keeps the tool call"
+    ;; The tool call's opening chunk is the only one carrying its id and name — classifying the
+    ;; delta as :reasoning would lose the call entirely and break the tool loop. The delta's
+    ;; reasoning fragment is dropped instead: display text, recoverable.
+    (is (= [{:type :start :messageId "chatcmpl-9"}
+            {:type :tool-input-start :toolCallId "call-1" :toolName "get_weather"}
+            {:type :tool-input-delta :toolCallId "call-1" :inputTextDelta "{\"city\""}
+            {:type :tool-input-delta :toolCallId "call-1" :inputTextDelta ": \"Berlin\"}"}
+            {:type :tool-input-available :toolCallId "call-1" :toolName "get_weather"}]
+           (into [] (chat-completions/chat-completions->aisdk-chunks-xf
+                     chat-completions/stop-reasons
+                     {:forward-reasoning? true})
+                 [{:id      "chatcmpl-9"
+                   :model   "m"
+                   :choices [{:index 0
+                              :delta {:reasoning_content "planning"
+                                      :tool_calls        [{:index    0
+                                                           :id       "call-1"
+                                                           :type     "function"
+                                                           :function {:name      "get_weather"
+                                                                      :arguments "{\"city\""}}]}}]}
+                  {:choices [{:index 0 :delta {:tool_calls [{:index    0
+                                                             :function {:arguments ": \"Berlin\"}"}}]}}]}
+                  {:choices [{:index 0 :delta {} :finish_reason "tool_calls"}]}])))))
+
 (deftest ^:parallel chunks-xf-reasoning-deltas-open-no-text-block-test
   (testing "reasoning_content deltas and empty-string content produce no chunks"
-    ;; Reasoning is not replayable over Chat Completions, so it is dropped rather than surfaced as text.
+    ;; Without `:forward-reasoning?` reasoning deltas are dropped rather than surfaced as text.
     ;; An empty-string `content` between blocks must not open a text block either — that would close
     ;; the tool call that follows it.
     (is (= [:start :tool-input-start :tool-input-delta :tool-input-available :usage]
@@ -286,6 +433,62 @@
              {:choices [{:index 0 :delta {:tool_calls [{:index 0 :function {:arguments "{}"}}]}}]}
              {:choices [{:index 0 :delta {} :finish_reason "tool_calls"}]}
              {:choices [] :usage {:prompt_tokens 127 :completion_tokens 288}}])))))
+
+(deftest ^:parallel chunks-xf-streamed-error-becomes-an-error-chunk-test
+  (testing "an error sent partway through a stream becomes an error chunk"
+    (doseq [[shape xf error-chunk message]
+            [["vLLM's error envelope"
+              (chat-completions/chat-completions->aisdk-chunks-xf)
+              {:error {:message "Internal server error" :type "InternalServerError" :param nil :code 500}}
+              "Internal server error"]
+             ["OpenRouter's error on a chunk that finishes the choice"
+              (openrouter/openrouter->aisdk-chunks-xf)
+              {:id       "cmpl-abc123"
+               :object   "chat.completion.chunk"
+               :created  1234567890
+               :model    "openai/gpt-4o"
+               :provider "openai"
+               :error    {:code "server_error" :message "Provider disconnected unexpectedly"}
+               :choices  [{:index 0 :delta {:content ""} :finish_reason "error"}]}
+              "Provider disconnected unexpectedly"]
+             ["Mistral's error finish reason, which carries no message"
+              (mistral/mistral->aisdk-chunks-xf)
+              {:id      "cmpl-e5cc70bb28c444948073e77776eb30ef"
+               :object  "chat.completion.chunk"
+               :created 1702256327
+               :model   "mistral-medium-3-5"
+               :choices [{:index 0 :delta {:content ""} :finish_reason "error"}]}
+              "The model provider failed to complete the response"]
+             ["Z.AI's network_error finish reason"
+              (zai/zai->aisdk-chunks-xf)
+              {:choices [{:index 0 :delta {} :finish_reason "network_error"}]}
+              "The model provider failed to complete the response"]]]
+      (testing shape
+        (testing "after closing the open text block"
+          (is (=? [{:type :start :messageId "chatcmpl-5"}
+                   {:type :text-start}
+                   {:type :text-delta :delta "Hel"}
+                   {:type :text-end}
+                   {:type :error :errorText message}]
+                  (into [] xf
+                        [{:id      "chatcmpl-5"
+                          :model   "kimi-k2.6"
+                          :choices [{:index 0 :delta {:role "assistant" :content "Hel"} :finish_reason nil}]}
+                         error-chunk]))))
+        (testing "without making a half-streamed tool call available to run"
+          (is (= [{:type :start :messageId "chatcmpl-5"}
+                  {:type :tool-input-start :toolCallId "call-1" :toolName "search"}
+                  {:type :tool-input-delta :toolCallId "call-1" :inputTextDelta "{\"query\": \"rev"}
+                  {:type :error :errorText message}]
+                 (into [] xf
+                       [{:id      "chatcmpl-5"
+                         :model   "kimi-k2.6"
+                         :choices [{:index 0
+                                    :delta {:tool_calls [{:index    0
+                                                          :id       "call-1"
+                                                          :type     "function"
+                                                          :function {:name "search" :arguments "{\"query\": \"rev"}}]}}]}
+                        error-chunk]))))))))
 
 ;;; ──────────────────────────────────────────────────────────────────
 ;;; models-catalog tests
@@ -321,12 +524,12 @@
          #"Mistral returned an unexpected model list response$"
          (chat-completions/models-catalog "Mistral" {:status 200 :body {:object "list"}} nil)))))
 
-(deftest ^:parallel models-catalog-error-is-tagged-api-error-without-status-test
-  (testing "the thrown error is tagged :api-error so rethrow-api-error! passes it through, and carries no status"
-    ;; `metabase.metabot.api/provider-client-error?` renders any 4xx :api-error under the admin API-key
-    ;; field. A malformed catalog is not a credentials problem, so it must not claim a 4xx status.
+(deftest ^:parallel models-catalog-error-is-tagged-api-error-with-client-status-test
+  (testing "the thrown error is tagged :api-error so rethrow-api-error! passes it through, and 400 so the admin sees it"
+    ;; `metabase.llm.api.provider/provider-client-error?` only surfaces an :api-error carrying a 4xx; anything
+    ;; else escapes the Connect path as an unhandled 500, which `MB_HIDE_STACKTRACES=true` collapses to
+    ;; "Something went wrong". A malformed catalog is the admin's to fix, so it has to claim the 4xx.
     (let [data (try
                  (chat-completions/models-catalog "Mistral" {:status 200 :body {:object "list"}})
                  (catch clojure.lang.ExceptionInfo e (ex-data e)))]
-      (is (= {:api-error true :error-code :malformed-model-catalog} data))
-      (is (not (contains? data :status))))))
+      (is (= {:api-error true :status-code 400 :error-code :malformed-model-catalog} data)))))

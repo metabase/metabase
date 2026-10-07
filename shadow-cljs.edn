@@ -33,6 +33,7 @@
                 metabase.util.devtools
                 metabase.util.formatting.constants
                 metabase.util.formatting.date
+                metabase.util.markdown.image
                 metabase.util.time
                 metabase.xrays.domain-entities.queries.util]}
 

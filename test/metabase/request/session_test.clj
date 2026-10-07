@@ -40,3 +40,15 @@
           (is (= original i18n/*user-locale*))
           (is (= "French"
                  (.getDisplayLanguage (i18n/user-locale)))))))))
+
+(deftest ^:parallel current-user-attributes-test
+  (testing "with-current-user resolves attributes for personal users"
+    (mt/with-temp [:model/User {user-id :id} {:login_attributes {"cat" "50"}}]
+      (request/with-current-user user-id
+        (is (= {"cat" "50"}
+               (:attributes @*current-user*))))))
+  (testing "API-key pseudo-users get NO attributes, even if login_attributes are stored on their row (UXW-4240)"
+    (mt/with-temp [:model/User {user-id :id} {:type             :api-key
+                                              :login_attributes {"cat" "50"}}]
+      (request/with-current-user user-id
+        (is (= {} (:attributes @*current-user*)))))))

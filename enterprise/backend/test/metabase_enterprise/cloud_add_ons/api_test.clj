@@ -93,7 +93,7 @@
                   (mt/user-http-request :crowberto :post 400 (str "ee/cloud-add-ons/" product-type) {})))))
       (testing "succeeds when all conditions are met"
         (mt/with-premium-features #{:hosting}
-          (with-redefs [hm.client/call (constantly nil)]
+          (mt/with-dynamic-fn-redefs [hm.client/call (constantly nil)]
             (is (=? {}
                     (mt/user-http-request :crowberto :post 200 (str "ee/cloud-add-ons/" product-type) {})))))))))
 
@@ -147,7 +147,7 @@
     (testing "is rejected as a bundle-only product type without calling the Store"
       (mt/with-premium-features #{:hosting}
         (let [{store-api-proxy :proxy store-api-calls :calls} (semantic.tu/spy (constantly nil))]
-          (with-redefs [hm.client/call store-api-proxy]
+          (mt/with-dynamic-fn-redefs [hm.client/call store-api-proxy]
             (is (=? "This add-on can only be purchased as part of a bundle."
                     (mt/user-http-request :crowberto :post 400 "ee/cloud-add-ons/etl-connections" {})))
             (is (empty? @store-api-calls)
@@ -228,7 +228,7 @@
     (testing "is rejected as a bundle-only product type without calling the Store"
       (mt/with-premium-features #{:hosting}
         (let [{store-api-proxy :proxy store-api-calls :calls} (semantic.tu/spy (constantly nil))]
-          (with-redefs [hm.client/call store-api-proxy]
+          (mt/with-dynamic-fn-redefs [hm.client/call store-api-proxy]
             (is (=? "This add-on can only be purchased as part of a bundle."
                     (mt/user-http-request :crowberto :delete 400 "ee/cloud-add-ons/etl-connections")))
             (is (empty? @store-api-calls)

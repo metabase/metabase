@@ -1,5 +1,5 @@
 # Catch-all filter — emits the full changed-files list as `all_changed_files`
-# so create-test-plan in run-tests.yml can reuse dorny's diff.
+# for the create-test-plan action.
 all_changed:
   - "**"
 
@@ -7,9 +7,8 @@ default: &default
   - "locales/**"
   - "bin/**/!(*.md)"
 
-actionlint:
-  - added|modified: ".github/workflows/*.yml"
-  - added|modified: ".github/workflows/*.yaml"
+workflows:
+  - added|modified: ".github/workflows/*.{yml,yaml}"
 
 shared_sources: &shared_sources
   - "src/**/*.cljc"
@@ -24,6 +23,8 @@ shared_ci: &shared_ci
   - ".github/actions/prepare-frontend/**"
   - ".github/actions/prepare-backend/**"
   - ".github/workflows/run-tests.yml"
+  # Every suite's gate calls it, so a change here can turn any suite off.
+  - ".github/workflows/test.gate.yml"
 
 shared_e2e: &shared_e2e
   - "e2e/runner/**"
@@ -40,6 +41,8 @@ frontend_configs: &frontend_configs
   - "package.json"
   - "babel.config.json"
   - "eslint.config.mjs"
+  - "oxlint.config.mts"
+  - ".oxfmtrc.json"
   - "postcss.config.js"
   - "rspack.config.js"
   - "rspack.main.config.js"
@@ -64,9 +67,10 @@ frontend_specs: &frontend_specs
   - "frontend/**/tests/**"
   - "frontend/**/*.unit.*"
   - "enterprise/frontend/**/*.unit.*"
-  - ".github/**/*.unit.spec.*"
   - "jest.config.js"
-  - "jest.tz.unit.conf.json"
+  - "jest.base.conf.js"
+  - "jest.esm-packages.js"
+  - "jest.tz.unit.conf.js"
 
 release_source: &release_sources
   - "release/**"
@@ -75,9 +79,11 @@ frontend_all: &frontend_all
   - *frontend_ci
   - *frontend_sources
   - *frontend_specs
+  - "frontend/lint/**/!(*.md)"
 
 frontend_loki_ci: &frontend_loki_ci
   - ".github/workflows/loki.yml"
+  - "loki.config.js"
   - ".loki/**"
   - ".storybook/**"
 
@@ -85,20 +91,55 @@ frontend_unit_infra: &frontend_unit_infra
   - *frontend_configs
   - *frontend_ci
   - "jest.config.js"
-  - "jest.tz.unit.conf.json"
+  - "jest.base.conf.js"
+  - "jest.esm-packages.js"
+  - "jest.tz.unit.conf.js"
   - "frontend/test/**"
   - "frontend/**/__mocks__/**"
+  - "frontend/src/embedding-sdk-shared/jest/**"
 
 frontend_loki_infra: &frontend_loki_infra
   - *frontend_configs
   - *shared_ci
   - *frontend_loki_ci
+  - "frontend/build/shared/**"
+  - "frontend/test/__support__/**"
+  - "patches/**"
+  # dependency-cruiser doesn't follow CSS @import, so global styles must run every story.
+  - "frontend/src/metabase/css/**/*.css"
+  # Storybook serves resources/frontend_client as static files, and the stories bundle the app's SVGs.
+  - "resources/frontend_client/**"
+  - "frontend/**/*.svg"
+  - "enterprise/frontend/**/*.svg"
 
-# e2e harness/support code (commands, support file, runner). Not in the
-# instrumented bundle, so it maps to no covered module — a change here forces a
-# full e2e run (see create-test-plan / e2eInfraTouched).
-e2e_infra: &e2e_infra
-  - *shared_e2e
+frontend_loki_all:
+  - *frontend_sources
+  - *frontend_loki_infra
+
+# Everything the ci-scripts jest project runs or depends on.
+# test-unit ignores that project, so this filter is the only thing that reruns it.
+ci_scripts:
+  - *frontend_ci
+  - ".nvmrc"
+  # file-paths.unit.spec.ts asserts what this file's own patterns match, so a change to it has to
+  # run the specs that guard it.
+  - ".github/file-paths.yaml"
+  - ".github/scripts/**"
+  - ".github/actions/**"
+  - ".github/workflows/e2e-{test,tests,matrix-builder}.yml"
+  - ".github/workflows/loki.yml"
+  - ".storybook/story-files.cjs"
+  - "e2e/runner/read-spec-paths.js"
+  - "e2e/support/cypress.config.js"
+  - "frontend/lint/module-boundaries.mjs"
+  - "frontend/lint/shared-tiers.mjs"
+  - "frontend/test/jest-test-paths-filter.ts"
+  - ".dependency-cruiser.cjs"
+  - "jest.config.js"
+  - "jest.base.conf.js"
+  - "jest.esm-packages.js"
+  - "package.json"
+  - "bun.lock"
 
 backend_ci: &backend_ci
   - *shared_ci
@@ -113,11 +154,15 @@ backend_sources: &backend_sources
   - "src/**"
   - "modules/drivers/{*,*/{*,!(test)/**}}"
   - "resources/**"
-  - ".clj-kondo/**"
+  # Ratchet files drive project_ratchet_checks alone, so automation PRs that lower budgets
+  # run the Project tests job by themselves. Patterns are OR-ed, so a separate "!..." entry would match
+  # every other path instead of excluding this one.
+  - ".clj-kondo/**/!(ratchets.edn|ratchets-test.edn)"
 
 backend_specs: &backend_specs
   - *shared_specs
   - "test/**"
+  - "dev/test/**"
   - "enterprise/backend/test/**"
   - "test_modules/**"
   - "modules/drivers/*/test/**"
@@ -129,6 +174,50 @@ backend_all: &backend_all
   - *backend_ci
   - *backend_sources
   - *backend_specs
+
+# Project checks have narrower triggers than the backend matrix.
+# Changes to their shared CI entry points exercise every suite; otherwise each
+# suite follows only the files that can affect its result.
+project_tests_infra: &project_tests_infra
+  - ".github/actions/prepare-backend/**"
+  - ".github/file-paths.yaml"
+  - ".github/workflows/backend.yml"
+  - ".github/workflows/run-tests.yml"
+  - "bb.edn"
+  - "bin/mage"
+  - "bin/mage.bb"
+  - "mage/src/mage/color.clj"
+  - "mage/src/mage/project_tests.clj"
+  - "mage/src/mage/shell.clj"
+  - "mage/src/mage/util.clj"
+
+project_backend_checks:
+  - *project_tests_infra
+  - "{src,test,enterprise,dev,bin,mage}/**/*.{clj,cljc,cljs}"
+  - "modules/**/*.clj"
+  - "modules/**/*.cljc"
+  - "modules/**/*.cljs"
+  - "**deps.edn"
+  - ".clj-kondo/{src,test}/**/*.{clj,cljc,cljs}"
+  - "{resources,test_resources,test_config}/**/*.{clj,cljc,cljs}"
+  - ".clj-kondo/config.edn"
+  - ".clj-kondo/config/modules/config.edn"
+  - ".clj-kondo/config/modules/cycle-clusters.edn"
+  - ".github/team.json"
+  - "dev/resources/dev/modules_config_test/**"
+
+# Only the ratchet check reads the budgets, so a diff that touches nothing else runs that suite alone.
+project_ratchet_checks:
+  - ".clj-kondo/ratchets.edn"
+  - ".clj-kondo/ratchets-test.edn"
+  - ".clj-kondo/config/modules/ratchets.edn"
+
+project_migration_checks:
+  - *project_tests_infra
+  - "bin/lint-migrations-file/**"
+  - "resources/migrations/**/*.{yaml,yml}"
+  - "src/metabase/app_db/custom_migrations.clj"
+  - "src/metabase/app_db/custom_migrations/**"
 
 sources: &sources
   - *shared_sources
@@ -159,14 +248,14 @@ embedding_sdk_ci: &embedding_sdk_ci
   - ".github/actions/prepare-cypress/**"
   - ".github/workflows/embedding-sdk*.yml"
 
-embedding_sdk_components:
+embedding_sdk_components: &embedding_sdk_components
   - *default
   - *embedding_sdk_ci
   - *sources
   - *shared_e2e
   - "e2e/test-component/**/*.cy.*.{js,jsx,ts,tsx}"
 
-embedding_sdk_host_sample_apps:
+embedding_sdk_host_sample_apps: &embedding_sdk_host_sample_apps
   - *default
   - *embedding_sdk_ci
   - *frontend_sources
@@ -181,13 +270,29 @@ snowplow: &snowplow
   - "bin/lint-snowplow-schemas.bb"
   - "bin/lint-snowplow-schemas-test.bb"
 
-e2e_all:
+# e2e harness/support code (commands, support file, runner). Not in the
+# instrumented bundle, so it maps to no covered module — a change here forces a
+# full e2e run (see create-test-plan / e2eInfraTouched).
+e2e_infra: &e2e_infra
+  - *default
+  - *e2e_ci
+  - *frontend_configs
+  - *shared_e2e
+  - *snowplow
+  - "e2e/**/!(*.cy.spec.@(js|jsx|ts|tsx))"
+  - "frontend/build/**"
+  - "patches/**"
+  - ".github/scripts/build-e2e-matrix.js"
+  - ".github/file-paths.yaml"
+
+e2e_all: &e2e_all
   - *default
   - *e2e_ci
   - *sources
   - *e2e_specs
   - "e2e/**"
   - *snowplow
+  - *e2e_infra
 
 documentation:
   - "docs/**"
@@ -196,9 +301,27 @@ documentation:
 docs:
   - "docs/**"
 
-embedding_documentation:
+embedding_documentation: &embedding_documentation
   - ".typedoc/**"
   - "docs/embedding/**"
+
+# Everything the SDK package build feeds, so the build itself follows the union of its consumers.
+build_embedding_sdk_package:
+  - *embedding_sdk_ci
+  - *embedding_sdk_components
+  - *embedding_sdk_host_sample_apps
+  - *embedding_documentation
+  - *frontend_sources
+
+# The uberjar only exists to feed e2e, the SDK suites that boot a Metabase instance, bundle-size and
+# containerize, so it is worth building exactly when one of them might run. The SDK's type checks run
+# against the package artifact alone, so embedding docs do not belong here.
+build_uberjar:
+  - *backend_all
+  - *frontend_all
+  - *e2e_all
+  - *embedding_sdk_components
+  - *embedding_sdk_host_sample_apps
 
 yaml:
   - "**/*.yml"
@@ -221,6 +344,13 @@ cljs:
   - *shared_specs
   - ".github/workflows/cljs.yml"
   - "shadow-cljs.edn"
+
+build_scripts:
+  - ".github/actions/prepare-backend/**"
+  - ".github/file-paths.yaml"
+  - ".github/workflows/build-scripts.yml"
+  - "bin/**"
+  - "deps.edn"
 
 embedder_plugin:
   - ".github/actions/prepare-backend/**"
@@ -253,8 +383,10 @@ openapi:
   - "src/metabase/api/**"
   - "src/metabase/api_routes/**"
   - "src/metabase/*_rest/api.clj"
-  - "src/metabase/*/api.clj"
-  - "src/metabase/*/api/*.clj"
+  - "src/metabase/**/rest/api.clj"
+  - "src/metabase/**/rest/api/*.clj"
+  - "src/metabase/**/api.clj"
+  - "src/metabase/**/api/*.clj"
   - "enterprise/backend/src/metabase_enterprise/**/api.clj"
   - "enterprise/backend/src/metabase_enterprise/**/api/*.clj"
   - "resources/openapi/**"

@@ -8,8 +8,8 @@ import {
   setupMetricDatasetEndpoint,
   setupMetricEndpoint,
 } from "__support__/server-mocks";
+import { createMockState } from "__support__/state";
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
-import { createMockState } from "metabase/redux/store/mocks";
 import { Route } from "metabase/router";
 import { registerVisualizations } from "metabase/visualizations/register";
 import type { Card, Dataset, Field, Metric } from "metabase-types/api";

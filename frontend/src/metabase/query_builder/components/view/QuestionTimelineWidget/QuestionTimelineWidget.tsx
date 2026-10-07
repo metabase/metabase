@@ -1,12 +1,10 @@
 import { t } from "ttag";
 
-import { ViewFooterButton } from "metabase/query_builder/components/view/ViewFooterButton";
-import { getUiControls } from "metabase/query_builder/selectors";
 import { useDispatch, useSelector } from "metabase/redux";
-import {
-  onCloseTimelines,
-  onOpenTimelines,
-} from "metabase/redux/query-builder";
+
+import { onCloseTimelines, onOpenTimelines } from "../../../store/actions";
+import { getUiControls } from "../../../store/selectors";
+import { ViewFooterButton } from "../ViewFooterButton";
 
 export interface QuestionTimelineWidgetProps {
   className?: string;

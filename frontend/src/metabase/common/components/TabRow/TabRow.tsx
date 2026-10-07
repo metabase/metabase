@@ -25,12 +25,13 @@ import {
 import { usePreviousDistinct } from "react-use";
 
 import { ExplicitSize } from "metabase/common/components/ExplicitSize";
+import { TabList } from "metabase/common/components/TabList";
 import { useDndSensors } from "metabase/common/hooks";
-import { Icon } from "metabase/ui";
+import { Box, Icon, rem } from "metabase/ui";
 
 import type { TabListProps } from "../TabList/TabList";
 
-import { ScrollButton, TabList } from "./TabRow.styled";
+import S from "./TabRow.module.css";
 import { tabsCollisionDetection } from "./collision-detection";
 
 interface TabRowProps<T> extends TabListProps<T> {
@@ -108,6 +109,7 @@ const TabRowInner = forwardRef<HTMLDivElement, TabRowProps<unknown>>(
         ref={mergedRef}
         {...props}
         className={cx(
+          S.tabList,
           {
             scrollable: showScrollLeft || showScrollRight,
           },
@@ -150,12 +152,17 @@ interface ScrollArrowProps {
 
 export function ScrollArrow({ direction, onClick }: ScrollArrowProps) {
   return (
-    <ScrollButton
+    <Box
+      component="button"
+      className={cx(S.scrollButton, S[direction])}
+      pos="absolute"
+      top={0}
+      w={rem(48)}
+      ta={direction}
       onClick={onClick}
-      direction={direction}
       aria-label={`scroll tabs ${direction}`}
     >
       <Icon name={`chevron${direction}`} />
-    </ScrollButton>
+    </Box>
   );
 }

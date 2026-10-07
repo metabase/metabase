@@ -38,7 +38,7 @@ export const SearchResultsDropdown = ({
         data-testid="search-dropdown-footer"
         justify="space-between"
         align="center"
-        px="lg"
+        px="xl"
         py={rem(10)}
         onClick={goToSearchApp}
       >

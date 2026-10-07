@@ -28,6 +28,7 @@
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
    [metabase.query-processor.pivot.test-util :as qp.pivot.test-util]
+   ;; binds mock metadata providers via the ambient store, which the code under test reads
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.test :as qp]
    [metabase.query-processor.test-util :as qp.test-util]
@@ -116,6 +117,7 @@
                     :pulse_id         nil
                     :card_id          nil
                     :is_sandboxed     false
+                    :sandbox_details  nil
                     :dashboard_id     nil
                     :transform_id     nil
                     :lens_id          nil
@@ -767,6 +769,23 @@
             (is (= ["MD" "Twitter" nil 4 16 62] (nth rows 1000)))
             (is (= [nil nil nil 7 18760 69540] (last rows)))))))))
 
+(deftest ^:parallel pivot-dataset-error-response-test
+  (mt/dataset test-data
+    (testing "POST /api/dataset/pivot"
+      (testing "a failed query returns the usual formatted error response, not an empty body"
+        (doseq [[cause query] {"an out-of-range pivot row index"
+                               (assoc (qp.pivot.test-util/pivot-query) :pivot_rows [0 1 2 3])
+
+                               "a reference to a nonexistent column"
+                               (assoc-in (qp.pivot.test-util/pivot-query) [:query :filter]
+                                         [:= [:field Integer/MAX_VALUE nil] 1])}]
+          (testing cause
+            (let [{:keys [status body]} (mt/user-http-request-full-response :crowberto :post "dataset/pivot" query)]
+              (is (contains? #{400 500} status))
+              (is (=? {:status "failed"
+                       :error  string?}
+                      body)))))))))
+
 (deftest ^:parallel pivot-dataset-row-totals-disabled-test
   (mt/test-drivers (qp.pivot.test-util/applicable-drivers)
     (mt/dataset test-data
@@ -1030,6 +1049,35 @@
                                   (lib/limit 2))]
         (is (=? {:data {:rows [[1 "Red Medicine" 4 10.0646 -165.374 3]
                                [2 "Stout Burgers & Beers" 11 34.0996 -118.329 2]]}}
+                (mt/user-http-request :crowberto :post 202 "dataset" query)))))))
+
+(mt/defdataset boolean-like-strings
+  [["ratings"
+    [{:field-name "isactive", :base-type :type/Text}]
+    [["true"] ["true"] ["false"]]]])
+
+(deftest ^:parallel filter-text-column-on-boolean-like-string-test
+  (testing "filtering a text column on the literal string \"true\" should not coerce it to a boolean (#80004)"
+    (mt/dataset boolean-like-strings
+      (let [mp (mt/metadata-provider)
+            ratings           (lib.metadata/table mp (mt/id :ratings))
+            isactive          (lib.metadata/field mp (mt/id :ratings :isactive))
+            query             (-> (lib/query mp ratings)
+                                  (lib/filter (lib/= isactive "true")))]
+        (is (=? {:status   "completed"
+                 :row_count 2
+                 :data      {:rows [[1 "true"] [2 "true"]]}}
+                (mt/user-http-request :crowberto :post 202 "dataset" query))))))
+  (testing "filtering a boolean column on an actual boolean should still work"
+    (mt/dataset places-cam-likes
+      (let [mp (mt/metadata-provider)
+            places            (lib.metadata/table mp (mt/id :places))
+            liked             (lib.metadata/field mp (mt/id :places :liked))
+            query             (-> (lib/query mp places)
+                                  (lib/filter (lib/= liked true)))]
+        (is (=? {:status   "completed"
+                 :row_count 2
+                 :data      {:rows [[1 "Tempest" true] [2 "Bullit" true]]}}
                 (mt/user-http-request :crowberto :post 202 "dataset" query)))))))
 
 (deftest ^:parallel mbql5-query-convert-to-native-test

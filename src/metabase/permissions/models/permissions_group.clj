@@ -8,14 +8,15 @@
 
   See documentation in [[metabase.permissions.models.permissions]] for more information about the Metabase permissions system."
   (:require
+   [clojure.set :as set]
    [metabase.app-db.core :as mdb]
    [metabase.models.interface :as mi]
+   [metabase.permissions.db :as permissions.db]
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.premium-features.core :as premium-features]
    [metabase.settings.core :as setting]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
-   [metabase.util.log :as log]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
    [toucan2.tools.hydrate :as t2.hydrate]))
@@ -37,7 +38,7 @@
 (defn- magic-group [magic-group-type]
   (mdb/memoize-for-application-db
    (fn []
-     (u/prog1 (t2/select-one [:model/PermissionsGroup :id :name :magic_group_type] :magic_group_type magic-group-type)
+     (u/prog1 (permissions.db/magic-group magic-group-type)
        ;; normally it is impossible to delete the magic [[all-users]] or [[admin]] Groups -- see
        ;; [[check-not-magic-group]]. This assertion is here to catch us if we do something dumb when hacking on
        ;; the MB code -- to make tests fail fast. For that reason it's not i18n'ed.
@@ -83,30 +84,24 @@
   "Does a `PermissionsGroup` with `group-name` exist in the DB? (case-insensitive)"
   ^Boolean [group-name]
   {:pre [((some-fn keyword? string?) group-name)]}
-  (t2/exists? :model/PermissionsGroup
-              :%lower.name (u/lower-case-en (name group-name))))
+  (permissions.db/group-exists-with-lower-name? (u/lower-case-en (name group-name))))
 
 (defn- check-name-not-already-taken
   [group-name]
   (when (exists-with-name? group-name)
     (throw (ex-info (tru "A group with that name already exists.") {:status-code 400}))))
 
-(def ^:dynamic ^:private *allow-modifying-magic-groups*
-  "Dynamic var that, when bound to true, allows modifying magic groups. Used by [[sync-data-analyst-group-for-oss!]]."
-  false)
-
 (defn- check-not-magic-group
   "Make sure we're not trying to edit/delete one of the magic groups, or throw an exception."
   [{id :id}]
   {:pre [(integer? id)]}
-  (when-not *allow-modifying-magic-groups*
-    (doseq [magic-group [(all-users)
-                         (all-external-users)
-                         (admin)
-                         (data-analyst)]]
-      (when (= id (:id magic-group))
-        (throw (ex-info (tru "You cannot edit or delete the ''{0}'' permissions group!" (:name magic-group))
-                        {:status-code 400}))))))
+  (doseq [magic-group [(all-users)
+                       (all-external-users)
+                       (admin)
+                       (data-analyst)]]
+    (when (= id (:id magic-group))
+      (throw (ex-info (tru "You cannot edit or delete the ''{0}'' permissions group!" (:name magic-group))
+                      {:status-code 400})))))
 
 ;;; --------------------------------------------------- Lifecycle ----------------------------------------------------
 
@@ -118,7 +113,7 @@
 (defn- set-default-permission-values!
   [group]
   (data-perms/with-global-permissions-lock
-    (let [db-ids (t2/select-pks-vec :model/Database :router_database_id nil)]
+    (let [db-ids (permissions.db/non-destination-database-ids)]
       (data-perms/set-default-group-permissions! group db-ids (not (:is_tenant_group group))))))
 
 (t2/define-after-insert :model/PermissionsGroup
@@ -153,56 +148,51 @@
   [_model k groups]
   (mi/instances-with-hydrated-data
    groups k
-   #(group-by :group_id (t2/select :model/User {:select    [:u.id
-                                                            ;; user_id is for legacy reasons, we should remove it
-                                                            [:u.id :user_id]
-                                                            :u.first_name
-                                                            :u.last_name
-                                                            :u.email
-                                                            :u.is_superuser
-                                                            :u.type
-                                                            :pgm.group_id
-                                                            [:pgm.id :membership_id]
-                                                            (when (premium-features/enable-advanced-permissions?)
-                                                              [:pgm.is_group_manager :is_group_manager])]
-                                                :from      [[:core_user :u]]
-                                                :left-join [[:permissions_group_membership :pgm] [:= :u.id :pgm.user_id]]
-                                                :where     [:and
-                                                            [:= :u.is_active true]
-                                                            [:in :pgm.group_id (map :id groups)]]
-                                                :order-by  [[[:lower :u.first_name] :asc]
-                                                            [[:lower :u.last_name] :asc]]}))
+   ;; `user_id` in the result is for legacy reasons, we should remove it
+   #(group-by :group_id (permissions.db/group-members (map :id groups)
+                                                      (boolean (premium-features/enable-advanced-permissions?))))
    :id
    {:default []}))
 
 (defn non-admin-groups
   "Return a set of the IDs of all `PermissionsGroups`, aside from the admin group."
   []
-  (t2/select :model/PermissionsGroup :magic_group_type [:not= admin-magic-group-type]))
+  (permissions.db/groups-except-magic-type admin-magic-group-type))
 
 (defn non-magic-groups
   "Return a set of the IDs of all `PermissionsGroups`, aside from the admin group and the All Users group."
   []
-  (t2/select :model/PermissionsGroup {:where [:= :magic_group_type nil]}))
+  (permissions.db/non-magic-groups))
 
 (defn is-tenant-group?
   "Returns a boolean representing whether this group is a tenant group."
   [group-id]
-  (t2/select-one-fn :is_tenant_group :model/PermissionsGroup :id (u/the-id group-id)))
+  (permissions.db/tenant-group? (u/the-id group-id)))
+
+(defn hidden-tenant-group-ids
+  "Returns the subset of `group-ids` that are tenant groups while the Tenants feature is disabled
+  (i.e. invisible to API consumers right now). Returns an empty set if the feature is enabled, or
+  if no supplied IDs are tenant groups."
+  [group-ids]
+  (if (or (setting/get :use-tenants) (empty? group-ids))
+    #{}
+    (set/intersection (set (map u/the-id group-ids))
+                      (permissions.db/tenant-group-ids))))
+
+(defn check-tenant-groups-visible!
+  "Throws a 400 if any of `group-ids` is a tenant group while the Tenants feature is disabled.
+  The error payload includes the offending IDs under `[:errors :tenant-group-ids]`."
+  [group-ids]
+  (when-let [offending (seq (hidden-tenant-group-ids group-ids))]
+    (throw (ex-info (tru "Tenant groups are not editable while the Tenants feature is disabled.")
+                    {:status-code 400
+                     :errors      {:tenant-group-ids (sort offending)}}))))
 
 (defn- group-id->num-members
   "Return a map of `PermissionsGroup` ID -> number of members in the group. (This doesn't include entries for empty
   groups.)"
   []
-  (let [results (mdb/query
-                 {:select    [[:pgm.group_id :group_id] [[:count :pgm.id] :members]]
-                  :from      [[:permissions_group_membership :pgm]]
-                  :left-join [[:core_user :user] [:= :pgm.user_id :user.id]]
-                  :where     [:= :user.is_active true]
-                  :group-by  [:pgm.group_id]})]
-    (zipmap
-     (map :group_id results)
-     (map :members results))))
+  (permissions.db/group-member-counts))
 
 (methodical/defmethod t2/batched-hydrate [:model/PermissionsGroup :member_count]
   "Efficiently add `:member_count` to PermissionGroups."
@@ -210,81 +200,3 @@
   (let [group-id->num-members (group-id->num-members)]
     (for [group groups]
       (assoc group :member_count (get group-id->num-members (u/the-id group) 0)))))
-
-;;; ------------------------------------------ OSS Data Analyst Group Handling ------------------------------------------
-
-(defn- unique-converted-group-name
-  "Generate a unique name for the converted Data Analysts group.
-  Returns \"Data Analysts (converted)\", or \"Data Analysts (converted) (2)\", etc."
-  [group-name]
-  (let [base-name (format "%s (converted)" group-name)
-        like-pattern (str base-name "%")
-        existing-names (t2/select-fn-set :name :model/PermissionsGroup
-                                         :name [:like like-pattern])]
-    (if-not (contains? existing-names base-name)
-      base-name
-      (loop [n 2]
-        (let [candidate (str base-name " (" n ")")]
-          (if-not (contains? existing-names candidate)
-            candidate
-            (recur (inc n))))))))
-
-(defn- grant-library-permissions!
-  "Grant write permissions on all library collections to a group."
-  [group-id]
-  (when-let [collection-ids (seq (t2/select-pks-set :model/Collection
-                                                    :type [:in ["library" "library-data" "library-metrics"]]))]
-    (t2/insert! :model/Permissions
-                (for [coll-id collection-ids]
-                  {:group_id group-id
-                   :object   (str "/collection/" coll-id "/")}))))
-
-(defn- do-sync-conversion!
-  "Convert the Data Analysts magic group (if it has members) to a normal visible group, and create a fresh empty
-  magic group in its place. This ensures that we don't have an invisible group that affects permissions on OSS."
-  []
-  (when-let [existing-group (t2/select-one :model/PermissionsGroup :magic_group_type data-analyst-magic-group-type)]
-    (when (pos? (t2/count :model/PermissionsGroupMembership :group_id (:id existing-group)))
-      (log/info "Converting Data Analysts group to normal group for OSS")
-      (binding [*allow-modifying-magic-groups* true]
-        (t2/with-transaction [_conn]
-          ;; Rename and demote the existing group to a normal visible group
-          (t2/update! :model/PermissionsGroup (:id existing-group)
-                      {:name             (unique-converted-group-name (:name existing-group))
-                       :magic_group_type nil})
-          ;; Create new empty magic group with default library permissions, reusing the old name
-          (let [{new-group-id :id} (t2/insert-returning-instance! :model/PermissionsGroup
-                                                                  {:name             (:name existing-group)
-                                                                   :magic_group_type data-analyst-magic-group-type})]
-            (grant-library-permissions! new-group-id))
-          (t2/update! :model/User {:is_data_analyst true} {:is_data_analyst false}))))))
-
-(def ^:private seconds-to-sleep-per-attempt 1)
-
-(defn sync-data-analyst-group-for-oss!
-  "On startup, convert the Data Analysts group to a normal visible group if this instance definitively lacks
-  the `:advanced-permissions` premium feature.
-
-  In OSS, we don't want the Data Analysts group to be invisible while still granting permissions — that's a hidden
-  backdoor. Instead, we convert any existing Data Analysts group (with members) to a normal group with a unique name
-  like 'Data Analysts (converted)' that admins can see and manage. We then create a fresh empty Data Analysts magic
-  group.
-
-  Uses [[premium-features/canonically-has-feature?]] to distinguish between 'definitively no feature' and 'token
-  check failed (indeterminate)'. If the token check is indeterminate, retries in a background thread until a
-  canonical response is received.
-
-  This is idempotent: if the magic group has no members, nothing happens."
-  []
-  (let [result (premium-features/canonically-has-feature? :advanced-permissions)]
-    (case result
-      true  nil
-      false (do-sync-conversion!)
-      nil   (future
-              (loop [attempt 1]
-                (Thread/sleep (long (* 1000 (min (* attempt seconds-to-sleep-per-attempt) 60))))
-                (let [result (premium-features/canonically-has-feature? :advanced-permissions)]
-                  (case result
-                    true  nil
-                    false (do-sync-conversion!)
-                    nil   (recur (inc attempt)))))))))

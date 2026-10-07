@@ -52,7 +52,7 @@ function ArchiveNotificationModal({
         <Button
           key="submit"
           variant="filled"
-          color="feedback-negative"
+          color="negative"
           onClick={handleArchiveClick}
         >
           {getSubmitMessage(type, hasUnsubscribed)}
@@ -60,7 +60,7 @@ function ArchiveNotificationModal({
       ]}
       onClose={onClose}
     >
-      <Stack gap="md">
+      <Stack gap="lg">
         {isCreator(item, user) && hasUnsubscribed && (
           <Box data-server-date>
             {getCreatorMessage(type, user)}

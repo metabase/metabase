@@ -79,7 +79,7 @@ const groupTableAccessPolicies = handleActions<
           return state;
         }
 
-        const { entityId, metadata, groupId, value, permissionInfo } = payload;
+        const { entityId, database, groupId, value, permissionInfo } = payload;
 
         // if user is unsandboxing a specific table,
         // remove the specific table's sandbox data
@@ -102,12 +102,11 @@ const groupTableAccessPolicies = handleActions<
         }
 
         if (entityId.databaseId !== null) {
-          const database = metadata.databases?.[entityId.databaseId];
           const tables = database?.tables ?? [];
           // filter tables if there's a schema referenced in the entity id
           const entityTables = tables.filter(
             (table) =>
-              !entityId.schemaName || table.schema_name === entityId.schemaName,
+              !entityId.schemaName || table.schema === entityId.schemaName,
           );
 
           // delete 0 to N sandboxes present in the state

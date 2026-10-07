@@ -222,7 +222,7 @@
     (testing "sync-operation creates a task run with type :sync"
       (let [mock-db    (mi/instance :model/Database {:name "test" :id 999 :engine :h2})
             step-name  (mt/random-name)
-            sync-steps [(sync-util/create-sync-step step-name (fn [_] {:done true}))]]
+            sync-steps [(sync-util/create-sync-step step-name (fn [_] {:total-tables 1}))]]
         (sync-util/sync-operation :sync-metadata mock-db "Test sync"
           (sync-util/run-sync-operation "test-sync" mock-db sync-steps))
         (let [run (t2/select-one :model/TaskRun :entity_type :database :entity_id 999)]
@@ -237,7 +237,7 @@
     (testing "analyze operation creates a task run with type :fingerprint"
       (let [mock-db    (mi/instance :model/Database {:name "test" :id 998 :engine :h2})
             step-name  (mt/random-name)
-            sync-steps [(sync-util/create-sync-step step-name (fn [_] {:done true}))]]
+            sync-steps [(sync-util/create-sync-step step-name (fn [_] {:total-tables 1}))]]
         (sync-util/sync-operation :analyze mock-db "Test analyze"
           (sync-util/run-sync-operation "test-analyze" mock-db sync-steps))
         (let [run (t2/select-one :model/TaskRun :entity_type :database :entity_id 998)]
@@ -257,8 +257,8 @@
                                                        (sync-util/sync-operation :sync mock-db "Inner sync"
                                                          (sync-util/run-sync-operation "inner"
                                                                                        mock-db
-                                                                                       [(sync-util/create-sync-step inner-step (fn [_] {:inner true}))]))
-                                                       {:outer true}))]]
+                                                                                       [(sync-util/create-sync-step inner-step (fn [_] {:total-tables 1}))]))
+                                                       {:total-tables 1}))]]
         (sync-util/sync-operation :sync mock-db "Outer sync"
           (sync-util/run-sync-operation "outer" mock-db outer-steps))
         (is (= 1 (t2/count :model/TaskRun :entity_id 997))

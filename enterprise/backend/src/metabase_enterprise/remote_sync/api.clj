@@ -3,6 +3,7 @@
    [clojure.string :as str]
    [medley.core :as m]
    [metabase-enterprise.remote-sync.core :as remote-sync.core]
+   [metabase-enterprise.remote-sync.db :as remote-sync.db]
    [metabase-enterprise.remote-sync.impl :as impl]
    [metabase-enterprise.remote-sync.models.remote-sync-object :as remote-sync.object]
    [metabase-enterprise.remote-sync.models.remote-sync-task :as remote-sync.task]
@@ -54,16 +55,18 @@
   [_route
    _query
    {:keys [branch force merge expected_branch]}
-   :- [:map [:branch {:optional true} ms/NonBlankString]
+   :- [:map {:closed true} [:branch {:optional true} ms/NonBlankString]
        [:force {:optional true} :boolean]
        [:merge {:optional true} :boolean]
        ;; the branch the client believes is currently active; rejected if it disagrees with the
        ;; remote-sync-branch setting (a pull/switch from a stale tab). `branch` is the operational
        ;; target (it differs from this on a branch switch); `expected_branch` is only the assertion.
-       [:expected_branch ms/NonBlankString]]]
+       ;; Optional because headless clients (the `mb` CLI) hold no cached view that can go stale.
+       [:expected_branch {:optional true} ms/NonBlankString]]]
   (api/check-superuser)
   (api/check-400 (settings/remote-sync-enabled) "Remote sync is not configured.")
-  (check-branch-matches-setting! expected_branch)
+  (when expected_branch
+    (check-branch-matches-setting! expected_branch))
   (let [branch-name (or branch (settings/remote-sync-branch))
         user-id     api/*current-user-id*
         {task-id :id}
@@ -93,7 +96,7 @@
    - local_version: Git SHA of last successful import (nil if never imported)
    - cached: true if result was served from cache"
   [_route-params
-   {:keys [force-refresh]} :- [:map [:force-refresh {:optional true} :boolean]]
+   {:keys [force-refresh]} :- [:map {:closed true} [:force-refresh {:optional true} :boolean]]
    _body]
   (api/check-superuser)
   (api/check-400 (settings/remote-sync-enabled) "Remote sync is not configured.")
@@ -127,7 +130,7 @@
   Requires superuser permissions."
   [_route
    _query
-   {:keys [message branch force merge]} :- [:map
+   {:keys [message branch force merge]} :- [:map {:closed true}
                                             [:message {:optional true} ms/NonBlankString]
                                             [:branch ms/NonBlankString]
                                             [:force {:optional true} :boolean]
@@ -163,7 +166,7 @@
 
   Requires superuser permissions."
   [_route
-   {:keys [branch]} :- [:map [:branch ms/NonBlankString]]]
+   {:keys [branch]} :- [:map {:closed true} [:branch ms/NonBlankString]]]
   (api/check-superuser)
   (api/check-400 (settings/remote-sync-enabled) "Remote sync is not configured.")
   (let [branch-name (check-branch-matches-setting! branch)
@@ -176,12 +179,24 @@
      :force_push_casualties  force-push-casualties
      :reason                 (some-> reason name)}))
 
+(defn- present-task
+  "Hydrate `task` for the API: its status and the initiating user trimmed to what the UI shows."
+  [task]
+  (-> task
+      (t2/hydrate :status :initiated_by_user)
+      (update :initiated_by_user #(some-> % (select-keys [:id :first_name :last_name :email])))))
+
 (api.macros/defendpoint :get "/current-task" :- [:maybe remote-sync.schema/SyncTask]
   "Get the current sync task"
   []
   (api/check-superuser)
-  (when-let [task (remote-sync.task/most-recent-task)]
-    (t2/hydrate task :status)))
+  (when-let [task (some-> (remote-sync.task/most-recent-task) present-task)]
+    (if (= :timed-out (:status task))
+      ;; The owning worker is gone (its heartbeat stopped), so close the row now rather than leaving it to the
+      ;; next task creation. Idempotent and safe to race across nodes and polling tabs.
+      (do (remote-sync.task/supersede-stale-tasks!)
+          (present-task (remote-sync.task/most-recent-task)))
+      task)))
 
 (api.macros/defendpoint :post "/current-task/cancel" :- remote-sync.schema/SyncTask
   "Cancels the current task if one is running"
@@ -190,7 +205,7 @@
   (let [task (remote-sync.task/most-recent-task)]
     (api/check-400 (and (some? task) (remote-sync.task/running? task)) "No active task to cancel")
     (remote-sync.task/cancel-sync-task! (:id task))
-    (t2/hydrate (remote-sync.task/most-recent-task) :status)))
+    (present-task (remote-sync.task/most-recent-task))))
 
 (api.macros/defendpoint :post "/test-connection" :- remote-sync.schema/TestConnectionResponse
   "Test whether the Remote Sync credentials can reach the git repository.
@@ -209,7 +224,7 @@
   [_route-params
    _query-params
    {:keys [remote-sync-url remote-sync-token] :as body}
-   :- [:map
+   :- [:map {:closed true}
        [:remote-sync-url {:optional true} [:maybe :string]]
        [:remote-sync-token {:optional true} [:maybe :string]]]]
   (api/check-superuser)
@@ -239,7 +254,7 @@
   [_route-params
    _query-params
    {:keys [remote-sync-type collections] :as settings}
-   :- [:map
+   :- [:map {:closed true}
        [:remote-sync-url {:optional true} [:maybe :string]]
        [:remote-sync-token {:optional true} [:maybe :string]]
        [:remote-sync-type {:optional true} [:maybe [:enum :read-only :read-write]]]
@@ -269,8 +284,7 @@
   (let [collections (when (seq collections)
                       (let [current-states (into {}
                                                  (map (juxt :id :is_remote_synced))
-                                                 (t2/select [:model/Collection :id :is_remote_synced]
-                                                            :id [:in (keys collections)]))]
+                                                 (remote-sync.db/collection-sync-states (keys collections)))]
                         (not-empty
                          (into {}
                                (filter (fn [[id desired]]
@@ -328,7 +342,7 @@
   Requires superuser permissions."
   [_route
    _query
-   {:keys [name]} :- [:map [:name ms/NonBlankString]]]
+   {:keys [name]} :- [:map {:closed true} [:name ms/NonBlankString]]]
   (api/check-superuser)
   (let [base-branch (or (remote-sync.task/last-version) (settings/remote-sync-branch))]
     (api/check-400 (source/source-from-settings) "Source not configured")
@@ -350,7 +364,7 @@
   Requires superuser permissions."
   [_route
    _query
-   {new-branch :new_branch message :message} :- [:map
+   {new-branch :new_branch message :message} :- [:map {:closed true}
                                                  [:new_branch ms/NonBlankString]
                                                  [:message ms/NonBlankString]]]
   (api/check-superuser)

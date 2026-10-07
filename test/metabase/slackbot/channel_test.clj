@@ -111,13 +111,15 @@
 
 (deftest ^:parallel truncation-notice-test
   (testing "the notice points at the instance, and says what to do about the cut"
-    (is (= (str "_This answer was longer than 3000 characters. That is too long to post in Slack, "
+    (is (= (str "_This answer was longer than " slackbot.tu/slack-markdown-text-limit
+                " characters. That is too long to post in Slack, "
                 "so I cut it short._\n\n"
                 "Ask a narrower question so the answer comes back smaller"
                 ", or head to <https://metabase.example.com|Metabase> and try again.")
            (#'slackbot.channel/truncation-notice test-site-url))))
   (testing "an instance with no site URL still gets a sentence, just without the link"
-    (is (= (str "_This answer was longer than 3000 characters. That is too long to post in Slack, "
+    (is (= (str "_This answer was longer than " slackbot.tu/slack-markdown-text-limit
+                " characters. That is too long to post in Slack, "
                 "so I cut it short._\n\n"
                 "Ask a narrower question so the answer comes back smaller.")
            (#'slackbot.channel/truncation-notice nil))))
@@ -130,15 +132,14 @@
     (mt/with-temporary-setting-values [site-url test-site-url]
       (let [{:keys [text blocks backfill]} (send-channel-response! slackbot.tu/oversized-answer)
             [answer-block notice-block]    blocks
-            section-text                   (get-in answer-block [:text :text])]
-        (testing "no section block is over the limit -- so Slack no longer rejects the message"
-          (is (nil? (slackbot.tu/oversized-section-error blocks))))
-        (testing "the answer rides one mrkdwn section block, cut to the limit"
-          (is (= "section" (:type answer-block)))
-          (is (= "mrkdwn" (get-in answer-block [:text :type])))
-          (is (= slackbot.tu/slack-section-text-limit (count section-text)))
-          (is (str/ends-with? section-text "..."))
-          (is (str/starts-with? slackbot.tu/oversized-answer (str/replace section-text #"\.\.\.$" ""))
+            answer-text                    (:text answer-block)]
+        (testing "no block is over its limit -- so Slack no longer rejects the message"
+          (is (nil? (slackbot.tu/oversized-block-error blocks))))
+        (testing "the answer goes in one markdown block, cut to the limit (BOT-2010)"
+          (is (= "markdown" (:type answer-block)))
+          (is (= slackbot.tu/slack-markdown-text-limit (count answer-text)))
+          (is (str/ends-with? answer-text "..."))
+          (is (str/starts-with? slackbot.tu/oversized-answer (str/replace answer-text #"\.\.\.$" ""))
               "what survives the cut is a genuine prefix of the answer"))
         (testing "the notice rides in a context block of the same message, linking to the instance"
           (is (= "context" (:type notice-block)))
@@ -148,10 +149,10 @@
           (is (not (str/includes? (get-in notice-block [:elements 0 :text]) "/metabot/conversation/"))
               "the link is the home page, not a conversation we cannot continue on the web"))
         (testing "the visualizations and the feedback buttons still ride the message"
-          (is (= ["section" "context" "section" "table" "context_actions"]
+          (is (= ["markdown" "context" "section" "table" "context_actions"]
                  (mapv :type blocks))))
         (testing "the notice stays out of `:text`, which `thread->history` replays back to the model"
-          (is (= section-text text))
+          (is (= answer-text text))
           (is (not (str/includes? text "too long to post in Slack"))))
         (testing "one message is posted, and its ts is persisted -- it carries the feedback buttons"
           (is (= {:msg-id 42 :slack-msg-id "1700000000.000002"} backfill)))))))
@@ -171,10 +172,10 @@
   (testing "an answer within the limit is posted whole, with no notice"
     (let [answer                "Orders peaked in March. *1,204* of them."
           {:keys [text blocks]} (send-channel-response! answer)]
-      (is (nil? (slackbot.tu/oversized-section-error blocks)))
-      (is (= answer (get-in (first blocks) [:text :text])))
+      (is (nil? (slackbot.tu/oversized-block-error blocks)))
+      (is (= answer (:text (first blocks))))
       (is (= answer text))
-      (is (= ["section" "section" "table" "context_actions"] (mapv :type blocks))
+      (is (= ["markdown" "section" "table" "context_actions"] (mapv :type blocks))
           "no context block, because nothing was cut"))))
 
 ;; Not ^:parallel: `with-prometheus-system!` redefs a process-global var.

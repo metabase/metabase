@@ -26,7 +26,7 @@
             (messages/input-message->parts {:role :assistant :content "Hi there"}))))
   (testing "assistant with tool_calls (OpenAI style)"
     (is (=? [{:type :text :text "Searching..."}
-             {:type :tool-input :id "t1" :function "search" :arguments {:q "test"}}]
+             {:type :tool-input :id "t1" :function "search" :arguments {"q" "test"}}]
             (messages/input-message->parts
              {:role       :assistant
               :content    "Searching..."

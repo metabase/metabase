@@ -8,6 +8,7 @@
    [environ.core :as env]
    [metabase.events.core :as events]
    [metabase.request.core :as request]
+   [metabase.session.db :as session.db]
    [metabase.session.settings :as session.settings]
    [metabase.util :as u]
    [metabase.util.encryption :as encryption]
@@ -85,7 +86,7 @@
     (throw (ex-info "Session key should not be stored plaintext in the session table." {})))
   ;; Check auth identity provider if provided
   (when-let [auth-identity-id (:auth_identity_id session)]
-    (when-let [auth-identity (t2/select-one [:model/AuthIdentity :provider] :id auth-identity-id)]
+    (when-let [auth-identity (session.db/auth-identity-provider auth-identity-id)]
       (when (and (= "password" (:provider auth-identity))
                  (not (session.settings/enable-password-login)))
         (throw (ex-info (str (tru "Password login is disabled for this instance."))
@@ -101,7 +102,7 @@
 
 (t2/define-after-insert :model/Session
   [session]
-  (when-let [user (t2/select-one :model/User (:user_id session))]
+  (when-let [user (session.db/user (:user_id session))]
     (let [event {:user-id (u/the-id user)}]
       (events/publish-event! :event/user-login event)
       (when (nil? (:last_login user))

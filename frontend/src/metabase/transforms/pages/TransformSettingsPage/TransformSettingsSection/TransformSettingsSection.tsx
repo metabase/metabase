@@ -9,9 +9,9 @@ import {
 } from "metabase/api";
 import { Link } from "metabase/common/components/Link";
 import { TitleSection } from "metabase/common/data-studio/components/TitleSection";
+import { useMetadataToasts } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
 import { UserInput } from "metabase/metadata/components";
-import { useMetadataToasts } from "metabase/metadata/hooks";
 import { TransformOwnerAvatar } from "metabase/transforms/components/TransformOwnerAvatar/TransformOwnerAvatar";
 import { Button, Divider, Group, Icon, Loader, Stack, Text } from "metabase/ui";
 import * as Urls from "metabase/urls";
@@ -42,13 +42,13 @@ export const TransformSettingsSection = ({
         label={t`Transform target`}
         description={t`Change what this transform generates and where.`}
       >
-        <Group p="lg">
+        <Group p="xl">
           <TargetInfo transform={transform} />
         </Group>
         {!permissionsReadOnly && (
           <>
             <Divider />
-            <Group p="lg">
+            <Group p="xl">
               {!readOnly && <EditTargetButton transform={transform} />}
               <EditMetadataButton transform={transform} />
             </Group>
@@ -134,7 +134,7 @@ function TargetInfo({ transform }: TargetInfoProps) {
           <TargetItemDivider />
         </>
       )}
-      <Group gap="xs">
+      <Group gap="xxs">
         <TargetItemLink
           label={target.name}
           icon="table2"
@@ -169,7 +169,7 @@ function TargetItemLink({
       data-testid={dataTestId}
       tooltip={tooltip}
     >
-      <Group gap="xs">
+      <Group gap="xxs">
         <Icon name={icon} />
         <Text c="inherit">{label}</Text>
       </Group>
@@ -281,7 +281,7 @@ function OwnerSection({ transform, readOnly }: OwnerSectionProps) {
       label={t`Ownership`}
       description={t`Specify who is responsible for this transform.`}
     >
-      <Group p="lg">
+      <Group p="xl">
         {readOnly ? (
           <>
             <Text fw="bold">{t`Owner`}</Text>

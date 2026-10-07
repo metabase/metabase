@@ -92,7 +92,7 @@
 (defmethod docker-cmd :postgres
   [_db container-name resolved-version port]
   ["docker" "run" "-d"
-   "-p" (str port ":5432")
+   "-p" (str "127.0.0.1:" port ":5432")
    ;; "--network" "psql-metabase-network"
    "-e" "POSTGRES_USER=metabase"
    "-e" "POSTGRES_DB=metabase"
@@ -105,7 +105,7 @@
 (defmethod docker-cmd :mysql
   [_db container-name resolved-version port]
   ["docker" "run" "-d"
-   "-p" (str port ":3306")
+   "-p" (str "127.0.0.1:" port ":3306")
    "-e" "MYSQL_DATABASE=metabase_test"
    "-e" "MYSQL_ALLOW_EMPTY_PASSWORD=yes"
    "--name" container-name
@@ -114,7 +114,7 @@
 (defmethod docker-cmd :mariadb
   [_db container-name resolved-version port]
   ["docker" "run" "-d"
-   "-p" (str port ":3306")
+   "-p" (str "127.0.0.1:" port ":3306")
    "-e" "MYSQL_DATABASE=metabase_test"
    "-e" "MYSQL_ALLOW_EMPTY_PASSWORD=yes"
    "--name" container-name
@@ -125,7 +125,7 @@
   ["docker" "run" "-d"
    "-e" "MONGO_INITDB_ROOT_USERNAME=metabase"
    "-e" "MONGO_INITDB_ROOT_PASSWORD=metasample123"
-   "-p" (str port ":27017")
+   "-p" (str "127.0.0.1:" port ":27017")
    "--name" container-name
    (str "mongo:" resolved-version)])
 
@@ -141,7 +141,7 @@
 (defmethod docker-cmd :sqlserver
   [_db container-name resolved-version port]
   ["docker" "run" "-d"
-   "-p" (str port ":1433")
+   "-p" (str "127.0.0.1:" port ":1433")
    "-e" "ACCEPT_EULA=Y"
    "-e" "SA_PASSWORD=P@ssw0rd"
    "--name" container-name
@@ -150,12 +150,30 @@
 (defmethod docker-cmd :oracle
   [_db container-name resolved-version port]
   ["docker" "run" "-d"
-   "-p" (str port ":1521")
+   "-p" (str "127.0.0.1:" port ":1521")
    "-e" "ORACLE_PASSWORD=password"
    "--name" container-name
    (if (= resolved-version "latest")
      "gvenzl/oracle-free:latest"
      (str "gvenzl/oracle-xe:" resolved-version))])
+
+;; Client command stuff:
+
+(defmulti ^:private client-cmd
+  {:arglists '([db port])}
+  (fn [db _port] db))
+
+;; TODO: add other databases' commands here
+(defmethod client-cmd :default [_ _] nil)
+
+(defmethod client-cmd :mysql [_ port]
+  (format "mysql --host localhost --port %s --user root --password=\"\" metabase_test" port))
+
+(defmethod client-cmd :mariadb [_ port]
+  (client-cmd :mysql port))
+
+(defmethod client-cmd :postgres [_ port]
+  (format "PGPASSWORD=password psql --user metabase --host localhost --port %s -d metabase" port))
 
 (defn- app-db? [db]
   (contains? #{:postgres :mysql :mariadb} db))
@@ -174,7 +192,10 @@
       (let [deps-edn-alias (->deps-edn-alias database version)]
         (printf "Use the %s alias in deps.edn to use this DB:\n" deps-edn-alias)
         (println (str "  clj -M:dev:ee:ee-dev" deps-edn-alias))
-        (u/debug (str "  clj -M:dev:ee:ee-dev" deps-edn-alias " -e '(dev) (start!)'"))))))
+        (u/debug (str "  clj -M:dev:ee:ee-dev" deps-edn-alias " -e '(dev) (start!)'"))))
+    (when-let [client-command (client-cmd database port)]
+      (println "\nUse this command to connect:")
+      (println client-command))))
 
 (defn- usage
   [{:keys [db-info]}]

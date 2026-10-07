@@ -78,7 +78,7 @@ function SortOptionsPopover({
   };
 
   return (
-    <Stack w="15rem" p="md" gap="lg">
+    <Stack w="15rem" p="lg" gap="xl">
       <Radio.Group
         value={sortOptions.column}
         label={t`Sort by`}
@@ -97,7 +97,6 @@ function SortOptionsPopover({
       <SegmentedControl
         value={sortOptions.direction}
         data={getSortDirectionItems()}
-        size="sm"
         fullWidth
         onChange={handleDirectionChange}
       />

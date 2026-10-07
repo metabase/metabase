@@ -6,35 +6,6 @@ import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { PRODUCTS, PRODUCTS_ID, ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
-describe("issue 54638", () => {
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsNormalUser();
-    H.openOrdersTable({ mode: "notebook" });
-    H.addCustomColumn();
-  });
-
-  it("should be possible to click documentation links in the expression editor help text popover (metabase#54638)", () => {
-    H.CustomExpressionEditor.type("case(");
-    H.CustomExpressionEditor.helpText().within(() => {
-      cy.findByText("Learn more")
-        .scrollIntoView()
-        .should("be.visible")
-        .then(($a) => {
-          expect($a).to.have.attr("target", "_blank");
-          // Update attr to open in same tab, since Cypress does not support
-          // testing in multiple tabs.
-          $a.attr("target", "_self");
-        })
-        .click();
-      cy.url().should(
-        "equal",
-        "https://www.metabase.com/docs/latest/questions/query-builder/expressions/case.html",
-      );
-    });
-  });
-});
-
 describe("issue #54722", () => {
   beforeEach(() => {
     H.restore();
@@ -66,7 +37,7 @@ describe("issue #31964", () => {
     H.openOrdersTable({ mode: "notebook" });
   });
 
-  it("should focus the editor when opening it (metabase#54722)", () => {
+  it("should apply a completion on a new line inside case (metabase#31964)", () => {
     H.addCustomColumn();
     H.CustomExpressionEditor.type('case([Product -> Category] = "Widget", 1,');
     cy.realPress("Enter");
@@ -123,36 +94,28 @@ describe("issue #55984", () => {
     H.openOrdersTable({ mode: "notebook" });
   });
 
-  it("should not overflow the suggestion tooltip when a suggestion name is too long (metabase#55984)", () => {
+  it("should not overflow the suggestion tooltip when a suggestion name is too long, with or without spaces (metabase#55984)", () => {
+    const longName =
+      "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt";
+    const longNameWithoutSpaces = longName.replaceAll(" ", "_");
+
     H.addCustomColumn();
+    H.enterCustomColumnDetails({ formula: "[Total]", name: longName });
+    cy.button("Done").click();
+
+    H.getNotebookStep("expression").icon("add").click();
     H.enterCustomColumnDetails({
       formula: "[Total]",
-      name: "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt",
+      name: longNameWithoutSpaces,
     });
     cy.button("Done").click();
 
     H.summarize({ mode: "notebook" });
     H.popover().findByText("Custom Expression").click();
     H.CustomExpressionEditor.type("[lo");
-    H.CustomExpressionEditor.completions().should(($el) => {
-      expect(H.isScrollableHorizontally($el[0])).to.be.false;
-    });
-  });
-
-  it("should not overflow the suggestion tooltip when a suggestion name is too long and has no spaces (metabase#55984)", () => {
-    H.addCustomColumn();
-    H.enterCustomColumnDetails({
-      formula: "[Total]",
-      name: "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt".replaceAll(
-        " ",
-        "_",
-      ),
-    });
-    cy.button("Done").click();
-
-    H.summarize({ mode: "notebook" });
-    H.popover().findByText("Custom Expression").click();
-    H.CustomExpressionEditor.type("[lo");
+    // The list scrolls vertically, so the second long suggestion can be out of view
+    H.CustomExpressionEditor.completion(longName).should("exist");
+    H.CustomExpressionEditor.completion(longNameWithoutSpaces).should("exist");
     H.CustomExpressionEditor.completions().should(($el) => {
       expect(H.isScrollableHorizontally($el[0])).to.be.false;
     });
@@ -364,11 +327,11 @@ describe("issue 55300", () => {
 
       H.CustomExpressionEditor.type("Sum(case(Count, Count(), 0))");
 
-      cy.log("Move cursor over now()");
+      cy.log("Move cursor over Count()");
       H.CustomExpressionEditor.type("{leftarrow}".repeat(7));
       H.CustomExpressionEditor.helpTextHeader().should("contain", "Count()");
 
-      cy.log("Move cursor over now");
+      cy.log("Move cursor over Count");
       H.CustomExpressionEditor.type("{leftarrow}".repeat(18));
       H.CustomExpressionEditor.helpTextHeader().should("contain", "case");
 
@@ -473,78 +436,6 @@ describe("issue 55687", () => {
   });
 });
 
-describe("issue 58371", { tags: "@skip" }, () => {
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-
-    cy.request("PUT", `/api/field/${ORDERS.PRODUCT_ID}`, {
-      display_name: null,
-    });
-
-    const baseQuestion = {
-      name: "Base Question",
-      query: {
-        "source-table": PRODUCTS_ID,
-        aggregation: [
-          [
-            "aggregation-options",
-            ["count-where", ["=", ["field", PRODUCTS.TITLE, null], "OK"]],
-            { "display-name": "Aggregation with Dash-in-name" },
-          ],
-        ],
-        breakout: [["field", PRODUCTS.ID, null]],
-      },
-    };
-
-    H.createQuestion(baseQuestion, { wrapId: true }).then((questionId) => {
-      const questionDetails = {
-        query: {
-          "source-table": ORDERS_ID,
-          joins: [
-            {
-              fields: "all",
-              "source-table": `card__${questionId}`,
-              alias: "Other Question",
-              condition: [
-                "=",
-                ["field", ORDERS.PRODUCT_ID, null],
-                ["field", PRODUCTS.ID, { "join-alias": "Other Question" }],
-              ],
-            },
-          ],
-          expressions: {
-            Foo: [
-              "+",
-              0,
-              [
-                "field",
-                "count_where",
-                {
-                  "base-type": "type/Float",
-                  "join-alias": "Other Question",
-                },
-              ],
-            ],
-          },
-        },
-      };
-
-      H.createQuestion(questionDetails, { visitQuestion: true });
-    });
-
-    H.openNotebook();
-  });
-
-  it("should allow using names with a dash in them from joined tables (metabase#58371)", () => {
-    H.getNotebookStep("expression").findByText("Foo").click();
-    H.CustomExpressionEditor.value().should(
-      "eq",
-      "0 + [Other Question → Aggregation with Dash-in-name]",
-    );
-  });
-});
-
 describe("Issue 58230", () => {
   beforeEach(() => {
     H.restore();
@@ -585,38 +476,25 @@ describe("issue 57674", () => {
     H.openOrdersTable({ mode: "notebook" });
   });
 
-  // TODO: re-enable this test once we have a fix for metabase#61264
-  it(
-    "should show an error when using a case or if expression with mismatched types (metabase#57674)",
-    { tags: "@skip" },
-    () => {
-      H.getNotebookStep("data").button("Custom column").click();
-
-      H.CustomExpressionEditor.clear();
-      H.popover().findByText("Types are incompatible.").should("not.exist");
-
-      H.CustomExpressionEditor.type(
-        'case([Total] > 100, [Created At], "foo")',
-        {
-          allowFastSet: true,
-        },
-      ).blur();
-
-      H.popover().findByText("Types are incompatible.").should("be.visible");
-    },
-  );
-
   it("should not show an error when using a case or if expression with compatible types (metabase#57674)", () => {
     H.getNotebookStep("data").button("Custom column").click();
 
-    H.CustomExpressionEditor.clear();
-    H.popover().findByText("Types are incompatible.").should("not.exist");
-
-    H.CustomExpressionEditor.type('case([Total] > 100, "foo", "bar")', {
+    H.CustomExpressionEditor.type('year("a string")', {
       allowFastSet: true,
     }).blur();
+    H.popover()
+      .findByText(/Types are incompatible/)
+      .should("be.visible");
 
-    H.popover().findByText("Types are incompatible.").should("not.exist");
+    H.CustomExpressionEditor.clear()
+      .type('case([Total] > 100, "foo", "bar")', { allowFastSet: true })
+      .blur();
+    H.popover()
+      .findByText(/Types are incompatible/)
+      .should("not.exist");
+
+    H.CustomExpressionEditor.nameInput().type("Foo");
+    H.popover().button("Done").should("be.enabled");
   });
 });
 
@@ -628,36 +506,46 @@ describe("Issue 12938", () => {
   });
 
   it("should be possible to concat number with string (metabase#12938)", () => {
+    H.getNotebookStep("data").button("Pick columns").click();
+    H.popover().within(() => {
+      // "Select all" on a fully selected list keeps only the first column (ID)
+      cy.findByText("Select all").click();
+      cy.findByText("Title").click();
+      cy.findByText("ID").click();
+    });
+    cy.realPress("Escape");
+
     H.addCustomColumn();
     H.enterCustomColumnDetails({
       formula: "concat(floor([Rating]), [Title])",
-      name: "MyCustom",
+      name: "RatingTitle",
       clickDone: true,
     });
 
-    H.visualize();
-    cy.get("main")
-      .findByText("There was a problem with your question")
-      .should("not.exist");
-  });
-
-  it("should be possible to concat number with string (metabase#12938)", () => {
-    H.addCustomColumn();
+    H.getNotebookStep("expression").icon("add").click();
     H.enterCustomColumnDetails({
       formula: 'concat(hour([Created At]), ":", minute([Created At]))',
-      name: "MyCustom",
+      name: "HourMinute",
       clickDone: true,
     });
 
-    H.visualize();
-    cy.get("main")
-      .findByText("There was a problem with your question")
-      .should("not.exist");
+    H.visualize(({ body }) => {
+      expect(body.error).to.not.exist;
+    });
+    H.assertTableData({
+      columns: ["Title", "RatingTitle", "HourMinute"],
+      firstRows: [
+        ["Rustic Paper Wallet", "4.0Rustic Paper Wallet", "19:44"],
+        ["Small Marble Shoes", "0.0Small Marble Shoes", "8:49"],
+      ],
+    });
   });
 });
 
 describe("Issue 25189", () => {
   beforeEach(() => {
+    cy.intercept("POST", "/api/dataset").as("dataset");
+
     H.restore();
     cy.signInAsNormalUser();
   });
@@ -697,6 +585,10 @@ describe("Issue 25189", () => {
       cy.findByText("Today").click();
     });
 
+    cy.wait("@dataset").its("response.body.error").should("not.exist");
+    cy.findAllByTestId("filter-pill")
+      .should("have.length", 1)
+      .and("contain.text", "CCreated At");
     cy.findAllByTestId("header-cell")
       .contains("CCreated At")
       .should("be.visible");
@@ -740,13 +632,16 @@ describe("Issue 25189", () => {
       cy.findAllByText("Created At").should("have.length", 2).first().click();
       cy.findByText("Today").click();
     });
+    cy.wait("@dataset").its("response.body.error").should("not.exist");
 
     H.filter();
     H.popover().within(() => {
       cy.findAllByText("Created At").should("have.length", 2).last().click();
       cy.findByText("Today").click();
     });
+    cy.wait("@dataset").its("response.body.error").should("not.exist");
 
+    cy.findAllByTestId("filter-pill").should("have.length", 2);
     cy.findAllByTestId("header-cell")
       .contains("Created At")
       .should("be.visible");
@@ -802,6 +697,42 @@ describe("Issue 26512", () => {
   });
 });
 
+describe("issues 41381, 33439, 33441", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should validate custom expressions: constant-only, convertTimezone on an unsupported db, and an incorrect date expression (metabase#41381, metabase#33439, metabase#33441)", () => {
+    H.openOrdersTable({ mode: "notebook" });
+    H.addCustomColumn();
+    H.enterCustomColumnDetails({ formula: "'Test'", name: "Constant" });
+    H.popover().within(() => {
+      cy.findByText("Invalid expression").should("not.exist");
+      cy.button("Done").should("be.enabled");
+    });
+
+    H.enterCustomColumnDetails({
+      formula:
+        'convertTimezone("2022-12-28T12:00:00", "Canada/Pacific", "Canada/Eastern")',
+      name: "Date",
+    });
+    H.popover().within(() => {
+      cy.findByText("Unsupported function convertTimezone");
+      cy.button("Done").should("be.disabled");
+    });
+
+    H.enterCustomColumnDetails({
+      formula: 'datetimeDiff([Created At] , now(), "days")',
+      name: "Date",
+    });
+    H.popover().within(() => {
+      cy.findByText("Types are incompatible.").should("be.visible");
+      cy.button("Done").should("be.disabled");
+    });
+  });
+});
+
 describe("Issue 38498", { tags: "@external" }, () => {
   beforeEach(() => {
     H.restore("postgres-12");
@@ -814,7 +745,7 @@ describe("Issue 38498", { tags: "@external" }, () => {
     });
   });
 
-  it("should not be possible to use convertTimezone with an invalid timezone (metabse#38498)", () => {
+  it("should not be possible to use convertTimezone with an invalid timezone (metabase#38498)", () => {
     H.addCustomColumn();
     H.CustomExpressionEditor.type(
       'convertTimezone([Created At], "Asia/Ho_Chi_Mihn", "UTC")',

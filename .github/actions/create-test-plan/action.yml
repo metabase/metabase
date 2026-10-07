@@ -1,48 +1,34 @@
-name: Create test plan
-description: Cruise the frontend import graph and compute the affected-tests plan.
+name: Create frontend test plan
+description: Compute the affected-tests plan for the changed files.
 
 inputs:
-  changed-files:
-    description: All changed files (CSV).
-    required: true
-  fe-changed-files:
-    description: Changed frontend_sources files (CSV).
-    required: true
-  be-changed-files:
-    description: Changed backend_sources files (CSV).
-    required: true
-  unit-infra-touched:
-    description: Whether FE unit infra changed.
-    required: true
-  loki-infra-touched:
-    description: Whether Loki infra changed.
-    required: true
-  e2e-infra-touched:
-    description: Whether e2e harness/support code changed.
-    required: true
-  shared-sources-touched:
-    description: Whether cljc/cljs/package.json changed.
-    required: true
+  stats-url:
+    description: Endpoint that stores the affected-tests stats row.
+    required: false
+    default: ''
+  stats-api-key:
+    description: API key for stats-url.
+    required: false
+    default: ''
 
 outputs:
-  stats:
-    description: FE Affected Tests stats row (JSON).
-    value: ${{ steps.compute.outputs.stats }}
-  fe_unit_specs_to_run:
-    description: Unit specs to run (JSON array).
-    value: ${{ steps.compute.outputs.fe_unit_specs_to_run }}
-  loki_stories_to_run:
-    description: Loki stories to run (JSON array).
-    value: ${{ steps.compute.outputs.loki_stories_to_run }}
-  e2e_specs_to_run:
-    description: E2E specs to run (JSON array).
-    value: ${{ steps.compute.outputs.e2e_specs_to_run }}
+  artifact-id:
+    description: Artifact containing test-plan.json for this run.
+    value: ${{ steps.upload.outputs.artifact-id }}
 
 runs:
   using: composite
   steps:
-    - name: Prepare Node + Bun
-      uses: ./.github/actions/prepare-node-bun
+    # The action reads the diff itself, so a caller hands it no file lists.
+    - name: Test which files changed
+      id: changes
+      uses: dorny/paths-filter@fbd0ab8f3e69293af611ebaee6363fc25e6d187d # v4.0.1
+      with:
+        token: ${{ github.token }}
+        list-files: csv
+        filters: .github/file-paths.yaml
+    - name: Prepare front-end environment
+      uses: ./.github/actions/prepare-frontend
     - name: Resolve closest-ancestor e2e coverage manifest
       id: manifest
       uses: actions/github-script@v9
@@ -61,40 +47,35 @@ runs:
             headSha: context.payload.pull_request?.head?.sha ?? context.sha,
           });
           core.setOutput("path", result?.path ?? "");
-    - name: Build dependency graph
-      shell: bash
-      run: |
-        # Quiet on success; surface output only if install fails.
-        bun install --frozen-lockfile > /tmp/bun-install.log 2>&1 \
-          || { echo "bun install issues (continuing):"; tail -20 /tmp/bun-install.log; }
-        bunx depcruise frontend/src enterprise/frontend/src \
-          --config .dependency-cruiser.cjs \
-          --output-type json > dependency-graph.json || true
-
     - name: Create test plan
       id: compute
       shell: bash
       env:
-        CHANGED_FILES: ${{ inputs.changed-files }}
-        FE_CHANGED_FILES: ${{ inputs.fe-changed-files }}
-        BE_CHANGED_FILES: ${{ inputs.be-changed-files }}
-        UNIT_INFRA_TOUCHED: ${{ inputs.unit-infra-touched }}
-        LOKI_INFRA_TOUCHED: ${{ inputs.loki-infra-touched }}
-        E2E_INFRA_TOUCHED: ${{ inputs.e2e-infra-touched }}
-        SHARED_SOURCES_TOUCHED: ${{ inputs.shared-sources-touched }}
-        DEP_GRAPH_JSON: dependency-graph.json
+        CHANGED_FILES: ${{ steps.changes.outputs.all_changed_files }}
+        FE_CHANGED_FILES: ${{ steps.changes.outputs.frontend_sources_files }}
+        BE_CHANGED_FILES: ${{ steps.changes.outputs.backend_sources_files }}
+        UNIT_INFRA_TOUCHED: ${{ steps.changes.outputs.frontend_unit_infra }}
+        LOKI_INFRA_TOUCHED: ${{ steps.changes.outputs.frontend_loki_infra }}
+        E2E_INFRA_TOUCHED: ${{ steps.changes.outputs.e2e_infra }}
+        SHARED_SOURCES_TOUCHED: ${{ steps.changes.outputs.shared_sources }}
         E2E_SPEC_MANIFEST: ${{ steps.manifest.outputs.path }}
       run: |
         # stdout is the plan JSON; the planner's own info logs go to stderr.
+        # The planner writes this step's GITHUB_OUTPUT entries.
         bun .github/scripts/create-test-plan.ts > test-plan.json
-        echo "stats=$(jq -c '.stats' test-plan.json)" >> "$GITHUB_OUTPUT"
-        echo "fe_unit_specs_to_run=$(jq -c '.fe_unit_specs_to_run' test-plan.json)" >> "$GITHUB_OUTPUT"
-        echo "loki_stories_to_run=$(jq -c '.loki_stories_to_run' test-plan.json)" >> "$GITHUB_OUTPUT"
-        echo "e2e_specs_to_run=$(jq -c '.e2e_specs_to_run' test-plan.json)" >> "$GITHUB_OUTPUT"
+
+    - name: Upload test plan
+      id: upload
+      uses: actions/upload-artifact@v7
+      with:
+        name: test-plan-${{ github.run_id }}-${{ github.run_attempt }}
+        path: test-plan.json
+        if-no-files-found: error
+        retention-days: 7
 
     - name: Report test plan
       shell: bash
-      run: |
+      run: | # sh
         plan=test-plan.json
         row() { # name, selected, total
           if [ "$2" -eq "$3" ]; then echo "| $1 | all ($3) | $3 |"; else echo "| $1 | $2 | $3 |"; fi
@@ -110,6 +91,10 @@ runs:
           echo
           echo "Changed: $(jq '.stats.fe_files_changed' "$plan") FE / $(jq '.stats.be_files_changed' "$plan") BE file(s) · $(jq '.stats.fe_modules_affected_usage' "$plan") FE module(s) affected"
           echo
+          if [ "$(jq '.stats.loki_preview_touched' "$plan")" = "true" ]; then
+            echo "**Loki: full run**: a file the Storybook preview imports changed."
+            echo
+          fi
           e2e_run=$(jq '.stats.e2e_specs_to_run_usage' "$plan")
           e2e_all=$(jq '.stats.e2e_specs_all' "$plan")
           if [ "$e2e_run" -eq "$e2e_all" ]; then
@@ -129,3 +114,20 @@ runs:
           echo '```'
           echo "</details>"
         } | tee -a "${GITHUB_STEP_SUMMARY:-/dev/null}"
+
+    # Only land rows for PRs from the upstream repo so forks don't pollute the table. Best-effort:
+    # a failed upload must not cost us the plan.
+    - name: Upload affected tests stats
+      if: >-
+        ${{ inputs.stats-url != ''
+        && github.event.pull_request.head.repo.full_name == 'metabase/metabase' }}
+      continue-on-error: true
+      shell: bash
+      env:
+        STATS_JSON: ${{ steps.compute.outputs.stats }}
+        PR_NUMBER: ${{ github.event.pull_request.number }}
+        HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        ENG_STATS_URL: ${{ inputs.stats-url }}
+        API_KEY: ${{ inputs.stats-api-key }}
+      run: bun .github/scripts/upload-affected-tests-stats.ts

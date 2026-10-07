@@ -1,7 +1,7 @@
 import cx from "classnames";
 import { useEffect, useMemo, useState } from "react";
 
-import ErrorBoundary from "metabase/ErrorBoundary";
+import ErrorBoundary from "metabase/common/components/ErrorBoundary";
 import { isRouteInSync } from "metabase/common/hooks/is-route-in-sync";
 import { useFavicon } from "metabase/common/hooks/use-favicon";
 import CS from "metabase/css/core/index.css";

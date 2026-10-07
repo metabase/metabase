@@ -7,13 +7,15 @@ import {
   PillTabNavigation,
 } from "metabase/common/components/PillTabNavigation";
 import type { MetricUrls } from "metabase/common/metrics/types";
-import { getUserIsAdmin, getUserIsAnalyst } from "metabase/current-user";
+import {
+  getUserIsAdmin,
+  getUserIsEntitledAnalyst,
+} from "metabase/current-user";
+import { useMetadataProvider } from "metabase/metadata-store";
 import { isNumericMetric } from "metabase/metrics/utils/validation";
 import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
-import { getMetadata } from "metabase/selectors/metadata";
 import * as Lib from "metabase-lib";
-import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type { Card } from "metabase-types/api";
 
 interface MetricTabsProps {
@@ -22,23 +24,27 @@ interface MetricTabsProps {
 }
 
 export function MetricTabs({ card, urls }: MetricTabsProps) {
-  const metadata = useSelector(getMetadata);
+  const metadataProvider = useMetadataProvider(card.dataset_query.database);
   const { data: metric } = useGetMetricQuery(card.id);
   const hasDimensions =
     metric?.dimensions != null && metric.dimensions.length > 0;
   const canSeeDependencies = useSelector(
-    (state) => getUserIsAdmin(state) || getUserIsAnalyst(state),
+    (state) => getUserIsAdmin(state) || getUserIsEntitledAnalyst(state),
+  );
+  const query = useMemo(
+    () => Lib.fromJsQuery(metadataProvider, card.dataset_query),
+    [card, metadataProvider],
   );
   const tabs = useMemo(
-    () => getTabs(card, metadata, urls, hasDimensions, canSeeDependencies),
-    [card, metadata, urls, hasDimensions, canSeeDependencies],
+    () => getTabs(card, query, urls, hasDimensions, canSeeDependencies),
+    [card, query, urls, hasDimensions, canSeeDependencies],
   );
   return <PillTabNavigation tabs={tabs} />;
 }
 
 function getTabs(
   card: Card,
-  metadata: Metadata,
+  query: Lib.Query,
   urls: MetricUrls,
   hasDimensions: boolean,
   canSeeDependencies: boolean,
@@ -50,7 +56,6 @@ function getTabs(
     },
   ];
 
-  const query = Lib.fromJsQueryAndMetadata(metadata, card.dataset_query);
   const queryInfo = Lib.queryDisplayInfo(query);
 
   if (queryInfo.isEditable) {

@@ -1,18 +1,18 @@
 .footer:not(:empty) {
-  margin-top: var(--mantine-spacing-md);
+  margin-top: var(--mantine-spacing-lg);
 }
 
 .illustration {
-  margin-bottom: var(--mantine-spacing-md);
+  margin-bottom: var(--mantine-spacing-lg);
 }
 
 /* Defaults to "md" spacing; "sm" stays at 1rem even above the small breakpoint */
 @media (--breakpoint-min-sm) {
   .illustration {
-    margin-bottom: var(--mantine-spacing-xl);
+    margin-bottom: var(--mantine-spacing-xxl);
   }
 
   .illustration[data-spacing="sm"] {
-    margin-bottom: var(--mantine-spacing-md);
+    margin-bottom: var(--mantine-spacing-lg);
   }
 }

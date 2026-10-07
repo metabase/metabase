@@ -32,7 +32,11 @@ import {
   PLUGIN_TABLE_EDITING,
   PLUGIN_TENANTS,
 } from "metabase/plugins";
-import { QuestionHashRedirect } from "metabase/query_builder/components/QuestionHashRedirect";
+import {
+  QuestionHashRedirect,
+  loadMetabotQueryBuilder,
+  loadQueryBuilder,
+} from "metabase/query_builder";
 import type { State } from "metabase/redux/store";
 import { getReferenceRoutes } from "metabase/reference/routes";
 import {
@@ -46,6 +50,7 @@ import {
   Navigate,
   type RouteObject,
   redirect,
+  registerBackgroundPagePrefetch,
   registerPagePrefetch,
   toRouteObjects,
   useParams,
@@ -88,14 +93,12 @@ export function LegacyBrowseRedirect() {
  * every later navigation to the query builder is synchronous again.
  */
 const queryBuilder = () =>
-  import(
-    /* webpackChunkName: "query-builder" */ "metabase/query_builder/containers/QueryBuilder"
-  ).then(({ QueryBuilder }) => ({ Component: QueryBuilder }));
+  loadQueryBuilder().then(({ QueryBuilder }) => ({ Component: QueryBuilder }));
 
 const metabotQueryBuilder = () =>
-  import(
-    /* webpackChunkName: "metabot-query-builder" */ "metabase/query_builder/components/MetabotQueryBuilder"
-  ).then(({ MetabotQueryBuilder }) => ({ Component: MetabotQueryBuilder }));
+  loadMetabotQueryBuilder().then(({ MetabotQueryBuilder }) => ({
+    Component: MetabotQueryBuilder,
+  }));
 
 /**
  * Documents, in their own chunk. It carries the rich text editing stack, which
@@ -200,6 +203,23 @@ const commentsSidesheet = () =>
     /* webpackChunkName: "comments-sidesheet" */ "metabase/documents/components/CommentsSidesheet"
   ).then(({ CommentsSidesheet }) => CommentsSidesheet);
 
+const dashboardMoveModal = () =>
+  import(
+    /* webpackChunkName: "dashboard-move-modal" */ "metabase/dashboard/components/DashboardMoveModal"
+  ).then(({ DashboardMoveModalConnected }) => DashboardMoveModalConnected);
+
+const dashboardCopyModal = () =>
+  import(
+    /* webpackChunkName: "dashboard-copy-modal" */ "metabase/dashboard/components/DashboardCopyModal"
+  ).then(({ DashboardCopyModalConnected }) => DashboardCopyModalConnected);
+
+const dashboardArchiveModal = () =>
+  import(
+    /* webpackChunkName: "dashboard-archive-modal" */ "metabase/dashboard/containers/ArchiveDashboardModal"
+  ).then(
+    ({ ArchiveDashboardModalConnected }) => ArchiveDashboardModalConnected,
+  );
+
 /**
  * Hovering a link into one of these chunks starts the fetch, so it is usually in
  * hand by the time the click lands. The router still awaits `lazy` and still
@@ -230,6 +250,13 @@ registerPagePrefetch("/", landingPage, { exact: true });
 registerPagePrefetch("/collection/", collectionLanding);
 registerPagePrefetch("/trash", trashCollectionLanding);
 registerPagePrefetch("/browse", browsePage("BrowseModels"));
+
+// No link points at a modal, so hovering never says one is wanted. These are
+// fetched only in the background, where the point is that a tab which outlives a
+// deploy can still open them.
+registerBackgroundPagePrefetch(dashboardMoveModal);
+registerBackgroundPagePrefetch(dashboardCopyModal);
+registerBackgroundPagePrefetch(dashboardArchiveModal);
 
 export const getRoutes = (store: AppStore): RouteObject[] => [
   {
@@ -359,6 +386,7 @@ export const getRoutes = (store: AppStore): RouteObject[] => [
                       {modalRoute(
                         "move-questions-dashboard",
                         MoveQuestionsIntoDashboardsModal,
+                        { noWrap: true },
                       )}
                       {PLUGIN_COLLECTIONS.cleanUpRoute}
                     </>,
@@ -389,39 +417,15 @@ export const getRoutes = (store: AppStore): RouteObject[] => [
                 path: "dashboard/:slug",
                 lazy: dashboardApp,
                 children: [
-                  lazyModalRoute(
-                    "move",
-                    () =>
-                      import(
-                        /* webpackChunkName: "dashboard-move-modal" */ "metabase/dashboard/components/DashboardMoveModal"
-                      ).then(
-                        ({ DashboardMoveModalConnected }) =>
-                          DashboardMoveModalConnected,
-                      ),
-                    { noWrap: true },
-                  ),
-                  lazyModalRoute(
-                    "copy",
-                    () =>
-                      import(
-                        /* webpackChunkName: "dashboard-copy-modal" */ "metabase/dashboard/components/DashboardCopyModal"
-                      ).then(
-                        ({ DashboardCopyModalConnected }) =>
-                          DashboardCopyModalConnected,
-                      ),
-                    { noWrap: true },
-                  ),
-                  lazyModalRoute(
-                    "archive",
-                    () =>
-                      import(
-                        /* webpackChunkName: "dashboard-archive-modal" */ "metabase/dashboard/containers/ArchiveDashboardModal"
-                      ).then(
-                        ({ ArchiveDashboardModalConnected }) =>
-                          ArchiveDashboardModalConnected,
-                      ),
-                    { noWrap: true },
-                  ),
+                  lazyModalRoute("move", dashboardMoveModal, {
+                    noWrap: true,
+                  }),
+                  lazyModalRoute("copy", dashboardCopyModal, {
+                    noWrap: true,
+                  }),
+                  lazyModalRoute("archive", dashboardArchiveModal, {
+                    noWrap: true,
+                  }),
                 ],
               },
 

@@ -5,19 +5,16 @@ import {
 } from "__support__/echarts";
 import { dayjs } from "metabase/dayjs";
 import {
+  type ComputedVisualizationSettings,
+  type Datum,
+  type DimensionModel,
+  type EChartsSeriesBrushEndEvent,
+  type EChartsSeriesBrushSelectedEvent,
+  type EChartsSeriesMouseEvent,
   INDEX_KEY,
   X_AXIS_DATA_KEY,
-} from "metabase/visualizations/echarts/cartesian/constants/dataset";
-import { getDatasetKey } from "metabase/visualizations/echarts/cartesian/model/dataset";
-import type {
-  Datum,
-  DimensionModel,
-} from "metabase/visualizations/echarts/cartesian/model/types";
-import type {
-  EChartsSeriesBrushEndEvent,
-  EChartsSeriesMouseEvent,
-} from "metabase/visualizations/echarts/types";
-import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
+  getDatasetKey,
+} from "metabase/viz-core";
 import {
   createMockColumn,
   createMockDatetimeColumn,
@@ -27,6 +24,7 @@ import {
 
 import {
   canBrush,
+  getAdjustedBrushEndEvent,
   getBrushClickObject,
   getEventDimensions,
   getSeriesClickData,
@@ -64,6 +62,7 @@ const dimensionModel: DimensionModel = {
   column: createdAtColumn,
   columnIndex: 0,
   columnByCardId: { [CARD_ID]: createdAtColumn },
+  columns: [createdAtColumn],
 };
 
 describe("getEventDimensions", () => {
@@ -158,6 +157,7 @@ describe("getEventDimensions", () => {
       column: monthColumn,
       columnIndex: 0,
       columnByCardId: { [CARD_ID]: monthColumn },
+      columns: [monthColumn],
     };
 
     const seriesModel = createMockSeriesModel({
@@ -225,56 +225,6 @@ describe("getEventDimensions", () => {
       { column: sourceColumn, value: "Affiliate" },
     ]);
   });
-
-  it("includes the x-axis breakout when clicking a bar with only metric data (#73448)", () => {
-    const categoryColumn = createMockColumn({
-      name: "CATEGORY",
-      display_name: "Product → Category",
-      source: "breakout",
-      base_type: "type/Text",
-      effective_type: "type/Text",
-    });
-    const countColumn = createMockColumn({
-      name: "count",
-      display_name: "Count",
-      source: "aggregation",
-      base_type: "type/BigInteger",
-      effective_type: "type/BigInteger",
-    });
-    const countKey = `${CARD_ID}:count`;
-    const datum: Datum = {
-      [X_AXIS_DATA_KEY]: "Doohickey",
-      [countKey]: 3976,
-    };
-    const chartModel = createMockCartesianChartModel({
-      columnByDataKey: {
-        [countKey]: countColumn,
-      },
-    });
-    const categoryDimensionModel: DimensionModel = {
-      column: categoryColumn,
-      columnIndex: 0,
-      columnByCardId: { [CARD_ID]: categoryColumn },
-    };
-    const seriesModel = createMockSeriesModel({
-      dataKey: countKey,
-      column: countColumn,
-      columnIndex: 1,
-      cardId: CARD_ID,
-      vizSettingsKey: "count",
-    });
-
-    const dimensions = getEventDimensions(
-      chartModel,
-      datum,
-      categoryDimensionModel,
-      seriesModel,
-    );
-
-    expect(dimensions).toEqual([
-      { column: categoryColumn, value: "Doohickey" },
-    ]);
-  });
 });
 
 describe("getSeriesClickData", () => {
@@ -328,6 +278,7 @@ describe("getSeriesClickData", () => {
         column: createdAtColumn,
         columnIndex: 0,
         columnByCardId: { [CARD_ID]: createdAtColumn },
+        columns: [createdAtColumn],
       },
       cardsColumns: [
         {
@@ -370,9 +321,11 @@ describe("getSeriesClickData", () => {
       source: "breakout",
     });
     const sourceKey = getDatasetKey(sourceColumn, CARD_ID);
+    const categoryKey = getDatasetKey(categoryColumn, CARD_ID);
     const sumKey = dataKey;
     const datum: Datum = {
       [X_AXIS_DATA_KEY]: "Gadget",
+      [categoryKey]: "Gadget",
       [sourceKey]: "Affiliate",
       [sumKey]: 12,
     };
@@ -394,6 +347,7 @@ describe("getSeriesClickData", () => {
         { [X_AXIS_DATA_KEY]: "", [INDEX_KEY]: 0 },
       ] as Datum[],
       columnByDataKey: {
+        [categoryKey]: categoryColumn,
         [sourceKey]: sourceColumn,
         [sumKey]: sumColumn,
       },
@@ -401,6 +355,7 @@ describe("getSeriesClickData", () => {
         column: categoryColumn,
         columnIndex: 0,
         columnByCardId: { [CARD_ID]: categoryColumn },
+        columns: [categoryColumn],
       },
       cardsColumns: [
         {
@@ -452,6 +407,18 @@ describe("canBrush", () => {
     source: "aggregation",
     base_type: "type/Float",
     effective_type: "type/Float",
+  });
+
+  const binnedQuantityColumn = createMockColumn({
+    name: "QUANTITY",
+    display_name: "Quantity: 10 bins",
+    source: "breakout",
+    base_type: "type/Integer",
+    effective_type: "type/Integer",
+    binning_info: {
+      binning_strategy: "num-bins",
+      bin_width: 10,
+    },
   });
 
   const baseSettings: ComputedVisualizationSettings = {
@@ -511,6 +478,22 @@ describe("canBrush", () => {
       canBrush(series, baseSettings, sumSubtotalColumn, undefined, onBrush),
     ).toBe(true);
   });
+
+  // Binned dimensions default to histogram scale (already unbrushable), but
+  // users can switch to linear. Bars are centered on the bin start (0 for
+  // "0-10"), so a brush would filter the wrong range
+  it("returns false when the x-axis dimension is binned, even on a linear scale", () => {
+    const series = [
+      createMockSingleSeries(
+        {},
+        { data: { cols: [binnedQuantityColumn, sumSubtotalColumn] } },
+      ),
+    ];
+
+    expect(
+      canBrush(series, baseSettings, binnedQuantityColumn, onChangeCardAndRun),
+    ).toBe(false);
+  });
 });
 
 describe("getBrushClickObject", () => {
@@ -535,6 +518,7 @@ describe("getBrushClickObject", () => {
         column: createdAtColumn,
         columnIndex: 0,
         columnByCardId: { [CARD_ID]: createdAtColumn },
+        columns: [createdAtColumn],
       },
       xAxisModel: {
         axisType: "time",
@@ -581,6 +565,7 @@ describe("getBrushClickObject", () => {
         column: priceColumn,
         columnIndex: 0,
         columnByCardId: { [CARD_ID]: priceColumn },
+        columns: [priceColumn],
       },
       xAxisModel: {
         axisType: "value",
@@ -613,6 +598,207 @@ describe("getBrushClickObject", () => {
       end: 4,
     });
     expect(clicked?.column).toBe(priceColumn);
+  });
+});
+
+describe("getAdjustedBrushEndEvent", () => {
+  const jan = "2020-01-01T00:00:00Z";
+  const feb = "2020-02-01T00:00:00Z";
+  const mar = "2020-03-01T00:00:00Z";
+  const apr = "2020-04-01T00:00:00Z";
+  const janMs = Date.UTC(2020, 0, 1);
+  const febMs = Date.UTC(2020, 1, 1);
+  const marMs = Date.UTC(2020, 2, 1);
+  const aprMs = Date.UTC(2020, 3, 1);
+
+  const timeSeriesChartModel = createMockCartesianChartModel({
+    dimensionModel: {
+      column: createdAtColumn,
+      columnIndex: 0,
+      columnByCardId: { [CARD_ID]: createdAtColumn },
+      columns: [createdAtColumn],
+    },
+    xAxisModel: {
+      axisType: "time",
+      toEChartsAxisValue: (value) => String(value),
+      fromEChartsAxisValue: (value) => dayjs.utc(value),
+      interval: { unit: "month", count: 1 },
+      intervalsCount: 4,
+      range: [dayjs.utc(jan), dayjs.utc(apr)],
+      formatter: String,
+    },
+    transformedDataset: [jan, feb, mar, apr].map((value, index) => ({
+      [X_AXIS_DATA_KEY]: value,
+      [INDEX_KEY]: index,
+    })),
+  });
+
+  const brushEndEvent = (coordRange: [number, number]) =>
+    // getAdjustedBrushEndEvent only reads areas; mouse fields are unused
+    ({
+      areas: [
+        {
+          brushType: "lineX",
+          coordRange,
+          range: [40, 180],
+        },
+      ],
+    }) as unknown as EChartsSeriesBrushEndEvent;
+
+  const brushSelectedEvent = (
+    dataIndex: number[],
+  ): EChartsSeriesBrushSelectedEvent => ({
+    batch: [{ selected: [{ seriesIndex: 0, dataIndex }] }],
+  });
+
+  // Mid-January to mid-March: the pixel range covers parts of the Jan and Mar
+  // bars without reaching their tick values.
+  const partialCoordRange: [number, number] = [
+    Date.UTC(2020, 0, 15),
+    Date.UTC(2020, 2, 15),
+  ];
+
+  it("widens the start to include a highlighted bar whose tick is left of coordRange", () => {
+    const adjusted = getAdjustedBrushEndEvent(
+      brushEndEvent(partialCoordRange),
+      brushSelectedEvent([0, 1, 2]),
+      timeSeriesChartModel,
+    );
+
+    expect(adjusted?.areas[0].coordRange).toEqual([
+      janMs,
+      partialCoordRange[1],
+    ]);
+  });
+
+  it("widens the end to include a highlighted bar whose tick is right of coordRange", () => {
+    const adjusted = getAdjustedBrushEndEvent(
+      brushEndEvent(partialCoordRange),
+      brushSelectedEvent([1, 2, 3]),
+      timeSeriesChartModel,
+    );
+
+    expect(adjusted?.areas[0].coordRange).toEqual([
+      partialCoordRange[0],
+      aprMs,
+    ]);
+  });
+
+  it("widens both bounds when highlighted bars sit outside the pixel range", () => {
+    const adjusted = getAdjustedBrushEndEvent(
+      brushEndEvent(partialCoordRange),
+      brushSelectedEvent([0, 1, 2, 3]),
+      timeSeriesChartModel,
+    );
+
+    expect(adjusted?.areas[0].coordRange).toEqual([janMs, aprMs]);
+  });
+
+  it("takes the min and max dataIndex across series", () => {
+    const adjusted = getAdjustedBrushEndEvent(
+      brushEndEvent(partialCoordRange),
+      {
+        batch: [
+          {
+            selected: [
+              { seriesIndex: 0, dataIndex: [1, 2] },
+              { seriesIndex: 1, dataIndex: [0, 3] },
+            ],
+          },
+        ],
+      },
+      timeSeriesChartModel,
+    );
+
+    expect(adjusted?.areas[0].coordRange).toEqual([janMs, aprMs]);
+  });
+
+  it("returns the original coordRange when nothing is selected", () => {
+    const adjusted = getAdjustedBrushEndEvent(
+      brushEndEvent(partialCoordRange),
+      brushSelectedEvent([]),
+      timeSeriesChartModel,
+    );
+
+    expect(adjusted?.areas[0].coordRange).toEqual(partialCoordRange);
+  });
+
+  it("returns the original coordRange when brushSelected is missing", () => {
+    const adjusted = getAdjustedBrushEndEvent(
+      brushEndEvent(partialCoordRange),
+      null,
+      timeSeriesChartModel,
+    );
+
+    expect(adjusted?.areas[0].coordRange).toEqual(partialCoordRange);
+  });
+
+  it("returns the original coordRange for a numeric axis", () => {
+    const chartModel = createMockCartesianChartModel({
+      xAxisModel: {
+        axisType: "value",
+        toEChartsAxisValue: (value) =>
+          typeof value === "number" ? value : null,
+        fromEChartsAxisValue: (value) => value,
+        extent: [0, 10],
+        interval: 1,
+        intervalsCount: 10,
+        isPadded: false,
+        formatter: String,
+      },
+      transformedDataset: [0, 1, 2, 3].map((value, index) => ({
+        [X_AXIS_DATA_KEY]: value,
+        [INDEX_KEY]: index,
+      })),
+    });
+
+    const adjusted = getAdjustedBrushEndEvent(
+      brushEndEvent([1.5, 2.5]),
+      brushSelectedEvent([0, 1, 2, 3]),
+      chartModel,
+    );
+
+    expect(adjusted?.areas[0].coordRange).toEqual([1.5, 2.5]);
+  });
+
+  it("returns null when coordRange is not a lineX pair", () => {
+    // Missing coordRange is the case under test; mouse fields are unused
+    const event = {
+      areas: [{ brushType: "lineX", range: [40, 180] }],
+    } as unknown as EChartsSeriesBrushEndEvent;
+
+    expect(
+      getAdjustedBrushEndEvent(
+        event,
+        brushSelectedEvent([0]),
+        timeSeriesChartModel,
+      ),
+    ).toBeNull();
+  });
+
+  it("keeps a bound when the selected index is out of range", () => {
+    const adjusted = getAdjustedBrushEndEvent(
+      brushEndEvent(partialCoordRange),
+      brushSelectedEvent([0, 99]),
+      timeSeriesChartModel,
+    );
+
+    expect(adjusted?.areas[0].coordRange).toEqual([
+      janMs,
+      partialCoordRange[1],
+    ]);
+  });
+
+  it("does not shrink the range when selected ticks sit inside coordRange", () => {
+    const adjusted = getAdjustedBrushEndEvent(
+      brushEndEvent(partialCoordRange),
+      brushSelectedEvent([1, 2]),
+      timeSeriesChartModel,
+    );
+
+    expect(adjusted?.areas[0].coordRange).toEqual(partialCoordRange);
+    expect(febMs).toBeGreaterThan(partialCoordRange[0]);
+    expect(marMs).toBeLessThan(partialCoordRange[1]);
   });
 });
 

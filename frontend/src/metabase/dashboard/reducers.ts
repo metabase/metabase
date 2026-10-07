@@ -22,6 +22,7 @@ import {
   UNDO_REMOVE_CARD_FROM_DASH,
   addCardToDash,
   addManyCardsToDash,
+  dashboardLayoutFetched,
   fetchDashboardFulfilled,
   markNewCardSeen,
   onReplaceAllDashCardVisualizationSettings,
@@ -40,6 +41,7 @@ import {
   editingDashboard,
   isAddParameterPopoverOpen,
   isNavigatingBackToDashboard,
+  linkTargets,
   loadingControls,
   loadingDashCards,
   missingActionParameters,
@@ -66,6 +68,10 @@ const dashcards = createReducer(
       .addCase(fetchDashboardFulfilled, (state, action) => ({
         ...state,
         ...action.payload.entities.dashcard,
+      }))
+      .addCase(dashboardLayoutFetched, (state, { payload }) => ({
+        ...state,
+        ...payload.dashcard,
       }))
       .addCase(
         setDashCardAttributes,
@@ -273,6 +279,7 @@ const combinedDashboardReducer = combineReducers({
   loadingDashCards,
   dashcards,
   dashcardData,
+  linkTargets,
   draftParameterValues,
   // Combined reducer needs to init state for every slice
   selectedTabId: (state = INITIAL_DASHBOARD_STATE.selectedTabId) => state,

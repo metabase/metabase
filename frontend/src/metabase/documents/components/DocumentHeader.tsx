@@ -34,8 +34,8 @@ import type { Document } from "metabase-types/api";
 import { trackDocumentPrint } from "../analytics";
 import { DOCUMENT_TITLE_MAX_LENGTH } from "../constants";
 
-import { DocumentPublicLinkPopover } from "./DocumentHeader/DocumentPublicLinkPopover/DocumentPublicLinkPopover";
 import S from "./DocumentHeader.module.css";
+import { DocumentPublicLinkPopover } from "./DocumentHeader/DocumentPublicLinkPopover/DocumentPublicLinkPopover";
 
 const saveButtonTransition: TransitionProps["transition"] = {
   in: { opacity: 1, visibility: "visible", width: "auto" },
@@ -150,7 +150,7 @@ export const DocumentHeader = ({
           }}
         />
         {document && (
-          <Flex gap="md">
+          <Flex gap="lg">
             <Flex align="center" gap="0.25rem" c="text-secondary">
               <Icon name="person" />
               <Text>{document.creator.common_name}</Text>
@@ -168,7 +168,7 @@ export const DocumentHeader = ({
           </Flex>
         )}
       </Flex>
-      <Flex gap="md" align="center" className={S.actionsContainer}>
+      <Flex gap="lg" align="center" className={S.actionsContainer}>
         <Transition
           mounted={showSaveButton}
           transition={saveButtonTransition}
@@ -261,11 +261,11 @@ export const DocumentHeader = ({
                             component={Link}
                             to="/admin/settings/public-sharing"
                             target="_blank"
-                            variant="subtle"
+                            variant="transparent"
+                            size="compact-md"
                             h="auto"
                             lh="inherit"
                             ml="sm"
-                            p={0}
                             bd={0}
                             className={CS.floatRight}
                           >

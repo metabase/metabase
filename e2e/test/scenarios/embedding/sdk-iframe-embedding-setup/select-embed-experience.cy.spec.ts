@@ -106,30 +106,6 @@ describe(suiteTitle, () => {
       });
     });
 
-    it("shows exploration template when selected", { tags: "@skip" }, () => {
-      visitNewEmbedPage();
-
-      getEmbedSidebar().within(() => {
-        cy.findByLabelText("Metabase account (SSO)").click();
-
-        cy.findByText("Exploration").click();
-        cy.findByText("Next").click();
-      });
-
-      H.expectUnstructuredSnowplowEvent({
-        event: "embed_wizard_experience_completed",
-        event_detail:
-          "authType=sso,experience=exploration,isDefaultExperience=false",
-      });
-
-      H.waitForSimpleEmbedIframesToLoad();
-
-      H.getSimpleEmbedIframeContent().within(() => {
-        cy.log("data picker is visible");
-        cy.findByText("Pick your starting data").should("be.visible");
-      });
-    });
-
     it("shows browser template when selected", () => {
       visitNewEmbedPage();
 
@@ -193,38 +169,6 @@ describe(suiteTitle, () => {
         cy.findByText("Person detail").should("be.visible");
       });
     });
-
-    it(
-      "shows question of id=1 when activity log is empty and chart is selected",
-      { tags: "@skip" },
-      () => {
-        visitNewEmbedPage();
-        cy.wait("@emptyRecentItems");
-
-        getEmbedSidebar().within(() => {
-          cy.findByLabelText("Guest").click();
-        });
-        embedModalEnableEmbedding();
-
-        getEmbedSidebar().within(() => {
-          cy.findByText("Chart").click();
-          cy.findByText("Next").click();
-        });
-
-        H.expectUnstructuredSnowplowEvent({
-          event: "embed_wizard_experience_completed",
-          event_detail:
-            "authType=guest-embed,experience=chart,isDefaultExperience=false",
-        });
-
-        H.waitForSimpleEmbedIframesToLoad();
-
-        H.getSimpleEmbedIframeContent().within(() => {
-          cy.log("question title of id=1 is visible");
-          cy.findByText("Query log").should("be.visible");
-        });
-      },
-    );
   });
 
   it("should show a fake loading indicator in embed preview", () => {

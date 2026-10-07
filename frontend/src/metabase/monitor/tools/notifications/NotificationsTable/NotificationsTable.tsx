@@ -122,7 +122,7 @@ export const NotificationsTable = ({
           const name = getUserLabel(creator);
           const isDeactivated = creator?.is_active === false;
           return (
-            <Flex gap="xs" align="center" miw={0}>
+            <Flex gap="xxs" align="center" miw={0}>
               <Ellipsified tooltip={name}>{name}</Ellipsified>
               {isDeactivated && (
                 <Tooltip label={t`Deactivated owner`}>
@@ -151,7 +151,7 @@ export const NotificationsTable = ({
             <Flex gap="sm" align="center" wrap="wrap">
               {summaries.map(({ channel, count }) => (
                 <Tooltip key={channel} label={getChannelLabel(channel)}>
-                  <Flex gap="xs" align="center">
+                  <Flex gap="xxs" align="center">
                     <Icon
                       name={getChannelIconName(channel)}
                       c="text-secondary"
@@ -238,7 +238,7 @@ export const NotificationsTable = ({
         flex="0 1 auto"
         mih={0}
         withBorder
-        p="lg"
+        p="xl"
         data-testid="notifications-admin-table"
       >
         <LoadingAndErrorWrapper error={error} />

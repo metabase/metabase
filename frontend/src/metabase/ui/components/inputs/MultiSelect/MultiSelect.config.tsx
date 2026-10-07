@@ -7,7 +7,7 @@ import S from "./MultiSelect.module.css";
 export const multiSelectOverrides = {
   MultiSelect: MultiSelect.extend({
     defaultProps: {
-      radius: "sm",
+      radius: "xs",
       size: "md",
       variant: "default",
       maxDropdownHeight: 512,

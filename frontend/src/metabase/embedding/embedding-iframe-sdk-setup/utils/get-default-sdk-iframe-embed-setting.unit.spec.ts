@@ -1,4 +1,4 @@
-import type { SdkIframeEmbedSetupExperience } from "../types";
+import type { SdkIframeEmbedSetupExperience } from "metabase/embedding/types";
 
 import {
   getDefaultSdkIframeEmbedSettings,

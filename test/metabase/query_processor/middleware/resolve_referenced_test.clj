@@ -55,6 +55,7 @@
         ;; allowing `with-temp` here: this exercises app-DB permission enforcement (card-read perms, current user)
         ;; via `process-query-for-card`, which a metadata provider does not model
         (let [mp (mt/metadata-provider)]
+          ;; card-read perms via process-query-for-card need real app-db cards; MPs don't model perms
           #_{:clj-kondo/ignore [:discouraged-var]}
           (mt/with-temp
             [:model/Card {parent-id :id} {:database_id   (mt/id)

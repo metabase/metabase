@@ -133,7 +133,7 @@ export function IndexEditorModal({
     <Modal
       opened
       title={isEditing ? t`Edit index` : t`Create an index`}
-      padding="xl"
+      padding="xxl"
       onClose={onClose}
     >
       {isLoading || error !== undefined ? (

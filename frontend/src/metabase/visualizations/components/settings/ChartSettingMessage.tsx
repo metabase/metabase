@@ -7,12 +7,12 @@ export const ChartSettingMessage = ({ children }: PropsWithChildren) => {
 
   return (
     <Center
-      py="md"
+      py="lg"
       px={0}
       bg="background_page-secondary"
       c="text-disabled"
       fw="bold"
-      style={{ borderRadius: theme.radius.md }}
+      style={{ borderRadius: theme.radius.sm }}
     >
       {children}
     </Center>

@@ -1,5 +1,5 @@
+import { createMockStoreDashboard } from "__support__/state";
 import { INITIALIZE } from "metabase/redux/dashboard";
-import { createMockStoreDashboard } from "metabase/redux/store/mocks";
 import { createMockDashboard } from "metabase-types/api/mocks";
 
 import {
@@ -30,6 +30,7 @@ describe("dashboard reducers", () => {
       dashboards: {},
       dashcardData: {},
       dashcards: {},
+      linkTargets: { questions: {}, dashboards: {} },
       isAddParameterPopoverOpen: false,
       isNavigatingBackToDashboard: false,
       editingDashboard: null,

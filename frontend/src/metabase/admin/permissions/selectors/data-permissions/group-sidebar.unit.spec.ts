@@ -28,6 +28,19 @@ const stateWithLegacyValues = assocIn(
 ) as unknown as State;
 
 describe("getGroupsDataPermissionEditor", () => {
+  // The selector memoizes on its inputs, and the plugin flag is not one of
+  // them, so it has to be set before the first call rather than per test.
+  const originalPluginValue =
+    PLUGIN_ADVANCED_PERMISSIONS.shouldShowViewDataColumn;
+
+  beforeEach(() => {
+    PLUGIN_ADVANCED_PERMISSIONS.shouldShowViewDataColumn = true;
+  });
+
+  afterEach(() => {
+    PLUGIN_ADVANCED_PERMISSIONS.shouldShowViewDataColumn = originalPluginValue;
+  });
+
   it("returns data for permission editor header", () => {
     const permissionEditorData = getGroupsDataPermissionEditor(
       stateWithLegacyValues,
@@ -52,12 +65,6 @@ describe("getGroupsDataPermissionEditor", () => {
   });
 
   it("returns entities list for permissions editor", () => {
-    const originalPluginValue =
-      PLUGIN_ADVANCED_PERMISSIONS.shouldShowViewDataColumn;
-
-    // make sure that we're showing the view data column
-    PLUGIN_ADVANCED_PERMISSIONS.shouldShowViewDataColumn = true;
-
     const entities = getGroupsDataPermissionEditor(stateWithLegacyValues, {
       params: {
         databaseId: 3,
@@ -124,8 +131,6 @@ describe("getGroupsDataPermissionEditor", () => {
         iconColor: "feedback-negative",
       },
     ]);
-
-    PLUGIN_ADVANCED_PERMISSIONS.shouldShowViewDataColumn = originalPluginValue;
   });
 
   it("omits view data options when there is only one view data option", () => {

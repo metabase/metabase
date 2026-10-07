@@ -16,7 +16,7 @@ If your work in Metabase is crashing, missing, or not being saved, you might hav
 
    > If you're encountering problems after your Metabase version was recently upgraded, you can add the label `.Regression`.
 
-3. Choose least one value in the **Label** dropdown that matches the feature you're having trouble with.
+3. Choose at least one value in the **Label** dropdown that matches the feature you're having trouble with.
 
    > Add additional keywords to the search bar above the list of results. Hit Enter/Return to run the search.
 

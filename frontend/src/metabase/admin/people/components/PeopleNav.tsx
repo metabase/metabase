@@ -26,7 +26,7 @@ export function PeopleNav() {
 
   return (
     <AdminNavWrapper justify="space-between" aria-label="people-nav">
-      <Stack gap="xs">
+      <Stack gap="xxs">
         <PeopleNavItem
           path="/admin/people"
           data-testid="nav-item"

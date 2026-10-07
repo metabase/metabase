@@ -1,7 +1,7 @@
-import type { Card, DashboardCard } from "metabase-types/api";
+import type { Card, DashboardCard, SeriesCard } from "metabase-types/api";
 
 export type NavigateToNewCardFromDashboardOpts = {
-  nextCard: Card;
+  nextCard: SeriesCard;
   previousCard: Card;
   dashcard: DashboardCard;
   objectId?: number | string;

@@ -8,6 +8,8 @@ import {
 import type { PluginRoute } from "metabase/plugins/types";
 import type { PythonTransformSourceDraft, Transform } from "metabase-types/api";
 
+import { definePluginSlot } from "../slot";
+
 // Types
 export type TransformPickerItem = OmniPickerItem & {
   model: "transform";
@@ -27,15 +29,11 @@ export type PythonTransformEditorUiOptions = {
 
 export type PythonTransformEditorProps = {
   source: PythonTransformSourceDraft;
-  proposedSource?: PythonTransformSourceDraft;
   uiOptions?: PythonTransformEditorUiOptions;
   isEditMode?: boolean;
   transform?: Transform;
   readOnly?: boolean;
   onChangeSource: (source: PythonTransformSourceDraft) => void;
-  onAcceptProposed: () => void;
-  onRejectProposed: () => void;
-  onDryRunErrorChange?: (error: string | undefined) => void;
   onRunTransform?: (result: any) => void;
   onRun?: () => void;
 };
@@ -70,7 +68,7 @@ const getDefaultPluginTransforms = (): TransformsPlugin => ({
   TransformsUpsellPage: PluginPlaceholder,
 });
 
-export const PLUGIN_TRANSFORMS = getDefaultPluginTransforms();
+export const PLUGIN_TRANSFORMS = definePluginSlot(getDefaultPluginTransforms);
 
 const getDefaultPluginTransformsPython = (): PythonTransformsPlugin => ({
   isEnabled: false,
@@ -86,12 +84,6 @@ const getDefaultPluginTransformsPython = (): PythonTransformsPlugin => ({
   sharedLibImportPath: "",
 });
 
-export const PLUGIN_TRANSFORMS_PYTHON = getDefaultPluginTransformsPython();
-
-/**
- * @internal Do not call directly. Use the main reinitialize function from metabase/plugins instead.
- */
-export function reinitialize() {
-  Object.assign(PLUGIN_TRANSFORMS, getDefaultPluginTransforms());
-  Object.assign(PLUGIN_TRANSFORMS_PYTHON, getDefaultPluginTransformsPython());
-}
+export const PLUGIN_TRANSFORMS_PYTHON = definePluginSlot(
+  getDefaultPluginTransformsPython,
+);

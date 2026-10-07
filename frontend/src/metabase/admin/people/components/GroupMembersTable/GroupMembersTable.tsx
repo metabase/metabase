@@ -6,7 +6,11 @@ import { AdminContentTable } from "metabase/admin/components/AdminContentTable";
 import { Link } from "metabase/common/components/Link";
 import { PaginationControls } from "metabase/common/components/PaginationControls";
 import { usePagination } from "metabase/common/hooks/use-pagination";
-import { isAdminGroup, isDefaultGroup } from "metabase/common/utils/groups";
+import {
+  isAdminGroup,
+  isApiKeyGroupMember,
+  isDefaultGroup,
+} from "metabase/common/utils/groups";
 import { getUser } from "metabase/current-user";
 import { PLUGIN_GROUP_MANAGERS, PLUGIN_TENANTS } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
@@ -15,9 +19,6 @@ import { getFullName } from "metabase/utils/user";
 import type { Group, Member, Membership } from "metabase-types/api";
 
 import { AddMemberRow } from "../AddMemberRow";
-
-const isApiKeyGroupMember = (member: Member) =>
-  member.email.endsWith("@api-key.invalid");
 
 const canEditMembership = (group: Group) =>
   !isDefaultGroup(group) &&
@@ -55,7 +56,7 @@ export function GroupMembersTable({
   // An empty group renders just the call to action, without the column header.
   if (!hasMembers && !showAddUser) {
     return (
-      <Text c="text-secondary" ta="center" mt="xl">
+      <Text c="text-secondary" ta="center" mt="xxl">
         {t`Add members to get started.`}
       </Text>
     );
@@ -94,7 +95,7 @@ export function GroupMembersTable({
       </AdminContentTable>
 
       {hasMembers && (
-        <Flex align="center" justify="flex-end" p="md">
+        <Flex align="center" justify="flex-end" p="lg">
           <PaginationControls
             page={page}
             pageSize={pageSize}

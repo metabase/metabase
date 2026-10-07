@@ -32,7 +32,7 @@ There are two basic types of expressions, **Aggregations** and **Functions**. Ch
 
 ### Aggregations
 
-[Aggregations][aggregations] take values from multiple rows to perform a calculation, such as finding the average value from all values in a column. Aggregations functions can only be used in the **Summarize** section of the notebook editor, because aggregations use values from all rows for that column. So while you could create a custom column with the formula `[Subtotal] + [Tax]`, you could _not_ write `Sum([Subtotal] + [Tax])`, unless you were creating a custom metric expression (that would add up all the subtotals and taxes together).
+[Aggregations][aggregations] take values from multiple rows to perform a calculation, such as finding the average value from all values in a column. Aggregation functions can only be used in the **Summarize** section of the notebook editor, because aggregations use values from all rows for that column. So while you could create a custom column with the formula `[Subtotal] + [Tax]`, you could _not_ write `Sum([Subtotal] + [Tax])`, unless you were creating a custom metric expression (that would add up all the subtotals and taxes together).
 
 ### Functions
 
@@ -54,7 +54,7 @@ To format expressions, click on the auto-format button on the right side of the 
 
 Use `+`, `-`, `*` (multiply), `/` (divide) on numeric columns with numeric values, like integers, floats, and double. You can use parentheses, `(` and `)`, to group parts of your expression.
 
-For example, you could create a new column that calculates the difference between the total and subtotal of a order: `[Total] - [Subtotal]`.
+For example, you could create a new column that calculates the difference between the total and subtotal of an order: `[Total] - [Subtotal]`.
 
 To do math on timestamp columns, you can use [Date functions](expressions-list.md#date-functions) like [dateDiff](./expressions/datetimediff.md).
 
@@ -91,13 +91,13 @@ You can refer to columns in the current table, or to columns that are linked via
 
 ## Referencing Segments and Metrics
 
-You can refer to saved [metrics](../../data-modeling/metrics.md) and [segments](../../data-modeling/segments.md) that are present in the currently selected table. You write these out the same as with columns, like this: `[Valid User Sessions]`.
+You can refer to saved [metrics](../../data-modeling/semantic-layer/metrics.md) and [segments](../../data-modeling/semantic-layer/segments.md) that are present in the currently selected table. You write these out the same as with columns, like this: `[Valid User Sessions]`.
 
 ## Filter expressions and conditionals
 
 Some things to keep in mind about filter expressions and conditionals:
 
-- Filter expressions are different in that they must return a Boolean value (something that's either true or false). For example, you could write `[Subtotal] + [Tax] < 100`. Metabase would look at each row, add its subtotal and tax, the check if that sum is greater than 100. If it is, the statement evaluates as true, and Metabase will include the row in the result. If instead you were to (incorrectly) write `[Subtotal] + [Tax]`, Metabase wouldn't know what to do, as that expression doesn't evaluate to true or false.
+- Filter expressions are different in that they must return a Boolean value (something that's either true or false). For example, you could write `[Subtotal] + [Tax] < 100`. Metabase would look at each row, add its subtotal and tax, then check if that sum is greater than 100. If it is, the statement evaluates as true, and Metabase will include the row in the result. If instead you were to (incorrectly) write `[Subtotal] + [Tax]`, Metabase wouldn't know what to do, as that expression doesn't evaluate to true or false.
 - The arguments of logic operators such as `AND` and `OR` must be Boolean. For example, '[Subtotal] < 100 AND [Tax] > 12`.
 - You can use functions inside of the conditional portion of the `CountIf` and `SumIf` aggregations, like so: `CountIf( round([Subtotal]) > 100 OR floor([Tax]) < 10 )`.
 
