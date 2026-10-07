@@ -1,3 +1,4 @@
+import { useId } from "react";
 import { t } from "ttag";
 
 import { getGroupNameLocalized } from "metabase/common/utils/groups";
@@ -7,6 +8,16 @@ import type { GroupId } from "metabase-types/api";
 import S from "./GroupMappings.module.css";
 import type { GroupLookup } from "./utils";
 
+type MappingRowProps = {
+  name: string;
+  groupIds: GroupId[];
+  groupLookup: GroupLookup;
+  readOnly: boolean;
+  disabled: boolean;
+  onEdit: () => void;
+  onDelete: () => void;
+};
+
 export function MappingRow({
   name,
   groupIds,
@@ -15,15 +26,9 @@ export function MappingRow({
   disabled,
   onEdit,
   onDelete,
-}: {
-  name: string;
-  groupIds: GroupId[];
-  groupLookup: GroupLookup;
-  readOnly: boolean;
-  disabled: boolean;
-  onEdit: () => void;
-  onDelete: () => void;
-}) {
+}: MappingRowProps) {
+  const nameId = useId();
+
   return (
     <Flex
       className={S.mappingRow}
@@ -32,16 +37,27 @@ export function MappingRow({
       data-testid="group-mapping-row"
     >
       <Flex flex={1} miw={0} align="center" gap="lg" wrap="wrap">
-        <Text fw="bold" flex="0 0 auto" maw="100%" className={S.wrappableText}>
+        <Text
+          id={nameId}
+          fw="bold"
+          flex="0 0 auto"
+          maw="100%"
+          className={S.wrappableText}
+        >
           {name}
         </Text>
-        <FixedSizeIcon aria-hidden name="arrow_right" c="text-secondary" />
-        <MappingRowGroups groupIds={groupIds} groupLookup={groupLookup} />
+        {groupLookup.isLoaded && (
+          <>
+            <FixedSizeIcon aria-hidden name="arrow_right" c="text-secondary" />
+            <MappingRowGroups groupIds={groupIds} groupLookup={groupLookup} />
+          </>
+        )}
       </Flex>
       {!readOnly && (
         <Flex className={S.rowActions} gap="sm">
           <ActionIcon
             aria-label={t`Edit mapping`}
+            aria-describedby={nameId}
             disabled={disabled}
             onClick={onEdit}
           >
@@ -49,6 +65,7 @@ export function MappingRow({
           </ActionIcon>
           <ActionIcon
             aria-label={t`Delete mapping`}
+            aria-describedby={nameId}
             disabled={disabled}
             onClick={onDelete}
           >
@@ -60,13 +77,12 @@ export function MappingRow({
   );
 }
 
-function MappingRowGroups({
-  groupIds,
-  groupLookup,
-}: {
+type MappingRowGroupsProps = {
   groupIds: GroupId[];
   groupLookup: GroupLookup;
-}) {
+};
+
+function MappingRowGroups({ groupIds, groupLookup }: MappingRowGroupsProps) {
   const names = groupIds
     .map((groupId) => {
       const group = groupLookup.getGroup(groupId);

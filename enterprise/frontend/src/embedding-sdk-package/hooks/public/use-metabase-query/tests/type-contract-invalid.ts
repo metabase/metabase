@@ -31,7 +31,7 @@ defineQuery({
 
 const actionWithInvalidActionSourceId = {
   copiedActionId: "91",
-  action: TEST_SCHEMA.models.orders.actions.create,
+  action: TEST_SCHEMA.actions.createOrder,
 } as const;
 
 // @ts-expect-error generated action source IDs are numeric
@@ -41,11 +41,11 @@ defineAction(actionWithInvalidActionSourceId);
 defineAction({ action: TEST_SCHEMA.tables.orders });
 
 const CreateOrder = defineAction({
-  action: TEST_SCHEMA.models.orders.actions.create,
+  action: TEST_SCHEMA.actions.createOrder,
 });
 
 const UpdateOrder = defineAction({
-  action: TEST_SCHEMA.models.orders.actions.update,
+  action: TEST_SCHEMA.actions.updateOrder,
 });
 
 // --------
@@ -150,7 +150,7 @@ function InvalidTypeFixtures() {
   useMetabaseQueryObject({ ...staticQuery, limit: 10 });
 
   // @ts-expect-error a data app's action is a `defineAction` export from `actions/`, never an inline object
-  useDataAppAction({ action: TEST_SCHEMA.models.orders.actions.create });
+  useDataAppAction({ action: TEST_SCHEMA.actions.createOrder });
 
   // @ts-expect-error a copy of a definition is not the definition
   useDataAppAction({ ...CreateOrder });
@@ -159,10 +159,10 @@ function InvalidTypeFixtures() {
   useDataAppAction(51);
 
   // @ts-expect-error pass the `defineAction` export, not the schema entry
-  useDataAppAction(TEST_SCHEMA.models.orders.actions.create);
+  useDataAppAction(TEST_SCHEMA.actions.createOrder);
 
   // @ts-expect-error the SDK hook takes a definition object or an id, not the schema entry
-  useAction(TEST_SCHEMA.models.orders.actions.create);
+  useAction(TEST_SCHEMA.actions.createOrder);
 
   // @ts-expect-error the definition's parameter slugs are the only keys
   useAction(CreateOrder).execute({ stauts: "shipped" });

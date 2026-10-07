@@ -240,6 +240,98 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
     cy.findByText("294").should("not.exist"); // the other one is still hidden
   });
 
+  describe("issue 50346", () => {
+    const questionDetails = {
+      query: {
+        "source-table": ORDERS_ID,
+        aggregation: [
+          ["count"],
+          ["sum", ["field", ORDERS.TOTAL, { "base-type": "type/Float" }]],
+        ],
+        breakout: [
+          [
+            "field",
+            PRODUCTS.CATEGORY,
+            { "base-type": "type/Text", "source-field": ORDERS.PRODUCT_ID },
+          ],
+          [
+            "field",
+            PRODUCTS.VENDOR,
+            { "base-type": "type/Text", "source-field": ORDERS.PRODUCT_ID },
+          ],
+          [
+            "field",
+            PEOPLE.SOURCE,
+            { "base-type": "type/Text", "source-field": ORDERS.USER_ID },
+          ],
+        ],
+      },
+      display: "pivot",
+      visualization_settings: {
+        "pivot_table.column_split": {
+          // mix field refs with and without `base-type` to make sure we support both cases
+          rows: [
+            ["field", PRODUCTS.CATEGORY, { "source-field": ORDERS.PRODUCT_ID }],
+            [
+              "field",
+              PRODUCTS.VENDOR,
+              { "base-type": "type/Text", "source-field": ORDERS.PRODUCT_ID },
+            ],
+            [
+              "field",
+              PEOPLE.SOURCE,
+              { "base-type": "type/Text", "source-field": ORDERS.USER_ID },
+            ],
+          ],
+          columns: [],
+          values: [
+            ["aggregation", 0],
+            ["aggregation", 1],
+          ],
+        },
+        "pivot_table.column_widths": {
+          leftHeaderWidths: [150, 214, 120],
+          totalLeftHeaderWidths: 484,
+          valueHeaderWidths: {},
+        },
+      },
+    };
+
+    const groupValue = "Annetta Wyman and Sons";
+    const totalValue = "1,217.76";
+
+    beforeEach(() => {
+      cy.signInAsNormalUser();
+      cy.intercept("PUT", "/api/card/*").as("updateCard");
+    });
+
+    it("should be able to collapse rows for questions with legacy pivot settings (metabase#50346)", () => {
+      H.createQuestion(questionDetails, { visitQuestion: true, wrapId: true });
+
+      cy.log("collapse one of the sections");
+      cy.findByTestId("pivot-table").within(() => {
+        cy.findByText(totalValue).should("be.visible");
+        cy.findByTestId(`${groupValue}-toggle-button`).click();
+        cy.findByText(totalValue).should("not.exist");
+      });
+
+      cy.log("save and make sure the setting is preserved on reload");
+      H.queryBuilderHeader().button("Save").click();
+      H.modal().button("Save").click();
+      cy.wait("@updateCard");
+      H.visitQuestion("@questionId");
+      cy.findByTestId("pivot-table").within(() => {
+        cy.findByText(totalValue).should("not.exist");
+      });
+
+      cy.log("expand the section");
+      cy.findByTestId("pivot-table").within(() => {
+        cy.findByTestId(`${groupValue}-toggle-button`).click();
+        cy.findByText(totalValue).should("be.visible");
+      });
+    });
+  });
+
   it("should show standalone values when collapsed to the sub-level grouping (metabase#25250)", () => {
     const questionDetails = {
       name: "25250",
@@ -329,6 +421,113 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
     cy.findByText("3,520").should("not.exist"); // the subtotal has disappeared!
   });
 
+  it("pivot table should show subtotals for a group of a single value (metabase#52333)", () => {
+    const baseQuery = `
+SELECT *
+FROM (
+  SELECT
+    category,
+    source,
+    state,
+    SUM(orders.discount) AS discount,
+    SUM(orders.total) AS total,
+    SUM(orders.quantity) AS quantity
+  FROM
+    orders
+    LEFT JOIN products ON orders.product_id = products.id
+    LEFT JOIN people ON orders.user_id = people.id
+  GROUP BY category, source, state
+) AS filtered_orders
+WHERE NOT (
+  category = 'Gizmo'
+  AND (
+    source IN ('Facebook', 'Google', 'Organic', 'Twitter')
+    OR state NOT IN ('AK')
+  )
+);`;
+
+    const baseQuestionDetails = {
+      name: "52333",
+      display: "table",
+      native: {
+        query: baseQuery,
+      },
+    };
+
+    H.createNativeQuestion(baseQuestionDetails, {
+      visitQuestion: true,
+      wrapId: true,
+    });
+
+    cy.get("@questionId").then((id) => {
+      const questionDetails = {
+        query: {
+          "source-table": `card__${id}`,
+          aggregation: [["count"]],
+          breakout: [
+            [
+              "field",
+              "CATEGORY",
+              {
+                "base-type": "type/Text",
+              },
+            ],
+            [
+              "field",
+              "SOURCE",
+              {
+                "base-type": "type/Text",
+              },
+            ],
+            [
+              "field",
+              "STATE",
+              {
+                "base-type": "type/Text",
+              },
+            ],
+          ],
+        },
+        display: "pivot",
+        visualization_settings: {
+          "pivot_table.column_split": {
+            rows: ["CATEGORY", "SOURCE", "STATE"],
+            columns: [],
+            values: ["count", "avg"],
+          },
+          "pivot_table.column_widths": {
+            leftHeaderWidths: [104, 92, 80],
+            totalLeftHeaderWidths: 276,
+            valueHeaderWidths: {},
+          },
+          "pivot_table.collapsed_rows": {
+            value: ['["Doohickey"]', '["Gadget"]', '["Widget"]'],
+            rows: ["CATEGORY", "SOURCE", "STATE"],
+          },
+        },
+      };
+
+      H.createQuestion(questionDetails, { visitQuestion: true });
+    });
+
+    H.queryBuilderMain().within(() => {
+      cy.findByText("Affiliate");
+      cy.findByText("AK");
+
+      // Ensure it does not show subtotals for the single value by default
+      cy.findByText("Totals for Affiliate").should("not.exist");
+
+      H.openVizSettingsSidebar();
+    });
+
+    H.sidebar().findByText("Condense duplicate totals").click();
+
+    // Ensure it shows subtotals for the single value
+    H.queryBuilderMain()
+      .findByText("Totals for Affiliate")
+      .should("be.visible");
+  });
+
   it("should uncollapse a value when hiding the subtotals", () => {
     const rows = ["SOURCE", "CATEGORY"];
     H.visitQuestionAdhoc({
@@ -412,6 +611,38 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
     cy.findByText("Done").click();
     cy.findByTestId("query-visualization-root").within(() => {
       cy.findByText("78,300%");
+    });
+  });
+
+  describe("issue 15353", () => {
+    const questionDetails = {
+      name: "15353",
+      query: {
+        "source-table": ORDERS_ID,
+        aggregation: [["count"]],
+        breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "year" }]],
+      },
+      display: "pivot",
+    };
+
+    beforeEach(() => {
+      cy.intercept("POST", "/api/dataset/pivot").as("pivotDataset");
+
+      H.createQuestion(questionDetails, { visitQuestion: true });
+    });
+
+    it("should be able to change field name used for values (metabase#15353)", () => {
+      H.openVizSettingsSidebar();
+      openColumnSettings("Count");
+
+      cy.findByDisplayValue("Count").type(" renamed").blur();
+
+      cy.wait("@pivotDataset");
+
+      cy.findByTestId("query-visualization-root").should(
+        "contain",
+        "Count renamed",
+      );
     });
   });
 
@@ -607,6 +838,104 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
       H.saveDashboard();
 
       cy.findByTestId("dashcard").should("not.exist");
+    });
+
+    it("should allow mapping pivot table dashcard fields to click behavior targets (metabase#52339)", () => {
+      const questionDetails = {
+        name: "Orders, Distinct values of ID, Grouped by Product → Title and Created At (month) and User → ID",
+
+        query: {
+          "source-table": ORDERS_ID,
+          aggregation: [["distinct", ["field", ORDERS.ID, null]]],
+          breakout: [
+            ["field", PRODUCTS.TITLE, { "source-field": ORDERS.PRODUCT_ID }],
+            ["field", PEOPLE.SOURCE, { "source-field": ORDERS.USER_ID }],
+          ],
+        },
+        display: "pivot",
+        visualization_settings: {
+          "pivot_table.column_split": {
+            rows: ["TITLE", "SOURCE"],
+            columns: [],
+            values: ["distinct"],
+          },
+        },
+      };
+
+      const sourceParam = {
+        name: "Source",
+        slug: "filter-text",
+        id: "1b9cd9f1",
+        type: "string/=",
+        sectionId: "string",
+      };
+
+      H.createQuestionAndDashboard({
+        dashboardDetails: {
+          parameters: [sourceParam],
+        },
+        questionDetails,
+        cardDetails: {
+          size_x: 16,
+          size_y: 8,
+        },
+      }).then(({ body: { id, card_id, dashboard_id }, questionId }) => {
+        cy.wrap(questionId).as("questionId");
+
+        cy.request("PUT", `/api/dashboard/${dashboard_id}`, {
+          dashcards: [
+            {
+              id,
+              card_id,
+              row: 0,
+              col: 0,
+              size_x: 16,
+              size_y: 8,
+              series: [],
+              visualization_settings: {},
+              parameter_mappings: [
+                {
+                  parameter_id: sourceParam.id,
+                  card_id,
+                  target: [
+                    "dimension",
+                    [
+                      "field",
+                      PEOPLE.SOURCE,
+                      {
+                        "source-field": ORDERS.USER_ID,
+                      },
+                    ],
+                  ],
+                },
+              ],
+            },
+          ],
+        });
+
+        H.visitDashboard(dashboard_id);
+      });
+
+      H.editDashboard();
+      H.getDashboardCard(0)
+        .realHover({ scrollBehavior: "bottom" })
+        .findByLabelText("Click behavior")
+        .click();
+
+      H.sidebar().within(() => {
+        cy.findByText("Go to a custom destination").click();
+        cy.findByText("Dashboard").click();
+      });
+
+      H.modal().findByText("Test Dashboard").click();
+
+      cy.findByTestId("click-mappings").findByText("Source").click();
+
+      H.popover().within(() => {
+        cy.findByText("Product → Title");
+        cy.findByText("User → Source");
+        cy.findByText("Distinct values of ID");
+      });
     });
   });
 
@@ -1101,6 +1430,137 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
         cy.findByText("Row totals").then(($headerTextEl) => {
           expect(getCellWidth($headerTextEl)).equal(220);
         });
+      });
+    });
+
+    describe("issue 37726", () => {
+      const PIVOT_QUESTION = {
+        name: "Pivot table with custom column width",
+        display: "pivot",
+        query: {
+          "source-table": ORDERS_ID,
+          breakout: [
+            [
+              "field",
+              ORDERS.TOTAL,
+              { "base-type": "type/Float", binnig: { strategy: "default" } },
+            ],
+          ],
+          aggregation: [
+            [
+              "distinct",
+              ["field", ORDERS.ID, { "base-type": "type/BigInteger" }],
+            ],
+          ],
+        },
+        visualization_settings: {
+          "pivot_table.column_split": {
+            rows: ["TOTAL"],
+            columns: [],
+            values: ["distinct"],
+          },
+          "pivot_table.column_widths": {
+            leftHeaderWidths: [80],
+            totalLeftHeaderWidths: 80,
+            valueHeaderWidths: { 0: 193 },
+          },
+        },
+      };
+
+      beforeEach(() => {
+        cy.signInAsNormalUser();
+      });
+
+      it("should not result in an error when you add a column after resizing an existing one (#37726)", () => {
+        cy.intercept("POST", "/api/dataset/pivot").as("pivot");
+
+        // The important data point in this question is that it has custom
+        // leftHeaderWidths as if a user had dragged them to change the defaults.
+        H.createQuestion(PIVOT_QUESTION, { visitQuestion: true });
+
+        // Now, add in another column to the pivot table
+        cy.button(/Summarize/).click();
+
+        cy.findByRole("listitem", { name: "Category" })
+          .realHover()
+          .button("Add dimension")
+          .click();
+
+        // Wait for the pivot call to return
+        cy.wait("@pivot");
+
+        // Refresh the page -- this loads the question using the transient value
+        cy.reload();
+
+        // Look for the new column name in the resulting pivot table.
+        // Note that before this fix, the page would error out and this elements,
+        // along with the rest of the pivot table, would not appear.
+        // Instead, you got a nice ⚠️ icon and a "Something's gone wrong" tooltip.
+        H.main().within(() => {
+          cy.findByText("Product → Category", { timeout: 8000 });
+        });
+      });
+    });
+
+    describe("issue 42697", () => {
+      const PIVOT_QUESTION = {
+        display: "pivot",
+        query: {
+          "source-table": ORDERS_ID,
+          aggregation: [
+            ["count"],
+            ["sum", ["field", ORDERS.TOTAL, { "base-type": "type/Float" }]],
+          ],
+          breakout: [
+            [
+              "field",
+              PEOPLE.STATE,
+              { "base-type": "type/Text", "source-field": ORDERS.USER_ID },
+            ],
+            [
+              "field",
+              ORDERS.CREATED_AT,
+              { "base-type": "type/DateTime", "temporal-unit": "year" },
+            ],
+          ],
+        },
+        visualization_settings: {
+          "pivot_table.column_split": {
+            rows: ["CREATED_AT"],
+            columns: ["STATE"],
+            values: ["count", "sum"],
+          },
+          "pivot_table.column_widths": {
+            leftHeaderWidths: [156],
+            totalLeftHeaderWidths: 156,
+            valueHeaderWidths: {},
+          },
+        },
+      };
+
+      beforeEach(() => {
+        cy.signInAsNormalUser();
+        cy.intercept("PUT", "/api/card/*").as("updateCard");
+      });
+
+      it("should display a pivot table when a new breakout is added to the query (metabase#42697)", () => {
+        H.createQuestion(PIVOT_QUESTION, { visitQuestion: true });
+        H.openNotebook();
+        H.getNotebookStep("summarize")
+          .findByTestId("breakout-step")
+          .icon("add")
+          .click();
+        H.popover().within(() => {
+          cy.findByText("Product").click();
+          cy.findByText("Category").click();
+        });
+        H.queryBuilderHeader().findByText("Save").click();
+        H.modal().button("Save").click();
+        cy.wait("@updateCard");
+        cy.button("Visualize").click();
+        cy.findByTestId("pivot-table")
+          .findByText("Product → Category")
+          .should("be.visible");
       });
     });
   });

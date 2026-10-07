@@ -592,6 +592,74 @@ describe("scenarios > visualizations > legend", () => {
       blurAfter: true,
     });
   });
+
+  it("should not fire an invalid API request when clicking a legend item on a cartesian chart with multiple aggregations (metabase#43077)", () => {
+    const cartesianQuestionDetails = {
+      dataset_query: {
+        type: "query",
+        query: {
+          "source-table": ORDERS_ID,
+          aggregation: [
+            ["sum", ["field", ORDERS.QUANTITY, null]],
+            ["sum", ["field", ORDERS.TOTAL, null]],
+          ],
+          breakout: [
+            ["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }],
+          ],
+        },
+        database: 1,
+      },
+      display: "line",
+    };
+    const cardRequestSpy = cy.spy();
+    cy.intercept("/api/card/*", cardRequestSpy);
+
+    H.visitQuestionAdhoc(cartesianQuestionDetails);
+
+    // Click the title, because a click on the dot toggles the series visibility
+    cy.findAllByTestId("legend-item")
+      .first()
+      .findByText(/^Sum of/)
+      .click();
+
+    cy.wait(500);
+    cy.location("pathname").should("eq", "/question");
+    cy.then(() => expect(cardRequestSpy).not.to.have.been.called);
+  });
+
+  it("should not fire an invalid API request when clicking a legend item on a row chart with multiple aggregations (metabase#43077)", () => {
+    const rowQuestionDetails = {
+      dataset_query: {
+        type: "query",
+        query: {
+          "source-table": ORDERS_ID,
+          aggregation: [
+            ["sum", ["field", ORDERS.QUANTITY, null]],
+            ["sum", ["field", ORDERS.TOTAL, null]],
+          ],
+          breakout: [
+            ["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }],
+          ],
+        },
+        database: 1,
+      },
+      display: "row",
+    };
+    const cardRequestSpy = cy.spy();
+    cy.intercept("/api/card/*", cardRequestSpy);
+
+    H.visitQuestionAdhoc(rowQuestionDetails);
+
+    // Click the title, because a click on the dot toggles the series visibility
+    cy.findAllByTestId("legend-item")
+      .first()
+      .findByText(/^Sum of/)
+      .click();
+
+    cy.wait(500);
+    cy.location("pathname").should("eq", "/question");
+    cy.then(() => expect(cardRequestSpy).not.to.have.been.called);
+  });
 });
 
 function hideSeries(legendItemIndex) {

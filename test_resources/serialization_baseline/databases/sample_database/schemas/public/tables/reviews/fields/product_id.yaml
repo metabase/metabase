@@ -15,16 +15,8 @@ fk_target_field_id:
 - PUBLIC
 - PRODUCTS
 - ID
-dimensions: []
 position: 1
 database_position: 1
 serdes/meta:
-- id: Sample Database
-  model: Database
-- id: PUBLIC
-  model: Schema
-- id: REVIEWS
-  model: Table
-- id: PRODUCT_ID
-  model: Field
+- model: Field
 database_indexed: true

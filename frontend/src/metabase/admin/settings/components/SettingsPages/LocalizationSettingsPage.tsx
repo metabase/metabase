@@ -4,7 +4,7 @@ import _ from "underscore";
 import { CommunityLocalizationNotice } from "metabase/common/components/CommunityLocalizationNotice";
 import { useSelector } from "metabase/redux";
 import { getApplicationName } from "metabase/selectors/whitelabel";
-import { useSetting } from "metabase/settings";
+import { useListTimezonesQuery, useSetting } from "metabase/settings";
 import {
   AdminSettingInput,
   SettingsPageWrapper,
@@ -16,7 +16,7 @@ import { FormattingWidget } from "../widgets/FormattingWidget";
 
 export function LocalizationSettingsPage() {
   const availableLocales = useSetting("available-locales");
-  const availableTimezones = useSetting("available-timezones");
+  const { data: availableTimezones } = useListTimezonesQuery();
   const applicationName = useSelector(getApplicationName);
 
   return (
