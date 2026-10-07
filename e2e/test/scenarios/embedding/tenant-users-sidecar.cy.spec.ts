@@ -105,6 +105,7 @@ describe("scenarios > sidecar > tenant users", () => {
 
       // No "internal/external" naming or sections
       cy.findByText(/External collections/).should("not.exist");
+      cy.findByText(/Internal Collections/).should("not.exist");
     });
 
     H.navigationSidebar().findByText("Our data").should("be.visible").click();
