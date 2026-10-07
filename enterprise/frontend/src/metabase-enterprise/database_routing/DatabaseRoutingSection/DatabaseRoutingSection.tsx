@@ -41,6 +41,7 @@ import * as Urls from "metabase-enterprise/urls";
 import type { Database } from "metabase-types/api";
 import { isEngineKey } from "metabase-types/guards";
 
+import { AnonymousAccessChoiceModal } from "../AnonymousAccessChoiceModal";
 import { DestinationDatabasesList } from "../DestinationDatabasesList";
 
 import { getDisabledFeatureMessage, getSelectErrorMessage } from "./utils";
@@ -66,8 +67,9 @@ export const DatabaseRoutingSection = ({
   const shouldHideSection =
     database.is_attached_dwh || database.is_sample || !dbSupportsRouting;
 
+  const isRoutingStored = hasDbRoutingEnabled(database);
   const [tempEnabled, setTempEnabled] = useState(false);
-  const enabled = tempEnabled || hasDbRoutingEnabled(database);
+  const enabled = tempEnabled || isRoutingStored;
 
   const [isExpanded, setIsExpanded] = useState(false);
   useEffect(
@@ -79,7 +81,16 @@ export const DatabaseRoutingSection = ({
     [enabled],
   );
 
-  const anonymousAccessGranted = !!database.router_anonymous_access_granted;
+  // The answer given at the toggle, held here until a user attribute carries it to the server.
+  const [pendingAnonymousAccess, setPendingAnonymousAccess] = useState<
+    boolean | undefined
+  >(undefined);
+  // Once routing is stored the grant lives on the server, so the held answer has done its work.
+  const pendingGrant = isRoutingStored ? undefined : pendingAnonymousAccess;
+  const anonymousAccessGranted =
+    pendingGrant ?? !!database.router_anonymous_access_granted;
+  const canChangeAnonymousAccess =
+    isRoutingStored || pendingGrant !== undefined;
 
   const [updateRouterDatabase, { error }] = useUpdateRouterDatabaseMutation();
   const userAttrsReq = useListUserAttributesQuery(
@@ -99,12 +110,20 @@ export const DatabaseRoutingSection = ({
     shouldHideSection || !isAdmin ? skipToken : database.id,
   );
 
-  // A granted router serves anonymous traffic from the router database, so the claim would be false.
-  const anonymousSurfacesBreak =
-    enabled && !anonymousAccessGranted && !!usageInfo?.anonymously_reachable;
-  // Routing only takes effect once a user attribute is stored, which is also what makes the
-  // grant switch reachable, so that one fact decides both the tense and whether to name a remedy.
-  const routingAlreadyInEffect = hasDbRoutingEnabled(database);
+  const anonymouslyReachable = !!usageInfo?.anonymously_reachable;
+
+  // A just-toggled database was asked about at the toggle instead, and a granted router serves
+  // anonymous traffic from the router database, so in neither case has anything stopped working.
+  const hasStoppedServingAnonymousVisitors =
+    isRoutingStored && !anonymousAccessGranted && anonymouslyReachable;
+
+  // Derived rather than stored, so the question is still asked when the toggle beats the
+  // reachability fact. An answer closes it; cancelling closes it by turning the toggle off.
+  const mustChooseAnonymousAccess =
+    tempEnabled &&
+    !isRoutingStored &&
+    anonymouslyReachable &&
+    pendingGrant === undefined;
 
   const disabledFeatMsg = getDisabledFeatureMessage(database, {
     hasTransforms,
@@ -117,9 +136,16 @@ export const DatabaseRoutingSection = ({
   });
 
   const handleUserAttributeChange = async (attribute: string) => {
-    await updateRouterDatabase({ id: database.id, user_attribute: attribute });
+    await updateRouterDatabase({
+      id: database.id,
+      user_attribute: attribute,
+      // An omitted grant leaves the stored one alone, so only the first enable carries the answer.
+      ...(pendingGrant !== undefined && {
+        anonymous_access_granted: pendingGrant,
+      }),
+    });
 
-    if (!hasDbRoutingEnabled(database)) {
+    if (!isRoutingStored) {
       sendToast({ message: t`Database routing enabled` });
     } else {
       sendToast({ message: t`Database routing updated` });
@@ -127,7 +153,9 @@ export const DatabaseRoutingSection = ({
   };
 
   const handleAnonymousAccessChange = async (granted: boolean) => {
+    // With no stored attribute the grant has nothing to be stored against, so the answer keeps waiting.
     if (!userAttribute) {
+      setPendingAnonymousAccess(granted);
       return;
     }
     const result = await updateRouterDatabase({
@@ -149,13 +177,21 @@ export const DatabaseRoutingSection = ({
   const handleToggle = async (enabled: boolean) => {
     setIsExpanded(enabled);
     setTempEnabled(enabled);
-    if (!enabled) {
-      await updateRouterDatabase({ id: database.id, user_attribute: null });
-
-      if (hasDbRoutingEnabled(database)) {
-        sendToast({ message: t`Database routing disabled` });
-      }
+    if (enabled) {
+      return;
     }
+    setPendingAnonymousAccess(undefined);
+    await updateRouterDatabase({ id: database.id, user_attribute: null });
+
+    if (isRoutingStored) {
+      sendToast({ message: t`Database routing disabled` });
+    }
+  };
+
+  const handleChoiceCancel = () => {
+    setIsExpanded(false);
+    setTempEnabled(false);
+    setPendingAnonymousAccess(undefined);
   };
 
   if (shouldHideSection) {
@@ -168,6 +204,11 @@ export const DatabaseRoutingSection = ({
       description={dbRoutingInfo}
       data-testid="database-routing-section"
     >
+      <AnonymousAccessChoiceModal
+        opened={mustChooseAnonymousAccess}
+        onCancel={handleChoiceCancel}
+        onAnswer={setPendingAnonymousAccess}
+      />
       <Flex justify="space-between" align="center">
         <Stack>
           <Label htmlFor="database-routing-toggle">
@@ -216,21 +257,16 @@ export const DatabaseRoutingSection = ({
         <>
           <DatabaseInfoSectionDivider />
 
-          {anonymousSurfacesBreak && (
+          {hasStoppedServingAnonymousVisitors && (
             <Alert
               size="compact"
               variant="light"
               color="warning"
               icon={<Icon name="warning" />}
-              title={
-                routingAlreadyInEffect
-                  ? t`This database has stopped serving anonymous visitors`
-                  : t`This database will stop serving anonymous visitors`
-              }
+              title={t`This database has stopped serving anonymous visitors`}
               mb="lg"
             >
-              {routingAlreadyInEffect &&
-                t`To start serving them again, allow anonymous access below.`}
+              {t`To start serving them again, allow anonymous access below.`}
             </Alert>
           )}
           <Stack mb="xxl" gap="sm">
@@ -286,7 +322,7 @@ export const DatabaseRoutingSection = ({
               </Box>
               <Tooltip
                 label={t`Please choose a user attribute first`}
-                disabled={hasDbRoutingEnabled(database)}
+                disabled={canChangeAnonymousAccess}
                 withArrow
               >
                 <Box>
@@ -294,9 +330,7 @@ export const DatabaseRoutingSection = ({
                     id="db-routing-anonymous-access"
                     checked={anonymousAccessGranted}
                     disabled={
-                      !isAdmin ||
-                      !!disabledFeatMsg ||
-                      !hasDbRoutingEnabled(database)
+                      !isAdmin || !!disabledFeatMsg || !canChangeAnonymousAccess
                     }
                     onChange={(e) =>
                       handleAnonymousAccessChange(e.currentTarget.checked)
@@ -311,7 +345,7 @@ export const DatabaseRoutingSection = ({
             <Text fw="bold">{t`Destination databases`}</Text>
             {isAdmin && (
               <>
-                {hasDbRoutingEnabled(database) ? (
+                {isRoutingStored ? (
                   <Button
                     component={Link}
                     to={Urls.createDestinationDatabase(database.id)}
