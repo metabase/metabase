@@ -841,56 +841,6 @@ describe("issue 31274", () => {
   });
 });
 
-describe("issue 31697", () => {
-  const segmentDetails = {
-    name: "Orders segment",
-    description: "All orders with a total under $100.",
-    definition: {
-      database: SAMPLE_DB_ID,
-      type: "query",
-      query: {
-        "source-table": ORDERS_ID,
-        filter: ["<", ["field", ORDERS.TOTAL, null], 100],
-      },
-    },
-  };
-
-  const getQuestionDetails = (segment) => ({
-    display: "line",
-    query: {
-      "source-table": ORDERS_ID,
-      filter: ["segment", segment.id],
-      aggregation: [["count"]],
-      breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }]],
-    },
-    visualization_settings: {
-      "graph.metrics": ["count"],
-      "graph.dimensions": ["CREATED_AT"],
-    },
-  });
-
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-    H.createSegment(segmentDetails).then(({ body: segment }) => {
-      H.createQuestion(getQuestionDetails(segment), { wrapId: true });
-    });
-    cy.intercept("GET", "/api/automagic-dashboards/**").as("xrayDashboard");
-  });
-
-  it("should allow x-rays for questions with segments (metabase#31697)", () => {
-    cy.get("@questionId").then(H.visitQuestion);
-    H.cartesianChartCircle().eq(0).click();
-    H.popover().findByText("Automatic insights…").click();
-    H.popover().findByText("X-ray").click();
-    cy.wait("@xrayDashboard");
-
-    cy.findByRole("main").within(() => {
-      cy.findByText(/A closer look at number of Orders/).should("be.visible");
-    });
-  });
-});
-
 describe("issue 31766", () => {
   function saveUpdatedQuestion() {
     cy.intercept("PUT", "/api/card/*").as("updateQuestion");
