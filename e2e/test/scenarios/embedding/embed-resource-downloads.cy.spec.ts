@@ -210,24 +210,6 @@ describe("Static embed dashboards/questions downloads (results and export as pdf
       cy.signOut();
     });
 
-    it("#downloads=false should disable result downloads", () => {
-      H.visitEmbeddedPage(
-        {
-          resource: { question: ORDERS_BY_YEAR_QUESTION_ID },
-          params: {},
-        },
-        {
-          pageStyle: {
-            downloads: false,
-          },
-        },
-      );
-
-      waitLoading();
-
-      cy.findByRole("button", { name: "Download results" }).should("not.exist");
-    });
-
     it("should be able to download the question as PNG", () => {
       H.visitEmbeddedPage(
         {

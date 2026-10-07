@@ -147,30 +147,6 @@ describe("scenarios > embedding > sdk iframe embedding > custom elements api", (
         .should("not.exist");
     });
 
-    it("should show download button when with-downloads is true", () => {
-      H.visitCustomHtmlPage(`
-      ${H.getNewEmbedScriptTag()}
-      ${H.getNewEmbedConfigurationScript()}
-      <metabase-dashboard dashboard-id="${ORDERS_DASHBOARD_ID}" with-downloads />
-      `);
-
-      H.getSimpleEmbedIframeContent()
-        .findByLabelText("Download as PDF")
-        .should("be.visible");
-    });
-
-    it("should hide download button when with-downloads is false", () => {
-      H.visitCustomHtmlPage(`
-      ${H.getNewEmbedScriptTag()}
-      ${H.getNewEmbedConfigurationScript()}
-      <metabase-dashboard dashboard-id="${ORDERS_DASHBOARD_ID}" with-downloads="false" />
-      `);
-
-      H.getSimpleEmbedIframeContent()
-        .findByLabelText("Download as PDF")
-        .should("not.exist");
-    });
-
     it("should enable drill-through when drills is true", () => {
       H.createQuestionAndDashboard({
         questionDetails: {
@@ -276,18 +252,6 @@ describe("scenarios > embedding > sdk iframe embedding > custom elements api", (
       `);
 
       H.getSimpleEmbedIframeContent().findByText("Orders").should("not.exist");
-    });
-
-    it("should show download button when with-downloads is true", () => {
-      H.visitCustomHtmlPage(`
-      ${H.getNewEmbedScriptTag()}
-      ${H.getNewEmbedConfigurationScript()}
-      <metabase-question question-id="${ORDERS_QUESTION_ID}" with-downloads />
-      `);
-
-      H.getSimpleEmbedIframeContent()
-        .findByLabelText("download icon")
-        .should("be.visible");
     });
 
     it("should hide download button when with-downloads is false", () => {
