@@ -138,7 +138,7 @@ export const MetabotFeedbackModal = ({
             </Text>
 
             <Group justify="flex-end" gap="lg" mt="lg">
-              <Button variant="subtle" onClick={onClose}>
+              <Button variant="subtle" color="neutral" onClick={onClose}>
                 {t`Cancel`}
               </Button>
               <Button variant="filled" type="submit">{c(

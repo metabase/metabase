@@ -10,13 +10,13 @@ import { useMount, usePrevious } from "react-use";
 import { t } from "ttag";
 import _ from "underscore";
 
-import ErrorBoundary from "metabase/ErrorBoundary";
 import {
   skipToken,
   useGetRemappedCardParameterValueQuery,
   useGetRemappedDashboardParameterValueQuery,
   useGetRemappedParameterValueQuery,
 } from "metabase/api";
+import ErrorBoundary from "metabase/common/components/ErrorBoundary";
 import { ExplicitSize } from "metabase/common/components/ExplicitSize";
 import { MultiAutocompleteWithTranslation } from "metabase/common/components/MultiAutocomplete";
 import { useTranslateContent } from "metabase/content-translation/hooks";
@@ -57,7 +57,7 @@ import type {
 import { Value as ValueComponent } from "../Value";
 
 import { ListField } from "./ListField";
-import SingleSelectListField from "./SingleSelectListField";
+import { SingleSelectListField } from "./SingleSelectListField";
 import type { LoadingStateType, ValuesMode } from "./types";
 import {
   canUseCardEndpoints,
@@ -108,7 +108,6 @@ export interface IFieldValuesWidgetProps {
   autoFocus?: boolean;
   className?: string;
   placeholder?: string;
-  checkedColor?: string;
 
   optionRenderer?: (option: FieldValue) => JSX.Element;
 }
@@ -138,7 +137,6 @@ export const FieldValuesWidgetInner = forwardRef<
     autoFocus,
     className,
     placeholder,
-    checkedColor,
     optionRenderer,
   },
   ref,
@@ -384,7 +382,6 @@ export const FieldValuesWidgetInner = forwardRef<
             onChange={onChange}
             options={options}
             optionRenderer={optionRenderer}
-            checkedColor={checkedColor}
           />
         ) : isListMode && hasListValues && !multi ? (
           <SingleSelectListField
@@ -394,7 +391,6 @@ export const FieldValuesWidgetInner = forwardRef<
             onChange={onChange}
             options={options}
             optionRenderer={optionRenderer}
-            checkedColor={checkedColor}
           />
         ) : multi ? (
           <MultiAutocompleteWithTranslation

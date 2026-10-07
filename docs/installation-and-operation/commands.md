@@ -89,6 +89,10 @@ Options:
 
 Transfer data from existing H2 database to the newly created MySQL or Postgres DB specified by env vars.
 
+## `mcp-tools-documentation`
+
+Generates `docs/ai/mcp-tools.md`, the reference for the tools Metabase's MCP server exposes to AI clients.
+
 ## `migrate direction`
 
 Run database migrations. Valid options for `direction` are `up`, `force`, `down`, `down-force`, `print`, or `release-locks`.

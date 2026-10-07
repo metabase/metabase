@@ -72,6 +72,7 @@
    [metabase.documents.prose-mirror :as prose-mirror]
    [metabase.metabot.agent.streaming :as streaming]
    [metabase.metabot.db :as metabot.db]
+   [metabase.metabot.query-export :as query-export]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.tmpl :as te]
    [metabase.metabot.tools.entity-details :as entity-details]
@@ -80,6 +81,7 @@
    [metabase.metabot.tools.shared.content-store :as shared.content-store]
    [metabase.metabot.tools.shared.instructions :as instructions]
    [metabase.metabot.tools.shared.llm-shape :as llm-shape]
+   [metabase.metabot.tools.util :as metabot.tools.u]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.transforms.core :as transforms]
@@ -582,6 +584,7 @@
 
 (defn- fetch-transform [id-str]
   {:structured-output (-> (transforms/get-transform (parse-long id-str))
+                          query-export/transform-with-exportable-source
                           (assoc :result-type :entity :type :transform))})
 
 (defn- fetch-transform-sources [id-str]
@@ -734,10 +737,10 @@
   is routine presentation and stays quiet."
   [query-id query]
   (let [audited? (contains? (shared/current-client-ids) query-id)]
-    (when-let [[gated mp] (shared.content-store/query-for-export query audited?)]
-      (llm-shape/export-query-for-llm gated mp (if audited?
-                                                 shared.content-store/audited-store
-                                                 shared.content-store/default-store)))))
+    (some-> (shared.content-store/query-for-export query audited?)
+            (query-export/export->text (if audited?
+                                         shared.content-store/audited-store
+                                         shared.content-store/default-store)))))
 
 (defn- fetch-conversation-query
   "Present a query stored in this conversation's agent state (created by tools or pasted
@@ -1019,7 +1022,7 @@
             (str "Too many URIs provided (" (count uris) "). "
                  "Please limit to " max-concurrent-uris " URIs maximum. "
                  "Be more selective and focus on the most relevant items for the current task or fetch them in batches.")
-            {:uri-count (count uris) :max max-concurrent-uris})))
+            {:agent-error? true :uri-count (count uris) :max max-concurrent-uris})))
 
   ;; Fetch all URIs (sequentially for now, could parallelize with pmap)
   (let [resources (mapv fetch-single-uri uris)
@@ -1091,5 +1094,4 @@
   (try
     (read-resource {:uris uris})
     (catch Exception e
-      (log/errorf "Error in read_resource tool: %s" (ex-message e))
-      {:output (str "Failed to read resources: " (or (ex-message e) "Unknown error"))})))
+      (metabot.tools.u/handle-agent-error e))))

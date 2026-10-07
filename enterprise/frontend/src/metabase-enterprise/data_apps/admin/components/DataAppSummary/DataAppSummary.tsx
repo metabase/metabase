@@ -1,7 +1,6 @@
 import { t } from "ttag";
 
 import { Group, Stack, Text } from "metabase/ui";
-import type { MetabaseColorKey } from "metabase/ui/colors/types";
 import * as Urls from "metabase/urls";
 import type { DataApp } from "metabase-types/api";
 
@@ -18,37 +17,8 @@ const Bullet = () => (
   </Text>
 );
 
-function getSyncStatus({ sync_error, last_synced_sha }: DataApp): {
-  label: string;
-  color: MetabaseColorKey;
-  title?: string;
-} {
-  if (sync_error) {
-    return { label: t`Sync failed`, color: "error", title: sync_error };
-  }
-
-  if (last_synced_sha) {
-    return {
-      label: t`Synced ${last_synced_sha.slice(0, 7)}`,
-      color: "text-secondary",
-    };
-  }
-
-  return { label: t`Not synced yet`, color: "text-tertiary" };
-}
-
-const SyncStatus = ({ app }: Props) => {
-  const { label, color, title } = getSyncStatus(app);
-
-  return (
-    <Text size="sm" c={color} title={title} lh="1.4">
-      {label}
-    </Text>
-  );
-};
-
 export const DataAppSummary = ({ app }: Props) => {
-  const isOpenable = app.enabled && !app.sync_error;
+  const isOpenable = app.enabled && !app.draft && !app.outdated;
 
   return (
     <Group align="center" flex="1" wrap="nowrap" miw={0}>
@@ -92,9 +62,15 @@ export const DataAppSummary = ({ app }: Props) => {
             {Urls.dataApp(app.name)}
           </Text>
 
-          <Bullet />
+          {app.draft && (
+            <>
+              <Bullet />
 
-          <SyncStatus app={app} />
+              <Text size="sm" c="text-tertiary" lh="1.4">
+                {t`Draft`}
+              </Text>
+            </>
+          )}
 
           {app.allowed_hosts.length > 0 && (
             <>

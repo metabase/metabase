@@ -195,9 +195,15 @@
   (t2/select-pks-set :model/Field :table_id table-id :active true {:from [(warehouse-schema-overlay/field-query {:user-settings? false})]}))
 
 (mu/defn active-fk-to-fields-exists?
-  "Whether an active Field points at one of the Fields with `field-ids`."
+  "Whether an active Field on an active Table points at one of the Fields with `field-ids`."
   [field-ids :- [:set ::lib.schema.id/field]]
-  (t2/exists? :model/Field :fk_target_field_id [:in field-ids] :active true {:from [(warehouse-schema-overlay/field-query)]}))
+  (t2/exists? :model/Field {:from  [(warehouse-schema-overlay/field-query)]
+                            :join  [(warehouse-schema-overlay/table-query {:user-settings? false})
+                                    [:= :metabase_field.table_id :metabase_table.id]]
+                            :where [:and
+                                    [:in :metabase_field.fk_target_field_id field-ids]
+                                    [:= :metabase_field.active true]
+                                    [:= :metabase_table.active true]]}))
 
 (mu/defn sandbox-exists-for-table?
   "Whether a Sandbox is defined on the Table with `table-id`."

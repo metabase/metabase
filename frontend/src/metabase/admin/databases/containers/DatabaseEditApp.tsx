@@ -2,12 +2,12 @@ import { type ComponentType, useEffect, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import ErrorBoundary from "metabase/ErrorBoundary";
 import {
   useGetDatabaseQuery,
   useGetDatabaseSettingsAvailableQuery,
 } from "metabase/api";
 import { Breadcrumbs } from "metabase/common/components/Breadcrumbs";
+import ErrorBoundary from "metabase/common/components/ErrorBoundary";
 import { GenericError } from "metabase/common/components/ErrorPages";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import CS from "metabase/css/core/index.css";
@@ -25,7 +25,6 @@ import { connect, useSelector } from "metabase/redux";
 import { Outlet, useParams } from "metabase/router";
 import { useSetting } from "metabase/settings";
 import { Box, Divider, Flex } from "metabase/ui";
-import { isSameOrSiteUrlOrigin } from "metabase/utils/dom";
 import type { DatabaseId, Database as DatabaseType } from "metabase-types/api";
 
 import { DatabaseConnectionInfoSection } from "../components/DatabaseConnectionInfoSection";
@@ -55,20 +54,9 @@ function DatabaseEditAppInner({
   const isModelPersistenceEnabled = useSetting("persisted-models-enabled");
 
   const databaseId = parseInt(params.databaseId ?? "", 10);
-  // The param carries where the guide was opened from. Older links carry the
-  // literal "true", which falls back to the default guide path.
-  const returnToSetupGuide = new URLSearchParams(window.location.search).get(
-    RETURN_TO_SETUP_GUIDE_PARAM,
-  );
-  const fromEmbeddingSetupGuide = returnToSetupGuide != null;
-  // Checked the way `useSetupGuideReturnPath` checks the same param: the value
-  // comes from the URL and is navigated to.
-  const setupGuideOrigin =
-    returnToSetupGuide &&
-    returnToSetupGuide !== "true" &&
-    isSameOrSiteUrlOrigin(returnToSetupGuide)
-      ? returnToSetupGuide
-      : undefined;
+  const fromEmbeddingSetupGuide = new URLSearchParams(
+    window.location.search,
+  ).has(RETURN_TO_SETUP_GUIDE_PARAM);
 
   const [showReturnModal, setShowReturnModal] = useState(false);
   const [pollingInterval, setPollingInterval] = useState<number>();
@@ -126,29 +114,33 @@ function DatabaseEditAppInner({
                 >
                   <DatabaseConnectionInfoSection database={database} />
 
-                  <PLUGIN_WRITABLE_CONNECTION.WritableConnectionInfoSection
-                    database={database}
-                  />
+                  {!database.is_stub && (
+                    <>
+                      <PLUGIN_WRITABLE_CONNECTION.WritableConnectionInfoSection
+                        database={database}
+                      />
 
-                  <DatabaseModelFeaturesSection
-                    database={database}
-                    isModelPersistenceEnabled={isModelPersistenceEnabled}
-                    updateDatabase={updateDatabase}
-                  />
+                      <DatabaseModelFeaturesSection
+                        database={database}
+                        isModelPersistenceEnabled={isModelPersistenceEnabled}
+                        updateDatabase={updateDatabase}
+                      />
 
-                  <PLUGIN_DATABASE_REPLICATION.DatabaseReplicationSection
-                    database={database}
-                  />
+                      <PLUGIN_DATABASE_REPLICATION.DatabaseReplicationSection
+                        database={database}
+                      />
 
-                  <PLUGIN_TABLE_EDITING.AdminDatabaseTableEditingSection
-                    database={database}
-                    settingsAvailable={settingsAvailable?.settings}
-                    updateDatabase={updateDatabase}
-                  />
+                      <PLUGIN_TABLE_EDITING.AdminDatabaseTableEditingSection
+                        database={database}
+                        settingsAvailable={settingsAvailable?.settings}
+                        updateDatabase={updateDatabase}
+                      />
 
-                  <PLUGIN_DB_ROUTING.DatabaseRoutingSection
-                    database={database}
-                  />
+                      <PLUGIN_DB_ROUTING.DatabaseRoutingSection
+                        database={database}
+                      />
+                    </>
+                  )}
 
                   <DatabaseDangerZoneSection
                     isAdmin={isAdmin}
@@ -168,7 +160,6 @@ function DatabaseEditAppInner({
           onClose={() => setShowReturnModal(false)}
           title={t`Database connected!`}
           message={t`Your database has been added and synced. Return to the setup guide to continue.`}
-          returnTo={setupGuideOrigin}
         />
       )}
     </>

@@ -1,0 +1,86 @@
+.root {
+  width: 100%;
+  container-type: inline-size;
+}
+
+/*
+ * Mirrors react-grid-layout's geometry (see DashboardGrid). The column count,
+ * aspect ratio, minimum row height and margins come in as custom properties,
+ * set from the same constants the real grid uses. Lengths are in
+ * container-query width units, so the skeleton cards land at the size and
+ * position the real cards will, at any width.
+ */
+.grid {
+  --skeleton-row-height: max(
+    calc(100cqw / var(--grid-columns) / var(--grid-aspect-ratio)),
+    var(--grid-min-row-height)
+  );
+  --skeleton-col-width: calc(
+    (100cqw - var(--grid-margin-x) * (var(--grid-columns) - 1)) /
+      var(--grid-columns)
+  );
+
+  position: relative;
+  width: 100%;
+  height: calc(
+    (var(--skeleton-row-height) + var(--grid-margin-y)) * var(--skeleton-rows)
+  );
+}
+
+.card {
+  position: absolute;
+  overflow: hidden;
+  background-color: var(--mb-color-bg-dashboard-card);
+  border: 1px solid var(--mb-color-border);
+  border-radius: 0.75rem;
+  left: calc(
+    (var(--skeleton-col-width) + var(--grid-margin-x)) * var(--skeleton-col)
+  );
+  top: calc(
+    (var(--skeleton-row-height) + var(--grid-margin-y)) * var(--skeleton-row)
+  );
+  width: calc(
+    var(--skeleton-col-width) * var(--skeleton-w) + (var(--skeleton-w) - 1) *
+      var(--grid-margin-x)
+  );
+  height: calc(
+    var(--skeleton-row-height) * var(--skeleton-h) + (var(--skeleton-h) - 1) *
+      var(--grid-margin-y)
+  );
+}
+
+/* Heading and text cards have no card chrome — just their text lines. */
+.transparent {
+  background-color: transparent;
+  border-color: transparent;
+}
+
+.textContent {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.5rem;
+  height: 100%;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.875rem;
+}
+
+.textContentHeading {
+  font-size: 1.25rem;
+}
+
+/* The grid's mobile breakpoint, MOBILE_BREAKPOINT. A container query can't read a custom property. */
+@container (max-width: 752px) {
+  .grid {
+    display: flex;
+    flex-direction: column;
+    gap: var(--grid-mobile-margin-y);
+    height: auto;
+  }
+
+  .card {
+    position: static;
+    width: 100%;
+    height: calc(var(--skeleton-row-height) * var(--skeleton-h));
+  }
+}

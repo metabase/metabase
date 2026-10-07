@@ -21,6 +21,7 @@
    [metabase.public-sharing-rest.api :as api.public]
    [metabase.public-sharing.core :as public-sharing]
    [metabase.queries-rest.api.card-test :as api.card-test]
+   [metabase.query-processor.card :as qp.card]
    [metabase.query-processor.card-test :as qp.card-test]
    [metabase.query-processor.middleware.process-userland-query-test :as process-userland-query-test]
    [metabase.query-processor.pivot.test-util :as api.pivots]
@@ -213,6 +214,25 @@
           (is (= card-id (:id (mt/client :get 200 (str "public/card/" uuid))))))
         (with-temp-public-dashboard [{uuid :public_uuid, dashboard-id :id}]
           (is (= dashboard-id (:id (mt/client :get 200 (str "public/dashboard/" uuid))))))))))
+
+(deftest ^:synchronized public-uuid-prefix-lookup-is-bound-test
+  (testing "GHY-4587: every shared model resolves by its uuid through the bound prefix lookup"
+    (encryption-tu/with-encrypted-app-db
+      (mt/with-actions-enabled
+        (mt/with-temporary-setting-values [enable-public-sharing true]
+          (with-temp-public-card [{uuid :public_uuid, card-id :id}]
+            (is (= card-id (:id (mt/client :get 200 (str "public/card/" uuid)))))
+            (is (= card-id (:id (public-sharing/public-uuid->model :model/Card uuid)))))
+          (with-temp-public-dashboard [{uuid :public_uuid, dashboard-id :id}]
+            (is (= dashboard-id (:id (mt/client :get 200 (str "public/dashboard/" uuid)))))
+            (is (= dashboard-id (:id (public-sharing/public-uuid->model :model/Dashboard uuid)))))
+          (let [{uuid :public_uuid, :as action-opts} (shared-obj)]
+            (mt/with-actions [{action-id :action-id} action-opts]
+              (is (= action-id (:id (mt/client :get 200 (str "public/action/" uuid)))))
+              (is (= action-id (:id (public-sharing/public-uuid->model :model/Action uuid))))))
+          (mt/with-temp [:model/Document {uuid :public_uuid, document-id :id} (merge {:name "Shared Doc"} (shared-obj))]
+            (is (= document-id (:id (mt/client :get 200 (str "public/document/" uuid)))))
+            (is (= document-id (:id (public-sharing/public-uuid->model :model/Document uuid))))))))))
 
 (defn- assert-forged-plaintext-does-not-resolve!
   [model id]
@@ -1522,6 +1542,54 @@
                                (param-values-url :card field-filter-uuid
                                                  (:field-values param-keys) "bar"))))))))))))
 
+(deftest param-values-input-box-test
+  (testing "A filter set to Input box (values_query_type = none) offers no values, even anonymously (SEC-1211)"
+    (mt/with-temporary-setting-values [enable-public-sharing true]
+      (let [name-param-id     "_NAME_"
+            contains-param-id "_NAME_CONTAINS_"
+            category-param-id "_CATEGORY_"
+            parameters        [{:id                name-param-id
+                                :name              "Name"
+                                :slug              "name"
+                                :type              :string/=
+                                :values_query_type "none"
+                                :target            [:dimension [:field (mt/id :venues :name) nil]]}
+                               ;; the frontend defaults a `contains` filter to an Input box without saving
+                               ;; `values_query_type`
+                               {:id     contains-param-id
+                                :name   "Name contains"
+                                :slug   "name_contains"
+                                :type   :string/contains
+                                :target [:dimension [:field (mt/id :venues :name) nil]]}
+                               {:id                category-param-id
+                                :name              "Category"
+                                :slug              "category"
+                                :type              :id
+                                :values_query_type "none"
+                                :target            [:dimension [:field (mt/id :venues :category_id) nil]]}]]
+        (mt/with-temp [:model/Card {card-id :id, card-uuid :public_uuid} {:public_uuid   (str (random-uuid))
+                                                                          :dataset_query (mt/mbql-query venues {:filter [:= $price 1]})
+                                                                          :parameters    parameters}
+                       :model/Dashboard {dash-uuid :public_uuid, dashboard-id :id} {:public_uuid (str (random-uuid))
+                                                                                    :parameters  (mapv #(dissoc % :target) parameters)}
+                       :model/DashboardCard _ {:dashboard_id       dashboard-id
+                                               :card_id            card-id
+                                               :parameter_mappings (for [{:keys [id target]} parameters]
+                                                                     {:parameter_id id, :card_id card-id, :target target})}]
+          (doseq [[model uuid] [[:card card-uuid] [:dashboard dash-uuid]]
+                  param-id     [name-param-id contains-param-id]]
+            (testing (format "GET /api/public/%s/:uuid/params/%s/values" (name model) param-id)
+              (is (= {:values [], :has_more_values false}
+                     (client/client :get 200 (param-values-url model uuid param-id)))))
+            (testing (format "GET /api/public/%s/:uuid/params/%s/search/:query" (name model) param-id)
+              (is (= {:values [], :has_more_values false}
+                     (client/client :get 200 (param-values-url model uuid param-id "red"))))))
+          (doseq [[model uuid] [[:card card-uuid] [:dashboard dash-uuid]]]
+            (testing (format "GET /api/public/%s/:uuid/params/:param-key/remapping still labels a chosen value" (name model))
+              (is (= [2 "American"]
+                     (client/client :get 200 (format "public/%s/%s/params/%s/remapping?value=2"
+                                                     (name model) uuid category-param-id)))))))))))
+
 (deftest card-param-fields-public-columns-test
   (testing "GET /api/public/card/:uuid :param_fields only carry the public Field columns"
     (mt/with-temporary-setting-values [enable-public-sharing true]
@@ -1990,6 +2058,104 @@
                  (t2/update! :model/Card (u/the-id card) {:archived true})
                  (is (= "Not found."
                         (client/client :get 404 (dashcard-url dash card dashcard)))))))))))))
+
+(def ^:private error-leak-sql-canary "ERROR_LEAK_SQL_CANARY")
+(def ^:private error-leak-card-name-canary "ERROR LEAK CARD NAME CANARY")
+
+(defn- date-param-native-card
+  "A healthy native Card with a date field filter, so a caller-supplied parameter value can drive it to an error without
+  the Card itself being broken."
+  [display]
+  {:name          error-leak-card-name-canary
+   :display       display
+   :dataset_query {:database (mt/id)
+                   :type     :native
+                   :native   {:query         (str "SELECT COUNT(*) AS N FROM ORDERS WHERE {{d}} -- " error-leak-sql-canary)
+                              :template-tags {"d" {:id           "d"
+                                                   :name         "d"
+                                                   :display-name "D"
+                                                   :type         :dimension
+                                                   :widget-type  :date/all-options
+                                                   :dimension    [:field (mt/id :orders :created_at) nil]}}}}
+   :parameters    [{:id     "d"
+                    :type   :date/all-options
+                    :name   "D"
+                    :slug   "d"
+                    :target [:dimension [:template-tag "d"]]}]})
+
+(def ^:private unparseable-date-param
+  "A parameter value that passes endpoint validation but blows up while the query is being built."
+  (json/encode [{:id     "d"
+                 :type   "date/all-options"
+                 :target ["dimension" ["template-tag" "d"]]
+                 :value  "NOT-A-DATE"}]))
+
+(defn- assert-generic-query-error
+  "Assert that `response` (from [[client/client-full-response]]) is the generic public-endpoint failure body and that
+  nothing about the Card leaked into it."
+  [{:keys [status body]}]
+  (let [body-str (pr-str body)]
+    (testing "the query genuinely failed"
+      (is (contains? #{400 500} status)))
+    (testing "the body is the generic failed-query shape"
+      (is (=? {:status "failed"
+               :error  string?}
+              body))
+      (is (set/subset? (set (keys body)) #{:status :error :error_type})))
+    (testing "the Card's SQL, name, and a stacktrace must not reach an unauthenticated caller"
+      (is (not (str/includes? body-str error-leak-sql-canary)))
+      (is (not (str/includes? body-str error-leak-card-name-canary)))
+      (is (not (str/includes? body-str ":trace")))
+      (is (not (str/includes? body-str ":via"))))))
+
+(deftest public-pivot-card-error-does-not-leak-query-test
+  (testing "GET /api/public/pivot/card/:uuid/query"
+    (testing "an error raised while building the pivot sub-queries must not leak the Card's query or a stacktrace"
+      (mt/dataset test-data
+        (mt/with-temporary-setting-values [enable-public-sharing true]
+          (with-temp-public-card [{uuid :public_uuid} (date-param-native-card :pivot)]
+            (let [url (format "public/pivot/card/%s/query" uuid)]
+              (testing "sanity check: the Card is healthy without the bad parameter"
+                (is (= 202 (:status (client/client-full-response :get url)))))
+              (assert-generic-query-error
+               (client/client-full-response :get url :parameters unparseable-date-param)))))))))
+
+(deftest public-card-with-pivot-display-error-does-not-leak-query-test
+  (testing "GET /api/public/card/:uuid/query"
+    (testing "a Card with :display :pivot takes the pivot path on its ordinary public link too"
+      (mt/dataset test-data
+        (mt/with-temporary-setting-values [enable-public-sharing true]
+          (with-temp-public-card [{uuid :public_uuid} (date-param-native-card :pivot)]
+            (assert-generic-query-error
+             (client/client-full-response :get (format "public/card/%s/query" uuid)
+                                          :parameters unparseable-date-param))))))))
+
+(deftest public-pivot-dashcard-error-does-not-leak-query-test
+  (testing "GET /api/public/pivot/dashboard/:uuid/dashcard/:dashcard-id/card/:card-id"
+    (testing "an error raised before the QP runs must not leak the query of a Card that is not itself public"
+      (mt/with-temporary-setting-values [enable-public-sharing true]
+        (with-temp-public-dashboard [dash]
+          (mt/with-temp [:model/Card card {:name          error-leak-card-name-canary
+                                           :display       :pivot
+                                           :dataset_query {:database (mt/id)
+                                                           :type     :native
+                                                           :native   {:query (str "SELECT * FROM no_such_table -- "
+                                                                                  error-leak-sql-canary)}}}]
+            (let [dashcard (add-card-to-dashboard! card dash)]
+              (is (nil? (:public_uuid card)))
+              (assert-generic-query-error
+               (client/client-full-response :get (pivot-dashcard-url dash card dashcard))))))))))
+
+(deftest public-card-query-exception-outside-qp-does-not-leak-test
+  (testing "GET /api/public/card/:uuid/query"
+    (testing "an exception that escapes the QP entirely (thrown outside its error-handling middleware) is still sanitized"
+      (mt/with-temporary-setting-values [enable-public-sharing true]
+        (with-temp-public-card [{uuid :public_uuid} {:name error-leak-card-name-canary}]
+          (mt/with-dynamic-fn-redefs [qp.card/process-query-for-card-default-qp
+                                      (fn [query _rff]
+                                        (throw (ex-info (str "Boom " error-leak-sql-canary) {:query query})))]
+            (assert-generic-query-error
+             (client/client-full-response :get (format "public/card/%s/query" uuid)))))))))
 
 ;;; ------------------------- POST /api/public/dashboard/:dashboard-uuid/dashcard/:uuid/execute ------------------------------
 

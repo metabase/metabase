@@ -5,7 +5,6 @@ import {
 import { enableJwtAuth } from "e2e/support/helpers/e2e-jwt-helpers";
 
 import {
-  clickNewEmbedButton,
   getEmbedSidebar,
   navigateToEntitySelectionStep,
   navigateToGetCodeStep,
@@ -22,8 +21,9 @@ describe("scenarios > embedding > sdk iframe embed setup > common", () => {
     cy.signInAsAdmin();
     H.activateToken("pro-self-hosted");
     H.enableTracking();
-    H.updateSetting("enable-embedding-modular", true);
-    H.updateSetting("show-modular-embed-terms", false);
+    H.updateSetting("enable-embedding-simple", true);
+    H.updateSetting("show-simple-embed-terms", false);
+    H.updateSetting("enable-embedding-static", true);
     H.updateSetting("show-static-embed-terms", false);
 
     cy.intercept("GET", "/api/dashboard/**").as("dashboard");
@@ -44,9 +44,7 @@ describe("scenarios > embedding > sdk iframe embed setup > common", () => {
       });
 
     H.modal().should("not.exist");
-    cy.findByTestId("embedding-hub-main")
-      .findByRole("heading", { name: "Security" })
-      .should("be.visible");
+    cy.findAllByTestId("sdk-setting-card").should("be.visible");
   });
 
   it("should close wizard when clicking `Done` button on the last step", () => {
@@ -65,9 +63,7 @@ describe("scenarios > embedding > sdk iframe embed setup > common", () => {
     });
 
     H.modal().should("not.exist");
-    cy.findByTestId("embedding-hub-main")
-      .findByRole("heading", { name: "Security" })
-      .should("be.visible");
+    cy.findAllByTestId("sdk-setting-card").should("be.visible");
   });
 
   it("should close wizard when navigating back in browser history", () => {
@@ -76,12 +72,14 @@ describe("scenarios > embedding > sdk iframe embed setup > common", () => {
       .contains("General")
       .should("be.visible");
 
-    cy.visit("/embedding/security");
-    cy.findByTestId("embedding-hub-main")
-      .findByRole("heading", { name: "Security" })
-      .should("be.visible");
+    cy.visit("/admin/embedding");
+    cy.findAllByTestId("sdk-setting-card").should("be.visible");
 
-    clickNewEmbedButton();
+    cy.findAllByTestId("sdk-setting-card")
+      .first()
+      .within(() => {
+        cy.findByText("New embed").click();
+      });
 
     cy.wait("@dashboard");
 
@@ -98,8 +96,8 @@ describe("scenarios > embedding > sdk iframe embed setup > common", () => {
   });
 
   describe("auth type switch", () => {
-    it("allows to select the `guest` item even when modular embedding is disabled", () => {
-      H.updateSetting("enable-embedding-modular", false);
+    it("allows to select the `guest` item even when static embedding setting is disabled", () => {
+      H.updateSetting("enable-embedding-static", false);
 
       H.visitQuestion(ORDERS_COUNT_QUESTION_ID);
 
@@ -108,8 +106,8 @@ describe("scenarios > embedding > sdk iframe embed setup > common", () => {
       cy.findByLabelText("Guest").should("be.enabled");
     });
 
-    it("allows to select the `Metabase Account` item even when modular embedding is disabled", () => {
-      H.updateSetting("enable-embedding-modular", false);
+    it("allows to select the `Metabase Account` item even when simple embedding setting is disabled", () => {
+      H.updateSetting("enable-embedding-simple", false);
 
       H.visitQuestion(ORDERS_COUNT_QUESTION_ID);
 
@@ -129,9 +127,22 @@ describe("scenarios > embedding > sdk iframe embed setup > common", () => {
           .click();
       };
 
-      const openFromEmbeddingHub = () => {
-        cy.visit("/embedding/security");
-        clickNewEmbedButton();
+      const openFromAdminEmbedding = () => {
+        cy.visit("/admin/embedding");
+        cy.findAllByTestId("sdk-setting-card")
+          .first()
+          .within(() => {
+            cy.findByText("New embed").click();
+          });
+      };
+
+      const openFromAdminGuestEmbeds = () => {
+        cy.visit("/admin/embedding/guest");
+        cy.findAllByTestId("guest-embeds-setting-card")
+          .first()
+          .within(() => {
+            cy.findByText("New embed").click();
+          });
       };
 
       const openFromSharingMenu = () => {
@@ -158,21 +169,29 @@ describe("scenarios > embedding > sdk iframe embed setup > common", () => {
         openFromCommandPalette();
         assertCheckedAuth("sso");
 
-        openFromEmbeddingHub();
+        openFromAdminEmbedding();
         assertCheckedAuth("sso");
 
         openFromSharingMenu();
         assertCheckedAuth("sso");
+
+        // The Guest embeds admin section is intentionally guest-only and
+        // forces guest mode regardless of SSO configuration.
+        openFromAdminGuestEmbeds();
+        assertCheckedAuth("guest");
       });
 
       it("defaults to Guest from all entry points when SSO is not configured", () => {
         openFromCommandPalette();
         assertCheckedAuth("guest");
 
-        openFromEmbeddingHub();
+        openFromAdminEmbedding();
         assertCheckedAuth("guest");
 
         openFromSharingMenu();
+        assertCheckedAuth("guest");
+
+        openFromAdminGuestEmbeds();
         assertCheckedAuth("guest");
       });
     });

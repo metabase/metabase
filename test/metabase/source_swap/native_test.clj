@@ -266,7 +266,13 @@
                                                                    "SELECT * FROM\n-- /*]]*/ \nORDERS LIMIT 5"
                                                                    "ORDERS" "NEW_ORDERS")]
       (is (str/includes? result "NEW_ORDERS"))
-      (is (str/includes? result "/*]]*/") "Comment with bracket marker should be preserved"))))
+      ;; sqlglot regenerates comments rather than preserving their source text, and versions differ on how they
+      ;; escape a comment-terminator-like sequence inside comment content (sqlglot >=30.17 inserts spaces, e.g.
+      ;; "/*]]*/" -> "/* / *]]* / */", to keep the regenerated SQL valid). A plain substring check for "]]" would
+      ;; pass even if the marker leaked out of the comment into live SQL, so this checks it's still bracketed by
+      ;; some /* ... */ span instead.
+      (is (re-find #"(?s)/\*.*?\]\].*?\*/" result)
+          "Bracket marker should stay inside a comment, not leak into executable SQL"))))
 
 ;;; ------------------------------------------------ Schema-Qualified Native SQL Tests ------------------------------------------------
 

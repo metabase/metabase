@@ -16,7 +16,6 @@
    [metabase.app-db.encryption :as mdb.encryption]
    [metabase.app-db.env :as mdb.env]
    [metabase.app-db.format]
-   [metabase.app-db.h2 :as mdb.h2]
    [metabase.app-db.honeysql-guard]
    [metabase.app-db.jdbc-protocols :as mdb.jdbc-protocols]
    [metabase.app-db.liquibase :as liquibase]
@@ -55,8 +54,6 @@
   broken-out-details->DataSource]
  [mdb.env
   db-file]
- [mdb.h2
-  jdbc-sql-syntax-error-exception-classname]
  [mdb.jdbc-protocols
   clob->str]
  [mdb.encryption

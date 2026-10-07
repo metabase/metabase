@@ -19,7 +19,7 @@ import {
 
 import { useCancelCloudMigrationMutation } from "../../api/cloud-migration";
 
-import { MigrationCard } from "./CloudPanel.styled";
+import { MigrationCard } from "./MigrationCard";
 import type { InProgressCloudMigration, InProgressStates } from "./utils";
 import { getMigrationUrl } from "./utils";
 
@@ -98,7 +98,8 @@ export const MigrationInProgress = ({
               <Button
                 mt="lg"
                 onClick={openModal}
-                c="feedback-negative"
+                variant="light"
+                color="negative"
               >{t`Cancel migration`}</Button>
               <Button
                 mt="lg"
@@ -123,7 +124,7 @@ export const MigrationInProgress = ({
         <Flex justify="end" mt="3.5rem">
           <Button
             variant="filled"
-            color="feedback-negative"
+            color="negative"
             onClick={handleCancelMigration}
           >{t`Cancel migration`}</Button>
         </Flex>

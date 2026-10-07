@@ -1,4 +1,8 @@
+version: 1
+
 name: Data App Template
+
+slug: data-app-template
 
 description: A summary of what this app does
 
@@ -10,3 +14,10 @@ path: ./dist/index.js
 # allowed_hosts:
 #   - https://api.example.com
 #   - https://*.internal.acme.com
+
+entity_id: replace-entity-id-xxx
+
+serdes/meta:
+- model: DataApp
+  id: replace-entity-id-xxx
+  label: data-app-template

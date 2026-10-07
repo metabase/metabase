@@ -18,6 +18,7 @@
    [metabase.parameters.custom-values :as custom-values]
    [metabase.public-sharing-rest.api-test :as public-test]
    [metabase.queries-rest.api.card-test :as api.card-test]
+   [metabase.query-processor.card :as qp.card]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
    [metabase.query-processor.middleware.process-userland-query-test :as process-userland-query-test]
    [metabase.query-processor.pivot.test-util :as api.pivots]
@@ -37,6 +38,7 @@
 
 (defn random-embedding-secret-key [] (u.random/secure-hex 32))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *secret-key* nil)
 
 (defn sign [claims] (jwt/sign claims *secret-key*))
@@ -139,7 +141,7 @@
       ~@body)))
 
 (defmacro with-embedding-enabled-and-new-secret-key! {:style/indent 0} [& body]
-  `(mt/with-temporary-setting-values [~'enable-embedding-modular true
+  `(mt/with-temporary-setting-values [~'enable-embedding-static true
                                       ~'enable-embedding-interactive true]
      (with-new-secret-key!
        ~@body)))
@@ -1105,6 +1107,16 @@
         (is (= "Message seems corrupt or manipulated"
                (client/client :get 400 (with-new-secret-key! (dashcard-url dashcard)))))))))
 
+(deftest dashcard-archived-card-test
+  (testing "GET /api/embed/dashboard/:token/dashcard/:dashcard-id/card/:card-id[/:export-format]"
+    (testing "refuses a trashed Card, indistinguishably from a missing one, even though its DashboardCard row survives"
+      (with-embedding-enabled-and-new-secret-key!
+        (with-temp-dashcard [dashcard {:dash {:enable_embedding true}
+                                       :card {:archived true}}]
+          (do-response-formats [response-format _request-options]
+            (is (= "Not found."
+                   (client/client :get 400 (str (dashcard-url dashcard) response-format))))))))))
+
 (deftest dashboard-locked-params-test
   (with-embedding-enabled-and-new-secret-key!
     (with-temp-dashcard [dashcard {:dash {:enable_embedding true, :embedding_params {:venue_id "locked"}}}]
@@ -1254,7 +1266,7 @@
             (client/client :get 200 (format "embed/card/%s/params/%s/values"
                                             (card-token card nil entity-id) param-key)))]
     (binding [custom-values/*max-rows* 5]
-      (mt/with-temporary-setting-values [enable-embedding-modular true]
+      (mt/with-temporary-setting-values [enable-embedding-static true]
         (with-new-secret-key!
           (api.card-test/with-card-param-values-fixtures [{:keys [card field-filter-card param-keys]}]
             (t2/update! :model/Card (:id field-filter-card)
@@ -1409,28 +1421,29 @@
 
 (deftest card-param-values-native-card-without-parameters-test
   (testing "a native card described only by its template tags, with an empty locked value, still serves values"
-    (with-embedding-enabled-and-new-secret-key!
-      (mt/with-temp
-        [:model/Card card {:enable_embedding true
-                           :embedding_params {:total "locked" :state "enabled"}
-                           :dataset_query
-                           {:database (mt/id)
-                            :type     :native
-                            :native   {:query         "SELECT * FROM ORDERS WHERE {{total}} AND {{state}}"
-                                       :template-tags {"total" {:id           "t1"
-                                                                :name         "total"
-                                                                :display-name "Total"
-                                                                :type         :dimension
-                                                                :widget-type  :number/>=
-                                                                :dimension    [:field (mt/id :orders :total) nil]}
-                                                       "state" {:id           "s1"
-                                                                :name         "state"
-                                                                :display-name "State"
-                                                                :type         :dimension
-                                                                :widget-type  :string/=
-                                                                :dimension    [:field (mt/id :people :state) nil]}}}}}]
-        (let [token (card-token card {:params {:total []}})]
-          (is (seq (:values (client/client :get 200 (format "embed/card/%s/params/s1/values" token))))))))))
+    (mt/with-temporary-setting-values [enable-embedding-static true]
+      (with-new-secret-key!
+        (mt/with-temp
+          [:model/Card card {:enable_embedding true
+                             :embedding_params {:total "locked" :state "enabled"}
+                             :dataset_query
+                             {:database (mt/id)
+                              :type     :native
+                              :native   {:query         "SELECT * FROM ORDERS WHERE {{total}} AND {{state}}"
+                                         :template-tags {"total" {:id           "t1"
+                                                                  :name         "total"
+                                                                  :display-name "Total"
+                                                                  :type         :dimension
+                                                                  :widget-type  :number/>=
+                                                                  :dimension    [:field (mt/id :orders :total) nil]}
+                                                         "state" {:id           "s1"
+                                                                  :name         "state"
+                                                                  :display-name "State"
+                                                                  :type         :dimension
+                                                                  :widget-type  :string/=
+                                                                  :dimension    [:field (mt/id :people :state) nil]}}}}}]
+          (let [token (card-token card {:params {:total []}})]
+            (is (seq (:values (client/client :get 200 (format "embed/card/%s/params/s1/values" token)))))))))))
 
 ;;; ------------------------------------------------ Chain filtering -------------------------------------------------
 
@@ -1627,7 +1640,7 @@
     (mt/dataset test-data
       (testing "GET /api/embed/pivot/card/:token/query"
         (testing "check that the endpoint doesn't work if embedding isn't enabled"
-          (mt/with-temporary-setting-values [enable-embedding-modular false]
+          (mt/with-temporary-setting-values [enable-embedding-static false]
             (with-new-secret-key!
               (with-temp-card [card (api.pivots/pivot-card)]
                 (is (= "Embedding is not enabled."
@@ -1660,6 +1673,38 @@
               (is (= "Message seems corrupt or manipulated"
                      (client/client :get 400 (with-new-secret-key! (pivot-card-query-url card ""))))))))))))
 
+(deftest embed-pivot-card-error-does-not-leak-query-test
+  (testing "GET /api/embed/pivot/card/:token/query"
+    (testing "an error raised while building the pivot sub-queries must not leak the Card's query or a stacktrace"
+      (with-embedding-enabled-and-new-secret-key!
+        (with-temp-card [card {:enable_embedding true
+                               :name             "EMBED ERROR LEAK CARD NAME CANARY"
+                               :display          :pivot
+                               :dataset_query    {:database (mt/id)
+                                                  :type     :native
+                                                  :native   {:query "SELECT * FROM no_such_table -- EMBED_ERROR_LEAK_SQL_CANARY"}}}]
+          (let [{:keys [status body]} (client/client-full-response :get (pivot-card-query-url card ""))
+                body-str              (pr-str body)]
+            (is (= 500 status))
+            (is (= {:status "failed", :error "An error occurred while running the query.", :error_type "qp"}
+                   body))
+            (is (not (str/includes? body-str "CANARY")))
+            (is (not (str/includes? body-str ":trace")))))))))
+
+(deftest embed-card-query-exception-outside-qp-does-not-leak-test
+  (testing "GET /api/embed/card/:token/query"
+    (testing "an exception that escapes the QP entirely is still reduced to the generic embedding error"
+      (with-embedding-enabled-and-new-secret-key!
+        (with-temp-card [card {:enable_embedding true, :name "EMBED ERROR LEAK CARD NAME CANARY"}]
+          (mt/with-dynamic-fn-redefs [qp.card/process-query-for-card-default-qp
+                                      (fn [query _rff]
+                                        (throw (ex-info "Boom EMBED_ERROR_LEAK_SQL_CANARY" {:query query})))]
+            (let [{:keys [status body]} (client/client-full-response :get (card-query-url card ""))]
+              (is (= 500 status))
+              (is (= {:status "failed", :error "An error occurred while running the query."}
+                     body))
+              (is (not (str/includes? (pr-str body) "CANARY"))))))))))
+
 (defn- pivot-dashcard-url
   ([dashcard] (pivot-dashcard-url dashcard (:dashboard_id dashcard)))
   ([dashcard dashboard-id & [additional-token-keys]]
@@ -1689,7 +1734,7 @@
 
 (deftest pivot-dashcard-embedding-disabled-test
   (mt/dataset test-data
-    (mt/with-temporary-setting-values [enable-embedding-modular false]
+    (mt/with-temporary-setting-values [enable-embedding-static false]
       (with-new-secret-key!
         (with-temp-dashcard [dashcard {:dash     {:parameters []}
                                        :card     (api.pivots/pivot-card)
@@ -1705,6 +1750,16 @@
                                      :dashcard {:parameter_mappings []}}]
         (is (= "Embedding is not enabled for this object."
                (client/client :get 400 (pivot-dashcard-url dashcard))))))))
+
+(deftest pivot-dashcard-archived-card-test
+  (testing "GET /api/embed/pivot/dashboard/:token/dashcard/:dashcard-id/card/:card-id refuses a trashed Card"
+    (mt/dataset test-data
+      (with-embedding-enabled-and-new-secret-key!
+        (with-temp-dashcard [dashcard {:dash     {:enable_embedding true, :parameters []}
+                                       :card     (assoc (api.pivots/pivot-card) :archived true)
+                                       :dashcard {:parameter_mappings []}}]
+          (is (= "Not found."
+                 (client/client :get 400 (pivot-dashcard-url dashcard)))))))))
 
 (deftest pivot-dashcard-signing-check-test
   (mt/dataset test-data
@@ -2267,6 +2322,20 @@
                                                  card-id)
                      :latField (tiles.api-test/encoded-lat-field-ref)
                      :lonField (tiles.api-test/encoded-lon-field-ref)))))))))
+
+(deftest dashcard-tile-archived-card-test
+  (testing "GET api/embed/tiles/dashboard/:token/dashcard/:dashcard-id/card/:card-id/:zoom/:x/:y refuses a trashed Card"
+    (with-embedding-enabled-and-new-secret-key!
+      (mt/with-temp [:model/Dashboard     {dashboard-id :id} {:enable_embedding true}
+                     :model/Card          {card-id :id}      {:dataset_query (venues-query)
+                                                              :archived      true}
+                     :model/DashboardCard {dashcard-id :id}  {:card_id      card-id
+                                                              :dashboard_id dashboard-id}]
+        (is (= "Not found."
+               (client/client :get 400 (format "embed/tiles/dashboard/%s/dashcard/%d/card/%d/1/1/1"
+                                               (dash-token dashboard-id) dashcard-id card-id)
+                              :latField (tiles.api-test/encoded-lat-field-ref)
+                              :lonField (tiles.api-test/encoded-lon-field-ref))))))))
 
 (deftest dashcard-tile-query-does-not-save-last-used-parameters-test
   (testing "GET api/embed/tiles/dashboard/:token/dashcard/:dashcard-id/card/:card-id/:zoom/:x/:y"

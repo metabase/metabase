@@ -27,7 +27,7 @@ Before rendering a filter, answer:
 
 Query options from Metabase at runtime with a breakout on the same generated table field or compatible Metric dimension used by the filter.
 
-- Run a `useMetabaseQuery` breakout on the same table field or Metric dimension used by `filter(...)`, then derive a deduped option list from returned rows.
+- Declare an options query in `queries/` with a breakout on the same table field or Metric dimension used by `filter(...)`, run it with `useMetabaseQuery`, then derive a deduped option list from returned rows. An options query is a query like any other: it needs its own `defineQuery` export, never an inline object.
 - Prefer querying options from the same source used by the charts so the option list stays compatible with the filter.
 - Treat categorical labels as runtime values unless the user explicitly provides a closed enum. Field names in the generated schema are not value lists.
 - Use a searchable picker/combobox for entity filters and long runtime option lists.
@@ -35,15 +35,19 @@ Query options from Metabase at runtime with a breakout on the same generated tab
 For Metric-backed cards, use the table source plus generated Metric aggregation. Use the generated Metric dimension in both the options query and the visible card query when the dimension belongs to that table source:
 
 ```ts
+// queries/revenue.query.ts
 const ordersTable = schema.tables.orders;
 const revenueMetric = schema.metrics.revenue;
 const franchiseDimension = revenueMetric.dimensions.orders.franchiseId;
 
-const { data: optionData } = useMetabaseQuery<typeof ordersTable>({
+export const RevenueByFranchise = defineQuery<typeof ordersTable>({
   source: ordersTable,
   aggregations: [revenueMetric],
   breakouts: [breakout(franchiseDimension)],
 });
+
+// the filter bar
+const { data: optionData } = useMetabaseQuery(RevenueByFranchise);
 
 const revenueFilters =
   selectedFranchise === "all"

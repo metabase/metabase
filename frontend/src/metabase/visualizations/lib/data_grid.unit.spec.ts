@@ -1,5 +1,9 @@
 import _ from "underscore";
 
+import {
+  type LocaleDataWithLanguage,
+  setLocalization,
+} from "metabase/utils/i18n";
 import { checkNotNull } from "metabase/utils/types";
 import {
   COLLAPSED_ROWS_SETTING,
@@ -872,6 +876,67 @@ describe("data_grid", () => {
           (i) => getRowSection(columnCount - 1, i)[0].value,
         ),
       ).toEqual(lastColumn);
+    });
+
+    describe("localized subtotals", () => {
+      const GERMAN: LocaleDataWithLanguage = {
+        headers: {
+          language: "de",
+          "plural-forms": "nplurals=2; plural=(n != 1);",
+        },
+        translations: {
+          "": { "Totals for ${ 0 }": { msgstr: ["Summen für ${ 0 }"] } },
+        },
+      };
+
+      const ENGLISH: LocaleDataWithLanguage = {
+        headers: {
+          language: "en",
+          "plural-forms": "nplurals=2; plural=(n != 1);",
+        },
+        translations: { "": {} },
+      };
+
+      const CREATED_AT = createMockColumn({
+        name: "CREATED_AT",
+        display_name: "Created At",
+        base_type: TYPE.DateTime,
+        effective_type: TYPE.DateTime,
+        unit: "month",
+        source: "breakout",
+      });
+
+      const data = makePivotData(
+        [
+          ["2026-05-01T00:00:00Z", "a", 1],
+          ["2026-05-01T00:00:00Z", "b", 2],
+        ],
+        [CREATED_AT, D1, M],
+      );
+
+      afterEach(() => {
+        setLocalization(ENGLISH);
+      });
+
+      it("formats a date breakout once, in the active locale (metabase#23076)", () => {
+        setLocalization(GERMAN);
+
+        const { leftHeaderItems } = multiLevelPivotForIndexes(
+          data,
+          [],
+          [0, 1],
+          [2],
+        );
+
+        // Formatting the subtotal value a second time would re-parse the
+        // localized "Mai 2026" and mangle the month.
+        expect(getValues(leftHeaderItems)).toEqual([
+          "Mai 2026",
+          "a",
+          "b",
+          "Summen für Mai 2026",
+        ]);
+      });
     });
   });
 });

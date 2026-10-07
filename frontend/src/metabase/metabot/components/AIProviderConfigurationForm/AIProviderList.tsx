@@ -14,6 +14,7 @@ import { SetByEnvVar } from "metabase/common/components/SetByEnvVar";
 import { useToast } from "metabase/common/hooks";
 import { useLlmConnectionModels } from "metabase/metabot/hooks";
 import { PLUGIN_METABOT } from "metabase/plugins";
+import { useSetting } from "metabase/settings";
 import {
   ActionIcon,
   Box,
@@ -81,6 +82,7 @@ export function AIProviderList() {
   } = useListLlmProviderTypesQuery();
   const [deleteProvider] = useDeleteLlmProviderMutation();
   const { errorByConnectionKey } = useLlmConnectionModels();
+  const embeddingProvider = useSetting("ee-embedding-provider");
 
   const [isAdding, { open: startAdding, close: stopAdding }] =
     useDisclosure(false);
@@ -152,8 +154,8 @@ export function AIProviderList() {
         )}
 
         <Button
-          variant={hasConnections ? "subtle" : "filled"}
-          p={hasConnections ? 0 : undefined}
+          variant={hasConnections ? "transparent" : "filled"}
+          size={hasConnections ? "compact-md" : "md"}
           w="fit-content"
           leftSection={<Icon name="add" />}
           onClick={startAdding}
@@ -174,7 +176,7 @@ export function AIProviderList() {
         opened={deleting != null}
         onClose={() => setDeleting(undefined)}
         title={t`Remove this provider?`}
-        message={getDeleteWarning(deleting, providerTypes)}
+        message={getDeleteWarning(deleting, providerTypes, embeddingProvider)}
         confirmButtonText={t`Remove provider`}
         onConfirm={handleConfirmDelete}
       />
@@ -182,26 +184,19 @@ export function AIProviderList() {
   );
 }
 
-// Features that read a fixed connection key directly rather than following the Metabot selection: deleting
-// the connection they name turns them off, which the admin deserves to hear before confirming.
-const KEYED_DEPENDENTS: Record<string, () => string> = {
-  anthropic: () =>
-    t`SQL generation also runs on this connection, and will stop working without it.`,
-  openai: () =>
-    t`Semantic search also runs on this connection, and will stop working without it.`,
-};
-
 function getDeleteWarning(
   deleting: LlmProviderConnection | undefined,
   providerTypes: LlmProviderType[],
+  embeddingProvider: string | null | undefined,
 ) {
   const base = providerTypes.find((type) => type.type === deleting?.type)
     ?.managed
     ? // eslint-disable-next-line metabase/no-literal-metabase-strings -- Metabase AI service
       t`This cancels your Metabase AI service subscription, and its models will no longer be available.`
     : t`This provider's models will no longer be available, and its saved credentials will be deleted.`;
-  const dependent = deleting && KEYED_DEPENDENTS[deleting.key]?.();
-  return dependent ? `${base} ${dependent}` : base;
+  return deleting != null && deleting.key === embeddingProvider
+    ? `${base} ${t`Semantic search also runs on this connection, and will stop working without it.`}`
+    : base;
 }
 
 function RowActions({ children }: { children: ReactNode }) {

@@ -77,8 +77,6 @@
 ;; Transforms
 (api-scope/defscope agent-transforms-read "agent:transforms:read"
   (deferred-tru "View transforms"))
-(api-scope/defscope agent-transforms-write "agent:transforms:write"
-  (deferred-tru "Create and edit transforms"))
 
 ;; Snippets
 (api-scope/defscope agent-snippets-read "agent:snippets:read"
@@ -134,7 +132,9 @@
   (deferred-tru "Render query visualizations in the MCP UI"))
 (api-scope/defscope agent-viz-mcp-ui-drill-through "agent:viz:mcp-ui:drill-through"
   (deferred-tru "Render drill-through visualizations in the MCP UI"))
-;; The v2 UI resources gate on `agent:query:run`, not a viz scope of their own: rendering a chart
+;; The v2 UI resources declare `agent:query:run`, not a viz scope of their own. The shell itself is
+;; served to any token -- a host reads it alongside the tool call, and it carries no data; the scope
+;; is what the UI credential a shell embeds costs. It is `agent:query:run` because rendering a chart
 ;; is what running a query looks like on screen, and `visualize_query`'s fresh-query path means a
 ;; viz-only grant would run a query the user thought they had declined. Client capability is gated
 ;; by the `:mcp-app-ui` extension, and the iframe executes under the user's own session, so a
@@ -158,7 +158,7 @@
 
 ;; Resource
 (api-scope/defscope agent-resource-read "agent:resource:read"
-  (deferred-tru "View resources"))
+  (deferred-tru "Read MCP resources"))
 
 ;; Todo
 (api-scope/defscope agent-todo-read "agent:todo:read"
@@ -192,12 +192,14 @@
 ;;; Metabot-specific scope state
 ;;; ──────────────────────────────────────────────────────────────────
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *current-user-scope*
   "Set of scope strings granted to the current user. Defaults to `#{}` (no
   permissions granted). Bind this in the request path once scope resolution
   is wired up."
   #{})
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *current-user-metabot-permissions*
   "Map of metabot permission type to value for the current user.
   e.g. `{:permission/metabot-sql-generation :yes, :permission/metabot-nlq :no, ...}`.
@@ -205,12 +207,14 @@
   consumers should fall back to `perm-type-defaults`."
   nil)
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *current-user-capabilities*
   "The request's capabilities (strings/keywords as sent by the API). Bound in the request path
   alongside `*current-user-scope*` so capability-gated checks (e.g. which skills are loadable)
   match the manifest, which is built from the same capabilities. Defaults to `#{}`."
   #{})
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *current-loadable-skill-ids*
   "Request-scoped atom containing the set of skill ids that appeared in the current
   profile's skill manifest. When bound, `load_skill` rejects ids outside this set

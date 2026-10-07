@@ -639,12 +639,69 @@
                                                       (if (= :channel/slack (first args))
                                                         (throw (ex-info "Slack failed" {}))
                                                         (apply original-render-noti args)))]
-            ;; slack failed but email should still be sent
+            ;; slack failed but email should still be sent; the synchronous caller then learns that slack
+            ;; failed (GDGT-3144)
             (is (= {:channel/email 1}
                    (update-vals
                     (pulse.test-util/with-captured-channel-send-messages!
-                      (pulse.send/send-pulse! (t2/select-one :model/Pulse pulse-id)))
+                      (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                                            #"Failed to deliver to channel/slack$"
+                                            (pulse.send/send-pulse! (t2/select-one :model/Pulse pulse-id)))))
                     count)))))))))
+
+(deftest failure-on-several-channels-names-each-channel-test
+  (testing "a synchronous send that fails on several channels names each channel in one exception (GDGT-3144)"
+    (notification.tu/with-send-notification-sync
+      (mt/with-temp
+        [:model/Card         {card-id :id}  (pulse.test-util/checkins-query-card {:breakout [!day.date]
+                                                                                  :limit    1})
+         :model/Pulse        {pulse-id :id} {:name            "Test Pulse"
+                                             :alert_condition "rows"}
+         :model/PulseCard    _              {:pulse_id pulse-id
+                                             :card_id  card-id}
+         :model/PulseChannel _              {:pulse_id     pulse-id
+                                             :channel_type "email"
+                                             :details      {:emails ["foo@metabase.com"]}}
+         :model/PulseChannel _              {:pulse_id     pulse-id
+                                             :channel_type "slack"
+                                             :details      {:channel "#general"}}]
+        (with-redefs [channel/render-notification (fn [channel-type & _]
+                                                    (throw (ex-info (str (name channel-type) " failed") {})))]
+          (let [e (is (thrown? clojure.lang.ExceptionInfo
+                               (pulse.send/send-pulse! (t2/select-one :model/Pulse pulse-id))))]
+            ;; the channels come in the pulse's channel order, which the test does not fix
+            (is (re-matches #"Failed to deliver to (channel/email, channel/slack|channel/slack, channel/email)"
+                            (ex-message e)))
+            (is (=? {:status-code     502
+                     :error-code      :notification/delivery-failed
+                     :notification-id pulse-id}
+                    (ex-data e)))
+            (is (= #{:channel/email :channel/slack}
+                   (set (map :channel_type (:failed-handlers (ex-data e))))))))))))
+
+(deftest webhook-failure-names-the-channel-test
+  (testing "a pulse webhook handler carries its channel under :channel; the failure still names the channel (GDGT-3144)"
+    (notification.tu/with-send-notification-sync
+      (mt/with-temp
+        [:model/Card         {card-id :id}    (pulse.test-util/checkins-query-card {:breakout [!day.date]
+                                                                                    :limit    1})
+         :model/Channel      {channel-id :id} {:type    :channel/http
+                                               :details {:url         "https://example.com/test"
+                                                         :auth-method :none}}
+         :model/Pulse        {pulse-id :id}   {:name            "Test Pulse"
+                                               :alert_condition "rows"}
+         :model/PulseCard    _                {:pulse_id pulse-id
+                                               :card_id  card-id}
+         :model/PulseChannel _                {:pulse_id     pulse-id
+                                               :channel_type "http"
+                                               :channel_id   channel-id}]
+        (with-redefs [channel/render-notification (fn [& _] (throw (ex-info "http failed" {})))]
+          (let [e (is (thrown? clojure.lang.ExceptionInfo
+                               (pulse.send/send-pulse! (t2/select-one :model/Pulse pulse-id))))]
+            (is (= (str "Failed to deliver to channel/http " channel-id) (ex-message e)))
+            (is (=? {:failed-handlers [{:channel_type :channel/http
+                                        :channel_id   channel-id}]}
+                    (ex-data e)))))))))
 
 (deftest alert-send-to-channel-e2e-test
   (testing "Send alert to http channel works e2e"
@@ -655,7 +712,7 @@
                       (swap! requests conj req)
                       {:status 200
                        :body   "ok"}))]
-      (mt/with-temporary-setting-values [http-channel-allowed-networks :allow-all]
+      (mt/with-temp-env-var-value! [mb-http-channel-allowed-networks "allow-all"]
         (notification.tu/with-notification-testing-setup!
           (channel.http-test/with-server [url [endpoint]]
             (mt/with-temp

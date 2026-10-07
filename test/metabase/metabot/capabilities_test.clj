@@ -10,7 +10,6 @@
 (def ^:private claimed-capabilities
   #{"permission:save_questions"
     "permission:write_sql_queries"
-    "permission:write_transforms"
     "frontend:navigate_user_v1"})
 
 (deftest enforce-permissions-drops-sql-claim-without-native-permission-test

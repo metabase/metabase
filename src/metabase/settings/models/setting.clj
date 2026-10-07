@@ -15,6 +15,7 @@
    [metabase.config.core :as config]
    [metabase.events.core :as events]
    [metabase.models.serialization :as serdes]
+   [metabase.premium-features.defenterprise :refer [defenterprise]]
    [metabase.settings.db :as settings.db]
    [metabase.settings.models.setting.cache :as setting.cache]
    [metabase.util :as u]
@@ -36,6 +37,7 @@
    (java.util.concurrent TimeUnit)
    (java.util.concurrent.locks ReentrantLock)))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *database*
   "The database upon which we are operating, from which [[*database-local-values*]] are taken.
   This is used to do a just-in-time check whether a given setting is enabled for the given database, so that we can
@@ -45,6 +47,7 @@
   You may need to manually bind it in other places where you want to use Database-local values."
   nil)
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *database-local-values*
   "Database-local Settings values (as a map of Setting name -> already-deserialized value). This comes from the value of
   `Database.settings` in the application DB. When bound, any Setting that *can* be Database-local will have a value
@@ -54,6 +57,7 @@
   You may need to manually bind it in other places where you want to use Database-local values."
   nil)
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *user-local-values*
   "User-local Settings values (as a delay to a atom containing a map of Setting name -> already-deserialized value). This
   comes from the value of `User.settings` in the application DB. When bound, any Setting that *can* be User-local will
@@ -75,6 +79,7 @@
     "user-recent-views"
     "most-recently-viewed-dashboard"})
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *allow-retired-setting-names*
   "A dynamic val that controls whether it's allowed to use retired settings.
   Primarily used in test to disable retired setting check."
@@ -410,6 +415,7 @@
     (swap! @*user-local-values* u/assoc-dissoc setting-name value)
     (settings.db/update-user-settings! api/*current-user-id* (json/encode @@*user-local-values*))))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *enforce-setting-access-checks*
   "A dynamic var that controls whether we should enforce checks on setting access. Defaults to false; should be
   set to true when settings are being written directly via /api/setting endpoints."
@@ -419,16 +425,12 @@
   [feature]
   ((requiring-resolve 'metabase.premium-features.core/has-feature?) feature))
 
-(defn has-advanced-setting-access?
+(defenterprise has-advanced-setting-access?
   "If `advanced-permissions` is enabled, check if current user has permissions to edit `setting`.
   Return `false` for all non-admins when `advanced-permissions` is disabled. Return `true` for all admins."
+  metabase-enterprise.advanced-permissions.common
   []
-  (or api/*is-superuser?*
-      (when (and config/ee-available?
-                 (has-feature? :advanced-permissions))
-        ((requiring-resolve 'metabase-enterprise.advanced-permissions.common/current-user-has-application-permissions?)
-         :setting))
-      false))
+  (boolean api/*is-superuser?*))
 
 (defn- current-user-can-access-setting?
   "This checks whether the current user should have the ability to read or write the provided setting.
@@ -474,26 +476,39 @@
     (or (@env-var-translation-cache sname)
         ((swap! env-var-translation-cache assoc sname (keyword (str "mb-" (munge-setting-name sname)))) sname))))
 
-(defn env-var-value
-  "Get the value of `setting-definition-or-name` from the corresponding env var, if any.
-   The name of the Setting is converted to uppercase and dashes to underscores; for example, a setting named
+(defn env-var-source
+  "Which env var supplies `setting-definition-or-name`'s value and what it holds, as `[env-var-name value]`, or nil
+  when no env var supplies one.
+
+  The name of the Setting is converted to uppercase and dashes to underscores; for example, a setting named
   `default-domain` can be set with the env var `MB_DEFAULT_DOMAIN`. Note that this strips out characters that are not
   legal for shells. Setting `foo-bar?` will expect to find the key `:mb-foo-bar` which will be sourced from the
   environment variable `MB_FOO_BAR`.
 
   When the primary env var is truly absent (nil from environ) and the setting has a `:deprecated-name`, the env var
-  derived from that name is checked as a fallback. An empty string for the primary env var means \"explicitly unset\"
-  and blocks the fallback."
-  ^String [setting-definition-or-name]
+  derived from that name is checked as a fallback, and is the one named -- so a message about the value points at
+  the variable the operator actually set. An empty string for the primary env var means \"explicitly unset\" and
+  blocks the fallback.
+
+  Prefer [[env-var-value]] unless the name is needed too."
+  [setting-definition-or-name]
   (let [setting (resolve-setting setting-definition-or-name)]
     (when (and (allows-site-wide-values? setting)
                (allows-setting-via-env? setting))
       (if-let [v (env/env (setting-env-map-name setting))]
-        ;; primary env var is set — return it only if non-empty
-        (not-empty v)
+        ;; primary env var is set — use it only if non-empty
+        (when-let [v (not-empty v)]
+          [(env-var-name setting) v])
         ;; primary env var is absent — try deprecated name
         (when-let [deprecated-name (:deprecated-name setting)]
-          (not-empty (env/env (setting-env-map-name deprecated-name))))))))
+          (when-let [v (not-empty (env/env (setting-env-map-name deprecated-name)))]
+            [(env-var-name deprecated-name) v]))))))
+
+(defn env-var-value
+  "Get the value of `setting-definition-or-name` from the corresponding env var, if any.
+  See [[env-var-source]], which this reads the value half of."
+  ^String [setting-definition-or-name]
+  (second (env-var-source setting-definition-or-name)))
 
 (defn log-deprecated-env-var-usage!
   "Log warnings for any settings currently using a deprecated env var name.
@@ -521,6 +536,7 @@
         (log/warnf "Deprecated %s is set; rename it to %s."
                    legacy-env primary-env)))))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic *disable-init* false)
 
 (declare get)
@@ -550,6 +566,7 @@
           (settings.db/setting-value setting-name-str)
           (core/get cache setting-name-str))))))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *deprecated-db-key-warned*
   "Set of deprecated DB keys that have already triggered a warning. Dynamic so tests can rebind it."
   (atom #{}))

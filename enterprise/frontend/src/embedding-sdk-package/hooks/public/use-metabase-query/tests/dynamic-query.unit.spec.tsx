@@ -1,12 +1,13 @@
-/* eslint-disable import/order */
-
+// Register mocks before loading the modules under test.
+// oxfmt-ignore
 import { createMockStore, resetTestState, stagesOf } from "./setup";
-import { TEST_SCHEMA } from "./fixtures";
 
 import { resolveDatasetQuery as resolveDatasetQueryInBundle } from "embedding-sdk-bundle/lib/create-metabase-query";
 import { EMBEDDING_SDK_CONFIG } from "metabase/embedding-sdk/config";
 
-import { count, filter, orderBy } from "..";
+import { count, filter, orderBy, sum } from "..";
+
+import { TEST_SCHEMA } from "./fixtures";
 
 beforeEach(resetTestState);
 afterEach(() => {
@@ -184,6 +185,78 @@ describe("dynamic query clauses", () => {
       "order-by": [["desc", expect.anything(), expect.anything()]],
       limit: 5,
     });
+  });
+
+  // Products' ID is reachable through PRODUCT_ID under the same name.
+  it.each([
+    ["the published card", false],
+    ["the dev preview table", true],
+  ])(
+    "tells a result column from a same-named implicitly joinable column on %s",
+    async (_source, isDataAppDev) => {
+      EMBEDDING_SDK_CONFIG.isDataAppDev = isDataAppDev;
+
+      const datasetQuery = await resolveDatasetQueryInBundle(createMockStore())(
+        STATIC_QUERY,
+        {
+          orderBys: [orderBy(TEST_SCHEMA.tables.orders.fields.id, "desc")],
+        },
+      );
+
+      expect(stagesOf(datasetQuery)[1]).toMatchObject({
+        "order-by": [
+          ["desc", expect.anything(), ["field", expect.anything(), "ID"]],
+        ],
+      });
+    },
+  );
+
+  // Unnamed, both sums return a column named `sum`, and the later stage cannot
+  // tell them apart.
+  it("orders the dynamic stage by one of two sums, by its name", async () => {
+    EMBEDDING_SDK_CONFIG.isDataAppDev = true;
+
+    const totalAmount = sum(TEST_SCHEMA.tables.orders.fields.amount, {
+      name: "total amount",
+    });
+    const totalIds = sum(TEST_SCHEMA.tables.orders.fields.id, {
+      name: "total ids",
+    });
+
+    const datasetQuery = await resolveDatasetQueryInBundle(createMockStore())(
+      {
+        ...STATIC_QUERY,
+        aggregations: [totalAmount, totalIds],
+        breakouts: [TEST_SCHEMA.tables.orders.fields.status],
+      },
+      { orderBys: [orderBy(totalIds, "desc")] },
+    );
+
+    expect(stagesOf(datasetQuery)).toMatchObject([
+      {
+        aggregation: [
+          [
+            "sum",
+            expect.objectContaining({ name: "total amount" }),
+            expect.anything(),
+          ],
+          [
+            "sum",
+            expect.objectContaining({ name: "total ids" }),
+            expect.anything(),
+          ],
+        ],
+      },
+      {
+        "order-by": [
+          [
+            "desc",
+            expect.anything(),
+            ["field", expect.anything(), "total ids"],
+          ],
+        ],
+      },
+    ]);
   });
 
   it("rejects table-scoped references in the dynamic part", async () => {

@@ -8,6 +8,8 @@
    [clojure.string :as str]
    [environ.core :as env]
    [metabase.config.core :as config]
+   [metabase.mcp.v2.common :as common]
+   [metabase.mcp.v2.message :as message]
    [metabase.request.core :as request]
    [metabase.system.core :as system]
    [metabase.util.json :as json]
@@ -58,11 +60,15 @@
    tool — so those two keys only render into the test fallback template."
   [vars]
   (cond
+    ;; The fallback wins when installed: a developer whose worktree has a frontend build would
+    ;; otherwise render the built template, and the credential-embedding tests would fail on their
+    ;; machine and pass on CI. Gated on `is-test?` so no production process can ever prefer an
+    ;; inline template over the built one, whatever leaves the atom set.
+    (and config/is-test? @fallback-template)
+    (stencil/render-string @fallback-template vars)
+
     (io/resource embed-mcp-template-path)
     (stencil/render-file embed-mcp-template-path vars)
-
-    @fallback-template
-    (stencil/render-string @fallback-template vars)
 
     :else
     (throw (ex-info (str "Missing MCP embed template: " embed-mcp-template-path
@@ -153,11 +159,13 @@
   (set/difference (:required-extensions tool #{}) supported-extensions))
 
 (defn missing-extensions-error
-  "Teaching message for a tool call the client can't render."
+  "Teaching message for a call to registered tool `tool-name` from a client missing `missing-extensions`."
   [tool-name missing-extensions]
-  (let [extension-names (str/join ", " (map #(get extension-labels % (name %)) missing-extensions))]
-    (str tool-name " requires a client that supports " extension-names ". "
-         "Reconnect from a client that advertises text/html;profile=mcp-app.")))
+  (let [extension-names (common/list-message (map #(get extension-labels % (name %)) missing-extensions))]
+    (message/msg ["%s requires a client that supports %s."
+                  "Reconnect from a client that advertises text/html;profile=mcp-app."]
+                 tool-name
+                 extension-names)))
 
 (defn embed-render-fn
   "Build a `:render-fn` that serves the MCP Apps iframe shell.
@@ -169,8 +177,8 @@
 
    The returned fn takes the `resources/read` options map: `:ui-credential` (the scoped credential
    the iframe authenticates with, as a delay — forcing it here is what mints one, so resources that
-   do not embed a credential never cause one to exist) and `:session-id` (the MCP session id it
-   echoes back on callbacks). Since #81041 the production template discards both — the iframe
+   do not embed a credential never cause one to exist; absent or nil renders none) and `:session-id`
+   (the MCP session id it echoes back on callbacks). Since #81041 the production template discards both — the iframe
    fetches its credential through the `refresh_ui_credential` tool — so on a production shell read
    the minted credential (HMAC-only, no DB row) is unused; the test fallback template still embeds
    it, which is what the shell-credential tests exercise."

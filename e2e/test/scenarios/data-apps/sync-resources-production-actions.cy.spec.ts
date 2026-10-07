@@ -2,6 +2,7 @@ import { USERS, WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import {
   addUserToGroup,
   createDataAppApiKey,
+  createDataAppScoreboardAction,
   dataAppIframe,
   dataAppPermissionGroupId,
   mockDataApp,
@@ -11,7 +12,6 @@ import {
 const { H } = cy;
 
 const TEST_TABLE = "scoreboard_actions";
-const MODEL_NAME = "Scoreboard model";
 
 const APP_SLUG = "synced-actions-app";
 const APP_DISPLAY_NAME = "Synced Actions App";
@@ -23,7 +23,18 @@ const MANIFEST_FILE = () => `${APP_ROOT()}/data_app.yaml`;
 const LOCKFILE = () => `${APP_ROOT()}/resources_metadata.json`;
 
 /** The manifest as source control holds it. */
-const AUTHORED_MANIFEST = `name: ${APP_DISPLAY_NAME}\npath: ./dist/index.js\n`;
+const AUTHORED_MANIFEST = [
+  "version: 1",
+  `name: ${APP_DISPLAY_NAME}`,
+  `slug: ${APP_SLUG}`,
+  "path: ./dist/index.js",
+  "entity_id: nPu5r1EndcM_D8TQfLk9c",
+  "serdes/meta:",
+  "- model: DataApp",
+  "  id: nPu5r1EndcM_D8TQfLk9c",
+  "  label: synced-actions-app",
+  "",
+].join("\n");
 
 /** The declaration as source control holds it, with no generated ID yet. */
 const declaration = (sourceActionId: number) =>
@@ -38,8 +49,8 @@ const declaration = (sourceActionId: number) =>
 
 /**
  * The action half of the production path. Outside the dev preview
- * `toExecutableActionId` runs `copiedActionId` — the copy hanging off the copied
- * model — because that is the only action an app's viewers may execute.
+ * `toExecutableActionId` runs `copiedActionId` — the copy in the app's collection —
+ * because that is the only action an app's viewers may execute.
  */
 describe(
   "scenarios > data apps > sync-resources in production (actions)",
@@ -60,10 +71,6 @@ describe(
       H.resetTestTable({ type: "postgres", table: TEST_TABLE });
       H.resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: TEST_TABLE });
       H.setActionsEnabledForDB(WRITABLE_DB_ID);
-      H.createModelFromTableName({
-        tableName: TEST_TABLE,
-        modelName: MODEL_NAME,
-      });
 
       restoreAuthoredFixture();
       createDataAppApiKey().as("apiKey");
@@ -73,40 +80,33 @@ describe(
       restoreAuthoredFixture();
     });
 
-    /** Declares the model's action, synchronizes, and returns both action IDs. */
+    /** Declares an action, synchronizes, and returns both action IDs. */
     const syncApp = () =>
-      cy.get<number>("@modelId").then((modelId) =>
-        H.createImplicitAction({ model_id: modelId, kind: "create" }).then(
-          ({ body: action }) => {
-            cy.writeFile(ACTION_FILE(), declaration(action.id));
+      createDataAppScoreboardAction().then((action) => {
+        cy.writeFile(ACTION_FILE(), declaration(action.id));
 
-            return cy.get<string>("@apiKey").then((apiKey) =>
-              syncDataAppResources(apiKey, APP_ROOT()).then(({ ok, error }) => {
-                expect(error, "sync-resources failed").to.eq(null);
-                expect(ok).to.eq(true);
+        return cy.get<string>("@apiKey").then((apiKey) =>
+          syncDataAppResources(apiKey, APP_ROOT()).then(({ ok, error }) => {
+            expect(error, "sync-resources failed").to.eq(null);
+            expect(ok).to.eq(true);
 
-                return cy
-                  .readFile(`${APP_ROOT()}/resources_metadata.json`)
-                  .then((lockfile) => {
-                    const copiedActionId =
-                      lockfile.models?.[0]?.actions?.[0]?.copiedActionId;
+            return cy
+              .readFile(`${APP_ROOT()}/resources_metadata.json`)
+              .then((lockfile) => {
+                const copiedActionId = lockfile.actions?.[0]?.copiedActionId;
 
-                    if (typeof copiedActionId !== "number") {
-                      throw new Error(
-                        "The sync wrote no action to the lockfile.",
-                      );
-                    }
+                if (typeof copiedActionId !== "number") {
+                  throw new Error("The sync wrote no action to the lockfile.");
+                }
 
-                    return cy.wrap(
-                      { sourceActionId: action.id, copiedActionId },
-                      { log: false },
-                    );
-                  });
-              }),
-            );
-          },
-        ),
-      );
+                return cy.wrap(
+                  { sourceActionId: action.id, copiedActionId },
+                  { log: false },
+                );
+              });
+          }),
+        );
+      });
 
     it("executes the synchronized copy rather than the authored action", () => {
       syncApp().then(({ sourceActionId, copiedActionId }) => {

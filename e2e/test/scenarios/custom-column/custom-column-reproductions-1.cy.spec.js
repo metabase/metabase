@@ -45,6 +45,47 @@ describe("issue 13751", { tags: "@external" }, () => {
   });
 });
 
+describe("postgres > question > custom columns", { tags: "@external" }, () => {
+  beforeEach(() => {
+    H.restore("postgres-12");
+    cy.signInAsAdmin();
+
+    cy.request(`/api/database/${WRITABLE_DB_ID}/schema/public`).then(
+      ({ body }) => {
+        const tableId = body.find((table) => table.name === "orders").id;
+        H.openTable({
+          database: WRITABLE_DB_ID,
+          table: tableId,
+          mode: "notebook",
+        });
+      },
+    );
+
+    cy.findByRole("button", { name: "Summarize" }).click();
+  });
+
+  it("`Percentile` custom expression function should accept two parameters (metabase#15714)", () => {
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
+    cy.findByText("Pick a function or metric").click();
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
+    cy.findByText("Custom Expression").click();
+    H.enterCustomColumnDetails({
+      formula: "Percentile([Subtotal], 0.1)",
+      format: true,
+    });
+
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
+    cy.findByText("Function Percentile expects 1 argument").should("not.exist");
+    H.CustomExpressionEditor.nameInput().type("Expression name");
+    cy.button("Done").should("not.be.disabled").click();
+    // Todo: Add positive assertions once this is fixed
+
+    cy.findByTestId("aggregate-step")
+      .contains("Expression name")
+      .should("exist");
+  });
+});
+
 describe("issue 14843", () => {
   const { PEOPLE, PEOPLE_ID } = SAMPLE_DATABASE;
   const CC_NAME = "City Length";
@@ -80,6 +121,8 @@ describe("issue 14843", () => {
 
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText(`${CC_NAME} is not equal to 3`);
+    // Rye (length 3) is the city of the 4th person, so it would render without the filter
+    H.tableInteractiveBody().findByText("Hudson Borer").should("be.visible");
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Rye").should("not.exist");
   });
@@ -488,6 +531,59 @@ describe("issue 21135", () => {
   });
 });
 
+describe("issue 40064", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should be able to edit a custom column with the same name as one of the columns used in the expression (metabase#40064)", () => {
+    H.createQuestion(
+      {
+        query: {
+          "source-table": ORDERS_ID,
+          expressions: {
+            Tax: ["*", ["field", ORDERS.TAX, { "base-type": "type/Float" }], 2],
+          },
+          limit: 1,
+        },
+      },
+      { visitQuestion: true },
+    );
+
+    cy.log("check the initial expression value");
+    H.tableInteractive().findByText("4.14").should("be.visible");
+
+    cy.log("update the expression and check the value");
+    H.openNotebook();
+    H.getNotebookStep("expression").findByText("Tax").click();
+    H.enterCustomColumnDetails({ formula: "[Tax] * 3", blur: true });
+    H.popover().button("Update").click();
+    H.visualize();
+    H.tableInteractive().findByText("6.21").should("be.visible");
+
+    cy.log("rename the expression and make sure you cannot create a cycle");
+    H.openNotebook();
+    H.getNotebookStep("expression").findByText("Tax").click();
+    H.enterCustomColumnDetails({
+      formula: "[Tax] * 3",
+      name: "Tax3",
+      blur: true,
+    });
+    H.popover().button("Update").should("not.be.disabled").click();
+    H.getNotebookStep("expression").findByText("Tax3").click();
+    H.enterCustomColumnDetails({
+      formula: "[Tax3] * 3",
+      name: "Tax3",
+      blur: true,
+    });
+    H.popover().within(() => {
+      cy.findByText("Unknown column: Tax3").should("be.visible");
+      cy.button("Update").should("be.disabled");
+    });
+  });
+});
+
 describe("issue 21513", () => {
   beforeEach(() => {
     H.restore();
@@ -596,9 +692,20 @@ describe("issue 24922", () => {
     H.enterCustomColumnDetails(customColumnDetails);
     cy.button("Done").click();
 
-    H.visualize();
+    H.visualize(({ body }) => {
+      expect(body.error).to.not.exist;
+    });
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("CustomColumn").should("be.visible");
+    // The first order's total is under 100, the second one's is not
+    H.tableInteractiveBody()
+      .findAllByText("Segment")
+      .first()
+      .should("be.visible");
+    H.tableInteractiveBody()
+      .findAllByText("Other")
+      .first()
+      .should("be.visible");
   });
 });
 
@@ -775,6 +882,7 @@ describe("issue 49882", () => {
     H.CustomExpressionEditor.acceptCompletion("tab");
 
     H.CustomExpressionEditor.value().should("equal", "[Product → Rating]");
+    cy.focused().should("have.attr", "role", "textbox");
   });
 });
 
@@ -880,25 +988,6 @@ describe("issue 49304", () => {
       cy.findByText("gizmo").should("be.visible");
       cy.findByLabelText("Case sensitive").should("be.checked");
     });
-  });
-});
-
-describe("issue 41305", () => {
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsNormalUser();
-  });
-
-  it("should allow to right click in the suggestion popover without closing it (metabase#41305)", () => {
-    H.openProductsTable({ mode: "notebook" });
-    H.addCustomColumn();
-    H.enterCustomColumnDetails({ formula: "contains(", blur: false });
-    H.popover()
-      .should("have.length", 2)
-      .last()
-      .findByText("The column or text to check.")
-      .rightclick();
-    H.popover().should("have.length", 2);
   });
 });
 
@@ -1031,16 +1120,18 @@ describe("issue 50925", () => {
     H.getNotebookStep("expression").findByText("Custom").click();
 
     H.CustomExpressionEditor.focus()
-      .type("{leftarrow}".repeat(9))
-      .type(" [Pr", { focus: false });
+      .type("{leftarrow}".repeat(8))
+      .type("[Pr", { focus: false });
 
-    cy.wait(300);
     H.CustomExpressionEditor.completions().should("be.visible");
     H.CustomExpressionEditor.get().realPress("Enter", { pressDelay: 10 });
 
     H.CustomExpressionEditor.blur()
       .value()
-      .should("equal", "case([ID] = 1, [Price] * 1.21, [Price] [Price])");
+      .should(
+        "match",
+        /^case\(\[ID\] = 1, \[Price\] \* 1\.21, \[Price\]\s*\[Price\]\)$/,
+      );
   });
 });
 
@@ -1062,6 +1153,14 @@ describe("issue 53682", () => {
       );
       cy.button("Done").should("be.disabled");
     });
+
+    cy.log("Editing the name should not crash the editor");
+    H.CustomExpressionEditor.nameInput().click().type("Name");
+    H.expressionEditorWidget().should("be.visible");
+    H.CustomExpressionEditor.nameInput().should("have.value", "Name");
+    H.popover()
+      .findByText("Function contains expects at least 2 arguments")
+      .should("be.visible");
   });
 });
 

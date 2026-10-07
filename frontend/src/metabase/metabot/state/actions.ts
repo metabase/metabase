@@ -2,7 +2,6 @@ import {
   type ThunkDispatch,
   type UnknownAction,
   isRejected,
-  nanoid,
 } from "@reduxjs/toolkit";
 import { P, isMatching, match } from "ts-pattern";
 import { t } from "ttag";
@@ -32,7 +31,6 @@ import type {
   MetabotChatContext,
   MetabotCodeEditorBufferContext,
   MetabotStateContext,
-  MetabotTransformInfo,
 } from "metabase-types/api";
 
 import { metabotApi } from "../api";
@@ -87,10 +85,6 @@ export const {
   toolCallSearchResults,
   setMetabotReqIdOverride,
   setDebugMode,
-  addSuggestedTransform,
-  activateSuggestedTransform,
-  deactivateSuggestedTransform,
-  updateSuggestedTransformId,
   createAgent,
   destroyAgent,
   attachAgentToConversation,
@@ -328,7 +322,6 @@ export const submitInput = createAsyncThunk<
     metabot_id?: string;
     profile?: MetabotProfileId;
     retryMessageId?: string;
-    isTransformsPage?: boolean;
     isFullPageMetabot?: boolean;
   }
 >(
@@ -340,7 +333,6 @@ export const submitInput = createAsyncThunk<
       message: rawPrompt,
       profile,
       retryMessageId,
-      isTransformsPage,
       isFullPageMetabot,
       ...data
     } = payload;
@@ -388,7 +380,6 @@ export const submitInput = createAsyncThunk<
         getState(),
         conversationId,
         retryMessageId,
-        isTransformsPage ?? false,
       );
       const messageId = createMessageId();
       const userMessageId = retryMessageId ?? uuid();
@@ -424,14 +415,28 @@ export const submitInput = createAsyncThunk<
       const result = await sendMessageRequestPromise;
 
       if (isRejected(result)) {
+        const metabotName = getSetting(getState(), "metabot-name");
         return {
           prompt: rawPrompt,
           success: false,
           shouldRetry: result.payload?.shouldRetry ?? true,
-          error:
-            result.payload?.type === "error"
-              ? result.payload.display
-              : undefined,
+          error: match(result)
+            .returnType<MetabotAgentTurnDisplayError | undefined>()
+            .with(
+              P.union(
+                { payload: { type: "abort" } },
+                { meta: { aborted: true } },
+              ),
+              () => ({
+                type: "aborted",
+                message: t`Response from ${metabotName} was interrupted`,
+              }),
+            )
+            .with(
+              { payload: { type: "error" } },
+              ({ payload }) => payload.display,
+            )
+            .otherwise(() => undefined),
         };
       }
 
@@ -552,27 +557,6 @@ export const sendAgentRequest = createAsyncThunk<
                   },
                 });
               })
-              .with({ type: "data-transform_suggestion" }, (part) => {
-                const suggestionId = nanoid();
-                const suggestedTransform = {
-                  ...part.data,
-                  id: part.data.id || undefined,
-                  active: true,
-                  suggestionId,
-                };
-                dispatch(addSuggestedTransform(suggestedTransform));
-
-                const editorTransform = request.context.user_is_viewing
-                  .filter(
-                    (t): t is MetabotTransformInfo => t.type === "transform",
-                  )
-                  .find((t) => t.id === suggestedTransform.id);
-                pushDataPart({
-                  type: "data_part",
-                  part,
-                  metadata: { editorTransform, suggestionId },
-                });
-              })
               .with({ type: "data-generated_entity" }, (part) => {
                 // TODO: always push, but let the surface render and/or navigate on its own
                 if (isFullPageMetabot) {
@@ -622,6 +606,7 @@ export const sendAgentRequest = createAsyncThunk<
                 );
               })
               .with(
+                { type: "data-transform_suggestion" },
                 { type: "data-navigate_to" },
                 { type: "data-adhoc_viz" },
                 { type: "data-static_viz" },
@@ -734,7 +719,15 @@ export const sendAgentRequest = createAsyncThunk<
           serverStarted,
           error: streamedError,
           display: isMatching(
-            { type: "ai_usage_limit_reached", message: P.string },
+            {
+              type: P.union(
+                "ai_usage_limit_reached",
+                "ai_provider_billing",
+                "ai_provider_rate_limit",
+                "ai_provider_auth",
+              ),
+              message: P.string,
+            },
             streamedError,
           )
             ? // special case where we want to show the returned error from the backend
@@ -851,7 +844,6 @@ export const retryPrompt = createAsyncThunk<
     metabot_id?: string;
     conversationId: string;
     profile?: MetabotProfileId;
-    isTransformsPage?: boolean;
     isFullPageMetabot?: boolean;
   }
 >(
@@ -863,7 +855,6 @@ export const retryPrompt = createAsyncThunk<
       metabot_id,
       conversationId,
       profile,
-      isTransformsPage,
       isFullPageMetabot,
     },
     { getState, dispatch },
@@ -901,7 +892,6 @@ export const retryPrompt = createAsyncThunk<
         metabot_id,
         profile,
         retryMessageId,
-        isTransformsPage,
         isFullPageMetabot,
       }),
     ).unwrap();

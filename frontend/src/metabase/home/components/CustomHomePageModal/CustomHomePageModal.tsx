@@ -42,12 +42,12 @@ export const CustomHomePageModal = ({
           <Box ml="0.5rem" mr="2.5rem">
             <Text
               span
-              c="text-primary-inverse"
+              c="inherit"
               fw={700}
             >{t`This dashboard has been set as your homepage.`}</Text>
             <Text
               span
-              c="text-primary-inverse"
+              c="inherit"
             >{t`You can change this in Admin > Settings > General.`}</Text>
           </Box>
         ),
@@ -100,7 +100,7 @@ export const CustomHomePageModal = ({
       </Box>
 
       <Flex mt="xl" justify="flex-end" gap="0.5rem">
-        <Button variant="subtle" onClick={handleClose}>
+        <Button variant="subtle" color="neutral" onClick={handleClose}>
           {t`Cancel`}
         </Button>
         <Button variant="filled" disabled={!dashboardId} onClick={handleSave}>

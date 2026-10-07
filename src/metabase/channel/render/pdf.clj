@@ -75,6 +75,7 @@
 
 (set! *warn-on-reflection* true)
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *debug-boxes*
   "When true, fill the *allocated* bounding box (the full space available, not the content's actual extent) behind
   each chart (red) and each card title / heading card (light blue), so one can see how much of its cell the content
@@ -142,6 +143,7 @@
 ;; page draws we collect link rectangles into `*link-rects*` and add the annotations afterward.
 ;; --------------------------------------------------------------------------------------------
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *link-rects*
   "While a page renders, an atom holding a vector of `{:x0 :y0 :x1 :y1 :href}` rectangles for the clickable link
   annotations to add to the page once drawing is done."
@@ -930,6 +932,14 @@
     :else
     {:footer nil :footer-h 0}))
 
+(defn- body-chart-type
+  "The chart type the table body is styled and footered as. A `:table` card whose \"Pivot table\" toggle applies
+  renders as an assembled grid, so it takes a pivot's treatment: no header dividers and no source row count."
+  [chart-type data]
+  (if (and (= :table chart-type) (body/simple-pivot? data))
+    :pivot
+    chart-type))
+
 (defn- table-body-png
   "Render a table-like card body (`:table`, `:pivot`, or `:object`) to PNG bytes sized to the `px-w` x `px-h`
   cell (logical pixels), supersampled at [[table-supersample]]x. The body is a `width:100%` table inside a
@@ -947,15 +957,16 @@
         ;; width would only overflow the page and clip the text (see [[table/*text-wrapping-fallback-width*]]).
         info     (binding [table/*text-wrapping-fallback-width* nil]
                    (body/render chart-type :inline timezone card dashcard (:data result)))
+        body-type (body-chart-type chart-type (:data result))
         note     (when (= :object chart-type) (object-detail-note (:content info)))
         ;; the note is body/render's trailing element, so drop it from the clipped body (it's pinned below)
         body     (cond-> (:content info) note pop)
-        {:keys [footer footer-h]} (card-footer chart-type note (count (get-in result [:data :rows])))
+        {:keys [footer footer-h]} (card-footer body-type note (count (get-in result [:data :rows])))
         max-h    (max 0 (- (long px-h) footer-h 2))
         clip-css (format "width:%dpx;max-height:%dpx;overflow:hidden" (long px-w) max-h)
         ;; the frame is stroked natively in draw-table-card!, so this wrapper has no border
         content  [:div
-                  [:div {:style clip-css} (restyle-table body (= :table chart-type))]
+                  [:div {:style clip-css} (restyle-table body (= :table body-type))]
                   footer]]
     (png/render-html-to-png (assoc info :content content) px-w {:channel.render/scale table-supersample})))
 

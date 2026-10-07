@@ -2,6 +2,7 @@ import type { ThunkDispatch, UnknownAction } from "@reduxjs/toolkit";
 import { createListenerMiddleware } from "@reduxjs/toolkit";
 
 import { Api } from "metabase/api";
+import { getUserId } from "metabase/current-user";
 import type { State } from "metabase/redux/store";
 import { EnterpriseApi } from "metabase-enterprise/api/api";
 import { remoteSyncApi } from "metabase-enterprise/api/remote-sync";
@@ -9,6 +10,7 @@ import { tag } from "metabase-enterprise/api/tags";
 import type { RemoteSyncTaskStatus } from "metabase-types/api";
 
 import { REMOTE_SYNC_INVALIDATION_TAGS } from "../constants";
+import { getCurrentTask } from "../selectors";
 import {
   modalDismissed,
   syncConflictVariantUpdated,
@@ -109,15 +111,34 @@ const terminalTaskStates: RemoteSyncTaskStatus[] = [
   "successful",
   "errored",
   "cancelled",
-  "timed-out",
 ] as const;
 
 remoteSyncListenerMiddleware.startListening({
   matcher: remoteSyncApi.endpoints.getRemoteSyncCurrentTask.matchFulfilled,
-  effect: async (action, { dispatch }) => {
+  effect: async (action, { dispatch, getState, getOriginalState }) => {
     const task = action.payload;
 
     if (task) {
+      // The query is subscribed whenever remote sync is enabled, so a fetch made while nothing is being
+      // watched is discovery, not an event: the current user's own running task is picked up so this tab
+      // can follow it, while a finished one is history and is left alone. Treating history as an event
+      // would replay an old conflict on every page load and, since the terminal handling invalidates this
+      // query's own tag, refetch forever. Another user's task (or an auto-import) is not followed: the
+      // blocking progress modal would otherwise open for every admin, offering to cancel a sync they did
+      // not start.
+      const previous = getCurrentTask(getOriginalState());
+      const wasRunning = previous !== null && previous.ended_at === null;
+
+      if (!wasRunning) {
+        if (
+          task.ended_at === null &&
+          task.initiated_by === getUserId(getState())
+        ) {
+          dispatch(taskUpdated(task));
+        }
+        return;
+      }
+
       dispatch(taskUpdated(task));
 
       if (task.status === "conflict") {

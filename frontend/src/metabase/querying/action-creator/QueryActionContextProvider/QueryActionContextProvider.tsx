@@ -11,7 +11,6 @@ import type { CreateQueryActionParams } from "metabase/actions/types";
 import { getDefaultFormSettings } from "metabase/actions/utils";
 import { useSelector } from "metabase/redux";
 import type Question from "metabase-lib/v1/Question";
-import { getTemplateTagParametersFromCard } from "metabase-lib/v1/parameters/utils/template-tags";
 import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 import type {
   ActionFormSettings,
@@ -126,12 +125,7 @@ export function QueryActionContextProvider({
   );
 
   const handleQueryChange = useCallback((nextQuery: NativeQuery) => {
-    const nextQuestion = nextQuery.question();
-    const parameters = getTemplateTagParametersFromCard(
-      nextQuestion.card(),
-      nextQuestion.metadata(),
-    );
-    setQuestion(nextQuestion.setParameters(parameters));
+    setQuestion(nextQuery.question().applyTemplateTagParameters());
   }, []);
 
   const renderEditorBody = useCallback(

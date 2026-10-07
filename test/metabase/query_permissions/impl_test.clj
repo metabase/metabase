@@ -385,3 +385,15 @@
         (let [query (mt/mbql-query orders)]
           (is (false? (query-perms/can-run-query? query)))
           (is (false? (query-perms/can-run-query? query false true))))))))
+
+(deftest check-result-metadata-data-perms-error-message-test
+  (testing "the denied table's ID reads as a plain number, with no digit-grouping separator"
+    ;; `tru` runs its arguments through MessageFormat, which formats a bare integer for the current locale: a
+    ;; four-digit ID comes out as "1,595". IDs only reach four digits on busy instances, so the ID is passed as a
+    ;; string to keep the message stable whatever its magnitude.
+    (mt/with-no-data-perms-for-all-users!
+      (mt/with-current-user (mt/user->id :rasta)
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"You do not have permission to view data of table 1595 in result_metadata\."
+             (query-perms/check-result-metadata-data-perms (mt/id) [{:name "NAME", :table_id 1595}])))))))

@@ -203,7 +203,6 @@ export function TableAttributesEditBulk({
             {canPublish && !remoteSyncReadOnly && (
               <Button
                 flex={1}
-                p="sm"
                 leftSection={<Icon name="publish" />}
                 onClick={() => setModalType(hasLibrary ? "publish" : "library")}
               >
@@ -213,7 +212,6 @@ export function TableAttributesEditBulk({
             {canPublish && !remoteSyncReadOnly && hasLibrary && (
               <Button
                 flex={1}
-                p="sm"
                 leftSection={<Icon name="unpublish" />}
                 onClick={() => setModalType("unpublish")}
               >
@@ -309,7 +307,7 @@ export function TableAttributesEditBulk({
       </Stack>
 
       <PLUGIN_LIBRARY.CreateLibraryModal
-        title={t`First, let's create your Library`}
+        title={t`First, let's create your semantic layer`}
         explanatorySentence={t`This is where published tables will go.`}
         isOpened={modalType === "library"}
         onCreate={() => setModalType("publish")}

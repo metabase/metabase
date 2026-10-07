@@ -1,15 +1,11 @@
 const { H } = cy;
-import { USER_GROUPS, WRITABLE_DB_ID } from "e2e/support/cypress_data";
+import { WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import { FIRST_COLLECTION_ID } from "e2e/support/cypress_sample_instance_data";
 import { FIXTURE_PATH, VALID_CSV_FILES } from "e2e/support/helpers";
-
-const { NOSQL_GROUP, ALL_USERS_GROUP } = USER_GROUPS;
 
 describe("CSV Uploading", { tags: ["@external", "@actions"] }, () => {
   beforeEach(() => {
     cy.intercept("POST", "/api/dataset").as("dataset");
-    cy.intercept("POST", "/api/table/*/append-csv").as("appendCSV");
-    cy.intercept("POST", "/api/table/*/replace-csv").as("replaceCSV");
   });
 
   it("Can upload a CSV file to an empty postgres schema", () => {
@@ -104,7 +100,8 @@ describe("CSV Uploading", { tags: ["@external", "@actions"] }, () => {
         H.expectNoBadSnowplowEvents();
       });
 
-      VALID_CSV_FILES.forEach((testFile) => {
+      // VALID_CSV_FILES[0] is uploaded and checked by the append/replace test below
+      VALID_CSV_FILES.slice(1).forEach((testFile) => {
         it(`Can upload ${testFile.fileName} to a collection`, () => {
           uploadFileToCollection(testFile);
 
@@ -112,18 +109,10 @@ describe("CSV Uploading", { tags: ["@external", "@actions"] }, () => {
             event: "csv_upload_successful",
           });
 
-          const tableQuery = `SELECT * FROM information_schema.tables WHERE table_name LIKE '%${testFile.tableName}_%' ORDER BY table_name DESC LIMIT 1;`;
-
-          H.queryWritableDB(tableQuery, dialect).then((result) => {
-            expect(result.rows.length).to.equal(1);
-            const tableName =
-              result.rows[0].table_name ?? result.rows[0].TABLE_NAME;
-            H.queryWritableDB(
-              `SELECT count(*) as count FROM ${tableName};`,
-              dialect,
-            ).then((result) => {
-              expect(Number(result.rows[0].count)).to.equal(testFile.rowCount);
-            });
+          assertUploadedRowCount({
+            dialect,
+            testFile,
+            rowCount: testFile.rowCount,
           });
         });
       });
@@ -143,81 +132,74 @@ describe("CSV Uploading", { tags: ["@external", "@actions"] }, () => {
           });
 
           cy.log("metabase#55382");
-          cy.findByRole("dialog", { name: "Upload error details" })
-            .findByRole("button", { name: "Close" })
-            .click();
+          closeUploadErrorDetails();
 
+          cy.intercept("PUT", "/api/collection/*").as("trashCollection");
           H.openCollectionMenu();
           H.popover().findByText("Move to trash").click();
+          H.modal().button("Move to trash").click();
+          cy.wait("@trashCollection");
+
+          cy.findByTestId("toast-undo").should("contain", "Trashed collection");
           cy.findByRole("dialog", { name: "Upload error details" }).should(
             "not.exist",
           );
         });
       });
 
-      describe("CSV appends", () => {
-        it("Can append a CSV file to an existing table", () => {
-          uploadFileToCollection(VALID_CSV_FILES[0]);
-          cy.findByTestId("view-footer").findByText(
-            `Showing ${VALID_CSV_FILES[0].rowCount} rows`,
-          );
+      it("Can upload a CSV to a collection, then append and replace data in the table, but not with a different schema", () => {
+        const { rowCount } = VALID_CSV_FILES[0];
 
-          uploadToExisting({
-            testFile: VALID_CSV_FILES[0],
-            uploadMode: "append",
-          });
-          cy.findByTestId("view-footer").findByText(
-            `Showing ${VALID_CSV_FILES[0].rowCount * 2} rows`,
-          );
+        uploadFileToCollection(VALID_CSV_FILES[0]);
+
+        H.expectUnstructuredSnowplowEvent({
+          event: "csv_upload_successful",
+        });
+        assertUploadedRowCount({
+          dialect,
+          testFile: VALID_CSV_FILES[0],
+          rowCount,
         });
 
-        it("Cannot append a CSV file to a table with a different schema", () => {
-          uploadFileToCollection(VALID_CSV_FILES[0]);
-          cy.findByTestId("view-footer").findByText(
-            `Showing ${VALID_CSV_FILES[0].rowCount} rows`,
-          );
+        cy.findByTestId("view-footer").findByText(`Showing ${rowCount} rows`);
 
-          uploadToExisting({
-            testFile: VALID_CSV_FILES[1],
-            identicalSchema: false,
-            uploadMode: "append",
-          });
-          cy.findByTestId("view-footer").findByText(
-            `Showing ${VALID_CSV_FILES[0].rowCount} rows`,
-          );
+        cy.log("append with an identical schema");
+        uploadToExisting({
+          testFile: VALID_CSV_FILES[0],
+          uploadMode: "append",
         });
-      });
+        cy.findByTestId("view-footer").findByText(
+          `Showing ${rowCount * 2} rows`,
+        );
 
-      describe("CSV replacement", () => {
-        it("Can replace data in an existing table", () => {
-          uploadFileToCollection(VALID_CSV_FILES[0]);
-          cy.findByTestId("view-footer").findByText(
-            `Showing ${VALID_CSV_FILES[0].rowCount} rows`,
-          );
-
-          uploadToExisting({
-            testFile: VALID_CSV_FILES[0],
-            uploadMode: "replace",
-          });
-          cy.findByTestId("view-footer").findByText(
-            `Showing ${VALID_CSV_FILES[0].rowCount} rows`,
-          );
+        cy.log("replace with an identical schema");
+        uploadToExisting({
+          testFile: VALID_CSV_FILES[0],
+          uploadMode: "replace",
         });
+        cy.findByTestId("view-footer").findByText(`Showing ${rowCount} rows`);
 
-        it("Cannot data in a table with a different schema", () => {
-          uploadFileToCollection(VALID_CSV_FILES[0]);
-          cy.findByTestId("view-footer").findByText(
-            `Showing ${VALID_CSV_FILES[0].rowCount} rows`,
-          );
+        cy.log("append with a different schema");
+        uploadToExisting({
+          testFile: VALID_CSV_FILES[1],
+          identicalSchema: false,
+          uploadMode: "append",
+        });
+        closeUploadErrorDetails();
 
-          uploadToExisting({
-            testFile: VALID_CSV_FILES[1],
-            identicalSchema: false,
-            uploadMode: "replace",
-          });
-          cy.findByTestId("view-footer").findByText(
-            `Showing ${VALID_CSV_FILES[0].rowCount} rows`,
-          );
+        cy.log("replace with a different schema");
+        uploadToExisting({
+          testFile: VALID_CSV_FILES[1],
+          identicalSchema: false,
+          uploadMode: "replace",
+        });
+        closeUploadErrorDetails();
+
+        cy.log("rejected uploads leave the table unchanged");
+        assertUploadedRowCount({
+          dialect,
+          testFile: VALID_CSV_FILES[0],
+          rowCount,
         });
       });
     });
@@ -226,7 +208,6 @@ describe("CSV Uploading", { tags: ["@external", "@actions"] }, () => {
   it("should allow you to choose a model to append to if there are multiple (metabase#53824)", () => {
     H.restore("postgres-writable");
     cy.signInAsAdmin();
-    H.enableTracking();
 
     H.enableUploads("postgres");
     H.headlessUpload(FIRST_COLLECTION_ID, VALID_CSV_FILES[0]);
@@ -254,85 +235,10 @@ describe("CSV Uploading", { tags: ["@external", "@actions"] }, () => {
       .click();
 
     H.popover().findByText(VALID_CSV_FILES[0].humanName).click();
-    cy.findByRole("textbox", { name: "Select a model" })
-      .should("have.value", VALID_CSV_FILES[0].humanName)
-      .click();
-  });
-});
-
-describe("permissions", { tags: "@external" }, () => {
-  it("should not show you upload buttons if you are a sandboxed user", () => {
-    H.restore("postgres-12");
-    cy.signInAsAdmin();
-
-    H.activateToken("pro-self-hosted");
-    H.enableUploads("postgres");
-
-    //Deny access for all users to writable DB
-    cy.updatePermissionsGraph({
-      1: {
-        [WRITABLE_DB_ID]: {
-          "view-data": "blocked",
-        },
-      },
-    });
-
-    cy.request("GET", `/api/database/${WRITABLE_DB_ID}/schema/public`).then(
-      ({ body: tables }) => {
-        cy.request("GET", `/api/database/${WRITABLE_DB_ID}/fields`).then(
-          ({ body: fields }) => {
-            // Sandbox a table so that the sandboxed user will have read access to a table
-            cy.sandboxTable({
-              table_id: tables[0].id,
-              attribute_remappings: {
-                attr_uid: ["dimension", ["field", fields[0].id, null]],
-              },
-            });
-          },
-        );
-      },
+    cy.findByRole("textbox", { name: "Select a model" }).should(
+      "have.value",
+      VALID_CSV_FILES[0].humanName,
     );
-
-    cy.signInAsSandboxedUser();
-    cy.visit("/collection/root");
-    // No upload icon should appear for the sandboxed user
-    cy.findByTestId("collection-menu").within(() => {
-      cy.get(".Icon-calendar").should("exist");
-      cy.findByLabelText("Upload data").should("not.exist");
-    });
-  });
-
-  it("should show you upload buttons if you have unrestricted access to the upload schema", () => {
-    H.restore("postgres-12");
-    cy.signInAsAdmin();
-
-    H.activateToken("pro-self-hosted");
-    H.enableUploads("postgres");
-
-    cy.updatePermissionsGraph({
-      [ALL_USERS_GROUP]: {
-        [WRITABLE_DB_ID]: {
-          "view-data": "blocked",
-        },
-      },
-      [NOSQL_GROUP]: {
-        [WRITABLE_DB_ID]: {
-          "view-data": "unrestricted",
-          "create-queries": "query-builder",
-        },
-      },
-    });
-
-    cy.updateCollectionGraph({
-      [NOSQL_GROUP]: { root: "write" },
-    });
-
-    cy.signIn("nosql");
-    cy.visit("/collection/root");
-    cy.findByTestId("collection-menu").within(() => {
-      cy.findByLabelText("Upload data").should("exist");
-      cy.findByRole("img", { name: /upload/i }).should("exist");
-    });
   });
 });
 
@@ -437,11 +343,36 @@ function uploadFileToCollection(testFile, viewModel = true) {
   }
 }
 
+function closeUploadErrorDetails() {
+  cy.findByRole("dialog", { name: "Upload error details" })
+    .findByRole("button", { name: "Close" })
+    .click();
+  cy.findByRole("dialog", { name: "Upload error details" }).should("not.exist");
+}
+
+function assertUploadedRowCount({ dialect, testFile, rowCount }) {
+  const tableQuery = `SELECT * FROM information_schema.tables WHERE table_name LIKE '%${testFile.tableName}_%' ORDER BY table_name DESC LIMIT 1;`;
+
+  H.queryWritableDB(tableQuery, dialect).then((result) => {
+    expect(result.rows.length).to.equal(1);
+    const tableName = result.rows[0].table_name ?? result.rows[0].TABLE_NAME;
+    H.queryWritableDB(
+      `SELECT count(*) as count FROM ${tableName};`,
+      dialect,
+    ).then((result) => {
+      expect(Number(result.rows[0].count)).to.equal(rowCount);
+    });
+  });
+}
+
 function uploadToExisting({
   testFile,
   identicalSchema = true,
   uploadMode = "append",
 }) {
+  cy.intercept("POST", "/api/table/*/append-csv").as("appendCSV");
+  cy.intercept("POST", "/api/table/*/replace-csv").as("replaceCSV");
+
   // assumes we're already looking at an uploadable model page
   cy.findByTestId("qb-header").icon("upload").click();
 

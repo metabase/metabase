@@ -147,7 +147,9 @@ config:
     embedding-homepage: hidden
     embedding-secret-key: null
     enable-embedding-interactive: false
-    enable-embedding-modular: false
+    enable-embedding-sdk: false
+    enable-embedding-simple: false
+    enable-embedding-static: false
     enable-password-login: true
     enable-pivoted-exports: true
     enable-public-sharing: true
@@ -163,7 +165,6 @@ config:
     help-link: metabase
     help-link-custom-destination: https://www.metabase.com/help/premium
     hide-stacktraces: false
-    http-channel-allowed-networks: external-only
     humanization-strategy: simple
     index-update-thread-count: 2
     jdbc-data-warehouse-connection-pool-checkout-timeout-ms: 0
@@ -186,7 +187,7 @@ config:
     landing-page-illustration: default
     landing-page-illustration-custom: null
     ldap-attribute-email: mail
-    ldap-attribute-firstname: givenName
+    ldap-attribute-firstname: givenname
     ldap-attribute-lastname: sn
     ldap-bind-dn: null
     ldap-enabled: false
@@ -209,7 +210,6 @@ config:
     license-token-missing-banner-dismissal-timestamp: []
     llm-anthropic-api-base-url: https://api.anthropic.com
     llm-anthropic-api-key: null
-    llm-anthropic-model: claude-opus-4-5-20251101
     llm-azure-api-base-url: null
     llm-azure-api-key: null
     llm-azure-deployment-name: null
@@ -240,18 +240,17 @@ config:
     llm-openrouter-api-base-url: https://openrouter.ai/api
     llm-openrouter-api-key: null
     llm-providers: []
-    llm-rate-limit-per-ip: 100
-    llm-rate-limit-per-user: 20
     llm-request-timeout-ms: 120000
     llm-vllm-api-base-url: null
     llm-vllm-api-key: null
     llm-vllm-request-timeout-ms: 300000
+    llm-xai-api-base-url: https://api.x.ai/v1
+    llm-xai-api-key: null
     llm-zai-api-base-url: https://api.z.ai/api/paas/v4
     llm-zai-api-key: null
     loading-message: doing-science
     login-page-illustration: default
     login-page-illustration-custom: null
-    map-tile-server-allowed-networks: null
     map-tile-server-url: https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png
     mcp-apps-cors-custom-origins: ''
     mcp-apps-cors-enabled-clients: []
@@ -282,7 +281,6 @@ config:
     notification-link-base-url: null
     notification-system-event-thread-pool-size: 5
     notification-thread-pool-size: 3
-    oidc-allowed-networks: allow-all
     oidc-providers: []
     oidc-user-provisioning-enabled: true
     persisted-model-refresh-cron-schedule: 0 0 0/6 * * ? *
@@ -382,5 +380,4 @@ config:
     use-native-pivot-tables: false
     use-tenants: false
     user-visibility: all
-    warehouse-allowed-networks: null
 ```

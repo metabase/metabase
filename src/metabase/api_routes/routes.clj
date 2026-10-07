@@ -18,7 +18,7 @@
    [metabase.bookmarks.api]
    [metabase.bug-reporting.api]
    [metabase.cache.api]
-   [metabase.channel.api]
+   [metabase.channel.rest.api]
    [metabase.cloud-migration.api]
    [metabase.collections-rest.api]
    [metabase.comments.api]
@@ -27,8 +27,8 @@
    [metabase.data-studio.api]
    [metabase.documents.api]
    [metabase.eid-translation.api]
-   [metabase.embedding-hub.api]
    [metabase.embedding-rest.api]
+   [metabase.explorations.api]
    [metabase.frontend-errors.api]
    [metabase.geojson.api]
    [metabase.glossary.api]
@@ -49,7 +49,7 @@
    [metabase.oauth-server.api.admin]
    [metabase.osi.ai-context.api]
    [metabase.permissions-rest.api]
-   [metabase.premium-features.api]
+   [metabase.premium-features.rest.api]
    [metabase.product-feedback.api]
    [metabase.public-sharing-rest.api]
    [metabase.pulse.api]
@@ -57,7 +57,8 @@
    [metabase.query-processor.api]
    [metabase.revisions.api]
    [metabase.search.api]
-   [metabase.segments.api]
+   [metabase.segments.rest.api]
+   [metabase.server.streaming-response :as streaming-response]
    [metabase.session.api]
    [metabase.settings-rest.api]
    [metabase.setup-rest.api]
@@ -98,6 +99,7 @@
          metabase.data-studio.api/keep-me
          metabase.documents.api/keep-me
          metabase.eid-translation.api/keep-me
+         metabase.explorations.api/keep-me
          metabase.frontend-errors.api/keep-me
          metabase.geojson.api/keep-me
          metabase.glossary.api/keep-me
@@ -118,7 +120,7 @@
          metabase.public-sharing-rest.api/keep-me
          metabase.query-processor.api/keep-me
          metabase.revisions.api/keep-me
-         metabase.segments.api/keep-me
+         metabase.segments.rest.api/keep-me
          metabase.settings-rest.api/keep-me
          metabase.setup-rest.api/keep-me
          metabase.task-history.api/keep-me
@@ -154,9 +156,29 @@
   (cond-> x
     (simple-symbol? x) api.macros/ns-handler))
 
+(defn- sanitize-streaming-errors
+  "Middleware that reduces any error written by a streaming response body to
+  [[metabase.public-sharing-rest.api/error-response]]. The public and embedding route wrappers catch and genericize
+  exceptions thrown by the handler, but a streaming body runs after the handler has returned, so a query failure --
+  or an exception attaching the Card's query as `ex-data` -- would otherwise reach an unauthenticated client as-is.
+
+  This lives here rather than next to those wrappers in [[metabase.api.routes.common]] because the `api` module can't
+  depend on `server` (which depends on the query processor, which depends on `api`)."
+  [handler]
+  (fn [request respond raise]
+    (handler request
+             (fn [response]
+               (respond (streaming-response/with-error-response-fn
+                          response
+                          metabase.public-sharing-rest.api/error-response)))
+             raise)))
+
+(def ^:private ^{:arglists '([handler])} +sanitize-streaming-errors
+  (routes.common/wrap-middleware-for-open-api-spec-generation sanitize-streaming-errors))
+
 (defn- +auth                    [handler] (routes.common/+auth                    (->handler handler)))
-(defn- +message-only-exceptions [handler] (routes.common/+message-only-exceptions (->handler handler)))
-(defn- +public-exceptions       [handler] (routes.common/+public-exceptions       (->handler handler)))
+(defn- +message-only-exceptions [handler] (routes.common/+message-only-exceptions (+sanitize-streaming-errors (->handler handler))))
+(defn- +public-exceptions       [handler] (routes.common/+public-exceptions       (+sanitize-streaming-errors (->handler handler))))
 
 (declare routes)
 
@@ -182,32 +204,32 @@
    "/cache"                (+auth 'metabase.cache.api)
    "/card"                 (+auth metabase.queries-rest.api/card-routes)
    "/cards"                (+auth metabase.queries-rest.api/cards-routes)
-   "/channel"              (+auth metabase.channel.api/channel-routes)
+   "/channel"              (+auth metabase.channel.rest.api/channel-routes)
    "/cloud-migration"      (+auth 'metabase.cloud-migration.api)
    "/collection"           (+auth 'metabase.collections-rest.api)
    "/comment"              (+auth metabase.comments.api/routes)
    "/dashboard"            (+auth 'metabase.dashboards-rest.api)
    "/data-studio"          (+auth metabase.data-studio.api/routes)
    "/database"             (+auth 'metabase.warehouses-rest.api)
-   ;; The MCP Apps iframe credential is accepted for `/dataset` and is stamped unrestricted, so the endpoint
-   ;; scope middleware cannot hold the `agent:sql:run` line here — the guard is what stops a credential lifted
-   ;; out of the resource HTML from POSTing raw SQL. The spec-generation wrapper keeps the guard transparent
-   ;; to [[metabase.api.open-api/open-api-spec]] — a bare middleware fn here fails openapi.json generation
-   ;; for the whole /api tree.
+   ;; The MCP Apps iframe credential is accepted for `/dataset`, whose endpoints declare no scope, so the
+   ;; endpoint scope middleware cannot hold the `agent:sql:run` line here. The credential carries the minting
+   ;; token's scopes as a signed claim (unrestricted only when minted from an unrestricted session: a cookie or
+   ;; API-key session, or an `mb:full` bearer token), and the guard
+   ;; spends that claim to stop a credential without `agent:sql:run` from POSTing raw SQL. The spec-generation
+   ;; wrapper keeps the guard transparent to [[metabase.api.open-api/open-api-spec]] — a bare middleware fn here
+   ;; fails openapi.json generation for the whole /api tree.
    "/dataset"              (+auth ((routes.common/wrap-middleware-for-open-api-spec-generation
                                     agent-api.query-guards/+refuse-unscoped-native-sql)
                                    (api.macros/ns-handler 'metabase.query-processor.api)))
    "/docs"                 (metabase.api.docs/make-routes #'routes)
    "/document"             (+auth metabase.documents.api/routes)
    "/eid-translation"      (+auth 'metabase.eid-translation.api)
-   "/email"                (+auth metabase.channel.api/email-routes)
+   "/email"                (+auth metabase.channel.rest.api/email-routes)
    "/embed"                (+message-only-exceptions metabase.embedding-rest.api/embedding-routes)
    "/embed-mcp"            (+auth metabase.mcp.callback-api/routes)
    "/embed-theme"          (+auth metabase.embedding-rest.api/theme-routes)
-   "/embedding-hub"        metabase.embedding-hub.api/routes
    "/eval-trace"           (metabase.ai-tracing.api/+eval-capture-enabled metabase.ai-tracing.api/routes)
-   ;; Explorations are intentionally disabled on the v64 release branch. do not uncomment this
-   ;; "/exploration"          (+auth metabase.explorations.api/routes)
+   "/exploration"          (+auth metabase.explorations.api/routes)
    "/field"                (+auth metabase.warehouse-schema-rest.api/field-routes)
    "/frontend-errors"      metabase.frontend-errors.api/routes
    "/geojson"              'metabase.geojson.api
@@ -234,18 +256,18 @@
    "/osi"                  {"/ai-context" (+auth 'metabase.osi.ai-context.api)}
    "/permissions"          (+auth 'metabase.permissions-rest.api)
    "/persist"              (+auth 'metabase.model-persistence.api)
-   "/premium-features"     (+auth metabase.premium-features.api/routes)
+   "/premium-features"     (+auth metabase.premium-features.rest.api/routes)
    "/preview_embed"        (+auth metabase.embedding-rest.api/preview-embedding-routes)
    "/product-feedback"     'metabase.product-feedback.api
    "/public"               (+public-exceptions metabase.public-sharing-rest.api/routes)
    "/pulse"                metabase.pulse.api/pulse-routes
    "/revision"             (+auth 'metabase.revisions.api)
    "/search"               (+auth metabase.search.api/routes)
-   "/segment"              (+auth 'metabase.segments.api)
+   "/segment"              (+auth 'metabase.segments.rest.api)
    "/session"              metabase.session.api/routes
    "/setting"              (+auth 'metabase.settings-rest.api)
    "/setup"                'metabase.setup-rest.api
-   "/slack"                (+auth metabase.channel.api/slack-routes)
+   "/slack"                (+auth metabase.channel.rest.api/slack-routes)
    "/table"                (+auth metabase.warehouse-schema-rest.api/table-routes)
    "/task"                 (+auth 'metabase.task-history.api)
    "/testing"              (if metabase.testing-api.core/enable-testing-routes? 'metabase.testing-api.api pass-thru-handler)

@@ -166,6 +166,7 @@
   (when (seq query)
     (:table-ids (query->source-ids query))))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *card-instances*
   "A map from card IDs to card instances with the collection_id (possibly nil).
   Useful when bulk loading cards from different databases."
@@ -375,7 +376,7 @@
                       :unrestricted
                       database-id
                       %)
-             (throw (perms-exception (tru "You do not have permission to view data of table {0} in result_metadata." %)
+             (throw (perms-exception (tru "You do not have permission to view data of table {0} in result_metadata." (str %))
                                      {database-id {:perms/view-data {% :unrestricted}}})))
           table-ids)))
 

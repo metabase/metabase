@@ -7,10 +7,8 @@ import { useEmbeddingParameters } from "metabase/embedding/embedding-iframe-sdk-
 import { useGetGuestEmbedSignedToken } from "metabase/embedding/embedding-iframe-sdk-setup/hooks/use-get-guest-embed-signed-token";
 import { useIsSsoEnabledAndConfigured } from "metabase/embedding/embedding-iframe-sdk-setup/hooks/use-is-sso-enabled-and-configured";
 import { shouldAllowPreviewAndNavigation } from "metabase/embedding/embedding-iframe-sdk-setup/utils/should-allow-preview-and-navigation";
-import {
-  PLUGIN_EMBEDDING_IFRAME_SDK_SETUP,
-  type SdkIframeEmbedSetupModalInitialState,
-} from "metabase/plugins";
+import type { SdkIframeEmbedSetupModalInitialState } from "metabase/embedding/types";
+import { PLUGIN_EMBEDDING_IFRAME_SDK_SETUP } from "metabase/plugins";
 import { useSetting } from "metabase/settings";
 
 import {
@@ -43,14 +41,10 @@ export const SdkIframeEmbedSetupProvider = ({
   const isSimpleEmbedFeatureAvailable =
     PLUGIN_EMBEDDING_IFRAME_SDK_SETUP.isEnabled();
 
-  // One setting backs both since 0.65.0; only the terms they gate still differ.
-  const isModularEmbeddingEnabled = useSetting("enable-embedding-modular");
-  const isSimpleEmbeddingEnabled = isModularEmbeddingEnabled;
-  const isGuestEmbedsEnabled = isModularEmbeddingEnabled;
+  const isSimpleEmbeddingEnabled = useSetting("enable-embedding-simple");
+  const isSimpleEmbeddingTermsAccepted = !useSetting("show-simple-embed-terms");
 
-  const isSimpleEmbeddingTermsAccepted = !useSetting(
-    "show-modular-embed-terms",
-  );
+  const isGuestEmbedsEnabled = useSetting("enable-embedding-static");
   const isGuestEmbedsTermsAccepted = !useSetting("show-static-embed-terms");
 
   const isSsoEnabledAndConfigured = useIsSsoEnabledAndConfigured();

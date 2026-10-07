@@ -194,7 +194,7 @@ export function initializePlugin() {
             },
           )}
           <Route path=":userId">
-            <Route index element={redirect("..")} />
+            <Route index element={redirect("/admin/people/tenants/people")} />
             {modalRoute(
               "edit",
               (props) => (

@@ -11,6 +11,8 @@
    [clojure.java.io :as io]
    [clojure.java.shell :as shell]
    [clojure.string :as str]
+   [dev.module-cycle-names :as cycle-names]
+   [dev.module-graph :as module-graph]
    [hooks.common.modules :as modules]))
 
 (set! *warn-on-reflection* true)
@@ -53,9 +55,10 @@
 (defn- build-module->uses
   "Known module dependencies.
 
-  Namespace edges provide observed dependencies. Without them, use the declared sets and leave `:uses :any`
-  unresolved instead of treating it as a dependency on every module."
-  [modules-config ns-edges]
+  Namespace edges provide observed dependencies.
+  Without them, use the declared sets, and for a `:uses :any` module the modules in `any-uses`.
+  An unresolved `:uses :any` stays empty instead of becoming a dependency on every module."
+  [modules-config ns-edges any-uses]
   (if (some? ns-edges)
     (let [known-modules (set (keys modules-config))]
       (reduce (fn [acc [consumer producer _namespace]]
@@ -70,7 +73,10 @@
               ns-edges))
     (into {}
           (map (fn [[module {:keys [uses]}]]
-                 [module (if (set? uses) uses #{})]))
+                 [module (cond
+                           (set? uses)   uses
+                           (= uses :any) (get any-uses module #{})
+                           :else         #{})]))
           modules-config)))
 
 (defn- used-by-index
@@ -146,6 +152,62 @@
       (str/starts-with? filename "enterprise/backend/test/")
       (str/includes? filename "/test/")))
 
+(defn- libspec-namespaces
+  "Namespaces a `:require` libspec loads, with prefix lists expanded."
+  [libspec]
+  (cond
+    (symbol? libspec)           [libspec]
+    (not (sequential? libspec)) []
+    :else
+    (let [[head & more] libspec]
+      ;; `[a.b c [d :as e]]` is a prefix list; `[a.b :as x]` names one namespace
+      (if (and (seq more) (not (keyword? (first more))))
+        (for [spec more, ns-symb (libspec-namespaces spec)]
+          (symbol (str head "." ns-symb)))
+        (when (symbol? head) [head])))))
+
+(defn- file-requires
+  "Namespaces the `ns` form of `file` loads through `:require` or `:use`, read as Clojure."
+  [file]
+  (with-open [r (java.io.PushbackReader. (io/reader file))]
+    (let [form (read {:read-cond :allow, :features #{:clj}, :eof nil} r)]
+      (when (and (seq? form) (= 'ns (first form)))
+        (into #{}
+              (comp (filter #(and (seq? %) (#{:require :use} (first %))))
+                    (mapcat rest)
+                    (mapcat libspec-namespaces))
+              form)))))
+
+(defn- file-modules
+  "Each of `files` that belongs to a declared module, mapped to that module."
+  [modules-config files]
+  (let [prefix->module (modules/build-prefix->module modules-config)]
+    (into {}
+          (for [file  files
+                :let  [module (file->module prefix->module file)]
+                :when module]
+            [file module]))))
+
+(defn- any-uses
+  "The modules each `:uses :any` module requires, from the `ns` forms of its source files.
+  Reads the files in `file->module*`, a [[file-modules]] map.
+  Requires made at runtime, such as `requiring-resolve`, are not seen."
+  [modules-config file->module*]
+  (let [prefix->module (modules/build-prefix->module modules-config)
+        any-modules    (set (for [[module {:keys [uses]}] modules-config
+                                  :when (= uses :any)]
+                              module))]
+    (reduce (fn [acc [module used]] (update acc module conj used))
+            (zipmap any-modules (repeat #{}))
+            (for [[file module] file->module*
+                  :when   (and (any-modules module)
+                               (not (test-file? file))
+                               (not (str/ends-with? file ".cljs")))
+                  ns-symb (file-requires file)
+                  :let    [used (modules/declared-module prefix->module ns-symb)]
+                  :when   (and used (not= used module))]
+              [module used]))))
+
 (defn- count-lines [filename]
   (with-open [r (io/reader filename)]
     (count (line-seq r))))
@@ -169,50 +231,94 @@
                                                                acc))))))
 
 (defn- module-stats
-  "`module -> {:namespaces :loc :test-files :tests :commits}`."
-  [modules-config files]
-  (let [prefix->module (modules/build-prefix->module modules-config)
-        file->module*  (into {} (keep (fn [f] (some->> (file->module prefix->module f) (vector f)))) files)
-        by-module      (reduce (fn [acc [f m]]
-                                 (if (test-file? f)
-                                   (-> acc
-                                       (update-in [m :test-files] (fnil inc 0))
-                                       (update-in [m :tests] (fnil + 0) (count-deftests f)))
-                                   (-> acc
-                                       (update-in [m :namespaces] (fnil inc 0))
-                                       (update-in [m :loc] (fnil + 0) (count-lines f)))))
-                               {}
-                               file->module*)
-        commits        (module->commit-count file->module*)]
+  "Per-module source metrics as `module -> {:namespaces :loc :test-files :tests :commits}`.
+  Works from a [[file-modules]] map of the tracked files."
+  [modules-config file->module*]
+  (let [by-module (reduce (fn [acc [f m]]
+                            (if (test-file? f)
+                              (-> acc
+                                  (update-in [m :test-files] (fnil inc 0))
+                                  (update-in [m :tests] (fnil + 0) (count-deftests f)))
+                              (-> acc
+                                  (update-in [m :namespaces] (fnil inc 0))
+                                  (update-in [m :loc] (fnil + 0) (count-lines f)))))
+                          {}
+                          file->module*)
+        commits   (module->commit-count file->module*)]
     (into {}
           (for [m (keys modules-config)]
             [m (merge {:namespaces 0, :loc 0, :test-files 0, :tests 0}
                       (get by-module m)
                       {:commits (get commits m 0)})]))))
 
+(defn- cycle-anchors
+  "The cluster names from [[cycle-names/read-anchors]], or nil when the file is missing or invalid.
+  Without them the page numbers the cycles instead."
+  []
+  (try
+    (cycle-names/read-anchors)
+    (catch Exception e
+      (binding [*out* *err*]
+        (println "Numbering module cycles instead of naming them:" (ex-message e)))
+      nil)))
+
+(defn- cycle-name
+  "The names in `anchors` whose anchor is among `modules`, joined with \" + \", or nil when there are none."
+  [anchors modules]
+  ;; two names mean named cycles merged; the module-cycles test fails on that, and the page shows both
+  (let [members (set modules)]
+    (some->> (for [[cluster-name anchor] anchors
+                   :when (members anchor)]
+               (str cluster-name))
+             seq
+             sort
+             (str/join " + "))))
+
+(defn- page-cycle
+  "A [[module-graph/cycles]] entry for the page: module names as strings, and a `:name` from `anchors`."
+  [anchors cyc]
+  (-> cyc
+      (assoc :name (cycle-name anchors (:modules cyc)))
+      (update :modules #(mapv str %))
+      (update :strong-bridges #(mapv (partial mapv str) %))))
+
 (defn explorer-data
   "The data embedded in the page.
 
   `:stats?` adds per-module source metrics, which take a few seconds.
-  `:ns-edges` is a seq of `[consumer producer namespace]` string triples."
-  [modules-config {:keys [stats? ns-edges]}]
-  (let [module->uses (build-module->uses modules-config ns-edges)
-        used-by      (used-by-index module->uses)
-        files        (when (or stats? ns-edges) (tracked-source-files))
-        stats        (when stats? (module-stats modules-config files))]
-    {:modules  (mapv (fn [m]
-                       (cond-> (module-node modules-config module->uses used-by m)
-                         stats? (assoc :stats (get stats m))))
-                     (sort (keys modules-config)))
-     :ns-edges (some-> ns-edges vec)
-     :ns-files (when ns-edges
-                 (let [used (into #{} (map #(nth % 2)) ns-edges)]
-                   (into {}
-                         (keep (fn [f]
-                                 (let [ns-str (str (file->ns f))]
-                                   (when (and (used ns-str) (not (test-file? f)))
-                                     [ns-str f]))))
-                         files)))}))
+  `:ns-edges` is a seq of `[consumer producer namespace]` string triples.
+  Without them, `:resolve-any?` reads the requires of `:uses :any` modules so their dependencies are known.
+  The result's `:cycles` lists the dependency cycles.
+  A cycle holding an anchor in [[cycle-names/clusters-file]] carries that name.
+  Each module in a cycle carries the cycle's index as `:cycle`."
+  [modules-config {:keys [stats? ns-edges resolve-any?]}]
+  (let [read-requires? (and resolve-any? (nil? ns-edges))
+        files          (when (or stats? ns-edges read-requires?) (tracked-source-files))
+        file->module*  (when (or stats? read-requires?) (file-modules modules-config files))
+        resolved-any   (when read-requires? (any-uses modules-config file->module*))
+        module->uses   (build-module->uses modules-config ns-edges resolved-any)
+        used-by        (used-by-index module->uses)
+        stats          (when stats? (module-stats modules-config file->module*))
+        cycles         (module-graph/cycles module->uses)
+        module->cycle  (into {} (for [[i {:keys [modules]}] (map-indexed vector cycles), m modules] [m i]))]
+    {:modules           (mapv (fn [m]
+                                (let [cycle-index (module->cycle m)]
+                                  (cond-> (module-node modules-config module->uses used-by m)
+                                    stats?      (assoc :stats (get stats m))
+                                    cycle-index (assoc :cycle cycle-index))))
+                              (sort (keys modules-config)))
+     :cycles            (mapv (partial page-cycle (cycle-anchors)) cycles)
+     ;; tells the page that `:uses :any` modules list real dependencies, not an empty set
+     :any-uses-resolved read-requires?
+     :ns-edges          (some-> ns-edges vec)
+     :ns-files          (when ns-edges
+                          (let [used (into #{} (map #(nth % 2)) ns-edges)]
+                            (into {}
+                                  (keep (fn [f]
+                                          (let [ns-str (str (file->ns f))]
+                                            (when (and (used ns-str) (not (test-file? f)))
+                                              [ns-str f]))))
+                                  files)))}))
 
 (defn- explorer-resource [filename]
   (slurp (or (io/resource (str "dev/" filename))

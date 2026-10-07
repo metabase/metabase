@@ -80,4 +80,4 @@ const RESOLVE_ALIASES = {
       : SRC_PATH + "/plugins/noop",
 };
 
-module.exports = { RESOLVE_ALIASES };
+module.exports = { ENTERPRISE_SRC_PATH, RESOLVE_ALIASES };

@@ -263,6 +263,7 @@
 (defmacro ^:private with-search-items-in-collection [created-items-sym search-string & body]
   `(do-with-search-items ~search-string false (fn [~created-items-sym] ~@body)))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic *search-request-results-database-id*
   "Filter out all results from `search-request` that don't have this Database ID. Default: the default H2 `test-data`
   Database. Other results are filtered out so these tests can be ran from the REPL without the presence of other
@@ -1235,7 +1236,7 @@
          :model/Card      {card-id-4 :id}    {:name (format "%s Card 4" search-term) :creator_id user-id-2}
          :model/Card      {model-id :id}     {:name (format "%s Dataset 1" search-term) :type :model :creator_id user-id}
          :model/Dashboard {dashboard-id :id} {:name (format "%s Dashboard 1" search-term) :creator_id user-id}
-         :model/Action    {action-id :id}    {:name (format "%s Action 1" search-term) :model_id model-id :creator_id user-id :type :http}]
+         :model/Action    {action-id :id}    {:name (format "%s Action 1" search-term) :model_id model-id :creator_id user-id :type :query}]
         (testing "sanity check that without search by created_by we have more results than if a filter is provided"
           (is (> (:total (mt/user-http-request :crowberto :get 200 "search" :q search-term))
                  5)))
@@ -1458,7 +1459,7 @@
        :model/Card       {metric-id :id} {:name search-term :type :metric}
        :model/Action     {action-id :id} {:name       search-term
                                           :model_id   model-id
-                                          :type       :http}]
+                                          :type       :query}]
       (doseq [[model id] [[:model/Card card-id] [:model/Card model-id]
                           [:model/Dashboard dash-id] [:model/Card metric-id]]]
         (revision/push-revision!
@@ -1548,7 +1549,7 @@
              (t2/select-one-fn :query_type :model/Card :id native-card-in-query)))
       (mt/with-actions
        [_                         {:type :model :dataset_query (mt/mbql-query venues)}
-        {http-action :action-id}  {:type :http :name search-term}
+        {named-action :action-id} {:type :implicit :name search-term}
         {query-action :action-id} {:type :query :dataset_query (mt/native-query {:query (format "delete from %s" search-term)})}]
         ;; TODO investigate why the actions don't get indexed automatically
         (search/reindex! {:async? false :in-place? true})
@@ -1557,7 +1558,7 @@
                    ["card" native-card-in-name]
                    ["dataset" mbql-model]
                    ["dataset" native-model-in-name]
-                   ["action" http-action]}
+                   ["action" named-action]}
                  (->> (mt/user-http-request :crowberto :get 200 "search" :q search-term)
                       :data
                       (map (juxt :model :id))
@@ -1567,7 +1568,7 @@
                    ["card" native-card-in-name]
                    ["dataset" mbql-model]
                    ["dataset" native-model-in-name]
-                   ["action" http-action]
+                   ["action" named-action]
                    ["card" native-card-in-query]
                    ["dataset" native-model-in-query]
                    ["action" query-action]}
@@ -2072,16 +2073,17 @@
                 "result count is not observed on error responses")))))))
 
 (deftest ^:synchronized multiple-limits-test
-  (when (search/supports-index?)
-    ;; This test is failing with "no index" for some reason, forcing the reindex
-    (mt/user-real-request :crowberto :post 200 "search/force-reindex"))
   (testing "Multiple `limit` query args should be handled correctly (#45345)"
-    (let [total-count (-> (mt/user-real-request :crowberto :get 200 "search?q=product")
-                          :data count)
-          result-count (-> (mt/user-real-request :crowberto :get 200 "search?q=product&limit=1&limit=3")
-                           :data count)]
-      (is (>= total-count result-count))
-      (is (= 1 result-count)))))
+    ;; The mock client sends repeated `:limit` keys as `limit=1&limit=3`, the same shape a real request would.
+    (let [q (str "multiplelimits" (u/lower-case-en (mt/random-name)))]
+      (mt/with-temp [:model/Card _ {:name (str q " one")}
+                     :model/Card _ {:name (str q " two")}]
+        (let [total-count  (-> (mt/user-http-request :crowberto :get 200 "search" :q q)
+                               :data count)
+              result-count (-> (mt/user-http-request :crowberto :get 200 "search" :q q :limit 1 :limit 3)
+                               :data count)]
+          (is (= 2 total-count))
+          (is (= 1 result-count)))))))
 
 (deftest ^:synchronized delete-database-hides-cards-from-search-test
   (testing "When deleting a database, cards referring to that database should be hidden from search"
@@ -2295,3 +2297,12 @@
                                                         :q table-name :models "table" :search_engine "appdb"))]
                   (is (seq rows))
                   (is (every? (comp nil? :is_published) rows)))))))))))
+
+(deftest exploration-description-searchable-in-place-test
+  (testing "explorations match on :description in the in-place engine (parity with the appdb spec)"
+    (let [description (mt/random-name)]
+      (mt/with-temp [:model/Exploration _ {:name        "desc-probe-exploration"
+                                           :description description
+                                           :creator_id  (mt/user->id :crowberto)}]
+        (is (=? [{:model "exploration" :name "desc-probe-exploration"}]
+                (search-request-data :crowberto :q description :search_engine "in-place")))))))

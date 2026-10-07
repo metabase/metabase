@@ -39,37 +39,22 @@ describe("issues 34688 and 34690", () => {
     cy.signInAsNormalUser();
   });
 
-  it("shows time series footer when category breakout is before temporal breakout (metabase#34688)", () => {
-    H.createQuestion(
-      {
-        database: SAMPLE_DB_ID,
-        type: "query",
-        query: {
-          ...BASE_QUERY,
-          breakout: [CUSTOM_COLUMN_BREAKOUT, CREATED_AT_BREAKOUT],
+  it("shows time series footer with a category breakout before or after the temporal one (metabase#34688, metabase#34690)", () => {
+    [
+      [CUSTOM_COLUMN_BREAKOUT, CREATED_AT_BREAKOUT],
+      [CREATED_AT_BREAKOUT, CUSTOM_COLUMN_BREAKOUT],
+    ].forEach((breakout) => {
+      H.createQuestion(
+        {
+          database: SAMPLE_DB_ID,
+          type: "query",
+          query: { ...BASE_QUERY, breakout },
         },
-      },
-      { visitQuestion: true },
-    );
+        { visitQuestion: true },
+      );
 
-    cy.findByTestId("timeseries-filter-button").should("exist");
-    cy.findByTestId("timeseries-bucket-button").should("exist");
-  });
-
-  it("shows time series footer when there is a category breakout (metabase#34690)", () => {
-    H.createQuestion(
-      {
-        database: SAMPLE_DB_ID,
-        type: "query",
-        query: {
-          ...BASE_QUERY,
-          breakout: [CREATED_AT_BREAKOUT, CUSTOM_COLUMN_BREAKOUT],
-        },
-      },
-      { visitQuestion: true },
-    );
-
-    cy.findByTestId("timeseries-filter-button").should("exist");
-    cy.findByTestId("timeseries-bucket-button").should("exist");
+      cy.findByTestId("timeseries-filter-button").should("exist");
+      cy.findByTestId("timeseries-bucket-button").should("exist");
+    });
   });
 });

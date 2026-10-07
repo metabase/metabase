@@ -159,6 +159,7 @@ Metabase's reference documentation.
 - [AI system prompts](./ai/system-prompts.md)
 - [Agent API](./ai/agent-api.md)
 - [MCP server](./ai/mcp.md)
+- [MCP server tools](./ai/mcp-tools.md)
 - [Metabot in Slack](./ai/metabot-slack.md)
 - [AI privacy](./ai/privacy.md)
 
@@ -233,6 +234,7 @@ Metabase's reference documentation.
 - [Configuration overview](./configuring-metabase/start.md)
 - [Setting up Metabase](./configuring-metabase/setting-up-metabase.md)
 - [General settings](./configuring-metabase/settings.md)
+- [Allow iframes and images from other domains](./configuring-metabase/domains.md)
 - [Email](./configuring-metabase/email.md)
 - [Slack](./configuring-metabase/slack.md)
 - [Webhooks](./configuring-metabase/webhooks.md)

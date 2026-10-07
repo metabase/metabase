@@ -12,7 +12,7 @@ describe("scenarios > data apps > sandbox isolation", () => {
     H.activateToken("bleeding-edge");
   });
 
-  const setUp = () => {
+  const setup = () => {
     const instanceUrl = Cypress.config("baseUrl") ?? "";
     const testEnv: IsolationTestEnv = { instanceUrl };
 
@@ -63,177 +63,177 @@ describe("scenarios > data apps > sandbox isolation", () => {
   };
 
   it("keeps a document.createElement about:blank iframe within the gated realm", () => {
-    setUp();
+    setup();
     runProbe("isolation-create-element");
   });
 
   it("gates a host-React about:blank iframe", () => {
-    setUp();
+    setup();
     runProbeExpectingGuard("isolation-react-about-blank");
   });
 
   it("gates an iframe pointing at Metabase itself", () => {
-    setUp();
+    setup();
     runProbeExpectingGuard("isolation-react-src");
   });
 
   it("gates a srcdoc iframe", () => {
-    setUp();
+    setup();
     runProbeExpectingGuard("isolation-react-srcdoc");
   });
 
   it("keeps a window.open realm within the gated realm", () => {
-    setUp();
+    setup();
     runProbe("isolation-window-open");
   });
 
   it("gates the Worker constructor", () => {
-    setUp();
+    setup();
     runProbe("isolation-worker");
   });
 
   it("gates the SharedWorker constructor", () => {
-    setUp();
+    setup();
     runProbe("isolation-shared-worker");
   });
 
   it("gates the service worker registration API", () => {
-    setUp();
+    setup();
     runProbe("isolation-service-worker");
   });
 
   it("gates dynamic import", () => {
-    setUp();
+    setup();
     runProbe("isolation-dynamic-import");
   });
 
   it("keeps a dangerouslySetInnerHTML iframe within the gated realm", () => {
-    setUp();
+    setup();
     runProbe("isolation-inner-html");
   });
 
   it("keeps a Function-constructor fetch gated", () => {
-    setUp();
+    setup();
     runProbe("isolation-function-constructor");
   });
 
   it("keeps a DOMParser iframe within the gated realm", () => {
-    setUp();
+    setup();
     runProbe("isolation-dom-parser");
   });
 
   it("keeps a createHTMLDocument iframe adopted into the realm gated", () => {
-    setUp();
+    setup();
     runProbe("isolation-adopt-html-doc-iframe");
   });
 
   it("keeps a createHTMLDocument iframe imported into the realm gated", () => {
-    setUp();
+    setup();
     runProbe("isolation-import-html-doc-iframe");
   });
 
   it("keeps a createDocument iframe adopted into the realm gated", () => {
-    setUp();
+    setup();
     runProbe("isolation-xml-doc-iframe");
   });
 
   it("keeps a template owner-document iframe adopted into the realm gated", () => {
-    setUp();
+    setup();
     runProbe("isolation-template-doc-iframe");
   });
 
   it("keeps a raw API out of the SDK endowments", () => {
-    setUp();
+    setup();
     runProbe("isolation-endowment-api");
   });
 
   it("keeps an Error.prepareStackTrace realm reference gated", () => {
-    setUp();
+    setup();
     runProbe("isolation-stack-trace-realm");
   });
 
   it("keeps window.parent within the gated realm", () => {
-    setUp();
+    setup();
     runProbe("isolation-window-parent");
   });
 
   it("keeps window.top within the gated realm", () => {
-    setUp();
+    setup();
     runProbe("isolation-window-top");
   });
 
   it("keeps window.frameElement's owner realm gated", () => {
-    setUp();
+    setup();
     runProbe("isolation-frame-element");
   });
 
   it("keeps window.parent.parent within the gated realm", () => {
-    setUp();
+    setup();
     runProbe("isolation-parent-chain");
   });
 
   it("gates document.cookie on the parent realm", () => {
-    setUp();
+    setup();
     runProbe("isolation-parent-cookie");
   });
 
   it("gates localStorage on the parent realm", () => {
-    setUp();
+    setup();
     runProbe("isolation-parent-local-storage");
   });
 
   it("gates sessionStorage on the parent realm", () => {
-    setUp();
+    setup();
     runProbe("isolation-parent-session-storage");
   });
 
   it("gates indexedDB on the parent realm", () => {
-    setUp();
+    setup();
     runProbe("isolation-parent-indexeddb");
   });
 
   it("gates caches on the parent realm", () => {
-    setUp();
+    setup();
     runProbe("isolation-parent-caches");
   });
 
   it("keeps indexed window.frames access gated", () => {
-    setUp();
+    setup();
     runProbe("isolation-window-frames");
   });
 
   it("keeps window.opener's realm gated", () => {
-    setUp();
+    setup();
     runProbe("isolation-window-opener");
   });
 
   it("gates FontFace.load", () => {
-    setUp();
+    setup();
     runProbe("isolation-font-face");
   });
 
   it("gates cookieStore", () => {
-    setUp();
+    setup();
     runProbe("isolation-cookie-store");
   });
 
   it("gates performance resource timing", () => {
-    setUp();
+    setup();
     runProbe("isolation-perf-resource-timing");
   });
 
   it("keeps a Range.createContextualFragment iframe within the gated realm", () => {
-    setUp();
+    setup();
     runProbe("isolation-range-fragment-iframe");
   });
 
   it("keeps a custom element's upgrade callback in the gated realm", () => {
-    setUp();
+    setup();
     runProbe("isolation-custom-element");
   });
 
   it("keeps a host iframe's realm gated", () => {
-    setUp();
+    setup();
 
     // A srcless (about:blank) iframe is same-origin, so its `contentWindow` is a
     // live realm with an un-gated `fetch` — the same capability html2canvas's
@@ -288,5 +288,38 @@ describe("scenarios > data apps > sandbox isolation", () => {
     H.openDataApp(APP_NAME);
 
     runProbe("isolation-allowed-host-redirect");
+  });
+
+  // The 403s the marker produces are backend behaviour, covered by
+  // `data_app_scope_test.clj`. What only e2e can prove is the premise those 403s rest
+  // on: that the real transport stamps `X-Metabase-Client: data-app` on the requests the
+  // SDK makes from inside the sandbox. The header cannot be spoofed to gain access —
+  // host-realm code the membraned guest can't reach sets it, and it only ever narrows —
+  // but if it ever stopped being sent, the confinement would silently stop applying.
+  it("marks the requests the SDK makes from inside the sandbox as data-app", () => {
+    const markedPaths = new Set<string>();
+
+    cy.intercept("/api/**", (req) => {
+      if (req.headers["x-metabase-client"] === "data-app") {
+        markedPaths.add(new URL(req.url).pathname);
+      }
+    });
+
+    setup();
+
+    // Wait for the guest bundle to have rendered — the SDK's bootstrap requests are
+    // still in flight while it loads, so asserting earlier races them.
+    H.dataAppIframe(APP_DISPLAY_NAME).within(() => {
+      cy.findByTestId("isolation-result", { timeout: 30000 }).should("exist");
+    });
+
+    // `/api/user/current` is the whole marked surface this fixture produces — it renders
+    // isolation probes, not questions, and the SDK's bootstrap takes site settings from
+    // the auth prefetch rather than refetching `/api/session/properties`.
+    cy.then(() => {
+      expect([...markedPaths], "requests marked as data-app").to.include(
+        "/api/user/current",
+      );
+    });
   });
 });

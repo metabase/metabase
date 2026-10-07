@@ -62,22 +62,12 @@
      (let [breakout-indexes (range num-breakouts)]
        (into [] (filter #(zero? (bit-and (bit-shift-left 1 %) (ensure-is-int pivot-group))) breakout-indexes))))))
 
-(defn- remove-item-by-index
-  "Remove an item with the given `index` from collection `v`."
-  [coll index-to-remove]
-  (reduce-kv (fn [acc i x]
-               (if (<= i index-to-remove)
-                 acc
-                 (conj acc x)))
-             (subvec coll 0 index-to-remove)
-             coll))
-
 (defn- process-grouped-rows
   "Processes rows for a specific pivot group value (k).
    Returns a tuple of [active-breakout-indexes, rows-with-pivot-column-removed]."
   [pivot-group rows pivot-group-index num-breakouts]
   (let [active-indexes (get-active-breakout-indexes pivot-group num-breakouts)
-        processed-rows (mapv #(remove-item-by-index % pivot-group-index) rows)]
+        processed-rows (mapv #(perf/remove-by-index % pivot-group-index) rows)]
     [active-indexes processed-rows]))
 
 (defn split-pivot-data
@@ -110,7 +100,7 @@
                (reduce
                 (fn [acc row]
                   (let [grouping-key (perf/mapv #(ensure-consistent-type (nth row %)) column-indexes)
-                        values (perf/mapv #(nth row %) val-indexes)]
+                        values (perf/mapa #(nth row %) val-indexes)]
                     (assoc! acc grouping-key values)))
                 (transient {})
                 rows))]
@@ -163,7 +153,7 @@
 
 ;; defrecord has no docstring slot for the vars it interns
 #_{:clj-kondo/ignore [:missing-docstring]}
-(defrecord TreeNode [value children value->child-pos isCollapsed])
+(defrecord TreeNode [value children value->child-pos isCollapsed rawValue clicked])
 
 (defn- add-path-to-tree
   "Adds a path of values to a row or column tree. The path is represented by the actual row and the list of indexes in
@@ -179,7 +169,7 @@
           value->child-pos (:value->child-pos tree)
           children (:children tree)
           node (or (some->> (perf/map-get value->child-pos v) (perf/list-nth children))
-                   (let [node (->TreeNode v (perf/make-list) (perf/make-map) false)]
+                   (let [node (->TreeNode v (perf/make-list) (perf/make-map) false nil nil)]
                      (perf/map-put! value->child-pos v (count children))
                      (perf/list-add! children node)
                      node))]
@@ -190,40 +180,38 @@
 (defn- select-indexes
   "Given a row, returns a subset of its values according to the provided indexes."
   [row indexes]
-  (mapv #(nth row %) indexes))
+  (perf/mapv #(nth row %) indexes))
 
 (defn- build-values-by-key
   "Creates a mapping from row and column indexes to the values, as well as
   metadata used for conditional formatting and drill-throughs."
   [rows cols row-indexes col-indexes val-indexes]
-  (let [col-and-row-indexes (into (vec col-indexes) row-indexes)]
-    (reduce
-     (fn [acc row]
-       (let [value-key  (perf/mapv ensure-consistent-type (select-indexes row col-and-row-indexes))
-             values     (select-indexes row val-indexes)
-             data       (into []
-                              (map-indexed
-                               (fn [index value]
-                                 {:value value
-                                  :colIdx index}))
-                              row)
-             dimensions (into []
-                              (keep-indexed (fn [index value]
-                                              (when (= (:source (nth cols index)) "breakout")
-                                                {:value value
-                                                 :colIdx index})))
-                              row)
-             col-names  (->> (select-indexes cols val-indexes)
-                             (map :name)
-                             (into []))]
-         (assoc acc
-                value-key
-                {:values values
-                 :valueColNames col-names
-                 :data data
-                 :dimensions dimensions})))
-     {}
-     rows)))
+  (let [col-and-row-indexes (into (vec col-indexes) row-indexes)
+        col-names (perf/mapv :name (select-indexes cols val-indexes))
+        breakout-col-indexes (vec (keep-indexed (fn [index col]
+                                                  (when (= (:source col) "breakout")
+                                                    index))
+                                                cols))]
+    (persistent!
+     (reduce
+      (fn [acc row]
+        (let [value-key  (perf/mapv #(ensure-consistent-type (nth row %)) col-and-row-indexes)
+              values     (perf/mapa #(nth row %) val-indexes)
+              data       (perf/mapv-indexed (fn [^long index value]
+                                              {:value value
+                                               :colIdx index})
+                                            row)
+              dimensions (perf/mapv (fn [index]
+                                      {:value (nth row index)
+                                       :colIdx index})
+                                    breakout-col-indexes)]
+          (assoc! acc value-key
+                  {:values values
+                   :valueColNames col-names
+                   :data data
+                   :dimensions dimensions})))
+      (transient {})
+      rows))))
 
 (defn- sort-orders-from-settings
   [col-settings indexes]
@@ -291,8 +279,8 @@
   ;; settings is only used by the :cljs branch of this function
   #_{:clj-kondo/ignore [:unused-binding]}
   [rows cols row-indexes col-indexes val-indexes settings col-settings]
-  (let [row-tree (->TreeNode nil (perf/make-list) (perf/make-map) false)
-        col-tree (->TreeNode nil (perf/make-list) (perf/make-map) false)
+  (let [row-tree (->TreeNode nil (perf/make-list) (perf/make-map) false nil nil)
+        col-tree (->TreeNode nil (perf/make-list) (perf/make-map) false nil nil)
         _ (run! (fn [row]
                   (add-path-to-tree row-tree row row-indexes 0)
                   (add-path-to-tree col-tree row col-indexes 0))
@@ -315,22 +303,25 @@
   "Walks a tree, formatting values and annotating each value with its color for
   conditional formatting, as well as data that powers drill-throughs on the
   FE."
-  [tree formatters cols col-indexes]
-  (let [formatter (first formatters)
-        col-idx   (first col-indexes)]
-    (mapv
-     (fn [{:keys [value children] :as node}]
-       (assoc node
-              :value #?(:clj (formatter value)
-                        ;; if we're in clojurescript these formatting functions are JS-based which means
-                        ;; they cannot handle clojure data types so we need to convert collections into js
-                        ;; types. We do it only for collections so as not to convert unnecessarily
-                        :cljs (formatter (cond-> value (coll? value) perf/clj->js)))
-              :children (format-values-in-tree children (rest formatters) (rest cols) (rest col-indexes))
-              :rawValue value
-              :clicked {:value value
-                        :colIdx col-idx}))
-     tree)))
+  [tree formatters col-indexes]
+  (letfn [(walk [values level]
+            (let [formatter (nth formatters level nil)
+                  col-idx   (nth col-indexes level nil)]
+              (mapv
+               (fn [{:keys [value children value->child-pos isCollapsed]}]
+                 (->TreeNode #?(:clj (formatter value)
+                                ;; if we're in clojurescript these formatting functions are JS-based which means
+                                ;; they cannot handle clojure data types so we need to convert collections into js
+                                ;; types. We do it only for collections so as not to convert unnecessarily
+                                :cljs (formatter (cond-> value (coll? value) perf/clj->js)))
+                             (walk children (inc level))
+                             value->child-pos
+                             isCollapsed
+                             value
+                             {:value value
+                              :colIdx col-idx}))
+               values)))]
+    (walk tree 0)))
 
 (defn- should-show-row-totals?
   [settings]
@@ -550,22 +541,17 @@
   `sum-where`, `share`). Without them, clicking a pivot cell for `CountIf([X] = Y)` drills without the `X = Y` filter
   (#79023)."
   [values-by-key index-values value-formatters val-indexes color-getter]
-  (let [{:keys [values valueColNames data dimensions]} (get values-by-key index-values)
-        formatted-values (format-values values value-formatters)]
-    (if-not data
-      formatted-values
-      (map-indexed
-       (fn [index value]
-         (assoc value
-                :clicked {:data       data
-                          :dimensions dimensions
-                          :colIdx     (nth val-indexes index)
-                          :value      (nth values index)}
-                :backgroundColor (color-getter
-                                  (nth values index)
-                                  index
-                                  (nth valueColNames index))))
-       formatted-values))))
+  (let [{:keys [values valueColNames data dimensions]} (get values-by-key index-values)]
+    (if data
+      (map-indexed (fn [index value]
+                     {:value ((nth value-formatters index) value)
+                      :clicked {:data       data
+                                :dimensions dimensions
+                                :colIdx     (nth val-indexes index)
+                                :value      value}
+                      :backgroundColor (color-getter value index (nth valueColNames index))})
+                   values)
+      (format-values values value-formatters))))
 
 (defn- is-subtotal?
   "Determines if a cell is a subtotal based on its position."
@@ -645,9 +631,8 @@
       (process-tree tree 0 0 [])
       (persistent! @result))))
 
-(defn- compute-row-paths [columns row-indexes row-tree left-formatters settings col-settings]
-  (let [left-index-columns (select-indexes columns row-indexes)
-        formatted-row-tree-without-subtotals (format-values-in-tree row-tree left-formatters left-index-columns row-indexes)
+(defn- compute-row-paths [row-indexes row-tree left-formatters settings col-settings]
+  (let [formatted-row-tree-without-subtotals (format-values-in-tree row-tree left-formatters row-indexes)
         formatted-row-tree (add-subtotals formatted-row-tree-without-subtotals row-indexes settings col-settings)
         formatted-row-tree-with-totals (if (> (count formatted-row-tree-without-subtotals) 1)
                                          (maybe-add-grand-totals-row formatted-row-tree settings)
@@ -658,9 +643,8 @@
                                                     (transient []) formatted-row-tree-with-totals)))
                     [[]])}))
 
-(defn- compute-col-paths [columns col-indexes col-tree top-formatters settings]
-  (let [top-index-columns (select-indexes columns col-indexes)
-        formatted-col-tree-without-values (into [] (format-values-in-tree col-tree top-formatters top-index-columns col-indexes))
+(defn- compute-col-paths [col-indexes col-tree top-formatters settings]
+  (let [formatted-col-tree-without-values (into [] (format-values-in-tree col-tree top-formatters col-indexes))
         formatted-col-tree-with-totals (maybe-add-row-totals-column formatted-col-tree-without-values settings)]
     {:formatted-col-tree-with-totals formatted-col-tree-with-totals
      :col-paths (or (not-empty (persistent! (reduce (fn [acc node]
@@ -683,10 +667,10 @@
          (build-pivot-trees primary-rows columns row-indexes col-indexes val-indexes settings col-settings)
 
          {:keys [row-paths formatted-row-tree-with-totals]}
-         (compute-row-paths columns row-indexes row-tree left-formatters settings col-settings)
+         (compute-row-paths row-indexes row-tree left-formatters settings col-settings)
 
          {:keys [col-paths formatted-col-tree-with-totals]}
-         (compute-col-paths columns col-indexes col-tree top-formatters settings)
+         (compute-col-paths col-indexes col-tree top-formatters settings)
 
          formatted-col-tree (into [] (add-value-column-nodes formatted-col-tree-with-totals columns val-indexes col-settings format-rows?))
          subtotal-values (get-subtotal-values pivot-data val-indexes primary-rows-key)]

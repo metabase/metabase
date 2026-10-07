@@ -8,6 +8,7 @@
    [metabase.actions.core :as actions]
    [metabase.actions.schema :as actions.schema]
    [metabase.analytics.core :as analytics]
+   [metabase.api-scope.data-app :as api-scope]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.channel.email.messages :as messages]
@@ -331,6 +332,7 @@
   "Using 10 seconds for the cache TTL."
   (* 10 1000))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic *dashboard-load-id* nil)
 
 ;; This is a kind of two-layer memoization:
@@ -649,8 +651,7 @@
   endpoints and a signed JWT."
   []
   (perms/check-has-application-permission :setting)
-  ;; Not gated on `enable-embedding-static`: an admin who turned guest embeds off still needs to see what is already
-  ;; published. Publishing itself stays gated.
+  (embedding.validation/check-embedding-enabled)
   (dashboards-rest.db/embeddable-dashboards))
 
 ;;; --------------------------------------------- Fetching/Updating/Etc. ---------------------------------------------
@@ -662,6 +663,7 @@
                       :metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/:id"
   "Get Dashboard with ID."
+  {:scope api-scope/data-app}
   [{:keys [id]} :- [:map {:closed true}
                     [:id [:or ms/PositiveInt ms/NanoIdString]]]
    {dashboard-load-id :dashboard_load_id} :- [:map {:closed true}
@@ -1160,6 +1162,7 @@
                       :metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/:id/query_metadata"
   "Get all of the required query metadata for the cards on dashboard."
+  {:scope api-scope/data-app}
   [{:keys [id]} :- [:map {:closed true}
                     [:id [:or ms/PositiveInt ms/NanoIdString]]]
    {dashboard-load-id :dashboard_load_id} :- [:map {:closed true}
@@ -1191,12 +1194,15 @@
   (let [existing-public-uuid (dashboards-rest.db/dashboard-public-uuid dashboard-id)
         uuid (or existing-public-uuid
                  (u/prog1 (str (random-uuid))
-                   (events/publish-event! :event/dashboard-public-link-created
-                                          {:object-id dashboard-id
-                                           :user-id api/*current-user-id*})
-                   (dashboards-rest.db/update-dashboard! dashboard-id
-                                                         {:public_uuid       <>
-                                                          :made_public_by_id api/*current-user-id*})))]
+                   ;; one transaction, so a failing handler cannot leave a saved link that a retry never reports
+                   (t2/with-transaction [_conn]
+                     (dashboards-rest.db/update-dashboard! dashboard-id
+                                                           {:public_uuid       <>
+                                                            :made_public_by_id api/*current-user-id*})
+                     (events/publish-event! :event/dashboard-public-link-created
+                                            {:object    (dashboards-rest.db/dashboard dashboard-id)
+                                             :object-id dashboard-id
+                                             :user-id   api/*current-user-id*}))))]
     {:uuid uuid}))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
@@ -1213,12 +1219,14 @@
   (perms/check-has-application-permission :setting)
   (public-sharing.validation/check-public-sharing-enabled)
   (api/check-exists? :model/Dashboard :id dashboard-id, :public_uuid [:not= nil], :archived false)
-  (dashboards-rest.db/update-dashboard! dashboard-id
-                                        {:public_uuid       nil
-                                         :made_public_by_id nil})
-  (events/publish-event! :event/dashboard-public-link-deleted
-                         {:object-id dashboard-id
-                          :user-id api/*current-user-id*})
+  (t2/with-transaction [_conn]
+    (dashboards-rest.db/update-dashboard! dashboard-id
+                                          {:public_uuid       nil
+                                           :made_public_by_id nil})
+    (events/publish-event! :event/dashboard-public-link-deleted
+                           {:object    (dashboards-rest.db/dashboard dashboard-id)
+                            :object-id dashboard-id
+                            :user-id   api/*current-user-id*}))
   {:status 204, :body nil})
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
@@ -1309,6 +1317,7 @@
 
     ;; fetch values for Dashboard 1 parameter 'abc' that are possible when parameter 'def' is set to 100
     GET /api/dashboard/1/params/abc/values?def=100"
+  {:scope api-scope/data-app}
   [{:keys [id param-key]}      :- [:map {:closed true}
                                    [:id ms/PositiveInt]
                                    [:param-key ms/NonBlankString]]
@@ -1331,6 +1340,7 @@
      GET /api/dashboard/1/params/abc/search/Cam?def=100
 
   Currently limited to first 1000 results."
+  {:scope api-scope/data-app}
   [{:keys [id param-key query]} :- [:map {:closed true}
                                     [:id    ms/PositiveInt]
                                     [:param-key ms/NonBlankString]
@@ -1351,6 +1361,7 @@
 
     ;; fetch the remapped value for Dashboard 1 parameter 'abc' for value 100
     GET /api/dashboard/1/params/abc/remapping?value=100"
+  {:scope api-scope/data-app}
   [{:keys [id param-key]} :- [:map {:closed true}
                               [:id ms/PositiveInt]
                               [:param-key ms/NonBlankString]]
@@ -1384,6 +1395,7 @@
   Results are returned as a map of
 
   `filtered` Field ID -> subset of `filtering` Field IDs that would be used in chain filter query"
+  {:scope api-scope/data-app}
   [_route-params
    {:keys [filtered filtering]} :- [:map {:closed true}
                                     [:filtered  (ms/QueryVectorOf ::lib.schema.id/field)]
@@ -1401,6 +1413,7 @@
   "Fetches the values for filling in execution parameters. Pass PK parameters and values to select.
 
   Parameters are sent in the request body rather than the query string so their values stay out of URLs and logs."
+  {:scope api-scope/data-app}
   [{:keys [dashboard-id dashcard-id]} :- [:map {:closed true}
                                           [:dashboard-id ms/PositiveInt]
                                           [:dashcard-id  ms/PositiveInt]]
@@ -1422,6 +1435,7 @@
 
    `parameters` should be the mapped dashboard parameters with values.
    `extra_parameters` should be the extra, user entered parameter values."
+  {:scope api-scope/data-app}
   [{:keys [dashboard-id dashcard-id]} :- [:map {:closed true}
                                           [:dashboard-id ms/PositiveInt]
                                           [:dashcard-id  ms/PositiveInt]]
@@ -1440,6 +1454,7 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/:dashboard-id/dashcard/:dashcard-id/card/:card-id/query"
   "Run the query associated with a Saved Question (`Card`) in the context of a `Dashboard` that includes it."
+  {:scope api-scope/data-app}
   [{:keys [dashboard-id dashcard-id card-id]} :- [:map {:closed true}
                                                   [:dashboard-id ms/PositiveInt]
                                                   [:dashcard-id  ms/PositiveInt]
@@ -1466,6 +1481,7 @@
 
   `parameters` should be passed as query parameter encoded as a serialized JSON string (this is because this endpoint
   is normally used to power 'Download Results' buttons that use HTML `form` actions)."
+  {:scope api-scope/data-app}
   [{:keys [dashboard-id dashcard-id card-id export-format]} :- [:map {:closed true}
                                                                 [:dashboard-id  ms/PositiveInt]
                                                                 [:dashcard-id   ms/PositiveInt]
@@ -1503,6 +1519,7 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/pivot/:dashboard-id/dashcard/:dashcard-id/card/:card-id/query"
   "Run a pivot table query for a specific DashCard."
+  {:scope api-scope/data-app}
   [{:keys [dashboard-id dashcard-id card-id]} :- [:map {:closed true}
                                                   [:dashboard-id ms/PositiveInt]
                                                   [:dashcard-id  ms/PositiveInt]

@@ -43,6 +43,7 @@ export {
 } from "./hooks/public/use-data-app-location";
 export { defineQuery } from "./hooks/public/use-metabase-query/define-query";
 export { defineAction } from "./hooks/public/use-action/define-action";
+export { useDataAppAction as useAction } from "./hooks/public/use-action";
 export {
   aggregations,
   breakout,
@@ -52,6 +53,7 @@ export {
   useMetabaseQueryObject,
 } from "./hooks/public/use-metabase-query";
 export type {
+  DefinedQuery,
   LocalFieldReference,
   MetabaseBreakout,
   MetabaseDynamicColumn,
@@ -66,6 +68,7 @@ export type {
 export type {
   ActionKindFromDataAppSchema,
   ActionParametersFromDataAppSchema,
+  DefinedAction,
 } from "./hooks/public/use-action";
 export type {
   DataAppFactory,

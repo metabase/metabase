@@ -9,8 +9,10 @@ export const uploadTranslationDictionary = (rows: DictionaryArray) => {
   cy.intercept("POST", "/api/ee/content-translation/upload-dictionary").as(
     "uploadDictionary",
   );
+  cy.intercept("GET", "/api/setting").as("getSettings");
   cy.signInAsAdmin();
-  cy.visit("/embedding/localization");
+  cy.visit("/admin/embedding");
+  cy.wait("@getSettings");
 
   cy.findByTestId("content-localization-setting").findByText(
     /Upload edited translation dictionary/,

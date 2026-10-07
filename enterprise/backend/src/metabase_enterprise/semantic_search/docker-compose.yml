@@ -13,7 +13,7 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
     ports:
-      - "55432:5432"
+      - "127.0.0.1:55432:5432"
     volumes:
       - pgvector17_data:/var/lib/postgresql/data
     healthcheck:
@@ -25,7 +25,7 @@ services:
   ollama:
     image: ollama/ollama:latest
     ports:
-      - "11434:11434"
+      - "127.0.0.1:11434:11434"
     volumes:
       - ollama_data:/root/.ollama
     healthcheck:

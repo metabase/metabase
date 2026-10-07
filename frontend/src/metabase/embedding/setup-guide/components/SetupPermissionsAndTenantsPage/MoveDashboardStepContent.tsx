@@ -125,7 +125,7 @@ export const MoveDashboardStepContent = ({
               variant="filled"
               onClick={handleMoveDashboard}
               loading={isMoving}
-              disabled={!effectiveDashboardId}
+              disabled={!effectiveDashboardId || sharedCollectionId === null}
             >
               {t`Move to shared collection`}
             </Button>
@@ -140,6 +140,7 @@ export const MoveDashboardStepContent = ({
           variant={hasXrayDashboard ? "default" : "filled"}
           onClick={handleCreateSampleDashboard}
           loading={isCreating}
+          disabled={sharedCollectionId === null}
         >
           {t`Create a sample dashboard`}
         </Button>
