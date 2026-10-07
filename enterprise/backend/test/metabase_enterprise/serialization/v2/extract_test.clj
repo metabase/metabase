@@ -548,7 +548,8 @@
                        [:human_readable_field_id {:optional true} [:maybe [:sequential [:maybe :string]]]]]
                       ser))
           (is (not (contains? ser :id)))
-          (is (not (contains? ser :field_id)) ":field_id is dropped; it's implied by the path")
+          (is (= ["My Database" nil "Schemaless Table" "email"] (:field_id ser))
+              ":field_id is exported so the path can be rebuilt from the file")
           (testing "have no dependencies; the Database, Table and Field are synthesized on import if missing"
             (is (= #{}
                    (set (serdes/deserialization-dependencies ser)))))))
@@ -567,6 +568,20 @@
                    (set (serdes/deserialization-dependencies ser)))))))
       (testing "Fields carry no dimensions"
         (is (not (contains? (ts/extract-one "Field" fk-id) :dimensions)))))))
+
+(deftest snippet-descendants-test
+  (testing "Exporting a snippet also exports the snippets and cards its template tags reference"
+    (mt/with-empty-h2-app-db!
+      (mt/with-temp [:model/NativeQuerySnippet {b-eid :entity_id} {:name "B" :content "1 = 1"}
+                     :model/Card               {d-id :id d-eid :entity_id} {:name "D"}
+                     :model/NativeQuerySnippet {a-id :id a-eid :entity_id}
+                     {:name "A" :content (format "{{snippet: B}} AND id IN ({{#%d-d}})" d-id)}]
+        (let [extraction (into [] (extract/extract {:targets       [["NativeQuerySnippet" a-id]]
+                                                    :no-settings   true
+                                                    :no-data-model true
+                                                    :no-transforms true}))]
+          (is (= #{a-eid b-eid} (ids-by-model "NativeQuerySnippet" extraction)))
+          (is (= #{d-eid} (ids-by-model "Card" extraction))))))))
 
 (deftest native-query-snippets-test
   (mt/with-empty-h2-app-db!
@@ -1123,8 +1138,8 @@
                    :values      values}
                   ser))
           (is (not (contains? ser :id)))
-          (is (not (contains? ser :field_id))
-              ":field_id is dropped; its implied by the path")
+          (is (= ["My Database" nil "Schemaless Table" "Some Field"] (:field_id ser))
+              ":field_id is exported so the path can be rebuilt from the file")
           (testing "have no dependencies; the Database and parent Field are synthesized on import if missing"
             (is (= #{}
                    (set (serdes/deserialization-dependencies ser)))))))
@@ -1160,8 +1175,8 @@
                    :description      description
                    :data_sensitivity :PII}
                   ser))
-          (is (not (contains? ser :field_id))
-              ":field_id is dropped; its implied by the path")))
+          (is (= ["My Database" nil "Schemaless Table" "Some Field"] (:field_id ser))
+              ":field_id is exported so the path can be rebuilt from the file")))
       (testing "data_sensitivity on the Field itself"
         (is (= :PII (:data_sensitivity (ts/extract-one "Field" field-id)))
             "a labeled field exports the keyword as-is")

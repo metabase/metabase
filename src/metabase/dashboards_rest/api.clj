@@ -458,6 +458,14 @@
              :discard []}
             (filter :card_id dashcards))))
 
+(defn- reference-metrics
+  "Moves the metrics in `cards`' `:copy` to `:reference`, since a dashboards-only collection can't hold copies of them."
+  [{:keys [copy] :as cards}]
+  (let [metric? (fn [[_ card]] (= :metric (keyword (:type card))))]
+    (-> cards
+        (assoc :copy (into {} (remove metric?) copy))
+        (update :reference merge (into {} (filter metric?) copy)))))
+
 (defn- maybe-duplicate-cards
   "Takes a dashboard id, and duplicates the cards both on the dashboard's cards and dashcardseries as necessary.
 
@@ -466,14 +474,18 @@
   If `deep-copy?` is `false`, doesn't copy any cards *except* for Dashboard Questions, which must be copied."
   [deep-copy? new-dashboard old-dashboard dest-coll-id]
   (let [same-collection?                 (= (:collection_id old-dashboard) dest-coll-id)
-        {:keys [copy discard reference]} (cards-to-copy deep-copy? (:dashcards old-dashboard))]
+        dashboards-only?                 (collections/library-dashboards-collection? dest-coll-id)
+        {:keys [copy discard reference]} (cond-> (cards-to-copy deep-copy? (:dashcards old-dashboard))
+                                           dashboards-only? reference-metrics)]
     {:copied     (into {} (for [[id to-copy] copy]
                             [id (queries/with-copy-source-card to-copy
                                   (queries/create-card!
                                    (cond-> to-copy
                                      true                    (assoc :collection_id dest-coll-id)
                                      same-collection?        (update :name #(str % " - " (tru "Duplicate")))
-                                     (:dashboard_id to-copy) (assoc :dashboard_id (u/the-id new-dashboard)))
+                                     (or (:dashboard_id to-copy)
+                                         dashboards-only?)   (-> (assoc :dashboard_id (u/the-id new-dashboard))
+                                                                 (dissoc :collection_position)))
                                    @api/*current-user*
                                    ;; creating cards from a transaction. wait until tx complete to signal event
                                    true

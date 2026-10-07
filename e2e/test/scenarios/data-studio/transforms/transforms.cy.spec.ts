@@ -1326,7 +1326,7 @@ LIMIT
         cy.button("Change target").click();
         cy.wait("@updateTransform")
           .its("response.statusCode")
-          .should("eq", 403);
+          .should("eq", 409);
         cy.findByText("A table with that name already exists.").should(
           "be.visible",
         );

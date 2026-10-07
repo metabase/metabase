@@ -12,6 +12,7 @@ import { browseDatabase } from "./browse";
 import { card } from "./cards";
 import { collection } from "./collections";
 import { dashboard } from "./dashboards";
+import { dataApp } from "./data-apps";
 import {
   dataStudioGlossary,
   dataStudioPublishedTableMeasure,
@@ -101,6 +102,8 @@ export function modelToUrl(item: UrlableModel): string {
       return exploration(item.id);
     case "glossary":
       return dataStudioGlossary();
+    case "dataapp":
+      return dataApp(item.name);
     default:
       return NOT_FOUND_URL;
   }

@@ -21,7 +21,15 @@ import type {
   Collection,
   CollectionId,
   CollectionItem,
+  CollectionItemModel,
 } from "metabase-types/api";
+
+const SECTION_ITEM_MODELS: Record<LibrarySectionType, CollectionItemModel[]> = {
+  data: ["table", "collection"],
+  metrics: ["metric", "collection"],
+  dashboards: ["dashboard", "collection"],
+  snippets: ["snippet", "collection"],
+};
 
 export function useLibraryCollectionTree(
   collection: Collection | undefined,
@@ -30,6 +38,7 @@ export function useLibraryCollectionTree(
 ) {
   const dispatch = useDispatch();
   const getIcon = useGetIcon();
+  const models = SECTION_ITEM_MODELS[sectionType];
 
   // 1. Fetch top-level items
   const {
@@ -40,7 +49,7 @@ export function useLibraryCollectionTree(
     collection
       ? {
           id: collection.id,
-          models: ["metric", "table", "collection"],
+          models,
           archived: false,
         }
       : skipToken,
@@ -71,7 +80,7 @@ export function useLibraryCollectionTree(
         collectionApi.endpoints.listCollectionItems.initiate(
           {
             id: collectionId,
-            models: ["metric", "table", "collection"],
+            models,
             archived: false,
           },
           { forceRefetch: true },
@@ -80,7 +89,7 @@ export function useLibraryCollectionTree(
       const items = (result.data?.data ?? []).filter((item) => !item.archived);
       setLoadedCollections((prev) => new Map([...prev, [collectionId, items]]));
     },
-    [dispatch],
+    [dispatch, models],
   );
 
   const refreshCollections = useCallback(
