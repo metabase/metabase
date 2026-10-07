@@ -1280,7 +1280,9 @@ describe("issue 25374", () => {
 
     cy.location("search").should("eq", "?num=1%2C2%2C3");
 
-    H.queryBuilderHeader().findByLabelText("Back to Dashboard").click();
+    H.queryBuilderHeader()
+      .findByLabelText(`Back to ${dashboardDetails.name}`)
+      .click();
     cy.location("search").should("eq", "?equal_to=1%2C2%2C3");
     cy.findByDisplayValue("1,2,3").should("be.visible");
 
