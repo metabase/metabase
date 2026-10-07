@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 
 import { FullWidthContainer } from "metabase/styled-components/layout/FullWidthContainer";
-import { Box, Flex, Group, Icon } from "metabase/ui";
+import { Flex, Group, Icon, Text } from "metabase/ui";
 
 type EditBarProps = {
   title: string;
@@ -33,9 +33,9 @@ export function EditBar({
     >
       <Group gap="sm" align="center" wrap="nowrap">
         <Icon name="pencil" size={12} c="text-primary-inverse" />
-        <Box component="span" c="text-primary-inverse" fw="bold">
+        <Text component="span" c="text-primary-inverse" fw="bold" lh="md">
           {title}
-        </Box>
+        </Text>
       </Group>
       {center && <div>{center}</div>}
       <Flex gap="md">{buttons}</Flex>
