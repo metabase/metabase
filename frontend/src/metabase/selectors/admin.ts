@@ -6,3 +6,6 @@ export const getAdminPaths = (state: State) => {
 
 export const getHasAdminPath = (state: State, key: AdminPathKey) =>
   getAdminPaths(state).some((path) => path.key === key);
+
+export const canManageDatabases = (state: State) =>
+  getHasAdminPath(state, "databases");

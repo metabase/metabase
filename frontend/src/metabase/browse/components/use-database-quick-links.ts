@@ -4,8 +4,7 @@ import { canAccessDataStudio } from "metabase/common/data-studio/selectors";
 import { canAccessDataModel } from "metabase/current-user";
 import { PLUGIN_SCHEMA_VIEWER } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
-import type { State } from "metabase/redux/store";
-import { getHasAdminPath } from "metabase/selectors/admin";
+import { canManageDatabases } from "metabase/selectors/admin";
 import * as Urls from "metabase/urls";
 import type { DatabaseId, IconName } from "metabase-types/api";
 
@@ -51,8 +50,4 @@ export function useDatabaseQuickLinks(
   ];
 
   return links.filter((link) => link.isVisible);
-}
-
-function canManageDatabases(state: State) {
-  return getHasAdminPath(state, "databases");
 }
