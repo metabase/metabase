@@ -192,7 +192,7 @@
       (is (tag-has-attribute? locked "disabled"))
       (is (re-find #"(?s)value=\"agent:content:read\"(?:(?!</li>).)*Always granted" html)
           "the note sits in the locked scope's row")))
-  (testing "GHY-4826: every other requested scope, including a full-access one, starts ticked and can be unticked"
+  (testing "GHY-4826: every requested scope starts ticked"
     (let [[_ sql full] (checkbox-tags (render-with-scopes! checkbox-scopes))]
       (doseq [tag [sql full]]
         (is (tag-has-attribute? tag "checked") tag)
