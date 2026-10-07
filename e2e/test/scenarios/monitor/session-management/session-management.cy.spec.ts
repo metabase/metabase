@@ -329,9 +329,11 @@ describe("scenarios > monitor > session management > access", () => {
     // a valid token that lacks the feature, rather than no token at all
     H.activateToken("starter");
     cy.visit("/monitor/sessions");
-    cy.findByRole("heading", {
-      name: "See who is signed in, and revoke access in one click",
-    }).should("be.visible");
+    cy.findByTestId("monitor-main")
+      .findByText(
+        /See who is signed in to your Metabase. Revoke individual sessions/,
+      )
+      .should("be.visible");
     cy.findByTestId("sessions-table").should("not.exist");
   });
 
