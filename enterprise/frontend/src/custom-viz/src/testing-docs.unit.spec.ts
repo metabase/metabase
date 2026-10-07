@@ -12,8 +12,9 @@ const TESTING_DOC = readFileSync(
 
 describe("testing.md", () => {
   it("lists every mockColumn kind", () => {
+    const prose = TESTING_DOC.replace(/```[\s\S]*?```/g, "");
     const spans = new Set(
-      [...TESTING_DOC.matchAll(/`([^`]+)`/g)].map((match) => match[1]),
+      [...prose.matchAll(/`([^`]+)`/g)].map((match) => match[1]),
     );
 
     expect(
