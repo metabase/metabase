@@ -20,7 +20,7 @@ This command uses [Markdown link check](https://github.com/tcort/markdown-link-c
 touch ~/links-to-fix.txt && bun run docs-lint-links > ~/links-to-fix.txt
 ```
 
-Alternatively, if you just want to check the in-product links to make sure they link to actual documents:
+Alternatively, if you just want to check the in-product links (the pages passed to `useDocsUrl` and `getDocsUrl`) to make sure they link to actual documents and headings:
 
 ```
 bun run lint-docs-links

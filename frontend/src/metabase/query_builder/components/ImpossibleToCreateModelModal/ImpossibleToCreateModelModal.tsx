@@ -15,7 +15,7 @@ type Props = {
 
 function SQLSnippetsDocLink() {
   const href = useSelector((state) =>
-    getDocsUrl(state, { page: "questions/native-editor/sql-snippets" }),
+    getDocsUrl(state, { page: "questions/native-editor/snippets" }),
   );
   return <ExternalLink href={href}>{t`SQL snippets`}</ExternalLink>;
 }

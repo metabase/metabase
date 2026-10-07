@@ -25,13 +25,13 @@ Here's a high-level overview:
 2. [Add a new endpoint to your backend to handle authentication](#2-add-a-new-endpoint-to-your-backend-to-handle-authentication)
 3. [Wire your frontend to your new endpoint](#3-wire-your-frontend-to-your-new-endpoint)
 
-### 1. Enable JWT SSO in your Metabase
+### 1. Enable JWT SSO in your Metabase {#1-enable-jwt-sso-in-your-metabase}
 
 1. Configure JWT by going to **Admin** > **Settings** > **Authentication** and clicking on **JWT**
 2. Enter the JWT Identity Provider URI, for example `http://localhost:9090/sso/metabase`. This is a new endpoint you will add in your backend to handle authentication.
 3. Generate a key and copy it to your clipboard.
 
-### 2. Add a new endpoint to your backend to handle authentication
+### 2. Add a new endpoint to your backend to handle authentication {#2-add-a-new-endpoint-to-your-backend-to-handle-authentication}
 
 You'll need to add a library to your backend to sign your JSON Web Tokens.
 
@@ -74,7 +74,7 @@ Here's an example of an Express.js endpoint that handles both:
 {% include_file "{{ dirname }}/sdk/snippets/authentication/express-server-interactive-and-sdk.ts" %}
 ```
 
-### 3. Wire your frontend to your new endpoint
+### 3. Wire your frontend to your new endpoint {#3-wire-your-frontend-to-your-new-endpoint}
 
 Update the config in your frontend code to point to your backend's authentication endpoint.
 

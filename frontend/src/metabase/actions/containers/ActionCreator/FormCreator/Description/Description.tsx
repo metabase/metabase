@@ -8,7 +8,7 @@ import { Text } from "metabase/ui";
 
 export function Description() {
   const docsLink = useSelector((state) =>
-    getDocsUrl(state, { page: "actions/custom" }),
+    getDocsUrl(state, { page: "data-modeling/models/actions/custom" }),
   );
   const showMetabaseLinks = useSelector(getShowMetabaseLinks);
 
