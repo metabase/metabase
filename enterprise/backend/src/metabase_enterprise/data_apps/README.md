@@ -77,9 +77,9 @@ assets (`metabase.server.routes/static-files-handler`).
 - `PUT /api/apps/:slug` — update manifest fields or the bundle, or toggle `enabled` (superuser).
 - `DELETE /api/apps/:slug` — drop a row, its bundle, and its owned resources (superuser).
 - `GET /api/apps/repo-status` — whether a repo is connected (superuser).
-- `POST /api/apps/export-resources` — what the files of an app's collection are written from: the query Metabase builds
-  from each `defineQuery` definition, and the actions and metrics it copies, all as serialization exports
-  them (`resource_export.clj`). An action must belong to no model (superuser).
+- `POST /api/apps/serialize-resources` — what the files of an app's collection are written from: the query Metabase builds
+  from each `defineQuery` definition, and the actions and metrics it copies, all as serialization writes
+  them (`resource_serialization.clj`). An action must belong to no model (superuser).
 
 Responses are field-filtered by role: superusers get full metadata, everyone else gets `name` and
 `display_name` only. The bundle blob is never serialized into JSON, and metadata reads go through
@@ -125,8 +125,8 @@ Exporting an app's resources also needs a superuser.
 | `api.clj`             | The `/api/apps` endpoints, bundle serving, ETag handling.                                           |
 | `resources.clj`       | Lifecycle of the app-owned collection and permission group: creation, view-data blocking, deletion. |
 | `models/data_app.clj` | The `:model/DataApp` Toucan model: hooks, permissions, default fields, serialization.               |
-| `resource_export.clj` | The export an app's resource files are written from: built queries, actions, metrics.             |
-| `query_definition.clj`| The closed schema of a `defineQuery` definition the export accepts.                                 |
+| `resource_serialization.clj` | The serialization an app's resource files are written from: built queries, actions, metrics. |
+| `query_definition.clj`| The closed schema of a `defineQuery` definition the serialization accepts.                                 |
 | `db.clj`              | The module's application-database queries.                                                          |
 | `csp.clj`             | `allowed_hosts` lookup for the core CSP middleware.                                                 |
 | `init.clj`            | Loads the above so endpoints, models, and hooks register.                                           |

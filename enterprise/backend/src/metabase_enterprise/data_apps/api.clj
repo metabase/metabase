@@ -12,7 +12,7 @@
    [metabase-enterprise.data-apps.db :as data-apps.db]
    [metabase-enterprise.data-apps.models.data-app :as data-app]
    [metabase-enterprise.data-apps.query-definition :as query-definition]
-   [metabase-enterprise.data-apps.resource-export :as data-app.resource-export]
+   [metabase-enterprise.data-apps.resource-serialization :as data-app.resource-serialization]
    [metabase-enterprise.data-apps.schema :as data-apps.schema]
    [metabase-enterprise.data-apps.user-access :as data-app.user-access]
    [metabase.api-scope.data-app :as api-scope]
@@ -150,7 +150,7 @@
    [:user_id ms/PositiveInt]
    [:missing_tables [:sequential MissingTable]]])
 
-(def ^:private ExportResourcesRequest
+(def ^:private SerializeResourcesRequest
   [:map {:closed true}
    [:collection ms/NanoIdString]
    [:queries {:default []} [:sequential [:map {:closed true}
@@ -159,7 +159,7 @@
                                          [:query ::query-definition/query-definition]]]]
    [:actions {:default []} [:sequential {:distinct true} ms/PositiveInt]]])
 
-(def ^:private ExportedQuery
+(def ^:private SerializedQuery
   [:or
    [:map {:closed true}
     [:export  :string]
@@ -169,7 +169,7 @@
     [:export :string]
     [:error  :string]]])
 
-(def ^:private ExportedEntity
+(def ^:private SerializedEntity
   [:or
    [:map {:closed true}
     [:id     ms/PositiveInt]
@@ -178,11 +178,11 @@
     [:id    ms/PositiveInt]
     [:error :string]]])
 
-(def ^:private ExportResourcesResponse
+(def ^:private SerializeResourcesResponse
   [:map {:closed true}
-   [:queries [:sequential ExportedQuery]]
-   [:actions [:sequential ExportedEntity]]
-   [:metrics [:sequential ExportedEntity]]])
+   [:queries [:sequential SerializedQuery]]
+   [:actions [:sequential SerializedEntity]]
+   [:metrics [:sequential SerializedEntity]]])
 ;;; --------------------------------------------- Repo status ---------------------------------------------
 
 (api.macros/defendpoint :get "/repo-status" :- RepoStatusResponse
@@ -354,17 +354,17 @@
                    (tru "Tenant users cannot be added to data apps."))
     (data-app.user-access/permission-warnings (:table_ids app) users)))
 
-(api.macros/defendpoint :post "/export-resources" :- ExportResourcesResponse
-  "Export what the files of a data app's collection are written from, as serialization writes it: the saved question
+(api.macros/defendpoint :post "/serialize-resources" :- SerializeResourcesResponse
+  "Serialize what the files of a data app's collection are written from, as serialization writes it: the saved question
   holding the query Metabase builds from each `defineQuery` definition in `queries`, in the app's `collection`,
   the actions in `actions`, which must belong to no model, and the metrics the queries aggregate. Each item answers
-  on its own, with its export or the error that stops it. For superusers: the files are written into the app's
+  on its own, with its serialization or the error that stops it. For superusers: the files are written into the app's
   repository, which only an admin works with."
   [_route-params
    _query-params
-   {:keys [queries actions collection]} :- ExportResourcesRequest]
+   {:keys [queries actions collection]} :- SerializeResourcesRequest]
   (api/check-superuser)
-  (data-app.resource-export/export-resources collection queries actions))
+  (data-app.resource-serialization/serialize-resources collection queries actions))
 
 ;; Not tagged `data-apps:base`, though the bundle route below is — which looks backwards until
 ;; you place the two callers. `DataAppView` fetches this metadata on the *host* page to decide

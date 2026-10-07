@@ -1,4 +1,4 @@
-(ns metabase-enterprise.data-apps.resource-export
+(ns metabase-enterprise.data-apps.resource-serialization
   "What the files of a data app's collection are written from, as serialization writes it: the saved question that holds
   the query Metabase builds from each `defineQuery` definition, each action the app runs, and the metrics its queries
   aggregate. Nothing here references an entity by numeric ID, so the author copies it into the app's collection as it
@@ -29,25 +29,25 @@
 (set! *warn-on-reflection* true)
 
 (defn- fail
-  "Throws the refusal of an item: a reason the author has to act on, which is not a failure of the export."
+  "Throws the refusal of an item: a reason the author has to act on, which is not a failure of the serialization."
   [message]
   (throw (ex-info message {::refusal true})))
 
 (defn- with-item-error
-  "Calls `export`, or answers `item` with the `:error` that stopped it, so one item that can't be exported doesn't
-  fail the rest. Anything other than a refusal is logged, so a bug in an export leaves a trace on the server."
-  [item export]
+  "Calls `serialize`, or answers `item` with the `:error` that stopped it, so one item that can't be serialized doesn't
+  fail the rest. Anything other than a refusal is logged, so a bug in the serialization leaves a trace on the server."
+  [item serialize]
   (try
-    (export)
+    (serialize)
     (catch Exception e
       (when-not (::refusal (ex-data e))
-        (log/warn e "Could not export a data app resource" item))
-      (assoc item :error (or (ex-message e) (tru "Could not export it."))))))
+        (log/warn e "Could not serialize a data app resource" item))
+      (assoc item :error (or (ex-message e) (tru "Could not serialize it."))))))
 
 (defn- extract-by-entity-id
-  "The entities of `model-name` with `ids`, as serialization exports them, keyed by entity ID: one extraction for
-  them all. Serialization leaves out what it can't export (an exploration's card), and goes on past one it fails
-  on, so an entity missing from the result couldn't be exported; [[extraction-error]] says why."
+  "The entities of `model-name` with `ids`, as serialization extracts them, keyed by entity ID: one extraction for
+  them all. Serialization leaves out what it can't extract (an exploration's card), and goes on past one it fails
+  on, so an entity missing from the result couldn't be extracted; [[extraction-error]] says why."
   [model-name ids]
   (if (seq ids)
     (into {}
@@ -57,7 +57,7 @@
     {}))
 
 (defn- extraction-error
-  "Why serialization can't export the `model-name` entity with `id`, or nil when it leaves the entity out without an
+  "Why serialization can't extract the `model-name` entity with `id`, or nil when it leaves the entity out without an
   error: the one entity is extracted on its own, with the error let through. Serialization wraps what fails inside
   an extraction in \"Error extracting ...\" at each level, so the reason is the innermost cause."
   [model-name id]
@@ -87,20 +87,20 @@
            (str/join ", ")))
 
 (defn- check-copyable
-  "Throws when the `model-name` entity `source`, labelled `label` and exported as `exported`, can't be copied into a
+  "Throws when the `model-name` entity `source`, labelled `label` and extracted as `serialized`, can't be copied into a
   data app's resources: it's archived (the pull refuses it), a routing destination backs it, it references a card other
-  than `own-cards`, or serialization couldn't export it, with the reason when it gave one."
-  [label model-name {:keys [archived database_id] :as source} exported own-cards]
+  than `own-cards`, or serialization couldn't extract it, with the reason when it gave one."
+  [label model-name {:keys [archived database_id] :as source} serialized own-cards]
   (when archived
     (fail (tru "{0} is archived." label)))
   (when (seq (data-apps.db/destination-database-ids #{database_id}))
     (fail (tru "{0} is backed by a routing destination database." label)))
   (when-let [card-ids (cards-read model-name source own-cards)]
     (fail (tru "{0} reads card {1}, which a data app''s resources can''t hold." label card-ids)))
-  (when-not exported
+  (when-not serialized
     (fail (if-let [cause (extraction-error model-name (:id source))]
-            (tru "Serialization could not export {0}: {1}" label cause)
-            (tru "Serialization could not export {0}." label)))))
+            (tru "Could not serialize {0}: {1}" label cause)
+            (tru "Could not serialize {0}." label)))))
 
 (def ^:private public-keys
   "What makes a source public or embedded. A copy never is, and the pull refuses a file that says it is."
@@ -153,7 +153,7 @@
       (fail (tru "Table {0} does not exist." (str table-id))))
     (let [built (lib/test-query (lib-be/application-database-metadata-provider (:db_id table)) query-definition)]
       ;; The request schema accepts what a type lets through, such as a fractional limit, and the checks in lib
-      ;; that would refuse it are off in production: an invalid query must not export and then fail when it runs.
+      ;; that would refuse it are off in production: an invalid query must not serialize and then fail when it runs.
       (when-not (mr/validate ::lib.schema/query built)
         (fail (tru "The definition does not build a valid query.")))
       ;; Types generated before a table was deactivated still reach its columns through a foreign key, as does the
@@ -163,7 +163,7 @@
           (fail (tru "Table {0} does not exist." (str read-id)))))
       built)))
 
-(mu/defn- export-query
+(mu/defn- serialize-query
   "A `defineQuery` definition as `{:export :entity :metric_ids}`, the entity being the saved question that holds the
   query Metabase builds from it, in the app's collection with `collection-entity-id`, or `{:export :error}`."
   [collection-entity-id        :- ms/NanoIdString
@@ -180,24 +180,24 @@
                                         :collection_id collection-entity-id))
          :metric_ids (vec (sort (lib/all-source-card-ids built)))}))))
 
-(defn- export-metric
-  "The metric `card` as `{:id :entity}`, or `{:id :error}` when the app can't copy it. `exported` is its
-  serialization export, if it has one."
-  [card-id card exported]
+(defn- serialize-metric
+  "The metric `card` as `{:id :entity}`, or `{:id :error}` when the app can't copy it. `serialized` is what
+  serialization extracts for it, if anything."
+  [card-id card serialized]
   (with-item-error
     {:id card-id}
     (fn []
       (let [label (tru "Metric {0}" (str card-id))]
         (when-not (and card (= :metric (keyword (:type card))))
           (fail (tru "{0} does not exist." label)))
-        (check-copyable label "Card" card exported #{})
-        {:id card-id, :entity (as-written exported)}))))
+        (check-copyable label "Card" card serialized #{})
+        {:id card-id, :entity (as-written serialized)}))))
 
-(defn- export-action
-  "The action with `action-id` as `{:id :entity}`, or `{:id :error}` when the app can't copy it. `exported` is the
-  action's serialization export, if it has one. A data app runs only actions that belong to no model, as the typed
+(defn- serialize-action
+  "The action with `action-id` as `{:id :entity}`, or `{:id :error}` when the app can't copy it. `serialized` is what
+  serialization extracts for the action, if anything. A data app runs only actions that belong to no model, as the typed
   schema lists only those."
-  [action-id action exported]
+  [action-id action serialized]
   (with-item-error
     {:id action-id}
     (fn []
@@ -206,26 +206,26 @@
           (fail (tru "{0} does not exist." label)))
         (when (:model_id action)
           (fail (tru "{0} belongs to a model. A data app runs query actions that belong to no model." label)))
-        (check-copyable label "Action" action exported #{})
-        {:id action-id, :entity (as-written exported)}))))
+        (check-copyable label "Action" action serialized #{})
+        {:id action-id, :entity (as-written serialized)}))))
 
-(defn export-resources
-  "Export the saved question built from each of `queries` (`{:export <name> :query <definition> :entity_id <id>}`),
+(defn serialize-resources
+  "Serialize the saved question built from each of `queries` (`{:export <name> :query <definition> :entity_id <id>}`),
   in the app's collection with `collection-entity-id`, the actions with `action-ids`, and the metrics the queries
-  aggregate. Each item comes back on its own, with what it exports or the error that stops it, so one item that
-  can't be exported doesn't hide the rest. A query lists the entity IDs of the metrics it references, which the
+  aggregate. Each item comes back on its own, with its serialization or the error that stops it, so one item that
+  can't be serialized doesn't hide the rest. A query lists the entity IDs of the metrics it references, which the
   author points at the app's copies."
   [collection-entity-id queries action-ids]
   (serdes/with-cache
-    (let [queries       (mapv (partial export-query collection-entity-id) queries)
-          actions-by-id (into {} (map (juxt :id identity)) (actions/select-actions-for-ids nil action-ids))
-          metric-ids    (into (sorted-set) (mapcat :metric_ids) queries)
-          cards-by-id   (into {} (map (juxt :id identity)) (data-apps.db/cards-by-ids metric-ids))
-          exported-card (comp (extract-by-entity-id "Card" (keys cards-by-id)) :entity_id cards-by-id)
-          exported-act  (comp (extract-by-entity-id "Action" (keys actions-by-id)) :entity_id actions-by-id)]
+    (let [queries           (mapv (partial serialize-query collection-entity-id) queries)
+          actions-by-id     (into {} (map (juxt :id identity)) (actions/select-actions-for-ids nil action-ids))
+          metric-ids        (into (sorted-set) (mapcat :metric_ids) queries)
+          cards-by-id       (into {} (map (juxt :id identity)) (data-apps.db/cards-by-ids metric-ids))
+          serialized-card   (comp (extract-by-entity-id "Card" (keys cards-by-id)) :entity_id cards-by-id)
+          serialized-action (comp (extract-by-entity-id "Action" (keys actions-by-id)) :entity_id actions-by-id)]
       {:queries (mapv (fn [{:keys [metric_ids] :as query}]
                         (cond-> (dissoc query :metric_ids)
                           (not (:error query)) (assoc :metrics (mapv (comp :entity_id cards-by-id) metric_ids))))
                       queries)
-       :actions (mapv #(export-action % (actions-by-id %) (exported-act %)) action-ids)
-       :metrics (mapv #(export-metric % (cards-by-id %) (exported-card %)) metric-ids)})))
+       :actions (mapv #(serialize-action % (actions-by-id %) (serialized-action %)) action-ids)
+       :metrics (mapv #(serialize-metric % (cards-by-id %) (serialized-card %)) metric-ids)})))
