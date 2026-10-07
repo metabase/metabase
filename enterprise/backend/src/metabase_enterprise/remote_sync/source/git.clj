@@ -37,7 +37,10 @@
   [^Exception e ^GitCommand command remote?]
   (let [root-ex (root-cause e)]
     ;; strip off the beginning URL that is often included and ends up being duplicated later
-    (ex-info (format "Git %s failed: %s" (-> command .getClass .getSimpleName) (str/replace-first (ex-message root-ex) #"^[a-z]+://[a-zA-Z0-9\-\.]+: " ""))
+    (ex-info (format "Git %s failed: %s" (-> command .getClass .getSimpleName)
+                     ;; an InterruptedException has no message
+                     (str/replace-first (or (ex-message root-ex) (.getName (class root-ex)))
+                                        #"^[a-z]+://[a-zA-Z0-9\-\.]+: " ""))
              ;; the data of the root cause, for example a URL refusal, stays readable on the thrown exception
              (merge (ex-data root-ex) {:remote remote?})
              root-ex)))
@@ -80,22 +83,26 @@
       "<a URL that cannot be parsed>")))
 
 (defn- same-server?
-  "True iff the URI `uri` has the scheme, the host and the port of the URI `expected`."
+  "True iff the URI `uri` has the host of the URI `expected`, and either has its scheme and port, or is https on port
+  443 where `expected` is http on port 80."
   [^URIish expected ^URIish uri]
+  ;; A server can redirect http to https on the same host, and JGit then asks for the credentials of the https URI.
   (let [scheme (fn [^URIish u] (some-> (.getScheme u) u/lower-case-en))
         host   (fn [^URIish u] (some-> (.getHost u) u/lower-case-en))
         port   (fn [^URIish u]
                  (let [p (.getPort u)]
                    (if (pos? p)
                      p
-                     (case (scheme u) "https" 443 "http" 80 p))))]
-    (and (= (scheme expected) (scheme uri))
-         (= (host expected) (host uri))
-         (= (port expected) (port uri)))))
+                     (case (scheme u) "https" 443 "http" 80 p))))
+        server (juxt scheme port)]
+    (and (= (host expected) (host uri))
+         (contains? (cond-> #{(server expected)}
+                      (= ["http" 80] (server expected)) (conj ["https" 443]))
+                    (server uri)))))
 
 (defn- for-server-of
-  "A CredentialsProvider that gives the credentials of `provider` only for a URI with the scheme, the host and the port
-  of `remote-url`, and no credentials for another URI."
+  "A CredentialsProvider that gives the credentials of `provider` only for a URI on the server of `remote-url` (see
+  [[same-server?]]), and no credentials for another URI."
   ^CredentialsProvider [^CredentialsProvider provider ^String remote-url]
   ;; JGit follows an HTTP redirect after the transport callback, and asks the provider for the URI of the redirect
   ;; target.
@@ -180,9 +187,10 @@
       (if (instance? FetchCommand command)
         ;; Sources of one URL share one clone, and two fetches into it at one time can fail on the lock of a pack
         ;; file. The lock is held only for the JGit call, which waits for no other lock. A ReentrantLock, not a
-        ;; monitor: on JDK 21, a virtual thread that blocks in a monitor pins its carrier thread.
+        ;; monitor: on JDK 21, a virtual thread that blocks in a monitor pins its carrier thread. An interrupt ends the
+        ;; wait for the lock.
         (let [lock (fetch-lock (.getRepository command))]
-          (.lock lock)
+          (.lockInterruptibly lock)
           (try
             (.call command)
             (finally

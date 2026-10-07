@@ -18,7 +18,7 @@
    (java.nio.channels FileChannel FileLock OverlappingFileLockException)
    (java.nio.file FileSystems Files FileVisitOption LinkOption NoSuchFileException OpenOption Path StandardOpenOption)
    (java.nio.file.attribute FileAttribute PosixFilePermissions UserPrincipal)
-   (java.util.concurrent ExecutorService Executors ThreadFactory)
+   (java.util.concurrent ExecutorService Executors ThreadFactory TimeUnit)
    (org.apache.commons.io FileUtils)))
 
 (set! *warn-on-reflection* true)
@@ -126,12 +126,13 @@
   "The user id of the root user."
   0)
 
-(defn- check-safe-parent!
-  "Where the file system has POSIX permissions, throws when another user can rename `base-dir`: when the parent
-  directory of `base-dir` exists and is owned by a user other than the user of this process and root, or when the
-  group or other users can write to it and it has no sticky bit. The error names the parent, the reason and the remedy,
-  and its data has the `:path` and the `:reason` `:unsafe-parent`."
+(defn- warn-unsafe-parent!
+  "Where the file system has POSIX permissions, logs a warning that names the parent directory of `base-dir`, the risk
+  and the remedy when another user can rename `base-dir`: when the parent exists and is owned by a user other than the
+  user of this process and root, or when the group or other users can write to it and it has no sticky bit. Checks
+  only the direct parent."
   [^File base-dir]
+  ;; A warning, not a refusal: a Kubernetes emptyDir volume, a common java.io.tmpdir, has mode 0777 and no sticky bit.
   (when-let [parent (when (posix?) (.getParentFile (.getAbsoluteFile base-dir)))]
     (let [path (.toPath parent)]
       (when (Files/isDirectory path (make-array LinkOption 0))
@@ -144,24 +145,23 @@
                         (and (pos? (bit-and mode 8r022)) (zero? (bit-and mode 8r1000)))
                         "lets other users write to it, and has no sticky bit")]
           (when problem
-            (throw (ex-info (str "The directory " parent " holds the git clone directory, and " problem
-                                 ". Another user can then rename the git clone directory. Remove the write permission"
-                                 " of the group and other users from " parent ", set its sticky bit, or set"
-                                 " java.io.tmpdir to a directory that only the Metabase user can write to. Then try"
-                                 " again.")
-                            {:path (str parent) :reason :unsafe-parent}))))))))
+            (log/warn (str "The directory " parent " holds the git clone directory, and " problem
+                           ". Another user can rename the git clone directory and put other files at its path."
+                           " To prevent this, remove the write permission of the group and other users from " parent
+                           ", set its sticky bit, or set java.io.tmpdir to a directory that only the Metabase user can"
+                           " write to."))))))))
 
 (defn- make-owner-only-base!
-  "Creates `base-dir` and its missing parents, and checks it with [[check-own-directory!]] and its parent with
-  [[check-safe-parent!]]. Where the file system has POSIX permissions, makes `base-dir` owner-only, also when it exists.
-  A failure to change the permissions is logged."
+  "Creates `base-dir` and its missing parents, checks it with [[check-own-directory!]], and checks its parent with
+  [[warn-unsafe-parent!]]. Where the file system has POSIX permissions, makes `base-dir` owner-only, also when it
+  exists. A failure to change the permissions is logged."
   [^File base-dir]
   ;; A cleaner of the temp dir can delete a process root while a clone writes into it, and JGit then makes the root
   ;; again with default permissions. No other user can enter that root below an owner-only base.
   (let [path (.toPath base-dir)]
     (Files/createDirectories path (owner-only-attributes))
     (check-own-directory! base-dir)
-    (check-safe-parent! base-dir)
+    (warn-unsafe-parent! base-dir)
     (when (posix?)
       (try
         (when (not= owner-only (Files/getPosixFilePermissions path (no-follow)))
@@ -383,16 +383,20 @@
   earlier Metabase version idle for longer than it.
 
   `clone-intact?`, a fn of a clone directory: when it is false for the active generation of a URL, the next
-  [[acquire!]] of the URL retires that generation and clones again. Default: the directory exists."
+  [[acquire!]] of the URL retires that generation and clones again. Default: the directory exists.
+
+  `shutdown-wait-ms`: [[shutdown!]] waits at most this long, in ms, for the running clone jobs. Default 5000."
   ([^File base-dir]
    (make-registry base-dir nil))
-  ([^File base-dir {:keys [max-lease-age-ms old-clone-idle-ms clone-intact?]}]
+  ([^File base-dir {:keys [max-lease-age-ms old-clone-idle-ms clone-intact? shutdown-wait-ms]
+                    :or   {shutdown-wait-ms 5000}}]
    {:base-dir          base-dir
     :clone-intact?     clone-intact?
     :root              (atom nil)
     :old-roots         (atom [])
     :state             (atom {})
     :executor          (delay (Executors/newCachedThreadPool (clone-thread-factory)))
+    :shutdown-wait-ms  shutdown-wait-ms
     :max-lease-age-ms  max-lease-age-ms
     :old-clone-idle-ms old-clone-idle-ms
     :old-clones-swept? (atom false)}))
@@ -696,13 +700,22 @@
                                      (recur))))))
 
 (defn shutdown!
-  "Interrupts the clone jobs of `registry`, closes every clone, releases the lock of the process root, and deletes the
-  root and each retired root. A clone job that ends after the shutdown deletes its clone and its root. Keeps, and logs,
-  a root whose path leads out of the roots that this JVM made."
-  [{:keys [state root old-roots executor]}]
-  ;; Before the deletes: a clone job reads the shutdown of the executor after its clone.
+  "Interrupts the clone jobs of `registry` and waits for them to end, at most the `shutdown-wait-ms` of `registry`. Then
+  closes every clone, releases the lock of the process root, and deletes the root and each retired root. A clone job
+  that ends after the wait deletes its clone and its root, unless the JVM stops its thread first: at the exit of the
+  JVM, such a job can leave a root with no lock file, which no sweep deletes. Keeps, and logs, a root whose path leads
+  out of the roots that this JVM made."
+  [{:keys [state root old-roots executor shutdown-wait-ms]}]
+  ;; Before the deletes: a clone job reads the shutdown of the executor after its clone. A JGit clone can ignore the
+  ;; interrupt, and at the exit of the JVM the job thread, a daemon, stops when the shutdown hooks end. The wait lets
+  ;; a job that ends in time delete what it wrote. The wait holds no lock that a job takes.
   (when (realized? executor)
-    (.shutdownNow ^ExecutorService @executor))
+    (let [^ExecutorService executor @executor]
+      (.shutdownNow executor)
+      (try
+        (.awaitTermination executor (long shutdown-wait-ms) TimeUnit/MILLISECONDS)
+        (catch InterruptedException _
+          (.interrupt (Thread/currentThread))))))
   (doseq [[_ {:keys [generations]}] @state
           [_ {:keys [git dir]}]      generations]
     (close-git! git dir))

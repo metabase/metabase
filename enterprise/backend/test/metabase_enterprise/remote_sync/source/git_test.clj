@@ -1665,6 +1665,8 @@
                 (.join waiter 2000)
                 (is (not (.isAlive waiter)) "the interrupted fetch ends while the other thread holds the lock")
                 (is (instance? Exception (deref result 0 ::running)) "the interrupted fetch throws")
+                (is (str/includes? (str (ex-message (deref result 0 nil))) "Git FetchCommand failed")
+                    "the error names the git command")
                 (finally
                   (deliver release true)
                   (.join holder 10000)
