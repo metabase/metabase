@@ -152,8 +152,9 @@ row · Click object incomplete, or clickable mark without
   as in `api-contract.md`; set `cursor: pointer` on every element with
   `onClick`.
 - **Detector** — For each `onClick(` call with a non-null object, a bug
-  when `value`, `column`, `element` or `event` is missing, or when
-  `dimensions` is missing and the viz has a dimension column. For each
+  when `value`, `column` or `event` is missing, when `element` is
+  missing for a DOM or SVG mark, or when `dimensions` is missing and the
+  viz has a dimension column. For each
   data mark with an `onClick=` prop, a bug when its style has no
   `cursor: "pointer"`. A background handler that only calls
   `onClick(null)` to close the menu takes no pointer cursor.

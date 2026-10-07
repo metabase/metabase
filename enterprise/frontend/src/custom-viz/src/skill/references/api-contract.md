@@ -19,13 +19,18 @@ onClick({
     // identifies the row; drives "filter by"
     { value: row[dimIndex], column: cols[dimIndex] },
   ],
+  data: cols.map((col, i) => ({ col, value: row[i] })), // every column of the row
+  origin: { row, cols }, // the source row
   element: event.currentTarget, // the drill popover anchors to this node
   event: event.nativeEvent, // fallback anchor
 });
 ```
 
+- `data` decides which drills Metabase offers (row details, foreign
+  keys); pass it and `origin` when the mark comes from one row.
 - `element` anchors the popover; without it the menu opens at the event
-  coordinates.
+  coordinates. Canvas libraries have no node per mark: pass `event`
+  only.
 - `dimensions` drives the "filter by this dimension" actions. For a mark
   that aggregates several rows (a category arc, a band), pass only the
   aggregating dimension.
@@ -40,7 +45,9 @@ symmetric: every mouse-enter that calls `onHover(...)` needs a leave path
 that reaches `onHover(null)` (known-mistakes: hover leave). Provide
 `data` (rows of `{ key, value, col }`) for multi-line tooltips; `col`
 drives value formatting. Pass `element` and `event` to anchor it, as for
-`onClick`.
+`onClick`. On a canvas, build the anchor event at the mark's position:
+`new MouseEvent("mouseover", { clientX, clientY })` from the chart's
+bounding rect plus the mark's pixel coordinates.
 
 ## renderingContext
 
@@ -136,6 +143,18 @@ or your own React component typed with `BaseWidgetProps<Value, Settings>`;
 it receives `value`, `onChange` and `onChangeSettings`. Use your own only
 when no built-in widget fits; it renders in the settings sidebar under
 the same sandbox rules.
+
+## Imperative libraries
+
+Charting libraries that own their DOM or canvas (ECharts, Chart.js, d3
+with event handlers):
+
+- Create the chart once in an effect and dispose it in the cleanup.
+- Register its event handlers once. `onClick`, `onHover`, `series` and
+  `settings` change on every render, so read them through a ref that
+  each render updates.
+- Push new options when data or settings change, and call the library's
+  resize when `width` or `height` changes.
 
 ## Other host behavior
 
