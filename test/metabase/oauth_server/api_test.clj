@@ -2384,9 +2384,8 @@
                  (checkbox-states (consent-page-at! :crowberto client_id redirect)))))))))
 
 (deftest consent-page-pre-ticks-requested-scopes-test
-  (testing (str "GHY-4826: every scope the MCP client requests starts ticked on the consent page. Claude and ChatGPT "
-                "do not notice when a token carries fewer scopes than they asked for, so an unticked default silently "
-                "grants less than requested. The baseline stays locked; the user can still untick the others.")
+  (testing (str "GHY-4826: every scope the MCP client requests starts ticked on the consent page."
+                "The baseline stays disabled.")
     (mt/with-temporary-setting-values [site-url                                  "http://localhost:3000"
                                        oauth-server-dynamic-registration-enabled true]
       (t2/with-transaction [_conn nil {:rollback-only true}]

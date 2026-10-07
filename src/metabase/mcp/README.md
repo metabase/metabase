@@ -88,17 +88,15 @@ OAuth protected resource metadata is available at:
 ```
 
 On the consent screen, every scope the client requested starts ticked, and the baseline scopes are also locked. Only
-the scopes left ticked are granted, and only for the token this authorization mints: an untick never touches a token the app already has. A scope left unticked is not remembered by
-Metabase. A later 403 can trigger another step-up in clients that support it. Other clients may require manual
-reauthorization. Each challenge's `error_description` ends with a note that the user must grant the permission on the
-consent screen.
+the scopes left ticked are granted, and only for the token this authorization mints. A scope left unticked is not
+remembered by Metabase. A later 403 can trigger another step-up in clients that support it. Other clients may require
+manual reauthorization. Each challenge's `error_description` ends with a note that the user must grant the permission
+on the consent screen.
 
 Several clients replace the 403's `error_description` with their own text, so the `initialize` result's
 `instructions` explain scope failures to the model too: an auth error usually means a missing permission rather than an
 expired login, the model should name the failed tool or resource and the permission it requires, and the user grants it
-by reconnecting and leaving the permission ticked on the consent screen. Because every requested permission starts
-ticked, the instructions never tell the user to tick one: clicking a ticked box unticks it. The instructions are one
-static string, the same for every caller: there is no per-connection permission list.
+by reconnecting and leaving the permission ticked on the consent screen.
 
 ## Available tools
 

@@ -104,8 +104,7 @@
      (for [{:keys [scope description full-access? locked?]} scopes]
        [:li {:class (not-empty (str/join " " (cond-> [] full-access? (conj "full") locked? (conj "locked"))))}
         [:label
-         [:input (cond-> {:type "checkbox" :name "granted_scope" :value scope :checked true}
-                   locked? (assoc :disabled true))]
+         [:input {:type "checkbox" :name "granted_scope" :value scope :checked true :disabled locked?}]
          [:span.text
           (if full-access? [:strong description] [:span description])
           (when (not= description scope)
