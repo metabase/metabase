@@ -2295,6 +2295,16 @@
                  (cond-> response
                    (string? response) str/split-lines))))))))
 
+(deftest csv-download-pivot-results-on-non-pivot-card-test
+  (testing "pivot_results is ignored on non-pivot cards (#81323)"
+    (with-temp-native-card [_ card]
+      (let [response (mt/user-http-request :crowberto :post 200 (format "card/%d/query/csv" (u/the-id card))
+                                           {:pivot_results true})]
+        (is (= ["COUNT(*)"
+                "75"]
+               (cond-> response
+                 (string? response) (-> u/strip-bom str/split-lines))))))))
+
 (deftest json-download-test
   (testing "no parameters"
     (with-temp-native-card [_ card]
