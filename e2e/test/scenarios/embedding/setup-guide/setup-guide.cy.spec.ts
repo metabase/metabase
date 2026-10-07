@@ -206,14 +206,6 @@ describe("scenarios - setup guide", () => {
       });
     });
 
-    it("embedding checklist should not show up on the embedding homepage if not enabled", () => {
-      cy.visit("/");
-
-      cy.get("main")
-        .findByText("Get started with modular embedding")
-        .should("not.exist");
-    });
-
     it("overflow menu > customize homepage opens modal with correct title", () => {
       cy.request("PUT", "/api/setting/embedding-homepage", {
         value: "visible",
@@ -236,6 +228,14 @@ describe("scenarios - setup guide", () => {
     });
 
     it("overflow menu > dismiss guide hides the embedding homepage", () => {
+      cy.log("embedding checklist should not show up if not enabled");
+      cy.visit("/");
+
+      cy.findByTestId("home-page").should("be.visible");
+      cy.get("main")
+        .findByText("Get started with modular embedding")
+        .should("not.exist");
+
       cy.request("PUT", "/api/setting/embedding-homepage", {
         value: "visible",
       });
