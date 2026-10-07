@@ -291,17 +291,46 @@
                 (is (seq rows))                                     ; not hard-deleted — history retained
                 (is (every? :invalidated_at rows))))))))))
 
+(defn- scan-task-history
+  "The `content-diagnostics-scan` TaskHistory rows, oldest first."
+  []
+  (t2/select [:model/TaskHistory :status :task_details]
+             :task "content-diagnostics-scan"
+             {:order-by [[:id :asc]]}))
+
 (deftest scan-job-gated-on-premium-feature-test
   (let [scans (atom 0)]
-    (mt/with-dynamic-fn-redefs [scan/scan! (fn [] (swap! scans inc))]
-      (testing "the scheduled job body no-ops without the :content-diagnostics feature"
-        (mt/with-premium-features #{}
-          (#'task.scan/scan-when-enabled!)
-          (is (zero? @scans))))
-      (testing "the scheduled job body scans when the feature is present"
+    (mt/with-dynamic-fn-redefs [scan/scan! (fn []
+                                             (swap! scans inc)
+                                             {:scan_id "scan-job-test-scan" :finding_count 0 :duration_ms 0})]
+      (testing "the scheduled job body no-ops without the :content-diagnostics feature, recording the skip"
+        (mt/with-model-cleanup [:model/TaskHistory]
+          (mt/with-premium-features #{}
+            (#'task.scan/scan-when-enabled!)
+            (is (zero? @scans))
+            (is (=? [{:status       :success
+                      :task_details {:skipped-reason "content-diagnostics-disabled"}}]
+                    (scan-task-history))))))
+      (testing "the scheduled job body scans when the feature is present, recording the scan id"
+        (mt/with-model-cleanup [:model/TaskHistory]
+          (mt/with-premium-features #{:content-diagnostics :advanced-permissions}
+            (#'task.scan/scan-when-enabled!)
+            (is (= 1 @scans))
+            (is (= [{:status       :success
+                     :task_details {:scan-id "scan-job-test-scan"}}]
+                   (map #(into {} %) (scan-task-history))))))))))
+
+(deftest scan-job-failure-recorded-in-task-history-test
+  (testing "a scan that throws still fails the job, and its task_history row records the exception"
+    (mt/with-model-cleanup [:model/TaskHistory]
+      (mt/with-dynamic-fn-redefs [scan/scan! (fn [] (throw (ex-info "scan blew up" {})))]
         (mt/with-premium-features #{:content-diagnostics :advanced-permissions}
-          (#'task.scan/scan-when-enabled!)
-          (is (= 1 @scans)))))))
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"scan blew up"
+                                (#'task.scan/scan-when-enabled!)))
+          (is (=? [{:status       :failed
+                    :task_details {:status  "failed"
+                                   :message "scan blew up"}}]
+                  (scan-task-history))))))))
 
 (deftest api-latest-per-entity-and-hydration-test
   (testing "GET /stale returns the latest valid finding per entity, batch-hydrated"

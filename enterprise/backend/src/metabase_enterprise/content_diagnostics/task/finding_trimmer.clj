@@ -9,6 +9,7 @@
    [java-time.api :as t]
    [metabase-enterprise.content-diagnostics.models.finding :as finding]
    [metabase-enterprise.content-diagnostics.settings :as cd.settings]
+   [metabase.task-history.core :as task-history]
    [metabase.task.core :as task]
    [metabase.util.log :as log])
   (:import
@@ -32,10 +33,16 @@
         deleted (finding/delete-invalidated-before! cutoff)]
     (log/infof "Trimmed %d Content Diagnostics finding(s) invalidated before %s" deleted cutoff)))
 
+(defn- trim-with-history!
+  "Run [[trim-old-findings!]], recording the run in `task_history`."
+  []
+  (task-history/with-task-history {:task "content-diagnostics-trimmer"}
+    (trim-old-findings!)))
+
 (task/defjob ^{DisallowConcurrentExecution true
                :doc                         "Content Diagnostics - delete invalidated findings past retention."}
   ContentDiagnosticsFindingTrimmer [_ctx]
-  (trim-old-findings!))
+  (trim-with-history!))
 
 (defmethod task/init! ::ContentDiagnosticsFindingTrimmer [_]
   (let [job     (jobs/build

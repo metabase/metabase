@@ -56,6 +56,11 @@
    [:run-method      [:= :cron]]
    [:skipped-reason  {:optional true} :string]])
 
+(mr/def ::task-details.content-diagnostics-scan
+  [:map {:closed true}
+   [:scan-id        {:optional true} :string]
+   [:skipped-reason {:optional true} :string]])
+
 (mr/def ::task-details.remote-sync-auto-import
   [:map {:closed true}
    [:task-id ms/PositiveInt]])
@@ -135,6 +140,7 @@
    ::task-details.notification-trigger
    ::task-details.send-pulse
    ::task-details.run-transforms
+   ::task-details.content-diagnostics-scan
    ::task-details.remote-sync-auto-import
    ::task-details.persist-refresh
    ::task-details.sync-step

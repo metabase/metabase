@@ -47,3 +47,10 @@
         (is (= #{recent}
                (t2/select-pks-set :model/ContentDiagnosticsFinding
                                   {:where [:in :id [old recent]]})))))))
+
+(deftest records-runs-in-task-history-test
+  (testing "the scheduled job body records its run in task_history"
+    (mt/with-model-cleanup [:model/TaskHistory]
+      (#'task.finding-trimmer/trim-with-history!)
+      (is (=? [{:status :success}]
+              (t2/select [:model/TaskHistory :status] :task "content-diagnostics-trimmer"))))))
