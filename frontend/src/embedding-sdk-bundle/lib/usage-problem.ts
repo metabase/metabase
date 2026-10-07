@@ -49,13 +49,13 @@ export const USAGE_PROBLEM_MESSAGES = {
 
 export const SDK_AUTH_DOCS_URL =
   // eslint-disable-next-line metabase/no-unconditional-metabase-links-render -- these links are used in the SDK banner which is only shown to developers
-  "https://www.metabase.com/docs/latest/embedding/sdk/authentication#2-add-a-new-endpoint-to-your-backend-to-handle-authentication";
+  "https://www.metabase.com/docs/latest/embedding/authentication#2-add-a-new-endpoint-to-your-backend-to-handle-authentication";
 
 export const METABASE_UPGRADE_URL = "https://www.metabase.com/upgrade";
 
 export const SDK_INTRODUCTION_DOCS_URL =
   // eslint-disable-next-line metabase/no-unconditional-metabase-links-render -- these links are used in the SDK banner which is only shown to developers
-  "https://www.metabase.com/docs/latest/embedding/sdk/introduction#in-metabase";
+  "https://www.metabase.com/docs/latest/embedding/sdk/introduction#enable-the-sdk-in-metabase";
 
 const SDK_PREREQUISITES_DOCS_URL =
   // eslint-disable-next-line metabase/no-unconditional-metabase-links-render -- these links are used in the SDK banner which is only shown to developers
