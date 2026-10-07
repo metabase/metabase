@@ -754,3 +754,130 @@
       (is tc?)
       (is t?)
       (is (true? u?) "the new transform stays"))))
+
+;;; ------------------------------------ a transform test of a remote-deleted transform ------------------------------------
+
+(defn- transform-test-of-a-deleted-transform!
+  "A transforms collection TC with transform T and its transform test S is synced as the version v0. The remote deletes
+  TC, T and S. Before the pull, the user changes nothing (`:unchanged`), edits S (`:changed`), or adds transform test X
+  to T (`:local-new`); or the user adds X after the load (`:during`). Returns the pull result, the description of S,
+  whether TC, T, S and X exist after the pull, and the ledger rows of S and X."
+  [at]
+  (mt/with-premium-features #{:transforms-basic}
+    (with-sync-settings
+      (mt/with-temporary-setting-values [remote-sync-transforms true]
+        (mt/with-temp [:model/Collection    {alpha :id} {:name "Alpha" :is_remote_synced true :location "/"}
+                       :model/Card          _           {:name "Card A" :collection_id alpha}
+                       :model/Collection    {tc :id}    {:name "TC" :namespace "transforms" :location "/"}
+                       :model/Transform     {t :id}     {:name "Transform T" :collection_id tc}
+                       :model/TransformTest {s :id}     {:transform_id t :name "Test S" :description "original"}]
+          (mt/with-model-cleanup [:model/Transform :model/TransformTest]
+            (let [t0    (export-tree!)
+                  _     (pull-base! t0)
+                  t1    (into {} (remove (fn [[p _]] (str/starts-with? p "collections/transforms/tc"))) t0)
+                  x-id  (atom nil)
+                  add!  #(reset! x-id (t2/insert-returning-pk! :model/TransformTest
+                                                               {:transform_id t
+                                                                :name         "Test X"
+                                                                :inputs       []
+                                                                :expectations []
+                                                                :creator_id   (mt/user->id :rasta)}))
+                  _     (case at
+                          :changed   (t2/update! :model/TransformTest s {:description "local edit"})
+                          :local-new (add!)
+                          nil)
+                  {:keys [result]} (merge-pull! t0 t1 :on-report (once-at! 0.75 #(when (= :during at) (add!))))
+                  x-id  @x-id]
+              {:paths   (filterv #(str/starts-with? % "collections/transforms/tc") (keys t0))
+               :result  result
+               :s-desc  (t2/select-one-fn :description :model/TransformTest s)
+               :tc?     (t2/exists? :model/Collection :id tc)
+               :t?      (t2/exists? :model/Transform :id t)
+               :s?      (t2/exists? :model/TransformTest :id s)
+               :x?      (some->> x-id (t2/exists? :model/TransformTest :id))
+               :s-row   (row "TransformTest" s)
+               :x-row   (some->> x-id (row "TransformTest"))})))))))
+
+(deftest remote-delete-of-a-transform-with-a-local-transform-test-test
+  (testing "The user adds transform test X to transform T and does not push. The remote deletes T. The merge pull
+            reports a conflict on X and keeps T and X."
+    (let [{:keys [paths result t? x? x-row]} (transform-test-of-a-deleted-transform! :local-new)]
+      (is (= 3 (count paths)) "precondition: the tree has the files of TC, T and S")
+      (is (= :conflict (:status result)) (pr-str result))
+      (is (some #(str/includes? % "Test X") (:conflicts result)) (pr-str (:conflicts result)))
+      (is t?)
+      (is (true? x?) "the local transform test stays")
+      (is (= "create" (:status x-row)))))
+  (testing "The user edits transform test S and does not push. The remote deletes S and its transform T. The merge pull
+            reports a conflict and keeps the edit."
+    (let [{:keys [result t? s-desc s-row]} (transform-test-of-a-deleted-transform! :changed)]
+      (is (= :conflict (:status result)) (pr-str result))
+      (is t?)
+      (is (= "local edit" s-desc))
+      (is (= "update" (:status s-row))))))
+
+(deftest transform-test-added-under-a-remote-deleted-transform-during-the-pull-stops-the-pull-test
+  (testing "The remote deletes transform T. After the load, the user adds transform test X to T. The merge did not see
+            X, so the pull stops, and T and X stay."
+    (let [{:keys [result t? x?]} (transform-test-of-a-deleted-transform! :during)]
+      (is (= :conflict (:status result)) (pr-str result))
+      (is (= ["Test X"] (:conflicts result)) "the conflict names the new transform test")
+      (is (= (str "Import blocked: content was added locally during the pull under content that the remote "
+                  "branch deleted. Your local change is kept.")
+             (:message result)))
+      (is t?)
+      (is (true? x?) "the new transform test stays"))))
+
+(deftest remote-delete-of-a-transform-with-an-unchanged-transform-test-deletes-both-test
+  (testing "The remote deletes transforms collection TC, transform T and its transform test S, which nobody changed
+            locally. The merge pull deletes all of them and the row of S."
+    (let [{:keys [result tc? t? s? s-row]} (transform-test-of-a-deleted-transform! :unchanged)]
+      (is (= :success (:status result)) (pr-str result))
+      (is (not tc?))
+      (is (not t?))
+      (is (not s?))
+      (is (nil? s-row) "the row of S goes with S"))))
+
+;;; ------------------------------- a collection that a user creates during the reconcile -------------------------------
+
+(deftest sub-collection-created-during-the-reconcile-stops-the-pull-test
+  (testing "The remote deletes collection Beta. In the reconcile, after the save rule checked the delete closure, the
+            user creates collection Gamma under Beta and card D in Gamma. The merge did not see Gamma, so the pull stops,
+            and Beta, Gamma and D stay."
+    (with-sync-settings
+      (mt/with-temp [:model/Collection {alpha :id} {:name "Alpha" :is_remote_synced true :location "/"}
+                     :model/Card       _           {:name "Card A" :collection_id alpha}
+                     :model/Collection {beta :id}  {:name "Beta" :is_remote_synced true :location "/"}
+                     :model/Card       _           {:name "Card B" :collection_id beta}]
+        (mt/with-model-cleanup [:model/Card :model/Collection]
+          (let [t0     (export-tree!)
+                _      (pull-base! t0)
+                user   (atom nil)
+                real   (mt/original-fn #'save-rule/check-closure!)
+                create! (fn []
+                          (let [gamma (t2/insert-returning-pk! :model/Collection {:name             "Gamma"
+                                                                                  :location         (str "/" beta "/")
+                                                                                  :is_remote_synced true})]
+                            {:gamma gamma :d (insert-card! "New card D" {:collection_id gamma})}))
+                {:keys [result]}
+                (mt/with-dynamic-fn-redefs [save-rule/check-closure!
+                                            (fn [state closure phase]
+                                              (let [checked (real state closure phase)]
+                                                (when (and (= :reconcile phase) (nil? @user))
+                                                  ;; a plain thread, with no binding of the connection of the pull
+                                                  (let [p (promise)]
+                                                    (.start (Thread. ^Runnable #(deliver p (try (create!)
+                                                                                                (catch Throwable e e)))))
+                                                    (reset! user (deref p 30000 ::still-waiting))))
+                                                checked))]
+                  (merge-pull! t0 (without-beta t0)))
+                {:keys [gamma d]} @user]
+            (is (map? @user) (str "the user thread created Gamma and D: " (pr-str @user)))
+            (is (= :conflict (:status result)) (pr-str result))
+            (is (= ["Gamma"] (:conflicts result)) "the conflict names the new collection")
+            (is (= (str "Import blocked: content was added locally during the pull under content that the remote "
+                        "branch deleted. Your local change is kept.")
+                   (:message result)))
+            (is (t2/exists? :model/Collection :id beta) "Beta stays")
+            (is (t2/exists? :model/Collection :id gamma) "Gamma stays")
+            (is (t2/exists? :model/Card :id d) "card D stays")))))))

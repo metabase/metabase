@@ -146,3 +146,21 @@
     (testing "an empty input gives an empty closure"
       (is (= {:ids-by-model {} :model-index-ids #{}}
              (remote-sync.db/delete-closure {}))))))
+
+(deftest delete-closure-of-a-transform-test
+  (mt/with-premium-features #{:transforms-basic}
+    (mt/with-temp [:model/Transform     {t :id}     {:name "Closure transform"}
+                   :model/Transform     {other :id} {:name "Other transform"}
+                   :model/TransformTest {x :id}     {:transform_id t :name "Test X"}
+                   :model/TransformTest {y :id}     {:transform_id t :name "Test Y"}
+                   :model/TransformTest _           {:transform_id other :name "Other test"}]
+      (testing "the closure adds the transform tests of each Transform, which a delete of it removes by cascade"
+        (is (= {:ids-by-model    {:model/Transform     #{t}
+                                  :model/TransformTest #{x y}}
+                :model-index-ids #{}}
+               (remote-sync.db/delete-closure {:model/Transform #{t}}))))
+      (testing "the closure locks the rows of the Transform and of its transform tests"
+        (is (= {:result {:ids-by-model    {:model/Transform     #{t}
+                                           :model/TransformTest #{x y}}
+                         :model-index-ids #{}}}
+               (rolled-back #(remote-sync.db/delete-closure {:model/Transform #{t}} {:lock? true}))))))))
