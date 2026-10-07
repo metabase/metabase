@@ -192,11 +192,14 @@
       (is (tag-has-attribute? locked "disabled"))
       (is (re-find #"(?s)value=\"agent:content:read\"(?:(?!</li>).)*Always granted" html)
           "the note sits in the locked scope's row")))
-  (testing "every other scope, including a full-access one, starts unticked and can be ticked"
-    (let [[_ sql full] (checkbox-tags (render-with-scopes! checkbox-scopes))]
-      (doseq [tag [sql full]]
-        (is (not (tag-has-attribute? tag "checked")) tag)
-        (is (not (tag-has-attribute? tag "disabled")) tag))))
+  (testing "GHY-4826: every other requested scope starts ticked and can be unticked"
+    (let [[_ sql] (checkbox-tags (render-with-scopes! checkbox-scopes))]
+      (is (tag-has-attribute? sql "checked"))
+      (is (not (tag-has-attribute? sql "disabled")))))
+  (testing "a full-access scope starts unticked, so granting complete account access is a deliberate choice"
+    (let [[_ _ full] (checkbox-tags (render-with-scopes! checkbox-scopes))]
+      (is (not (tag-has-attribute? full "checked")))
+      (is (not (tag-has-attribute? full "disabled")))))
   (testing "no always-granted note when nothing is locked"
     (is (not (re-find #"Always granted" (render-with-scopes! (rest checkbox-scopes)))))))
 

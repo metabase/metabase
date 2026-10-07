@@ -91,8 +91,8 @@
    `{:scope <string> :description <localized-string-or-raw-scope> :full-access? <bool> :locked? <bool>}` maps, rendered
    in order.
 
-   A `:locked?` scope is ticked, disabled, and labelled as always granted; every other scope starts unticked and can be
-   ticked. A `:full-access?` scope carries the full-access warning in its own row.
+   A `:locked?` scope is ticked, disabled, and labelled as always granted. A `:full-access?` scope starts unticked and
+   carries the full-access warning in its own row. Every other scope starts ticked and can be unticked.
 
    Shows the human description and the raw scope string: the description is readable, the raw string
    is the precise, unambiguous grant the token will carry — both matter when approving a broad scope.
@@ -105,7 +105,8 @@
        [:li {:class (not-empty (str/join " " (cond-> [] full-access? (conj "full") locked? (conj "locked"))))}
         [:label
          [:input (cond-> {:type "checkbox" :name "granted_scope" :value scope}
-                   locked? (assoc :checked true :disabled true))]
+                   (not full-access?) (assoc :checked true)
+                   locked?            (assoc :checked true :disabled true))]
          [:span.text
           (if full-access? [:strong description] [:span description])
           (when (not= description scope)
