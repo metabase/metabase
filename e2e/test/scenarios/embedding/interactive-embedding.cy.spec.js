@@ -597,7 +597,28 @@ describe("scenarios > embedding > full app", () => {
       H.popover().findByText("Question").click();
     }
 
-    function selectTable({ tableName, schemaName, databaseName }) {
+    const DEFAULT_ALIASES = {
+      cardAlias: "@getCard",
+      tableMetadataAlias: "@getTableMetadata",
+    };
+
+    function interceptDataPickerRequests(name) {
+      cy.intercept("GET", "/api/card/*").as(`getCard${name}`);
+      cy.intercept("GET", "/api/table/*/query_metadata").as(
+        `getTableMetadata${name}`,
+      );
+      return {
+        cardAlias: `@getCard${name}`,
+        tableMetadataAlias: `@getTableMetadata${name}`,
+      };
+    }
+
+    function selectTable({
+      tableName,
+      schemaName,
+      databaseName,
+      aliases = DEFAULT_ALIASES,
+    }) {
       H.popover().within(() => {
         cy.findByText("Raw Data").click();
         if (databaseName) {
@@ -608,10 +629,15 @@ describe("scenarios > embedding > full app", () => {
         }
         cy.findByText(tableName).click();
       });
-      cy.wait("@getTableMetadata");
+      cy.wait(aliases.tableMetadataAlias);
     }
 
-    function selectCard({ cardName, cardType, collectionNames }) {
+    function selectCard({
+      cardName,
+      cardType,
+      collectionNames,
+      aliases = DEFAULT_ALIASES,
+    }) {
       H.popover().within(() => {
         cy.findByText(cardTypeToLabel[cardType]).click();
         collectionNames.forEach((collectionName) =>
@@ -619,9 +645,9 @@ describe("scenarios > embedding > full app", () => {
         );
         cy.findByText(cardName).click();
       });
-      cy.wait("@getTableMetadata");
+      cy.wait(aliases.tableMetadataAlias);
       if (cardType !== "metric") {
-        cy.wait("@getCard");
+        cy.wait(aliases.cardAlias);
       }
     }
 
@@ -852,8 +878,9 @@ describe("scenarios > embedding > full app", () => {
         H.createQuestion(cardDetails);
 
         cy.log("select a table in the only database");
+        const onlyDatabaseAliases = interceptDataPickerRequests("OnlyDatabase");
         startNewEmbeddingQuestion({ isMultiStageDataPicker: true });
-        selectTable({ tableName: "Products" });
+        selectTable({ tableName: "Products", aliases: onlyDatabaseAliases });
         clickOnDataSource("Products");
         verifyTableSelected({
           tableName: "Products",
@@ -861,9 +888,11 @@ describe("scenarios > embedding > full app", () => {
         });
 
         cy.log("join a table when the data source is a table");
+        const joinTableAliases = interceptDataPickerRequests("JoinTable");
         startNewEmbeddingQuestion({ isMultiStageDataPicker: true });
         selectTable({
           tableName: "Orders",
+          aliases: joinTableAliases,
         });
         H.getNotebookStep("data").button("Join data").click();
         H.popover().findByText("Products").click();
@@ -874,9 +903,11 @@ describe("scenarios > embedding > full app", () => {
         });
 
         cy.log("join a model when the data source is a table");
+        const joinModelAliases = interceptDataPickerRequests("JoinModel");
         startNewEmbeddingQuestion({ isMultiStageDataPicker: true });
         selectTable({
           tableName: "Products",
+          aliases: joinModelAliases,
         });
         H.getNotebookStep("data").button("Join data").click();
         goBackToBucketStep();
@@ -884,6 +915,7 @@ describe("scenarios > embedding > full app", () => {
           cardName: cardDetails.name,
           cardType: "model",
           collectionNames: ["First collection"],
+          aliases: joinModelAliases,
         });
         clickOnJoinDataSource(cardDetails.name);
         verifyCardSelected({
@@ -896,16 +928,18 @@ describe("scenarios > embedding > full app", () => {
     describe("model", () => {
       it("should select a model in every collection the user can see", () => {
         createCollectionMatrixCards({ withQuestions: false }).then(() => {
-          COLLECTION_CASES.forEach((testCase) => {
+          COLLECTION_CASES.forEach((testCase, index) => {
             const modelName = getMatrixModelName(testCase.location);
             cy.log(`${testCase.user} user, model in ${testCase.location}`);
 
             signInForCollectionCase(testCase);
+            const aliases = interceptDataPickerRequests(`Matrix${index}`);
             startNewEmbeddingQuestion({ isMultiStageDataPicker: true });
             selectCard({
               cardName: modelName,
               cardType: "model",
               collectionNames: testCase.stagedPath,
+              aliases,
             });
             clickOnDataSource(modelName);
             verifyCardSelected({
@@ -928,11 +962,13 @@ describe("scenarios > embedding > full app", () => {
         H.createQuestion(ordersCountModelDetails);
 
         cy.log("join a model when the data source is a model");
+        const joinModelAliases = interceptDataPickerRequests("JoinModel");
         startNewEmbeddingQuestion({ isMultiStageDataPicker: true });
         selectCard({
           cardName: ordersModelName,
           cardType: "model",
           collectionNames: [],
+          aliases: joinModelAliases,
         });
 
         H.getNotebookStep("data").button("Join data").click();
@@ -941,6 +977,7 @@ describe("scenarios > embedding > full app", () => {
           cardName: ordersCountModelDetails.name,
           cardType: "model",
           collectionNames: [],
+          aliases: joinModelAliases,
         });
 
         cy.log("select join column");
@@ -954,11 +991,13 @@ describe("scenarios > embedding > full app", () => {
         });
 
         cy.log("join a table when the data source is a model");
+        const joinTableAliases = interceptDataPickerRequests("JoinTable");
         startNewEmbeddingQuestion({ isMultiStageDataPicker: true });
         selectCard({
           cardName: ordersModelName,
           cardType: "model",
           collectionNames: [],
+          aliases: joinTableAliases,
         });
 
         H.getNotebookStep("data").button("Join data").click();
@@ -967,6 +1006,7 @@ describe("scenarios > embedding > full app", () => {
         selectTable({
           tableName: "Products",
           databaseName: "Sample Database",
+          aliases: joinTableAliases,
         });
         clickOnJoinDataSource("Products");
         verifyTableSelected({
