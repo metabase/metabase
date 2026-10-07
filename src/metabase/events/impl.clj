@@ -37,25 +37,39 @@
     {:error/message "Events should derive from :metabase/event"}
     #(events.hierarchy/isa? % :metabase/event)]])
 
-(defn- invoke-all!
-  "Call `invoke` on each of `methods`. If calls throw, throw the first exception after all calls ran, with the others
-  added to it as suppressed."
-  [methods invoke]
-  (let [errors (into [] (keep (fn [method]
-                                (try
-                                  (invoke method)
-                                  nil
-                                  (catch Exception e
-                                    e))))
-                     methods)]
-    (when-let [[^Throwable e & more] (seq errors)]
-      (doseq [^Throwable other more
-              :when (not (identical? e other))]
-        (.addSuppressed e other))
-      (throw e))))
+(defn- with-suppressed
+  "Add each of `others` to `e` as suppressed, and return `e`."
+  ^Throwable [^Throwable e others]
+  (doseq [^Throwable other others
+          ;; two listeners can throw one object (for example, a failed `delay`), and `(.addSuppressed e e)` throws
+          :when (not (identical? e other))]
+    (.addSuppressed e other))
+  e)
 
-;; Inside an open app-DB transaction, the first exception stops the listeners after it, as with `:do`: the transaction
-;; rolls back, and a later listener must not act on rows that never commit (e.g. send the invite email of a user).
+(defn- invoke-all!
+  "Call `invoke` on each of `methods`. If calls throw Exceptions, throw the first after all calls ran, with the others
+  added to it as suppressed. An Error or an InterruptedException propagates at once, with the Exceptions before it
+  added to it as suppressed; an InterruptedException also sets the interrupt flag of the thread again."
+  [methods invoke]
+  (let [errors (reduce (fn [errors method]
+                         (try
+                           (invoke method)
+                           errors
+                           (catch InterruptedException e
+                             (.interrupt (Thread/currentThread))
+                             (throw (with-suppressed e errors)))
+                           (catch Exception e
+                             (conj errors e))
+                           (catch Error e
+                             (throw (with-suppressed e errors)))))
+                       []
+                       methods)]
+    (when-let [[e & more] (seq errors)]
+      (throw (with-suppressed e more)))))
+
+;; Inside an open app-DB transaction, the first throw stops the listeners after it, as with `:do`: the transaction
+;; rolls back, and a later listener must not act on rows that never commit (for example, send the invite email of a
+;; user that rolls back).
 (combo.operator/defoperator ::publish-event [methods invoke]
   (if (mdb/in-transaction?)
     (run! invoke methods)
@@ -72,11 +86,15 @@
 
     (events/publish-event! :event/database-create {:object database :user-id api/*current-user-id*})
 
-  'Subscribe' to an event by add a Methodical method implementation. Every method implementation that matches the
-  topic is called for a single invocation, from the most specific dispatch value to the least specific; return values
-  are ignored. Outside an app-DB transaction, a method that throws does not stop the others: this throws after all of
-  them ran, an `ex-info` whose cause is the first exception, with the others added to it as suppressed. Inside an
-  app-DB transaction, the first exception stops the methods after it.
+  'Subscribe' to an event by adding a Methodical method implementation (a listener). Each call runs every listener
+  that matches the topic. A listener on the topic runs before the listeners of its ancestors; the order of the other
+  listeners is not defined. Return values are ignored.
+
+  Outside an app-DB transaction, a listener that throws an `Exception` does not stop the others: after all ran,
+  `publish-event!` throws an `ex-info` whose cause is the first exception, with the others added to it as suppressed.
+  An `Error` or an `InterruptedException` stops the listeners after it, and is the cause, with the earlier exceptions
+  added to it as suppressed; an `InterruptedException` also sets the interrupt flag of the thread again. Inside an
+  app-DB transaction, the first throw stops the listeners after it.
 
   Don't write method implementations for the event names themselves, e.g. `:event/database-create`, because these will
   stomp on other methods with the same key:
