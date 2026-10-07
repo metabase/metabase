@@ -40,7 +40,7 @@ import { isEngineKey } from "metabase-types/guards";
 import { AnonymousAccessChoiceModal } from "../AnonymousAccessChoiceModal";
 import { DestinationDatabasesList } from "../DestinationDatabasesList";
 
-import { useAnonymousAccessChoice } from "./useAnonymousAccessChoice";
+import { useDatabaseRoutingPanel } from "./useDatabaseRoutingPanel";
 import { getDisabledFeatureMessage, getSelectErrorMessage } from "./utils";
 
 export const DatabaseRoutingSection = ({
@@ -68,16 +68,18 @@ export const DatabaseRoutingSection = ({
     error,
     anonymousAccessGranted,
     canChangeAnonymousAccess,
-    isReachabilityKnown,
+    isRevokeHeldForReachability,
     hasStoppedServingAnonymousVisitors,
     openQuestion,
     cancelUndoesEnable,
     toggleRouting,
     chooseUserAttribute,
     changeAnonymousAccess,
-    answerQuestion,
-    cancelQuestion,
-  } = useAnonymousAccessChoice(database, { skip: !!shouldHideSection });
+    chooseGrant,
+    cancelGrantChoice,
+    confirmRevoke,
+    dismissRevoke,
+  } = useDatabaseRoutingPanel(database, { skip: !!shouldHideSection });
 
   const [isExpanded, setIsExpanded] = useState(false);
   useEffect(
@@ -116,11 +118,11 @@ export const DatabaseRoutingSection = ({
     await toggleRouting(nextEnabled);
   };
 
-  const handleQuestionCancel = () => {
+  const handleGrantChoiceCancel = () => {
     if (cancelUndoesEnable) {
       setIsExpanded(false);
     }
-    cancelQuestion();
+    cancelGrantChoice();
   };
 
   if (shouldHideSection) {
@@ -135,8 +137,10 @@ export const DatabaseRoutingSection = ({
     >
       <AnonymousAccessChoiceModal
         question={openQuestion}
-        onCancel={handleQuestionCancel}
-        onAnswer={answerQuestion}
+        onChooseGrant={chooseGrant}
+        onCancelGrantChoice={handleGrantChoiceCancel}
+        onConfirmRevoke={confirmRevoke}
+        onDismissRevoke={dismissRevoke}
       />
       <Flex justify="space-between" align="center">
         <Stack>
@@ -262,8 +266,8 @@ export const DatabaseRoutingSection = ({
                       !isAdmin ||
                       !!disabledFeatMsg ||
                       !canChangeAnonymousAccess ||
-                      // the grant cannot be decided before the panel knows what it is serving
-                      !isReachabilityKnown
+                      // a revoke cannot be decided before the panel knows what it is serving
+                      isRevokeHeldForReachability
                     }
                     onChange={(e) =>
                       changeAnonymousAccess(e.currentTarget.checked)

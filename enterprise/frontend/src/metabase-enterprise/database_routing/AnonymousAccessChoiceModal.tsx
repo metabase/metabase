@@ -1,55 +1,87 @@
+import { type ReactNode, useState } from "react";
 import { t } from "ttag";
 
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { Button, Flex, Modal, Text } from "metabase/ui";
 
-/**
- * Which form the anonymous-access question takes.
- *
- * "choose" puts the grant to an admin who has not decided it yet, before a router is stored.
- * "revoke" confirms withdrawing a grant that is serving anonymous visitors right now.
- */
+/** Which question is being put about the anonymous-access grant. */
 export type AnonymousAccessQuestion = "choose" | "revoke";
+
+type Answer = () => void | Promise<void>;
 
 interface AnonymousAccessChoiceModalProps {
   /** The question being put, or null when none is. */
   question: AnonymousAccessQuestion | null;
-  /** Dismissing the question without answering it. Nothing changes. */
-  onCancel: () => void;
-  /** Called with the admin's answer. */
-  onAnswer: (granted: boolean) => void | Promise<void>;
+  /** The open question, which has not been decided yet, so its answer goes either way. */
+  onChooseGrant: (granted: boolean) => void | Promise<void>;
+  onCancelGrantChoice: () => void;
+  /** The confirmation, which can only mean the revoke the admin already asked for. */
+  onConfirmRevoke: Answer;
+  onDismissRevoke: () => void;
 }
 
-/**
- * Puts the anonymous-access grant to the admin. The caller applies the answer.
- *
- * "choose" is an open question, asked before a router is stored: all three answers are live.
- * "revoke" confirms a withdrawal the admin has already asked for, so the only answer that
- * changes anything is the one they asked for, and the rest is Cancel.
- *
- * The two are separate modals rather than one with branching copy, so that each keeps its own
- * words while Mantine closes it and hands focus back to the control that opened it.
- *
- * Each body is one whole string rather than assembled from shared sentences, so that a
- * translator sees the paragraph they are translating.
- */
+/** Puts the anonymous-access grant to the admin. The caller applies the answer. */
 export const AnonymousAccessChoiceModal = ({
   question,
-  onCancel,
+  onChooseGrant,
+  onCancelGrantChoice,
+  onConfirmRevoke,
+  onDismissRevoke,
+}: AnonymousAccessChoiceModalProps) => {
+  // All mounted, so Mantine can close one and hand focus back to what opened it.
+  // The Record makes a new question a compile error until it has a modal here.
+  const modals: Record<AnonymousAccessQuestion, ReactNode> = {
+    choose: (
+      <GrantChoiceModal
+        key="choose"
+        opened={question === "choose"}
+        onAnswer={onChooseGrant}
+        onCancel={onCancelGrantChoice}
+      />
+    ),
+    revoke: (
+      <ConfirmModal
+        key="revoke"
+        opened={question === "revoke"}
+        title={t`Stop serving anonymous visitors?`}
+        // either surface alone makes the fact true, so the copy disjoins them
+        message={t`This database serves anonymous visitors, through a public link or a published guest embed. They have no user attribute for routing to match on, so without anonymous access their queries stop returning data.`}
+        confirmButtonText={t`Stop serving them`}
+        onConfirm={onConfirmRevoke}
+        onClose={onDismissRevoke}
+      />
+    ),
+  };
+
+  return <>{Object.values(modals)}</>;
+};
+
+const GrantChoiceModal = ({
+  opened,
   onAnswer,
-}: AnonymousAccessChoiceModalProps) => (
-  <>
-    <ConfirmModal
-      opened={question === "revoke"}
-      title={t`Stop serving anonymous visitors?`}
-      // either surface alone makes the fact true, so the copy names them as a disjunction
-      message={t`This database serves anonymous visitors, through a public link or a published guest embed. They have no user attribute for routing to match on, so without anonymous access their queries stop returning data.`}
-      confirmButtonText={t`Stop serving them`}
-      onConfirm={() => onAnswer(false)}
-      onClose={onCancel}
-    />
+  onCancel,
+}: {
+  opened: boolean;
+  onAnswer: (granted: boolean) => void | Promise<void>;
+  onCancel: () => void;
+}) => {
+  const [answering, setAnswering] = useState(false);
+
+  const answer = async (granted: boolean) => {
+    const applied = onAnswer(granted);
+    try {
+      if (applied instanceof Promise) {
+        setAnswering(true);
+        await applied;
+      }
+    } finally {
+      setAnswering(false);
+    }
+  };
+
+  return (
     <Modal
-      opened={question === "choose"}
+      opened={opened}
       title={t`Keep serving anonymous visitors?`}
       size="lg"
       onClose={onCancel}
@@ -61,13 +93,14 @@ export const AnonymousAccessChoiceModal = ({
         <Flex align="center" justify="space-between" gap="lg">
           <Button variant="subtle" onClick={onCancel}>{t`Cancel`}</Button>
           <Flex align="center" gap="lg">
-            <Button onClick={() => onAnswer(false)}>
+            <Button disabled={answering} onClick={() => answer(false)}>
               {t`Stop serving them`}
             </Button>
             <Button
               variant="filled"
               data-autofocus
-              onClick={() => onAnswer(true)}
+              disabled={answering}
+              onClick={() => answer(true)}
             >
               {t`Keep serving them`}
             </Button>
@@ -75,5 +108,5 @@ export const AnonymousAccessChoiceModal = ({
         </Flex>
       </Flex>
     </Modal>
-  </>
-);
+  );
+};

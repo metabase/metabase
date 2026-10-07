@@ -12,15 +12,10 @@ import type { Database } from "metabase-types/api";
 import type { AnonymousAccessQuestion } from "../AnonymousAccessChoiceModal";
 
 /**
- * The routing enable and its anonymous-access grant, which are one decision.
- *
- * A router is never stored without the grant decision attached, so the attribute the admin
- * picked, the answer they gave, and whether either has reached the server are interdependent:
- * their invariants only hold as a set, and so they live here rather than in the panel.
- *
- * `skip` suppresses the queries this makes for a database whose panel is not rendered at all.
+ * The panel's write state: the routing enable, the attribute, and the grant decision, whose
+ * invariants only hold as a set. `skip` suppresses its queries for a panel that is not rendered.
  */
-export const useAnonymousAccessChoice = (
+export const useDatabaseRoutingPanel = (
   database: Database,
   { skip }: { skip: boolean },
 ) => {
@@ -32,13 +27,7 @@ export const useAnonymousAccessChoice = (
   const { data: usageInfo, isLoading: isReachabilityPending } =
     useGetDatabaseUsageInfoQuery(skip || !isAdmin ? skipToken : database.id);
   const anonymouslyReachable = !!usageInfo?.anonymously_reachable;
-  /**
-   * Whether the fact has settled, either way.
-   *
-   * Absence of the fact is not the fact: a revoke decided before it lands would send without
-   * asking, which is the very thing the question exists to prevent. A request that failed counts
-   * as settled, because no honest question can be put without the fact.
-   */
+  // Settled either way. A failed request counts: no honest question can be put without the fact.
   const isReachabilityKnown = !isReachabilityPending;
 
   const userAttribute = database.router_user_attribute ?? undefined;
@@ -69,6 +58,10 @@ export const useAnonymousAccessChoice = (
     pendingGrant ?? !!database.router_anonymous_access_granted;
   const canChangeAnonymousAccess =
     isRoutingStored || pendingGrant !== undefined;
+
+  // Only a revoke needs the fact; granting widens what works, so it is never held.
+  const isRevokeHeldForReachability =
+    anonymousAccessGranted && !isReachabilityKnown;
 
   // A just-toggled database was asked instead, and a granted router still serves them.
   const hasStoppedServingAnonymousVisitors =
@@ -128,8 +121,7 @@ export const useAnonymousAccessChoice = (
     if ("error" in result) {
       return;
     }
-    // Outranks the prop until the refetch lands, for a router not yet stored as far as the
-    // panel can see. Once one is stored the grant lives on the server and this is not read.
+    // Outranks the prop until the refetch lands, for a router the panel has not seen stored.
     setPendingAnonymousAccess(granted);
     sendToast({
       message: granted
@@ -144,8 +136,7 @@ export const useAnonymousAccessChoice = (
       setPendingAnonymousAccess(granted);
       return;
     }
-    // Revoking takes data away from visitors the stored grant is serving right now, so it is
-    // confirmed first. Granting is never confirmed: it only ever widens what works.
+    // Revoking takes data away from visitors being served right now; granting never does.
     if (!granted && anonymouslyReachable) {
       setIsConfirmingRevoke(true);
       return;
@@ -180,15 +171,7 @@ export const useAnonymousAccessChoice = (
     }
   };
 
-  const answerQuestion = async (granted: boolean) => {
-    if (isConfirmingRevoke) {
-      setIsConfirmingRevoke(false);
-      // the question is only raised once an attribute exists to write the grant against
-      if (routerAttribute) {
-        await writeAnonymousAccess(routerAttribute, granted);
-      }
-      return;
-    }
+  const chooseGrant = async (granted: boolean) => {
     setPendingAnonymousAccess(granted);
     if (attributeAwaitingAnswer === undefined) {
       return;
@@ -197,14 +180,17 @@ export const useAnonymousAccessChoice = (
     await storeRouter(attributeAwaitingAnswer, granted);
   };
 
-  const cancelQuestion = () => {
-    // Declining a confirmation leaves the grant exactly as it was, with nothing sent.
-    if (isConfirmingRevoke) {
-      setIsConfirmingRevoke(false);
-      return;
+  // The confirmation can only mean the revoke the admin asked for, so it carries no answer.
+  const confirmRevoke = async () => {
+    setIsConfirmingRevoke(false);
+    // the question is only raised once an attribute exists to write the grant against
+    if (routerAttribute) {
+      await writeAnonymousAccess(routerAttribute, false);
     }
-    discardPendingRouting();
   };
+
+  // Declining leaves the grant exactly as it was, with nothing sent.
+  const dismissRevoke = () => setIsConfirmingRevoke(false);
 
   return {
     /** The routing switch, which a pending enable checks before anything is stored. */
@@ -214,22 +200,20 @@ export const useAnonymousAccessChoice = (
     isRoutingStored,
     /** The last failed write, rendered inline by the panel. */
     error,
-    isReachabilityKnown,
     anonymousAccessGranted,
     canChangeAnonymousAccess,
     hasStoppedServingAnonymousVisitors,
     /** The question being asked, or null. */
     openQuestion,
-    /**
-     * Whether cancelling the open question undoes an enable, rather than declining a
-     * confirmation. The chevron's disclosure is the admin's own, so only an enable's question
-     * takes the section's expansion down with it.
-     */
-    cancelUndoesEnable: openQuestion === "choose" && tempEnabled,
+    /** Whether cancelling the grant choice also takes the section's expansion down with it. */
+    cancelUndoesEnable: tempEnabled,
+    isRevokeHeldForReachability,
     toggleRouting,
     chooseUserAttribute,
     changeAnonymousAccess,
-    answerQuestion,
-    cancelQuestion,
+    chooseGrant,
+    cancelGrantChoice: discardPendingRouting,
+    confirmRevoke,
+    dismissRevoke,
   };
 };

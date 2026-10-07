@@ -74,6 +74,8 @@ interface SetupOpts {
   anonymouslyReachable?: boolean;
   /** Hold the usage-info response until the test releases it, so a click can get in first. */
   holdUsageInfo?: boolean;
+  /** Fail the usage-info request, leaving the reachability fact permanently unavailable. */
+  usageInfoStatus?: number;
 }
 
 const setup = ({
@@ -82,6 +84,7 @@ const setup = ({
   routerUpdateStatus = 200,
   anonymouslyReachable = false,
   holdUsageInfo = false,
+  usageInfoStatus = 200,
 }: SetupOpts = {}) => {
   setupUserAttributesEndpoint(["cool_guy", "boss_gal"]);
   setupDatabasesEndpoints([database]);
@@ -97,6 +100,11 @@ const setup = ({
       await held;
       return usageInfo;
     });
+  } else if (usageInfoStatus !== 200) {
+    fetchMock.get(
+      `path:/api/database/${database.id}/usage_info`,
+      usageInfoStatus,
+    );
   } else {
     setupDatabaseUsageInfoEndpoint(database, usageInfo);
   }
@@ -969,6 +977,52 @@ describe("DatabaseRoutingSection confirmation before revoking anonymous access",
     expect(grant).toBeChecked();
     expect(grant).toBeEnabled();
     expect(await findRequests("PUT")).toHaveLength(1);
+  });
+
+  it("should let the grant be given while the reachability fact is still in flight", async () => {
+    const { releaseUsageInfo } = setup({
+      database: routedDatabase({ router_anonymous_access_granted: false }),
+      anonymouslyReachable: true,
+      holdUsageInfo: true,
+    });
+
+    // granting only widens what works, so it is never held for a fact it does not need
+    const grant = await screen.findByLabelText("Allow anonymous access");
+    expect(grant).toBeEnabled();
+    await userEvent.click(grant);
+
+    releaseUsageInfo();
+
+    expect(queryConfirmation()).not.toBeInTheDocument();
+    const puts = await findRequests("PUT");
+    expect(puts).toHaveLength(1);
+    expect(puts[0].body).toEqual({
+      user_attribute: "cool_guy",
+      anonymous_access_granted: true,
+    });
+  });
+
+  it("should revoke unasked when the reachability fact cannot be fetched at all", async () => {
+    setup({
+      database: grantedDatabase(),
+      anonymouslyReachable: true,
+      usageInfoStatus: 500,
+    });
+
+    // the switch must not stay hostage to a fact that is never coming
+    const grant = await screen.findByLabelText("Allow anonymous access");
+    await waitFor(() => expect(grant).toBeEnabled());
+
+    await userEvent.click(grant);
+
+    // no honest question can be put without the fact, so this proceeds unasked, by design
+    expect(queryConfirmation()).not.toBeInTheDocument();
+    const puts = await findRequests("PUT");
+    expect(puts).toHaveLength(1);
+    expect(puts[0].body).toEqual({
+      user_attribute: "cool_guy",
+      anonymous_access_granted: false,
+    });
   });
 
   it("should not let the grant be revoked before the reachability fact has arrived", async () => {
