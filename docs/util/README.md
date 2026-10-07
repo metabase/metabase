@@ -24,14 +24,15 @@ docs/exploration-and-organization/keyboard-shortcuts.md
 
 ## Check links
 
-Checks every link in the markdown under `docs/`, and every `url` in `data/nav.yml`. A nav url has to point at a page under `docs/`, and if it has an `#anchor`, that heading has to exist in the page. CI runs the same checks in `.github/workflows/docs-links.yml`.
+Checks every link in the markdown under `docs/`, every `url` in `data/nav.yml`, and every `https://www.metabase.com/docs/latest/...` link written out in the frontend sources (TSDoc, error messages). A nav url or frontend link has to point at a page under `docs/`, and if it has an `#anchor`, that heading has to exist in the page. A link to an old path that only survives as a `redirect_from` fails too. CI runs the same checks in `.github/workflows/docs-links.yml`.
 
 Install [lychee](https://lychee.cli.rs) and jq (`brew install lychee jq`), then run from the repo root:
 
 ```bash
-docs/util/check-links.sh                   # both
+docs/util/check-links.sh                   # all three
 docs/util/check-links.sh docs              # only the markdown under docs/
 docs/util/check-links.sh nav               # only nav.yml
+docs/util/check-links.sh src               # only the frontend sources
 docs/util/check-links.sh --external [nav]  # also fetch links to other sites
 ```
 

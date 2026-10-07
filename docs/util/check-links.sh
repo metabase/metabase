@@ -1,10 +1,12 @@
 #!/usr/bin/env bash
-# Checks the docs links: every link in the markdown under docs/, and every `url` in
-# docs/util/data/nav.yml (the page has to exist under docs/, and so does any #anchor).
+# Checks the docs links: every link in the markdown under docs/, every `url` in
+# docs/util/data/nav.yml, and every metabase.com/docs/latest link written out in the frontend sources
+# (the page has to exist under docs/, and so does any #anchor).
 #
-#   docs/util/check-links.sh                   # both
+#   docs/util/check-links.sh                   # all three
 #   docs/util/check-links.sh docs              # only the markdown under docs/
 #   docs/util/check-links.sh nav               # only nav.yml
+#   docs/util/check-links.sh src               # only the frontend sources
 #   docs/util/check-links.sh --external [nav]  # also fetch external links (slow, needs network)
 #
 # Without --external, links to other sites are skipped, which is how CI runs it
@@ -24,12 +26,12 @@ for tool in lychee jq; do
 done
 
 external=0
-what=both
+what=all
 for arg in "$@"; do
   case "$arg" in
     --external) external=1 ;;
-    docs|nav|both) what=$arg ;;
-    *) echo "usage: $0 [--external] [docs|nav]" >&2; exit 2 ;;
+    docs|nav|src) what=$arg ;;
+    *) echo "usage: $0 [--external] [docs|nav|src]" >&2; exit 2 ;;
   esac
 done
 
@@ -92,10 +94,24 @@ check_nav() {
   [ "$count" -eq 0 ]
 }
 
+# Full metabase.com/docs URLs in the frontend (TSDoc, error messages) would be skipped by --offline, so
+# map each one back to its markdown file under docs/. Links built with useDocsUrl/getDocsUrl aren't
+# literal URLs, so lychee can't see them. Unit specs only repeat what those helpers return, and
+# engines-config.ts holds JDBC strings like sqlserver://host:1433;db=x that lychee can't parse.
+check_src() {
+  echo "Checking docs links in the frontend sources"
+  lychee --config ./.lychee/config.toml --offline --include-fragments=full --extensions ts,tsx,js,jsx \
+    --include '^https://www\.metabase\.com/docs/latest/' \
+    --exclude-path '\.unit\.spec\.' --exclude-path 'DatabaseConnectionUri/engines-config\.ts$' \
+    --remap "^https://www\.metabase\.com/docs/latest/([^#?]+?)(\.html)?(\?[^#]*)?(#.*)?\$ file://$PWD/docs/\$1.md\$4" \
+    -- frontend/src enterprise/frontend/src
+}
+
 status=0
 case "$what" in
-  both) check_docs || status=1; echo; check_nav || status=1 ;;
+  all)  check_docs || status=1; echo; check_nav || status=1; echo; check_src || status=1 ;;
   docs) check_docs || status=1 ;;
   nav)  check_nav  || status=1 ;;
+  src)  check_src  || status=1 ;;
 esac
 exit "$status"
