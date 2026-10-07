@@ -270,7 +270,7 @@
              {:where [:or [:in :table_id table-ids] [:= :table_id nil]]}))
 
 (defn table-details
-  "Table names and database details for `table-ids`."
+  "Names and database details for the active tables in `table-ids`."
   [table-ids]
   (t2/select :model/Table
              {:select [:t.id
@@ -280,5 +280,5 @@
                        [:d.name :database_name]]
               :from [(warehouse-schema-overlay/table-query {:alias :t})]
               :join [[:metabase_database :d] [:= :d.id :t.db_id]]
-              :where [:in :t.id table-ids]
+              :where [:and [:in :t.id table-ids] [:= :t.active true]]
               :order-by [[:d.name :asc] [:t.schema :asc] [:t.display_name :asc]]}))

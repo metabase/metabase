@@ -9,6 +9,34 @@
 
 (set! *warn-on-reflection* true)
 
+(deftest group-permission-warnings-exclude-inactive-tables-test
+  (mt/with-premium-features #{:data-apps :advanced-permissions}
+    (mt/with-no-data-perms-for-all-users!
+      (mt/with-temp [:model/DataApp app {:name "birds" :display_name "Birds" :bundle_path "birds.js"
+                                         :table_ids [(mt/id :venues) (mt/id :orders) (mt/id :categories)]}
+                     :model/PermissionsGroup group {}]
+        (perms/set-database-permission! (:id group) (mt/id) :perms/view-data :blocked)
+        (group-access/add-groups! app [(:id group)])
+        (mt/with-temp-vals-in-db :model/Table (mt/id :venues) {:active false}
+          (mt/with-temp-vals-in-db :model/Table (mt/id :orders) {:visibility_type :hidden}
+            ;; exclude inactive tables, but keep active visible and hidden tables.
+            ;; permissions editor also follow this filtering.
+            (is (=? [{:group_id (:id group)
+                      :missing_tables [{:id (mt/id :categories)} {:id (mt/id :orders)}]}]
+                    (group-access/permission-warnings app)))))))))
+
+(deftest group-permission-warnings-ignore-apps-with-only-inactive-tables-test
+  (mt/with-premium-features #{:data-apps :advanced-permissions}
+    (mt/with-no-data-perms-for-all-users!
+      (mt/with-temp [:model/DataApp app {:name "birds" :display_name "Birds" :bundle_path "birds.js"
+                                         :table_ids [(mt/id :venues)]}
+                     :model/PermissionsGroup group {}]
+        (perms/set-database-permission! (:id group) (mt/id) :perms/view-data :blocked)
+        (group-access/add-groups! app [(:id group)])
+        ; if data apps only references inactive tables, there will be no access warnings
+        (mt/with-temp-vals-in-db :model/Table (mt/id :venues) {:active false}
+          (is (= [] (group-access/permission-warnings app))))))))
+
 (deftest group-permission-warnings-ignore-unassigned-groups-test
   (mt/with-premium-features #{:data-apps :advanced-permissions :sandboxes}
     (mt/with-no-data-perms-for-all-users!
