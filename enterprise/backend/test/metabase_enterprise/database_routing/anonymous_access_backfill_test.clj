@@ -4,7 +4,7 @@
   the two have to agree. This runs the real migration and then asks the gate, rather than setting the column by hand.
 
   The migration's own cases -- which shapes are backfilled and which are left alone -- are covered by
-  `db-router-anonymous-access-granted-backfill-test` in `metabase.app-db.schema-migrations-test`."
+  [[metabase.app-db.schema-migrations-test/db-router-anonymous-access-granted-backfill-test]]."
   (:require
    [clojure.test :refer [deftest is testing]]
    [metabase-enterprise.database-routing.common :as common]

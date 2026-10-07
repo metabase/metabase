@@ -385,8 +385,8 @@
 (defn process-query-for-card-with-params
   "Run the query associated with pre-loaded Card `card` using JWT `token-params`, user-supplied URL `query-params`,
    an `embedding-params` whitelist, and additional query `options`. Callers are responsible for selecting `card`
-  exactly once per request and threading it here. Runs against the router database where it grants anonymous access
-  (see above). Returns `StreamingResponse` that should be returned as the API endpoint result."
+  exactly once per request and threading it here. Resolves database routing as described above. Returns
+  `StreamingResponse` that should be returned as the API endpoint result."
   [& {:keys [export-format card embedding-params token-params query-params qp constraints options]
       :or   {qp qp.card/process-query-for-card-default-qp}}]
   {:pre [(map? card) (pos-int? (:id card)) (u/maybe? map? embedding-params) (map? token-params) (map? query-params)]}
@@ -430,9 +430,8 @@
                                                            (tile-slug->value (:parameters dashboard) parameter-values))))
 
 (defn process-tiles-query-for-card
-  "Like [[metabase.tiles.api/process-tiles-query-for-card]], but takes a pre-loaded Card entity and runs against the
-  router database where it grants anonymous access (see above). Used by the embed tiles endpoints. Returns a Ring
-  response."
+  "Like [[metabase.tiles.api/process-tiles-query-for-card]], but takes a pre-loaded Card entity and resolves database
+  routing as described above. Used by the embed tiles endpoints. Returns a Ring response."
   [card parameters zoom x y lat-field lon-field]
   (database-routing/with-database-routing-off-if-granted
     (api.tiles/process-tiles-query-for-card card parameters zoom x y lat-field lon-field)))
@@ -493,9 +492,8 @@
 
 (defn process-query-for-dashcard
   "Return results for running the query belonging to a DashboardCard. Callers are responsible for selecting the
-  `dashboard`, `dashcard`, and `card` entities exactly once per request and threading them here. Runs against the
-  router database where it grants anonymous access (see the comment above [[process-query-for-card-with-params]]).
-  Returns a `StreamingResponse`."
+  `dashboard`, `dashcard`, and `card` entities exactly once per request and threading them here. Resolves database
+  routing as described above [[process-query-for-card-with-params]]. Returns a `StreamingResponse`."
   [& {:keys [dashboard dashcard card export-format embedding-params token-params middleware
              query-params constraints qp]
       :or   {constraints (qp.constraints/default-query-constraints)
@@ -518,9 +516,8 @@
 
 (defn process-tiles-query-for-dashcard
   "Like [[metabase.tiles.api/process-tiles-query-for-dashcard]], but takes pre-loaded Dashboard/DashboardCard/Card
-  entities and runs against the router database where it grants anonymous access (see the comment
-  above [[process-query-for-card-with-params]]). Used by the embed tiles endpoints. Callers select each entity exactly
-  once and thread it here. Returns a Ring response."
+  entities and resolves database routing as described above [[process-query-for-card-with-params]]. Used by the embed
+  tiles endpoints. Callers select each entity exactly once and thread it here. Returns a Ring response."
   [dashboard dashcard card parameters zoom x y lat-field lon-field]
   (database-routing/with-database-routing-off-if-granted
     (api.public/process-tiles-query-for-dashcard dashboard dashcard card
