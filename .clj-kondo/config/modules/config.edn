@@ -433,6 +433,7 @@
    :model-imports #{:model/Card
                     :model/Dashboard
                     :model/Document
+                    :model/Exploration
                     :model/Table}}
 
   auth-provider
