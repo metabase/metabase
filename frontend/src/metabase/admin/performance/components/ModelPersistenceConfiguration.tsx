@@ -118,7 +118,7 @@ export const ModelPersistenceConfiguration = () => {
     await resolveWithToasts([promise]);
   };
 
-  const { url: docsUrl } = useDocsUrl("data-modeling/model-persistence");
+  const { url: docsUrl } = useDocsUrl("data-modeling/models/model-persistence");
 
   return (
     <PerformancePageContent>

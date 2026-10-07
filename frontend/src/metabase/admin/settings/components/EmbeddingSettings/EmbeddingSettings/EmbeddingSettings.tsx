@@ -51,7 +51,7 @@ function EmbeddingSettingsEE() {
   const isHosted = useSetting("is-hosted?");
 
   // The quickstart is part of the documentation page, unlike the SDK, so we only need a single docs link.
-  const embedJsDocumentationUrl = useDocsUrl("embedding/embedded-analytics-js");
+  const embedJsDocumentationUrl = useDocsUrl("embedding/modular-embedding");
 
   return (
     <>

@@ -64,7 +64,7 @@ export function ModelCachingControl({ database, disabled }: Props) {
     }
   };
 
-  const { url: docsUrl } = useDocsUrl("data-modeling/model-persistence");
+  const { url: docsUrl } = useDocsUrl("data-modeling/models/model-persistence");
 
   return (
     <div>

@@ -14,7 +14,9 @@ import {
 } from "./EmptyFormPlaceholder.styled";
 
 export const EmptyFormPlaceholder = () => {
-  const { url, showMetabaseLinks } = useDocsUrl("actions/custom");
+  const { url, showMetabaseLinks } = useDocsUrl(
+    "data-modeling/models/actions/custom",
+  );
 
   return (
     <EmptyFormPlaceholderWrapper>

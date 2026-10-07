@@ -96,7 +96,7 @@ check_nav() {
 
 # Full metabase.com/docs URLs in the frontend (TSDoc, error messages) would be skipped by --offline, so
 # map each one back to its markdown file under docs/. Links built with useDocsUrl/getDocsUrl aren't
-# literal URLs, so lychee can't see them. Unit specs only repeat what those helpers return, and
+# literal URLs, so bin/verify-doc-links checks those. Unit specs only repeat what the helpers return, and
 # engines-config.ts holds JDBC strings like sqlserver://host:1433;db=x that lychee can't parse.
 check_src() {
   echo "Checking docs links in the frontend sources"
