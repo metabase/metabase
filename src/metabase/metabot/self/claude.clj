@@ -193,7 +193,8 @@
              (= t "message_stop")       identity
              ;; catch errors if any
              (= t "error")              (rf {:type      :error
-                                             :errorText (:message error)}))))))))
+                                             :errorText (:message error)
+                                             :error     error}))))))))
 
 ;;; AISDK parts → Claude messages
 

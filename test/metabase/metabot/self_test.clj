@@ -2348,46 +2348,50 @@
    :error {:type    "invalid_request_error"
            :message "Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}})
 
-(deftest byok-provider-error-test
+(deftest provider-error-test
   (mt/with-temporary-setting-values [llm-providers        llm.tu/default-connections
                                      llm-metabot-provider "anthropic/claude-sonnet-4-6"]
-    (testing "classifies the failures that the customer can fix on their side"
+    (testing "classifies the failures that the customer can fix on their side, and the provider's outages"
       (are [code provider status body]
-           (= code (:error-code (mt/as-admin (self/byok-provider-error (provider-api-error! provider status body)))))
-        "ai_provider_billing"    "anthropic"  400 anthropic-credit-balance-body
-        "ai_provider_billing"    "anthropic"  400 {:error {:type    "invalid_request_error"
-                                                           :message "You have reached your specified API usage limits."}}
-        "ai_provider_billing"    "anthropic"  402 {:error {:type "billing_error" :message "Check your payment details."}}
-        "ai_provider_billing"    "anthropic"  429 {:error {:type    "rate_limit_error"
-                                                           :message "You have reached your API usage limits."
-                                                           :details {:error_code "enforced_spend_limit_reached"}}}
-        "ai_provider_billing"    "openai"     429 {:error {:type    "insufficient_quota"
-                                                           :code    "insufficient_quota"
-                                                           :message "You exceeded your current quota."}}
-        "ai_provider_billing"    "openrouter" 402 {:error {:code 402 :message "Insufficient credits"}}
-        "ai_provider_rate_limit" "anthropic"  429 {:error {:type "rate_limit_error" :message "Too many requests."}}
-        "ai_provider_rate_limit" "openai"     429 {:error {:code "rate_limit_exceeded" :message "Rate limit reached."}}
-        "ai_provider_auth"       "anthropic"  401 {:error {:type "authentication_error" :message "invalid x-api-key"}}
-        "ai_provider_auth"       "anthropic"  403 {:error {:type    "permission_error"
-                                                           :message "Your API key does not have permission to use the specified resource."}}
-        nil                      "openai"     403 {:error {:type    "request_forbidden"
-                                                           :code    "unsupported_country_region_territory"
-                                                           :message "Country, region, or territory not supported"}}
-        nil                      "anthropic"  400 {:error {:type    "invalid_request_error"
-                                                           :message "max_tokens: Input should be greater than 0"}}
-        nil                      "anthropic"  529 {:error {:type "overloaded_error" :message "Overloaded"}}))
+           (= code (:error-code (mt/as-admin (self/provider-error (provider-api-error! provider status body)))))
+        "ai_provider_billing"     "anthropic"  400 anthropic-credit-balance-body
+        "ai_provider_billing"     "anthropic"  400 {:error {:type    "invalid_request_error"
+                                                            :message "You have reached your specified API usage limits."}}
+        "ai_provider_billing"     "anthropic"  402 {:error {:type "billing_error" :message "Check your payment details."}}
+        "ai_provider_billing"     "anthropic"  429 {:error {:type    "rate_limit_error"
+                                                            :message "You have reached your API usage limits."
+                                                            :details {:error_code "enforced_spend_limit_reached"}}}
+        "ai_provider_billing"     "openai"     429 {:error {:type    "insufficient_quota"
+                                                            :code    "insufficient_quota"
+                                                            :message "You exceeded your current quota."}}
+        "ai_provider_billing"     "openrouter" 402 {:error {:code 402 :message "Insufficient credits"}}
+        "ai_provider_rate_limit"  "anthropic"  429 {:error {:type "rate_limit_error" :message "Too many requests."}}
+        "ai_provider_rate_limit"  "openai"     429 {:error {:code "rate_limit_exceeded" :message "Rate limit reached."}}
+        "ai_provider_auth"        "anthropic"  401 {:error {:type "authentication_error" :message "invalid x-api-key"}}
+        "ai_provider_auth"        "anthropic"  403 {:error {:type    "permission_error"
+                                                            :message "Your API key does not have permission to use the specified resource."}}
+        "ai_provider_unavailable" "anthropic"  529 {:error {:type "overloaded_error" :message "Overloaded"}}
+        "ai_provider_unavailable" "anthropic"  500 {:error {:type "api_error" :message "Internal server error"}}
+        "ai_provider_unavailable" "openai"     503 {:error {:message "The server is overloaded or not ready yet."}}
+        nil                       "openai"     403 {:error {:type    "request_forbidden"
+                                                            :code    "unsupported_country_region_territory"
+                                                            :message "Country, region, or territory not supported"}}
+        nil                       "anthropic"  400 {:error {:type    "invalid_request_error"
+                                                            :message "max_tokens: Input should be greater than 0"}}))
     (testing "admins are told which provider failed, everyone else is not"
-      (doseq [status [402 429 401]]
+      (doseq [status [402 429 401 529]]
         (let [e (provider-api-error! "anthropic" status {})]
-          (is (str/includes? (:message (mt/as-admin (self/byok-provider-error e)))
+          (is (str/includes? (:message (mt/as-admin (self/provider-error e)))
                              "Anthropic"))
           (is (not (str/includes? (:message (mt/with-current-user (mt/user->id :rasta)
-                                              (self/byok-provider-error e)))
+                                              (self/provider-error e)))
                                   "Anthropic"))))))
-    (testing "the managed provider keeps the generic error, since its failures are Metabase's to fix"
+    (testing "on the managed provider only an outage is explained, and without naming the provider"
       (mt/with-temporary-setting-values [llm-metabot-provider "metabase/anthropic/claude-sonnet-4-6"]
         (is (nil? (mt/as-admin
-                    (self/byok-provider-error (provider-api-error! "anthropic" 400 anthropic-credit-balance-body)))))))))
+                    (self/provider-error (provider-api-error! "anthropic" 400 anthropic-credit-balance-body)))))
+        (is (=? {:error-code "ai_provider_unavailable" :message #"The AI provider is having problems.*"}
+                (mt/as-admin (self/provider-error (provider-api-error! "anthropic" 529 {})))))))))
 
 (deftest known-models-normalization-test
   (testing "adapters that key model id to a map are passed through"

@@ -88,7 +88,7 @@
                  {:type "error" :error {:type "overloaded_error" :message "Overloaded"}}]
           parts (into [] (comp (claude/claude->aisdk-chunks-xf) (self.core/aisdk-xf)) raw)
           err   (m/find-first #(= :error (:type %)) parts)]
-      (is (=? {:message "Overloaded"} (:error err)))
+      (is (=? {:type "overloaded_error" :message "Overloaded"} (:error err)))
       (is (= (self.core/format-sse-event {:type "error" :errorText "Overloaded"})
              (self.core/format-error-line err))))))
 
