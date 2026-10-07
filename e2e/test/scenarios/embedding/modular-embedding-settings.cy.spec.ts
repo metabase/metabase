@@ -16,16 +16,15 @@ describe("scenarios > modular embedding settings", { tags: "@EE" }, () => {
     H.activateToken("pro-self-hosted");
   });
 
-  it("should link to user strategy when tenants are disabled", () => {
+  it("should link to user strategy when tenants are disabled and to tenants page when tenants are enabled", () => {
     cy.visit("/admin/embedding/modular");
     assertTenantsLink("/admin/people/user-strategy");
 
     cy.log("setup guide shows the same link");
     cy.visit("/admin/embedding/setup-guide");
     assertTenantsLink("/admin/people/user-strategy");
-  });
 
-  it("should link to tenants page when tenants are enabled", () => {
+    cy.log("enable tenants");
     H.updateSetting("use-tenants", true);
     cy.visit("/admin/embedding/modular");
     assertTenantsLink("/admin/people/tenants");
