@@ -283,6 +283,32 @@
                                                    :total_tokens 15}]
         (is (=? {:model "anthropic/claude-haiku-4-5-20251001"} (first (query-view [convo-id]))))))))
 
+(deftest title-call-sets-neither-source-nor-model-test
+  (testing "a title call logged before the agent's first call counts toward the tokens, not the source or model"
+    (let [convo-id (str (random-uuid))
+          now      (java.time.OffsetDateTime/now)]
+      (mt/with-temp [:model/User {user-id :id} {}
+                     :model/MetabotConversation _ {:id convo-id :user_id user-id}
+                     :model/AiUsageLog          _ {:source "conversation_title"
+                                                   :model "anthropic/claude-haiku-4-5"
+                                                   :conversation_id convo-id
+                                                   :prompt_tokens 900
+                                                   :completion_tokens 30
+                                                   :total_tokens 930
+                                                   :created_at (.minusSeconds now 5)}
+                     :model/AiUsageLog          _ {:source "metabot_agent"
+                                                   :model default-model
+                                                   :conversation_id convo-id
+                                                   :prompt_tokens 9000
+                                                   :completion_tokens 300
+                                                   :total_tokens 9300
+                                                   :created_at now}]
+        (is (=? {:source       "metabot_agent"
+                 :source_name  "Metabot"
+                 :model        default-model
+                 :total_tokens 10230}
+                (first (query-view [convo-id]))))))))
+
 (deftest ip-address-test
   (testing "ip_address is surfaced from the conversation row"
     (let [convo-with-ip (str (random-uuid))
