@@ -8,7 +8,7 @@
 
 databaseChangeLog:
   - changeSet:
-      id: v65.2026-10-05T00:00:00
+      id: v65.2026-10-07T00:00:00
       author: prascuna
       comment: Add finish_reason to metabot_message
       changes:
@@ -27,7 +27,7 @@ databaseChangeLog:
             columnName: finish_reason
 
   - changeSet:
-      id: v65.2026-10-05T00:00:01
+      id: v65.2026-10-07T00:00:01
       author: prascuna
       comment: Add context_window_full to metabot_message
       changes:
