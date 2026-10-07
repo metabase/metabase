@@ -95,26 +95,6 @@ describe(
       H.main().findByText("My custom theme").should("be.visible");
     });
 
-    it("can edit and save a theme name", () => {
-      createThemeViaApi("Original name").then((theme) => {
-        visitThemeEditor(theme.id);
-      });
-
-      cy.log("change the theme name");
-      cy.findByLabelText("Theme name").clear().type("Updated name");
-
-      cy.log("save button should be enabled");
-      cy.findByRole("button", { name: /Save theme/ }).should("be.enabled");
-
-      cy.log("save the theme");
-      cy.findByRole("button", { name: /Save theme/ }).click();
-
-      // An earlier undo toast may still be on screen, so use the toast list
-      // (plural) and filter by text — `undoToast()` (singular) yields
-      // undefined when multiple toasts match.
-      H.undoToastList().contains("Theme saved").should("be.visible");
-    });
-
     it("shows not found for invalid theme id", () => {
       cy.visit("/admin/embedding/themes/99999");
 
@@ -213,6 +193,12 @@ describe(
           cy.findByLabelText("Base font size").should("be.visible");
         });
 
+        cy.log("change the theme name");
+        cy.findByLabelText("Theme name").clear().type("Updated name");
+
+        cy.log("save button should be enabled");
+        cy.findByRole("button", { name: /Save theme/ }).should("be.enabled");
+
         cy.log("select a font family");
         H.main().findByLabelText("Font").click();
         cy.findByRole("option", { name: "Lato" }).click();
@@ -226,7 +212,8 @@ describe(
         });
 
         cy.wait("@updateTheme").then((interception) => {
-          const { settings } = interception.request.body;
+          const { name, settings } = interception.request.body;
+          expect(name).to.eq("Updated name");
           expect(settings.fontFamily).to.eq("Lato");
           expect(settings.fontSize).to.eq("16px");
         });
@@ -235,6 +222,10 @@ describe(
         // screen, so use the toast list (plural) and filter by text — using
         // `undoToast()` (singular) yields undefined when multiple toasts match.
         H.undoToastList().contains("Theme saved").should("be.visible");
+
+        cy.log("saving navigates back to the listing with the new name");
+        cy.url().should("match", /\/admin\/embedding\/themes$/);
+        H.main().findByText("Updated name").should("be.visible");
       });
     });
 
