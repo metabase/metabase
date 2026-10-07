@@ -543,6 +543,7 @@
   metabase.settings.core/defsetting                                                     clj-kondo.lint-as/def-catch-all
   metabase.settings.models.setting.multi-setting/define-multi-setting                   clojure.core/def
   metabase.settings.models.setting/defsetting                                           clj-kondo.lint-as/def-catch-all
+  metabase.server.test-util/with-test-server                                             clojure.core/let
   metabase.sso.ldap/with-ldap-connection                                                clojure.core/fn
   metabase.sync.util/sum-for                                                            clojure.core/for
   metabase.sync.util/with-emoji-progress-bar                                            clojure.core/let
