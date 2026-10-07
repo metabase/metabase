@@ -1,8 +1,8 @@
 (ns metabase-enterprise.remote-sync.model-metadata-pull-test
   "A remote-sync pull keeps the columns of a card. An export writes only the overrides of an MBQL model's columns; the
   pull keeps the column types that the model's query gives. An export writes the full columns of a native card; the
-  pull keeps them, also when it changes the SQL. A pull that changes the SQL of a native card whose file has no
-  columns stores no columns."
+  pull keeps them, also when it changes the SQL or the file holds a legacy query. A pull that changes the SQL of a
+  native card whose file has no columns stores no columns."
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
@@ -170,6 +170,28 @@
                 "Precondition: the native question stores the given columns")
             (is (= 1 (count (replace-in-files! source "SELECT ID, NAME FROM VENUES" "SELECT ID, NAME FROM VENUES WHERE ID > 0")))
                 "Precondition: one exported file has the SQL of the question")
+            (forced-pull! source)
+            (is (= "SELECT ID, NAME FROM VENUES WHERE ID > 0"
+                   (lib/raw-native-query (t2/select-one-fn :dataset_query :model/Card :id card-id))))
+            (is (= before (columns card-id)))))))))
+
+(deftest forced-pull-of-native-question-with-legacy-query-file-test
+  (testing "a forced pull of a native question whose file holds a legacy query and columns succeeds and keeps the columns"
+    (mt/with-premium-features #{:remote-sync}
+      (mt/with-temporary-setting-values [remote-sync-type :read-write]
+        (mt/with-temp [:model/Collection {coll-id :id} {:name "Questions" :is_remote_synced true :location "/"}
+                       :model/Card       {card-id :id} {:name            "Native venues question"
+                                                        :type            :question
+                                                        :collection_id   coll-id
+                                                        :dataset_query   (lib/native-query (mt/metadata-provider)
+                                                                                           "SELECT ID, NAME FROM VENUES")
+                                                        :result_metadata native-venues-columns}]
+          (let [before (columns card-id)
+                source (export!)]
+            (is (= 1 (count (replace-in-files! source
+                                               "  stages:\n  - native: SELECT ID, NAME FROM VENUES\n    lib/type: mbql.stage/native\n  lib/type: mbql/query\n"
+                                               "  native:\n    query: SELECT ID, NAME FROM VENUES WHERE ID > 0\n  type: native\n")))
+                "Precondition: one exported file has the query in the legacy form")
             (forced-pull! source)
             (is (= "SELECT ID, NAME FROM VENUES WHERE ID > 0"
                    (lib/raw-native-query (t2/select-one-fn :dataset_query :model/Card :id card-id))))
