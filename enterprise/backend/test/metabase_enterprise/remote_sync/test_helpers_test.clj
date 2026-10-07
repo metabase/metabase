@@ -175,10 +175,11 @@
     (try
       (thunk)
       (finally
-        (t2/with-transaction [_conn]
-          (t2/delete! :setting :key [:like "remote-sync%"])
-          (when (seq settings)
-            (t2/insert! :setting settings)))
+        ;; one autocommit statement for each row, so that the restore holds the lock of one setting row at a time
+        (doseq [k (t2/select-fn-set :key :setting :key [:like "remote-sync%"])]
+          (t2/query-one {:delete-from :setting :where [:= :key k]}))
+        (doseq [row settings]
+          (t2/query-one {:insert-into :setting :values [row]}))
         (setting/restore-cache!)
         (t2/delete! :model/RemoteSyncObject)
         (when (seq ledger)

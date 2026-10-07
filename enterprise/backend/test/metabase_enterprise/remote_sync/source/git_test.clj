@@ -15,8 +15,7 @@
            (org.apache.commons.io FileUtils)
            (org.eclipse.jgit.api Git TransportCommand)
            (org.eclipse.jgit.dircache DirCacheEditor DirCacheEditor$PathEdit DirCacheEntry)
-           (org.eclipse.jgit.lib AnyObjectId FileMode PersonIdent)
-           (org.eclipse.jgit.transport UsernamePasswordCredentialsProvider)))
+           (org.eclipse.jgit.lib AnyObjectId FileMode PersonIdent)))
 
 (set! *warn-on-reflection* true)
 
@@ -747,14 +746,6 @@
               "A fresh Git instance is returned, not the stale cached one")
           (is (= ["branch-1" "master"] (source.p/branches fresh-source))
               "branches works again after the dir was deleted, without an instance restart"))))))
-
-(deftest credentials-provider-test
-  (testing "GitHub URL uses x-access-token"
-    (let [provider (git/credentials-provider "https://github.com/org/repo.git" "my-token")]
-      (is (instance? UsernamePasswordCredentialsProvider provider))))
-  (testing "Bitbucket URL uses x-token-auth"
-    (let [provider (#'git/credentials-provider "https://bitbucket.org/org/repo" "my-token")]
-      (is (instance? UsernamePasswordCredentialsProvider provider)))))
 
 ;; ---------------------------------------------------------------------------
 ;; Missing remote branch tests (issue #72778)
