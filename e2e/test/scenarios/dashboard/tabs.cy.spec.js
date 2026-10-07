@@ -81,6 +81,8 @@ describe("scenarios > dashboard > tabs", () => {
           id: -1,
           card_id: ORDERS_QUESTION_ID,
           dashboard_tab_id: TAB_1.id,
+          size_x: 10,
+          size_y: 4,
           parameter_mappings: [
             createDateFilterMapping({ card_id: ORDERS_QUESTION_ID }),
             createTextFilterMapping({ card_id: ORDERS_BY_YEAR_QUESTION_ID }),
@@ -90,6 +92,8 @@ describe("scenarios > dashboard > tabs", () => {
           id: -2,
           card_id: ORDERS_BY_YEAR_QUESTION_ID,
           dashboard_tab_id: TAB_2.id,
+          size_x: 10,
+          size_y: 4,
           parameter_mappings: [
             createDateFilterMapping({ card_id: ORDERS_BY_YEAR_QUESTION_ID }),
             createNumberFilterMapping({ card_id: ORDERS_BY_YEAR_QUESTION_ID }),
@@ -105,7 +109,7 @@ describe("scenarios > dashboard > tabs", () => {
 
     cy.log("leaving edit mode should not show cards from other tabs");
     H.dashboardGrid().within(() => {
-      cy.findByText("Orders").should("exist");
+      cy.findByText("Orders").should("be.visible");
       cy.findByText("Orders, Count, Grouped by Created At (year)").should(
         "not.exist",
       );
