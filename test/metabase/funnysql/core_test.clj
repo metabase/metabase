@@ -89,6 +89,13 @@
       [:is nil :x]        "NULL IS \"x\""
       [:is-not nil :x]    "NULL IS NOT \"x\"")))
 
+(deftest ^:parallel ratio-test
+  (testing "a Ratio is bound as a parameter (set as a double by metabase.app-db.jdbc-protocols) rather than spliced as an exact NUMERIC literal (#9246)"
+    (let [ratio (/ 1 10)]
+      (is (instance? clojure.lang.Ratio ratio))
+      (is (= ["SELECT ? AS \"one_tenth\"" ratio]
+             (funnysql/format {:select [[ratio :one_tenth]]} :postgres))))))
+
 (deftest ^:parallel number-rejects-non-numeric-rendering-test
   (testing "compiling a Number must fail closed instead of splicing whatever `(str n)` happens to produce"
     (testing "a hostile Number implementation's toString is not guaranteed to be numeric SQL syntax"
@@ -1130,6 +1137,28 @@
                   :total_count]]
      :from   [:collection]}
     ["SELECT *, count(*) OVER () AS \"total_count\" FROM \"collection\""]))
+
+(deftest ^:parallel dotted-alias-test
+  (testing "like Honey SQL, an alias containing a `.` is a single identifier, not a qualified one"
+    (are [engine expected] (= [expected]
+                              (funnysql/format {:select [[:card.name :report_card.name]]
+                                                :from   [[:report_card :card]]}
+                                               engine))
+      :postgres "SELECT \"card\".\"name\" AS \"report_card.name\" FROM \"report_card\" AS \"card\""
+      :h2       "SELECT \"CARD\".\"NAME\" AS \"REPORT_CARD.NAME\" FROM \"REPORT_CARD\" AS \"CARD\""
+      :mysql    "SELECT `card`.`name` AS `report_card.name` FROM `report_card` AS `card`"))
+  (testing "an alias is still validated"
+    (is (thrown? clojure.lang.ExceptionInfo
+                 (funnysql/format {:select [[:x (keyword "y\" FROM users; --")]]} :postgres)))))
+
+(deftest ^:parallel over-alias-inside-over-form-test
+  (testing "Honey SQL's alias-inside-`:over` form should fail loudly rather than silently dropping the alias"
+    (is (thrown-with-msg?
+         clojure.lang.ExceptionInfo
+         #"put the alias outside"
+         (funnysql/format {:select [[[:over [[:row_number] {:order-by [[:id :desc]]} :rn]]]]
+                           :from   [:query_execution]}
+                          :postgres)))))
 
 (deftest ^:parallel nest-test
   (testing ":nest wraps a subquery in parens"

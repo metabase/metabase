@@ -1070,7 +1070,8 @@
   (let [sql-order     (children-sort-clause sort-info (mdb/db-type))
         models        (sort (map keyword models))
         queries       (for [model models
-                            :let  [query              (collection-children-query model collection options)
+                            :let  [query              (-> (collection-children-query model collection options)
+                                                          (vary-meta assoc :allow-subquery true))
                                    select-clause-type (some
                                                        (fn [k]
                                                          (when (get query k)
@@ -1190,7 +1191,9 @@
                          {:with   [[:visible_collection_ids (collection/visible-collection-query viz-config)]]
                           :select (vec
                                    (for [model candidates]
-                                     [[:exists (collection-children-query model collection options)] model]))}))]
+                                     [[:exists (-> (collection-children-query model collection options)
+                                                   (vary-meta assoc :allow-subquery true))]
+                                      model]))}))]
         {:available_models
          (->> candidates
               (keep (fn [model]

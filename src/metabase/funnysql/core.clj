@@ -54,7 +54,10 @@
 
 (defn- number! [n context]
   (if (instance? clojure.lang.Ratio n)
-    (recur (double n) context)
+    ;; bind a Ratio rather than splicing it as a decimal literal. Postgres (and H2) type a literal like `0.1` as an exact
+    ;; `NUMERIC`, so the value would come back as a `BigDecimal`; bound, [[metabase.app-db.jdbc-protocols]] sets it as
+    ;; a double, which is what Honey SQL did (#9246).
+    (object! n context)
     (let [s (str n)]
       ;; don't trust `(str n)` blindly -- fail closed instead of splicing whatever it produces. This rejects
       ;; non-finite Doubles (`NaN`, `Infinity`) and guards against a hostile custom `Number` implementation whose
@@ -122,6 +125,8 @@
   (when-not (identifier-form? x)
     (throw (ex-info "Expected an identifier" {:x x}))))
 
+(declare alias!)
+
 (defn- identifier-with-optional-alias!
   "Handle an identifier form as seen in `:select`, `:from`, etc.; unwrapped or a vector with one element will act an
   unaliased identifier while a vector with two elements will emit `<x> AS <y>`."
@@ -137,7 +142,7 @@
       ;; would reject `count(*) AS ?`
       (check-identifier-form rhs)
       (append-sql! context (if include-as? " AS " " "))
-      (compile! rhs context))))
+      (alias! rhs context))))
 
 (defn- identifier-list! [xs context]
   (let [xs (->sequence xs)]
@@ -498,6 +503,19 @@
                     (f (get m k) context)))
                 #(append-sql! context " ")))
 
+(defn- quoted-identifier!
+  "Emit `s` as a single quoted identifier. `s` must already be validated -- it is not escaped."
+  [s context]
+  (let [engine     (engine context)
+        quote-char (case engine
+                     :mysql "`"
+                     "\"")]
+    (append-sql! context quote-char)
+    (append-sql! context (case engine
+                           :h2 (u/upper-case-en s)
+                           s))
+    (append-sql! context quote-char)))
+
 (defn- identifier-part!
   "Emit a single quoted and escaped identifier part."
   [part context]
@@ -506,20 +524,24 @@
     (do
       (when-not (re-matches #"^[A-Za-z_][?A-Za-z0-9_-]*$" part)
         (throw (ex-info "Invalid identifier" {:identifier part})))
-      (let [engine     (engine context)
-            quote-char (case engine
-                         :mysql "`"
-                         "\"")]
-        (append-sql! context quote-char)
-        (append-sql! context (case engine
-                               :h2 (u/upper-case-en part)
-                               part))
-        (append-sql! context quote-char)))))
+      (quoted-identifier! part context))))
 
 (defn- identifier!
   "Emit a (possibly qualified) identifier composed of multiple [[-identifier-part!]]s."
   [s context]
   (interpose-fn (str/split s #"\.") #(identifier-part! % context) #(append-sql! context ".")))
+
+(defn- alias!
+  "Emit the alias in `<x> AS <alias>`. An alias names a single thing, so like Honey SQL, an unqualified keyword alias is
+  quoted whole rather than split on `.` into qualified parts -- `:report_card.name` is the column `\"report_card.name\"`,
+  not `\"report_card\".\"name\"`, which isn't valid SQL in an alias."
+  [alias context]
+  (if (simple-keyword? alias)
+    (let [s (name alias)]
+      (when-not (re-matches #"^[A-Za-z_][?A-Za-z0-9_.-]*$" s)
+        (throw (ex-info "Invalid alias" {:alias alias})))
+      (quoted-identifier! s context))
+    (compile! alias context)))
 
 (defn- keyword!
   "Compile a keyword as a quoted and escaped identifier."
@@ -763,7 +785,13 @@
 (defn- current-timestamp! [context]
   (append-sql! context "current_timestamp"))
 
-(defn- over! [[expr m] context]
+(defn- over! [[expr m & more :as args] context]
+  ;; Honey SQL also accepts an alias inside the `:over` form, `[:over [expr window alias]]`. Don't silently drop it --
+  ;; the query would fail later with a confusing `column "alias" does not exist`.
+  (when (seq more)
+    (throw (ex-info (str "`:over` only supports [<expression> <window>]; put the alias outside instead, e.g. "
+                         "[[:over [<expression> <window>]] <alias>]")
+                    {:args args})))
   (compile! expr context)
   (append-sql! context " OVER (")
   (when-let [m (not-empty (select-keys m [:order-by :partition-by]))]
@@ -851,7 +879,8 @@
   (when-not (number? fraction)
     (throw (ex-info "Invalid continuous percentile fraction" {:fraction fraction})))
   (append-sql! context "percentile_cont(")
-  (compile! fraction context)
+  ;; splice the fraction as a literal even when it's a Ratio, which [[number!]] would otherwise bind as a parameter
+  (compile! (cond-> fraction (ratio? fraction) double) context)
   (append-sql! context ") WITHIN GROUP (ORDER BY ")
   (compile! expr context)
   (append-sql! context ")"))

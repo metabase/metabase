@@ -320,28 +320,28 @@
   "Builds a `:order-by` clause for the paged run listing, translating display values for sortable columns per
   `status-labels`/`run-method-labels`/`tag-name-labels` (maps of raw value to display label)."
   [sort-column sort-direction status-labels run-method-labels tag-name-labels]
-  (let [sort-column    (or (keyword sort-column) :start-time)
-        sort-direction (or (keyword sort-direction) :desc)
-        nulls-sort     (if (= sort-direction :asc)
-                         :nulls-last
-                         :nulls-first)]
+  (let [sort-column               (or (keyword sort-column) :start-time)
+        sort-direction            (or (keyword sort-direction) :desc)
+        sort-direction-with-nulls (case sort-direction
+                                    :asc  :asc-nulls-last
+                                    :desc :desc-nulls-first)]
     (conj
      (case sort-column
-       :transform-name  [[:transform.name sort-direction]]
-       :start-time      [[:start_time sort-direction]]
-       :end-time        [[:end_time sort-direction nulls-sort]]
-       :status          [[(label-case :status status-labels) sort-direction]]
-       :run-method      [[(label-case :run_method run-method-labels) sort-direction]]
-       :transform-tags  [[(first-tag-name-subquery tag-name-labels) sort-direction nulls-sort]]
+       :transform-name [[:transform.name sort-direction]]
+       :start-time     [[:start_time sort-direction]]
+       :end-time       [[:end_time sort-direction-with-nulls]]
+       :status         [[(label-case :status status-labels) sort-direction]]
+       :run-method     [[(label-case :run_method run-method-labels) sort-direction]]
+       :transform-tags [[(first-tag-name-subquery tag-name-labels) sort-direction-with-nulls]]
        ;; In-progress runs (end_time = nil) sink to the bottom in BOTH
        ;; directions — null means "no measurable duration yet," not
        ;; "longest duration."
-       :duration        [[[:is :end_time nil] :asc]
-                         [(h2x/calculate-interval-honeysql-form
-                           (mdb/db-type) :end_time :start_time)
-                          sort-direction]]
+       :duration       [[[:is :end_time nil] :asc]
+                        [(h2x/calculate-interval-honeysql-form
+                          (mdb/db-type) :end_time :start_time)
+                         sort-direction]]
        [[:start_time sort-direction]
-        [:end_time   sort-direction nulls-sort]])
+        [:end_time   sort-direction-with-nulls]])
      [:transform_run.id sort-direction])))
 
 (def ^:private RunFilters
@@ -532,13 +532,15 @@
 
 (defn- job-run-order-by
   [sort-column sort-direction]
-  (let [sort-direction (or (keyword sort-direction) :desc)
-        nulls-sort     (if (= sort-direction :asc) :nulls-last :nulls-first)]
+  (let [sort-direction            (or (keyword sort-direction) :desc)
+        sort-direction-with-nulls (case sort-direction
+                                    :asc  :asc-nulls-last
+                                    :desc :desc-nulls-first)]
     (case (keyword sort-column)
       :start_time [[:start_time sort-direction]]
-      :end_time   [[:end_time sort-direction nulls-sort]]
+      :end_time   [[:end_time sort-direction-with-nulls]]
       [[:start_time sort-direction]
-       [:end_time   sort-direction nulls-sort]])))
+       [:end_time   sort-direction-with-nulls]])))
 
 (mu/defn job-runs
   "Up to `limit` (offset by `offset`) TransformJobRuns, optionally narrowed to `job-id`, `status`, `run-method`, and
@@ -717,13 +719,15 @@
   anything else — including nil — falls back to ordering by start_time then end_time) in `sort-direction`
   (`:asc`/`:desc`, defaulting to `:desc`), with in-progress rows (null `end_time`) always ordered last."
   [sort-column sort-direction]
-  (let [sort-direction (or (keyword sort-direction) :desc)
-        nulls-sort     (if (= sort-direction :asc) :nulls-last :nulls-first)]
+  (let [sort-direction            (or (keyword sort-direction) :desc)
+        sort-direction-with-nulls (case sort-direction
+                                    :asc  :asc-nulls-last
+                                    :desc :desc-nulls-first)]
     (case (keyword sort-column)
       :start_time [[:start_time sort-direction]]
-      :end_time   [[:end_time sort-direction nulls-sort]]
+      :end_time   [[:end_time sort-direction-with-nulls]]
       [[:start_time sort-direction]
-       [:end_time   sort-direction nulls-sort]])))
+       [:end_time   sort-direction-with-nulls]])))
 
 (mu/defn root-run-summaries-page
   "Up to `limit` (offset by `offset`) root-run summary rows -- see [[metabase.transforms.run-listing]] -- of `types`

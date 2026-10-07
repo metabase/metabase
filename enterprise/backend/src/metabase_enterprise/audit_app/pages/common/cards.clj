@@ -12,8 +12,8 @@
                         [[:over [[:row_number]
                                  ^:allow-subquery
                                  {:partition-by [:query_execution.card_id]
-                                  :order-by     [[:query_execution.id :desc]]}
-                                 :rn]]]]
+                                  :order-by     [[:query_execution.id :desc]]}]]
+                         :rn]]
                :from   [:query_execution]
                ;; Join on BOTH card_id and started_at, because some cards share the same timestamp.
                :join   [[^:allow-subquery
