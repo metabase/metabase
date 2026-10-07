@@ -52,7 +52,7 @@ export const BrowseModels = () => {
   const { isLoading, error, models, recentModels, hasVerifiedModels } =
     useFilteredModels(modelFilters);
 
-  const { showMetabaseLinks, url } = useDocsUrl("data-modeling/models");
+  const { showMetabaseLinks, url } = useDocsUrl("data-modeling/models/models");
 
   const isEmpty = !isLoading && !error && models.length === 0;
   const titleId = useMemo(() => _.uniqueId("browse-models"), []);

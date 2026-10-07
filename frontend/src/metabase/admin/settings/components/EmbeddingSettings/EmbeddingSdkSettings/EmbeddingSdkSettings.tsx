@@ -21,7 +21,7 @@ export const EmbeddingSdkSettings = () => {
   const isEE = PLUGIN_IS_EE_BUILD.isEEBuild();
   const isReactSdkFeatureAvailable = PLUGIN_EMBEDDING_SDK.isEnabled();
 
-  const implementJwtUrl = useDocsUrl("embedding/sdk/authentication", {
+  const implementJwtUrl = useDocsUrl("embedding/authentication", {
     utm: utmTags,
   });
 

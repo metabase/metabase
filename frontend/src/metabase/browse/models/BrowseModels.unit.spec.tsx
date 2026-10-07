@@ -325,7 +325,7 @@ describe("BrowseModels", () => {
         await within(emptyState).findByRole("link", { name: "Read the docs" }),
       ).toHaveAttribute(
         "href",
-        "https://www.metabase.com/docs/latest/data-modeling/models.html",
+        "https://www.metabase.com/docs/latest/data-modeling/models/models.html",
       );
     });
 
@@ -376,7 +376,7 @@ describe("BrowseModels", () => {
         await within(banner).findByRole("link", { name: "Read the docs" }),
       ).toHaveAttribute(
         "href",
-        "https://www.metabase.com/docs/latest/data-modeling/models.html",
+        "https://www.metabase.com/docs/latest/data-modeling/models/models.html",
       );
 
       const dismissButton = await within(banner).findByRole("button", {

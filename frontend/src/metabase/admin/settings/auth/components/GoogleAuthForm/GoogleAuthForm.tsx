@@ -54,7 +54,7 @@ export const GoogleAuthForm = (): JSX.Element => {
     return { ...values, [ENABLED_KEY]: true };
   }, [settingValues]);
 
-  const { url: docsUrl } = useDocsUrl("people-and-groups/google-and-ldap", {
+  const { url: docsUrl } = useDocsUrl("people-and-groups/google-sign-in", {
     anchor: "enabling-google-sign-in",
   });
 

@@ -51,7 +51,7 @@ export const EnableGuestEmbedsSection = ({
   const usageConditionsLink = (
     <Anchor
       key="usage-conditions"
-      href="https://metabase.com/license/embedding"
+      href="https://www.metabase.com/license/embedding"
       target="_blank"
     >
       {t`usage conditions`}

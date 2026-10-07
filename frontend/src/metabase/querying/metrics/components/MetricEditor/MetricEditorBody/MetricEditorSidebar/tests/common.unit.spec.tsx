@@ -10,7 +10,7 @@ describe("MetricEditorSidebar (OSS)", () => {
     expect(link).toHaveAttribute("target", "_blank");
     expect(link).toHaveAttribute(
       "href",
-      expect.stringContaining("data-modeling/metrics"),
+      expect.stringContaining("data-modeling/semantic-layer/metrics"),
     );
   });
 });

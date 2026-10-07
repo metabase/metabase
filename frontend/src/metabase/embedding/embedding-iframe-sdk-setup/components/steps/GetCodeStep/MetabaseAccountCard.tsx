@@ -21,7 +21,7 @@ export const MetabaseAccountCard = () => {
   const isGuestEmbed = !!settings.isGuest;
 
   // eslint-disable-next-line metabase/no-unconditional-metabase-links-render -- Only for admins
-  const { url: setupSsoUrl } = useDocsUrl("embedding/sdk/authentication", {
+  const { url: setupSsoUrl } = useDocsUrl("embedding/authentication", {
     utm: utmTags,
   });
 

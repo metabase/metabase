@@ -18,6 +18,13 @@ jobs:
           sparse-checkout: |
             docs
             .lychee
+            .github/ISSUE_TEMPLATE
+            frontend/src
+            enterprise/frontend/src
+            src
+            enterprise/backend/src
+            resources
+            modules
 
       - name: Cache lychee
         uses: actions/cache@v5
@@ -38,3 +45,7 @@ jobs:
       - name: Check nav.yml links
         if: ${{ !cancelled() }}
         run: docs/util/check-links.sh nav
+
+      - name: Check docs links in the source code
+        if: ${{ !cancelled() }}
+        run: docs/util/check-links.sh src

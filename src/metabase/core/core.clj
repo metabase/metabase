@@ -65,7 +65,7 @@
         (str "Metabase Enterprise Edition extensions are PRESENT."
              "\n\n"
              "Usage of Metabase Enterprise Edition features are subject to the Metabase Commercial License."
-             "See https://www.metabase.com/license/commercial/ for details.")
+             "See https://www.metabase.com/license/commercial for details.")
         "Metabase Enterprise Edition extensions are NOT PRESENT.")))
 
 ;;; --------------------------------------------------- Info Metric---------------------------------------------------

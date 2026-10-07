@@ -60803,7 +60803,7 @@
       "post" : {
         "operationId" : "post-api-notify-db-id",
         "summary" : "POST /api/notify/db/{id}",
-        "description" : "Notification about a potential schema change to one of our `Databases`.\n  Caller can optionally specify a `:table_id` or `:table_name` in the body to limit updates to a single\n  `Table`. Optional Parameter `:scan` can be `\"full\"` or `\"schema\"` for a full sync or a schema sync, available\n  regardless if a `:table_id` or `:table_name` is passed.\n  This endpoint is secured by an API key that needs to be passed as a `X-METABASE-APIKEY` header which needs to be defined in\n  the `MB_API_KEY` [environment variable](https://www.metabase.com/docs/latest/configuring-metabase/environment-variables.html#mb_api_key)",
+        "description" : "Notification about a potential schema change to one of our `Databases`.\n  Caller can optionally specify a `:table_id` or `:table_name` in the body to limit updates to a single\n  `Table`. Optional Parameter `:scan` can be `\"full\"` or `\"schema\"` for a full sync or a schema sync, available\n  regardless if a `:table_id` or `:table_name` is passed.\n  This endpoint is secured by an API key that needs to be passed as a `X-METABASE-APIKEY` header which needs to be defined in\n  the `MB_API_KEY` [environment variable](https://www.metabase.com/docs/latest/configuring-metabase/environment-variables#mb_api_key)",
         "parameters" : [ {
           "in" : "path",
           "name" : "id",

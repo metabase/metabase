@@ -1,0 +1,109 @@
+name: Check links against the live sites
+
+on:
+  schedule:
+    # Sundays at 05:00 UTC
+    - cron: "0 5 * * 0"
+  workflow_dispatch:
+
+jobs:
+  live-links:
+    name: Check links against the live sites
+    if: ${{ github.event_name != 'schedule' || github.repository == 'metabase/metabase' }}
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      issues: write
+    env:
+      LINKS_REPORT: broken-links.txt
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+        with:
+          sparse-checkout: |
+            .lychee
+            .github/ISSUE_TEMPLATE
+            docs
+            frontend/src
+            enterprise/frontend/src
+            src
+            enterprise/backend/src
+            resources
+            modules
+
+      - name: Install lychee
+        env:
+          LYCHEE_VERSION: "0.24.2"
+          LYCHEE_SHA256: 1f4e0ef7f6554a6ed33dd7ac144fb2e1bbed98598e7af973042fc5cd43951c9a
+        run: |
+          archive=lychee-x86_64-unknown-linux-gnu.tar.gz
+          curl -sSfL -o "$archive" "https://github.com/lycheeverse/lychee/releases/download/lychee-v${LYCHEE_VERSION}/$archive"
+          echo "$LYCHEE_SHA256  $archive" | sha256sum -c -
+          tar xzf "$archive"
+          sudo install lychee-x86_64-unknown-linux-gnu/lychee /usr/local/bin/lychee
+
+      - name: Check links
+        id: check
+        continue-on-error: true
+        env:
+          # lychee uses it for github.com, which rate-limits anonymous requests.
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          status=0
+          docs/util/check-links.sh site || status=1
+          docs/util/check-links.sh --external || status=1
+          exit "$status"
+
+      # Keeps one open issue: the first failing run opens it, later ones replace its description and comment
+      # on it, so subscribers hear about every run.
+      - name: Open or update the broken links issue
+        if: steps.check.outcome == 'failure'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          TITLE: Broken links report
+          ASSIGNEE: tmashara
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          BLOB_URL: ${{ github.server_url }}/${{ github.repository }}/blob/${{ github.sha }}
+        run: |
+          max_rows=300
+          {
+            echo "cc @metabase/growth-eng @metabase/tech-writers"
+            echo
+            if [ -s "$LINKS_REPORT" ]; then
+              failures=$(sort -u "$LINKS_REPORT")
+              count=$(grep -c '' <<<"$failures")
+              echo "The weekly link check found **$count broken links** on $(date -u +%Y-%m-%d) ([run]($RUN_URL))."
+              echo "A redirect counts as broken for metabase.com and our GitHub wikis: see \`docs/util/README.md\`."
+              echo
+              echo "| Where | Link | Status |"
+              echo "| --- | --- | --- |"
+              head -n "$max_rows" <<<"$failures" | while IFS= read -r failure; do
+                location=${failure%%: *}
+                rest=${failure#*: }
+                url=${rest%%: *}
+                status=$(sed -E 's/^Rejected status code: ([0-9]+).*/\1/' <<<"${rest#*: }")
+                echo "| [\`$location\`]($BLOB_URL/${location%:*}#L${location##*:}) | $url | $status |"
+              done
+              if [ "$count" -gt "$max_rows" ]; then
+                echo
+                echo "…and $((count - max_rows)) more in the run."
+              fi
+            else
+              echo "The weekly link check failed on $(date -u +%Y-%m-%d) without listing any links. See the [run]($RUN_URL)."
+            fi
+          } > broken-links-issue.md
+
+          issue=$(gh issue list --state open --search "\"$TITLE\" in:title" --json number,title \
+                    --jq "map(select(.title == \"$TITLE\")) | .[0].number // empty")
+          if [ -z "$issue" ]; then
+            gh issue create --title "$TITLE" --body-file broken-links-issue.md --assignee "$ASSIGNEE"
+          else
+            gh issue edit "$issue" --body-file broken-links-issue.md
+            gh issue comment "$issue" --body "Updated with the results of the $(date -u +%Y-%m-%d) run ([run]($RUN_URL)). cc @metabase/growth-eng @metabase/tech-writers"
+          fi
+
+      - name: Fail the run
+        if: steps.check.outcome == 'failure'
+        run: exit 1

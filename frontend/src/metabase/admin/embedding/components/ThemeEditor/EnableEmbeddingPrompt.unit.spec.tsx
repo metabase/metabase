@@ -47,7 +47,7 @@ describe("EnableEmbeddingPrompt", () => {
     const link = screen.getByRole("link", { name: "usage conditions" });
     expect(link).toHaveAttribute(
       "href",
-      "https://metabase.com/license/embedding",
+      "https://www.metabase.com/license/embedding",
     );
     expect(link).toHaveAttribute("target", "_blank");
   });
