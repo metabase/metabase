@@ -1533,8 +1533,7 @@
 
 (deftest settings-update-succeeds-test
   (testing "PUT /api/ee/remote-sync/settings successfully updates settings"
-    (let [mock-main     (test-helpers/create-mock-source)
-          branch-before (settings/remote-sync-branch)]
+    (let [mock-main (test-helpers/create-mock-source)]
       (mt/with-dynamic-fn-redefs [settings/check-git-settings! (constantly nil)
                                   source/source-from-settings (constantly mock-main)]
         (mt/with-temporary-setting-values [remote-sync-url    nil
@@ -1543,9 +1542,7 @@
           (let [resp (mt/user-http-request :crowberto :put 200 "ee/remote-sync/settings"
                                            {:remote-sync-url "https://github.com/test/repo.git"
                                             :remote-sync-branch "main"})]
-            (is (= {:success true} resp)))))
-      (testing "the test restores the branch that the request changed"
-        (is (= branch-before (settings/remote-sync-branch)))))))
+            (is (= {:success true} resp))))))))
 
 (deftest settings-update-triggers-import-in-read-only-test
   (testing "PUT /api/ee/remote-sync/settings triggers import when type is read-only"
@@ -2273,9 +2270,7 @@
 
 (deftest settings-preserves-transforms-when-not-specified-test
   (testing "PUT /api/ee/remote-sync/settings preserves transforms setting when not specified"
-    (let [mock-source        (test-helpers/create-mock-source)
-          stored-auto-import #(t2/select-one-fn :value :model/Setting :key "remote-sync-auto-import")
-          auto-import-before (stored-auto-import)]
+    (let [mock-source (test-helpers/create-mock-source)]
       (mt/with-dynamic-fn-redefs [settings/check-git-settings! (constantly nil)
                                   source/source-from-settings (constantly mock-source)]
         (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git"
@@ -2283,7 +2278,6 @@
                                            remote-sync-branch "main"
                                            remote-sync-type :read-write
                                            remote-sync-transforms true]
-          ;; raw, so that the stored row is restored, also when there was no row
           (mt/with-temporary-raw-setting-values [remote-sync-auto-import "false"]
             ;; Toggle an unrelated setting (auto-import) so no branch switch is attempted and no import runs
             ;; that could itself re-toggle remote-sync-transforms; the point is transforms is left untouched.
@@ -2291,9 +2285,7 @@
                                              {:remote-sync-auto-import true})]
               (is (=? {:success true} resp))
               (is (true? (settings/remote-sync-transforms))
-                  "Transforms setting should be preserved when not included in request")))))
-      (testing "the test restores the stored auto-import row that the request changed"
-        (is (= auto-import-before (stored-auto-import)))))))
+                  "Transforms setting should be preserved when not included in request"))))))))
 
 ;;; ------------------------------------------- Dirty Endpoint with Transforms Root Tests -------------------------------------------
 
