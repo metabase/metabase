@@ -1519,9 +1519,13 @@
   (let [{task-id :id existing? :existing? :as task} (create-task-with-lock! task-type)]
     (api/check-400 (not existing?) "Remote sync in progress")
     (u.jvm/in-virtual-thread*
-     (dh/with-timeout {:interrupt? true
-                       :timeout-ms (* (settings/remote-sync-task-time-limit-ms) 10)}
-       (run-task-body! task-id branch sync-fn :on-success on-success :source source)))
+     ;; run-task-body! closes the source too; this close covers a throw before its try. A second close does nothing.
+     (try
+       (dh/with-timeout {:interrupt? true
+                         :timeout-ms (* (settings/remote-sync-task-time-limit-ms) 10)}
+         (run-task-body! task-id branch sync-fn :on-success on-success :source source))
+       (finally
+         (source/close! source))))
     task))
 
 (defn- close-on-throw!

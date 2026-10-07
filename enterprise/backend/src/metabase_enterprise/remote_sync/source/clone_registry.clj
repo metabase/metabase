@@ -11,6 +11,7 @@
     clone job of that URL.
   - [[retire!]] retires a stale generation: no later [[acquire!]] gets it.
   - [[release!]] ends a lease. A retired generation that no lease holds is closed and deleted.
+  - [[lease-git]] gives the Git instance of the newest generation that a lease holds.
   - [[shutdown!]] closes every clone and deletes the process root. The [[process-registry]] runs it at exit.
 
   Nothing ends a lease but [[release!]]. A lease that is older than the age limit of the registry is logged one time,
@@ -311,6 +312,15 @@
                    (-> (update-in [url :generations] update-vals #(update % :leases disj lease-id))
                        (update-in [url :leases] dissoc lease-id)))))
   (delete-unleased! registry url))
+
+(defn lease-git
+  "The Git instance of the newest generation that `lease` holds, or nil when it holds none."
+  [{:keys [state]} {lease-id :id url :url}]
+  (some->> (vals (get-in @state [url :generations]))
+           (filter #(contains? (:leases %) lease-id))
+           seq
+           (apply max-key :id)
+           :git))
 
 (defn- retire-missing!
   "Retires the active generation of `url` if its directory no longer exists, for example after a cleaner of the temp

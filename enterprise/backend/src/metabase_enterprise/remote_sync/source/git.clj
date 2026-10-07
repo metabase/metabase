@@ -727,9 +727,19 @@
     (when-let [sha (commit-sha source version)]
       (->GitSnapshot (:git source) (:remote-url source) (:branch source) sha (:token source) (:managed-dirs source)))))
 
+(defn- on-newest-clone
+  "`source` on the Git instance of the newest generation that its lease holds. Unchanged when the lease holds none."
+  [{:keys [lease] :as source}]
+  ;; A recovery returns a copy of the source on a new generation, and the caller can keep the original. A commit on a
+  ;; snapshot of the copy is only in the new generation, so a read of that commit through the original needs it.
+  (if-let [git (some->> lease (clone-registry/lease-git (clone-registry/process-registry)))]
+    (assoc source :git git)
+    source))
+
 ;; A GitSource also answers the remote questions, from its URL and token, as a GitRemote does. `lease` is its lease in
 ;; the clone registry, and `generation` is the id of the generation whose Git instance is `git`. A recovery returns a
-;; copy with the same lease, so a close of either one releases every generation of the lease.
+;; copy with the same lease, so a close of either one releases every generation of the lease, and `snapshot-at` of
+;; either one reads the newest generation of the lease.
 (defrecord GitSource [git remote-url branch token managed-dirs lease generation]
   java.io.Closeable
   (close [_]
@@ -750,7 +760,7 @@
     (snapshot this))
 
   (snapshot-at [this version]
-    (snapshot-at-version this version)))
+    (snapshot-at-version (on-newest-clone this) version)))
 
 (defn git-source
   "Creates a new GitSource instance for a git repository.
