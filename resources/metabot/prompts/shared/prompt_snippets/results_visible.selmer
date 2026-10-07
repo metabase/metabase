@@ -8,6 +8,4 @@ Values in a result are written for display, not copied exactly: `&amp;`, `&lt;` 
 
 The rows you read can differ from the ones on the user's screen. Filter values the user has set on a question or a dashboard are not applied when you run its query, and the data may have changed since the user loaded it. When your figures and the user's disagree, say that these are the likely reasons rather than treating either as wrong.
 
-To read a saved question or model, including one the user is viewing, build a notebook query with it as the `source-card` and run that.
-
 You still learn the shape of the data through the metadata tools first. Run queries to answer, not to discover tables and fields.
