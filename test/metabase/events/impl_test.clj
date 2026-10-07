@@ -72,41 +72,34 @@
       e)))
 
 (deftest every-listener-runs-when-another-throws-test
-  ;; Make each listener the thrower in turn: the thrower runs first in one case and last in the other.
-  (doseq [thrower [::throwing-topic ::throwing-topics]]
-    (testing (str "listener " thrower " throws")
+  ;; ::throwing-topic is the topic, so its listener runs first. Each listener throws alone, then both throw.
+  (doseq [[throwers first-thrower] [[#{::throwing-topic} ::throwing-topic]
+                                    [#{::throwing-topics} ::throwing-topics]
+                                    [#{::throwing-topic ::throwing-topics} ::throwing-topic]]]
+    (testing (str "listeners " throwers " throw")
       (binding [*method-calls* (atom {})]
-        (let [event {::throw #{thrower}}
+        (let [event {::throw throwers}
               e     (publish-and-catch! event)
-              cause (ex-cause e)]
+              cause ^Throwable (ex-cause e)]
           (testing "every listener ran"
-            (is (= {::throwing-topic  event
-                    ::throwing-topics event}
+            (is (= {::throwing-topic event, ::throwing-topics event}
                    @*method-calls*)))
-          (testing "publish-event! throws the error of the listener"
-            (is (= {:topic ::throwing-topic, :event event}
-                   (ex-data e)))
-            (is (= {:listener thrower}
-                   (ex-data cause)))
-            (is (empty? (.getSuppressed ^Throwable cause))))))))
-  (testing "both listeners throw"
+          (testing "publish-event! throws the first error, with the others as suppressed"
+            (is (= {:topic ::throwing-topic, :event event} (ex-data e)))
+            (is (= {:listener first-thrower} (ex-data cause)))
+            (is (= (disj throwers first-thrower)
+                   (into #{} (map (comp :listener ex-data)) (.getSuppressed cause))))))))))
+
+(deftest listeners-that-throw-one-exception-test
+  (testing "when two listeners throw the same exception object, publish-event! throws it, not a self-suppression error"
     (binding [*method-calls* (atom {})]
-      (let [event {::throw #{::throwing-topic ::throwing-topics}}
-            e     (publish-and-catch! event)
-            cause ^Throwable (ex-cause e)]
-        (testing "every listener ran"
-          (is (= {::throwing-topic  event
-                  ::throwing-topics event}
-                 @*method-calls*)))
-        (testing "publish-event! throws one error, with the other as suppressed"
-          (is (= 1 (count (.getSuppressed cause))))
-          (is (= #{::throwing-topic ::throwing-topics}
-                 (into #{}
-                       (map (comp :listener ex-data))
-                       (cons cause (.getSuppressed cause))))))))))
+      (let [failure (ex-info "shared failure" {})
+            e       (publish-and-catch! {::throwables {::throwing-topic failure, ::throwing-topics failure}})]
+        (is (identical? failure (ex-cause e)))
+        (is (empty? (.getSuppressed ^Throwable (ex-cause e))))))))
 
 (deftest first-error-stops-the-listeners-inside-a-transaction-test
-  ;; The transaction rolls back after the error, so a later listener must not act on rows that never commit.
+  ;; Inside a transaction, the first error stops the later listeners, even when the caller catches it.
   (binding [*method-calls* (atom {})]
     (let [event {::throw #{::throwing-topic}}
           e     (t2/with-transaction [_conn]

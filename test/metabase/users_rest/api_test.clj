@@ -2085,7 +2085,7 @@
                             {:first_name "Inv" :last_name "Itee" :email email}))
     @invites))
 
-(deftest invite-sends-nothing-when-the-invite-rolls-back-test
+(deftest invite-sends-nothing-when-an-invite-listener-throws-test
   (testing "POST /api/user"
     (mt/with-model-cleanup [:model/User]
       (testing "sends one invite notification"
