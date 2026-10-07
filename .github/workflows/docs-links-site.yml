@@ -14,9 +14,9 @@ jobs:
     timeout-minutes: 15
     permissions:
       contents: read
+      issues: write
     env:
       LINKS_REPORT: broken-links.txt
-      SLACK_CHANNEL: C0ACAG2CXHV # #team-growth
     steps:
       - name: Checkout repository
         uses: actions/checkout@v7
@@ -55,33 +55,54 @@ jobs:
           docs/util/check-links.sh --external || status=1
           exit "$status"
 
-      - name: Write the Slack message
+      # Keeps one open issue: the first failing run opens it, later ones replace its description and comment
+      # on it, so subscribers hear about every run.
+      - name: Open or update the broken links issue
         if: steps.check.outcome == 'failure'
         env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          TITLE: Broken links report
+          ASSIGNEE: tmashara
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          BLOB_URL: ${{ github.server_url }}/${{ github.repository }}/blob/${{ github.sha }}
         run: |
-          max_lines=20
-          if [ -s "$LINKS_REPORT" ]; then
-            failures=$(sort -u "$LINKS_REPORT" | sed -E 's/: Rejected status code: ([0-9]+).*$/: \1/; s/: File not found\..*$/: file not found/')
-            count=$(grep -c '' <<<"$failures")
-            text=$(printf ':link: *%s broken links* in metabase/metabase (<%s|weekly link check>)\n```\n%s\n```' \
-              "$count" "$RUN_URL" "$(head -n "$max_lines" <<<"$failures" | cut -c1-160)")
-            if [ "$count" -gt "$max_lines" ]; then
-              text+=$(printf '\n…and %s more in the run.' "$((count - max_lines))")
+          max_rows=300
+          {
+            echo "cc @metabase/growth-eng @metabase/tech-writers"
+            echo
+            if [ -s "$LINKS_REPORT" ]; then
+              failures=$(sort -u "$LINKS_REPORT")
+              count=$(grep -c '' <<<"$failures")
+              echo "The weekly link check found **$count broken links** on $(date -u +%Y-%m-%d) ([run]($RUN_URL))."
+              echo "A redirect counts as broken for metabase.com and our GitHub wikis: see \`docs/util/README.md\`."
+              echo
+              echo "| Where | Link | Status |"
+              echo "| --- | --- | --- |"
+              head -n "$max_rows" <<<"$failures" | while IFS= read -r failure; do
+                location=${failure%%: *}
+                rest=${failure#*: }
+                url=${rest%%: *}
+                status=$(sed -E 's/^Rejected status code: ([0-9]+).*/\1/' <<<"${rest#*: }")
+                echo "| [\`$location\`]($BLOB_URL/${location%:*}#L${location##*:}) | $url | $status |"
+              done
+              if [ "$count" -gt "$max_rows" ]; then
+                echo
+                echo "…and $((count - max_rows)) more in the run."
+              fi
+            else
+              echo "The weekly link check failed on $(date -u +%Y-%m-%d) without listing any links. See the [run]($RUN_URL)."
             fi
-          else
-            text=":warning: The weekly link check failed without listing any links. <$RUN_URL|See the run>."
-          fi
-          jq -n --arg channel "$SLACK_CHANNEL" --arg text "$text" '{channel: $channel, text: $text}' > slack-payload.json
+          } > broken-links-issue.md
 
-      - name: Post to Slack
-        if: steps.check.outcome == 'failure'
-        uses: slackapi/slack-github-action@45a88b9581bfab2566dc881e2cd66d334e621e2c # v3.0.3
-        with:
-          method: chat.postMessage
-          token: ${{ secrets.SLACK_BOT_TOKEN }}
-          payload-file-path: ./slack-payload.json
-          errors: true
+          issue=$(gh issue list --state open --search "\"$TITLE\" in:title" --json number,title \
+                    --jq "map(select(.title == \"$TITLE\")) | .[0].number // empty")
+          if [ -z "$issue" ]; then
+            gh issue create --title "$TITLE" --body-file broken-links-issue.md --assignee "$ASSIGNEE"
+          else
+            gh issue edit "$issue" --body-file broken-links-issue.md
+            gh issue comment "$issue" --body "Updated with the results of the $(date -u +%Y-%m-%d) run ([run]($RUN_URL)). cc @metabase/growth-eng @metabase/tech-writers"
+          fi
 
       - name: Fail the run
         if: steps.check.outcome == 'failure'
