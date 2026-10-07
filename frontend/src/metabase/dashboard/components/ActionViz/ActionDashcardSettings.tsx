@@ -1,11 +1,12 @@
-import { type ReactNode, useMemo } from "react";
+import cx from "classnames";
+import { useMemo } from "react";
 import { t } from "ttag";
 
 import { EmptyState } from "metabase/common/components/EmptyState";
 import CS from "metabase/css/core/index.css";
 import { setActionForDashcard } from "metabase/dashboard/actions";
 import { useDispatch } from "metabase/redux";
-import { Box, Button, Flex } from "metabase/ui";
+import { Box, Button, Flex, Stack, Title } from "metabase/ui";
 import type {
   ActionDashboardCard,
   Dashboard,
@@ -70,48 +71,50 @@ export function ActionDashcardSettings({
 
   return (
     <Flex
-      className={S.wrapper}
+      className={CS.overflowHidden}
       h="80vh"
       miw="50rem"
       data-testid="action-dashcard-settings"
     >
-      <Box className={S.left} w="20rem" pl="xxl" py="xxl">
+      <Box
+        className={cx(CS.overflowYAuto, S.scrollFade)}
+        w="20rem"
+        pl="xxl"
+        py="xxl"
+      >
         <h4 className={CS.pb2}>{t`Action Library`}</h4>
         <ConnectedActionPicker currentAction={action} onClick={setAction} />
       </Box>
-      <Flex
-        className={S.right}
-        direction="column"
-        flex={1}
-        maw="30rem"
-        pt="xxl"
-      >
-        {action ? (
+      <Stack className={CS.borderLeft} gap={0} flex={1} maw="30rem" pt="xxl">
+        {action && hasParameters && (
           <>
-            {hasParameters && (
-              <>
-                <Box component="h2" fz="1.25rem" pb="sm" px="xxl">
-                  {t`Where should the values for '${action.name}' come from?`}
-                </Box>
-                <ExplainerText />
-              </>
-            )}
-            <ParameterMapperContainer>
-              <ActionParameterMappingForm
-                dashcard={dashcard}
-                dashboard={dashboard}
-                action={action}
-                currentMappings={currentMappings}
-              />
-            </ParameterMapperContainer>
+            <Title order={2} size="h3" lh="normal" pb="sm" px="xxl">
+              {t`Where should the values for '${action.name}' come from?`}
+            </Title>
+            <ExplainerText />
           </>
-        ) : (
-          <ParameterMapperContainer>
-            <EmptyActionState />
-          </ParameterMapperContainer>
         )}
+        <Stack
+          className={CS.overflowYAuto}
+          gap={0}
+          flex={1}
+          pt="sm"
+          pb="xxl"
+          px="xxl"
+        >
+          {action ? (
+            <ActionParameterMappingForm
+              dashcard={dashcard}
+              dashboard={dashboard}
+              action={action}
+              currentMappings={currentMappings}
+            />
+          ) : (
+            <EmptyActionState />
+          )}
+        </Stack>
         <Flex
-          className={S.modalActions}
+          className={CS.borderTop}
           flex="0 0 auto"
           justify="flex-end"
           gap="lg"
@@ -121,23 +124,10 @@ export function ActionDashcardSettings({
             {t`Done`}
           </Button>
         </Flex>
-      </Flex>
+      </Stack>
     </Flex>
   );
 }
-
-const ParameterMapperContainer = ({ children }: { children: ReactNode }) => (
-  <Flex
-    className={S.parameterMapperContainer}
-    direction="column"
-    flex={1}
-    pt="sm"
-    pb="xxl"
-    px="xxl"
-  >
-    {children}
-  </Flex>
-);
 
 const EmptyActionState = () => (
   <EmptyState className={CS.p3} message={t`Select an action to get started`} />

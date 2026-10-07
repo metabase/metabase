@@ -2,9 +2,8 @@ import { t } from "ttag";
 
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { useDocsUrl } from "metabase/common/hooks";
+import CS from "metabase/css/core/index.css";
 import { Box } from "metabase/ui";
-
-import S from "./ExplainerText.module.css";
 
 export function ExplainerText() {
   const { url, showMetabaseLinks } = useDocsUrl("dashboards/actions");
@@ -12,9 +11,15 @@ export function ExplainerText() {
     <Box component="p" mx="xxl" c="text-secondary">
       {t`You can either ask users to enter values, or use the value of a dashboard filter.`}
       {showMetabaseLinks && (
-        <ExternalLink className={S.brandLink} href={url}>
+        // a className stops ExternalLink falling back to CS.link (hover underline)
+        <Box
+          component={ExternalLink}
+          className={CS.textBrand}
+          href={url}
+          ml="sm"
+        >
           {t`Learn more.`}
-        </ExternalLink>
+        </Box>
       )}
     </Box>
   );

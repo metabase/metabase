@@ -25,7 +25,7 @@ import type {
 } from "metabase-types/api";
 
 import ActionButtonView from "./ActionButtonView";
-import ActionVizForm from "./ActionVizForm";
+import { ActionVizForm } from "./ActionVizForm";
 import {
   getDashcardParamValues,
   getMappedActionParameters,

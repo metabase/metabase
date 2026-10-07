@@ -1,5 +1,4 @@
-.formWrapper {
-  border-radius: var(--mantine-radius-sm);
+.border {
   border: 1px solid var(--mb-color-border-neutral);
-  overflow-y: auto;
+  border-radius: 0.5rem;
 }

@@ -1,3 +1,4 @@
+import cx from "classnames";
 import type { FormikHelpers } from "formik";
 import { startTransition, useCallback, useEffect, useState } from "react";
 
@@ -8,6 +9,7 @@ import { useActionInitialValues } from "metabase/actions/hooks/use-action-initia
 import { getFormTitle, isImplicitUpdateAction } from "metabase/actions/utils";
 import { actionApi, publicApi } from "metabase/api";
 import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
+import CS from "metabase/css/core/index.css";
 import {
   ActionCreator,
   loadActionCreator,
@@ -17,6 +19,7 @@ import {
   Box,
   Modal,
   PREVENT_AUTOCOMPLETE_CLIPPING_MODAL_PROPS,
+  Title,
 } from "metabase/ui";
 import { getDashboardType } from "metabase/utils/dashboard";
 import type {
@@ -50,7 +53,7 @@ export interface ActionFormProps {
   onActionEdit?: (newAction: WritebackAction) => void;
 }
 
-function ActionVizForm({
+export function ActionVizForm({
   action,
   dashcard,
   dashboard,
@@ -193,10 +196,14 @@ function ActionVizForm({
   }
 
   return (
-    <Box className={S.formWrapper} p="xl" bg="background_page-primary">
-      <Box component="h4" mb="xl">
+    <Box
+      className={cx(S.border, CS.overflowYAuto)}
+      p="xl"
+      bg="background_page-primary"
+    >
+      <Title order={4} size="h5" lh="normal" mb="xl">
         {title}
-      </Box>
+      </Title>
       <ActionParametersInputForm
         action={action}
         mappedParameters={mappedParameters}
@@ -207,6 +214,3 @@ function ActionVizForm({
     </Box>
   );
 }
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default ActionVizForm;

@@ -17,7 +17,6 @@ import type {
   WritebackParameter,
 } from "metabase-types/api";
 
-import S from "./ActionParameterMapping.module.css";
 import {
   getParameterDefaultValue,
   isParameterHidden,
@@ -147,11 +146,11 @@ export const ActionParameterMappingItem = ({
         {isHidden && (
           <Box
             component="span"
-            className={S.parameterFormBadge}
             c="text-primary"
             bg="background_page-tertiary"
             px="sm"
             py="xxs"
+            bdrs="xxs"
           >{t`Hidden`}</Box>
         )}
       </Flex>
