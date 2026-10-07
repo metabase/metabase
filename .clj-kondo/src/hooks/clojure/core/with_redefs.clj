@@ -30,17 +30,21 @@
     (or (when-let [v (get-in analysis [:clj var-sym])]
           (or (seq (:fixed-arities v))
               (:varargs-min-arity v)))
-        ;; `hooks/ns-analysis` strips each var's `:imported-ns`, so search every namespace this one re-exports from.
-        ;; Any of them could be the one the var was imported from, so all must be readable, and all that define
+        ;; Kondo's `hooks/ns-analysis` strips each var's `:imported-ns`, so search every namespace this one re-exports
+        ;; from. Any of them could be the one the var was imported from, so all must be readable, and all that define
         ;; the name must be defns.
-        ;; `seen` holds only the namespaces on the current path, so a source reached by two routes is still followed.
-        (let [proxied (for [ns-sym (get-in analysis [:clj :proxied-namespaces])
-                            :when  (not (seen ns-sym))]
-                        [ns-sym (:clj (ns-analysis ns-sym))])
-              sources (filter (fn [[_ vars]] (when-let [v (get vars var-sym)] (not (:private v)))) proxied)]
-          (and (every? (comp some? second) proxied)
+        ;; Only the namespaces on the current path are in `seen`, so a source reached by two routes is still followed.
+        (let [proxied (into {} (for [ns-sym (get-in analysis [:clj :proxied-namespaces])
+                                     :when  (not (seen ns-sym))]
+                                 [ns-sym (:clj (ns-analysis ns-sym))]))
+              ;; Skip private vars: a renamed import can share its name with an unrelated private var in a source.
+              sources (for [[ns-sym vars] proxied
+                            :let  [v (get vars var-sym)]
+                            :when (and v (not (:private v)))]
+                        ns-sym)]
+          (and (every? some? (vals proxied))
                (seq sources)
-               (every? (fn [[ns-sym vars]] (defn-arity? {:clj vars} var-sym (conj seen ns-sym))) sources)))))))
+               (every? #(defn-arity? {:clj (proxied %)} var-sym (conj seen %)) sources)))))))
 
 (defn- safely-nudgeable-lhs?
   "Is this LHS a regular function (defn) according to kondo's analysis?
@@ -77,7 +81,7 @@
    multimethod names — adding a new `defmulti` doesn't require touching this hook."
   [{:keys [node lang]}]
   (let [[_with-redefs bindings-vec] (:children node)]
-    ;; `with-dynamic-fn-redefs` is clj-only, so a var only counts as a defn by its clj definition.
+    ;; The `with-dynamic-fn-redefs` macro is clj-only, so a var only counts as a defn by its clj definition.
     (when (and (= :clj lang) (hooks/vector-node? bindings-vec))
       (let [pairs (partition-all 2 (:children bindings-vec))]
         (when (and (seq pairs)
