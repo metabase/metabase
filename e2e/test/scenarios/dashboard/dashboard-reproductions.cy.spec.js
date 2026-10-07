@@ -488,51 +488,6 @@ describe("issue 17879", () => {
   });
 });
 
-describe("issue 21830", () => {
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-  });
-
-  it("slow loading card visualization options click shouldn't lead to error (metabase#21830)", () => {
-    cy.intercept("GET", "/api/dashboard/*").as("getDashboard");
-    cy.intercept(
-      {
-        method: "POST",
-        url: "/api/dashboard/*/dashcard/*/card/*/query",
-        middleware: true,
-      },
-      (req) => {
-        req.on("response", (res) => {
-          // throttle the response to simulate a mobile 3G connection
-          res.setThrottle(100);
-        });
-      },
-    ).as("getCardQuery");
-
-    cy.visit(`/dashboard/${ORDERS_DASHBOARD_ID}`);
-    cy.wait("@getDashboard");
-
-    // it's crucial that we try to click on this icon BEFORE we wait for the `getCardQuery` response!
-    H.editDashboard();
-    H.showDashboardCardActions();
-
-    H.getDashboardCard().within(() => {
-      cy.icon("close").should("be.visible");
-      cy.icon("click").should("not.exist");
-      cy.icon("palette").should("not.exist");
-    });
-
-    cy.wait("@getCardQuery");
-
-    H.getDashboardCard().within(() => {
-      cy.icon("close").should("be.visible");
-      cy.icon("click").should("be.visible");
-      cy.icon("palette").should("be.visible");
-    });
-  });
-});
-
 describe("issue 28756", () => {
   const UNRESTRICTED_COLLECTION_NAME = "Unrestricted collection";
   const RESTRICTED_COLLECTION_NAME = "Restricted collection";

@@ -85,9 +85,54 @@ describe("scenarios > dashboard cards > visualization options", () => {
     );
   });
 
-  it("column reordering should work (metabase#16229)", () => {
-    H.visitDashboard(ORDERS_DASHBOARD_ID);
-    cy.findByLabelText("Edit dashboard").click();
+  it("should hide visualization options while the card loads, then toggle column settings and reorder columns (metabase#21830, metabase#30966, metabase#16229)", () => {
+    cy.intercept("GET", "/api/dashboard/*").as("getDashboard");
+    cy.intercept(
+      {
+        method: "POST",
+        url: "/api/dashboard/*/dashcard/*/card/*/query",
+        middleware: true,
+      },
+      (req) => {
+        req.on("response", (res) => {
+          // throttle the response to simulate a mobile 3G connection
+          res.setThrottle(100);
+        });
+      },
+    ).as("getCardQuery");
+
+    cy.visit(`/dashboard/${ORDERS_DASHBOARD_ID}`);
+    cy.wait("@getDashboard");
+
+    cy.log("metabase#21830");
+    // it's crucial that we try to click on this icon BEFORE we wait for the `getCardQuery` response!
+    H.editDashboard();
+    H.showDashboardCardActions();
+
+    H.getDashboardCard().within(() => {
+      cy.icon("close").should("be.visible");
+      cy.icon("click").should("not.exist");
+      cy.icon("palette").should("not.exist");
+    });
+
+    cy.wait("@getCardQuery");
+
+    H.getDashboardCard().within(() => {
+      cy.icon("close").should("be.visible");
+      cy.icon("click").should("be.visible");
+      cy.icon("palette").should("be.visible");
+    });
+
+    cy.log("metabase#30966");
+    H.getDashboardCard().realHover();
+    cy.findByLabelText("Show visualization options").click();
+    cy.findByTestId("Subtotal-settings-button").click();
+    H.popover().findByLabelText("Show a mini bar chart").click({ force: true });
+    cy.findAllByTestId("mini-bar-container").should("have.length.above", 0);
+    H.modal().button("Cancel").click();
+    H.modal().should("not.exist");
+
+    cy.log("metabase#16229");
     H.getDashboardCard().realHover();
     cy.findByLabelText("Show visualization options").click();
     cy.findByTestId("chartsettings-sidebar").within(() => {
@@ -107,15 +152,5 @@ describe("scenarios > dashboard cards > visualization options", () => {
     });
     // The table preview should get updated immediately, reflecting the changes in columns ordering.
     H.modal().findAllByRole("columnheader").first().contains("User ID");
-  });
-
-  it("should reflect column settings accurately when changing (metabase#30966)", () => {
-    H.visitDashboard(ORDERS_DASHBOARD_ID);
-    cy.findByLabelText("Edit dashboard").click();
-    H.getDashboardCard().realHover();
-    cy.findByLabelText("Show visualization options").click();
-    cy.findByTestId("Subtotal-settings-button").click();
-    H.popover().findByLabelText("Show a mini bar chart").click({ force: true });
-    cy.findAllByTestId("mini-bar-container").should("have.length.above", 0);
   });
 });

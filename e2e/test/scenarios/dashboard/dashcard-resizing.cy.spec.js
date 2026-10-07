@@ -197,7 +197,7 @@ describe(
       cy.signInAsAdmin();
     });
 
-    it("should display all visualization cards with their default sizes", () => {
+    it("should display all visualization cards with their default sizes and not allow resizing them below their min sizes", () => {
       TEST_QUESTIONS.forEach((question) => {
         H.createQuestion(question);
       });
@@ -235,6 +235,28 @@ describe(
         cy.request("GET", `/api/dashboard/${dashId}`).then(({ body }) => {
           body.dashcards.forEach(({ card, size_x, size_y }) => {
             const { height, width } = getDefaultSize(card.display);
+            expect(size_x).to.equal(width);
+            expect(size_y).to.equal(height);
+          });
+        });
+
+        H.editDashboard();
+
+        cy.request("GET", `/api/dashboard/${dashId}`).then(({ body }) => {
+          body.dashcards.forEach(({ card }, index) => {
+            H.resizeDashboardCard({
+              card: H.getDashboardCard(index),
+              x: -getDefaultSize(card.display).width * 200,
+              y: -getDefaultSize(card.display).height * 200,
+            });
+          });
+        });
+
+        H.saveDashboard();
+
+        cy.request("GET", `/api/dashboard/${dashId}`).then(({ body }) => {
+          body.dashcards.forEach(({ card, size_x, size_y }) => {
+            const { height, width } = getMinSize(card.display);
             expect(size_x).to.equal(width);
             expect(size_y).to.equal(height);
           });
@@ -304,49 +326,6 @@ describe(
             `Vertical drift: handle at ${handleCenterY}, cursor at ${targetY}`,
           ).to.be.lessThan(maxDrift);
         });
-    });
-
-    it("should not allow cards to be resized smaller than min height", () => {
-      const cardIds = [];
-      TEST_QUESTIONS.forEach((question) => {
-        H.createQuestion(question).then(({ body: { id } }) => {
-          cardIds.push(id);
-        });
-      });
-      H.createDashboard().then(({ body: { id: dashId } }) => {
-        cy.request("PUT", `/api/dashboard/${dashId}`, {
-          dashcards: cardIds.map((cardId, index) => ({
-            id: index,
-            card_id: cardId,
-            row: index * 10,
-            col: 0,
-            size_x: 18,
-            size_y: 10,
-          })),
-        });
-        H.visitDashboard(dashId);
-        H.editDashboard();
-
-        cy.request("GET", `/api/dashboard/${dashId}`).then(({ body }) => {
-          body.dashcards.forEach(({ card }, index) => {
-            H.resizeDashboardCard({
-              card: H.getDashboardCard(index),
-              x: -getDefaultSize(card.display).width * 200,
-              y: -getDefaultSize(card.display).height * 200,
-            });
-          });
-
-          H.saveDashboard();
-
-          cy.request("GET", `/api/dashboard/${dashId}`).then(({ body }) => {
-            body.dashcards.forEach(({ card, size_x, size_y }) => {
-              const { height, width } = getMinSize(card.display);
-              expect(size_x).to.equal(width);
-              expect(size_y).to.equal(height);
-            });
-          });
-        });
-      });
     });
   },
 );

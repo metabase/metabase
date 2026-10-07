@@ -130,44 +130,7 @@ describe("scenarios > dashboard cards > replace question", () => {
     H.expectNoBadSnowplowEvents();
   });
 
-  it("should replace a dashboard card question (metabase#36984)", () => {
-    visitDashboardAndEdit();
-
-    findHeadingDashcard()
-      .realHover({ scrollBehavior: "bottom" })
-      .findByLabelText("Replace")
-      .should("not.exist");
-
-    // Ensure can replace with a question
-    replaceQuestion(findTargetDashcard(), {
-      nextQuestionName: "Orders",
-    });
-    H.expectUnstructuredSnowplowEvent({ event: "dashboard_card_replaced" });
-    findTargetDashcard().within(() => {
-      assertDashCardTitle("Orders");
-      cy.findByText("Product ID").should("exist");
-    });
-
-    // Ensure can replace with a model
-    replaceQuestion(findTargetDashcard(), {
-      nextQuestionName: "Orders Model",
-    });
-    findTargetDashcard().within(() => {
-      assertDashCardTitle("Orders Model");
-      cy.findByText("Product ID").should("exist");
-      cy.findByText("User ID").should("exist");
-    });
-
-    // Ensure changes are persisted
-    H.saveDashboard();
-    findTargetDashcard().within(() => {
-      assertDashCardTitle("Orders Model");
-      cy.findByText("Product ID").should("exist");
-      cy.findByText("User ID").should("exist");
-    });
-  });
-
-  it("should undo the question replace action", () => {
+  it("should undo the question replace action, then replace a dashboard card question (metabase#36984)", () => {
     visitDashboardAndEdit();
 
     overwriteDashCardTitle("Custom name");
@@ -210,6 +173,42 @@ describe("scenarios > dashboard cards > replace question", () => {
       cy.findByText("18,760").should("exist");
       cy.findByText("Ean").should("not.exist");
       cy.findByText("Rustic Paper Wallet").should("not.exist");
+    });
+
+    cy.log("metabase#36984");
+    cy.findByLabelText("Edit dashboard").click();
+
+    findHeadingDashcard()
+      .realHover({ scrollBehavior: "bottom" })
+      .findByLabelText("Replace")
+      .should("not.exist");
+
+    // Ensure can replace with a question
+    replaceQuestion(findTargetDashcard(), {
+      nextQuestionName: "Orders",
+    });
+    H.expectUnstructuredSnowplowEvent({ event: "dashboard_card_replaced" }, 2);
+    findTargetDashcard().within(() => {
+      assertDashCardTitle("Orders");
+      cy.findByText("Product ID").should("exist");
+    });
+
+    // Ensure can replace with a model
+    replaceQuestion(findTargetDashcard(), {
+      nextQuestionName: "Orders Model",
+    });
+    findTargetDashcard().within(() => {
+      assertDashCardTitle("Orders Model");
+      cy.findByText("Product ID").should("exist");
+      cy.findByText("User ID").should("exist");
+    });
+
+    // Ensure changes are persisted
+    H.saveDashboard();
+    findTargetDashcard().within(() => {
+      assertDashCardTitle("Orders Model");
+      cy.findByText("Product ID").should("exist");
+      cy.findByText("User ID").should("exist");
     });
   });
 
