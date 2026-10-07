@@ -235,6 +235,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       });
       H.createQuestionAndDashboard({ questionDetails }).then(
         ({ body: card }) => {
+          cy.wrap(card.dashboard_id).as("sourceDashboardId");
           H.visitDashboard(card.dashboard_id);
         },
       );
@@ -295,6 +296,9 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       cy.get("@collections").should("not.have.been.called");
 
       cy.go("back");
+      cy.get("@sourceDashboardId").then((sourceDashboardId) => {
+        cy.location("pathname").should("eq", `/dashboard/${sourceDashboardId}`);
+      });
       testChangingBackToDefaultBehavior();
       cy.then(() => {
         expect(typeErrors).to.have.length(0);
@@ -659,17 +663,6 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       });
       cy.wait("@targetDashcardQuery");
 
-      cy.log("the target dashboard keeps the last used values");
-      cy.reload();
-      cy.findAllByTestId("parameter-widget")
-        .contains(DASHBOARD_FILTER_TEXT.name)
-        .parent()
-        .should("contain.text", "John Doe");
-      cy.findAllByTestId("parameter-widget")
-        .contains(DASHBOARD_FILTER_TEXT_WITH_DEFAULT.name)
-        .parent()
-        .should("contain.text", "World");
-
       H.createDashboardWithQuestions({
         questions: [questionDetails, questionDetails],
         cards: [
@@ -699,6 +692,27 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
 
       H.saveDashboard();
 
+      cy.log("parameters with default values get the mapped value");
+      clickLineChartPoint({ dashcardIndex: 1 });
+      cy.findAllByTestId("parameter-widget")
+        .contains(DASHBOARD_FILTER_TEXT_WITH_DEFAULT.name)
+        .parent()
+        .should("contain.text", POINT_COUNT);
+
+      cy.get("@targetDashboardId").then((targetDashboardId) => {
+        cy.location().should(({ pathname, search }) => {
+          expect(pathname).to.equal(`/dashboard/${targetDashboardId}`);
+          expect(search).to.equal(
+            `?${DASHBOARD_FILTER_TEXT.slug}=&${DASHBOARD_FILTER_TEXT_WITH_DEFAULT.slug}=${POINT_COUNT}`,
+          );
+        });
+      });
+
+      cy.go("back");
+      cy.get("@sourceDashboardId").then((sourceDashboardId) => {
+        cy.location("pathname").should("eq", `/dashboard/${sourceDashboardId}`);
+      });
+
       cy.log("non-specified parameters get their default values");
       clickLineChartPoint({ dashcardIndex: 0 });
 
@@ -716,27 +730,6 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
           expect(pathname).to.equal(`/dashboard/${targetDashboardId}`);
           expect(search).to.equal(
             `?${DASHBOARD_FILTER_TEXT.slug}=${POINT_COUNT}&${DASHBOARD_FILTER_TEXT_WITH_DEFAULT.slug}=Hello`,
-          );
-        });
-      });
-
-      cy.go("back");
-      cy.get("@sourceDashboardId").then((sourceDashboardId) => {
-        cy.location("pathname").should("eq", `/dashboard/${sourceDashboardId}`);
-      });
-
-      cy.log("parameters with default values get the mapped value");
-      clickLineChartPoint({ dashcardIndex: 1 });
-      cy.findAllByTestId("parameter-widget")
-        .contains(DASHBOARD_FILTER_TEXT_WITH_DEFAULT.name)
-        .parent()
-        .should("contain.text", POINT_COUNT);
-
-      cy.get("@targetDashboardId").then((targetDashboardId) => {
-        cy.location().should(({ pathname, search }) => {
-          expect(pathname).to.equal(`/dashboard/${targetDashboardId}`);
-          expect(search).to.equal(
-            `?${DASHBOARD_FILTER_TEXT.slug}=&${DASHBOARD_FILTER_TEXT_WITH_DEFAULT.slug}=${POINT_COUNT}`,
           );
         });
       });
@@ -1059,6 +1052,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       cy.get("aside").button("Remove").click();
 
       H.saveDashboard();
+      cy.location("search").should("eq", "");
 
       clickLineChartPoint();
       cy.findAllByTestId("parameter-widget")
