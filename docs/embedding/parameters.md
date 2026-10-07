@@ -22,7 +22,7 @@ With **SSO** authentication, you can set a default value and choose whether to h
 
 ### Guest embed parameters
 
-With **guest** authentication, however, every parameter starts out **Disabled**, and for each parameter you can pick from:
+With **guest** authentication, every parameter starts out **Disabled**, and for each parameter you can pick from:
 
 - **Disabled**: no widget, and nobody can set a value.
 - **Editable**: the widget shows, people can change the value, and your page can set a [starting value](#set-starting-values).
@@ -56,7 +56,7 @@ Some notes on locked parameters:
 - **A locked value narrows the options in editable widgets.** Lock **State** to Vermont, and an editable **City** filter on the same dashboard only lists Vermont cities (like [linked filters](../dashboards/filters.md#linking-filters)).
 - **Multiple locked parameters combine with AND.**
 - **To turn a locked parameter off for a given token, pass `[]` as its value.** The token still has to name the parameter; the filter just doesn't apply.
-- **The key in `params` is the filter's slug.** If you rename a locked dashboard filter, update the key in your server code to match. Locked parameters connected to a [SQL variable](../questions/native-editor/sql-parameters.md) keep the variable's name, so renaming the widget doesn't affect them.
+- **The key in `params` is the parameter's slug.** On a dashboard, that's the dashboard filter's slug, even when the filter is connected to a [SQL variable](../questions/native-editor/sql-parameters.md). If you rename a locked dashboard filter, update the key in your server code to match. On an embedded SQL question, the key is the variable's name: changing the widget's label doesn't affect it, but renaming the variable in the SQL does.
 - **A locked filter only restricts the cards it's connected to.** A dashboard filter with no connected cards still shows up in the wizard, still has to be in the token, but it won't do anything. The embed renders fine, so nothing in the browser tells you.
 - **Pass one value to a locked filter that's connected to a plain SQL variable.** Metabase substitutes several values as a comma-separated list, which only works if the query is written for one, like `{% raw %}IN ({{variable}}){% endraw %}`. To send several values, connect the filter to a [field filter](../questions/native-editor/field-filters.md) instead.
 
@@ -148,7 +148,7 @@ Set the value as an attribute. To catch edits people make in Metabase's widgets,
 
 For a SQL question, use the `sql-parameters` attribute or `sqlParameters` property on `<metabase-question>`, and listen for `sql-parameters-change`.
 
-To hand control back to the embed, assign `null` or `undefined` to the `parameters` or `sqlParameters` property. That removes the attribute and returns the element to uncontrolled mode, with the last applied values still in place.
+To hand control back to the embed, assign `null` or `undefined` to the `parameters` or `sqlParameters` property. That removes the attribute and returns the element to uncontrolled mode. A dashboard keeps the last applied values. A SQL question reloads with its `initial-sql-parameters`, or with the variables' defaults if you haven't set any.
 
 ### React SDK controlled values
 
@@ -255,7 +255,7 @@ If you'd rather use Metabase's own widgets for a SQL question's variables, the S
 
 Sometimes one viewer is allowed more than one value, but not every value. Say an account manager covers three customers. The **Customer ID** parameter has to stay locked so the manager can't query a fourth customer, but they still need to switch between their three. A widget on your page picks the customer, your server signs a new token with that value in `params`, and you hand the token to the component. The embed re-queries with the new locked value.
 
-Because the parameter is locked, your server should check that the viewer is allowed the value before it signs the new token. If the endpoint signs whatever value it's sent, anyone can request a token for any value, and the parameter is basically an editable parameter that you've [hidden](#hide-parameter-widgets).
+Because the parameter is locked, your server should check that the viewer is allowed the value before it signs the new token. If the endpoint signs whatever value it's sent, anyone can request a token for any value, and the parameter is no safer than an editable parameter that you've [hidden](#hide-parameter-widgets).
 
 #### Web component re-signed token
 

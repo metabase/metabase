@@ -28,9 +28,9 @@ For each attribute's or prop's type and description, see:
 
 The parameter attributes take JSON: an object keyed by slug, or for `hidden-parameters`, an array of slugs.
 
-Attribute values are parsed as [JSON5](https://json5.org/), so single quotes, unquoted keys, and trailing commas all work. Only values that start with `{` or `[` are parsed as JSON. Other values stay strings, except `true`, `false`, and bare numbers, which become booleans and numbers. So wrap even a single slug in `hidden-parameters` in `[]`: without the brackets, the embed won't render at all, and the console shows a `TypeError` rather than a message about the attribute. A value that starts with `{` or `[`, but that doesn't parse, stays a string, and Metabase logs an error.
+Attribute values are parsed as [JSON5](https://json5.org/), so single quotes, unquoted keys, and trailing commas all work. Only values that start with `{` or `[` are parsed as JSON. Other values stay strings, except `true`, `false`, and bare numbers, which become booleans and numbers. So wrap even a single slug in `hidden-parameters` in `[]`. Without the brackets, a dashboard embed won't render at all, and the console shows a `TypeError` rather than a message about the attribute. A question embed still renders, but it hides every parameter whose slug appears anywhere in the string. A value that starts with `{` or `[`, but that doesn't parse, stays a string, and Metabase logs an error.
 
-Changing `initial-parameters`, `initial-sql-parameters`, or `hidden-parameters` _after_ the embed has loaded re-renders the embed from scratch with the new values. Changing `parameters` or `sql-parameters` pushes the new values without a reload.
+Changing `initial-parameters`, `initial-sql-parameters`, or `hidden-parameters` _after_ the embed has loaded re-renders the embed from scratch with the new values. Changing `parameters` or `sql-parameters` applies the new values and re-runs the queries, without re-rendering the embed from scratch.
 
 ## Value formats by parameter type
 
@@ -50,7 +50,7 @@ The [change callback](#change-payload) hands values back as arrays: push `4` and
 
 The two-element between formats work with dashboard filters connected to a column or a field filter. A plain SQL variable can only be connected to an equal-to filter, so a between value never reaches one; put the comparison in the SQL instead.
 
-In the `params` of a signed token or in a URL, `[10, null]` and `[null, 20]` give a between filter an open end. Through attributes and props, pass a closed range: the embed drops the `null` and applies the remaining number as a lower bound. So `[null, 20]` doesn't mean up to 20; it's applied as 20 and up. Pass `[0, 20]` instead.
+In the `params` of a signed token, `[10, null]` and `[null, 20]` give a between filter an open end. Through attributes and props, pass a closed range: the embed drops the `null` and applies the remaining number as a lower bound. So `[null, 20]` doesn't mean up to 20; it's applied as 20 and up. Pass `[0, 20]` instead.
 
 ### Date formats
 
@@ -76,7 +76,7 @@ The quickest way to get these values is to set the filter in Metabase and copy i
 | `exclude-months-Jan-Dec`                                      | Exclude months, using `Jan` through `Dec`.                                                                                 |
 | `exclude-quarters-1-4`                                        | Exclude quarters, `1` through `4`.                                                                                         |
 
-A plain SQL date variable takes a single date, like `2024-01-02`, with an optional time. A month like `2024-04` is read as the first day of that month, not the whole month. Every other format in this table needs a dashboard filter connected to a column, or a [field filter](../questions/native-editor/field-filters.md).
+A plain SQL date variable takes a single date, like `2024-01-02`, with an optional time. Every other format in this table needs a dashboard filter connected to a column, or a [field filter](../questions/native-editor/field-filters.md).
 
 In an embed, the filter widget shows no label for the `last…` values, but the filter still applies.
 
@@ -110,22 +110,22 @@ Metabase normalizes values before applying them, so `auto-change` usually means 
 
 ## Params in a signed token
 
-On guest embeds, your server passes parameter values in the `params` object of the JWT it signs. What Metabase does with them depends on the visibility you chose for each parameter in the embed wizard.
+On guest embeds, your server passes parameter values in the `params` object of the JWT it signs. What Metabase does with them depends on the visibility you chose for each parameter in the embed wizard. The error messages below are for a parameter with the slug `category`.
 
-| Wizard setting | Token sets it                                                | Page sets it (`initial-parameters`, widget, or URL)                                                           | Widget shows |
-| -------------- | ------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------- | ------------ |
-| **Disabled**   | Rejected: `You're not allowed to specify a value for :slug.` | Rejected, same error.                                                                                         | No           |
-| **Editable**   | Allowed. The widget disappears for that token.               | Allowed, unless the token also sets it: `You can't specify a value for :slug if it's already set in the JWT.` | Yes          |
-| **Locked**     | Required: `You must specify a value for :slug in the JWT.`   | Rejected: `You can only specify a value for :slug in the JWT.`                                                | No           |
+| Wizard setting | Token sets it                                                   | Page sets it (`initial-parameters`, widget, or URL)                                                              | Widget shows |
+| -------------- | --------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- | ------------ |
+| **Disabled**   | Rejected: `You're not allowed to specify a value for category.` | Rejected, same error.                                                                                            | No           |
+| **Editable**   | Allowed. The widget disappears for that token.                  | Allowed, unless the token also sets it: `You can't specify a value for category if it's already set in the JWT.` | Yes          |
+| **Locked**     | Required: `You must specify a value for :category in the JWT.`  | Rejected: `You can only specify a value for category in the JWT.`                                                | No           |
 
-Metabase checks these rules when a card runs its query, not when the dashboard loads. A rejected token still renders the dashboard's frame and widgets, and each card shows the error in place of its chart.
+Metabase checks these rules when a card runs its query, not when the dashboard loads. A token that breaks one of these rules still renders the dashboard's frame and widgets, and each card shows the error in place of its chart. A token that Metabase can't accept at all, like one without `params`, with a bad signature, or that has expired, stops the whole embed from loading.
 
 Other rules:
 
 - Always include `params` (even just as `{}`). A token without params is rejected with `Token is missing value for keypath [:params]`.
-- A slug that isn't on the item at all is rejected with `Unknown parameter :slug.`
+- A slug that isn't in the embed's published settings is rejected with `Unknown parameter category.` That includes a filter you added to the item after you last published the embed, so publish again after you add one.
 - Pass values as arrays, one element per value: `{ category: ["Gadget", "Gizmo"] }`. A bare value like `{ category: "Gadget" }` works too, but arrays behave consistently everywhere, including in the dropdown values of editable widgets.
-- For a locked filter connected to a plain variable in a SQL question, Metabase substitutes the values as a comma-separated list. That works inside `{% raw %} IN ({{variable}}) {% endraw %}`, but after `=` it's a SQL error from your database, not a Metabase error. So, unless the query is written for a list, pass one element. To deal with several values, connect the filter to a [field filter](../questions/native-editor/field-filters.md) instead, which expands to `IN (...)` on its own, and wrap the tag in `[[ ]]` so `[]` turns the clause off.
+- For a locked filter connected to a plain variable in a SQL question, Metabase substitutes the values as a comma-separated list. That works inside `{% raw %}IN ({{variable}}){% endraw %}`, but after `=` it's a SQL error from your database, not a Metabase error. So, unless the query is written for a list, pass one element. To deal with several values, connect the filter to a [field filter](../questions/native-editor/field-filters.md) instead, which expands to `IN (...)` on its own, and wrap the tag in `[[ ]]` so `[]` turns the clause off.
 - An empty array, `[]`, means "no value" and turns the filter off for that token.
 - A blank string, `""`, or `null` counts as no value at all. On a locked parameter that's the same as leaving the parameter out, so the token is rejected.
 - Metabase substitutes token values into text cards on the server, so a [text card variable that's connected to the filter](../dashboards/filters.md#wiring-up-dashboard-filters-to-text-cards) shows the value even though the browser never receives it.
