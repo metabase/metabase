@@ -4210,6 +4210,7 @@
                     :model/ModelIndex
                     :model/ModelIndexValue
                     :model/NativeQuerySnippet
+                    :model/Pulse
                     :model/PythonLibrary
                     :model/Segment
                     :model/Table

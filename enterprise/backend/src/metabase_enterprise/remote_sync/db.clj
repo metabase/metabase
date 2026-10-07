@@ -11,6 +11,8 @@
    [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [toucan2.core :as t2]))
 
+(set! *warn-on-reflection* true)
+
 (def ^:private ConditionKey
   "The column keys used in the `:conditions` / `:cascade-filter` / `:removal-conditions` of a remote-sync model
   spec (see `metabase-enterprise.remote-sync.spec`)."
@@ -241,34 +243,60 @@
    [:fn {:error/message "a Toucan 2 model key"} #(and (qualified-keyword? %) (= "model" (namespace %)))]
    [:set ms/PositiveInt]])
 
+(def ^:private LockOpts
+  "The options of a lock function here. With `:nowait?`, a row that another transaction holds makes the lock throw the
+  lock error of the app DB at once. H2 ignores NOWAIT: there the lock waits until the lock timeout of the session."
+  [:map {:closed true} [:nowait? {:optional true} :boolean]])
+
 (defn- lock-rows!
   "Lock the rows of the table `table` whose column `column` is in `values`, for update, in the order of the column
-  `pk`. Returns the values of `pk` of the locked rows."
-  [table pk column values]
+  `pk`, with the [[LockOpts]] `opts`. Returns the values of `pk` of the locked rows."
+  [table pk column values {:keys [nowait?]}]
   (into []
         (mapcat #(t2/query {:select   [pk]
                             :from     [table]
                             :where    [:in column %]
                             :order-by [[pk :asc]]
-                            :for      :update}))
+                            :for      (if nowait? [:update :nowait] :update)}))
         (partition-all ids-per-query values)))
 
 (mu/defn lock-instances! :- [:sequential ms/PositiveInt]
-  "Lock the rows of the instances of `model` whose primary key is in `ids`, for update, in primary-key order. Returns
-  the primary keys of the rows that exist."
-  [model :- :keyword
-   ids   :- [:sequential ms/PositiveInt]]
-  (let [pk (first (t2/primary-keys model))]
-    (mapv pk (lock-rows! (t2/table-name model) pk pk ids))))
+  "Lock the rows of the instances of `model` whose primary key is in `ids`, for update, in primary-key order, with the
+  [[LockOpts]] `opts`. Returns the primary keys of the rows that exist."
+  ([model :- :keyword
+    ids   :- [:sequential ms/PositiveInt]]
+   (lock-instances! model ids {}))
+  ([model :- :keyword
+    ids   :- [:sequential ms/PositiveInt]
+    opts  :- LockOpts]
+   (let [pk (first (t2/primary-keys model))]
+     (mapv pk (lock-rows! (t2/table-name model) pk pk ids opts)))))
 
 (mu/defn lock-children! :- [:sequential ms/PositiveInt]
-  "Lock the rows of `model` whose column `fk` is in `parent-ids`, for update, in primary-key order. Returns their
-  primary keys."
-  [model      :- :keyword
-   fk         :- :keyword
-   parent-ids :- [:sequential ms/PositiveInt]]
-  (let [pk (first (t2/primary-keys model))]
-    (mapv pk (lock-rows! (t2/table-name model) pk fk parent-ids))))
+  "Lock the rows of `model` whose column `fk` is in `parent-ids`, for update, in primary-key order, with the
+  [[LockOpts]] `opts`. Returns their primary keys."
+  ([model      :- :keyword
+    fk         :- :keyword
+    parent-ids :- [:sequential ms/PositiveInt]]
+   (lock-children! model fk parent-ids {}))
+  ([model      :- :keyword
+    fk         :- :keyword
+    parent-ids :- [:sequential ms/PositiveInt]
+    opts       :- LockOpts]
+   (let [pk (first (t2/primary-keys model))]
+     (mapv pk (lock-rows! (t2/table-name model) pk fk parent-ids opts)))))
+
+(def ^:private collection-content-models
+  "The models whose instances in a Collection the delete hook of the Collection deletes by `collection_id`."
+  [:model/Card :model/Dashboard :model/NativeQuerySnippet :model/Pulse :model/Timeline :model/Action])
+
+(mu/defn lock-collection-contents! :- :nil
+  "Lock with NOWAIT (see [[LockOpts]]) the rows of the instances of each model in the Collections `collection-ids`
+  that the delete hook of a Collection deletes: Cards, Dashboards, NativeQuerySnippets, Pulses, Timelines and Actions,
+  one table at a time, each in primary-key order."
+  [collection-ids :- [:sequential ::lib.schema.id/collection]]
+  (doseq [model collection-content-models]
+    (lock-children! model :collection_id collection-ids {:nowait? true})))
 
 (def ^:private closure-lock-order
   "The order in which [[delete-closure]] locks the models of one round: parents before children."
@@ -282,8 +310,8 @@
   TransformTests of each Transform), until no new entity comes. Also returns the ids of the ModelIndexes of the
   closure's Cards, which the delete removes by cascade with their values.
 
-  With `:lock?`, it locks the rows of the entities of each round for update, parents first, before it reads their
-  children. Else it takes no lock."
+  With `:lock?`, it locks the rows of the entities of each round for update with NOWAIT (see [[LockOpts]]), parents
+  first, before it reads their children. Else it takes no lock."
   ([ids-by-model :- IdsByModel]
    (delete-closure ids-by-model {}))
   ([ids-by-model :- IdsByModel
@@ -295,7 +323,7 @@
        (doseq [model-key (into closure-lock-order (remove (set closure-lock-order)) (keys frontier))
                :let [ids (get frontier model-key)]
                :when (seq ids)]
-         (lock-instances! model-key (vec (sort ids)))))
+         (lock-instances! model-key (vec (sort ids)) {:nowait? true})))
      (let [{:keys [action-ids] new-index-ids :index-ids} (cascaded-action-and-index-ids
                                                           (vec (:model/Card frontier)))
            children  {:model/Card          (set (child-card-ids (vec (:model/Dashboard frontier))
@@ -622,13 +650,13 @@
                   :for   :update}))
 
 (mu/defn lock-rsos-of-keys! :- [:sequential ms/PositiveInt]
-  "Lock the RemoteSyncObjects keyed by the `:model_type`/`:model_id` of `rows`, for update, in id order. Returns their
-  ids."
+  "Lock the RemoteSyncObjects keyed by the `:model_type`/`:model_id` of `rows`, for update with NOWAIT (see
+  [[LockOpts]]), in id order. Returns their ids."
   [rows :- [:sequential [:map {:closed true} [:model_type :string] [:model_id ModelId]]]]
   (into []
         (mapcat #(t2/select-pks-vec :model/RemoteSyncObject {:where    (rso-keys-expr %)
                                                              :order-by [[:id :asc]]
-                                                             :for      :update}))
+                                                             :for      [:update :nowait]}))
         (partition-all ids-per-query rows)))
 
 (mu/defn rso-by-file-path
@@ -829,6 +857,49 @@
   "Delete every RemoteSyncObject."
   []
   (t2/delete! :model/RemoteSyncObject))
+
+(mu/defn mariadb? :- :boolean
+  "Whether the app DB is MariaDB, which has the type `:mysql`."
+  []
+  (t2/with-connection [^java.sql.Connection conn]
+    (= "MariaDB" (.getDatabaseProductName (.getMetaData conn)))))
+
+(mu/defn set-local-lock-timeout! :- :any
+  "Postgres: set the lock timeout of the open transaction to its minimum, 1 ms, until the transaction ends."
+  []
+  (t2/query ["SET LOCAL lock_timeout = '1ms'"]))
+
+(mu/defn innodb-lock-wait-timeout :- :int
+  "MySQL and MariaDB: the lock wait timeout of the session of the bound connection, in seconds."
+  []
+  (long (:timeout (t2/query-one ["SELECT @@session.innodb_lock_wait_timeout AS timeout"]))))
+
+(mu/defn set-innodb-lock-wait-timeout! :- :any
+  "MySQL and MariaDB: set the lock wait timeout of the session of the bound connection to `seconds`."
+  [seconds :- :int]
+  (t2/query [(str "SET SESSION innodb_lock_wait_timeout = " seconds)]))
+
+(mu/defn h2-lock-timeout :- :int
+  "H2: the lock timeout of the session of the bound connection, in milliseconds."
+  []
+  (long (:lock_timeout (t2/query-one ["SELECT LOCK_TIMEOUT() AS lock_timeout"]))))
+
+(mu/defn set-h2-lock-timeout! :- :any
+  "H2: set the lock timeout of the session of the bound connection to `ms` milliseconds."
+  [ms :- :int]
+  (t2/query [(str "SET LOCK_TIMEOUT " ms)]))
+
+(mu/defn set-h2-exclusive! :- :any
+  "H2: turn exclusive mode on or off. In exclusive mode, every statement of another session pauses until this session
+  turns it off. The command commits the open transaction of the session."
+  [on? :- :boolean]
+  (t2/query [(if on? "SET EXCLUSIVE 1" "SET EXCLUSIVE 0")]))
+
+(mu/defn h2-busy-session-count :- :int
+  "H2: the number of other sessions that hold uncommitted work, which includes a row lock."
+  []
+  (long (:sessions (t2/query-one [(str "SELECT COUNT(*) AS sessions FROM INFORMATION_SCHEMA.SESSIONS "
+                                       "WHERE CONTAINS_UNCOMMITTED AND SESSION_ID <> SESSION_ID()")]))))
 
 (mu/defn task
   "The RemoteSyncTask with `task-id`, or nil."

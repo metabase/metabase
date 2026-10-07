@@ -525,7 +525,8 @@
   safe; this assumes the plan is valid.
 
   `save-rule`, when given, is the save-rule state of a merge pull (see [[save-rule/plan]]): the load and the
-  reconcile follow the save rule, and a stop throws (see [[save-rule/stop-data]]).
+  reconcile follow the save rule, and a stop throws (see [[save-rule/stop-data]]). The reconcile transaction then
+  never waits for a row lock: a busy row makes the pull run it again, and then stop (see [[save-rule/run-reconcile!]]).
 
   Renames are handled by entity identity, not path: a rename re-loads the same entity_id at the new path
   (an add), so the old path's delete is recognized as a rename and the entity is not removed."
@@ -556,8 +557,8 @@
     (report 0.7 {:force? true})
     ;; Before the transaction for the same reason as in [[load-snapshot!]].
     (report 0.75 {:force? true})
-    (let [{:keys [deleted loaded-count search-ids]}
-          (t2/with-transaction [_conn]
+    (let [reconcile!
+          (fn []
             ;; The closure runs after the load. A Card file with no `dashboard_id` does not clear the old value, so
             ;; the closure still holds a Card that the remote moved out of a deleted Dashboard.
             ;; The before-delete hook of a Collection also deletes entities that are not in `deletes` (an archived
@@ -588,7 +589,13 @@
                                        (when ingestable (source.ingestable/cached-file-paths ingestable))
                                        (some-> save-rule save-rule/loaded-hashes)))
               (when finalize! (finalize!))
-              result))]
+              result))
+
+          {:keys [deleted loaded-count search-ids]}
+          (if save-rule
+            (save-rule/run-reconcile! reconcile!)
+            (t2/with-transaction [_conn]
+              (reconcile!)))]
       (report 0.9 {:force? true})
       ;; We skip the whole-appdb reindex the full load runs. Added/modified entities are already
       ;; re-indexed by the load itself — serdes' t2 insert!/update! fire the :hook/search-index
@@ -651,7 +658,10 @@
   [snapshot state e]
   (when-let [data (save-rule/stop-data e)]
     (log/infof "Pull merge stopped: content changed locally during the pull (%s)" (pr-str (select-keys data [:phase :reason :key])))
-    (merge-conflict-result snapshot [(save-rule/stop-conflict state data)] (save-rule/stop-message data))))
+    (merge-conflict-result snapshot
+                           ;; a busy stop has no entity
+                           (if (:key data) [(save-rule/stop-conflict state data)] [])
+                           (save-rule/stop-message data))))
 
 (defn- restore-base!
   "After a stop of a merge pull with the save-rule state `state`, give each entity that the load of the pull wrote for

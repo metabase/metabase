@@ -23,6 +23,7 @@
    [metabase.app-db.query-cancelation]
    [metabase.app-db.setup :as mdb.setup]
    [metabase.app-db.spec :as mdb.spec]
+   [metabase.app-db.transient-error :as mdb.transient-error]
    [metabase.app-db.value-guard]
    [metabase.config.core :as config]
    [potemkin :as p]))
@@ -86,7 +87,9 @@
  [metabase.app-db.query-cancelation
   query-canceled-exception?]
  [liquibase
-  changelog-by-id])
+  changelog-by-id]
+ [mdb.transient-error
+  lock-not-available?])
 
 ;; TODO -- consider whether we can just do this automatically when `getConnection` is called on
 ;; [[mdb.connection/*application-db*]] (or its data source)

@@ -15,13 +15,19 @@
   wrote for a remote change its content of the merge base again ([[restore-keys]], [[wrap-restore-one]] and
   [[lock-added-closure!]]).
 
+  The reconcile never waits for a row lock ([[run-reconcile!]]): a busy row rolls it back, and the pull runs it again.
+  A placement under a Collection that the reconcile locked fails. So when the reconcile commits, each entity that its
+  delete removes is in the delete set that its checks read.
+
   Every transaction of the pull locks entity rows before ledger rows, as the save paths do."
   (:require
    [metabase-enterprise.remote-sync.db :as remote-sync.db]
    [metabase-enterprise.remote-sync.merge :as remote-sync.merge]
    [metabase-enterprise.remote-sync.source :as source]
    [metabase-enterprise.remote-sync.spec :as spec]
+   [metabase.app-db.core :as mdb]
    [metabase.models.serialization :as serdes]
+   [metabase.util.log :as log]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -49,9 +55,9 @@
 (defn- stop!
   "Throw the stop of the pull on the entity with the merge key `k`. `phase` is `:pre-check`, `:load` or `:reconcile`;
   `reason` is `:changed`, `:decision` (an entity of the delete closure whose decision does not allow its delete) or
-  `:unknown` (an entity of the delete closure that the merge did not see). `closure?` is true for an entity of the
-  delete closure of a remote delete. `entity-name` is the name of an entity that ours does not hold, for the label of
-  the conflict."
+  `:unknown` (an entity of the delete closure that the merge did not see). [[run-reconcile!]] throws the stop with the
+  reason `:busy`, which has no entity. `closure?` is true for an entity of the delete closure of a remote delete.
+  `entity-name` is the name of an entity that ours does not hold, for the label of the conflict."
   [phase reason k & {:keys [closure?] entity-name :name}]
   (throw (ex-info (format "Content changed locally during the pull: %s" (pr-str k))
                   (cond-> {:error    stop-error
@@ -74,6 +80,9 @@
   "The message of the conflict result of a stop with the ex-data `data` (see [[stop-data]])."
   [{:keys [reason closure?]}]
   (cond
+    (= :busy reason)
+    "Import blocked: content under a collection that the remote branch deleted was in use during the pull. Try the pull again."
+
     (= :unknown reason)
     "Import blocked: content was added locally during the pull under content that the remote branch deleted. Your local change is kept."
 
@@ -202,18 +211,22 @@
 (defn- collection-contents
   "The Collections `collection-ids` and their descendants, and the instances of [[collection-content-model-keys]] in
   them that the full import also removes (the spec removal conditions), as a map of model key to a set of ids. With
-  `lock?`, it locks the rows of the Collections for update before it reads the instances in them."
+  `lock?`, it locks with NOWAIT the rows of the Collections for update, and then the rows of the content that the
+  delete hook of a Collection deletes, before it reads the instances in them."
   [collection-ids lock?]
   (if (empty? collection-ids)
     {}
     (let [subtree (vec (sort (remote-sync.db/subtree-collection-ids-of-ids (vec collection-ids))))]
       (when lock?
-        ;; On Postgres and MySQL, the insert of an entity into a locked Collection, or its move into one, checks the
-        ;; foreign key to the Collection, so it waits until the pull commits. On H2 it does not wait. Every app DB
-        ;; reads at READ COMMITTED, so the read below sees each entity that is in the Collections now. A Collection
-        ;; that a user creates under a locked Collection does not wait: it has no foreign key to its parent.
-        ;; [[check-subtree!]] reads the subtree again before the delete.
-        (remote-sync.db/lock-instances! :model/Collection subtree))
+        ;; A placement under a locked Collection fails, so none commits under a Collection that the reconcile
+        ;; deletes. A Collection create or move fails at once at the gate of its parent row (the Collection hooks). On
+        ;; Postgres, MySQL and MariaDB, a content insert or move checks the foreign key to the Collection, so it waits
+        ;; until the reconcile commits, and then fails. On H2, the reconcile runs in exclusive mode
+        ;; ([[run-reconcile!]]), so every write of another session pauses until the reconcile commits. Every app DB
+        ;; reads at READ COMMITTED, so the read below sees each entity that is in the Collections now.
+        (remote-sync.db/lock-instances! :model/Collection subtree {:nowait? true})
+        ;; also the content that the ledger does not track, so that no delete statement of the hook waits for a lock
+        (remote-sync.db/lock-collection-contents! subtree))
       (into {:model/Collection (set subtree)}
             (keep (fn [model-key]
                     (let [ids (remote-sync.db/ids-in-collections
@@ -312,13 +325,95 @@
   [closure phase]
   (let [deleted (get-in closure [:delete-set :model/Collection] #{})]
     (when (seq deleted)
-      ;; A Collection has no foreign key to its parent, so its insert does not wait for the lock on the parent. A
-      ;; Collection that a user creates after this read and before the delete commits is still deleted.
+      ;; Finds a Collection that a user created before the lock of the subtree. After the lock, the gate of the
+      ;; Collection hooks makes a create under a locked Collection fail.
       (when-let [added (seq (sort (remove deleted (remote-sync.db/subtree-collection-ids-of-ids (vec deleted)))))]
         (let [id (first added)]
           (stop! phase :unknown [["Collection" (remote-sync.db/entity-id :model/Collection id)]]
                  :closure? true
                  :name (:name (first (remote-sync.db/instance-names :model/Collection [id])))))))))
+
+(def ^:private reconcile-retry-delays-ms
+  "The waits, in milliseconds, before each new run of a reconcile that found a busy row."
+  [100 200 400])
+
+(defn- busy?
+  "True when `e` is the error of a row that another transaction holds (see [[in-reconcile-transaction]])."
+  [e]
+  (or (mdb/lock-not-available? (mdb/db-type) e)
+      (= ::busy (:error (ex-data e)))))
+
+(defn- in-reconcile-transaction
+  "Run `(thunk)` in a new transaction in which no statement waits for a row lock. The explicit locks of the reconcile
+  take NOWAIT; this sets the lock timeout of the other statements to the minimum of the app DB: 1 ms on Postgres, 1 s
+  on MySQL, 0 on MariaDB. H2 ignores NOWAIT and does not make a foreign key check wait, so on H2 the transaction runs
+  in exclusive mode with a lock timeout of 1 ms, and it does not start while another session holds uncommitted work."
+  [thunk]
+  (case (mdb/db-type)
+    :postgres
+    (t2/with-transaction [_conn]
+      (remote-sync.db/set-local-lock-timeout!)
+      (thunk))
+
+    :mysql
+    (t2/with-connection [_conn]
+      (let [timeout (remote-sync.db/innodb-lock-wait-timeout)]
+        (remote-sync.db/set-innodb-lock-wait-timeout! (if (remote-sync.db/mariadb?) 0 1))
+        (try
+          (t2/with-transaction [_conn]
+            (thunk))
+          (finally
+            ;; the connection goes back to the pool
+            (remote-sync.db/set-innodb-lock-wait-timeout! timeout)))))
+
+    :h2
+    (if (mdb/in-transaction?)
+      ;; exclusive mode would commit the open transaction
+      (t2/with-transaction [_conn]
+        (thunk))
+      (t2/with-connection [_conn]
+        (let [timeout (remote-sync.db/h2-lock-timeout)]
+          (remote-sync.db/set-h2-exclusive! true)
+          (try
+            ;; H2 waits about 4 s with a lock timeout of 0
+            (remote-sync.db/set-h2-lock-timeout! 1)
+            ;; another session can hold a lock that the reconcile needs, or the gate of a Collection create
+            (when (pos? (remote-sync.db/h2-busy-session-count))
+              (throw (ex-info "Another session holds uncommitted work" {:error ::busy})))
+            (t2/with-transaction [_conn]
+              (thunk))
+            (finally
+              (remote-sync.db/set-h2-lock-timeout! timeout)
+              (remote-sync.db/set-h2-exclusive! false))))))))
+
+(defn run-reconcile!
+  "Run `(thunk)`, the reconcile of a merge pull, in one transaction in which no statement waits for a row lock (see
+  [[in-reconcile-transaction]]). When a row is busy, the transaction rolls back, and this runs it again after each wait
+  of [[reconcile-retry-delays-ms]]. After the last busy run, it throws the stop with the reason `:busy` (see
+  [[stop-data]]). Returns the value of `(thunk)`. `(thunk)` must have no effect outside the app DB, because it can run
+  more than once."
+  [thunk]
+  (loop [delays reconcile-retry-delays-ms]
+    (let [outcome (try
+                    {:value (in-reconcile-transaction thunk)}
+                    (catch Exception e
+                      (if (busy? e)
+                        {:busy e}
+                        (throw e))))]
+      (if-let [e (:busy outcome)]
+        (if-let [ms (first delays)]
+          (do
+            (log/infof "Pull merge: a row of the reconcile is busy (%s); run it again in %d ms" (ex-message e) ms)
+            (Thread/sleep (long ms))
+            (recur (rest delays)))
+          (throw (ex-info "A row of the reconcile stayed busy during the pull"
+                          {:error    stop-error
+                           :phase    :reconcile
+                           :reason   :busy
+                           :key      nil
+                           :closure? true}
+                          e)))
+        (:value outcome)))))
 
 (defn pre-check!
   "Stop the pull, before any write, when an entity of ours that the pull will load or delete (the merge keys

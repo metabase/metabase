@@ -485,7 +485,11 @@
 
 (mu/defn all-ids-in-location-path-are-valid? :- :boolean
   "Do all the IDs in `location-path` belong to actual Collections? (This requires a DB call to check this, so this
-  should only be used when creating/updating a Collection. Don't use this for casual schema validation.)"
+  should only be used when creating/updating a Collection. Don't use this for casual schema validation.)
+
+  Before the check, it locks the row of the parent Collection with no wait, until the transaction commits, and throws
+  the lock error of the app DB when another transaction holds that row. So a Collection never commits under a parent
+  that another transaction deletes."
   [location-path :- LocationPath]
   (or
    ;; if location is just the root Collection there are no IDs in the path, so nothing to check
@@ -494,7 +498,7 @@
    ;; of IDs
    (let [ids (location-path->ids location-path)]
      (= (count ids)
-        (collections.db/collection-count-by-ids ids)))))
+        (collections.db/lock-parent-and-count-collections (last ids) ids)))))
 
 (defn- assert-valid-location
   "Assert that the `location` property of a `collection`, if specified, is valid. This checks that it is valid both from
@@ -513,7 +517,14 @@
         (let [msg (tru "You cannot move a Personal Collection.")]
           (throw (ex-info msg {:status-code 400, :errors {:location msg}})))))
     ;; Also make sure that all the IDs referenced in the Location path actually correspond to real Collections
-    (when-not (all-ids-in-location-path-are-valid? location)
+    (when-not (try
+                (all-ids-in-location-path-are-valid? location)
+                (catch Exception e
+                  ;; another transaction holds the row of the parent: for example, a merge pull that deletes it
+                  (if (mdb/lock-not-available? (mdb/db-type) e)
+                    (let [msg (tru "The parent collection is being changed. Try again.")]
+                      (throw (ex-info msg {:status-code 409, :errors {:location msg}} e)))
+                    (throw e))))
       (let [msg (tru "Invalid Collection location: some or all ancestors do not exist.")]
         (throw (ex-info msg {:status-code 404, :errors {:location msg}}))))))
 

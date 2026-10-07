@@ -13,6 +13,8 @@
    [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [toucan2.core :as t2]))
 
+(set! *warn-on-reflection* true)
+
 (def ^:private PermissionsRow
   "The writable columns of a Permissions row (excluding `:id`)."
   [:map {:closed true}
@@ -199,9 +201,35 @@
                                      [:in filter-column filter-ids])]
                         :order-by serdes/stable-storage-order}))
 
-(mu/defn collection-count-by-ids
-  "The number of Collections among `collection-ids`."
-  [collection-ids :- [:sequential ::lib.schema.id/collection]]
+(defn- mariadb?
+  "Whether the app DB is MariaDB, which has the type `:mysql`."
+  []
+  (t2/with-connection [^java.sql.Connection conn]
+    (= "MariaDB" (.getDatabaseProductName (.getMetaData conn)))))
+
+(mu/defn lock-parent-and-count-collections :- :int
+  "Lock the row of the Collection `parent-id` with no wait, in a mode that conflicts with a lock for update but not
+  with another lock of this kind; then the number of Collections among `collection-ids`. The lock lasts until the
+  transaction commits. Throws the lock error of the app DB when another transaction holds a conflicting lock on the
+  row. H2 has no shared row lock and ignores NOWAIT, so on H2 the lock is for update, with a lock timeout of 1 ms, and
+  it also conflicts with another lock of this kind."
+  [parent-id      :- ::lib.schema.id/collection
+   collection-ids :- [:sequential ::lib.schema.id/collection]]
+  (let [lock-query {:select [:id] :from [:collection] :where [:= :id parent-id]}]
+    (case (app-db/db-type)
+      :postgres (t2/query (assoc lock-query :for [:key-share :nowait]))
+      ;; MariaDB has no FOR SHARE
+      :mysql    (t2/query (if (mariadb?)
+                            (assoc lock-query :lock [:in-share-mode :nowait])
+                            (assoc lock-query :for [:share :nowait])))
+      :h2       (t2/with-connection [_conn]
+                  (let [timeout (:lock_timeout (t2/query-one ["SELECT LOCK_TIMEOUT() AS lock_timeout"]))]
+                    ;; H2 waits about 4 s with a lock timeout of 0
+                    (t2/query ["SET LOCK_TIMEOUT 1"])
+                    (try
+                      (t2/query (assoc lock-query :for :update))
+                      (finally
+                        (t2/query [(str "SET LOCK_TIMEOUT " (long timeout))])))))))
   (t2/count :model/Collection :id [:in collection-ids]))
 
 (mu/defn collection-count-of-types
