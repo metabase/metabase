@@ -110,19 +110,20 @@ describe("managing dashboard from the dashboard's edit menu", () => {
                     name: `Duplicate "${dashboardName}"`,
                   });
                   cy.button("Duplicate").click();
-                  assertOnRequest("copyDashboard");
                 });
+                assertOnRequest("copyDashboard");
 
                 cy.url().should("contain", `/dashboard/${newDashboardId}`);
 
                 cy.findByDisplayValue(newDashboardName);
                 H.appBar().findByText("Our analytics").click();
 
-                cy.findAllByTestId("collection-entry-name")
-                  .should("contain", dashboardName)
-                  .and("contain", newDashboardName)
-                  .and("contain", originalQuestionName)
-                  .and("not.contain", newQuestionName);
+                H.collectionTable().within(() => {
+                  cy.findByText(dashboardName).should("be.visible");
+                  cy.findByText(newDashboardName).should("be.visible");
+                  cy.findByText(originalQuestionName).should("be.visible");
+                  cy.findByText(newQuestionName).should("not.exist");
+                });
               });
             });
 
@@ -158,10 +159,8 @@ describe("managing dashboard from the dashboard's edit menu", () => {
                   "If you check this, the cards in the duplicated dashboard will reference the original questions.",
                 );
 
-                H.modal().within(() => {
-                  cy.button("Duplicate").click();
-                  assertOnRequest("copyDashboard");
-                });
+                H.modal().button("Duplicate").click();
+                assertOnRequest("copyDashboard");
 
                 cy.url().should("contain", `/dashboard/${newDashboardId}`);
 
@@ -219,9 +218,13 @@ describe("managing dashboard from the dashboard's edit menu", () => {
 
                 cy.findByDisplayValue(newDashboardName);
                 H.appBar().findByText(NEW_COLLECTION).click();
-                cy.findAllByTestId("collection-entry-name")
-                  .should("contain", newDashboardName)
-                  .and("contain", newQuestionName);
+                H.collectionTable().within(() => {
+                  cy.findByText(newDashboardName).should("be.visible");
+                  cy.findByText(newQuestionName).should("be.visible");
+                  cy.findByText(`${newQuestionName} - Duplicate`).should(
+                    "not.exist",
+                  );
+                });
 
                 H.openNavigationSidebar();
                 H.navigationSidebar().findByText("Our analytics").click();
@@ -280,8 +283,8 @@ describe("managing dashboard from the dashboard's edit menu", () => {
                     name: "Move this dashboard to trash?",
                   }); //Without this, there is some race condition and the button click fails
                   cy.button("Move to trash").click();
-                  assertOnRequest("updateDashboard");
                 });
+                assertOnRequest("updateDashboard");
 
                 cy.location("pathname").should("eq", `/dashboard/${id}`);
 
@@ -290,8 +293,8 @@ describe("managing dashboard from the dashboard's edit menu", () => {
                 H.undoToast().within(() => {
                   cy.findByText("FooBar has been moved to the trash.");
                   cy.button("Undo").click();
-                  assertOnRequest("updateDashboard");
                 });
+                assertOnRequest("updateDashboard");
 
                 cy.visit("/collection/root");
                 cy.findAllByTestId("collection-entry-name").should(
@@ -315,11 +318,12 @@ describe("managing dashboard from the dashboard's edit menu", () => {
           });
 
           it("should not be offered to edit dashboard details or archive the dashboard for dashboard in collections they have `read` access to (metabase#15280)", () => {
-            H.popover()
-              .findByText("Edit dashboard details")
-              .should("not.exist");
-
-            H.popover().findByText("Move to trash").should("not.exist");
+            H.popover().within(() => {
+              cy.findByText("Duplicate").should("be.visible");
+              cy.findByText("Edit settings").should("not.exist");
+              cy.findByText("Move").should("not.exist");
+              cy.findByText("Move to trash").should("not.exist");
+            });
           });
 
           it("should be offered to duplicate dashboard in collections they have `read` access to", () => {

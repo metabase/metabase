@@ -1070,6 +1070,7 @@ describe("issue 34382", () => {
         .findAllByRole("gridcell")
         .eq(3)
         .should("contain", "Gizmo");
+      cy.findByTestId("table-body").should("not.contain", "Doohickey");
     });
   });
 });

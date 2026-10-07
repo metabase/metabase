@@ -15,22 +15,23 @@ describe("scenarios > x-rays", { tags: "@slow" }, () => {
   const XRAY_DATASETS = 5; // enough to load most questions
 
   it("should not display x-rays if the feature is disabled in admin settings (metabase#26571)", () => {
-    cy.request("PUT", "api/setting/enable-xrays", { value: false });
+    const xrayCaption =
+      "Try out these sample x-rays to see what Metabase can do.";
 
     cy.visit("/");
+    cy.findByTestId("home-page").should("contain", xrayCaption);
 
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText(
-      "Try out these sample x-rays to see what Metabase can do.",
-    ).should("not.exist");
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText(/^A summary of/).should("not.exist");
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText(/^A glance at/).should("not.exist");
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText(/^A look at/).should("not.exist");
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText(/^Some insights about/).should("not.exist");
+    cy.request("PUT", "api/setting/enable-xrays", { value: false });
+    cy.reload();
+
+    cy.findByTestId("home-page").within(() => {
+      cy.findByTestId("loading-indicator").should("not.exist");
+      cy.findByText(xrayCaption).should("not.exist");
+      cy.findByText(/^A summary of/).should("not.exist");
+      cy.findByText(/^A glance at/).should("not.exist");
+      cy.findByText(/^A look at/).should("not.exist");
+      cy.findByText(/^Some insights about/).should("not.exist");
+    });
   });
 
   it("should work on questions with explicit joins (metabase#13112)", () => {
@@ -209,23 +210,29 @@ describe("scenarios > x-rays", { tags: "@slow" }, () => {
     const successfullyLoadedCards = 1;
     const failedCards = totalRequests - successfullyLoadedCards;
 
-    cy.intercept({
-      method: "POST",
-      url: "/api/dataset",
-      times: successfullyLoadedCards,
-    }).as("dataset");
-
+    // Cypress runs the newest matching intercept first, so the stub for the
+    // failed requests is registered before the pass-through for the first one
     cy.intercept(
       { method: "POST", url: "/api/dataset", times: failedCards },
       { statusCode: 500 },
     ).as("datasetFailed");
+
+    cy.intercept(
+      { method: "POST", url: "/api/dataset", times: successfullyLoadedCards },
+      (req) => req.continue(),
+    ).as("dataset");
 
     cy.visit(`/auto/dashboard/table/${ORDERS_ID}`);
 
     cy.wait("@dataset");
     cy.wait("@datasetFailed");
 
-    H.getDashboardCards().eq(1).contains("Total transactions");
+    getDashcardByTitle("Total transactions")
+      .findByText("18,760")
+      .should("be.visible");
+    getDashcardByTitle("Transactions in the last 30 days")
+      .icon("warning")
+      .should("be.visible");
   });
 
   // TODO - this is a legitimate failure because `param_fields` are not returned for x-ray dashboards
