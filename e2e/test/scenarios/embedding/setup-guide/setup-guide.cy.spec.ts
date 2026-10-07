@@ -488,13 +488,15 @@ describe("scenarios - setup guide", () => {
         .should("have.attr", "data-completed", "true");
     });
 
-    it("enable-tenants step should not be marked as completed when tenants are enabled but no shared collection exists", () => {
+    it('"Enable tenants and create shared collection" button should be disabled when already set up', () => {
       cy.log("enable tenants via setting without creating a shared collection");
       H.updateSetting("use-tenants", true);
 
       cy.visit("/admin/embedding/setup-guide/permissions");
 
-      cy.log("no steps should be completed");
+      cy.log(
+        "enable-tenants step should not be completed without a shared collection",
+      );
       H.main().within(() => {
         cy.findByText("Enable multi-tenant user strategy")
           .scrollIntoView()
@@ -509,17 +511,14 @@ describe("scenarios - setup guide", () => {
           name: "Enable tenants and create shared collection",
         })
         .should("be.enabled");
-    });
 
-    it('"Enable tenants and create shared collection" button should be disabled when already set up', () => {
-      cy.log("enable tenants and create a shared collection");
-      H.updateSetting("use-tenants", true);
+      cy.log("create a shared collection");
       cy.request("POST", "/api/collection", {
         name: "Shared collection",
         namespace: "shared-tenant-collection",
       });
 
-      cy.visit("/admin/embedding/setup-guide/permissions");
+      cy.reload();
 
       cy.log("wait until step is marked as complete");
       H.main().icon("check").should("have.length", 1);
