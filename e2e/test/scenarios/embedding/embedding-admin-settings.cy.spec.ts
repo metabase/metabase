@@ -1,5 +1,38 @@
 const { H } = cy;
 
+const assertSidebarWithoutSetupGuide = () => {
+  cy.log("Navigate to Embedding admin section");
+  cy.visit("/admin/embedding");
+
+  cy.log("Check that we're on the embedding settings page");
+  cy.url().should("include", "/admin/embedding");
+  cy.get("main").findByText("Embedding settings").should("be.visible");
+
+  cy.log("Verify sidebar does not contain setup guide");
+  cy.findByTestId("admin-layout-sidebar")
+    .findByRole("link", { name: /Setup guide/ })
+    .should("not.exist");
+
+  cy.log("Verify sidebar does not contain guest embeds link");
+  cy.findByTestId("admin-layout-sidebar")
+    .findByRole("link", { name: /Guest embeds/ })
+    .should("not.exist");
+
+  cy.log("Verify sidebar contains security settings link");
+  cy.findByTestId("admin-layout-sidebar")
+    .findByRole("link", { name: /Security/ })
+    .should("exist");
+};
+
+const assertCorsSettingOnSecurityPage = () => {
+  cy.log("Security page shows the CORS setting");
+  cy.visit("/admin/embedding/security");
+
+  cy.findByTestId("admin-layout-content").within(() => {
+    cy.findByText("Cross-Origin Resource Sharing (CORS)").should("exist");
+  });
+};
+
 describe(
   "scenarios > embedding > admin settings > oss",
   { tags: "@OSS" },
@@ -12,27 +45,8 @@ describe(
     });
 
     it("shows all embedding types without the setup guide", () => {
-      cy.log("Navigate to Embedding admin section");
-      cy.visit("/admin/embedding");
-
-      cy.log("Check that we're on the embedding settings page");
-      cy.url().should("include", "/admin/embedding");
-      cy.get("main").findByText("Embedding settings").should("be.visible");
-
-      cy.log("Verify sidebar does not contain setup guide");
-      cy.findByTestId("admin-layout-sidebar")
-        .findByRole("link", { name: /Setup guide/ })
-        .should("not.exist");
-
-      cy.log("Verify sidebar does not contain guest embeds link");
-      cy.findByTestId("admin-layout-sidebar")
-        .findByRole("link", { name: /Guest embeds/ })
-        .should("not.exist");
-
-      cy.log("Verify sidebar contains security settings link");
-      cy.findByTestId("admin-layout-sidebar")
-        .findByRole("link", { name: /Security/ })
-        .should("exist");
+      assertSidebarWithoutSetupGuide();
+      assertCorsSettingOnSecurityPage();
     });
 
     it("should show embedding upsell on oss", () => {
@@ -54,14 +68,6 @@ describe(
           );
       });
     });
-
-    it("should show CORS setting on security page", () => {
-      cy.visit("/admin/embedding/security");
-
-      cy.findByTestId("admin-layout-content").within(() => {
-        cy.findByText("Cross-Origin Resource Sharing (CORS)").should("exist");
-      });
-    });
   },
 );
 
@@ -76,27 +82,8 @@ describe("scenarios > embedding > admin settings > starter", () => {
   });
 
   it("shows all embedding types without the setup guide", () => {
-    cy.log("Navigate to Embedding admin section");
-    cy.visit("/admin/embedding");
-
-    cy.log("Check that we're on the embedding settings page");
-    cy.url().should("include", "/admin/embedding");
-    cy.get("main").findByText("Embedding settings").should("be.visible");
-
-    cy.log("Verify sidebar does not contain setup guide");
-    cy.findByTestId("admin-layout-sidebar")
-      .findByRole("link", { name: /Setup guide/ })
-      .should("not.exist");
-
-    cy.log("Verify sidebar does not contain guest embeds link");
-    cy.findByTestId("admin-layout-sidebar")
-      .findByRole("link", { name: /Guest embeds/ })
-      .should("not.exist");
-
-    cy.log("Verify sidebar contains security settings link");
-    cy.findByTestId("admin-layout-sidebar")
-      .findByRole("link", { name: /Security/ })
-      .should("exist");
+    assertSidebarWithoutSetupGuide();
+    assertCorsSettingOnSecurityPage();
   });
 
   it("should show embedding upsell on oss", () => {
@@ -109,14 +96,6 @@ describe("scenarios > embedding > admin settings > starter", () => {
 
       cy.log("upsell gem icon should be visible");
       cy.icon("gem").should("be.visible");
-    });
-  });
-
-  it("should show CORS setting on security page", () => {
-    cy.visit("/admin/embedding/security");
-
-    cy.findByTestId("admin-layout-content").within(() => {
-      cy.findByText("Cross-Origin Resource Sharing (CORS)").should("exist");
     });
   });
 });
