@@ -193,6 +193,8 @@ describe("scenarios > embedding > sdk iframe embed setup > common", () => {
             cy.findByText("Orders").should("be.visible");
           });
 
+          cy.findByLabelText("Chart").should("be.checked");
+
           cy.findByLabelText("Metabase account (SSO)").click();
 
           H.waitForSimpleEmbedIframesToLoad();
@@ -201,6 +203,8 @@ describe("scenarios > embedding > sdk iframe embed setup > common", () => {
             cy.findByText("Orders").should("be.visible");
           });
 
+          cy.findByLabelText("Chart").should("be.checked");
+
           cy.findByLabelText("Guest").click();
 
           H.waitForSimpleEmbedIframesToLoad();
@@ -208,6 +212,8 @@ describe("scenarios > embedding > sdk iframe embed setup > common", () => {
           H.getSimpleEmbedIframeContent().within(() => {
             cy.findByText("Orders").should("be.visible");
           });
+
+          cy.findByLabelText("Chart").should("be.checked");
         });
 
         openFromAdminGuestEmbeds();
