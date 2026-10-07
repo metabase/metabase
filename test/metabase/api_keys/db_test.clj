@@ -42,3 +42,12 @@
             (is (= {busy ts} skipped))
             (is (= ts (last-used-at available)))
             (is (nil? (last-used-at busy)))))))))
+
+(deftest update-api-keys-last-used-at!-drops-deleted-keys-test
+  (testing "an id the lock step excludes because the key was deleted is dropped, not retried"
+    (mt/with-temp [:model/ApiKey {available :id} (temp-key-opts)]
+      (let [ts         (now)
+            deleted-id Integer/MAX_VALUE
+            skipped    (api-keys.db/update-api-keys-last-used-at! {available ts, deleted-id ts})]
+        (is (= {} skipped) "the deleted id is dropped, not carried forward for another retry")
+        (is (= ts (last-used-at available)))))))

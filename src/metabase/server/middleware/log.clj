@@ -203,9 +203,13 @@
 (defn- api-key-request?
   "Whether `request` authenticated with an API key — the only kind of request that gets recorded. Resolved well
   outside this middleware by `metabase.server.middleware.session/wrap-current-user-info`, so it is already on the
-  request we closed over. Everything else pays this one keyword lookup and nothing more."
+  request we closed over. Everything else pays this one keyword lookup and nothing more.
+
+  Checks `:api-key-id` rather than `:embedding/auth-method` — that key is stamped `agent-api`/`metabot`/`public`/
+  `guest` etc. for those routes even when the request authenticated with an API key, so matching on `\"api-key\"`
+  missed all of them. `:api-key-id` is only ever set by API-key auth, on every route."
   [request]
-  (= "api-key" (:embedding/auth-method request)))
+  (some? (:api-key-id request)))
 
 (defn- record-api-key-usage!
   "Record API-key usage analytics for a completed request.

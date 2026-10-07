@@ -9,8 +9,7 @@
 ## to api_key, which lets rows outlive a deleted key. `user_id` is the key's own synthetic
 ## service-account user (used for permission checks); `created_by_id` is the real human who created
 ## the key. `route_template` is the reconstructed Compojure route (e.g. /api/card/:id), never the raw
-## URI or query string — those carry entity ids and filter values. Route reconstruction is EMB-2150;
-## row insertion and PII gating are later tickets.
+## URI or query string — those carry entity ids and filter values.
 
 databaseChangeLog:
   - logicalFilePath: migrations/065_update_migrations.yaml

@@ -29,6 +29,7 @@ import * as Urls from "metabase/urls";
 import {
   CanAccessAiAuditing,
   CanAccessAlertsManagement,
+  CanAccessApiKeyUsage,
   CanAccessMonitor,
   CanAccessMonitorDiagnostics,
   CanAccessMonitoringTools,
@@ -151,6 +152,12 @@ export function getMonitorRoutes() {
           <Route path="model-persistence-log" lazy={modelPersistenceLogPage}>
             {modalRoute(":jobId", ModelPersistenceLogJobModal)}
           </Route>
+        </Route>
+
+        {/* Admin-only, unlike the rest of Monitoring tools above — the page loads
+            `GET /api/api-key`, superuser-only, so a non-admin with just the monitoring
+            application permission would hit a 403. */}
+        <Route element={<CanAccessApiKeyUsage />}>
           {PLUGIN_MONITOR.isApiKeyUsageEnabled ? (
             <Route path="api-key-usage">
               {PLUGIN_MONITOR.getApiKeyUsageRoutes()}

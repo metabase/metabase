@@ -332,7 +332,7 @@ describe("MonitorLayout", () => {
     });
   });
 
-  it("hides Dependency diagnostics for a monitoring-only user, and hides Alerts management (admin-only)", async () => {
+  it("hides Dependency diagnostics for a monitoring-only user, and hides Alerts management and API key usage (admin-only)", async () => {
     setup({
       user: createMockUser({
         is_superuser: false,
@@ -358,6 +358,10 @@ describe("MonitorLayout", () => {
     });
     expect(
       screen.queryByRole("link", { name: "Alerts management" }),
+    ).not.toBeInTheDocument();
+    // the page loads GET /api/api-key, which is superuser-only
+    expect(
+      screen.queryByRole("link", { name: "API key usage" }),
     ).not.toBeInTheDocument();
   });
 

@@ -120,7 +120,9 @@
 (defn update-api-keys-last-used-at!
   "Move `last_used_at` of each ApiKey in `id->timestamp` forward to its timestamp, without touching
   `updated_at`. Returns the subset of `id->timestamp` that was skipped because another writer held the
-  row — the caller should retry those on its next pass rather than wait for them here.
+  row — the caller should retry those on its next pass rather than wait for them here. A deleted key's
+  id is dropped rather than retried: it never comes back from [[lock-available-key-ids]], but it is
+  gone for good, not merely busy, so retrying it on every flush would never succeed.
 
   Locks the rows first with `SELECT ... FOR UPDATE SKIP LOCKED` (outside H2) so a key a concurrent
   writer is editing (e.g. an admin renaming or rotating it) is skipped rather than blocking this
@@ -145,4 +147,6 @@
                                                             (get id->timestamp id)]])
                                                         available-ids))
                             :updated_at :updated_at}}))
-      (apply dissoc id->timestamp available-ids))))
+      (select-keys id->timestamp
+                   (when-let [busy (seq (remove (set available-ids) (keys id->timestamp)))]
+                     (t2/select-pks-set :model/ApiKey :id [:in busy]))))))

@@ -11,8 +11,7 @@
    [clojure.test :refer [deftest is testing use-fixtures]]
    [java-time.api :as t]
    [metabase-enterprise.api-keys.usage :as ee-usage]
-   [metabase.api-keys.core :as-alias api-keys]
-   [metabase.api-keys.db :as api-keys.db]
+   [metabase.api-keys.core :as api-keys]
    [metabase.api-keys.usage :as usage]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -291,6 +290,25 @@
         (is (= 500 (count @pending)) "the queue was already at capacity, so the new row was dropped")
         (finally (reset! pending original))))))
 
+(deftest offer-usage-log!-counts-drops-for-flush-to-log-once-test
+  (testing "drops accumulate in a counter that flush-usage-logs! takes and resets, rather than each drop logging on its own"
+    (let [pending          (deref #'ee-usage/pending-usage-logs)
+          dropped          (deref #'ee-usage/dropped-usage-log-count)
+          original-pending @pending
+          original-dropped @dropped]
+      (try
+        (reset! pending (vec (repeat 500 {:dummy true})))
+        (reset! dropped 0)
+        (#'ee-usage/offer-usage-log! {:dummy true})
+        (#'ee-usage/offer-usage-log! {:dummy true})
+        (is (= 2 @dropped) "two dropped rows are counted, not logged individually")
+        (reset! pending [])
+        (#'ee-usage/flush-usage-logs!)
+        (is (= 0 @dropped) "flush takes and resets the counter after logging the total once")
+        (finally
+          (reset! pending original-pending)
+          (reset! dropped original-dropped))))))
+
 ;;; ------------------------------------------ last_used_at --------------------------------------------
 
 (deftest record-api-key-usage!-stamps-last-used-at-test
@@ -386,7 +404,7 @@
           (try
             (record! (request-info route :api-key-id api-key-id :occurred-at earlier))
             ;; simulate the lock step finding every key busy: nothing is actually written
-            (mt/with-dynamic-fn-redefs [api-keys.db/update-api-keys-last-used-at! (fn [id->timestamp] id->timestamp)]
+            (mt/with-dynamic-fn-redefs [api-keys/update-api-keys-last-used-at! (fn [id->timestamp] id->timestamp)]
               (#'ee-usage/flush-last-used-at!))
             (is (nil? (last-used-at api-key-id)) "still pending — the redef simulated a busy row")
             ;; a fresher event lands before the key is retried

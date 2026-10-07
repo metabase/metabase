@@ -9,6 +9,7 @@ import {
 import {
   canAccessAiAuditing,
   canAccessAlertsManagement,
+  canAccessApiKeyUsage,
   canAccessMonitorDiagnostics,
   canAccessMonitoringTools,
   canAccessSessionManagement,
@@ -92,6 +93,7 @@ export function MonitorLayout() {
   const canAccessAlerts = useSelector(canAccessAlertsManagement);
   const canAccessSessions = useSelector(canAccessSessionManagement);
   const canAccessAiAuditingTab = useSelector(canAccessAiAuditing);
+  const canAccessApiKeyUsageTab = useSelector(canAccessApiKeyUsage);
 
   const activeSection = getActiveSection(pathname);
 
@@ -190,15 +192,17 @@ export function MonitorLayout() {
               onClick={() => trackMonitorSectionClicked("session-management")}
             />
           )}
-          <AreaTab
-            label={t`API key usage`}
-            icon="key"
-            to={Urls.monitorApiKeyUsage()}
-            isSelected={activeSection === "api-key-usage"}
-            showLabel={isNavbarOpened}
-            isGated={!hasAuditAppFeature}
-            onClick={() => trackMonitorSectionClicked("api-key-usage")}
-          />
+          {canAccessApiKeyUsageTab && (
+            <AreaTab
+              label={t`API key usage`}
+              icon="key"
+              to={Urls.monitorApiKeyUsage()}
+              isSelected={activeSection === "api-key-usage"}
+              showLabel={isNavbarOpened}
+              isGated={!hasAuditAppFeature}
+              onClick={() => trackMonitorSectionClicked("api-key-usage")}
+            />
+          )}
         </AreaTabGroup>
       )}
       {canAccessAiAuditingTab && hasAuditAppFeature && (

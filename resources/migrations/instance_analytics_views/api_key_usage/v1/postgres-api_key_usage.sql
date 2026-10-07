@@ -16,13 +16,14 @@ SELECT
     t.created_by_id                                        AS creator_id,
     COALESCE(creator.first_name || ' ' || creator.last_name, creator.email) AS creator_display_name,
     -- the key's own group (via its synthetic user ak.user_id), not the creator's — a key has
-    -- exactly one group, but its creator may belong to several.
+    -- exactly one group, but its creator may belong to several. Ordered so a specific group
+    -- (id != 1) wins over All Users when the key is in both, rather than excluding All Users
+    -- outright — a key whose only group is All Users would otherwise get a NULL group_name.
     (SELECT pg.name
      FROM permissions_group_membership pgm
      JOIN permissions_group pg ON pg.id = pgm.group_id
      WHERE pgm.user_id = ak.user_id
-       AND pg.id != 1
-     ORDER BY pg.name
+     ORDER BY CASE WHEN pg.id = 1 THEN 1 ELSE 0 END, pg.name
      LIMIT 1)                                              AS group_name,
     t.client_name                                          AS client_name,
     -- NOTE: keep these CASE branches in sync with `supported-client-keys` /

@@ -21,7 +21,7 @@
    [metabase-enterprise.api-keys.db :as ee.api-keys.db]
    [metabase.analytics.core :as analytics]
    [metabase.analytics.sdk :as analytics.sdk]
-   [metabase.api-keys.db :as api-keys.db]
+   [metabase.api-keys.core :as api-keys]
    [metabase.api-keys.usage :as api-keys.usage]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.request.core :as request]
@@ -84,14 +84,19 @@
 
 (defonce ^:private pending-usage-logs (atom []))
 
+;; Counts drops between flushes rather than logging each one — a burst past the cap can drop
+;; hundreds of rows a second, and one warning per row would itself flood the log. See
+;; [[flush-usage-logs!]], which logs the total once and resets this.
+(defonce ^:private dropped-usage-log-count (atom 0))
+
 (defn- offer-usage-log!
   "Appends `row` to the pending batch, unless it's already at [[usage-log-batch-capacity]] — a full
-  queue drops the row (logged) rather than blocking the request thread waiting for room. Uses
-  `swap-vals!` rather than a `volatile!` set from inside the `swap!` function: under CAS contention
-  `swap!` can invoke that function more than once, so an early attempt that sees the queue full and
-  flags a drop can still lose the race to a retry that finds room and conjes the row — logging
-  \"Dropping\" for a row that was actually queued. Comparing the before/after values instead only
-  reports a drop for the transition that actually won."
+  queue drops the row rather than blocking the request thread waiting for room. Uses `swap-vals!`
+  rather than a `volatile!` set from inside the `swap!` function: under CAS contention `swap!` can
+  invoke that function more than once, so an early attempt that sees the queue full and flags a drop
+  can still lose the race to a retry that finds room and conjes the row — counting a drop for a row
+  that was actually queued. Comparing the before/after values instead only counts a drop for the
+  transition that actually won."
   [row]
   (let [[old new] (swap-vals! pending-usage-logs
                               (fn [rows]
@@ -99,12 +104,17 @@
                                   rows
                                   (conj rows row))))]
     (when (identical? old new)
-      (log/warn "Dropping API key usage log row; the pending queue is full"))))
+      (swap! dropped-usage-log-count inc))))
 
 (defn- flush-usage-logs!
-  "Scheduled-task handler: atomically take the current pending rows and insert them as one batch."
+  "Scheduled-task handler: atomically take the current pending rows and insert them as one batch.
+  Also takes and logs, once, the row count [[offer-usage-log!]] dropped since the last flush — see
+  [[dropped-usage-log-count]]."
   []
-  (let [[rows] (reset-vals! pending-usage-logs [])]
+  (let [[rows]    (reset-vals! pending-usage-logs [])
+        [dropped] (reset-vals! dropped-usage-log-count 0)]
+    (when (pos? dropped)
+      (log/warnf "Dropped %d API key usage log rows; the pending queue was full" dropped))
     (when (seq rows)
       (log/debugf "Inserting %d api_key_usage_log rows" (count rows))
       (try
@@ -138,7 +148,7 @@
     (when (seq batch)
       (log/debugf "Updating last_used_at for %d API keys" (count batch))
       (try
-        (let [skipped (api-keys.db/update-api-keys-last-used-at! batch)]
+        (let [skipped (api-keys/update-api-keys-last-used-at! batch)]
           (when (seq skipped)
             (log/debugf "Retrying last_used_at for %d busy API keys next flush" (count skipped))
             (swap! pending-last-used-at #(merge-with t/max % skipped))))

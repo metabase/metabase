@@ -103,14 +103,25 @@
 (deftest log-api-call-records-nothing-for-other-auth-methods-test
   (testing "session-authenticated requests are untouched"
     (let [{:keys [recorded]}
-          (run-log-api-call! (assoc api-key-request :embedding/auth-method "session")
+          (run-log-api-call! (-> api-key-request
+                                 (assoc :embedding/auth-method "session")
+                                 (dissoc :api-key-id))
                              "/api/card/:id" {:status 200, :body "ok"})]
       (is (= ::not-called recorded))))
   (testing "so are unauthenticated ones"
     (let [{:keys [recorded]}
-          (run-log-api-call! (dissoc api-key-request :embedding/auth-method)
+          (run-log-api-call! (dissoc api-key-request :embedding/auth-method :api-key-id)
                              nil {:status 401, :body "Unauthenticated"})]
       (is (= ::not-called recorded)))))
+
+(deftest log-api-call-records-api-key-usage-on-embedding-and-agent-routes-test
+  (testing "an API-key-authenticated request still records usage when the route stamps a different
+           embedding/auth-method (agent-api, metabot, public, guest — #EMB-2154 feedback)"
+    (doseq [embedding-auth-method ["agent-api" "metabot" "public" "guest"]]
+      (let [{:keys [recorded]}
+            (run-log-api-call! (assoc api-key-request :embedding/auth-method embedding-auth-method)
+                               "/api/card/:id" {:status 200, :body "ok"})]
+        (is (not= ::not-called recorded) (str "auth-method " embedding-auth-method))))))
 
 (deftest log-api-call-records-api-key-usage-without-a-route-template-test
   (testing "a request that matched no endpoint still records the event, with a nil route-template. Whether the

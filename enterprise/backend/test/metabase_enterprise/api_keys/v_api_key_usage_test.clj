@@ -13,6 +13,7 @@
    [metabase.api-keys.core :as api-keys]
    [metabase.api-keys.usage :as api-keys.usage]
    [metabase.app-db.core :as mdb]
+   [metabase.permissions.core :as perms]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [toucan2.core :as t2]))
@@ -89,6 +90,23 @@
                :ip_address           "10.0.0.7"
                :user_agent           "metabase-cli/1.2.3"}
               (find-row (query-view [log-id]) log-id))))))
+
+(deftest group-name-falls-back-to-all-users-test
+  (testing "a key whose actor belongs to no group but All Users gets \"All Users\", not a null group_name"
+    (mt/with-temp
+      [;; every new non-tenant user is added to All Users on insert — no explicit membership needed
+       :model/User               {creator-id :id} {}
+       :model/User               {actor-id :id}   {}
+       :model/ApiKey             {key-id :id}     {::api-keys/unhashed-key "mb_0000000000"
+                                                   :name          "All Users only key"
+                                                   :user_id       actor-id
+                                                   :creator_id    creator-id
+                                                   :updated_by_id creator-id}
+       :model/ApiKeyUsageLog     {log-id :id}     (log-row {:api_key_id    key-id
+                                                            :user_id       actor-id
+                                                            :created_by_id creator-id})]
+      (is (= (:name (perms/all-users-group))
+             (:group_name (find-row (query-view [log-id]) log-id)))))))
 
 (deftest missing-key-and-creator-test
   (testing "a row whose key/creator are gone (or were never set) survives, with null join columns"

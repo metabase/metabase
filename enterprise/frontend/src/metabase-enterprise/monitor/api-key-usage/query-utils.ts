@@ -55,9 +55,11 @@ const COUNT_COLUMN = "count";
 
 /**
  * Apply the shared API key/user/group filters to a query. The API key and user filters are plain
- * equality checks on columns the view already has; the group filter joins the audit
- * `v_group_members` view and filters by `group_id` (a user can belong to several groups). Each
- * no-ops when its id is unset.
+ * equality checks on columns the view already has. The group filter means the key's own group —
+ * matching the Key activity table (which scopes by `apiKey.group.id`, the key's group from
+ * `GET /api/api-key`) — so it joins the audit `v_group_members` view on `actor_user_id`, not the
+ * creator: a key has exactly one group through its own user, while its creator may belong to
+ * several. Each no-ops when its id is unset.
  */
 function applyScopeFilters(
   query: Query,
@@ -74,7 +76,7 @@ function applyScopeFilters(
   query = applyIdFilter(query, "creator_id", userId);
   query =
     groupId != null
-      ? joinGroupMembers(query, groupMembersTable, "creator_id")
+      ? joinGroupMembers(query, groupMembersTable, "actor_user_id")
       : query;
   query = groupId != null ? applyIdFilter(query, "group_id", groupId) : query;
   return query;

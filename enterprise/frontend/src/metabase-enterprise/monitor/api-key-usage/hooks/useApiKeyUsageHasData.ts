@@ -89,10 +89,15 @@ export function useApiKeyUsageHasData({
   // The query is a single count aggregation with no breakout, so the result is exactly one row
   // with one column — the scalar total. `rows[0][0]` is that count.
   const count = Number(data?.data?.rows?.[0]?.[0] ?? 0);
+  // `count > 0` keeps a deleted key's history reachable: once no live key matches the filters,
+  // nothing in `apiKeys` can match either, but the usage log rows (and the key's name on them)
+  // still exist and still match the filters' date range.
   const hasData =
-    apiKeys?.some((apiKey) =>
+    count > 0 ||
+    (apiKeys?.some((apiKey) =>
       apiKeyMatchesScope(apiKey, { apiKeyId, userId, groupId }),
-    ) ?? false;
+    ) ??
+      false);
 
   return {
     isInitialLoading: !hasLoadedOnce.current,

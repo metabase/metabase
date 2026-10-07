@@ -6,9 +6,9 @@
 ##
 ## Client identity + PII are stored on each request row, so v_api_key_usage reads them straight off
 ## api_key_usage_log. Every join is a LEFT JOIN: api_key_usage_log deliberately has no foreign keys
-## on api_key_id / user_id / tenant_id so rows outlive a deleted key, user, or tenant — an inner
-## join would silently drop that history, so api_key_name / user_display_name / tenant_name are
-## simply NULL once the referenced row is gone.
+## on api_key_id / user_id / created_by_id so rows outlive a deleted key or user — an inner join
+## would silently drop that history, so api_key_name / creator_display_name / group_name are simply
+## NULL once the referenced row is gone.
 
 databaseChangeLog:
   - logicalFilePath: migrations/065_update_migrations.yaml
