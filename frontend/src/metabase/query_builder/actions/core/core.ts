@@ -276,7 +276,17 @@ export const apiCreateQuestion = (
               display: "list",
             })
           : createdQuestionWithMetadata.composeQuestionAdhoc();
-      dispatch(runQuestionQuery({ overrideWithQuestion: composedQuestion }));
+      // Run the composed adhoc query for results only. Its URL is the adhoc
+      // /question/query, but the canonical URL is the saved model's /model/:id,
+      // written by the updateUrl the create flow schedules. Letting the adhoc run
+      // mirror its URL leaves that navigation pending when the model redirect
+      // fires, and the redirect sits out for it (metabase#51020).
+      dispatch(
+        runQuestionQuery({
+          overrideWithQuestion: composedQuestion,
+          shouldUpdateUrl: false,
+        }),
+      );
     }
 
     return createdQuestionWithMetadata;
