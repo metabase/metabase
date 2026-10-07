@@ -483,7 +483,8 @@
                                    true                    (assoc :collection_id dest-coll-id)
                                    same-collection?        (update :name #(str % " - " (tru "Duplicate")))
                                    (or (:dashboard_id to-copy)
-                                       dashboards-only?)   (assoc :dashboard_id (u/the-id new-dashboard)))
+                                       dashboards-only?)   (-> (assoc :dashboard_id (u/the-id new-dashboard))
+                                                               (dissoc :collection_position)))
                                  @api/*current-user*
                                  ;; creating cards from a transaction. wait until tx complete to signal event
                                  true

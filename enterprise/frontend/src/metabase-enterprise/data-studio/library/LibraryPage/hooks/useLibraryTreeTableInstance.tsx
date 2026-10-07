@@ -20,12 +20,13 @@ import {
   useTreeTableInstance,
 } from "metabase/ui";
 import { getIsRemoteSyncReadOnly } from "metabase-enterprise/remote_sync/selectors";
-import type { Collection } from "metabase-types/api";
+import type { Collection, CollectionId } from "metabase-types/api";
 
 import { ActionCell } from "../components/ActionCell";
 import { EmptyStateAction } from "../components/EmptyStateAction";
 import { getTreeRowHref } from "../utils";
 
+import type { LibrarySection } from "./library-bulk-selection.utils";
 import { useErrorHandling } from "./useErrorHandling";
 import { useLibraryCollectionTree } from "./useLibraryCollectionTree";
 import { useLibraryCollections } from "./useLibraryCollections";
@@ -100,6 +101,23 @@ export function useLibraryTreeTableInstance({
     isLoading: loadingSnippets,
     error: snippetsError,
   } = useBuildSnippetTree();
+
+  const refreshSection = useCallback(
+    (section: LibrarySection, collectionIds: CollectionId[]) => {
+      const refreshCollections = {
+        data: refreshTableCollections,
+        metrics: refreshMetricCollections,
+        dashboards: refreshDashboardCollections,
+        snippets: undefined,
+      }[section];
+      refreshCollections?.(collectionIds);
+    },
+    [
+      refreshTableCollections,
+      refreshMetricCollections,
+      refreshDashboardCollections,
+    ],
+  );
 
   // Server-side search for tables, metrics, and dashboards, client-side for snippets
   const {
@@ -236,12 +254,7 @@ export function useLibraryTreeTableInstance({
         id: "actions",
         width: 48,
         cell: ({ row }) => (
-          <ActionCell
-            treeItem={row.original}
-            refreshMetricCollections={refreshMetricCollections}
-            refreshTableCollections={refreshTableCollections}
-            refreshDashboardCollections={refreshDashboardCollections}
-          />
+          <ActionCell treeItem={row.original} refreshSection={refreshSection} />
         ),
       },
     ],
@@ -249,9 +262,7 @@ export function useLibraryTreeTableInstance({
       isRemoteSyncReadOnly,
       onPublishTableClick,
       onNewDashboardClick,
-      refreshMetricCollections,
-      refreshTableCollections,
-      refreshDashboardCollections,
+      refreshSection,
     ],
   );
 
@@ -389,8 +400,6 @@ export function useLibraryTreeTableInstance({
     isChildrenLoading,
     isLoading,
     emptyMessage,
-    refreshTableCollections,
-    refreshMetricCollections,
-    refreshDashboardCollections,
+    refreshSection,
   };
 }

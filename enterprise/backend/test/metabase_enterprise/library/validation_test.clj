@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.collections.models.collection :as collection]
+   [metabase.dashboards.write :as dashboards.write]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.models.interface :as mi]
@@ -132,18 +133,23 @@
           query (lib/query mp (lib.metadata/table mp (mt/id :venues)))]
       (mt/with-temp [:model/Collection    allow-dashboards {:name "Test Base Library" :type collection/library-dashboards-collection-type}
                      :model/Collection    regular          {:name "Regular Collection"}
-                     :model/Card          question         {:collection_id (:id regular) :type :question :dataset_query query}
+                     :model/Card          question         {:collection_id       (:id regular)
+                                                            :collection_position 1
+                                                            :type                :question
+                                                            :dataset_query       query}
                      :model/Card          metric           {:collection_id (:id regular) :type :metric :dataset_query query}
                      :model/Dashboard     dashboard        {:collection_id (:id regular)}
                      :model/DashboardCard _                {:dashboard_id (:id dashboard) :card_id (:id question)}
                      :model/DashboardCard _                {:dashboard_id (:id dashboard) :card_id (:id metric)}]
-        (testing "Copied questions become dashboard questions and metrics stay referenced"
-          (let [copy-id (:id (mt/user-http-request :crowberto :post 200 (str "dashboard/" (:id dashboard) "/copy")
-                                                   {:collection_id (:id allow-dashboards) :is_deep_copy true}))
-                cards   (t2/select :model/Card :id [:in (t2/select-fn-set :card_id :model/DashboardCard :dashboard_id copy-id)])]
-            (is (=? [{:type :metric :id (:id metric) :dashboard_id nil}
-                     {:type :question :dashboard_id copy-id :collection_id (:id allow-dashboards)}]
-                    (sort-by (comp name :type) cards)))))))))
+        (doseq [[path copy!] {"API"   #(:id (mt/user-http-request :crowberto :post 200 (str "dashboard/" (:id dashboard) "/copy") %))
+                              "write" #(mt/with-current-user (mt/user->id :crowberto)
+                                         (:id (dashboards.write/copy-dashboard! (:id dashboard) %)))}]
+          (testing (str path ": copied pinned questions become unpinned dashboard questions and metrics stay referenced")
+            (let [copy-id (copy! {:collection_id (:id allow-dashboards) :is_deep_copy true})
+                  cards   (t2/select :model/Card :id [:in (t2/select-fn-set :card_id :model/DashboardCard :dashboard_id copy-id)])]
+              (is (=? [{:type :metric :id (:id metric) :dashboard_id nil}
+                       {:type :question :dashboard_id copy-id :collection_id (:id allow-dashboards) :collection_position nil}]
+                      (sort-by (comp name :type) cards))))))))))
 
 (deftest move-dashboard-into-library-dashboards-test
   (mt/with-premium-features #{:library}

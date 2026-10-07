@@ -67,9 +67,7 @@ function LibraryPageContent() {
     isChildrenLoading,
     isLoading,
     emptyMessage,
-    refreshTableCollections,
-    refreshMetricCollections,
-    refreshDashboardCollections,
+    refreshSection,
   } = useLibraryTreeTableInstance({
     collections,
     isLoadingCollections,
@@ -115,22 +113,11 @@ function LibraryPageContent() {
 
   const handleActionComplete = useCallback(
     (section: LibrarySection, affectedCollectionIds: CollectionId[]) => {
-      if (section === "data") {
-        refreshTableCollections(affectedCollectionIds);
-      } else if (section === "metrics") {
-        refreshMetricCollections(affectedCollectionIds);
-      } else if (section === "dashboards") {
-        refreshDashboardCollections(affectedCollectionIds);
-      }
+      refreshSection(section, affectedCollectionIds);
       // Snippet sections refetch via RTK tag invalidation.
       clearSelection();
     },
-    [
-      refreshTableCollections,
-      refreshMetricCollections,
-      refreshDashboardCollections,
-      clearSelection,
-    ],
+    [refreshSection, clearSelection],
   );
 
   return (
