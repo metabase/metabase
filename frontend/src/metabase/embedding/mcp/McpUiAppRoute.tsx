@@ -1,4 +1,4 @@
-import { type CSSProperties, useEffect, useMemo } from "react";
+import { type CSSProperties, useEffect, useMemo, useRef } from "react";
 
 import { SdkError } from "embedding-sdk-bundle/components/private/PublicComponentWrapper/SdkError";
 import { ComponentProvider } from "embedding-sdk-bundle/components/public/ComponentProvider";
@@ -12,10 +12,16 @@ import { McpCardFooter } from "./McpCardFooter";
 import { McpFeedbackArea } from "./McpFeedbackArea";
 import { MCP_CONTENT_HEIGHT, McpQuestionView } from "./McpQuestionView";
 import { getMcpDeserializedQuery } from "./McpUiAppRoute.utils";
-import { useHandleMcpDrillThrough } from "./hooks/useHandleMcpDrillThrough";
+import { createMcpClickActionMode, isMcpChartChanging } from "./clickActions";
+import type { ApplyMcpOperations } from "./derive";
+import {
+  useHandleMcpDrill,
+  useHandleMcpDrillThrough,
+} from "./hooks/useHandleMcpDrillThrough";
 import { type McpAppState, useMcpApp } from "./hooks/useMcpApp";
 import { useMcpFeedback } from "./hooks/useMcpFeedback";
 import { useMcpUserAndSettingsFetch } from "./hooks/useMcpUserAndSettingsFetch";
+import { useSerializedMcpDerive } from "./hooks/useSerializedMcpDerive";
 import { buildMcpAppsTheme } from "./utils/buildMcpAppsTheme";
 
 const store = getSdkStore();
@@ -117,11 +123,34 @@ function McpUiAppRouteContent({
   const isHosted = useSetting("is-hosted?");
   const safeAreaInsets = hostContext?.safeAreaInsets ?? DEFAULT_INSETS;
 
-  const handleDrillThrough = useHandleMcpDrillThrough({
+  const handleDrillThrough = useHandleMcpDrillThrough({ app });
+
+  // Set by the question view, which can update the question the SDK shows.
+  const applyOperationsRef = useRef<ApplyMcpOperations | null>(null);
+
+  const handleDrill = useHandleMcpDrill({
     app,
     uiCredential,
     mcpSessionId,
+    applyOperationsRef,
   });
+
+  const { deriveQuery, pendingDerivesRef } = useSerializedMcpDerive({
+    instanceUrl,
+    uiCredential,
+    mcpSessionId,
+  });
+
+  // Set by the question view from the SDK question's running state.
+  const isQueryRunningRef = useRef(false);
+
+  const clickActionMode = useMemo(
+    () =>
+      createMcpClickActionMode(handleDrill, () =>
+        isMcpChartChanging(pendingDerivesRef, isQueryRunningRef),
+      ),
+    [handleDrill, pendingDerivesRef],
+  );
 
   const deserializedQuery = useMemo(() => {
     if (!query) {
@@ -211,6 +240,9 @@ function McpUiAppRouteContent({
         <McpQuestionView
           queryKey={query}
           safeAreaPaddingTop={safeAreaPadding.top}
+          deriveQuery={deriveQuery}
+          applyOperationsRef={applyOperationsRef}
+          isQueryRunningRef={isQueryRunningRef}
         />
 
         <McpCardFooter
@@ -235,6 +267,7 @@ function McpUiAppRouteContent({
         // we should never show query builder in chat interfaces
         withEditorButton={false}
         withChartTypeSelector={false}
+        clickActionMode={clickActionMode}
         onDrillThrough={handleDrillThrough}
       >
         {renderSdkQuestionContent()}

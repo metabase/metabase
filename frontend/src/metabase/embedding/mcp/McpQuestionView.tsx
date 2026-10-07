@@ -1,12 +1,24 @@
-import type { CSSProperties } from "react";
+import {
+  type CSSProperties,
+  type MutableRefObject,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
+import { t } from "ttag";
 
+import { useSdkQuestionContext } from "embedding-sdk-bundle/components/private/SdkQuestion/context";
 import { SdkQuestion } from "embedding-sdk-bundle/components/public/SdkQuestion";
-import { Box, Divider, Flex } from "metabase/ui";
+import { Alert, Box, Divider, Flex } from "metabase/ui";
 
 import { ChartTypePicker } from "./ChartTypePicker/ChartTypePicker";
 import { McpQuestionTitle } from "./McpQuestionTitle";
+import { getMcpDeserializedQuery } from "./McpUiAppRoute.utils";
 import { TimeGranularityControl } from "./TimeControlBar/TimeGranularityControl";
 import { TimeRangeControl } from "./TimeControlBar/TimeRangeControl";
+import type { DerivedQuery } from "./api";
+import type { ApplyMcpOperations, McpDeriveOperation } from "./derive";
 import { useMcpQueryControls } from "./hooks/useMcpQueryControls";
 
 export const MCP_CONTENT_HEIGHT = "500px";
@@ -17,12 +29,115 @@ const RECLAIMED_CONTENT_BOTTOM_PADDING = "var(--mantine-spacing-xl)";
 export interface McpQuestionViewProps {
   queryKey: string | null;
   safeAreaPaddingTop: number;
+  deriveQuery: (
+    operations: McpDeriveOperation[],
+    apply: (derived: DerivedQuery) => void,
+  ) => Promise<DerivedQuery>;
+  applyOperationsRef: MutableRefObject<ApplyMcpOperations | null>;
+  isQueryRunningRef: MutableRefObject<boolean>;
+}
+
+function getDeriveErrorMessage(error: unknown): string {
+  if (
+    typeof error === "object" &&
+    error !== null &&
+    "serverMessage" in error &&
+    typeof error.serverMessage === "string" &&
+    error.serverMessage
+  ) {
+    return error.serverMessage;
+  }
+
+  return t`This change could not be applied.`;
+}
+
+function isStaleDerive(error: unknown): boolean {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "isStale" in error &&
+    error.isStale === true
+  );
+}
+
+/**
+ * Applies operations by asking the server to derive a new query handle, which
+ * becomes the current one, then shows that handle's query. Runs of the question
+ * then go through the new handle, so the question never runs a query the iframe
+ * built.
+ */
+function useApplyMcpOperations(
+  deriveQuery: McpQuestionViewProps["deriveQuery"],
+  onError: (message: string | null) => void,
+): ApplyMcpOperations {
+  const { question, updateQuestion } = useSdkQuestionContext();
+
+  // `apply` runs once the derive returns, so it reads the question as it is then,
+  // keeping changes made while the derive was in flight, such as a new display.
+  const questionRef = useRef(question);
+  useEffect(() => {
+    questionRef.current = question;
+  }, [question]);
+
+  return useCallback(
+    (operations) => {
+      if (!question) {
+        return;
+      }
+
+      const apply = ({ query }: DerivedQuery) => {
+        const derived = getMcpDeserializedQuery(query);
+
+        if (!derived) {
+          throw new Error("The derived query could not be read.");
+        }
+
+        const latest = questionRef.current ?? question;
+        updateQuestion(latest.setDatasetQuery(derived.card.dataset_query), {
+          run: true,
+        });
+      };
+
+      deriveQuery(operations, apply)
+        .then(() => onError(null))
+        .catch((error) => {
+          // A new tool result replaced the chart; this change no longer applies to it.
+          if (isStaleDerive(error)) {
+            return;
+          }
+          console.error("Error changing the MCP query", error);
+          onError(getDeriveErrorMessage(error));
+        });
+    },
+    [deriveQuery, onError, question, updateQuestion],
+  );
 }
 
 export function McpQuestionView({
   queryKey,
   safeAreaPaddingTop,
+  deriveQuery,
+  applyOperationsRef,
+  isQueryRunningRef,
 }: McpQuestionViewProps) {
+  const { isQueryRunning } = useSdkQuestionContext();
+
+  useEffect(() => {
+    isQueryRunningRef.current = isQueryRunning;
+  }, [isQueryRunning, isQueryRunningRef]);
+
+  const [deriveError, setDeriveError] = useState<string | null>(null);
+
+  // A new tool result replaces the chart the error was about.
+  useEffect(() => {
+    setDeriveError(null);
+  }, [queryKey]);
+  const applyOperations = useApplyMcpOperations(deriveQuery, setDeriveError);
+
+  useEffect(() => {
+    applyOperationsRef.current = applyOperations;
+  }, [applyOperations, applyOperationsRef]);
+
   const {
     hasChartTypeSelector,
     hasTimeControls,
@@ -31,7 +146,7 @@ export function McpQuestionView({
     chartTypes,
     currentChartType,
     onChartTypeChange,
-  } = useMcpQueryControls(queryKey);
+  } = useMcpQueryControls(queryKey, applyOperations);
 
   const isTableVisualization = currentChartType === "table";
 
@@ -96,6 +211,20 @@ export function McpQuestionView({
           height={resolvedVisualizationHeight}
         />
       </Flex>
+
+      {deriveError && (
+        <Box px="xl">
+          <Alert
+            color="error"
+            variant="outline"
+            p="xs"
+            withCloseButton
+            onClose={() => setDeriveError(null)}
+          >
+            {deriveError}
+          </Alert>
+        </Box>
+      )}
 
       {hasTimeControls && (
         <Flex px="xl" justify="center">

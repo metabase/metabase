@@ -1,3 +1,6 @@
+import userEvent from "@testing-library/user-event";
+import fetchMock from "fetch-mock";
+
 import {
   setupAlertsEndpoints,
   setupCardEndpoints,
@@ -10,6 +13,7 @@ import {
 } from "__support__/server-mocks";
 import { createMockEmbedState, createMockState } from "__support__/state";
 import {
+  act,
   mockGetBoundingClientRect,
   screen,
   waitFor,
@@ -22,6 +26,7 @@ import {
   createMockLoginStatusState,
   createMockSdkState,
 } from "embedding-sdk-bundle/test/mocks/state";
+import { utf8_to_b64 } from "metabase/utils/encoding";
 import MetabaseSettings from "metabase/utils/settings";
 import type { User } from "metabase-types/api";
 import {
@@ -43,6 +48,8 @@ import {
 } from "metabase-types/api/mocks/presets";
 
 import { McpQuestionView } from "./McpQuestionView";
+import type { DerivedQuery } from "./api";
+import type { McpDeriveOperation } from "./derive";
 
 const TEST_DATABASE = createSampleDatabase();
 
@@ -75,9 +82,31 @@ const QUERY_RESULT = createMockDataset({
         source: "aggregation",
       }),
     ],
-    rows: [["2024-01-01T00:00:00Z", 26000]],
+    // Two rows, so the chart type picker offers more than one display.
+    rows: [
+      ["2024-01-01T00:00:00Z", 26000],
+      ["2024-04-01T00:00:00Z", 27000],
+    ],
   }),
 });
+
+/** A derive result whose query is the test card's, with its breakout bucketed by `unit`. */
+function derivedWithUnit(unit: string): DerivedQuery {
+  return {
+    handle: `handle-${unit}`,
+    query: utf8_to_b64(
+      JSON.stringify({
+        type: "query",
+        database: SAMPLE_DB_ID,
+        query: {
+          "source-table": ORDERS_ID,
+          aggregation: [["count"]],
+          breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": unit }]],
+        },
+      }),
+    ),
+  };
+}
 
 /**
  * What `GET /api/embed-mcp/bootstrap` answers, not what a logged-in browser session
@@ -94,6 +123,11 @@ const BOOTSTRAP = createMockMcpAppsBootstrapResponse({
 
 function setup() {
   const { user, settings } = BOOTSTRAP;
+  const isQueryRunningRef = { current: false };
+  const deriveQuery = jest.fn<
+    Promise<DerivedQuery>,
+    [McpDeriveOperation[], (derived: DerivedQuery) => void]
+  >(() => new Promise(() => {}));
 
   // Reproduces the widening `useMcpUserAndSettingsFetch` does when it seeds the cache: at
   // runtime the store holds a `User` carrying only these fields.
@@ -124,20 +158,33 @@ function setup() {
     embed: createMockEmbedState(),
   });
 
-  renderWithSDKProviders(
+  const applyOperationsRef = { current: null };
+  const view = (queryKey: string) => (
     <SdkQuestion
       questionId={TEST_CARD.id}
       isSaveEnabled={false}
       withEditorButton={false}
       withChartTypeSelector={false}
     >
-      <McpQuestionView queryKey="test-query" safeAreaPaddingTop={0} />
-    </SdkQuestion>,
-    {
-      componentProviderProps: { authConfig: createMockSdkConfig() },
-      storeInitialState: state,
-    },
+      <McpQuestionView
+        queryKey={queryKey}
+        safeAreaPaddingTop={0}
+        deriveQuery={deriveQuery}
+        applyOperationsRef={applyOperationsRef}
+        isQueryRunningRef={isQueryRunningRef}
+      />
+    </SdkQuestion>
   );
+
+  const { rerender } = renderWithSDKProviders(view("test-query"), {
+    componentProviderProps: { authConfig: createMockSdkConfig() },
+    storeInitialState: state,
+  });
+
+  return {
+    deriveQuery,
+    showQuery: (queryKey: string) => rerender(view(queryKey)),
+  };
 }
 
 describe("McpQuestionView with the MCP Apps bootstrap projection (GHY-4400)", () => {
@@ -166,5 +213,147 @@ describe("McpQuestionView with the MCP Apps bootstrap projection (GHY-4400)", ()
       expect(screen.queryByText(/gone wrong/i)).not.toBeInTheDocument();
     });
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+
+  it("asks the server to derive a rebucketed query rather than building one", async () => {
+    const { deriveQuery } = setup();
+
+    await userEvent.click(await screen.findByText("by quarter"));
+    await userEvent.click(await screen.findByRole("option", { name: "Month" }));
+
+    expect(deriveQuery).toHaveBeenCalledWith(
+      [{ type: "temporal-bucket/set", unit: "month" }],
+      expect.any(Function),
+    );
+  });
+
+  it("shows why a change failed, and clears it once a change succeeds", async () => {
+    const { deriveQuery } = setup();
+    jest.spyOn(console, "error").mockImplementation(() => {});
+    fetchMock.post("path:/api/dataset", QUERY_RESULT);
+    fetchMock.post(
+      "path:/api/dataset/query_metadata",
+      createMockCardQueryMetadata({ databases: [TEST_DATABASE] }),
+    );
+
+    deriveQuery.mockRejectedValueOnce(
+      Object.assign(new Error("deriveMcpQuery failed"), {
+        status: 400,
+        serverMessage: "This breakout cannot be bucketed by month.",
+      }),
+    );
+
+    await userEvent.click(await screen.findByText("by quarter"));
+    await userEvent.click(await screen.findByRole("option", { name: "Month" }));
+
+    expect(
+      await screen.findByText("This breakout cannot be bucketed by month."),
+    ).toBeInTheDocument();
+
+    deriveQuery.mockRejectedValueOnce(new TypeError("Failed to fetch"));
+
+    await userEvent.click(await screen.findByText("by quarter"));
+    await userEvent.click(await screen.findByRole("option", { name: "Year" }));
+
+    expect(
+      await screen.findByText("This change could not be applied."),
+    ).toBeInTheDocument();
+
+    deriveQuery.mockResolvedValueOnce({
+      handle: "handle-2",
+      query: utf8_to_b64(JSON.stringify(TEST_CARD.dataset_query)),
+    });
+
+    await userEvent.click(await screen.findByText("by quarter"));
+    await userEvent.click(await screen.findByRole("option", { name: "Week" }));
+
+    await waitFor(() => {
+      expect(
+        screen.queryByText("This change could not be applied."),
+      ).not.toBeInTheDocument();
+    });
+  });
+
+  it("clears a failed change's message when a new query loads", async () => {
+    const { deriveQuery, showQuery } = setup();
+    jest.spyOn(console, "error").mockImplementation(() => {});
+    deriveQuery.mockRejectedValueOnce(new TypeError("Failed to fetch"));
+
+    await userEvent.click(await screen.findByText("by quarter"));
+    await userEvent.click(await screen.findByRole("option", { name: "Month" }));
+
+    expect(
+      await screen.findByText("This change could not be applied."),
+    ).toBeInTheDocument();
+
+    showQuery("next-query");
+
+    await waitFor(() => {
+      expect(
+        screen.queryByText("This change could not be applied."),
+      ).not.toBeInTheDocument();
+    });
+  });
+
+  describe("applying a derived query keeps changes made while it was in flight", () => {
+    beforeEach(() => {
+      fetchMock.post("path:/api/dataset", QUERY_RESULT);
+      fetchMock.post(
+        "path:/api/dataset/query_metadata",
+        createMockCardQueryMetadata({ databases: [TEST_DATABASE] }),
+      );
+    });
+
+    const pickUnit = async (unit: string) => {
+      await userEvent.click(await screen.findByText(/^by /));
+      await userEvent.click(await screen.findByRole("option", { name: unit }));
+    };
+
+    const pickDisplay = async (display: string) =>
+      userEvent.click(await screen.findByRole("button", { name: display }));
+
+    const expectDisplay = async (display: string) =>
+      waitFor(() => {
+        expect(screen.getByRole("button", { name: display })).toHaveAttribute(
+          "data-variant",
+          "filled",
+        );
+      });
+
+    const applyOf = (
+      deriveQuery: ReturnType<typeof setup>["deriveQuery"],
+      call: number,
+    ) => deriveQuery.mock.calls[call][1];
+
+    it("keeps a display picked while the derive was in flight", async () => {
+      const { deriveQuery } = setup();
+
+      await pickUnit("Month");
+      await pickDisplay("bar");
+      await expectDisplay("bar");
+
+      act(() => applyOf(deriveQuery, 0)(derivedWithUnit("month")));
+
+      expect(await screen.findByText("by month")).toBeInTheDocument();
+      await expectDisplay("bar");
+    });
+
+    it("applies a queued derive on top of the question the previous one left", async () => {
+      const { deriveQuery } = setup();
+
+      await pickUnit("Month");
+      await pickUnit("Year");
+
+      act(() => applyOf(deriveQuery, 0)(derivedWithUnit("month")));
+      expect(await screen.findByText("by month")).toBeInTheDocument();
+
+      await pickDisplay("bar");
+      await expectDisplay("bar");
+
+      act(() => applyOf(deriveQuery, 1)(derivedWithUnit("year")));
+
+      expect(await screen.findByText("by year")).toBeInTheDocument();
+      await expectDisplay("bar");
+    });
   });
 });

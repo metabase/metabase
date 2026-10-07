@@ -81,7 +81,7 @@
         (u/update-if-exists :resource vec))))
 
 (def ^:private access-token-db-columns
-  [:user_id :client_id :scope :expiry :resource])
+  [:id :user_id :client_id :scope :expiry :resource])
 
 (defn- db-row->access-token
   "Convert a DB row from :model/OAuthAccessToken to the protocol's map shape."

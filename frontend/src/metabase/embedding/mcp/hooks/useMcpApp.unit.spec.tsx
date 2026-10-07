@@ -5,6 +5,10 @@ import type {
 import { act, renderHook, waitFor } from "@testing-library/react";
 
 import { MCP_APPS_METADATA_KEY } from "../constants";
+import {
+  getCurrentMcpQueryHandle,
+  setCurrentMcpQueryHandle,
+} from "../requests";
 
 import { useMcpApp } from "./useMcpApp";
 
@@ -451,6 +455,60 @@ describe("useMcpApp", () => {
           mcpSessionId: "mcp-session-id",
         }),
       );
+    });
+
+    it("keeps a derived handle current across a credential refresh", async () => {
+      jest.useFakeTimers();
+
+      const { app } = setup({
+        callServerTool: jest.fn().mockResolvedValue(createAuthResult()),
+        getHostCapabilities: jest.fn(() => ({ serverTools: {} })),
+      });
+
+      await act(async () => app.ontoolresult(QUERY_RESULT));
+      expect(getCurrentMcpQueryHandle()).toBe(QUERY_HANDLE);
+
+      // What a derive does: the iframe now shows another handle.
+      setCurrentMcpQueryHandle(NEXT_QUERY_HANDLE);
+
+      await act(async () => {
+        await jest.advanceTimersByTimeAsync(3 * 60 * 1000);
+      });
+
+      expect(app.callServerTool).toHaveBeenCalledTimes(2);
+      expect(getCurrentMcpQueryHandle()).toBe(NEXT_QUERY_HANDLE);
+    });
+
+    it("keeps a derived handle current when the host delivers the same tool result again", async () => {
+      const { app } = setup({
+        callServerTool: jest.fn().mockResolvedValue(createAuthResult()),
+        getHostCapabilities: jest.fn(() => ({ serverTools: {} })),
+      });
+
+      await act(async () => app.ontoolresult(QUERY_RESULT));
+      setCurrentMcpQueryHandle(NEXT_QUERY_HANDLE);
+
+      // The same handle again, in a new payload object.
+      await act(async () => app.ontoolresult({ ...QUERY_RESULT }));
+
+      expect(getCurrentMcpQueryHandle()).toBe(NEXT_QUERY_HANDLE);
+    });
+
+    it("makes a new tool result's handle current", async () => {
+      const { app, result } = setup({
+        callServerTool: jest.fn().mockResolvedValue(createAuthResult()),
+        getHostCapabilities: jest.fn(() => ({ serverTools: {} })),
+      });
+
+      await act(async () => app.ontoolresult(QUERY_RESULT));
+      expect(getCurrentMcpQueryHandle()).toBe(QUERY_HANDLE);
+
+      await act(async () => app.ontoolresult(NEXT_QUERY_RESULT));
+
+      await waitFor(() => {
+        expect(result.current.query).toBe("next-encoded-query");
+      });
+      expect(getCurrentMcpQueryHandle()).toBe(NEXT_QUERY_HANDLE);
     });
 
     it("surfaces an error instead of spinning forever when a handle will not resolve", async () => {

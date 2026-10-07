@@ -32,16 +32,16 @@
    Deliberately the raw store read rather than [[metabase.mcp.v2.queries/resolve-query-handle!]]
    and friends: those re-validate the stored query against the shape v2's execute tools mint
    (`:stages`, positive `:limit`, MBQL-only). A visualizable handle need not have that shape —
-   the drill-through handles the iframe mints through `POST /api/embed-mcp/drills` hold the
-   SDK's legacy `dataset_query`, and `execute_sql` handles hold native SQL. Both are visualizable
-   by design, so the guards would reject exactly the handles these tools exist to render.
+   `execute_sql` handles hold native SQL, and handles stored before drill-throughs were derived on
+   the server hold the SDK's legacy `dataset_query`. Both are visualizable by design, so the guards
+   would reject exactly the handles these tools exist to render.
 
    Access control still holds. The store read is user-scoped — [[metabase.mcp.session/find-handle-row]]
    joins `core_session` and filters on its `user_id`, so a handle resolves only for the user who
    minted it; the `mcp_session_id` on the row is telemetry, and handles deliberately survive a
-   client rotating its MCP session. Native SQL is re-enforced downstream rather than here:
-   `check-mcp-ui-native-query!`, mounted on `/api/dataset` via `+refuse-unscoped-native-sql`, is the
-   boundary that decides whether the iframe may execute a native query."
+   client rotating its MCP session. Native SQL is re-enforced downstream rather than here: the
+   iframe's handle routes in [[metabase.mcp.callback-api]] decide whether it may execute a native
+   query."
   [session-id handle]
   (or (mcp.session/resolve-query-handle session-id api/*current-user-id* handle)
       (common/throw-teaching-error

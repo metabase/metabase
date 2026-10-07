@@ -5,9 +5,7 @@
    [clojure.string :as str]
    [metabase.api.macros :as api.macros]
    [metabase.mcp.paths :as mcp.paths]
-   [metabase.mcp.session :as mcp.session]
    [metabase.mcp.settings :as mcp.settings]
-   [metabase.mcp.ui-surface :as mcp.ui-surface]
    [metabase.mcp.usage :as mcp.usage]))
 
 (set! *warn-on-reflection* true)
@@ -32,21 +30,6 @@
   "Whether the MCP server is enabled (composes [[metabase.llm.settings/ai-features-enabled?]])."
   []
   (mcp.settings/mcp-enabled?))
-
-(defn resolve-ui-credential
-  "Resolves a credential issued for an MCP UI resource."
-  [credential]
-  (mcp.session/resolve-ui-credential credential))
-
-(defn ui-credential-on-surface?
-  "Whether an MCP Apps UI credential may authenticate `method` + `uri` at all."
-  [method uri]
-  (mcp.ui-surface/on-surface? method uri))
-
-(defn ui-credential-scope-satisfied?
-  "Whether a UI credential with `claims` holds what `method` + `uri` costs."
-  [method uri claims]
-  (mcp.ui-surface/scope-satisfied? method uri claims))
 
 (defn inline-ui-enabled-for-client?
   "Whether the admin allows the client named `client-info-name` (from the `initialize` handshake) to render

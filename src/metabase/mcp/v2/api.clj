@@ -107,7 +107,7 @@
     token-scopes
     (registry/insufficient-scope-detail uri required-scope)))
 
-(defn- handle-resources-read [id params session-id token-scopes]
+(defn- handle-resources-read [id params session-id token-scopes request-context]
   (let [uri (:uri params)]
     (if (or (not (string? uri)) (str/blank? uri))
       (transport/jsonrpc-error id -32602 (message/msg ["Missing required parameter: uri"]))
@@ -120,7 +120,8 @@
       ;; [[metabase.mcp.v2.resources/read-resource]] withholds it from a token lacking the shell's scope.
       (let [user-id       api/*current-user-id*
             ui-credential (when user-id
-                            (delay (mcp.session/issue-ui-credential session-id user-id token-scopes)))
+                            (delay (mcp.session/issue-ui-credential session-id user-id token-scopes
+                                                                    (:oauth-token-id request-context))))
             result        (v2.resources/read-resource uri token-scopes {:ui-credential ui-credential
                                                                         :session-id    session-id})]
         (case (:status result)
@@ -146,7 +147,7 @@
     "tools/list"                (handle-tools-list id params session-id)
     "tools/call"                (handle-tools-call id params session-id token-scopes request-context)
     "resources/list"            (handle-resources-list id params)
-    "resources/read"            (handle-resources-read id params session-id token-scopes)
+    "resources/read"            (handle-resources-read id params session-id token-scopes request-context)
     "ping"                      (handle-ping id params)
     (if id
       (transport/jsonrpc-error id -32601 (message/msg ["Method not found: %s"] method))

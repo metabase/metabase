@@ -30,13 +30,13 @@
    :annotations         {:readOnlyHint true :idempotentHint true}
    :_meta               {:ui {:visibility ["app"]}}
    :args                [:map {:closed true}]}
-  [_arguments {:keys [session-id token-scopes]}]
+  [_arguments {:keys [session-id token-scopes request-context]}]
   (if (and session-id api/*current-user-id*)
-    ;; Always minted with the caller's scopes, which is what subjects the credential to the native-SQL gate
-    ;; on /api/dataset. (v1's claimless, gate-exempt 2-arity retired with v1 in this slice.)
+    ;; Minted with the caller's scopes, which the iframe routes charge, and bound to the caller's access token.
     (assoc (common/success-content (message/msg ["MCP UI credential refreshed."]))
            :_meta {common/mcp-apps-meta-key
-                   {:credential (mcp.session/issue-ui-credential session-id api/*current-user-id* token-scopes)
+                   {:credential (mcp.session/issue-ui-credential session-id api/*current-user-id* token-scopes
+                                                                 (:oauth-token-id request-context))
                     :sessionId  session-id}})
     (common/error-content (message/msg ["Refreshing an MCP UI credential requires an authenticated MCP session."])
                           common/error-code-invalid-request)))

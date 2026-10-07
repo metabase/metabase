@@ -11,7 +11,10 @@
    [metabase.oauth-server.test-util :as oauth-server.tu]
    [metabase.test :as mt]
    [oidc-provider.store :as oidc.store]
+   [oidc-provider.util :as oidc.util]
    [toucan2.core :as t2]))
+
+(set! *warn-on-reflection* true)
 
 (comment metabase.agent-api.api/keep-me)
 
@@ -350,3 +353,38 @@
           (testing "host case is still folded and the default port still elided"
             (is (= narrowed (oauth-server/narrow-scope-to-resource
                              ["HTTP://LocalHost:3000/api/metabase-mcp"] wide)))))))))
+
+(deftest resolver-and-liveness-check-agree-test
+  (testing "`live-mcp-access-token?` refuses an MCP token for every reason `resolve-access-token` does, and accepts one
+            it resolves"
+    (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+      (mt/with-temp [:model/User {user-id :id} {}]
+        (mt/with-model-cleanup [:model/OAuthAccessToken :model/OAuthClient]
+          (let [client! (fn []
+                          (:client_id (t2/insert-returning-instance!
+                                       :model/OAuthClient {:client_id         (str (random-uuid))
+                                                           :redirect_uris     ["https://example.com/callback"]
+                                                           :grant_types       ["authorization_code"]
+                                                           :response_types    ["code"]
+                                                           :scopes            ["openid"]
+                                                           :registration_type "static"})))
+                mint!   (fn [client-id & {:as opts}]
+                          (let [token (apply oauth-server.tu/insert-access-token! user-id client-id ["agent:query:run"]
+                                             (mapcat identity (merge {:resource (oauth-server.tu/mcp-resource)} opts)))]
+                            [token (t2/select-one-pk :model/OAuthAccessToken :token (oidc.util/hash-token token))]))
+                agree   (fn [[token token-id]]
+                          [(some? (oauth-server/resolve-access-token token))
+                           (oauth-server/live-mcp-access-token? token-id user-id)])]
+            (testing "control: a live MCP token passes both"
+              (is (= [true true] (agree (mint! (client!))))))
+            (testing "an expired token fails both"
+              (is (= [false false] (agree (mint! (client!) :expiry (inst-ms (java.util.Date/from (.minusSeconds (java.time.Instant/now) 1))))))))
+            (testing "a token whose client was deleted fails both"
+              (let [client-id (client!)
+                    minted    (mint! client-id)]
+                (t2/delete! :model/OAuthClient :client_id client-id)
+                (is (= [false false] (agree minted)))))
+            (testing "a token whose user was deactivated fails both"
+              (let [minted (mint! (client!))]
+                (t2/query-one {:update :core_user :set {:is_active false} :where [:= :id user-id]})
+                (is (= [false false] (agree minted)))))))))))
