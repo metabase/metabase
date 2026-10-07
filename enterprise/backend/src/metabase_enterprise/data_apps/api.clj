@@ -350,7 +350,7 @@
   "Return missing table access for groups already assigned to this app."
   [{:keys [slug]} :- [:map {:closed true} [:slug ms/NonBlankString]]]
   (api/check-superuser)
-  (data-app.group-access/permission-warnings (api/check-404 (data-apps.db/non-blob-data-app-by-slug slug))))
+  (data-app.group-access/permission-warnings (api/check-404 (data-apps.db/data-app-by-slug slug))))
 
 (def ^:private AssignedGroup
   [:map
