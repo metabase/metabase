@@ -21,6 +21,11 @@
 ;;; registers toucan2's row-level delete tool, so composition tests keep `::bird`'s preconditions obvious.
 (methodical/defmethod t2.model/table-name ::bird [_] table-name)
 (methodical/defmethod t2.model/table-name ::moody-bird [_] table-name)
+;; A `table-name` method registers the keyword as a toucan2 model for the life of the JVM, so this derivation
+;; has to be just as permanent: metabase.models-test/toucan2-models-should-derive-test scans every registered
+;; model and asserts this for each, whenever it runs later in the same test process.
+(derive ::bird :metabase/model)
+(derive ::moody-bird :metabase/model)
 
 (def ^:private captured
   "Events delivered by [[dml-capture/captured!]] for the scratch models, in order."
@@ -42,6 +47,7 @@
 ;;; narrow snapshot doesn't fetch (the shape of :model/Revision's :object deserializer), and its transforms
 ;;; rewrite :name on the way in and out, so a decorated read is distinguishable from a raw one.
 (methodical/defmethod t2.model/table-name ::decorated-bird [_] table-name)
+(derive ::decorated-bird :metabase/model)
 
 (t2/deftransforms ::decorated-bird
   {:name {:in  (fn [s] (u/upper-case-en ^String s))
