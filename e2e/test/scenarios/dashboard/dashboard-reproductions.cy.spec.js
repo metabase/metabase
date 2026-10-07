@@ -643,6 +643,10 @@ describe("issue 31274", () => {
 
       H.assertTabSelected("Tab 1");
 
+      // Text 3 sits above Text 2 and comes after it in the DOM, so it could cover its actions
+      H.getDashboardCard(1).findByText("Text 2");
+      H.getDashboardCard(2).findByText("Text 3");
+
       H.getDashboardCard(1).realHover({
         scrollBehavior: false, // prevents flaky tests
       });

@@ -502,8 +502,7 @@ describe("issue 18454", () => {
     cy.findByTestId("dashcard-container").within(() => {
       cy.icon("info").trigger("mouseenter", { force: true });
     });
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText(CARD_DESCRIPTION);
+    H.tooltip().should("contain", CARD_DESCRIPTION);
   });
 });
 
@@ -1449,6 +1448,9 @@ describe("issue 63416", () => {
     H.saveDashcardVisualizerModal();
 
     H.saveDashboard();
+    cy.get("@saveDashboard-saveDashboardCards")
+      .its("response.body.dashcards.0.visualization_settings.visualization")
+      .should("exist");
 
     H.toggleFilterWidgetValues(["Doohickey"]);
 
