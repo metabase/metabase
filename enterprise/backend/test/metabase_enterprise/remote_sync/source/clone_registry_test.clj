@@ -368,6 +368,45 @@
          (clone-registry/release! registry lease)
          (is (not (Files/exists (.toPath dir) (make-array LinkOption 0))) "the release removes the link"))))))
 
+(defn- check-no-delete-through-a-symlink-base!
+  "Makes a clone of [[url]] with a new registry. Then moves the base directory away, and puts at its path a symbolic link
+  to a directory that has a file at the path of the clone. Calls `(f registry lease generation)`, and checks that the
+  file is still there."
+  [f]
+  (when (posix?)
+    (let [tmp      (System/getProperty "java.io.tmpdir")
+          base     (io/file tmp (str "clone-registry-test-" (random-uuid)))
+          moved    (io/file (str base ".moved"))
+          victim   (io/file tmp (str "clone-registry-test-victim-" (random-uuid)))
+          registry (clone-registry/make-registry base)]
+      (try
+        (let [lease                               (clone-registry/new-lease url)
+              {:keys [^File dir] :as generation} (clone-registry/acquire! registry lease (fake-clone (atom []) (atom [])))
+              keep                                (io/file victim (.getName (.getParentFile dir)) (.getName dir) "keep")]
+          (io/make-parents keep)
+          (spit keep "x")
+          (is (.renameTo base moved))
+          (symlink! base victim)
+          (f registry lease generation)
+          (is (.isFile keep) "the file in the target of the symbolic link is not deleted"))
+        (finally
+          (clone-registry/shutdown! registry)
+          (Files/deleteIfExists (.toPath base))
+          (FileUtils/deleteQuietly moved)
+          (FileUtils/deleteQuietly victim))))))
+
+(deftest no-delete-through-a-symlink-base-test
+  (testing "when the base directory is replaced by a symbolic link, no delete of a process root or a clone follows the link"
+    (testing "a shutdown"
+      (check-no-delete-through-a-symlink-base!
+       (fn [registry _lease _generation]
+         (clone-registry/shutdown! registry))))
+    (testing "the last release of a retired generation"
+      (check-no-delete-through-a-symlink-base!
+       (fn [registry lease {:keys [id]}]
+         (clone-registry/retire! registry url id)
+         (clone-registry/release! registry lease))))))
+
 ;; A clone job writes into the directory that it got before it started. An acquire can check the root of the active
 ;; generation before the job publishes it, and take the generation after.
 (deftest acquire-does-not-get-a-clone-published-in-a-retired-root-test

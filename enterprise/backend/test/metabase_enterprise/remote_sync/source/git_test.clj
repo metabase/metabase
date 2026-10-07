@@ -21,7 +21,8 @@
            (org.eclipse.jgit.api Git TransportCommand)
            (org.eclipse.jgit.dircache DirCacheEditor DirCacheEditor$PathEdit DirCacheEntry)
            (org.eclipse.jgit.lib AnyObjectId FileMode PersonIdent)
-           (org.eclipse.jgit.transport UsernamePasswordCredentialsProvider)))
+           (org.eclipse.jgit.transport UsernamePasswordCredentialsProvider)
+           (org.eclipse.jgit.util FS FS_Win32_Cygwin ProcessResult$Status)))
 
 (set! *warn-on-reflection* true)
 
@@ -1212,4 +1213,61 @@
               (git/push-branch! (assoc source :branch "hook-check"))
               (is (some? (git/commit-sha remote "hook-check")) "precondition: the push reached the remote")
               (is (not (.exists marker)) "the pre-push hook does not run"))
+            (finally (forget-clones! url))))))))
+
+(deftest cygwin-file-system-runs-no-hook-test
+  (testing "the clone file system of remote sync finds and runs no git hook, also on Windows with Cygwin"
+    ;; Simulated: the test makes the JGit file system of Windows with Cygwin directly on this host. JGit does not detect
+    ;; it, and no Windows shell runs.
+    (mt/with-temp-dir [dir nil]
+      (with-open [g (.call (-> (Git/init) (.setBare true) (.setDirectory (io/file dir))))]
+        (let [repo (.getRepository g)
+              hook (io/file dir "hooks" "pre-push")]
+          (io/make-parents hook)
+          (spit hook "#!/bin/sh\nexit 0\n")
+          (.setExecutable hook true)
+          (is (some? (.findHook (FS_Win32_Cygwin.) repo "pre-push")) "precondition: the Cygwin file system finds the hook")
+          (doseq [^FS fs [(FS_Win32_Cygwin.) FS/DETECTED]]
+            (testing (.getSimpleName (class fs))
+              (let [^FS no-hooks (#'git/no-hooks-fs-of fs)]
+                (is (instance? (class fs) no-hooks) "the clone file system keeps the class of the file system")
+                (is (nil? (.findHook no-hooks repo "pre-push")) "the clone file system finds no hook")
+                (is (= ProcessResult$Status/NOT_PRESENT
+                       (.getStatus (.runHookIfPresent no-hooks repo "pre-push" (into-array String []))))
+                    "the clone file system runs no hook")))))))))
+
+(defn- set-origin-config!
+  "Sets the key `k` of the origin remote to `v` in the config file of the clone of `source`."
+  [{:keys [^Git git]} ^String k ^String v]
+  (doto (.getConfig (.getRepository git))
+    (.setString "remote" "origin" k v)
+    (.save)))
+
+(deftest remote-commands-run-no-pack-program-of-the-clone-config-test
+  (testing "remote sync runs only the default pack programs: a fetch or a push runs no program from the config file of the clone"
+    (mt/with-temp-dir [remote-dir nil]
+      (mt/with-temp-dir [marker-dir nil]
+        (let [remote (init-remote! remote-dir :files {"master.txt" "File in master"})
+              url    (remote-url remote)]
+          (try
+            (let [{:keys [^Git git] :as source} (git/git-source url "master" nil ingest/legal-top-level-paths)
+                  repo                          (.getRepository git)]
+              (testing "a fetch with remote.origin.uploadpack in the clone config"
+                (let [marker (io/file marker-dir "upload-pack-ran")]
+                  (set-origin-config! source "uploadpack" (str "touch '" (.getPath marker) "'; git upload-pack"))
+                  (git-working-add! remote "after.txt" "Added after the clone")
+                  (git-working-commit! remote "Add after.txt")
+                  (git/fetch! source)
+                  (is (= (git/commit-sha remote "master") (git/commit-sha source "master"))
+                      "precondition: the fetch got the new commit")
+                  (is (not (.exists marker)) "the fetch runs no upload-pack program of the clone config")))
+              (testing "a push with remote.origin.receivepack in the clone config"
+                (let [marker (io/file marker-dir "receive-pack-ran")]
+                  (set-origin-config! source "receivepack" (str "touch '" (.getPath marker) "'; git receive-pack"))
+                  (doto (.updateRef repo "refs/heads/pack-check")
+                    (.setNewObjectId (.resolve repo "refs/heads/master"))
+                    (.update))
+                  (git/push-branch! (assoc source :branch "pack-check"))
+                  (is (some? (git/commit-sha remote "pack-check")) "precondition: the push reached the remote")
+                  (is (not (.exists marker)) "the push runs no receive-pack program of the clone config"))))
             (finally (forget-clones! url))))))))
