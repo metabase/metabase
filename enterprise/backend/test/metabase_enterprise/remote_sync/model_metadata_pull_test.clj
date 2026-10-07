@@ -1,7 +1,8 @@
 (ns metabase-enterprise.remote-sync.model-metadata-pull-test
   "A remote-sync pull keeps the columns of a card. An export writes only the overrides of an MBQL model's columns; the
   pull keeps the column types that the model's query gives. An export writes the full columns of a native card; the
-  pull keeps them, also when it changes the SQL."
+  pull keeps them, also when it changes the SQL. A pull that changes the SQL of a native card whose file has no
+  columns stores no columns."
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
@@ -167,6 +168,76 @@
                 source (export!)]
             (is (= [["ID" :type/BigInteger "ID" nil] ["NAME" :type/Text "Venue name" nil]] before)
                 "Precondition: the native question stores the given columns")
+            (is (= 1 (count (replace-in-files! source "SELECT ID, NAME FROM VENUES" "SELECT ID, NAME FROM VENUES WHERE ID > 0")))
+                "Precondition: one exported file has the SQL of the question")
+            (forced-pull! source)
+            (is (= "SELECT ID, NAME FROM VENUES WHERE ID > 0"
+                   (lib/raw-native-query (t2/select-one-fn :dataset_query :model/Card :id card-id))))
+            (is (= before (columns card-id)))))))))
+
+(defn- export-without-columns!
+  "Export the native Card `card-id` while it has no columns, so that its file has no result_metadata. Then store
+  `native-venues-columns` again, and return the source."
+  [card-id]
+  (t2/update! :model/Card card-id {:result_metadata nil})
+  (is (= [] (columns card-id)) "Precondition: the card has no columns at the export")
+  (let [source (export!)]
+    (t2/update! :model/Card card-id {:result_metadata native-venues-columns})
+    (is (= 2 (count (columns card-id))) "Precondition: the card has columns at the pull")
+    source))
+
+(deftest forced-pull-of-native-question-query-change-without-file-columns-stores-no-columns-test
+  (testing "a forced pull that changes the SQL of a native question whose file has no columns stores no columns"
+    (mt/with-premium-features #{:remote-sync}
+      (mt/with-temporary-setting-values [remote-sync-type :read-write]
+        (mt/with-temp [:model/Collection {coll-id :id} {:name "Questions" :is_remote_synced true :location "/"}
+                       :model/Card       {card-id :id} {:name            "Native venues question"
+                                                        :type            :question
+                                                        :collection_id   coll-id
+                                                        :dataset_query   (lib/native-query (mt/metadata-provider)
+                                                                                           "SELECT ID, NAME FROM VENUES")
+                                                        :result_metadata native-venues-columns}]
+          (let [source (export-without-columns! card-id)]
+            (is (= 1 (count (replace-in-files! source "SELECT ID, NAME FROM VENUES" "SELECT ID, PRICE FROM VENUES")))
+                "Precondition: one exported file has the SQL of the question")
+            (forced-pull! source)
+            (is (= "SELECT ID, PRICE FROM VENUES"
+                   (lib/raw-native-query (t2/select-one-fn :dataset_query :model/Card :id card-id))))
+            (is (= [] (columns card-id)))))))))
+
+(deftest forced-pull-of-native-question-without-file-columns-keeps-columns-test
+  (testing "a forced pull that does not change the SQL of a native question whose file has no columns keeps its columns"
+    (mt/with-premium-features #{:remote-sync}
+      (mt/with-temporary-setting-values [remote-sync-type :read-write]
+        (mt/with-temp [:model/Collection {coll-id :id} {:name "Questions" :is_remote_synced true :location "/"}
+                       :model/Card       {card-id :id} {:name            "Native venues question"
+                                                        :type            :question
+                                                        :collection_id   coll-id
+                                                        :dataset_query   (lib/native-query (mt/metadata-provider)
+                                                                                           "SELECT ID, NAME FROM VENUES")
+                                                        :result_metadata native-venues-columns}]
+          (let [before (columns card-id)]
+            (forced-pull! (export-without-columns! card-id))
+            (is (= before (columns card-id)))))))))
+
+(deftest forced-pull-of-native-then-mbql-question-query-change-keeps-columns-test
+  (testing "a forced pull that changes only the SQL of a question with a native stage and an MBQL stage keeps its columns"
+    (mt/with-premium-features #{:remote-sync}
+      (mt/with-temporary-setting-values [remote-sync-type :read-write]
+        (mt/with-temp [:model/Collection {coll-id :id} {:name "Questions" :is_remote_synced true :location "/"}
+                       :model/Card       {card-id :id} {:name            "Native then MBQL question"
+                                                        :type            :question
+                                                        :collection_id   coll-id
+                                                        :dataset_query   (lib/append-stage
+                                                                          (lib/native-query (mt/metadata-provider)
+                                                                                            "SELECT ID, NAME FROM VENUES"))
+                                                        :result_metadata native-venues-columns}]
+          (let [before (columns card-id)
+                source (export!)]
+            (is (= [["ID" :type/BigInteger "ID" nil] ["NAME" :type/Text "Venue name" nil]] before)
+                "Precondition: the question stores the given columns")
+            (is (= 2 (count (:stages (t2/select-one-fn :dataset_query :model/Card :id card-id))))
+                "Precondition: the stored query has two stages")
             (is (= 1 (count (replace-in-files! source "SELECT ID, NAME FROM VENUES" "SELECT ID, NAME FROM VENUES WHERE ID > 0")))
                 "Precondition: one exported file has the SQL of the question")
             (forced-pull! source)
