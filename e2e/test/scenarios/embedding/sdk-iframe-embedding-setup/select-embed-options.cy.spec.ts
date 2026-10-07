@@ -426,6 +426,9 @@ describe(suiteTitle, () => {
       .should("not.be.checked");
 
     H.getSimpleEmbedIframeContent()
+      .findByText(QUESTION_NAME)
+      .should("be.visible");
+    H.getSimpleEmbedIframeContent()
       .findByTestId("question-download-widget-button")
       .should("not.exist");
 
@@ -770,6 +773,7 @@ describe(suiteTitle, () => {
       .should("not.be.checked");
 
     H.getSimpleEmbedIframeContent().within(() => {
+      cy.findByText("Second collection").should("be.visible");
       cy.findByText("New dashboard").should("not.exist");
     });
 

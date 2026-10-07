@@ -85,9 +85,7 @@ describe("scenarios > embedding > sdk iframe embed setup > enable embed js (EE)"
           "Agree to the usage conditions to continue.",
         );
 
-        embedModalEnableEmbeddingCard().within(() => {
-          cy.findByText(cardText).should("not.exist");
-        });
+        embedModalEnableEmbeddingCard().should("not.contain.text", cardText);
 
         cy.log("shows tooltip with fair usage info");
         getEmbedSidebar().findByLabelText("info icon").trigger("mouseover");
@@ -151,6 +149,7 @@ describe("scenarios > embedding > sdk iframe embed setup > enable embed js (EE)"
 
         openNewEmbed();
 
+        cy.findByLabelText(authMethodLabel).should("be.checked");
         getEmbedSidebar().contains(cardText).should("not.exist");
       });
     });
@@ -163,6 +162,7 @@ describe("scenarios > embedding > sdk iframe embed setup > enable embed js (EE)"
 
     openSharingMenu("Embed");
 
+    cy.findByRole("button", { name: "Agree and enable" }).should("be.visible");
     cy.findByTestId("embed-modal-content-status-bar").should("not.exist");
 
     cy.findByRole("button", { name: "Agree and enable" }).click();
@@ -313,6 +313,7 @@ describe("scenarios > embedding > sdk iframe embed setup > enable embed js (oss 
 
         openNewGuestEmbed();
 
+        cy.findByLabelText("Guest").should("be.checked");
         getEmbedSidebar()
           .contains(
             "To continue, enable guest embeds and agree to the usage conditions.",

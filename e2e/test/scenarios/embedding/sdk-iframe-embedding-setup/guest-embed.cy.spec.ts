@@ -425,6 +425,7 @@ describe("scenarios > embedding > sdk iframe embed setup > guest-embed", () => {
 
         // Get code step
         getEmbedSidebar().within(() => {
+          codeBlock().should("exist");
           cy.findByTestId("publish-guest-embed-link").should("not.exist");
         });
 
