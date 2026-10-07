@@ -497,7 +497,7 @@ describe("scenarios > embedding > sdk iframe embed setup > guest-embed", () => {
         });
       });
 
-      it("Properly re-initializes embedding parameters and Guest Embed navbar, and adjusts EmbedJS options when switching between guest/sso modes for a Dashboard", () => {
+      it("Properly re-initializes embedding parameters and Guest Embed navbar", () => {
         cy.get("@question1Id").then((questionId) => {
           cy.request("PUT", `/api/card/${questionId}`, {
             enable_embedding: true,
@@ -561,7 +561,9 @@ describe("scenarios > embedding > sdk iframe embed setup > guest-embed", () => {
 
           H.assertEmbeddingParameter("Text", "Disabled");
         });
+      });
 
+      it("Properly adjusts EmbedJS options when switching between guest/sso modes for a Dashboard", () => {
         cy.get("@dashboardId").then((dashboardId) => {
           cy.request("PUT", `/api/dashboard/${dashboardId}`, {
             enable_embedding: true,
