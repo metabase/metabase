@@ -367,7 +367,20 @@ const it = makeTest("run");
 it.skip = makeTest("skip"); it.only = makeTest("run"); it.todo = (name) => makeTest("todo")(name); it.failing = makeTest("skip");
 const describe = makeDescribe("run");
 describe.skip = makeDescribe("skip"); describe.only = makeDescribe("run");
-const hook = (kind) => (fn) => { current()[kind].push(fn); };
+// A package can register hooks when it is first imported. React Testing
+// Library does, to tell React that this is a test environment. jest loads
+// packages again for every file, so those hooks apply to every file. Here a
+// package loads once, so its hooks are kept apart from the setup files' hooks,
+// which are registered again each time the setup files run.
+const packageHooks = { beforeAll: [], afterAll: [], beforeEach: [], afterEach: [] };
+const registeredFromPackage = () => {
+  const frames = (new Error().stack ?? "").split("\n").slice(3, 6);
+  return frames.length > 0 && frames[0].includes("/node_modules/");
+};
+const hook = (kind) => (fn) => {
+  if (!process.env.NT_NO_PACKAGE_HOOKS && registeredFromPackage()) packageHooks[kind].push(fn);
+  else current()[kind].push(fn);
+};
 Object.assign(globalThis, {
   describe, it, test: it, xit: it.skip, xtest: it.skip, xdescribe: describe.skip, fit: it.only, fdescribe: describe.only,
   beforeAll: hook("beforeAll"), afterAll: hook("afterAll"), beforeEach: hook("beforeEach"), afterEach: hook("afterEach"),
@@ -922,7 +935,12 @@ globalThis.__nodeTestSpike.runFile = async (t, file) => {
     try { require(file); } finally { suiteStack.pop(); }
   }
   try {
-    await runSuite(fileSuite, t, { beforeEach: rootSuite.beforeEach, afterEach: rootSuite.afterEach });
+    for (const fn of [...packageHooks.beforeAll, ...rootSuite.beforeAll]) await fn();
+    try {
+      await runSuite(fileSuite, t, { beforeEach: [...packageHooks.beforeEach, ...rootSuite.beforeEach], afterEach: [...packageHooks.afterEach, ...rootSuite.afterEach] });
+    } finally {
+      for (const fn of [...rootSuite.afterAll, ...packageHooks.afterAll]) { try { await fn(); } catch {} }
+    }
   } finally {
     if (process.env.NT_DEBUG_RAN) process.stderr.write(`[ran] ${currentFile}: ${ownRan}${FLAT ? ` pass=${flatPass} fail=${flatFail} skip=${flatSkip}` : ""}\n`);
     if (process.env.NT_DEBUG_PERFILE) {
