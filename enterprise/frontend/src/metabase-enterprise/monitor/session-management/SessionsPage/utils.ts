@@ -128,7 +128,7 @@ export const buildListParams = (
     limit: pageSize,
     offset: state.page * pageSize,
     // the endpoint rejects a blank query, so send it only when there is something to search for
-    query: state.query || undefined,
+    query: state.query.trim() || undefined,
     status: TAB_STATUS[state.tab],
     // an empty list would be sent as no filter at all, which is what we want; a populated one filters on any of them
     provider: state.provider.length === 0 ? undefined : state.provider,

@@ -142,6 +142,19 @@ describe("SessionsPage/utils", () => {
       expect(params.query).toBeUndefined();
       expect(params.provider).toBeUndefined();
     });
+
+    it("trims the search, leaving out one that is only whitespace", () => {
+      const build = (query: string) =>
+        buildListParams(
+          { ...DEFAULT_STATE, query },
+          PAGE_SIZE,
+          undefined,
+          undefined,
+        ).query;
+
+      expect(build("  ann  ")).toBe("ann");
+      expect(build("   ")).toBeUndefined();
+    });
   });
 
   describe("getTabChange", () => {
