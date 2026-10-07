@@ -4,12 +4,18 @@ import { join } from "node:path";
 import ts from "typescript";
 import { describe, expect, it } from "vitest";
 
+import columnPresets from "./testing/column-presets.json";
+
 const SANDBOX_DIR = join(
   __dirname,
   "../../../../../frontend/src/metabase/utils/scripts-sandbox",
 );
 const RESTRICTIONS = readFileSync(
   join(__dirname, "skill/references/sandbox-restrictions.md"),
+  "utf-8",
+);
+const TESTING_DOC = readFileSync(
+  join(__dirname, "skill/references/testing.md"),
   "utf-8",
 );
 
@@ -133,5 +139,13 @@ describe("sandbox-restrictions.md", () => {
 
     expect(allowed.length).toBeGreaterThan(0);
     expect(allowed.filter((tag) => blocked.has(tag))).toEqual([]);
+  });
+});
+
+describe("testing.md", () => {
+  it("lists every mockColumn kind", () => {
+    const prose = TESTING_DOC.replace(/```[\s\S]*?```/g, "");
+
+    expect(missingFrom(prose, Object.keys(columnPresets))).toEqual([]);
   });
 });
