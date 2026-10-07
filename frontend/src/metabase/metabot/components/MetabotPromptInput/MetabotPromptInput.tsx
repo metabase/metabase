@@ -203,17 +203,19 @@ export const MetabotPromptInput = forwardRef<
         return null;
       }
 
-      return Object.assign(editor, {
+      return {
         focus: () => editor.commands.focus("end"),
-        clear: () => editor.commands.clearContent(),
         getValue: () => serializeTiptapToMetabotMessage(editor.getJSON()),
+        // Lazy getters so editor.view is read only when a caller reads the
+        // size, after React 19 has mounted the view. Reading it during this
+        // handle setup throws, because the view mounts afterwards.
         get scrollHeight() {
           return editor.view.dom.scrollHeight;
         },
         get scrollTop() {
           return editor.view.dom.scrollTop;
         },
-      });
+      };
     }, [editor]);
 
     // Sync external value changes to editor
