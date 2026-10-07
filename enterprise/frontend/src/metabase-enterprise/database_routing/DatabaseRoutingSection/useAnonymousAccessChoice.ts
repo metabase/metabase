@@ -9,13 +9,7 @@ import { useSelector } from "metabase/redux";
 import { useUpdateRouterDatabaseMutation } from "metabase-enterprise/api";
 import type { Database } from "metabase-types/api";
 
-/**
- * Which form the anonymous-access question takes while it is open.
- *
- * "choose" puts the grant to an admin who has not decided it yet, before a router is stored.
- * "revoke" confirms withdrawing a grant that is serving anonymous visitors right now.
- */
-export type AnonymousAccessQuestion = "choose" | "revoke";
+import type { AnonymousAccessQuestion } from "../AnonymousAccessChoiceModal";
 
 /**
  * The routing enable and its anonymous-access grant, which are one decision.
@@ -35,10 +29,17 @@ export const useAnonymousAccessChoice = (
   const [updateRouterDatabase, { error }] = useUpdateRouterDatabaseMutation();
 
   // usage info is admin-only, and the fact is only there to inform the admin making the decision
-  const { data: usageInfo } = useGetDatabaseUsageInfoQuery(
-    skip || !isAdmin ? skipToken : database.id,
-  );
+  const { data: usageInfo, isLoading: isReachabilityPending } =
+    useGetDatabaseUsageInfoQuery(skip || !isAdmin ? skipToken : database.id);
   const anonymouslyReachable = !!usageInfo?.anonymously_reachable;
+  /**
+   * Whether the fact has settled, either way.
+   *
+   * Absence of the fact is not the fact: a revoke decided before it lands would send without
+   * asking, which is the very thing the question exists to prevent. A request that failed counts
+   * as settled, because no honest question can be put without the fact.
+   */
+  const isReachabilityKnown = !isReachabilityPending;
 
   const userAttribute = database.router_user_attribute ?? undefined;
   const isRoutingStored = hasDbRoutingEnabled(database);
@@ -127,7 +128,8 @@ export const useAnonymousAccessChoice = (
     if ("error" in result) {
       return;
     }
-    // What the server just accepted outranks the prop until the refetch lands.
+    // Outranks the prop until the refetch lands, for a router not yet stored as far as the
+    // panel can see. Once one is stored the grant lives on the server and this is not read.
     setPendingAnonymousAccess(granted);
     sendToast({
       message: granted
@@ -207,16 +209,23 @@ export const useAnonymousAccessChoice = (
   return {
     /** The routing switch, which a pending enable checks before anything is stored. */
     enabled,
+    /** The stored attribute routing matches on, which is also the select's value. */
+    userAttribute,
     isRoutingStored,
     /** The last failed write, rendered inline by the panel. */
     error,
+    isReachabilityKnown,
     anonymousAccessGranted,
     canChangeAnonymousAccess,
     hasStoppedServingAnonymousVisitors,
     /** The question being asked, or null. */
     openQuestion,
-    /** Whether the routing toggle, rather than the chevron, opened this section. */
-    isPendingEnable: tempEnabled,
+    /**
+     * Whether cancelling the open question undoes an enable, rather than declining a
+     * confirmation. The chevron's disclosure is the admin's own, so only an enable's question
+     * takes the section's expansion down with it.
+     */
+    cancelUndoesEnable: openQuestion === "choose" && tempEnabled,
     toggleRouting,
     chooseUserAttribute,
     changeAnonymousAccess,

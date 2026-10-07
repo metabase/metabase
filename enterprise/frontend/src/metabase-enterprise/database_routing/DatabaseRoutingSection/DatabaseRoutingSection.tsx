@@ -51,7 +51,6 @@ export const DatabaseRoutingSection = ({
   const { data: engines = {} } = useListEnginesQuery();
 
   const isAdmin = useSelector(getUserIsAdmin);
-  const userAttribute = database.router_user_attribute ?? undefined;
   const dbSupportsRouting = database.features?.includes("database-routing");
   const engineKey = isEngineKey(database.engine) ? database.engine : undefined;
   const engine = engineKey ? engines[engineKey] : undefined;
@@ -64,13 +63,15 @@ export const DatabaseRoutingSection = ({
 
   const {
     enabled,
+    userAttribute,
     isRoutingStored,
     error,
     anonymousAccessGranted,
     canChangeAnonymousAccess,
+    isReachabilityKnown,
     hasStoppedServingAnonymousVisitors,
     openQuestion,
-    isPendingEnable,
+    cancelUndoesEnable,
     toggleRouting,
     chooseUserAttribute,
     changeAnonymousAccess,
@@ -116,9 +117,7 @@ export const DatabaseRoutingSection = ({
   };
 
   const handleQuestionCancel = () => {
-    // A confirmation declined changes nothing, and the chevron's disclosure is the admin's own,
-    // so only a section the routing toggle opened collapses.
-    if (openQuestion === "choose" && isPendingEnable) {
+    if (cancelUndoesEnable) {
       setIsExpanded(false);
     }
     cancelQuestion();
@@ -134,13 +133,11 @@ export const DatabaseRoutingSection = ({
       description={dbRoutingInfo}
       data-testid="database-routing-section"
     >
-      {openQuestion !== null && (
-        <AnonymousAccessChoiceModal
-          question={openQuestion}
-          onCancel={handleQuestionCancel}
-          onAnswer={answerQuestion}
-        />
-      )}
+      <AnonymousAccessChoiceModal
+        question={openQuestion}
+        onCancel={handleQuestionCancel}
+        onAnswer={answerQuestion}
+      />
       <Flex justify="space-between" align="center">
         <Stack>
           <Label htmlFor="database-routing-toggle">
@@ -262,7 +259,11 @@ export const DatabaseRoutingSection = ({
                     id="db-routing-anonymous-access"
                     checked={anonymousAccessGranted}
                     disabled={
-                      !isAdmin || !!disabledFeatMsg || !canChangeAnonymousAccess
+                      !isAdmin ||
+                      !!disabledFeatMsg ||
+                      !canChangeAnonymousAccess ||
+                      // the grant cannot be decided before the panel knows what it is serving
+                      !isReachabilityKnown
                     }
                     onChange={(e) =>
                       changeAnonymousAccess(e.currentTarget.checked)

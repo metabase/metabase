@@ -971,6 +971,28 @@ describe("DatabaseRoutingSection confirmation before revoking anonymous access",
     expect(await findRequests("PUT")).toHaveLength(1);
   });
 
+  it("should not let the grant be revoked before the reachability fact has arrived", async () => {
+    const { releaseUsageInfo } = setup({
+      database: grantedDatabase(),
+      anonymouslyReachable: true,
+      holdUsageInfo: true,
+    });
+
+    // nothing is yet known about what the grant is serving, so it cannot be decided
+    const grant = await screen.findByLabelText("Allow anonymous access");
+    expect(grant).toBeDisabled();
+    // a click that lands in this window must not reach the server behind the question's back
+    await userEvent.click(grant);
+    expect(queryConfirmation()).not.toBeInTheDocument();
+
+    releaseUsageInfo();
+    await waitFor(() => expect(grant).toBeEnabled());
+
+    await userEvent.click(grant);
+    expect(await findConfirmation()).toBeInTheDocument();
+    expect(await findRequests("PUT")).toHaveLength(0);
+  });
+
   it("should not ask again about an answer the admin is still free to revise", async () => {
     setup({
       database: routingCapableDatabase({ router_user_attribute: null }),
