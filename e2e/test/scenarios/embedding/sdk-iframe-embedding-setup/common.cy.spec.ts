@@ -193,7 +193,7 @@ describe("scenarios > embedding > sdk iframe embed setup > common", () => {
             cy.findByText("Orders").should("be.visible");
           });
 
-          cy.findByLabelText("Chart").should("be.checked");
+          cy.findByText("Set default values").should("be.visible");
 
           cy.findByLabelText("Metabase account (SSO)").click();
 
@@ -203,7 +203,7 @@ describe("scenarios > embedding > sdk iframe embed setup > common", () => {
             cy.findByText("Orders").should("be.visible");
           });
 
-          cy.findByLabelText("Chart").should("be.checked");
+          cy.findByText("Set default values").should("be.visible");
 
           cy.findByLabelText("Guest").click();
 
@@ -213,7 +213,7 @@ describe("scenarios > embedding > sdk iframe embed setup > common", () => {
             cy.findByText("Orders").should("be.visible");
           });
 
-          cy.findByLabelText("Chart").should("be.checked");
+          cy.findByText("Set default values").should("be.visible");
         });
 
         openFromAdminGuestEmbeds();
