@@ -6,7 +6,7 @@ import { PLUGIN_SCHEMA_VIEWER } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
 import { canManageDatabases } from "metabase/selectors/admin";
 import * as Urls from "metabase/urls";
-import type { DatabaseId, IconName } from "metabase-types/api";
+import type { DatabaseId, IconName, SchemaName } from "metabase-types/api";
 
 type DatabaseQuickLink = {
   key: string;
@@ -18,6 +18,7 @@ type DatabaseQuickLink = {
 
 export function useDatabaseQuickLinks(
   databaseId: DatabaseId,
+  schemaName?: SchemaName,
 ): DatabaseQuickLink[] {
   const hasDatabaseManagementAccess = useSelector(canManageDatabases);
   const hasDataModelAccess = useSelector(canAccessDataModel);
@@ -36,15 +37,15 @@ export function useDatabaseQuickLinks(
       label: t`Edit metadata`,
       icon: "label",
       to: hasDataStudioAccess
-        ? Urls.dataStudioData({ databaseId })
-        : Urls.dataModel({ databaseId }),
+        ? Urls.dataStudioData({ databaseId, schemaName })
+        : Urls.dataModel({ databaseId, schemaName }),
       isVisible: hasDataModelAccess,
     },
     {
       key: "schema-viewer",
       label: t`View schema`,
       icon: "network",
-      to: Urls.dataStudioSchemaViewer({ databaseId }),
+      to: Urls.dataStudioSchemaViewer({ databaseId, schema: schemaName }),
       isVisible: hasDataStudioAccess && PLUGIN_SCHEMA_VIEWER.isEnabled,
     },
   ];

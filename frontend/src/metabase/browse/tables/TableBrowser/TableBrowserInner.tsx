@@ -64,7 +64,7 @@ export const TableBrowserInner = ({
             ...(showSchemaInHeader ? [{ title: schemaName }] : []),
           ]}
         />
-        <DatabaseQuickLinksMenu databaseId={dbId} />
+        <DatabaseQuickLinksMenu databaseId={dbId} schemaName={schemaName} />
       </Flex>
       <BrowseGrid pt="xl">
         {tables.map((table) => (
