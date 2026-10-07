@@ -270,29 +270,6 @@ describe("scenarios - setup guide", () => {
         .scrollIntoView()
         .should("be.visible");
     });
-
-    it("locks the production embed step when JWT is not enabled", () => {
-      cy.visit("/admin/embedding/setup-guide");
-
-      cy.log("jwt should be disabled by default");
-      cy.request("GET", "/api/session/properties").then(({ body }) => {
-        expect(body["jwt-enabled"]).to.equal(false);
-      });
-
-      cy.findByTestId("admin-layout-content")
-        .findByText("Embed in production with SSO")
-        .scrollIntoView()
-        .should("be.visible")
-        .closest("button")
-        .icon("lock")
-        .should("be.visible");
-
-      cy.findByTestId("admin-layout-content")
-        .findByText("Embed in production with SSO")
-        .closest("button")
-        .findByText("Complete the other steps to unlock")
-        .should("be.visible");
-    });
   });
 
   describe("permissions setup", () => {
@@ -1729,9 +1706,32 @@ describe("scenarios - setup guide", () => {
       H.activateToken("pro-cloud");
     });
 
-    it("disables the Enable JWT button when IdP URI is empty", () => {
+    it("can configure JWT auth and complete SSO setup", () => {
+      cy.visit("/admin/embedding/setup-guide");
+
+      cy.log("jwt should be disabled by default");
+      cy.request("GET", "/api/session/properties").then(({ body }) => {
+        expect(body["jwt-enabled"]).to.equal(false);
+      });
+
+      cy.log("production embed step should be locked when JWT is not enabled");
+      cy.findByTestId("admin-layout-content")
+        .findByText("Embed in production with SSO")
+        .scrollIntoView()
+        .should("be.visible")
+        .closest("button")
+        .icon("lock")
+        .should("be.visible");
+
+      cy.findByTestId("admin-layout-content")
+        .findByText("Embed in production with SSO")
+        .closest("button")
+        .findByText("Complete the other steps to unlock")
+        .should("be.visible");
+
       cy.visit("/admin/embedding/setup-guide/sso");
 
+      cy.log("Enable JWT button should be disabled when IdP URI is empty");
       cy.findByLabelText(/JWT Identity Provider URI/i)
         .should("be.visible")
         .should("be.empty");
@@ -1742,10 +1742,6 @@ describe("scenarios - setup guide", () => {
         })
         .should("be.visible")
         .should("be.disabled");
-    });
-
-    it("can configure JWT auth and complete SSO setup", () => {
-      cy.visit("/admin/embedding/setup-guide/sso");
 
       cy.log("no steps should be completed initially");
       H.main().icon("check").should("not.exist");
