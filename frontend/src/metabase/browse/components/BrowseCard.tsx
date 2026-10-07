@@ -53,6 +53,7 @@ export const BrowseCard = ({
 }) => {
   return (
     <Card
+      data-testid="browse-card"
       withBorder
       shadow="none"
       h={sizeOptions[size].height}
