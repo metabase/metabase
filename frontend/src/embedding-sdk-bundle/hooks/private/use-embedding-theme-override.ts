@@ -17,7 +17,6 @@ import { getFont } from "metabase/styled-components/selectors";
 import {
   DEFAULT_METABASE_COMPONENT_THEME,
   type MantineThemeOverride,
-  useColorScheme,
 } from "metabase/ui";
 import { deriveFullMetabaseTheme } from "metabase/ui/colors";
 import { getColorShades } from "metabase/ui/utils/colors";
@@ -30,7 +29,6 @@ export function useEmbeddingThemeOverride(
 ): MantineThemeOverride | undefined {
   const font = useSelector(getFont);
   const appColors = useSetting("application-colors");
-  const { resolvedColorScheme } = useColorScheme();
 
   return useMemo(() => {
     if (!theme || isEmbeddingThemeV1(theme)) {
@@ -40,12 +38,7 @@ export function useEmbeddingThemeOverride(
       // This must be done before ThemeProvider calls getThemeOverrides.
       setGlobalEmbeddingColors(themeWithPreset?.colors, appColors ?? {});
 
-      return getEmbeddingThemeOverride(
-        theme || {},
-        font,
-        appColors ?? {},
-        resolvedColorScheme,
-      );
+      return getEmbeddingThemeOverride(theme || {}, font, appColors ?? {});
     }
 
     // We must include Modular Embedding specific overrides for portals (e.g. popover and modal) to target the correct portal id
@@ -57,15 +50,12 @@ export function useEmbeddingThemeOverride(
         whitelabelColors: appColors ?? {},
         embeddingThemeOverride: theme,
       });
-      const { axisColor, gridlineColor } = getEmbeddingCartesianColors(
-        {
-          background: derivedTheme.colors["background_page-primary"],
-          foreground: derivedTheme.colors["text-primary"],
-          border: theme.colors?.border,
-          axis: theme.colors?.["chart-axis"],
-        },
-        resolvedColorScheme,
-      );
+      const { axisColor, gridlineColor } = getEmbeddingCartesianColors({
+        background: derivedTheme.colors["background_page-primary"],
+        foreground: derivedTheme.colors["text-primary"],
+        border: theme.colors?.border,
+        axis: theme.colors?.["chart-axis"],
+      });
 
       // Convert derived colors to Mantine color tuples
       const colors = Object.fromEntries(
@@ -90,5 +80,5 @@ export function useEmbeddingThemeOverride(
 
     // No theme provided: just return the component overrides for portals
     return { components };
-  }, [appColors, theme, font, resolvedColorScheme]);
+  }, [appColors, theme, font]);
 }

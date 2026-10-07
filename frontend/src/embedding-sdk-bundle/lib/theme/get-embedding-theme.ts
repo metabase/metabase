@@ -26,7 +26,6 @@ import type {
   MetabaseColorKey,
 } from "metabase/ui/colors";
 import { mapChartColorsToAccents } from "metabase/ui/colors/accents";
-import type { ResolvedColorScheme } from "metabase/utils/color-scheme";
 import type { ColorSettings } from "metabase-types/api";
 
 import { colorTuple } from "./color-tuple";
@@ -47,17 +46,13 @@ export function getEmbeddingThemeOverride(
   userTheme: MetabaseTheme,
   font: string | undefined,
   whitelabeledColors?: ColorSettings | undefined,
-  colorScheme: ResolvedColorScheme = "light",
 ): MantineThemeOverride {
   const theme = applyThemePreset(userTheme) ?? userTheme;
-  const { axisColor, gridlineColor } = getEmbeddingCartesianColors(
-    {
-      background: theme.colors?.background,
-      foreground: theme.colors?.["text-primary"],
-      border: userTheme.colors?.border,
-    },
-    colorScheme,
-  );
+  const { axisColor, gridlineColor } = getEmbeddingCartesianColors({
+    background: theme.colors?.background,
+    foreground: theme.colors?.["text-primary"],
+    border: userTheme.colors?.border,
+  });
   const components: MetabaseComponentTheme = merge(
     merge(DEFAULT_EMBEDDED_COMPONENT_THEME, {
       cartesian: { splitLine: { lineStyle: { color: gridlineColor } } },
