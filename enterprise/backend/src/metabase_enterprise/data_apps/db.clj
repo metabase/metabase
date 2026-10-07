@@ -279,6 +279,6 @@
                        [:t.db_id :database_id]
                        [:d.name :database_name]]
               :from [(warehouse-schema-overlay/table-query {:alias :t})]
-              :join [[:metabase_database :d] [:= :d.id :t.db_id]]
+              :join [[(t2/table-name :model/Database) :d] [:= :d.id :t.db_id]]
               :where [:and [:in :t.id table-ids] [:= :t.active true]]
               :order-by [[:d.name :asc] [:t.schema :asc] [:t.display_name :asc]]}))
