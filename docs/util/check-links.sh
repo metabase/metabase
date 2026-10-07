@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 # Checks the docs links: every link in the markdown under docs/, every `url` in
-# docs/util/data/nav.yml, and every metabase.com/docs/latest link written out in the frontend sources
+# docs/util/data/nav.yml, and every metabase.com/docs/latest link written out in the source code
 # (the page has to exist under docs/, and so does any #anchor).
 #
 #   docs/util/check-links.sh                   # all three
 #   docs/util/check-links.sh docs              # only the markdown under docs/
 #   docs/util/check-links.sh nav               # only nav.yml
-#   docs/util/check-links.sh src               # only the frontend sources
+#   docs/util/check-links.sh src               # only the source code
 #   docs/util/check-links.sh --external [nav]  # also fetch external links (slow, needs network)
 #
 # Without --external, links to other sites are skipped, which is how CI runs it
@@ -94,17 +94,54 @@ check_nav() {
   [ "$count" -eq 0 ]
 }
 
-# Full metabase.com/docs URLs in the frontend (TSDoc, error messages) would be skipped by --offline, so
-# map each one back to its markdown file under docs/. Links built with useDocsUrl/getDocsUrl aren't
-# literal URLs, so bin/verify-doc-links checks those. Unit specs only repeat what the helpers return, and
-# engines-config.ts holds JDBC strings like sqlserver://host:1433;db=x that lychee can't parse.
+# Full metabase.com/docs URLs in the source code (TSDoc, error messages, emails, docstrings) would be
+# skipped by --offline, so map each one back to its markdown file under docs/. git grep pulls the URLs
+# out first because lychee can't parse every string in source code as a URL (postgres://user:pw@host:port).
+# Links built with useDocsUrl/getDocsUrl aren't literal URLs, so bin/verify-doc-links checks those. Unit
+# specs only repeat what those helpers return, and resources/openapi is generated from src docstrings.
 check_src() {
-  echo "Checking docs links in the frontend sources"
-  lychee --config ./.lychee/config.toml --offline --include-fragments=full --extensions ts,tsx,js,jsx \
-    --include '^https://www\.metabase\.com/docs/latest/' \
-    --exclude-path '\.unit\.spec\.' --exclude-path 'DatabaseConnectionUri/engines-config\.ts$' \
-    --remap "^https://www\.metabase\.com/docs/latest/([^#?]+?)(\.html)?(\?[^#]*)?(#.*)?\$ file://$PWD/docs/\$1.md\$4" \
-    -- frontend/src enterprise/frontend/src
+  echo "Checking docs links in the source code"
+  local tmpdir locations rendered report total failures count line url text location
+  tmpdir=$(mktemp -d)
+  trap 'rm -rf "$tmpdir"' RETURN
+  locations=$tmpdir/locations
+  # The .md extension matters: lychee only looks for markdown links in markdown files.
+  rendered=$tmpdir/src-links.md
+
+  # path:line:url, one per line. Urls built with ${...} can't be checked, and trailing punctuation is
+  # usually the end of a sentence in a docstring.
+  git grep -nIoE 'https://www\.metabase\.com/docs/latest/[^][:space:]"'"'"'`<>()\\]*' \
+    -- frontend/src enterprise/frontend/src src enterprise/backend/src resources \
+       ':!*.unit.spec.*' ':!resources/openapi' |
+    grep -v '\${' | sed -E 's/[.,;:]+$//' > "$locations" || true
+  sed -E 's/^[^:]+:[0-9]+:(.*)$/- [src](\1)/' "$locations" > "$rendered"
+
+  # Same as check_nav: trust the report, not the exit code.
+  report=$(lychee --config ./.lychee/config.toml --offline --include-fragments=full --no-progress \
+                  --format json --include '^https://www\.metabase\.com/docs/latest/' \
+                  --remap "^https://www\.metabase\.com/docs/latest/([^#?]+?)(\.html)?(\?[^#]*)?(#.*)?\$ file://$PWD/docs/\$1.md\$4" \
+                  "$rendered" || true)
+  total=$(jq -e -r '.total' <<<"$report") || {
+    echo "lychee produced no report (see errors above)" >&2
+    return 1
+  }
+
+  failures=$(jq -r '.error_map[][] | "\(.span.line)\t\(.url)\t\(.status.text)"' <<<"$report")
+
+  count=0
+  while IFS=$'\t' read -r line url text; do
+    [ -n "$line" ] || continue
+    count=$((count + 1))
+    location=$(sed -n "${line}p" "$locations" | cut -d: -f1,2)
+    url=${url#file://$PWD/docs/}
+    echo "$location: $url: $text"
+    if [ -n "${GITHUB_ACTIONS:-}" ]; then
+      echo "::error file=${location%:*},line=${location##*:}::$url: $text"
+    fi
+  done <<<"$failures"
+
+  echo "Checked $total docs links in the source code, $count broken"
+  [ "$count" -eq 0 ]
 }
 
 status=0
