@@ -2594,55 +2594,85 @@ describe("scenarios > dashboard > dashboard cards > click behavior > native ques
     cy.signInAsAdmin();
   });
 
-  it("should handle URL click through on a table", () => {
-    createDashboardWithQuestion({}, (dashboardId) => {
+  it("should handle URL click through on a table, including a URL to the same dashboard (metabase#22702)", () => {
+    createDashboardWithQuestion({ dashcardCount: 2 }, (dashboardId) => {
+      cy.wrap(dashboardId).as("dashboardId");
       H.visitDashboard(dashboardId);
+    });
 
-      cy.findByTestId("dashboard-header").icon("pencil").click();
-      H.showDashboardCardActions();
-      cy.findByTestId("dashboardcard-actions-panel").icon("click").click();
+    cy.findByTestId("dashboard-header").icon("pencil").click();
 
-      // configure a URL click through on the  "MY_NUMBER" column
-      H.sidebar()
-        .findByText("On-click behavior for each column")
-        .parent()
-        .parent()
-        .within(() => cy.findByText("MY_NUMBER").click());
+    cy.log("configure a URL click through on the MY_NUMBER column");
+    H.clickBehaviorSidebar(0);
+    H.sidebar()
+      .findByText("On-click behavior for each column")
+      .parent()
+      .parent()
+      .within(() => {
+        cy.findByText("MY_NUMBER").click();
+      });
+    H.sidebar().findByText("Go to a custom destination").click();
+    H.sidebar().findByText("URL").click();
+
+    H.modal().within(() => {
+      cy.get("input").first().type("/foo/{{my_number}}/{{my_param}}", {
+        parseSpecialCharSequences: false,
+      });
+      // eslint-disable-next-line metabase/no-unsafe-element-filtering
+      cy.get("input")
+        .last()
+        .type("column value: {{my_number}}", {
+          parseSpecialCharSequences: false,
+        })
+        .blur();
+      cy.findByText("Done").click();
+    });
+    H.sidebar().button("Done").click();
+
+    cy.log("configure a URL to the same dashboard on the second card");
+    H.clickBehaviorSidebar(1).within(() => {
+      cy.findByText("MY_NUMBER").click();
       cy.findByText("Go to a custom destination").click();
       cy.findByText("URL").click();
-
-      // set the url and text template
-      H.modal().within(() => {
-        cy.get("input").first().type("/foo/{{my_number}}/{{my_param}}", {
-          parseSpecialCharSequences: false,
-        });
-        // eslint-disable-next-line metabase/no-unsafe-element-filtering
-        cy.get("input")
-          .last()
-          .type("column value: {{my_number}}", {
-            parseSpecialCharSequences: false,
-          })
-          .blur();
-        cy.findByText("Done").click();
-      });
-
-      cy.findByTestId("edit-bar").findByText("Save").click();
-
-      setParamValue("My Param", "param-value");
-      // click value and confirm url updates
-
-      H.getDashboardCard().findByText("column value: 111").click();
-      cy.location("pathname").should("eq", "/foo/111/param-value");
     });
+
+    H.modal().within(() => {
+      cy.get("@dashboardId").then((dashboardId) => {
+        cy.get("input")
+          .first()
+          .type(`/dashboard/${dashboardId}?my_param=Aaron Hand`, { delay: 0 });
+      });
+      // eslint-disable-next-line metabase/no-unsafe-element-filtering
+      cy.get("input").last().type("Click behavior", { delay: 0 }).blur();
+      cy.button("Done").click();
+    });
+
+    H.saveDashboard();
+
+    cy.log("metabase#22702: open the same dashboard");
+    H.getDashboardCard(1).findByText("Click behavior").click();
+    H.filterWidget().findByText("Aaron Hand").should("be.visible");
+    cy.get("@dashboardId").then((dashboardId) => {
+      cy.location("pathname").should("eq", `/dashboard/${dashboardId}`);
+    });
+    cy.location("search").should("eq", "?my_param=Aaron+Hand");
+
+    H.clearFilterWidget();
+    cy.location("search").should("eq", "");
+
+    setParamValue("My Param", "param-value");
+
+    cy.log("click value and confirm url updates");
+    H.getDashboardCard(0).findByText("column value: 111").click();
+    cy.location("pathname").should("eq", "/foo/111/param-value");
   });
 
-  it("should insert values from hidden column on custom destination URL click through (metabase#13927)", () => {
-    const questionDetails = {
+  it("should handle URL click through with hidden columns, pivot tables and custom formatting (metabase#13927, metabase#17920, metabase#14597)", () => {
+    const hiddenColumnQuestion = {
       name: "13927",
       native: { query: "SELECT PEOPLE.STATE, PEOPLE.CITY from PEOPLE;" },
     };
-
-    const clickBehavior = {
+    const hiddenColumnDashcardSettings = {
       "table.cell_column": "CITY",
       "table.pivot_column": "STATE",
       column_settings: {
@@ -2670,37 +2700,22 @@ describe("scenarios > dashboard > dashboard cards > click behavior > native ques
       ],
     };
 
-    H.createNativeQuestionAndDashboard({ questionDetails }).then(
-      ({ body: dashboardCard }) => {
-        const { dashboard_id } = dashboardCard;
-
-        H.editDashboardCard(dashboardCard, {
-          visualization_settings: clickBehavior,
-        });
-
-        H.visitDashboard(dashboard_id);
+    const pivotQuestion = {
+      name: "17920",
+      native: {
+        query:
+          "SELECT STATE, SOURCE, COUNT(*) AS CNT from PEOPLE GROUP BY STATE, SOURCE",
       },
-    );
-
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Click to find out which state does Rye belong to.").click();
-
-    cy.log("Reported failing on v0.37.2");
-    cy.location("pathname").should("eq", "/test/CO");
-  });
-
-  it("should insert data from the correct row in the URL for pivot tables (metabase#17920)", () => {
-    const query =
-      "SELECT STATE, SOURCE, COUNT(*) AS CNT from PEOPLE GROUP BY STATE, SOURCE";
-    const questionSettings = {
-      "table.pivot": true,
-      "table.pivot_column": "SOURCE",
-      "table.cell_column": "CNT",
+      display: "table",
+      visualization_settings: {
+        "table.pivot": true,
+        "table.pivot_column": "SOURCE",
+        "table.cell_column": "CNT",
+      },
     };
-    const columnKey = JSON.stringify(["name", "CNT"]);
-    const dashCardSettings = {
+    const pivotDashcardSettings = {
       column_settings: {
-        [columnKey]: {
+        [JSON.stringify(["name", "CNT"])]: {
           click_behavior: {
             type: "link",
             linkType: "url",
@@ -2709,37 +2724,155 @@ describe("scenarios > dashboard > dashboard cards > click behavior > native ques
         },
       },
     };
-    createQuestion(
-      { query, visualization_settings: questionSettings },
-      (questionId) => {
-        createDashboard(
-          { questionId, visualization_settings: dashCardSettings },
-          (dashboardIdA) => H.visitDashboard(dashboardIdA),
+
+    const formattedColumnKey = JSON.stringify(["name", "MY_NUMBER"]);
+    const formattedQuestion = {
+      name: "14597",
+      native: { query: "select 111 as my_number, 'foo' as my_string" },
+      display: "table",
+      visualization_settings: {
+        column_settings: {
+          [formattedColumnKey]: {
+            number_style: "currency",
+            currency_style: "code",
+            currency_in_header: false,
+          },
+        },
+      },
+    };
+    const formattedDashcardSettings = {
+      column_settings: {
+        [formattedColumnKey]: {
+          click_behavior: {
+            type: "link",
+            linkType: "url",
+            linkTemplate: "/it/worked",
+          },
+        },
+      },
+    };
+
+    H.createNativeQuestion(hiddenColumnQuestion).then(
+      ({ body: { id: hiddenColumnQuestionId } }) => {
+        H.createNativeQuestion(pivotQuestion).then(
+          ({ body: { id: pivotQuestionId } }) => {
+            H.createNativeQuestion(formattedQuestion).then(
+              ({ body: { id: formattedQuestionId } }) => {
+                H.createDashboard().then(({ body: { id: dashboardId } }) => {
+                  H.updateDashboardCards({
+                    dashboard_id: dashboardId,
+                    cards: [
+                      {
+                        card_id: hiddenColumnQuestionId,
+                        row: 0,
+                        col: 0,
+                        size_x: 11,
+                        size_y: 6,
+                        visualization_settings: hiddenColumnDashcardSettings,
+                      },
+                      {
+                        card_id: pivotQuestionId,
+                        row: 0,
+                        col: 12,
+                        visualization_settings: pivotDashcardSettings,
+                      },
+                      {
+                        card_id: formattedQuestionId,
+                        row: 8,
+                        col: 0,
+                        visualization_settings: formattedDashcardSettings,
+                      },
+                    ],
+                  });
+                  H.visitDashboard(dashboardId);
+                });
+              },
+            );
+          },
         );
       },
     );
 
-    H.tableInteractiveBody()
-      .findAllByRole("row")
-      .eq(5)
-      .findByText("18")
-      .as("targetCell");
+    cy.log("metabase#13927: insert values from a hidden column");
+    H.getDashboardCard(0)
+      .findByText("Click to find out which state does Rye belong to.")
+      .click();
+    cy.location("pathname").should("eq", "/test/CO");
+
+    cy.go("back");
+
+    cy.log("metabase#17920: insert data from the correct row of a pivot table");
+    H.getDashboardCard(1).within(() => {
+      H.tableInteractiveBody()
+        .findAllByRole("row")
+        .eq(5)
+        .findByText("18")
+        .as("targetCell");
+    });
     // querying the element before clicking to ensure its stability
     cy.get("@targetCell").click({ force: true });
     cy.location("pathname").should("eq", "/test/18/CO/Organic");
+
+    cy.go("back");
+
+    cy.log("metabase#14597: keep custom formatting");
+    H.getDashboardCard(2).findByText("USD 111.00").click();
+    cy.location("pathname").should("eq", "/it/worked");
   });
 
-  it("should handle question click through on a table", () => {
-    createDashboardWithQuestion({}, (dashboardId) =>
-      H.visitDashboard(dashboardId),
-    );
+  it("should handle dashboard and question click through on a table", () => {
+    createQuestion((questionId) => {
+      createDashboard(
+        { dashboardName: "start dash", questionId, dashcardCount: 2 },
+        (dashboardIdA) => {
+          cy.wrap(dashboardIdA).as("dashboardIdA");
+          createDashboardWithQuestion(
+            { dashboardName: "end dash" },
+            (dashboardIdB) => {
+              cy.wrap(dashboardIdB).as("dashboardIdB");
+              H.visitDashboard(dashboardIdA);
+            },
+          );
+        },
+      );
+    });
+    cy.icon("pencil").click();
 
-    cy.findByLabelText("Edit dashboard").click();
-    H.showDashboardCardActions();
-    cy.findByLabelText("Click behavior").click();
+    cy.log("configure clicks on MY_NUMBER to go to a dashboard");
+    H.clickBehaviorSidebar(0);
+    H.sidebar()
+      .findByText("On-click behavior for each column")
+      .parent()
+      .parent()
+      .within(() => {
+        cy.findByText("MY_NUMBER").click();
+      });
+    H.sidebar().findByText("Go to a custom destination").click();
+    H.sidebar()
+      .findByText("Link to")
+      .parent()
+      .within(() => {
+        cy.findByText("Dashboard").click();
+      });
+    H.entityPickerModal().within(() => {
+      cy.findByText("end dash").click();
+    });
+    H.sidebar()
+      .findByText("Available filters")
+      .parent()
+      .within(() => {
+        cy.findByText("My Param").click();
+      });
+    H.selectDropdown().findByText("MY_STRING").click();
 
-    H.sidebar().within(() => {
-      // Configuring on-click behavior for MY_NUMBER column
+    cy.log("set the text template");
+    H.sidebar()
+      .findByPlaceholderText("E.x. Details for {{Column Name}}")
+      .type("text: {{my_string}}", { parseSpecialCharSequences: false });
+    H.sidebar().button("Done").click();
+
+    cy.log("configure clicks on MY_NUMBER to go to a saved question");
+    H.clickBehaviorSidebar(1).within(() => {
       cy.findByText("MY_NUMBER").click();
       cy.findByText("Go to a custom destination").click();
       cy.findByText("Saved question").click();
@@ -2759,14 +2892,26 @@ describe("scenarios > dashboard > dashboard cards > click behavior > native ques
         parseSpecialCharSequences: false,
       });
 
-    cy.findByTestId("edit-bar").button("Save").click();
+    H.saveDashboard();
 
-    // wait to leave editing mode and set a param value
-    H.main().findByText("You're editing this dashboard.").should("not.exist");
+    cy.log("dashboard click through");
+    H.getDashboardCard(0).findByText("text: foo").click();
+
+    cy.get("@dashboardIdB").then((dashboardIdB) => {
+      cy.location("pathname").should("eq", `/dashboard/${dashboardIdB}`);
+    });
+    H.dashboardHeader().findByText("end dash").should("be.visible");
+    cy.location("search").should("eq", "?my_param=foo");
+    H.filterWidget().findByText("foo");
+
+    cy.go("back");
+    cy.get("@dashboardIdA").then((dashboardIdA) => {
+      cy.location("pathname").should("eq", `/dashboard/${dashboardIdA}`);
+    });
+
+    cy.log("question click through");
     setParamValue("My Param", "Widget");
-
-    // click on table value
-    cy.findByTestId("dashcard").findByText("num: 111").click();
+    H.getDashboardCard(1).findByText("num: 111").click();
 
     H.queryBuilderHeader().findByText("Orders").should("be.visible");
     cy.findByTestId("qb-filters-panel").within(() => {
@@ -2774,142 +2919,6 @@ describe("scenarios > dashboard > dashboard cards > click behavior > native ques
       cy.findByText("Product → Category is Widget").should("be.visible");
     });
     H.assertQueryBuilderRowCount(5);
-  });
-
-  it("should handle dashboard click through on a table", () => {
-    createQuestion({}, (questionId) => {
-      createDashboard(
-        { dashboardName: "start dash", questionId },
-        (dashboardIdA) => {
-          createDashboardWithQuestion(
-            { dashboardName: "end dash" },
-            (dashboardIdB) => {
-              H.visitDashboard(dashboardIdA);
-            },
-          );
-        },
-      );
-    });
-    cy.icon("pencil").click();
-    H.showDashboardCardActions();
-    cy.findByTestId("dashboardcard-actions-panel").within(() => {
-      cy.icon("click").click();
-    });
-
-    // configure clicks on "MY_NUMBER to update the param
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("On-click behavior for each column")
-      .parent()
-      .parent()
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      .within(() => cy.findByText("MY_NUMBER").click());
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Go to a custom destination").click();
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Link to")
-      .parent()
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      .within(() => cy.findByText("Dashboard").click());
-    H.entityPickerModal().within(() => {
-      cy.findByText("end dash").click();
-    });
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Available filters")
-      .parent()
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      .within(() => cy.findByText("My Param").click());
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    H.selectDropdown().within(() => cy.findByText("MY_STRING").click());
-
-    // set the text template
-    cy.findByPlaceholderText("E.x. Details for {{Column Name}}").type(
-      "text: {{my_string}}",
-      { parseSpecialCharSequences: false },
-    );
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Save").click();
-
-    // click on table value
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("text: foo").click();
-
-    // check that param was set to "foo"
-    cy.location("search").should("eq", "?my_param=foo");
-    H.filterWidget("My Param").findByText("foo");
-  });
-
-  it("should open the same dashboard when a custom URL click behavior points to the same dashboard (metabase#22702)", () => {
-    createDashboardWithQuestion({}, (dashboardId) => {
-      H.visitDashboard(dashboardId);
-      H.editDashboard();
-      H.showDashboardCardActions();
-      cy.findByTestId("dashboardcard-actions-panel")
-        .icon("click")
-        .should("be.visible")
-        .click();
-
-      H.sidebar().within(() => {
-        cy.findByText("MY_NUMBER").click();
-        cy.findByText("Go to a custom destination").click();
-        cy.findByText("URL").click();
-      });
-
-      H.modal().within(() => {
-        cy.get("input")
-          .first()
-          .type(`/dashboard/${dashboardId}?my_param=Aaron Hand`, { delay: 0 });
-        // eslint-disable-next-line metabase/no-unsafe-element-filtering
-        cy.get("input").last().type("Click behavior", { delay: 0 }).blur();
-        cy.button("Done").click();
-      });
-
-      H.saveDashboard();
-
-      cy.findByTestId("dashcard").findByText("Click behavior").click();
-      H.filterWidget("My Param").findByText("Aaron Hand").should("be.visible");
-
-      cy.location("pathname").should("eq", `/dashboard/${dashboardId}`);
-      cy.location("search").should("eq", "?my_param=Aaron+Hand");
-    });
-  });
-
-  it("should not hide custom formatting when click behavior is enabled (metabase#14597)", () => {
-    const columnKey = JSON.stringify(["name", "MY_NUMBER"]);
-    const questionSettings = {
-      column_settings: {
-        [columnKey]: {
-          number_style: "currency",
-          currency_style: "code",
-          currency_in_header: false,
-        },
-      },
-    };
-    const dashCardSettings = {
-      column_settings: {
-        [columnKey]: {
-          click_behavior: {
-            type: "link",
-            linkType: "url",
-            linkTemplate: "/it/worked",
-          },
-        },
-      },
-    };
-
-    createQuestion(
-      { visualization_settings: questionSettings },
-      (questionId) => {
-        createDashboard(
-          { questionId, visualization_settings: dashCardSettings },
-          (dashboardIdA) => H.visitDashboard(dashboardIdA),
-        );
-      },
-    );
-
-    // formatting works, so we see "USD" in the table
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("USD 111.00").click();
-    cy.location("pathname").should("eq", "/it/worked");
   });
 
   it("should not remove click behavior on 'reset to defaults' (metabase#14919)", () => {
@@ -4273,25 +4282,25 @@ function createMultiStageQuery() {
 }
 
 function createDashboardWithQuestion(
-  { dashboardName = "dashboard" } = {},
+  { dashboardName = "dashboard", dashcardCount = 1 } = {},
   callback,
 ) {
-  createQuestion({}, (questionId) => {
-    createDashboard({ dashboardName, questionId }, callback);
+  createQuestion((questionId) => {
+    createDashboard({ dashboardName, questionId, dashcardCount }, callback);
   });
 }
 
-function createQuestion(options, callback) {
+function createQuestion(callback) {
   cy.request("POST", "/api/card", {
     dataset_query: {
       database: SAMPLE_DB_ID,
       type: "native",
       native: {
-        query: options.query || "select 111 as my_number, 'foo' as my_string",
+        query: "select 111 as my_number, 'foo' as my_string",
       },
     },
     display: "table",
-    visualization_settings: options.visualization_settings || {},
+    visualization_settings: {},
     name: "Question",
     collection_id: null,
   }).then(({ body: { id: questionId } }) => {
@@ -4300,7 +4309,7 @@ function createQuestion(options, callback) {
 }
 
 function createDashboard(
-  { dashboardName = "dashboard", questionId, visualization_settings },
+  { dashboardName = "dashboard", questionId, dashcardCount = 1 },
   callback,
 ) {
   H.createDashboard({ name: dashboardName }).then(
@@ -4316,10 +4325,11 @@ function createDashboard(
         ],
       });
 
-      H.addOrUpdateDashboardCard({
-        card_id: questionId,
+      H.updateDashboardCards({
         dashboard_id: dashboardId,
-        card: {
+        cards: Array.from({ length: dashcardCount }, (_item, index) => ({
+          card_id: questionId,
+          col: index * 12,
           parameter_mappings: [
             {
               parameter_id: "e8f79be9",
@@ -4330,8 +4340,7 @@ function createDashboard(
               ],
             },
           ],
-          visualization_settings,
-        },
+        })),
       }).then(() => callback(dashboardId));
     },
   );
