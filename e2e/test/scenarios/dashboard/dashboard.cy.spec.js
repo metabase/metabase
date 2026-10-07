@@ -239,8 +239,8 @@ describe("scenarios > dashboard", () => {
         H.openQuestionsSidebar();
         H.sidebar().within(() => {
           cy.findByText("Our analytics").should("be.visible");
-          cy.findByText(myPersonalCollection).should("not.exist");
           cy.findByText(collectionInRoot.name).should("be.visible");
+          cy.findByText(myPersonalCollection).should("not.exist");
         });
 
         cy.log("Move dashboard to a personal collection");
@@ -274,8 +274,8 @@ describe("scenarios > dashboard", () => {
         H.openQuestionsSidebar();
         H.sidebar().within(() => {
           cy.findByText("Our analytics").should("be.visible");
-          cy.findByText(myPersonalCollection).should("not.exist");
           cy.findByText(collectionInRoot.name).should("be.visible");
+          cy.findByText(myPersonalCollection).should("not.exist");
         });
       });
 

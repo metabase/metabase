@@ -53,13 +53,13 @@ describe("scenarios > dashboard > text and headings", () => {
         .click(); // un-focus text
 
       H.getDashboardCard(1).within(() => {
-        // preview should have no textarea element
-        cy.get("textarea").should("not.exist");
-
         // if no content has been entered, preview should have placeholder content
         cy.findByText(
           "You can use Markdown here, and include variables {{like_this}}",
         ).should("be.visible");
+
+        // preview should have no textarea element
+        cy.get("textarea").should("not.exist");
       });
 
       // should focus textarea editor on click
@@ -78,18 +78,14 @@ describe("scenarios > dashboard > text and headings", () => {
         .click(); // un-focus text
       H.getDashboardCard(1).contains("Text text text").should("be.visible");
 
-      // should render visualization options
+      // should render visualization options, but no visualizer or edit actions
       H.getDashboardCard(1)
         .realHover()
         .within(() => {
-          cy.findByLabelText("Show visualization options").click();
-        });
-
-      // should not render visualizer option
-      H.getDashboardCard(1)
-        .realHover()
-        .within(() => {
+          cy.findByLabelText("Show visualization options").should("be.visible");
           cy.findByLabelText("Visualize another way").should("not.exist");
+          cy.findByLabelText("Edit card").should("not.exist");
+          cy.findByLabelText("Show visualization options").click();
         });
 
       cy.findByRole("dialog").within(() => {
@@ -101,14 +97,6 @@ describe("scenarios > dashboard > text and headings", () => {
 
         cy.findByText("Cancel").click(); // dismiss modal
       });
-
-      // should not render edit and preview actions
-      H.getDashboardCard(1)
-        .realHover()
-        .within(() => {
-          cy.findByLabelText("Edit card").should("not.exist");
-          cy.findByLabelText("Preview card").should("not.exist");
-        });
 
       // should allow saving and show up after refresh
       H.saveDashboard();
@@ -179,14 +167,14 @@ describe("scenarios > dashboard > text and headings", () => {
         .findByText("You're editing this dashboard.")
         .click(); // un-focus heading
       H.getDashboardCard(1).within(() => {
-        // preview mode should have no input
-        cy.get("input").should("not.exist");
-
         cy.get("h2")
           .findByText(
             "You can connect widgets to {{variables}} in heading cards.",
           )
           .should("be.visible");
+
+        // preview mode should have no input
+        cy.get("input").should("not.exist");
       });
 
       // should focus input editor on click
@@ -204,30 +192,24 @@ describe("scenarios > dashboard > text and headings", () => {
         .findByText("You're editing this dashboard.")
         .click(); // un-focus heading
       H.getDashboardCard(1)
-        .get("h2")
+        .find("h2")
         .findByText("Example Heading")
         .should("be.visible");
 
-      // should have no visualization options
+      // should have no visualization options or edit actions
       H.getDashboardCard(1)
         .realHover()
         .within(() => {
+          cy.findByLabelText("Add a filter").should("be.visible");
           cy.findByLabelText("Show visualization options").should("not.exist");
-        });
-
-      // should not render edit and preview actions
-      H.getDashboardCard(1)
-        .realHover()
-        .within(() => {
           cy.findByLabelText("Edit card").should("not.exist");
-          cy.findByLabelText("Preview card").should("not.exist");
         });
 
       // should allow saving and show up after refresh
       H.saveDashboard();
 
       H.getDashboardCard(1)
-        .get("h2")
+        .find("h2")
         .findByText("Example Heading")
         .should("be.visible");
     });
