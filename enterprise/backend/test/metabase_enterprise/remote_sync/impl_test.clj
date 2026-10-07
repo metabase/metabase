@@ -1,6 +1,7 @@
 (ns metabase-enterprise.remote-sync.impl-test
   {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase-enterprise.remote-sync.impl-test]}}}}}}
   (:require
+   [clojure.java.io :as io]
    [clojure.string :as str]
    [clojure.test :refer :all]
    [java-time.api :as t]
@@ -22,7 +23,11 @@
    [metabase.settings.core :as setting]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2])
+  (:import
+   (java.net URI)
+   (org.eclipse.jgit.api Git)
+   (org.eclipse.jgit.lib PersonIdent)))
 
 (set! *warn-on-reflection* true)
 
@@ -2552,3 +2557,102 @@ serdes/meta:
              (request!)
              (is (some? (active-generation url)) "precondition: the request used a clone")
              (is (empty? (test-helpers/leases url)) "no lease holds a clone after the request"))))))))
+
+(deftest import-task-that-throws-before-its-body-releases-its-lease-test
+  (testing "an import task that throws before its task body runs releases its lease"
+    (do-with-git-remote!
+     (fn [url]
+       (mt/with-dynamic-fn-redefs [impl/import!                      (fn [& _] {:status :success})
+                                   remote-sync.task/start-heartbeat! (fn [_]
+                                                                       (throw (ex-info "The heartbeat did not start" {})))]
+         (impl/async-import! "master" true {})
+         (is (some? (active-generation url)) "precondition: the request used a clone")
+         (is (wait-until #(empty? (test-helpers/leases url))) "no lease holds a clone after the task thread ends"))))))
+
+(defn- interruptible-import!
+  "An [[impl/import!]] that sleeps for 5 s. When an interrupt stops the sleep, it delivers true to `interrupted` and
+  throws again."
+  [interrupted]
+  (fn [& _]
+    (try
+      (Thread/sleep 5000)
+      {:status :success}
+      (catch InterruptedException e
+        (deliver interrupted true)
+        (throw e)))))
+
+(deftest import-task-that-times-out-releases-its-lease-test
+  (testing "an import task that the task timeout interrupts releases its lease"
+    (do-with-git-remote!
+     (fn [url]
+       (mt/with-temporary-setting-values [remote-sync-task-time-limit-ms 10]
+         (let [interrupted (promise)]
+           (mt/with-dynamic-fn-redefs [impl/import! (interruptible-import! interrupted)]
+             (let [{task-id :id} (impl/async-import! "master" true {})]
+               (is (true? (deref interrupted 5000 false)) "precondition: the timeout interrupts the task")
+               (is (wait-until #(task-ended? task-id)) "precondition: the task ended")
+               (is (empty? (test-helpers/leases url)) "no lease holds a clone after the timeout")))))))))
+
+(deftest request-that-throws-releases-its-lease-test
+  (testing "a request that throws while it reads the clone releases the lease of its source"
+    (do-with-git-remote!
+     (fn [url]
+       (mt/with-dynamic-fn-redefs [git/snapshot* (fn [_] (throw (ex-info "The fetch failed" {})))]
+         (is (thrown-with-msg? Exception #"The fetch failed" (impl/has-remote-changes? {:force-refresh? true}))
+             "precondition: the request throws"))
+       (is (some? (active-generation url)) "precondition: the request used a clone")
+       (is (empty? (test-helpers/leases url)) "no lease holds a clone after the request")))))
+
+;; ---------- a merge export after a stale-clone recovery ----------------------------------------
+
+(defn- remote-head
+  "The SHA of the `master` branch of the local git remote at `url`."
+  [url]
+  (with-open [git (Git/open (io/file (URI. url)))]
+    (.name (.resolve (.getRepository git) "refs/heads/master"))))
+
+(defn- commit-to-remote!
+  "Commits the new file `file-name` to the `master` branch of the local git remote at `url`. Returns the SHA of the
+  commit."
+  [url ^String file-name]
+  (let [dir (io/file (URI. url))]
+    (with-open [git (Git/open dir)]
+      (spit (io/file dir file-name) file-name)
+      (-> (.add git) (.addFilepattern file-name) (.call))
+      (.name (-> (.commit git)
+                 (.setMessage file-name)
+                 (.setAuthor (PersonIdent. "Test" "test@metabase.com"))
+                 (.setCommitter (PersonIdent. "Test" "test@metabase.com"))
+                 (.call))))))
+
+(deftest merge-export-after-a-stale-clone-recovery-loads-its-merge-commit-test
+  (testing "a merge export whose request recovers from a stale clone resolves the merge commit that it pushed, and
+            loads that commit"
+    (do-with-git-remote!
+     (fn [url]
+       (let [base           (remote-head url)
+             advanced       (commit-to-remote! url "remote-change")
+             loaded         (atom nil)
+             real-snapshot* (mt/original-fn #'git/snapshot*)
+             thrown?        (atom false)]
+         (mt/with-dynamic-fn-redefs [remote-sync.task/last-version    (constantly base)
+                                     spec/extract-entities-for-export (constantly [{:dummy true}])
+                                     source/compute-merge             (fn [& _]
+                                                                        {:merged    [{:path "collections/x.yaml" :content "x"}]
+                                                                         :conflicts []
+                                                                         :summary   {:added 1 :updated 0 :removed 0}})
+                                     impl/load-snapshot!              (fn [snapshot _ _ & {:keys [finalize!]}]
+                                                                        (reset! loaded (source.p/version snapshot))
+                                                                        (finalize!))
+                                     git/snapshot*                    (fn [s]
+                                                                        (if (compare-and-set! thrown? false true)
+                                                                          (throw (ex-info "Missing commit 0123456789abcdef" {}))
+                                                                          (real-snapshot* s)))]
+           (let [{task-id :id} (impl/async-export! "master" false "a merge" :merge? true)]
+             (is @thrown? "precondition: the request recovered from a stale clone")
+             (is (wait-until #(task-ended? task-id)) "precondition: the export task ended")
+             (let [pushed (remote-head url)]
+               (is (not= advanced pushed) "precondition: the export pushed a merge commit")
+               (is (=? {:error_message nil :version pushed} (t2/select-one :model/RemoteSyncTask :id task-id))
+                   "the export succeeds, and its version is the merge commit")
+               (is (= pushed @loaded) "the export loads the merge commit into the app DB")))))))))

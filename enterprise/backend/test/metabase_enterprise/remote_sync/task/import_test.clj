@@ -11,6 +11,7 @@
    [metabase.test.fixtures :as fixtures]
    [toucan2.core :as t2])
   (:import
+   (dev.failsafe TimeoutExceededException)
    (org.eclipse.jgit.api Git)))
 
 (set! *warn-on-reflection* true)
@@ -52,7 +53,7 @@
             (is (= (inc before) (t2/count :model/AuditLog :topic "remote-sync-import")))))))))
 
 (deftest auto-import-releases-its-lease-test
-  (testing "the auto-import job releases the lease of its source when it imports, when it skips, and when it fails"
+  (testing "the auto-import job releases the lease of its source when it imports, skips, fails, refuses and times out"
     (mt/with-temp-dir [remote-dir nil]
       (let [url     (test-helpers/init-local-git-remote! remote-dir)
             version (with-open [git (Git/open (io/file remote-dir))]
@@ -79,5 +80,24 @@
               (testing "a failure, because the branch is missing"
                 (is (thrown-with-msg? Exception #"Invalid branch" (import! "no-such-branch"))
                     "precondition: the job fails")
+                (is (empty? (test-helpers/leases url)) "no lease holds a clone after the job"))
+              (testing "a refusal, because a task runs"
+                (let [tasks (t2/count :model/RemoteSyncTask)]
+                  (mt/with-dynamic-fn-redefs [impl/create-task-with-lock! (constantly {:id 0 :existing? true})]
+                    (import! "master"))
+                  (is (= tasks (t2/count :model/RemoteSyncTask)) "precondition: the job made no task"))
                 (is (empty? (test-helpers/leases url)) "no lease holds a clone after the job")))
+            (testing "a timeout"
+              (mt/with-temporary-setting-values [remote-sync-task-time-limit-ms 10]
+                (let [interrupted (promise)]
+                  (mt/with-dynamic-fn-redefs [impl/import! (fn [& _]
+                                                             (try
+                                                               (Thread/sleep 5000)
+                                                               {:status :success}
+                                                               (catch InterruptedException e
+                                                                 (deliver interrupted true)
+                                                                 (throw e))))]
+                    (is (thrown? TimeoutExceededException (import! "master")) "precondition: the job times out")
+                    (is (true? (deref interrupted 5000 false)) "precondition: the timeout interrupts the import")
+                    (is (empty? (test-helpers/leases url)) "no lease holds a clone after the job")))))
             (finally (test-helpers/forget-clones! url))))))))

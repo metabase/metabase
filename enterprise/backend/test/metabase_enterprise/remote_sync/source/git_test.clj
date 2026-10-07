@@ -1131,8 +1131,8 @@
             (is (not= retired-dir (clone-dir recovered)) "precondition: the recovery made a new clone")
             (.close ^java.io.Closeable other)
             (is (.exists retired-dir) "the retired clone stays while the source whose recovery retired it holds it")
-            (is (= "File in master" (source.p/read-file (source.p/snapshot-at source version) "master.txt"))
-                "the source reads the retired clone")
+            (is (= "File in master" (git/read-file {:git retired-git :version version} "master.txt"))
+                "the source can still read the retired clone")
             (.close ^java.io.Closeable source)
             (is (not (.exists retired-dir)) "the close of the last holder deletes the retired clone")
             (is (not (test-helpers/repository-open? retired-git)) "the close of the last holder closes its Git instance")
@@ -1140,6 +1140,18 @@
             (let [before @state]
               (.close ^java.io.Closeable source)
               (is (= before @state) "a second close does nothing")))
+          (finally (forget-clones! url)))))))
+
+(deftest snapshot-at-after-a-recovery-resolves-a-commit-of-the-new-clone-test
+  (testing "after a stale-clone recovery of a source, snapshot-at of that source resolves a commit that a write on the
+            recovered snapshot made"
+    (mt/with-temp-dir [remote-dir nil]
+      (let [[source _] (init-source! "master" remote-dir :files {"master.txt" "File in master"})
+            url        (:remote-url source)]
+        (try
+          (let [recovered (recover-stale-clone! source)
+                version   (write-files! recovered "Change master.txt" [{:path "master.txt" :content "Changed"}])]
+            (is (= "Changed" (some-> (source.p/snapshot-at source version) (source.p/read-file "master.txt")))))
           (finally (forget-clones! url)))))))
 
 (deftest lease-older-than-the-task-timeout-is-logged-once-test
