@@ -107,8 +107,6 @@ describe("Static embed dashboards/questions downloads (results and export as pdf
       beforeEach(() => {
         cy.signInAsAdmin();
 
-        H.activateToken("pro-self-hosted");
-
         // Test parameter with accentuation (metabase#49118)
         const CATEGORY_FILTER = createMockParameter({
           id: "5aefc725",
@@ -251,8 +249,6 @@ describe("Static embed dashboards/questions downloads (results and export as pdf
     describe("with native question parameters", () => {
       beforeEach(() => {
         cy.signInAsAdmin();
-
-        H.activateToken("pro-self-hosted");
       });
 
       it("should be able to download a static embedded question as CSV with correct parameters when field filters has multiple values (metabase#52430)", () => {
