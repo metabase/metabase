@@ -469,3 +469,10 @@
                         [:in :status ["succeeded" "failed" "timeout"]]
                         [:>= :start_time cutoff]]
              :group-by [:transform_id]}))
+
+;;; ------------------------------------------------ Task history ---------------------------------------------
+
+(mu/defn task-history-details
+  "The `task_details` of every `task_history` row for `task-name`."
+  [task-name :- :string]
+  (t2/select-fn-vec :task_details [:model/TaskHistory :task_details] :task task-name))

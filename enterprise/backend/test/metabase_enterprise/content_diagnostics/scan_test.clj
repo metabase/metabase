@@ -19,6 +19,7 @@
    [metabase.documents.prose-mirror :as prose-mirror]
    [metabase.permissions.core :as perms]
    [metabase.queries.schema :as queries.schema]
+   [metabase.task.core :as task]
    [metabase.test :as mt]
    [metabase.tracing.core :as tracing]
    [metabase.util :as u]
@@ -309,7 +310,8 @@
             (#'task.scan/scan-when-enabled!)
             (is (zero? @scans))
             (is (=? [{:status       :success
-                      :task_details {:skipped-reason "content-diagnostics-disabled"}}]
+                      :task_details {:skipped-reason "content-diagnostics-disabled"
+                                     :run-method     "cron"}}]
                     (scan-task-history))))))
       (testing "the scheduled job body scans when the feature is present, recording the scan id"
         (mt/with-model-cleanup [:model/TaskHistory]
@@ -317,7 +319,8 @@
             (#'task.scan/scan-when-enabled!)
             (is (= 1 @scans))
             (is (= [{:status       :success
-                     :task_details {:scan-id "scan-job-test-scan"}}]
+                     :task_details {:scan-id    "scan-job-test-scan"
+                                    :run-method "cron"}}]
                    (map #(into {} %) (scan-task-history))))))))))
 
 (deftest scan-job-failure-recorded-in-task-history-test
@@ -331,6 +334,98 @@
                     :task_details {:status  "failed"
                                    :message "scan blew up"}}]
                   (scan-task-history))))))))
+
+;;; ------------------------------------------------ Upgrade backfill -----------------------------------------
+
+(defn- backfill-scans!
+  "Run the backfill job body under `features`, returning how many times it scanned."
+  [features]
+  (let [scans (atom 0)]
+    (mt/with-dynamic-fn-redefs [scan/scan! (fn []
+                                             (swap! scans inc)
+                                             {:scan_id "backfill-test-scan" :finding_count 0 :duration_ms 0})]
+      (mt/with-premium-features features
+        (#'task.scan/backfill-scan!)))
+    @scans))
+
+(defn- never-scanned?
+  "Precondition for the backfill tests: the shared app DB holds no scan history and no findings."
+  []
+  (and (empty? (scan-task-history))
+       (not (t2/exists? :model/ContentDiagnosticsFinding))))
+
+(deftest backfill-scans-a-never-scanned-licensed-instance-test
+  (mt/with-model-cleanup [:model/TaskHistory]
+    (is (never-scanned?))
+    (testing "scans once, recording the run under the scan's task name with its run method"
+      (is (= 1 (backfill-scans! #{:content-diagnostics :advanced-permissions})))
+      (is (= [{:status       :success
+               :task_details {:scan-id    "backfill-test-scan"
+                              :run-method "upgrade-backfill"}}]
+             (map #(into {} %) (scan-task-history)))))
+    (testing "its own row suppresses a second backfill, so an all-clean instance doesn't re-scan every boot"
+      (is (zero? (backfill-scans! #{:content-diagnostics :advanced-permissions})))
+      (is (= 1 (count (scan-task-history)))))))
+
+(deftest backfill-skips-without-the-feature-test
+  (mt/with-model-cleanup [:model/TaskHistory]
+    (is (never-scanned?))
+    (is (zero? (backfill-scans! #{})))
+    (testing "a skip decision writes no task_history row"
+      (is (empty? (scan-task-history))))))
+
+(deftest backfill-skips-when-findings-exist-test
+  (doseq [[desc invalidated-at] {"an active finding"         nil
+                                 "only invalidated findings" (t/instant)}]
+    (testing desc
+      (mt/with-model-cleanup [:model/TaskHistory :model/ContentDiagnosticsFinding]
+        (mt/with-temp [:model/Card {card-id :id} {}]
+          (is (never-scanned?))
+          (cd.tu/insert-finding! "old-scan" card-id invalidated-at)
+          (is (zero? (backfill-scans! #{:content-diagnostics :advanced-permissions})))
+          (is (empty? (scan-task-history))))))))
+
+(deftest backfill-skips-after-a-real-scan-test
+  (testing "a completed scheduled scan suppresses the backfill"
+    (mt/with-model-cleanup [:model/TaskHistory]
+      (is (never-scanned?))
+      (mt/with-dynamic-fn-redefs [scan/scan! (constantly {:scan_id "cron-scan" :finding_count 0 :duration_ms 0})]
+        (mt/with-premium-features #{:content-diagnostics :advanced-permissions}
+          (#'task.scan/scan-when-enabled!)))
+      (is (zero? (backfill-scans! #{:content-diagnostics :advanced-permissions})))
+      (is (= 1 (count (scan-task-history))))))
+  (testing "an in-flight scan suppresses the backfill"
+    (mt/with-model-cleanup [:model/TaskHistory]
+      (is (never-scanned?))
+      (t2/insert! :model/TaskHistory {:task       "content-diagnostics-scan"
+                                      :status     :started
+                                      :started_at (t/instant)})
+      (is (zero? (backfill-scans! #{:content-diagnostics :advanced-permissions})))
+      (is (= 1 (count (scan-task-history)))))))
+
+(deftest backfill-ignores-feature-skipped-firings-test
+  (testing "a scheduled firing skipped for the missing feature is not a prior scan"
+    (mt/with-model-cleanup [:model/TaskHistory]
+      (is (never-scanned?))
+      (mt/with-premium-features #{}
+        (#'task.scan/scan-when-enabled!))
+      (is (=? [{:task_details {:skipped-reason "content-diagnostics-disabled"}}]
+              (scan-task-history)))
+      (is (= 1 (backfill-scans! #{:content-diagnostics :advanced-permissions}))))))
+
+(deftest backfill-trigger-leaves-the-scheduled-scan-alone-test
+  (testing "scheduling the backfill, even repeatedly as nodes boot, keeps the daily trigger on the scan job"
+    (mt/with-temp-scheduler!
+      (task/init! ::task.scan/ContentDiagnosticsScan)
+      (task/init! ::task.scan/ContentDiagnosticsScanBackfill)
+      (task/init! ::task.scan/ContentDiagnosticsScanBackfill)
+      (is (=? [{:key      "metabase.task.content-diagnostics-scan-backfill.job"
+                :triggers [{:key "metabase.task.content-diagnostics-scan-backfill.trigger"}]}
+               {:key      "metabase.task.content-diagnostics-scan.job"
+                :triggers [{:key           "metabase.task.content-diagnostics-scan.trigger"
+                            :cron-schedule "0 0 4 * * ? *"}]}]
+              (filter #(re-find #"content-diagnostics-scan" (:key %))
+                      (mt/scheduler-current-tasks)))))))
 
 (deftest api-latest-per-entity-and-hydration-test
   (testing "GET /stale returns the latest valid finding per entity, batch-hydrated"
