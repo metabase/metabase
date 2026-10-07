@@ -8,7 +8,6 @@ import { getInputTypes } from "metabase/actions/constants";
 import { useUniqueId } from "metabase/common/hooks/use-unique-id";
 import CS from "metabase/css/core/index.css";
 import {
-  Box,
   Divider,
   Flex,
   Icon,
@@ -16,6 +15,7 @@ import {
   Radio,
   Stack,
   Switch,
+  Text,
   UnstyledButton,
 } from "metabase/ui";
 import { TextInput } from "metabase/ui/components/inputs/TextInput";
@@ -205,9 +205,9 @@ function RequiredInput({
   return (
     <div>
       <Flex align="center" justify="space-between" mb="sm">
-        <Box component="label" fw="bold" htmlFor={`${id}-required`}>
+        <Text component="label" fw="bold" lh="md" htmlFor={`${id}-required`}>
           {t`Required`}
-        </Box>
+        </Text>
         <Switch
           id={`${id}-required`}
           checked={required}

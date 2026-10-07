@@ -112,9 +112,9 @@ export function FormFieldEditor({
         </Stack>
         <Stack gap={0} flex={1}>
           <Flex justify="space-between" align="center">
-            <Box c="text-primary" fw="bold">
+            <Text c="text-primary" fw="bold" lh="md">
               {field.title}
-            </Box>
+            </Text>
             {isEditable && (
               <FieldSettingsButtons
                 fieldSettings={fieldSettings}
