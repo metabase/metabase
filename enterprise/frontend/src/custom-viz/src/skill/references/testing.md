@@ -43,6 +43,9 @@ The mock host throws on: a column not built with `mockColumn`;
 `api-contract.md` Colors; `formatValue` number options without a numeric
 `column`.
 
+`formatValue` in the mock returns `String(value)`, not Metabase's
+formatting: assert that a value is shown, never its formatted text.
+
 ## What to test
 
 Derive every expectation from `.claude/build-statement.md`:

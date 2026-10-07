@@ -109,23 +109,6 @@ const columnTypes: ColumnTypes = {
     cols.some(predicate("isLatitude")) && cols.some(predicate("isLongitude")),
 };
 
-const formatNumber = (value: number, options: FormatValueOptions) => {
-  const scaled = value * (options.scale ?? 1);
-  const formatted = new Intl.NumberFormat("en-US", {
-    style:
-      options.number_style === "percent"
-        ? "percent"
-        : options.number_style === "currency"
-          ? "currency"
-          : "decimal",
-    currency: options.currency ?? "USD",
-    notation: options.compact ? "compact" : "standard",
-    minimumFractionDigits: options.decimals,
-    maximumFractionDigits: options.decimals,
-  }).format(scaled);
-  return `${options.prefix ?? ""}${formatted}${options.suffix ?? ""}`;
-};
-
 const formatValue: FormatValue = (value: RowValue, options = {}) => {
   const isNumberColumn = options.column
     ? findPredicates(options.column).includes("isNumber")
@@ -140,9 +123,6 @@ const formatValue: FormatValue = (value: RowValue, options = {}) => {
   }
   if (value === null) {
     return "";
-  }
-  if (typeof value === "number" && isNumberColumn) {
-    return formatNumber(value, options);
   }
   return typeof value === "object" ? JSON.stringify(value) : String(value);
 };
