@@ -32,13 +32,12 @@
                                          [:model-id  {:optional true} [:maybe ::lib.schema.id/card]]
                                          [:type      {:optional true} [:maybe ::actions.schema/type]]
                                          [:namespace {:optional true} [:maybe ms/NonBlankString]]]]
-  (let [actions (if model-id
-                  (let [model (api/read-check :model/Card model-id)]
-                    (cond->> (actions/select-actions-for-models [model] [model-id])
-                      action-type (filter #(= action-type (keyword (:type %))))))
-                  (when-let [action-ids (seq (actions-rest.db/unarchived-action-ids-visible-to-user
-                                              {:type action-type, :namespace collection-namespace}))]
-                    (actions/select-actions-for-ids nil (vec action-ids))))]
+  (let [model      (when model-id
+                     (api/read-check :model/Card model-id))
+        action-ids (actions-rest.db/unarchived-action-ids-visible-to-user
+                    {:type action-type, :model-id model-id, :namespace collection-namespace})
+        actions    (when (seq action-ids)
+                     (actions/select-actions-for-ids (when model [model]) action-ids))]
     (t2/hydrate (vec actions) :creator :can_write)))
 
 (api.macros/defendpoint :get "/public" :- [:sequential ::actions.schema/action]

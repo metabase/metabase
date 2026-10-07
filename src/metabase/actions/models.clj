@@ -508,15 +508,6 @@
    action-ids   :- [:sequential ::lib.schema.id/action]]
   (enrich-actions-with-implicit-params known-models (normalize-actions-by-type (actions.db/actions-with-ids action-ids))))
 
-(mu/defn select-actions-for-models :- [:maybe [:sequential ::actions.schema/action]]
-  "Find the unarchived Actions whose `:model_id` is in `model-ids`, filling in implicit parameters as
-   [[select-actions]] does.
-
-   Pass in known-models to save a second Card lookup."
-  [known-models :- [:maybe [:sequential ::queries.schema/card]]
-   model-ids    :- [:sequential ms/PositiveInt]]
-  (enrich-actions-with-implicit-params known-models (normalize-actions-by-type (actions.db/unarchived-actions-for-models model-ids))))
-
 (mu/defn select-action :- [:maybe ::actions.schema/action]
   "Selects an Action and fills in the subtype data and implicit parameters.
    `options` is interpreted by [[select-actions-matching-options]]."

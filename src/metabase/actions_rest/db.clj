@@ -10,22 +10,25 @@
 
 (mu/defn unarchived-action-ids-visible-to-user
   "The ids of the unarchived Actions in Collections of `:namespace` the current user can read, limited to actions of
-  `:type` if given."
-  ([]
-   (unarchived-action-ids-visible-to-user {}))
-  ([{action-type :type, collection-namespace :namespace} :- [:map {:closed true}
-                                                             [:type      {:optional true} [:maybe ::actions.schema/type]]
-                                                             [:namespace {:optional true} [:maybe :string]]]]
-   (t2/select-fn-vec :id :model/Action {:select    [:action.id]
-                                        :from      [[(t2/table-name :model/Action) :action]]
-                                        :left-join [[(t2/table-name :model/Collection) :collection]
-                                                    [:= :collection.id :action.collection_id]]
-                                        :where     [:and
-                                                    [:= :action.archived false]
-                                                    (when action-type
-                                                      [:= :action.type (name action-type)])
-                                                    [:= :collection.namespace collection-namespace]
-                                                    (collection/visible-collection-filter-clause :action.collection_id)]})))
+  `:type` and of the model `:model-id` if given."
+  [{action-type          :type
+    model-id             :model-id
+    collection-namespace :namespace} :- [:map {:closed true}
+                                         [:type      {:optional true} [:maybe ::actions.schema/type]]
+                                         [:model-id  {:optional true} [:maybe ::lib.schema.id/card]]
+                                         [:namespace {:optional true} [:maybe :string]]]]
+  (t2/select-fn-vec :id :model/Action {:select    [:action.id]
+                                       :from      [[(t2/table-name :model/Action) :action]]
+                                       :left-join [[(t2/table-name :model/Collection) :collection]
+                                                   [:= :collection.id :action.collection_id]]
+                                       :where     [:and
+                                                   [:= :action.archived false]
+                                                   (when action-type
+                                                     [:= :action.type (name action-type)])
+                                                   (when model-id
+                                                     [:= :action.model_id model-id])
+                                                   [:= :collection.namespace collection-namespace]
+                                                   (collection/visible-collection-filter-clause :action.collection_id)]}))
 
 (mu/defn public-actions
   "The name, id, public uuid, and model id of the unarchived Actions that are publicly shared."
