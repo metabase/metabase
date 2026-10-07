@@ -115,6 +115,36 @@
              {:private true :collection_unknown_field nil}
              {:private false :collection_unknown_field 1}))))))
 
+(deftest ^:parallel every-revisioned-model-has-a-diff-description-test
+  (testing "Each revisioned model gets a description of a rename"
+    (let [model->display-name (cond-> {:model/Card        "Card"
+                                       :model/Dashboard   "Dashboard"
+                                       :model/Document    "Document"
+                                       :model/Exploration "Exploration"
+                                       :model/Measure     "Measure"
+                                       :model/Segment     "Segment"
+                                       :model/Transform   "Transform"}
+                                config/ee-available? (assoc :model/TransformTest "Transform test"))]
+      ;; `push-revision!` calls `serialize-instance`, which has no default: a model with revisions has a method.
+      (is (= (set (filter #(= "model" (namespace %)) (keys (methods revision/serialize-instance))))
+             (set (keys model->display-name))))
+      (doseq [[model display-name] model->display-name]
+        (testing model
+          (mt/with-log-messages-for-level [messages [metabase.revisions.models.revision.diff :warn]]
+            (is (= (str "renamed this " display-name " from \"A\" to \"B\".")
+                   (u/build-sentence (revision/diff-strings model {:name "A"} {:name "B"}))))
+            ;; A missing display name falls back to the model string, which equals the display name for most models.
+            (testing "with no warning of a missing display name"
+              (is (= [] (messages))))))))))
+
+(deftest ^:parallel model-with-no-display-name-gets-a-description-test
+  (testing "A model with no display name gets a description with the model string, and a warning that names the model"
+    (mt/with-log-messages-for-level [messages [metabase.revisions.models.revision.diff :warn]]
+      (is (= "renamed this NoSuchModel from \"A\" to \"B\"."
+             (u/build-sentence (revision.diff/diff-strings* "NoSuchModel" {:name "A"} {:name "B"}))))
+      (is (=? [{:level :warn, :message #".*NoSuchModel.*"}]
+              (messages))))))
+
 ;;; # REVISIONS + PUSH-REVISION!
 
 (deftest new-object-no-revisions-test

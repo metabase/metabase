@@ -1945,6 +1945,7 @@ serdes/meta:
                                    :source (export-test-source)
                                    :base-snapshot nil)]
           (is (= :conflict (:status result)))
+          (is (= {:kind "history-rewritten"} (:outcome result)))
           (is (str/includes? (:message result) "rewritten")))))))
 
 (deftest export!-refuses-when-diverged-without-merge-flag-test
@@ -1958,9 +1959,25 @@ serdes/meta:
                                      :source (export-test-source)
                                      :base-snapshot (export-test-snapshot "base-B"))]
             (is (= :conflict (:status result)))
+            (is (= {:conflicts [] :outcome {:kind "remote-changed"}}
+                   (select-keys result [:conflicts :outcome]))
+                "nothing collided; the outcome names why it stopped")
             (is (false? @merged?) "no merge without the merge flag")
             ;; :conflict short-circuits before any write — the version is never advanced
             (is (nil? (:version (t2/select-one :model/RemoteSyncTask :id task-id))))))))))
+
+(deftest diverged-export-conflict-keeps-sync-base-test
+  (testing "a diverged export that ends in conflict leaves the sync base alone, so a retry with merge? still merges"
+    (mt/with-temp [:model/RemoteSyncTask _ {:sync_task_type "import" :version "base-B" :ended_at (t/offset-date-time)}
+                   :model/RemoteSyncTask {task-id :id} {:sync_task_type "export"}]
+      (let [result (impl/export! (export-test-snapshot "remote-R") task-id "msg"
+                                 :source (export-test-source)
+                                 :base-snapshot (export-test-snapshot "base-B"))]
+        (impl/handle-task-result! result task-id)
+        (is (= {:version "remote-R" :conflicts [] :outcome {:kind "remote-changed"}}
+               (t2/select-one [:model/RemoteSyncTask :version :conflicts :outcome] :id task-id))
+            "the task row records the remote version it conflicted against and why it stopped")
+        (is (= "base-B" (remote-sync.task/last-version)))))))
 
 (deftest export!-force-overwrites-without-merging-test
   (testing "force? overwrites the remote wholesale (full export) even when it advanced — no merge"
@@ -2184,6 +2201,7 @@ serdes/meta:
                                  :merge? true
                                  :base-snapshot nil)]
         (is (= :conflict (:status result)))
+        (is (= {:kind "history-rewritten"} (:outcome result)))
         (is (str/includes? (:message result) "rewritten"))))))
 
 ;;; ------------------------------- merging pull and push extract the library once -------------------------------
