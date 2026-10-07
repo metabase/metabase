@@ -95,7 +95,7 @@
                 {:search-native-query true}))
 
 ;;; ════════════════════════════════════════════════════════════════════════════════════════════════
-;;; read_resource — one thing per item
+;;; read_resource — a single-item tool that can also take several
 ;;; ════════════════════════════════════════════════════════════════════════════════════════════════
 
 (tools.error/defrecoverable unreadable-uri!
@@ -110,10 +110,16 @@
   {1 {:name "orders" :fields ["id" "total"]}
    2 {:name "people" :fields ["id" "email"]}})
 
+(def ^:private uri-schema
+  "Shared between the single and the batched declaration, so the two cannot drift."
+  [:string {:description "A metabase:// resource URI."}])
+
+(def ^:private max-uris 5)
+
 (defn- prefetch-tables!
   "Stands in for the batching `read_resource` does not do yet (`mapv`, with a pmap TODO) and for the
-  cache `list_available_fields` already uses. A failure here fails the whole call, on purpose: a
-  dead connection is one fault, not N misses."
+  cache `list_available_fields` already uses. A failure here fails the whole call, on purpose: a dead
+  connection is one fault, not N misses."
   [uris]
   (when (some #(str/includes? % "/dbdown") uris)
     (throw (ex-info "H2 connection reset: user=mb_admin" {:sql "SELECT 1"})))
@@ -121,23 +127,14 @@
 
 (defrecord ReadResourceTool []
   tools/Tool
+  ;; The single form. Take `BatchedTool` away and this is a complete, working tool that reads one
+  ;; URI — which is why `handle` needs no second per-item function beside it.
   (declaration [_]
     {:name        "read_resource"
-     :description "Read detailed information about Metabase resources via URI patterns."
-     :args        [:map {:closed true}
-                   ;; The item cap is a fact about the arguments, so the runtime enforces it and the
-                   ;; tool drops its hand-written count check. See `item-cap-loses-its-teaching-test`.
-                   [:uris [:sequential {:min 1 :max 5} :string]]]
-     :scope       scope/agent-resource-read})
-  (handle [this {:keys [uris]} ctx]
-    ;; The whole shape of this tool, in two lines: warm the cache, then do each item.
-    (prefetch-tables! uris)
-    (tools/handle-each this {:uris uris} ctx))
-
-  tools/BatchedTool
-  (items [_ {:keys [uris]} _ctx]
-    uris)
-  (load-item [_ uri _ctx]
+     :description "Read detailed information about one Metabase resource via its URI."
+     :scope       scope/agent-resource-read
+     :args        [:map {:closed true} [:uri uri-schema]]})
+  (handle [_ {:keys [uri]} _ctx]
     (if-not (str/starts-with? uri "metabase://")
       (unreadable-uri! {:uri uri})
       (let [[kind id] (str/split (subs uri (count "metabase://")) #"/")]
@@ -147,15 +144,32 @@
            :structured-output table}
           (tools/with-entity {:kind :table :id id}
             (throw (ex-info "Not found." {:status-code 404})))))))
+
+  tools/BatchedTool
+  (batched-declaration [_ declared]
+    ;; Complete, and composed by the tool. Nothing derives it, which is why the wire format can stay
+    ;; a list of strings rather than becoming a list of {"uri": …} maps.
+    (-> declared
+        (assoc :description
+               (str "Read detailed information about Metabase resources via URI patterns. "
+                    "Up to " max-uris " URIs may be requested in one call."))
+        (assoc :args [:map {:closed true}
+                      [:uris [:sequential {:min 1 :max max-uris} uri-schema]]])))
+  (batched-args [_ {:keys [uris]}]
+    (mapv (fn [uri] {:uri uri}) uris))
+  (around-batch [_ item-args _ctx run]
+    (prefetch-tables! (map :uri item-args))
+    (run))
   (compose [_ entries _ctx]
     ;; Each item in its own element, so a failure sits inside the element for the URI it belongs to
-    ;; — which is what the tool does today via `format-resources`' `**Error:**` branch. The one thing
-    ;; this cannot get from `concatenated` is `:data-parts`: the tool emits a *single* title part
-    ;; built from the items that loaded, so that key is not per-item concatenable.
+    ;; — what the tool does today via `format-resources`' `**Error:**` branch. The one thing
+    ;; `concatenated` cannot give is `:data-parts`: the tool emits a *single* title part built from
+    ;; the items that loaded, so that key is not per-item.
     (cond-> {:output (str "<resources>\n"
                           (str/join "\n"
                                     (for [{:keys [item output]} entries]
-                                      (format "<resource uri=\"%s\">\n%s\n</resource>" item output)))
+                                      (format "<resource uri=\"%s\">\n%s\n</resource>"
+                                              (:uri item) output)))
                           "\n</resources>")}
       (seq (remove :failed? entries))
       (assoc :data-parts [{:type      :data
@@ -168,72 +182,155 @@
 
 (def read-resource-tool (->ReadResourceTool))
 
-;;; A batched tool that wants nothing special from composition — the delegating line is the whole
-;;; answer to Clojure's missing protocol defaults, and it reads as what it is.
+;;; A batched tool that wants nothing special. Each `batched-…` is one line, and the delegation in
+;;; `around-batch` and `compose` is the whole answer to Clojure's missing protocol defaults.
+
+(def ^:private skill-id-schema [:string {:description "A skill id."}])
 
 (defrecord LoadSkillTool []
   tools/Tool
   (declaration [_]
     {:name        "load_skill"
-     :description "Load the full instructions for one or more skills."
-     :args        [:map {:closed true} [:ids [:sequential :string]]]})
-  (handle [this args ctx]
-    (tools/handle-each this args ctx))
-
-  tools/BatchedTool
-  (items [_ {:keys [ids]} _ctx] ids)
-  (load-item [_ id _ctx]
+     :description "Load the full instructions for one skill."
+     :args        [:map {:closed true} [:id skill-id-schema]]})
+  (handle [_ {:keys [id]} _ctx]
     (if (= "unknown" id)
       (unreadable-uri! {:uri id})
       {:output (format "<skill id=\"%s\">…body…</skill>" id)}))
-  (compose [_ entries _ctx]
-    (tools/concatenated entries)))
+
+  tools/BatchedTool
+  (batched-declaration [_ declared]
+    (-> declared
+        (assoc :description "Load the full instructions for one or more skills.")
+        (assoc :args [:map {:closed true} [:ids [:sequential {:min 1} skill-id-schema]]])))
+  (batched-args [_ {:keys [ids]}] (mapv (fn [id] {:id id}) ids))
+  (around-batch [_ _item-args _ctx run] (run))
+  (compose [_ entries _ctx] (tools/concatenated entries)))
 
 (def load-skill-tool (->LoadSkillTool))
+
+;;; A batched tool whose items are heterogeneous. Here the single schema goes in whole, which is the
+;;; payoff of `batched-declaration` receiving it: three parallel id lists become one addressable list.
+
+(defrecord LoadEntityTool []
+  tools/Tool
+  (declaration [_]
+    {:name        "load_entity"
+     :description "Get metadata for one table, model or metric."
+     :args        [:map {:closed true}
+                   [:kind [:enum "table" "model" "metric"]]
+                   [:id :int]]})
+  (handle [_ {:keys [kind id]} _ctx]
+    (if (and (= "table" kind) (get fake-tables id))
+      {:output            (format "<table name=\"%s\"/>" (:name (get fake-tables id)))
+       :structured-output {:kind kind :id id :name (:name (get fake-tables id))}}
+      (tools/with-entity {:kind (keyword kind) :id id}
+        (throw (ex-info "Not found." {:status-code 404})))))
+
+  tools/BatchedTool
+  (batched-declaration [_ declared]
+    (-> declared
+        (assoc :description "Get metadata for several tables, models or metrics.")
+        (assoc :args [:map {:closed true}
+                      ;; The single schema, embedded verbatim.
+                      [:items [:sequential {:min 1 :max 20} (:args declared)]]])))
+  (batched-args [_ {:keys [items]}] (vec items))
+  (around-batch [_ _item-args _ctx run] (run))
+  (compose [_ entries _ctx]
+    ;; One document grouped by kind: no per-item positions, so failures go in a block.
+    (let [{loaded false failed true} (group-by :failed? entries)]
+      {:output (str (str/join "\n" (map :output loaded))
+                    (when (seq failed)
+                      (str "\n\nThese could not be loaded:\n"
+                           (str/join "\n" (for [{:keys [item output]} failed]
+                                            (let [[head & tail] (str/split-lines output)]
+                                              (str/join "\n"
+                                                        (cons (str "- " (:kind item) " " (:id item)
+                                                                   ": " head)
+                                                              (map #(str "  " %) tail)))))))))})))
+
+(def load-entity-tool (->LoadEntityTool))
 
 ;;; ════════════════════════════════════════════════════════════════════════════════════════════════
 ;;; Tests
 ;;; ════════════════════════════════════════════════════════════════════════════════════════════════
 
 (def ^:private entries
-  (tools/entries [search-tool read-resource-tool load-skill-tool]))
+  (tools/entries [search-tool read-resource-tool load-skill-tool load-entity-tool]))
 
 (defn- invoke
-  ([tool args] (invoke #{"search" "read_resource" "load_skill"} tool args))
+  ([tool args] (invoke #{"search" "read_resource" "load_skill" "load_entity"} tool args))
   ([tool-names tool args]
    (binding [scope/*current-user-scope* #{"*"}]
      (tools.runtime/invoke entries
                            {:profile-id :nlq :metabot-id nil :tool-names tool-names}
                            tool args))))
 
-;;; ── the variant case ──────────────────────────────────────────────────────────────────────────
+;;; ── the single form is a real tool ────────────────────────────────────────────────────────────
 
-(deftest ^:parallel variants-are-instances-not-copies-test
-  (testing "all four share a type, a scope, a title function and a body"
-    (let [variants [search-tool sql-search-tool nlq-search-tool transform-search-tool]]
-      (is (every? #(instance? SearchTool %) variants))
-      (is (= [scope/agent-search] (distinct (map (comp :scope tools/declaration) variants))))
-      (is (= [search-display] (distinct (map (comp :metabot/title-fn tools/declaration) variants))))
-      (is (= ["search"] (distinct (map (comp :name tools/declaration) variants))))))
-  (testing "and differ only in the fields they were constructed with"
-    (is (= #{"model" "table"} (:allowed-types sql-search-tool)))
-    (is (= {:profile-id "nlq"} (:opts nlq-search-tool)))
-    (is (not= (:args search-tool) (:args sql-search-tool)))))
+(deftest ^:parallel the-single-form-works-on-its-own-test
+  (testing "take BatchedTool away and the record is still a working tool"
+    (is (= {:output            "<table name=\"orders\">id, total</table>"
+            :structured-output {:name "orders" :fields ["id" "total"]}}
+           (tools/handle read-resource-tool {:uri "metabase://table/1"} {}))))
+  (testing "its declaration is a complete, publishable single-item declaration"
+    (is (= {:name        "read_resource"
+            :description "Read detailed information about one Metabase resource via its URI."
+            :scope       scope/agent-resource-read
+            :args        [:map {:closed true} [:uri uri-schema]]}
+           (tools/declaration read-resource-tool))))
+  (testing "and a record that implements only Tool is invoked directly, with no branch taken"
+    (let [single (reify tools/Tool
+                   (declaration [_] {:name "one_only" :description "d"
+                                     :args [:map {:closed true} [:uri uri-schema]]})
+                   (handle [_ {:keys [uri]} _] {:output (str "read " uri)}))]
+      (is (not (tools/batched? single)))
+      (is (= {:output "read x"}
+             (binding [scope/*current-user-scope* #{"*"}]
+               (tools.runtime/invoke (tools/entries [single])
+                                     {:profile-id :nlq :metabot-id nil :tool-names #{"one_only"}}
+                                     "one_only" {:uri "x"})))))))
 
-(deftest ^:parallel each-variant-declares-validly-test
-  (testing "a declaration is checked the same way whatever instance it came from"
-    (doseq [tool [search-tool sql-search-tool nlq-search-tool transform-search-tool]]
-      (is (mr/validate ::tools/declaration (tools/validate-tool! tool))))))
+;;; ── what the consumer publishes ───────────────────────────────────────────────────────────────
 
-(deftest ^:parallel a-variants-config-reaches-its-body-test
-  (is (= (str "<search label=\"search\" types=\"dashboard,document,metric,model,question,table\" "
-              "opts=\"{}\">orders</search>")
-         (:output (invoke "search" {:keyword_queries ["orders"]}))))
-  (testing "a different instance, same code path"
-    (is (= "<search label=\"search\" types=\"model,table,transform\" opts=\"{:search-native-query true}\">orders</search>"
-           (:output (tools/handle transform-search-tool {:keyword_queries ["orders"]} {}))))))
+(deftest ^:parallel the-batched-declaration-is-what-gets-published-test
+  (let [{:keys [declaration]} (get entries "read_resource")]
+    (testing "the batched args, composed by the tool — so the wire format stays a list of strings"
+      (is (= [:map {:closed true}
+              [:uris [:sequential {:min 1 :max 5} uri-schema]]]
+             (:args declaration))))
+    (testing "the description gained its per-call limit sentence"
+      (is (str/ends-with? (:description declaration)
+                          "Up to 5 URIs may be requested in one call.")))
+    (testing "and the name, scope and extras passed through"
+      (is (= "read_resource" (:name declaration)))
+      (is (= scope/agent-resource-read (:scope declaration))))))
 
-;;; ── the batched case ──────────────────────────────────────────────────────────────────────────
+(deftest ^:parallel a-heterogeneous-tool-embeds-its-single-schema-whole-test
+  (testing "the payoff of batched-declaration receiving the single declaration"
+    (is (= [:map {:closed true}
+            [:items [:sequential {:min 1 :max 20}
+                     [:map {:closed true}
+                      [:kind [:enum "table" "model" "metric"]]
+                      [:id :int]]]]]
+           (:args (:declaration (get entries "load_entity")))))))
+
+(deftest ^:parallel both-declarations-are-validated-test
+  (testing "a batched declaration the tool composed wrongly fails at load time, not on the first call"
+    (is (thrown-with-msg?
+         clojure.lang.ExceptionInfo #"Invalid tool declaration"
+         (tools/validate-tool!
+          (reify
+            tools/Tool
+            (declaration [_] {:name "b" :description "d" :args [:map {:closed true}]})
+            (handle [_ _ _] {:output ""})
+            tools/BatchedTool
+            (batched-declaration [_ d] (dissoc d :description))
+            (batched-args [_ _] [])
+            (around-batch [_ _ _ run] (run))
+            (compose [_ es _] (tools/concatenated es))))))))
+
+;;; ── the batched call ──────────────────────────────────────────────────────────────────────────
 
 (deftest ^:parallel a-failed-item-sits-in-its-own-element-test
   (let [outcome (invoke "read_resource" {:uris ["metabase://table/1" "nope" "metabase://table/9"]})]
@@ -261,8 +358,8 @@
   (testing "and none when nothing loaded"
     (is (nil? (:data-parts (invoke "read_resource" {:uris ["nope"]}))))))
 
-(deftest ^:parallel delegating-to-concatenated-is-the-whole-default-test
-  (testing "load_skill wants nothing special, so its compose is one line"
+(deftest ^:parallel delegating-is-the-whole-default-test
+  (testing "load_skill wants nothing special; around-batch and compose are one line each"
     (is (= ["<skill id=\"a\">…body…</skill>"
             "<skill id=\"b\">…body…</skill>"]
            (str/split-lines (:output (invoke "load_skill" {:ids ["a" "b"]})))))
@@ -272,14 +369,28 @@
               "Call `search` and feed a URI from its results back here."]
              (str/split-lines (:output (invoke "load_skill" {:ids ["a" "unknown"]}))))))))
 
+(deftest ^:parallel heterogeneous-items-stay-addressable-test
+  (let [outcome (invoke "load_entity" {:items [{:kind "table" :id 1}
+                                               {:kind "table" :id 77}
+                                               {:kind "metric" :id 88}]})]
+    (is (nil? (:error outcome)))
+    (is (= ["<table name=\"orders\"/>"
+            ""
+            "These could not be loaded:"
+            "- table 77: Table 77 was not found. It may not exist, or you may not have access to it."
+            "  Call `search` to find the entity you want and use an id from the results."
+            "- metric 88: Metric 88 was not found. It may not exist, or you may not have access to it."
+            "  Call `search` to find the entity you want and use an id from the results."]
+           (str/split-lines (:output outcome))))))
+
 (deftest ^:parallel recovery-steps-are-filtered-once-for-everyone-test
   (testing "an item's failure gets the filtering a whole failed call gets"
     (let [outcome (invoke #{"read_resource"} "read_resource" {:uris ["nope"]})]
       (is (not (str/includes? (:output outcome) "`search`")))
       (is (str/includes? (:output outcome) "\"nope\" is not a Metabase resource URI.")))))
 
-(deftest ^:parallel prefetch-failure-fails-the-whole-call-test
-  (testing "it runs in `handle` before the delegation, so it is not a per-item failure"
+(deftest ^:parallel around-batch-failure-fails-the-whole-call-test
+  (testing "it wraps the run, so a dead connection is one fault and not a per-item failure"
     (let [outcome (invoke "read_resource" {:uris ["metabase://table/1" "metabase://table/dbdown"]})]
       (is (= {:class :unrecoverable :code :internal} (:error outcome)))
       (doseq [leak ["H2" "mb_admin" "SELECT"]]
@@ -290,21 +401,50 @@
     (let [crashing (reify
                      tools/Tool
                      (declaration [_] {:name "crash" :description "d"
-                                       :args [:map {:closed true}]})
-                     (handle [this args ctx] (tools/handle-each this args ctx))
+                                       :args [:map {:closed true} [:n :int]]})
+                     (handle [_ {:keys [n]} _] (if (= 2 n)
+                                                 (throw (ex-info "a real bug: hunter2"
+                                                                 {:pw "hunter2"}))
+                                                 {:output "fine"}))
                      tools/BatchedTool
-                     (items [_ _ _] [1 2])
-                     (load-item [_ i _] (if (= 2 i)
-                                          (throw (ex-info "a real bug: hunter2" {:pw "hunter2"}))
-                                          {:output "fine"}))
+                     (batched-declaration [_ d]
+                       (assoc d :args [:map {:closed true} [:ns [:sequential :int]]]))
+                     (batched-args [_ {:keys [ns]}] (mapv (fn [n] {:n n}) ns))
+                     (around-batch [_ _ _ run] (run))
                      (compose [_ es _] (tools/concatenated es)))
           outcome  (binding [scope/*current-user-scope* #{"*"}]
                      (tools.runtime/invoke (tools/entries [crashing])
                                            {:profile-id :nlq :metabot-id nil :tool-names #{"crash"}}
-                                           "crash" {}))]
+                                           "crash" {:ns [1 2]}))]
       (is (= {:class :unrecoverable :code :internal} (:error outcome)))
       (doseq [secret ["hunter2" "a real bug" "fine"]]
         (is (not (str/includes? (:output outcome) secret)) (str "leaked " secret))))))
+
+;;; ── the variant case ──────────────────────────────────────────────────────────────────────────
+
+(deftest ^:parallel variants-are-instances-not-copies-test
+  (testing "all four share a type, a scope, a title function and a body"
+    (let [variants [search-tool sql-search-tool nlq-search-tool transform-search-tool]]
+      (is (every? #(instance? SearchTool %) variants))
+      (is (= [scope/agent-search] (distinct (map (comp :scope tools/declaration) variants))))
+      (is (= [search-display] (distinct (map (comp :metabot/title-fn tools/declaration) variants))))
+      (is (= ["search"] (distinct (map (comp :name tools/declaration) variants))))))
+  (testing "and differ only in the fields they were constructed with"
+    (is (= #{"model" "table"} (:allowed-types sql-search-tool)))
+    (is (= {:profile-id "nlq"} (:opts nlq-search-tool)))
+    (is (not= (:args search-tool) (:args sql-search-tool)))))
+
+(deftest ^:parallel each-variant-declares-validly-test
+  (doseq [tool [search-tool sql-search-tool nlq-search-tool transform-search-tool]]
+    (is (mr/validate ::tools/declaration (tools/validate-tool! tool)))))
+
+(deftest ^:parallel a-variants-config-reaches-its-body-test
+  (is (= (str "<search label=\"search\" types=\"dashboard,document,metric,model,question,table\" "
+              "opts=\"{}\">orders</search>")
+         (:output (invoke "search" {:keyword_queries ["orders"]}))))
+  (testing "a different instance, same code path"
+    (is (= "<search label=\"search\" types=\"model,table,transform\" opts=\"{:search-native-query true}\">orders</search>"
+           (:output (tools/handle transform-search-tool {:keyword_queries ["orders"]} {}))))))
 
 (deftest ^:parallel reify-is-enough-for-a-test-double-test
   (testing "no macro, no var metadata, no registry — a tool is just a value"
@@ -316,9 +456,9 @@
 
 ;;; ── recorded, not decided ─────────────────────────────────────────────────────────────────────
 
-(deftest ^:parallel item-cap-loses-its-teaching-test
-  (testing "moving the cap into :args is right, but the generated message is much worse than the
-           hand-written one. read_resource says today:
+(deftest ^:parallel item-cap-is-now-just-a-schema-test
+  (testing "the cap lives in the batched args the tool composed. The generated message is still
+           worse than read_resource's hand-written one:
 
              Too many URIs provided (6). Please limit to 5 URIs maximum. Be more selective and
              focus on the most relevant items for the current task or fetch them in batches."
@@ -333,151 +473,3 @@
     (let [outcome (invoke "read_resource" {:uris ["nope" "also-nope"]})]
       (is (nil? (:error outcome)))
       (is (= 2 (count (re-seq #"is not a Metabase resource URI" (:output outcome))))))))
-
-;;; ════════════════════════════════════════════════════════════════════════════════════════════════
-;;; edit_sql_query — a mutation tool: three failures, three audiences
-;;; ════════════════════════════════════════════════════════════════════════════════════════════════
-
-(tools.error/defrecoverable unknown-query-id!
-  "The query id is not in this conversation's query state."
-  {:payload [:map {:closed true}
-             [:query-id  :string]
-             [:available [:sequential :string]]]}
-  [{:keys [query-id available]}]
-  {:message  (if (seq available)
-               (str "Query " query-id " is not in this conversation. Available query ids: "
-                    (str/join ", " available) ".")
-               (str "Query " query-id " is not in this conversation, and none have been created "
-                    "in it yet."))
-   :recovery (if (seq available)
-               []
-               [{:uses #{"create_sql_query"}
-                 :text "Call `create_sql_query` to make one first."}])})
-
-(tools.error/defrecoverable sql-syntax-error!
-  "The edited SQL does not parse."
-  {:payload [:map {:closed true}
-             [:dialect :string]
-             [:line    {:optional true} [:maybe :int]]
-             [:column  {:optional true} [:maybe :int]]]}
-  [{:keys [dialect line column]}]
-  ;; Structured fields, never the raw sqlglot message — that can carry ANSI escapes, and `render`'s
-  ;; dev/test assertion would reject it.
-  {:message  (str "The edited query is not valid " dialect " SQL"
-                  (when line (str " at line " line (when column (str ", column " column)))) ".")
-   :recovery [{:uses #{} :text "Fix the syntax and send the edit again."}]})
-
-(def ^:private fake-queries
-  {"q1" {:database 1 :sql "SELECT id, name FROM orders"}
-   "q2" {:database 99 :sql "SELECT 1"}})
-
-(defrecord EditSqlQueryTool []
-  tools/Tool
-  (declaration [_]
-    {:name         "edit_sql_query"
-     :description  "Edit an existing SQL query using structured edits."
-     :scope        scope/agent-sql-edit
-     :metabot/capabilities #{:permission-write-sql-queries}
-     :args         [:map {:closed true}
-                    [:query_id [:or :string :int]]
-                    [:old_string :string]
-                    [:new_string :string]]})
-  (handle [_ {:keys [query_id old_string new_string]} ctx]
-    (let [queries  (get-in (some-> (:memory-atom ctx) deref) [:state :queries] fake-queries)
-          query-id (str query_id)
-          query    (or (get queries query-id)
-                       (unknown-query-id! {:query-id  query-id
-                                           :available (vec (sort (keys queries)))}))]
-      ;; A permission the agent cannot acquire, so the user is the one who has to act. Note this is
-      ;; the call Maksym questioned: MBQL may still be open, which would make it recoverable.
-      (when (= 99 (:database query))
-        (tools.error/unrecoverable!
-         ::no-native-query-permission
-         {:user-message "You don't have permission to write SQL against this database."
-          :data         {:database-id (:database query)}}))
-      (let [new-sql (str/replace-first (:sql query) old_string new_string)]
-        (when (str/includes? new-sql "FROM FROM")
-          (sql-syntax-error! {:dialect "postgres" :line 1 :column 22}))
-        {:output            (str "<result>\nQuery " query-id " updated.\n"
-                                 "<query>" new-sql "</query>\n</result>\n"
-                                 "<instructions>\nShow the user the result.\n</instructions>")
-         :structured-output {:query-id query-id :query-content new-sql}}))))
-
-(def edit-sql-query-tool (->EditSqlQueryTool))
-
-;;; ════════════════════════════════════════════════════════════════════════════════════════════════
-;;; get_timeline_details — a single-query tool that is one converter
-;;; ════════════════════════════════════════════════════════════════════════════════════════════════
-
-(defrecord GetTimelineDetailsTool []
-  tools/Tool
-  (declaration [_]
-    {:name        "get_timeline_details"
-     :description "Get the full details of a timeline including its events."
-     :scope       scope/agent-timelines-read
-     :args        [:map {:closed true} [:timeline_id pos-int?]]})
-  (handle [_ {:keys [timeline_id]} _ctx]
-    (let [timeline (tools/with-entity {:kind :timeline :id timeline_id}
-                     (if (= 1 timeline_id)
-                       {:name "Releases" :events [{:name "v50"}]}
-                       (throw (ex-info "Not found." {:status-code 404}))))]
-      {:output (format "<timeline name=\"%s\">%s events</timeline>"
-                       (:name timeline) (count (:events timeline)))})))
-
-(def get-timeline-details-tool (->GetTimelineDetailsTool))
-
-;;; ── tests for the two above ───────────────────────────────────────────────────────────────────
-
-(def ^:private more-entries
-  (tools/entries [edit-sql-query-tool get-timeline-details-tool]))
-
-(defn- invoke-more [tool args]
-  (binding [scope/*current-user-scope* #{"*"}]
-    (tools.runtime/invoke more-entries
-                          {:profile-id :sql :metabot-id nil
-                           :tool-names #{"edit_sql_query" "get_timeline_details"
-                                         "create_sql_query" "search"}}
-                          tool args)))
-
-(deftest ^:parallel a-mutation-tool-routes-three-failures-three-ways-test
-  (testing "recoverable: the agent can pick a different query id"
-    (is (=? {:output "Query q7 is not in this conversation. Available query ids: q1, q2."
-             :error  {:class :recoverable}}
-            (invoke-more "edit_sql_query" {:query_id "q7" :old_string "a" :new_string "b"}))))
-  (testing "recoverable: the agent can fix its own syntax"
-    (is (=? {:error {:class :recoverable
-                     :code  ::sql-syntax-error}}
-            (invoke-more "edit_sql_query" {:query_id   "q1"
-                                           :old_string "FROM orders"
-                                           :new_string "FROM FROM orders"}))))
-  (testing "unrecoverable: only the user can grant a permission, so the turn ends"
-    (is (=? {:output "This call failed and the user was shown the error (:metabase.metabot.tools.protocols-spike-test/no-native-query-permission). Don't retry it."
-             :error  {:class        :unrecoverable
-                      :user-message "You don't have permission to write SQL against this database."}}
-            (invoke-more "edit_sql_query" {:query_id "q2" :old_string "1" :new_string "2"}))))
-  (testing "success"
-    (is (=? {:output            #(str/includes? % "SELECT id, name, total FROM orders")
-             :structured-output {:query-id "q1"}}
-            (invoke-more "edit_sql_query" {:query_id   "q1"
-                                           :old_string "id, name"
-                                           :new_string "id, name, total"})))))
-
-(deftest ^:parallel a-mutation-tool-reads-state-from-ctx-test
-  (testing "no dynamic var, no per-tool memory allowlist"
-    (is (=? {:output "Query q1 is not in this conversation. Available query ids: mine."}
-            (binding [scope/*current-user-scope* #{"*"}]
-              (tools.runtime/invoke more-entries
-                                    {:profile-id  :sql :metabot-id nil
-                                     :tool-names  #{"edit_sql_query"}
-                                     :memory-atom (atom {:state {:queries {"mine" {:database 1
-                                                                                   :sql "SELECT 1"}}}})}
-                                    "edit_sql_query"
-                                    {:query_id "q1" :old_string "a" :new_string "b"}))))))
-
-(deftest ^:parallel a-single-query-tool-can-be-one-converter-test
-  (is (= {:output "<timeline name=\"Releases\">1 events</timeline>"}
-         (invoke-more "get_timeline_details" {:timeline_id 1})))
-  (is (=? {:output #(str/starts-with? % "Timeline 9 was not found.")
-           :error  {:class :recoverable
-                    :code  :metabase.metabot.tools.recoverable.common/not-found}}
-          (invoke-more "get_timeline_details" {:timeline_id 9}))))

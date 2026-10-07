@@ -3,8 +3,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.metabot.tools.core :as tools]
-   [metabase.metabot.tools.error :as tools.error]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.metabot.tools.error :as tools.error]))
 
 (set! *warn-on-reflection* true)
 
@@ -114,79 +113,113 @@
   {:message  (str "Item " id " could not be loaded.")
    :recovery [{:uses #{"search"} :text "Call `search` for a loadable id."}]})
 
-(defn- batched!
-  "A `BatchedTool` over `item-ids`, loading even ids and failing odd ones. `compose` is `nil` to take
-  the ordinary composition."
-  [item-ids & {:keys [compose-fn]}]
-  (reify
-    tools/Tool
-    (declaration [_] {:name "batched" :description "d" :args [:map {:closed true}]})
-    (handle [this args ctx] (tools/handle-each this args ctx))
-    tools/BatchedTool
-    (items [_ _args _ctx] item-ids)
-    (load-item [_ id _ctx]
-      (if (even? id) {:output (str "item " id)} (odd-id! {:id id})))
-    (compose [_ entries _ctx]
-      (if compose-fn (compose-fn entries) (tools/concatenated entries)))))
+(defrecord ItemTool [compose-fn around-fn]
+  tools/Tool
+  (declaration [_]
+    {:name "batched" :description "Loads one item."
+     :args [:map {:closed true} [:id :int]]})
+  (handle [_ {:keys [id]} _ctx]
+    (if (even? id) {:output (str "item " id)} (odd-id! {:id id})))
+
+  tools/BatchedTool
+  (batched-declaration [_ declared]
+    (-> declared
+        (assoc :description "Loads several items.")
+        (assoc :args [:map {:closed true} [:ids [:sequential {:min 1 :max 3} :int]]])))
+  (batched-args [_ {:keys [ids]}] (mapv (fn [id] {:id id}) ids))
+  (around-batch [_ item-args ctx run] ((or around-fn (fn [_ _ r] (r))) item-args ctx run))
+  (compose [_ entries _ctx] ((or compose-fn tools/concatenated) entries)))
+
+(defn- item-tool [] (->ItemTool nil nil))
 
 (def ^:private ctx {:profile-id :nlq :metabot-id nil :tool-names #{"search"}})
 
-(deftest ^:parallel handle-each-composes-one-result-test
-  (testing "a batched tool returns the same shape a plain one does"
-    (let [result (tools/handle (batched! [2 4]) {} ctx)]
-      (is (= {:output "item 2\nitem 4"} result))
-      (is (mr/validate ::tools/result result)))))
+(deftest ^:parallel the-single-form-is-a-real-tool-test
+  (testing "take BatchedTool away and this still works; handle is the item loader"
+    (is (= {:output "item 2"} (tools/handle (item-tool) {:id 2} ctx)))
+    (is (= {:name "batched" :description "Loads one item."
+            :args [:map {:closed true} [:id :int]]}
+           (tools/declaration (item-tool))))))
+
+(deftest ^:parallel batched-declaration-is-complete-test
+  (testing "the tool composes it; nothing is derived"
+    (is (= {:name "batched" :description "Loads several items."
+            :args [:map {:closed true} [:ids [:sequential {:min 1 :max 3} :int]]]}
+           (tools/batched-declaration (item-tool) (tools/declaration (item-tool))))))
+  (testing "and validate-tool! returns the published one"
+    (is (= "Loads several items." (:description (tools/validate-tool! (item-tool)))))))
+
+(deftest ^:parallel call-does-not-make-the-consumer-branch-test
+  (testing "one entry point for both kinds of tool"
+    (is (= {:output "item 2\nitem 4"} (tools/call (item-tool) {:ids [2 4]} ctx)))
+    (is (= {:output "one"}
+           (tools/call (reify tools/Tool
+                         (declaration [_] {:name "x" :description "d" :args :any})
+                         (handle [_ _ _] {:output "one"}))
+                       {} ctx))))
+  (testing "and batched? is there for a consumer that needs to know for its own reasons"
+    (is (tools/batched? (item-tool)))
+    (is (not (tools/batched? (reify tools/Tool
+                               (declaration [_] {:name "x" :description "d" :args :any})
+                               (handle [_ _ _] {:output "one"})))))))
 
 (deftest ^:parallel a-failed-item-is-rendered-in-position-test
   (is (= ["item 2"
           "Item 3 could not be loaded."
           "Call `search` for a loadable id."
           "item 4"]
-         (str/split-lines (:output (tools/handle (batched! [2 3 4]) {} ctx)))))
+         (str/split-lines (:output (tools/call (item-tool) {:ids [2 3 4]} ctx)))))
   (testing "with the step filtering a whole failed call would get"
     (is (= ["item 2" "Item 3 could not be loaded."]
            (str/split-lines
-            (:output (tools/handle (batched! [2 3]) {} (assoc ctx :tool-names #{}))))))))
+            (:output (tools/call (item-tool) {:ids [2 3]} (assoc ctx :tool-names #{}))))))))
+
+(deftest ^:parallel around-batch-wraps-the-whole-run-test
+  (let [log  (atom [])
+        tool (->ItemTool nil (fn [item-args _ctx run]
+                               (swap! log conj [:before (count item-args)])
+                               (let [result (run)]
+                                 (swap! log conj :after)
+                                 result)))]
+    (is (= {:output "item 2"} (tools/call tool {:ids [2]} ctx)))
+    (is (= [[:before 1] :after] @log)))
+  (testing "a failure in the wrapper fails the whole call"
+    (is (thrown-with-msg?
+         clojure.lang.ExceptionInfo #"cache is cold"
+         (tools/call (->ItemTool nil (fn [_ _ _] (throw (ex-info "cache is cold" {}))))
+                     {:ids [2]} ctx)))))
 
 (deftest ^:parallel only-declared-recoverables-are-captured-test
   (testing "an undeclared exception ends the turn and discards the items that loaded"
     (is (thrown-with-msg?
          clojure.lang.ExceptionInfo #"a real bug"
-         (tools/handle (reify
-                         tools/Tool
-                         (declaration [_] {:name "b" :description "d" :args :any})
-                         (handle [this args ctx] (tools/handle-each this args ctx))
-                         tools/BatchedTool
-                         (items [_ _ _] [1 2])
-                         (load-item [_ i _] (if (= 2 i)
-                                              (throw (ex-info "a real bug" {}))
-                                              {:output "fine"}))
-                         (compose [_ es _] (tools/concatenated es)))
-                       {} ctx))))
-  (testing "and so does an explicit give-up"
-    (is (thrown? clojure.lang.ExceptionInfo
-                 (tools/handle (reify
-                                 tools/Tool
-                                 (declaration [_] {:name "b" :description "d" :args :any})
-                                 (handle [this args ctx] (tools/handle-each this args ctx))
-                                 tools/BatchedTool
-                                 (items [_ _ _] [1])
-                                 (load-item [_ _ _] (tools.error/unrecoverable! ::nope))
-                                 (compose [_ es _] (tools/concatenated es)))
-                               {} ctx)))))
-
-(deftest ^:parallel a-malformed-item-result-is-caught-test
-  (is (thrown-with-msg?
-       clojure.lang.ExceptionInfo #"invalid result"
-       (tools/handle (reify
+         (tools/call (reify
                        tools/Tool
                        (declaration [_] {:name "b" :description "d" :args :any})
-                       (handle [this args ctx] (tools/handle-each this args ctx))
+                       (handle [_ {:keys [id]} _] (if (= 2 id)
+                                                    (throw (ex-info "a real bug" {}))
+                                                    {:output "fine"}))
                        tools/BatchedTool
-                       (items [_ _ _] [1])
-                       (load-item [_ _ _] {:outputs "typo"})
+                       (batched-declaration [_ d] d)
+                       (batched-args [_ {:keys [ids]}] (mapv (fn [i] {:id i}) ids))
+                       (around-batch [_ _ _ run] (run))
                        (compose [_ es _] (tools/concatenated es)))
-                     {} ctx))))
+                     {:ids [1 2]} ctx)))))
+
+(deftest ^:parallel a-malformed-item-result-is-caught-test
+  (testing "an item returns a complete ::result now — :output is required, as for any tool"
+    (is (thrown-with-msg?
+         clojure.lang.ExceptionInfo #"invalid result"
+         (tools/call (reify
+                       tools/Tool
+                       (declaration [_] {:name "b" :description "d" :args :any})
+                       (handle [_ _ _] {:outputs "typo"})
+                       tools/BatchedTool
+                       (batched-declaration [_ d] d)
+                       (batched-args [_ _] [{:id 1}])
+                       (around-batch [_ _ _ run] (run))
+                       (compose [_ es _] (tools/concatenated es)))
+                     {} ctx)))))
 
 (deftest ^:parallel concatenated-test
   (testing "outputs joined in order, structured outputs vectored, data parts concatenated"
@@ -194,25 +227,23 @@
             :structured-output [{:n 1} {:n 2}]
             :data-parts        [{:type :data :data-type "x"} {:type :data :data-type "y"}]}
            (tools/concatenated
-            [{:item :a :failed? false :output "a" :structured-output {:n 1}
+            [{:item {} :failed? false :output "a" :structured-output {:n 1}
               :data-parts [{:type :data :data-type "x"}]}
-             {:item :b :failed? false :output "b" :structured-output {:n 2}
+             {:item {} :failed? false :output "b" :structured-output {:n 2}
               :data-parts [{:type :data :data-type "y"}]}]))))
   (testing "keys no entry produced are absent rather than empty"
-    (is (= {:output "a"} (tools/concatenated [{:item :a :failed? false :output "a"}])))))
+    (is (= {:output "a"} (tools/concatenated [{:item {} :failed? false :output "a"}])))))
 
 (deftest ^:parallel compose-owns-placement-test
-  (testing "an entry is uniform — :output always a string, :failed? always a boolean — so
-           concatenating asks nothing and separating asks a boolean"
+  (testing "an entry is uniform — :output always a string, :failed? always a boolean"
     (is (= {:output "ok: item 2 | failed: 3"}
-           (tools/handle (batched! [2 3]
-                                   :compose-fn
-                                   (fn [entries]
+           (tools/call (->ItemTool (fn [entries]
                                      (let [{ok false failed true} (group-by :failed? entries)]
                                        {:output (str "ok: " (str/join ", " (map :output ok))
                                                      " | failed: "
-                                                     (str/join ", " (map :item failed)))})))
-                         {} ctx)))))
+                                                     (str/join ", " (map (comp :id :item) failed)))}))
+                                   nil)
+                       {:ids [2 3]} ctx)))))
 
 ;;; ------------------------------------------------ with-entity ---------------------------------------------------
 

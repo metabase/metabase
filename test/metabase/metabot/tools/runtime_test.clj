@@ -70,19 +70,23 @@
         (fn [_ ctx] {:output (str "memory: " (pr-str (some-> (:memory-atom ctx) deref)))})))
 
 (def ^:private multi-item-tool
-  "A batched tool: the runtime does not know it is one. It calls `handle` like any other."
+  "A single-card tool that can also take several. The runtime never asks which it is."
   (reify
     tools/Tool
-    (declaration [_] {:name "read_many" :description "Resolves several items."
-                      :args [:map {:closed true} [:ids [:sequential :int]]]})
-    (handle [this args ctx] (tools/handle-each this args ctx))
-    tools/BatchedTool
-    (items [_ {:keys [ids]} _ctx] ids)
-    (load-item [_ id _ctx]
+    (declaration [_] {:name "read_many" :description "Reads one card."
+                      :args [:map {:closed true} [:id :int]]})
+    (handle [_ {:keys [id]} _ctx]
       (tools/with-entity {:kind :card :id id}
         (if (even? id)
           {:output (str "card " id " contents")}
           (throw (ex-info "nope" {:status-code 404})))))
+    tools/BatchedTool
+    (batched-declaration [_ declared]
+      (-> declared
+          (assoc :description "Reads several cards.")
+          (assoc :args [:map {:closed true} [:ids [:sequential {:min 1} :int]]])))
+    (batched-args [_ {:keys [ids]}] (mapv (fn [id] {:id id}) ids))
+    (around-batch [_ _item-args _ctx run] (run))
     (compose [_ entries _ctx] (tools/concatenated entries))))
 
 (def ^:private entries
@@ -228,8 +232,8 @@
 
 ;;; --------------------------------------------- Multiple items ---------------------------------------------------
 
-(deftest ^:parallel the-runtime-does-not-know-about-batching-test
-  (testing "it calls `handle`; whether that does one thing or one per item is the tool's business"
+(deftest ^:parallel the-runtime-does-not-branch-test
+  (testing "it calls tools.core/call; one item or several is the tool's business"
     (let [outcome (invoke "read_many" {:ids [2 3 4]})]
       (is (nil? (:error outcome)) "a partial failure is not a failed call")
       (is (= ["card 2 contents"
@@ -238,6 +242,12 @@
               "card 4 contents"]
              (str/split-lines (:output outcome))))
       (is (mr/validate ::tools.runtime/outcome outcome)))))
+
+(deftest ^:parallel the-batched-declaration-is-what-the-model-sees-test
+  (testing "arguments are validated against the shape the tool was offered in"
+    (is (= {:class :validation :code :invalid-arguments}
+           (:error (invoke "read_many" {:id 2})))
+        "the single form's args are not what this tool publishes")))
 
 (deftest ^:parallel item-failures-are-profile-filtered-test
   (testing "the same step filtering as a failed call, in the same place"

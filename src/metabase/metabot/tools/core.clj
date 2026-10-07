@@ -136,23 +136,6 @@
    [:data-parts        {:optional true} [:sequential DataPart]]
    [:resources         {:optional true} [:sequential ::schema.v2/tool-io]]])
 
-(mr/def ::item-result
-  "What [[load-item]] returns: a [[::result]] whose `:output` is optional.
-
-  Optional rather than required because the two composition styles want different things from an
-  item. A tool whose output is a concatenation of its items (`read_resource` wraps each in its own
-  element) formats per item, so each item carries its own `:output`. A tool whose output is one
-  document over the whole set (`list_available_fields` groups by kind) formats in [[compose]], so its
-  items carry only `:structured-output`.
-
-  This is the one place the \"an item is just a smaller tool\" equivalence loosens: a tool must
-  produce `:output`, an item need not."
-  [:map {:closed true}
-   [:output            {:optional true} ::renderable]
-   [:structured-output {:optional true} ::schema.v2/tool-io]
-   [:data-parts        {:optional true} [:sequential DataPart]]
-   [:resources         {:optional true} [:sequential ::schema.v2/tool-io]]])
-
 (mr/def ::entry
   "One item's contribution, as [[compose]] sees it.
 
@@ -172,39 +155,60 @@
 ;;; ------------------------------------------------ Protocols -----------------------------------------------------
 
 (defprotocol Tool
-  "Every Metabot tool. The runtime knows this protocol and nothing else."
+  "Every Metabot tool. One call, one unit of work."
   (declaration [this]
-    "This tool's [[::declaration]] — what the model is told it is, and what the runtime gates it on.
+    "This tool's complete [[::declaration]] — what the model is told it is, and what a consumer
+    gates it on.
 
     Written out as a literal map rather than derived from the record's fields, because it is the
     tool's contract with the model and a reader should be able to see all of it in one place.")
   (handle [this args ctx]
-    "Do the work. `args` have already been coerced and validated against the declaration's `:args`,
-    so destructure them without re-checking.
+    "Do the work for one call. `args` have already been coerced and validated against the
+    declaration's `:args`, so destructure them without re-checking.
 
-    Returns a [[::result]] or throws. A tool that works item by item implements [[BatchedTool]] too
-    and delegates here: `(handle-each this args ctx)`."))
+    Returns a [[::result]] or throws."))
 
 (defprotocol BatchedTool
-  "A tool whose arguments name several things the agent wants, done one at a time.
+  "A tool that can also be called for several items at once.
 
-  Not a protocol the runtime looks for: [[handle-each]] is what calls these, and a tool reaches
-  [[handle-each]] from its own [[handle]]. So implementing this changes nothing until the tool says
-  so, and the delegating line in `handle` is where a reader finds out.
+  The rule: for everything that differs between the single and the batched form, this protocol has a
+  `batched-…` function that receives the single form and returns a **complete** batched form. Nothing
+  is derived by the framework, so there are no special cases and no shape a tool cannot express.
 
-  Batching in the database sense belongs in `handle`, before the delegation — warm whatever cache
-  [[load-item]] reads (`metabase.metabot.metadata-perms/with-cache` is the existing example). A
-  prefetch that fails fails the whole call, which is the right answer: five \"not found\"s thrown by a
-  dead connection teach the agent the wrong thing. Keeping it out of the per-item path is also what
-  lets [[load-item]] throw, since a batch loader would have to report several failures at once and a
-  `defrecoverable` constructor can only throw one."
-  (items [this args ctx]
-    "The things the agent asked for, in the order it asked. These are the units of partial failure —
-    whatever this returns is what a failure can be attributed to.")
-  (load-item [this item ctx]
-    "One item's [[::item-result]], or throw. A *declared recoverable* error becomes this item's
-    contribution; anything else ends the turn, discarding the items that did load. That is the point:
-    a bug is not a partial result.")
+  [[Tool]] stays the single-item tool. Take `BatchedTool` away and the record is still a working
+  tool that reads one URI, loads one id, edits one query. That is the point: `handle` *is* the item
+  loader, so there is no second per-item function to keep in step with it, and the single form can be
+  tested and published on its own.
+
+  The consumer orchestrates. It asks whether a tool satisfies this protocol, and if so calls
+  [[run-batched]] instead of [[handle]]. That is one branch in each consumer, in exchange for the
+  single form being independently real."
+  (batched-declaration [this declaration]
+    "The complete [[::declaration]] for the batched form, given the single one.
+
+    Two things usually differ: `:args` becomes a map holding a sequence, and `:description` gains a
+    sentence about the per-call limit. Everything else — name, scope, namespaced extras — is normally
+    passed through.
+
+    The tool composes `:args` itself rather than the framework wrapping the single schema. That is
+    what lets `read_resource` publish `[:sequential :string]` while its single form takes
+    `{:uri :string}`, and lets a tool with heterogeneous items embed the single schema whole. Share
+    the item schema through a var so the two cannot drift.")
+  (batched-args [this args]
+    "The batched `args`, split into one single-form args map per item, in the order the agent asked.
+
+    The inverse of what [[batched-declaration]] did to `:args`. The tool owns both, so the framework
+    never has to guess how the plural shape maps onto the singular one.")
+  (around-batch [this item-args ctx run]
+    "Run the whole batched call, wrapped in whatever it needs. `(run)` performs it and returns the
+    composed result.
+
+    This is where batching in the database sense belongs. `metabase.metabot.metadata-perms/with-cache`
+    is a wrapper, so `(with-cache (run))` is the whole implementation; an eager prefetch reads
+    `item-args` first and then calls `(run)`. A failure here fails the whole call, which is the right
+    answer: five \"not found\"s thrown by a dead connection teach the agent the wrong thing.
+
+    The default is `(run)`. Clojure gives a protocol no way to supply one, so write it out.")
   (compose [this entries ctx]
     "The [[::result]] for the whole call, from one [[::entry]] per item in item order.
 
@@ -220,42 +224,78 @@
   collected into a vector, their `:data-parts` and `:resources` concatenated.
 
   Failures land in position, because a failed entry's `:output` is its rendered failure text and this
-  joins what it is given. Delegate to it explicitly from [[compose]] — Clojure gives a protocol no
-  way to supply a default, and spelling the delegation out is clearer than any of the ways around
-  that."
+  joins what it is given."
   [entries]
   (cond-> {:output (str/join "\n" (map :output entries))}
     (some :structured-output entries) (assoc :structured-output (mapv :structured-output entries))
     (some :data-parts entries)        (assoc :data-parts (vec (mapcat :data-parts entries)))
     (some :resources entries)         (assoc :resources (vec (mapcat :resources entries)))))
 
-(defn- entry
-  "One item's [[::entry]]: its [[load-item]] result, or its declared failure rendered."
-  [tool item ctx]
+(defn entry
+  "One item's [[::entry]]: the result of calling `tool`'s [[handle]] with `item-args`, or its declared
+  failure rendered.
+
+  The default per-item step for [[run-batched]]. A consumer whose error vocabulary differs supplies
+  its own — rendering a recoverable error to text is neutral, but what a consumer does with an
+  unrecoverable one is not."
+  [tool item-args ctx]
   (try
-    (let [result (load-item tool item ctx)]
-      (when-not (mr/validate ::item-result result)
-        (throw (ex-info (str "load-item returned an invalid result for " (pr-str item))
-                        {:item item :result result})))
-      ;; Rendered here so that `compose` and every composer downstream work with strings, and only
-      ;; the edges of the system deal in renderables.
-      (assoc result :item item :failed? false :output (render-text (:output result ""))))
+    (let [result (handle tool item-args ctx)]
+      (when-not (mr/validate ::result result)
+        (throw (ex-info (str "handle returned an invalid result for " (pr-str item-args))
+                        {:item-args item-args :result result})))
+      (assoc result :item item-args :failed? false :output (render-text (:output result))))
     (catch Throwable e
       (let [error (tools.error/classify e)]
         (if (= :recoverable (:class error))
-          {:item    item
+          {:item    item-args
            :error   error
            :output  (tools.error/recoverable-text error (:tool-names ctx))
            :failed? true}
           (throw e))))))
 
-(defn handle-each
-  "Run `tool`'s [[load-item]] over its [[items]] and [[compose]] the results.
+(defn run-batched
+  "Perform `tool`'s batched call and return one [[::result]].
 
-  What a [[BatchedTool]]'s [[handle]] delegates to. Kept as an ordinary function rather than wired
-  into the runtime so that a tool's `handle` still shows its whole shape: the prefetch, then this."
-  [tool args ctx]
-  (compose tool (mapv #(entry tool % ctx) (items tool args ctx)) ctx))
+  What a consumer calls in place of [[handle]] when a tool satisfies [[BatchedTool]]. `entry-fn`
+  takes one item's args and returns an [[::entry]]; it defaults to [[entry]], and a consumer with its
+  own error vocabulary passes its own.
+
+  A declared recoverable error from one item becomes that item's contribution. Anything else is
+  rethrown, so an undeclared exception fails the whole call and discards the items that did load.
+  That is deliberate: a bug is not a partial result."
+  ([tool args ctx]
+   (run-batched tool args ctx #(entry tool % ctx)))
+  ([tool args ctx entry-fn]
+   (let [item-args (batched-args tool args)]
+     (around-batch tool item-args ctx
+                   #(compose tool (mapv entry-fn item-args) ctx)))))
+
+(defn batched?
+  "Whether `tool` can be called for several items at once.
+
+  A consumer does not normally ask: [[call]] does. This is here for a consumer that needs to know
+  for its own reasons — an MCP annotation, say."
+  [tool]
+  (satisfies? BatchedTool tool))
+
+(defn call
+  "Call `tool` with `args` and `ctx`, and return one [[::result]].
+
+  The entry point a consumer uses. One item or several, depending on the tool, so a consumer does not
+  branch and does not need to know which kind it has. [[handle]] is the protocol method for one
+  item's work; this is the function that performs a call.
+
+  `entry-fn` is the seam for a consumer whose error vocabulary differs from [[entry]]'s. It is only
+  reached for a batched tool, because a single-item call has no per-item step."
+  ([tool args ctx]
+   (if (batched? tool)
+     (run-batched tool args ctx)
+     (handle tool args ctx)))
+  ([tool args ctx entry-fn]
+   (if (batched? tool)
+     (run-batched tool args ctx entry-fn)
+     (handle tool args ctx))))
 
 ;;; ------------------------------------------------ Registration --------------------------------------------------
 
@@ -268,11 +308,10 @@
   "The keys every consumer needs. Anything else must be namespaced for one; see [[::declaration]]."
   #{:name :description :args :scope})
 
-(defn validate-tool!
-  "Check `tool`'s declaration, throwing on anything a load-time check can catch, and return the
-  declaration."
-  [tool]
-  (let [{tool-name :name :keys [args] :as declared} (declaration tool)]
+(defn- validate-declaration!
+  "Check one declaration, throwing on anything a load-time check can catch."
+  [declared]
+  (let [{tool-name :name :keys [args]} declared]
     (when-not (mr/validate ::declaration declared)
       (throw (ex-info (str "Invalid tool declaration: " (pr-str declared))
                       {:declaration declared
@@ -302,8 +341,24 @@
                         {:name tool-name} e))))
     declared))
 
+(defn validate-tool!
+  "Check `tool`'s declaration — and its batched declaration, when it has one — and return the
+  declaration a consumer publishes.
+
+  Both are checked because both are published schemas somewhere: the single one by a consumer that
+  calls `handle` directly, the batched one by every consumer of a [[BatchedTool]]. A batched `:args`
+  the tool composed wrongly would otherwise fail on the first model call."
+  [tool]
+  (let [declared (validate-declaration! (declaration tool))]
+    (if (batched? tool)
+      (validate-declaration! (batched-declaration tool declared))
+      declared)))
+
 (defn entries
   "The runtime's `entries` map — tool name to `{:declaration … :tool …}` — for one profile's `tools`.
+
+  The declaration is the published one, so a batched tool's entry carries its batched `:args` and the
+  runtime validates the model's arguments against the shape it was actually offered.
 
   Rejects two tools claiming the same name: within a profile the name is how the model and the
   runtime address a tool, so a collision means one of them is unreachable and which one depends on
