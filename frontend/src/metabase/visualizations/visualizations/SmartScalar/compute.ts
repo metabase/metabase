@@ -709,8 +709,8 @@ function computeComparisonStrPreviousValue({
   const prevDateTime = dayjs.parseZone(prevDate);
   const nextDateTime = dayjs.parseZone(nextDate);
 
-  // dayjs compares day and year granularity in the machine's local calendar,
-  // so these are formatted first to keep the comparison in each timestamp's own offset.
+  // isSame checks whether nextDate falls inside prevDate's day as worked out in prevDate's offset,
+  // so it gives the wrong answer when the two timestamps carry different offsets.
   const options = {
     removeDay:
       prevDateTime.format("YYYY-MM-DD") === nextDateTime.format("YYYY-MM-DD"),
