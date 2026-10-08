@@ -35,11 +35,11 @@ export const PaginationControls = ({
   const isNextDisabled =
     total != null ? isLastPage(page, pageSize, total) : !onNextPage;
 
-  const rangeStart = itemsLength === 0 ? 0 : page * pageSize + 1;
-  const unclampedRangeEnd =
-    itemsLength === 0 ? 0 : page * pageSize + itemsLength;
+  const rangeStart = page * pageSize + 1;
   const rangeEnd =
-    total != null ? Math.min(unclampedRangeEnd, total) : unclampedRangeEnd;
+    total != null
+      ? Math.min(page * pageSize + itemsLength, total)
+      : page * pageSize + itemsLength;
 
   return (
     <Group

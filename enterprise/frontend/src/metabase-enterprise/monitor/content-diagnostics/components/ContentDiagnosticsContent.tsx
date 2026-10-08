@@ -18,6 +18,7 @@ import { PAGE_SIZE } from "metabase-enterprise/monitor/constants";
 import type {
   ContentDiagnosticsBaseFinding,
   ContentDiagnosticsFilterType,
+  ContentDiagnosticsFindingId,
   SortDirection,
 } from "metabase-types/api";
 
@@ -28,10 +29,7 @@ import {
   trackContentDiagnosticsTabViewed,
 } from "../analytics";
 
-import {
-  ContentDiagnosticsBulkActionsBar,
-  useBulkDismissFindings,
-} from "./ContentDiagnosticsBulkActionsBar";
+import { ContentDiagnosticsBulkActionsBar } from "./ContentDiagnosticsBulkActionsBar";
 import { DiagnosticsHeader } from "./DiagnosticsHeader";
 import { DiagnosticsPagination } from "./DiagnosticsPagination";
 import type {
@@ -99,7 +97,6 @@ type ContentDiagnosticsContentProps<
   ) => void;
   data?: { data: TFinding[]; total: number };
   isFetchingFindings: boolean;
-  hasCurrentData: boolean;
   isLoadingFindings: boolean;
   error: ComponentProps<typeof DelayedLoadingAndErrorWrapper>["error"];
   renderFilterBar: (props: FilterBarProps<TFilterOptions>) => ReactNode;
@@ -123,7 +120,6 @@ export function ContentDiagnosticsContent<
   onParamsChange,
   data,
   isFetchingFindings,
-  hasCurrentData,
   isLoadingFindings,
   error,
   renderFilterBar,
@@ -137,7 +133,8 @@ export function ContentDiagnosticsContent<
   TSortColumn
 >) {
   const { ref: containerRef, width: containerWidth } = useElementSize();
-  const [selectedFindingId, setSelectedFindingId] = useState<number>();
+  const [selectedFindingId, setSelectedFindingId] =
+    useState<ContentDiagnosticsFindingId>();
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
 
   const { page = 0, query, sortColumn, sortDirection } = params;
@@ -150,13 +147,7 @@ export function ContentDiagnosticsContent<
   );
   const isFetching = isFetchingFindings || isLoadingParams;
   const isLoading = isLoadingFindings || isLoadingParams;
-  const { dismissFindings, hiddenFindingIds, isDismissing } =
-    useBulkDismissFindings();
-  const findings = useMemo(
-    () =>
-      data?.data.filter((finding) => !hiddenFindingIds.has(finding.id)) ?? [],
-    [data, hiddenFindingIds],
-  );
+  const findings = useMemo(() => data?.data ?? [], [data]);
   const totalCount = data?.total ?? 0;
   const selectedFinding = findings.find(
     (finding) => finding.id === selectedFindingId,
@@ -250,6 +241,14 @@ export function ContentDiagnosticsContent<
     });
     setSelectedFindingId(finding.id);
   };
+  const handleBulkActionSettled = (
+    failedIds: readonly ContentDiagnosticsFindingId[],
+    settledIds: readonly ContentDiagnosticsFindingId[],
+  ) => {
+    setRowSelection((selection) =>
+      reconcileRowSelection({ selection, failedIds, settledIds }),
+    );
+  };
 
   return (
     <>
@@ -276,7 +275,7 @@ export function ContentDiagnosticsContent<
               findings,
               params,
               sortOptions,
-              isFetching: isFetching && !hasCurrentData,
+              isFetching,
               isLoading,
               rowSelection,
               onSelect: handleSelect,
@@ -293,24 +292,10 @@ export function ContentDiagnosticsContent<
             />
           )}
           <ContentDiagnosticsBulkActionsBar
-            dismissFindings={dismissFindings}
-            isDismissing={isDismissing}
             enableTrash={enableBulkTrash}
             tab={tab}
             selectedFindings={selectedFindings}
-            onSettled={(failedIds, settledIds) => {
-              setRowSelection((selection) => {
-                const next = { ...selection };
-                settledIds.forEach((id) => {
-                  if (failedIds.includes(id)) {
-                    next[id] = true;
-                  } else {
-                    delete next[id];
-                  }
-                });
-                return next;
-              });
-            }}
+            onSettled={handleBulkActionSettled}
           />
         </MonitorMain>
         {selectedFinding != null && (
@@ -323,4 +308,24 @@ export function ContentDiagnosticsContent<
       </Flex>
     </>
   );
+}
+
+function reconcileRowSelection({
+  selection,
+  failedIds,
+  settledIds,
+}: {
+  selection: RowSelectionState;
+  failedIds: readonly ContentDiagnosticsFindingId[];
+  settledIds: readonly ContentDiagnosticsFindingId[];
+}): RowSelectionState {
+  const settledKeys = new Set(settledIds.map((id) => id.toString()));
+  return {
+    ...Object.fromEntries(
+      Object.entries(selection).filter(([id]) => !settledKeys.has(id)),
+    ),
+    ...Object.fromEntries(
+      settledIds.filter((id) => failedIds.includes(id)).map((id) => [id, true]),
+    ),
+  };
 }

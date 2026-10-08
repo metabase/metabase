@@ -5,6 +5,7 @@ import { useDeleteTransformMutation } from "metabase/api";
 import { archiveAndTrack } from "metabase/archive/analytics";
 import { useSetArchive } from "metabase/archive/hooks/use-set-archive";
 import { deleteTransformAndTrack } from "metabase/transforms/analytics";
+import { isNotNull } from "metabase/utils/types";
 import type { ContentDiagnosticsBaseFinding } from "metabase-types/api";
 
 import { trackContentDiagnosticsFindingsBulkTrashed } from "../../analytics";
@@ -42,17 +43,13 @@ function getArchivableModel(
   return finding.entity_type;
 }
 
-/**
- * Trash a set of findings' entities: archive the archivable ones and hard-delete
- * transforms, each via separate API call.
- */
 export function useBulkTrashFindings() {
   const archive = useSetArchive();
   const [deleteTransform] = useDeleteTransformMutation();
 
   return useCallback(
     async (
-      findings: ContentDiagnosticsBaseFinding[],
+      findings: readonly ContentDiagnosticsBaseFinding[],
       tab: ContentDiagnosticsTab,
     ): Promise<BulkTrashResult> => {
       if (findings.length === 0) {
@@ -87,9 +84,7 @@ export function useBulkTrashFindings() {
           }
         }),
       );
-      const failedFindings = outcomes.filter(
-        (finding): finding is ContentDiagnosticsBaseFinding => finding != null,
-      );
+      const failedFindings = outcomes.filter(isNotNull);
       const removedCount = findings.length - failedFindings.length;
       trackContentDiagnosticsFindingsBulkTrashed({
         tab,

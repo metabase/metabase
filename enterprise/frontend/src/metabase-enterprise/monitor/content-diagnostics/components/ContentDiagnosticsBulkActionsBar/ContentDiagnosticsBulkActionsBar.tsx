@@ -1,216 +1,91 @@
-import { useDisclosure } from "@mantine/hooks";
 import { msgid, ngettext, t } from "ttag";
 
 import { BulkActionButton } from "metabase/common/components/BulkActionBar";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
-import { useDispatch } from "metabase/redux";
-import { addUndo } from "metabase/redux/undo";
 import { Box, Card, Flex, Text, Tooltip } from "metabase/ui";
-import type { ContentDiagnosticsBaseFinding } from "metabase-types/api";
+import type {
+  ContentDiagnosticsBaseFinding,
+  ContentDiagnosticsFindingId,
+} from "metabase-types/api";
 
 import type { ContentDiagnosticsTab } from "../types";
 
+import S from "./ContentDiagnosticsBulkActionsBar.module.css";
 import { ContentDiagnosticsBulkDismissButton } from "./ContentDiagnosticsBulkDismissButton";
-import type { BulkDismissAction } from "./use-bulk-dismiss-findings";
-import { useBulkTrashFindings } from "./use-bulk-trash-findings";
+import { useBulkTrashConfirmation } from "./use-bulk-trash-confirmation";
 
-type ContentDiagnosticsBulkActionsBarProps = BulkDismissAction & {
-  selectedFindings: ContentDiagnosticsBaseFinding[];
+type ContentDiagnosticsBulkActionsBarProps = {
+  selectedFindings: readonly ContentDiagnosticsBaseFinding[];
   tab: ContentDiagnosticsTab;
   enableTrash?: boolean;
-  onSettled: (failedFindingIds: number[], settledFindingIds: number[]) => void;
+  onSettled: (
+    failedFindingIds: ContentDiagnosticsFindingId[],
+    settledFindingIds: ContentDiagnosticsFindingId[],
+  ) => void;
 };
-
-type TrashCopy = {
-  actionLabel: string;
-  title: string;
-  message: string;
-  confirmLabel: string;
-};
-
-// Transforms are permanently deleted (no restore), so any selection that includes
-// one drops the "trash" language for "delete". A pure-archivable selection keeps
-// the recoverable "move to trash" wording (matching the collections screen).
-function getTrashCopy(
-  archivableCount: number,
-  transformCount: number,
-): TrashCopy {
-  if (transformCount === 0) {
-    return {
-      actionLabel: t`Move to trash`,
-      title: ngettext(
-        msgid`Move ${archivableCount} item to trash?`,
-        `Move ${archivableCount} items to trash?`,
-        archivableCount,
-      ),
-      message: t`You can restore items from the trash.`,
-      confirmLabel: t`Move to trash`,
-    };
-  }
-
-  const deletePart = ngettext(
-    msgid`${transformCount} transform will be permanently deleted and cannot be restored.`,
-    `${transformCount} transforms will be permanently deleted and cannot be restored.`,
-    transformCount,
-  );
-
-  if (archivableCount === 0) {
-    return {
-      actionLabel: t`Delete`,
-      title: ngettext(
-        msgid`Delete ${transformCount} transform?`,
-        `Delete ${transformCount} transforms?`,
-        transformCount,
-      ),
-      message: deletePart,
-      confirmLabel: t`Delete`,
-    };
-  }
-
-  const trashPart = ngettext(
-    msgid`${archivableCount} item will be moved to the trash and can be restored later.`,
-    `${archivableCount} items will be moved to the trash and can be restored later.`,
-    archivableCount,
-  );
-  return {
-    actionLabel: t`Delete`,
-    title: t`Delete selected items?`,
-    message: `${trashPart} ${deletePart}`,
-    confirmLabel: t`Delete`,
-  };
-}
-
-function getResultMessage(count: number, transformCount: number): string {
-  if (transformCount === 0) {
-    return ngettext(
-      msgid`Moved ${count} item to the trash`,
-      `Moved ${count} items to the trash`,
-      count,
-    );
-  }
-  return ngettext(
-    msgid`Deleted ${count} item`,
-    `Deleted ${count} items`,
-    count,
-  );
-}
 
 export function ContentDiagnosticsBulkActionsBar({
   selectedFindings,
   tab,
   onSettled,
   enableTrash = true,
-  dismissFindings,
-  isDismissing,
 }: ContentDiagnosticsBulkActionsBarProps) {
-  const dispatch = useDispatch();
-  const trashFindings = useBulkTrashFindings();
-  const [isConfirmOpen, { open, close }] = useDisclosure();
-
-  const canTrash = selectedFindings.every((finding) => finding.can_write);
   const count = selectedFindings.length;
-  const transformCount = selectedFindings.filter(
-    (finding) => finding.entity_type === "transform",
-  ).length;
-  const archivableCount = count - transformCount;
-  const trashCopy = getTrashCopy(archivableCount, transformCount);
-
-  const handleConfirm = async () => {
-    if (selectedFindings.length === 0 || !enableTrash || !canTrash) {
-      close();
-      return;
-    }
-    const { total, failedFindings } = await trashFindings(
-      selectedFindings,
-      tab,
-    );
-    close();
-
-    if (failedFindings.length > 0) {
-      dispatch(
-        addUndo({
-          icon: "warning",
-          message: ngettext(
-            msgid`Couldn't remove ${failedFindings.length} item`,
-            `Couldn't remove ${failedFindings.length} items`,
-            failedFindings.length,
-          ),
-        }),
-      );
-    } else {
-      dispatch(addUndo({ message: getResultMessage(total, transformCount) }));
-    }
-
-    onSettled(
-      failedFindings.map((finding) => finding.id),
-      selectedFindings.map((finding) => finding.id),
-    );
-  };
-
+  const { canTrash, actionLabel, open, confirmationProps } =
+    useBulkTrashConfirmation({ selectedFindings, tab, enableTrash, onSettled });
   return (
     <>
-      {/* Keep dialogs mounted when selected rows disappear. */}
-      <Box
-        display={count > 0 ? undefined : "none"}
-        pos="absolute"
-        left="50%"
-        style={{
-          bottom: "var(--mantine-spacing-lg)",
-          transform: "translateX(-50%)",
-          zIndex: 150,
-        }}
-        data-testid="content-diagnostics-bulk-actions"
-      >
-        <Card
-          bg="tooltip-background"
-          c="tooltip-text"
-          py="md"
-          px="lg"
-          data-testid="toast-card"
+      {count > 0 && (
+        <Box
+          pos="absolute"
+          left="50%"
+          bottom="var(--mantine-spacing-lg)"
+          className={S.bulkActions}
+          data-testid="content-diagnostics-bulk-actions"
         >
-          <Flex align="center" justify="space-between" gap="2.5rem">
-            <Text c="tooltip-text">
-              {ngettext(
-                msgid`${count} item selected`,
-                `${count} items selected`,
-                count,
-              )}
-            </Text>
-            <Flex gap="sm" align="center">
-              <ContentDiagnosticsBulkDismissButton
-                dismissFindings={dismissFindings}
-                isDismissing={isDismissing}
-                findingIds={selectedFindings.map((finding) => finding.id)}
-                onDismiss={(ids) => onSettled([], ids)}
-              />
-              {enableTrash && (
-                <Tooltip
-                  label={t`You don't have permission to delete some selected items.`}
-                  disabled={canTrash}
-                >
-                  <span>
-                    <BulkActionButton
-                      danger
-                      disabled={!canTrash}
-                      onClick={open}
-                    >
-                      {trashCopy.actionLabel}
-                    </BulkActionButton>
-                  </span>
-                </Tooltip>
-              )}
+          <Card
+            bg="tooltip-background"
+            c="tooltip-text"
+            py="md"
+            px="lg"
+            data-testid="toast-card"
+          >
+            <Flex align="center" justify="space-between" gap="xxxl">
+              <Text c="tooltip-text">
+                {ngettext(
+                  msgid`${count} item selected`,
+                  `${count} items selected`,
+                  count,
+                )}
+              </Text>
+              <Flex gap="sm" align="center">
+                <ContentDiagnosticsBulkDismissButton
+                  tab={tab}
+                  findingIds={selectedFindings.map((finding) => finding.id)}
+                  onDismiss={(ids) => onSettled([], ids)}
+                />
+                {enableTrash && (
+                  <Tooltip
+                    label={t`You don't have permission to delete some selected items.`}
+                    disabled={canTrash}
+                  >
+                    <span>
+                      <BulkActionButton
+                        danger
+                        disabled={!canTrash}
+                        onClick={open}
+                      >
+                        {actionLabel}
+                      </BulkActionButton>
+                    </span>
+                  </Tooltip>
+                )}
+              </Flex>
             </Flex>
-          </Flex>
-        </Card>
-      </Box>
-      <ConfirmModal
-        opened={isConfirmOpen}
-        title={trashCopy.title}
-        message={trashCopy.message}
-        confirmButtonText={trashCopy.confirmLabel}
-        onConfirm={handleConfirm}
-        onClose={close}
-      />
+          </Card>
+        </Box>
+      )}
+      <ConfirmModal {...confirmationProps} />
     </>
   );
 }

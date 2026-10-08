@@ -1,5 +1,6 @@
 import { trackSimpleEvent } from "metabase/analytics";
 import type {
+  CollectionId,
   ContentDiagnosticsEntityId,
   ContentDiagnosticsEntityType,
 } from "metabase-types/api";
@@ -71,7 +72,7 @@ export const trackContentDiagnosticsDuplicateOpened = ({
 
 export const trackContentDiagnosticsLocationOpened = (
   tab: ContentDiagnosticsTab,
-  collectionId: number | string,
+  collectionId: CollectionId,
 ) => {
   trackSimpleEvent({
     event: "content_diagnostics_location_opened",
@@ -120,6 +121,28 @@ export const trackContentDiagnosticsFindingsBulkTrashed = ({
     event: "content_diagnostics_findings_bulk_trashed",
     triggered_from: tab,
     event_detail: `${removedCount}/${selectedCount}`,
+    duration_ms: durationMs,
+    result,
+  });
+};
+
+export const trackContentDiagnosticsFindingsBulkDismissed = ({
+  tab,
+  dismissedCount,
+  selectedCount,
+  durationMs,
+  result,
+}: {
+  tab: ContentDiagnosticsTab;
+  dismissedCount: number;
+  selectedCount: number;
+  durationMs: number;
+  result: "success" | "partial" | "failure";
+}) => {
+  trackSimpleEvent({
+    event: "content_diagnostics_findings_bulk_dismissed",
+    triggered_from: tab,
+    event_detail: `${dismissedCount}/${selectedCount}`,
     duration_ms: durationMs,
     result,
   });

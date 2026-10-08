@@ -7,10 +7,12 @@ import { EMPTY_CELL_PLACEHOLDER } from "metabase/utils/constants";
 import {
   CONTENT_DIAGNOSTICS_FILTER_TYPES,
   CONTENT_DIAGNOSTICS_NON_COLLECTION_FILTER_TYPES,
+  type CollectionId,
   type CollectionNamespace,
   type ContentDiagnosticsBaseFinding,
   type ContentDiagnosticsCollection,
   type ContentDiagnosticsDuplicateEntity,
+  type ContentDiagnosticsEntityId,
   type ContentDiagnosticsFilterType,
   type ContentDiagnosticsNonCollectionFilterType,
   type ContentDiagnosticsUser,
@@ -34,7 +36,7 @@ type ContentDiagnosticsCollectionBreadcrumbEntry =
   | ContentDiagnosticsCollection["effective_ancestors"][number];
 
 export type ContentDiagnosticsBreadcrumbLink = {
-  id: string;
+  id: CollectionId;
   label: string;
   url: string;
   icon?: IconName;
@@ -46,7 +48,7 @@ type ContentDiagnosticsEntityKind = Pick<
 >;
 
 type ContentDiagnosticsEntityTarget = ContentDiagnosticsEntityKind & {
-  id: number;
+  id: ContentDiagnosticsEntityId;
   name: string;
   namespace?: CollectionNamespace;
 };

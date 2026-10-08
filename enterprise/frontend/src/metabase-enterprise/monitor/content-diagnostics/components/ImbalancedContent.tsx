@@ -33,21 +33,19 @@ export function ImbalancedContent({
   const config = getImbalancedContentConfig(mode);
   const { page = 0, query } = params;
   const filterOptions = config.getFilterOptions(params);
-  const { data, currentData, isFetching, isLoading, error } =
-    useListImbalancedFindingsQuery(
-      {
-        query,
-        "entity-types": config.getEntityTypesParam(filterOptions.entityTypes),
-        "include-personal-collections":
-          filterOptions.includePersonalCollections,
-        "finding-types": [mode],
-        "sort-column": params.sortColumn,
-        "sort-direction": params.sortDirection,
-        limit: PAGE_SIZE,
-        offset: page * PAGE_SIZE,
-      },
-      { skip: isLoadingParams },
-    );
+  const { data, isFetching, isLoading, error } = useListImbalancedFindingsQuery(
+    {
+      query,
+      "entity-types": config.getEntityTypesParam(filterOptions.entityTypes),
+      "include-personal-collections": filterOptions.includePersonalCollections,
+      "finding-types": [mode],
+      "sort-column": params.sortColumn,
+      "sort-direction": params.sortDirection,
+      limit: PAGE_SIZE,
+      offset: page * PAGE_SIZE,
+    },
+    { skip: isLoadingParams },
+  );
 
   return (
     <ContentDiagnosticsContent
@@ -59,7 +57,6 @@ export function ImbalancedContent({
       onParamsChange={onParamsChange}
       data={data}
       isFetchingFindings={isFetching}
-      hasCurrentData={currentData !== undefined}
       isLoadingFindings={isLoading}
       error={error}
       enableBulkTrash={mode !== "crowded"}

@@ -3,7 +3,9 @@ import fetchMock from "fetch-mock";
 
 import {
   setupCardEndpoints,
+  setupInvalidateFindingsEndpoint,
   setupListStaleFindingsEndpoint,
+  setupUpdateCardEndpointWithError,
   setupUserKeyValueEndpoints,
 } from "__support__/server-mocks";
 import {
@@ -79,9 +81,7 @@ function setup({
       body: { message: "Stale scan failed" },
     });
   } else if (getResponse) {
-    fetchMock.get("path:/api/ee/content-diagnostics/stale", ({ url }) =>
-      getResponse(url),
-    );
+    setupListStaleFindingsEndpoint(({ url }) => getResponse(url));
   } else {
     setupListStaleFindingsEndpoint(
       createMockListStaleFindingsResponse({
@@ -119,45 +119,6 @@ function setup({
   );
 
   return { router, store };
-}
-
-function getUrlQuery(router: TestRouter | undefined) {
-  return parseSearchQuery(router?.location.search ?? "");
-}
-
-function getLastRequestUrl() {
-  return new URL(
-    String(
-      fetchMock.callHistory.lastCall("path:/api/ee/content-diagnostics/stale")
-        ?.url,
-    ),
-    "http://localhost",
-  );
-}
-
-async function waitForListToLoad() {
-  expect(await screen.findByRole("treegrid")).toBeInTheDocument();
-}
-
-function getFindingRow(name: string) {
-  const row = within(screen.getByRole("treegrid"))
-    .getAllByRole("row")
-    .find((row) => within(row).queryByText(name));
-  if (row == null) {
-    throw new Error(`Expected finding row: ${name}`);
-  }
-  return row;
-}
-
-async function selectFinding(name: string) {
-  await userEvent.click(within(getFindingRow(name)).getByRole("checkbox"));
-}
-
-async function confirmBulkAction(name: string) {
-  await userEvent.click(screen.getByRole("button", { name }));
-  await userEvent.click(
-    within(await screen.findByRole("dialog")).getByRole("button", { name }),
-  );
 }
 
 describe("StaleContentPage", () => {
@@ -207,7 +168,7 @@ describe("StaleContentPage", () => {
     ).toBeInTheDocument();
   });
 
-  it("allows read-only findings to be dismissed but not trashed", async () => {
+  it("allows findings for read-only entities to be dismissed but not trashed", async () => {
     setup({
       findings: [
         createMockContentDiagnosticsStaleFinding({
@@ -257,7 +218,7 @@ describe("StaleContentPage", () => {
         can_write: false,
       }),
     ];
-    fetchMock.post("path:/api/ee/content-diagnostics/invalidate", () => {
+    setupInvalidateFindingsEndpoint(() => {
       findings = [];
       return { invalidated: [11], skipped: [] };
     });
@@ -270,107 +231,128 @@ describe("StaleContentPage", () => {
     });
     await screen.findByRole("treegrid");
     await userEvent.click(screen.getByLabelText("Select all"));
-    await userEvent.click(
-      screen.getByRole("button", { name: "Dismiss finding" }),
-    );
-    await userEvent.click(
-      within(await screen.findByRole("dialog")).getByRole("button", {
-        name: "Dismiss finding",
-      }),
-    );
+    await confirmBulkAction("Dismiss finding");
     expect(
       await screen.findByText("No stale content found"),
     ).toBeInTheDocument();
     expect(screen.queryByText("Dismiss me")).not.toBeInTheDocument();
     expect(
-      screen.getByTestId("content-diagnostics-bulk-actions"),
-    ).not.toBeVisible();
+      screen.queryByTestId("content-diagnostics-bulk-actions"),
+    ).not.toBeInTheDocument();
     expect(
       fetchMock.callHistory.calls("path:/api/ee/content-diagnostics/stale")
         .length,
     ).toBeGreaterThan(1);
-    const [call] = fetchMock.callHistory.calls(
+    const calls = fetchMock.callHistory.calls(
       "path:/api/ee/content-diagnostics/invalidate",
     );
+    expect(calls).toHaveLength(1);
+    const [call] = calls;
     expect(JSON.parse(String(call.options.body))).toEqual({ ids: [11] });
   });
 
-  it("hides pending and confirmed dismissals during a non-blocking background refresh", async () => {
+  it("keeps rows and pagination until dismissal refetches the authoritative list", async () => {
+    const findings = [
+      ...FINDINGS,
+      ...Array.from({ length: 23 }, (_, index) =>
+        createMockContentDiagnosticsStaleFinding({
+          id: index + 3,
+          entity_id: index + 3,
+          entity_display_name: `Finding ${index + 3}`,
+        }),
+      ),
+    ];
+    const remainingFinding = createMockContentDiagnosticsStaleFinding({
+      id: 26,
+      entity_id: 26,
+      entity_display_name: "Remaining finding",
+    });
     const dismissal = defer<InvalidateFindingsResponse>();
     const refresh = defer<ListStaleFindingsResponse>();
-    const dismissalResponse = { invalidated: [1], skipped: [] };
+    const dismissalResponse = {
+      invalidated: findings.map(({ id }) => id),
+      skipped: [],
+    };
     const refreshResponse = createMockListStaleFindingsResponse({
-      data: [FINDINGS[1]],
+      data: [remainingFinding],
       total: 1,
     });
     let listRequests = 0;
-    fetchMock.post(
-      "path:/api/ee/content-diagnostics/invalidate",
-      () => dismissal.promise,
-    );
+    setupInvalidateFindingsEndpoint(() => dismissal.promise);
     setup({
       withUndos: true,
       getResponse: () => {
         listRequests += 1;
         return listRequests === 1
-          ? createMockListStaleFindingsResponse({ data: FINDINGS, total: 2 })
+          ? createMockListStaleFindingsResponse({ data: findings, total: 26 })
           : refresh.promise;
       },
     });
 
     try {
       await screen.findByText("Sales overview");
-      expect(screen.getByText("Marketing funnel")).toBeVisible();
-      await selectFinding("Sales overview");
-      await confirmBulkAction("Dismiss finding");
+      await userEvent.click(screen.getByLabelText("Select all"));
+      await confirmBulkAction("Dismiss findings");
 
-      expect(screen.queryByText("Sales overview")).not.toBeInTheDocument();
+      expect(screen.getByText("Sales overview")).toBeVisible();
       expect(screen.getByText("Marketing funnel")).toBeVisible();
-      await waitFor(() =>
-        expect(screen.queryByRole("dialog")).not.toBeInTheDocument(),
-      );
-      expect(screen.queryByText("Dismissed 1 finding")).not.toBeInTheDocument();
-      expect(screen.queryByText("Dismiss failed")).not.toBeInTheDocument();
+      expect(screen.getByText(/^1 - 25/)).toHaveTextContent("1 - 25 of 26");
+      expect(
+        screen.queryByText("No stale content found"),
+      ).not.toBeInTheDocument();
+      const dialog = screen.getByRole("dialog");
+      expect(
+        within(dialog).getByRole("button", { name: "Dismiss findings" }),
+      ).toBeDisabled();
+      expect(
+        within(dialog).getByRole("button", { name: "Cancel" }),
+      ).toBeDisabled();
+      expect(
+        screen.queryByText("Dismissed 25 findings"),
+      ).not.toBeInTheDocument();
 
       dismissal.resolve(dismissalResponse);
       await waitFor(() =>
-        expect(screen.getByText("Dismissed 1 finding")).toBeVisible(),
+        expect(screen.getByText("Dismissed 25 findings")).toBeVisible(),
       );
       await waitFor(() => expect(listRequests).toBe(2));
-      expect(screen.queryByText("Sales overview")).not.toBeInTheDocument();
-      expect(screen.getByText("Marketing funnel")).toBeVisible();
-      expect(screen.queryByTestId("loading-overlay")).not.toBeInTheDocument();
+      expect(screen.getByTestId("loading-overlay")).toBeVisible();
+      expect(screen.getByText("Sales overview")).toBeVisible();
+      expect(screen.getByText(/^1 - 25/)).toHaveTextContent("1 - 25 of 26");
+      expect(
+        screen.queryByText("No stale content found"),
+      ).not.toBeInTheDocument();
 
       refresh.resolve(refreshResponse);
-      await fetchMock.callHistory.flush();
-      expect(screen.getByText("Marketing funnel")).toBeVisible();
+      expect(await screen.findByText("Remaining finding")).toBeVisible();
+      expect(screen.queryByText("Sales overview")).not.toBeInTheDocument();
+      expect(screen.queryByTestId("loading-overlay")).not.toBeInTheDocument();
     } finally {
       dismissal.resolve(dismissalResponse);
       refresh.resolve(refreshResponse);
     }
   });
 
-  it("restores populated rows and their selection after dismissal fails", async () => {
+  it("keeps rows and selection when dismissal fails", async () => {
     const dismissal = defer<Response>();
     const failureResponse = new Response(
       JSON.stringify({ message: "Dismiss failed" }),
       { status: 500, headers: { "Content-Type": "application/json" } },
     );
-    fetchMock.post(
-      "path:/api/ee/content-diagnostics/invalidate",
-      () => dismissal.promise,
-    );
+    setupInvalidateFindingsEndpoint(() => dismissal.promise);
     setup({ findings: FINDINGS, withUndos: true });
 
     try {
       await screen.findByText("Sales overview");
       await userEvent.click(screen.getByLabelText("Select all"));
-      for (const name of ["Sales overview", "Marketing funnel"]) {
-        expect(within(getFindingRow(name)).getByRole("checkbox")).toBeChecked();
-      }
       await confirmBulkAction("Dismiss findings");
-      expect(screen.queryByText("Sales overview")).not.toBeInTheDocument();
-      expect(screen.queryByText("Marketing funnel")).not.toBeInTheDocument();
+      for (const name of ["Sales overview", "Marketing funnel"]) {
+        const row = getFindingRow(name);
+        expect(row).toBeVisible();
+        expect(
+          within(row).getByRole("checkbox", { hidden: true }),
+        ).toBeChecked();
+      }
       expect(screen.queryByText("Dismiss failed")).not.toBeInTheDocument();
 
       dismissal.resolve(failureResponse);
@@ -394,121 +376,37 @@ describe("StaleContentPage", () => {
     }
   });
 
-  it("preserves a pending dismissal's selection when concurrent trash completes", async () => {
-    const findings = [
-      createMockContentDiagnosticsStaleFinding({
-        id: 11,
-        entity_type: "card",
-        entity_id: 101,
-        entity_display_name: "Dismiss me",
-        can_write: true,
-      }),
-      createMockContentDiagnosticsStaleFinding({
-        id: 22,
-        entity_type: "card",
-        entity_id: 202,
-        entity_display_name: "Trash me",
-        can_write: true,
-      }),
-    ];
-    const dismissal = defer<Response>();
-    const failureResponse = new Response(
-      JSON.stringify({ message: "Dismiss failed" }),
-      { status: 500, headers: { "Content-Type": "application/json" } },
-    );
-    let trashed = false;
-    fetchMock.post(
-      "path:/api/ee/content-diagnostics/invalidate",
-      () => dismissal.promise,
-    );
-    fetchMock.put("path:/api/card/202", () => {
-      trashed = true;
-      return createMockCard({ id: 202, archived: true });
-    });
-    setup({
-      withUndos: true,
-      getResponse: () =>
-        createMockListStaleFindingsResponse({
-          data: trashed ? [findings[0]] : findings,
-          total: trashed ? 1 : 2,
-        }),
-    });
-
-    try {
-      await screen.findByText("Dismiss me");
-      await selectFinding("Dismiss me");
-      await confirmBulkAction("Dismiss finding");
-      expect(screen.queryByText("Dismiss me")).not.toBeInTheDocument();
-      expect(screen.getByText("Trash me")).toBeVisible();
-      await waitFor(() =>
-        expect(screen.queryByRole("dialog")).not.toBeInTheDocument(),
-      );
-
-      await selectFinding("Trash me");
-      await confirmBulkAction("Move to trash");
-      await waitFor(() =>
-        expect(screen.getByText("Moved 1 item to the trash")).toBeVisible(),
-      );
-      expect(screen.queryByText("Dismiss me")).not.toBeInTheDocument();
-      expect(screen.queryByText("Dismiss failed")).not.toBeInTheDocument();
-
-      dismissal.resolve(failureResponse);
-      await waitFor(() =>
-        expect(screen.getByText("Dismiss failed")).toBeVisible(),
-      );
-      expect(await screen.findByText("Dismiss me")).toBeVisible();
-      expect(
-        within(getFindingRow("Dismiss me")).getByRole("checkbox"),
-      ).toBeChecked();
-      expect(screen.getByText("1 item selected")).toBeVisible();
-      await waitFor(() =>
-        expect(screen.queryByText("Trash me")).not.toBeInTheDocument(),
-      );
-    } finally {
-      dismissal.resolve(failureResponse);
-    }
-  });
-
   it("returns to the first page when dismissal removes the last page", async () => {
     const finding = createMockContentDiagnosticsStaleFinding({
       id: 26,
       entity_display_name: "Last page finding",
     });
     let dismissed = false;
-    fetchMock.post("path:/api/ee/content-diagnostics/invalidate", () => {
+    setupInvalidateFindingsEndpoint(() => {
       dismissed = true;
       return { invalidated: [26], skipped: [] };
     });
     const { router } = setup({
       urlParams: { page: "1" },
-      getResponse: (url) =>
-        createMockListStaleFindingsResponse({
-          data: url.includes("offset=25")
-            ? dismissed
-              ? []
-              : [finding]
-            : FINDINGS,
+      getResponse: (url) => {
+        const lastPageData = dismissed ? [] : [finding];
+        return createMockListStaleFindingsResponse({
+          data: url.includes("offset=25") ? lastPageData : FINDINGS,
           total: dismissed ? 25 : 26,
-        }),
+        });
+      },
     });
     await screen.findByText("Last page finding");
     await userEvent.click(screen.getByLabelText("Select all"));
-    await userEvent.click(
-      screen.getByRole("button", { name: "Dismiss finding" }),
-    );
-    await userEvent.click(
-      within(await screen.findByRole("dialog")).getByRole("button", {
-        name: "Dismiss finding",
-      }),
-    );
+    await confirmBulkAction("Dismiss finding");
     expect(await screen.findByText("Sales overview")).toBeInTheDocument();
     await waitFor(() =>
       expect(getLastRequestUrl().searchParams.get("offset")).toBe("0"),
     );
     expect(getUrlQuery(router)).toEqual({});
     expect(
-      screen.getByTestId("content-diagnostics-bulk-actions"),
-    ).not.toBeVisible();
+      screen.queryByTestId("content-diagnostics-bulk-actions"),
+    ).not.toBeInTheDocument();
   });
 
   it("archives the selected findings and refetches the list", async () => {
@@ -585,7 +483,7 @@ describe("StaleContentPage", () => {
 
   it("keeps items that failed to trash selected", async () => {
     setupCardEndpoints(createMockCard({ id: 1 }));
-    fetchMock.put("path:/api/card/2", { status: 500, body: {} });
+    setupUpdateCardEndpointWithError(2);
     const { store } = setup({
       findings: [
         createMockContentDiagnosticsStaleFinding({
@@ -1130,3 +1028,38 @@ describe("StaleContentPage", () => {
     });
   });
 });
+
+function getUrlQuery(router: TestRouter | undefined) {
+  return parseSearchQuery(router?.location.search ?? "");
+}
+
+function getLastRequestUrl() {
+  return new URL(
+    String(
+      fetchMock.callHistory.lastCall("path:/api/ee/content-diagnostics/stale")
+        ?.url,
+    ),
+    "http://localhost",
+  );
+}
+
+async function waitForListToLoad() {
+  expect(await screen.findByRole("treegrid")).toBeInTheDocument();
+}
+
+function getFindingRow(name: string) {
+  const row = within(screen.getByRole("treegrid", { hidden: true }))
+    .getAllByRole("row", { hidden: true })
+    .find((row) => within(row).queryByText(name));
+  if (row === undefined) {
+    throw new Error(`Expected finding row: ${name}`);
+  }
+  return row;
+}
+
+async function confirmBulkAction(name: string) {
+  await userEvent.click(screen.getByRole("button", { name }));
+  await userEvent.click(
+    within(await screen.findByRole("dialog")).getByRole("button", { name }),
+  );
+}

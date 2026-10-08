@@ -3,6 +3,7 @@ import fetchMock from "fetch-mock";
 import type { ComponentType } from "react";
 
 import {
+  setupInvalidateFindingsEndpoint,
   setupListImbalancedFindingsEndpoint,
   setupUserKeyValueEndpoints,
 } from "__support__/server-mocks";
@@ -180,7 +181,7 @@ describe("ImbalancedContentPage", () => {
   );
 
   it("offers dismissal without trash on the Crowded tab", async () => {
-    fetchMock.post("path:/api/ee/content-diagnostics/invalidate", {
+    setupInvalidateFindingsEndpoint({
       invalidated: [11],
       skipped: [],
     });
@@ -216,12 +217,14 @@ describe("ImbalancedContentPage", () => {
     );
     await waitFor(() =>
       expect(
-        screen.getByTestId("content-diagnostics-bulk-actions"),
-      ).not.toBeVisible(),
+        screen.queryByTestId("content-diagnostics-bulk-actions"),
+      ).not.toBeInTheDocument(),
     );
-    const [call] = fetchMock.callHistory.calls(
+    const calls = fetchMock.callHistory.calls(
       "path:/api/ee/content-diagnostics/invalidate",
     );
+    expect(calls).toHaveLength(1);
+    const [call] = calls;
     const body: unknown = JSON.parse(String(call.options.body));
     expect(body).toEqual({ ids: [11] });
   });

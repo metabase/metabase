@@ -2,8 +2,19 @@ import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 import type { ComponentProps } from "react";
 
-import { setupCardEndpoints } from "__support__/server-mocks";
+import {
+  setupCardEndpoints,
+  setupDeleteTransformEndpoint,
+  setupInvalidateFindingsEndpoint,
+  setupInvalidateFindingsEndpointWithError,
+  setupListDuplicatedFindingsEndpoint,
+  setupListImbalancedFindingsEndpoint,
+  setupListSlowFindingsEndpoint,
+  setupListStaleFindingsEndpoint,
+  setupUpdateCardEndpointWithError,
+} from "__support__/server-mocks";
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
+import { defer } from "metabase/utils/promise";
 import {
   useListDuplicatedFindingsQuery,
   useListImbalancedFindingsQuery,
@@ -11,8 +22,10 @@ import {
   useListStaleFindingsQuery,
 } from "metabase-enterprise/api";
 import type {
+  CardId,
   ContentDiagnosticsBaseFinding,
   InvalidateFindingsResponse,
+  TransformId,
 } from "metabase-types/api";
 import {
   createMockCard,
@@ -24,63 +37,27 @@ import {
 } from "metabase-types/api/mocks";
 
 import { ContentDiagnosticsBulkActionsBar } from "./ContentDiagnosticsBulkActionsBar";
-import { useBulkDismissFindings } from "./use-bulk-dismiss-findings";
 
 const { trackSimpleEvent, trackSchemaEvent } =
   jest.requireMock("metabase/analytics");
 
-function card(
-  opts: {
-    id?: number;
-    entity_id?: number;
-    card_type?: "question" | "model" | "metric";
-  } = {},
-): ContentDiagnosticsBaseFinding {
-  return createMockContentDiagnosticsStaleFinding({
-    entity_type: "card",
-    ...opts,
-  });
-}
-
-function transform(
-  opts: { id?: number; entity_id?: number } = {},
-): ContentDiagnosticsBaseFinding {
-  return createMockContentDiagnosticsStaleFinding({
-    entity_type: "transform",
-    ...opts,
-  });
-}
-
-function TestBulkActionsBar(
-  props: Omit<
+type SetupOpts = Partial<
+  Pick<
     ComponentProps<typeof ContentDiagnosticsBulkActionsBar>,
-    "dismissFindings" | "isDismissing"
-  >,
-) {
-  const { dismissFindings, isDismissing } = useBulkDismissFindings();
-  return (
-    <ContentDiagnosticsBulkActionsBar
-      {...props}
-      dismissFindings={dismissFindings}
-      isDismissing={isDismissing}
-    />
-  );
-}
+    "selectedFindings"
+  >
+>;
 
-function setup(selectedFindings: ContentDiagnosticsBaseFinding[]) {
+function setup({ selectedFindings = [] }: SetupOpts = {}) {
   const onSettled = jest.fn();
   const { store, rerender } = renderWithProviders(
-    <TestBulkActionsBar
+    <ContentDiagnosticsBulkActionsBar
       tab="stale"
       selectedFindings={selectedFindings}
       onSettled={onSettled}
     />,
   );
   return { onSettled, store, rerender };
-}
-
-function hasUndo(store: ReturnType<typeof setup>["store"], message: string) {
-  return store.getState().undo.some((undo) => undo.message === message);
 }
 
 describe("ContentDiagnosticsBulkActionsBar", () => {
@@ -90,7 +67,12 @@ describe("ContentDiagnosticsBulkActionsBar", () => {
   });
 
   it("uses recoverable trash wording for archivable-only selections", async () => {
-    setup([card({ id: 1, entity_id: 1 }), card({ id: 2, entity_id: 2 })]);
+    setup({
+      selectedFindings: [
+        createMockCardFinding({ id: 1, entity_id: 1 }),
+        createMockCardFinding({ id: 2, entity_id: 2 }),
+      ],
+    });
 
     expect(screen.getByText("2 items selected")).toBeInTheDocument();
     await userEvent.click(
@@ -107,7 +89,9 @@ describe("ContentDiagnosticsBulkActionsBar", () => {
   });
 
   it("uses permanent-delete wording for transform-only selections", async () => {
-    setup([transform({ id: 1, entity_id: 1 })]);
+    setup({
+      selectedFindings: [createMockTransformFinding({ id: 1, entity_id: 1 })],
+    });
 
     await userEvent.click(screen.getByRole("button", { name: "Delete" }));
 
@@ -121,7 +105,12 @@ describe("ContentDiagnosticsBulkActionsBar", () => {
   });
 
   it("warns about both outcomes for mixed selections", async () => {
-    setup([card({ id: 1, entity_id: 1 }), transform({ id: 2, entity_id: 2 })]);
+    setup({
+      selectedFindings: [
+        createMockCardFinding({ id: 1, entity_id: 1 }),
+        createMockTransformFinding({ id: 2, entity_id: 2 }),
+      ],
+    });
 
     await userEvent.click(screen.getByRole("button", { name: "Delete" }));
 
@@ -137,8 +126,10 @@ describe("ContentDiagnosticsBulkActionsBar", () => {
   });
 
   it("hard-deletes a transform on confirm and reports it as a transform delete", async () => {
-    fetchMock.delete("path:/api/transform/7", 204);
-    const { onSettled } = setup([transform({ id: 1, entity_id: 7 })]);
+    setupDeleteTransformEndpoint(7);
+    const { onSettled } = setup({
+      selectedFindings: [createMockTransformFinding({ id: 1, entity_id: 7 })],
+    });
 
     await userEvent.click(screen.getByRole("button", { name: "Delete" }));
     const dialog = await screen.findByRole("dialog");
@@ -165,7 +156,9 @@ describe("ContentDiagnosticsBulkActionsBar", () => {
 
   it("archives on confirm, reports success, and clears the selection", async () => {
     setupCardEndpoints(createMockCard({ id: 1 }));
-    const { onSettled, store } = setup([card({ id: 1, entity_id: 1 })]);
+    const { onSettled, store } = setup({
+      selectedFindings: [createMockCardFinding({ id: 1, entity_id: 1 })],
+    });
 
     await userEvent.click(
       screen.getByRole("button", { name: "Move to trash" }),
@@ -179,7 +172,9 @@ describe("ContentDiagnosticsBulkActionsBar", () => {
       expect(onSettled).toHaveBeenCalledWith([], [1]);
     });
 
-    const [putCall] = fetchMock.callHistory.calls("path:/api/card/1");
+    const calls = fetchMock.callHistory.calls("path:/api/card/1");
+    expect(calls).toHaveLength(1);
+    const [putCall] = calls;
     expect(JSON.parse(String(putCall.options?.body))).toMatchObject({
       archived: true,
     });
@@ -190,9 +185,11 @@ describe("ContentDiagnosticsBulkActionsBar", () => {
     "tracks a trashed %s as its card subtype",
     async (cardType) => {
       setupCardEndpoints(createMockCard({ id: 1 }));
-      const { onSettled } = setup([
-        card({ id: 1, entity_id: 1, card_type: cardType }),
-      ]);
+      const { onSettled } = setup({
+        selectedFindings: [
+          createMockCardFinding({ id: 1, entity_id: 1, card_type: cardType }),
+        ],
+      });
 
       await userEvent.click(
         screen.getByRole("button", { name: "Move to trash" }),
@@ -215,11 +212,13 @@ describe("ContentDiagnosticsBulkActionsBar", () => {
 
   it("keeps failed items selected and warns when some entities can't be trashed", async () => {
     setupCardEndpoints(createMockCard({ id: 1 }));
-    fetchMock.put("path:/api/card/2", { status: 500, body: {} });
-    const { onSettled, store } = setup([
-      card({ id: 1, entity_id: 1 }),
-      card({ id: 2, entity_id: 2 }),
-    ]);
+    setupUpdateCardEndpointWithError(2);
+    const { onSettled, store } = setup({
+      selectedFindings: [
+        createMockCardFinding({ id: 1, entity_id: 1 }),
+        createMockCardFinding({ id: 2, entity_id: 2 }),
+      ],
+    });
 
     await userEvent.click(
       screen.getByRole("button", { name: "Move to trash" }),
@@ -244,16 +243,16 @@ describe("ContentDiagnosticsBulkActionsBar", () => {
   });
 
   it("does not trash or track when the selected finding disappears before confirmation", async () => {
-    const { rerender, onSettled, store } = setup([
-      card({ id: 1, entity_id: 1 }),
-    ]);
+    const { rerender, onSettled, store } = setup({
+      selectedFindings: [createMockCardFinding({ id: 1, entity_id: 1 })],
+    });
     await userEvent.click(
       screen.getByRole("button", { name: "Move to trash" }),
     );
     const dialog = await screen.findByRole("dialog");
 
     rerender(
-      <TestBulkActionsBar
+      <ContentDiagnosticsBulkActionsBar
         tab="stale"
         selectedFindings={[]}
         onSettled={onSettled}
@@ -275,10 +274,12 @@ describe("ContentDiagnosticsBulkActionsBar", () => {
   it("tracks a fully trashed selection as a success", async () => {
     setupCardEndpoints(createMockCard({ id: 1 }));
     setupCardEndpoints(createMockCard({ id: 2 }));
-    const { onSettled } = setup([
-      card({ id: 1, entity_id: 1 }),
-      card({ id: 2, entity_id: 2 }),
-    ]);
+    const { onSettled } = setup({
+      selectedFindings: [
+        createMockCardFinding({ id: 1, entity_id: 1 }),
+        createMockCardFinding({ id: 2, entity_id: 2 }),
+      ],
+    });
 
     await userEvent.click(
       screen.getByRole("button", { name: "Move to trash" }),
@@ -302,8 +303,10 @@ describe("ContentDiagnosticsBulkActionsBar", () => {
   });
 
   it("tracks a selection where nothing could be trashed as a failure", async () => {
-    fetchMock.put("path:/api/card/1", { status: 500, body: {} });
-    const { onSettled } = setup([card({ id: 1, entity_id: 1 })]);
+    setupUpdateCardEndpointWithError(1);
+    const { onSettled } = setup({
+      selectedFindings: [createMockCardFinding({ id: 1, entity_id: 1 })],
+    });
 
     await userEvent.click(
       screen.getByRole("button", { name: "Move to trash" }),
@@ -327,12 +330,7 @@ describe("ContentDiagnosticsBulkActionsBar", () => {
   });
 
   describe("dismiss", () => {
-    const endpoint = "path:/api/ee/content-diagnostics/invalidate";
-
-    async function openConfirmation(name = "Dismiss finding") {
-      await userEvent.click(screen.getByRole("button", { name }));
-      return screen.findByRole("dialog");
-    }
+    const INVALIDATE_ENDPOINT = "path:/api/ee/content-diagnostics/invalidate";
 
     it.each([
       { count: 1, label: "Dismiss finding" },
@@ -340,12 +338,13 @@ describe("ContentDiagnosticsBulkActionsBar", () => {
     ])(
       "labels both dismissal actions for $count selected findings",
       async ({ count, label }) => {
-        setup(
-          Array.from({ length: count }, (_, index) => card({ id: index + 1 })),
-        );
+        setup({
+          selectedFindings: Array.from({ length: count }, (_, index) =>
+            createMockCardFinding({ id: index + 1 }),
+          ),
+        });
 
-        await userEvent.click(screen.getByRole("button", { name: label }));
-        const dialog = await screen.findByRole("dialog");
+        const dialog = await openConfirmation(label);
         expect(
           within(dialog).getByRole("button", { name: label }),
         ).toBeEnabled();
@@ -356,23 +355,25 @@ describe("ContentDiagnosticsBulkActionsBar", () => {
     );
 
     it("dismisses mixed finding types using finding IDs without deleting content", async () => {
-      fetchMock.post(endpoint, { invalidated: [11, 22], skipped: [] });
-      const { onSettled, store } = setup([
-        card({ id: 11, entity_id: 101 }),
-        transform({ id: 22, entity_id: 202 }),
-      ]);
+      setupInvalidateFindingsEndpoint({ invalidated: [11, 22], skipped: [] });
+      const { onSettled, store } = setup({
+        selectedFindings: [
+          createMockCardFinding({ id: 11, entity_id: 101 }),
+          createMockTransformFinding({ id: 22, entity_id: 202 }),
+        ],
+      });
       const dialog = await openConfirmation("Dismiss findings");
       expect(
         within(dialog).getByText(
           "Dismissed findings will be hidden for everyone. The underlying content will not be deleted.",
         ),
       ).toBeInTheDocument();
-      expect(fetchMock.callHistory.calls(endpoint)).toHaveLength(0);
+      expect(fetchMock.callHistory.calls(INVALIDATE_ENDPOINT)).toHaveLength(0);
       await userEvent.click(
         within(dialog).getByRole("button", { name: "Dismiss findings" }),
       );
       await waitFor(() => expect(onSettled).toHaveBeenCalledWith([], [11, 22]));
-      const calls = fetchMock.callHistory.calls(endpoint);
+      const calls = fetchMock.callHistory.calls(INVALIDATE_ENDPOINT);
       expect(calls).toHaveLength(1);
       expect(JSON.parse(String(calls[0].options.body))).toEqual({
         ids: [11, 22],
@@ -386,24 +387,31 @@ describe("ContentDiagnosticsBulkActionsBar", () => {
           ),
       ).toHaveLength(0);
       expect(hasUndo(store, "Dismissed 2 findings")).toBe(true);
+      expect(trackSimpleEvent).toHaveBeenCalledWith({
+        event: "content_diagnostics_findings_bulk_dismissed",
+        triggered_from: "stale",
+        event_detail: "2/2",
+        duration_ms: expect.any(Number),
+        result: "success",
+      });
     });
 
     it("refreshes findings across every diagnostics tab after dismissal", async () => {
       let dismissed = false;
       const getTotal = () => (dismissed ? 0 : 1);
-      fetchMock.get("path:/api/ee/content-diagnostics/stale", () =>
+      setupListStaleFindingsEndpoint(() =>
         createMockListStaleFindingsResponse({ total: getTotal() }),
       );
-      fetchMock.get("path:/api/ee/content-diagnostics/slow", () =>
+      setupListSlowFindingsEndpoint(() =>
         createMockListSlowFindingsResponse({ total: getTotal() }),
       );
-      fetchMock.get("path:/api/ee/content-diagnostics/duplicated", () =>
+      setupListDuplicatedFindingsEndpoint(() =>
         createMockListDuplicatedFindingsResponse({ total: getTotal() }),
       );
-      fetchMock.get("path:/api/ee/content-diagnostics/imbalanced", () =>
+      setupListImbalancedFindingsEndpoint(() =>
         createMockListImbalancedFindingsResponse({ total: getTotal() }),
       );
-      fetchMock.post(endpoint, () => {
+      setupInvalidateFindingsEndpoint(() => {
         dismissed = true;
         return { invalidated: [11], skipped: [] };
       });
@@ -426,43 +434,48 @@ describe("ContentDiagnosticsBulkActionsBar", () => {
       renderWithProviders(
         <>
           <DiagnosticsCounts />
-          <TestBulkActionsBar
+          <ContentDiagnosticsBulkActionsBar
             tab="stale"
-            selectedFindings={[card({ id: 11 })]}
+            selectedFindings={[createMockCardFinding({ id: 11 })]}
             onSettled={jest.fn()}
           />
         </>,
       );
-      for (const tab of ["Stale", "Slow", "Duplicated", "Imbalanced"]) {
-        expect(await screen.findByText(`${tab}: 1`)).toBeInTheDocument();
-      }
+      const TABS = ["Stale", "Slow", "Duplicated", "Imbalanced"];
+      await Promise.all(
+        TABS.map(async (tab) => {
+          expect(await screen.findByText(`${tab}: 1`)).toBeInTheDocument();
+        }),
+      );
       const dialog = await openConfirmation();
       await userEvent.click(
         within(dialog).getByRole("button", { name: "Dismiss finding" }),
       );
-      for (const tab of ["Stale", "Slow", "Duplicated", "Imbalanced"]) {
-        expect(await screen.findByText(`${tab}: 0`)).toBeInTheDocument();
-      }
+      await Promise.all(
+        TABS.map(async (tab) => {
+          expect(await screen.findByText(`${tab}: 0`)).toBeInTheDocument();
+        }),
+      );
     });
 
     it("does not dismiss when confirmation is canceled", async () => {
-      const { onSettled } = setup([card({ id: 11 })]);
+      const { onSettled } = setup({
+        selectedFindings: [createMockCardFinding({ id: 11 })],
+      });
       const dialog = await openConfirmation();
       await userEvent.click(
         within(dialog).getByRole("button", { name: "Cancel" }),
       );
-      expect(fetchMock.callHistory.calls(endpoint)).toHaveLength(0);
+      expect(fetchMock.callHistory.calls(INVALIDATE_ENDPOINT)).toHaveLength(0);
       expect(onSettled).not.toHaveBeenCalled();
+      expect(trackSimpleEvent).not.toHaveBeenCalled();
     });
 
     it("preserves selection on error and allows retry", async () => {
-      let failed = true;
-      fetchMock.post(endpoint, () =>
-        failed
-          ? { status: 500, body: { message: "Dismiss failed" } }
-          : { invalidated: [11], skipped: [] },
-      );
-      const { onSettled, store } = setup([card({ id: 11 })]);
+      setupInvalidateFindingsEndpointWithError({ message: "Dismiss failed" });
+      const { onSettled, store } = setup({
+        selectedFindings: [createMockCardFinding({ id: 11 })],
+      });
       const dialog = await openConfirmation();
       await userEvent.click(
         within(dialog).getByRole("button", { name: "Dismiss finding" }),
@@ -470,13 +483,22 @@ describe("ContentDiagnosticsBulkActionsBar", () => {
       await waitFor(() => expect(hasUndo(store, "Dismiss failed")).toBe(true));
       expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
       expect(onSettled).not.toHaveBeenCalled();
-      failed = false;
+      expect(trackSimpleEvent).toHaveBeenCalledWith({
+        event: "content_diagnostics_findings_bulk_dismissed",
+        triggered_from: "stale",
+        event_detail: "0/1",
+        duration_ms: expect.any(Number),
+        result: "failure",
+      });
+      fetchMock.modifyRoute("invalidate-findings", {
+        response: { invalidated: [11], skipped: [] },
+      });
       const retryDialog = await openConfirmation();
       await userEvent.click(
         within(retryDialog).getByRole("button", { name: "Dismiss finding" }),
       );
       await waitFor(() => expect(onSettled).toHaveBeenCalledWith([], [11]));
-      expect(fetchMock.callHistory.calls(endpoint)).toHaveLength(2);
+      expect(fetchMock.callHistory.calls(INVALIDATE_ENDPOINT)).toHaveLength(2);
     });
 
     it.each([
@@ -489,11 +511,13 @@ describe("ContentDiagnosticsBulkActionsBar", () => {
     ])(
       "reports the actual dismissed count: $message",
       async ({ invalidated, skipped, message }) => {
-        fetchMock.post(endpoint, { invalidated, skipped });
-        const { onSettled, store } = setup([
-          card({ id: 11 }),
-          card({ id: 22 }),
-        ]);
+        setupInvalidateFindingsEndpoint({ invalidated, skipped });
+        const { onSettled, store } = setup({
+          selectedFindings: [
+            createMockCardFinding({ id: 11 }),
+            createMockCardFinding({ id: 22 }),
+          ],
+        });
         const dialog = await openConfirmation("Dismiss findings");
         await userEvent.click(
           within(dialog).getByRole("button", { name: "Dismiss findings" }),
@@ -502,54 +526,93 @@ describe("ContentDiagnosticsBulkActionsBar", () => {
           expect(onSettled).toHaveBeenCalledWith([], [11, 22]),
         );
         expect(hasUndo(store, message)).toBe(true);
+        expect(trackSimpleEvent).toHaveBeenCalledWith({
+          event: "content_diagnostics_findings_bulk_dismissed",
+          triggered_from: "stale",
+          event_detail: `${invalidated.length}/2`,
+          duration_ms: expect.any(Number),
+          result: "partial",
+        });
       },
     );
 
-    it("closes confirmation immediately and blocks duplicate requests while pending", async () => {
-      let resolveResponse: (
-        response: InvalidateFindingsResponse,
-      ) => void = () => {
-        throw new Error("response not initialized");
-      };
-      fetchMock.post(
-        endpoint,
-        () =>
-          new Promise<InvalidateFindingsResponse>((resolve) => {
-            resolveResponse = resolve;
-          }),
-      );
-      const { onSettled } = setup([card({ id: 11 })]);
-      const dialog = await openConfirmation();
-      const confirm = within(dialog).getByRole("button", {
-        name: "Dismiss finding",
+    it("keeps confirmation open and blocks duplicate requests while dismissing", async () => {
+      const response = defer<InvalidateFindingsResponse>();
+      setupInvalidateFindingsEndpoint(() => response.promise);
+      const { onSettled } = setup({
+        selectedFindings: [createMockCardFinding({ id: 11 })],
       });
-      await userEvent.click(confirm);
-      await waitFor(() =>
-        expect(screen.queryByRole("dialog")).not.toBeInTheDocument(),
-      );
-      const dismiss = screen.getByRole("button", { name: "Dismiss finding" });
-      expect(dismiss).toBeDisabled();
-      await userEvent.click(dismiss);
-      expect(fetchMock.callHistory.calls(endpoint)).toHaveLength(1);
-      resolveResponse({ invalidated: [11], skipped: [] });
-      await waitFor(() => expect(onSettled).toHaveBeenCalledWith([], [11]));
+      try {
+        const dialog = await openConfirmation();
+        const confirm = within(dialog).getByRole("button", {
+          name: "Dismiss finding",
+        });
+        await userEvent.click(confirm);
+        expect(dialog).toBeVisible();
+        expect(confirm).toBeDisabled();
+        expect(
+          within(dialog).getByRole("button", { name: "Cancel" }),
+        ).toBeDisabled();
+        await userEvent.click(confirm);
+        expect(fetchMock.callHistory.calls(INVALIDATE_ENDPOINT)).toHaveLength(
+          1,
+        );
+        response.resolve({ invalidated: [11], skipped: [] });
+        await waitFor(() => expect(onSettled).toHaveBeenCalledWith([], [11]));
+        await waitFor(() =>
+          expect(screen.queryByRole("dialog")).not.toBeInTheDocument(),
+        );
+      } finally {
+        response.resolve({ invalidated: [11], skipped: [] });
+      }
     });
 
     it("does not send an empty selection if findings disappear before confirmation", async () => {
-      const { rerender, onSettled } = setup([card({ id: 11 })]);
-      const dialog = await openConfirmation();
+      const { rerender, onSettled } = setup({
+        selectedFindings: [createMockCardFinding({ id: 11 })],
+      });
+      await openConfirmation();
       rerender(
-        <TestBulkActionsBar
+        <ContentDiagnosticsBulkActionsBar
           tab="stale"
           selectedFindings={[]}
           onSettled={onSettled}
         />,
       );
-      await userEvent.click(
-        within(dialog).getByRole("button", { name: "Dismiss findings" }),
-      );
-      expect(fetchMock.callHistory.calls(endpoint)).toHaveLength(0);
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+      expect(fetchMock.callHistory.calls(INVALIDATE_ENDPOINT)).toHaveLength(0);
       expect(onSettled).not.toHaveBeenCalled();
     });
   });
 });
+
+function createMockCardFinding(
+  opts: Partial<Pick<ContentDiagnosticsBaseFinding, "id" | "card_type">> & {
+    entity_id?: CardId;
+  } = {},
+): ContentDiagnosticsBaseFinding {
+  return createMockContentDiagnosticsStaleFinding({
+    entity_type: "card",
+    ...opts,
+  });
+}
+
+function createMockTransformFinding(
+  opts: Partial<Pick<ContentDiagnosticsBaseFinding, "id">> & {
+    entity_id?: TransformId;
+  } = {},
+): ContentDiagnosticsBaseFinding {
+  return createMockContentDiagnosticsStaleFinding({
+    entity_type: "transform",
+    ...opts,
+  });
+}
+
+function hasUndo(store: ReturnType<typeof setup>["store"], message: string) {
+  return store.getState().undo.some((undo) => undo.message === message);
+}
+
+async function openConfirmation(name = "Dismiss finding") {
+  await userEvent.click(screen.getByRole("button", { name }));
+  return screen.findByRole("dialog");
+}

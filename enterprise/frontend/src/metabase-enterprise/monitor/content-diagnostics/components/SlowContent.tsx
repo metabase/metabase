@@ -26,21 +26,19 @@ export function SlowContent({
   const config = slowContentConfig;
   const { page = 0, query } = params;
   const filterOptions = config.getFilterOptions(params);
-  const { data, currentData, isFetching, isLoading, error } =
-    useListSlowFindingsQuery(
-      {
-        query,
-        "entity-types": config.getEntityTypesParam(filterOptions.entityTypes),
-        "include-personal-collections":
-          filterOptions.includePersonalCollections,
-        "min-duration-ms": filterOptions.minDurationMs,
-        "sort-column": params.sortColumn,
-        "sort-direction": params.sortDirection,
-        limit: PAGE_SIZE,
-        offset: page * PAGE_SIZE,
-      },
-      { skip: isLoadingParams },
-    );
+  const { data, isFetching, isLoading, error } = useListSlowFindingsQuery(
+    {
+      query,
+      "entity-types": config.getEntityTypesParam(filterOptions.entityTypes),
+      "include-personal-collections": filterOptions.includePersonalCollections,
+      "min-duration-ms": filterOptions.minDurationMs,
+      "sort-column": params.sortColumn,
+      "sort-direction": params.sortDirection,
+      limit: PAGE_SIZE,
+      offset: page * PAGE_SIZE,
+    },
+    { skip: isLoadingParams },
+  );
 
   return (
     <ContentDiagnosticsContent
@@ -52,7 +50,6 @@ export function SlowContent({
       onParamsChange={onParamsChange}
       data={data}
       isFetchingFindings={isFetching}
-      hasCurrentData={currentData !== undefined}
       isLoadingFindings={isLoading}
       error={error}
       renderFilterBar={(props) => <SlowContentFilterBar {...props} />}
