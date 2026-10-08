@@ -154,17 +154,32 @@
     (let [cards (saved-questions-read normalized)]
       (when (some metabot-sql-card? cards)
         ;; The SQL refusal says what a question holds, so it goes only to a user who can read every question
-        ;; involved. Such a user may still run a question they can read that reads one they can't.
+        ;; involved. The check above passes a readable question that reads one the user can't; the QP would
+        ;; refuse it.
         (throw (if (every? #(some-> % mi/can-read?) cards)
                  (metabot-sql-card-refusal)
                  (no-permission)))))
     (lib/prepare-for-serialization normalized)))
 
+(defn- number-text
+  "`n` in plain decimal form, where `str` would give a large or small one an exponent."
+  [n]
+  (cond
+    (instance? BigDecimal n)
+    (.toPlainString ^BigDecimal n)
+
+    (and (float? n) (str/includes? (str n) "E"))
+    (.toPlainString (.stripTrailingZeros (BigDecimal. (str n))))
+
+    :else
+    (str n)))
+
 (defn- cell-text
   [value]
   (if (nil? value)
-    ""
-    (-> (llm-shape/truncate (str value) max-cell-chars)
+    ;; An empty cell is an empty string, so a missing value needs a form of its own.
+    "(null)"
+    (-> (llm-shape/truncate (if (number? value) (number-text value) (str value)) max-cell-chars)
         (str/replace #"(?U)\s+" " ")
         llm-shape/escape-xml-content
         (str/replace "\\" "\\\\")
