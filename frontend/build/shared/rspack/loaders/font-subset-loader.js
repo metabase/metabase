@@ -15,7 +15,33 @@ const {
 // renders nothing.
 const MIN_USEFUL_CHUNK_BYTES = 3000;
 
-const SUBSET_OPTIONS = { targetFormat: "woff2" };
+// A family's OpenType features reach well past what anything here asks for:
+// small caps, stylistic sets, swashes. Subsetting keeps every glyph those can
+// reach, which is half the glyphs in the richer families. These are the ones a
+// browser applies to latin text unasked, plus the numeric set `font-variant-
+// numeric` can request, so nothing renders differently for dropping the rest.
+const KEPT_FEATURES = [
+  "ccmp",
+  "liga",
+  "clig",
+  "calt",
+  "rlig",
+  "locl",
+  "kern",
+  "mark",
+  "mkmk",
+  "rvrn",
+  "lnum",
+  "onum",
+  "pnum",
+  "tnum",
+  "frac",
+  "afrc",
+  "ordn",
+  "zero",
+];
+
+const SUBSET_OPTIONS = { targetFormat: "woff2", keepFeatures: KEPT_FEATURES };
 
 // Chunks are cached under the hash of their source, so everything else that
 // decides their contents belongs in that hash too.
