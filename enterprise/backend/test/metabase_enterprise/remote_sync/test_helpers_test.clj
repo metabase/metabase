@@ -314,6 +314,12 @@
     :postgres         (:id (t2/query-one ["SELECT pg_backend_pid() AS id"]))
     (:mysql :mariadb) (:id (t2/query-one ["SELECT CONNECTION_ID() AS id"]))))
 
+(defn- mariadb-server?
+  "Whether the app DB server is MariaDB. Metabase reports the MariaDB driver as `:mysql`, and only the server
+  version tells the two apart."
+  []
+  (str/includes? (u/lower-case-en (str (:v (t2/query-one ["SELECT VERSION() AS v"])))) "mariadb"))
+
 (defn- session-blocks-another?
   "Whether another app DB session waits for a lock that the session `id` holds."
   [id]
@@ -324,20 +330,19 @@
     :postgres
     (pos? (:n (t2/query-one ["SELECT count(*) AS n FROM pg_stat_activity WHERE ? = ANY (pg_blocking_pids(pid))" id])))
 
-    :mysql
-    ;; `data_lock_waits` names the waiting and the blocking transaction, so the wait must be for a lock that the
-    ;; session `id` holds, not for one that any other session on the server holds
-    (pos? (:n (t2/query-one [(str "SELECT count(*) AS n FROM performance_schema.data_lock_waits w "
-                                  "JOIN information_schema.innodb_trx b ON b.trx_mysql_thread_id = ? "
-                                  "WHERE w.BLOCKING_ENGINE_TRANSACTION_ID = b.trx_id")
-                             id])))
-
-    :mariadb
-    ;; MariaDB has no `performance_schema`; `INNODB_LOCK_WAITS` names the blocking transaction
-    (pos? (:n (t2/query-one [(str "SELECT count(*) AS n FROM information_schema.INNODB_LOCK_WAITS w "
-                                  "JOIN information_schema.innodb_trx b ON b.trx_mysql_thread_id = ? "
-                                  "WHERE w.blocking_trx_id = b.trx_id")
-                             id])))))
+    (:mysql :mariadb)
+    (if (mariadb-server?)
+      ;; MariaDB has no `performance_schema`; `INNODB_LOCK_WAITS` names the blocking transaction
+      (pos? (:n (t2/query-one [(str "SELECT count(*) AS n FROM information_schema.INNODB_LOCK_WAITS w "
+                                    "JOIN information_schema.innodb_trx b ON b.trx_mysql_thread_id = ? "
+                                    "WHERE w.blocking_trx_id = b.trx_id")
+                               id])))
+      ;; `data_lock_waits` names the waiting and the blocking transaction, so the wait must be for a lock that the
+      ;; session `id` holds, not for one that any other session on the server holds
+      (pos? (:n (t2/query-one [(str "SELECT count(*) AS n FROM performance_schema.data_lock_waits w "
+                                    "JOIN information_schema.innodb_trx b ON b.trx_mysql_thread_id = ? "
+                                    "WHERE w.BLOCKING_ENGINE_TRANSACTION_ID = b.trx_id")
+                               id]))))))
 
 (defn- cleanup-against-a-two-row-writer!
   "Run `fixture` around a body that calls `write-two!` (it writes two rows and returns their ids `[a b]`) and then,
