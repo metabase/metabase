@@ -2,7 +2,7 @@ import React, { useEffect, useMemo } from "react";
 import { createPortal } from "react-dom";
 
 import { baseStyle, rootStyle } from "metabase/css/core/base.styled";
-import "metabase/css/core/fonts.css";
+import "fonts.css";
 import { getMetabaseCssVariables } from "metabase/styled-components/theme/css-variables";
 import { PortalContainer, ThemeProvider } from "metabase/ui";
 
@@ -22,18 +22,15 @@ require("metabase/visualizations/components/EChartsRenderer/EChartsRenderer");
 
 import "@mantine/core/styles.css";
 import "@mantine/dates/styles.css";
+import { Global, css, useTheme } from "@emotion/react";
+import { initialize, mswLoader } from "msw-storybook-addon";
 
 import { OverlayStackProvider } from "metabase/ui/components/overlays/overlay-stack";
 import { EmotionCacheProvider } from "metabase/ui/components/theme/EmotionCacheProvider";
-
-import { Global, css, useTheme } from "@emotion/react";
-
 import {
   getSaveDomImageStyles,
   loadVisualizationComponents,
 } from "metabase/viz-core";
-
-import { initialize, mswLoader } from "msw-storybook-addon";
 
 // Force every registered font to load before the story renders. This ensures we
 // use same fonts for tests every time, instead of using generic fallback
