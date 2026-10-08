@@ -303,6 +303,7 @@ const createDom = () => new JSDOM("<!DOCTYPE html><html><head></head><body></bod
 // when they load are loaded again for each file.
 const FRESH_WINDOW = process.env.NT_ISOLATE_ALL === "1" && process.env.NT_FRESH_WINDOW !== "0";
 const WINDOW_BOUND_PACKAGES = process.env.NT_EVICT_PACKAGES ?? (FRESH_WINDOW ? "@testing-library|jest-canvas-mock|@emotion" : "");
+const windowBoundPattern = WINDOW_BOUND_PACKAGES ? new RegExp(`/node_modules/(${WINDOW_BOUND_PACKAGES})/`) : null;
 let dom = createDom();
 let win = dom.window;
 const keep = new Set(["undefined", "globalThis", "window", "self", "global", "setTimeout", "clearTimeout", "setInterval", "clearInterval", "setImmediate", "clearImmediate", "queueMicrotask", "console", "process", "performance", "structuredClone", "crypto", "URL", "URLSearchParams", "TextEncoder", "TextDecoder", "AbortController", "AbortSignal", "fetch", "Request", "Response", "Headers", "Blob", "File", "ReadableStream", "WritableStream", "TransformStream", "constructor"]);
@@ -361,6 +362,7 @@ if (process.env.NT_NODE_GLOBALS !== "1" && process.env.NT_NODE_URL !== "1") {
   for (const name of ["URL", "URLSearchParams", "WebSocket"]) { keep.delete(name); override.add(name); }
 }
 const installedWindowKeys = new Set();
+globalThis.__nodeTestSpike.countWindows = () => require("node:v8").queryObjects(JSDOM, { format: "count" });
 const windowForwarders = {};
 const installWindowGlobals = (again) => {
 for (const key of windowKeys) {
@@ -767,6 +769,13 @@ const runSuite = async (suite, t, outer) => {
     });
   }
   for (const fn of suite.afterAll) await fn();
+  // node:test keeps every test it ran until the process ends, and with it the
+  // callbacks above. Emptied, they no longer hold the spec's functions and,
+  // through those, every module the file loaded.
+  if (!process.env.NT_NO_SUITE_RELEASE) {
+    for (const child of suite.children) child.fn = undefined;
+    for (const list of [suite.children, suite.beforeAll, suite.afterAll, suite.beforeEach, suite.afterEach, hooks.beforeEach, hooks.afterEach]) list.length = 0;
+  }
 };
 
 // A spec may pin document.activeElement with a non-configurable data property,
@@ -882,6 +891,17 @@ const STABLE_MODULES = new Set(
     : [],
 );
 const isEvictable = (file) => (isProjectSource(file) && !STABLE_MODULES.has(file)) || EVICTABLE_PACKAGES.test(file);
+// A module that stays loaded lists every module it ever required and points
+// at the module that first required it. Either link would keep an evicted
+// module, and through it the graph of its file, alive.
+const releaseEvicted = (evicted) => {
+  if (process.env.NT_NO_EVICTED_RELEASE || evicted.size === 0) return;
+  for (const survivor of [module, require.main, ...Object.values(require.cache)]) {
+    if (!survivor) continue;
+    if (evicted.has(survivor.parent)) survivor.parent = undefined;
+    if (survivor.children?.some((child) => evicted.has(child))) survivor.children = survivor.children.filter((child) => !evicted.has(child));
+  }
+};
 const evictProjectModules = () => {
   if (process.env.NT_DEBUG_EVICT) {
     for (const file of Object.keys(require.cache)) {
@@ -890,7 +910,14 @@ const evictProjectModules = () => {
       }
     }
   }
-  for (const file of Object.keys(require.cache)) if (isEvictable(file)) delete require.cache[file];
+  const evicted = new Set();
+  for (const file of Object.keys(require.cache)) {
+    if (!isEvictable(file)) continue;
+    evicted.add(require.cache[file]);
+    if (process.env.NT_HEAPSNAP) require.cache[file].__evictedMarker = true;
+    delete require.cache[file];
+  }
+  releaseEvicted(evicted);
 };
 let preloadMocks = null;
 let currentFile = "";
@@ -1035,12 +1062,18 @@ const fileCleanup = async (isolated) => {
     globalThis.__nodeTestSpike.remirror();
     if (!process.env.NT_FRESH_WINDOW_KEEP) try { previous.window.close(); } catch {}
   }
-  if (WINDOW_BOUND_PACKAGES) {
-    const pattern = new RegExp(`/node_modules/(${WINDOW_BOUND_PACKAGES})/`);
-    let evicted = 0;
-    for (const cachedFile of Object.keys(require.cache)) if (pattern.test(cachedFile)) { delete require.cache[cachedFile]; evicted += 1; }
+  if (windowBoundPattern) {
+    const pattern = windowBoundPattern;
+    const evicted = new Set();
+    for (const cachedFile of Object.keys(require.cache)) {
+      if (!pattern.test(cachedFile)) continue;
+      if (process.env.NT_HEAPSNAP) require.cache[cachedFile].__evictedMarker = true;
+      evicted.add(require.cache[cachedFile]);
+      delete require.cache[cachedFile];
+    }
+    releaseEvicted(evicted);
     for (const kind of Object.keys(packageHooks)) packageHooks[kind].length = 0;
-    if (process.env.NT_DEBUG_EVICT_PACKAGES) console.error(`[evict-packages] ${evicted}`);
+    if (process.env.NT_DEBUG_EVICT_PACKAGES) console.error(`[evict-packages] ${evicted.size}`);
   }
   globalThis.__nodeTestSpike.measureEnd?.(isolated);
   globalThis.__nodeTestSpike.restoreSharedPackages?.();
@@ -1274,14 +1307,30 @@ const jestMock = (id, factory) => {
 let setupMocksOpen = false;
 let setupMocksPending = [];
 const setupMocks = [];
+const setupProcessListeners = [];
+let pristineConsole;
 const runSetupChain = () => {
   // The setup files register the root hooks each time they run. Without this
   // every isolated file would add another copy for all later tests to run.
   for (const kind of ["beforeAll", "afterAll", "beforeEach", "afterEach"]) rootSuite[kind].length = 0;
+  // The same goes for the mocks they install. The old ones also hold the window
+  // of the file they were made for, and with it everything that file rendered.
+  setupMocks.length = 0;
+  // And for the console: a setup file wraps console.error around whatever is
+  // there, so each run would add a layer that also keeps the previous run alive.
+  if (pristineConsole) restoreDescriptors(console, pristineConsole, true);
+  else pristineConsole = new Map(Reflect.ownKeys(console).map((key) => [key, Object.getOwnPropertyDescriptor(console, key)]));
+  // And for the listeners they put on the process, which jest hands to each
+  // file as a copy of its own.
+  for (const [event, listener] of setupProcessListeners.splice(0)) process.removeListener(event, listener);
+  const listenersBefore = new Map(process.eventNames().map((event) => [event, new Set(process.rawListeners(event))]));
   setupMocksOpen = true;
   try {
     for (const setupFile of SETUP_CHAIN) require(abs(setupFile));
   } finally {
+    for (const event of process.eventNames()) {
+      for (const listener of process.rawListeners(event)) if (!listenersBefore.get(event)?.has(listener)) setupProcessListeners.push([event, listener]);
+    }
     setupMocksOpen = false;
     for (const mock of setupMocksPending) {
       const implementation = mock.getMockImplementation();
@@ -1435,7 +1484,9 @@ const measureEnd = (isolated) => {
 globalThis.__nodeTestSpike.measureStart = measureStart;
 globalThis.__nodeTestSpike.measureEnd = measureEnd;
 const trackedLets = new Map();
-globalThis.__nodeTestSpike.trackLets = (file, read, write) => { trackedLets.set(file, { baseline: read(), read, write }); };
+// With every project module loaded again for each file there is nothing to put
+// back, and a tracked module would stay alive after its file.
+globalThis.__nodeTestSpike.trackLets = (file, read, write) => { if (!ISOLATE_ALL) trackedLets.set(file, { baseline: read(), read, write }); };
 // Other modules write into these bindings while they load: a registry gets its
 // default, a renderer gets installed. Those modules will not load again, so a
 // value written during a load is part of the baseline. Only what test code
@@ -1527,7 +1578,9 @@ globalThis.__nodeTestSpike.trackLets = (file, read, write) => { trackedLets.set(
     const compilePackage = NodeModule.prototype._compile;
     NodeModule.prototype._compile = function (content, filename, ...rest) {
       const result = compilePackage.call(this, content, filename, ...rest);
-      if (SHARED_UI.test(filename)) packageModulesPending.push(this);
+      // A package that is loaded again for each file needs no baseline, and one
+      // would keep every old copy of it alive.
+      if (SHARED_UI.test(filename) && !windowBoundPattern?.test(filename)) packageModulesPending.push(this);
       return result;
     };
   }
