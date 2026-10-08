@@ -1346,12 +1346,10 @@
            settings
            system
            task
-           transforms
            users
            util
            util.config
            warehouse-schema-overlay
-           warehouses
            warehouses.schema}
    :model-imports #{:model/Card
                     :model/Collection
@@ -1365,8 +1363,6 @@
                     :model/Pulse
                     :model/Segment
                     :model/Table
-                    :model/Transform
-                    :model/TransformTag
                     :model/User}}
 
   mcp.oauth-server
