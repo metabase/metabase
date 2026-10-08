@@ -99,6 +99,7 @@ describe("scenarios > data apps > sandbox & isolation", () => {
         url: `/embed/apps/${APP_NAME}`,
         failOnStatusCode: false,
       }).then((res) => {
+        expect(res.status).to.eq(200);
         const csp = String(res.headers["content-security-policy"] ?? "");
         expect(csp).to.contain("frame-ancestors 'self'");
         expect(csp).to.contain("default-src 'none'");
@@ -119,7 +120,9 @@ describe("scenarios > data apps > sandbox & isolation", () => {
 
       cy.get(`iframe[title="${APP_DISPLAY_NAME}"]`)
         .should("have.attr", "sandbox")
-        .and("contain", "allow-scripts");
+        .and("contain", "allow-scripts")
+        .and("not.contain", "allow-top-navigation")
+        .and("not.contain", "allow-popups-to-escape-sandbox");
 
       H.dataAppIframe(APP_DISPLAY_NAME).within(() => {
         cy.findByRole("heading", { name: "Orders overview" }).should(
