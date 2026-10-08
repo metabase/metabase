@@ -1,7 +1,13 @@
 import fs from "fs";
 import path from "path";
 
-import { SUBSET_OPTIONS, buildFontFaces, subsetFace } from "./fonts";
+import {
+  SUBSET_OPTIONS,
+  buildFontFaces,
+  latinCharacters,
+  restCharacters,
+  subsetFace,
+} from "./fonts";
 
 const FONTS_DIR = path.join(__dirname, "../../../fonts");
 const DEFAULT_FAMILY = "Lato";
@@ -121,5 +127,23 @@ describe("subsetting", () => {
       notdefOutline: false,
     });
     expect(kept.length).toBeGreaterThan(dropped.length);
+  });
+
+  // Lato is drawn from two upstream releases: the latin it has always shipped,
+  // and the scripts merged in from the later one, which re-spaced the family.
+  // The merge takes only codepoints the first chunk does not serve, so a latin
+  // page renders exactly what it did. If a script glyph reached the first
+  // chunk it would arrive with the later release's spacing.
+  it("keeps the scripts merged into the default family out of its latin chunk", async () => {
+    const source = fs.readFileSync(
+      path.join(FONTS_DIR, DEFAULT_FAMILY, "lato-v16-latin-regular.woff2"),
+    );
+    const cyrillicAndGreek = /[\u0370-\u03ff\u0400-\u052f]/;
+    expect(cyrillicAndGreek.test(restCharacters())).toBe(true);
+    expect(cyrillicAndGreek.test(latinCharacters())).toBe(false);
+
+    const latin = await subsetFace(source, latinCharacters());
+    const rest = await subsetFace(source, restCharacters());
+    expect(rest.length).toBeGreaterThan(latin.length / 2);
   });
 });
