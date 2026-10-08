@@ -127,7 +127,7 @@
         (is (ifn? (registry/required provider :list-models)) provider))))
   (testing "a capability a provider does not have is absent, not a default"
     (is (nil? (registry/optional "vllm" :supported-models)))
-    (is (nil? (registry/optional "deepseek" :context-window)))
+    (is (nil? (registry/optional "vllm" :context-window)))
     (is (some? (registry/optional "anthropic" :supported-models))))
   (testing "the registry covers exactly the provider types the platform knows about"
     (is (= (set (map :type (llm.provider/provider-types)))
@@ -1285,6 +1285,8 @@
       "google/google/gemini-3.6-flash"       1048576 ; publisher-qualified model reaches Google adapter
       "zai/glm-5.3"                          1048576 ; Z.AI direct
       "openrouter/z-ai/glm-5.3"              1048576 ; OpenRouter serving limit
+      "deepseek/deepseek-v4-pro"             1048576 ; DeepSeek direct, first-party endpoint figure
+      "deepseek/deepseek-flash"              1000000 ; DeepSeek direct, the documented "1M"
       "azure/openai/my-deployment"           nil     ; unmatched deployment
       "anthropic/some-future-model"          nil     ; unknown model
       "unknown"                              nil)))  ; no such connection

@@ -177,10 +177,10 @@ Credentials:
 
 Supported models:
 
-| Model           | Model ID          |
-| --------------- | ----------------- |
-| DeepSeek Flash  | `deepseek-flash`  |
-| DeepSeek V4 Pro | `deepseek-v4-pro` |
+| Model           | Model ID          | Context window (tokens) |
+| --------------- | ----------------- | ----------------------- |
+| DeepSeek Flash  | `deepseek-flash`  | 1,000,000               |
+| DeepSeek V4 Pro | `deepseek-v4-pro` | 1,048,576               |
 
 Credentials:
 
