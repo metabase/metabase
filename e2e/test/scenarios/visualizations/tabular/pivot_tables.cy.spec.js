@@ -28,33 +28,11 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
     cy.intercept("POST", "/api/card").as("createCard");
   });
 
-  it("should be created from an ad-hoc question", () => {
-    H.visitQuestionAdhoc({ dataset_query: testQuery, display: "pivot" });
-
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText(/Count by Users? → Source and Products? → Category/); // ad-hoc title
-
-    H.openVizSettingsSidebar();
-    assertOnPivotSettings();
-    cy.findByTestId("query-visualization-root").within(() => {
-      assertOnPivotFields();
-    });
-  });
-
-  it("should correctly display saved question", () => {
-    createTestQuestion();
-    cy.findByTestId("query-visualization-root").within(() => {
-      assertOnPivotFields();
-    });
-
-    // Open Pivot table side-bar
-    H.openVizSettingsSidebar();
-
-    assertOnPivotSettings();
-  });
-
   it("should not show sub-total data after a switch to other viz type", () => {
     createTestQuestion();
+    cy.findByTestId("query-visualization-root").within(() => {
+      assertOnPivotFields();
+    });
 
     // Switch to "ordinary" table
     cy.findByTestId("view-footer").findByText("Visualization").click();
@@ -586,11 +564,14 @@ WHERE NOT (
     });
   });
 
-  it("should allow value formatting", () => {
+  it("should be created from an ad-hoc question and allow value formatting", () => {
     H.visitQuestionAdhoc({ dataset_query: testQuery, display: "pivot" });
 
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText(/Count by Users? → Source and Products? → Category/); // ad-hoc title
+    cy.findByTestId("query-visualization-root").within(() => {
+      assertOnPivotFields();
+    });
 
     H.openVizSettingsSidebar();
     assertOnPivotSettings();
@@ -603,6 +584,10 @@ WHERE NOT (
     cy.findByText("Style");
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Separator style");
+
+    cy.log("Value fields cannot be sorted");
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
+    cy.findByText(/Sort order/).should("not.be.visible");
 
     cy.log("Change the value formatting");
     cy.findByDisplayValue("Normal").click();
@@ -645,20 +630,6 @@ WHERE NOT (
         "Count renamed",
       );
     });
-  });
-
-  it("should not allow sorting of value fields", () => {
-    H.visitQuestionAdhoc({ dataset_query: testQuery, display: "pivot" });
-
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText(/Count by Users? → Source and Products? → Category/); // ad-hoc title
-
-    H.openVizSettingsSidebar();
-    assertOnPivotSettings();
-    openColumnSettings("Count");
-
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText(/Sort order/).should("not.be.visible");
   });
 
   it("should allow sorting fields", () => {
@@ -1188,7 +1159,7 @@ WHERE NOT (
     }
   });
 
-  it("should not show subtotals for flat tables", () => {
+  it("should not show subtotals for flat tables and apply conditional formatting", () => {
     H.visitQuestionAdhoc({
       dataset_query: {
         type: "query",
@@ -1218,38 +1189,9 @@ WHERE NOT (
       },
     });
 
+    cy.log("A single year per state means no subtotals");
+    cy.findByTestId("pivot-table").should("contain", "65.09");
     cy.findAllByText(/Totals for .*/i).should("have.length", 0);
-  });
-
-  it("should apply conditional formatting", () => {
-    H.visitQuestionAdhoc({
-      dataset_query: {
-        type: "query",
-        query: {
-          "source-table": ORDERS_ID,
-          aggregation: [["sum", ["field", ORDERS.SUBTOTAL, null]]],
-          breakout: [
-            ["field", ORDERS.CREATED_AT, { "temporal-unit": "year" }],
-            ["field", PRODUCTS.CATEGORY, { "source-field": ORDERS.PRODUCT_ID }],
-            ["field", PEOPLE.STATE, { "source-field": ORDERS.USER_ID }],
-          ],
-          filter: [">", ["field", ORDERS.CREATED_AT, null], "2029-01-01"],
-        },
-        database: SAMPLE_DB_ID,
-      },
-      display: "pivot",
-      visualization_settings: {
-        "pivot_table.column_split": {
-          rows: ["STATE", "CREATED_AT"],
-          columns: ["CATEGORY"],
-          values: ["sum"],
-        },
-        "pivot_table.collapsed_rows": {
-          value: [],
-          rows: ["STATE", "CREATED_AT"],
-        },
-      },
-    });
 
     H.openVizSettingsSidebar();
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
