@@ -219,13 +219,13 @@
 
   Every field goes to [[metabase.metabot.usage/log-ai-usage!]], where `:tag` stands in for a missing `:source`.
 
-  Prometheus + the token_usage event:
+  Prometheus + Snowplow:
     - `:model`      - the model reference (e.g. `openrouter/anthropic/claude-haiku-4.5`)
     - `:tag`        - the specific purpose for which the tokens were used (e.g. 'agent', 'sql-fixing')
     - `:provider`   - the provider type serving it (e.g. `openrouter`)
     - `:ai-proxy?`  - whether the call went through the managed AI proxy, reported as the `metabase` provider
 
-  The token_usage event only:
+  Snowplow only:
     - `:model-name` - the model as the provider names it (e.g. `anthropic/claude-haiku-4.5`)
     - `:profile-id` - the profile id (e.g. `:internal`)
     - `:request-id` - UUID string for this request

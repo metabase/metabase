@@ -14,7 +14,6 @@
    [metabase-enterprise.semantic-search.settings :as semantic.settings]
    [metabase-enterprise.semantic-search.test-util :as semantic.tu]
    [metabase.analytics-interface.core :as analytics]
-   [metabase.analytics.metaplow-test :as metaplow-test]
    [metabase.analytics.snowplow-test :as snowplow-test]
    [metabase.embeddings.provider :as embeddings.provider]
    [metabase.llm.provider :as llm.provider]
@@ -617,28 +616,29 @@
                            :usage {:prompt_tokens 5
                                    :total_tokens  5}}]
         (snowplow-test/with-fake-snowplow-collector
-          (let [metaplow-events (mt/with-dynamic-fn-redefs [http/post (fn [_url & _opts]
-                                                                        {:status  200
-                                                                         :headers {"Content-Type" "application/json"}
-                                                                         :body    (json/encode mock-response)})]
-                                  (metaplow-test/events-sent-by!
-                                   #(embedding/get-embeddings-batch {:provider         "ai-service"
-                                                                     :model-name       "test-model"
-                                                                     :vector-dimensions 3}
-                                                                    ["hello world"]
-                                                                    {:record-tokens? true})))
-                events          (->> (snowplow-test/pop-event-data-and-user-id!)
-                                     ;; Filter out unrelated setup events (e.g. new_instance_created
-                                     ;; triggered by instance-creation setting being read for the first time)
-                                     (filter #(get-in % [:data "tag"])))]
+          (mt/with-dynamic-fn-redefs [http/post (fn [_url & _opts]
+                                                  {:status  200
+                                                   :headers {"Content-Type" "application/json"}
+                                                   :body    (json/encode mock-response)})]
+            (embedding/get-embeddings-batch {:provider         "ai-service"
+                                             :model-name       "test-model"
+                                             :vector-dimensions 3}
+                                            ["hello world"]
+                                            {:record-tokens? true}))
+          (let [events (->> (snowplow-test/pop-event-data-and-user-id!)
+                            ;; Filter out unrelated setup events (e.g. new_instance_created
+                            ;; triggered by instance-creation setting being read for the first time)
+                            (filter #(get-in % [:data "tag"])))]
             (is (=? [{:data {"model_id"      "test-model"
+                             "provider"      "ai-service"
+                             "model_name"    "test-model"
                              "total_tokens"  5
                              "prompt_tokens" 5
                              "tag"           "embedding_generation"}}]
                     events))
-            (testing "and Metaplow gets the provider and the model name"
-              (is (=? [{:data {"provider" "ai-service" "model_name" "test-model"}}]
-                      (filter #(= "token_usage" (:name %)) metaplow-events))))))))))
+            (testing "with no cache counts and a zero cost"
+              (is (=? [{:data {"cache_creation_tokens" nil "cache_read_tokens" nil "estimated_costs_usd" 0.0}}]
+                      events)))))))))
 
 (deftest test-embedding-service-snowplow-suppression
   (testing "ai-service fires no token_usage event when the caller passes :snowplow? false"

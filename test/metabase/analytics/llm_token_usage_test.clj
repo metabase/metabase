@@ -3,7 +3,6 @@
    [clojure.test :refer :all]
    [metabase.analytics-interface.core :as analytics]
    [metabase.analytics.llm-token-usage :as llm-token-usage]
-   [metabase.analytics.metaplow-test :as metaplow-test]
    [metabase.analytics.snowplow :as snowplow]
    [metabase.analytics.snowplow-test :as snowplow-test]
    [metabase.test :as mt]
@@ -88,6 +87,8 @@
                     :data    {"hashed_metabase_license_token" "oss__uuid-for-test"
                               "request_id"                   "deadbeef00"
                               "model_id"                     "openai/gpt-4"
+                              "provider"                     "openai"
+                              "model_name"                   "gpt-4"
                               "total_tokens"                 300
                               "prompt_tokens"                200
                               "completion_tokens"            100
@@ -113,15 +114,6 @@
         (is (nil? (schema-violation event)))
         (testing "and the schema rejects a field it does not declare"
           (is (some? (schema-violation (assoc event "undeclared_field" "value")))))))))
-
-(deftest track-snowplow!-metaplow-only-fields-test
-  (testing "Metaplow gets the provider and the model name, which the Snowplow schema doesn't declare"
-    (is (=? [{:name "token_usage"
-              :data {"request_id" "abc123"
-                     "model_id"   "anthropic/claude-haiku-4-5"
-                     "provider"   "anthropic"
-                     "model_name" "claude-haiku-4-5"}}]
-            (metaplow-test/events-sent-by! #(llm-token-usage/track-snowplow! base-usage))))))
 
 ;;; ------------------------------------------- track-prometheus! -------------------------------------------
 
@@ -212,6 +204,7 @@
           (testing "Snowplow event fired"
             (is (=? [{:data {"request_id"    "req-123"
                              "model_id"      "anthropic/claude-haiku-4-5"
+                             "provider"      "anthropic"
                              "total_tokens"  150
                              "prompt_tokens" 100}}]
                     (snowplow-test/pop-event-data-and-user-id!))))
