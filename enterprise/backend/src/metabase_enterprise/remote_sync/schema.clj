@@ -86,7 +86,8 @@
    [:query_type {:optional true} [:maybe :string]]
    [:description {:optional true} [:maybe :string]]
    [:table_id {:optional true} [:maybe pos-int?]]
-   [:table_name {:optional true} [:maybe :string]]])
+   [:table_name {:optional true} [:maybe :string]]
+   [:card_id {:optional true} [:maybe pos-int?]]])
 
 ;;; ------------------------------------------- API Response Schemas -------------------------------------------
 

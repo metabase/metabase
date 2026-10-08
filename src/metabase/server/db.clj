@@ -5,6 +5,7 @@
    [honey.sql.helpers :as sql.helpers]
    [metabase.app-db.core :as mdb]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.session.core :as session]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [toucan2.core :as t2]
@@ -13,17 +14,6 @@
 ;; These session/API-key/OAuth-token lookup queries run on every single authenticated API request, so it's worth it
 ;; to optimize a bit and only compile each one to SQL once (keyed by its boolean/enum arguments) rather than every
 ;; time.
-
-(defn- oldest-allowed-expr
-  "A database-specific expression for `NOW() - interval`."
-  [db-type amount unit]
-  (let [now (h2x/current-datetime-honeysql-form db-type)]
-    (case db-type
-      :postgres [:- now [::h2x/postgres-interval amount unit]]
-      :h2       [:dateadd (h2x/literal (name unit))
-                 [:inline (- amount)]
-                 now]
-      :mysql    [:- now [::h2x/mysql-interval amount unit]])))
 
 ;; Hard-coded rather than `(descendants :metabase.auth-identity.provider/supports-mfa)` so the session query below is
 ;; compiled once rather than depending on load order of the provider namespaces.
@@ -36,41 +26,32 @@
    (fn [db-type max-age-minutes session-type enable-advanced-permissions? enable-tenants? session-timeout-seconds mfa-required?]
      (first
       (t2.pipeline/compile*
-       (cond-> {:select    [[:session.user_id :metabase-user-id]
-                            [:user.is_superuser :is-superuser?]
-                            [:user.is_data_analyst :is-data-analyst?]
-                            [:user.locale :user-locale]
-                            [:auth_identity.provider :auth-provider]]
-                :from      [[:core_session :session]]
-                :left-join [[:core_user :user] [:= :session.user_id :user.id]
-                            [:tenant] [:= :tenant.id :user.tenant_id]
-                            [:auth_identity] [:= :auth_identity.id :session.auth_identity_id]]
-                :where     (into [:and
-                                  (if enable-tenants?
-                                    [:or [:= :tenant.id nil] :tenant.is_active]
-                                    [:= :tenant.id nil])
-                                  [:= :user.is_active true]
-                                  [:= :session.key_hashed (Object.)] ; to produce "?"
-                                  [:> :session.created_at (oldest-allowed-expr db-type max-age-minutes :minute)]
-                                  [:or [:= :session.expires_at nil]
-                                   [:> :session.expires_at (h2x/current-datetime-honeysql-form db-type)]]
-                                  [:= :session.anti_csrf_token (case session-type
-                                                                 :normal         nil
-                                                                 :full-app-embed (Object.))]]
-                                 cat
-                                 [(when mfa-required?
-                                    [[:or
-                                      [:not= :session.mfa_auth_identity_id nil]
-                                      (into [:and]
-                                            (map (fn [mfa-supporting-provider]
-                                                   [:not=
-                                                    :auth_identity.provider
-                                                    (h2x/literal (name mfa-supporting-provider))])
-                                                 mfa-supported-methods))]])
-                                  (when session-timeout-seconds
-                                    [[:> [:coalesce :session.last_active_at :session.created_at]
-                                      (oldest-allowed-expr db-type session-timeout-seconds :second)]])])
-                :limit     [:inline 1]}
+       (cond-> (merge session/session-from-and-joins
+                      {:select [[:session.user_id :metabase-user-id]
+                                [:user.is_superuser :is-superuser?]
+                                [:user.is_data_analyst :is-data-analyst?]
+                                [:user.locale :user-locale]
+                                [:auth_identity.provider :auth-provider]]
+                       :where  (into [:and
+                                      [:= :session.key_hashed ^:allow-raw-sql (Object.)] ; force a `?` placeholder
+                                      [:= :session.anti_csrf_token (case session-type
+                                                                     :normal         nil
+                                                                     :full-app-embed ^:allow-raw-sql (Object.))]]
+                                     cat
+                                     [(session/live-session-conditions
+                                       {:db-type                 db-type
+                                        :max-age-minutes         max-age-minutes
+                                        :enable-tenants?         enable-tenants?
+                                        :session-timeout-seconds session-timeout-seconds})
+                                      (when mfa-required?
+                                        [[:or
+                                          [:not= :session.mfa_auth_identity_id nil]
+                                          (into [:and]
+                                                (map (fn [mfa-supporting-provider]
+                                                       [:not= :auth_identity.provider
+                                                        (h2x/literal (name mfa-supporting-provider))])
+                                                     mfa-supported-methods))]])])
+                       :limit  [:inline 1]})
          enable-advanced-permissions?
          (->
           (sql.helpers/select
@@ -85,7 +66,13 @@
    (fn [enable-advanced-permissions?]
      (first
       (t2.pipeline/compile*
-       (cond-> {:select    [[:api_key.user_id :metabase-user-id]
+       ;; `api-key-id` and `api-key-creator-id` are here for API-key usage analytics: the auth query already has
+       ;; both rows joined, so carrying them on the request costs nothing and spares the response path a second
+       ;; lookup. `api-key-creator-id` is the real human who created the key — distinct from `metabase-user-id`,
+       ;; which is the key's own synthetic service-account user used for permission checks.
+       (cond-> {:select    [[:api_key.id :api-key-id]
+                            [:api_key.creator_id :api-key-creator-id]
+                            [:api_key.user_id :metabase-user-id]
                             [:api_key.key :api-key]
                             [:user.is_superuser :is-superuser?]
                             [:user.is_data_analyst :is-data-analyst?]
@@ -151,8 +138,8 @@
     (t2/query-one (cons sql params))))
 
 (mu/defn api-key-user-info
-  "The user id, api key, superuser/data-analyst/group-manager flags, and locale for the active User whose ApiKey
-  starts with `key-prefix`, or nil if there is none."
+  "The API key id, user id, api key, superuser/data-analyst/group-manager flags, and locale for the active User
+  whose ApiKey starts with `key-prefix`, or nil if there is none."
   [key-prefix                   :- :string
    enable-advanced-permissions? :- :boolean]
   (t2/query-one (cons (user-data-for-api-key-prefix-query enable-advanced-permissions?) [key-prefix])))

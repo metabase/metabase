@@ -344,32 +344,9 @@
     "BIGNUMERIC" :type/Decimal
     :type/*))
 
-(defmulti ^:private type->database-type
-  "Internal type->database-type multimethod for BigQuery that dispatches on type."
-  {:arglists '([type])}
-  identity)
-
-;; we can't recover the parameterized types
-(defmethod type->database-type :type/Array [_] [[:raw "JSON"]])
-(defmethod type->database-type :type/Dictionary [_] [[:raw "JSON"]])
-
-(defmethod type->database-type :type/Boolean [_] [[:raw "BOOL"]])
-(defmethod type->database-type :type/Float [_] [[:raw "FLOAT64"]])
-(defmethod type->database-type :type/Integer [_] [[:raw "INT"]])
-(defmethod type->database-type :type/Number [_] [[:raw "INT"]])
-(defmethod type->database-type :type/Text [_] [[:raw "STRING"]])
-(defmethod type->database-type :type/TextLike [_] [[:raw "STRING"]])
-(defmethod type->database-type :type/Date [_] [[:raw "DATE"]])
-(defmethod type->database-type :type/DateTime [_] [[:raw "DATETIME"]])
-(defmethod type->database-type :type/DateTimeWithTZ [_] [[:raw "TIMESTAMP"]])
-(defmethod type->database-type :type/Time [_] [[:raw "TIME"]])
-(defmethod type->database-type :type/JSON [_] [[:raw "JSON"]])
-(defmethod type->database-type :type/SerializedJSON [_] [[:raw "JSON"]])
-(defmethod type->database-type :type/Decimal [_] [[:raw "BIGDECIMAL"]])
-
 (defmethod driver/type->database-type :bigquery-cloud-sdk
   [_driver base-type]
-  (type->database-type base-type))
+  [[:raw (bigquery.common/base-type->bigquery-type base-type)]])
 
 (defn- field->database+base-type
   "Returns a normalized `database-type` and its `base-type` for a type from BigQuery Field type.

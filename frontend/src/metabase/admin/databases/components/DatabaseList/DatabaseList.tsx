@@ -96,8 +96,10 @@ export const DatabaseList = ({
                       </Flex>
                     </td>
                     <td>
-                      {engines?.[database.engine ?? ""]?.["driver-name"] ??
-                        database.engine}
+                      {database.is_stub
+                        ? t`Unknown`
+                        : (engines?.[database.engine ?? ""]?.["driver-name"] ??
+                          database.engine)}
                     </td>
                     <td>{database.is_stub ? t`Stubbed` : t`Active`}</td>
                   </tr>

@@ -230,7 +230,7 @@
 
 (deftest delete-collection-deletes-actions-test
   (testing "deleting a Collection deletes the Actions in it, including the ones without a model"
-    (mt/with-temp [:model/Collection collection {}
+    (mt/with-temp [:model/Collection collection {:namespace "data-actions"}
                    :model/Action     action     {:type :query :name "No model" :model_id nil
                                                  :collection_id (u/the-id collection)}]
       (t2/delete! :model/Collection :id (u/the-id collection))
@@ -3309,12 +3309,31 @@
                                                                             non-archived-dash
                                                                             non-archived-card]))))))))
 
+(deftest ensure-library-dashboards-collection-test
+  (mt/with-empty-h2-app-db!
+    (testing "Without a Library there is nothing to restore"
+      (is (nil? (collection/ensure-library-dashboards-collection!))))
+    (let [library (collection/create-library-collection!)]
+      (testing "An existing Dashboards collection is kept"
+        (is (nil? (collection/ensure-library-dashboards-collection!))))
+      (testing "A missing Dashboards collection is recreated with the Library's permissions"
+        (t2/delete! :model/Collection :type collection/library-dashboards-collection-type)
+        (let [dashboards (collection/ensure-library-dashboards-collection!)]
+          (is (=? {:name     "Dashboards"
+                   :type     collection/library-dashboards-collection-type
+                   :location (str "/" (:id library) "/")}
+                  dashboards))
+          (binding [api/*current-user*                 (mt/user->id :rasta)
+                    api/*current-user-permissions-set* (-> :rasta mt/user->id perms/user-permissions-set atom)]
+            (is (true? (mi/can-read? dashboards)))
+            (is (false? (mi/can-write? dashboards)))))))))
+
 (deftest create-library
   (mt/with-empty-h2-app-db!
     (testing "Can create a library if none exist"
       (let [library (collection/create-library-collection!)]
         (is (= "Library" (:name library)))
-        (is (= ["Data" "Metrics"] (sort (map :name (collection/descendants library)))))
+        (is (= ["Dashboards" "Data" "Metrics"] (sort (map :name (collection/descendants library)))))
         (testing "Only admins can write to the library, all users can read"
           (binding [api/*current-user*                 (mt/user->id :rasta)
                     api/*current-user-permissions-set* (-> :rasta mt/user->id perms/user-permissions-set atom)]

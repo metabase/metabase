@@ -334,21 +334,22 @@ describe(
 
       it("refuses to sync when a copy was moved out of the app collection", () => {
         syncOneAction().then(({ copiedAction }) => {
-          cy.request("POST", "/api/collection", { name: "Elsewhere" }).then(
-            ({ body: collection }) => {
-              cy.request("PUT", `/api/action/${copiedAction.id}`, {
-                collection_id: collection.id,
-              });
+          cy.request("POST", "/api/collection", {
+            name: "Elsewhere",
+            namespace: "data-actions",
+          }).then(({ body: collection }) => {
+            cy.request("PUT", `/api/action/${copiedAction.id}`, {
+              collection_id: collection.id,
+            });
 
-              syncExpectingRefusal(
-                `Action ${copiedAction.id} is the copy of action`,
-              );
-              // Refusing is only worth anything if the copy is left alone.
-              cy.request(`/api/action/${copiedAction.id}`)
-                .its("body.collection_id")
-                .should("eq", collection.id);
-            },
-          );
+            syncExpectingRefusal(
+              `Action ${copiedAction.id} is the copy of action`,
+            );
+            // Refusing is only worth anything if the copy is left alone.
+            cy.request(`/api/action/${copiedAction.id}`)
+              .its("body.collection_id")
+              .should("eq", collection.id);
+          });
         });
       });
     });

@@ -80,9 +80,8 @@
 (defn- create!
   [{:keys [description parent_id authority_level], coll-name :name, coll-namespace :namespace, :as args}]
   (check-method-args! :create args)
-  ;; A namespaced collection ("snippets", "transforms") is its own hierarchy, and personal
-  ;; collections only exist in the default one — so only a normal collection can default into the
-  ;; caller's.
+  ;; A namespaced collection ("snippets") is its own hierarchy, and personal collections only exist in the default
+  ;; one — so only a normal collection can default into the caller's.
   (let [parent-id (if coll-namespace
                     (v2.resolve/resolve-collection-id parent_id)
                     (v2.resolve/resolve-collection-id-or-personal parent_id))]
@@ -138,10 +137,9 @@
                                          "delete. Omit to leave the collection's trashed state alone.")}]]]
    [:namespace {:optional true}
     [:maybe [:enum {:description (str "Create only: puts the collection in a separate hierarchy instead of the "
-                                      "normal one. \"snippets\" holds SQL snippet folders; \"transforms\" holds "
-                                      "transform folders, the ones transform_write's `collection_id` names. Omit "
-                                      "for a normal collection.")}
-             "snippets" "transforms"]]]
+                                      "normal one. \"snippets\" holds SQL snippet folders. Omit for a normal "
+                                      "collection.")}
+             "snippets"]]]
    [:authority_level {:optional true}
     [:maybe [:enum {:description (str "Marks the collection Official. Requires an admin on an instance with the "
                                       "Official Collections feature. To make a collection unofficial again, name "
@@ -163,8 +161,7 @@
   restores it — there is no hard delete, and omitting archived leaves the trashed state alone. To move something out of
   the trash, pass archived: false together with parent_id; parent_id on its own would leave it trashed. namespace is
   create-only
-  (\"snippets\" for SQL snippet folders, \"transforms\" for the transform folders transform_write files transforms
-  into); collections cannot move between namespaces. authority_level \"official\"
+  (\"snippets\" for SQL snippet folders); collections cannot move between namespaces. authority_level \"official\"
   marks the collection Official and needs an admin on an instance with that feature. description and authority_level
   can be set, rewritten, and cleared — to erase one, name it in clear (clear: [\"description\"]); sending null does
   not work, because unset properties are stripped before the tool sees them. Personal collections

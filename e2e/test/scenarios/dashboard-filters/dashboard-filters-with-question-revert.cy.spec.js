@@ -194,6 +194,7 @@ describe("issue 35954", () => {
           // Set the filter through the URL
           cy.visit(`/public/dashboard/${uuid}?number=3`);
         });
+        H.filterWidget().should("contain", "3");
         assertFilterIsDisconnected();
       });
 

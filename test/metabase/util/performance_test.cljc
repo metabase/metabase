@@ -258,6 +258,9 @@
                               (for [_ (range 10)]
                                 (throw (ex-info "you should not be here" {})))))))))
 
+(deftest ^:parallel mapa-test
+  (is (= [1 2 3] (vec (perf/mapa inc (range 3))))))
+
 #?(:clj
    (defspec mapv-single-coll-equivalence 100
      (prop/for-all [coll (mg/generator [:sequential :int])]

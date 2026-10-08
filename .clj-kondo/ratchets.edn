@@ -108,8 +108,7 @@
                                 :unresolved-symbol                       15
                                 :unresolved-var                          1
                                 :unused-referred-var                     4}
- :comment-exempt               #{:deprecated-namespace
-                                 :discouraged-namespace
+ :comment-exempt               #{:discouraged-namespace
                                  :discouraged-var
                                  :metabase/discourage-dynamic-vars
                                  :metabase/modules

@@ -64,7 +64,7 @@
       (let [app (insert-app! :description "Pipeline health")]
         (export! dump-dir)
         (testing "the manifest is a serdes YAML in the app's directory, keyed like a hand-written data_app.yaml"
-          (is (= {:serdes/meta   [{:model "DataApp" :id (:entity_id app) :label "sales_ops"}]
+          (is (= {:serdes/meta   [{:model "DataApp"}]
                   :entity_id     (:entity_id app)
                   :slug          "sales-ops"
                   :name          "Sales Ops"
