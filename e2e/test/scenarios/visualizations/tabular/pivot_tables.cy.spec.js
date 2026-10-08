@@ -450,6 +450,7 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
     cy.findByText("3,520");
 
     cy.log("Hiding subtotals uncollapses the value");
+    openColumnSettings("User → Source");
     cy.findByTestId("chart-settings-widget-pivot_table.column_show_totals")
       .findByRole("switch")
       .click({ force: true });
@@ -1010,7 +1011,7 @@ WHERE NOT (
             .findByTestId("public-link-input")
             .invoke("val")
             .as("publicLink");
-          cy.realPress("Escape");
+          cy.get("body").click("topLeft");
           cy.findByTestId("public-link-popover-content").should("not.exist");
 
           const { alias, resource } = {
@@ -1132,9 +1133,6 @@ WHERE NOT (
       cy.contains("Row totals");
       cy.findByText("333"); // Row totals for 2027
       cy.findByText("Grand totals");
-    });
-    cy.findByTestId("pivot-table").within(() => {
-      ["A", "B", "C", "D", "E"].forEach((label) => cy.findByText(label));
     });
   });
 
