@@ -94,7 +94,7 @@ If you're self-hosting, you can configure a provider with [environment variables
 
 An environment variable can also override a single field of a connection you manage in the UI. For example, if you set only `MB_LLM_ANTHROPIC_API_BASE_URL`, the base URL comes from the environment, and the rest of the connection stays editable.
 
-A connection's credentials and its address have to come from the same place. For Ollama, if `MB_LLM_OLLAMA_API_BASE_URL` points a connection at a different server, such as Ollama Cloud at `https://ollama.com/v1`, Metabase won't send an API key entered in the UI there: set `MB_LLM_OLLAMA_API_KEY` too.
+A connection's credentials and its address have to come from the same place. For Ollama, if `MB_LLM_OLLAMA_API_BASE_URL` points a connection at a different server (such as Ollama Cloud at `https://ollama.com/v1`), Metabase won't send an API key entered in the UI there: set `MB_LLM_OLLAMA_API_KEY` too.
 
 To put the whole list under environment control, set [`MB_LLM_PROVIDERS`](../configuring-metabase/environment-variables.md#mb_llm_providers) to a JSON array of connections. The provider list is then read-only, so manage your connections by editing `MB_LLM_PROVIDERS` and restarting.
 
