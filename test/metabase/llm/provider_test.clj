@@ -624,7 +624,12 @@
     (testing "a retired model id resolves to the model that now serves it"
       (is (= "qwen/qwen3.8-max-0902" (:model (llm.provider/resolve-model-ref "openrouter/qwen/qwen3.8-max")))))
     (testing "the same id under another provider type is not retired there"
-      (is (= "qwen/qwen3.8-max" (:model (llm.provider/resolve-model-ref "anthropic/qwen/qwen3.8-max")))))))
+      (is (= "qwen/qwen3.8-max" (:model (llm.provider/resolve-model-ref "anthropic/qwen/qwen3.8-max"))))))
+  (mt/with-temporary-setting-values [llm-providers [(connection "my-google" "google"
+                                                                {:service-account-key "{\"type\":\"db\"}"})]]
+    (testing "Google's dated Claude Haiku 4.5 resolves to the undated id Google documents"
+      (is (= "anthropic/claude-haiku-4-5"
+             (:model (llm.provider/resolve-model-ref "my-google/anthropic/claude-haiku-4-5@20251001")))))))
 
 (deftest canonical-model-ref-test
   (mt/with-temporary-setting-values [llm-providers [(connection "openrouter" "openrouter" {:api-key "sk-or-v1-db"})
@@ -635,7 +640,12 @@
       (is (= "openrouter/qwen/qwen3.8-max-0902" (llm.provider/canonical-model-ref "openrouter/qwen/qwen3.8-max-0902")))
       (is (= "anthropic/qwen/qwen3.8-max" (llm.provider/canonical-model-ref "anthropic/qwen/qwen3.8-max")))
       (is (= "nope/qwen/qwen3.8-max" (llm.provider/canonical-model-ref "nope/qwen/qwen3.8-max")))
-      (is (nil? (llm.provider/canonical-model-ref nil))))))
+      (is (nil? (llm.provider/canonical-model-ref nil)))))
+  (mt/with-temporary-setting-values [llm-providers [(connection "my-google" "google"
+                                                                {:service-account-key "{\"type\":\"db\"}"})]]
+    (testing "a saved Google selection of the dated Claude Haiku 4.5 reads as the undated id"
+      (is (= "my-google/anthropic/claude-haiku-4-5"
+             (llm.provider/canonical-model-ref "my-google/anthropic/claude-haiku-4-5@20251001"))))))
 
 (deftest ^:parallel retired-models-map-straight-to-a-current-model-test
   (testing (str "a retired model's successor is never itself retired: a model ref resolves through a single "
@@ -644,6 +654,16 @@
             successor                     (vals retired-models)]
       (testing type
         (is (not (contains? retired-models successor)))))))
+
+(deftest ^:parallel retired-models-map-to-an-offered-model-test
+  (testing "a retired model's successor is in its type's fixed catalog, so the connection form can show it"
+    ;; a type that fetches its models has no catalog to check offline
+    (let [checked (filter #(and (:models %) (seq (:retired-models %))) (llm.provider/provider-types))]
+      (is (seq checked) "a type with a fixed catalog retires a model, so the check below runs")
+      (doseq [{:keys [type models retired-models]} checked
+              successor                            (vals retired-models)]
+        (testing type
+          (is (contains? (set (map :id models)) successor)))))))
 
 (deftest with-field-defaults-normalizes-base-urls-test
   (testing "a base URL keeps no trailing slash, whichever source it comes from, so joining a path cannot double the /"

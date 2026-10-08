@@ -384,15 +384,36 @@
   [model]
   (str/replace-first (u/lower-case-en (str model)) #"^anthropic\." ""))
 
+(def ^:private undated-aliases
+  "Undated alias → dated id, for every dated row of [[supported-models]].
+
+    \"claude-haiku-4-5\" => \"claude-haiku-4-5-20251001\"
+
+  Before the 4.6 generation, \"the alias is a convenience pointer that resolves to the dated ID\":
+  https://platform.claude.com/docs/en/about-claude/models/overview"
+  (into {}
+        (keep (fn [id]
+                (when-let [[_ alias] (re-matches #"(.+)-\d{8}" id)]
+                  [alias id])))
+        (keys supported-models)))
+
+(defn- supported-model-id
+  "The [[supported-models]] key that describes `model`, which may be vendor-prefixed or an undated alias."
+  [model]
+  (let [id (strip-vendor-prefix model)]
+    (if (contains? supported-models id)
+      id
+      (get undated-aliases id id))))
+
 (defn- model-max-tokens
   "The `max_tokens` ceiling for `model`, or nil when it isn't one we know."
   [model]
-  (get-in supported-models [(strip-vendor-prefix model) :max-tokens]))
+  (get-in supported-models [(supported-model-id model) :max-tokens]))
 
 (mu/defn context-window-tokens :- [:maybe :int]
   "The input context window for `model`, or nil when it isn't one we know."
   [model :- [:maybe :string]]
-  (get-in supported-models [(strip-vendor-prefix model) :context-window]))
+  (get-in supported-models [(supported-model-id model) :context-window]))
 
 (defn- claude-model-version
   "`[family major minor]` for a Claude opus/sonnet/fable/mythos model id, or nil.

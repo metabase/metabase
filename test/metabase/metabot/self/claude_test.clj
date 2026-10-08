@@ -692,7 +692,24 @@
         {:model "claude-opus-4-8" :max-tokens 32000}            32000
         ;; Bedrock ids reach us vendor-prefixed
         {:model "anthropic.claude-opus-4-8"}                   128000
+        ;; an undated alias reads its dated row's ceiling, which is below the default
+        {:model "claude-opus-4-1"}                              32000
         {:model "my-deployment-3"} @#'claude/default-max-tokens))))
+
+(deftest ^:parallel context-window-tokens-undated-alias-test
+  (testing "an undated alias reads its dated row"
+    (is (= 200000 (claude/context-window-tokens "claude-haiku-4-5")))
+    (is (= 200000 (claude/context-window-tokens "anthropic.claude-haiku-4-5")))
+    (is (= 200000 (claude/context-window-tokens "claude-haiku-4-5-20251001"))))
+  (testing "only a whole alias matches"
+    (is (nil? (claude/context-window-tokens "claude-haiku-4")))
+    (is (nil? (claude/context-window-tokens "claude-haiku-4-5-x")))
+    (is (nil? (claude/context-window-tokens "claude-haiku-9-9")))))
+
+(deftest ^:parallel undated-aliases-are-unambiguous-test
+  (testing "each undated alias names one dated row, so an alias never picks a row at random"
+    (let [stems (keep #(second (re-matches #"(.+)-\d{8}" %)) (keys claude/supported-models))]
+      (is (= (count stems) (count (set stems)))))))
 
 (deftest claude-auto-cache-breakpoint-test
   (mt/with-temporary-setting-values [llm.settings/llm-anthropic-api-key "sk-ant-test"]
@@ -868,6 +885,14 @@
               {:id "claude-opus-4-8" :display_name "Claude Opus 4.8"}
               {:id "claude-sonnet-5" :display_name "Claude Sonnet 5"}]
              (:models (claude/list-models {:credentials byok-credentials})))))))
+
+(deftest list-models-does-not-offer-undated-aliases-test
+  (testing "an undated alias in the account's catalog is not offered: only the dated row is supported"
+    (let [catalog {:data [{:id "claude-haiku-4-5"          :display_name "Claude Haiku 4.5"}
+                          {:id "claude-haiku-4-5-20251001" :display_name "Claude Haiku 4.5"}]}]
+      (mt/with-dynamic-fn-redefs [http/request (fn [_] {:status 200 :body catalog})]
+        (is (= [{:id "claude-haiku-4-5-20251001" :display_name "Claude Haiku 4.5"}]
+               (:models (claude/list-models {:credentials byok-credentials}))))))))
 
 (deftest ^:parallel model-supports-temperature?-test
   (testing "models that accept an explicit temperature"
