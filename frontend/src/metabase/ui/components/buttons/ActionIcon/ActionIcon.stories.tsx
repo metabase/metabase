@@ -53,7 +53,7 @@ const argTypes = {
 
 const DefaultTemplate = (args: ActionIconProps) => (
   <ActionIcon aria-label="action" {...args}>
-    <Icon name="ai" />
+    <Icon name="model" />
   </ActionIcon>
 );
 
@@ -150,7 +150,7 @@ const MatrixSection = ({
               aria-label="action"
               data-spec-cell={`${matrixCell(variant, color)}/${size}/${state}`}
             >
-              <Icon name="ai" />
+              <Icon name="model" />
             </ActionIcon>
           ))}
         </Fragment>
@@ -166,6 +166,9 @@ const groupJsx = (variant: MatrixVariant) =>
     `  <ActionIcon variant="${variant}" />`,
     "</ActionIcon.Group>",
   ].join("\n");
+
+const groupCell = (variant: MatrixVariant) =>
+  variant === "subtle" ? "group" : `group-${variant}`;
 
 const GroupSection = ({ variant }: { variant: MatrixVariant }) => (
   <StorySection
@@ -187,17 +190,18 @@ const GroupSection = ({ variant }: { variant: MatrixVariant }) => (
                 size={size}
                 disabled={state === "disabled"}
                 aria-label="action"
-                data-spec-cell={`group/${size}/${state}`}
+                data-spec-cell={`${groupCell(variant)}/${size}/${state}`}
               >
-                <Icon name="ai" />
+                <Icon name="model" />
               </ActionIcon>
               <ActionIcon
                 variant={variant}
                 size={size}
                 disabled={state === "disabled"}
                 aria-label="more"
+                data-group-state={state}
               >
-                <Icon name="chevrondown" />
+                <Icon name="model" />
               </ActionIcon>
             </ActionIcon.Group>
           ))}
@@ -238,8 +242,8 @@ const VariantMatrix = ({
 
 const matrixParameters = {
   pseudo: {
-    hover: ['[data-spec-cell$="/hover"]'],
-    active: ['[data-spec-cell$="/active"]'],
+    hover: ['[data-spec-cell$="/hover"]', '[data-group-state="hover"]'],
+    active: ['[data-spec-cell$="/active"]', '[data-group-state="active"]'],
   },
   controls: { disable: true },
 };
@@ -252,6 +256,7 @@ export const VariantDefault = {
       variant="default"
       colors={["neutral"]}
       sizes={NO_XS_SIZES}
+      group
     />
   ),
   parameters: matrixParameters,
@@ -265,6 +270,7 @@ export const VariantLight = {
       variant="light"
       colors={["neutral"]}
       sizes={NO_XS_SIZES}
+      group
     />
   ),
   parameters: matrixParameters,
