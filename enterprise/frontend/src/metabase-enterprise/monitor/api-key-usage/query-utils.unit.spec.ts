@@ -3,7 +3,7 @@ import type { ApiKey } from "metabase-types/api";
 import {
   apiKeyMatchesScope,
   apiKeyUsageEventColumnKeys,
-  shouldClearKeyOnGroupChange,
+  isKeyOutsideGroup,
 } from "./query-utils";
 
 const apiKey: ApiKey = {
@@ -43,21 +43,22 @@ describe("apiKeyMatchesScope", () => {
   });
 });
 
-describe("shouldClearKeyOnGroupChange", () => {
-  it("doesn't clear when no key is selected", () => {
-    expect(shouldClearKeyOnGroupChange(undefined, 5)).toBe(false);
+describe("isKeyOutsideGroup", () => {
+  it("is false when no key is selected", () => {
+    expect(isKeyOutsideGroup(undefined, 5)).toBe(false);
   });
 
-  it("doesn't clear when the new group is the key's own group", () => {
-    expect(shouldClearKeyOnGroupChange(apiKey, 2)).toBe(false);
+  it("is false when the group is the key's own group", () => {
+    expect(isKeyOutsideGroup(apiKey, 2)).toBe(false);
   });
 
-  it("doesn't clear when the new group is All groups (null)", () => {
-    expect(shouldClearKeyOnGroupChange(apiKey, null)).toBe(false);
+  it("is false with no group set (All groups)", () => {
+    expect(isKeyOutsideGroup(apiKey, null)).toBe(false);
+    expect(isKeyOutsideGroup(apiKey, undefined)).toBe(false);
   });
 
-  it("clears when the new group isn't the key's own group", () => {
-    expect(shouldClearKeyOnGroupChange(apiKey, 5)).toBe(true);
+  it("is true when the group isn't the key's own group", () => {
+    expect(isKeyOutsideGroup(apiKey, 5)).toBe(true);
   });
 });
 

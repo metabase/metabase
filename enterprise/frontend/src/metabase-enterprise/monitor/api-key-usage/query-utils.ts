@@ -45,21 +45,16 @@ export function apiKeyMatchesScope(
 }
 
 /**
- * Whether changing the Group filter to `newGroupId` should clear the currently selected API key.
- * Soft-lock: picking a key shows its group but doesn't prevent picking a different one; picking a
- * group the key isn't in clears the key instead, rather than leaving a selection the (now
- * group-filtered) key list no longer offers. Picking "All groups" (`null`) never clears the key,
- * since every key matches when no group filter is set.
+ * Whether `apiKey` is outside the Group filter's `groupId`. With no group set ("All groups"),
+ * every key is inside. Group and API key filter like State and City: the key list only offers the
+ * chosen group's keys, and picking a group the selected key isn't in clears the key. So the UI
+ * never produces an outside key itself — only a stale or hand-edited URL can.
  */
-export function shouldClearKeyOnGroupChange(
-  selectedApiKey: Pick<ApiKey, "group"> | undefined,
-  newGroupId: number | null,
+export function isKeyOutsideGroup(
+  apiKey: Pick<ApiKey, "group"> | undefined,
+  groupId: number | null | undefined,
 ): boolean {
-  return (
-    selectedApiKey != null &&
-    newGroupId != null &&
-    selectedApiKey.group.id !== newGroupId
-  );
+  return apiKey != null && groupId != null && apiKey.group.id !== groupId;
 }
 
 type ApiKeyUsageDataSources = {

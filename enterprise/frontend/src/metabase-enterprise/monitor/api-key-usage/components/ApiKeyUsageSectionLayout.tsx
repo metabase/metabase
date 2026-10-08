@@ -26,7 +26,7 @@ import {
   VIEW_GROUP_MEMBERS,
 } from "metabase-enterprise/monitor/api-key-usage/constants";
 import { useApiKeyUsageHasData } from "metabase-enterprise/monitor/api-key-usage/hooks/useApiKeyUsageHasData";
-import { shouldClearKeyOnGroupChange } from "metabase-enterprise/monitor/api-key-usage/query-utils";
+import { isKeyOutsideGroup } from "metabase-enterprise/monitor/api-key-usage/query-utils";
 import { apiKeyUsageUrlStateConfig } from "metabase-enterprise/monitor/api-key-usage/url-state";
 
 import { ApiKeyFilterSelect } from "./ApiKeyFilterSelect";
@@ -72,19 +72,6 @@ export function ApiKeyUsageSectionLayout() {
     { date, user, group, tenant, api_key, page, sort_column, sort_direction },
     { patchUrlState },
   ] = useUrlState(location, apiKeyUsageUrlStateConfig);
-  const apiKeyId = parseId(api_key);
-
-  const { data: apiKeys } = useListApiKeysQuery();
-  const selectedApiKey = useMemo(
-    () => apiKeys?.find((apiKey) => apiKey.id === apiKeyId),
-    [apiKeys, apiKeyId],
-  );
-  // A key belongs to exactly one group, so selecting one shows its group here as a reflection of
-  // reality — but the Group select stays fully open (see `shouldClearKeyOnGroupChange` below for
-  // what happens if the user then picks a different one).
-  const effectiveGroup = selectedApiKey
-    ? String(selectedApiKey.group.id)
-    : group;
 
   const {
     dateFilter,
@@ -93,7 +80,19 @@ export function ApiKeyUsageSectionLayout() {
     groupNoFilterValue,
     userOptions,
     groupOptions,
-  } = useFilterOptions({ date, user, group: effectiveGroup, tenant });
+  } = useFilterOptions({ date, user, group, tenant });
+
+  const { data: apiKeys } = useListApiKeysQuery();
+  const selectedApiKey = useMemo(
+    () => apiKeys?.find((apiKey) => apiKey.id === parseId(api_key)),
+    [apiKeys, api_key],
+  );
+  // Group and API key work like State and City: Group is only ever set by the user, the key list
+  // is narrowed to the chosen group, and picking another group clears a key that isn't in it. The
+  // UI can't produce a key outside the group, but a stale or hand-edited URL can — ignore the key
+  // then, rather than let the two filters silently return nothing.
+  const keyOutsideGroup = isKeyOutsideGroup(selectedApiKey, groupId);
+  const apiKeyId = keyOutsideGroup ? undefined : parseId(api_key);
 
   const hasPii = useSetting("analytics-pii-retention-enabled") === true;
   const usageAudit = useAuditTable(VIEW_API_KEY_USAGE);
@@ -189,19 +188,20 @@ export function ApiKeyUsageSectionLayout() {
         user={user}
         onUserChange={(val) => patchUrlState({ user: val, page: 0 })}
         userOptions={userOptions}
-        group={effectiveGroup}
-        onGroupChange={(val) => {
-          const newGroupId = val == null ? null : Number(val);
+        group={group}
+        onGroupChange={(val) =>
           patchUrlState({
             group: val,
-            // Soft lock: picking a group the selected key isn't in clears the key, rather than
-            // leaving a selection the (now group-filtered) key list no longer offers.
-            ...(shouldClearKeyOnGroupChange(selectedApiKey, newGroupId)
+            // Like picking a new State: a key that isn't in the new group is cleared.
+            ...(isKeyOutsideGroup(
+              selectedApiKey,
+              val == null ? null : Number(val),
+            )
               ? { api_key: null }
               : {}),
             page: 0,
-          });
-        }}
+          })
+        }
         groupOptions={groupOptions}
         groupNoFilterValue={groupNoFilterValue}
         // Tenants aren't a meaningful concept for API-key usage — see EMB-2391, which will make
@@ -215,7 +215,7 @@ export function ApiKeyUsageSectionLayout() {
         hasUsers={false}
         extraFilter={
           <ApiKeyFilterSelect
-            value={api_key}
+            value={keyOutsideGroup ? null : api_key}
             onChange={(val) => patchUrlState({ api_key: val, page: 0 })}
             groupId={groupId}
           />
