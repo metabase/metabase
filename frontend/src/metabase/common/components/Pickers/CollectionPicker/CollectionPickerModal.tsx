@@ -6,7 +6,6 @@ import {
   canPlaceEntityInCollection,
   canPlaceEntityInCollectionOrDescendants,
 } from "metabase/common/collections/utils";
-import { useCanUseLibraryDashboards } from "metabase/common/data-studio/library-dashboards";
 import { PLUGIN_TENANTS } from "metabase/plugins/oss/tenants";
 
 import {
@@ -48,7 +47,6 @@ export const CollectionPickerModal = ({
   onChange,
   ...props
 }: CollectionPickerModalProps) => {
-  const canUseLibraryDashboards = useCanUseLibraryDashboards();
   const shouldDisableItem = useMemo(() => {
     const entityTypeCheck = entityType
       ? (item: OmniPickerItem) => {
@@ -56,7 +54,6 @@ export const CollectionPickerModal = ({
             return !canPlaceEntityInCollectionOrDescendants(
               entityType,
               getCollectionType(item),
-              { canUseLibraryDashboards },
             );
           }
           return false;
@@ -70,7 +67,7 @@ export const CollectionPickerModal = ({
     }
 
     return isDisabledItemProp || entityTypeCheck;
-  }, [isDisabledItemProp, entityType, canUseLibraryDashboards]);
+  }, [isDisabledItemProp, entityType]);
 
   // dashboards act as collections for cards
   const models: EntityPickerModalProps["models"] =

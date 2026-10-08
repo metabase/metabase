@@ -4,7 +4,6 @@ import {
   canPlaceEntityInCollection as canPlaceEntityInCollectionImpl,
   canPlaceEntityInCollectionOrDescendants as canPlaceEntityInCollectionOrDescendantsImpl,
 } from "metabase/common/data-studio/collection-utils";
-import { isLibraryDashboardsCollection } from "metabase/common/data-studio/library-dashboards-utils";
 import { getUserPersonalCollectionId } from "metabase/current-user";
 import { PLUGIN_COLLECTIONS, PLUGIN_LIBRARY } from "metabase/plugins";
 import type { State } from "metabase/redux/store";
@@ -307,12 +306,10 @@ export function canPlaceEntityInCollection(
 export function canPlaceEntityInCollectionOrDescendants(
   entityType: EntityType,
   collectionType: CollectionType | null | undefined,
-  options?: { canUseLibraryDashboards?: boolean },
 ): boolean {
   return canPlaceEntityInCollectionOrDescendantsImpl(
     entityType,
     collectionType,
-    options,
   );
 }
 
@@ -419,10 +416,6 @@ export function getCollectionIcon(
   if (isSyncedCollection(collection) && !isTenantUser) {
     // tenant users see the normal icon, they don't know what a synced collection is
     return { name: "synced_collection" };
-  }
-
-  if (isLibraryDashboardsCollection(collection)) {
-    return { name: "dashboard" };
   }
 
   if (collection.is_library_root) {

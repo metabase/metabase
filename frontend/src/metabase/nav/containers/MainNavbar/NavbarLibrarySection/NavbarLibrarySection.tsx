@@ -10,7 +10,6 @@ import {
 import { CollapseSection } from "metabase/common/components/CollapseSection";
 import ErrorBoundary from "metabase/common/components/ErrorBoundary";
 import { Tree } from "metabase/common/components/tree";
-import { isLibraryDashboardsCollection } from "metabase/common/data-studio/library-dashboards";
 import {
   SidebarHeading,
   SidebarSection,
@@ -26,7 +25,7 @@ type LibraryCollectionSectionProps = {
   onItemSelect: () => void;
 };
 
-/** Build the tree for a single library section (Data or Metrics).
+/** Build the tree for a single library section (Data, Metrics, or Dashboards).
  *  If the user has access to the root collection, use it directly.
  *  If not, create a synthetic container for any promoted children. */
 function buildSectionTree(
@@ -117,20 +116,14 @@ export function NavbarLibrarySection({
       "library-metrics",
       t`Metrics`,
     );
-
-    // PROTOTYPE: Library › Dashboards is a top-level collection shown here
-    const dashboardsCollection = collections.find(
-      isLibraryDashboardsCollection,
+    const dashboardsTree = buildSectionTree(
+      libraryCollection,
+      collections,
+      "library-dashboards",
+      t`Dashboards`,
     );
-    const dashboardsTree: CollectionTreeItem | null = dashboardsCollection
-      ? {
-          ...dashboardsCollection,
-          ...buildCollectionTree([dashboardsCollection])[0],
-          name: t`Dashboards`,
-          icon: { name: "dashboard" },
-        }
-      : null;
 
+    // PROTOTYPE: Dashboards is listed first
     return [dashboardsTree, dataTree, metricsTree].filter(
       (node): node is CollectionTreeItem => node != null,
     );

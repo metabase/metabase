@@ -5,11 +5,6 @@ export function canPlaceEntityInCollection(
   entityType: CollectionItemModel,
   collectionType: CollectionType | null | undefined,
 ): boolean {
-  // PROTOTYPE: the Library › Dashboards folder only holds dashboards
-  if (collectionType === "library-dashboards") {
-    return entityType === "dashboard" || entityType === "collection";
-  }
-
   if (!PLUGIN_LIBRARY.isLibraryCollectionType(collectionType)) {
     return true;
   }
@@ -27,26 +22,31 @@ export function canPlaceEntityInCollection(
     return entityType === "metric" || entityType === "collection";
   }
 
+  if (collectionType === "library-dashboards") {
+    return entityType === "dashboard" || entityType === "collection";
+  }
+
   return false;
 }
 
 export function canPlaceEntityInCollectionOrDescendants(
   entityType: CollectionItemModel,
   collectionType: CollectionType | null | undefined,
-  {
-    canUseLibraryDashboards = false,
-  }: { canUseLibraryDashboards?: boolean } = {},
 ): boolean {
   if (canPlaceEntityInCollection(entityType, collectionType)) {
     return true;
+  }
+
+  // Questions can be saved into the dashboards inside the Dashboards section
+  if (collectionType === "library-dashboards") {
+    return entityType === "card";
   }
 
   if (collectionType === "library") {
     return (
       canPlaceEntityInCollection(entityType, "library-data") ||
       canPlaceEntityInCollection(entityType, "library-metrics") ||
-      (canUseLibraryDashboards &&
-        canPlaceEntityInCollection(entityType, "library-dashboards"))
+      canPlaceEntityInCollectionOrDescendants(entityType, "library-dashboards")
     );
   }
 

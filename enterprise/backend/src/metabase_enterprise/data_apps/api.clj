@@ -22,6 +22,7 @@
    [metabase.lib-be.core :as lib-be]
    [metabase.lib-be.schema :as lib-be.schema]
    [metabase.lib.core :as lib]
+   [metabase.remote-sync.core :as remote-sync]
    [metabase.settings.core :as setting]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
@@ -96,7 +97,7 @@
    [:bundle_path     ms/NonBlankString]
    [:enabled         :boolean]
    [:allowed_hosts   [:sequential :string]]
-   [:resource_collection_id [:maybe ms/PositiveInt]]
+   [:resource_collection_id ms/PositiveInt]
    [:permission_group_id    [:maybe ms/PositiveInt]]
    [:table_ids       [:sequential ms/PositiveInt]]
    [:has_user_permission_warnings {:optional true} :boolean]
@@ -246,16 +247,10 @@
 
 (defn- read-check-data-app
   "Check whether the current user can access a data app. Viewing requires read access to the app's
-   resource collection. An app with no linked resource collection has not been published yet: it is
-   not viewable by anyone through this endpoint (an admin must publish it first), signalled with a
-   409 so the client can show a dedicated \"not published\" screen rather than leaking metadata or
-   the bundle to every signed-in user."
+   resource collection, which every app has."
   [app]
   (api/read-check app)
-  (if-let [collection-id (:resource_collection_id app)]
-    (api/read-check :model/Collection collection-id)
-    (throw (ex-info (tru "This data app has not been published yet.")
-                    {:status-code 409})))
+  (api/read-check :model/Collection (:resource_collection_id app))
   app)
 
 (defn- check-not-outdated
@@ -298,12 +293,18 @@
   [slug]
   (api/write-check (api/check-404 (data-apps.db/data-app-by-slug slug))))
 
+(defn- check-editable!
+  "Throws a 403 when `app` is read-only under remote sync."
+  [app]
+  (api/check-403 (remote-sync/model-editable? :model/DataApp app)))
+
 (api.macros/defendpoint :post "/" :- DataAppResponse
   "Create a data app from its manifest fields and bundle. A draft with the same slug becomes the app."
   [_route-params
    _query-params
    body :- CreateDataAppRequest]
   (api/create-check :model/DataApp body)
+  (check-editable! (assoc body :draft false))
   (let [app (data-apps.db/data-app (data-apps.apps/create-app! (with-bundle body)))]
     (events/publish-event! :event/data-app-create {:object app :user-id api/*current-user-id*})
     (data-app-response app)))
@@ -316,17 +317,22 @@
   [{:keys [slug]} :- [:map {:closed true} [:slug ms/NonBlankString]]
    _query-params
    changes :- UpdateDataAppRequest]
-  (let [app (write-check-data-app slug)]
+  (let [app            (write-check-data-app slug)
+        synced-changes (dissoc changes :enabled)]
+    (when (seq synced-changes)
+      (check-editable! app))
     (when (seq changes)
       (data-apps.db/update-data-app! (:id app) (with-bundle changes)))
     (let [app (data-apps.db/data-app (:id app))]
-      (events/publish-event! :event/data-app-update {:object app :user-id api/*current-user-id*})
+      (when (seq synced-changes)
+        (events/publish-event! :event/data-app-update {:object app :user-id api/*current-user-id*}))
       (data-app-response app))))
 
 (api.macros/defendpoint :delete ["/:slug" :slug slug-regex] :- :nil
   "Delete a data app, its bundle, and the collection and permission group it owns."
   [{:keys [slug]} :- [:map {:closed true} [:slug ms/NonBlankString]]]
   (let [app (write-check-data-app slug)]
+    (check-editable! app)
     (data-apps.db/delete-data-app! (:id app))
     (events/publish-event! :event/data-app-delete {:object app :user-id api/*current-user-id*}))
   ;; a `nil` body is rendered as a 204; matches the `:- :nil` response schema
@@ -417,7 +423,7 @@
   :- QueryTableDependenciesResponse
   "Return the tables read by already-saved queries, including ones reached only through an implicit join.
 
-   Sync copies models, actions and metrics whose queries it never resolves through `/query`, and only
+   Sync copies actions and metrics whose queries it never resolves through `/query`, and only
    this metadata-based lookup sees an implicit join: the id of a table reached through a foreign key
    appears nowhere in the query itself."
   [{:keys [slug]} :- [:map {:closed true} [:slug ms/NonBlankString]]

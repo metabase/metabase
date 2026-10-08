@@ -28,7 +28,7 @@ export function useLibrarySearch(
       ? {
           q: debouncedQuery,
           collection: libraryCollectionId,
-          models: ["table", "metric"],
+          models: ["table", "metric", "dashboard"],
           context: "library",
         }
       : skipToken,
@@ -44,9 +44,14 @@ export function useLibrarySearch(
     if (searchResponse) {
       const dataItems: TreeItem[] = [];
       const metricItems: TreeItem[] = [];
+      const dashboardItems: TreeItem[] = [];
 
       for (const result of searchResponse.data) {
-        if (result.model !== "table" && result.model !== "metric") {
+        if (
+          result.model !== "table" &&
+          result.model !== "metric" &&
+          result.model !== "dashboard"
+        ) {
           continue;
         }
 
@@ -73,6 +78,8 @@ export function useLibrarySearch(
           dataItems.push(item);
         } else if (result.model === "metric") {
           metricItems.push(item);
+        } else {
+          dashboardItems.push(item);
         }
       }
 
@@ -101,6 +108,20 @@ export function useLibrarySearch(
             name: t`Metrics`,
           },
           children: metricItems,
+        });
+      }
+
+      if (dashboardItems.length > 0) {
+        sections.push({
+          id: "search-section:dashboards",
+          name: t`Dashboards`,
+          icon: "dashboard",
+          model: "collection",
+          data: {
+            model: "collection",
+            name: t`Dashboards`,
+          },
+          children: dashboardItems,
         });
       }
     }

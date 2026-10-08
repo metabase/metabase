@@ -16,11 +16,6 @@ import {
   allCollectionModels,
   getCollectionItemsOptions,
 } from "metabase/common/components/Pickers/utils";
-import {
-  fetchLibraryDashboardsCollection,
-  getLibraryDashboardsPickerItem,
-  useCanUseLibraryDashboards,
-} from "metabase/common/data-studio/library-dashboards";
 import { useGetPersonalCollection } from "metabase/common/hooks/use-get-personal-collection";
 import { PLUGIN_LIBRARY } from "metabase/plugins";
 import { type DispatchFn, useDispatch } from "metabase/redux";
@@ -47,11 +42,13 @@ const getDefaultPath = async ({
   options,
   libraryCollection,
   namespaces,
+  models,
   dispatch,
 }: {
   options: EntityPickerOptions;
   libraryCollection?: LibraryCollection;
   namespaces: CollectionNamespace[];
+  models: OmniPickerCollectionItem["model"][];
   dispatch: DispatchFn;
 }): Promise<OmniPickerItem[]> => {
   if (libraryCollection && options.hasLibrary) {
@@ -62,8 +59,11 @@ const getDefaultPath = async ({
     ).unwrap();
 
     if (libraryChildrenResponse) {
+      // The Dashboards section only holds dashboards, so skip it unless we're picking them
       const firstChildCollection = libraryChildrenResponse.data.find(
-        (item) => item.model === "collection",
+        (item) =>
+          item.model === "collection" &&
+          (item.type !== "library-dashboards" || models.includes("dashboard")),
       );
       // we might also want to check if this collection has any relevant models
       if (firstChildCollection) {
@@ -111,8 +111,6 @@ export function useGetPathFromValue({
   const { data: personalCollection, isLoading: isLoadingPersonalCollection } =
     useGetPersonalCollection();
 
-  const canUseLibraryDashboards = useCanUseLibraryDashboards();
-
   useDeepCompareEffect(() => {
     if (isLoadingLibraryCollection || isLoadingPersonalCollection) {
       return;
@@ -121,12 +119,16 @@ export function useGetPathFromValue({
     setIsLoadingPath(true);
 
     if (!value) {
-      getDefaultPath({ options, libraryCollection, namespaces, dispatch }).then(
-        (path) => {
-          setPath(path);
-          setIsLoadingPath(false);
-        },
-      );
+      getDefaultPath({
+        options,
+        libraryCollection,
+        namespaces,
+        models,
+        dispatch,
+      }).then((path) => {
+        setPath(path);
+        setIsLoadingPath(false);
+      });
       return;
     }
 
@@ -136,7 +138,6 @@ export function useGetPathFromValue({
       libraryCollection,
       personalCollection,
       models,
-      canUseLibraryDashboards,
     }).then((newPath) => {
       setPath(newPath);
       setIsLoadingPath(false);
@@ -147,7 +148,6 @@ export function useGetPathFromValue({
     libraryCollection,
     isLoadingLibraryCollection,
     isLoadingPersonalCollection,
-    canUseLibraryDashboards,
   ]);
 
   return [path, setPath, { isLoadingPath }] as const;
@@ -165,14 +165,12 @@ async function getPathFromValue({
   libraryCollection,
   personalCollection,
   models,
-  canUseLibraryDashboards,
 }: {
   value: OmniPickerValue;
   dispatch: DispatchFn;
   libraryCollection?: LibraryCollection;
   personalCollection?: Collection;
   models: OmniPickerCollectionItem["model"][];
-  canUseLibraryDashboards?: boolean;
 }): Promise<OmniPickerItem[]> {
   if (value.id === "databases") {
     return [getFakeDbCollection()];
@@ -189,7 +187,6 @@ async function getPathFromValue({
       libraryCollection,
       personalCollection,
       models,
-      canUseLibraryDashboards,
     });
   }
 
@@ -210,7 +207,6 @@ async function getPathFromValue({
         libraryCollection,
         personalCollection,
         models,
-        canUseLibraryDashboards,
       });
 }
 
@@ -358,14 +354,12 @@ async function getCollectionPathFromValue({
   libraryCollection,
   personalCollection,
   models,
-  canUseLibraryDashboards,
 }: {
   value: OmniPickerCollectionItemValue;
   dispatch: DispatchFn;
   libraryCollection?: LibraryCollection;
   personalCollection?: Collection;
   models: OmniPickerCollectionItem["model"][];
-  canUseLibraryDashboards?: boolean;
 }): Promise<OmniPickerItem[]> {
   if (value.id === null || value.id === "root") {
     // if a root was passed, just return the root collection item
@@ -424,16 +418,6 @@ async function getCollectionPathFromValue({
 
   const isInLibrary =
     libraryCollection?.id && collectionIds.includes(libraryCollection.id);
-
-  // PROTOTYPE: present the Library › Dashboards collection inside the Library
-  if (canUseLibraryDashboards && libraryCollection) {
-    await moveLibraryDashboardsPathIntoLibrary({
-      collectionIds,
-      locationPath,
-      libraryCollection,
-      dispatch,
-    });
-  }
 
   const isInPersonalCollection =
     personalCollection?.id && collectionIds.includes(personalCollection.id);
@@ -583,43 +567,6 @@ async function getCollectionPathFromValue({
     });
   }
   return locationPath;
-}
-
-async function moveLibraryDashboardsPathIntoLibrary({
-  collectionIds,
-  locationPath,
-  libraryCollection,
-  dispatch,
-}: {
-  collectionIds: unknown[];
-  locationPath: OmniPickerItem[];
-  libraryCollection: LibraryCollection;
-  dispatch: DispatchFn;
-}) {
-  if (!collectionIds[1]) {
-    return;
-  }
-  const libraryDashboardsCollection =
-    await fetchLibraryDashboardsCollection(dispatch);
-  if (
-    !libraryDashboardsCollection ||
-    collectionIds[1] !== libraryDashboardsCollection.id
-  ) {
-    return;
-  }
-  collectionIds.shift();
-  locationPath.splice(
-    0,
-    locationPath.length,
-    {
-      id: libraryCollection.id,
-      name: libraryCollection.name,
-      model: "collection",
-      type: libraryCollection.type,
-      below: allCollectionModels,
-    },
-    getLibraryDashboardsPickerItem(libraryDashboardsCollection),
-  );
 }
 
 function getItemByModel(value: OmniPickerValue, dispatch: DispatchFn) {

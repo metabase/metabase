@@ -76,6 +76,7 @@
    [:tool-name :string]
    [:doc {:optional true} [:maybe :string]]
    [:schema MalliSchema]
+   [:declaration {:optional true} [:maybe [:fn delay?]]]
    [:fn [:fn fn?]]
    [:decode {:optional true} [:maybe [:fn fn?]]]
    [:prompt {:optional true} [:maybe :string]]
@@ -421,10 +422,19 @@
                             :function    (:toolName chunk)
                             :result      (:result chunk)
                             :error       (:error chunk)
-                            :duration-ms (::duration-ms chunk)}))
+                            :duration-ms (::duration-ms chunk)}
+    ;; A group opening with a continuation chunk (:tool-input-delta, :text-delta, ...) has lost its start chunk,
+    ;; and with it the data the part needs (a tool call's name), so it cannot be assembled.
+    (let [id (or (:id chunk) (:toolCallId chunk))]
+      (throw (ex-info (format "Model stream sent a %s chunk for %s without its start chunk" (:type chunk) (pr-str id))
+                      {:chunk-type (:type chunk)
+                       :id         id})))))
 
 (defn aisdk-xf
-  "Collect a stream of AI SDK v5 chunks into a list of parts (joins by id)."
+  "Collect a stream of AI SDK v5 chunks into a list of parts (joins by id).
+
+  Producers must emit the chunks of each id contiguously, the start chunk first. A group that does not open
+  with its start chunk throws."
   ([] (aisdk-xf nil))
   ([{:keys [stream-text?]}]
    (fn [rf]
@@ -1009,15 +1019,17 @@
   "Transducer that executes tool calls in parallel on virtual threads.
 
   Behavior:
-  - Passes all chunks through unchanged as they arrive
+  - Passes chunks through unchanged as they arrive
   - Tracks tool calls from :tool-input-start through :tool-input-available
   - Spawns virtual thread for each tool when input is complete
+  - Once an :error chunk comes through, starts no more tools and drops the tool-input chunks after it
   - At completion, waits for all tools and appends results
 
   Tools can return: plain values, IReduceInit (reducible), or channels (legacy)."
   [tools]
   (fn [rf]
-    (let [active (volatile! {})] ;; tool-call-id -> {:chunks [...]} or {:task derefable}
+    (let [active   (volatile! {}) ;; tool-call-id -> {:chunks [...]} or {:task derefable}
+          errored? (volatile! false)]
       (fn
         ([result]
          (let [{tasks  true
@@ -1030,22 +1042,32 @@
              (rf result))))
 
         ([result {:keys [type toolCallId toolName] :as chunk}]
-         (case type
-           :tool-input-start
-           (vswap! active assoc toolCallId {:chunks [chunk]})
+         (if (and @errored? (#{:tool-input-start :tool-input-delta :tool-input-available} type))
+           result
+           (do
+             (case type
+               :tool-input-start
+               (vswap! active assoc toolCallId {:chunks [chunk]})
 
-           :tool-input-delta
-           (when (contains? @active toolCallId)
-             (vswap! active update-in [toolCallId :chunks] conj chunk))
+               :tool-input-delta
+               (when (contains? @active toolCallId)
+                 (vswap! active update-in [toolCallId :chunks] conj chunk))
 
-           :tool-input-available
-           (when-let [{:keys [chunks]} (get @active toolCallId)]
-             (let [task (submit-virtual (bound-fn* #(run-tool toolCallId toolName tools chunks)))]
-               (vswap! active assoc toolCallId {:task task})))
+               :tool-input-available
+               (when-let [{:keys [chunks]} (get @active toolCallId)]
+                 (let [task (submit-virtual (bound-fn* #(run-tool toolCallId toolName tools chunks)))]
+                   (vswap! active assoc toolCallId {:task task})))
 
-           ;; otherwise: do nothing
-           nil)
-         (rf result chunk))))))
+               :error
+               (let [cut-off (for [[id {:keys [task]}] @active :when (not task)] id)]
+                 (vreset! errored? true)
+                 (when (seq cut-off)
+                   (log/warn "Dropping tool calls that a stream error cut off" {:tool-calls cut-off})
+                   (vswap! active #(apply dissoc % cut-off))))
+
+               ;; otherwise: do nothing
+               nil)
+             (rf result chunk))))))))
 
 (def ^:private max-body-preview-chars
   "Cap on the body snippet spliced into provider error messages."

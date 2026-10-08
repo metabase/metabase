@@ -8,7 +8,7 @@ import { isPublicCollection } from "metabase/common/collections/utils";
 import { Breadcrumbs } from "metabase/common/components/Breadcrumbs";
 import { SelectList } from "metabase/common/components/SelectList";
 import type { BaseSelectListItemProps } from "metabase/common/components/SelectList/BaseSelectListItem";
-import { useIsInLibraryDashboards } from "metabase/common/data-studio/library-dashboards";
+import { isInLibraryDashboards } from "metabase/common/data-studio/library-dashboards";
 import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
 import { getCollectionBreadCrumbs } from "metabase/common/utils/collections";
 import {
@@ -74,7 +74,7 @@ export function QuestionPicker({ onSelect }: QuestionPickerProps) {
 
   // PROTOTYPE: Library dashboards can only show content from the Library, so
   // browsing and search are limited to the Library collection's subtree
-  const isLibraryDashboard = useIsInLibraryDashboards(dashboard?.collection);
+  const isLibraryDashboard = isInLibraryDashboards(dashboard?.collection);
   const { data: libraryCollection } = PLUGIN_LIBRARY.useGetLibraryCollection({
     skip: !isLibraryDashboard,
   });

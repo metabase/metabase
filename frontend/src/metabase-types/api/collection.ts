@@ -42,7 +42,6 @@ export type CollectionType =
   | "library"
   | "library-data"
   | "library-metrics"
-  // PROTOTYPE: frontend-only type for the Library › Dashboards picker item
   | "library-dashboards"
   | "shared-tenant-collection"
   | "tenant-specific-root-collection"

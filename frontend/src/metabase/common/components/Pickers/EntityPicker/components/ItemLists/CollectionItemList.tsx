@@ -1,11 +1,5 @@
 import { useListCollectionItemsQuery } from "metabase/api";
 import { getCollectionItemsOptions } from "metabase/common/components/Pickers/utils";
-import {
-  getLibraryDashboardsPickerItem,
-  isLibraryDashboardsCollection,
-  useCanUseLibraryDashboards,
-  useLibraryDashboardsCollection,
-} from "metabase/common/data-studio/library-dashboards";
 import { PLUGIN_LIBRARY } from "metabase/plugins";
 import type { CollectionItem } from "metabase-types/api";
 
@@ -36,22 +30,9 @@ export const CollectionItemList = ({
     ...getCollectionItemsOptions({ models }),
   });
 
-  const isLibraryParent =
-    parentItem.model === "collection" && parentItem.type === "library";
-  const canUseLibraryDashboards = useCanUseLibraryDashboards();
-  const { data: libraryDashboardsCollection } = useLibraryDashboardsCollection({
-    skip: !isLibraryParent || !canUseLibraryDashboards,
-  });
-
-  const items = withLibraryDashboards({
+  const items = getCollectionItems({
     parentItem,
-    items: getCollectionItems({
-      parentItem,
-      items: collectionItems?.data,
-    }),
-    libraryDashboardsCollection: canUseLibraryDashboards
-      ? libraryDashboardsCollection
-      : undefined,
+    items: collectionItems?.data,
   });
 
   return (
@@ -63,41 +44,6 @@ export const CollectionItemList = ({
     />
   );
 };
-
-// PROTOTYPE: present the Library › Dashboards collection inside the Library
-// instead of the root collection
-function withLibraryDashboards({
-  parentItem,
-  items,
-  libraryDashboardsCollection,
-}: {
-  parentItem: OmniPickerItem;
-  items?: OmniPickerItem[];
-  libraryDashboardsCollection?: CollectionItem;
-}): OmniPickerItem[] | undefined {
-  if (!items || parentItem.model !== "collection") {
-    return items;
-  }
-
-  const isRootParent =
-    (parentItem.id === "root" || parentItem.id === null) &&
-    !parentItem.namespace;
-  if (isRootParent) {
-    return items.filter(
-      (item) =>
-        !(item.model === "collection" && isLibraryDashboardsCollection(item)),
-    );
-  }
-
-  if (parentItem.type === "library" && libraryDashboardsCollection) {
-    return [
-      getLibraryDashboardsPickerItem(libraryDashboardsCollection),
-      ...items,
-    ];
-  }
-
-  return items;
-}
 
 function getCollectionItemsParentId(parentItem: OmniPickerItem) {
   if (parentItem.model === "collection" && parentItem.sourceCollectionId) {

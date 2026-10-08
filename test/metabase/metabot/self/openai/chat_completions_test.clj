@@ -3,7 +3,11 @@
    [clojure.test :refer :all]
    [metabase.metabot.self.core :as self.core]
    [metabase.metabot.self.mistral :as mistral]
+   [metabase.metabot.self.moonshot :as moonshot]
    [metabase.metabot.self.openai.chat-completions :as chat-completions]
+   [metabase.metabot.self.openrouter :as openrouter]
+   [metabase.metabot.self.vllm :as vllm]
+   [metabase.metabot.self.zai :as zai]
    [metabase.metabot.test-util :as metabot.tu]
    [metabase.util.json :as json]))
 
@@ -349,10 +353,9 @@
                      {:choices []
                       :usage   {:prompt_tokens 100 :completion_tokens 5 :cached_tokens 64}}]))))))
 
-(deftest ^:parallel chunks-xf-parallel-tool-calls-are-tracked-by-id-test
-  (testing "tool calls serialized on one choice are split into separate blocks by tool-call id"
-    ;; Both calls arrive on `choices[0]`; only the `tool_calls` entry's `id` distinguishes them.
-    ;; The `index` field is present in the wire data and deliberately unread.
+(deftest ^:parallel chunks-xf-parallel-tool-calls-are-split-by-index-test
+  (testing "tool calls serialized on one choice are split into separate blocks by tool-call index"
+    ;; Both calls arrive on `choices[0]`; the `tool_calls` entry's `index` distinguishes them.
     (is (=? [{:type :start}
              {:type      :tool-input
               :id        "get_weather_0"
@@ -385,15 +388,225 @@
                    {:choices [{:index 0 :delta {} :finish_reason "tool_calls"}]}
                    {:choices [] :usage {:prompt_tokens 138 :completion_tokens 36}}])))))
 
+;;; ──────────────────────────────────────────────────────────────────
+;;; Tool-call assembly fixtures
+;;;
+;;; SYNTHETIC: hand-written from the documented Chat Completions streaming
+;;; format, not captured from the named providers. Each fixture models one
+;;; delta shape a model family is reported to send; none has been recorded
+;;; from a live stream yet.
+;;; ──────────────────────────────────────────────────────────────────
+
+(defn- synthetic-stream
+  "Wrap `deltas` (each a Chat Completions `delta` map) in a stream envelope: an opening role chunk, one chunk
+  per delta on `choices[0]`, a `tool_calls` finish, and a final usage chunk."
+  [model deltas]
+  (concat [{:id      "chatcmpl-synthetic"
+            :model   model
+            :choices [{:index 0 :delta {:role "assistant" :content ""} :finish_reason nil}]}]
+          (for [delta deltas]
+            {:choices [{:index 0 :delta delta :finish_reason nil}]})
+          [{:choices [{:index 0 :delta {} :finish_reason "tool_calls"}]}
+           {:choices [] :usage {:prompt_tokens 100 :completion_tokens 20}}]))
+
+(def ^:private search-call
+  {:function "search" :arguments {:query "revenue"}})
+
+(def ^:private get-time-call
+  {:function "get_time" :arguments {:tz "UTC"}})
+
+(def ^:private tool-call-fixtures
+  "Synthetic streams keyed by the delta shape they model, each with the tool calls it must assemble into."
+  {"vLLM / Qwen: index-keyed, id never sent"
+   {:stream   (synthetic-stream
+               "Qwen/Qwen3-32B"
+               [{:tool_calls [{:index 0 :type "function" :function {:name "search" :arguments ""}}]}
+                {:tool_calls [{:index 0 :function {:arguments "{\"query\":"}}]}
+                {:tool_calls [{:index 0 :function {:arguments " \"revenue\"}"}}]}])
+    :expected [(assoc search-call :id string?)]}
+
+   "vLLM / Qwen: two index-keyed calls, id never sent"
+   {:stream   (synthetic-stream
+               "Qwen/Qwen3-32B"
+               [{:tool_calls [{:index 0 :type "function" :function {:name "search" :arguments ""}}]}
+                {:tool_calls [{:index 0 :function {:arguments "{\"query\": \"revenue\"}"}}]}
+                {:tool_calls [{:index 1 :type "function" :function {:name "get_time" :arguments ""}}]}
+                {:tool_calls [{:index 1 :function {:arguments "{\"tz\": \"UTC\"}"}}]}])
+    :expected [(assoc search-call :id string?) (assoc get-time-call :id string?)]}
+
+   "vLLM / Qwen: id arrives after the opening delta"
+   {:stream   (synthetic-stream
+               "Qwen/Qwen3-32B"
+               [{:tool_calls [{:index 0 :type "function" :function {:name "search" :arguments ""}}]}
+                {:tool_calls [{:index 0 :id "chatcmpl-tool-7f3a" :function {:arguments "{\"query\":"}}]}
+                {:tool_calls [{:index 0 :function {:arguments " \"revenue\"}"}}]}])
+    :expected [(assoc search-call :id "chatcmpl-tool-7f3a")]}
+
+   "GLM: id repeated on every delta"
+   {:stream   (synthetic-stream
+               "glm-4.6"
+               [{:tool_calls [{:index 0 :id "call_9a1" :type "function" :function {:name "search" :arguments ""}}]}
+                {:tool_calls [{:index 0 :id "call_9a1" :type "function" :function {:arguments "{\"query\":"}}]}
+                {:tool_calls [{:index 0 :id "call_9a1" :type "function" :function {:arguments " \"revenue\"}"}}]}])
+    :expected [(assoc search-call :id "call_9a1")]}
+
+   "GLM: two whole calls in one delta"
+   {:stream   (synthetic-stream
+               "glm-4.6"
+               [{:tool_calls [{:index    0
+                               :id       "call_a"
+                               :type     "function"
+                               :function {:name "search" :arguments "{\"query\": \"revenue\"}"}}
+                              {:index    1
+                               :id       "call_b"
+                               :type     "function"
+                               :function {:name "get_time" :arguments "{\"tz\": \"UTC\"}"}}]}])
+    :expected [(assoc search-call :id "call_a") (assoc get-time-call :id "call_b")]}
+
+   "DeepSeek via OpenRouter: deltas of two calls interleaved"
+   {:stream   (synthetic-stream
+               "deepseek/deepseek-v4-pro"
+               [{:tool_calls [{:index 0 :id "call_00_a" :type "function" :function {:name "search" :arguments ""}}]}
+                {:tool_calls [{:index 1 :id "call_01_b" :type "function" :function {:name "get_time" :arguments ""}}]}
+                {:tool_calls [{:index 0 :function {:arguments "{\"query\":"}}]}
+                {:tool_calls [{:index 1 :function {:arguments "{\"tz\":"}}]}
+                {:tool_calls [{:index 0 :function {:arguments " \"revenue\"}"}}]}
+                {:tool_calls [{:index 1 :function {:arguments " \"UTC\"}"}}]}])
+    :expected [(assoc search-call :id "call_00_a") (assoc get-time-call :id "call_01_b")]}
+
+   "DeepSeek via OpenRouter: reasoning between a call's deltas"
+   {:stream   (synthetic-stream
+               "deepseek/deepseek-v4-pro"
+               [{:reasoning "I should search."}
+                {:tool_calls [{:index 0 :id "call_00_a" :type "function" :function {:name "search" :arguments ""}}]}
+                {:tool_calls [{:index 0 :function {:arguments "{\"query\":"}}]}
+                {:reasoning " Revenue it is."}
+                {:content "\n"}
+                {:tool_calls [{:index 0 :function {:arguments " \"revenue\"}"}}]}])
+    :expected [(assoc search-call :id "call_00_a")]}
+
+   "one index reused for calls with distinct ids"
+   {:stream   (synthetic-stream
+               "some-model"
+               [{:tool_calls [{:index    0
+                               :id       "call_a"
+                               :type     "function"
+                               :function {:name "search" :arguments "{\"query\": \"revenue\"}"}}]}
+                {:tool_calls [{:index    0
+                               :id       "call_b"
+                               :type     "function"
+                               :function {:name "get_time" :arguments "{\"tz\": \"UTC\"}"}}]}])
+    :expected [(assoc search-call :id "call_a") (assoc get-time-call :id "call_b")]}
+
+   "id-keyed, no index"
+   {:stream   (synthetic-stream
+               "some-model"
+               [{:tool_calls [{:id "call_a" :type "function" :function {:name "search" :arguments ""}}]}
+                {:tool_calls [{:function {:arguments "{\"query\": \"revenue\"}"}}]}
+                {:tool_calls [{:id "call_b" :type "function" :function {:name "get_time" :arguments ""}}]}
+                {:tool_calls [{:function {:arguments "{\"tz\": \"UTC\"}"}}]}])
+    :expected [(assoc search-call :id "call_a") (assoc get-time-call :id "call_b")]}
+
+   "blank id on continuation deltas"
+   {:stream   (synthetic-stream
+               "some-model"
+               [{:tool_calls [{:index 0 :id "call_a" :type "function" :function {:name "search" :arguments ""}}]}
+                {:tool_calls [{:index 0 :id "" :function {:arguments "{\"query\":"}}]}
+                {:tool_calls [{:index 0 :id "" :function {:arguments " \"revenue\"}"}}]}])
+    :expected [(assoc search-call :id "call_a")]}
+
+   "index on the opening delta only, id on every delta"
+   {:stream   (synthetic-stream
+               "some-model"
+               [{:tool_calls [{:index 0 :id "call_a" :type "function" :function {:name "search" :arguments ""}}]}
+                {:tool_calls [{:id "call_a" :function {:arguments "{\"query\": \"revenue\"}"}}]}])
+    :expected [(assoc search-call :id "call_a")]}})
+
+(defn- assembled-tool-calls
+  [chunks-xf parts-xf stream]
+  (into []
+        (comp chunks-xf
+              parts-xf
+              (filter #(= :tool-input (:type %)))
+              (map #(select-keys % [:id :function :arguments])))
+        stream))
+
+(deftest ^:parallel chunks-xf-assembles-tool-calls-test
+  (doseq [[shape {:keys [stream expected]}] tool-call-fixtures
+          [adapter chunks-xf]                [["openrouter" (openrouter/openrouter->aisdk-chunks-xf)]
+                                              ["vllm"       (vllm/vllm->aisdk-chunks-xf)]
+                                              ["zai"        (zai/zai->aisdk-chunks-xf)]
+                                              ["moonshot"   (moonshot/moonshot->aisdk-chunks-xf)]
+                                              ["mistral"    (mistral/mistral->aisdk-chunks-xf)]]
+          [mode parts-xf]                    [["aisdk-xf" (self.core/aisdk-xf)]
+                                              ["lite-aisdk-xf" (self.core/lite-aisdk-xf)]]]
+    (testing (str shape " through " adapter " and " mode)
+      (is (=? expected (assembled-tool-calls chunks-xf parts-xf stream))))))
+
+(deftest ^:parallel chunks-xf-tool-call-chunks-are-not-interleaved-test
+  (testing "each tool call's chunks are emitted together, in arrival order, with joined arguments, at finish"
+    (is (= [{:type :tool-input-start :toolCallId "call_00_a" :toolName "search"}
+            {:type :tool-input-delta :toolCallId "call_00_a" :inputTextDelta "{\"query\": \"revenue\"}"}
+            {:type :tool-input-available :toolCallId "call_00_a" :toolName "search"}
+            {:type :tool-input-start :toolCallId "call_01_b" :toolName "get_time"}
+            {:type :tool-input-delta :toolCallId "call_01_b" :inputTextDelta "{\"tz\": \"UTC\"}"}
+            {:type :tool-input-available :toolCallId "call_01_b" :toolName "get_time"}]
+           (into []
+                 (comp (chat-completions/chat-completions->aisdk-chunks-xf)
+                       (filter #(#{:tool-input-start :tool-input-delta :tool-input-available} (:type %))))
+                 (:stream (tool-call-fixtures "DeepSeek via OpenRouter: deltas of two calls interleaved")))))))
+
+(deftest ^:parallel chunks-xf-tool-call-emission-stops-when-reduced-test
+  (testing "a consumer that stops early receives no more tool-call chunks, and the result stays reduced"
+    (let [seen (atom [])]
+      (is (= [:start :tool-input-start]
+             (into []
+                   (comp (chat-completions/chat-completions->aisdk-chunks-xf)
+                         (map (fn [chunk] (swap! seen conj (:type chunk)) chunk))
+                         (take 2)
+                         (map :type))
+                   (:stream (tool-call-fixtures "GLM: two whole calls in one delta")))))
+      (is (= [:start :tool-input-start] @seen)))))
+
+(deftest ^:parallel chunks-xf-duplicate-tool-call-id-fails-test
+  (testing "two calls with one id fail with an error naming the id, and emit no tool call"
+    (let [emitted (atom [])]
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"Model stream sent the tool call id \"call_0\" for 2 different calls"
+           (into []
+                 (comp (chat-completions/chat-completions->aisdk-chunks-xf)
+                       (map (fn [chunk] (swap! emitted conj (:type chunk)) chunk)))
+                 (synthetic-stream
+                  "some-model"
+                  [{:tool_calls [{:index    0
+                                  :id       "call_0"
+                                  :type     "function"
+                                  :function {:name "search" :arguments "{\"query\": \"revenue\"}"}}]}
+                   {:tool_calls [{:index    1
+                                  :id       "call_0"
+                                  :type     "function"
+                                  :function {:name "get_time" :arguments "{\"tz\": \"UTC\"}"}}]}]))))
+      (is (= [:start] @emitted)))))
+
+(deftest ^:parallel chunks-xf-nameless-tool-call-is-dropped-test
+  (testing "a tool call whose name never arrives emits no chunks, and the named call beside it survives"
+    (is (=? [(assoc search-call :id "call_a")]
+            (assembled-tool-calls
+             (chat-completions/chat-completions->aisdk-chunks-xf)
+             (self.core/aisdk-xf)
+             (synthetic-stream
+              "some-model"
+              [{:tool_calls [{:index 0 :id "call_a" :type "function" :function {:name "search" :arguments ""}}]}
+               {:tool_calls [{:index 1 :id "call_b" :type "function" :function {:arguments "{}"}}]}
+               {:tool_calls [{:index 0 :function {:arguments "{\"query\": \"revenue\"}"}}]}]))))))
+
 (deftest ^:parallel chunks-xf-combined-reasoning-and-tool-call-delta-test
   (testing "a delta carrying both reasoning and a tool call keeps the tool call"
-    ;; The tool call's opening chunk is the only one carrying its id and name — classifying the
-    ;; delta as :reasoning would lose the call entirely and break the tool loop. The delta's
-    ;; reasoning fragment is dropped instead: display text, recoverable.
+    ;; tool_calls outrank reasoning, so the delta's reasoning fragment is dropped: display text, recoverable.
     (is (= [{:type :start :messageId "chatcmpl-9"}
             {:type :tool-input-start :toolCallId "call-1" :toolName "get_weather"}
-            {:type :tool-input-delta :toolCallId "call-1" :inputTextDelta "{\"city\""}
-            {:type :tool-input-delta :toolCallId "call-1" :inputTextDelta ": \"Berlin\"}"}
+            {:type :tool-input-delta :toolCallId "call-1" :inputTextDelta "{\"city\": \"Berlin\"}"}
             {:type :tool-input-available :toolCallId "call-1" :toolName "get_weather"}]
            (into [] (chat-completions/chat-completions->aisdk-chunks-xf
                      chat-completions/stop-reasons
@@ -414,8 +627,7 @@
 (deftest ^:parallel chunks-xf-reasoning-deltas-open-no-text-block-test
   (testing "reasoning_content deltas and empty-string content produce no chunks"
     ;; Without `:forward-reasoning?` reasoning deltas are dropped rather than surfaced as text.
-    ;; An empty-string `content` between blocks must not open a text block either — that would close
-    ;; the tool call that follows it.
+    ;; An empty-string `content` between blocks must not open a spurious text block either.
     (is (= [:start :tool-input-start :tool-input-delta :tool-input-available :usage]
            (chunk-types
             [{:id      "chatcmpl-4"
@@ -440,7 +652,7 @@
               {:error {:message "Internal server error" :type "InternalServerError" :param nil :code 500}}
               "Internal server error"]
              ["OpenRouter's error on a chunk that finishes the choice"
-              (chat-completions/chat-completions->aisdk-chunks-xf)
+              (openrouter/openrouter->aisdk-chunks-xf)
               {:id       "cmpl-abc123"
                :object   "chat.completion.chunk"
                :created  1234567890
@@ -456,6 +668,10 @@
                :created 1702256327
                :model   "mistral-medium-3-5"
                :choices [{:index 0 :delta {:content ""} :finish_reason "error"}]}
+              "The model provider failed to complete the response"]
+             ["Z.AI's network_error finish reason"
+              (zai/zai->aisdk-chunks-xf)
+              {:choices [{:index 0 :delta {} :finish_reason "network_error"}]}
               "The model provider failed to complete the response"]]]
       (testing shape
         (testing "after closing the open text block"
@@ -469,10 +685,8 @@
                           :model   "kimi-k2.6"
                           :choices [{:index 0 :delta {:role "assistant" :content "Hel"} :finish_reason nil}]}
                          error-chunk]))))
-        (testing "without making a half-streamed tool call available to run"
+        (testing "without emitting any chunk of a half-streamed tool call"
           (is (= [{:type :start :messageId "chatcmpl-5"}
-                  {:type :tool-input-start :toolCallId "call-1" :toolName "search"}
-                  {:type :tool-input-delta :toolCallId "call-1" :inputTextDelta "{\"query\": \"rev"}
                   {:type :error :errorText message}]
                  (into [] xf
                        [{:id      "chatcmpl-5"

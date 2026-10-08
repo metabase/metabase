@@ -6,7 +6,7 @@ import { skipToken, useGetUserQuery } from "metabase/api";
 import { DateTime } from "metabase/common/components/DateTime";
 import { Link } from "metabase/common/components/Link";
 import { SidesheetCardSection } from "metabase/common/components/Sidesheet";
-import { isLibraryDashboardsCollection } from "metabase/common/data-studio/library-dashboards-utils";
+import { isLibraryDashboardsRoot } from "metabase/common/data-studio/library-dashboards";
 import Styles from "metabase/css/core/index.css";
 import { Box, FixedSizeIcon, Flex, Text } from "metabase/ui";
 import { collection as collectionUrl } from "metabase/urls";
@@ -65,7 +65,7 @@ export const DashboardDetails = ({ dashboard }: { dashboard: Dashboard }) => {
           <Flex gap="sm" align="top">
             <FixedSizeIcon
               name={
-                isLibraryDashboardsCollection(dashboard.collection)
+                isLibraryDashboardsRoot(dashboard.collection)
                   ? "dashboard"
                   : "folder"
               }

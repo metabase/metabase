@@ -1,21 +1,18 @@
 import type { Row } from "@tanstack/react-table";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import {
   useListCollectionsTreeQuery,
   useListDashboardsQuery,
 } from "metabase/api";
+import { isLibraryCollection } from "metabase/common/collections/utils";
 import { DateTime } from "metabase/common/components/DateTime";
 import { Link } from "metabase/common/components/Link";
 import { ListEmptyState } from "metabase/common/components/ListEmptyState";
 import { DataStudioBreadcrumbs } from "metabase/common/data-studio/components/DataStudioBreadcrumbs";
 import { PaneHeader } from "metabase/common/data-studio/components/PaneHeader";
-import {
-  isLibraryDashboardsCollection,
-  useCanUseLibraryDashboards,
-  useCreateLibraryDashboardsCollection,
-} from "metabase/common/data-studio/library-dashboards";
+import { isLibraryDashboardsRoot } from "metabase/common/data-studio/library-dashboards";
 import { useHasTokenFeature } from "metabase/common/hooks";
 import { SectionLayout } from "metabase/data-studio/app/components/SectionLayout";
 import { LibraryUpsellPage } from "metabase/data-studio/upsells/pages";
@@ -79,25 +76,23 @@ function LibraryDashboardsPageContent() {
   usePageTitle(t`Dashboards`);
 
   const [searchQuery, setSearchQuery] = useState("");
-  const canUseLibraryDashboards = useCanUseLibraryDashboards();
 
   const { data: collections = [], isLoading: isLoadingCollections } =
     useListCollectionsTreeQuery({
       "exclude-other-user-collections": true,
       "exclude-archived": true,
+      "include-library": true,
     });
   const { data: dashboards = [], isLoading: isLoadingDashboards } =
     useListDashboardsQuery({ f: "all" });
 
   const rootCollection = useMemo(
-    () => collections.find(isLibraryDashboardsCollection),
+    () =>
+      collections
+        .find(isLibraryCollection)
+        ?.children?.find(isLibraryDashboardsRoot),
     [collections],
   );
-
-  useEnsureLibraryDashboardsCollection({
-    shouldCreate:
-      canUseLibraryDashboards && !isLoadingCollections && !rootCollection,
-  });
 
   const treeData = useMemo(() => {
     if (!rootCollection) {
@@ -175,8 +170,7 @@ function LibraryDashboardsPageContent() {
     }
   }, []);
 
-  const isLoading =
-    isLoadingCollections || isLoadingDashboards || !rootCollection;
+  const isLoading = isLoadingCollections || isLoadingDashboards;
   const hasNoData = treeData.length === 0;
   const emptyMessage = hasNoData
     ? t`No dashboards yet`
@@ -214,7 +208,7 @@ function LibraryDashboardsPageContent() {
           )}
         </Flex>
         <Card withBorder p={0}>
-          {isLoading && canUseLibraryDashboards ? (
+          {isLoading ? (
             <TreeTableSkeleton columnWidths={[0.6, 0.2, 0.05]} />
           ) : (
             <TreeTable
@@ -230,26 +224,4 @@ function LibraryDashboardsPageContent() {
       </Stack>
     </SectionLayout>
   );
-}
-
-/**
- * PROTOTYPE: lazily create the collection that backs Library › Dashboards the
- * first time an admin or analyst visits this page.
- */
-function useEnsureLibraryDashboardsCollection({
-  shouldCreate,
-}: {
-  shouldCreate: boolean;
-}) {
-  const [createCollection] = useCreateLibraryDashboardsCollection();
-  const hasRequestedRef = useRef(false);
-
-  useEffect(() => {
-    if (shouldCreate && !hasRequestedRef.current) {
-      hasRequestedRef.current = true;
-      createCollection().catch(() => {
-        hasRequestedRef.current = false;
-      });
-    }
-  }, [shouldCreate, createCollection]);
 }

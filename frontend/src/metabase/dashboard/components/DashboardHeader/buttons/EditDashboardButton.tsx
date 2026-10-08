@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
 import { ToolbarButton } from "metabase/common/components/ToolbarButton";
-import { useIsInLibraryDashboards } from "metabase/common/data-studio/library-dashboards";
+import { isInLibraryDashboards } from "metabase/common/data-studio/library-dashboards";
 import { useDashboardContext } from "metabase/dashboard/context/context";
 import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
 
@@ -9,7 +9,7 @@ export const EditDashboardButton = () => {
   const { dashboard, onRefreshPeriodChange, setEditingDashboard } =
     useDashboardContext();
   // PROTOTYPE: Library dashboards are edited from Data Studio
-  const isLibraryDashboard = useIsInLibraryDashboards(dashboard?.collection);
+  const isLibraryDashboard = isInLibraryDashboards(dashboard?.collection);
 
   const onBeginEditing = () => {
     if (dashboard && !isLibraryDashboard) {

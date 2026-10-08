@@ -28,15 +28,11 @@ import type {
   CreateBookmark,
   DeleteBookmark,
 } from "metabase/common/collections/types";
-import {
-  isRootCollection,
-  isRootTrashCollection,
-} from "metabase/common/collections/utils";
+import { isRootTrashCollection } from "metabase/common/collections/utils";
 import { EmptyState } from "metabase/common/components/EmptyState";
 import { ItemsTable } from "metabase/common/components/ItemsTable";
 import { getVisibleColumnsMap } from "metabase/common/components/ItemsTable/utils";
 import { PaginationControls } from "metabase/common/components/PaginationControls";
-import { isLibraryDashboardsCollection } from "metabase/common/data-studio/library-dashboards";
 import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
 import { usePagination } from "metabase/common/hooks/use-pagination";
 import CS from "metabase/css/core/index.css";
@@ -347,17 +343,7 @@ const CollectionItemsTableContent = ({
 }: CollectionItemsTableContentProps) => {
   const { data, isFetching } = useListCollectionItemsQuery(itemsQuery);
 
-  // PROTOTYPE: Library › Dashboards is shown in the Library, not the root collection
-  const items = useMemo(
-    () =>
-      (data?.data ?? []).filter(
-        (item) =>
-          !(
-            isRootCollection(collection) && isLibraryDashboardsCollection(item)
-          ),
-      ),
-    [data, collection],
-  );
+  const items = data?.data ?? [];
   const totalMatchingItems = data?.total;
   const visibleColumnsMap = useMemo(
     () => getVisibleColumnsMap(visibleColumns),

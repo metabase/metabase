@@ -348,12 +348,14 @@
   "Anthropic chat models offered in the Metabot model picker, keyed by model id.
   `list-models` returns the intersection of this map with the account's `/v1/models` catalog."
   {"claude-fable-5"             {:display-name "Claude Fable 5"    :max-tokens 128000 :context-window 1000000}
+   "claude-opus-5-5"            {:display-name "Claude Opus 5.5"   :max-tokens 128000 :context-window 1000000}
    "claude-opus-5"              {:display-name "Claude Opus 5"     :max-tokens 128000 :context-window 1000000}
    "claude-opus-4-8"            {:display-name "Claude Opus 4.8"   :max-tokens 128000 :context-window 1000000}
    "claude-opus-4-7"            {:display-name "Claude Opus 4.7"   :max-tokens 128000 :context-window 1000000}
    "claude-opus-4-6"            {:display-name "Claude Opus 4.6"   :max-tokens 128000 :context-window 1000000}
    "claude-opus-4-5-20251101"   {:display-name "Claude Opus 4.5"   :max-tokens  64000 :context-window  200000}
    "claude-opus-4-1-20250805"   {:display-name "Claude Opus 4.1"   :max-tokens  32000 :context-window  200000}
+   "claude-sonnet-5-5"          {:display-name "Claude Sonnet 5.5" :max-tokens 128000 :context-window 1000000}
    "claude-sonnet-5"            {:display-name "Claude Sonnet 5"   :max-tokens 128000 :context-window 1000000}
    "claude-sonnet-4-6"          {:display-name "Claude Sonnet 4.6" :max-tokens 128000 :context-window 1000000}
    "claude-sonnet-4-5-20250929" {:display-name "Claude Sonnet 4.5" :max-tokens  64000 :context-window  200000}
@@ -392,12 +394,13 @@
   (get-in supported-models [(strip-vendor-prefix model) :context-window]))
 
 (defn- claude-model-version
-  "`[family major minor]` for a Claude opus/sonnet model id, or nil."
+  "`[family major minor]` for a Claude opus/sonnet model id, or nil.
+  The minor version is one or two digits, so a date suffix doesn't read as one: `claude-opus-5-20261005` is 5.0."
   [model]
   ;; the minor version accepts both separators: canonical ids are hyphenated (claude-opus-4-8)
   ;; but Azure admins name deployments freely, and the dotted display-name spelling
   ;; (claude-opus-4.8) is the norm for the GPT family next to it
-  (when-let [[_ family major minor] (re-find #"^claude-(opus|sonnet)-(\d+)(?:[-.](\d+))?"
+  (when-let [[_ family major minor] (re-find #"^claude-(opus|sonnet)-(\d+)(?:[-.](\d{1,2})(?!\d))?"
                                              (strip-vendor-prefix model))]
     [family (parse-long major) (or (some-> minor parse-long) 0)]))
 
@@ -416,6 +419,19 @@
   were removed starting with Claude Opus 4.7 and Sonnet 5."
   [model]
   (not (model-current-gen? model)))
+
+(defn- model-supports-forced-tool-choice?
+  "Whether `model` accepts a forced `tool_choice` (`any`, or a named tool). Opus and Sonnet reject one from 5.5 on."
+  [model]
+  (if-let [[_ major minor] (claude-model-version model)]
+    (or (< major 5) (and (= major 5) (< minor 5)))
+    true))
+
+(def ^:private unforced-structured-output-token-floor
+  "Smallest `max_tokens` for structured output on a model that can't be forced to call the tool.
+  It answers under `auto` after thinking first, which bills against the same cap. The value is the floor the other
+  adapters give thinking-only models."
+  2048)
 
 (defn- model-thinking-config
   "Thinking config that streams reasoning for `model`, or nil where we don't enable
@@ -438,7 +454,7 @@
 
 (def ^:private fast-mode-models
   "The models Anthropic documents fast mode for: https://code.claude.com/docs/en/fast-mode"
-  #{"claude-opus-4-8" "claude-opus-5"})
+  #{"claude-opus-4-8" "claude-opus-5" "claude-opus-5-5"})
 
 (defn fast-mode-model?
   "Whether `model` supports Anthropic fast mode. Never through the AI proxy: fast mode is premium-priced,
@@ -460,10 +476,12 @@
   restrictions, which the model-id-derived config and the suppression rules below cannot describe."
   [{:keys [model system input tools schema tool_choice temperature max-tokens reasoning? reasoning-config fast? ai-proxy?]
     :or   {model default-model reasoning? true}} :- core/LLMRequestOpts]
-  (let [;; forced tool choice (structured output, or "required") is incompatible
+  (let [forced?   (and (or schema (= "required" (some-> tool_choice name)))
+                       (model-supports-forced-tool-choice? model))
+        ;; forced tool choice (structured output, or "required") is incompatible
         ;; with thinking — suppress it there.
         thinking  (or reasoning-config
-                      (when-not (or (not reasoning?) schema (= "required" (some-> tool_choice name)))
+                      (when (and reasoning? (not forced?))
                         (model-thinking-config model)))
         fast?     (and fast? (fast-mode-model? model ai-proxy?))
         input     (cond->> input
@@ -480,16 +498,21 @@
              :messages      messages}
       system            (assoc :system (system->cached-content-blocks system))
       all-tools         (assoc :tools all-tools)
-      schema            (assoc :tool_choice {:type "tool"
-                                             :name "structured_output"}
+      schema            (assoc :tool_choice (if forced?
+                                              {:type "tool"
+                                               :name "structured_output"}
+                                              {:type "auto"})
                                :tools [{:name         "structured_output"
                                         :description  "Output structured data"
                                         :input_schema schema}])
 
+      (and schema max-tokens (not forced?))
+      (update :max_tokens max unforced-structured-output-token-floor)
+
       (and all-tools tool_choice)
       (assoc :tool_choice (case (name tool_choice)
                             "auto"     {:type "auto"}
-                            "required" {:type "any"}))
+                            "required" (if forced? {:type "any"} {:type "auto"})))
 
       thinking          (assoc :thinking thinking)
 

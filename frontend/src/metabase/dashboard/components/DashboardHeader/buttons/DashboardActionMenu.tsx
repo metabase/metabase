@@ -4,8 +4,8 @@ import { c, t } from "ttag";
 import { Link, type LinkProps } from "metabase/common/components/Link";
 import { ToolbarButton } from "metabase/common/components/ToolbarButton";
 import {
+  isInLibraryDashboards,
   useCanUseLibraryDashboards,
-  useIsInLibraryDashboards,
 } from "metabase/common/data-studio/library-dashboards";
 import { useDashboardContext } from "metabase/dashboard/context/context";
 import { useRefreshDashboard } from "metabase/dashboard/hooks";
@@ -70,7 +70,7 @@ const DashboardActionMenuInner = ({
   // PROTOTYPE: Library dashboards are managed from Data Studio. Its settings,
   // Move, Duplicate, and Move to trash live there instead of in this menu.
   const canUseLibraryDashboards = useCanUseLibraryDashboards();
-  const isInLibrary = useIsInLibraryDashboards(dashboard?.collection);
+  const isInLibrary = isInLibraryDashboards(dashboard?.collection);
   const showViewInDataStudio = canUseLibraryDashboards && isInLibrary;
 
   const moderationItems = PLUGIN_MODERATION.useDashboardMenuItems(

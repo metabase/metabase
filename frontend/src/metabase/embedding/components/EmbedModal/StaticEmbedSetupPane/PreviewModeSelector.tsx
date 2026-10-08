@@ -1,35 +1,14 @@
 import { t } from "ttag";
 
-import { Box, Group, Icon, SegmentedControl } from "metabase/ui";
-import type { IconName } from "metabase-types/api";
+import { SegmentedControl, type SegmentedControlItem } from "metabase/ui";
 
 import type { ActivePreviewPane } from "./types";
 
-const ControlOptionItem = ({
-  label,
-  iconName,
-}: {
-  label: string;
-  iconName: IconName;
-}) => (
-  <Group wrap="nowrap" px="sm" gap="xxs">
-    <Icon name={iconName} />
-    <Box>{label}</Box>
-  </Group>
-);
-
-const getCodePreviewControlOptions = () => [
-  {
-    label: <ControlOptionItem label={t`Code`} iconName="embed" />,
-    // Unjustified type cast. FIXME
-    value: "code" as ActivePreviewPane,
-  },
-  {
-    label: <ControlOptionItem label={t`Preview`} iconName="eye_filled" />,
-    // Unjustified type cast. FIXME
-    value: "preview" as ActivePreviewPane,
-  },
-];
+const getCodePreviewControlOptions =
+  (): SegmentedControlItem<ActivePreviewPane>[] => [
+    { label: t`Code`, icon: "embed", value: "code" },
+    { label: t`Preview`, icon: "eye_filled", value: "preview" },
+  ];
 
 interface PreviewModeSelectorProps {
   value: ActivePreviewPane;

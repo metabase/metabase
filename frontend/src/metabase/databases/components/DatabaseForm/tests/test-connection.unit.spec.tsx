@@ -48,7 +48,7 @@ const findValidateRequests = async () => {
 
 describe("DatabaseForm > test connection", () => {
   it("should not test the connection when a required connection field is missing", async () => {
-    setupTestConnection({
+    await setupTestConnection({
       initialValues: { engine: "postgres", name: "My database" },
     });
 
@@ -62,7 +62,7 @@ describe("DatabaseForm > test connection", () => {
     { name: "omit the id for a new database", id: undefined },
     { name: "send the id for an existing database", id: 42 },
   ])("should $name", async ({ id }) => {
-    setupTestConnection({ initialValues: { ...POSTGRES_VALUES, id } });
+    await setupTestConnection({ initialValues: { ...POSTGRES_VALUES, id } });
 
     await clickTestConnection();
 
@@ -77,8 +77,8 @@ describe("DatabaseForm > test connection", () => {
     expect(request.body.details.id).toBe(id);
   });
 
-  it("should show the result until the form is edited, including while re-testing", async () => {
-    setupTestConnection({
+  it("should show the result until the form is edited or re-tested", async () => {
+    await setupTestConnection({
       initialValues: POSTGRES_VALUES,
       validateDelayMs: 200,
     });
@@ -89,11 +89,13 @@ describe("DatabaseForm > test connection", () => {
     ).toBeInTheDocument();
 
     await clickTestConnection();
-    expect(screen.getByLabelText("Connection successful")).toBeInTheDocument();
-    await waitFor(async () => {
-      expect(await findValidateRequests()).toHaveLength(2);
-    });
-    expect(screen.getByLabelText("Connection successful")).toBeInTheDocument();
+    expect(
+      screen.queryByLabelText("Connection successful"),
+    ).not.toBeInTheDocument();
+    expect(
+      await screen.findByLabelText("Connection successful"),
+    ).toBeInTheDocument();
+    expect(await findValidateRequests()).toHaveLength(2);
 
     await userEvent.type(screen.getByLabelText("Host"), "x");
     expect(
@@ -115,7 +117,10 @@ describe("DatabaseForm > test connection", () => {
   ])(
     "should show the error in the failure icon's tooltip for $name",
     async ({ validateResponse, message }) => {
-      setupTestConnection({ initialValues: POSTGRES_VALUES, validateResponse });
+      await setupTestConnection({
+        initialValues: POSTGRES_VALUES,
+        validateResponse,
+      });
 
       await clickTestConnection();
       expect(
@@ -131,7 +136,7 @@ describe("DatabaseForm > test connection", () => {
   );
 
   it("should delay the loader and ignore clicks while a test is running", async () => {
-    setupTestConnection({
+    await setupTestConnection({
       initialValues: POSTGRES_VALUES,
       validateDelayMs: 800,
     });
