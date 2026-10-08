@@ -1,23 +1,71 @@
+import { setupEnterprisePlugins } from "__support__/enterprise";
 import { getStore, mainReducers } from "__support__/entities-store";
 import { createMockSettingsState } from "__support__/state";
 import { getRoutes } from "metabase/routes";
+import type { TokenFeatures } from "metabase-types/api";
+import { createMockTokenFeatures } from "metabase-types/api/mocks";
 
 import { collectRouteChunks } from "./derive-route-preloads";
 import { preloadRows } from "./route-preloads-rows";
 import { readRoutes } from "./routes";
 
 // The admin routes read settings off the store while the tree is built, so this
-// needs a real one. `getRoutes` wants the app's own store type, which the test
-// store satisfies at runtime but not on paper.
-const store = getStore(mainReducers, {
-  settings: createMockSettingsState({}),
-}) as unknown as Parameters<typeof getRoutes>[0];
+// needs a real one.
+const treeFor = (settings: Parameters<typeof createMockSettingsState>[0]) => {
+  // `getRoutes` wants the app's own store type, which the test store satisfies
+  // at runtime but not on paper.
+  const store = getStore(mainReducers, {
+    settings: createMockSettingsState(settings),
+  }) as unknown as Parameters<typeof getRoutes>[0];
 
-const executed = collectRouteChunks(getRoutes(store));
+  return collectRouteChunks(getRoutes(store));
+};
+
+const everyTokenFeature = () => {
+  const enabled = Object.keys(createMockTokenFeatures()).map((feature) => [
+    feature,
+    true,
+  ]);
+
+  // `fromEntries` widens the keys back to `string`, and every key here comes
+  // from the shape of the mock itself.
+  return Object.fromEntries(enabled) as TokenFeatures;
+};
+
+/**
+ * Two trees, united. A plain instance reaches neither the enterprise routes nor
+ * the ones a token feature gates, and the reader reports a route whether or not
+ * the instance it runs on can reach it.
+ */
+const open = treeFor({});
+setupEnterprisePlugins();
+const paid = treeFor({ "token-features": everyTokenFeature() });
+
+const executed = {
+  routes: [...open.routes, ...paid.routes],
+  unnamed: [...open.unnamed, ...paid.unnamed],
+};
+
 const derived = readRoutes(process.cwd());
 
 const key = ({ pattern, chunks }: { pattern: string; chunks: string[] }) =>
   `${pattern} -> ${[...chunks].sort().join("+")}`;
+
+/**
+ * Pages a plugin registers at runtime. Source cannot reach them, so they get no
+ * hint and load a moment after the app does. Pinned so a new one shows up here
+ * rather than in production.
+ */
+const ROUTES_WITHOUT_HINTS = [
+  "/admin/metabot/customization -> admin+metabot-customization",
+  "/admin/metabot/system-prompts/metabot-chat -> admin+metabot-system-prompts",
+  "/admin/metabot/usage-controls/ai-feature-access -> admin+metabot-feature-access",
+  "/admin/settings/authentication/2fa/enrolled -> admin+admin-settings+mfa-enrolled-users",
+  "/admin/settings/authentication/2fa/unenrolled -> admin+admin-settings+mfa-unenrolled-users",
+  "/data-studio/transforms -> data-studio+transforms-python",
+  "/data-studio/transforms/:transformId/inspect -> data-studio+transforms-inspector-upsell",
+  "/data-studio/transforms/:transformId/inspect/:lensId -> data-studio+transforms-inspector-upsell",
+];
 
 /**
  * A note names the construct the reader could not follow, not where it sits, so
@@ -85,7 +133,7 @@ describe("the route preload manifest", () => {
       .map(key)
       .filter((route) => !found.has(route));
 
-    expect(missing).toEqual([]);
+    expect([...new Set(missing)].sort()).toEqual(ROUTES_WITHOUT_HINTS);
   });
 
   /**
