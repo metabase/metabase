@@ -205,7 +205,10 @@
   (let [enriched-context (metabot.context/create-context context {:metabot-id metabot-id
                                                                   :profile-id (keyword profile-id)})
         messages         (concat history [message])]
-    (sr/streaming-response {:content-type "text/event-stream"} [^OutputStream os canceled-chan]
+    ;; a reasoning model can spend longer than MB_JETTY_ASYNC_RESPONSE_TIMEOUT on one turn
+    (sr/streaming-response {:content-type     "text/event-stream"
+                            :async-timeout-ms (metabot.settings/metabot-chat-turn-async-timeout-ms)}
+                           [^OutputStream os canceled-chan]
       (let [parts-atom  (atom [])
             memory-atom (atom nil)
             canceled?   (volatile! false)
