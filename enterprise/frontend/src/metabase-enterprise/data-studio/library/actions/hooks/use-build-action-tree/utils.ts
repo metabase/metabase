@@ -9,7 +9,8 @@ import type {
   WritebackAction,
 } from "metabase-types/api";
 
-export const DATA_ACTIONS_ROOT_NODE_KEY = "data-actions-root";
+// The data actions root has the same "root" id as the SQL snippets root, so its node needs its own key.
+const DATA_ACTIONS_ROOT_NODE_KEY = "data-actions-root";
 
 export function getActionCollectionNodeId(collection: Pick<Collection, "id">) {
   return isRootCollection(collection)
@@ -30,6 +31,7 @@ function createActionNode(action: WritebackAction): TreeItem {
       description: action.description,
       collection_id: action.collection_id,
       archived: action.archived,
+      can_write: action.can_write,
     },
     updatedAt: action.updated_at,
   };

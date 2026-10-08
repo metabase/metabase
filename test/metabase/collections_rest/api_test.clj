@@ -2141,6 +2141,11 @@
              (with-some-children-of-collection! nil
                (mt/user-http-request :crowberto :get 200 "collection/root")))))))
 
+(deftest fetch-data-actions-root-collection-test
+  (testing "GET /api/collection/root?namespace=data-actions names the root after data actions"
+    (is (=? {:id "root" :name "Data actions" :namespace "data-actions"}
+            (mt/user-http-request :crowberto :get 200 "collection/root" :namespace "data-actions")))))
+
 (deftest fetch-root-collection-permissions-test
   (testing "GET /api/collection/root"
     (testing "403s (not silently filters) for a user without root read perms"

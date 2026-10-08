@@ -1,7 +1,6 @@
 import type { ExpandedState } from "@tanstack/react-table";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
-import _ from "underscore";
 
 import { DateTime } from "metabase/common/components/DateTime";
 import { Link } from "metabase/common/components/Link";
@@ -53,17 +52,15 @@ export function useLibraryTreeTableInstance({
   const [searchParams] = useSearchParams();
   const isRemoteSyncReadOnly = useSelector(getIsRemoteSyncReadOnly);
 
-  const expandedIdsFromUrl = useMemo(() => {
-    const ids = searchParams.getAll("expandedId");
-    if (ids.length === 0) {
-      return null;
-    }
-
-    // Unjustified type cast. FIXME
-    return _.object(
-      ids.map((id) => [`collection:${id}`, true]),
-    ) as ExpandedState;
-  }, [searchParams]);
+  const expandedIdsFromUrl = useMemo(
+    (): Record<string, boolean> =>
+      Object.fromEntries(
+        searchParams
+          .getAll("expandedId")
+          .map((id) => [`collection:${id}`, true]),
+      ),
+    [searchParams],
+  );
   const {
     libraryCollection,
     tableCollection,
@@ -126,6 +123,7 @@ export function useLibraryTreeTableInstance({
         metrics: refreshMetricCollections,
         dashboards: refreshDashboardCollections,
         snippets: undefined,
+        actions: undefined,
       }[section];
       refreshCollections?.(collectionIds);
     },
@@ -293,11 +291,8 @@ export function useLibraryTreeTableInstance({
   const actionRootId = actionTree[0]?.id;
 
   // Controlled expansion: expand all during search, preserve user state when browsing.
-  // Default any IDs from the URL. If none are provided, default to Data, Metrics, Dashboards and SQL Snippets expanded
+  // Expand Data, Metrics, Dashboards, SQL Snippets and Data actions, plus any IDs from the URL
   const defaultExpanded = useMemo<ExpandedState>(() => {
-    if (expandedIdsFromUrl) {
-      return expandedIdsFromUrl;
-    }
     const ids: ExpandedState = {};
     if (tableCollection) {
       ids[`collection:${tableCollection.id}`] = true;
@@ -317,7 +312,7 @@ export function useLibraryTreeTableInstance({
       ids[actionRootId] = true;
     }
 
-    return ids;
+    return { ...ids, ...expandedIdsFromUrl };
   }, [
     expandedIdsFromUrl,
     tableCollection,

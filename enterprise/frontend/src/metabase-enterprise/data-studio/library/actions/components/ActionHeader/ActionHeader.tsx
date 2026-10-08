@@ -20,7 +20,6 @@ import * as Urls from "metabase/urls";
 import type { WritebackAction, WritebackActionId } from "metabase-types/api";
 
 import { ACTION_NAME_MAX_LENGTH } from "../../constants";
-import { DATA_ACTIONS_ROOT_NODE_KEY } from "../../hooks/use-build-action-tree";
 
 import { ActionMoreMenu } from "./ActionMoreMenu";
 
@@ -61,10 +60,7 @@ export function ActionHeader({
             <Link
               key={collection.id}
               to={Urls.dataStudioLibrary({
-                expandedIds: [
-                  DATA_ACTIONS_ROOT_NODE_KEY,
-                  ...folderPath.slice(0, index + 1).map(({ id }) => id),
-                ],
+                expandedIds: folderPath.slice(0, index + 1).map(({ id }) => id),
               })}
             >
               {collection.name}
