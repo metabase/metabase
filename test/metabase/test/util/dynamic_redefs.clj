@@ -40,12 +40,28 @@
   [a-var]
   (or (proxy-original a-var) @a-var))
 
+(defn- call-replacement
+  "Call the replacement `f` that is in scope for `a-var`, counting re-entries through the proxy on this thread."
+  [a-var f args]
+  (let [depth (get *proxy-depths* a-var 0)]
+    (when (> depth max-proxy-depth)
+      ;; Throw an Error, not an Exception: a `(catch Exception ...)` in the code under test would swallow an Exception
+      ;; and turn this diagnostic into silent, confusing behavior.
+      (throw (AssertionError.
+              (str "with-dynamic-fn-redefs: runaway recursion through proxy for " a-var " (depth " depth "). "
+                   "This usually means the replacement fn calls the redefined var directly "
+                   "(closing over the var resolves to the proxy, not the original). "
+                   "Use (metabase.test.util.dynamic-redefs/original-fn " (pr-str a-var) ") "
+                   "to capture the unpatched function."))))
+    (binding [*proxy-depths* (assoc *proxy-depths* a-var (inc depth))]
+      (apply f args))))
+
 (defn- var->proxy
   "Build a proxy function to intercept the given var. The proxy checks the current scope for what to call.
    Uses unconditional throws (not `assert`) so the safety checks fire even when `*assert*` is false.
 
    Accepts any `IFn` root value — keywords and collections work via their `IFn` impl
-   (`(:a {:a 1})` → `1`, `({:a 1} :a)` → `1`), so the proxy's `apply` delegates correctly."
+   (`(:a {:a 1})` → `1`, `({:a 1} :a)` → `1`), so the proxy delegates to them correctly."
   [a-var original]
   (when-not (ifn? original)
     (throw (ex-info (str "Cannot proxy non-IFn values: " a-var) {:var a-var, :value original})))
@@ -55,23 +71,44 @@
                          "dispatch and pollutes the JVM for other tests. Use defmethod (or add-method) "
                          "with a dedicated test dispatch value instead.")
                     {:var a-var})))
+  ;; The proxy outlives the redef that installed it, so most calls find nothing in scope for the var. That path calls
+  ;; the original with no `binding` and, for up to four arguments, no argument seq. The recursion check only runs
+  ;; while a replacement is in scope: without one, any recursion is the original's own.
+  ;;
   ;; Each proxy keeps its own original. Something else can put a different root over the proxy and a later patch
   ;; then treats that root as the original, so an original stored on the var would be wrong for this proxy.
   ^{::proxy-for a-var, ::original original}
-  (fn [& args]
-    (let [depth (get *proxy-depths* a-var 0)]
-      (when (> depth max-proxy-depth)
-        ;; Throw an Error, not an Exception: a `(catch Exception ...)` in the code under test would swallow an Exception
-        ;; and turn this diagnostic into silent, confusing behavior.
-        (throw (AssertionError.
-                (str "with-dynamic-fn-redefs: runaway recursion through proxy for " a-var " (depth " depth "). "
-                     "This usually means the replacement fn calls the redefined var directly "
-                     "(closing over the var resolves to the proxy, not the original). "
-                     "Use (metabase.test.util.dynamic-redefs/original-fn " (pr-str a-var) ") "
-                     "to capture the unpatched function."))))
-      (binding [*proxy-depths* (assoc *proxy-depths* a-var (inc depth))]
-        (let [current-f (get *local-redefs* a-var original)]
-          (apply current-f args))))))
+  (fn
+    ([]
+     (let [f (get *local-redefs* a-var ::none)]
+       (if (identical? f ::none)
+         (original)
+         (call-replacement a-var f nil))))
+    ([a]
+     (let [f (get *local-redefs* a-var ::none)]
+       (if (identical? f ::none)
+         (original a)
+         (call-replacement a-var f (list a)))))
+    ([a b]
+     (let [f (get *local-redefs* a-var ::none)]
+       (if (identical? f ::none)
+         (original a b)
+         (call-replacement a-var f (list a b)))))
+    ([a b c]
+     (let [f (get *local-redefs* a-var ::none)]
+       (if (identical? f ::none)
+         (original a b c)
+         (call-replacement a-var f (list a b c)))))
+    ([a b c d]
+     (let [f (get *local-redefs* a-var ::none)]
+       (if (identical? f ::none)
+         (original a b c d)
+         (call-replacement a-var f (list a b c d)))))
+    ([a b c d & more]
+     (let [f (get *local-redefs* a-var ::none)]
+       (if (identical? f ::none)
+         (apply original a b c d more)
+         (call-replacement a-var f (list* a b c d more)))))))
 
 (defn patch-vars!
   "Rebind the given vars with proxies that wrap the original functions."
@@ -106,7 +143,9 @@
      `Thread`, quartz/cron workers, and unwrapped `ExecutorService` tasks do not. For those
      keep `with-redefs` — the root swap is visible to every thread.
    - Redefining a potemkin re-export only intercepts calls made through the re-export.
-     Callers of the var it was imported from still see the original."
+     Callers of the var it was imported from still see the original.
+   - A `with-redefs` of a var inside a dynamic redef of the same var holds only until a dynamic redef
+     nested further in exits. From then on the outer dynamic replacement is in effect, not the stub."
   [bindings & body]
   (let [var->definition (bindings->var->definition bindings)]
     `(do
