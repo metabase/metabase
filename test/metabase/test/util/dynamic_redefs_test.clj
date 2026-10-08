@@ -18,26 +18,30 @@
   ([a b c d] [:original a b c d])
   ([a b c d & more] (into [:original a b c d] more)))
 
+(defn- one-arg [x] x)
+
 (defn- call-with-each-arity [f]
   [(f) (f 1) (f 1 2) (f 1 2 3) (f 1 2 3 4) (f 1 2 3 4 5 6) (apply f (range 30))])
 
 (deftest ^:parallel proxied-var-calls-original-test
   (let [expected (call-with-each-arity arities)]
-    (mt/with-dynamic-fn-redefs [arities (constantly :replaced)]
-      (is (= :replaced (arities 1))))
+    (mt/with-dynamic-fn-redefs [arities (constantly :replaced)
+                                one-arg (constantly :replaced)]
+      (is (= :replaced (arities 1) (one-arg 1))))
     (testing "once the redef has exited, the proxied var behaves like the original at every arity"
       (is (= expected (call-with-each-arity arities))))
     (testing "a wrong arity is still the original's error"
-      (let [one-arg (fn [x] x)]
-        (mt/with-dynamic-fn-redefs [arities one-arg]
-          (is (thrown? clojure.lang.ArityException (arities 1 2))))))))
+      (is (thrown? clojure.lang.ArityException (apply one-arg [1 2]))))))
 
 (deftest ^:parallel replacement-receives-arguments-test
   (testing "a replacement receives the arguments unchanged at every arity"
     (mt/with-dynamic-fn-redefs [arities (fn [& args] (into [:replaced] args))]
       (is (= [[:replaced] [:replaced 1] [:replaced 1 2] [:replaced 1 2 3] [:replaced 1 2 3 4]
               [:replaced 1 2 3 4 5 6] (into [:replaced] (range 30))]
-             (call-with-each-arity arities))))))
+             (call-with-each-arity arities)))))
+  (testing "a replacement's own arity error reaches the caller"
+    (mt/with-dynamic-fn-redefs [arities (fn [x] x)]
+      (is (thrown? clojure.lang.ArityException (arities 1 2))))))
 
 (defn- countdown [n]
   (if (pos? n) (countdown (dec n)) :done))
@@ -93,9 +97,10 @@
 
 (deftest ^:parallel first-patch-race-test
   (testing "threads that make the first redef of a var at the same moment each see their own replacement"
-    (let [n       32
-          barrier (CyclicBarrier. n)
-          pool    (Executors/newFixedThreadPool n)]
+    (let [n        32
+          barrier  (CyclicBarrier. n)
+          pool     (Executors/newFixedThreadPool n)
+          original (mt/original-fn #'raced)]
       (try
         (let [tasks (mapv (fn [i]
                             (.submit pool ^Callable (fn []
@@ -108,7 +113,8 @@
         (finally
           (.shutdown pool)))
       (is (= :original (raced)))
-      (is (= :original ((mt/original-fn #'raced)))))))
+      (testing "and the var is proxied once: its original is still the function it started with"
+        (is (identical? original (mt/original-fn #'raced)))))))
 
 (defn- shadowed [] :original)
 
@@ -122,17 +128,15 @@
         (is (= :stub (shadowed))))
       (mt/with-dynamic-fn-redefs [shadowed (constantly :inner)]
         (is (= :inner (shadowed))))
-      (testing "known limitation: once a dynamic redef nested inside that `with-redefs` exits, the outer dynamic
-               replacement is in effect instead of the stub"
+      (testing "known limitation: after a dynamic redef nested in the `with-redefs` exits, the outer one wins"
         (is (= :outer (shadowed)))))
     (is (= :outer (shadowed))))
   (is (= :original (shadowed))))
 
-;;; A model test. A generated program nests dynamic redefs, `with-redefs`, futures and exceptions around calls to two
-;;; vars. The model is one rule: a call sees the innermost enclosing redef of its var, of either kind, else the original.
-;;;
-;;; Programs never put a `with-redefs` of a var inside a dynamic redef of the same var, which breaks that rule: see
-;;; `with-redefs-inside-dynamic-redef-test`.
+;;; Model test: generated programs nest dynamic redefs, `with-redefs`, futures and exceptions around calls to two vars.
+;;; The model is one rule: a call sees the innermost enclosing redef of its var, of either kind, else the original.
+;;; Programs never put a `with-redefs` of a var inside a dynamic redef of the same var, which breaks that rule.
+;;; See `with-redefs-inside-dynamic-redef-test`.
 
 (defn- model-a [& args] [:original (count args)])
 
@@ -148,12 +152,15 @@
                      v       gen-var
                      throws? gen/boolean
                      body    gen-body]
-             {:op kind :var v :throws? throws? :body body})
+             {:op      kind
+              :var     v
+              :throws? throws?
+              :body    body})
            (gen/let [body gen-body]
-             {:op :future :body body})])))
+             {:op :future, :body body})])))
      (gen/let [v gen-var
                n (gen/choose 0 5)]
-       {:op :call :var v :nargs n}))))
+       {:op :call, :var v, :nargs n}))))
 
 (defn- supported
   "Turn a `with-redefs` of a var into a dynamic redef wherever a dynamic redef of that var encloses it."
@@ -171,8 +178,8 @@
   (fn [& args] [id (count args)]))
 
 (defn- run-program!
-  "Run `ops`, appending what each call returns to the `seen` atom. `id` is an atom counting the redefs entered, so each
-  stub is distinct and the model can number them the same way."
+  "Run `ops`, appending what each call returns to the `seen` atom.
+  The `id` atom counts the redefs entered, which numbers the stubs the way [[model]] does."
   [seen id ops]
   (doseq [{:keys [op body throws?] v :var :as o} ops]
     (case op
@@ -213,5 +220,5 @@
     (let [seen (atom [])]
       (run-program! seen (atom 0) ops)
       (and (= (model ops) @seen)
-           ;; nothing leaks out of a program: both vars are back to their originals
+           ;; Nothing leaks out of a program: both vars are back to their originals.
            (= [:original 0] (model-a) (model-b))))))
