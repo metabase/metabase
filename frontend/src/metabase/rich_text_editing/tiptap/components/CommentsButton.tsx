@@ -14,7 +14,6 @@ export const CommentsButton = <C extends ElementType = "button">({
   active,
   ...props
 }: Props<C>) => {
-  // TODO: replace with ActionIcon (GDGT-2457)
   return (
     <Button
       aria-label={t`Comments`}
