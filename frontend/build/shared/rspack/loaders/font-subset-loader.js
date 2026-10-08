@@ -3,10 +3,13 @@ const fs = require("fs");
 const path = require("path");
 
 const {
+  FORMATS,
   LATIN_UNICODE_RANGE,
   REST_UNICODE_RANGE,
   SUBSET_OPTIONS,
   buildFontFaces,
+  convertFace,
+  fallbackFormatsFor,
   latinCharacters,
   restCharacters,
   subsetFace,
@@ -20,6 +23,7 @@ const MIN_USEFUL_CHUNK_BYTES = 3000;
 // Chunks are cached under the hash of their source, so everything else that
 // decides their contents belongs in that hash too.
 const RECIPE = JSON.stringify([
+  FORMATS,
   LATIN_UNICODE_RANGE,
   REST_UNICODE_RANGE,
   SUBSET_OPTIONS,
@@ -78,16 +82,32 @@ async function rewrite(loader) {
           continue;
         }
         writeAtomic(chunkPath, subset);
+        for (const extension of fallbackFormatsFor(dir)) {
+          writeAtomic(
+            chunkPath.replace(/woff2$/, extension),
+            await convertFace(subset, extension),
+          );
+        }
       }
       made[name] = chunkRel;
     }
     return made;
   };
 
+  const sourcesFor = (chunkRel) =>
+    ["woff2", ...fallbackFormatsFor(path.dirname(chunkRel))]
+      .map(
+        (extension) =>
+          `url("~generated-fonts/${chunkRel.replace(/woff2$/, extension)}") format("${FORMATS[extension]}")`,
+      )
+      .join(",\n    ");
+
   const splitFace = async (block) => {
-    const urls = [...block.matchAll(/url\("~fonts\/([^"]+\.woff2)"\)/g)];
-    // A face that is not a single woff2, such as the legacy Lato fallbacks,
-    // passes through untouched.
+    const urls = [
+      ...block.matchAll(/url\("~fonts\/([^"]+\.woff2)"\) format\("woff2"\)/g),
+    ];
+    // Every bundled face names exactly one woff2. Anything else is not ours
+    // to cut, so it passes through.
     if (urls.length !== 1) {
       return block;
     }
@@ -99,12 +119,12 @@ async function rewrite(loader) {
     const { latin, rest } = await chunksFor(rel);
     if (!rest) {
       // Nothing outside latin, so a second request would render nothing.
-      return block.replace(urls[0][0], `url("~generated-fonts/${latin}")`);
+      return block.replace(urls[0][0], sourcesFor(latin));
     }
 
     const withChunk = (chunkRel, range) =>
       block
-        .replace(urls[0][0], `url("~generated-fonts/${chunkRel}")`)
+        .replace(urls[0][0], sourcesFor(chunkRel))
         .replace(/\}$/, `  unicode-range: ${range};\n}`);
 
     return (
