@@ -198,49 +198,44 @@ const readFontMetadata = async (font) => {
 // --- The @font-face rules ---------------------------------------------------
 
 // The browser takes the first it understands.
-const FORMATS = [
-  { extension: "eot", format: "embedded-opentype" },
-  { extension: "woff2", format: "woff2" },
-  { extension: "woff", format: "woff" },
-  { extension: "ttf", format: "truetype" },
-  { extension: "svg", format: "svg" },
-];
+const FORMATS = { woff2: "woff2", woff: "woff", ttf: "truetype" };
+
+// The default family is the one a stock instance loads, so it keeps a `woff`
+// and a `ttf` beside its `woff2`. Both are cut from the same chunk, so they
+// cover exactly what the `woff2` covers. Every other family declares only the
+// format its source is in.
+const FALLBACK_FORMATS = ["woff", "ttf"];
 
 // The default font is on the critical path of every page, so `swap` there
 // would flash a fallback on each load.
 const DEFAULT_FAMILY = "Lato";
 
+/** The extra container formats a family's chunks are also written in. */
+const fallbackFormatsFor = (directory) =>
+  directory.replace(/_/g, " ") === DEFAULT_FAMILY ? FALLBACK_FORMATS : [];
+
+/** Re-wraps a chunk in another container format, leaving the glyphs alone. */
+const convertFace = (chunk, extension) =>
+  fontverter.convert(chunk, extension === "ttf" ? "truetype" : extension);
+
 const quoted = (family) => (family.includes(" ") ? `"${family}"` : family);
 
-const faceUrl = (directory, stem, extension, family) => {
-  const fragment = { eot: "?#iefix", svg: `#${family.replace(/ /g, "")}` };
-  return `~fonts/${directory}/${stem}.${extension}${fragment[extension] ?? ""}`;
-};
-
-const face = ({ directory, family, stem, weight, localNames, extensions }) => {
-  const sources = FORMATS.filter((f) => extensions.has(f.extension)).map(
-    (f) =>
-      `    url("${faceUrl(directory, stem, f.extension, family)}") format("${f.format}")`,
-  );
-  return [
+const face = ({ directory, family, stem, weight, localNames }) =>
+  [
     "@font-face {",
     `  font-family: ${quoted(family)};`,
     "  font-style: normal;",
     `  font-weight: ${weight};`,
     family === DEFAULT_FAMILY ? null : "  font-display: swap;",
-    // For browsers that understand no `format()` at all.
-    extensions.has("eot")
-      ? `  src: url("~fonts/${directory}/${stem}.eot");`
-      : null,
     "  src:",
-    [...localNames.map((name) => `    local("${name}")`), ...sources].join(
-      ",\n",
-    ) + ";",
+    [
+      ...localNames.map((name) => `    local("${name}")`),
+      `    url("~fonts/${directory}/${stem}.woff2") format("woff2")`,
+    ].join(",\n") + ";",
     "}",
   ]
     .filter((line) => line !== null)
     .join("\n");
-};
 
 const familiesIn = (fontsDir) =>
   fs
@@ -266,22 +261,18 @@ const buildFontFaces = async (fontsDir, onRead) => {
   const blocks = [];
   for (const directory of familiesIn(fontsDir)) {
     const family = directory.replace(/_/g, " ");
-    const inFamily = fs.readdirSync(path.join(fontsDir, directory));
-    for (const file of inFamily.filter((f) => f.endsWith(".woff2")).sort()) {
+    const woff2s = fs
+      .readdirSync(path.join(fontsDir, directory))
+      .filter((f) => f.endsWith(".woff2"))
+      .sort();
+    for (const file of woff2s) {
       const stem = path.basename(file, ".woff2");
       const source = path.join(fontsDir, directory, file);
       onRead(source);
       const { weight, localNames } = await readFontMetadata(
         fs.readFileSync(source),
       );
-      const extensions = new Set(
-        FORMATS.map((f) => f.extension).filter((extension) =>
-          inFamily.includes(`${stem}.${extension}`),
-        ),
-      );
-      blocks.push(
-        face({ directory, family, stem, weight, localNames, extensions }),
-      );
+      blocks.push(face({ directory, family, stem, weight, localNames }));
     }
   }
   return blocks.join("\n\n") + "\n";
@@ -353,6 +344,7 @@ const FONT_FACES_RULE = {
 
 module.exports = {
   FONT_FACES_RULE,
+  FORMATS,
   FONT_FACES_VIRTUAL_MODULE,
   LATIN_UNICODE_RANGE: unicodeRange(LATIN_RANGES),
   SUBSET_OPTIONS,
@@ -361,5 +353,7 @@ module.exports = {
   restCharacters: () => (rest ??= characters(REST_RANGES)),
   buildFontFaces,
   subsetFace,
+  convertFace,
+  fallbackFormatsFor,
   fontAssetName,
 };
