@@ -1,11 +1,10 @@
 (ns metabase.typed-schemas.source
   "Data access for typed schemas, reified as a protocol.
 
-  [[SchemaSource]] names every read that [[metabase.typed-schemas.core/fetch-items]]
+  [[SchemaSource]] names every read that [[metabase.typed-schemas.build/fetch-items]]
   performs, so the module's data-access surface is one definition instead of
   selects scattered across namespaces. [[app-db-source]] is the production
-  implementation, backed by the application database and filtered by what the
-  current user can read.
+  implementation, backed by the application database.
 
   Tests reify the protocol with literal values instead of redefining selection
   functions:
@@ -21,7 +20,7 @@
 
   When the pipeline needs to read something new, add a protocol method and its
   [[app-db-source]] implementation here — do not call `t2`/`metabot` directly
-  from `metabase.typed-schemas.core` or anything downstream of it. That keeps
+  from `metabase.typed-schemas.build` or anything downstream of it. That keeps
   the module's data-access surface enumerable and every downstream stage
   testable with literal values."
   (:require
@@ -40,7 +39,7 @@
   entities. A nil `database-ids`/`collection-ids` argument means unscoped;
   an empty set matches nothing."
   (database-ids [source database-ref]
-    "Readable database ids matching a database reference, or nil without one.")
+    "Database ids matching a database reference, or nil without one.")
   (collection-ids [source collection-refs]
     "Ids of the referenced collections and their descendants, or nil without refs.")
   (library-scope [source scope-options]

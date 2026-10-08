@@ -2,10 +2,10 @@
   "Typed schema generation for tables, fields, segments and measures."
   (:require
    [medley.core :as m]
+   [metabase.audit-app.core :as audit]
    [metabase.lib-be.core :as lib-be]
    [metabase.metabot.core :as metabot]
-   [metabase.models.interface :as mi]
-   [metabase.permissions.core :as perms]
+   [metabase.premium-features.core :as premium-features]
    [metabase.typed-schemas.common :as common]
    [metabase.typed-schemas.db :as typed-schemas.db]
    [metabase.typed-schemas.schema.common :as schema.common]))
@@ -37,32 +37,30 @@
       :tableId (when (integer? table-id) table-id)
       :defaultTemporalBucket (:unit field)))))
 
-(defn- filter-readable-tables
-  "Filters tables down to the ones the current user can read, excluding any backed by a destination
-  (routed) database -- see [[schema.common/destination-db-ids]]."
+(defn- without-unavailable-tables
+  "`tables` without any backed by a destination (routed) database -- see [[schema.common/destination-db-ids]] -- and
+  without the audit database's while the audit feature is off, since the table details lookup refuses those."
   [tables]
-  (perms/prime-table-perms-cache {:db-ids    (into #{} (keep :db_id) tables)
-                                  :table-ids (into #{} (map :id) tables)})
   (let [destination-ids (schema.common/destination-db-ids (into #{} (keep :db_id) tables))
-        tables          (if (seq destination-ids)
-                          (remove #(contains? destination-ids (:db_id %)) tables)
-                          tables)]
-    (filter mi/can-read? tables)))
+        audit-off?      (not (premium-features/enable-audit-app?))]
+    (cond->> tables
+      (seq destination-ids) (remove #(contains? destination-ids (:db_id %)))
+      audit-off?            (remove #(= audit/audit-db-id (:db_id %))))))
 
 (defn select-tables
-  "Returns readable tables, with optional database and table-id scopes.
+  "Returns the active tables, with optional database and table-id scopes.
 
-  Library and database endpoint paths both need the same active/readable table
-  rules; only their id filters differ."
+  Library and database endpoint paths both need the same active-table rules;
+  only their id filters differ."
   [database-ids table-ids]
   (->> (typed-schemas.db/active-tables-in-scope database-ids table-ids)
-       (filter-readable-tables)))
+       (without-unavailable-tables)))
 
 (defn select-library-tables
   "Returns published tables from the library based on the given scope."
   [{:keys [data-collection-ids]}]
   (->> (typed-schemas.db/published-library-tables-in-collections data-collection-ids)
-       (filter-readable-tables)))
+       (without-unavailable-tables)))
 
 (defn segment-schema
   "Returns the schema for a segment."

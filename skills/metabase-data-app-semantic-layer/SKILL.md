@@ -9,7 +9,7 @@ description: Use when building, creating, or editing data apps that should query
 
 Keep the semantic layer and presentation layer separate.
 
-- All Metabase context must come from the generated schema file, usually `src/metabase.data.ts` or `src/*.metabase.data.ts`.
+- All Metabase context must come from the generated schema file, usually `src/metabase.data.ts` or `src/*.metabase.data.ts`: its runtime object and the `/* metadata: {...} */` block an entry opens with when it has context to give.
 - Do not discover data through MCP tools, create Metabase content, create tables, or edit the semantic layer while building the React UI.
 - Import data app query helpers from `@metabase/embedding-sdk-react/data-app`.
 - Every query is a `defineQuery(...)` named export in the root-level `queries/` directory, and every action a `defineAction(...)` named export in the root-level `actions/` directory, both beside `package.json`. Create both directories before writing the first hook call; the template ships them, each with a README. The hooks enforce this at compile time: `useMetabaseQuery`, `useMetabaseQueryObject`, and `useAction` reject an inline object, a `satisfies MetabaseQueryOptions` object, and a spread copy of a definition. The error reads `Property 'definedWithDefineQuery' is missing` (or `'definedWithDefineAction'`); the fix is always to move the object into `queries/` or `actions/` as a definition and import it, never a cast.
@@ -68,7 +68,8 @@ If the user asks for any mutation-like flow, such as creating, updating, deletin
 
 The Metabase URL and API key live in the **repo-root** `.env.local` as
 `DATA_APP_MB_URL` and `DATA_APP_MB_API_KEY` (one file per repo, usually two levels up
-from the app dir, not in the app dir). The command below `source`s that file so
+from the app dir, not in the app dir). The key must be one in the Administrators group:
+the typed schema answers only an admin, and any other key gets a `403`. The command below `source`s that file so
 the shell substitutes the values straight into `curl` — you never read, extract,
 or handle the credentials yourself.
 
@@ -105,6 +106,8 @@ fi
     "$DATA_APP_MB_URL/api/typed-schemas/v1/typescript?include-data-library=true"
 )
 ```
+
+An entry in the generated file opens with a `/* metadata: {...} */` block of JSON, before its runtime properties, when it has context to give for writing the app: such as a field's display name, description, and semantic type, a table's database, schema, and real name, and a metric's description, filters, and whether it's verified. It is a comment, so it never reaches the bundle and the app never imports it; read it, and never edit or reformat the file.
 
 After a successful export, verify that the schema contains every entity needed for the requested app. If any are missing, revise the scope using available context or ask for the missing context before building the UI.
 
