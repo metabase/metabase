@@ -97,6 +97,14 @@ export function DataStudioLayout() {
 
       <AreaTabGroup label={t`Library`} showLabel={isNavbarOpened}>
         <AreaTab
+          label={t`Dashboards`}
+          icon="dashboard"
+          to={Urls.dataStudioLibraryDashboards()}
+          isSelected={currentTab === "library-dashboards"}
+          showLabel={isNavbarOpened}
+          isGated={!hasLibraryFeature}
+        />
+        <AreaTab
           label={t`Semantic layer`}
           icon="repository"
           to={Urls.dataStudioLibrary()}

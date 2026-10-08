@@ -38,6 +38,8 @@ interface QuestionListProps {
   onSelect: BaseSelectListItemProps["onSelect"];
   hasCollections: boolean;
   showOnlyPublicCollections: boolean;
+  /** Narrows search results, e.g. to a collection subtree */
+  isSearchResultVisible?: (result: SearchResult) => boolean;
 }
 
 export function QuestionList({
@@ -46,6 +48,7 @@ export function QuestionList({
   onSelect,
   hasCollections,
   showOnlyPublicCollections,
+  isSearchResultVisible,
 }: QuestionListProps) {
   const getIcon = useGetIcon();
   const [queryOffset, setQueryOffset] = useState(0);
@@ -112,7 +115,11 @@ export function QuestionList({
         }
       : skipToken,
   );
-  const data = isSearching ? searchData : itemsData;
+  const visibleSearchData =
+    searchData && isSearchResultVisible
+      ? { ...searchData, data: searchData.data.filter(isSearchResultVisible) }
+      : searchData;
+  const data = isSearching ? visibleSearchData : itemsData;
   const error = isSearching ? searchError : itemsError;
   const isFetching = isSearching ? searchIsFetching : itemsIsFetching;
   const dispatch = useDispatch();

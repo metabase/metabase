@@ -1,5 +1,6 @@
 import type { ComponentType } from "react";
 
+import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
 import { Route } from "metabase/router";
 
 import { LibrarySectionLayout } from "./LibrarySectionLayout";
@@ -16,10 +17,87 @@ const libraryPage = () =>
     ({ LibraryPage }) => ({ Component: LibraryPage }),
   );
 
+const libraryDashboardsPage = () =>
+  import(
+    /* webpackChunkName: "data-studio-library" */ "./dashboards/LibraryDashboardsPage"
+  ).then(({ LibraryDashboardsPage }) => ({
+    Component: LibraryDashboardsPage,
+  }));
+
+const libraryDashboardOverviewPage = () =>
+  import(
+    /* webpackChunkName: "data-studio-library" */ "./dashboards/pages/LibraryDashboardOverviewPage"
+  ).then(({ LibraryDashboardOverviewPage }) => ({
+    Component: LibraryDashboardOverviewPage,
+  }));
+
+const libraryDashboardContentsPage = () =>
+  import(
+    /* webpackChunkName: "data-studio-library" */ "./dashboards/pages/LibraryDashboardContentsPage"
+  ).then(({ LibraryDashboardContentsPage }) => ({
+    Component: LibraryDashboardContentsPage,
+  }));
+
+const libraryDashboardDependenciesPage = () =>
+  import(
+    /* webpackChunkName: "data-studio-library" */ "./dashboards/pages/LibraryDashboardDependenciesPage"
+  ).then(({ LibraryDashboardDependenciesPage }) => ({
+    Component: LibraryDashboardDependenciesPage,
+  }));
+
+const libraryDashboardSubscriptionsPage = () =>
+  import(
+    /* webpackChunkName: "data-studio-library" */ "./dashboards/pages/LibraryDashboardSubscriptionsPage"
+  ).then(({ LibraryDashboardSubscriptionsPage }) => ({
+    Component: LibraryDashboardSubscriptionsPage,
+  }));
+
+const libraryDashboardHistoryPage = () =>
+  import(
+    /* webpackChunkName: "data-studio-library" */ "./dashboards/pages/LibraryDashboardHistoryPage"
+  ).then(({ LibraryDashboardHistoryPage }) => ({
+    Component: LibraryDashboardHistoryPage,
+  }));
+
+const libraryDashboardUsageStatsPage = () =>
+  import(
+    /* webpackChunkName: "data-studio-library" */ "./dashboards/pages/LibraryDashboardUsageStatsPage"
+  ).then(({ LibraryDashboardUsageStatsPage }) => ({
+    Component: LibraryDashboardUsageStatsPage,
+  }));
+
 export const getDataStudioLibraryRoutes = (IsAdmin: ComponentType) => {
   return (
     <Route path="library" element={<LibrarySectionLayout />}>
       <Route index lazy={libraryPage} />
+      <Route path="dashboards">
+        <Route index lazy={libraryDashboardsPage} />
+        <Route path=":dashboardId" lazy={libraryDashboardOverviewPage} />
+        <Route
+          path=":dashboardId/contents"
+          lazy={libraryDashboardContentsPage}
+        />
+        <Route
+          path=":dashboardId/subscriptions"
+          lazy={libraryDashboardSubscriptionsPage}
+        />
+        <Route path=":dashboardId/history" lazy={libraryDashboardHistoryPage} />
+        <Route
+          path=":dashboardId/usage"
+          lazy={libraryDashboardUsageStatsPage}
+        />
+        {PLUGIN_DEPENDENCIES.isEnabled && (
+          <Route
+            path=":dashboardId/dependencies"
+            lazy={libraryDashboardDependenciesPage}
+          >
+            <Route
+              index
+              element={<PLUGIN_DEPENDENCIES.DependencyGraphPage />}
+            />
+          </Route>
+        )}
+      </Route>
       {getDataStudioTableRoutes(IsAdmin)}
       {getDataStudioMetricRoutes()}
       {getDataStudioSnippetRoutes()}

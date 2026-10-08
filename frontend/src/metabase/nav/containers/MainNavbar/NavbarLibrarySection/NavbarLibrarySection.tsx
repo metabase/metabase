@@ -123,7 +123,8 @@ export function NavbarLibrarySection({
       t`Dashboards`,
     );
 
-    return [dataTree, metricsTree, dashboardsTree].filter(
+    // PROTOTYPE: Dashboards is listed first
+    return [dashboardsTree, dataTree, metricsTree].filter(
       (node): node is CollectionTreeItem => node != null,
     );
   }, [collections]);

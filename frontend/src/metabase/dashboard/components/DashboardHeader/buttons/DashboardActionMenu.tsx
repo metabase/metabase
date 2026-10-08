@@ -3,12 +3,17 @@ import { c, t } from "ttag";
 
 import { Link, type LinkProps } from "metabase/common/components/Link";
 import { ToolbarButton } from "metabase/common/components/ToolbarButton";
+import {
+  isInLibraryDashboards,
+  useCanUseLibraryDashboards,
+} from "metabase/common/data-studio/library-dashboards";
 import { useDashboardContext } from "metabase/dashboard/context/context";
 import { useRefreshDashboard } from "metabase/dashboard/hooks";
 import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
 import { PLUGIN_CACHING, PLUGIN_MODERATION } from "metabase/plugins";
 import { useLocation } from "metabase/router";
 import { Icon, Menu } from "metabase/ui";
+import * as Urls from "metabase/urls";
 import { parseSearchQuery } from "metabase/utils/browser";
 
 import {
@@ -62,6 +67,12 @@ const DashboardActionMenuInner = ({
     parameterQueryParams,
   });
 
+  // PROTOTYPE: Library dashboards are managed from Data Studio. Its settings,
+  // Move, Duplicate, and Move to trash live there instead of in this menu.
+  const canUseLibraryDashboards = useCanUseLibraryDashboards();
+  const isInLibrary = isInLibraryDashboards(dashboard?.collection);
+  const showViewInDataStudio = canUseLibraryDashboards && isInLibrary;
+
   const moderationItems = PLUGIN_MODERATION.useDashboardMenuItems(
     dashboard ?? undefined,
     refreshDashboard,
@@ -74,13 +85,13 @@ const DashboardActionMenuInner = ({
       {
         id: "dashboard-send-to-trash",
         perform: () => {
-          if (pathname) {
+          if (pathname && !isInLibrary) {
             onChangeLocation(`${pathname}/archive`);
           }
         },
       },
     ],
-    [pathname],
+    [pathname, isInLibrary],
   );
 
   if (!dashboard) {
@@ -106,6 +117,17 @@ const DashboardActionMenuInner = ({
           <AutoRefreshMenuOptions onSelect={() => handleOpenChange(false)} />
         ) : (
           <>
+            {showViewInDataStudio && (
+              <>
+                <Menu.Item
+                  leftSection={<Icon name="table" />}
+                  component={ForwardRefLink}
+                  to={Urls.dataStudioLibraryDashboard(dashboard.id)}
+                >{t`View in Data Studio`}</Menu.Item>
+                <Menu.Divider />
+              </>
+            )}
+
             {canResetFilters && (
               <Menu.Item
                 leftSection={<Icon name="revert" />}
@@ -128,7 +150,7 @@ const DashboardActionMenuInner = ({
               onClick={() => setShowAutoRefreshOptions(true)}
             />
 
-            {(canEdit || canConfigureCaching) && (
+            {(canEdit || canConfigureCaching) && !isInLibrary && (
               <Menu.Item
                 leftSection={<Icon name="gear" />}
                 onClick={openSettingsSidebar}
@@ -139,7 +161,7 @@ const DashboardActionMenuInner = ({
 
             {canEdit && moderationItems}
 
-            {canEdit && (
+            {canEdit && !isInLibrary && (
               <>
                 <Menu.Divider />
 
@@ -151,13 +173,15 @@ const DashboardActionMenuInner = ({
               </>
             )}
 
-            <Menu.Item
-              leftSection={<Icon name="clone" />}
-              component={ForwardRefLink}
-              to={`${location?.pathname}/copy`}
-            >{c("A verb, not a noun").t`Duplicate`}</Menu.Item>
+            {!isInLibrary && (
+              <Menu.Item
+                leftSection={<Icon name="clone" />}
+                component={ForwardRefLink}
+                to={`${location?.pathname}/copy`}
+              >{c("A verb, not a noun").t`Duplicate`}</Menu.Item>
+            )}
 
-            {canEdit && (
+            {canEdit && !isInLibrary && (
               <>
                 <Menu.Divider />
                 <Menu.Item

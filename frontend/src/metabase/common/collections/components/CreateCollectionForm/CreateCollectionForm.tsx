@@ -53,6 +53,7 @@ export interface CreateCollectionFormOwnProps {
   filterPersonalCollections?: FilterItemsInPersonalCollection;
   showCollectionPicker?: boolean;
   pickerOptions?: EntityPickerOptions;
+  isHiddenPickerItem?: (item: OmniPickerItem) => boolean;
   namespaces?: CollectionNamespace[];
   showAuthorityLevelPicker?: boolean;
 }
@@ -67,6 +68,7 @@ function CreateCollectionForm({
   filterPersonalCollections,
   showCollectionPicker = true,
   pickerOptions,
+  isHiddenPickerItem,
   namespaces,
   showAuthorityLevelPicker = true,
 }: Props) {
@@ -148,6 +150,7 @@ function CreateCollectionForm({
                 collectionPickerModalProps={{
                   options: pickerOptions,
                   namespaces,
+                  isHiddenItem: isHiddenPickerItem,
                 }}
                 entityType="collection"
                 filterPersonalCollections={filterPersonalCollections}

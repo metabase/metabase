@@ -171,7 +171,7 @@ function canEditPulse(
   }
 }
 
-function buildRecipientText(pulse: DashboardSubscription): string {
+export function buildRecipientText(pulse: DashboardSubscription): string {
   const {
     channels: [firstChannel],
   } = pulse;
@@ -327,7 +327,7 @@ function PulseDetails({ pulse, parameters }: PulseDetailsProps) {
   );
 }
 
-function friendlySchedule(channel: Channel): string {
+export function friendlySchedule(channel: Channel): string {
   const {
     channel_type,
     details,

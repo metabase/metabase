@@ -1,6 +1,7 @@
 import { useCallback } from "react";
 import { t } from "ttag";
 
+import type { EntityPickerModalProps } from "metabase/common/components/Pickers";
 import { useNavigate } from "metabase/router";
 import { Modal, type ModalProps } from "metabase/ui";
 import * as Urls from "metabase/urls";
@@ -12,6 +13,7 @@ export interface CreateDashboardModalProps {
   opened: boolean;
   collectionId?: CollectionId | null; // can be used by `getInitialCollectionId`
   targetCollection?: CollectionId | null;
+  collectionPickerModalProps?: Partial<EntityPickerModalProps>;
   onCreate?: (dashboard: Dashboard) => void;
   onClose: () => void;
 }
@@ -20,6 +22,7 @@ export const CreateDashboardModal = ({
   opened,
   collectionId,
   targetCollection,
+  collectionPickerModalProps,
   onCreate,
   onClose,
 }: CreateDashboardModalProps & Omit<ModalProps, "onClose">) => {
@@ -49,6 +52,7 @@ export const CreateDashboardModal = ({
         onCancel={onClose}
         collectionId={collectionId}
         targetCollection={targetCollection}
+        collectionPickerModalProps={collectionPickerModalProps}
       />
     </Modal>
   );
