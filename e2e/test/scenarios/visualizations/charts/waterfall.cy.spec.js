@@ -36,7 +36,7 @@ describe("scenarios > visualizations > waterfall", () => {
     verifyWaterfallRendering("PRODUCT", "PROFIT");
   });
 
-  it("should work with ordinal series and numeric X-axis (metabase#15550)", () => {
+  it("should work with quantitative and ordinal series and numeric X-axis (metabase#15550)", () => {
     H.startNewNativeQuestion();
     H.NativeEditor.type("select 1 as X, 20 as Y union select 2 as X, -10 as Y");
 
@@ -52,30 +52,14 @@ describe("scenarios > visualizations > waterfall", () => {
     H.sidebar().findAllByPlaceholderText("Select a field").last().click();
     H.popover().findByText("Y").click();
 
+    verifyWaterfallRendering("X", "Y");
+
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.contains("Axes").click();
 
     H.sidebar().findAllByDisplayValue("Linear").first().click();
     H.popover().findByText("Ordinal").click();
     H.sidebar().findByDisplayValue("Ordinal").should("exist");
-
-    verifyWaterfallRendering("X", "Y");
-  });
-
-  it("should work with quantitative series", () => {
-    H.startNewNativeQuestion();
-    H.NativeEditor.type("select 1 as X, 10 as Y union select 2 as X, -2 as Y");
-    cy.findByTestId("native-query-editor-container").icon("play").click();
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.contains("Visualization").click();
-    switchToWaterfallDisplay();
-
-    H.sidebar().findAllByPlaceholderText("Select a field").first().click();
-    H.popover().findByText("X").click();
-
-    // eslint-disable-next-line metabase/no-unsafe-element-filtering
-    H.sidebar().findAllByPlaceholderText("Select a field").last().click();
-    H.popover().findByText("Y").click();
 
     verifyWaterfallRendering("X", "Y");
   });
@@ -358,8 +342,9 @@ describe("scenarios > visualizations > waterfall", () => {
     });
   });
 
-  it("should allow adding non-series columns to the tooltip", () => {
+  it("should show the total bar tooltip, allow adding non-series columns to the tooltip, and display a goal line (metabase#48118)", () => {
     const INCREASE_COLOR = "#00FF00";
+    const TOTAL_BAR_COLOR = "#303D46";
 
     function getFirstWaterfallSegment() {
       return H.echartsContainer()
@@ -381,6 +366,12 @@ describe("scenarios > visualizations > waterfall", () => {
       visualization_settings: {
         "waterfall.increase_color": INCREASE_COLOR,
       },
+    });
+
+    H.chartPathWithFillColor(TOTAL_BAR_COLOR).realHover();
+    H.assertEChartsTooltip({
+      header: "Total",
+      rows: [{ name: "Count", value: "18,760", color: TOTAL_BAR_COLOR }],
     });
 
     getFirstWaterfallSegment().realHover();
@@ -406,49 +397,6 @@ describe("scenarios > visualizations > waterfall", () => {
         { name: "Sum of Total", value: "42,156.87" },
       ],
     });
-  });
-
-  it("should show tooltip when hovering the total bar (metabase#48118)", () => {
-    H.visitQuestionAdhoc({
-      display: "waterfall",
-      dataset_query: {
-        type: "query",
-        database: SAMPLE_DB_ID,
-        query: {
-          "source-table": ORDERS_ID,
-          aggregation: [["count"], ["sum", ["field-id", ORDERS.TOTAL]]],
-          breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "year" }]],
-        },
-      },
-    });
-
-    const totalBarColor = "#303D46";
-
-    H.chartPathWithFillColor(totalBarColor).realHover();
-
-    H.assertEChartsTooltip({
-      header: "Total",
-      rows: [{ name: "Count", value: "18,760", color: totalBarColor }],
-    });
-  });
-
-  it("should display goal line when configured", () => {
-    H.visitQuestionAdhoc({
-      display: "waterfall",
-      dataset_query: {
-        type: "query",
-        database: SAMPLE_DB_ID,
-        query: {
-          "source-table": ORDERS_ID,
-          aggregation: [["count"], ["sum", ["field-id", ORDERS.TOTAL]]],
-          breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "year" }]],
-        },
-      },
-    });
-
-    H.openVizSettingsSidebar();
-
-    H.leftSidebar().contains("Display").click();
 
     H.leftSidebar().within(() => {
       cy.findByText("Goal line").click();
@@ -473,18 +421,7 @@ describe("scenarios > visualizations > waterfall", () => {
       switchToWaterfallDisplay();
     });
 
-    it("should have increase, decrease, and total color options", () => {
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      cy.contains("Display").click();
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Increase color").click();
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Decrease color").click();
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Total color").click();
-    });
-
-    it("should allow toggling of the total bar", () => {
+    it("should allow toggling of the total bar and value labels, and have color options", () => {
       // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.contains("Display").click();
 
@@ -500,11 +437,6 @@ describe("scenarios > visualizations > waterfall", () => {
         cy.findByRole("switch").click({ force: true });
       });
       H.echartsContainer().find("text").contains("Total").should("exist");
-    });
-
-    it("should allow toggling of value labels", () => {
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      cy.contains("Display").click();
 
       H.chartPathWithFillColor("#303D46").should("exist");
       H.echartsContainer().find("text").contains("(4.56)").should("not.exist");
@@ -513,6 +445,13 @@ describe("scenarios > visualizations > waterfall", () => {
         .findByRole("switch")
         .click({ force: true });
       H.echartsContainer().find("text").contains("(4.56)").should("be.visible");
+
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
+      cy.findByText("Increase color").click();
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
+      cy.findByText("Decrease color").click();
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
+      cy.findByText("Total color").click();
     });
   });
 });
