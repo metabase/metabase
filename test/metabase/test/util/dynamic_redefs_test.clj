@@ -51,7 +51,11 @@
       (is (= [:wrapped [:original 1]] (delegated 1)))))
   (testing "and through `original-fn` of the var"
     (mt/with-dynamic-fn-redefs [delegated (fn [x] [:wrapped ((mt/original-fn #'delegated) x)])]
-      (is (= [:wrapped [:original 1]] (delegated 1))))))
+      (is (= [:wrapped [:original 1]] (delegated 1)))))
+  (testing "given the var, `dynamic-value` is the replacement in scope"
+    (let [replacement (fn [x] [:replaced x])]
+      (mt/with-dynamic-fn-redefs [delegated replacement]
+        (is (identical? replacement (mt/dynamic-value #'delegated)))))))
 
 (defn- countdown [n]
   (if (pos? n) (countdown (dec n)) :done))
