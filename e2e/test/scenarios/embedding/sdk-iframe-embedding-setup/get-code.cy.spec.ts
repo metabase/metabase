@@ -42,7 +42,7 @@ describe("scenarios > embedding > sdk iframe embed setup > get code step", () =>
     H.expectNoBadSnowplowEvents();
   });
 
-  it("shows the dashboard code snippet and disables SSO when JWT and SAML are not configured", () => {
+  it("shows the dashboard code snippet and disables SSO when JWT and SAML are not configured, then enables SSO once SAML is configured", () => {
     navigateToEmbedOptionsStep({
       experience: "dashboard",
       resourceName: DASHBOARD_NAME,
@@ -75,9 +75,8 @@ describe("scenarios > embedding > sdk iframe embed setup > get code step", () =>
       codeBlock().should("contain", "metabase-dashboard");
       codeBlock().should("contain", `dashboard-id="${ORDERS_DASHBOARD_ID}"`);
     });
-  });
 
-  it("should enable SSO radio button when SAML is configured", () => {
+    cy.log("SSO should be enabled once SAML is configured");
     enableSamlAuth();
     navigateToGetCodeStep({
       experience: "dashboard",
