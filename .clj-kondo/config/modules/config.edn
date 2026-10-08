@@ -3373,6 +3373,7 @@
            parameters.schema
            permissions
            premium-features
+           queries
            query-processor
            remote-sync
            search
