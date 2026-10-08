@@ -269,6 +269,28 @@ describe("resolveDatasetQuery", () => {
     });
   });
 
+  it("filters the dynamic stage on an FK-joined dimension of the static query", async () => {
+    const product = TEST_SCHEMA.metrics.revenue.dimensions.orders.product;
+
+    const datasetQuery = await resolveDatasetQueryInBundle(createMockStore())(
+      {
+        source: TEST_SCHEMA.tables.orders,
+        aggregations: [TEST_SCHEMA.metrics.revenue],
+        breakouts: [breakout(product)],
+      },
+      { filters: [filter(product, "=", "Widget")] },
+    );
+
+    expect(stagesOf(datasetQuery)[1].filters).toEqual([
+      [
+        "=",
+        expect.anything(),
+        ["field", expect.anything(), expect.stringContaining("NAME")],
+        "Widget",
+      ],
+    ]);
+  });
+
   it("passes generated metric dimension orderBys through Lib.createTestQuery", async () => {
     const datasetQuery = await resolveDatasetQueryInBundle(createMockStore())({
       source: TEST_SCHEMA.tables.orders,

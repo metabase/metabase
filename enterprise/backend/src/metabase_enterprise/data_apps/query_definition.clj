@@ -28,14 +28,12 @@
 
 (mr/def ::column
   [:map {:closed true :decode/normalize {:compile query-map-decoder}
-         ::sdk-metadata [:description :js-type :field-id :base-type :effective-type :default-temporal-bucket :id :metric-id]}
+         ::sdk-metadata [:description :display-name :js-type :table-id :source-name :base-type :effective-type
+                         :default-temporal-bucket :id :metric-id]}
    [:type [:= {:decode/normalize lib.schema.common/normalize-keyword} :column]]
    [:name string?]
-   [:table-id {:optional true} [:maybe ::lib.schema.id/table]]
-   [:source-name {:optional true} [:maybe string?]]
-   [:source-field-id {:optional true} [:maybe ::lib.schema.id/field]]
-   [:display-name {:optional true} [:maybe string?]]
-   [:index {:optional true} [:maybe pos-int?]]])
+   [:field-id {:optional true} [:maybe ::lib.schema.id/field]]
+   [:source-field-id {:optional true} [:maybe ::lib.schema.id/field]]])
 
 (mr/def ::temporal-bucket
   [:map {:closed true :decode/normalize {:compile query-map-decoder}}
