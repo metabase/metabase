@@ -1,6 +1,6 @@
 (ns metabase.test.util.dynamic-redefs
   (:import
-   (clojure.lang MultiFn Var)
+   (clojure.lang MultiFn Namespace Var)
    (java.util Collections Map WeakHashMap)))
 
 (set! *warn-on-reflection* true)
@@ -78,19 +78,38 @@
   ;; So each proxy records its own original, and replacements are bound to a proxy, not to the var.
   (.put proxies proxy [a-var original]))
 
-(defn- var->proxy
-  "Build a proxy for `a-var` that calls the replacement in scope on the current thread, or `original` with none.
-   Throws when `original` is not an `IFn`, or is a multimethod."
-  [a-var original]
+(defn- check-proxyable
+  "Throws when `root`, the root of `a-var`, is not an `IFn`, or is a multimethod."
+  [a-var root]
   ;; These are throws, not asserts, so they fire even when `*assert*` is false.
-  (when-not (ifn? original)
-    (throw (ex-info (str "Cannot proxy non-IFn values: " a-var) {:var a-var, :value original})))
-  (when (instance? MultiFn original)
+  (when-not (ifn? root)
+    (throw (ex-info (str "Cannot proxy non-IFn values: " a-var) {:var a-var, :value root})))
+  (when (instance? MultiFn root)
     (throw (ex-info (str "Cannot proxy multimethods: " a-var ". "
                          "with-dynamic-fn-redefs replaces the var's root with a proxy, which breaks "
                          "dispatch and pollutes the JVM for other tests. Use defmethod (or add-method) "
                          "with a dedicated test dispatch value instead.")
-                    {:var a-var})))
+                    {:var a-var}))))
+
+(defn- import-source
+  "The var that potemkin imported `a-var` from, or nil when `a-var` is not an import that still mirrors its source."
+  ^Var [^Var a-var]
+  ;; potemkin watches the source with the import as the key, and copies the source's metadata over the import's.
+  ;; That includes `:ns`, so the source is normally interned in the namespace the import's metadata names.
+  (let [watching    (fn [vars]
+                      (some (fn [^Var v] (when (contains? (.getWatches v) a-var) v)) vars))
+        meta-ns     (:ns (meta a-var))
+        ^Var source (or (when (instance? Namespace meta-ns)
+                          (watching (vals (ns-interns meta-ns))))
+                        ;; An import of an import names the first source's namespace, so its own source can be anywhere.
+                        (when-not (identical? meta-ns (.ns a-var))
+                          (watching (mapcat (comp vals ns-interns) (all-ns)))))]
+    (when (and source (identical? (.getRawRoot source) (.getRawRoot a-var)))
+      source)))
+
+(defn- var->proxy
+  "Build a proxy for `a-var` that calls the replacement in scope on the current thread, or `original` with none."
+  [a-var original]
   ;; The proxy outlives the redef that installed it, so most calls find no replacement in scope and must stay cheap.
   ;; The fixed arities avoid an argument seq for those calls, and only a replacement gets a `binding`.
   ;; The recursion check is skipped with it: without a replacement, any recursion is the original's own.
@@ -111,7 +130,15 @@
   (doseq [^Var a-var (remove proxy-original vars)]
     (locking a-var
       (when-not (proxy-original a-var)
-        (.bindRoot a-var (var->proxy a-var (.getRawRoot a-var)))))))
+        (let [root   (.getRawRoot a-var)
+              source (import-source a-var)]
+          (check-proxyable a-var root)
+          ;; An import's proxy calls through its source var, so it follows the source's root with no help from the
+          ;; watch. The watch has to go: it would copy every new source root over this proxy, and both a proxy
+          ;; installed on the source and a `with-redefs` of it are new roots.
+          (when source
+            (remove-watch source a-var))
+          (.bindRoot a-var (var->proxy a-var (or source root))))))))
 
 (defn local-redefs
   "The value to bind [[*local-redefs*]] to so that each var in `var->replacement` calls its replacement.
@@ -145,7 +172,8 @@
      A raw `Thread`, a Quartz worker and an unwrapped `ExecutorService` task do not inherit them.
      Keep `with-redefs` for those: its root swap is visible to every thread.
    - Redefining a potemkin re-export only intercepts calls made through the re-export.
-     Callers of the var it was imported from still see the original."
+     Callers of the var it was imported from still see the original.
+     With no replacement of its own in scope, a re-export calls whatever its source calls."
   [bindings & body]
   (let [var->definition (bindings->var->definition bindings)]
     `(do

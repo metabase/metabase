@@ -4,7 +4,8 @@
    [clojure.test.check.clojure-test :refer [defspec]]
    [clojure.test.check.generators :as gen]
    [clojure.test.check.properties :as prop]
-   [metabase.test :as mt])
+   [metabase.test :as mt]
+   [potemkin :as p])
   (:import
    (java.util.concurrent Callable CyclicBarrier Executors Future)))
 
@@ -147,15 +148,73 @@
     (is (= :outer (shadowed))))
   (is (= :original (shadowed))))
 
-;;; Model test: generated programs nest dynamic redefs, `with-redefs`, futures and exceptions around calls to two vars.
+;;; Each test of an import gets its own source: whether a var has been proxied before is part of what they check.
+
+(defn- source-1 [] :original)
+(p/import-fn source-1 import-1)
+
+(deftest ^:parallel import-follows-its-source-test
+  (testing "an import with no replacement of its own calls what its source calls"
+    (mt/with-dynamic-fn-redefs [source-1 (constantly :source)]
+      (is (= [:source :source] [(source-1) (import-1)]))))
+  (testing "a replacement for the import only reaches calls through the import"
+    (mt/with-dynamic-fn-redefs [import-1 (constantly :import)]
+      (is (= [:original :import] [(source-1) (import-1)]))))
+  (testing "and the import follows its source again afterwards"
+    (mt/with-dynamic-fn-redefs [source-1 (constantly :source)]
+      (is (= [:source :source] [(source-1) (import-1)])))
+    (is (= [:original :original] [(source-1) (import-1)]))))
+
+(defn- source-2 [] :original)
+(p/import-fn source-2 import-2)
+
+(deftest ^:parallel import-redef-survives-first-redef-of-source-test
+  (mt/with-dynamic-fn-redefs [import-2 (constantly :import)]
+    (testing "the first dynamic redef of the source, nested inside"
+      (mt/with-dynamic-fn-redefs [source-2 (constantly :source)]
+        (is (= [:source :import] [(source-2) (import-2)])))
+      (is (= [:original :import] [(source-2) (import-2)])))))
+
+(defn- source-3 [] :original)
+(p/import-fn source-3 import-3)
+
+(deftest ^:parallel import-redef-survives-source-redef-on-another-thread-test
+  (mt/with-dynamic-fn-redefs [import-3 (constantly :import)]
+    (doto (Thread. ^Runnable (fn [] (mt/with-dynamic-fn-redefs [source-3 (constantly :source)] (source-3))))
+      .start
+      .join)
+    (is (= [:original :import] [(source-3) (import-3)]))))
+
+(defn- source-4 [] :original)
+(p/import-fn source-4 import-4)
+
+;; Not ^:parallel: `with-redefs` replaces the var's root for every thread.
+(deftest ^:synchronized import-redef-survives-with-redefs-of-source-test
+  (mt/with-dynamic-fn-redefs [import-4 (constantly :import)]
+    ;; The global root swap is the case under test.
+    #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
+    (with-redefs [source-4 (constantly :stub)]
+      (is (= [:stub :import] [(source-4) (import-4)])))
+    (is (= [:original :import] [(source-4) (import-4)])))
+  (testing "with no replacement of its own, the import sees a `with-redefs` of its source"
+    #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
+    (with-redefs [source-4 (constantly :stub)]
+      (is (= [:stub :stub] [(source-4) (import-4)])))
+    (is (= [:original :original] [(source-4) (import-4)]))))
+
+;;; Model test: generated programs nest dynamic redefs, `with-redefs`, futures and exceptions around calls to three
+;;; vars, one of them an import of another.
 ;;; The model is one rule: a call sees the innermost enclosing redef of its var, of either kind, else the original.
+;;; An import with no redef of its own sees what its source sees.
 
 (defn- model-a [& args] [:original (count args)])
 
 (defn- model-b [& args] [:original (count args)])
 
+(p/import-fn model-a model-a-import)
+
 (def ^:private gen-program
-  (let [gen-var (gen/elements [:a :b])]
+  (let [gen-var (gen/elements [:a :b :a-import])]
     (gen/recursive-gen
      (fn [gen-op]
        (let [gen-body (gen/vector gen-op 0 4)]
@@ -183,7 +242,7 @@
   [seen id ops]
   (doseq [{:keys [op body throws?] v :var :as o} ops]
     (case op
-      :call   (swap! seen conj (apply (case v :a model-a :b model-b) (range (:nargs o))))
+      :call   (swap! seen conj (apply (case v :a model-a, :b model-b, :a-import model-a-import) (range (:nargs o))))
       :future @(future (run-program! seen id body))
       (let [f     (stub (swap! id inc))
             body! (fn []
@@ -192,10 +251,12 @@
                       (throw (ex-info "leave the redef by exception" {::expected true}))))]
         (try
           (case [op v]
-            [:dynamic :a] (mt/with-dynamic-fn-redefs [model-a f] (body!))
-            [:dynamic :b] (mt/with-dynamic-fn-redefs [model-b f] (body!))
-            [:plain :a]   (with-redefs-fn {#'model-a f} body!)
-            [:plain :b]   (with-redefs-fn {#'model-b f} body!))
+            [:dynamic :a]        (mt/with-dynamic-fn-redefs [model-a f] (body!))
+            [:dynamic :b]        (mt/with-dynamic-fn-redefs [model-b f] (body!))
+            [:dynamic :a-import] (mt/with-dynamic-fn-redefs [model-a-import f] (body!))
+            [:plain :a]          (with-redefs-fn {#'model-a f} body!)
+            [:plain :b]          (with-redefs-fn {#'model-b f} body!)
+            [:plain :a-import]   (with-redefs-fn {#'model-a-import f} body!))
           (catch clojure.lang.ExceptionInfo e
             (when-not (::expected (ex-data e))
               (throw e))))))))
@@ -208,7 +269,7 @@
     ((fn walk [env ops]
        (doseq [{:keys [op body] v :var :as o} ops]
          (case op
-           :call   (swap! seen conj [(get env v :original) (:nargs o)])
+           :call   (swap! seen conj [(or (env v) (when (= v :a-import) (env :a)) :original) (:nargs o)])
            :future (walk env body)
            (walk (assoc env v (swap! id inc)) body))))
      {} ops)
@@ -218,7 +279,10 @@
 (defspec ^:synchronized innermost-redef-wins-model-test 300
   (prop/for-all [ops (gen/vector gen-program 1 6)]
     (let [seen (atom [])]
+      ;; Until an import is first proxied, potemkin copies each new root of its source over it, a `with-redefs` stub
+      ;; of the import included. The rule only holds from then on, so proxy it before the program runs.
+      (mt/with-dynamic-fn-redefs [model-a-import identity] nil)
       (run-program! seen (atom 0) ops)
       (and (= (model ops) @seen)
-           ;; Nothing leaks out of a program: both vars are back to their originals.
-           (= [:original 0] (model-a) (model-b))))))
+           ;; Nothing leaks out of a program: every var is back to its original.
+           (= [:original 0] (model-a) (model-b) (model-a-import))))))
