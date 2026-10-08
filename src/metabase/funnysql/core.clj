@@ -40,7 +40,7 @@
 
 (defn- fn-call? [x]
   (and (vector? x)
-       (keyword? (first x))))
+       (keyword? (get x 0))))
 
 (defn- object! [x context]
   (append-sql! context "?")
@@ -114,7 +114,7 @@
   [x]
   (or (keyword? x)
       (and (vector? x)
-           (= (first x) ::h2x/identifier))))
+           (= (get x 0) ::h2x/identifier))))
 
 (defn- check-identifier-form
   "Table/column-name positions must never silently fall through to [[object!]]'s `?`-parameter handling just
@@ -255,7 +255,7 @@
 
 (defn- insert-into! [x context]
   (let [[identifier subquery] (if (and (vector? x)
-                                       (vector? (first x)))
+                                       (vector? (get x 0)))
                                 x
                                 [x])]
     (append-sql! context "INSERT INTO ")
@@ -430,7 +430,7 @@
 
 (defn- inline? [x]
   (and (vector? x)
-       (= (first x) :inline)))
+       (= (get x 0) :inline)))
 
 (defn- limit!
   [n context]
@@ -635,7 +635,7 @@
   "Whether `x` is a [[fn-call?]] for one of the [[predicate-operators]]."
   [x]
   (and (fn-call? x)
-       (contains? predicate-operators (first x))))
+       (contains? predicate-operators (get x 0))))
 
 (defn- equals! [sql nil-sql [x y :as args] context]
   (when-not (= (count args) 2)
@@ -845,7 +845,7 @@
 
 (defn- binary-arithmetic-call? [x]
   (and (fn-call? x)
-       (binary-arithmetic-operators (first x))))
+       (binary-arithmetic-operators (get x 0))))
 
 (defn- unary-binary-operator! [f x context]
   (case f
