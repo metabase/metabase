@@ -666,7 +666,7 @@
    :search-terms [:name :description]
    :render-terms {:model-id   :model.id
                   :model-name :model.name}
-   :where        [:= :collection.namespace nil]
+   :where        [:and [:= :collection.namespace nil] [:not= :this.model_id nil]]
    :joins        {:model        [:model/Card [:= :model.id :this.model_id]]
                   :query_action [:model/QueryAction [:= :query_action.action_id :this.id]]
                   :collection   [:model/Collection [:= :collection.id :this.collection_id]]}})
