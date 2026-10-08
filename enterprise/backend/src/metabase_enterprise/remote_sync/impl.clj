@@ -1537,6 +1537,16 @@
     (catch Throwable t
       (log/errorf t "Failed to close remote sync task %d" task-id))))
 
+(defn- clear-interrupt!
+  "Clears the interrupt flag of the current thread, and logs a warning when it was set. The task timeout interrupts
+  the worker of task `task-id`; afterwards the worker must still write the task row."
+  [task-id]
+  ;; On a virtual thread with the flag set, each app-DB query fails on Postgres, MySQL and MariaDB ("Closed by
+  ;; interrupt"), so the row would stay open. The error that the interrupt caused is the result that the row records.
+  ;; Failsafe (`dh/with-timeout`) records its own interrupt, and clears the flag again when the body returns.
+  (when (Thread/interrupted)
+    (log/warnf "Remote sync task %d was interrupted; recording its result" task-id)))
+
 (defn run-task-body!
   "Run `sync-fn` (a fn of task-id returning a result map) for the already-created RemoteSyncTask `task-id` on the
   current thread, recording the outcome on the row. `branch` is written to the remote-sync-branch setting on
@@ -1545,7 +1555,8 @@
   Guarantees, whatever `sync-fn` or the bookkeeping does: a heartbeat runs on the row for the duration, the task
   is registered in [[running-task-ids]] for the duration, and the row is ended on exit. When the heartbeat does not
   start, `sync-fn` does not run. Any `Throwable` from `sync-fn` becomes an `:error` result; an `Error` must not escape
-  the worker thread, where nothing would log it and the row would stay open."
+  the worker thread, where nothing would log it and the row would stay open. The interrupt flag of the thread is
+  cleared after `sync-fn`, so that an interrupt (the task timeout) does not stop the bookkeeping."
   [task-id branch sync-fn & {:keys [on-success]}]
   (let [stop-heartbeat! (volatile! (constantly nil))]
     (swap! running-tasks conj task-id)
@@ -1558,6 +1569,7 @@
                        (log/error t "Remote sync task failed")
                        {:status  :error
                         :message (source-error-message t)}))]
+        (clear-interrupt! task-id)
         (handle-task-result! result task-id branch)
         (when (and on-success (= :success (:status result)))
           (try
@@ -1569,6 +1581,8 @@
       (finally
         (@stop-heartbeat!)
         (swap! running-tasks disj task-id)
+        ;; again: the interrupt can also come while the bookkeeping runs
+        (clear-interrupt! task-id)
         (ensure-task-ended! task-id)))))
 
 (defn- run-async!
