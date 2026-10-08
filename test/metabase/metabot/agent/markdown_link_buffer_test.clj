@@ -294,14 +294,31 @@
       (is (= "metabase://query/q1" (first (vals @registry)))))))
 
 (deftest ^:parallel resolve-xf-flushes-held-text-where-the-text-ends-test
-  (testing "text held for a possible link comes out before the tool call that follows it"
-    (is (=? [{:type :text :id "t1" :text "Let me check the "}
-             {:type :text :id "t1" :text "[Orders"}
-             {:type :tool-input :id "call-1"}
-             {:type :tool-output :id "call-1"}]
-            (resolve-parts [{:type :text :id "t1" :text "Let me check the [Orders"}
-                            {:type :tool-input :id "call-1" :function "search" :arguments {}}
-                            {:type :tool-output :id "call-1" :result {:output "Found ORDERS"}}])))))
+  (doseq [[where after] [["before the tool call that follows it"
+                          [{:type :tool-input :id "call-1" :function "search" :arguments {}}
+                           {:type :tool-output :id "call-1" :result {:output "Found ORDERS"}}]]
+                         ["before an error"
+                          [{:type :error :error {:message "Stream failed"}}]]
+                         ["at the end of the stream"
+                          []]]]
+    (testing (str "text held for a possible link comes out " where ", with the id of its text")
+      (is (= (into [{:type :text :id "t1" :text "Let me check the "}
+                    {:type :text :id "t1" :text "[Orders"}]
+                   after)
+             (resolve-parts (into [{:type :text :id "t1" :text "Let me check the [Orders"}] after)))))))
+
+(deftest ^:parallel resolve-xf-supports-early-termination-test
+  (let [take-parts (fn [n parts]
+                     (into [] (comp (mlb/resolve-xf {} {} (atom {})) (take n)) parts))]
+    (testing "the consumer stops at the held text flushed before a tool call"
+      (is (= [{:type :text :id "t1" :text "a "}
+              {:type :text :id "t1" :text "[b"}]
+             (take-parts 2 [{:type :text :id "t1" :text "a [b"}
+                            {:type :tool-input :id "c1"}
+                            {:type :tool-output :id "c1"}]))))
+    (testing "the consumer stops before the held text flushed at the end of the stream"
+      (is (= [{:type :text :id "t1" :text "a "}]
+             (take-parts 1 [{:type :text :id "t1" :text "a [b"}]))))))
 
 (deftest ^:parallel resolve-xf-holds-text-across-parts-that-do-not-end-it-test
   (doseq [part [{:type :usage :usage {:promptTokens 1}}
