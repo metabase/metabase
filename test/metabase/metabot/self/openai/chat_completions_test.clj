@@ -481,23 +481,20 @@
                               :finish_reason "tool_calls"}]
                    :usage   {:prompt_tokens 10 :completion_tokens 4}}])))))
 
-(deftest ^:parallel chunks-xf-content-still-outranks-tool-calls-test
-  (testing "KNOWN GAP, pinned deliberately: `chunk-type` classifies content ahead of tool calls, so a
-           delta carrying both yields the text and drops the calls — however many there are.
-
-           Not fixed here because it is speculative, not because it is hard: no probed provider emits
-           the shape, and what such a delta should emit — text first, calls first, or both in wire
-           order — is a guess until one does. Worth knowing the shape is legal, though. The replay
-           direction already assumes it: `merge-consecutive-assistant-messages` exists precisely
-           because Chat Completions allows text and tool_calls on one assistant message, so we build
-           the combination going out and drop half of it coming in.
-
-           Pinned so that if a provider starts sending it, a failing test says what happens rather
-           than a tool quietly never running."
+(deftest ^:parallel chunks-xf-content-and-tool-calls-in-one-delta-test
+  (testing "a delta can carry text and tool calls together. Ollama sends this shape when its parser flushes text
+           and a call at the same time. The text comes first and its block closes, then every call follows in
+           wire order."
     (is (= [{:type :start :messageId "chatcmpl-b"}
             {:type :text-start}
             {:type :text-delta :delta "on it"}
-            {:type :text-end}]
+            {:type :text-end}
+            {:type :tool-input-start :toolCallId "call-a" :toolName "t"}
+            {:type :tool-input-delta :toolCallId "call-a" :inputTextDelta "{}"}
+            {:type :tool-input-available :toolCallId "call-a" :toolName "t"}
+            {:type :tool-input-start :toolCallId "call-b" :toolName "t"}
+            {:type :tool-input-delta :toolCallId "call-b" :inputTextDelta "{}"}
+            {:type :tool-input-available :toolCallId "call-b" :toolName "t"}]
            (mapv #(dissoc % :id)
                  (into [] (chat-completions/chat-completions->aisdk-chunks-xf)
                        [{:id      "chatcmpl-b"

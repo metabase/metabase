@@ -327,8 +327,12 @@
                    (= @current-type :reasoning))               (u/prog1
                                                                  (vswap! payload assoc
                                                                          :providerMetadata reasoning-md))
-              ;; Tool calls — every entry in the delta, in order
-              (= chunk-type :function_call)                    (as-> r (u/reduce-preserving-reduced emit-tool-call! r tool-calls))
+              ;; Tool calls — every entry in the delta, in order. A delta can carry text and calls together: Ollama
+              ;; puts both in one delta when its parser flushes them at the same time. The text comes first, so its
+              ;; block is closed here before the calls start.
+              (seq tool-calls)                                 (as-> r
+                                                                     (cond-> r (= :text @current-type) (close!))
+                                                                 (u/reduce-preserving-reduced emit-tool-call! r tool-calls))
               ;; Closing a tool call runs it, so drop one that an error cuts off
               (and error-text
                    (= @current-type :function_call))           (u/prog1 (clear!))
