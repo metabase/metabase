@@ -475,7 +475,7 @@
     "lint-openapi": "redocly lint resources/openapi/openapi.json --skip-rule security-defined --skip-rule operation-operationId --skip-rule no-unused-components --skip-rule info-license --skip-rule no-path-trailing-slash --skip-rule no-identical-paths --skip-rule no-ambiguous-paths --skip-rule path-parameters-defined --skip-rule spec-components-invalid-map-name",
     "lint": "bun run lint-oxlint && bun run lint-format && bun run lint-docs-links && bun run lint-yaml",
     "lint-docs-links": "bun install && ./bin/verify-doc-links",
-    "lint-css": "stylelint './frontend/**/*.css'",
+    "lint-css": "stylelint '{frontend,enterprise/frontend,e2e}/**/*.css'",
     "lint-oxlint": "node frontend/lint/scripts/run-oxlint.mjs",
     "test-oxlint": "node --test frontend/lint/tests/oxlint-*.test.mjs",
     "lint-config-update": "node frontend/lint/update-recommended-rules.mjs && oxfmt frontend/lint/recommended-rules.json frontend/lint/oxlint/rule-defaults.json",
