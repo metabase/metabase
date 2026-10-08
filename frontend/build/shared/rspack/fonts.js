@@ -10,15 +10,13 @@ const fontverter = require("fontverter");
 // what the first leaves out, so a codepoint claimed by both would render tofu
 // whenever the browser picked the face that lacks it.
 //
-// The two sets are disjoint and together cover everything above the control
-// characters. The second chunk holds only what the first leaves out, so a
-// codepoint claimed by both would render tofu whenever the browser picked the
-// face that lacks it.
-//
-// This is Google's own latin subset. Its scattered singletons are not noise:
-// the arrows, the true minus and the euro turn up in otherwise-latin text, and
-// a chart that renders one with the second chunk still in flight measures the
-// fallback's metrics and lays itself out around them.
+// Google's latin subset, widened to whole blocks for the symbols that turn up
+// in otherwise-latin text: sub- and superscripts, currency, letterlike, arrows
+// and mathematical operators. A chart labels a series CO₂, a trend draws an
+// arrow, a header carries a summation. None of those is worth fetching an
+// entire script for, and a page that renders one while the second chunk is
+// still in flight measures the fallback's metrics and lays itself out around
+// them. Whole blocks also absorb the singletons Google lists one by one.
 //
 // Two chunks rather than Google's seven. Measured across Noto Sans, Inter,
 // Roboto and PT Sans, a third cost 19-52 kB more for a latin page 28 bytes
@@ -31,14 +29,10 @@ const LATIN_RANGES = [
   [0x2c6, 0x2c6],
   [0x2da, 0x2da],
   [0x2dc, 0x2dc],
-  [0x2000, 0x206f],
-  [0x2074, 0x2074],
-  [0x20ac, 0x20ac],
-  [0x2122, 0x2122],
-  [0x2191, 0x2191],
-  [0x2193, 0x2193],
-  [0x2212, 0x2212],
-  [0x2215, 0x2215],
+  [0x2000, 0x20cf],
+  [0x2100, 0x214f],
+  [0x2190, 0x21ff],
+  [0x2200, 0x22ff],
   [0xfeff, 0xfeff],
   [0xfffd, 0xfffd],
 ];
