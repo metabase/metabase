@@ -8,6 +8,7 @@ import {
 import {
   canAccessAiAuditing,
   canAccessAlertsManagement,
+  canAccessApiKeyUsage,
   canAccessMonitor,
   canAccessMonitorDiagnostics,
   canAccessMonitoringTools,
@@ -324,5 +325,51 @@ describe("canAccessAiAuditing", () => {
     });
 
     expect(canAccessAiAuditing(state)).toBe(false);
+  });
+});
+
+describe("canAccessApiKeyUsage", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    isWithinIframe.mockReturnValue(false);
+  });
+
+  it("returns false when in embedding iframe", () => {
+    isWithinIframe.mockReturnValue(true);
+    const state = createMockState({
+      currentUser: createMockUser({ is_superuser: true }),
+    });
+
+    expect(canAccessApiKeyUsage(state)).toBe(false);
+  });
+
+  it("returns true when user is admin", () => {
+    const state = createMockState({
+      currentUser: createMockUser({ is_superuser: true }),
+    });
+
+    expect(canAccessApiKeyUsage(state)).toBe(true);
+  });
+
+  it("returns false for an analyst without admin", () => {
+    const state = createMockState({
+      currentUser: createMockUser({
+        is_superuser: false,
+        is_data_analyst: true,
+      }),
+    });
+
+    expect(canAccessApiKeyUsage(state)).toBe(false);
+  });
+
+  it("returns false for a non-admin with the monitoring application permission", () => {
+    const state = createMockState({
+      currentUser: createMockUser({
+        is_superuser: false,
+        permissions: { can_access_monitoring: true },
+      }),
+    });
+
+    expect(canAccessApiKeyUsage(state)).toBe(false);
   });
 });

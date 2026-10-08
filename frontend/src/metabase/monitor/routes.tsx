@@ -29,6 +29,7 @@ import * as Urls from "metabase/urls";
 import {
   CanAccessAiAuditing,
   CanAccessAlertsManagement,
+  CanAccessApiKeyUsage,
   CanAccessMonitor,
   CanAccessMonitorDiagnostics,
   CanAccessMonitoringTools,
@@ -65,6 +66,13 @@ const dependencyDiagnosticsUpsellPage = () =>
     /* webpackChunkName: "monitor" */ "metabase/monitor/dependency-diagnostics/DependencyDiagnosticsUpsellPage"
   ).then(({ DependencyDiagnosticsUpsellPage }) => ({
     Component: DependencyDiagnosticsUpsellPage,
+  }));
+
+const apiKeyUsageUpsellPage = () =>
+  import(
+    /* webpackChunkName: "monitor" */ "metabase/monitor/api-key-usage/ApiKeyUsageUpsellPage"
+  ).then(({ ApiKeyUsageUpsellPage }) => ({
+    Component: ApiKeyUsageUpsellPage,
   }));
 
 const jobInfoApp = () =>
@@ -144,6 +152,22 @@ export function getMonitorRoutes() {
           <Route path="model-persistence-log" lazy={modelPersistenceLogPage}>
             {modalRoute(":jobId", ModelPersistenceLogJobModal)}
           </Route>
+        </Route>
+
+        {/* Admin-only, unlike the rest of Monitoring tools above — the page loads
+            `GET /api/api-key`, superuser-only, so a non-admin with just the monitoring
+            application permission would hit a 403. */}
+        <Route element={<CanAccessApiKeyUsage />}>
+          {PLUGIN_MONITOR.isApiKeyUsageEnabled ? (
+            <Route path="api-key-usage">
+              {PLUGIN_MONITOR.getApiKeyUsageRoutes()}
+            </Route>
+          ) : (
+            <Route path="api-key-usage">
+              <Route index lazy={apiKeyUsageUpsellPage} />
+              <Route path="*" lazy={apiKeyUsageUpsellPage} />
+            </Route>
+          )}
         </Route>
 
         <Route element={<CanAccessAlertsManagement />}>

@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { useMemo, useState } from "react";
 import { P, match } from "ts-pattern";
 import { t } from "ttag";
@@ -214,6 +215,11 @@ type ConversationFiltersProps = {
   groupOptions: { value: string; label: string }[];
   tenantOptions: { value: string; label: string }[];
   hasTenants: boolean;
+  /** Hides the user select for pages where filtering by user isn't a meaningful concept. */
+  hasUsers?: boolean;
+  /** Rendered right after the Group select, before User/Date — for a caller-specific filter that
+   * belongs grouped with Group rather than after the rest of this shared bar. */
+  extraFilter?: ReactNode;
 };
 
 export function ConversationFilters({
@@ -230,6 +236,8 @@ export function ConversationFilters({
   groupOptions,
   tenantOptions,
   hasTenants,
+  hasUsers = true,
+  extraFilter,
 }: ConversationFiltersProps) {
   return (
     <Flex gap="sm" wrap="wrap" align="center">
@@ -256,15 +264,18 @@ export function ConversationFilters({
         bdrs="xs"
         data-testid="conversation-filters-group-select"
       />
-      <Select
-        data={[{ value: "", label: t`All users` }, ...userOptions]}
-        value={user ?? ""}
-        onChange={(val) => onUserChange(val === "" ? null : val)}
-        searchable
-        w={FILTER_WIDTH}
-        bdrs="xs"
-        data-testid="conversation-filters-user-select"
-      />
+      {extraFilter}
+      {hasUsers && (
+        <Select
+          data={[{ value: "", label: t`All users` }, ...userOptions]}
+          value={user ?? ""}
+          onChange={(val) => onUserChange(val === "" ? null : val)}
+          searchable
+          w={FILTER_WIDTH}
+          bdrs="xs"
+          data-testid="conversation-filters-user-select"
+        />
+      )}
       <ConversationDateFilter value={date} onChange={onDateChange} />
     </Flex>
   );
