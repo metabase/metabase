@@ -1,7 +1,4 @@
-import {
-  ORDERS_COUNT_QUESTION_ID,
-  ORDERS_QUESTION_ID,
-} from "e2e/support/cypress_sample_instance_data";
+import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 import { enableJwtAuth } from "e2e/support/helpers/e2e-jwt-helpers";
 
 import {
@@ -96,8 +93,6 @@ describe("scenarios > embedding > sdk iframe embed setup > common", () => {
   describe("auth type switch", () => {
     it("allows to select the `guest` item when static embedding setting is disabled and the `Metabase Account` item when simple embedding setting is disabled", () => {
       H.updateSetting("enable-embedding-static", false);
-
-      H.visitQuestion(ORDERS_COUNT_QUESTION_ID);
 
       visitNewEmbedPage({ waitForResource: false });
 
@@ -248,8 +243,6 @@ describe("scenarios > embedding > sdk iframe embed setup > common (oss and start
 
     it("allows to select the `guest` item when static embedding setting is disabled, but not the `Metabase Account` item when token feature is missing", () => {
       H.updateSetting("enable-embedding-static", false);
-
-      H.visitQuestion(ORDERS_COUNT_QUESTION_ID);
 
       visitNewEmbedPage({ waitForResource: false });
 
