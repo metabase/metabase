@@ -21,7 +21,15 @@ import { channelTargetIsValid, dashboardPulseIsValid } from "metabase/pulse";
 import { useSelector } from "metabase/redux";
 import { getApplicationName } from "metabase/selectors/whitelabel";
 import { getSetting } from "metabase/settings";
-import { Icon, Stack, Switch, Text, TextInput, Title } from "metabase/ui";
+import {
+  Icon,
+  Input,
+  Stack,
+  Switch,
+  Text,
+  TextInput,
+  Title,
+} from "metabase/ui";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import {
   type Channel,
@@ -133,7 +141,7 @@ export const AddEditEmailSidebar = ({
       >
         {isEmbeddingSdk() ? null : (
           <div>
-            <div className={CS.mb1}>{t`To:`}</div>
+            <Input.Label>{t`To`}</Input.Label>
             <RecipientPicker
               autoFocus={false}
               recipients={channel.recipients}
