@@ -117,7 +117,9 @@
 
 (mr/def ::decoded-json
   "A value decoded from JSON.
-  Object keys are strings from `json/decode` (replayed history) or keywords from `json/decode+kw` (the stream)."
+
+  Object keys are strings or keywords. `json/decode` gives string keys, for example in replayed history.
+  [[parse-tool-arguments]] keywordizes only the top-level argument names. Maps built in Clojure can use keywords."
   [:or
    :string
    :keyword
