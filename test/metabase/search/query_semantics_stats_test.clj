@@ -31,34 +31,34 @@
 (deftest corpus-statistics-test
   (let [{:keys [same-query translations]} (stats/summary fixtures/cases)]
     (testing "same query, with pairwise direction relative to the first engine"
-      (is (= {:count     37
+      (is (= {:count     40
               :all-equal 5
-              :mean-hits {:in-place       108/37
-                          :appdb-h2       57/37
-                          :appdb-postgres 65/37
-                          :semantic       108/37}
-              :pairwise  {[:in-place :appdb-h2]       {:equal 18, :left-superset 19, :left-subset 0,  :incomparable 0}
-                          [:in-place :appdb-postgres] {:equal 6,  :left-superset 25, :left-subset 4,  :incomparable 2}
-                          [:in-place :semantic]       {:equal 19, :left-superset 10, :left-subset 8,  :incomparable 0}
-                          [:appdb-h2 :appdb-postgres] {:equal 11, :left-superset 11, :left-subset 12, :incomparable 3}
-                          [:appdb-h2 :semantic]       {:equal 7,  :left-superset 7,  :left-subset 23, :incomparable 0}
-                          [:appdb-postgres :semantic] {:equal 8,  :left-superset 3,  :left-subset 25, :incomparable 1}}}
+              :mean-hits {:in-place       29/10
+                          :appdb-h2       31/20
+                          :appdb-postgres 67/40
+                          :semantic       23/8}
+              :pairwise  {[:in-place :appdb-h2]       {:equal 20, :left-superset 20, :left-subset 0,  :incomparable 0}
+                          [:in-place :appdb-postgres] {:equal 6,  :left-superset 28, :left-subset 4,  :incomparable 2}
+                          [:in-place :semantic]       {:equal 21, :left-superset 11, :left-subset 8,  :incomparable 0}
+                          [:appdb-h2 :appdb-postgres] {:equal 11, :left-superset 13, :left-subset 13, :incomparable 3}
+                          [:appdb-h2 :semantic]       {:equal 8,  :left-superset 8,  :left-subset 24, :incomparable 0}
+                          [:appdb-postgres :semantic] {:equal 8,  :left-superset 3,  :left-subset 28, :incomparable 1}}}
              same-query)))
     (testing "translated queries, scored against each comparison's correct result set"
-      (is (= {:count     16
+      (is (= {:count     18
               :all-equal 1
-              :mean-hits {:in-place       31/8
-                          :appdb-h2       3
-                          :appdb-postgres 41/16
-                          :semantic       57/16}
-              :pairwise  {[:in-place :appdb-h2]       {:equal 8, :left-superset 8,  :left-subset 0,  :incomparable 0}
-                          [:in-place :appdb-postgres] {:equal 4, :left-superset 11, :left-subset 0,  :incomparable 1}
-                          [:in-place :semantic]       {:equal 8, :left-superset 5,  :left-subset 2,  :incomparable 1}
-                          [:appdb-h2 :appdb-postgres] {:equal 5, :left-superset 6,  :left-subset 3,  :incomparable 2}
-                          [:appdb-h2 :semantic]       {:equal 5, :left-superset 2,  :left-subset 8,  :incomparable 1}
-                          [:appdb-postgres :semantic] {:equal 4, :left-superset 2,  :left-subset 10, :incomparable 0}}
-              :scores    {:in-place       {:precision 2203/3360, :recall 1,     :f1 366617/480480, :exact 4}
-                          :appdb-h2       {:precision 193/240,   :recall 91/96, :f1 31159/36960,   :exact 6}
-                          :appdb-postgres {:precision 89/96,     :recall 23/24, :f1 2449/2640,     :exact 11}
-                          :semantic       {:precision 209/320,   :recall 43/48, :f1 25079/36960,   :exact 3}}}
+              :mean-hits {:in-place       11/3
+                          :appdb-h2       26/9
+                          :appdb-postgres 41/18
+                          :semantic       10/3}
+              :pairwise  {[:in-place :appdb-h2]       {:equal 10, :left-superset 8,  :left-subset 0,  :incomparable 0}
+                          [:in-place :appdb-postgres] {:equal 4,  :left-superset 13, :left-subset 0,  :incomparable 1}
+                          [:in-place :semantic]       {:equal 9,  :left-superset 6,  :left-subset 2,  :incomparable 1}
+                          [:appdb-h2 :appdb-postgres] {:equal 5,  :left-superset 8,  :left-subset 3,  :incomparable 2}
+                          [:appdb-h2 :semantic]       {:equal 6,  :left-superset 3,  :left-subset 8,  :incomparable 1}
+                          [:appdb-postgres :semantic] {:equal 4,  :left-superset 2,  :left-subset 12, :incomparable 0}}
+              :scores    {:in-place       {:precision 2623/3780, :recall 1,       :f1 426677/540540, :exact 6}
+                          :appdb-h2       {:precision 223/270,   :recall 103/108, :f1 35779/41580,   :exact 8}
+                          :appdb-postgres {:precision 89/108,    :recall 23/27,   :f1 2449/2970,     :exact 11}
+                          :semantic       {:precision 83/120,    :recall 95/108,  :f1 9643/13860,    :exact 4}}}
              translations)))))

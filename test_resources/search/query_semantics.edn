@@ -246,6 +246,19 @@
            :appdb-h2       [:B]
            :appdb-postgres [:B]
            :semantic       {:keyword [:B], :vector [:A :B :C :D]}}}
+ {:id     "english-not-stopword"
+  :focus  "same documents/query with English dropping not as a stopword"
+  :config "english"
+  :query  "amber not cobalt"
+  :docs   {:A {:name "amber cobalt"}
+           :B {:name "amber not cobalt"}
+           :C {:name "amber"}
+           :D {:name "not cobalt"}}
+  ;; With "not" dropped, PostgreSQL asks only for "amber" and "cobalt", so A matches too.
+  :expect {:in-place       [:A :B :C :D]
+           :appdb-h2       [:B]
+           :appdb-postgres [:A :B]
+           :semantic       {:keyword [:A :B], :vector [:A :B :C :D]}}}
  {:id     "vector-only-match"
   :focus  "vector-only match enters semantic union without lexical overlap"
   :config "simple"
@@ -484,7 +497,8 @@
     :correct [:A :B]
     :alternatives
     {:appdb-postgres {:query "\"or\"", :hits [:A]}}}]}
- ;; Controls: every lexical engine can express these intents, some only by adapting the query.
+ ;; Controls: with the simple configuration, every lexical engine can express these intents, some only by
+ ;; adapting the query.
  ;; No document contains the word inside a longer word; see or-only-operator for that trap.
  {:id     "or-word-control"
   :focus  "control: or as a literal word"
@@ -518,6 +532,40 @@
     :correct [:A :C]
     :alternatives
     {:appdb-postgres {:query "\"and\"", :hits [:A :C]}}}]}
+ ;; The same controls with English, the default on an English-locale instance with a PostgreSQL app db.
+ ;; Both words are English stopwords, so PostgreSQL cannot require them even when quoted.
+ {:id     "english-or-word"
+  :focus  "same or control with English dropping or as a stopword"
+  :config "english"
+  :query  "or"
+  :docs   {:A {:name "or"}
+           :B {:name "amber"}
+           :C {:name "this or that"}}
+  :expect {:in-place       [:A :C]
+           :appdb-h2       [:A :C]
+           :appdb-postgres []
+           :semantic       {:keyword [], :vector [:A :C]}}
+  :comparisons
+  [{:focus   "quoting or cannot recover an English stopword"
+    :correct [:A :C]
+    :alternatives
+    {:appdb-postgres {:query "\"or\"", :hits []}}}]}
+ {:id     "english-and-word"
+  :focus  "same and control with English dropping and as a stopword"
+  :config "english"
+  :query  "and"
+  :docs   {:A {:name "and"}
+           :B {:name "amber"}
+           :C {:name "salt and pepper"}}
+  :expect {:in-place       [:A :C]
+           :appdb-h2       [:A :C]
+           :appdb-postgres []
+           :semantic       {:keyword [], :vector [:A]}}
+  :comparisons
+  [{:focus   "quoting and cannot recover an English stopword"
+    :correct [:A :C]
+    :alternatives
+    {:appdb-postgres {:query "\"and\"", :hits []}}}]}
  {:id     "field-term-agreement"
   :focus  "ordinary term matches either indexed text field"
   :config "simple"
