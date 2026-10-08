@@ -20,6 +20,9 @@ export function EditBar({
   className,
   "data-testid": dataTestId,
 }: EditBarProps) {
+  // The admin bar is purple in both themes, so its text stays white instead of following the inverse token
+  const textColor = admin ? "white" : "text-primary-inverse";
+
   return (
     <Flex
       component={FullWidthContainer}
@@ -28,12 +31,12 @@ export function EditBar({
       justify="space-between"
       pos="relative"
       py="sm"
-      bg={admin ? "accent7" : "core-brand"}
+      bg={admin ? "admin-navbar" : "core-brand"}
       data-testid={dataTestId ?? "edit-bar"}
     >
       <Group gap="sm" align="center" wrap="nowrap">
-        <Icon name="pencil" size={12} c="text-primary-inverse" />
-        <Text component="span" c="text-primary-inverse" fw="bold" lh="md">
+        <Icon name="pencil" size={12} c={textColor} />
+        <Text component="span" c={textColor} fw="bold" lh="md">
           {title}
         </Text>
       </Group>
