@@ -551,12 +551,26 @@
                [(calls) (redefined! source (constantly :source) calls)])
             "the re-export follows its source once both stubs are gone")))))
 
+;;; A surprising and unfortunate result, recorded so that changing it is a decision.
+;;;
+;;; The `with-redefs` below binds a re-export to its source's own function, and the source is then redefined. The
+;;; innermost redef of the re-export is that `with-redefs`, so the intuitive answer is `:original`. The answer is
+;;; `:source`.
+;;;
+;;; The macro cannot tell this binding from a `with-redefs` that started before it first proxied the re-export and is
+;;; now putting a stale copy of the source back. Both show up as the re-export's root changing from its proxy to the
+;;; source's function. The stale copy has to be reconnected, or the re-export stays disconnected from its source for
+;;; the rest of the JVM and later tests see it: `reexport-first-redefined-under-a-stub-potemkin-overwrote-test`. This
+;;; binding loses instead, because the damage stays inside the one test that wrote it.
+;;;
+;;; A way to tell the two apart, or a different view of which one should lose, would make this expect `:original`.
+
 ;; Not ^:parallel: `with-redefs` replaces the var's root for every thread.
 (deftest ^:synchronized with-redefs-of-reexport-to-its-source's-function-test
   (let [source   (fresh-source! (fn [] :original))
         reexport (reexport! source 'metabase.test.util.dynamic-redefs-test)]
     (redefined! reexport (constantly :reexport) reexport)
-    (testing "known limitation: a stub that is the source's own function reads as a copy, so it follows the source"
+    (testing "surprising: a `with-redefs` of a re-export to its source's own function does not hold"
       (is (= :source
              (with-redefs-fn {reexport (mt/original-fn source)}
                #(redefined! source (constantly :source) reexport)))))))
