@@ -421,6 +421,7 @@ process.setUncaughtExceptionCaptureCallback((error) => {
   pendingUncaught ??= error;
 });
 
+const realPerformance = require("node:perf_hooks").performance;
 const TIMEOUT = Number(process.env.NT_TIMEOUT ?? 30000);
 const HOOK_TIMEOUT = Number(process.env.NT_HOOK_TIMEOUT ?? 8000);
 // Node's own timers, taken before any fake clock can replace them, so a deadline
@@ -600,6 +601,7 @@ const runSuite = async (suite, t, outer) => {
       let failure;
       if (actEnvironmentForFile !== undefined && !process.env.NT_NO_ACT_ENV_RESTORE) globalThis.IS_REACT_ACT_ENVIRONMENT = actEnvironmentForFile;
       const testStarted = Date.now();
+      const idleAtStart = process.env.NT_IDLE_LOG ? [realPerformance.eventLoopUtilization(), realPerformance.now()] : null;
       if (process.env.NT_DEBUG_BODY) {
         const attrs = (element) => [...element.attributes].map((a) => `${a.name}="${a.value.slice(0, 40)}"`).join(" ");
         process.stderr.write(`[body] ${currentFile.slice(-34)} html{${attrs(document.documentElement)}} body{${attrs(document.body)}} head=${document.head.children.length} active=${document.activeElement?.tagName} requestSame=${(() => { try { const fm = require("fetch-mock").default; return `${globalThis.Request === fm.config.Request} fetchIsMock=${globalThis.fetch === fm.fetchHandler} name=${globalThis.Request?.name}/${fm.config.Request?.name}`; } catch (e) { return String(e).slice(0, 40); } })()}\n`);
@@ -762,6 +764,10 @@ const runSuite = async (suite, t, outer) => {
         for (const key of Object.keys(require.cache)) if (!before.has(key)) process.stderr.write(`[fake-load] ${key.replace(/.*\/node_modules\//, "nm/").replace(root, "")}\n`);
       }
       if (process.env.NT_DEBUG_BODY) { try { const fm = require("fetch-mock").default; process.stderr.write(`[calls] ${fm.callHistory.callLogs.map((log) => `${log.options?.method ?? "?"}:${log.request ? "req:" + log.request.method : "noreq"}:${log.route ? "matched" : "unmatched"}:${String(log.url).slice(-28)}`).join(" | ")}\n`); } catch {} }
+      if (idleAtStart) {
+        const used = realPerformance.eventLoopUtilization(idleAtStart[0]);
+        fs.appendFileSync(process.env.NT_IDLE_LOG, `${currentFile}\t${child.name}\t${Math.round(realPerformance.now() - idleAtStart[1])}\t${Math.round(used.idle)}\n`);
+      }
       if (process.env.NT_DEBUG_TESTS) process.stderr.write(`[test-done] ms=${Date.now() - testStarted} ${failure ? "FAIL" : "ok"} ${currentFile.slice(-40)} "${child.name.slice(0, 50)}"\n`);
       if (failure) {
         if (process.env.NT_FAILURE_DETAIL) fs.appendFileSync(process.env.NT_FAILURE_DETAIL, `\n===== ${currentFile} > ${child.name}\n${String(failure.error?.stack ?? failure.error).slice(0, 40000)}\n`);

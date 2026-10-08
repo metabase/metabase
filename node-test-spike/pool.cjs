@@ -19,8 +19,14 @@ const projectOf = (file) => (process.env.NT_ONE_PROJECT !== "1" && SDK_PROJECT.t
 // last one picked up, and then one worker runs it while the others sit idle.
 // The times come from the previous run, and a file with no record goes first.
 const durationsFile = path.join(__dirname, "../node_modules/.cache/node-test-spike/durations.json");
+// A machine with no run behind it, such as a CI runner, starts from the times
+// that are checked in. They are from another machine, but the order holds.
+const seedDurationsFile = path.join(__dirname, "durations.json");
 const durations = (() => {
-  try { return JSON.parse(fs.readFileSync(durationsFile, "utf8")); } catch { return {}; }
+  for (const file of [durationsFile, seedDurationsFile]) {
+    try { return JSON.parse(fs.readFileSync(file, "utf8")); } catch {}
+  }
+  return {};
 })();
 const queues = { core: [], sdk: [] };
 for (const file of files) queues[projectOf(file)].push(file);
