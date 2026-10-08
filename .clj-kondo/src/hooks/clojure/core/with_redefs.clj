@@ -74,6 +74,9 @@
     (defn-arity? (hooks/ns-analysis (symbol (namespace resolved)))
       (symbol (name resolved)))))
 
+(defn- var-list [syms]
+  (str/join ", " (map #(str "`" % "`") (sort (distinct syms)))))
+
 (defn lint-with-redefs
   "Suggest `with-dynamic-fn-redefs` when every LHS is known to be a `defn`-style var.
 
@@ -83,17 +86,36 @@
    a non-defn LHS (defmulti, plain `def`, unresolved) can't be split usefully — the
    leftover `with-redefs` still does a global root-swap, so the form remains thread-unsafe.
 
+   A form that redefs a hot var is the exception. It has to stay `with-redefs`, but only
+   for that var: a process-wide redef of any other `defn`-style var is visible to every
+   thread and can break dynamic redefs of the same var elsewhere in the JVM, so those
+   bindings are flagged to move out.
+
    The LHS check uses kondo's own analysis cache rather than a hand-maintained list of
    multimethod names — adding a new `defmulti` doesn't require touching this hook."
   [{:keys [node]}]
   (let [[_with-redefs bindings-vec] (:children node)]
     (when (hooks/vector-node? bindings-vec)
-      (let [pairs (partition-all 2 (:children bindings-vec))]
-        (when (and (seq pairs)
-                   (not-any? (comp dynamic-redefs-prohibited-lhs? first) pairs)
-                   (every? (fn [[lhs rhs]]
-                             (and rhs (safely-nudgeable-lhs? lhs)))
-                           pairs))
+      (let [pairs      (partition-all 2 (:children bindings-vec))
+            hot?       (comp dynamic-redefs-prohibited-lhs? first)
+            nudgeable? (fn [[lhs rhs]]
+                         (and rhs (safely-nudgeable-lhs? lhs)))]
+        (cond
+          (empty? pairs)
+          nil
+
+          (some hot? pairs)
+          (when-let [movable (seq (filter nudgeable? (remove hot? pairs)))]
+            (hooks/reg-finding!
+             (assoc (meta node)
+                    :message (format (str "Only %s needs `with-redefs`. Move %s to "
+                                          "`metabase.test/with-dynamic-fn-redefs` so the redef stays "
+                                          "thread-local. [:metabase/prefer-with-dynamic-fn-redefs]")
+                                     (var-list (keep (comp resolved-lhs-symbol first) (filter hot? pairs)))
+                                     (var-list (keep (comp resolved-lhs-symbol first) movable)))
+                    :type    :metabase/prefer-with-dynamic-fn-redefs)))
+
+          (every? nudgeable? pairs)
           (hooks/reg-finding!
            (assoc (meta node)
                   :message (str "Every binding here redefines a defn-style var. Before converting, "

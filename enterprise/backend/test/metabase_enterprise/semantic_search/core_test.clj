@@ -334,15 +334,15 @@
                               (make-card-result 2 "fallback-card-2")]
             search-ctx       search-context
             metrics          (atom {})]
-        (with-redefs [semantic.pgvector-api/query (fn [& _]
-                                                    (throw (ex-info "Semantic search unavailable" {})))
-                      search.engine/results       (fn [ctx]
-                                                    (case (:search-engine ctx)
-                                                      :search.engine/semantic (semantic.core/results ctx)
-                                                      fallback-results))
-                      analytics/inc!              (fn [metric & _args]
-                                                    (swap! metrics update metric (fnil inc 0)))]
-          (let [results (semantic.core/results search-ctx)]
-            (is (= fallback-results results))
-            (is (= 1 (:metabase-search/semantic-error-fallback @metrics))
-                "Should increment semantic-error-fallback metric on error")))))))
+        (mt/with-dynamic-fn-redefs [semantic.pgvector-api/query (fn [& _]
+                                                                  (throw (ex-info "Semantic search unavailable" {})))]
+          (with-redefs [search.engine/results (fn [ctx]
+                                                (case (:search-engine ctx)
+                                                  :search.engine/semantic (semantic.core/results ctx)
+                                                  fallback-results))
+                        analytics/inc!        (fn [metric & _args]
+                                                (swap! metrics update metric (fnil inc 0)))]
+            (let [results (semantic.core/results search-ctx)]
+              (is (= fallback-results results))
+              (is (= 1 (:metabase-search/semantic-error-fallback @metrics))
+                  "Should increment semantic-error-fallback metric on error"))))))))

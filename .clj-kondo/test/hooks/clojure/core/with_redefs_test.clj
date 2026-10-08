@@ -149,10 +149,19 @@
       (doseq [hot-var hot-vars]
         (is (= [] (lint (list 'with-redefs [hot-var '(constantly nil)] :body)))
             (str "expected no dynamic-redefs nudge for " hot-var)))
-      (is (= [] (lint '(with-redefs [io/file  identity
-                                     plain-fn identity]
+      (is (= [] (lint '(with-redefs [io/file       identity
+                                     a-multimethod identity]
                          :body)))
-          "one prohibited hot var keeps a mixed binding form on synchronized with-redefs"))
+          "a hot var with nothing that can move keeps the whole form on with-redefs"))
+    (testing "defn-style vars redefined alongside a hot var are asked to move out"
+      (is (=? [{:type    :metabase/prefer-with-dynamic-fn-redefs
+                :message #(and (re-find #"Only `clojure.java.io/file` needs `with-redefs`" %)
+                               (re-find #"Move `example.ns/plain-fn` to" %)
+                               (not (re-find #"a-multimethod" %)))}]
+              (lint '(with-redefs [io/file       identity
+                                   plain-fn      identity
+                                   a-multimethod identity]
+                       :body)))))
     (testing "the ordinary warning asks callers to assess hot-path cost before converting"
       (is (=? [{:type    :metabase/prefer-with-dynamic-fn-redefs
                 :message #(and (re-find #"cheap, frequently called test hot path" %)
