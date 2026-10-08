@@ -718,9 +718,9 @@ describe("issue 44532", () => {
       cy.findByText("Created At: Month").should("exist"); // x-axis
 
       // x-axis values
-      cy.findByText("January 2026").should("exist");
-      cy.findByText("January 2027").should("exist");
-      cy.findByText("January 2028").should("exist");
+      cy.findByText("April 2026").should("exist");
+      cy.findByText("April 2027").should("exist");
+      cy.findByText("April 2028").should("exist");
 
       // previous x-axis values
       cy.findByText("Doohickey").should("not.exist");
@@ -744,9 +744,9 @@ describe("issue 44532", () => {
       cy.findByText("Created At: Month").should("exist"); // x-axis
 
       // x-axis values
-      cy.findByText("January 2026").should("exist");
-      cy.findByText("January 2027").should("exist");
-      cy.findByText("January 2028").should("exist");
+      cy.findByText("April 2026").should("exist");
+      cy.findByText("April 2027").should("exist");
+      cy.findByText("April 2028").should("exist");
 
       // previous x-axis values
       cy.findByText("Doohickey").should("not.exist");

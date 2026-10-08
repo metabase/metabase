@@ -192,58 +192,32 @@ export function getTimeSeriesIntervalDuration(interval: TimeSeriesInterval) {
   return dayjs(0).add(interval.count, interval.unit).valueOf();
 }
 
-// Counts interval boundary crossings within the domain
+// Counts the ticks the axis will label (see getTicksOptions): boundaries of
+// the grid's unit inside the domain, every `step` of them starting from the
+// first one. Weeks start on the first data point's weekday rather than on
+// calendar weeks, and quarters are counted as three-month steps.
 export function expectedTickCount(
   interval: TimeSeriesInterval,
   xDomain: ContinuousDomain,
 ): number {
   const { unit, count } = interval;
+  if (unit === "ms") {
+    return Math.floor((xDomain[1] - xDomain[0]) / count) + 1;
+  }
+
+  const [gridUnit, step] =
+    unit === "quarter"
+      ? (["month", 3 * count] as const)
+      : ([unit, count] as const);
   const start = dayjs.utc(xDomain[0]);
   const end = dayjs.utc(xDomain[1]);
+  const first =
+    gridUnit === "week" || start.startOf(gridUnit).isSame(start)
+      ? start
+      : start.startOf(gridUnit).add(1, gridUnit);
+  const boundariesCount = Math.floor(end.diff(first, gridUnit, true));
 
-  const startTrunc = start.startOf(unit);
-  const endTrunc = end.startOf(unit);
-
-  // Multi-year grids start at the first year inside the domain (see
-  // getTicksOptions); finer grids are aligned to the calendar.
-  if (unit === "year") {
-    const firstYear = startTrunc.year() + (start.isSame(startTrunc) ? 0 : 1);
-    const lastYear = endTrunc.year();
-    return lastYear < firstYear
-      ? 0
-      : Math.floor((lastYear - firstYear) / count) + 1;
-  }
-
-  const diffUnits = endTrunc.diff(startTrunc, unit);
-
-  let startIdx: number;
-  if (unit === "quarter") {
-    startIdx = startTrunc.quarter() - 1;
-  } else if (unit === "month") {
-    startIdx = startTrunc.month();
-  } else if (unit === "week") {
-    startIdx = startTrunc.week();
-  } else if (unit === "day") {
-    startIdx = startTrunc.day();
-  } else if (unit === "hour") {
-    startIdx = startTrunc.hour();
-  } else if (unit === "minute") {
-    startIdx = startTrunc.minute();
-  } else if (unit === "second") {
-    startIdx = startTrunc.second();
-  } else {
-    startIdx = startTrunc.valueOf();
-  }
-
-  const startAligned = Math.ceil(startIdx / count) * count;
-  const endAligned = Math.floor((startIdx + diffUnits) / count) * count;
-
-  const diffAligned = (endAligned - startAligned) / count;
-
-  if (start.valueOf() === startTrunc.valueOf() || startIdx < startAligned) {
-    return diffAligned + 1;
-  }
-  return diffAligned;
+  return boundariesCount < 0 ? 0 : Math.floor(boundariesCount / step) + 1;
 }
 
 /// Get the appropriate tick interval option from the TIMESERIES_INTERVALS above based on the xAxis bucketing

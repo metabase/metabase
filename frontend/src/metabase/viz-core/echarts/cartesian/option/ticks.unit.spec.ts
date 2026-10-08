@@ -126,21 +126,89 @@ describe("year tick grids", () => {
     ).toEqual(["2021-01-01", "2023-01-01"]);
   });
 
-  it("keeps finer grids aligned to the calendar", () => {
-    // Daily data from 20 January: two-month ticks stay on odd-numbered months.
+  it("starts finer grids at the first boundary in range too", () => {
+    // Daily data from 20 January: two-month ticks start on 1 February.
     const options = getTicksOptions(
       model("day", "2026-01-20", "2026-07-15"),
       layout(300),
     );
 
+    expect(options.maxInterval).toBe(
+      getTimeSeriesIntervalDuration({ unit: "day", count: 1 }),
+    );
     expect(
       rendered(options, [
+        "2026-01-20",
         "2026-02-01",
         "2026-03-01",
         "2026-04-01",
-        "2026-05-01",
+        "2026-06-01",
       ]),
-    ).toEqual(["2026-03-01", "2026-05-01"]);
+    ).toEqual(["2026-02-01", "2026-04-01", "2026-06-01"]);
+  });
+
+  it("steps quarter grids over finer data three months from the first month in range", () => {
+    // The same daily data on a narrower chart: only two labels fit, so the
+    // grid is quarterly, but anchored on 1 February rather than a calendar
+    // quarter.
+    const options = getTicksOptions(
+      model("day", "2026-01-20", "2026-07-15"),
+      layout(180),
+    );
+
+    expect(options.maxInterval).toBe(
+      getTimeSeriesIntervalDuration({ unit: "month", count: 1 }),
+    );
+    expect(
+      rendered(options, [
+        "2026-02-01",
+        "2026-04-01",
+        "2026-05-01",
+        "2026-07-01",
+      ]),
+    ).toEqual(["2026-02-01", "2026-05-01"]);
+  });
+
+  it("keeps quarterly data on calendar quarters", () => {
+    // Quarterly points from Q2 2025: half-year ticks start on that quarter.
+    const options = getTicksOptions(
+      model("quarter", "2025-04-01", "2028-01-01"),
+      layout(400),
+    );
+
+    expect(
+      rendered(options, [
+        "2025-04-01",
+        "2025-07-01",
+        "2025-10-01",
+        "2026-01-01",
+        "2026-04-01",
+      ]),
+    ).toEqual(["2025-04-01", "2025-10-01", "2026-04-01"]);
+  });
+
+  it("starts sub-day grids at the first hour in range", () => {
+    const options = getTicksOptions(
+      model("hour", "2026-03-01T01:00:00Z", "2026-03-01T22:00:00Z"),
+      layout(560),
+    );
+
+    expect(options.maxInterval).toBe(
+      getTimeSeriesIntervalDuration({ unit: "hour", count: 1 }),
+    );
+    expect(
+      rendered(options, [
+        "2026-03-01T00:00:00Z",
+        "2026-03-01T01:00:00Z",
+        "2026-03-01T03:00:00Z",
+        "2026-03-01T04:00:00Z",
+        "2026-03-01T22:00:00Z",
+      ]),
+    ).toEqual([
+      "2026-03-01T01:00:00Z",
+      "2026-03-01T04:00:00Z",
+      "2026-03-01T22:00:00Z",
+    ]);
   });
 });
 
@@ -171,9 +239,9 @@ describe("waterfall Total tick", () => {
     totalXValue: utc(total).toISOString(),
   });
 
-  it("anchors a multi-year grid at the Total so it is always labeled", () => {
-    // Yearly data 2024–2034 with Total at 2035: five-year ticks count back
-    // from the Total instead of forward from 2024.
+  it("drops the grid tick crowded by the Total of a multi-year grid", () => {
+    // Yearly data 2024–2034 with Total at 2035: five-year ticks start at 2024,
+    // and 2034 gives way to the Total one year later.
     const options = getTicksOptions(
       waterfallModel("year", "2024-01-01", "2035-01-01"),
       layout(300),
@@ -183,23 +251,48 @@ describe("waterfall Total tick", () => {
       rendered(options, [
         "2024-01-01",
         "2025-01-01",
-        "2030-01-01",
+        "2029-01-01",
         "2034-01-01",
         "2035-01-01",
       ]),
-    ).toEqual(["2025-01-01", "2030-01-01", "2035-01-01"]);
+    ).toEqual(["2024-01-01", "2029-01-01", "2035-01-01"]);
   });
 
-  it("labels the Total even when a finer grid skips it", () => {
-    // Monthly data January–July with Total in August: two-month ticks stay on
-    // odd months, and the Total is labeled on top of them.
+  it("drops the grid tick crowded by the Total of finer grids as well", () => {
+    // Monthly data January–July with Total in August: two-month ticks start
+    // in January, and July gives way to the Total a month later.
     const options = getTicksOptions(
       waterfallModel("month", "2025-01-01", "2025-08-01"),
       layout(300),
     );
 
     expect(
-      rendered(options, ["2025-06-01", "2025-07-01", "2025-08-01"]),
-    ).toEqual(["2025-07-01", "2025-08-01"]);
+      rendered(options, [
+        "2025-01-01",
+        "2025-02-01",
+        "2025-03-01",
+        "2025-07-01",
+        "2025-08-01",
+      ]),
+    ).toEqual(["2025-01-01", "2025-03-01", "2025-08-01"]);
+  });
+
+  it("labels a Total that is not on the grid's unit", () => {
+    // Daily data with a two-year grid: the Total sits a day after the last
+    // point and is labeled, while the year boundary three months before it
+    // gives way.
+    const options = getTicksOptions(
+      waterfallModel("day", "2019-03-01", "2026-04-02"),
+      layout(300),
+    );
+
+    expect(
+      rendered(options, [
+        "2024-01-01",
+        "2026-01-01",
+        "2026-04-02",
+        "2026-04-03",
+      ]),
+    ).toEqual(["2024-01-01", "2026-04-02"]);
   });
 });

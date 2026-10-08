@@ -636,7 +636,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       H.modal().button("Discard changes").click();
       cy.button("Cancel").should("not.exist");
       cy.findByTestId("visualization-root")
-        .findByText("May 2025")
+        .findByText("April 2025")
         .should("exist");
       clickLineChartPoint();
       cy.get("@targetDashboardId").then((targetDashboardId) => {

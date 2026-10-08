@@ -256,7 +256,7 @@ describe("issue 51952", () => {
 
     cy.findByTestId("settings-CREATED_AT").click();
     H.popover().findByText("Abbreviate days and months").click();
-    H.echartsContainer().findByText("Jan 2027");
+    H.echartsContainer().findByText("Apr 2027");
   });
 });
 
