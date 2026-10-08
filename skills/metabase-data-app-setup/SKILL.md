@@ -134,28 +134,7 @@ Once the template is in `<repo>/data_apps/<slug>/` (run everything below from th
 6. **The lockfile and the built bundle must both be committed.** Metabase serves the file at the `path` declared in `data_app.yaml` (the template builds to `dist/index.js`) straight from the committed Git tree, and the lockfile keeps installs reproducible. **Verify with `git status`** after `npm install` and a build: both must appear as committable files.
 7. `npm run dev` and confirm the preview at http://localhost:5174 renders the starter "Hello, data app" message.
 8. If the preview hits CORS, add `http://localhost:5174` under Admin → Embedding → Embedded analytics SDK → CORS.
-9. **Edit `data_app.yaml`** (it ships with the template, in the app directory). This is the per-app config Metabase reads on sync — one file per app. Its fields, which of them are required, and their rules are defined in the Data App section of the Metabase representation format spec: load the skill for reading and writing Metabase representation YAML (use skill discovery) and follow its spec. If no such skill is available, install it with `npx skills add metabase/agent-skills/skills --skill metabase-representation-format`; if it still can't be loaded, stop and tell the user. Generate the app's entity ID with `npx representations generate-entity-id` (from the app's own dev dependencies, after `npm install`) and fill in the fields for this app; leave `path` as the template ships it unless you change the build output:
-
-   ```yaml
-   version: 1             # data app contract version — leave as-is (see below)
-   name: Sales App        # display name shown in the admin UI
-   slug: sales-app        # the /apps/<slug> URL
-   description: Pipeline health and quota attainment by region  # optional — see below
-   path: ./dist/index.js  # bundle path, relative to this app's directory — leave as-is unless you change the build output
-   # allowed_hosts:       # optional — external origins the app may fetch/XHR (see below)
-   #   - https://api.example.com
-   #   - https://*.internal.acme.com
-   entity_id: Xq2v9LbN0mTz4wRk7YsJd  # the generated entity id
-   serdes/meta:
-   - model: DataApp
-     id: Xq2v9LbN0mTz4wRk7YsJd
-     label: sales-app
-   ```
-
-   Commit it alongside the built bundle (the file `path` points at). It also
-   gets a `collection:` line, the entity ID of the app's own collection, whose
-   file is written under the repo's `collections/data_apps/` in Step 5. Never
-   copy that line from another app.
+9. **Fill in `data_app.yaml`**, the template's manifest, now in the app directory. This is the per-app config Metabase reads on sync, one file per app. Its fields, which of them are required, and their rules are defined in the Data App section of the Metabase representation format spec: load the skill for reading and writing Metabase representation YAML (use skill discovery) and follow its spec. If no such skill is available, install it with `npx skills add metabase/agent-skills/skills --skill metabase-representation-format`; if it still can't be loaded, stop and tell the user. Set `name`, `slug`, and `description` for this app, and `entity_id` to an ID from `npx representations generate-entity-id` (from the app's own dev dependencies, after `npm install`). Leave `version` and `serdes/meta` as the template ships them, and `path` too unless you change the build output. `collection` stays empty until item 10. Never copy a value from another app's manifest.
 
    **`description`** — optional: a single short sentence saying what the app
    does, shown under its name in the admin UI so admins can tell apps apart at a
@@ -191,18 +170,37 @@ Once the template is in `<repo>/data_apps/<slug>/` (run everything below from th
    must also permit framing (`X-Frame-Options`/`frame-ancestors`) — many public
    sites don't.
 
+10. **Write the app's collection.** Generate its entity ID with
+    `npx representations generate-entity-id`, write the collection's file under
+    the repo's `collections/data_apps/` (use skill discovery to find the
+    data-app guidance on writing the files of an app's collection), and set that
+    ID as `collection` in `data_app.yaml`.
+
+### The order of the app's files
+
+An app's YAML is written in this order, and each step needs the one before it:
+
+1. `data_app.yaml`, copied from the template in Step 3 and filled in at item 9.
+2. The collection's file under `collections/data_apps/`, named in
+   `data_app.yaml` as `collection` at item 10.
+3. `npm run print-resources`, once the app has definitions in `queries/` or
+   `actions/`. It prints the saved questions into the collection
+   `data_app.yaml` names, so it refuses to run until the manifest names one.
+4. The remaining files in the collection's directory: a saved question per
+   query and copies of the metrics and actions they use, written from what it
+   printed.
+
+Scaffolding ends after the second. The last two are part of building the app's
+data layer; use skill discovery for that.
+
 ## Step 5 — Verify the starter app
 
 At this point the data app exists. Keep this workflow focused on creating the
 project scaffold and proving the starter bundle works.
 
 1. Run `npm run typecheck`.
-2. Write the app's collection: generate an entity ID with
-   `npx representations generate-entity-id`, write the collection's file under
-   the repo's `collections/data_apps/`, and add `collection: <id>` to
-   `data_app.yaml` (use skill discovery to find the data-app guidance on
-   writing the files of an app's collection). Then run
-   `npm run check-resources`, which also validates the repository's YAML
+2. Run `npm run check-resources`. It fails when `data_app.yaml` names no
+   collection or one without a file, and it validates the repository's YAML
    against the format. It changes nothing in Metabase.
 3. Run `npm run build`.
 4. Confirm `git status` shows the app source, lockfile, `data_app.yaml`, the
