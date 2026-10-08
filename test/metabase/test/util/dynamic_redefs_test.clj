@@ -128,15 +128,13 @@
         (is (= :stub (shadowed))))
       (mt/with-dynamic-fn-redefs [shadowed (constantly :inner)]
         (is (= :inner (shadowed))))
-      (testing "known limitation: after a dynamic redef nested in the `with-redefs` exits, the outer one wins"
-        (is (= :outer (shadowed)))))
+      (testing "and still wins after a dynamic redef nested inside it exits"
+        (is (= :stub (shadowed)))))
     (is (= :outer (shadowed))))
   (is (= :original (shadowed))))
 
 ;;; Model test: generated programs nest dynamic redefs, `with-redefs`, futures and exceptions around calls to two vars.
 ;;; The model is one rule: a call sees the innermost enclosing redef of its var, of either kind, else the original.
-;;; Programs never put a `with-redefs` of a var inside a dynamic redef of the same var, which breaks that rule.
-;;; See `with-redefs-inside-dynamic-redef-test`.
 
 (defn- model-a [& args] [:original (count args)])
 
@@ -161,18 +159,6 @@
      (gen/let [v gen-var
                n (gen/choose 0 5)]
        {:op :call, :var v, :nargs n}))))
-
-(defn- supported
-  "Turn a `with-redefs` of a var into a dynamic redef wherever a dynamic redef of that var encloses it."
-  ([ops] (supported #{} ops))
-  ([dynamic-vars ops]
-   (mapv (fn [{:keys [op body] v :var :as o}]
-           (case op
-             :call   o
-             :future (assoc o :body (supported dynamic-vars body))
-             (let [op (if (dynamic-vars v) :dynamic op)]
-               (assoc o :op op :body (supported (cond-> dynamic-vars (= op :dynamic) (conj v)) body)))))
-         ops)))
 
 (defn- stub [id]
   (fn [& args] [id (count args)]))
@@ -216,7 +202,7 @@
 
 ;; Not ^:parallel: the generated programs use `with-redefs`, which replaces a var's root for every thread.
 (defspec ^:synchronized innermost-redef-wins-model-test 300
-  (prop/for-all [ops (gen/fmap supported (gen/vector gen-program 1 6))]
+  (prop/for-all [ops (gen/vector gen-program 1 6)]
     (let [seen (atom [])]
       (run-program! seen (atom 0) ops)
       (and (= (model ops) @seen)
