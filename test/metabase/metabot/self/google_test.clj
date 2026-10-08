@@ -58,7 +58,7 @@
   (update opts :credentials #(or % (settings-credentials))))
 
 (defn- google-raw [opts]
-  (google/google-raw (with-settings-credentials opts)))
+  (second (google/google-raw (with-settings-credentials opts))))
 
 (defn- list-models
   ([] (list-models {}))
