@@ -79,7 +79,7 @@ databaseChangeLog:
               - column:
                   name: status
                   type: int
-                  remarks: HTTP status code of the response. Non-PII.
+                  remarks: HTTP status code of the response. Non-PII. Streamed responses (for example query results) always store 202, because the real status is only known after the stream ends, so do not read 202 as an outcome.
                   constraints:
                     nullable: false
               - column:
