@@ -3,7 +3,8 @@ export type DataPickerDataType =
   | "models"
   | "raw-data"
   | "questions"
-  | "metrics";
+  | "metrics"
+  | "library";
 
 export type DataTypeInfoItem = {
   id: DataPickerDataType;

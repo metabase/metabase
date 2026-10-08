@@ -1,28 +1,51 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
+import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import {
   setupCollectionItemsEndpoint,
   setupCollectionsEndpoints,
   setupDatabasesEndpoints,
+  setupLibraryEndpoints,
 } from "__support__/server-mocks";
+import { mockSettings } from "__support__/settings";
 import { createMockSettingsState, createMockState } from "__support__/state";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { getNextId } from "__support__/utils";
 import { ROOT_COLLECTION } from "metabase/common/collections/constants";
+import { reinitialize } from "metabase/plugins";
 import type { EmbeddingEntityType } from "metabase/redux/store/embedding-data-picker";
 import type { Database, SearchModel, Table } from "metabase-types/api";
 import {
+  createMockCollection,
+  createMockCollectionItem,
   createMockDatabase,
   createMockTable,
+  createMockTokenFeatures,
   createMockUser,
   createMockUserPermissions,
 } from "metabase-types/api/mocks";
-import { createSampleDatabase } from "metabase-types/api/mocks/presets";
+import {
+  ORDERS_ID,
+  SAMPLE_DB_ID,
+  createSampleDatabase,
+} from "metabase-types/api/mocks/presets";
 
 import { DataSourceSelector } from "../DataSelector";
 
 const DATABASES = [createSampleDatabase()];
+
+const OTHER_DB_ID = 2;
+const OTHER_DATABASE_TABLE_ID = 9001;
+const REVENUE_METRIC_ID = 9002;
+
+const LIBRARY_COLLECTION = createMockCollection({
+  id: 6464,
+  name: "Library",
+  type: "library",
+  here: ["collection"],
+  below: ["table", "dataset", "metric"],
+});
 
 const storeInitialState = createMockState({
   settings: createMockSettingsState({
@@ -55,6 +78,7 @@ interface SetupOpts {
     databaseId: number;
   };
   entityTypes?: EmbeddingEntityType[];
+  hasLibrary?: boolean;
 }
 
 function setup({
@@ -63,6 +87,7 @@ function setup({
   availableModels = "tables-only",
   selectedTable,
   entityTypes,
+  hasLibrary = false,
 }: SetupOpts = {}) {
   fetchMock.get({
     url: "path:/api/search",
@@ -89,13 +114,56 @@ function setup({
     { saved: true },
   );
 
-  setupCollectionsEndpoints({ collections: [] });
+  setupCollectionsEndpoints({
+    collections: hasLibrary ? [LIBRARY_COLLECTION] : [],
+  });
   setupCollectionItemsEndpoint({
     collection: ROOT_COLLECTION,
     collectionItems: [],
   });
 
-  return renderWithProviders(
+  // `mockSettings` has to run first, as the Library plugin reads the token
+  // features when it initializes.
+  const libraryState = hasLibrary
+    ? createMockState({
+        settings: mockSettings({
+          "enable-nested-queries": true,
+          "token-features": createMockTokenFeatures({ library: true }),
+        }),
+      })
+    : undefined;
+
+  if (hasLibrary) {
+    setupEnterpriseOnlyPlugin("library");
+    setupLibraryEndpoints(true);
+    setupCollectionItemsEndpoint({
+      collection: LIBRARY_COLLECTION,
+      collectionItems: [
+        createMockCollectionItem({
+          id: ORDERS_ID,
+          name: "Published Orders",
+          model: "table",
+          database_id: SAMPLE_DB_ID,
+        }),
+        createMockCollectionItem({
+          id: OTHER_DATABASE_TABLE_ID,
+          name: "Published Elsewhere",
+          model: "table",
+          database_id: OTHER_DB_ID,
+        }),
+        createMockCollectionItem({
+          id: REVENUE_METRIC_ID,
+          name: "Revenue",
+          model: "metric",
+          database_id: SAMPLE_DB_ID,
+        }),
+      ],
+    });
+  }
+
+  const setSourceTableFn = jest.fn();
+
+  const view = renderWithProviders(
     <DataSourceSelector
       isInitiallyOpen
       querySourceType={undefined}
@@ -106,14 +174,23 @@ function setup({
       canSelectTable={entityTypes ? entityTypes.includes("table") : true}
       canSelectQuestion={entityTypes ? entityTypes.includes("question") : true}
       canSelectMetric={entityTypes ? entityTypes.includes("metric") : true}
+      canSelectLibrary={entityTypes ? entityTypes.includes("library") : true}
       triggerElement={<div>Click me to open or close data picker</div>}
-      setSourceTableFn={jest.fn()}
+      setSourceTableFn={setSourceTableFn}
     />,
-    { storeInitialState },
+    {
+      storeInitialState: libraryState ?? storeInitialState,
+    },
   );
+
+  return { ...view, setSourceTableFn };
 }
 
 describe("DataSourceSelector", () => {
+  afterEach(() => {
+    reinitialize();
+  });
+
   it("should close the picker when clicking outside", async () => {
     setup({
       availableModels: "tables-only",
@@ -237,6 +314,71 @@ describe("DataSourceSelector", () => {
     });
   });
 
+  describe("the Library is available", () => {
+    it("should offer the Library next to the raw data", async () => {
+      setup({ hasLibrary: true });
+
+      expect(await screen.findByText("Library")).toBeInTheDocument();
+      expect(screen.getByText("Raw Data")).toBeInTheDocument();
+    });
+
+    it("should pick a table published in the Library", async () => {
+      const { setSourceTableFn } = setup({ hasLibrary: true });
+
+      await userEvent.click(await screen.findByText("Library"));
+      await userEvent.click(await screen.findByText("Published Orders"));
+
+      await waitFor(() => {
+        expect(setSourceTableFn).toHaveBeenCalledWith(
+          ORDERS_ID,
+          expect.anything(),
+        );
+      });
+    });
+
+    it("should list the tables and metrics published in the Library", async () => {
+      setup({ hasLibrary: true });
+
+      await userEvent.click(await screen.findByText("Library"));
+
+      expect(await screen.findByText("Published Orders")).toBeInTheDocument();
+      expect(screen.getByText("Published Elsewhere")).toBeInTheDocument();
+      expect(screen.getByText("Revenue")).toBeInTheDocument();
+    });
+
+    it("should only list tables from the current database, and no metrics, when joining", async () => {
+      setup({
+        hasLibrary: true,
+        isJoinStep: true,
+        selectedTable: { id: ORDERS_ID, databaseId: SAMPLE_DB_ID },
+        entityTypes: ["model", "table", "library"],
+      });
+
+      // Go back from the table step to the bucket step
+      await userEvent.click(await screen.findByLabelText("chevronleft icon"));
+      await userEvent.click(await screen.findByLabelText("chevronleft icon"));
+      await userEvent.click(await screen.findByText("Library"));
+
+      expect(await screen.findByText("Published Orders")).toBeInTheDocument();
+      expect(screen.queryByText("Published Elsewhere")).not.toBeInTheDocument();
+      expect(screen.queryByText("Revenue")).not.toBeInTheDocument();
+    });
+
+    it('should not offer the Library when `entity_types` leaves out "library"', async () => {
+      setup({ hasLibrary: true, entityTypes: ["model", "table"] });
+
+      expect(await screen.findByText("Orders")).toBeInTheDocument();
+      expect(screen.queryByText("Library")).not.toBeInTheDocument();
+    });
+
+    it("should not offer the Library without the library feature", async () => {
+      setup();
+
+      expect(await screen.findByText("Orders")).toBeInTheDocument();
+      expect(screen.queryByText("Library")).not.toBeInTheDocument();
+    });
+  });
+
   describe("both questions and tables are available", () => {
     const setupOpts: SetupOpts = {
       availableModels: "with-questions",
@@ -339,6 +481,7 @@ describe("DataSourceSelector", () => {
           canSelectTable
           canSelectQuestion
           canSelectMetric
+          canSelectLibrary
           triggerElement={<div>Click me to open or close data picker</div>}
           setSourceTableFn={jest.fn()}
         />,
