@@ -15,7 +15,7 @@ import { BaseItemsTableBody } from "metabase/common/components/ItemsTable/BaseIt
 import type { ItemRendererProps } from "metabase/common/components/ItemsTable/DefaultItemRenderer";
 import { DefaultItemRenderer } from "metabase/common/components/ItemsTable/DefaultItemRenderer";
 import { canSelectItems } from "metabase/common/components/ItemsTable/utils";
-import { FixedSizeIcon } from "metabase/ui";
+import { FixedSizeIcon, Flex } from "metabase/ui";
 import type {
   Bookmark,
   Collection,
@@ -77,13 +77,14 @@ export const SortableColumnHeader = <SortColumn extends string>({
       hideAtContainerBreakpoint={hideAtContainerBreakpoint}
       {...columnHeaderProps}
     >
-      <div
+      <Flex
         {...props}
         className={cx(
           S.sortingControl,
           { [S.sortable]: isSortable, [S.active]: isSortingThisColumn },
           className,
         )}
+        align="center"
         onClick={onSortingControlClick}
         role="button"
       >
@@ -96,7 +97,7 @@ export const SortableColumnHeader = <SortColumn extends string>({
             ms="xxs"
           />
         )}
-      </div>
+      </Flex>
     </ColumnHeader>
   );
 };
