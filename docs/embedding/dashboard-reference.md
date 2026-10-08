@@ -104,5 +104,6 @@ See [Customize the menu on dashboard cards](./dashboard.md#customize-the-menu-on
 - [Embed the query builder](./query-builder.md)
 - [Question component reference](./question-reference.md)
 - [Modular embedding components](./components.md)
-- [Modular embedding parameters](./parameters.md)
+- [Embedding parameters](./parameters.md)
+- [Parameters reference](./parameters-reference.md)
 - [Appearance](./appearance.md)
