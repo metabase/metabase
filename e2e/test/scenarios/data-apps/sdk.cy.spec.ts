@@ -26,11 +26,11 @@ describe("scenarios > data apps > SDK runtime", () => {
         displayName: APP_DISPLAY_NAME,
         testEnv: {
           ...TEST_ENV,
-          // A card that doesn't exist → the query resolves to an error, rather
-          // than to the refusal an unsynchronized table source would raise.
+          // A card that doesn't exist, so the query resolves to an error rather
+          // than to the refusal a query without a saved question would raise.
           errorQuery: {
             source: { type: "table", id: ORDERS_ID },
-            savedQuestionSourceId: 999999,
+            savedQuestionEntityId: "missingQuestionEntity",
           },
         },
       });

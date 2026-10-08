@@ -108,48 +108,40 @@
        (lib.temporal-bucket/with-temporal-bucket column)))
 
 (mu/defn- matches-binning? :- :boolean
-  [strategy       :- ::lib.schema.binning/strategy
-   value          :- [:or ::lib.schema.binning/num-bins ::lib.schema.binning/bin-width ::lib.schema.test-spec/test-auto-bin-spec]
-   {:keys [mbql]} :- ::lib.schema.binning/binning-option]
-  (or
-   (and
-    (= :default (:strategy mbql))
-    (= value :auto))
-   (and
-    (= strategy (:strategy mbql))
-    (== value (strategy mbql)))))
+  [{:keys [strategy] :as binning} :- ::lib.schema.test-spec/test-binning-spec
+   {:keys [mbql]}                 :- ::lib.schema.binning/binning-option]
+  (and (= strategy (:strategy mbql))
+       (or (= strategy :default)
+           (== (strategy binning) (strategy mbql)))))
 
 (mu/defn- find-binning-strategy :- ::lib.schema.binning/binning-option
   [query        :- ::lib.schema/query
    stage-number :- :int
-   strategy     :- ::lib.schema.binning/strategy
-   value        :- [:or ::lib.schema.binning/num-bins ::lib.schema.binning/bin-width]
+   binning      :- ::lib.schema.test-spec/test-binning-spec
    column       :- [:or ::lib.schema.metadata/column ::lib.schema.ref/ref]]
   (let [binning-strategies (lib.binning/available-binning-strategies query stage-number column)
-        matches (filterv (partial matches-binning? strategy value) binning-strategies)]
+        matches (filterv (partial matches-binning? binning) binning-strategies)]
     (case (count matches)
-      0 (throw (ex-info "No binning strategy found" {:binning-strategies binning-strategies strategy value}))
+      0 (throw (ex-info "No binning strategy found" {:binning-strategies binning-strategies :binning binning}))
       1 (first matches)
-      (throw (ex-info "Multiple binning strategies found" {:matches matches strategy value})))))
+      (throw (ex-info "Multiple binning strategies found" {:matches matches :binning binning})))))
 
 (mu/defn- add-binning :- [:or ::lib.schema.metadata/column ::lib.schema.ref/ref]
   [query        :- ::lib.schema/query
    stage-number :- :int
-   strategy     :- ::lib.schema.binning/strategy
-   value        :- [:or ::lib.schema.binning/num-bins ::lib.schema.binning/bin-width]
+   binning      :- ::lib.schema.test-spec/test-binning-spec
    column       :- [:or ::lib.schema.metadata/column ::lib.schema.ref/ref]]
-  (->> (find-binning-strategy query stage-number strategy value column)
+  (->> (find-binning-strategy query stage-number binning column)
        (lib.binning/with-binning column)))
 
 (mu/defn- apply-binning :- [:or ::lib.schema.metadata/column ::lib.schema.ref/ref]
-  [query                         :- ::lib.schema/query
-   stage-number                  :- :int
-   {:keys [unit bins bin-width]} :- [:or ::lib.schema.test-spec/test-order-by-spec ::lib.schema.test-spec/test-join-source-spec]
-   column                       :- [:or ::lib.schema.metadata/column ::lib.schema.ref/ref]]
+  [query                  :- ::lib.schema/query
+   stage-number           :- :int
+   {:keys [unit binning]} :- [:or ::lib.schema.test-spec/test-order-by-spec ::lib.schema.test-spec/test-join-source-spec]
+   column                 :- [:or ::lib.schema.metadata/column ::lib.schema.ref/ref]]
   (cond->> column
-    unit      (add-temporal-bucket query stage-number unit)
-    bins      (add-binning query stage-number :num-bins bins)
-    bin-width (add-binning query stage-number :bin-width bin-width)))
+    unit    (add-temporal-bucket query stage-number unit)
+    binning (add-binning query stage-number binning)))
 
 (mu/defn- append-breakout :- ::lib.schema/query
   [query               :- ::lib.schema/query

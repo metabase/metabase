@@ -24,10 +24,8 @@ export interface DataApp {
   bundle_path: string;
   /** Admin toggle. When false the app is not served. */
   enabled: boolean;
-  /** Whether the app is a draft that reserves its slug before the app is created. */
-  draft: boolean;
   /** The collection that contains this app's saved questions and models. */
-  resource_collection_id: number | null;
+  resource_collection_id: number;
   /** The group that grants users access to this data app. */
   permission_group_id: number | null;
   /** Tables used by the last successful resource synchronization. */

@@ -250,7 +250,7 @@
 
 (deftest hard-coded-iam-credential-handling
   (testing "When not hosted"
-    (with-redefs [premium-features/is-hosted? (constantly false)]
+    (mt/with-dynamic-fn-redefs [premium-features/is-hosted? (constantly false)]
       (testing "Specifying access-key will not use credential chain"
         (is (not (contains?
                   (sql-jdbc.conn/connection-details->spec :athena {:region "us-west-2" :access_key "abc123"})
@@ -260,7 +260,7 @@
              (sql-jdbc.conn/connection-details->spec :athena {:region "us-west-2"})
              :CredentialsProvider)))))
   (testing "When hosted"
-    (with-redefs [premium-features/is-hosted? (constantly true)]
+    (mt/with-dynamic-fn-redefs [premium-features/is-hosted? (constantly true)]
       (testing "Specifying access-key will not use credential chain"
         (is (not (contains?
                   (sql-jdbc.conn/connection-details->spec :athena {:region "us-west-2" :access_key "abc123"})

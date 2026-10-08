@@ -1,5 +1,23 @@
 import { t } from "ttag";
 
+import athenaLogo from "assets/img/drivers/athena.svg?url";
+import bigqueryLogo from "assets/img/drivers/bigquery.svg?url";
+import clickhouseLogo from "assets/img/drivers/clickhouse.svg?url";
+import databricksLogo from "assets/img/drivers/databricks.svg?url";
+import druidLogo from "assets/img/drivers/druid.svg?url";
+import h2Logo from "assets/img/drivers/h2.svg?url";
+import mongoLogo from "assets/img/drivers/mongo.svg?url";
+import mysqlLogo from "assets/img/drivers/mysql.svg?url";
+import oracleLogo from "assets/img/drivers/oracle.svg?url";
+import postgresLogo from "assets/img/drivers/postgres.svg?url";
+import prestoLogo from "assets/img/drivers/presto.svg?url";
+import redshiftLogo from "assets/img/drivers/redshift.svg?url";
+import snowflakeLogo from "assets/img/drivers/snowflake.svg?url";
+import sparksqlLogo from "assets/img/drivers/sparksql.svg?url";
+import sqliteLogo from "assets/img/drivers/sqlite.svg?url";
+import sqlserverLogo from "assets/img/drivers/sqlserver.svg?url";
+import starburstLogo from "assets/img/drivers/starburst.svg?url";
+import verticaLogo from "assets/img/drivers/vertica.svg?url";
 import { SAVED_QUESTIONS_VIRTUAL_DB_ID } from "metabase-lib/v1/metadata/utils/saved-questions";
 
 import DatabaseAuthCodeDescription from "./components/DatabaseAuthCodeDescription";
@@ -46,27 +64,27 @@ export const ELEVATED_ENGINES = [
 export const ALLOWED_ENGINES_FOR_TABLE_EDITING = ["postgres", "mysql"];
 
 export const ENGINE_LOGO: Record<string, string> = {
-  athena: "athena.svg",
-  bigquery: "bigquery.svg",
-  "bigquery-cloud-sdk": "bigquery.svg",
-  clickhouse: "clickhouse.svg",
-  databricks: "databricks.svg",
-  druid: "druid.svg",
-  "druid-jdbc": "druid.svg",
-  h2: "h2.svg",
-  mongo: "mongo.svg",
-  mysql: "mysql.svg",
-  oracle: "oracle.svg",
-  postgres: "postgres.svg",
-  presto: "presto.svg",
-  "presto-jdbc": "presto.svg",
-  redshift: "redshift.svg",
-  snowflake: "snowflake.svg",
-  sparksql: "sparksql.svg",
-  starburst: "starburst.svg",
-  sqlite: "sqlite.svg",
-  sqlserver: "sqlserver.svg",
-  vertica: "vertica.svg",
+  athena: athenaLogo,
+  bigquery: bigqueryLogo,
+  "bigquery-cloud-sdk": bigqueryLogo,
+  clickhouse: clickhouseLogo,
+  databricks: databricksLogo,
+  druid: druidLogo,
+  "druid-jdbc": druidLogo,
+  h2: h2Logo,
+  mongo: mongoLogo,
+  mysql: mysqlLogo,
+  oracle: oracleLogo,
+  postgres: postgresLogo,
+  presto: prestoLogo,
+  "presto-jdbc": prestoLogo,
+  redshift: redshiftLogo,
+  snowflake: snowflakeLogo,
+  sparksql: sparksqlLogo,
+  starburst: starburstLogo,
+  sqlite: sqliteLogo,
+  sqlserver: sqlserverLogo,
+  vertica: verticaLogo,
 };
 
 export const ADVANCED_FIELDS = [

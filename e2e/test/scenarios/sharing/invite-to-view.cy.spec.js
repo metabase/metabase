@@ -81,24 +81,23 @@ describe("scenarios > sharing > invite someone to view", () => {
           id: ORDERS_QUESTION_ID,
         });
       });
+
+      H.modal().within(() => {
+        cy.findByText(/We couldn't send an email invitation/).should(
+          "be.visible",
+        );
+        cy.findByLabelText("Temporary password")
+          .invoke("val")
+          .should("not.be.empty");
+        cy.findByLabelText("Link to share")
+          .invoke("val")
+          .should("contain", `/question/${ORDERS_QUESTION_ID}`);
+      });
     });
   });
 
-  describe("invite email", () => {
+  describe("invite email", { tags: "@external" }, () => {
     beforeEach(() => H.setupSMTP());
-
-    it("scopes the subject/body to the dashboard and links to it", () => {
-      H.visitDashboard(ORDERS_DASHBOARD_ID);
-      inviteFromShareMenu(inviteEmail());
-
-      H.getInbox().then(({ body: [email] }) => {
-        expect(email.subject).to.contain("invited to view the dashboard");
-        expect(email.html).to.contain(`/dashboard/${ORDERS_DASHBOARD_ID}`);
-        expect(email.html).to.contain(
-          "wants to share a Metabase dashboard with you",
-        );
-      });
-    });
 
     it("uses the SSO login link (not a password reset) when password login is disabled", () => {
       enableGoogleSSO();
@@ -118,14 +117,20 @@ describe("scenarios > sharing > invite someone to view", () => {
     });
   });
 
-  describe("landing after signup", () => {
+  describe("landing after signup", { tags: "@external" }, () => {
     beforeEach(() => H.setupSMTP());
 
-    it("lands the invited user on the shared dashboard after they set a password", () => {
+    it("scopes the invite email to the dashboard and lands the invited user on it after they set a password", () => {
       H.visitDashboard(ORDERS_DASHBOARD_ID);
       inviteFromShareMenu(inviteEmail());
 
       H.getInbox().then(({ body: [sent] }) => {
+        expect(sent.subject).to.contain("invited to view the dashboard");
+        expect(sent.html).to.contain(`/dashboard/${ORDERS_DASHBOARD_ID}`);
+        expect(sent.html).to.contain(
+          "wants to share a Metabase dashboard with you",
+        );
+
         cy.signOut();
         cy.visit(joinUrlFromEmail(sent));
         completeSignup();
@@ -138,7 +143,7 @@ describe("scenarios > sharing > invite someone to view", () => {
     });
   });
 
-  describe("permissions", () => {
+  describe("permissions", { tags: "@external" }, () => {
     beforeEach(() => H.setupSMTP());
 
     // The redirect only navigates; it is not an access grant. An invitee whose
