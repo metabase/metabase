@@ -597,3 +597,36 @@
                                                  :response {"$ref" "#/components/schemas/E"})}}
                            {"schemas" {"E" {"type" "string" "enum" vs}}}))]
       (is (breaking? (s ["a"]) (s ["a" "b"]))))))
+
+(deftest component-named-after-a-doc-key-is-compared-test
+  (testing "a component named `title` is a schema, not documentation"
+    (let [s (fn [t] (spec {"/api/x" {"post" (op :body {"$ref" "#/components/schemas/title"})}}
+                          {"schemas" {"title" {"type" t}}}))]
+      (is (breaking? (s "string") (s "integer"))))))
+
+(deftest shared-refs-with-sibling-keys-do-not-expand-exponentially-test
+  (testing "a ref with a sibling key, such as `nullable`, still shares the resolved target"
+    (let [schemas (fn [leaf]
+                    (into {"S30" leaf}
+                          (for [i (range 30)
+                                :let [r {"$ref" (str "#/components/schemas/S" (inc i)) "nullable" true}]]
+                            [(str "S" i) (obj {"a" r "b" r})])))
+          body    {"$ref" "#/components/schemas/S0"}]
+      (is (breaking? (spec {"/api/x" {"post" (op :body body)}} {"schemas" (schemas {"enum" ["a" "b"]})})
+                     (spec {"/api/x" {"post" (op :body body)}} {"schemas" (schemas {"enum" ["a"]})}))))))
+
+(deftest shared-union-variants-do-not-expand-exponentially-test
+  (testing "a union whose variants share a union is typed once, not once per path"
+    (let [schemas (fn [leaf]
+                    (into {"X30" (obj {"p" leaf})}
+                          (for [i (range 30)
+                                :let [r {"$ref" (str "#/components/schemas/X" (inc i))}]]
+                            [(str "X" i) (assoc (obj {"p" leaf}) "anyOf" [r r])])))
+          body    {"oneOf" [{"$ref" "#/components/schemas/X0"} {"type" "null"}]}]
+      (is (breaking? (spec {"/api/x" {"post" (op :body body)}} {"schemas" (schemas {"enum" ["a" "b"]})})
+                     (spec {"/api/x" {"post" (op :body body)}} {"schemas" (schemas {"enum" ["a"]})}))))))
+
+(deftest summary-keeps-leaf-types-test
+  (testing "a nested array of strings prints as array<string>, not array<...>"
+    (is (= "array<string> | null"
+           (#'openapi-diff/brief {"oneOf" [{"type" "array" "items" {"type" "string"}} {"type" "null"}]} 200 1)))))

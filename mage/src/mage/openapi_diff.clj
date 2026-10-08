@@ -110,26 +110,32 @@
                                   (conj seen r)))
                          seen))))
         cache (volatile! {})]
-    (fn resolve
-      ([node] (resolve node #{}))
-      ([node path]
-       (cond
-         (map? node)
-         (if-let [ref (string-ref node)]
-           (let [rest' (dissoc node "$ref")]
-             (cond
-               (contains? path ref) (str "<recursive " ref ">")
-               ;; Sibling keys make this node unique, so it is not worth caching.
-               (seq rest') (resolve (merge (ref-target spec ref) rest') (conj path ref))
-               :else (let [k [ref (set/intersection path (reachable ref))]]
-                       (or (get @cache k)
-                           (let [r (resolve (ref-target spec ref) (conj path ref))]
-                             (vswap! cache assoc k r)
-                             r)))))
-           (stamp (update-vals node #(resolve % path))))
+    (letfn [(resolve-ref [ref path]
+              (let [k [ref (set/intersection path (reachable ref))]]
+                (or (get @cache k)
+                    (let [r (resolve (ref-target spec ref) (conj path ref))]
+                      (vswap! cache assoc k r)
+                      r))))
+            (resolve
+              ([node] (resolve node #{}))
+              ([node path]
+               (cond
+                 (map? node)
+                 (if-let [ref (string-ref node)]
+                   (let [rest' (dissoc node "$ref")]
+                     (cond
+                       (contains? path ref) (str "<recursive " ref ">")
+                       ;; Sibling keys, such as a `description` beside the ref, override the target's.
+                       (seq rest') (let [t (resolve-ref ref path)]
+                                     (if (map? t)
+                                       (stamp (merge t (update-vals rest' #(resolve % (conj path ref)))))
+                                       t))
+                       :else (resolve-ref ref path)))
+                   (stamp (update-vals node #(resolve % path))))
 
-         (sequential? node) (stamp (mapv #(resolve % path) node))
-         :else node)))))
+                 (sequential? node) (stamp (mapv #(resolve % path) node))
+                 :else node)))]
+      resolve)))
 
 (defn- non-null
   "The single real variant of a nullable union such as `oneOf [<array> {type: null}]`, else `node`."
@@ -149,8 +155,9 @@
       [props (set (get n "required"))]
       [nil #{}])))
 
-(defn- type-set
-  "Set of JSON types a schema accepts, or nil when unconstrained."
+(declare type-set)
+
+(defn- type-set-uncached
   [node]
   (when (and (map? node) (seq node))
     (if-let [variants (seq (concat (get node "oneOf") (get node "anyOf")))]
@@ -159,6 +166,23 @@
           (reduce set/union #{} parts)))
       (when-let [t (get node "type")]
         (if (string? t) #{t} (set t))))))
+
+(def ^:private type-set-cache
+  "Results of [[type-set]] by content digest.
+
+  ponytail: process-lifetime cache, like [[compatible-cache]]."
+  (atom {}))
+
+(defn- type-set
+  "Set of JSON types a schema accepts, or nil when unconstrained. Cached by content digest: unions
+  of shared unions otherwise walk each variant once per path."
+  [node]
+  (let [k (digest-of node)]
+    (if (contains? @type-set-cache k)
+      (get @type-set-cache k)
+      (let [v (type-set-uncached node)]
+        (swap! type-set-cache assoc k v)
+        v))))
 
 (defn- enum-set
   "Set of literal values a schema accepts, or nil when it is not an enum."
@@ -342,7 +366,10 @@
   whole resolved operation, so a documentation-only change can still be reported."
   [spec]
   (let [;; Stripping docs from the unresolved spec is linear; stripping resolved schemas is not.
-        stripped       (strip-docs spec)
+        ;; Only schema positions: component NAMES are data, and one named `title` must survive.
+        stripped       (-> spec
+                           (update "paths" strip-docs)
+                           (update "components" #(update-vals (or % {}) (fn [m] (if (map? m) (update-vals m strip-docs) m)))))
         resolve-schema (resolver stripped)
         resolve-raw    (resolver spec)
         entries
@@ -384,6 +411,14 @@
         collides? (set (for [[k n] (frequencies (map first entries)) :when (> n 1)] k))]
     (into {} (for [[k v] entries] [(if (collides? k) (:display v) k) v]))))
 
+(defn- nests?
+  "Whether a schema holds other schemas beyond a chain of array items."
+  [node]
+  (and (map? node)
+       (or (some #(contains? node %) ["properties" "oneOf" "anyOf" "allOf" "prefixItems"])
+           (map? (get node "additionalProperties"))
+           (nests? (get node "items")))))
+
 (defn- brief
   "One-line schema summary: type/enum/const rather than a wall of JSON."
   ([value] (brief value 200))
@@ -392,8 +427,9 @@
    (let [truncate #(cond-> % (> (count %) limit) (-> (subs 0 limit) (str "...")))
          nested   #(brief % 60 (inc depth))]
      (cond
-       ;; Resolved schemas can nest thousands of levels; a summary needs the top few.
-       (and (coll? value) (> depth 2)) "..."
+       ;; Resolved schemas can nest thousands of levels; a summary needs the top few. Leaves, such
+       ;; as `string` or `array<string>`, still print.
+       (and (> depth 2) (or (sequential? value) (nests? value))) "..."
        (map? value)
        (cond
          (contains? value "const") (str "const=" (truncate (json/write-str (get value "const"))))
