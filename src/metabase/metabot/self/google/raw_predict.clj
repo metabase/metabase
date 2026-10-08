@@ -23,15 +23,15 @@
 (defn- direct-api-model-id
   "The direct-API spelling of a platform model ID.
   The Gemini Agent Platform versions a dated model as `{model}@{date}` where the Messages API spells it
-  `{model}-{date}`. The Claude adapter's model knowledge (max_tokens ceilings, thinking support) is keyed by the
-  direct spelling."
+  `{model}-{date}`. The Claude adapter's model knowledge (thinking support, context windows) is keyed by the direct
+  spelling."
   [model-id]
   (str/replace (str model-id) "@" "-"))
 
 (mu/defn request-body
   "Build the streamRawPredict request body for an LLM request on `model-id`."
   [model-id :- [:maybe :string] opts :- core/LLMRequestOpts]
-  (-> (claude/claude-request-body (assoc opts :model (direct-api-model-id model-id)))
+  (-> (claude/claude-request-body (assoc opts :model (direct-api-model-id model-id) :fast? false))
       (dissoc :model)
       (assoc :anthropic_version anthropic-version)))
 

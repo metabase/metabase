@@ -214,6 +214,37 @@ describe("scenarios > visualizations > trend chart (SmartScalar)", () => {
     cy.button("Add comparison").should("be.enabled");
   });
 
+  it("should allow selecting more than 1 comparison (metabase#50686)", () => {
+    const questionDetails = {
+      name: "50686",
+      display: "smartscalar",
+      native: {
+        query:
+          "select 100 as total, 110 as forecast, 80 as last_year, now() as now",
+      },
+    };
+
+    H.createNativeQuestion(questionDetails, { visitQuestion: true });
+    // Default comparison (a single one renders inline)
+    H.queryBuilderMain().findByText("(No data)");
+
+    // Add another comparison
+    H.openVizSettingsSidebar();
+    cy.button("Add comparison").click();
+    H.popover().findByText("Value from another column…").click();
+    H.popover().findByText("FORECAST").click();
+    H.popover().button("Done").click();
+
+    H.queryBuilderMain().within(() => {
+      // First comparison still exists
+      cy.findByText("N/A (No data)");
+
+      // New comparison has been added
+      cy.findByText("-9.09% (110)");
+      cy.contains("vs. FORECAST");
+    });
+  });
+
   it("should reset 'another column' comparison when it becomes invalid", () => {
     cy.intercept("POST", "/api/dataset").as("dataset");
 

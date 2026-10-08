@@ -234,7 +234,9 @@
                      top-level-ancestor-id
                      (get top-levels))]
     (cond
-      (= :library-synced (get-in (spec/spec-for-model-key (keyword "model" model)) [:eligibility :type]))
+      (let [spec (spec/spec-for-model-key (keyword "model" model))]
+        (or (= :library-synced (get-in spec [:eligibility :type]))
+            (spec/library-content? spec instance)))
       (if library
         {:type       :collection
          :collection (remedy-collection library)}

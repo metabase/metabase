@@ -144,7 +144,7 @@
   (merge
    {:id               (format "card__%d" (u/the-id card))
     :db_id            (:database_id card)
-    :entity_id        nil
+    :entity_id        (:entity_id card)
     :display_name     (:name card)
     :schema           "Everything else"
     :moderated_status nil
@@ -220,7 +220,14 @@
                      :model/Database {db-id-2 :id} {:is_stub false}]
         (let [{databases :data} (mt/user-http-request :lucky :get 200 "database")]
           (is (nil? (m/find-first #(= (:id %) db-id-1) databases)))
-          (is (some? (m/find-first #(= (:id %) db-id-2) databases))))))))
+          (is (some? (m/find-first #(= (:id %) db-id-2) databases))))
+        (testing "unless include_stubs is passed"
+          (let [{databases :data} (mt/user-http-request :crowberto :get 200 "database" :include_stubs true)]
+            (is (some? (m/find-first #(= (:id %) db-id-1) databases)))
+            (is (some? (m/find-first #(= (:id %) db-id-2) databases)))))
+        (testing "A stub database can be fetched by id"
+          (is (=? {:id db-id-1 :is_stub true}
+                  (mt/user-http-request :crowberto :get 200 (format "database/%d" db-id-1)))))))))
 
 (deftest get-database-legacy-no-self-service-test
   (testing "GET /api/database/:id"
@@ -644,6 +651,21 @@
                                       :engine  (u/qualified-name ::test-driver)
                                       :details {:db "my_db"}
                                       :is_stub true})))))))
+
+(deftest connect-stub-database-test
+  (testing "PUT /api/database/:id with connection details for a stub clears is_stub and restarts the initial sync"
+    (mt/with-temporary-setting-values [disable-auto-sync true]
+      (mt/with-temp [:model/Database {db-id :id} {:engine              :postgres
+                                                  :details             {}
+                                                  :is_stub             true
+                                                  :initial_sync_status "complete"
+                                                  :initial_sync_error  "stale"}]
+        (with-redefs [driver/can-connect? (constantly true)]
+          (api-update-database! 200 db-id {:details {:host "localhost" :dbname "prod"}}))
+        (is (=? {:is_stub             false
+                 :initial_sync_status "incomplete"
+                 :initial_sync_error  nil}
+                (t2/select-one :model/Database :id db-id)))))))
 
 (deftest reject-is-stub-in-update-test
   (testing "PUT /api/database/:id returns a 400 when :is_stub=true is in the request body"
@@ -2395,7 +2417,7 @@
         (testing "Should be able to get saved questions in a specific collection"
           (is (= [{:id               (format "card__%d" (:id card-1))
                    :db_id            (mt/id)
-                   :entity_id        nil
+                   :entity_id        (:entity_id card-1)
                    :metrics          nil
                    :moderated_status nil
                    :display_name     "Card 1"
@@ -2421,7 +2443,7 @@
             (is (contains? (set response)
                            {:id               (format "card__%d" (:id card-2))
                             :db_id            (mt/id)
-                            :entity_id        nil
+                            :entity_id        (:entity_id card-2)
                             :display_name     "Card 2"
                             :metrics          nil
                             :moderated_status nil
@@ -2489,7 +2511,7 @@
             (is (contains? (set response)
                            {:id               (format "card__%d" (:id card-2))
                             :db_id            (mt/id)
-                            :entity_id        nil
+                            :entity_id        (:entity_id card-2)
                             :display_name     "Card 2"
                             :metrics          nil
                             :moderated_status nil
@@ -2991,6 +3013,13 @@
           (is (= {:status "error"
                   :message "Failed to connect to Database"}
                  (mt/user-http-request :crowberto :get 200 (str "database/" id "/healthcheck")))))))
+    (testing "stub database reports that it has no connection details without trying to connect"
+      (mt/with-temp [:model/Database {id :id} {:is_stub true :details {}}]
+        (with-redefs [driver/available?   (constantly true)
+                      driver/can-connect? (constantly true)]
+          (is (= {:status  "error"
+                  :message "This database has placeholder connection details. Replace that with actual connection details to make this connection Active."}
+                 (mt/user-http-request :crowberto :get 200 (str "database/" id "/healthcheck")))))))
     (when config/ee-available?
       (testing "connection-type passed and configured"
         (mt/with-premium-features #{:writable-connection}
@@ -3261,7 +3290,7 @@
               (is (= "new-write-host" (get-in db [:write_data_details :host])))
               (is (= "original-pass" (get-in db [:write_data_details :password]))))))))
     (testing "Returns 402 without :writable-connection feature"
-      (with-redefs [premium-features/has-feature? (constantly false)]
+      (mt/with-dynamic-fn-redefs [premium-features/has-feature? (constantly false)]
         (mt/with-temp [:model/Database {db-id :id} {:engine :h2
                                                     :details {:host "localhost"}}]
           (mt/user-http-request :crowberto :put 402 (format "database/%d" db-id)

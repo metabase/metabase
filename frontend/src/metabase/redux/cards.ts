@@ -59,9 +59,16 @@ const WRITABLE_CARD_PROPERTIES = [
   "size",
 ] as const;
 
-const pickWritable = (card: object) =>
+// Accepted by POST /api/card only, so it stays out of the shared list above:
+// it tells the backend the new card is a copy of an existing one.
+const CREATE_ONLY_CARD_PROPERTIES = ["source_card_id"] as const;
+
+const pickWritable = (card: object, extraProperties: readonly string[] = []) =>
   // Unjustified type cast. FIXME
-  _.pick(card, "id", ...WRITABLE_CARD_PROPERTIES) as Record<string, unknown>;
+  _.pick(card, "id", ...WRITABLE_CARD_PROPERTIES, ...extraProperties) as Record<
+    string,
+    unknown
+  >;
 
 /**
  * Creates a card and notifies the retired-entity reducers. Replaces
@@ -73,7 +80,7 @@ export const createQuestionCard =
   (request: object) =>
   async (dispatch: Dispatch): Promise<Card> => {
     const { collection_id, dashboard_id, dashboard_tab_id, ...rest } =
-      pickWritable(request);
+      pickWritable(request, CREATE_ONLY_CARD_PROPERTIES);
 
     const destination = dashboard_id
       ? { dashboard_id, dashboard_tab_id }

@@ -37,6 +37,7 @@ export const SDK_TO_MAIN_APP_COLORS_MAPPING: Record<
     "button_label-default-neutral-default",
     "button_label-light-neutral-default",
     "button_label-subtle-neutral-default",
+    "icon-primary",
   ],
   "text-secondary": ["text-secondary"],
   "text-tertiary": ["text-tertiary", "text-disabled"],

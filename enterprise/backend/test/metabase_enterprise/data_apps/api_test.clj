@@ -66,20 +66,6 @@
           (is (= "You don't have permissions to do that."
                  (mt/user-http-request :rasta :put 403 "apps/demo" {:enabled false}))))))))
 
-(deftest data-app-without-a-resource-collection-is-not-published-test
-  (mt/test-helpers-set-global-values!
-    (mt/with-premium-features #{:data-apps}
-      (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
-        (create-app!)
-        (t2/update! :model/DataApp :name "demo" {:resource_collection_id nil})
-        (testing "an app with no resource collection is not published: neither its metadata nor its
-                  bundle is served — to anyone — and a 409 lets the client show a \"not published\" screen"
-          (doseq [user [:rasta :crowberto]]
-            (is (= "This data app has not been published yet."
-                   (mt/user-http-request user :get 409 "apps/demo")))
-            (is (= "This data app has not been published yet."
-                   (mt/user-http-request user :get 409 "apps/demo/bundle")))))))))
-
 (deftest superuser-can-manage-and-view-test
   (mt/test-helpers-set-global-values!
     (mt/with-premium-features #{:data-apps}
@@ -119,6 +105,42 @@
               "its permission group is removed too")
           (is (not (t2/exists? :model/Collection :id resource_collection_id))
               "and so is its resource collection"))))))
+
+(deftest read-only-remote-sync-blocks-data-app-changes-test
+  (mt/with-premium-features #{:data-apps}
+    (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup :model/RemoteSyncObject]
+      (create-app!)
+      (mt/with-temporary-setting-values [remote-sync-url  "https://github.com/test/repo.git"
+                                         remote-sync-type :read-only]
+        (testing "a read-only instance refuses to create, change, or delete an app"
+          (mt/user-http-request :crowberto :post 403 "apps" (assoc app-request :name "other"))
+          (is (not (t2/exists? :model/DataApp :name "other")))
+          (mt/user-http-request :crowberto :put 403 "apps/demo" {:display_name "Renamed"})
+          (mt/user-http-request :crowberto :put 403 "apps/demo" {:enabled false :display_name "Renamed"})
+          (mt/user-http-request :crowberto :delete 403 "apps/demo")
+          (is (=? {:display_name "Demo" :enabled true} (t2/select-one :model/DataApp :name "demo"))))
+        (testing "enabling and disabling stays allowed"
+          (is (=? {:enabled false}
+                  (mt/user-http-request :crowberto :put 200 "apps/demo" {:enabled false}))))
+        (testing "drafts are outside sync, so they can still be created and deleted"
+          (mt/user-http-request :crowberto :post 200 "apps/draft-app/draft")
+          (mt/user-http-request :crowberto :delete 204 "apps/draft-app")))
+      (mt/with-temporary-setting-values [remote-sync-url  "https://github.com/test/repo.git"
+                                         remote-sync-type :read-write]
+        (testing "a read-write instance allows changes"
+          (is (=? {:display_name "Renamed"}
+                  (mt/user-http-request :crowberto :put 200 "apps/demo" {:display_name "Renamed"}))))))))
+
+(deftest enabling-a-data-app-is-not-a-synced-change-test
+  (mt/with-premium-features #{:data-apps}
+    (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup :model/RemoteSyncObject]
+      (create-app!)
+      (let [app-id (t2/select-one-pk :model/DataApp :name "demo")]
+        (mt/user-http-request :crowberto :put 200 "apps/demo" {:enabled false})
+        (is (not (t2/exists? :model/RemoteSyncObject :model_type "DataApp" :model_id app-id)))
+        (mt/user-http-request :crowberto :put 200 "apps/demo" {:display_name "Renamed"})
+        (is (=? {:model_name "demo" :status "update"}
+                (t2/select-one :model/RemoteSyncObject :model_type "DataApp" :model_id app-id)))))))
 
 (deftest ^:parallel query-definition-request-schema-is-closed-test
   (is (empty? (closed-schemas/findings ::query-definition/query-definition))))

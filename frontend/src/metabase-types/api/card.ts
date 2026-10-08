@@ -576,6 +576,9 @@ export type VisualizationSettings = {
   /** Color used for the list entity icon. */
   "list.entity_icon_color"?: string;
 
+  /** Draw timeline events on time series charts. */
+  "timeline_events.enabled"?: boolean;
+
   [key: string]: any;
 } & EmbedVisualizationSettings;
 
@@ -637,6 +640,7 @@ export interface CreateCardRequest {
   result_metadata?: Field[] | null;
   cache_ttl?: number | null;
   size?: DashboardCardSize;
+  source_card_id?: CardId;
 }
 
 export interface CreateCardFromCsvRequest {
