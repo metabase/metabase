@@ -95,9 +95,6 @@ describe("extract action", { viewportWidth: 1600 }, () => {
 
   describe("url columns", () => {
     beforeEach(() => {
-      H.restore();
-      cy.signInAsAdmin();
-
       // Make the Email column a URL column for these tests, to avoid having to create a new model
       cy.request("PUT", `/api/field/${PEOPLE.EMAIL}`, {
         semantic_type: "type/URL",

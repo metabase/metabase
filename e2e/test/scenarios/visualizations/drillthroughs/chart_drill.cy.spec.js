@@ -287,20 +287,18 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
   });
 
   it("should drill through a with date filter (metabase#12496)", () => {
-    H.createQuestion({
-      name: "Orders by Created At: Week",
-      query: {
-        "source-table": ORDERS_ID,
-        aggregation: [["count"]],
-        breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "week" }]],
+    H.createQuestion(
+      {
+        name: "Orders by Created At: Week",
+        query: {
+          "source-table": ORDERS_ID,
+          aggregation: [["count"]],
+          breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "week" }]],
+        },
+        display: "line",
       },
-      display: "line",
-    });
-
-    cy.visit("/collection/root");
-    cy.findAllByTestId("collection-entry-name")
-      .contains("Orders by Created At: Week")
-      .click();
+      { visitQuestion: true },
+    );
 
     H.echartsContainer().contains("January 2028");
     // drill into a recent week
@@ -312,10 +310,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
     H.assertQueryBuilderRowCount(127);
 
     cy.log("Filter should show the range between two dates");
-    // Now click on the filter widget to see if the proper parameters got passed in
-    cy.findByTestId("filter-pill")
-      .contains(/^Created At: Week is .*–/)
-      .click(); // en-dash to detect date range
+    cy.findByTestId("filter-pill").contains(/^Created At: Week is .*–/); // en-dash to detect date range
   });
 
   it("should drill-through on filtered aggregated results (metabase#13504)", () => {
@@ -825,8 +820,6 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
   describe("chart click actions analytics", () => {
     beforeEach(() => {
       H.resetSnowplow();
-      H.restore();
-      cy.signInAsAdmin();
       H.enableTracking();
     });
 
