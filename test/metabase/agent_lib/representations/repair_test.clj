@@ -743,8 +743,13 @@
       (get "stages")
       first))
 
-(defn- repair-filter [filter-clause]
-  (first (get (repair-in-stage {"filters" [filter-clause]}) "filters")))
+(defn- repair-filter
+  "Repair a single filter clause and return it. Throws if repair split it into several entries (a
+  top-level `and`), so a test can't silently check only the first conjunct."
+  [filter-clause]
+  (let [filters (get (repair-in-stage {"filters" [filter-clause]}) "filters")]
+    (assert (= 1 (count filters)) (str "repair split the filter into " (count filters) " entries"))
+    (first filters)))
 
 (defn- hoist-filter
   "Run only Pass 2.95 over a stage carrying `filter-clause`, returning the rewritten clause.
@@ -1402,7 +1407,26 @@
            (repaired-filters [id-filter ["and" {} status-filter ["and" {} total-filter]]]))))
   (testing "a bare `and` with no options map is split once Pass 1 has added `{}`"
     (is (= [status-filter total-filter]
-           (repaired-filters [["and" status-filter total-filter]])))))
+           (repaired-filters [["and" status-filter total-filter]]))))
+  (testing "the `and` head is matched case-insensitively"
+    (is (= [status-filter total-filter]
+           (repaired-filters [["AND" {} status-filter total-filter]]))))
+  (testing "an `and` with a non-clause operand is left whole for validation to report"
+    (let [filters [["and" {} status-filter total-filter {"trailing" "x"}]]]
+      (is (= filters (repaired-filters filters))))))
+
+(deftest ^:parallel split-top-level-and-filters-still-repairs-each-conjunct-test
+  (testing "hoisting and trailing-option merges still reach each conjunct of a split `and`"
+    (is (= [["=" {} (created-at-bucketed "month") "2025-01-01"]
+            ["contains" {"case-sensitive" false}
+             ["field" {} ["Sample" "PUBLIC" "ORDERS" "STATUS"]] "@gmail.com"]]
+           (get (repair-in-stage
+                 {"filters" [["and" {}
+                              ["=" {} created-at (abs-dt "2025-01-01" "month")]
+                              ["contains" {}
+                               ["field" {} ["Sample" "PUBLIC" "ORDERS" "STATUS"]]
+                               "@gmail.com" {"case-sensitive" false}]]]})
+                "filters")))))
 
 (deftest ^:parallel split-top-level-and-filters-keeps-boolean-logic-test
   (testing "`and` under `or` / `not` is real boolean logic and is left alone"

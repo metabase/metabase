@@ -1400,16 +1400,19 @@
 ;;; filter, it tends to fold that filter and an unrelated sibling into one `and`, and the user
 ;;; sees their filters merged into a custom expression (BOT-1446).
 ;;;
-;;; We flatten a top-level `and` (and any `and` directly nested inside it) into its operands.
-;;; `and` nested under `or` / `not` is left alone - that's real boolean logic. Idempotent: after
-;;; flattening, no top-level entry is an `and`.
+;;; We flatten a top-level `and` (and any `and` directly nested inside it) into its operands. The
+;;; head is matched case-insensitively (`AND`). `and` nested under `or` / `not` is left alone -
+;;; that's real boolean logic - and so is an `and` with a non-clause operand (e.g. a stray trailing
+;;; map), which we leave whole for validation to report against the clause the LLM wrote.
+;;; Idempotent: after flattening, no splittable top-level entry is an `and`.
 ;;;
 ;;; The pass can't tell an LLM-introduced `and` from one the user authored as a custom expression
 ;;; in the query being edited, so the latter is split too. That is deliberate: the result set is
 ;;; the same, and the notebook shows each condition as its own editable filter. The `and`'s own
 ;;; options map is dropped; in the portable form it carries nothing an operand needs.
 ;;;
-;;; Must run before Pass 2.9 (`split-post-agg-filters*`), which moves whole `filters:` entries:
+;;; Despite its number, this runs in `normalize-shape*` (after Pass 1 adds options maps, before
+;;; Pass 1.5). Must run before Pass 2.9 (`split-post-agg-filters*`), which moves whole `filters:` entries:
 ;;; splitting first lets a pre-aggregation conjunct stay in stage 0 while only the conjunct that
 ;;; references an aggregation moves to the new stage.
 ;;;
@@ -1422,8 +1425,10 @@
   [clause]
   (and (vector? clause)
        (>= (count clause) 3)
-       (= "and" (nth clause 0))
-       (map? (nth clause 1))))
+       (string? (nth clause 0))
+       (= "and" (u/lower-case-en (nth clause 0)))
+       (map? (nth clause 1))
+       (every? vector? (drop 2 clause))))
 
 (defn- and-filter-operands
   [clause]
@@ -3002,7 +3007,8 @@
        canonical sequential form, always output sequential with `lib/expression-name`
        stamped into each clause's options from the map key when missing;
     1.56. split a top-level `and` in `filters:` into separate entries, so the notebook editor
-       shows them as individual filters rather than one merged custom expression;
+       shows them as individual filters rather than one merged custom expression (runs with the
+       pass-1 shape passes, before 1.5; must precede 2.9);
     1.75. strip stray surrounding double-quotes from the string segments of `field` clauses'
        portable-FK vector targets, e.g. `\"col\"` → `col` (cross-stage string targets are left
        to the resolution-aware cross-stage matching in pass 5);
