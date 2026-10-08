@@ -1,0 +1,39 @@
+diff --git a/node_modules/subset-font/index.js b/node_modules/subset-font/index.js
+index 219fefaa5..e6b85a64f 100644
+--- a/node_modules/subset-font/index.js
++++ b/node_modules/subset-font/index.js
+@@ -29,6 +29,7 @@ const HB_SUBSET_SETS_DROP_TABLE_TAG = 3;
+ const HB_SUBSET_SETS_NAME_ID = 4;
+ const HB_SUBSET_SETS_LAYOUT_FEATURE_TAG = 6;
+ const HB_SUBSET_FLAGS_NO_HINTING = 0x00000001;
++const HB_SUBSET_FLAGS_NOTDEF_OUTLINE = 0x00000040;
+ const HB_SUBSET_FLAGS_GLYPH_NAMES = 0x00000080;
+ const HB_SUBSET_FLAGS_NO_LAYOUT_CLOSURE = 0x00000200;
+ 
+@@ -49,6 +50,7 @@ async function subsetFont(
+     noLayoutClosure,
+     glyphNames,
+     noHinting,
++    notdefOutline,
+     dropTables,
+     keepAllGlyphs = false,
+   } = {}
+@@ -139,7 +141,7 @@ async function subsetFont(
+     }
+   }
+ 
+-  if (noLayoutClosure || noHinting || glyphNames) {
++  if (noLayoutClosure || noHinting || glyphNames || notdefOutline) {
+     let flags = harfbuzzJsWasm.hb_subset_input_get_flags(input);
+     if (noLayoutClosure) {
+       flags |= HB_SUBSET_FLAGS_NO_LAYOUT_CLOSURE;
+@@ -150,6 +152,9 @@ async function subsetFont(
+     if (glyphNames) {
+       flags |= HB_SUBSET_FLAGS_GLYPH_NAMES;
+     }
++    if (notdefOutline) {
++      flags |= HB_SUBSET_FLAGS_NOTDEF_OUTLINE;
++    }
+     if (flags !== harfbuzzJsWasm.hb_subset_input_get_flags(input)) {
+       harfbuzzJsWasm.hb_subset_input_set_flags(input, flags);
+     }
