@@ -1182,7 +1182,7 @@ describe("issue 47170", () => {
 
     H.appBar().button("Toggle sidebar").click();
     H.navigationSidebar().findByText("Dashboard A").should("be.visible");
-    H.main().findByTestId("dashboard-header-skeleton").should("be.visible");
+    H.main().findByTestId("loading-indicator").should("be.visible");
     H.navigationSidebar().findByText("Dashboard A").click();
 
     H.main().within(() => {
