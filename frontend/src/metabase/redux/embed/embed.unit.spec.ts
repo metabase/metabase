@@ -119,10 +119,11 @@ describe("embed reducer", () => {
           "model",
           "table",
           "metric",
+          "library",
         ]);
       });
 
-      it('should set "entity_types" option to the default value `["model", "table", "metric"]` when "entity_types" are empty', () => {
+      it('should set "entity_types" option to the default value `["model", "table", "metric", "library"]` when "entity_types" are empty', () => {
         const store = createMockStore();
 
         store.dispatch(
@@ -136,6 +137,7 @@ describe("embed reducer", () => {
           "model",
           "table",
           "metric",
+          "library",
         ]);
 
         store.dispatch(
@@ -149,15 +151,16 @@ describe("embed reducer", () => {
           "model",
           "table",
           "metric",
+          "library",
         ]);
       });
 
-      it('should ignore "metric" in "entity_types" option', () => {
+      it('should ignore "metric" and "library" in "entity_types" option', () => {
         const store = createMockStore();
 
         store.dispatch(
           setInitialUrlOptions({
-            search: "entity_types=table,metric",
+            search: "entity_types=table,metric,library",
           }),
         );
 
@@ -179,6 +182,7 @@ describe("embed reducer", () => {
           "model",
           "table",
           "metric",
+          "library",
         ]);
       });
 

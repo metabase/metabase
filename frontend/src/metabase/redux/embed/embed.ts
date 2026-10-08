@@ -143,7 +143,10 @@ function normalizeEntityTypes(
       Array.isArray(entityTypesValueOrArray)
         ? entityTypesValueOrArray
         : [entityTypesValueOrArray]
-    ).filter((entityType: string) => entityType !== "metric");
+    ).filter(
+      (entityType: string) =>
+        entityType !== "metric" && entityType !== "library",
+    );
 
     if (entityTypes.length > 0) {
       return {

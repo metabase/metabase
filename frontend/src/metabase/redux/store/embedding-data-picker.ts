@@ -4,7 +4,12 @@ export interface EmbeddingDataPickerState {
 }
 
 // Duplicate the type instead, so we see this type name rather than `FullAppEmbeddingEntityType` if we do type EmbeddingEntityType = FullAppEmbeddingEntityType
-export type EmbeddingEntityType = "model" | "table" | "question" | "metric";
+export type EmbeddingEntityType =
+  | "model"
+  | "table"
+  | "question"
+  | "metric"
+  | "library";
 
 /**
  * `question` only works on multi-stage data picker, not the simple data picker.

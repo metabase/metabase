@@ -17,6 +17,7 @@ export interface DataSourceSelectorProps {
   canSelectTable: boolean;
   canSelectQuestion: boolean;
   canSelectMetric: boolean;
+  canSelectLibrary: boolean;
   triggerElement: JSX.Element;
   setSourceTableFn: (tableId: TableId) => void;
   /**
