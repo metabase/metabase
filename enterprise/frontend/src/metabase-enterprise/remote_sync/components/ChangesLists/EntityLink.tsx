@@ -15,6 +15,10 @@ interface EntityLinkProps {
 }
 
 function getEntityUrl(entity: RemoteSyncEntity): string | null {
+  // Transform test URLs need the parent transform id, which dirty entries do not carry.
+  if (entity.model === "transformtest") {
+    return null;
+  }
   if (entity.model === "action") {
     if (entity.card_id === undefined) {
       return null;

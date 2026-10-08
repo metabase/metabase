@@ -436,6 +436,8 @@ export function getCollectionIcon(
         return { name: "table" };
       case "library-metrics":
         return { name: "metric" };
+      case "library-dashboards":
+        return { name: "dashboard" };
     }
   }
 

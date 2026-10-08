@@ -925,6 +925,7 @@
   "Determines if a model instance is editable based on remote sync configuration.
 
    Returns false if:
+   - Remote sync is enabled AND
    - The model has a spec in remote-sync-specs AND
    - The instance is eligible for sync (via check-eligibility) AND
    - remote-sync-type is :read-only
@@ -932,16 +933,15 @@
    For models with global eligibility (e.g., :library-synced, :setting), the instance
    argument can be nil or an empty map since eligibility doesn't depend on instance data."
   [model-key instance]
-  (if-let [spec (spec-for-model-key model-key)]
+  (if-let [spec (and (rs-settings/remote-sync-enabled) (spec-for-model-key model-key))]
     (or (= (rs-settings/remote-sync-type) :read-write)
         (not (check-eligibility spec instance)))
-    ;; Model not in spec, always editable
     true))
 
 (defn batch-model-editable?
   "Batch version of model-editable?. Returns a map of instance-id -> editable? boolean."
   [model-key instances]
-  (if-let [spec (spec-for-model-key model-key)]
+  (if-let [spec (and (rs-settings/remote-sync-enabled) (spec-for-model-key model-key))]
     (if (= (rs-settings/remote-sync-type) :read-write)
       (into {} (map (fn [inst] [(:id inst) true])) instances)
       (let [eligibility-map (batch-check-eligibility spec instances)]

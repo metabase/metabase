@@ -23,12 +23,13 @@ import { useActionDatabases } from "metabase-enterprise/data-studio/library/acti
 import { useBuildActionTree } from "metabase-enterprise/data-studio/library/actions/hooks/use-build-action-tree";
 import { canCreateActions } from "metabase-enterprise/data-studio/library/actions/utils";
 import { getIsRemoteSyncReadOnly } from "metabase-enterprise/remote_sync/selectors";
-import type { Collection } from "metabase-types/api";
+import type { Collection, CollectionId } from "metabase-types/api";
 
 import { ActionCell } from "../components/ActionCell";
 import { EmptyStateAction } from "../components/EmptyStateAction";
 import { getTreeRowHref } from "../utils";
 
+import type { LibrarySection } from "./library-bulk-selection.utils";
 import { useErrorHandling } from "./useErrorHandling";
 import { useLibraryCollectionTree } from "./useLibraryCollectionTree";
 import { useLibraryCollections } from "./useLibraryCollections";
@@ -39,6 +40,7 @@ type Params = {
   isLoadingCollections: boolean;
   searchQuery: string;
   onPublishTableClick: VoidFunction;
+  onNewDashboardClick: VoidFunction;
 };
 
 export function useLibraryTreeTableInstance({
@@ -46,6 +48,7 @@ export function useLibraryTreeTableInstance({
   isLoadingCollections,
   searchQuery,
   onPublishTableClick,
+  onNewDashboardClick,
 }: Params) {
   const [searchParams] = useSearchParams();
   const isRemoteSyncReadOnly = useSelector(getIsRemoteSyncReadOnly);
@@ -61,8 +64,12 @@ export function useLibraryTreeTableInstance({
       ids.map((id) => [`collection:${id}`, true]),
     ) as ExpandedState;
   }, [searchParams]);
-  const { libraryCollection, tableCollection, metricCollection } =
-    useLibraryCollections(collections);
+  const {
+    libraryCollection,
+    tableCollection,
+    metricCollection,
+    dashboardCollection,
+  } = useLibraryCollections(collections);
 
   const {
     tree: tablesTree,
@@ -85,6 +92,14 @@ export function useLibraryTreeTableInstance({
     metricCollection?.id,
   );
   const {
+    tree: dashboardsTree,
+    isLoading: loadingDashboards,
+    error: dashboardsError,
+    watchRows: watchDashboardRows,
+    isChildrenLoading: isDashboardChildrenLoading,
+    refreshCollections: refreshDashboardCollections,
+  } = useLibraryCollectionTree(dashboardCollection, "dashboards");
+  const {
     tree: snippetTree,
     isLoading: loadingSnippets,
     error: snippetsError,
@@ -104,7 +119,24 @@ export function useLibraryTreeTableInstance({
     [snippetTree, actionTree],
   );
 
-  // Server-side search for tables and metrics, client-side for snippets and actions
+  const refreshSection = useCallback(
+    (section: LibrarySection, collectionIds: CollectionId[]) => {
+      const refreshCollections = {
+        data: refreshTableCollections,
+        metrics: refreshMetricCollections,
+        dashboards: refreshDashboardCollections,
+        snippets: undefined,
+      }[section];
+      refreshCollections?.(collectionIds);
+    },
+    [
+      refreshTableCollections,
+      refreshMetricCollections,
+      refreshDashboardCollections,
+    ],
+  );
+
+  // Server-side search for tables, metrics, and dashboards, client-side for snippets and actions
   const {
     tree: searchTree,
     isActive: isSearchActive,
@@ -115,20 +147,32 @@ export function useLibraryTreeTableInstance({
     () =>
       isSearchActive
         ? searchTree
-        : [...tablesTree, ...metricsTree, ...localTree],
-    [isSearchActive, searchTree, tablesTree, metricsTree, localTree],
+        : [...tablesTree, ...metricsTree, ...dashboardsTree, ...localTree],
+    [
+      isSearchActive,
+      searchTree,
+      tablesTree,
+      metricsTree,
+      dashboardsTree,
+      localTree,
+    ],
   );
 
   const isLoading =
     isLoadingCollections ||
     loadingTables ||
     loadingMetrics ||
+    loadingDashboards ||
     loadingSnippets ||
     loadingActions ||
     loadingActionDatabases ||
     isSearchLoading;
   useErrorHandling(
-    tablesError || metricsError || snippetsError || actionsError,
+    tablesError ||
+      metricsError ||
+      dashboardsError ||
+      snippetsError ||
+      actionsError,
   );
 
   const libraryHasContent = useMemo(
@@ -163,6 +207,7 @@ export function useLibraryTreeTableInstance({
                   <EmptyStateAction
                     data={data}
                     onPublishTableClick={onPublishTableClick}
+                    onNewDashboardClick={onNewDashboardClick}
                   />
                 )}
               </Flex>
@@ -232,19 +277,15 @@ export function useLibraryTreeTableInstance({
         id: "actions",
         width: 48,
         cell: ({ row }) => (
-          <ActionCell
-            treeItem={row.original}
-            refreshMetricCollections={refreshMetricCollections}
-            refreshTableCollections={refreshTableCollections}
-          />
+          <ActionCell treeItem={row.original} refreshSection={refreshSection} />
         ),
       },
     ],
     [
       isRemoteSyncReadOnly,
       onPublishTableClick,
-      refreshMetricCollections,
-      refreshTableCollections,
+      onNewDashboardClick,
+      refreshSection,
     ],
   );
 
@@ -252,7 +293,7 @@ export function useLibraryTreeTableInstance({
   const actionRootId = actionTree[0]?.id;
 
   // Controlled expansion: expand all during search, preserve user state when browsing.
-  // Default any IDs from the URL. If none are provided, default to Data, Metrics and SQL Snippets expanded
+  // Default any IDs from the URL. If none are provided, default to Data, Metrics, Dashboards and SQL Snippets expanded
   const defaultExpanded = useMemo<ExpandedState>(() => {
     if (expandedIdsFromUrl) {
       return expandedIdsFromUrl;
@@ -263,6 +304,9 @@ export function useLibraryTreeTableInstance({
     }
     if (metricCollection) {
       ids[`collection:${metricCollection.id}`] = true;
+    }
+    if (dashboardCollection) {
+      ids[`collection:${dashboardCollection.id}`] = true;
     }
 
     if (snippetRootId) {
@@ -278,6 +322,7 @@ export function useLibraryTreeTableInstance({
     expandedIdsFromUrl,
     tableCollection,
     metricCollection,
+    dashboardCollection,
     snippetRootId,
     actionRootId,
   ]);
@@ -349,17 +394,29 @@ export function useLibraryTreeTableInstance({
   useEffect(() => {
     watchTableRows(treeTableInstance.rows);
     watchMetricRows(treeTableInstance.rows);
-  }, [treeTableInstance.rows, watchTableRows, watchMetricRows]);
+    watchDashboardRows(treeTableInstance.rows);
+  }, [
+    treeTableInstance.rows,
+    watchTableRows,
+    watchMetricRows,
+    watchDashboardRows,
+  ]);
 
   const isChildrenLoading = useCallback(
     (row: Parameters<typeof isTableChildrenLoading>[0]) =>
-      isTableChildrenLoading(row) || isMetricChildrenLoading(row),
-    [isTableChildrenLoading, isMetricChildrenLoading],
+      isTableChildrenLoading(row) ||
+      isMetricChildrenLoading(row) ||
+      isDashboardChildrenLoading(row),
+    [
+      isTableChildrenLoading,
+      isMetricChildrenLoading,
+      isDashboardChildrenLoading,
+    ],
   );
 
   let emptyMessage = null;
   if (!libraryHasContent) {
-    emptyMessage = t`No tables, metrics, or snippets yet`;
+    emptyMessage = t`No tables, metrics, dashboards, or snippets yet`;
   } else if (searchQuery) {
     emptyMessage = t`No results for "${searchQuery}"`;
   }
@@ -372,7 +429,6 @@ export function useLibraryTreeTableInstance({
     isChildrenLoading,
     isLoading,
     emptyMessage,
-    refreshTableCollections,
-    refreshMetricCollections,
+    refreshSection,
   };
 }

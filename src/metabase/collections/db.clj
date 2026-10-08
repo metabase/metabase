@@ -39,6 +39,11 @@
   [type :- :string]
   (t2/select-one :model/Collection :type type))
 
+(mu/defn collection-with-entity-id
+  "The ::collections.schema/collection with `entity-id`, or nil."
+  [entity-id :- :string]
+  (t2/select-one :model/Collection :entity_id entity-id))
+
 (mu/defn root-remote-synced-collection
   "The top-level remote-synced ::collections.schema/collection, or nil."
   []
