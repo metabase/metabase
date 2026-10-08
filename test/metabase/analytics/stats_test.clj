@@ -563,7 +563,8 @@
     :session-management
     :session-timeout-config
     :sso-oidc
-    :admin-security-center})
+    :admin-security-center
+    :data-sensitivity})
 
 (deftest every-feature-is-accounted-for-test
   (testing "Is every premium feature either tracked under the :features key, or intentionally excluded?"
