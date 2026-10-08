@@ -8,7 +8,7 @@ import { Box, Checkbox, Ellipsified, Flex, Icon } from "metabase/ui";
 import { parseTimestamp } from "metabase/utils/time-dayjs";
 import type { Timeline, TimelineEvent } from "metabase-types/api";
 
-import EventCard from "../EventCard";
+import { EventCard } from "../EventCard";
 
 import S from "./TimelineCard.module.css";
 
