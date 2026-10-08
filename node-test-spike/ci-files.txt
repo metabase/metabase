@@ -154,11 +154,20 @@ enterprise/frontend/src/metabase-enterprise/data_apps/sandbox/create-element.uni
 enterprise/frontend/src/metabase-enterprise/data_apps/sandbox/distortions.unit.spec.ts
 enterprise/frontend/src/metabase-enterprise/data_apps/sandbox/host-element-guard.unit.spec.ts
 enterprise/frontend/src/metabase-enterprise/data_apps/sandbox/sandbox.unit.spec.ts
+enterprise/frontend/src/metabase-enterprise/data-studio/library/actions/components/ActionHeader/ActionHeader.unit.spec.tsx
+enterprise/frontend/src/metabase-enterprise/data-studio/library/actions/hooks/use-build-action-tree/utils.unit.spec.ts
+enterprise/frontend/src/metabase-enterprise/data-studio/library/actions/pages/ActionFieldsPage/ActionFieldDetails/ActionFieldDetails.unit.spec.tsx
+enterprise/frontend/src/metabase-enterprise/data-studio/library/actions/pages/ActionFieldsPage/ActionFieldDetails/utils.unit.spec.ts
+enterprise/frontend/src/metabase-enterprise/data-studio/library/actions/pages/ActionFieldsPage/ActionFieldsPage.unit.spec.tsx
+enterprise/frontend/src/metabase-enterprise/data-studio/library/actions/pages/ActionRunPage/ActionRunPage.unit.spec.tsx
+enterprise/frontend/src/metabase-enterprise/data-studio/library/actions/pages/ActionSettingsPage/ActionSettingsPage.unit.spec.tsx
+enterprise/frontend/src/metabase-enterprise/data-studio/library/actions/utils.unit.spec.ts
 enterprise/frontend/src/metabase-enterprise/data-studio/library/components/CreateLibraryModal/CreateLibraryModal.unit.spec.tsx
 enterprise/frontend/src/metabase-enterprise/data-studio/library/components/LibraryEmptyState/LibraryEmptyState.unit.spec.tsx
 enterprise/frontend/src/metabase-enterprise/data-studio/library/components/PublishTablesModal/PublishTablesModal.unit.spec.tsx
 enterprise/frontend/src/metabase-enterprise/data-studio/library/components/UnpublishTablesModal/UnpublishTablesModal.unit.spec.tsx
 enterprise/frontend/src/metabase-enterprise/data-studio/library/DataReferenceLibraryPane.unit.spec.tsx
+enterprise/frontend/src/metabase-enterprise/data-studio/library/LibraryPage/components/CreateLibraryDashboardModal.unit.spec.tsx
 enterprise/frontend/src/metabase-enterprise/data-studio/library/LibraryPage/components/CreateMenu.unit.spec.tsx
 enterprise/frontend/src/metabase-enterprise/data-studio/library/LibraryPage/components/LibraryBulkActions.unit.spec.tsx
 enterprise/frontend/src/metabase-enterprise/data-studio/library/LibraryPage/components/LibraryCollectionRowMenu.unit.spec.tsx
@@ -233,7 +242,12 @@ enterprise/frontend/src/metabase-enterprise/monitor/ai-auditing/metabot-analytic
 enterprise/frontend/src/metabase-enterprise/monitor/ai-auditing/metabot-analytics/components/ConversationStatsPage/DataComplexitySection.unit.spec.tsx
 enterprise/frontend/src/metabase-enterprise/monitor/ai-auditing/metabot-analytics/components/ConversationStatsPage/query-snapshots.unit.spec.ts
 enterprise/frontend/src/metabase-enterprise/monitor/ai-auditing/metabot-analytics/components/ConversationStatsPage/query-utils.unit.spec.ts
+enterprise/frontend/src/metabase-enterprise/monitor/ai-auditing/metabot-analytics/hooks/useAuditTable.unit.spec.tsx
 enterprise/frontend/src/metabase-enterprise/monitor/ai-auditing/routes.unit.spec.tsx
+enterprise/frontend/src/metabase-enterprise/monitor/api-key-usage/components/ApiKeyActivityTable.unit.spec.ts
+enterprise/frontend/src/metabase-enterprise/monitor/api-key-usage/hooks/useApiKeyUsageHasData.unit.spec.ts
+enterprise/frontend/src/metabase-enterprise/monitor/api-key-usage/query-utils.unit.spec.ts
+enterprise/frontend/src/metabase-enterprise/monitor/api-key-usage/raw-series.unit.spec.ts
 enterprise/frontend/src/metabase-enterprise/monitor/dependency-diagnostics/components/DiagnosticsSidebar/DiagnosticsSidebar.unit.spec.tsx
 enterprise/frontend/src/metabase-enterprise/monitor/dependency-diagnostics/components/DiagnosticsSidebar/ErrorsSection/ErrorsSection.unit.spec.tsx
 enterprise/frontend/src/metabase-enterprise/monitor/dependency-diagnostics/components/DiagnosticsSidebar/FieldsSection/FieldsSection.unit.spec.tsx
@@ -243,6 +257,11 @@ enterprise/frontend/src/metabase-enterprise/monitor/dependency-diagnostics/compo
 enterprise/frontend/src/metabase-enterprise/monitor/dependency-diagnostics/index.unit.spec.ts
 enterprise/frontend/src/metabase-enterprise/monitor/dependency-diagnostics/pages/DependencyDiagnosticsPage.unit.spec.tsx
 enterprise/frontend/src/metabase-enterprise/monitor/dependency-diagnostics/routes.unit.spec.tsx
+enterprise/frontend/src/metabase-enterprise/monitor/session-management/SessionDetailSidebar/SessionDetailSidebar.unit.spec.tsx
+enterprise/frontend/src/metabase-enterprise/monitor/session-management/SessionsFilters/SessionsFilters.unit.spec.tsx
+enterprise/frontend/src/metabase-enterprise/monitor/session-management/SessionsPage/SessionsPage.unit.spec.tsx
+enterprise/frontend/src/metabase-enterprise/monitor/session-management/SessionsPage/utils.unit.spec.ts
+enterprise/frontend/src/metabase-enterprise/monitor/session-management/SessionsTable/SessionsTable.unit.spec.tsx
 enterprise/frontend/src/metabase-enterprise/monitor/tools/ErrorOverview/ErrorOverview.unit.spec.tsx
 enterprise/frontend/src/metabase-enterprise/multi_factor_auth/components/AccountSecurityPanel/AccountSecurityPanel.unit.spec.tsx
 enterprise/frontend/src/metabase-enterprise/multi_factor_auth/components/AccountSecurityPanel/DisableModal/DisableModal.unit.spec.tsx
@@ -263,6 +282,7 @@ enterprise/frontend/src/metabase-enterprise/remote_sync/components/GitSettingsMo
 enterprise/frontend/src/metabase-enterprise/remote_sync/components/GitSyncControls/BranchDropdown.unit.spec.tsx
 enterprise/frontend/src/metabase-enterprise/remote_sync/components/GitSyncControls/GitSyncControls.unit.spec.tsx
 enterprise/frontend/src/metabase-enterprise/remote_sync/components/RemoteSyncAdminSettings/BranchSwitcher.unit.spec.tsx
+enterprise/frontend/src/metabase-enterprise/remote_sync/components/RemoteSyncAdminSettings/GitTestConnectionButton.unit.spec.tsx
 enterprise/frontend/src/metabase-enterprise/remote_sync/components/RemoteSyncAdminSettings/RemoteSyncDependencyModal.unit.spec.tsx
 enterprise/frontend/src/metabase-enterprise/remote_sync/components/RemoteSyncAdminSettings/RemoteSyncSettingsForm.unit.spec.tsx
 enterprise/frontend/src/metabase-enterprise/remote_sync/components/SharedTenantCollectionsList/SharedTenantCollectionsList.unit.spec.tsx
@@ -270,6 +290,7 @@ enterprise/frontend/src/metabase-enterprise/remote_sync/components/SyncConflictM
 enterprise/frontend/src/metabase-enterprise/remote_sync/components/SyncConflictModal/OutOfSyncOptions.unit.spec.tsx
 enterprise/frontend/src/metabase-enterprise/remote_sync/components/SyncProgressModal.unit.spec.tsx
 enterprise/frontend/src/metabase-enterprise/remote_sync/components/TopLevelCollectionsList/TopLevelCollectionsList.unit.spec.tsx
+enterprise/frontend/src/metabase-enterprise/remote_sync/displayGroups.unit.spec.ts
 enterprise/frontend/src/metabase-enterprise/remote_sync/hooks/use-git-sync-visible.unit.spec.ts
 enterprise/frontend/src/metabase-enterprise/remote_sync/hooks/use-has-glossary-dirty-changes.unit.spec.ts
 enterprise/frontend/src/metabase-enterprise/remote_sync/hooks/use-has-library-dirty-changes.unit.spec.ts
@@ -422,6 +443,7 @@ frontend/src/embedding-sdk-bundle/components/public/InteractiveQuestion/Interact
 frontend/src/embedding-sdk-bundle/components/public/SdkQuestion/SdkQuestion-drills.unit.spec.tsx
 frontend/src/embedding-sdk-bundle/components/public/SdkQuestion/SdkQuestion-multiple-questions.unit.spec.tsx
 frontend/src/embedding-sdk-bundle/components/public/SdkQuestion/SdkQuestion.EditorButton.unit.spec.tsx
+frontend/src/embedding-sdk-bundle/components/public/SdkQuestion/SdkQuestion.RefreshButton.unit.spec.tsx
 frontend/src/embedding-sdk-bundle/components/public/SdkQuestion/SdkQuestion.unit.spec.tsx
 frontend/src/embedding-sdk-bundle/components/public/StaticQuestion/StaticQuestion-multiple-guest-questions.unit.spec.tsx
 frontend/src/embedding-sdk-bundle/components/public/StaticQuestion/StaticQuestion.unit.spec.tsx
@@ -540,6 +562,8 @@ frontend/src/metabase/admin/app/reducers.unit.spec.ts
 frontend/src/metabase/admin/components/AdminDataTable/AdminDataTable.unit.spec.tsx
 frontend/src/metabase/admin/databases/components/DatabaseConnectionInfoSection/DatabaseConnectionInfoSection.unit.spec.tsx
 frontend/src/metabase/admin/databases/components/DatabaseDangerZoneSection/DatabaseDangerZoneSection.unit.spec.tsx
+frontend/src/metabase/admin/databases/components/DatabaseDataActionsSection/DataActionsSection/DataActionsSection.unit.spec.tsx
+frontend/src/metabase/admin/databases/components/DatabaseDataActionsSection/DatabaseDataActionsSection.unit.spec.tsx
 frontend/src/metabase/admin/databases/components/DatabaseEditConnectionForm.unit.spec.tsx
 frontend/src/metabase/admin/databases/components/DatabaseHelpSidePanel/DatabaseHelpSidePanel.unit.spec.tsx
 frontend/src/metabase/admin/databases/components/DatabaseHelpSidePanel/EmbeddedEngineDocContent/EmbeddedEngineDocContent.unit.spec.tsx
@@ -547,10 +571,11 @@ frontend/src/metabase/admin/databases/components/DatabaseHelpSidePanel/EmbeddedE
 frontend/src/metabase/admin/databases/components/DatabaseHelpSidePanel/EmbeddedEngineDocContent/MarkdownLink.unit.spec.tsx
 frontend/src/metabase/admin/databases/components/DatabaseHelpSidePanel/EmbeddedEngineDocContent/useEngineDocMarkdownContent.unit.spec.tsx
 frontend/src/metabase/admin/databases/components/DatabaseList/DatabaseList.unit.spec.tsx
-frontend/src/metabase/admin/databases/components/DatabaseModelFeaturesSection/DatabaseModelFeaturesSection.unit.spec.tsx
-frontend/src/metabase/admin/databases/components/DatabaseModelFeaturesSection/ModelActionsSection/ModelActionsSection.unit.spec.tsx
+frontend/src/metabase/admin/databases/components/DatabaseModelPersistenceSection/DatabaseModelPersistenceSection.unit.spec.tsx
 frontend/src/metabase/admin/databases/components/DeleteDatabaseModel/DeleteDatabaseModal.unit.spec.tsx
 frontend/src/metabase/admin/databases/components/ExistingDatabaseHeader/HeaderLinkGroup.unit.spec.tsx
+frontend/src/metabase/admin/databases/containers/DatabaseEditApp.unit.spec.tsx
+frontend/src/metabase/admin/databases/containers/DatabaseListApp.unit.spec.tsx
 frontend/src/metabase/admin/databases/containers/DatabasePage.unit.spec.tsx
 frontend/src/metabase/admin/datamodel/components/SegmentForm/SegmentForm.unit.spec.tsx
 frontend/src/metabase/admin/datamodel/components/SegmentItem.unit.spec.tsx
@@ -661,6 +686,7 @@ frontend/src/metabase/admin/settings/slack/SlackSetup.unit.spec.tsx
 frontend/src/metabase/admin/settings/tests/enterprise.unit.spec.tsx
 frontend/src/metabase/admin/settings/tests/oss.unit.spec.tsx
 frontend/src/metabase/admin/settings/tests/premium.unit.spec.tsx
+frontend/src/metabase/api/action.unit.spec.ts
 frontend/src/metabase/api/activity.unit.spec.ts
 frontend/src/metabase/api/ai-streaming/process-stream.unit.spec.ts
 frontend/src/metabase/api/ai-streaming/requests.unit.spec.ts
@@ -700,6 +726,7 @@ frontend/src/metabase/auth/components/PasswordButton/PasswordButton.unit.spec.ts
 frontend/src/metabase/auth/components/PasswordPanel/PasswordPanel.unit.spec.tsx
 frontend/src/metabase/auth/components/ResetPassword/ResetPassword.unit.spec.tsx
 frontend/src/metabase/auth/components/SsoReload/SsoReload.unit.spec.tsx
+frontend/src/metabase/browse/components/DatabaseQuickLinksMenu.unit.spec.tsx
 frontend/src/metabase/browse/databases/BrowseDatabases.unit.spec.tsx
 frontend/src/metabase/browse/metrics/tests/common.unit.spec.tsx
 frontend/src/metabase/browse/metrics/tests/enterprise.unit.spec.tsx
@@ -740,6 +767,7 @@ frontend/src/metabase/common/collections/components/CompactPinnedItemCard/Compac
 frontend/src/metabase/common/collections/components/CreateCollectionForm/tests/common.unit.spec.tsx
 frontend/src/metabase/common/collections/components/CreateCollectionForm/tests/enterprise.unit.spec.tsx
 frontend/src/metabase/common/collections/components/CreateCollectionForm/tests/premium.unit.spec.tsx
+frontend/src/metabase/common/collections/containers/CreateCollectionModal.unit.spec.ts
 frontend/src/metabase/common/collections/containers/FormCollectionAndDashboardPicker/FormCollectionAndDashboardPicker.unit.spec.tsx
 frontend/src/metabase/common/collections/dropzone.unit.spec.ts
 frontend/src/metabase/common/collections/hooks.unit.spec.tsx
@@ -761,10 +789,12 @@ frontend/src/metabase/common/components/ColorPicker/ColorPicker.unit.spec.tsx
 frontend/src/metabase/common/components/ColorSelector/ColorSelector.unit.spec.tsx
 frontend/src/metabase/common/components/CommunityLocalizationNotice/CommunityLocalizationNotice.unit.spec.tsx
 frontend/src/metabase/common/components/ConfirmModal/ConfirmModal.unit.spec.tsx
+frontend/src/metabase/common/components/CopyButton/CopyButton.unit.spec.tsx
 frontend/src/metabase/common/components/CopyCardForm/CopyCardForm.unit.spec.tsx
 frontend/src/metabase/common/components/CopyTextArea/CopyTextArea.unit.spec.tsx
 frontend/src/metabase/common/components/CopyTextInput/CopyTextInput.unit.spec.tsx
 frontend/src/metabase/common/components/DashboardName.unit.spec.tsx
+frontend/src/metabase/common/components/DataActionCollectionName.unit.spec.tsx
 frontend/src/metabase/common/components/DatabaseMultiSelect/DatabaseMultiSelect.unit.spec.tsx
 frontend/src/metabase/common/components/DateTime/DateTime.unit.spec.tsx
 frontend/src/metabase/common/components/dnd/CollectionDropTarget.unit.spec.ts
@@ -847,6 +877,7 @@ frontend/src/metabase/common/components/TabContent/TabContent.unit.spec.tsx
 frontend/src/metabase/common/components/Table/Table.unit.spec.tsx
 frontend/src/metabase/common/components/TabList/TabList.unit.spec.tsx
 frontend/src/metabase/common/components/TabRow/TabRow.unit.spec.tsx
+frontend/src/metabase/common/components/TestConnectionButton/TestConnectionButton.unit.spec.tsx
 frontend/src/metabase/common/components/TimelineEventInfo/TimelineEventInfo.unit.spec.tsx
 frontend/src/metabase/common/components/TitleAndDescription/i18n-tests/common.unit.spec.tsx
 frontend/src/metabase/common/components/TitleAndDescription/i18n-tests/premium.unit.spec.tsx
@@ -883,6 +914,7 @@ frontend/src/metabase/common/hooks/use-attached-dwh.unit.spec.ts
 frontend/src/metabase/common/hooks/use-callback-effect/use-callback-effect.unit.spec.tsx
 frontend/src/metabase/common/hooks/use-confirm-route-leave-modal.unit.spec.tsx
 frontend/src/metabase/common/hooks/use-get-personal-collection.unit.spec.tsx
+frontend/src/metabase/common/hooks/use-has-painted-since-mount.unit.spec.ts
 frontend/src/metabase/common/hooks/use-has-token-feature/use-has-token-feature.unit.spec.tsx
 frontend/src/metabase/common/hooks/use-help-link.unit.spec.ts
 frontend/src/metabase/common/hooks/use-list-keyboard-navigation/use-list-keyboard-navigation.unit.spec.ts
@@ -891,6 +923,7 @@ frontend/src/metabase/common/hooks/use-locale/use-locale.unit.spec.tsx
 frontend/src/metabase/common/hooks/use-memoized-callback.unit.spec.ts
 frontend/src/metabase/common/hooks/use-notification-channels/use-notification-channels.unit.spec.tsx
 frontend/src/metabase/common/hooks/use-number-formatter.unit.spec.ts
+frontend/src/metabase/common/hooks/use-page-in-range.unit.spec.ts
 frontend/src/metabase/common/hooks/use-pagination.unit.spec.ts
 frontend/src/metabase/common/hooks/use-scroll-to-top.unit.spec.tsx
 frontend/src/metabase/common/hooks/use-temp-storage/use-temp-storage.unit.spec.tsx
@@ -910,6 +943,7 @@ frontend/src/metabase/common/utils/columns.unit.spec.ts
 frontend/src/metabase/common/utils/database.unit.spec.ts
 frontend/src/metabase/common/utils/fields.unit.spec.ts
 frontend/src/metabase/common/utils/model-names.unit.spec.ts
+frontend/src/metabase/common/utils/timelines.unit.spec.ts
 frontend/src/metabase/current-user/api/current-user.unit.spec.ts
 frontend/src/metabase/current-user/selectors.unit.spec.ts
 frontend/src/metabase/current-user/use-user-key-value.unit.spec.tsx
@@ -923,6 +957,7 @@ frontend/src/metabase/dashboard/actions/getNewCardUrl.unit.spec.ts
 frontend/src/metabase/dashboard/actions/parameters.unit.spec.ts
 frontend/src/metabase/dashboard/actions/save.unit.spec.ts
 frontend/src/metabase/dashboard/actions/tabs.unit.spec.ts
+frontend/src/metabase/dashboard/actions/timeline-events.unit.spec.ts
 frontend/src/metabase/dashboard/actions/utils.unit.spec.ts
 frontend/src/metabase/dashboard/click-behavior/dashboard-click-drill.unit.spec.ts
 frontend/src/metabase/dashboard/click-behavior/question-url.unit.spec.ts
@@ -940,6 +975,7 @@ frontend/src/metabase/dashboard/components/Dashboard/DashboardEmptyState/Dashboa
 frontend/src/metabase/dashboard/components/Dashboard/use-dashboard-chart-paste.unit.spec.tsx
 frontend/src/metabase/dashboard/components/DashboardChartSettings/ChartNestedSettingSeriesMultiple.unit.spec.tsx
 frontend/src/metabase/dashboard/components/DashboardChartSettings/DashboardChartSettings.unit.spec.tsx
+frontend/src/metabase/dashboard/components/DashboardGridSkeleton/DashboardGridSkeleton.unit.spec.tsx
 frontend/src/metabase/dashboard/components/DashboardHeader/buttons/AddFilterParameterButton/AddFilterParameterButton.unit.spec.tsx
 frontend/src/metabase/dashboard/components/DashboardHeader/buttons/DashboardActionMenu.unit.spec.tsx
 frontend/src/metabase/dashboard/components/DashboardHeader/buttons/DashboardSubscriptionsButton.unit.spec.tsx
@@ -947,6 +983,7 @@ frontend/src/metabase/dashboard/components/DashboardHeader/buttons/ExportAsPdfBu
 frontend/src/metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow/DashboardHeaderButtonRow.unit.spec.tsx
 frontend/src/metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow/DashboardSharingMenu/DashboardSharingMenu.enterprise.unit.spec.tsx
 frontend/src/metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow/DashboardSharingMenu/DashboardSharingMenu.unit.spec.tsx
+frontend/src/metabase/dashboard/components/DashboardHeader/DashboardHeaderSkeleton.unit.spec.tsx
 frontend/src/metabase/dashboard/components/DashboardHeader/tests/common.unit.spec.tsx
 frontend/src/metabase/dashboard/components/DashboardHeader/tests/enterprise.unit.spec.ts
 frontend/src/metabase/dashboard/components/DashboardInfoSidebar/DashboardEntityIdCard/tests/common.unit.spec.tsx
@@ -957,6 +994,7 @@ frontend/src/metabase/dashboard/components/DashboardInfoSidebar/tests/common.uni
 frontend/src/metabase/dashboard/components/DashboardInfoSidebar/tests/enterprise.unit.spec.ts
 frontend/src/metabase/dashboard/components/DashboardInfoSidebar/tests/premium.unit.spec.ts
 frontend/src/metabase/dashboard/components/DashboardMoveModal.unit.spec.tsx
+frontend/src/metabase/dashboard/components/DashboardParameterPanel/DashboardParameterPanelSkeleton.unit.spec.tsx
 frontend/src/metabase/dashboard/components/DashboardSettingsSidebar/tests/common.unit.spec.ts
 frontend/src/metabase/dashboard/components/DashboardSettingsSidebar/tests/enterprise.unit.spec.ts
 frontend/src/metabase/dashboard/components/DashboardSettingsSidebar/tests/premium.unit.spec.ts
@@ -997,12 +1035,14 @@ frontend/src/metabase/dashboard/containers/ArchiveDashboardModal.unit.spec.tsx
 frontend/src/metabase/dashboard/containers/AutomaticDashboardApp/AutomaticDashboardApp.unit.spec.tsx
 frontend/src/metabase/dashboard/containers/DashboardApp/DashboardApp.autoscroll.unit.spec.tsx
 frontend/src/metabase/dashboard/containers/DashboardApp/DashboardApp.unit.spec.tsx
+frontend/src/metabase/dashboard/context/context.unit.spec.tsx
 frontend/src/metabase/dashboard/hooks/use-click-behavior-data.unit.spec.tsx
 frontend/src/metabase/dashboard/hooks/use-dashboard-url-query.unit.spec.tsx
 frontend/src/metabase/dashboard/hooks/use-is-parameter-panel-sticky.unit.spec.tsx
 frontend/src/metabase/dashboard/hooks/use-location-sync.unit.spec.tsx
 frontend/src/metabase/dashboard/reducers.unit.spec.ts
 frontend/src/metabase/dashboard/selectors.unit.spec.ts
+frontend/src/metabase/dashboard/timeline-events/hooks.unit.spec.tsx
 frontend/src/metabase/dashboard/utils.unit.spec.ts
 frontend/src/metabase/dashboard/utils/click-behavior.unit.spec.ts
 frontend/src/metabase/dashboard/utils/dashboard-options.unit.spec.tsx
@@ -1095,6 +1135,7 @@ frontend/src/metabase/documents/components/Editor/AnchorLinkMenu/AnchorLinkButto
 frontend/src/metabase/documents/components/Editor/AnchorLinkMenu/AnchorLinkMenu.unit.spec.tsx
 frontend/src/metabase/documents/components/Editor/chart-paste-extension.unit.spec.tsx
 frontend/src/metabase/documents/components/Editor/CommentsMenu/CommentsMenu.unit.spec.tsx
+frontend/src/metabase/documents/components/EmbedTimelineSidebar.unit.spec.tsx
 frontend/src/metabase/documents/documents.slice.unit.spec.ts
 frontend/src/metabase/documents/hooks/use-block-menus.unit.spec.tsx
 frontend/src/metabase/documents/hooks/use-document-comment-url.unit.spec.tsx
@@ -1541,6 +1582,7 @@ frontend/src/metabase/query_builder/components/view/PreviewQueryModal/tests/prem
 frontend/src/metabase/query_builder/components/view/QuestionDisplayToggle/QuestionDisplayToggle.unit.spec.tsx
 frontend/src/metabase/query_builder/components/view/QuestionLastUpdated/utils.unit.spec.tsx
 frontend/src/metabase/query_builder/components/view/QuestionRowCount/QuestionRowCount.unit.spec.tsx
+frontend/src/metabase/query_builder/components/view/QuestionTimelineWidget/QuestionTimelineWidget.unit.spec.tsx
 frontend/src/metabase/query_builder/components/view/sidebars/ChartSettingsSidebar.unit.spec.tsx
 frontend/src/metabase/query_builder/components/view/sidebars/ChartTypeSidebar/ChartTypeSidebar.unit.spec.tsx
 frontend/src/metabase/query_builder/components/view/sidebars/DatasetManagementSection/DatasetMetadataStrengthIndicator/DatasetMetadataStrengthIndicator.unit.spec.tsx
@@ -1576,6 +1618,7 @@ frontend/src/metabase/query_builder/components/Warnings.unit.spec.tsx
 frontend/src/metabase/query_builder/containers/QueryBuilder.beforeunload-events.unit.spec.tsx
 frontend/src/metabase/query_builder/containers/QueryBuilder.custom-viz-drill.unit.spec.tsx
 frontend/src/metabase/query_builder/containers/QueryBuilder.custom-viz-reload.unit.spec.tsx
+frontend/src/metabase/query_builder/containers/QueryBuilder.duplicate.unit.spec.tsx
 frontend/src/metabase/query_builder/containers/QueryBuilder.timeline-events.unit.spec.tsx
 frontend/src/metabase/query_builder/containers/QueryBuilder.unit.spec.tsx
 frontend/src/metabase/query_builder/containers/QueryBuilder.unsaved-changes-warning.unit.spec.tsx
@@ -1818,6 +1861,7 @@ frontend/src/metabase/search/components/UserListElement/UserListElement.unit.spe
 frontend/src/metabase/search/components/UserNameDisplay/UserNameDisplay.unit.spec.tsx
 frontend/src/metabase/search/containers/SearchApp.unit.spec.tsx
 frontend/src/metabase/segments/utils.unit.spec.ts
+frontend/src/metabase/selectors/admin.unit.spec.ts
 frontend/src/metabase/selectors/selectors.unit.spec.ts
 frontend/src/metabase/selectors/store-users.unit.spec.ts
 frontend/src/metabase/selectors/whitelabel/tests/common.unit.spec.ts
@@ -1884,12 +1928,13 @@ frontend/src/metabase/timelines/common/components/EditTimelineModal/EditTimeline
 frontend/src/metabase/timelines/common/components/ModalHeader/ModalHeader.unit.spec.tsx
 frontend/src/metabase/timelines/common/components/MoveEventModal/MoveEventModal.unit.spec.tsx
 frontend/src/metabase/timelines/common/components/NewTimelineModal/NewTimelineModal.unit.spec.tsx
-frontend/src/metabase/timelines/questions/components/EventCard/EventCard.unit.spec.tsx
-frontend/src/metabase/timelines/questions/components/TimelineCard/TimelineCard.unit.spec.tsx
-frontend/src/metabase/timelines/questions/components/TimelineEmptyState/TimelineEmptyState.unit.spec.tsx
-frontend/src/metabase/timelines/questions/components/TimelineList/TimelineList.unit.spec.tsx
-frontend/src/metabase/timelines/questions/components/TimelinePanel/TimelinePanel.unit.spec.tsx
-frontend/src/metabase/timelines/questions/components/TimelineSidebar/TimelineSidebar.unit.spec.tsx
+frontend/src/metabase/timelines/panel/components/EventCard/EventCard.unit.spec.tsx
+frontend/src/metabase/timelines/panel/components/TimelineCard/TimelineCard.unit.spec.tsx
+frontend/src/metabase/timelines/panel/components/TimelineEmptyState/TimelineEmptyState.unit.spec.tsx
+frontend/src/metabase/timelines/panel/components/TimelineList/TimelineList.unit.spec.tsx
+frontend/src/metabase/timelines/panel/components/TimelinePanel/TimelinePanel.unit.spec.tsx
+frontend/src/metabase/timelines/panel/components/TimelineSidebar/TimelineSidebar.unit.spec.tsx
+frontend/src/metabase/timelines/panel/utils.unit.spec.ts
 frontend/src/metabase/transforms/components/DetailedViewSwitch/DetailedViewSwitch.unit.spec.tsx
 frontend/src/metabase/transforms/components/ErrorSection/ErrorSection.unit.spec.tsx
 frontend/src/metabase/transforms/components/IncrementalTransform/form.unit.spec.ts
@@ -1964,6 +2009,7 @@ frontend/src/metabase/ui/components/inputs/MultiAutocomplete/MultiAutocompleteOp
 frontend/src/metabase/ui/components/inputs/MultiAutocomplete/MultiAutocompleteValue/MultiAutocompleteValue.unit.spec.tsx
 frontend/src/metabase/ui/components/inputs/NumberInput/NumberInput.unit.spec.tsx
 frontend/src/metabase/ui/components/inputs/QuarterPicker/QuarterPicker.unit.spec.tsx
+frontend/src/metabase/ui/components/inputs/SegmentedControl/SegmentedControl.unit.spec.tsx
 frontend/src/metabase/ui/components/inputs/Select/Select.unit.spec.tsx
 frontend/src/metabase/ui/components/inputs/TextareaBlurChange/TextareaBlurChange.unit.spec.tsx
 frontend/src/metabase/ui/components/inputs/TextInputBlurChange/TextInputBlurChange.unit.spec.tsx
@@ -2083,6 +2129,7 @@ frontend/src/metabase/visualizations/components/Visualization/Visualization-obje
 frontend/src/metabase/visualizations/components/Visualization/Visualization-themed.unit.spec.tsx
 frontend/src/metabase/visualizations/components/Visualization/Visualization.unit.spec.tsx
 frontend/src/metabase/visualizations/components/Visualization/VisualizationRunningState.unit.spec.tsx
+frontend/src/metabase/visualizations/hooks/use-timeline-events.unit.spec.ts
 frontend/src/metabase/visualizations/lib/action.unit.spec.ts
 frontend/src/metabase/visualizations/lib/data_grid.unit.spec.ts
 frontend/src/metabase/visualizations/lib/exports-branding-utils.unit.spec.ts
@@ -2094,6 +2141,7 @@ frontend/src/metabase/visualizations/lib/save-chart-image.unit.spec.ts
 frontend/src/metabase/visualizations/lib/save-dashboard-pdf.unit.spec.ts
 frontend/src/metabase/visualizations/lib/scalar_utils.unit.spec.ts
 frontend/src/metabase/visualizations/lib/sensibility.unit.spec.ts
+frontend/src/metabase/visualizations/lib/timeline-events-visibility.unit.spec.ts
 frontend/src/metabase/visualizations/lib/visible-table-data.unit.spec.ts
 frontend/src/metabase/visualizations/tests/computed-settings-for-series.unit.spec.ts
 frontend/src/metabase/visualizations/tests/dashcard-settings-merging.unit.spec.ts
@@ -2141,6 +2189,7 @@ frontend/src/metabase/visualizations/visualizations/TreemapChart/events.unit.spe
 frontend/src/metabase/visualizations/visualizations/TreemapChart/TreemapBreadcrumb.unit.spec.tsx
 frontend/src/metabase/visualizations/visualizations/TreemapChart/use-label-measurement.unit.spec.ts
 frontend/src/metabase/visualizer/components/DataImporter/DatasetsList/getIsCompatible.unit.spec.ts
+frontend/src/metabase/visualizer/components/VisualizationPicker/VisualizationPicker.unit.spec.tsx
 frontend/src/metabase/visualizer/hooks/use-can-handle-active-item.unit.spec.tsx
 frontend/src/metabase/visualizer/utils/get-initial-state-for-card-data-source.unit.spec.ts
 frontend/src/metabase/visualizer/utils/get-initial-state-for-multiple-series.unit.spec.ts
@@ -2201,9 +2250,9 @@ frontend/src/metabase/viz-core/lib/settings/column.unit.spec.ts
 frontend/src/metabase/viz-core/lib/settings/graph.unit.spec.ts
 frontend/src/metabase/viz-core/lib/settings/nested.unit.spec.ts
 frontend/src/metabase/viz-core/lib/settings/series.unit.spec.ts
-frontend/src/metabase/viz-core/lib/settings/timelineEvents.unit.spec.ts
 frontend/src/metabase/viz-core/lib/table_format.unit.spec.ts
 frontend/src/metabase/viz-core/lib/table.unit.spec.ts
+frontend/src/metabase/viz-core/lib/timeseries-x-axis.unit.spec.ts
 frontend/src/metabase/viz-core/lib/timeseries.unit.spec.ts
 frontend/src/metabase/viz-core/lib/utils.unit.spec.ts
 frontend/src/metabase/viz-core/shared/components/RowChart/RowChart.unit.spec.tsx
