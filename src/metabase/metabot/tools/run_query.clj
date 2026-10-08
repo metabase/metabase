@@ -96,9 +96,11 @@
 (defn- conversation-open-to-others?
   "Whether someone other than the current user can read the current conversation, now or by joining it later."
   []
-  (when-let [{:keys [id slack_thread_ts]} (some-> (shared/current-conversation-id) metabot.db/conversation)]
+  (when-let [{:keys [id user_id slack_thread_ts]} (some-> (shared/current-conversation-id) metabot.db/conversation)]
     ;; Anyone in a Slack thread can join its conversation, so the thread counts before a second person writes.
+    ;; Whoever started a conversation can read it even when none of its messages name them.
     (or (some? slack_thread_ts)
+        (some-> user_id (not= api/*current-user-id*))
         (metabot.db/other-participant? id api/*current-user-id*))))
 
 (defn- shared-conversation-refusal
