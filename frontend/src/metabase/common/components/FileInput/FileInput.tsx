@@ -63,7 +63,7 @@ export const FileInput = forwardRef(function FileInput(
       />
       <Text
         component="span"
-        className={cx(S.border, S.button, CS.cursorPointer, CS.textNoWrap)}
+        className={cx(S.button, CS.cursorPointer, CS.textNoWrap)}
         fw="bold"
         lh="md"
         px="md"

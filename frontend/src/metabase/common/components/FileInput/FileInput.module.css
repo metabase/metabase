@@ -12,12 +12,9 @@
   }
 }
 
-.border {
+.button {
   border: 1px solid var(--mb-color-border-neutral);
   border-radius: 0.375rem;
-}
-
-.button {
   user-select: none;
 }
 
