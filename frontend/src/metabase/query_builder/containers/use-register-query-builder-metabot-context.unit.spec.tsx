@@ -319,6 +319,21 @@ describe("registerQueryBuilderMetabotContextFn", () => {
     },
   );
 
+  it("should leave out the series of a multi-ring pie chart", async () => {
+    const card = createMockCard({
+      name: "Count by name",
+      display: "pie",
+      visualization_settings: createMockVisualizationSettings({
+        "pie.dimension": ["name", "category"],
+        "pie.metric": "count",
+      }),
+    });
+    const data = createMockData({ question: new Question(card) });
+    const result = await registerQueryBuilderMetabotContextFn(data);
+
+    expect(getChartConfig(result)?.series).toEqual({});
+  });
+
   it("should produce valid series results for funnel charts", async () => {
     const card = createMockCard({
       name: "Count by name",

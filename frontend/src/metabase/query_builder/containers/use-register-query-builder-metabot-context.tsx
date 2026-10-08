@@ -62,8 +62,11 @@ const getDimensions = (
   }
 
   if (visualizationSettings["pie.dimension"]) {
-    // a single column name, or an array of them for multi-ring pies (the default for new pies)
-    return [visualizationSettings["pie.dimension"]].flat();
+    // a single column name, or an array of them (the default for new pies). A multi-ring pie's
+    // rows are per inner-ring slice, so one dimension's values wouldn't line up with the metric:
+    // leave it out.
+    const pieDimensions = [visualizationSettings["pie.dimension"]].flat();
+    return pieDimensions.length === 1 ? pieDimensions : [];
   }
 
   if (visualizationSettings["funnel.dimension"]) {

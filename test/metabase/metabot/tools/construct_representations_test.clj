@@ -1345,6 +1345,27 @@
           (is (str/includes? (ex-message e)
                              "Columns of an explicit join need `join-alias` set to that join's alias: `P` (ID, CATEGORY).")))))))
 
+(deftest source-card-ref-with-unknown-join-alias-checked-against-source-test
+  (testing (str "a `join-alias` naming no join of the stage - a typo, or a join of an earlier stage - is\n"
+                "checked against the stage's source columns, so a bad name still surfaces an error")
+    (with-joined-card-mp-and-stubs!
+      (fn []
+        (let [e (try (construct/execute-representations-query
+                      (query-data
+                       {"lib/type" "mbql/query"
+                        "database" "Sample"
+                        "stages"   [{"lib/type"    "mbql.stage/mbql"
+                                     "source-card" card-entity-id
+                                     "joins"       [(products-join ["field" {} "PRODUCT_ID"])]
+                                     "aggregation" [["count" {}]]
+                                     "breakout"    [["field" {"join-alias" "Products"} "NO_SUCH_COLUMN"]]}]}))
+                     nil
+                     (catch clojure.lang.ExceptionInfo ex ex))]
+          (is (=? {:agent-error? true
+                   :error        :unresolved-cross-stage-field
+                   :available    ["ID" "TOTAL" "PRODUCT_ID"]}
+                  (ex-data e))))))))
+
 (deftest join-condition-without-join-alias-surfaces-error-test
   (testing (str "a join condition whose joined side lacks `join-alias` but names a column the source also\n"
                 "has (ID) resolves both sides against the source - a silent cross join - so it's rejected")

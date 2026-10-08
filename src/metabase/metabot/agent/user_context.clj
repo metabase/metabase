@@ -5,6 +5,7 @@
   recent views, user time formatting, and SQL dialect extraction from context."
   (:require
    [clojure.string :as str]
+   [metabase.agent-lib.representations.repair :as repr.repair]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.metabot.query-export :as query-export]
@@ -263,12 +264,6 @@
   [export]
   (some-> export (query-export/export->text shared.content-store/audited-store)))
 
-(def ^:private max-listed-columns
-  "Most columns [[query-columns-text]] lists; wide sources are truncated past this. Matches
-  `metabase.agent-lib.representations.repair/max-listed-column-names`, the cap on the column lists
-  in its unresolved-ref messages."
-  100)
-
 (defn- query-column-line
   [col]
   (str "- "
@@ -290,10 +285,11 @@
                                       {:include-implicitly-joinable?                 false
                                        :include-implicitly-joinable-for-source-card? false})]
         (when (seq cols)
-          (te/lines
-           (map query-column-line (take max-listed-columns cols))
-           (when (> (count cols) max-listed-columns)
-             (format "- ... and %d more" (- (count cols) max-listed-columns))))))
+          (let [[listed more] (repr.repair/listed-columns cols)]
+            (te/lines
+             (map query-column-line listed)
+             (when (pos? more)
+               (format "- ... and %d more" more))))))
       (catch Exception e
         (log/debug e "Could not list the viewed query's columns")
         nil))))

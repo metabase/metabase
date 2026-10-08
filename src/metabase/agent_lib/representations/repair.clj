@@ -27,6 +27,7 @@
   reference a table other than the stage's `source-table`. That pass is the only reason `repair`
   takes an `mp` argument - the shape passes themselves don't need it."
   (:require
+   [clojure.set :as set]
    [clojure.string :as str]
    [clojure.walk :as walk]
    [metabase.agent-lib.representations.resolve :as repr.resolve]
@@ -2407,10 +2408,23 @@
   [clause]
   (contains? (nth clause 1) "join-alias"))
 
-(defn- ref-join-aliases
-  "The set of `join-alias`es the string-named field refs `clauses` carry."
-  [clauses]
-  (into #{} (keep #(get (nth % 1) "join-alias")) clauses))
+(defn- stage-join-aliases
+  "The set of `alias`es of `stage`'s explicit joins."
+  [stage]
+  (let [joins (get stage "joins")]
+    (into #{}
+          (keep #(let [join-alias (when (map? %) (get % "alias"))]
+                   (when (non-blank-string? join-alias) join-alias)))
+          (when (sequential? joins) joins))))
+
+(defn- join-ref-alias
+  "The `join-alias` of field ref `clause` when it names one of the stage's join `aliases`, else nil. A
+  `join-alias` naming no join of the stage - a typo, or a join of an earlier stage - is checked
+  against the stage's source columns like a ref without one."
+  [aliases clause]
+  (let [join-alias (get (nth clause 1) "join-alias")]
+    (when (contains? aliases join-alias)
+      join-alias)))
 
 (defn- types-from-column
   "Pull `\"base-type\"` (and optionally `\"effective-type\"`) off a `lib/returned-columns`
@@ -2461,8 +2475,7 @@
 
 (defn- join-columns-by-alias
   "Map each explicit join in `stage` to the columns its own source returns, keyed by the join's
-  `alias`, as [[column-descriptors]]. Only joins whose alias is in `aliases` are resolved, or every
-  join when `aliases` is nil. A join whose source doesn't resolve is left out, so its refs are left
+  `alias`, as [[column-descriptors]]. Only joins whose alias is in `aliases` are resolved. A join whose source doesn't resolve is left out, so its refs are left
   for the resolver to judge."
   [mp query stage content-store aliases]
   (into {}
@@ -2470,7 +2483,7 @@
                 (let [join-alias  (when (map? join) (get join "alias"))
                       join-stages (when (map? join) (get join "stages"))]
                   (when (and (non-blank-string? join-alias)
-                             (or (nil? aliases) (contains? aliases join-alias))
+                             (contains? aliases join-alias)
                              (sequential? join-stages)
                              (seq join-stages))
                     (try
@@ -2536,10 +2549,11 @@
     @refs))
 
 (defn- ref-columns
-  "The columns a string-named field ref can name: its join's columns when it carries `join-alias`,
-  otherwise the stage's source `cols`. nil when those columns are unknown."
-  [clause cols join-cols]
-  (if-let [join-alias (get (nth clause 1) "join-alias")]
+  "The columns a string-named field ref can name: its join's columns when its `join-alias` names one of
+  the stage's join `aliases` (see [[join-ref-alias]]), otherwise the stage's source `cols`. nil when
+  those columns are unknown."
+  [clause cols join-cols aliases]
+  (if-let [join-alias (join-ref-alias aliases clause)]
     (get join-cols join-alias)
     cols))
 
@@ -2623,15 +2637,17 @@
 
 (defn- infer-cross-stage-field-types-in-stage
   "Walk one stage and stamp inferred types into every string-named field reference that lacks
-  `\"base-type\"`: a `join-alias` ref from `join-cols` (alias → [[column-descriptors]]), any
-  other ref from the stage's source `cols`. A ref whose columns are unknown is left alone."
+  `\"base-type\"`: a ref to one of the stage's joins from `join-cols` (alias → [[column-descriptors]]),
+  any other ref from the stage's source `cols` (see [[ref-columns]]). A ref whose columns are unknown
+  is left alone."
   [stage cols join-cols]
-  (walk-stage-refs (fn [node]
-                     (if-let [ref-cols (when (string-cross-stage-field-clause? node)
-                                         (ref-columns node cols join-cols))]
-                       (maybe-fill-cross-stage-types node ref-cols)
-                       node))
-                   stage))
+  (let [aliases (stage-join-aliases stage)]
+    (walk-stage-refs (fn [node]
+                       (if-let [ref-cols (when (string-cross-stage-field-clause? node)
+                                           (ref-columns node cols join-cols aliases))]
+                         (maybe-fill-cross-stage-types node ref-cols)
+                         node))
+                     stage)))
 
 (defn- mini-resolved-columns-for-source-card
   "Resolve a single-stage query consisting only of `{:source-card <entity-id>}` (plus the
@@ -2653,6 +2669,22 @@
                       stage-idx (ex-message e))
           nil)))))
 
+(defn- untyped-ref-columns
+  "The [[unstamped-cross-stage-ref?]] refs of `stage` and the columns they can name, resolving each
+  source only when an untyped ref needs it - resolving is the expensive part. Returns `:aliases` (the
+  stage's join aliases), `:untyped`, `:cols` (from calling `source-cols-fn`, only when some untyped
+  ref names the stage's source) and `:join-cols` (alias → columns, for the joins untyped refs name)."
+  [mp query stage content-store source-cols-fn]
+  (let [aliases (stage-join-aliases stage)
+        untyped (filterv unstamped-cross-stage-ref? (stage-refs stage))
+        named   (into #{} (keep #(join-ref-alias aliases %)) untyped)]
+    {:aliases   aliases
+     :untyped   untyped
+     :cols      (when (some #(nil? (join-ref-alias aliases %)) untyped)
+                  (source-cols-fn))
+     :join-cols (when (seq named)
+                  (join-columns-by-alias mp query stage content-store named))}))
+
 (defn- infer-source-card-field-types*
   "Stamp `base-type` / `effective-type` onto `[field, opts, \"<col>\"]` clauses whose columns come
   from a saved question or an explicit join: in a stage whose source is a `source-card:` entity,
@@ -2670,18 +2702,14 @@
              q query]
         (if (>= i n)
           q
-          ;; Resolving a card or a join is the expensive part, so each happens only when an
-          ;; untyped ref needs it.
-          (let [stage     (get-in q ["stages" i])
-                untyped   (when (map? stage)
-                            (filterv unstamped-cross-stage-ref? (stage-refs stage)))
-                cols      (when (and (get stage "source-card") (some (complement join-alias-ref?) untyped))
-                            (mini-resolved-columns-for-source-card mp q i content-store))
-                join-cols (when-let [aliases (not-empty (ref-join-aliases untyped))]
-                            (join-columns-by-alias mp q stage content-store aliases))
-                q'        (if (or cols (seq join-cols))
-                            (update-in q ["stages" i] infer-cross-stage-field-types-in-stage cols join-cols)
-                            q)]
+          (let [stage                    (get-in q ["stages" i])
+                {:keys [cols join-cols]} (when (map? stage)
+                                           (untyped-ref-columns
+                                            mp q stage content-store
+                                            #(mini-resolved-columns-for-source-card mp q i content-store)))
+                q'                       (if (or cols (seq join-cols))
+                                           (update-in q ["stages" i] infer-cross-stage-field-types-in-stage cols join-cols)
+                                           q)]
             (recur (inc i) q')))))))
 
 (defn- infer-cross-stage-field-types*
@@ -2722,28 +2750,33 @@
 (defn- first-unresolved-cross-stage-ref
   "Return the first of the [[unstamped-cross-stage-ref?]] clauses `untyped` that matches none of
   the columns it can name (see [[ref-columns]]), or nil. A ref whose columns are unknown is skipped."
-  [untyped cols join-cols]
+  [untyped cols join-cols aliases]
   (u/seek (fn [node]
-            (when-let [ref-cols (ref-columns node cols join-cols)]
+            (when-let [ref-cols (ref-columns node cols join-cols aliases)]
               (nil? (match-cross-stage-column ref-cols (nth node 2)))))
           untyped))
 
-(def ^:private max-listed-column-names
-  "Most column names one list in an unresolved-ref message carries; wide sources are truncated.
-  Matches `metabase.metabot.agent.user-context/max-listed-columns`, the cap on the viewed query's
-  column list."
+(def ^:private max-listed-columns
+  "Most columns one column list shown to the LLM carries; wide sources are truncated."
   100)
 
+(defn listed-columns
+  "Cap `cols` for a column list shown to the LLM: `[listed more]`, the first [[max-listed-columns]] of
+  them and how many were left out. Shared with the viewed query's column list in the Metabot user
+  context, so both lists truncate alike."
+  [cols]
+  [(take max-listed-columns cols) (max 0 (- (count cols) max-listed-columns))])
+
 (defn- column-names [cols]
-  (cond-> (str/join ", " (map :name (take max-listed-column-names cols)))
-    (> (count cols) max-listed-column-names)
-    (str (format ", ... and %d more" (- (count cols) max-listed-column-names)))))
+  (let [[listed more] (listed-columns cols)]
+    (cond-> (str/join ", " (map :name listed))
+      (pos? more) (str (format ", ... and %d more" more)))))
 
 (defn- unresolved-ref-message
   "The agent-facing message for `bad`, an unresolved ref, listing the columns it could have named."
-  [bad cols join-cols]
+  [bad cols join-cols aliases]
   (let [col-name   (pr-str (nth bad 2))
-        join-alias (get (nth bad 1) "join-alias")]
+        join-alias (join-ref-alias aliases bad)]
     (if join-alias
       (tru "No column named {0} is available from join `{1}`. Reference a column of the joined source by its machine name, not a UI label. Available column names in join `{2}`: {3}."
            col-name join-alias join-alias (column-names (get join-cols join-alias)))
@@ -2765,29 +2798,29 @@
                               _ nil))]
     (doseq [[idx stage] (map-indexed vector stages)
             :when        (map? stage)
-            :let         [untyped (filterv unstamped-cross-stage-ref? (stage-refs stage))]
+            :let         [{:keys [aliases untyped cols]
+                           check-cols :join-cols}
+                          (untyped-ref-columns
+                           mp query stage content-store
+                           #(cond
+                              (get stage "source-card") (mini-resolved-columns-for-source-card mp query idx content-store)
+                              (pos? idx)                (mini-resolved-columns mp query idx content-store)))]
             :when        (seq untyped)]
-      ;; The source's columns are resolved only to check refs without `join-alias`, and a join's only
-      ;; to check its own `join-alias` refs - or, once a ref is known to be bad, to list every join's
-      ;; columns in the message.
-      (let [cols       (when (some (complement join-alias-ref?) untyped)
-                         (cond
-                           (get stage "source-card") (mini-resolved-columns-for-source-card mp query idx content-store)
-                           (pos? idx)                (mini-resolved-columns mp query idx content-store)))
-            check-cols (when-let [aliases (not-empty (ref-join-aliases untyped))]
-                         (join-columns-by-alias mp query stage content-store aliases))]
-        (when-let [bad (first-unresolved-cross-stage-ref untyped cols check-cols)]
-          (let [join-cols (if (join-alias-ref? bad)
-                            check-cols
-                            (join-columns-by-alias mp query stage content-store nil))
-                available (ref-columns bad cols join-cols)]
-            (throw (ex-info
-                    (unresolved-ref-message bad cols join-cols)
-                    {:agent-error? true
-                     :error        :unresolved-cross-stage-field
-                     :stage        idx
-                     :clause       bad
-                     :available    (mapv :name available)})))))))
+      (when-let [bad (first-unresolved-cross-stage-ref untyped cols check-cols aliases)]
+        ;; A bad ref to the source lists every join's columns in the message too: resolve the rest.
+        (let [join-cols (if (join-ref-alias aliases bad)
+                          check-cols
+                          (merge check-cols
+                                 (join-columns-by-alias mp query stage content-store
+                                                        (set/difference aliases (set (keys check-cols))))))
+              available (ref-columns bad cols join-cols aliases)]
+          (throw (ex-info
+                  (unresolved-ref-message bad cols join-cols aliases)
+                  {:agent-error? true
+                   :error        :unresolved-cross-stage-field
+                   :stage        idx
+                   :clause       bad
+                   :available    (mapv :name available)}))))))
   query)
 
 ;;; ============================================================
@@ -2800,23 +2833,28 @@
 ;;; ============================================================
 
 (defn- join-anchoring-ref?
-  "True if field ref `clause` names a column of `join`: it carries the join's `alias`, it's a
-  portable ref into the join's own `source-table`, or it's a numeric field id - which names its
-  table too, so the resolver places it without needing `join-alias`."
-  [join clause]
-  (let [id-or-name   (nth clause 2)
-        source-table (get-in join ["stages" 0 "source-table"])]
+  "True if field ref `clause` names a column of `join`: it carries the join's `alias`, or it's a
+  numeric field id or portable ref - which names its table, so the resolver places it without
+  `join-alias` - into the join's own source table. Not when the stage's own source is that same
+  table (a self-join): there the ref is the stage's column; `stage-table` may be a delay. `table-of` maps a field or table
+  reference to a comparable table identity, nil when unknown; a ref whose table, or a join whose
+  table, is unknown is given the benefit of the doubt."
+  [table-of stage-table join clause]
+  (let [id-or-name (nth clause 2)]
     (or (= (get join "alias") (get (nth clause 1) "join-alias"))
-        (pos-int? id-or-name)
-        (and (sequential? id-or-name)
-             (sequential? source-table)
-             (= (seq source-table) (take (count source-table) id-or-name))))))
+        (when (or (pos-int? id-or-name) (sequential? id-or-name))
+          (let [field-table (table-of :field id-or-name)
+                join-table  (table-of :table (get-in join ["stages" 0 "source-table"]))]
+            (or (nil? field-table)
+                (nil? join-table)
+                (and (= field-table join-table)
+                     (not= join-table (force stage-table)))))))))
 
 (defn- unanchored-join-condition
   "Return the first condition of `join` that has a string-named field ref without `join-alias`
   and no [[join-anchoring-ref?]], or nil. Conditions written only with portable refs are left to
   the resolver, which places a joined table's portable refs itself."
-  [join]
+  [table-of stage-table join]
   (let [join-alias (when (map? join) (get join "alias"))
         conditions (when (map? join) (get join "conditions"))]
     (when (and (non-blank-string? join-alias) (sequential? conditions))
@@ -2824,30 +2862,60 @@
                 (let [refs (match/match-many condition
                              ["field" (_ :guard map?) _] &match)]
                   (and (some #(and (string-cross-stage-field-clause? %) (not (join-alias-ref? %))) refs)
-                       (not-any? #(join-anchoring-ref? join %) refs))))
+                       (not-any? #(join-anchoring-ref? table-of stage-table join %) refs))))
               conditions))))
+
+(defn- join-condition-table-of
+  "The `table-of` for [[join-anchoring-ref?]]: a field (numeric id or portable ref) or table reference
+  to its numeric table id via `mp`, or, without `mp`, to its portable table path."
+  [mp content-store]
+  (let [import-resolver (when mp (resolve.mp/import-resolver mp content-store))]
+    (fn [kind ref]
+      (if import-resolver
+        (case kind
+          :field (try-resolve-field-target-table-id mp import-resolver ref)
+          :table (try-resolve-source-table-id import-resolver ref))
+        (when (sequential? ref)
+          (vec (take 3 ref)))))))
+
+(defn- stage-source-table
+  "The table `stage` reads, for spotting a self-join: its `source-table`, or the table its
+  `source-card` is built on. nil when unknown."
+  [mp content-store table-of stage]
+  (if-let [source-table (get stage "source-table")]
+    (table-of :table source-table)
+    (when-let [source-card (and mp (get stage "source-card"))]
+      (try
+        (when-let [card-id (if (pos-int? source-card)
+                             source-card
+                             (:id (resolve.mp/card-by-entity-id content-store source-card)))]
+          (:table-id (lib.metadata.protocols/card mp card-id)))
+        (catch Exception _ nil)))))
 
 (defn- assert-join-conditions-name-join*
   "Pass 5.8: raise an `:agent-error?` for a join condition that never references the join's own
   columns (see [[unanchored-join-condition]])."
-  [query]
+  [query mp content-store]
   (when-let [stages (match/match-one query
                       {"stages" (stages :guard vector?)} stages
                       _ nil)]
-    (doseq [[idx stage] (map-indexed vector stages)
-            :when        (map? stage)
-            join         (let [joins (get stage "joins")] (when (sequential? joins) joins))
-            :let         [condition (unanchored-join-condition join)]
-            :when        condition]
-      (let [join-alias (get join "alias")]
-        (throw (ex-info
-                (tru "A condition of join `{0}` references no column of the joined source: a column without `join-alias` is the stage''s own column, so the condition compares the stage with itself. Set `join-alias` to `{1}` on the condition''s joined-side column."
-                     join-alias join-alias)
-                {:agent-error? true
-                 :error        :join-condition-missing-join-alias
-                 :stage        idx
-                 :join-alias   join-alias
-                 :condition    condition})))))
+    (let [table-of (join-condition-table-of mp content-store)]
+      (doseq [[idx stage] (map-indexed vector stages)
+              :when       (map? stage)
+              ;; resolving the stage's table, maybe through its card, only once a ref needs it
+              :let        [stage-table (delay (stage-source-table mp content-store table-of stage))]
+              join        (let [joins (get stage "joins")] (when (sequential? joins) joins))
+              :let        [condition (unanchored-join-condition table-of stage-table join)]
+              :when       condition]
+        (let [join-alias (get join "alias")]
+          (throw (ex-info
+                  (tru "A condition of join `{0}` references no column of the joined source: a column without `join-alias` is the stage''s own column, so the condition compares the stage with itself. Set `join-alias` to `{1}` on the condition''s joined-side column."
+                       join-alias join-alias)
+                  {:agent-error? true
+                   :error        :join-condition-missing-join-alias
+                   :stage        idx
+                   :join-alias   join-alias
+                   :condition    condition}))))))
   query)
 
 ;;; ============================================================
@@ -3224,16 +3292,30 @@
        (infer-source-card-field-types* mp content-store)
        (infer-cross-stage-field-types* mp content-store)
        (assert-cross-stage-refs-resolved* mp content-store)
-       assert-join-conditions-name-join*
+       (assert-join-conditions-name-join* mp content-store)
        friendly-errors*)))
 
 ;;; ============================================================
 ;;; Post-resolve gate -- expressions the FE expression editor rejects
 ;;; ============================================================
 
+(defn- numerically-used-field-refs
+  "The `:field` refs `clause` uses as a direct argument of arithmetic, or of a comparison against a
+  number literal. A ref wrapped in a cast is an argument of the cast, so it isn't one of them."
+  [clause]
+  (for [node  (tree-seq sequential? seq clause)
+        :when (and (vector? node) (keyword? (first node)))
+        :let  [[op _opts & args] node]
+        :when (or (#{:+ :- :* :/} op)
+                  (and (#{:= :!= :< :<= :> :>= :between} op) (some number? args)))
+        arg   args
+        :when (and (vector? arg) (= :field (first arg)))]
+    arg))
+
 (defn- text-column-names
-  "Names of the text-typed columns `clause` references as bare, uncast arguments. Only feeds a hint
-  on an error being raised, so a failure to compute it yields nil rather than masking that error."
+  "Names of the text-typed columns `clause` compares with a number or does arithmetic on (see
+  [[numerically-used-field-refs]]) - what a cast would fix. Only feeds a hint on an error being
+  raised, so a failure to compute it yields nil rather than masking that error."
   [query stage-idx clause]
   (try
     (into []
@@ -3244,9 +3326,7 @@
                           (:name (lib.metadata.protocols/field (lib/->metadata-provider query) id-or-name)))))
                 (remove nil?)
                 (distinct))
-          (match/match-many clause
-            [(_ :guard #{:integer :float}) _opts [:field & _]] nil
-            [:field & _]                                         &match))
+          (numerically-used-field-refs clause))
     (catch Exception e
       (log/debug e "[repr-repair] could not list the text columns of a rejected expression")
       nil)))
