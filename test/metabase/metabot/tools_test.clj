@@ -70,6 +70,13 @@
     (mt/with-temporary-setting-values [metabot-query-execution-enabled? true]
       (is (contains? (tools-for-profile :internal) "run_query")))))
 
+(deftest slackbot-profile-has-no-run-query-test
+  ;; Everyone in a Slack thread can read its stored tool output, so one person's rows would reach the others.
+  ;; Filter that output per reader before offering run_query there.
+  (testing "run_query is not offered in Slack even with query execution enabled"
+    (mt/with-temporary-setting-values [metabot-query-execution-enabled? true]
+      (is (not (contains? (tools-for-profile :slackbot) "run_query"))))))
+
 (deftest ^:parallel get-tools-for-sql-profile-test
   (let [tools (tools-for-profile :sql)]
     (is (map? tools))

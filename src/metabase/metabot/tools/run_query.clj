@@ -3,6 +3,7 @@
    bounded page of its rows."
   (:require
    [clojure.string :as str]
+   [metabase.api.common :as api]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.metabot.db :as metabot.db]
@@ -86,6 +87,20 @@
     (or (get queries query-id)
         (throw (ex-info (str "No query with id " query-id ". Known query ids: [" (str/join ", " (keys queries)) "].")
                         {:agent-error? true})))))
+
+(defn- conversation-open-to-others?
+  "Whether someone other than the current user can read the current conversation, now or by joining it later."
+  []
+  (when-let [{:keys [id slack_thread_ts]} (some-> (shared/current-conversation-id) metabot.db/conversation)]
+    ;; Anyone in a Slack thread can join its conversation, so the thread counts before a second person writes.
+    (or (some? slack_thread_ts)
+        (metabot.db/other-participant? id api/*current-user-id*))))
+
+(defn- shared-conversation-refusal
+  []
+  (ex-info (str "run_query is not available in a conversation other people can read, because they would see "
+                "the rows too. Ask the user to continue in their own Metabot chat.")
+           {:agent-error? true}))
 
 (defn- no-permission
   []
@@ -252,6 +267,9 @@
   (try
     (when-not (metabot.settings/metabot-query-execution-enabled?)
       (throw (ex-info "Query execution is turned off for Metabot." {:agent-error? true})))
+    ;; The rows are stored with the conversation, and every participant can read them back.
+    (when (conversation-open-to-others?)
+      (throw (shared-conversation-refusal)))
     (let [page                                 (-> (stored-query query_id)
                                                    runnable-query
                                                    (query-execution/execute-page! (or row_limit default-row-limit)
