@@ -38,6 +38,11 @@
   []
   (mt/native-query {:query "SELECT COUNT(*) AS N FROM VENUES"}))
 
+(defn- venues-sql-then-notebook
+  "A query with a notebook stage over a SQL stage, which a card records as a notebook query."
+  []
+  {:database (mt/id), :type :query, :query {:source-query {:native "SELECT COUNT(*) AS N FROM VENUES"}}})
+
 (defn- card-query
   "A notebook query whose source is the saved question `card-id`."
   [card-id]
@@ -169,13 +174,14 @@
                    :model/Card {metabot-sql-card :id}   {:collection_id open, :dataset_query (venues-sql)}
                    :model/Card {over-metabot-sql :id}   {:collection_id open
                                                          :dataset_query (card-query metabot-sql-card)}
+                   :model/Card {metabot-mixed :id}      {:collection_id open, :dataset_query (venues-sql-then-notebook)}
                    :model/Card {edited-sql-card :id}    {:collection_id open, :dataset_query (venues-sql)}
                    :model/Card {hidden-card :id}        {:collection_id hidden, :dataset_query (venues-count)}
                    :model/Card {hidden-metabot-sql :id} {:collection_id hidden, :dataset_query (venues-sql)}
                    :model/Card {over-hidden-sql :id}    {:collection_id open
                                                          :dataset_query (card-query hidden-metabot-sql)}]
       (perms/grant-collection-read-permissions! (perms-group/all-users) open)
-      (mark-saved-by-metabot! metabot-sql-card edited-sql-card hidden-metabot-sql)
+      (mark-saved-by-metabot! metabot-sql-card metabot-mixed edited-sql-card hidden-metabot-sql)
       (t2/update! :model/Card edited-sql-card {:display :bar})
       (testing "a notebook query over a saved question runs, whether the question is a notebook or a SQL one"
         (doseq [[shape card-id] {"a notebook question"                        notebook-card
@@ -187,7 +193,8 @@
                     (run-tool! {"q1" (card-query card-id)} {:query_id "q1"}))))))
       (testing "a notebook query over a SQL question Metabot saved is refused as SQL"
         (doseq [[shape card-id] {"read directly"                    metabot-sql-card
-                                 "read through a notebook question" over-metabot-sql}]
+                                 "read through a notebook question" over-metabot-sql
+                                 "with a notebook stage over its SQL" metabot-mixed}]
           (testing shape
             (is (= {:output (str "run_query only runs notebook queries, and this one reads a saved question that "
                                  "holds SQL you wrote. To get values, build the question from tables with "
