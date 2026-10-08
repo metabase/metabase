@@ -269,11 +269,13 @@
         (is (false? (rst/failed? completed-task)))))))
 
 (deftest cancelled?-test
-  (testing "cancelled? returns true for cancelled tasks"
+  (testing "cancelled? returns true for a task that holds a cancel request or ended cancelled"
     (let [task (rst/create-sync-task! "import" (mt/user->id :rasta))]
       (rst/cancel-sync-task! (:id task))
       (let [running-task (t2/select-one :model/RemoteSyncTask :id (:id task))]
-        (is (true? (rst/cancelled? running-task))))))
+        (is (true? (rst/cancelled? running-task))))
+      (rst/end-task-cancelled! (:id task))
+      (is (true? (rst/cancelled? (t2/select-one :model/RemoteSyncTask :id (:id task)))))))
   (testing "cancelled? returns false for incomplete task"
     (let [task (rst/create-sync-task! "import" (mt/user->id :rasta))
           running-task (t2/select-one :model/RemoteSyncTask :id (:id task))]
@@ -516,7 +518,7 @@
   (testing "a worker that finishes past its last cancel check ends the row with the flag cleared"
     (let [task (rst/create-sync-task! "import" (mt/user->id :rasta))]
       (rst/cancel-sync-task! (:id task))
-      (rst/complete-sync-task! (:id task) {:kind "pulled" :count 1})
+      (rst/complete-sync-task! (:id task) {:kind "pulled" :count 1 :branch "main"})
       (is (=? {:cancelled false :error_message nil :status :successful}
               (-> (t2/select-one :model/RemoteSyncTask :id (:id task))
                   (t2/hydrate :status)))))))
