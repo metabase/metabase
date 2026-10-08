@@ -1,15 +1,25 @@
-import cx from "classnames";
-import { c, t } from "ttag";
+import { t } from "ttag";
 
 import { getCurrentVersion } from "metabase/admin/app/selectors";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import CS from "metabase/css/core/index.css";
+import { dayjs } from "metabase/dayjs";
 import { useSelector } from "metabase/redux";
-import { useGetVersionInfoQuery } from "metabase/settings";
-import { Button, Tabs } from "metabase/ui";
-import { newVersionAvailable, versionIsLatest } from "metabase/utils/version";
+import { useEolDate, useGetVersionInfoQuery } from "metabase/settings";
+import {
+  Anchor,
+  Button,
+  Flex,
+  HoverCard,
+  Icon,
+  Stack,
+  Tabs,
+  Text,
+} from "metabase/ui";
+import { getMajorVersion, newVersionAvailable } from "metabase/utils/version";
 
 import S from "./VersionUpdateNotice.module.css";
+import { getEolMessage, getVersionMessage } from "./utils";
 
 const embedQueryParams = "?hide_nav=true&no_gdpr=true";
 
@@ -17,93 +27,129 @@ export function VersionUpdateNotice() {
   const { data: versionInfo } = useGetVersionInfoQuery();
   const currentVersion = useSelector(getCurrentVersion);
   const latestVersion = versionInfo?.latest?.version;
-  const displayVersion = formatVersion(currentVersion);
+  const eolDate = useEolDate();
 
-  if (latestVersion && versionIsLatest({ currentVersion, latestVersion })) {
-    return <OnLatestVersion currentVersion={displayVersion} />;
-  }
-
-  if (latestVersion && newVersionAvailable({ currentVersion, latestVersion })) {
-    return (
-      <NewVersionAvailable
-        currentVersion={displayVersion}
-        latestVersion={latestVersion}
-      />
-    );
-  }
-  return <DefaultUpdateMessage currentVersion={displayVersion} />;
-}
-
-function OnLatestVersion({ currentVersion }: { currentVersion: string }) {
   return (
-    <div>
-      <div className={S.message}>
-        {c(`{0} is a version number`)
-          .t`You're running Metabase ${currentVersion} which is the latest and greatest!`}
-      </div>
-    </div>
+    <VersionMessage
+      currentVersion={currentVersion}
+      latestVersion={latestVersion}
+      eolDate={eolDate}
+    />
   );
 }
 
-function DefaultUpdateMessage({ currentVersion }: { currentVersion: string }) {
-  return (
-    <div>
-      <div className={S.message}>
-        {c(`{0} is a version number`)
-          .t`You're running Metabase ${currentVersion}`}
-      </div>
-    </div>
-  );
+interface VersionMessageProps {
+  currentVersion: string;
+  latestVersion?: string;
+  eolDate?: Date | null;
 }
 
-function NewVersionAvailable({
+function VersionMessage({
   currentVersion,
   latestVersion,
-}: {
-  currentVersion: string;
-  latestVersion: string;
-}) {
+  eolDate,
+}: VersionMessageProps) {
+  const isNewVersionAvailable =
+    latestVersion != null &&
+    newVersionAvailable({ currentVersion, latestVersion });
+  const isEol = eolDate != null && new Date() > eolDate;
+  const message = getVersionMessage(currentVersion, latestVersion, isEol);
+  const textColor = isEol ? "text-primary" : "text-primary-inverse";
   return (
-    <div>
-      <div
-        className={cx(
-          S.container,
-          CS.p2,
-          CS.bordered,
-          CS.rounded,
-          CS.borderSuccess,
-          CS.flex,
-          CS.flexRow,
-          CS.alignCenter,
-          CS.justifyBetween,
+    <Flex
+      align="center"
+      justify="space-between"
+      p="lg"
+      bg={isEol ? "background_surface-warning" : "core-brand"}
+      bd={isEol ? "1px solid var(--mb-color-feedback-warning)" : undefined}
+      bdrs="sm"
+    >
+      <Flex align="center" gap="xs">
+        <Text fw="bold" c={textColor}>
+          {message}
+        </Text>
+        {isNewVersionAvailable && eolDate && (
+          <EolHoverCard
+            currentVersion={currentVersion}
+            eolDate={eolDate}
+            isEol={isEol}
+          >
+            <Icon name="info" c={textColor} className={CS.cursorPointer} />
+          </EolHoverCard>
         )}
-      >
-        <span className={cx(CS.textWhite, CS.textBold)}>
-          {t`Metabase ${formatVersion(latestVersion)} is available. You're running ${currentVersion}.`}
-        </span>
+      </Flex>
+      {isNewVersionAvailable && (
         <Button
           variant="on-dark-primary"
           component={ExternalLink}
           flex="0 0 auto"
           ml="sm"
-          href={
-            "https://www.metabase.com/docs/" +
-            latestVersion +
-            "/operations-guide/upgrading-metabase.html"
-          }
+          href="https://www.metabase.com/docs/latest/installation-and-operation/upgrading-metabase"
         >
           {t`Update`}
         </Button>
-      </div>
-    </div>
+      )}
+      {!isNewVersionAvailable && eolDate && (
+        <EolHoverCard
+          currentVersion={currentVersion}
+          eolDate={eolDate}
+          isEol={isEol}
+        >
+          <Flex
+            align="center"
+            gap="xs"
+            p="xs"
+            bdrs="sm"
+            className={S.hoverCardTrigger}
+          >
+            <Icon name="heart_handshake" c={textColor} />
+            <Text c={textColor} fw="bold">
+              {dayjs(eolDate).utc().format("ll")}
+            </Text>
+          </Flex>
+        </EolHoverCard>
+      )}
+    </Flex>
+  );
+}
+
+interface EolHoverCardProps {
+  currentVersion: string;
+  eolDate: Date;
+  isEol: boolean;
+  children: React.ReactNode;
+}
+
+function EolHoverCard({
+  currentVersion,
+  eolDate,
+  isEol,
+  children,
+}: EolHoverCardProps) {
+  const eolMessage = getEolMessage(currentVersion, eolDate, isEol);
+  return (
+    <HoverCard>
+      <HoverCard.Target>{children}</HoverCard.Target>
+      <HoverCard.Dropdown>
+        <Stack gap="sm" p="md" w="18rem">
+          <Text>{eolMessage}</Text>
+          <Anchor
+            component={ExternalLink}
+            href="https://www.metabase.com/version-support"
+            fw="bold"
+          >
+            {t`Learn more`}
+          </Anchor>
+        </Stack>
+      </HoverCard.Dropdown>
+    </HoverCard>
   );
 }
 
 export function NewVersionInfo() {
   const { data: versionInfo } = useGetVersionInfoQuery();
-  const latestMajorVersion = getLatestMajorVersion(
-    versionInfo?.latest?.version,
-  );
+  const latestMajorVersion =
+    getMajorVersion(versionInfo?.latest?.version ?? "") ?? "";
 
   return (
     <Tabs mt="lg" defaultValue="whats-new">
@@ -127,12 +173,4 @@ export function NewVersionInfo() {
       </Tabs.Panel>
     </Tabs>
   );
-}
-
-function getLatestMajorVersion(version: string | null | undefined) {
-  return version?.split(".")[1] ?? "";
-}
-
-function formatVersion(versionLabel = "") {
-  return versionLabel.replace(/^v/, "");
 }

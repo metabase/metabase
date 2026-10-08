@@ -12,7 +12,6 @@ import {
 } from "metabase/settings-components";
 import { Stack } from "metabase/ui";
 
-import { EolUpdateNotice } from "../widgets/EolUpdateNotice";
 import { VersionUpdateNotice } from "../widgets/VersionUpdateNotice";
 import { NewVersionInfo } from "../widgets/VersionUpdateNotice/VersionUpdateNotice";
 
@@ -39,7 +38,6 @@ export function UpdatesSettingsPage() {
             })}
           >
             <VersionUpdateNotice />
-            <EolUpdateNotice />
           </Stack>
         )}
         <NewVersionInfo />

@@ -7,6 +7,7 @@ import {
 import { createMockSettingsState } from "__support__/state";
 import { renderWithProviders, screen } from "__support__/ui";
 import { UndoListing } from "metabase/common/components/UndoListing";
+import { dayjs } from "metabase/dayjs";
 import type { SettingKey, VersionInfo } from "metabase-types/api";
 import {
   createMockMajorVersionSupport,
@@ -92,8 +93,8 @@ describe("UpdatesSettingsPage", () => {
 
     expect(screen.getByText("Check for updates")).toBeInTheDocument();
     expect(
-      screen.getByText(
-        "You're running Metabase 1.53.8 which is the latest and greatest!",
+      await screen.findByText(
+        "You're running Metabase 1.53.8, which is the latest and greatest.",
       ),
     ).toBeInTheDocument();
   });
@@ -155,14 +156,12 @@ describe("UpdatesSettingsPage", () => {
     });
 
     expect(
-      screen.getByText(
-        "You're running Metabase 1.53.8 which is the latest and greatest!",
+      await screen.findByText(
+        "You're running Metabase 1.53.8, which is the latest and greatest.",
       ),
     ).toBeInTheDocument();
     expect(
-      await screen.findByText(
-        /This version of Metabase reaches end-of-life on/,
-      ),
+      screen.getByText(dayjs.utc(FUTURE_EOL).format("ll")),
     ).toBeInTheDocument();
   });
 

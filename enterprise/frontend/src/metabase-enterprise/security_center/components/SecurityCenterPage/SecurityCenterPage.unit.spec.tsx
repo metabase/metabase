@@ -7,6 +7,7 @@ import {
 } from "__support__/server-mocks";
 import { createMockSettingsState } from "__support__/state";
 import { renderWithProviders, screen, within } from "__support__/ui";
+import { getEolReachedMessage } from "metabase/admin/settings/components/widgets/VersionUpdateNotice/utils";
 import { Route } from "metabase/router";
 import type { Advisory, VersionInfo } from "metabase-types/api";
 import {
@@ -31,8 +32,6 @@ const mockAcknowledge = jest.fn();
 const mockAcknowledgeAll = jest.fn();
 
 const PAST_EOL = "2000-06-01";
-const AFTER_EOL_COPY =
-  "This version of Metabase has reached end-of-life and will no longer receive updates.";
 
 function setup(
   advisories: Advisory[] = [],
@@ -455,7 +454,8 @@ describe("SecurityCenterPage", () => {
     it("shows the eol notice when the version is past eol and there is no upgrade target", async () => {
       setup([], { versionInfo: pastEolVersionInfo });
 
-      expect(await screen.findByText(AFTER_EOL_COPY)).toBeInTheDocument();
+      const banner = await screen.findByTestId("upgrade-banner");
+      expect(banner).toHaveTextContent(getEolReachedMessage());
     });
 
     it("does not show the eol notice when an upgrade target is available", () => {
@@ -471,7 +471,9 @@ describe("SecurityCenterPage", () => {
       );
 
       expect(screen.getByTestId("upgrade-banner")).toBeInTheDocument();
-      expect(screen.queryByText(AFTER_EOL_COPY)).not.toBeInTheDocument();
+      expect(
+        screen.queryByText(getEolReachedMessage()),
+      ).not.toBeInTheDocument();
     });
   });
 
