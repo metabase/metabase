@@ -174,9 +174,10 @@ type MockReferencedEntityResultOpts = {
   value?: RowValue;
 };
 
-type MockFailedReferencedEntityResultOpts = {
-  error?: string;
-};
+type MockFailedReferencedEntityResultOpts = Pick<
+  ReferencedEntityResult,
+  "error" | "error_type"
+>;
 
 type MockReferencedEntityRef =
   | { type?: "card"; id?: CardId }
@@ -206,12 +207,13 @@ export const createMockReferencedEntitiesResults = ({
 
 export const createMockFailedReferencedEntitiesResults = ({
   error,
+  error_type,
   id = 9,
   type = "card",
 }: MockFailedReferencedEntitiesResultsOpts = {}): ReferencedEntitiesResults =>
   createReferencedEntitiesResults({
     id,
-    result: createMockFailedReferencedEntityResult({ error }),
+    result: createMockFailedReferencedEntityResult({ error, error_type }),
     type,
   });
 
@@ -238,7 +240,9 @@ export const createMockReferencedEntityResult = ({
 
 export const createMockFailedReferencedEntityResult = ({
   error,
+  error_type,
 }: MockFailedReferencedEntityResultOpts = {}): ReferencedEntityResult => ({
   status: "failed",
   error,
+  error_type,
 });

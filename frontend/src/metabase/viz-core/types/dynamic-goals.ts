@@ -26,6 +26,7 @@ export type ResolvedGoalSegment = ResolvedOpenEndedGoalSegment & {
 
 export type GoalRefErrorReason =
   | "query-failed"
+  | "too-many-rows"
   | "column-not-found"
   | "not-a-number";
 
