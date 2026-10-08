@@ -15,8 +15,19 @@ const runner = path.join(__dirname, "run.cjs");
 // project, and the pool moves workers to whichever project has files left.
 const SDK_PROJECT = /^(frontend\/src\/embedding-sdk-(bundle|shared)|enterprise\/frontend\/src\/embedding-sdk-(package|ee))\//;
 const projectOf = (file) => (process.env.NT_ONE_PROJECT !== "1" && SDK_PROJECT.test(path.relative(path.resolve(__dirname, ".."), path.resolve(file))) ? "sdk" : "core");
+// The slowest files go first. Taken in list order, a 20 second file can be the
+// last one picked up, and then one worker runs it while the others sit idle.
+// The times come from the previous run, and a file with no record goes first.
+const durationsFile = path.join(__dirname, "../node_modules/.cache/node-test-spike/durations.json");
+const durations = (() => {
+  try { return JSON.parse(fs.readFileSync(durationsFile, "utf8")); } catch { return {}; }
+})();
 const queues = { core: [], sdk: [] };
 for (const file of files) queues[projectOf(file)].push(file);
+if (process.env.NT_NO_SLOWEST_FIRST !== "1") {
+  for (const queue of Object.values(queues)) queue.sort((a, b) => (durations[b] ?? Infinity) - (durations[a] ?? Infinity));
+}
+const measured = {};
 const serving = { core: 0, sdk: 0 };
 
 let live = 0;
@@ -26,6 +37,10 @@ const MAX_STARTUP_FAILURES = 5;
 const started = Date.now();
 
 const report = () => {
+  try {
+    fs.mkdirSync(path.dirname(durationsFile), { recursive: true });
+    fs.writeFileSync(durationsFile, JSON.stringify({ ...durations, ...measured }));
+  } catch {}
   console.error(
     `[pool] ${files.length} files over ${workers} workers in ${((Date.now() - started) / 1000).toFixed(1)} s, ` +
       `${crashed} worker restarts`,
@@ -61,10 +76,13 @@ const spawn = (project) => {
   serving[project] += 1;
   child.stdout.on("data", (chunk) => { if (process.env.NT_STDOUT) require("node:fs").appendFileSync(process.env.NT_STDOUT, chunk); });
   child.stderr.on("data", (chunk) => process.stderr.write(chunk));
+  let running = null;
   child.on("message", (message) => {
     if (!message?.ready) return;
     startupFailures = 0;
+    if (running) measured[running.file] = Date.now() - running.since;
     const assigned = queues[project].shift();
+    running = assigned ? { file: assigned, since: Date.now() } : null;
     child.send(assigned ? { file: assigned } : { done: true });
   });
   child.on("exit", (code) => {
