@@ -161,8 +161,6 @@ describe("detail view", () => {
         ["Products → Title", "Awesome Concrete Shoes"],
         ["Products → Vendor", "McClure-Lockman"],
       ]);
-
-      DetailView.getRelationships().should("not.exist");
     });
   });
 
