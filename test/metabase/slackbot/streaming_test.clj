@@ -8,6 +8,7 @@
    [metabase.metabot.agent.core :as agent]
    [metabase.metabot.persistence :as metabot.persistence]
    [metabase.metabot.scope :as metabot.scope]
+   [metabase.metabot.self :as metabot.self]
    [metabase.metabot.settings :as metabot.settings]
    [metabase.premium-features.core :as premium-features]
    [metabase.slackbot.client :as slackbot.client]
@@ -690,7 +691,9 @@
                                               (reduce [_ rf init]
                                                 (-> init
                                                     (rf {:type :text :text "Orders peaked in"})
-                                                    (rf {:type :usage :finish-reason "length"})))))
+                                                    (rf {:type :usage :finish-reason "length"
+                                                         :model "m" :usage {:promptTokens 10 :completionTokens 5}})))))
+                                          metabot.self/context-window-tokens (constantly 15)
                                           metabot.persistence/finalize-assistant-turn!
                                           (fn [msg-id parts & opts]
                                             (deliver assistant-pk msg-id)
@@ -711,9 +714,9 @@
                   (testing "and never reaches the streamed text `thread->history` replays to the model"
                     (is (str/includes? appended "Orders peaked in"))
                     (is (not (str/includes? appended "cut off"))))
-                  (testing "the turn persists the reason, and stays a finished turn"
+                  (testing "the turn persists the reason and the full window, and stays a finished turn"
                     (is (not= ::timeout pk))
-                    (is (=? {:finish_reason "length" :finished true}
+                    (is (=? {:finish_reason "length" :finished true :context_window_full true}
                             (t2/select-one :model/MetabotMessage :id pk)))))))))))))
 
 (deftest ^:synchronized slackbot-dm-textless-content-filter-reply-test

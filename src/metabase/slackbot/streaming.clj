@@ -14,6 +14,7 @@
    [metabase.metabot.context :as metabot.context]
    [metabase.metabot.envelope :as metabot.envelope]
    [metabase.metabot.persistence :as metabot.persistence]
+   [metabase.metabot.self :as metabot.self]
    [metabase.metabot.self.core :as self.core]
    [metabase.metabot.settings :as metabot.settings]
    [metabase.metabot.usage :as metabot.usage]
@@ -278,7 +279,10 @@
    {:keys [on-text on-tool-start on-tool-end on-data req-slack-msg-id get-res-slack-msg-id
            request-prompt team-id thread-ts]}]
   (let [message         (metabot.envelope/user-message prompt)
-        ai-proxy?       (llm.provider/managed-model-ref? (metabot.settings/llm-metabot-provider))
+        model-ref       (metabot.settings/llm-metabot-provider)
+        ai-proxy?       (llm.provider/managed-model-ref? model-ref)
+        ;; Read with `ai-proxy?`, before the loop, so the row's verdict uses the model the turn ran on.
+        window          (metabot.self/context-window-tokens model-ref)
         ;; Persist a placeholder assistant row up front so its `created_at` pins
         ;; turn ordering before any retry can sneak in earlier-timestamped rows.
         ;; `:user-id` stamps the author on both rows so participation-based
@@ -377,15 +381,16 @@
           (metabot.persistence/finalize-assistant-turn!
            assistant-msg-id
            combined-parts
-           :profile-id   "slackbot"
-           :slack-msg-id (when get-res-slack-msg-id (get-res-slack-msg-id))
-           :turn-state   (some-> @memory-atom memory/turn-state)
+           :profile-id            "slackbot"
+           :slack-msg-id          (when get-res-slack-msg-id (get-res-slack-msg-id))
+           :turn-state            (some-> @memory-atom memory/turn-state)
+           :context-window-tokens window
            ;; A thrown error is more authoritative, but the agent loop catches most
            ;; failures internally and emits an `:error` part instead of throwing. Without
            ;; the fallback such a turn persists as a clean `finished` row, and
            ;; `conversation-state` then merges its partial state into every later turn.
-           :error        (or (some-> @thrown metabot.persistence/throwable->error-payload)
-                             (:error (u/seek #(= :error (:type %)) combined-parts)))))))
+           :error                 (or (some-> @thrown metabot.persistence/throwable->error-payload)
+                                      (:error (u/seek #(= :error (:type %)) combined-parts)))))))
     {:msg-id        assistant-msg-id
      :external-id   assistant-external-id
      ;; Suppressed when the turn also errored: the error copy already explains the failure, and a
