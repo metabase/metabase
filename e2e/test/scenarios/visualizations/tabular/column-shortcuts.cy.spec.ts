@@ -94,32 +94,22 @@ describe("extract shortcut", () => {
   });
 
   describe("date columns", () => {
-    describe("should add a date expression for each option", () => {
+    it("should add a date expression for each option and handle duplicate expression names", () => {
+      H.openOrdersTable({ limit: 1 });
       DATE_CASES.forEach(({ option, value, example, expressions }) => {
-        it(option, () => {
-          H.openOrdersTable({ limit: 1 });
-          extractColumnAndCheck({
-            column: "Created At",
-            option,
-            value,
-            example,
-          });
-          H.expectUnstructuredSnowplowEvent({
-            event: "column_extract_via_plus_modal",
-            custom_expressions_used: expressions,
-            database_id: SAMPLE_DB_ID,
-          });
+        extractColumnAndCheck({
+          column: "Created At",
+          option,
+          value,
+          example,
+        });
+        H.expectUnstructuredSnowplowEvent({
+          event: "column_extract_via_plus_modal",
+          custom_expressions_used: expressions,
+          database_id: SAMPLE_DB_ID,
         });
       });
-    });
 
-    it("should handle duplicate expression names", () => {
-      H.openOrdersTable({ limit: 1 });
-      extractColumnAndCheck({
-        column: "Created At",
-        option: "Hour of day",
-        newColumn: "Hour of day",
-      });
       extractColumnAndCheck({
         column: "Created At",
         option: "Hour of day",
@@ -147,82 +137,12 @@ describe("extract shortcut", () => {
     });
   });
 
-  describe("email columns", () => {
-    beforeEach(() => {
-      H.restore();
-      cy.signInAsAdmin();
+  it("should add a url expression for each option", () => {
+    // Make the Email column a URL column for this test, to avoid having to create a new model
+    cy.request("PUT", `/api/field/${PEOPLE.EMAIL}`, {
+      semantic_type: "type/URL",
     });
 
-    EMAIL_CASES.forEach(({ option, value, example, expressions }) => {
-      it(option, () => {
-        H.createQuestion(
-          {
-            query: {
-              "source-table": PEOPLE_ID,
-              limit: 1,
-            },
-          },
-          {
-            visitQuestion: true,
-          },
-        );
-
-        extractColumnAndCheck({
-          column: "Email",
-          option,
-          value,
-          example,
-        });
-        H.expectUnstructuredSnowplowEvent({
-          event: "column_extract_via_plus_modal",
-          custom_expressions_used: expressions,
-          database_id: SAMPLE_DB_ID,
-        });
-      });
-    });
-  });
-
-  describe("url columns", () => {
-    beforeEach(() => {
-      H.restore();
-      cy.signInAsAdmin();
-
-      // Make the Email column a URL column for these tests, to avoid having to create a new model
-      cy.request("PUT", `/api/field/${PEOPLE.EMAIL}`, {
-        semantic_type: "type/URL",
-      });
-    });
-
-    URL_CASES.forEach(({ option, value, example, expressions }) => {
-      it(option, () => {
-        H.createQuestion(
-          {
-            query: {
-              "source-table": PEOPLE_ID,
-              limit: 1,
-            },
-          },
-          {
-            visitQuestion: true,
-          },
-        );
-
-        extractColumnAndCheck({
-          column: "Email",
-          option,
-          value,
-          example,
-        });
-        H.expectUnstructuredSnowplowEvent({
-          event: "column_extract_via_plus_modal",
-          custom_expressions_used: expressions,
-          database_id: SAMPLE_DB_ID,
-        });
-      });
-    });
-  });
-
-  it("should disable the scroll behaviour after it has been rendered", () => {
     H.createQuestion(
       {
         query: {
@@ -235,9 +155,46 @@ describe("extract shortcut", () => {
       },
     );
 
-    extractColumnAndCheck({
-      column: "Email",
-      option: "Host",
+    URL_CASES.forEach(({ option, value, example, expressions }) => {
+      extractColumnAndCheck({
+        column: "Email",
+        option,
+        value,
+        example,
+      });
+      H.expectUnstructuredSnowplowEvent({
+        event: "column_extract_via_plus_modal",
+        custom_expressions_used: expressions,
+        database_id: SAMPLE_DB_ID,
+      });
+    });
+  });
+
+  it("should add an email expression for each option and disable the scroll behaviour after it has been rendered", () => {
+    H.createQuestion(
+      {
+        query: {
+          "source-table": PEOPLE_ID,
+          limit: 1,
+        },
+      },
+      {
+        visitQuestion: true,
+      },
+    );
+
+    EMAIL_CASES.forEach(({ option, value, example, expressions }) => {
+      extractColumnAndCheck({
+        column: "Email",
+        option,
+        value,
+        example,
+      });
+      H.expectUnstructuredSnowplowEvent({
+        event: "column_extract_via_plus_modal",
+        custom_expressions_used: expressions,
+        database_id: SAMPLE_DB_ID,
+      });
     });
 
     H.tableInteractiveScrollContainer().scrollTo("left", {
