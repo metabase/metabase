@@ -105,7 +105,7 @@ describe("scenarios > visualizations > progress chart", () => {
     });
   });
 
-  it("should be backwards compatibile and not show value field selector with single numeric column", () => {
+  it("should be backwards compatible and not show value field selector with single numeric column", () => {
     // A question with numeric `progress.goal` and no `progress.value` should render a progress bar with the goal value
     const questionDetails = {
       name: "Backwards Compat Test",
@@ -130,11 +130,11 @@ describe("scenarios > visualizations > progress chart", () => {
     H.vizSettingsSidebar().within(() => {
       cy.findByText("Display").click();
 
-      // Should NOT show Value field selector since we only have one numeric column
-      cy.findByText("Value").should("not.exist");
-
       // Goal setting should still be visible with no dropdown since no other columns
       cy.findByText("Goal").should("be.visible");
+
+      // Should NOT show Value field selector since we only have one numeric column
+      cy.findByText("Value").should("not.exist");
 
       // No dropdown icon should be visible since there are no other columns for goal
       cy.findByPlaceholderText("Enter goal value")

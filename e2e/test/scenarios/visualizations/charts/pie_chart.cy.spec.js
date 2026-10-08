@@ -142,12 +142,19 @@ describe("scenarios > visualizations > pie chart", () => {
       cy.findByText("In legend").click();
     });
 
-    cy.findByTestId("chart-legend").within(() => {
-      cy.findByText("Widget").then(([element]) => {
+    cy.findByTestId("chart-legend")
+      .findByTestId("legend-item-Widget")
+      .should("contain", "%");
+    cy.findByTestId("chart-legend")
+      .findByText("Widget")
+      .should(([element]) => {
         // When text is truncated, offsetWidth will be less than scrollWidth
         expect(element.offsetWidth).to.eq(element.scrollWidth);
       });
-    });
+
+    cy.findByTestId("query-visualization-root")
+      .findByText("Total")
+      .should("be.visible");
 
     H.leftSidebar().within(() => {
       cy.findByText("Show total").click();

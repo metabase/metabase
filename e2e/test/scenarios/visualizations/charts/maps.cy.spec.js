@@ -205,10 +205,10 @@ describe("scenarios > visualizations > maps", () => {
     cy.get("@texas").trigger("mousemove");
 
     // check tooltip content
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("State:"); // column name key
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Texas"); // feature name as value
+    H.tooltip().within(() => {
+      cy.findByText("State:").should("be.visible"); // column name key
+      cy.findByText("Texas").should("be.visible"); // feature name as value
+    });
 
     // open drill-through menu and drill within it
     cy.get("@texas").click();
@@ -263,12 +263,11 @@ describe("scenarios > visualizations > maps", () => {
 
     cy.get(".leaflet-interactive").trigger("mousemove");
 
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Latitude: 10°:");
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Longitude: 10°:");
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("1");
+    H.tooltip().within(() => {
+      cy.findByText("Latitude: 10°:").should("be.visible");
+      cy.findByText("Longitude: 10°:").should("be.visible");
+      cy.findByText("1").should("be.visible");
+    });
   });
 
   it("should render grid map visualization for native questions (metabase#8362)", () => {
@@ -353,7 +352,7 @@ describe("scenarios > visualizations > maps", () => {
     });
 
     cy.findByTestId("visualization-root")
-      .get(".leaflet-marker-icon")
+      .find(".leaflet-marker-icon")
       .should("have.length.greaterThan", 10);
   });
 

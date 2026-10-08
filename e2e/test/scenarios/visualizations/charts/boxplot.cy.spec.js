@@ -76,6 +76,7 @@ describe("scenarios > visualizations > boxplot", () => {
       cy.findByText("Display").click();
       cy.findByText("Whiskers extend to").should("exist");
       cy.findByText("1.5 × interquartile range").should("exist");
+      cy.findByText("Outliers only").should("be.visible");
       cy.findByText("Min/Max").click();
     });
 
@@ -139,11 +140,17 @@ describe("scenarios > visualizations > boxplot", () => {
     H.leftSidebar().within(() => {
       cy.findByText("Values to display").should("exist");
       cy.findByRole("button", { name: "Median only" }).should("exist");
-      cy.findByRole("button", { name: "All" }).click();
     });
+
+    // With "Median only", the median labels show (2025 median is 35), but not the other values
+    H.echartsContainer().findAllByText("35").should("exist");
+    H.echartsContainer().findByText("412").should("not.exist");
+
+    H.leftSidebar().findByRole("button", { name: "All" }).click();
 
     // Verify label value appears
     H.echartsContainer().findByText("412").should("exist");
+    H.echartsContainer().findByText("91.75").should("not.exist");
 
     // Disable "Hide overlapping labels" to show more labels
     H.leftSidebar().findByText("Hide overlapping labels").click();

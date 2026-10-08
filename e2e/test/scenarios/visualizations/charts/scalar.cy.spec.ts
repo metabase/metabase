@@ -114,10 +114,9 @@ describe("scenarios > visualizations > scalar", () => {
     cy.findByText("April 30, 2024");
     H.openVizSettingsSidebar();
 
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Show the time").should("be.hidden");
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Time style").should("be.hidden");
+    H.sidebar().findByText("Date style").should("be.visible");
+    H.sidebar().findByText("Show the time").should("be.hidden");
+    H.sidebar().findByText("Time style").should("be.hidden");
   });
 
   it("should not auto-select chart type when opening and saving a native question with parameters that have default values (metabase#33208)", () => {

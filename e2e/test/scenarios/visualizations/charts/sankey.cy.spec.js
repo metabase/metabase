@@ -172,6 +172,7 @@ describe("scenarios > visualizations > sankey", () => {
       });
     });
 
+    H.getDashboardCard().findByTestId("development-watermark").should("exist");
     H.echartsContainer().findByText("Social Media");
 
     // Ensure drill-through works

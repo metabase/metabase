@@ -82,6 +82,7 @@ describe("scenarios > visualizations > funnel chart", () => {
     });
 
     H.getDraggableElements().should("have.length", 4);
+    cy.findAllByTestId("funnel-chart-header").should("have.length", 3);
 
     //Ensures that "Google" is still hidden, so it's state hasn't changed.
     H.getDraggableElements()
