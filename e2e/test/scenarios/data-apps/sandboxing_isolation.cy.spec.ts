@@ -98,6 +98,15 @@ describe("scenarios > data apps > sandbox isolation", () => {
 
     setup();
 
+    // `/api/user/current` is the whole marked surface this fixture produces — it renders
+    // isolation probes, not questions, and the SDK's bootstrap takes site settings from
+    // the auth prefetch rather than refetching `/api/session/properties`.
+    cy.wrap(markedPaths, { timeout: 30000 }).should((paths) => {
+      expect([...paths], "requests marked as data-app").to.include(
+        "/api/user/current",
+      );
+    });
+
     // A srcless (about:blank) iframe is same-origin, so its `contentWindow` is a
     // live realm with an un-gated `fetch` — the same capability html2canvas's
     // clone iframe has. Create it in the PARENT (whose createElement the host
@@ -128,15 +137,6 @@ describe("scenarios > data apps > sandbox isolation", () => {
       "parent-indexeddb",
       "parent-caches",
     ]);
-
-    // `/api/user/current` is the whole marked surface this fixture produces — it renders
-    // isolation probes, not questions, and the SDK's bootstrap takes site settings from
-    // the auth prefetch rather than refetching `/api/session/properties`.
-    cy.then(() => {
-      expect([...markedPaths], "requests marked as data-app").to.include(
-        "/api/user/current",
-      );
-    });
   });
 
   it("gates the APIs that run code, read host data or reach a host realm", () => {
