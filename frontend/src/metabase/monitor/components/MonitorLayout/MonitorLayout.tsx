@@ -9,7 +9,8 @@ import {
 import {
   canAccessAiAuditing,
   canAccessAlertsManagement,
-  canAccessMonitorDiagnostics,
+  canAccessContentDiagnostics,
+  canAccessDependencyDiagnostics,
   canAccessMonitoringTools,
   canAccessSessionManagement,
 } from "metabase/common/monitor/selectors";
@@ -32,6 +33,10 @@ function getActiveSection(pathname: string): MonitorSection | null {
     .with(
       P.string.startsWith(Urls.dependencyDiagnostics()),
       () => "diagnostics",
+    )
+    .with(
+      P.string.startsWith(Urls.contentDiagnostics()),
+      () => "content-diagnostics",
     )
     .with(
       P.string.startsWith(Urls.monitorErroringQuestions()),
@@ -81,10 +86,18 @@ export function MonitorLayout() {
 
   const { pathname } = useLocation();
   const hasDependenciesFeature = useHasTokenFeature("dependencies");
+  const hasContentDiagnosticsFeature = useHasTokenFeature(
+    "content_diagnostics",
+  );
   const hasAuditAppFeature = useHasTokenFeature("audit_app");
   const hasAiControlsFeature = useHasTokenFeature("ai_controls");
+  const canAccessDependencyDiagnosticsPage = useSelector(
+    canAccessDependencyDiagnostics,
+  );
+  const canAccessContentDiagnosticsPage = useSelector(
+    canAccessContentDiagnostics,
+  );
   const hasSessionManagementFeature = useHasTokenFeature("session-management");
-  const canAccessDiagnostics = useSelector(canAccessMonitorDiagnostics);
   const canAccessTools = useSelector(canAccessMonitoringTools);
   const canAccessAlerts = useSelector(canAccessAlertsManagement);
   const canAccessSessions = useSelector(canAccessSessionManagement);
@@ -93,7 +106,10 @@ export function MonitorLayout() {
   const activeSection = getActiveSection(pathname);
 
   const hasContentManagement =
-    canAccessDiagnostics || canAccessTools || canAccessAlerts;
+    canAccessDependencyDiagnosticsPage ||
+    canAccessContentDiagnosticsPage ||
+    canAccessTools ||
+    canAccessAlerts;
   const hasLogsAndActivity = canAccessTools;
 
   const upperNav = (
@@ -104,7 +120,7 @@ export function MonitorLayout() {
           showLabel={isNavbarOpened}
           mb="lg"
         >
-          {canAccessDiagnostics && (
+          {canAccessDependencyDiagnosticsPage && (
             <AreaTab
               label={t`Dependency diagnostics`}
               icon="search_check"
@@ -113,6 +129,17 @@ export function MonitorLayout() {
               showLabel={isNavbarOpened}
               isGated={!hasDependenciesFeature}
               onClick={() => trackMonitorSectionClicked("diagnostics")}
+            />
+          )}
+          {canAccessContentDiagnosticsPage && (
+            <AreaTab
+              label={t`Content diagnostics`}
+              icon="document"
+              to={Urls.contentDiagnostics()}
+              isSelected={activeSection === "content-diagnostics"}
+              showLabel={isNavbarOpened}
+              isGated={!hasContentDiagnosticsFeature}
+              onClick={() => trackMonitorSectionClicked("content-diagnostics")}
             />
           )}
           {canAccessTools && (

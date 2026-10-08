@@ -34,5 +34,3 @@ export const UNREFERENCED_GROUP_TYPES: DependencyGroupType[] = [
   "measure",
   "snippet",
 ];
-
-export const PAGE_SIZE = 25;
