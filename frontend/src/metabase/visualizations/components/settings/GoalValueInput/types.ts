@@ -1,4 +1,5 @@
 import type { OmniPickerItem } from "metabase/common/components/Pickers";
+import type { CardType } from "metabase-types/api";
 
 export type ColumnOption = {
   name: string;
@@ -11,7 +12,10 @@ export type PickedItem = {
   name: string;
 };
 
+export type ReferencedEntityKind = CardType | "measure";
+
 export type ReferencedEntityInfo = {
+  kind: ReferencedEntityKind | undefined;
   name: string | undefined;
   url: string | undefined;
   columns: ColumnOption[];

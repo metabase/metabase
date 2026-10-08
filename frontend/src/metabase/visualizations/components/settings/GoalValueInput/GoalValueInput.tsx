@@ -43,7 +43,7 @@ import { GoalEntityPickers } from "./GoalEntityPickers";
 import S from "./GoalValueInput.module.css";
 import { GoalValuePill } from "./GoalValuePill";
 import { StaticGoalValueInput } from "./StaticGoalValueInput";
-import type { ColumnOption, PickedItem } from "./types";
+import type { ColumnOption, PickedItem, ReferencedEntityKind } from "./types";
 import { useEntityColumnValues } from "./use-entity-column-values";
 import { useReferencedEntity } from "./use-referenced-entity";
 import { getNumericColumnOptions } from "./utils";
@@ -421,22 +421,40 @@ export const GoalValueInput = ({
 
       {resolved.error != null && (
         <Text c="error" fz="sm" mt="xs">
-          {getGoalErrorMessage(resolved.error)}
+          {getGoalErrorMessage(resolved.error, sourceInfo.kind)}
         </Text>
       )}
     </Box>
   );
 };
 
-function getGoalErrorMessage({ reason, message }: GoalRefError): string {
+function getGoalErrorMessage(
+  { reason, message }: GoalRefError,
+  sourceKind: ReferencedEntityKind | undefined,
+): string {
   return match(reason)
     .with("query-failed", () => message ?? t`Couldn't load this value`)
-    .with(
-      "too-many-rows",
-      () => t`The question's result must be a single value or row.`,
-    )
+    .with("too-many-rows", () => getTooManyRowsMessage(sourceKind))
     .with("column-not-found", () => t`This column no longer exists`)
     .with("not-a-number", () => t`This value isn't a number`)
+    .exhaustive();
+}
+
+function getTooManyRowsMessage(
+  sourceKind: ReferencedEntityKind | undefined,
+): string {
+  return match(sourceKind)
+    .with(
+      "question",
+      () => t`The question's result must be a single value or row.`,
+    )
+    .with("model", () => t`The model's result must be a single value or row.`)
+    .with("metric", () => t`The metric's result must be a single value or row.`)
+    .with(
+      "measure",
+      () => t`The measure's result must be a single value or row.`,
+    )
+    .with(undefined, () => t`The result must be a single value or row.`)
     .exhaustive();
 }
 

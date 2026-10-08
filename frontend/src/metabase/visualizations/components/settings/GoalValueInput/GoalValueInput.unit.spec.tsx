@@ -302,7 +302,9 @@ describe("GoalValueInput", () => {
   });
 
   it("explains that a referenced question must return a single row", async () => {
-    setupCardEndpoints(createMockCard({ id: 9, name: "Orders" }));
+    setupCardEndpoints(
+      createMockCard({ id: 9, name: "Orders", type: "question" }),
+    );
     setup({
       data: createMockDatasetData({
         ...DATA,
@@ -318,6 +320,81 @@ describe("GoalValueInput", () => {
     expect(
       await screen.findByText(
         "The question's result must be a single value or row.",
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("explains that a referenced model must return a single row", async () => {
+    setupCardEndpoints(
+      createMockCard({ id: 9, name: "Orders", type: "model" }),
+    );
+    setup({
+      data: createMockDatasetData({
+        ...DATA,
+        referenced_entities: createMockFailedReferencedEntitiesResults({
+          error:
+            "Referenced card 9 returned more rows than the requested maximum of 1.",
+          error_type: "too-many-rows",
+        }),
+      }),
+      value: { type: "card", id: 9, column: "total" },
+    });
+
+    expect(
+      await screen.findByText(
+        "The model's result must be a single value or row.",
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("explains that a referenced metric must return a single row", async () => {
+    setupCardEndpoints(
+      createMockCard({ id: 9, name: "Orders", type: "metric" }),
+    );
+    setup({
+      data: createMockDatasetData({
+        ...DATA,
+        referenced_entities: createMockFailedReferencedEntitiesResults({
+          error:
+            "Referenced card 9 returned more rows than the requested maximum of 1.",
+          error_type: "too-many-rows",
+        }),
+      }),
+      value: { type: "card", id: 9, column: "total" },
+    });
+
+    expect(
+      await screen.findByText(
+        "The metric's result must be a single value or row.",
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("explains that a referenced measure must return a single row", async () => {
+    setupMeasureEndpoint(
+      createMockMeasure({
+        id: 4,
+        name: "Total revenue",
+        result_column_name: "revenue",
+      }),
+    );
+    setup({
+      data: createMockDatasetData({
+        ...DATA,
+        referenced_entities: createMockFailedReferencedEntitiesResults({
+          type: "measure",
+          id: 4,
+          error:
+            "Referenced measure 4 returned more rows than the requested maximum of 1.",
+          error_type: "too-many-rows",
+        }),
+      }),
+      value: { type: "measure", id: 4, column: "revenue" },
+    });
+
+    expect(
+      await screen.findByText(
+        "The measure's result must be a single value or row.",
       ),
     ).toBeInTheDocument();
   });
