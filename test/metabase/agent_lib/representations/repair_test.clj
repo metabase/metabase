@@ -743,8 +743,13 @@
       (get "stages")
       first))
 
-(defn- repair-filter [filter-clause]
-  (first (get (repair-in-stage {"filters" [filter-clause]}) "filters")))
+(defn- repair-filter
+  "Repair a single filter clause and return it. Throws if repair split it into several entries (a
+  top-level `and`), so a test can't silently check only the first conjunct."
+  [filter-clause]
+  (let [filters (get (repair-in-stage {"filters" [filter-clause]}) "filters")]
+    (assert (= 1 (count filters)) (str "repair split the filter into " (count filters) " entries"))
+    (first filters)))
 
 (defn- hoist-filter
   "Run only Pass 2.95 over a stage carrying `filter-clause`, returning the rewritten clause.
@@ -992,9 +997,9 @@
 
 (deftest ^:parallel hoist-temporal-bucket-nested-in-filter-test
   (testing "hoisting reaches comparisons nested under boolean combinators"
-    (is (= ["and" {} ["=" {} (created-at-bucketed "month") "2025-01-01"]
+    (is (= ["or" {} ["=" {} (created-at-bucketed "month") "2025-01-01"]
             ["not" {} ["=" {} (created-at-bucketed "year") "2024-01-01"]]]
-           (repair-filter ["and" {}
+           (repair-filter ["or" {}
                            ["=" {} created-at (abs-dt "2025-01-01" "month")]
                            ["not" {} ["=" {} created-at (abs-dt "2024-01-01" "year")]]])))))
 
@@ -1369,6 +1374,108 @@
           once  (repair/repair trivial-mp input)
           twice (repair/repair trivial-mp once)]
       (is (= once twice)))))
+
+;;; ============================================================
+;;; Pass 1.56 - split top-level `and` filters
+;;; ============================================================
+
+(def ^:private status-filter
+  ["=" {} ["field" {} ["Sample" "PUBLIC" "ORDERS" "STATUS"]] "paid"])
+
+(def ^:private total-filter
+  [">" {} ["field" {} ["Sample" "PUBLIC" "ORDERS" "TOTAL"]] 100])
+
+(def ^:private id-filter
+  ["not-null" {} ["field" {} ["Sample" "PUBLIC" "ORDERS" "ID"]]])
+
+(defn- filters-query [filters]
+  {"lib/type" "mbql/query"
+   "database" "Sample"
+   "stages"   [{"lib/type"     "mbql.stage/mbql"
+                "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                "filters"      filters}]})
+
+(defn- repaired-filters [filters]
+  (get-in (repair/repair trivial-mp (filters-query filters)) ["stages" 0 "filters"]))
+
+(deftest ^:parallel split-top-level-and-filters-test
+  (testing "a top-level `and` becomes separate `filters:` entries (BOT-1446)"
+    (is (= [status-filter total-filter]
+           (repaired-filters [["and" {} status-filter total-filter]]))))
+  (testing "`and` nested directly in a top-level `and` is flattened too, keeping order"
+    (is (= [id-filter status-filter total-filter]
+           (repaired-filters [id-filter ["and" {} status-filter ["and" {} total-filter]]]))))
+  (testing "a bare `and` with no options map is split once Pass 1 has added `{}`"
+    (is (= [status-filter total-filter]
+           (repaired-filters [["and" status-filter total-filter]]))))
+  (testing "the `and` head is matched case-insensitively"
+    (is (= [status-filter total-filter]
+           (repaired-filters [["AND" {} status-filter total-filter]]))))
+  (testing "an `and` with a non-clause operand is left whole for validation to report"
+    (let [filters [["and" {} status-filter total-filter {"trailing" "x"}]]]
+      (is (= filters (repaired-filters filters))))))
+
+(deftest ^:parallel split-top-level-and-filters-still-repairs-each-conjunct-test
+  (testing "hoisting and trailing-option merges still reach each conjunct of a split `and`"
+    (is (= [["=" {} (created-at-bucketed "month") "2025-01-01"]
+            ["contains" {"case-sensitive" false}
+             ["field" {} ["Sample" "PUBLIC" "ORDERS" "STATUS"]] "@gmail.com"]]
+           (get (repair-in-stage
+                 {"filters" [["and" {}
+                              ["=" {} created-at (abs-dt "2025-01-01" "month")]
+                              ["contains" {}
+                               ["field" {} ["Sample" "PUBLIC" "ORDERS" "STATUS"]]
+                               "@gmail.com" {"case-sensitive" false}]]]})
+                "filters")))))
+
+(deftest ^:parallel split-top-level-and-filters-keeps-boolean-logic-test
+  (testing "`and` under `or` / `not` is real boolean logic and is left alone"
+    (let [filters [["or" {} ["and" {} status-filter total-filter] id-filter]
+                   ["not" {} ["and" {} status-filter total-filter]]]]
+      (is (= filters (repaired-filters filters))))))
+
+(deftest ^:parallel split-top-level-and-filters-nested-stages-test
+  (testing "a top-level `and` is split in a later stage and in a join's stage, not just stage 0"
+    (let [q   {"lib/type" "mbql/query"
+               "database" "Sample"
+               "stages"   [{"lib/type"     "mbql.stage/mbql"
+                            "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                            "joins"        [{"lib/type"   "mbql/join"
+                                             "alias"      "Products"
+                                             "stages"     [{"lib/type"     "mbql.stage/mbql"
+                                                            "source-table" ["Sample" "PUBLIC" "PRODUCTS"]
+                                                            "filters"      [["and" {} status-filter total-filter]]}]
+                                             "conditions" [["=" {}
+                                                            ["field" {} ["Sample" "PUBLIC" "ORDERS" "PRODUCT_ID"]]
+                                                            ["field" {"join-alias" "Products"}
+                                                             ["Sample" "PUBLIC" "PRODUCTS" "ID"]]]]}]}
+                           {"lib/type" "mbql.stage/mbql"
+                            "filters"  [["and" {} total-filter id-filter]]}]}
+          out (repair/repair trivial-mp q)]
+      (is (= [status-filter total-filter]
+             (get-in out ["stages" 0 "joins" 0 "stages" 0 "filters"])))
+      (is (= [total-filter id-filter]
+             (get-in out ["stages" 1 "filters"]))))))
+
+(deftest ^:parallel split-top-level-and-filters-before-post-agg-split-test
+  (testing (str "an `and` mixing a pre-aggregation condition with a post-aggregation one is split\n"
+                "before Pass 2.9, so only the post-aggregation condition moves to the new stage")
+    (let [q {"lib/type" "mbql/query"
+             "database" "Sample"
+             "stages"   [{"lib/type"     "mbql.stage/mbql"
+                          "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                          "aggregation"  [["count" {}]]
+                          "breakout"     [["field" {} ["Sample" "PUBLIC" "ORDERS" "PRODUCT_ID"]]]
+                          "filters"      [["and" {} status-filter [">" {} ["aggregation" {} 0] 10]]]}]}
+          stages (get (repair/repair trivial-mp q) "stages")]
+      (is (=? [{"filters" [status-filter]}
+               {"filters" [[">" {} ["field" {} "count"] 10]]}]
+              stages)))))
+
+(deftest ^:parallel split-top-level-and-filters-idempotent-test
+  (let [once  (repair/repair trivial-mp (filters-query [["and" {} status-filter ["and" {} total-filter id-filter]]]))
+        twice (repair/repair trivial-mp once)]
+    (is (= once twice))))
 
 ;;; ============================================================
 ;;; Pass 1.87 - rewrite misspelled `lib/type` aliases
@@ -3331,12 +3438,12 @@
 
 (deftest ^:parallel merge-trailing-options-nested-in-filters-test
   (testing (str "the misplaced trailing options can be nested arbitrarily deep - repair's\n"
-                "postwalk reaches a time-interval clause nested inside `and` inside the\n"
+                "postwalk reaches a time-interval clause nested inside `or` inside the\n"
                 "stage's filters: block.")
     (let [q   {"lib/type" "mbql/query"
                "stages"   [{"lib/type"     "mbql.stage/mbql"
                             "source-table" ["Sample" "PUBLIC" "ORDERS"]
-                            "filters"      [["and" {}
+                            "filters"      [["or" {}
                                              ["=" {} ["field" {} ["Sample" "PUBLIC" "ORDERS" "STATUS"]] "x"]
                                              ["time-interval" {}
                                               ["field" {} ["Sample" "PUBLIC" "ORDERS" "CREATED_AT"]]
@@ -3460,18 +3567,19 @@
                            {"case-sensitive" false}])))))
 
 (deftest ^:parallel merge-string-filter-trailing-options-nested-in-and-test
-  (testing (str "a contains clause with trailing case-sensitivity options, nested inside `and`\n"
+  (testing (str "a contains clause with trailing case-sensitivity options, nested inside `or`\n"
                 "inside the stage filters (the gmail-customers repro), is repaired via postwalk")
     (let [q   {"lib/type" "mbql/query"
                "stages"   [{"lib/type"     "mbql.stage/mbql"
                             "source-table" ["Sample" "PUBLIC" "ORDERS"]
-                            "filters"      [["and" {}
+                            "filters"      [["or" {}
                                              ["=" {} ["field" {} ["Sample" "PUBLIC" "ORDERS" "STATUS"]] "active"]
                                              ["contains" {}
                                               ["field" {} ["Sample" "PUBLIC" "ORDERS" "STATUS"]]
                                               "@gmail.com" {"case-sensitive" false}]]]}]}
           out (repair/repair trivial-mp q)
-          ;; and-clause is ["and" {} <=-cond> <contains-cond>]; the contains is at index 3
+          ;; or-clause is ["or" {} <=-cond> <contains-cond>]; the contains is at index 3 (an `and`
+          ;; would be split into separate filters by Pass 1.56)
           c   (get-in out ["stages" 0 "filters" 0 3])]
       (is (= ["contains" {"case-sensitive" false}
               ["field" {} ["Sample" "PUBLIC" "ORDERS" "STATUS"]] "@gmail.com"]

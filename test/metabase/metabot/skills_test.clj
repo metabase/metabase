@@ -1,5 +1,6 @@
 (ns metabase.metabot.skills-test
   (:require
+   [clojure.java.io :as io]
    [clojure.string :as str]
    [clojure.test :refer [deftest is testing]]
    [metabase.metabot.agent.prompts :as prompts]
@@ -213,3 +214,28 @@
     (is (= [] (skills/dialect-preload-parts nil))))
   (testing "returns empty when the dialect has no registered skill"
     (is (= [] (skills/dialect-preload-parts "nonexistent-engine")))))
+
+(defn- section-between
+  "The text of `s` from the first occurrence of `start` up to (not including) `end`."
+  [s start end]
+  (let [from (str/index-of s start)
+        to   (some->> from (str/index-of s end))]
+    (when (and from to)
+      (subs s from to))))
+
+(deftest ^:parallel construct-notebook-query-filter-guidance-in-sync-test
+  (testing (str "the filter-authoring guidance in the `construct_notebook_query` tool prompt is\n"
+                "repeated verbatim in the construct-notebook-query skills, so the two can't drift")
+    (let [tool-prompt (slurp (io/resource "metabot/prompts/tools/construct_notebook_query.md"))
+          core        (:body (skills/get-skill :construct-notebook-query-core))
+          operators   (:body (skills/get-skill :construct-notebook-query-operators))]
+      (doseq [[start end] [["Filters — one entry per condition" "Aggregation (on a field, plus `count`):"]
+                           ["Editing an existing query" "Anti-hallucination:"]]
+              :let [section (section-between tool-prompt start end)]]
+        (testing start
+          (is (some? section))
+          (is (= section (section-between core start end)))))
+      (testing "`and` operator entry"
+        (let [line (first (filter #(str/starts-with? % "- `[\"and\"") (str/split-lines tool-prompt)))]
+          (is (some? line))
+          (is (str/includes? operators line)))))))
