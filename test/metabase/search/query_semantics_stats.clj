@@ -25,16 +25,6 @@
     (set/subset? left right)   :left-subset
     :else                      :incomparable))
 
-(defn matching-pair-count
-  "Count engine pairs with identical result sets in one case."
-  [results]
-  (count (filter (fn [[left right]] (= (results left) (results right))) engine-pairs)))
-
-(defn conforming-engines
-  "Engines whose results equal the correct result set, in engine order."
-  [correct results]
-  (filterv #(= correct (results %)) engines))
-
 (defn score
   "Precision, recall, and F1 against a correct result set.
 

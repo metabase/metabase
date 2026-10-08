@@ -14,24 +14,10 @@
     :left-subset   #{:A}    #{:A :B}
     :incomparable  #{:A :B} #{:B :C}))
 
-(deftest matching-pair-count-test
-  (are [expected hits] (= expected (stats/matching-pair-count (zipmap stats/engines hits)))
-    6 [#{} #{}   #{}   #{}]
-    3 [#{} #{}   #{}   #{:A}]
-    2 [#{} #{}   #{:A} #{:A}]
-    1 [#{} #{}   #{:A} #{:B}]
-    0 [#{} #{:A} #{:B} #{:C}]))
-
 (deftest translated-comparisons-change-a-query-test
   (doseq [{:keys [scenario-id focus specs]} (stats/translation-rows fixtures/cases)]
     (is (< 1 (count (set (map (comp :query specs) stats/engines))))
         (str scenario-id " / " focus " does not adapt any query"))))
-
-(deftest conforming-engines-test
-  (are [expected hits] (= expected (stats/conforming-engines #{:A} (zipmap stats/engines hits)))
-    stats/engines         [#{:A} #{:A} #{:A}    #{:A}]
-    [:appdb-h2 :semantic] [#{}   #{:A} #{:A :B} #{:A}]
-    []                    [#{}   #{:B} #{:A :B} #{}]))
 
 (deftest correct-score-test
   (are [expected correct hits] (= expected (stats/score correct hits))
