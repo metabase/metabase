@@ -37,14 +37,16 @@
   "Throws, naming each file, when a data app's files in `snapshot` (its manifest, its collection, and what the
   collection holds) carry what a load can't take as the author meant it. Serialization trusts what it reads, so this
   is what keeps an app's resources to its own collection; it runs on the whole snapshot before any import, since an
-  incremental import ingests only the changed files. A file that doesn't parse is left to ingestion to report."
+  incremental import ingests only the changed files. A file that doesn't parse is left to ingestion to report, but a
+  manifest that doesn't is kept, so that its own problem names it rather than the app being deleted as no longer in
+  the repository."
   [snapshot]
   (let [files    (for [path (source.p/list-files snapshot)
                        :when (serialization/entity-file-path? path)
                        :let [entity (try
                                       (ingest-content (source.p/read-file snapshot path))
                                       (catch Exception _ nil))]
-                       :when entity]
+                       :when (or entity (re-matches #"data_apps/[^/]+/data_app\.yaml" path))]
                    {:path path :entity entity})
         problems (data-apps/problems files)]
     (when (seq problems)

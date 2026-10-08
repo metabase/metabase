@@ -346,6 +346,24 @@
                                                        :entity_id (data-apps.tu/app-entity-id "shop")}))]
       (is (= 2 (count (filter #(str/includes? % "which another data app also has") (messages tree))))))))
 
+(deftest refuses-two-manifests-with-one-slug-test
+  (testing "a load keeps the first app and refuses the second after it has started"
+    (let [tree (merge (shop (question-resources))
+                      (edit-file (data-apps.tu/app-files "shop2" {:name "Shop 2" :path "index.js" :bundle "B"})
+                                 "data_apps/shop2/data_app.yaml" #(assoc % :slug "shop")))]
+      (is (= 2 (count (filter #(str/includes? % "has the slug") (messages tree))))))))
+
+(deftest refuses-other-content-in-the-apps-collection-test
+  (testing "a data app's collection holds cards and actions only, and a load would refuse anything else only after it
+            had started"
+    (let [tree (assoc (shop (question-resources))
+                      (str collection-dir "launches.yaml")
+                      (yaml/generate-string {:name          "Launches"
+                                             :entity_id     "shopTimelineLaunches0"
+                                             :collection_id collection-eid
+                                             :serdes/meta   [{:model "Timeline" :id "shopTimelineLaunches0"}]}))]
+      (is (some #(str/includes? % "holds only questions, metrics and query actions") (messages tree))))))
+
 (deftest accepts-what-a-failed-pull-left-in-the-collection-the-app-claims-test
   (testing "a card loaded into the app's collection before the app itself failed to load is the app's to claim"
     (mt/with-temp [:model/Collection {collection-id :id} {:entity_id collection-eid :name "Mine" :namespace :data-apps}

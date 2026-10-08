@@ -13,12 +13,14 @@
 
 (defn- without-optional-brackets
   "`sql` with each optional clause kept as the SQL it holds: a parser reads neither `[[` nor `]]`, and a table named
-  inside a clause is read like one outside. A template tag is written back as it is."
+  inside a clause is read like one outside. A template tag is written back as it is, but a card tag, which stands
+  where a table does, as a name a parser can read."
   [sql]
   (letfn [(render [token]
             (cond
               (string? token)                                token
               (= :metabase.lib.parse/optional (:type token)) (apply str (map render (:contents token)))
+              (= \# (first (:name token)))                   "mb_card"
               :else                                          (str "{{" (:name token) "}}")))]
     (apply str (map render (lib/parse {} sql)))))
 

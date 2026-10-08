@@ -5,8 +5,10 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase-enterprise.data-apps.core :as data-apps]
    [metabase-enterprise.data-apps.test-util :as data-apps.tu]
    [metabase-enterprise.remote-sync.impl :as impl]
+   [metabase-enterprise.remote-sync.models.remote-sync-object :as remote-sync.object]
    [metabase-enterprise.remote-sync.models.remote-sync-task :as remote-sync.task]
    [metabase-enterprise.remote-sync.source.protocol :as source.p]
    [metabase-enterprise.remote-sync.test-helpers :as test-helpers]
@@ -495,6 +497,25 @@
           (is (t2/exists? :model/Collection :id collection-id))
           (is (t2/exists? :model/Card :id card-id)))))))
 
+(deftest pull-refuses-a-manifest-that-doesnt-parse-test
+  (testing "a data_app.yaml that holds no map can't say which app it is, so the pull refuses it naming the manifest,
+            rather than deleting the app as no longer in the repository"
+    (with-data-apps-sync
+      (let [v0  (shop-tree (question-resources))
+            src (test-helpers/versioned-source :trees {"v0"    v0
+                                                       "empty" (assoc v0 "data_apps/shop/data_app.yaml" "")
+                                                       "list"  (assoc v0 "data_apps/shop/data_app.yaml" "- a\n")
+                                                       "text"  (assoc v0 "data_apps/shop/data_app.yaml" "shop\n")}
+                                               :current "v0")]
+        (is (= :success (:status (import-at! src "v0" :force? true))))
+        (doseq [version ["empty" "list" "text"]]
+          (testing version
+            (let [result (import-at! src version)]
+              (is (= :error (:status result)))
+              (is (str/includes? (str (:message result)) "data_apps/shop/data_app.yaml must hold a single DataApp")
+                  (:message result))
+              (is (t2/exists? :model/DataApp :name "shop")))))))))
+
 (defn- export-merged!
   "Export to `src` with `merge`, as an instance whose last sync was `base-version` does once the remote has advanced."
   [src base-version]
@@ -800,3 +821,19 @@
                                 {:dataset_query (lib/->legacy-MBQL (lib/query mp (lib.metadata/table mp (mt/id :checkins))))})
           (is (= :success (:status (export! mock))))
           (is (= [(mt/id :checkins)] (t2/select-one-fn :table_ids :model/DataApp :name "shop"))))))))
+
+(deftest an-export-whose-table-record-fails-still-records-the-export-test
+  (testing "the commit is pushed before the tables are recorded, so a failure there must not undo the record of it"
+    (with-data-apps-sync
+      (let [mock (test-helpers/create-mock-source :initial-files {"main" (shop-tree (question-resources))})
+            mp   (mt/metadata-provider)]
+        (is (= :success (:status (import-at! mock "main" :force? true))))
+        (let [card-id (t2/select-one-pk :model/Card :entity_id question-eid)]
+          (mt/user-http-request :crowberto :put 200 (str "card/" card-id)
+                                {:dataset_query (lib/->legacy-MBQL (lib/query mp (lib.metadata/table mp (mt/id :checkins))))})
+          (is (seq (remote-sync.object/dirty-rows)))
+          (with-redefs [data-apps/record-table-dependencies! (fn [] (throw (ex-info "the tables can't be recorded" {})))]
+            (let [result (export! mock)]
+              (is (= :success (:status result)) (:message result))))
+          (testing "the export is recorded: the rows are synced"
+            (is (empty? (remote-sync.object/dirty-rows)))))))))

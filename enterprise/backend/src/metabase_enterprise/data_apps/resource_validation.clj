@@ -340,6 +340,14 @@
         {:keys [path]} carried-by]
     (problem path (tru "{0} has the entity ID {1}, which another data app also has." path entity-id))))
 
+(defn- shared-slug-problems
+  "Two manifests can't carry one slug: a load keeps the first app and refuses the second after it has started."
+  [manifests]
+  (for [[slug carried-by] (group-by (comp :slug :entity) manifests)
+        :when (and slug (< 1 (count carried-by)))
+        {:keys [path]} carried-by]
+    (problem path (tru "{0} has the slug {1}, which another data app also has." path slug))))
+
 (defn- child-collection-problems
   "A data app's collection holds no collections, and a load would refuse one only after it had started."
   [manifests files]
@@ -347,6 +355,16 @@
     (for [{:keys [path entity]} files
           :when (and (= "Collection" (model-of entity)) (contains? app-collections (:parent_id entity)))]
       (problem path (tru "{0} is a collection inside a data app''s collection, which can''t hold one." path)))))
+
+(defn- other-content-problems
+  "A data app's collection holds cards and actions only, and a load would refuse anything else only after it had
+  started. A collection's file names its own entity ID as `collection_id`, so a collection is its own content."
+  [manifests files]
+  (let [app-collections (into #{} (keep (comp :collection :entity)) manifests)]
+    (for [{:keys [path entity]} files
+          :when (and (contains? app-collections (:collection_id entity))
+                     (not (contains? #{"Card" "Action" "Collection"} (model-of entity))))]
+      (problem path (tru "{0} is in a data app''s collection, which holds only questions, metrics and query actions." path)))))
 
 (defn- defined-dependencies
   "The `[model entity-id]` of each snippet, segment and measure that `files` load: a resource that names one counts
@@ -370,7 +388,9 @@
         defined   (defined-dependencies files)]
     (concat
      (shared-entity-id-problems manifests)
+     (shared-slug-problems manifests)
      (shared-collection-problems manifests)
      (shared-resource-problems manifests files)
      (child-collection-problems manifests files)
+     (other-content-problems manifests files)
      (mapcat #(app-problems defined % files) manifests))))
