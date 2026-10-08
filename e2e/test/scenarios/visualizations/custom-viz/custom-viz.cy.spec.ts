@@ -646,6 +646,9 @@ describe("admin > custom visualizations", () => {
         });
       });
 
+      cy.log("Reload only after the app leaves the unsaved question URL");
+      cy.location("hash").should("be.empty");
+      cy.location("pathname").should("match", /^\/question\/\d+/);
       H.interceptPluginBundle();
       cy.reload();
       cy.wait("@pluginBundle");
