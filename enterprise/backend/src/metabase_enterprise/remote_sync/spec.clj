@@ -857,15 +857,18 @@
 (defmethod check-eligibility-by-type :collection
   [{:keys [eligibility] :as spec} object]
   (let [collection-type (:collection eligibility)
-        collection-id   (:collection_id object)]
-    (if (library-synced-object? spec object)
+        collection-id   (:collection_id object)
+        ;; what sits in a data app's collection is synced with the app, an action without a model included: the
+        ;; app's copies belong to no model, and are the app's rather than the Library's
+        in-data-app?    (and (some? collection-id)
+                             (data-apps-namespace-collection? {:namespace (remote-sync.db/collection-namespace collection-id)}))]
+    (if (and (library-synced-object? spec object) (not in-data-app?))
       (and (rs-settings/library-is-remote-synced?)
            (library-content? spec object))
       (case collection-type
         :remote-synced
         (or (collections/remote-synced-collection? collection-id)
-            ;; what sits in a data app's collection is synced with the app
-            (data-apps-namespace-collection? {:namespace (remote-sync.db/collection-namespace collection-id)}))
+            in-data-app?)
 
         :transforms-namespace
         (and (rs-settings/remote-sync-transforms)
