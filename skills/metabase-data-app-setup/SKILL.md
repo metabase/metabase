@@ -53,8 +53,9 @@ If `<repo>/data_apps/<slug>/` already holds a project, verify it matches the cur
 2. `src/index.tsx` default-exports a `DataAppFactory` (type from
    `@metabase/embedding-sdk-react/data-app`) returning `{ component, providerProps? }`
    (no args).
-3. `data_app.yaml` declares the same `version:` as this skill's
-   `template/data_app.yaml` (a manifest without the line is version 1). A lower
+3. `data_app.yaml` declares the `version:` Metabase serves (a manifest without
+   the line is version 1): the `version` in the `data_app.yaml` that
+   `POST /api/apps/generate/app` answers (Step 4), which writes nothing. A lower
    version is not drift but an outdated app: **Stop.** Migrating it is a
    separate task; use the agent's normal skill-discovery flow for migrating an
    outdated data app before extending it.
@@ -134,19 +135,34 @@ Once the template is in `<repo>/data_apps/<slug>/` (run everything below from th
 6. **The lockfile and the built bundle must both be committed.** Metabase serves the file at the `path` declared in `data_app.yaml` (the template builds to `dist/index.js`) straight from the committed Git tree, and the lockfile keeps installs reproducible. **Verify with `git status`** after `npm install` and a build: both must appear as committable files.
 7. `npm run dev` and confirm the preview at http://localhost:5174 renders the starter "Hello, data app" message.
 8. If the preview hits CORS, add `http://localhost:5174` under Admin → Embedding → Embedded analytics SDK → CORS.
-9. **Fill in `data_app.yaml`**, the template's manifest, now in the app directory. This is the per-app config Metabase reads on sync, one file per app. Its fields, which of them are required, and their rules are defined in the Data App section of the Metabase representation format spec: load the skill for reading and writing Metabase representation YAML (use skill discovery) and follow its spec. If no such skill is available, install it with `npx skills add metabase/agent-skills/skills --skill metabase-representation-format`; if it still can't be loaded, stop and tell the user. Set `name`, `slug`, and `description` for this app, and `entity_id` to an ID from `npx representations generate-entity-id` (from the app's own dev dependencies, after `npm install`). Leave `version` and `serdes/meta` as the template ships them, and `path` too unless you change the build output. `collection` stays empty until item 10. Never copy a value from another app's manifest.
+9. **Generate `data_app.yaml` and the app's collection.** Metabase writes both, with new entity IDs: `POST /api/apps/generate/app` answers the app's `data_app.yaml` (at `data_apps/<slug>/data_app.yaml`) and its collection's file under `collections/data_apps/`, each at its path from the repo root. Run it from the repo, with the app's display name, its `/apps/<slug>` slug, and an optional one-line description:
+
+   ```bash
+   ROOT="$(git rev-parse --show-toplevel 2>/dev/null)"
+   (
+     source "$ROOT/.env.local" 2>/dev/null
+     curl -sS -X POST \
+       -H "x-api-key: $DATA_APP_MB_API_KEY" \
+       -H "Content-Type: application/json" \
+       -d '{"name": "Sales App", "slug": "sales-app", "description": "Pipeline health and quota attainment by region"}' \
+       "$DATA_APP_MB_URL/api/apps/generate/app" |
+     node -e 'let s="";process.stdin.on("data",(d)=>(s+=d)).on("end",()=>{const r=JSON.parse(s);if(!r.files){console.error(s);process.exit(1)}for(const f of r.files){const p=require("path").join(process.argv[1],f.path);require("fs").mkdirSync(require("path").dirname(p),{recursive:true});require("fs").writeFileSync(p,f.yaml);console.log("Wrote "+f.path)}})' "$ROOT"
+   )
+   ```
+
+   Run it once per app: a second run writes a new collection with new entity IDs. Never copy `data_app.yaml` or its `collection:` line from another app. Edit the generated `data_app.yaml` only to add `allowed_hosts` (below).
 
    **`description`** — optional: a single short sentence saying what the app
    does, shown under its name in the admin UI so admins can tell apps apart at a
    glance. Sync folds any whitespace into single spaces and rejects anything over
    255 characters; the admin list wraps what is left rather than cutting it off,
    so a sentence reads well there and a paragraph crowds out the rows around it.
-   Replace the template's placeholder with a real sentence about *this* app, or
-   delete the line entirely if it adds nothing beyond the name.
+   Pass a real sentence about *this* app, or leave `description` out of the
+   request if it adds nothing beyond the name.
 
    **`version`** — the data app contract version this app's code targets, a
-   whole number. The template ships the version this skill targets; do not
-   change it by hand. Metabase bumps the version it serves only on a breaking
+   whole number. Metabase writes the version it serves; do not change it by
+   hand. Metabase bumps the version it serves only on a breaking
    change to the contract. An app on an older version is marked *Outdated* in
    the admin list, hidden from every other user, and refuses to open until it
    is migrated to the current contract, its `version` raised to match, rebuilt,
@@ -170,27 +186,19 @@ Once the template is in `<repo>/data_apps/<slug>/` (run everything below from th
    must also permit framing (`X-Frame-Options`/`frame-ancestors`) — many public
    sites don't.
 
-10. **Write the app's collection.** Generate its entity ID with
-    `npx representations generate-entity-id`, write the collection's file under
-    the repo's `collections/data_apps/` (use skill discovery to find the
-    data-app guidance on writing the files of an app's collection), and set that
-    ID as `collection` in `data_app.yaml`.
-
 ### The order of the app's files
 
 An app's YAML is written in this order, and each step needs the one before it:
 
-1. `data_app.yaml`, copied from the template in Step 3 and filled in at item 9.
-2. The collection's file under `collections/data_apps/`, named in
-   `data_app.yaml` as `collection` at item 10.
-3. `npm run print-resources`, once the app has definitions in `queries/` or
-   `actions/`. It prints the saved questions into the collection
-   `data_app.yaml` names, so it refuses to run until the manifest names one.
-4. The remaining files in the collection's directory: a saved question per
-   query and copies of the metrics and actions they use, written from what it
-   printed.
+1. `data_app.yaml` and the collection's file under `collections/data_apps/`,
+   both generated at item 9.
+2. The files in the collection's directory: a saved question per query and
+   copies of the metrics and actions they use, which `npm run write-resources`
+   regenerates once the app has definitions in `queries/` or `actions/`. It
+   writes into the collection `data_app.yaml` names, so it refuses to run until
+   the manifest names one whose file exists.
 
-Scaffolding ends after the second. The last two are part of building the app's
+Scaffolding ends after the first. The second is part of building the app's
 data layer; use skill discovery for that.
 
 ## Step 5 — Verify the starter app
