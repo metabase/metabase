@@ -657,3 +657,51 @@
       (and (= (model ops) @seen)
            ;; Nothing leaks out of a program: every var is back to its original.
            (= [:original 0] (model-a) (model-b) (model-a-reexport))))))
+
+;;; The same model across threads. A dynamic redef is local to its thread, so each thread's program has to see what the
+;;; model says whatever the other threads do, including while they proxy the same vars for the first time.
+
+(defn- dynamic-only
+  "Turn every `with-redefs` in `ops` into a dynamic redef: a `with-redefs` is seen by every thread."
+  [ops]
+  (mapv (fn [{:keys [op body] :as o}]
+          (cond-> o
+            (= op :plain) (assoc :op :dynamic)
+            body          (assoc :body (dynamic-only body))))
+        ops))
+
+(defn- run-dynamic-program!
+  "Like [[run-program!]], for dynamic redefs of the vars in `vars`, which maps the model's names to vars."
+  [vars seen id ops]
+  (doseq [{:keys [op body throws?] v :var :as o} ops]
+    (case op
+      :call   (swap! seen conj (apply (vars v) (range (:nargs o))))
+      :future @(future (run-dynamic-program! vars seen id body))
+      (try
+        (redefined! (vars v) (stub (swap! id inc))
+                    (fn []
+                      (run-dynamic-program! vars seen id body)
+                      (when throws?
+                        (throw (ex-info "leave the redef by exception" {::expected true})))))
+        (catch clojure.lang.ExceptionInfo e
+          (when-not (::expected (ex-data e))
+            (throw e)))))))
+
+(defspec dynamic-redefs-are-thread-local-model-test 100
+  (prop/for-all [programs (gen/vector (gen/fmap dynamic-only (gen/vector gen-program 1 5)) 4)]
+    (let [original (fn [& args] [:original (count args)])
+          source   (fresh-source! original)
+          vars     {:a          source
+                    :a-reexport (reexport! source 'metabase.test.util.dynamic-redefs-test)
+                    :b          (fresh-source! original)}
+          barrier  (CyclicBarrier. (count programs))
+          threads  (mapv (fn [ops]
+                           (future
+                             (.await barrier 30 TimeUnit/SECONDS)
+                             (let [seen (atom [])]
+                               (run-dynamic-program! vars seen (atom 0) ops)
+                               @seen)))
+                         programs)]
+      ;; A thread that does not finish is a deadlock.
+      (= (map model programs)
+         (map #(deref % 30000 ::did-not-finish) threads)))))
