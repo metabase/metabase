@@ -321,7 +321,7 @@ describe("scenarios > embedding > dashboard parameters", () => {
   });
 
   context("API", () => {
-    beforeEach(() => {
+    it("should work for all filters", () => {
       cy.get("@dashboardId").then((dashboardId) => {
         cy.request("PUT", `/api/dashboard/${dashboardId}`, {
           embedding_params: {
@@ -333,10 +333,38 @@ describe("scenarios > embedding > dashboard parameters", () => {
           enable_embedding: true,
         });
 
+        cy.log(
+          "should render error message when `params` is not an object (metabase#14474)",
+        );
+        const invalidParamsValue = [];
+        H.visitEmbeddedPage({
+          resource: { dashboard: dashboardId },
+          params: invalidParamsValue,
+        });
+
+        H.getDashboardCard()
+          .findByText("There was a problem displaying this chart.")
+          .should("be.visible");
+
+        cy.log("should send 'X-Metabase-Client' header for api requests");
+        cy.intercept("GET", "api/embed/dashboard/*").as("getEmbeddedDashboard");
+
         const payload = {
           resource: { dashboard: dashboardId },
           params: {},
         };
+
+        H.visitEmbeddedPage(payload, {
+          onBeforeLoad: (window) => {
+            window.Cypress = undefined;
+          },
+        });
+
+        cy.wait("@getEmbeddedDashboard").then(({ request }) => {
+          expect(request?.headers?.["x-metabase-client"]).to.equal(
+            "embedding-iframe-static",
+          );
+        });
 
         H.visitEmbeddedPage(payload);
 
@@ -344,9 +372,7 @@ describe("scenarios > embedding > dashboard parameters", () => {
         cy.contains("Test Dashboard");
         cy.contains("2,500");
       });
-    });
 
-    it("should work for all filters", () => {
       cy.log("should only display filters mapped to cards on the selected tab");
       H.dashboardParametersContainer().within(() => {
         cy.findByText("Id").should("be.visible");
@@ -355,6 +381,25 @@ describe("scenarios > embedding > dashboard parameters", () => {
         cy.findByText("User").should("be.visible");
         cy.findByText("Not Used Filter").should("not.exist");
       });
+
+      cy.log(
+        "should hide filters that are not mapped to cards on the selected tab",
+      );
+      H.goToTab("Tab 2");
+      H.assertTabSelected("Tab 2");
+
+      H.dashboardParametersContainer().should("not.exist");
+      cy.findByTestId("embed-frame").within(() => {
+        cy.findByText("Id").should("not.exist");
+        cy.findByText("Name").should("not.exist");
+        cy.findByText("Source").should("not.exist");
+        cy.findByText("User").should("not.exist");
+        cy.findByText("Not Used Filter").should("not.exist");
+      });
+
+      H.goToTab("Tab 1");
+      H.assertTabSelected("Tab 1");
+      H.dashboardParametersContainer().findByText("Id").should("be.visible");
 
       cy.log("should allow searching PEOPLE.ID by PEOPLE.NAME");
 
@@ -413,61 +458,6 @@ describe("scenarios > embedding > dashboard parameters", () => {
       );
 
       cy.findByTestId("scalar-value").contains("2");
-
-      cy.log(
-        "should hide filters that are not mapped to cards on the selected tab",
-      );
-      H.dashboardParametersContainer().should("be.visible");
-      H.goToTab("Tab 2");
-      H.assertTabSelected("Tab 2");
-
-      H.dashboardParametersContainer().should("not.exist");
-      cy.findByTestId("embed-frame").within(() => {
-        cy.findByText("Id").should("not.exist");
-        cy.findByText("Name").should("not.exist");
-        cy.findByText("Source").should("not.exist");
-        cy.findByText("User").should("not.exist");
-        cy.findByText("Not Used Filter").should("not.exist");
-      });
-
-      cy.log(
-        "should render error message when `params` is not an object (metabase#14474)",
-      );
-      cy.get("@dashboardId").then((dashboardId) => {
-        const invalidParamsValue = [];
-        const payload = {
-          resource: { dashboard: dashboardId },
-          params: invalidParamsValue,
-        };
-
-        H.visitEmbeddedPage(payload);
-
-        H.getDashboardCard()
-          .findByText("There was a problem displaying this chart.")
-          .should("be.visible");
-      });
-
-      cy.log("should send 'X-Metabase-Client' header for api requests");
-      cy.intercept("GET", "api/embed/dashboard/*").as("getEmbeddedDashboard");
-
-      cy.get("@dashboardId").then((dashboardId) => {
-        const payload = {
-          resource: { dashboard: dashboardId },
-          params: {},
-        };
-
-        H.visitEmbeddedPage(payload, {
-          onBeforeLoad: (window) => {
-            window.Cypress = undefined;
-          },
-        });
-
-        cy.wait("@getEmbeddedDashboard").then(({ request }) => {
-          expect(request?.headers?.["x-metabase-client"]).to.equal(
-            "embedding-iframe-static",
-          );
-        });
-      });
     });
   });
 
