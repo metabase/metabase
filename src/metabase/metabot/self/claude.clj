@@ -395,25 +395,25 @@
   (get-in supported-models [(strip-vendor-prefix model) :context-window]))
 
 (defn- claude-model-version
-  "`[family major minor]` for a Claude opus/sonnet model id, or nil.
+  "`[family major minor]` for a Claude opus/sonnet/fable/mythos model id, or nil.
   The minor version is one or two digits, so a date suffix doesn't read as one: `claude-opus-5-20261005` is 5.0."
   [model]
   ;; the minor version accepts both separators: canonical ids are hyphenated (claude-opus-4-8)
   ;; but Azure admins name deployments freely, and the dotted display-name spelling
   ;; (claude-opus-4.8) is the norm for the GPT family next to it
-  (when-let [[_ family major minor] (re-find #"^claude-(opus|sonnet)-(\d+)(?:[-.](\d{1,2})(?!\d))?"
+  (when-let [[_ family major minor] (re-find #"^claude-(opus|sonnet|fable|mythos)-(\d+)(?:[-.](\d{1,2})(?!\d))?"
                                              (strip-vendor-prefix model))]
     [family (parse-long major) (or (some-> minor parse-long) 0)]))
 
 (defn- model-current-gen?
-  "Current-generation Claude (Fable, Opus >=4.7, Sonnet >=5): no sampling params;
+  "Current-generation Claude (Fable, Mythos, Opus >=4.7, Sonnet >=5): no sampling params;
   thinking streams via `display: summarized`."
   [model]
-  (or (str/starts-with? (strip-vendor-prefix model) "claude-fable")
-      (when-let [[family major minor] (claude-model-version model)]
-        (case family
-          "opus"   (or (> major 4) (and (= major 4) (>= minor 7)))
-          "sonnet" (>= major 5)))))
+  (when-let [[family major minor] (claude-model-version model)]
+    (case family
+      ("fable" "mythos") true
+      "opus"             (or (> major 4) (and (= major 4) (>= minor 7)))
+      "sonnet"           (>= major 5))))
 
 (defn- model-supports-temperature?
   "Whether `model` accepts an explicit `temperature` parameter. Sampling params
@@ -425,15 +425,10 @@
   "Whether `model` accepts a forced `tool_choice` (`any`, or a named tool). Opus and Sonnet reject one from 5.5 on,
   Fable and Mythos from 5.1 on: https://platform.claude.com/docs/en/api/errors#forced-tool-use-not-supported"
   [model]
-  (if-let [[_ major minor] (claude-model-version model)]
-    (or (< major 5) (and (= major 5) (< minor 5)))
-    ;; same version syntax as [[claude-model-version]], which parses only opus and sonnet
-    (if-let [[_ major minor] (re-find #"^claude-(?:fable|mythos)-(\d+)(?:[-.](\d{1,2})(?!\d))?"
-                                      (strip-vendor-prefix model))]
-      (let [major (parse-long major)
-            minor (or (some-> minor parse-long) 0)]
-        (or (< major 5) (and (= major 5) (< minor 1))))
-      true)))
+  (if-let [[family major minor] (claude-model-version model)]
+    (let [first-rejecting-minor (if (#{"fable" "mythos"} family) 1 5)]
+      (or (< major 5) (and (= major 5) (< minor first-rejecting-minor))))
+    true))
 
 (def ^:private unforced-structured-output-token-floor
   "Smallest `max_tokens` for structured output on a model that can't be forced to call the tool.

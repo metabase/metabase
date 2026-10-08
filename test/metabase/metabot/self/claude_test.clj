@@ -658,10 +658,11 @@
                   (body {:model model :schema schema :max-tokens 512})))
           (is (=? {:tool_choice {:type "any"}}
                   (body {:model model :tools tools :tool_choice "required"}))))))
-    (testing "Opus and Sonnet from 5.5 and Fable from 5.1 reject a forced tool choice, so they get auto and keep thinking"
+    (testing "Opus and Sonnet from 5.5 and Fable and Mythos from 5.1 reject a forced tool choice, so they get auto and keep thinking"
       (doseq [model ["claude-opus-5-5" "claude-sonnet-5-5" "anthropic.claude-sonnet-5-5" "claude-opus-5.5"
                      "claude-opus-5-5-20261005" "claude-sonnet-5-5-2026-10-05"
-                     "claude-fable-5-1" "anthropic.claude-fable-5-1" "claude-fable-5-1-prod" "claude-fable-5.1-prod"]]
+                     "claude-fable-5-1" "anthropic.claude-fable-5-1" "claude-fable-5-1-prod" "claude-fable-5.1-prod"
+                     "claude-mythos-5-1"]]
         (testing model
           (is (=? {:tool_choice {:type "auto"}
                    :tools       [{:name "structured_output"}]
@@ -669,9 +670,6 @@
                   (body {:model model :schema schema})))
           (is (=? {:tool_choice {:type "auto"} :thinking {:type "adaptive"}}
                   (body {:model model :tools tools :tool_choice "required"}))))))
-    (testing "Mythos from 5.1 rejects a forced tool choice too"
-      (is (=? {:tool_choice {:type "auto"}} (body {:model "claude-mythos-5-1" :schema schema})))
-      (is (=? {:tool_choice {:type "auto"}} (body {:model "claude-mythos-5-1" :tools tools :tool_choice "required"}))))
     (testing "their structured-output cap is floored, since the thinking bills against it"
       (are [expected opts] (= expected (:max_tokens (body (assoc opts :model "claude-opus-5-5"))))
         2048 {:schema schema :max-tokens 512}
