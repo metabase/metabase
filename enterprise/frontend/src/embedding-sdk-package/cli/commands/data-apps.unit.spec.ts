@@ -14,6 +14,9 @@ import {
 import { addDataAppsCommands } from "./data-apps";
 
 const QUESTION = "questionEntityId00010";
+const ACTION_COPY = "actionCopyEntityId001";
+const QUESTION_PATH =
+  "collections/data_apps/appCollectionEntity01_shop/cards/questionEntityId00010_orders.yaml";
 
 async function run(...args: string[]) {
   const program = new Command();
@@ -42,20 +45,20 @@ describe("data app commands", () => {
   const printed = () =>
     stdout.mock.calls.map(([chunk]) => String(chunk)).join("");
 
-  it("prints the serialization of one file's definitions, relative to the app root", async () => {
+  it("writes the files of one file's definitions, relative to the app root", async () => {
     const appRoot = appWithQuery();
     writeAction(
       appRoot,
-      `export const Create = defineAction({ action: { id: 51, parameters: [] } });`,
+      `export const Create = defineAction({ copiedActionEntityId: "${ACTION_COPY}", action: { id: 51, parameters: [] } });`,
     );
     fs.writeFileSync(
       path.join(appRoot, ".env.local"),
       "DATA_APP_MB_URL=http://metabase.test\nDATA_APP_MB_API_KEY=mb_test_key\n",
     );
-    jest.spyOn(global, "fetch").mockResolvedValue(
+    const fetchSpy = jest.spyOn(global, "fetch").mockResolvedValue(
       new Response(
         JSON.stringify({
-          queries: [{ export: "Orders", entity: {}, metrics: [] }],
+          queries: [{ path: QUESTION_PATH, yaml: "name: Orders\n" }],
           actions: [],
           metrics: [],
         }),
@@ -63,25 +66,19 @@ describe("data app commands", () => {
     );
 
     await run(
-      "print-resources",
+      "write-resources",
       "queries/orders.query.ts",
       "--app-root",
       appRoot,
     );
 
-    expect(JSON.parse(printed())).toEqual({
-      queries: [
-        {
-          export: "Orders",
-          file: "queries/orders.query.ts",
-          savedQuestionEntityId: QUESTION,
-          entity: {},
-          metrics: [],
-        },
-      ],
-      actions: [],
-      metrics: [],
-    });
+    expect(JSON.parse(String(fetchSpy.mock.calls[0][1]?.body)).actions).toEqual(
+      [],
+    );
+    expect(fs.readFileSync(path.join(appRoot, QUESTION_PATH), "utf8")).toBe(
+      "name: Orders\n",
+    );
+    expect(printed()).toBe(`Wrote ${QUESTION_PATH}\n`);
   });
 
   it("confirms resources that back every definition", async () => {

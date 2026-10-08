@@ -89,9 +89,10 @@ assets (`metabase.server.routes/static-files-handler`).
 - `PUT /api/apps/:slug` — update manifest fields or the bundle, or toggle `enabled` (superuser).
 - `DELETE /api/apps/:slug` — drop a row, its bundle, and its owned resources (superuser).
 - `GET /api/apps/repo-status` — whether a repo is connected (superuser).
-- `POST /api/apps/serialize-resources` — what the files of an app's collection are written from: the query Metabase builds
-  from each `defineQuery` definition, and the actions and metrics it copies, all as serialization writes
-  them (`resource_serialization.clj`). An action must belong to no model (superuser).
+- `POST /api/apps/serialize` — the files of an app's collection, each at its path and with the YAML a
+  remote-sync export writes: a saved question per `defineQuery` definition, a copy of each action, and a
+  copy of each metric the queries aggregate (`serialization.clj`). An action must belong to no model
+  (superuser).
 
 Responses are field-filtered by role: superusers get full metadata, everyone else gets `name` and
 `display_name` only. The bundle blob is never serialized into JSON, and metadata reads go through
@@ -138,7 +139,7 @@ Exporting an app's resources also needs a superuser.
 | `api.clj`             | The `/api/apps` endpoints, bundle serving, ETag handling.                                           |
 | `resources.clj`       | Lifecycle of the app-owned collection and permission group: creation, view-data blocking, deletion. |
 | `models/data_app.clj` | The `:model/DataApp` Toucan model: hooks, permissions, default fields, serialization.               |
-| `resource_serialization.clj` | The serialization an app's resource files are written from: built queries, actions, metrics. |
+| `serialization.clj` | The files of an app's collection: built queries, action copies, metric copies, each at its path with its YAML. |
 | `query_definition.clj`| The closed schema of a `defineQuery` definition the serialization accepts.                                 |
 | `resource_validation.clj` | What the files of an app's collection may hold, checked on the whole snapshot before an import. |
 | `resource_tables.clj` | The tables an app's resources read, recorded on the app after an import.                           |

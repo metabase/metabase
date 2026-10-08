@@ -393,38 +393,68 @@ const resourceCard = ({
 });
 
 /**
+ * A collection of the `data-apps` namespace on the instance, which
+ * `POST /api/apps/serialize` needs to exist to lay a file out in it. Yields its
+ * entity ID.
+ */
+export function createDataAppsNamespaceCollection(
+  name = "Data App: Serialized",
+) {
+  return cy
+    .request<Collection>("POST", "/api/collection", {
+      name,
+      namespace: "data-apps",
+    })
+    .then(({ body }) => cy.wrap(String(body.entity_id), { log: false }));
+}
+
+/**
+ * What `POST /api/apps/serialize` answers for the actions `copies` name: the
+ * file of each copy, by position, in a collection of the instance.
+ */
+export function serializeDataAppActions(
+  copies: Array<{ sourceActionId: number; entityId: string }>,
+  collection: string,
+) {
+  return cy
+    .request<{ actions: Array<{ path: string; yaml: string }> }>(
+      "POST",
+      "/api/apps/serialize",
+      {
+        actions: copies.map(({ sourceActionId, entityId }) => ({
+          action_id: sourceActionId,
+          entity_id: entityId,
+          collection_id: collection,
+        })),
+      },
+    )
+    .its("body.actions");
+}
+
+/**
  * The copies of the actions `copies` name, as an author writes them into the
  * app's collection: what Metabase serializes for each source action, with the
- * copy's entity ID and in the app's `collection`.
+ * copy's entity ID, moved into the app's `collection`.
  */
 export function serializeDataAppActionCopies(
   copies: Array<{ sourceActionId: number; entityId: string }>,
   collection: string,
 ) {
-  return cy
-    .request<{ actions: Array<{ entity: ResourceEntity }> }>(
-      "POST",
-      "/api/apps/serialize-resources",
-      {
-        collection,
-        actions: copies.map(({ sourceActionId }) => sourceActionId),
-      },
-    )
-    .then(({ body }) =>
+  return createDataAppsNamespaceCollection().then((serializedIn) =>
+    serializeDataAppActions(copies, serializedIn).then((files) =>
       cy.wrap(
-        copies.map(({ entityId }, index): ResourceEntity => {
-          const { entity } = body.actions[index];
+        files.map(({ yaml: text }): ResourceEntity => {
+          const entity = yaml.load(text);
 
           return {
-            ...entity,
-            entity_id: entityId,
+            ...(isObject(entity) ? entity : {}),
             collection_id: collection,
-            "serdes/meta": serdesMeta("Action", entityId, String(entity.name)),
           };
         }),
         { log: false },
       ),
-    );
+    ),
+  );
 }
 
 /**
@@ -532,7 +562,7 @@ export function declareDataAppQueries(
 
 /**
  * Runs the data app CLI the host app has installed, the one an author runs:
- * `embedding-sdk-react data-apps <command>`. `check-resources` never calls Metabase; `print-resources`
+ * `embedding-sdk-react data-apps <command>`. `check-resources` never calls Metabase; `write-resources`
  * reaches it through `env` (see `dataAppCliEnv`).
  */
 export function runDataAppCli(command: string, env?: Record<string, string>) {

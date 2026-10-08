@@ -1,3 +1,5 @@
+import yaml from "js-yaml";
+
 import { USERS } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import type { PortableTable } from "e2e/support/helpers";
@@ -60,49 +62,57 @@ describe("Embedding SDK: data-app resources (queries)", () => {
   });
 
   describe("the CLI", () => {
-    it("prints the query Metabase builds from a definition, as an author writes the saved question from it", () => {
+    it("writes the saved question Metabase builds from a definition, at the path a remote-sync export writes it", () => {
       const question = H.newEntityId();
-      H.declareDataAppQueries(APP_ROOT(), [
-        { name: "Orders", tableId: ORDERS_ID, savedQuestionEntityId: question },
-      ]);
-
-      H.dataAppCliEnv().then((env) =>
-        H.runDataAppCli("print-resources", env).then(({ exitCode, stdout }) => {
-          expect(exitCode, stdout).to.eq(0);
-          const printed = JSON.parse(stdout);
-          expect(printed).to.deep.include({
-            actions: [],
-            metrics: [],
-          });
-          const [query] = printed.queries;
-          expect(query).to.deep.include({
-            export: "Orders",
-            file: "queries/orders.query.ts",
-            savedQuestionEntityId: question,
-            metrics: [],
-          });
-          // The saved question is complete: the author writes it as it is.
-          expect(query.entity).to.deep.include({
-            entity_id: question,
-            collection_id: COLLECTION,
+      H.createDataAppsNamespaceCollection().then((collectionEntityId) => {
+        cy.writeFile(
+          MANIFEST_FILE(),
+          `${H.DATA_APP_HOST_APP_MANIFEST}collection: ${collectionEntityId}\n`,
+        );
+        H.declareDataAppQueries(APP_ROOT(), [
+          {
             name: "Orders",
-            type: "question",
-            display: "table",
-            dataset_query: {
-              "lib/type": "mbql/query",
-              database: "Sample Database",
-              stages: [
-                {
-                  "lib/type": "mbql.stage/mbql",
-                  "source-table": ["Sample Database", "PUBLIC", "ORDERS"],
-                },
-              ],
+            tableId: ORDERS_ID,
+            savedQuestionEntityId: question,
+          },
+        ]);
+
+        H.dataAppCliEnv().then((env) =>
+          H.runDataAppCli("write-resources", env).then(
+            ({ exitCode, stdout }) => {
+              expect(exitCode, stdout).to.eq(0);
+              const [, written] = stdout.match(/^Wrote (.+)$/m) ?? [];
+              expect(written).to.contain("collections/data_apps/");
+              expect(written).to.contain(question);
+              expect(stdout.trim().split("\n")).to.have.length(1);
+
+              cy.readFile(`${APP_ROOT()}/${written}`).then((text) => {
+                const saved = yaml.load(text);
+                expect(saved).to.deep.include({
+                  entity_id: question,
+                  collection_id: collectionEntityId,
+                  name: "Orders",
+                  type: "question",
+                  display: "table",
+                  dataset_query: {
+                    "lib/type": "mbql/query",
+                    database: "Sample Database",
+                    stages: [
+                      {
+                        "lib/type": "mbql.stage/mbql",
+                        "source-table": ["Sample Database", "PUBLIC", "ORDERS"],
+                      },
+                    ],
+                  },
+                  "serdes/meta": [
+                    { model: "Card", id: question, label: "orders" },
+                  ],
+                });
+              });
             },
-            "serdes/meta": [{ model: "Card", id: question, label: "orders" }],
-          });
-          expect(query.entity.creator_id).to.be.a("string");
-        }),
-      );
+          ),
+        );
+      });
     });
 
     it("checks that the resources back every definition, listing every problem", () => {

@@ -71,7 +71,7 @@ try {
     NPM_COMMAND_OPTIONS,
   );
 
-  for (const command of ["print-resources", "check-resources"]) {
+  for (const command of ["write-resources", "check-resources"]) {
     const output = execFileSync(
       process.execPath,
       [

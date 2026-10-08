@@ -111,7 +111,7 @@ async function evaluateFiles(directory: string, filePaths: string[]) {
   }));
 }
 
-/** Narrows discovery to one definition file, the one `print-resources <file>` is asked about. */
+/** Narrows discovery to one definition file, the one `write-resources <file>` is asked about. */
 interface DiscoveryOptions {
   filePath?: string;
 }

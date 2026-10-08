@@ -11,9 +11,8 @@
    [metabase-enterprise.data-apps.config :as data-app.config]
    [metabase-enterprise.data-apps.db :as data-apps.db]
    [metabase-enterprise.data-apps.models.data-app :as data-app]
-   [metabase-enterprise.data-apps.query-definition :as query-definition]
-   [metabase-enterprise.data-apps.resource-serialization :as data-app.resource-serialization]
    [metabase-enterprise.data-apps.schema :as data-apps.schema]
+   [metabase-enterprise.data-apps.serialization :as apps.serialization]
    [metabase-enterprise.data-apps.user-access :as data-app.user-access]
    [metabase.api-scope.data-app :as api-scope]
    [metabase.api.common :as api]
@@ -35,7 +34,7 @@
 ;;; ------------------------------------------------ Constants ------------------------------------------------
 
 ;; Slug must not collide with the literal `repo-status`/`sandbox-host` sub-routes.
-(def ^:private slug-regex #"(?!repo-status$|sandbox-host$)[^/]+")
+(def ^:private slug-regex #"(?!repo-status$|sandbox-host$|serialize$)[^/]+")
 
 (def ^:private bundle-response-headers
   ;; `no-cache` so the browser may cache but must revalidate via
@@ -150,39 +149,6 @@
    [:user_id ms/PositiveInt]
    [:missing_tables [:sequential MissingTable]]])
 
-(def ^:private SerializeResourcesRequest
-  [:map {:closed true}
-   [:collection ms/NanoIdString]
-   [:queries {:default []} [:sequential [:map {:closed true}
-                                         [:export ms/NonBlankString]
-                                         [:entity_id ms/NanoIdString]
-                                         [:query ::query-definition/query-definition]]]]
-   [:actions {:default []} [:sequential {:distinct true} ms/PositiveInt]]])
-
-(def ^:private SerializedQuery
-  [:or
-   [:map {:closed true}
-    [:export  :string]
-    [:entity  :map]
-    [:metrics [:sequential :string]]]
-   [:map {:closed true}
-    [:export :string]
-    [:error  :string]]])
-
-(def ^:private SerializedEntity
-  [:or
-   [:map {:closed true}
-    [:id     ms/PositiveInt]
-    [:entity :map]]
-   [:map {:closed true}
-    [:id    ms/PositiveInt]
-    [:error :string]]])
-
-(def ^:private SerializeResourcesResponse
-  [:map {:closed true}
-   [:queries [:sequential SerializedQuery]]
-   [:actions [:sequential SerializedEntity]]
-   [:metrics [:sequential SerializedEntity]]])
 ;;; --------------------------------------------- Repo status ---------------------------------------------
 
 (api.macros/defendpoint :get "/repo-status" :- RepoStatusResponse
@@ -354,17 +320,21 @@
                    (tru "Tenant users cannot be added to data apps."))
     (data-app.user-access/permission-warnings (:table_ids app) users)))
 
-(api.macros/defendpoint :post "/serialize-resources" :- SerializeResourcesResponse
-  "Serialize what the files of a data app's collection are written from, as serialization writes it: the saved question
-  holding the query Metabase builds from each `defineQuery` definition in `queries`, in the app's `collection`,
-  the actions in `actions`, which must belong to no model, and the metrics the queries aggregate. Each item answers
-  on its own, with its serialization or the error that stops it. For superusers: the files are written into the app's
-  repository, which only an admin works with."
+(api.macros/defendpoint :post "/serialize" :- [:map {:closed true}
+                                               [:queries [:sequential ::data-apps.schema/file]]
+                                               [:actions [:sequential ::data-apps.schema/file]]
+                                               [:metrics [:sequential ::data-apps.schema/file]]]
+  "The files of a data app's collection, each at its path and with the YAML a remote-sync export writes: the saved
+  question of each `defineQuery` definition in `queries`, the copy of each action without a model in `actions`, and
+  the copies of the metrics the queries aggregate. Each item answers on its own, with its file or the error that stops
+  it. For superusers: the files are written into the app's repository, which only an admin works with."
   [_route-params
    _query-params
-   {:keys [queries actions collection]} :- SerializeResourcesRequest]
+   body :- [:map {:closed true}
+            [:queries {:optional true} [:maybe [:sequential ::data-apps.schema/query]]]
+            [:actions {:optional true} [:maybe [:sequential ::data-apps.schema/action]]]]]
   (api/check-superuser)
-  (data-app.resource-serialization/serialize-resources collection queries actions))
+  (apps.serialization/serialize body))
 
 ;; Not tagged `data-apps:base`, though the bundle route below is — which looks backwards until
 ;; you place the two callers. `DataAppView` fetches this metadata on the *host* page to decide
