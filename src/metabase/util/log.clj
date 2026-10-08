@@ -75,23 +75,17 @@
 (defn with-thread-context-fn
   "Not for public consumption. See macro docstring for details."
   [context-map f]
-  (let [context-map (perf/update-keys context-map #(str "mb-" (u.format/qualified-name %)))
-        context-keys (keys context-map)
-        ;; Store original values before modifying
-        original-context (into {}
-                               (keep (fn [k]
-                                       (when-let [v (ThreadContext/get (name k))]
-                                         [(name k) v])))
-                               context-keys)]
+  (let [;; Store original values before modifying
+        original-context (ThreadContext/getImmutableContext)]
     (try
-      (doseq [k context-keys]
-        (ThreadContext/put (name k) (str (get context-map k))))
+      (reduce-kv (fn [_ k v]
+                   (ThreadContext/put (perf/str "mb-" (u.format/qualified-name k))
+                                      (str v)))
+                 nil context-map)
       (f)
       (finally
-        (doseq [k context-keys]
-          (if-let [original (find original-context (name k))]
-            (ThreadContext/put (name k) (val original))
-            (ThreadContext/remove (name k))))))))
+        (ThreadContext/clearMap)
+        (ThreadContext/putAll original-context)))))
 
 (defmacro with-thread-context
   "Executes body with the given context map and message prefix in ThreadContext.
