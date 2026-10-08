@@ -210,6 +210,20 @@
       (testing "no error chunk is produced for an incomplete (partial-but-valid) response"
         (is (empty? (filter #(= :error (:type %)) parts)))))))
 
+(deftest ^:parallel openai-response-completed-reports-stop-test
+  (testing "a terminal response.completed event reports a \"stop\" finish reason on its usage part"
+    ;; Without it, a normal step would leave an earlier step's content-filter in place as the turn's reason.
+    (doseq [[fixture-name opts] [["openai-text"
+                                  {:input [{:role :user :content "Say hello briefly, in under 10 words."}]}]
+                                 ["openai-tool-calls"
+                                  {:input [{:role :user :content "What time is it in Kyiv?"}]
+                                   :tools [(metabot.tu/get-time-tool)]}]]]
+      (testing fixture-name
+        (is (=? {:type              :usage
+                 :finish-reason     "stop"
+                 :raw-finish-reason "completed"}
+                (last (into [] (openai/openai->aisdk-chunks-xf) (fixture fixture-name opts)))))))))
+
 ;;; ──────────────────────────────────────────────────────────────────
 ;;; Usage normalization tests
 ;;; ──────────────────────────────────────────────────────────────────

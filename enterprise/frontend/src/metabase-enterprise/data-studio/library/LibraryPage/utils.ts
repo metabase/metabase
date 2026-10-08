@@ -44,6 +44,9 @@ export const getTreeRowHref = (row: { original: TreeItem }): string | null => {
   if (treeItem.model === "snippet") {
     return Urls.dataStudioSnippet(entityId);
   }
+  if (treeItem.model === "action") {
+    return Urls.dataStudioAction(entityId);
+  }
   if (treeItem.model === "table") {
     return Urls.dataStudioTable(entityId);
   }

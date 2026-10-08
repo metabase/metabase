@@ -1,10 +1,9 @@
 import type { ReactNode } from "react";
 
-import { Flex, Group } from "metabase/ui";
+import { FullWidthContainer } from "metabase/styled-components/layout/FullWidthContainer";
+import { Flex, Group, Icon, Text } from "metabase/ui";
 
-import { EditIcon, Root, Title } from "./EditBar.styled";
-
-type Props = {
+type EditBarProps = {
   title: string;
   center?: ReactNode;
   buttons: ReactNode;
@@ -20,19 +19,29 @@ export function EditBar({
   admin = false,
   className,
   "data-testid": dataTestId,
-}: Props) {
+}: EditBarProps) {
+  // The admin bar is purple in both themes, so its text stays white instead of following the inverse token
+  const textColor = admin ? "white" : "text-primary-inverse";
+
   return (
-    <Root
+    <Flex
+      component={FullWidthContainer}
       className={className}
-      admin={admin}
+      align="center"
+      justify="space-between"
+      pos="relative"
+      py="sm"
+      bg={admin ? "admin-navbar" : "core-brand"}
       data-testid={dataTestId ?? "edit-bar"}
     >
       <Group gap="sm" align="center" wrap="nowrap">
-        <EditIcon name="pencil" size={12} />
-        <Title>{title}</Title>
+        <Icon name="pencil" size={12} c={textColor} />
+        <Text component="span" c={textColor} fw="bold" lh="md">
+          {title}
+        </Text>
       </Group>
       {center && <div>{center}</div>}
       <Flex gap="md">{buttons}</Flex>
-    </Root>
+    </Flex>
   );
 }

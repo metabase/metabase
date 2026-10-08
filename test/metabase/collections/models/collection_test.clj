@@ -230,7 +230,7 @@
 
 (deftest delete-collection-deletes-actions-test
   (testing "deleting a Collection deletes the Actions in it, including the ones without a model"
-    (mt/with-temp [:model/Collection collection {}
+    (mt/with-temp [:model/Collection collection {:namespace "data-actions"}
                    :model/Action     action     {:type :query :name "No model" :model_id nil
                                                  :collection_id (u/the-id collection)}]
       (t2/delete! :model/Collection :id (u/the-id collection))

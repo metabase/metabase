@@ -511,7 +511,7 @@ filter(ordersTable.fields.status, "not-empty");
 
 breakout(ordersTable.fields.createdAt, { unit: "month" });
 breakout(ordersTable.fields.amount, {
-  binning: { strategy: "num-bins", "num-bins": 10 },
+  binning: { strategy: "num-bins", numBins: 10 },
 });
 breakout(ordersTable.fields.state);
 

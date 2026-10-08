@@ -6,6 +6,7 @@ import {
   isTableData,
 } from "metabase/data-studio/common/utils";
 import { PLUGIN_LIBRARY } from "metabase/plugins";
+import { RootDataActionsMenu } from "metabase-enterprise/data-studio/library/actions/components/RootDataActionsMenu";
 import { TableMoreMenu } from "metabase-enterprise/data-studio/library/tables/components/TableHeader/TableMoreMenu";
 import type { CollectionId } from "metabase-types/api";
 
@@ -52,6 +53,16 @@ export function ActionCell({ treeItem, refreshSection }: ActionCellProps) {
   }
 
   if (isSnippetCollection) {
+    return <CollectionRowMenu collection={data} />;
+  }
+
+  const isDataActionCollection = data.namespace === "data-actions";
+
+  if (isDataActionCollection && data.id === "root") {
+    return <RootDataActionsMenu />;
+  }
+
+  if (isDataActionCollection) {
     return <CollectionRowMenu collection={data} />;
   }
 

@@ -103,6 +103,10 @@
   "Namespace for the resource collections of data apps"
   :data-apps)
 
+(def data-actions-ns
+  "Namespace for the collections of actions without a model"
+  :data-actions)
+
 (defn- trash-collection* []
   (collections.db/collection-of-type trash-collection-type))
 
@@ -1375,6 +1379,9 @@
       (collections.db/instances-with-columns [model-key :id :namespace :is_remote_synced] ids)
       :model/Table
       (collections.db/instances-with-columns [model-key :id :collection_id :is_published] ids)
+      ;; Actions without a model are synced with the Library rather than their collection
+      :model/Action
+      (collections.db/instances-with-columns [model-key :id :collection_id :model_id] ids)
       ;; DashboardCard and DashboardCardSeries are nested under Dashboard - skip separate eligibility check
       (:model/DashboardCard :model/DashboardCardSeries)
       nil
@@ -2218,9 +2225,10 @@
 (defmethod serdes/storage-path "Collection" [coll {:keys [collections]}]
   (let [path      (get collections (:entity_id coll))
         ns-folder (case (:namespace coll)
-                    :snippets   "snippets"
-                    :transforms "transforms"
-                    nil         "main"
+                    :snippets     "snippets"
+                    :transforms   "transforms"
+                    :data-actions "data-actions"
+                    nil           "main"
                     "main")]
     (into [{:label "collections"} {:label ns-folder}] path)))
 

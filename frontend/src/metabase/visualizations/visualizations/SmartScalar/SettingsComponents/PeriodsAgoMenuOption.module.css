@@ -1,0 +1,5 @@
+/* Element-qualified to outrank Mantine's input rule regardless of CSS load order */
+input.input {
+  padding: 0.25rem;
+  text-align: center;
+}

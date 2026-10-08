@@ -177,9 +177,13 @@
   (mt/with-premium-features #{:data-apps}
     (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
       (create-app!)
-      (doseq [[field-name field-id binning]
-              [["PRICE" (mt/id :venues :price) {:strategy "num-bins" :num-bins 10}]
-               ["LATITUDE" (mt/id :venues :latitude) {:strategy "bin-width" :bin-width 20.0}]]]
+      (doseq [[field-name field-id binning expected]
+              [["PRICE" (mt/id :venues :price)
+                {:strategy "num-bins" :numBins 10} {:strategy "num-bins" :num-bins 10}]
+               ["LATITUDE" (mt/id :venues :latitude)
+                {:strategy "bin-width" :binWidth 20.0} {:strategy "bin-width" :bin-width 20.0}]
+               ["PRICE" (mt/id :venues :price)
+                {:strategy "default"} {:strategy "default"}]]]
         (let [column {:type "column" :name field-name :description "A numeric field" :binning binning}
               response (mt/user-http-request
                         :crowberto :post 200 "apps/demo/query"
@@ -188,8 +192,8 @@
                                    :breakouts [column]
                                    :orderBys [(assoc column :direction "asc")]}]})]
           (is (=? {:dataset_query
-                   {:stages [{:breakout [["field" {:binning binning} field-id]]
-                              :order-by [["asc" {} ["field" {:binning binning} field-id]]]}]}}
+                   {:stages [{:breakout [["field" {:binning expected} field-id]]
+                              :order-by [["asc" {} ["field" {:binning expected} field-id]]]}]}}
                   response)))))))
 
 (deftest query-definition-rejects-unknown-nested-binning-options-test
@@ -200,7 +204,7 @@
                       :crowberto :post 400 "apps/demo/query"
                       {:stages [{:source {:type "table" :id (mt/id :venues)}
                                  :breakouts [{:type "column" :name "PRICE"
-                                              :binning {:strategy "num-bins" :num-bins 10 :unexpected true}}]}]})]
+                                              :binning {:strategy "num-bins" :numBins 10 :unexpected true}}]}]})]
         (is (= {:errors {:stages [{:breakouts [{:binning {:unexpected ["disallowed key"]}}]}]}}
                response))))))
 

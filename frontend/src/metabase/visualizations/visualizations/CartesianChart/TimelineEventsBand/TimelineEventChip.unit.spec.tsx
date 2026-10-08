@@ -1,6 +1,7 @@
 import userEvent from "@testing-library/user-event";
 
-import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import { act, renderWithProviders, screen, waitFor } from "__support__/ui";
+import { delay } from "metabase/utils/promise";
 import type { TimelineEventGroup } from "metabase/viz-core";
 import type { TimelineEvent, TimelineEventId } from "metabase-types/api";
 import { createMockTimelineEvent } from "metabase-types/api/mocks";
@@ -159,6 +160,9 @@ describe("TimelineEventChip", () => {
     expect(onSelectTimelineEvents).toHaveBeenCalledWith(
       singleGroup.group.events,
     );
+    expect(
+      screen.queryByTestId("timeline-event-popover"),
+    ).not.toBeInTheDocument();
   });
 
   it("deselects the events when a fully selected chip is clicked", async () => {
@@ -211,20 +215,64 @@ describe("TimelineEventChip", () => {
     expect(onSelectTimelineEvents).toHaveBeenCalledWith(manyGroup.group.events);
   });
 
-  it("hides 'See all' and does not select in degraded contexts", async () => {
-    setup({ eventsGroup: manyGroup, withCallbacks: false });
+  it("shows every event in a read-only cluster without opening a sidebar or selecting events", async () => {
+    const {
+      onOpenTimelines,
+      onSelectTimelineEvents,
+      onDeselectTimelineEvents,
+    } = setup({ eventsGroup: manyGroup, withCallbacks: false });
 
     await userEvent.click(screen.getByTestId("timeline-event-chip"));
     await userEvent.hover(screen.getByTestId("timeline-event-chip"));
 
     expect(await screen.findByText("Many 1")).toBeInTheDocument();
+    expect(screen.getByText("Many 4")).toBeInTheDocument();
     expect(screen.queryByText("See all")).not.toBeInTheDocument();
+    expect(onOpenTimelines).not.toHaveBeenCalled();
+    expect(onSelectTimelineEvents).not.toHaveBeenCalled();
+    expect(onDeselectTimelineEvents).not.toHaveBeenCalled();
+    expect(screen.getByTestId("timeline-event-chip")).toHaveAttribute(
+      "data-selected",
+      "false",
+    );
   });
 
-  it("shows 'See all' handing the cluster to onSeeAllEvents without making the chip clickable", async () => {
+  it.each([singleGroup, manyGroup])(
+    "shows read-only event descriptions without requiring creator metadata ($group.events.length events)",
+    async (eventsGroup) => {
+      setup({
+        withCallbacks: false,
+        eventsGroup: {
+          ...eventsGroup,
+          group: {
+            ...eventsGroup.group,
+            events: eventsGroup.group.events.map((event) => ({
+              ...event,
+              creator: undefined,
+              description: `${event.name} description`,
+            })),
+          },
+        },
+      });
+
+      await userEvent.hover(screen.getByTestId("timeline-event-chip"));
+
+      for (const event of eventsGroup.group.events) {
+        expect(
+          await screen.findByText(`${event.name} description`),
+        ).toBeInTheDocument();
+      }
+      expect(screen.queryByRole("checkbox")).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole("button", { name: /edit|delete|new event/i }),
+      ).not.toBeInTheDocument();
+    },
+  );
+
+  it("shows 'See all' handing the cluster to onSeeAllEvents while a chip click only opens the details", async () => {
     const onSeeAllEvents = jest.fn();
     // No select/open callbacks — the Explorations wiring, where only
-    // "See all" should act (a bare chip click must do nothing).
+    // "See all" acts on the events.
     const { onSelectTimelineEvents } = setup({
       eventsGroup: manyGroup,
       withCallbacks: false,
@@ -232,11 +280,13 @@ describe("TimelineEventChip", () => {
     });
 
     await userEvent.click(screen.getByTestId("timeline-event-chip"));
+    expect(
+      await screen.findByTestId("timeline-event-popover"),
+    ).toBeInTheDocument();
     expect(onSelectTimelineEvents).not.toHaveBeenCalled();
     expect(onSeeAllEvents).not.toHaveBeenCalled();
 
-    await userEvent.hover(screen.getByTestId("timeline-event-chip"));
-    await userEvent.click(await screen.findByText("See all"));
+    await userEvent.click(screen.getByText("See all"));
 
     expect(onSeeAllEvents).toHaveBeenCalledWith(manyGroup.group.events);
   });
@@ -256,6 +306,133 @@ describe("TimelineEventChip", () => {
         screen.queryByTestId("timeline-event-popover"),
       ).not.toBeInTheDocument();
     });
+  });
+
+  it("opens and closes the read-only details from the keyboard", async () => {
+    setup({
+      withCallbacks: false,
+      eventsGroup: {
+        ...singleGroup,
+        group: {
+          ...singleGroup.group,
+          events: [
+            createMockTimelineEvent({
+              id: 1,
+              name: "Release v1",
+              description: "The first release candidate is ready.",
+            }),
+          ],
+        },
+      },
+    });
+
+    const chip = screen.getByTestId("timeline-event-chip");
+    expect(chip).toHaveAttribute("aria-expanded", "false");
+
+    await userEvent.tab();
+    expect(chip).toHaveFocus();
+
+    await userEvent.keyboard("{Enter}");
+
+    expect(await screen.findByText("Release v1")).toBeInTheDocument();
+    expect(
+      screen.getByText("The first release candidate is ready."),
+    ).toBeInTheDocument();
+    expect(chip).toHaveAttribute("aria-expanded", "true");
+
+    await userEvent.keyboard("{Escape}");
+
+    await waitFor(() => {
+      expect(
+        screen.queryByTestId("timeline-event-popover"),
+      ).not.toBeInTheDocument();
+    });
+    expect(chip).toHaveAttribute("aria-expanded", "false");
+    await waitFor(() => expect(chip).toHaveFocus());
+  });
+
+  it("returns focus to the chip when the pointer closes keyboard-opened details", async () => {
+    setup({ withCallbacks: false });
+    const chip = screen.getByTestId("timeline-event-chip");
+
+    await userEvent.tab();
+    await userEvent.keyboard("{Enter}");
+    await waitFor(() => expect(chip).not.toHaveFocus());
+
+    await userEvent.hover(chip);
+    // the hover-open delay must elapse for the pointer to take over the popover
+    await act(() => delay(100));
+    await userEvent.unhover(chip);
+
+    await waitFor(() => {
+      expect(
+        screen.queryByTestId("timeline-event-popover"),
+      ).not.toBeInTheDocument();
+    });
+    await waitFor(() => expect(chip).toHaveFocus());
+  });
+
+  it("leaves focus where the user clicked when keyboard-opened details are dismissed", async () => {
+    setup({ withCallbacks: false });
+    const chip = screen.getByTestId("timeline-event-chip");
+
+    await userEvent.tab();
+    await userEvent.keyboard("{Enter}");
+    await waitFor(() => expect(chip).not.toHaveFocus());
+
+    await userEvent.click(document.body);
+
+    await waitFor(() => {
+      expect(
+        screen.queryByTestId("timeline-event-popover"),
+      ).not.toBeInTheDocument();
+    });
+    await act(() => delay(50));
+    expect(chip).not.toHaveFocus();
+  });
+
+  it("closes hover-opened details when focus leaves the chip", async () => {
+    setup({ withCallbacks: false });
+
+    await userEvent.tab();
+    await userEvent.hover(screen.getByTestId("timeline-event-chip"));
+    expect(
+      await screen.findByTestId("timeline-event-popover"),
+    ).toBeInTheDocument();
+
+    await userEvent.tab({ shift: true });
+
+    await waitFor(() => {
+      expect(
+        screen.queryByTestId("timeline-event-popover"),
+      ).not.toBeInTheDocument();
+    });
+  });
+
+  it("puts 'See all' within keyboard reach of a keyboard-opened cluster", async () => {
+    const onSeeAllEvents = jest.fn();
+    setup({ eventsGroup: manyGroup, withCallbacks: false, onSeeAllEvents });
+
+    await userEvent.tab();
+    await userEvent.keyboard("{Enter}");
+    expect(await screen.findByText("See all")).toBeInTheDocument();
+
+    await waitFor(() => {
+      expect(screen.getByTestId("timeline-event-chip")).not.toHaveFocus();
+    });
+    await userEvent.tab();
+    expect(screen.getByText("See all")).toHaveFocus();
+
+    await userEvent.keyboard("{Enter}");
+    expect(onSeeAllEvents).toHaveBeenCalledWith(manyGroup.group.events);
+  });
+
+  it("does not announce a dialog on a chip whose activation selects events", () => {
+    setup();
+
+    expect(screen.getByTestId("timeline-event-chip")).not.toHaveAttribute(
+      "aria-haspopup",
+    );
   });
 
   it("marks the chip as hidden when hidden", () => {

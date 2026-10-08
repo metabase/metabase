@@ -83,7 +83,7 @@
                    :model/QueryAction _ {:action_id     (:id standalone)
                                          :dataset_query (lib/native-query (mt/metadata-provider)
                                                                           "UPDATE orders SET discount = 0")}
-                   :model/Collection copies {:name "Data App: orders"}
+                   :model/Collection copies {:name "Data App: orders", :namespace "data-apps"}
                    :model/Action copy {:name "Copied order", :type :query, :collection_id (:id copies)}
                    :model/QueryAction _ {:action_id     (:id copy)
                                          :dataset_query (lib/native-query (mt/metadata-provider)

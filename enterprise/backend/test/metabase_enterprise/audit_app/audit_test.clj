@@ -465,15 +465,15 @@
   (with-audit-db-restoration!
     (let [audit-db (t2/select-one :model/Database :is_audit true)]
       ;; "Boot 1": steady state (checksums current), the engine-changed sync dies mid-flight.
-      (with-redefs [sync.core/sync-database! (fn [& _] (throw (ex-info "killed mid-sync" {})))]
+      (mt/with-dynamic-fn-redefs [sync.core/sync-database! (fn [& _] (throw (ex-info "killed mid-sync" {})))]
         (#'ee-audit/maybe-sync-audit-db! audit-db true))
       ;; "Boot 2": the full, un-stubbed pipeline, spying on audit-DB syncs.
       (let [audit-db-syncs (atom 0)
-            real-sync      sync.core/sync-database!]
-        (with-redefs [sync.core/sync-database! (fn [db & [opts]]
-                                                 (when (:is_audit db)
-                                                   (swap! audit-db-syncs inc))
-                                                 (real-sync db opts))]
+            real-sync      (mt/original-fn #'sync.core/sync-database!)]
+        (mt/with-dynamic-fn-redefs [sync.core/sync-database! (fn [db & [opts]]
+                                                               (when (:is_audit db)
+                                                                 (swap! audit-db-syncs inc))
+                                                               (real-sync db opts))]
           (mbc/ensure-audit-db-installed!))
         (testing "the boot after an interrupted engine-changed sync re-syncs the audit DB"
           (is (pos? @audit-db-syncs)))))))
