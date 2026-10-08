@@ -229,18 +229,24 @@ describe("scenarios > visualizations > table column settings", () => {
     needsScroll = true,
     scrollTimes = 1,
   }) => {
+    const scroll = () => {
+      if (needsScroll) {
+        _.times(scrollTimes, () => {
+          scrollVisualization();
+          cy.wait(200);
+        });
+      }
+    };
+
     cy.log("hide the column");
+    scroll();
+    visualization().findByText(columnName).should("exist");
     visibleColumns().within(() => hideColumn(columnName));
     assertColumnHidden(getColumn(columnName));
     if (sanityCheck) {
       assertColumnEnabled(getColumn(sanityCheck));
     }
-    if (needsScroll) {
-      _.times(scrollTimes, () => {
-        scrollVisualization();
-        cy.wait(200);
-      });
-    }
+    scroll();
     visualization().findByText(columnName).should("not.exist");
 
     cy.findByRole("button", { name: /Add or remove columns/ }).click();
@@ -557,27 +563,34 @@ describe("scenarios > visualizations > table column settings", () => {
       it("should not duplicate column in settings when removing and adding it back (metabase#22206)", () => {
         H.openVizSettingsSidebar();
 
-        // remove column
-        cy.findByTestId("sidebar-content")
-          .findByTestId("draggable-item-Subtotal")
-          .icon("eye_outline")
-          .click({ force: true });
+        // The duplicate shows on the second cycle
+        _.times(2, () => {
+          cy.findByTestId("sidebar-content")
+            .findByTestId("draggable-item-Subtotal")
+            .icon("eye_outline")
+            .click({ force: true });
 
-        // rerun query
+          cy.findAllByTestId("run-button").first().click();
+          cy.wait("@dataset");
+          cy.findByTestId("loading-indicator").should("not.exist");
+
+          cy.findByTestId("sidebar-content")
+            .findByTestId("draggable-item-Subtotal")
+            .icon("eye_crossed_out")
+            .click({ force: true });
+
+          cy.findByTestId("sidebar-content")
+            .findByTestId("draggable-item-Subtotal")
+            .icon("eye_outline")
+            .should("exist");
+          cy.findByTestId("sidebar-content")
+            .findAllByTestId("draggable-item-Subtotal")
+            .should("have.length", 1);
+        });
+
         cy.findAllByTestId("run-button").first().click();
         cy.wait("@dataset");
-        cy.findByTestId("loading-indicator").should("not.exist");
-
-        // add column back again
-        cy.findByTestId("sidebar-content")
-          .findByTestId("draggable-item-Subtotal")
-          .icon("eye_crossed_out")
-          .click({ force: true });
-
-        // fails because there are 2 columns, when there should be one
-        cy.findByTestId("sidebar-content").findByText("Subtotal");
-
-        // if you add it back again it crashes the question
+        H.tableInteractive().findByText("Subtotal").should("exist");
       });
     });
   });
@@ -1249,7 +1262,8 @@ describe("scenarios > visualizations > table column settings", () => {
           .findAllByTestId("header-cell")
           .should("have.length", 1)
           .first()
-          .should("contain.text", "ID");
+          .findByText("ID")
+          .should("exist");
 
         H.tableHeaderColumn("User ID").as("dragElement");
         H.moveDnDKitElementByAlias("@dragElement", { horizontal: -50 });
@@ -1258,7 +1272,8 @@ describe("scenarios > visualizations > table column settings", () => {
           .findAllByTestId("header-cell")
           .should("have.length", 1)
           .first()
-          .should("contain.text", "User ID");
+          .findByText("User ID")
+          .should("exist");
       });
 
       it("should allow reordering a column from the pinned section into the unpinned section", () => {
@@ -1276,9 +1291,9 @@ describe("scenarios > visualizations > table column settings", () => {
         cy.findByTestId("header-pinned-quadrant")
           .findAllByTestId("header-cell")
           .should("have.length", 2)
-          .then((cells) => {
-            expect(cells.eq(0)).to.contain("ID");
-            expect(cells.eq(1)).to.contain("User ID");
+          .should((cells) => {
+            expect(cells.eq(0).text()).to.match(/^ID/);
+            expect(cells.eq(1).text()).to.match(/^User ID/);
           });
 
         H.tableHeaderColumn("ID").as("dragElement");
@@ -1286,9 +1301,9 @@ describe("scenarios > visualizations > table column settings", () => {
 
         cy.findByTestId("header-pinned-quadrant")
           .findAllByTestId("header-cell")
-          .then((cells) => {
-            expect(cells.eq(0)).to.contain("User ID");
-            expect(cells.eq(1)).to.contain("Product ID");
+          .should((cells) => {
+            expect(cells.eq(0).text()).to.match(/^User ID/);
+            expect(cells.eq(1).text()).to.match(/^Product ID/);
           });
       });
     });
