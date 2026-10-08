@@ -3,7 +3,7 @@ import { useMemo } from "react";
 import type { IconData, IconModel } from "metabase/common/utils/icon";
 import { useGetIcon } from "metabase/hooks/use-icon";
 import { Anchor, Group, Icon, Text } from "metabase/ui";
-import { modelToUrl } from "metabase/urls";
+import * as Urls from "metabase/urls";
 import type { RemoteSyncEntity } from "metabase-types/api";
 
 import { getSyncStatusColor, getSyncStatusIcon } from "../../utils";
@@ -15,11 +15,15 @@ interface EntityLinkProps {
 }
 
 function getEntityUrl(entity: RemoteSyncEntity): string | null {
-  // An action URL needs the parent model id, which dirty entries do not carry.
   if (entity.model === "action") {
-    return null;
+    if (entity.card_id === undefined) {
+      return null;
+    }
+    return entity.card_id === null
+      ? Urls.dataStudioAction(entity.id)
+      : Urls.action({ id: entity.card_id }, entity.id);
   }
-  return modelToUrl(entity);
+  return Urls.modelToUrl(entity);
 }
 
 export const EntityLink = ({ entity }: EntityLinkProps) => {

@@ -437,6 +437,11 @@
   [namespace-name :- :string]
   (t2/select [:model/Collection :id :name] :namespace namespace-name))
 
+(mu/defn action-model-ids
+  "The model Card id, or nil, of each existing Action with `action-ids`, keyed by Action id."
+  [action-ids :- [:sequential ms/PositiveInt]]
+  (t2/select-pk->fn :model_id [:model/Action :id :model_id] :id [:in action-ids]))
+
 (mu/defn actions-without-model-in
   "The `:id`, `:name`, and `:collection_id` of the Actions without a model outside of any Collection or in the
   Collections with `collection-ids`."

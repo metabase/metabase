@@ -28,6 +28,8 @@ export type DisplayGroupSpec = {
   namespace?: string;
   /** Model types that belong to this group */
   models?: Set<RemoteSyncEntityModel>;
+  /** Other entities that belong to this group */
+  matches?: (entity: RemoteSyncEntity) => boolean;
   /** Virtual root ID for groups that have a synthetic root (e.g., -1 for Transforms) */
   virtualRootId?: number;
   /** i18n function for virtual root name */
@@ -65,6 +67,7 @@ const displayGroupSpecs: DisplayGroupSpec[] = [
   {
     id: "data-actions",
     namespace: "data-actions",
+    matches: (entity) => entity.model === "action" && entity.card_id === null,
     icon: "bolt",
     pathPrefixGroupId: "library",
     priority: 85,
@@ -135,7 +138,7 @@ const getSpecForEntity = (
   namespaceCollectionMap: NamespaceCollectionMap,
 ): DisplayGroupSpec => {
   for (const spec of displayGroupSpecs) {
-    if (spec.models?.has(entity.model)) {
+    if (spec.models?.has(entity.model) || spec.matches?.(entity)) {
       return spec;
     }
     if (entity.model === "collection" && spec.namespace) {

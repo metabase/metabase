@@ -41,6 +41,8 @@ export type RemoteSyncEntity = {
   table_id?: number;
   /** Parent table name for field and segment models */
   table_name?: string;
+  /** The model card of an existing action, null for an action without a model */
+  card_id?: number | null;
 };
 
 export type RemoteSyncChangesResponse = {
