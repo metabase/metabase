@@ -15,6 +15,7 @@ import { Outlet, useLocation } from "metabase/router";
 import { useSetting } from "metabase/settings";
 import { Flex, Loader, Stack } from "metabase/ui";
 import * as Urls from "metabase/urls";
+import { NewQuestionButton } from "metabase-enterprise/monitor/ai-auditing/components/NewQuestionButton";
 import {
   ConversationFilters as ApiKeyUsageFilterBar,
   parseId,
@@ -181,7 +182,10 @@ export function ApiKeyUsageSectionLayout() {
   // elements, just never scrolled past) so they're always visible regardless of page length.
   const tabsAndFilters = (
     <>
-      <PillTabNavigation tabs={tabs} />
+      <Flex justify="space-between" align="center" gap="md">
+        <PillTabNavigation tabs={tabs} />
+        <NewQuestionButton viewName={VIEW_API_KEY_USAGE} />
+      </Flex>
       <ApiKeyUsageFilterBar
         date={date}
         onDateChange={(val) => patchUrlState({ date: val, page: 0 })}

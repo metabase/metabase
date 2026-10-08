@@ -18,6 +18,7 @@ type AiAnalyticsSectionLayoutProps = {
   isTableRoute: boolean;
   showEmpty: boolean;
   tabs: PillTab[];
+  tabsAction?: ReactNode;
   title: string;
 };
 
@@ -30,11 +31,15 @@ export function AiAnalyticsSectionLayout({
   isTableRoute,
   showEmpty,
   tabs,
+  tabsAction,
   title,
 }: AiAnalyticsSectionLayoutProps) {
   const sectionContent = (
     <>
-      <PillTabNavigation tabs={tabs} />
+      <Flex justify="space-between" align="center" gap="md">
+        <PillTabNavigation tabs={tabs} />
+        {tabsAction}
+      </Flex>
       {filters}
       <RouteContent
         emptyState={emptyState}
