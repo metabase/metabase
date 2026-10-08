@@ -1976,8 +1976,11 @@
 
 (deftest active-model-test
   (mt/with-premium-features #{:ai-controls}
-    (mt/with-temporary-setting-values [llm-providers [(connection "anthropic" "anthropic" {:api-key "sk-ant-1"})
-                                                      (connection "openai" "openai" {:api-key "sk-o"})]]
+    (mt/with-temporary-setting-values [llm-providers [(connection "anthropic" "anthropic"
+                                                                  {:api-key    "sk-ant-1"
+                                                                   :mini-model "claude-haiku-4-5-20251001"})
+                                                      (connection "openai" "openai"
+                                                                  {:api-key "sk-o" :mini-model "gpt-5.4-mini"})]]
       (mt/with-temporary-raw-setting-values [llm-metabot-provider "anthropic/claude-sonnet-4-6"
                                              llm-mini-model      nil]
         (testing "with nothing failing, what is in use is what was selected, for both use cases"

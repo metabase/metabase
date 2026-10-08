@@ -663,7 +663,7 @@
 ;;; -------------------------------------------------- Fallback ---------------------------------------------------
 
 (def ^:private configured-openai
-  (connection "openai" "openai" {:api-key "sk-openai-test"}))
+  (connection "openai" "openai" {:api-key "sk-openai-test" :mini-model "gpt-5.4-mini"}))
 
 (defn- do-with-failing-connection!
   [conn-key thunk]
