@@ -82,7 +82,13 @@
                         :type     :query
                         :query    {:source-table (mt/id :venues), :limit 3}}
           {:keys [structured-output]} (run-tool! {"ctx" legacy-query} {:query_id "ctx"})]
-      (is (=? {:returned 3, :truncated? false} structured-output)))))
+      (is (=? {:returned 3, :truncated? false} structured-output))))
+  (testing "a parameter on the query the user is viewing still filters its rows"
+    (let [filtered (assoc (venues-count) :parameters [{:type   :number/=
+                                                       :value  [3]
+                                                       :target [:dimension [:field (mt/id :venues :id) nil]]}])]
+      (is (= ["| Count |" "| --- |" "| 1 |"]
+             (data-lines (:output (run-tool! {"ctx" filtered} {:query_id "ctx"}))))))))
 
 (deftest run-query-records-a-metabot-run-test
   (let [info (atom nil)]
