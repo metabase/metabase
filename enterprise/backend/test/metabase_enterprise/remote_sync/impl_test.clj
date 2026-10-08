@@ -1741,15 +1741,15 @@ serdes/meta:
 
 ;; ---------- handle-task-result! is robust against double-handling -----------------------------
 ;;
-;; If an admin cancels a task via POST /current-task/cancel while its virtual thread is still
-;; running, the thread will eventually reach handle-task-result!. Without protection, the :success
-;; path would write the captured branch (stomping any setting change since cancellation) and
-;; complete-sync-task! would overwrite the cancellation bookkeeping. The check at the top of
+;; If the stale-task check ends a row while its virtual thread is still running (the worker looked
+;; dead), the thread will eventually reach handle-task-result!. Without protection, the :success
+;; path would write the captured branch (stomping any setting change since the supersede) and
+;; complete-sync-task! would overwrite the supersede bookkeeping. The check at the top of
 ;; handle-task-result! short-circuits when the task is already terminated.
 
 (deftest handle-task-result!-skips-already-terminated-task-test
   (testing "handle-task-result! must not write the setting or update the task row when the task
-            is already terminated (e.g., cancelled by admin while the virtual thread was running)"
+            is already terminated (e.g., superseded as stale while the virtual thread was running)"
     (mt/with-temporary-setting-values [remote-sync-branch "dev"]
       (let [task-id (t2/insert-returning-pk!
                      :model/RemoteSyncTask
@@ -2418,14 +2418,22 @@ serdes/meta:
       (is (=? {:ended_at some? :cancelled false :error_message "Task ended without recording a result"}
               (t2/select-one :model/RemoteSyncTask :id task-id))))))
 
-(deftest run-task-body!-does-not-clobber-a-concurrent-cancel-test
-  (testing "a cancel that lands while sync-fn runs is preserved: neither the result nor the exit path overwrites it"
+(deftest run-task-body!-records-the-true-result-after-a-cancel-request-test
+  (testing "a cancel requested while sync-fn runs does not end the row: the recorded result is the result the
+            worker reports"
+    (let [task-id (new-task-id)]
+      (impl/run-task-body! task-id nil
+                           (fn [id]
+                             (remote-sync.task/cancel-sync-task! id)
+                             {:status :cancelled}))
+      (is (=? {:ended_at some? :cancelled true :error_message "Task cancelled"}
+              (t2/select-one :model/RemoteSyncTask :id task-id))))
     (let [task-id (new-task-id)]
       (impl/run-task-body! task-id nil
                            (fn [id]
                              (remote-sync.task/cancel-sync-task! id)
                              {:status :success}))
-      (is (=? {:ended_at some? :cancelled true :error_message "Task cancelled"}
+      (is (=? {:ended_at some? :cancelled false :error_message nil}
               (t2/select-one :model/RemoteSyncTask :id task-id))))))
 
 (deftest run-task-body!-stops-the-heartbeat-on-exit-test

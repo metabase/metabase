@@ -1,6 +1,6 @@
 (ns metabase-enterprise.remote-sync.cancel-before-save-test
-  "A cancel that arrives before the save of a pull stops the pull: the task says \"cancelled\" only when the pull
-  saved no ledger row and no version."
+  "A cancel before the last cancel check of a pull (the forced 0.75 report) stops the pull: the task says
+  \"cancelled\" only when the pull saved no ledger row and no version."
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
@@ -64,7 +64,7 @@
                                  (u/prog1 (impl/import! (source.p/snapshot source) tid :force? true)
                                    (reset! result <>)))))
         (let [task (t2/hydrate (t2/select-one :model/RemoteSyncTask :id task-id) :status)]
-          (is (nil? @result) "import! stopped on the cancel")
+          (is (= {:status :cancelled} @result) "import! stopped on the cancel")
           (is (= :cancelled (:status task)))
           (is (nil? (:version task)) "no version saved")
           (is (zero? (t2/count :model/RemoteSyncObject)) "no ledger row saved"))))))

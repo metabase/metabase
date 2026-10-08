@@ -1,7 +1,7 @@
 (ns metabase-enterprise.remote-sync.guards
-  "Guard predicates used by mutating remote-sync operations to refuse running while
-   another task is in flight, and to opportunistically clean up stale rows so a JVM
-   crash or hung thread doesn't block the system permanently.
+  "Guard used by mutating remote-sync operations to refuse running while another task is in flight — a task row
+   stays active until its worker ends it, also after a cancel request — and to opportunistically clean up stale
+   rows so a JVM crash or hung thread doesn't block the system permanently.
 
    Lives in its own namespace because both `impl.clj` and `settings.clj` need to call
    it, and they do not currently share a common ancestor that could host it without
@@ -20,9 +20,10 @@
   (some? (rst/current-task)))
 
 (defn ensure-no-active-task!
-  "Throws an ex-info with status-code 400 if a remote-sync task is currently active. After
-   the check passes, calls `supersede-stale-tasks!` to mark any stale rows as cancelled +
-   terminated so they don't interfere with the operation about to run.
+  "Throws an ex-info with status-code 400 if a remote-sync task is currently active, including one whose cancel was
+   requested: its row stays active until its worker ends it. After the check passes, calls
+   `supersede-stale-tasks!` to mark any stale rows as cancelled + terminated so they don't interfere with the
+   operation about to run.
 
    Used as a guard at the top of mutating remote-sync operations. Combined with
    `handle-task-result!`'s already-terminated check, this means an old task's late-arriving
@@ -33,20 +34,3 @@
     (throw (ex-info "Remote sync task in progress"
                     {:status-code 400})))
   (rst/supersede-stale-tasks!))
-
-(defn ensure-no-active-or-pending-task!
-  "As [[ensure-no-active-task!]], then closes a cancelled most recent task with `close-cancelled-task!`, so that its
-   worker cannot record a late success or write the branch or the transforms setting after this call. Guard for an
-   operation that reads or writes the branch setting."
-  []
-  (ensure-no-active-task!)
-  (rst/close-cancelled-task!))
-
-(defn ensure-no-active-task-before-a-transforms-save!
-  "As [[ensure-no-active-task!]], then marks a cancelled most recent task with `mark-transforms-saved!`, so that its
-   worker cannot write the transforms setting after this call. Its late success is still recorded and still writes
-   the branch. Guard for an operation that writes the transforms setting and does not read or write the branch
-   setting."
-  []
-  (ensure-no-active-task!)
-  (rst/mark-transforms-saved!))

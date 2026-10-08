@@ -1225,12 +1225,15 @@
 ;;; ------------------------------------------------- Cancel Task Endpoint -------------------------------------------------
 
 (deftest cancel-task-carries-the-trimmed-initiating-user-test
-  (testing "POST /api/ee/remote-sync/current-task/cancel returns the cancelled task with its trimmed initiating user"
+  (testing "POST /api/ee/remote-sync/current-task/cancel returns the task, which holds the request and still runs,
+            with its trimmed initiating user"
     (mt/with-temp [:model/RemoteSyncTask _ {:sync_task_type "export"
                                             :initiated_by (mt/user->id :rasta)
                                             :started_at :%now
                                             :last_progress_report_at :%now}]
-      (is (=? {:status            "cancelled"
+      (is (=? {:status            "running"
+               :cancelled         true
+               :ended_at          nil
                :initiated_by_user {:id (mt/user->id :rasta) :email "rasta@metabase.com"}}
               (mt/user-http-request :crowberto :post 200 "ee/remote-sync/current-task/cancel"))))))
 
@@ -1268,15 +1271,18 @@
              (mt/user-http-request :crowberto :post 400 "ee/remote-sync/current-task/cancel"))))))
 
 (deftest cancel-active-task-test
-  (testing "POST /api/ee/remote-sync/current-task/cancel successfully cancels active task"
+  (testing "POST /api/ee/remote-sync/current-task/cancel sets the cancel request on an active task and does not end
+            the row"
     (mt/with-temp [:model/RemoteSyncTask {id :id} {:sync_task_type "export"
                                                    :last_progress_report_at :%now
                                                    :started_at :%now}]
       (is (=? {:id id
                :cancelled true
-               :error_message "Task cancelled"}
+               :ended_at nil
+               :error_message nil}
               (mt/user-http-request :crowberto :post 200 "ee/remote-sync/current-task/cancel")))
-      (is (remote-sync.task/cancelled? (t2/select-one :model/RemoteSyncTask :id id))))))
+      (is (remote-sync.task/cancelled? (t2/select-one :model/RemoteSyncTask :id id)))
+      (is (remote-sync.task/running? (t2/select-one :model/RemoteSyncTask :id id))))))
 
 ;;; ------------------------------------------------- Is Dirty Endpoint -------------------------------------------------
 

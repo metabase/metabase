@@ -35,6 +35,14 @@ export const getProgress = createSelector(
   (currentTask) => currentTask?.progress ?? 0,
 );
 
+export const getIsCancelling = createSelector(
+  getCurrentTask,
+  (currentTask) =>
+    currentTask !== null &&
+    currentTask.ended_at === null &&
+    currentTask.cancelled === true,
+);
+
 export const getIsError = createSelector(
   getCurrentTask,
   (currentTask) => currentTask?.status === "errored",

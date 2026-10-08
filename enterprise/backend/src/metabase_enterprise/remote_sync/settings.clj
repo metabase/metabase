@@ -7,8 +7,7 @@
    [metabase-enterprise.remote-sync.source.git :as git]
    [metabase.collections.models.collection :as collection]
    [metabase.settings.core :as setting :refer [defsetting]]
-   [metabase.util.i18n :refer [deferred-tru]]
-   [toucan2.core :as t2]))
+   [metabase.util.i18n :refer [deferred-tru]]))
 
 (set! *warn-on-reflection* true)
 
@@ -194,77 +193,53 @@
   :encryption :no
   :doc false)
 
-(defn- clears-the-url?
-  "True iff [[check-and-update-remote-settings!]] of `settings` clears the git sync settings."
-  [{:keys [remote-sync-url] :as settings}]
-  (and (contains? settings :remote-sync-url) (str/blank? remote-sync-url)))
-
-(defn- writes-new-url-or-branch?
-  "True iff [[check-and-update-remote-settings!]] of `settings` writes a URL or a branch other than the stored one."
-  [settings]
-  (let [clearing? (clears-the-url? settings)]
-    (boolean
-     (some (fn [k]
-             (and (or clearing? (contains? settings k))
-                  (not= :env (setting/get-raw-value-source k))
-                  ;; a blank URL clears the branch too
-                  (not= (when-not clearing? (not-empty (get settings k)))
-                        (not-empty (setting/get k)))))
-           [:remote-sync-url :remote-sync-branch]))))
-
-(defn- writes-new-transforms?
-  "True iff [[check-and-update-remote-settings!]] of `settings` writes a `remote-sync-transforms` value other than the
-  stored one."
-  [settings]
-  ;; a blank URL writes no transforms value
-  (and (not (clears-the-url? settings))
-       (contains? settings :remote-sync-transforms)
-       (not= :env (setting/get-raw-value-source :remote-sync-transforms))
-       (not= (boolean (:remote-sync-transforms settings))
-             (boolean (setting/get :remote-sync-transforms)))))
+(defn- planned-writes
+  "The setting writes of [[check-and-update-remote-settings!]] of `settings`, as [key value] pairs in write order. A
+  blank URL clears the URL, the token and the branch. Leaves out a setting that an env var sets, and a token that
+  equals the obfuscated stored token."
+  [{:keys [remote-sync-url remote-sync-token] :as settings}]
+  (let [obfuscated? (= remote-sync-token (setting/obfuscate-value (setting/get :remote-sync-token)))]
+    (into []
+          (remove (fn [[k _]] (= :env (setting/get-raw-value-source k))))
+          (if (and (contains? settings :remote-sync-url) (str/blank? remote-sync-url))
+            [[:remote-sync-url nil] [:remote-sync-token nil] [:remote-sync-branch nil]]
+            (for [k     [:remote-sync-url :remote-sync-token :remote-sync-type :remote-sync-branch
+                         :remote-sync-auto-import :remote-sync-transforms]
+                  :when (and (contains? settings k)
+                             (not (and (= k :remote-sync-token) obfuscated?)))]
+              [k (get settings k)])))))
 
 (defn check-and-update-remote-settings!
   "Validates and updates git sync settings in the application database.
 
   Takes a settings map containing :remote-sync-url, :remote-sync-token, :remote-sync-type, :remote-sync-branch, and
   :remote-sync-auto-import keys. If the URL is blank, clears all git sync settings (url, token, and branch).
-  Otherwise, validates the settings by connecting to the repository, then updates the settings in a transaction.
+  Otherwise, validates the settings by connecting to the repository, then updates the settings.
+
+  Writes each setting in its own transaction: one transaction held across several setting writes can deadlock with
+  a concurrent multi-setting save (`setting/set-many!`), which takes the settings rows and the settings marker row
+  in the opposite order. A failure between two writes leaves the earlier one written.
 
   If the token is obfuscated (matches the existing token), preserves the existing token value rather than
-  overwriting it. If no branch is specified, uses the repository's default branch.
+  overwriting it.
 
-  Throws ExceptionInfo if the git settings are invalid or if unable to connect to the repository."
+  Throws ExceptionInfo if the git settings are invalid or if unable to connect to the repository, or if a sync
+  task is in progress."
   [{:keys [remote-sync-url remote-sync-token] :as settings}]
-  (cond
-    (writes-new-url-or-branch? settings) (guards/ensure-no-active-or-pending-task!)
-    (writes-new-transforms? settings)    (guards/ensure-no-active-task-before-a-transforms-save!)
-    :else                                (guards/ensure-no-active-task!))
-  (let [git-related-keys #{:remote-sync-url :remote-sync-token :remote-sync-type :remote-sync-branch}
-        updating-git-settings? (some git-related-keys (keys settings))
-        env-set-url    (= :env (setting/get-raw-value-source :remote-sync-url))
-        env-set-token  (= :env (setting/get-raw-value-source :remote-sync-token))
-        env-set-branch (= :env (setting/get-raw-value-source :remote-sync-branch))]
-    (if (and (contains? settings :remote-sync-url)
-             (str/blank? remote-sync-url))
-      (t2/with-transaction [_conn]
-        (when-not env-set-url
-          (setting/set! :remote-sync-url nil))
-        (when-not env-set-token
-          (setting/set! :remote-sync-token nil))
-        (when-not env-set-branch
-          (setting/set! :remote-sync-branch nil)))
-      (let [current-token  (setting/get :remote-sync-token)
-            obfuscated?    (= remote-sync-token (setting/obfuscate-value current-token))
-            token-to-check (if env-set-token
-                             (setting/get :remote-sync-token)
-                             (if obfuscated? current-token remote-sync-token))]
-        (when updating-git-settings?
-          (check-git-settings! (assoc settings :remote-sync-token token-to-check)))
-        (t2/with-transaction [_conn]
-          (doseq [k [:remote-sync-url :remote-sync-token :remote-sync-type :remote-sync-branch :remote-sync-auto-import :remote-sync-transforms]]
-            (when (and (not= :env (setting/get-raw-value-source k)) (contains? settings k)
-                       (not (and (= k :remote-sync-token) obfuscated?)))
-              (setting/set! k (k settings)))))))))
+  (guards/ensure-no-active-task!)
+  (let [clearing-url? (and (contains? settings :remote-sync-url) (str/blank? remote-sync-url))
+        writes        (planned-writes settings)]
+    (when (and (not clearing-url?)
+               (some #{:remote-sync-url :remote-sync-token :remote-sync-type :remote-sync-branch} (keys settings)))
+      (let [current-token (setting/get :remote-sync-token)]
+        (check-git-settings!
+         (assoc settings :remote-sync-token
+                (if (or (= :env (setting/get-raw-value-source :remote-sync-token))
+                        (= remote-sync-token (setting/obfuscate-value current-token)))
+                  current-token
+                  remote-sync-token)))))
+    (doseq [[k v] writes]
+      (setting/set! k v))))
 
 (defn library-is-remote-synced?
   "Returns true if the Library collection exists and is remote-synced.

@@ -232,6 +232,8 @@ export type RemoteSyncTask = {
   id: number;
   sync_task_type: RemoteSyncTaskType;
   status: RemoteSyncTaskStatus;
+  /** True while the task holds a cancel request; the row still runs until its worker ends it. */
+  cancelled?: boolean | null;
   progress: number | null;
   started_at: string | null;
   ended_at: string | null;

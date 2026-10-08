@@ -256,7 +256,7 @@
            (let [task (t2/insert-returning-pk! :model/RemoteSyncTask
                                                {:sync_task_type "import" :initiated_by (mt/user->id :rasta)})]
              (is (= :success (:status (impl/import! (source.p/snapshot-at src "v1") task))))
-             ;; The worker died (or an admin cancelled) between the commit and the result bookkeeping.
+             ;; The worker died between the commit and the result bookkeeping.
              (remote-sync.task/cancel-sync-task! task)
              (is (=? {:cancelled true :version "v1"} (t2/select-one :model/RemoteSyncTask :id task))))
            (is (= "v1" (remote-sync.task/last-version)))

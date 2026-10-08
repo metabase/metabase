@@ -370,42 +370,32 @@
                     (remote-sync.task/update-progress! task-id fraction))))}))
 
 (defn- report-after-save!
-  "Forced `report` of `fraction` after the save committed. A cancel is logged and ignored: the pull saved, so it
-  runs its remaining steps and records success. Rethrows any other error."
+  "Forced `report` of `fraction` for a point after the save committed. A cancel is logged and ignored: the work is
+  done and its result must be recorded. Rethrows any other error."
   [report fraction]
   (try
     (report fraction {:force? true})
     (catch Exception e
       (if (:cancelled? (ex-data e))
-        (log/info "Remote sync task cancelled after its save committed; finishing the pull")
+        (log/info "Remote sync task cancelled after its save committed; finishing the task")
         (throw e)))))
 
-(defn- cancelled-after-save?
-  "True iff a cancel ([[remote-sync.task/cancel-sync-task!]]) ended `task` after its save: the row holds a version and
-  no conflicts, no later change closed it ([[remote-sync.task/close-cancelled-task!]]), and it is the most recent
-  task. Its worker may then still record its success and write its branch. It may also write the transforms setting,
-  unless an admin saved that setting after the cancel ([[remote-sync.task/mark-transforms-saved!]])."
-  [task]
-  (and (some? (:ended_at task))
-       (:cancelled task)
-       (contains? #{remote-sync.task/cancel-message remote-sync.task/transforms-saved-message} (:error_message task))
-       (some? (:version task))
-       (nil? (:conflicts task))
-       (= (:id task) (:id (remote-sync.db/most-recent-task)))))
-
 (defn- set-transforms-setting!
-  "Sets `remote-sync-transforms` to `enabled?` iff the RemoteSyncTask `task-id` has not ended, or is
-  [[cancelled-after-save?]] and no admin saved the transforms setting after the cancel. Reads the row under its lock
-  and writes in the same transaction, so a cancel, a stale supersede, or a close or a mark of the row either comes
-  first and stops the write, or waits for its commit."
-  [task-id enabled?]
-  (t2/with-transaction [_conn]
-    (let [task (remote-sync.db/lock-task task-id)]
-      (if (and task (or (nil? (:ended_at task))
-                        (and (cancelled-after-save? task)
-                             (= remote-sync.task/cancel-message (:error_message task)))))
-        (settings/remote-sync-transforms! enabled?)
-        (log/infof "Task %s ended; not setting remote-sync-transforms to %s" task-id enabled?)))))
+  "Sets `remote-sync-transforms` to `enabled?` iff the RemoteSyncTask `task-id` can still record its result: the row
+  has not ended, and when `stop-on-cancel?` is true, no cancel was requested. Checks the row under its lock in one
+  short transaction, then writes the setting outside it: a transaction held across the setting write can deadlock
+  with a concurrent multi-setting save (the task row and the settings marker row in crossed order). A stale
+  supersede can land between the check and the write; its write is then lost, as on master."
+  [task-id enabled? stop-on-cancel?]
+  (if (t2/with-transaction [_conn]
+        (let [task (remote-sync.db/lock-task task-id)]
+          (and (some? task)
+               (nil? (:ended_at task))
+               (or (not stop-on-cancel?)
+                   (not (:cancelled task))))))
+    (settings/remote-sync-transforms! enabled?)
+    (log/infof "Task %s ended or got a cancel request; not setting remote-sync-transforms to %s"
+               task-id enabled?)))
 
 (defn load-snapshot!
   "Loads a snapshot's serialized entities into the app DB and reconciles local state to match it:
@@ -421,11 +411,11 @@
   they all commit or all roll back, so a crash can never leave the version advanced past stale local
   state or drop captured dirty markers (see [[import-merged!]]).
 
-  `:task-id` is the RemoteSyncTask that runs the load. The load writes the `remote-sync-transforms` setting only while
-  that task can still record its result (see [[set-transforms-setting!]]).
+  `:task-id` is the RemoteSyncTask that runs the load; the load writes `remote-sync-transforms` only while that task
+  can record its result.
 
-  A cancel stops the load only before that transaction commits; after the commit it is ignored and the load runs
-  to the end."
+  A cancel stops the load only at a progress report before the save transaction; the last one is the forced 0.75
+  report. After that, a cancel is ignored and the load runs to its end."
   [snapshot report sync-timestamp & {:keys [finalize! task-id]}]
   (report 0.05 {:force? true})
   (let [path-filters        (mapv #(re-pattern (str % "/.*")) serialization/legal-top-level-paths)
@@ -440,7 +430,7 @@
     (when (and has-transforms?
                (not (settings/remote-sync-transforms)))
       (log/info "Detected transforms in remote source, enabling remote-sync-transforms setting")
-      (set-transforms-setting! task-id true))
+      (set-transforms-setting! task-id true true))
     ;; Reported before the transaction, not inside it: a write inside would hold the task row's lock until
     ;; commit, blocking the heartbeat for the whole reconcile and hashing phase.
     (report 0.75 {:force? true})
@@ -460,7 +450,7 @@
     (when (and (not has-transforms?)
                (settings/remote-sync-transforms))
       (log/info "No transforms in remote source, disabling remote-sync-transforms setting")
-      (set-transforms-setting! task-id false))
+      (set-transforms-setting! task-id false false))
     ;; On H2 the reindex's table DDL blocks readers and can deadlock with them, so it must finish
     ;; inside the task; other app DBs keep the previous behavior of reindexing asynchronously.
     (try
@@ -540,7 +530,8 @@
   leaving everything else untouched. Runs `finalize!` inside the reconcile transaction, then logs success and
   returns [[import!]]'s `:success` result map carrying `snapshot-version`. The caller decides whether an
   incremental load is safe (see [[incremental-import-plan]] and [[import!]]); this assumes the plan is valid
-  and local state matches the diff base. A cancel stops it only before the reconcile transaction commits.
+  and local state matches the diff base. A cancel stops it only at a progress report before the reconcile
+  transaction; the last one is the forced 0.75 report. After that, a cancel is ignored.
 
   Renames are handled by entity identity, not path: a rename re-loads the same entity_id at the new path
   (an add), so the old path's delete is recognized as a rename and the entity is not removed."
@@ -784,10 +775,11 @@
                            :branch (settings/remote-sync-branch)}}))]
         result)
       (catch Exception e
-        ;; A cancellation isn't a failure: log it and return nil. Otherwise log the error, count it, and
-        ;; return a user-friendly :error result.
+        ;; A cancellation isn't a failure: log it and report the stop, so the worker ends the row as cancelled.
         (if (:cancelled? (ex-data e))
-          (log/info "Import from git repository was cancelled")
+          (do
+            (log/info "Import from git repository was cancelled")
+            {:status :cancelled})
           (do
             (log/errorf "Failed to reload from git repository: %s" (ex-message e))
             (analytics/inc! :metabase-remote-sync/imports-failed)
@@ -1356,12 +1348,16 @@
               (log/info "Remote sync full export: a pending change can't be applied incrementally")
               (full-export! snapshot task-id message sync-timestamp)))))
       (catch Exception e
-        ;; handle-task-result! records the failure on this result, and skips entirely when the task
-        ;; was already cancelled (ended_at set) — so cancellation needs no special case here.
-        (log/errorf "Failed to export to git repository: %s" (ex-message e))
-        (analytics/inc! :metabase-remote-sync/exports-failed)
-        {:status :error
-         :message (format "Failed to export to git repository: %s" (ex-message e))})
+        ;; A cancellation isn't a failure: report the stop, so the worker ends the row as cancelled.
+        (if (:cancelled? (ex-data e))
+          (do
+            (log/info "Export to git repository was cancelled")
+            {:status :cancelled})
+          (do
+            (log/errorf "Failed to export to git repository: %s" (ex-message e))
+            (analytics/inc! :metabase-remote-sync/exports-failed)
+            {:status :error
+             :message (format "Failed to export to git repository: %s" (ex-message e))})))
       (finally
         (analytics/observe! :metabase-remote-sync/export-duration-ms (t/as (t/duration sync-timestamp (t/instant)) :millis))))))
 
@@ -1487,26 +1483,20 @@
 (defn handle-task-result!
   "Handles the outcome of running import! or export! by updating the RemoteSyncTask record.
 
-  Takes a result map with a :status key (either :success, :conflict, or :error) and optional :message key, a
-  RemoteSyncTask ID, and an optional branch name. On success, updates the remote-sync-branch setting (if branch
-  provided), marks the task complete, and invalidates the remote changes cache. On conflict, sets the version and
-  stores the conflicts. On error, marks the task as failed with the error message. For any other status, marks the
-  task as failed with 'Unexpected Error'.
+  Takes a result map with a :status key (either :success, :conflict, :error or :cancelled) and optional :message
+  key, a RemoteSyncTask ID, and an optional branch name. On success, updates the remote-sync-branch setting (if
+  branch provided), marks the task complete, and invalidates the remote changes cache. On conflict, sets the
+  version and stores the conflicts. On error, marks the task as failed with the error message. On :cancelled, ends
+  the row as cancelled ([[remote-sync.task/end-task-cancelled!]]). For any other status, marks the task as failed
+  with 'Unexpected Error'.
 
-  If the task has already been terminated (`ended_at` is set, e.g., because an admin cancelled it
-  via POST /current-task/cancel while the virtual thread was still running), this function logs a
-  warning and returns without writing anything. This prevents a still-running thread from clobbering
-  the cancellation bookkeeping or stomping the branch setting via its captured value.
-
-  One exception: a success result for a row that a cancel ([[remote-sync.task/cancel-sync-task!]]) ended, that
-  holds a version and no conflicts, and that is still the most recent task. The task's save committed before the
-  cancel took effect, so the row records the success as above, with `cancelled` false and no error message. This
-  also holds for a row that [[remote-sync.task/mark-transforms-saved!]] marked. A row that a stale-task supersede
-  ended, a row that a newer task followed, or a row that [[remote-sync.task/close-cancelled-task!]] closed, is
-  skipped as above.
+  Only the worker ends its row this way. If the row has already been terminated (`ended_at` is set, by the
+  stale-task check for a dead worker or by the shutdown handler), this function logs a warning and returns without
+  writing anything: a still-running thread must not clobber that bookkeeping or stomp the branch setting via its
+  captured value.
 
   The read and the subsequent write happen in a single transaction with `SELECT ... FOR UPDATE` so
-  a concurrent cancel cannot slip in between the terminated-check and the result-write.
+  a concurrent supersede cannot slip in between the terminated-check and the result-write.
 
   Returns true iff it recorded `result` on the row."
   [result task-id & [branch]]
@@ -1517,17 +1507,6 @@
               (nil? task)
               (do (log/warnf "Task %s missing during result handling; skipping" task-id)
                   false)
-
-              (and (= :success (:status result))
-                   (cancelled-after-save? task))
-              (do (log/infof "Task %s was cancelled after its save committed; recording the success" task-id)
-                  (when branch
-                    (settings/remote-sync-branch! branch))
-                  (remote-sync.db/end-task! task-id {:cancelled     false
-                                                     :error_message nil
-                                                     :progress      1.0
-                                                     :outcome       (:outcome result)})
-                  true)
 
               (some? (:ended_at task))
               (do (log/warnf "Task %s already terminated (ended_at=%s); skipping result handling to preserve state"
@@ -1545,6 +1524,7 @@
                               (remote-sync.task/set-version! task-id (:version result))
                               (remote-sync.task/conflict-sync-task! task-id (:conflicts result) (:outcome result)))
                   :error (remote-sync.task/fail-sync-task! task-id (:message result))
+                  :cancelled (remote-sync.task/end-task-cancelled! task-id)
                   (remote-sync.task/fail-sync-task! task-id "Unexpected Error"))
                 true))))]
     (when (and proceed? (= (:status result) :success))
@@ -1604,8 +1584,8 @@
 
   Guarantees, whatever `sync-fn` or the bookkeeping does: a heartbeat runs on the row for the duration, the task
   is registered in [[running-task-ids]] for the duration, and the row is ended on exit. Any `Throwable` from
-  `sync-fn` becomes an `:error` result; an `Error` must not escape the worker thread, where nothing would log it
-  and the row would stay open."
+  `sync-fn` becomes an `:error` result, or a `:cancelled` result when it carries a cancel; an `Error` must not
+  escape the worker thread, where nothing would log it and the row would stay open."
   [task-id branch sync-fn & {:keys [on-success]}]
   (let [stop-heartbeat! (remote-sync.task/start-heartbeat! task-id)]
     (swap! running-tasks conj task-id)
@@ -1614,8 +1594,10 @@
                      (sync-fn task-id)
                      (catch Throwable t
                        (log/error t "Remote sync task failed")
-                       {:status  :error
-                        :message (source-error-message t)}))]
+                       (if (:cancelled? (ex-data t))
+                         {:status :cancelled}
+                         {:status  :error
+                          :message (source-error-message t)})))]
         (when (and (handle-task-result! result task-id branch)
                    on-success
                    (= :success (:status result)))
@@ -1662,7 +1644,7 @@
   Returns a RemoteSyncTask. Throws ExceptionInfo with status 400 and :conflicts true if there
   are unsaved changes and neither force? nor merge? is set."
   [branch force? import-args & {:keys [on-success merge? force-deletion?]}]
-  (guards/ensure-no-active-or-pending-task!)
+  (guards/ensure-no-active-task!)
   (let [pre-task-branch        (settings/remote-sync-branch)
         source                 (source/source-from-settings branch)
         has-dirty?             (remote-sync.object/dirty?)
@@ -1716,7 +1698,7 @@
 
   Returns a RemoteSyncTask."
   [branch force? message & {:keys [on-success merge?]}]
-  (guards/ensure-no-active-or-pending-task!)
+  (guards/ensure-no-active-task!)
   (when-not (settings/remote-sync-enabled)
     (throw (ex-info "Remote sync source is not enabled. Please configure MB_GIT_SOURCE_REPO_URL environment variable."
                     {:status-code 400})))
@@ -1789,7 +1771,7 @@
    to the new name. Does not publish events or return a response map; the caller
    is responsible for those concerns."
   [name base-branch]
-  (guards/ensure-no-active-or-pending-task!)
+  (guards/ensure-no-active-task!)
   (let [source (source/source-from-settings)]
     (source.p/create-branch source name base-branch)
     (settings/remote-sync-branch! name)))
@@ -1798,7 +1780,7 @@
   "Creates a new remote branch from the current `remote-sync-branch` and starts an
    async export to it. Returns the resulting RemoteSyncTask. Does not publish events."
   [new-branch message & {:keys [on-success]}]
-  (guards/ensure-no-active-or-pending-task!)
+  (guards/ensure-no-active-task!)
   (let [source (source/source-from-settings)]
     (source.p/create-branch source new-branch (settings/remote-sync-branch))
     (async-export! new-branch false message :on-success on-success)))

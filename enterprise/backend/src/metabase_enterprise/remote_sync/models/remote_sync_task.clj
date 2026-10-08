@@ -6,7 +6,6 @@
    [metabase-enterprise.remote-sync.schema :as remote-sync.schema]
    [metabase.models.interface :as mi]
    [metabase.settings.core :as setting]
-   [metabase.util.i18n :refer [tru]]
    [metabase.util.jvm :as u.jvm]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -57,61 +56,31 @@
                                       additional-fields)))
 
 (def cancel-message
-  "The error message of a task row that [[cancel-sync-task!]] ended."
+  "The error message of a task row whose worker stopped after a cancel request."
   "Task cancelled")
 
 (defn cancel-sync-task!
-  "Marks a sync task as cancelled.
+  "Requests a cancel of the sync task `task-id`: sets the `cancelled` flag on the row iff it is still running. The
+  flag does not end the row. The worker reads the flag at its progress reports: before its last cancel check it
+  stops and ends the row with [[cancel-message]]; after that check it ignores the flag, finishes and ends the row
+  with its true result, which clears the flag. Only the worker, or the stale-task check for a dead worker, ends a
+  row.
 
-  Takes the ID of the sync task to cancel.
+  Takes the ID of the sync task to cancel. Returns the number of rows updated (1 when a running task got the
+  request, 0 when it had already ended).
 
-  Returns the number of rows updated (should be 1 if successful).
+  The flag is read by [[update-progress!]] rather than interrupting the worker thread: interrupting Quartz threads
+  can cause issues."
+  [task-id]
+  (remote-sync.db/request-task-cancel! task-id))
 
-  This signal will be checked in update-progress! to stop further processing. Note that the worker thread must
-  manually check this flag rather than being interrupted, as interrupting Quartz threads can cause issues."
+(defn end-task-cancelled!
+  "Ends the RemoteSyncTask `task-id` as cancelled, with [[cancel-message]]. The worker calls this when it stops at
+  a progress report after a cancel request."
   [task-id]
   (remote-sync.db/end-task! task-id
                             {:cancelled true
                              :error_message cancel-message}))
-
-(def transforms-saved-message
-  "The error message of a task row that [[mark-transforms-saved!]] marked."
-  "Task cancelled; an admin saved the transforms setting after the cancel")
-
-(def closed-message
-  "The error message of a task row that [[close-cancelled-task!]] closed."
-  "Task cancelled; a later remote-sync change replaced its result")
-
-(defn close-cancelled-task!
-  "If a cancel ([[cancel-sync-task!]]) ended the most recent task and the task holds a version, changes its error
-  message to [[closed-message]], so that a late success of its worker is not recorded and does not write the branch
-  or the transforms setting. Also closes a row that [[mark-transforms-saved!]] marked. Call before a change that such
-  a late success must not overwrite, such as a write or a read of the branch setting for a new task.
-  Returns the number of rows updated, or nil when no task exists."
-  []
-  (when-let [{task-id :id} (remote-sync.db/most-recent-task)]
-    (remote-sync.db/replace-cancelled-task-message! task-id [cancel-message transforms-saved-message] closed-message)))
-
-(defn mark-transforms-saved!
-  "If a cancel ([[cancel-sync-task!]]) ended the most recent task and the task holds a version, changes its error
-  message to [[transforms-saved-message]], so that its worker does not write the transforms setting. A late success
-  of the worker is still recorded and still writes the branch. Call before a write of the transforms setting that
-  does not change the branch.
-  Returns the number of rows updated, or nil when no task exists."
-  []
-  (when-let [{task-id :id} (remote-sync.db/most-recent-task)]
-    (remote-sync.db/replace-cancelled-task-message! task-id [cancel-message] transforms-saved-message)))
-
-(defn localized-error-message
-  "`message`, the stored error message of a task row, in the user locale. [[closed-message]] and
-  [[transforms-saved-message]] are stored in English and translated here; any other message is returned as stored."
-  [message]
-  ;; tru takes a literal, so each literal repeats its constant; a test with a translation keyed by the stored text
-  ;; fails when the two differ
-  (condp = message
-    closed-message           (tru "Task cancelled; a later remote-sync change replaced its result")
-    transforms-saved-message (tru "Task cancelled; an admin saved the transforms setting after the cancel")
-    message))
 
 (defn update-progress!
   "Updates the progress of a sync task.
@@ -120,7 +89,8 @@
 
   Returns the number of rows updated (should be 1 if successful).
 
-  Throws ExceptionInfo if the task has been marked as cancelled."
+  Throws ExceptionInfo with `:cancelled?` true iff a cancel was requested on the task: this is how the worker
+  reads the request."
   [task-id progress]
   (when (true? (remote-sync.db/task-cancelled? task-id))
     (throw (ex-info "Remote sync task has been cancelled" {:task-id task-id
@@ -137,7 +107,8 @@
   Call the returned fn with a fraction in [0.0, 1.0]. It writes progress (and bumps
   `last_progress_report_at`) at most once per throttle window and never moves the fraction backward.
   Pass `{:force? true}` to write immediately regardless of the throttle — use at phase boundaries. A forced report
-  always writes, and so always checks for a cancel (see `update-progress!`); it writes the highest fraction so far.
+  always writes, the highest fraction so far; with the default `:write-fn` it so always checks for a cancel
+  (see `update-progress!`).
 
   Options:
    - :throttle-ms  minimum ms between throttled writes (default 10000)
@@ -202,22 +173,29 @@
   (e.g. `{:kind \"pulled\" :count 12 :branch \"main\"}`). The UI renders the outcome to a localized
   confirmation message; we store structured data rather than customer-facing copy.
 
+  Ends the row with the worker's true result, so a cancel request on it is withdrawn.
+
   Returns the number of rows updated (should be 1 if successful)."
   ([task-id] (complete-sync-task! task-id nil))
   ([task-id outcome]
    (remote-sync.db/end-task! task-id
-                             {:progress 1.0
-                              :outcome  outcome})))
+                             {:cancelled     false
+                              :error_message nil
+                              :progress      1.0
+                              :outcome       outcome})))
 
 (defn fail-sync-task!
   "Marks a sync task as failed.
 
   Takes the ID of the sync task to mark as failed and an error message describing why the task failed.
 
+  Ends the row with the worker's true result, so a cancel request on it is withdrawn.
+
   Returns the number of rows updated (should be 1 if successful)."
   [task-id error-msg]
   (remote-sync.db/end-task! task-id
-                            {:error_message error-msg}))
+                            {:cancelled     false
+                             :error_message error-msg}))
 
 (defn- liveness-cutoff
   "The instant before which a running task's last sign of life makes it stale."
@@ -305,11 +283,9 @@
        (some? (:ended_at task))))
 
 (defn cancelled?
-  "Checks if a task was cancelled.
-
-  Takes a RemoteSyncTask instance.
-
-  Returns true if the task was cancelled, false otherwise."
+  "True iff a cancel was requested on `task` and not withdrawn. A running row carries the request until its worker
+  ends the row: stopped for the cancel, the row keeps the flag; finished past its last cancel check, the row ends
+  with the flag cleared. See [[cancel-sync-task!]]."
   [task]
   (:cancelled task))
 
@@ -344,10 +320,13 @@
   `:outcome` naming why the task stopped when that is not a collision (`nil` otherwise). Both are serialized to
   JSON via the model transform.
 
+  Ends the row with the worker's true result, so a cancel request on it is withdrawn.
+
   Returns the number of rows updated (should be 1 if successful)."
   [task-id conflicts outcome]
   (remote-sync.db/end-task! task-id
-                            {:conflicts (vec conflicts)
+                            {:cancelled false
+                             :conflicts (vec conflicts)
                              :outcome   outcome}))
 
 ;;; ------------------------------------------- Hydration -------------------------------------------
@@ -366,6 +345,8 @@
                           (failed? task) :errored
                           (conflict? task) :conflict
                           (successful? task) :successful
-                          (cancelled? task) :cancelled
+                          ;; a row that only holds a cancel request is still running; the UI reads the
+                          ;; `cancelled` flag to show the request
+                          (and (cancelled? task) (some? (:ended_at task))) :cancelled
                           (timed-out? task) :timed-out
                           :else :running))))

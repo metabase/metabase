@@ -307,7 +307,7 @@
             _           (is (= :success (:status (import-baseline! src "v0"))) "the baseline import of v0")
             task-id     (:id (remote-sync.task/create-sync-task! "export" (mt/user->id :rasta)))
             hook-result (atom nil)]
-        ;; the load of the merge step maps its 0.9 report to 0.66 + 0.9 * 0.34 on the export bar
+        ;; the merge step's 0.9 report lands between 0.96 and 0.97 on the export bar
         (mt/with-dynamic-fn-redefs [remote-sync.task/make-progress-reporter
                                     (hook-before-forced-report! #(< 0.96 % 0.97) cancel-on-plain-thread! hook-result)]
           (impl/run-task-body! task-id new-branch

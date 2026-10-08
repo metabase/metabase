@@ -10,6 +10,7 @@ import {
   getHasPendingMutation,
   getInitiatedByUser,
   getIsCancelled,
+  getIsCancelling,
   getIsError,
   getIsRunning,
   getIsSuccess,
@@ -34,6 +35,7 @@ export const useSyncStatus = () => {
   const progress = useSelector(getProgress);
   const isError = useSelector(getIsError);
   const isCancelled = useSelector(getIsCancelled);
+  const isCancelling = useSelector(getIsCancelling);
   const lastProgressReportAt = useSelector(getLastProgressReportAt);
   const startedAt = useSelector(getStartedAt);
   const initiatedByUser = useSelector(getInitiatedByUser);
@@ -73,6 +75,7 @@ export const useSyncStatus = () => {
         progress={progress}
         isQuiet={isQuiet}
         isCancelled={isCancelled}
+        isCancelling={isCancelling}
         minutesSinceLastUpdate={minutesSinceLastUpdate}
         startedAt={startedAt}
         initiatedByUser={initiatedByUser}

@@ -27,6 +27,7 @@ const setup = ({
   progress = 0.5,
   isQuiet = false,
   isCancelled = false,
+  isCancelling = false,
   minutesSinceLastUpdate = null,
   startedAt = null,
   initiatedByUser = null,
@@ -42,6 +43,7 @@ const setup = ({
   progress?: number;
   isQuiet?: boolean;
   isCancelled?: boolean;
+  isCancelling?: boolean;
   minutesSinceLastUpdate?: number | null;
   startedAt?: string | null;
   initiatedByUser?: RemoteSyncTaskUser | null;
@@ -65,6 +67,7 @@ const setup = ({
         progress={progress}
         isQuiet={isQuiet}
         isCancelled={isCancelled}
+        isCancelling={isCancelling}
         minutesSinceLastUpdate={minutesSinceLastUpdate}
         startedAt={startedAt}
         initiatedByUser={initiatedByUser}
@@ -116,6 +119,12 @@ describe("SyncProgressModal", () => {
       expect(
         screen.getByRole("button", { name: "Cancel" }),
       ).toBeInTheDocument();
+    });
+
+    it("should show a disabled Cancelling button and no Cancel button while a cancel was requested", () => {
+      setup({ isCancelling: true });
+      expect(screen.getByRole("button", { name: "Cancelling…" })).toBeDisabled();
+      expect(screen.queryByRole("button", { name: "Cancel" })).not.toBeInTheDocument();
     });
 
     it("should not show cancel button when user is not admin", () => {

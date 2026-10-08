@@ -291,11 +291,14 @@
         (is (false? (rst/cancelled? failed-task)))))))
 
 (deftest running?-test
-  (testing "running? returns false for cancelled tasks"
+  (testing "running? returns true for a task that only holds a cancel request: the worker, not the cancel, ends the
+            row"
     (let [task (rst/create-sync-task! "import" (mt/user->id :rasta))]
       (rst/cancel-sync-task! (:id task))
       (let [cancelled-task (t2/select-one :model/RemoteSyncTask :id (:id task))]
-        (is (false? (rst/running? cancelled-task))))))
+        (is (true? (rst/running? cancelled-task))))
+      (rst/end-task-cancelled! (:id task))
+      (is (false? (rst/running? (t2/select-one :model/RemoteSyncTask :id (:id task)))))))
   (testing "running? returns true for incomplete task"
     (let [task (rst/create-sync-task! "import" (mt/user->id :rasta))
           running-task (t2/select-one :model/RemoteSyncTask :id (:id task))]
@@ -445,9 +448,9 @@
           (rst/complete-sync-task! (:id task)))))))
 
 (deftest touch-task!-ignores-ended-task-test
-  (testing "touch-task! updates nothing on a cancelled task, so a late beat cannot revive it"
+  (testing "touch-task! updates nothing on an ended task, so a late beat cannot revive it"
     (let [task (rst/create-sync-task! "import" (mt/user->id :rasta))]
-      (rst/cancel-sync-task! (:id task))
+      (rst/end-task-cancelled! (:id task))
       (let [before (t2/select-one :model/RemoteSyncTask :id (:id task))]
         (is (= 0 (remote-sync.db/touch-task! (:id task))))
         (is (= before (t2/select-one :model/RemoteSyncTask :id (:id task))))))))
@@ -496,6 +499,28 @@
       (is (thrown-with-msg? Exception #"Remote sync task has been cancelled"
                             (rst/update-progress! (:id task) 0.5))))))
 
+(deftest cancel-sync-task!-requests-and-the-worker-ends-test
+  (testing "a cancel sets the flag on the running row and does not end it; the worker's :cancelled result ends it"
+    (let [task (rst/create-sync-task! "import" (mt/user->id :rasta))]
+      (is (= 1 (rst/cancel-sync-task! (:id task))))
+      (is (=? {:cancelled true :ended_at nil :error_message nil :status :running}
+              (-> (t2/select-one :model/RemoteSyncTask :id (:id task))
+                  (t2/hydrate :status))))
+      (testing "a second cancel changes nothing, and an ended row takes no request"
+        (is (= 1 (rst/cancel-sync-task! (:id task))))
+        (rst/end-task-cancelled! (:id task))
+        (is (= 0 (rst/cancel-sync-task! (:id task))))
+        (is (=? {:cancelled true :status :cancelled}
+                (-> (t2/select-one :model/RemoteSyncTask :id (:id task))
+                    (t2/hydrate :status)))))))
+  (testing "a worker that finishes past its last cancel check ends the row with the flag cleared"
+    (let [task (rst/create-sync-task! "import" (mt/user->id :rasta))]
+      (rst/cancel-sync-task! (:id task))
+      (rst/complete-sync-task! (:id task) {:kind "pulled" :count 1})
+      (is (=? {:cancelled false :error_message nil :status :successful}
+              (-> (t2/select-one :model/RemoteSyncTask :id (:id task))
+                  (t2/hydrate :status)))))))
+
 (deftest last-version-test
   (testing "When there are no tasks, last-version returns nil"
     (is (nil? (rst/last-version))))
@@ -509,8 +534,10 @@
       (rst/set-version! (:id successful-task) "version 1")
       (is (= "version 1" (rst/last-version)))
       (testing "Ignores a cancelled task with no version"
-        (rst/cancel-sync-task! (:id (rst/create-sync-task! "import" (mt/user->id :rasta))))
-        (is (= "version 1" (rst/last-version))))
+        (let [cancelled (rst/create-sync-task! "import" (mt/user->id :rasta))]
+          (rst/cancel-sync-task! (:id cancelled))
+          (is (= "version 1" (rst/last-version)))
+          (rst/end-task-cancelled! (:id cancelled))))
       (testing "Ignores a failed task with no version"
         (rst/fail-sync-task! (:id (rst/create-sync-task! "import" (mt/user->id :rasta))) "Error")
         (is (= "version 1" (rst/last-version))))
@@ -532,7 +559,8 @@
         (let [cancelled-task (rst/create-sync-task! "import" (mt/user->id :rasta))]
           (rst/set-version! (:id cancelled-task) "version 3")
           (rst/cancel-sync-task! (:id cancelled-task))
-          (is (= "version 3" (rst/last-version)))))
+          (is (= "version 3" (rst/last-version)))
+          (rst/end-task-cancelled! (:id cancelled-task))))
       (testing "A task that failed after its commit landed is still the sync base"
         (let [failed-task (rst/create-sync-task! "export" (mt/user->id :rasta))]
           (rst/set-version! (:id failed-task) "version 4")

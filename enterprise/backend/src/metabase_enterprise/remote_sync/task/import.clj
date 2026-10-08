@@ -21,8 +21,6 @@
   (when (and (settings/remote-sync-enabled)
              (= :read-only (settings/remote-sync-type))
              (settings/remote-sync-auto-import))
-    ;; A cancelled pull that saved must not write its branch after this run reads the branch.
-    (remote-sync.task/close-cancelled-task!)
     (let [branch (settings/remote-sync-branch)
           source (source/source-from-settings branch)
           snapshot (source.p/snapshot source)
@@ -40,6 +38,13 @@
         (log/infof (str "Skipping auto-import: the last task conflicted at source version %s; "
                         "waiting for a new commit or a manual import")
                    snapshot-version)
+
+        ;; The fetch above can outlast a pull to another branch that changed the setting meanwhile; importing the
+        ;; branch this tick read would load content the instance no longer points at. The next tick reads the new
+        ;; branch.
+        (not= branch (settings/remote-sync-branch))
+        (log/infof "Skipping auto-import: the branch setting changed from %s to %s while this run fetched %s"
+                   branch (settings/remote-sync-branch) snapshot-version)
 
         :else
         (let [{task-id :id existing? :existing?} (impl/create-task-with-lock! "import")]

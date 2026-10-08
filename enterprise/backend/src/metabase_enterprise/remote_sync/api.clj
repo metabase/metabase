@@ -180,13 +180,11 @@
      :reason                 (some-> reason name)}))
 
 (defn- present-task
-  "Hydrate `task` for the API: its status, the initiating user trimmed to what the UI shows, and its error message in
-  the user locale."
+  "Hydrate `task` for the API: its status, and the initiating user trimmed to what the UI shows."
   [task]
   (-> task
       (t2/hydrate :status :initiated_by_user)
-      (update :initiated_by_user #(some-> % (select-keys [:id :first_name :last_name :email])))
-      (update :error_message remote-sync.task/localized-error-message)))
+      (update :initiated_by_user #(some-> % (select-keys [:id :first_name :last_name :email])))))
 
 (api.macros/defendpoint :get "/current-task" :- [:maybe remote-sync.schema/SyncTask]
   "Get the current sync task"

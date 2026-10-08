@@ -21,6 +21,7 @@ interface SyncProgressModalProps {
   progress: number;
   isQuiet?: boolean;
   isCancelled?: boolean;
+  isCancelling?: boolean;
   minutesSinceLastUpdate?: number | null;
   startedAt?: string | null;
   initiatedByUser?: RemoteSyncTaskUser | null;
@@ -36,6 +37,7 @@ export function SyncProgressModal({
   taskType,
   isQuiet = false,
   isCancelled = false,
+  isCancelling = false,
   minutesSinceLastUpdate = null,
   startedAt = null,
   initiatedByUser = null,
@@ -158,16 +160,21 @@ export function SyncProgressModal({
         <Text size="sm">
           {t`Please wait until this finishes before editing content.`}
         </Text>
-        {isAdmin && (
-          <Group justify="flex-end">
-            <ActionButton
-              actionFn={onCancel}
-              normalText={t`Cancel`}
-              activeText={t`Cancelling…`}
-              failedText={t`Cancel`}
-            />
-          </Group>
-        )}
+        {isAdmin &&
+          (isCancelling ? (
+            <Group justify="flex-end">
+              <Button disabled>{t`Cancelling…`}</Button>
+            </Group>
+          ) : (
+            <Group justify="flex-end">
+              <ActionButton
+                actionFn={onCancel}
+                normalText={t`Cancel`}
+                activeText={t`Cancelling…`}
+                failedText={t`Cancel`}
+              />
+            </Group>
+          ))}
       </Stack>
     </Modal>
   );
