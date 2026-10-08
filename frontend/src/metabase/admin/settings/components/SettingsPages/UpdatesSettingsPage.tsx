@@ -10,7 +10,6 @@ import {
   SettingsPageWrapper,
   SettingsSection,
 } from "metabase/settings-components";
-import { Stack } from "metabase/ui";
 
 import { VersionUpdateNotice } from "../widgets/VersionUpdateNotice";
 import { NewVersionInfo } from "../widgets/VersionUpdateNotice/VersionUpdateNotice";
@@ -32,13 +31,13 @@ export function UpdatesSettingsPage() {
           inputType="boolean"
         />
         {checkForUpdates && (
-          <Stack
+          <div
             className={cx(CS.pt3, {
               [CS.borderTop]: !isHosted,
             })}
           >
             <VersionUpdateNotice />
-          </Stack>
+          </div>
         )}
         <NewVersionInfo />
       </SettingsSection>
