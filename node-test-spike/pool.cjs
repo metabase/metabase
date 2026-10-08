@@ -48,6 +48,9 @@ const spawn = (project) => {
     execArgv: [
       "--require", harness,
       `--max-old-space-size=${process.env.NT_HEAP_MB ?? 1536}`,
+      // React tests allocate fast and drop most of it at once, so a larger young
+      // generation saves many small collections.
+      `--max-semi-space-size=${process.env.NT_SEMI_SPACE_MB ?? 32}`,
       `--test-reporter=${process.env.NT_REPORTER ?? "dot"}`,
       ...(process.env.NT_NODE_EXTRA ? process.env.NT_NODE_EXTRA.split(" ") : []),
     ],

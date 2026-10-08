@@ -30,6 +30,9 @@ const bunModule = (name) => {
 // --- transform ---------------------------------------------------------------
 const swc = require("@swc/core");
 const cacheDir = abs("node_modules/.cache/node-test-spike");
+// Every file evaluates the project's modules again, and without this V8 parses
+// and compiles the same source each time.
+if (process.env.NT_COMPILE_CACHE === "1") require("node:module").enableCompileCache?.(path.join(cacheDir, "v8-compile-cache"));
 fs.mkdirSync(cacheDir, { recursive: true });
 const crypto = require("node:crypto");
 // Keyed on content, not mtime, so the cache survives a fresh checkout. TRANSFORM_VERSION
@@ -109,11 +112,23 @@ const transformSource = (file, source) => {
 
 // --- resolution ----------------------------------------------------------------
 const EXTENSIONS = [".ts", ".tsx", ".js", ".jsx", ".json"];
-const findFile = (base) => {
+// Every file loads the project's modules again, so the same lookups repeat for
+// the life of the process. Only hits are kept: a spec may create a file later.
+const foundFiles = new Map();
+const findFileOnDisk = (base) => {
   if (fs.existsSync(base) && fs.statSync(base).isFile()) return base;
   for (const ext of EXTENSIONS) if (fs.existsSync(base + ext)) return base + ext;
   for (const ext of EXTENSIONS) if (fs.existsSync(path.join(base, "index" + ext))) return path.join(base, "index" + ext);
   return null;
+};
+const findFile = (base) => {
+  if (process.env.NT_NO_RESOLVE_MEMO) return findFileOnDisk(base);
+  let found = foundFiles.get(base);
+  if (found === undefined) {
+    found = findFileOnDisk(base);
+    if (found) foundFiles.set(base, found);
+  }
+  return found;
 };
 const sourceRoots = ["frontend/src", "frontend/test", "enterprise/frontend/src"].map(abs);
 const topLevel = new Set(sourceRoots.flatMap((dir) => fs.readdirSync(dir)));
@@ -235,13 +250,24 @@ const refuseUntransformedModule = (result, context) => {
   if (result.format !== "module" && !isModuleFile(result.url, packageMatch[1])) return;
   throw new SyntaxError(`Cannot use import statement outside a module (${name} is an ES module that jest does not transform)`);
 };
+const packageResolutions = new Map();
 registerHooks({
   resolve(specifier, context, nextResolve) {
     const parentFile = context.parentURL?.startsWith("file:") ? fileURLToPath(context.parentURL.split("?")[0]) : undefined;
     if (process.env.NT_DEBUG && specifier.startsWith(".")) console.error("[resolve]", specifier, "parentURL=", context.parentURL, "->", parentFile && resolveProject(specifier, parentFile));
     const projectFile = specifier.startsWith("file:") || specifier.startsWith("node:") ? null : resolveProject(specifier, parentFile);
     if (process.env.NT_DEBUG_CONDITIONS && specifier === "@reduxjs/toolkit") console.error(`[conditions] ${JSON.stringify(context.conditions)} parent=${String(context.parentURL).slice(-60)}`);
-    const result = projectFile ? { url: pathToFileURL(projectFile).href, shortCircuit: true } : nextResolve(specifier, resolveContext(context));
+    let result;
+    if (projectFile) {
+      result = { url: pathToFileURL(projectFile).href, shortCircuit: true };
+    } else {
+      const memoKey = process.env.NT_NO_RESOLVE_MEMO || !parentFile ? null : `${specifier}\0${path.dirname(parentFile)}\0${context.conditions?.join(",")}\0${JSON.stringify(context.importAttributes ?? {})}`;
+      result = memoKey ? packageResolutions.get(memoKey) : undefined;
+      if (!result) {
+        result = nextResolve(specifier, resolveContext(context));
+        if (memoKey) packageResolutions.set(memoKey, { ...result, shortCircuit: true });
+      }
+    }
     if (!bypassMocks && result.url.startsWith("node:") && mocks.has(result.url)) {
       return { url: pathToFileURL(mockStub(result.url)).href, format: "commonjs", shortCircuit: true };
     }
@@ -747,12 +773,14 @@ const runSuite = async (suite, t, outer) => {
 // which jest discards with its document but a shared one cannot. Keeping such a
 // definition configurable is what makes it removable between files.
 const originalDefineProperty = Object.defineProperty;
-Object.defineProperty = function defineProperty(target, key, descriptor) {
-  if (key === "activeElement" && target === globalThis.document) {
-    return originalDefineProperty(target, key, { ...descriptor, configurable: true });
-  }
-  return originalDefineProperty(target, key, descriptor);
-};
+if (!FRESH_WINDOW) {
+  Object.defineProperty = function defineProperty(target, key, descriptor) {
+    if (key === "activeElement" && target === globalThis.document) {
+      return originalDefineProperty(target, key, { ...descriptor, configurable: true });
+    }
+    return originalDefineProperty(target, key, descriptor);
+  };
+}
 
 const resetFocus = () => {
   const document = globalThis.document;
@@ -839,6 +867,7 @@ const MOCKING_API = /\bjest\.(mock|doMock|unmock|resetModules|isolateModules)\(/
 // Every file gets a fresh registry, which is jest's model on Node's own loader.
 const ISOLATE_ALL = process.env.NT_ISOLATE_ALL === "1";
 const sharedGlobalKeys = new Set();
+let packageLoadDepth = 0;
 const CLOCK_GLOBALS = ["setTimeout", "clearTimeout", "setInterval", "clearInterval", "setImmediate", "clearImmediate", "requestAnimationFrame", "cancelAnimationFrame", "requestIdleCallback", "cancelIdleCallback", "Date", "performance", "queueMicrotask"];
 // Mantine keeps a module-level theme whose component overrides close over project
 // components, so leaving it cached hands the next file's tree the old graph's ones.
@@ -959,29 +988,7 @@ const describeExports = (specifier, keys) => {
   const shape = keys.map((key) => `${key}=${typeof exported[key]}`).join(" ");
   return `${specifier}: object#${exportIds.get(exported)} keys=${Object.keys(exported).length} ${shape}`;
 };
-// React's scheduler is one queue for the whole process. A render that a file
-// queued and never finished would run inside the next file, where jest would
-// have dropped it with the environment. It is run to the end here, unheard,
-// while the file's window still exists.
-let sharedScheduler;
-const drainScheduler = async () => {
-  if (process.env.NT_NO_SCHEDULER_DRAIN || !sharedScheduler?.unstable_getFirstCallbackNode) return;
-  if (sharedScheduler.unstable_getFirstCallbackNode() === null) return;
-  const silent = () => {};
-  const methods = ["log", "info", "warn", "error", "debug"];
-  const original = methods.map((name) => console[name]);
-  for (const name of methods) console[name] = silent;
-  try {
-    for (let turn = 0; turn < 50 && sharedScheduler.unstable_getFirstCallbackNode() !== null; turn += 1) {
-      await new Promise((resolve) => realSetTimeout(resolve, 1));
-    }
-  } finally {
-    methods.forEach((name, index) => { if (console[name] === silent) console[name] = original[index]; });
-  }
-  if (process.env.NT_DEBUG_DRAIN) process.stderr.write(`[drain] ${currentFile} left=${sharedScheduler.unstable_getFirstCallbackNode() !== null}\n`);
-};
 const fileCleanup = async (isolated) => {
-  await drainScheduler();
   if (process.env.NT_DEBUG_EXPORTS) {
     const apiFile = resolveProject("metabase/api", abs("frontend/test/__support__/ui.tsx"));
     console.error(`[exports] after ${currentFile} isolated=${isolated} mockedThisFile=${mockedThisFile} mocks=${mocks.size} apiMocked=${mocks.has(apiFile)}\n  ${describeExports("metabase/api", ["Api", "shouldSchemaBePassedAsQueryParam"])}\n  ${describeExports("metabase/metadata-store", ["createMockEntitiesState"])}`);
@@ -994,6 +1001,10 @@ const fileCleanup = async (isolated) => {
   // restoreAllMocks, on top of globals that have been reset since. Spies go
   // first, so the fake clock a spy wrapped is back in place to be uninstalled.
   if (!process.env.NT_NO_SPY_RESTORE) moduleMocker.restoreAllMocks();
+  if (process.env.NT_DEBUG_CONSOLE_LEAK) {
+    const leaked = ["log", "info", "warn", "error", "debug"].filter((name) => console[name]?._isMockFunction);
+    if (leaked.length > 0) process.stderr.write(`[console-leak] ${currentFile} leaves ${leaked.map((name) => `${name}(${console[name].mock.calls.length} calls)`).join(" ")}\n`);
+  }
   fakeTimers.useRealTimers();
   timerShape("after-useRealTimers");
   restoreTimerGlobals();
@@ -1485,7 +1496,11 @@ globalThis.__nodeTestSpike.trackLets = (file, read, write) => { trackedLets.set(
       packagesLoadedSinceMirror = true;
       // A package or the cljs build loads once per process, so a global that it
       // installs has to outlive the file that happened to load it.
-      const before = new Set(Reflect.ownKeys(globalThis));
+      // A package that loads inside another one's load is covered by the outer
+      // comparison.
+      const outermost = packageLoadDepth === 0;
+      packageLoadDepth += 1;
+      const before = outermost ? new Set(Reflect.ownKeys(globalThis)) : null;
       // It also keeps whatever clock functions it reads while it loads
       // (Mantine: `const raf = window.requestAnimationFrame`), so it must not
       // load under a file's fake clock.
@@ -1503,7 +1518,8 @@ globalThis.__nodeTestSpike.trackLets = (file, read, write) => { trackedLets.set(
         return compileAny.call(this, content, filename, ...rest);
       } finally {
         for (const [name, descriptor] of faked) Object.defineProperty(globalThis, name, descriptor);
-        for (const key of Reflect.ownKeys(globalThis)) if (!before.has(key)) sharedGlobalKeys.add(key);
+        packageLoadDepth -= 1;
+        if (before) for (const key of Reflect.ownKeys(globalThis)) if (!before.has(key)) sharedGlobalKeys.add(key);
       }
     };
   }
@@ -1572,7 +1588,7 @@ globalThis.__nodeTestSpike.resetLets = () => {
 // on believing that its callback is still due.
 {
   const fromProject = Module.createRequire(abs("frontend/src/index.js"));
-  sharedScheduler = Module.createRequire(fromProject.resolve("react-dom"))("scheduler");
+  Module.createRequire(fromProject.resolve("react-dom"))("scheduler");
 }
 if (!process.env.NT_NO_TIMER_CLEAR) trackTimers();
 runSetupChain();
@@ -1598,6 +1614,10 @@ const realmObjects = () => [
   win.Range.prototype,
   win.Selection.prototype,
   globalThis.navigator,
+  // jest gives each file its own console. A spec that assigns a mock to
+  // console.warn would otherwise hand its recorded calls to the next file's
+  // spyOn, which returns a mock it finds already in place.
+  ...(process.env.NT_NO_CONSOLE_RESTORE ? [] : [console]),
 ].filter(Boolean);
 const realmBaseline = new Map();
 const snapshotDescriptors = (target) => {
