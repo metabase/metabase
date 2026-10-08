@@ -57,6 +57,7 @@ describe("scenarios > data apps > admin management", () => {
     H.pullExampleDataApps();
     cy.request<DataApp>("GET", "/api/apps/good").then(({ body }) => {
       const dataAppGroupId = body.permission_group_id;
+      expect(dataAppGroupId).to.be.a("number");
 
       // The groups API does not return data-app groups.
       cy.request("GET", "/api/permissions/group").then(({ body: groups }) => {
