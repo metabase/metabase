@@ -159,10 +159,7 @@
 (defn all-admin-recipients
   "Return a sequence of email addresses for all Admin users who have accepted their invitation (i.e. have logged in at
   least once). Admins who have been invited but not yet accepted are excluded — they shouldn't receive notifications
-  about activity in an instance they haven't joined.
-
-  The first recipient will be the site admin (or oldest accepted admin if unset), which is the address that should be
-  used in `mailto` links (e.g., for the new user to email with any questions)."
+  about activity in an instance they haven't joined. The site admin email, if set, comes first."
   []
   (concat (when-let [admin-email (system/admin-email)]
             [admin-email])
@@ -189,7 +186,6 @@
                                               :joinedViaSSO      google-auth?
                                               :joinedUserEmail   (:email new-user)
                                               :joinedDate        (t/format "EEEE, MMMM d" (t/zoned-date-time)) ; e.g. "Wednesday, July 13".
-                                              :adminEmail        (first recipients)
                                               :joinedUserEditUrl (str (system/site-url) "/admin/people")})})))
 
 (defn send-password-reset-email!
