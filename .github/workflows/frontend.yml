@@ -39,10 +39,6 @@ jobs:
       - name: Prepare front-end environment
         uses: ./.github/actions/prepare-frontend
 
-      # Runs in the background while the steps below run.
-      - name: Start CSS linter
-        run: |
-          (code=0; bun run lint-css > "$RUNNER_TEMP/lint-css.log" 2>&1 || code=$?; echo "$code" > "$RUNNER_TEMP/lint-css.exit") &
       - name: Find CSS variables that are used but never defined
         run: bun run find-never-defined-css-variables
       - name: Run oxfmt formatting linter
@@ -51,11 +47,8 @@ jobs:
         run: bun run lint-oxlint
       - name: Verify lint configuration and behavior
         run: bun run test-oxlint
-      - name: Wait for CSS linter
-        run: |
-          while [ ! -f "$RUNNER_TEMP/lint-css.exit" ]; do sleep 1; done
-          cat "$RUNNER_TEMP/lint-css.log"
-          exit "$(cat "$RUNNER_TEMP/lint-css.exit")"
+      - name: Run CSS linter
+        run: bun run lint-css
 
   fe-type-check:
     needs: gate
