@@ -68,19 +68,16 @@ describe("admin > custom visualizations", () => {
 
   describe("feature gating", () => {
     describe("EE", () => {
-      it("should show upsell when feature is locked", () => {
-        // No token activation — feature is locked
+      it("should show upsell when feature is locked, then enable and disable custom visualizations", () => {
+        cy.log("No token activation — feature is locked");
         H.visitCustomVizSettings();
 
         cy.findByRole("heading", {
           name: /Build your own visualizations/,
         }).should("be.visible");
         H.getAddVisualizationLink().should("not.exist");
-      });
 
-      it("should enable and disable custom visualizations", () => {
         H.activateToken("bleeding-edge");
-
         H.visitCustomVizSettings();
 
         cy.log(
@@ -194,57 +191,9 @@ describe("admin > custom visualizations", () => {
       H.updateSetting("custom-viz-enabled", true);
     });
 
-    it("should add a plugin via the form and show it in the list", () => {
+    it("should reject an invalid bundle inline, then add a plugin via the form and show it in the list", () => {
       H.resetSnowplow();
       H.enableTracking();
-      H.visitCustomVizSettings();
-
-      H.getAddVisualizationLink().click();
-
-      cy.log("Submit is disabled until a file is selected");
-      cy.findByRole("button", { name: "Add visualization" }).should(
-        "be.disabled",
-      );
-
-      H.dropCustomVizBundle(H.CUSTOM_VIZ_FIXTURE_TGZ);
-      cy.findByRole("button", { name: "Add visualization" }).should(
-        "be.enabled",
-      );
-
-      H.interceptPluginCreate();
-      cy.findByRole("button", { name: "Add visualization" }).click();
-      cy.wait("@pluginCreate");
-
-      cy.log("Should redirect to the list and show the plugin");
-      H.main().findByText("demo-viz").should("be.visible");
-      H.expectUnstructuredSnowplowEvent({
-        event: "custom_viz_plugin_created",
-        result: "success",
-      });
-      H.expectNoBadSnowplowEvents();
-    });
-
-    it("should display manifest information and bundle hash after upload", () => {
-      H.addCustomVizPlugin(H.CUSTOM_VIZ_FIXTURE_TGZ);
-      H.visitCustomVizSettings();
-      H.getCustomVizPluginIcon("demo-viz").should("be.visible");
-      H.main().findByText("demo-viz").should("be.visible");
-
-      cy.log(
-        "Bundle hash chip is the first 8 chars of the fixture's deterministic SHA-256",
-      );
-      H.getCustomVizFixtureHash(H.CUSTOM_VIZ_FIXTURE_TGZ).then((hash) => {
-        H.main()
-          .findByText(`Bundle: ${hash.slice(0, 8)}`)
-          .should("be.visible");
-      });
-
-      H.main()
-        .findByText(/^Requires Metabase /)
-        .should("be.visible");
-    });
-
-    it("should surface an inline error for an invalid bundle", () => {
       H.visitCustomVizNewForm();
 
       cy.findByRole("link", { name: /Manage visualizations/ }).should(
@@ -253,6 +202,11 @@ describe("admin > custom visualizations", () => {
         "true",
       );
       cy.findByRole("link", { name: /Development/ }).should("be.visible");
+
+      cy.log("Submit is disabled until a file is selected");
+      cy.findByRole("button", { name: "Add visualization" }).should(
+        "be.disabled",
+      );
 
       cy.log("Upload a non-tar.gz file so the BE rejects it.");
       H.dropCustomVizBundle({
@@ -281,15 +235,47 @@ describe("admin > custom visualizations", () => {
         "eq",
         "/admin/settings/custom-visualizations/new",
       );
+
+      cy.log("Upload a valid bundle");
+      H.dropCustomVizBundle(H.CUSTOM_VIZ_FIXTURE_TGZ);
+      cy.findByRole("button", { name: "Add visualization" }).should(
+        "be.enabled",
+      );
+
+      H.interceptPluginCreate();
+      cy.findByRole("button", { name: "Add visualization" }).click();
+      cy.wait("@pluginCreate");
+
+      cy.log("Should redirect to the list and show the plugin");
+      H.main().findByText("demo-viz").should("be.visible");
+      H.expectUnstructuredSnowplowEvent({
+        event: "custom_viz_plugin_created",
+        result: "success",
+      });
+      H.expectNoBadSnowplowEvents();
     });
 
-    it("should support multiple plugins", () => {
+    it("should support multiple plugins and display their manifest information and bundle hash", () => {
       H.addCustomVizPlugin(H.CUSTOM_VIZ_FIXTURE_TGZ);
       H.addCustomVizPlugin(H.CUSTOM_VIZ_FIXTURE_TGZ_2);
       H.visitCustomVizSettings();
 
+      H.getCustomVizPluginIcon("demo-viz").should("be.visible");
       H.main().findByText("demo-viz").should("be.visible");
       H.main().findByText("demo-viz-2").should("be.visible");
+
+      cy.log(
+        "Bundle hash chip is the first 8 chars of the fixture's deterministic SHA-256",
+      );
+      H.getCustomVizFixtureHash(H.CUSTOM_VIZ_FIXTURE_TGZ).then((hash) => {
+        H.main()
+          .findByText(`Bundle: ${hash.slice(0, 8)}`)
+          .should("be.visible");
+      });
+
+      H.main()
+        .findAllByText(/^Requires Metabase /)
+        .should("have.length", 2);
 
       // Both plugins should be available in chart type selector
       H.openOrdersTable({ limit: 1 });
@@ -299,236 +285,194 @@ describe("admin > custom visualizations", () => {
       H.main().findByText("demo-viz-2").should("be.visible");
     });
 
-    describe("updating a plugin", () => {
-      beforeEach(() => {
-        H.activateToken("bleeding-edge");
-      });
+    it("should reject a non-matching bundle inline, then replace the bundle via the edit form", () => {
+      H.resetSnowplow();
+      H.enableTracking();
+      H.addCustomVizPlugin(H.CUSTOM_VIZ_FIXTURE_TGZ).then(
+        (plugin: CustomVizPlugin) => {
+          H.visitCustomVizEditForm(plugin.id);
 
-      it("should replace the bundle via the edit form", () => {
-        H.resetSnowplow();
-        H.enableTracking();
-        H.addCustomVizPlugin(H.CUSTOM_VIZ_FIXTURE_TGZ).then(
-          (plugin: CustomVizPlugin) => {
-            H.visitCustomVizSettings();
-
-            cy.log(
-              "Replace bundle is reachable only via the row's Plugin actions menu — clicking the row itself does not navigate",
-            );
-            H.main().findByText("demo-viz").click();
-            cy.location("pathname").should(
-              "eq",
-              "/admin/settings/custom-visualizations",
-            );
-            cy.findByRole("heading", {
-              name: /Replace bundle for/,
-            }).should("not.exist");
-
-            // Actions menu is only visible on row hover
-            H.main().findByText("demo-viz").realHover();
-            cy.findByRole("button", { name: "Plugin actions" }).click();
-            H.popover().findByText("Replace bundle").click();
-
-            cy.findByRole("heading", {
-              name: "Replace bundle for demo-viz",
-            }).should("be.visible");
-
-            H.dropCustomVizBundle(H.CUSTOM_VIZ_FIXTURE_TGZ);
-
-            cy.intercept(
-              "PUT",
-              `/api/ee/custom-viz-plugin/${plugin.id}/bundle`,
-            ).as("pluginBundleReplace");
-            cy.findByRole("button", { name: /Replace$/ }).click();
-
-            cy.wait("@pluginBundleReplace")
-              .its("response.statusCode")
-              .should("eq", 200);
-
-            cy.log("Should redirect back to the list page");
-            cy.location("pathname").should(
-              "eq",
-              "/admin/settings/custom-visualizations",
-            );
-            H.main().findByText("demo-viz").should("be.visible");
-            H.expectUnstructuredSnowplowEvent({
-              event: "custom_viz_plugin_updated",
-              result: "success",
-            });
-            H.expectNoBadSnowplowEvents();
-          },
-        );
-      });
-
-      it("should surface an inline error when replacing with a non-matching bundle", () => {
-        H.addCustomVizPlugin(H.CUSTOM_VIZ_FIXTURE_TGZ).then(
-          (plugin: CustomVizPlugin) => {
-            H.visitCustomVizEditForm(plugin.id);
-
-            cy.findByRole("link", { name: /Manage visualizations/ }).should(
-              "have.attr",
-              "data-active",
-              "true",
-            );
-
-            cy.log(
-              'The 2nd fixture has manifest.name = "demo-viz-2" — BE rejects because it does not match the existing identifier',
-            );
-            H.dropCustomVizBundle(H.CUSTOM_VIZ_FIXTURE_TGZ_2);
-
-            cy.intercept(
-              "PUT",
-              `/api/ee/custom-viz-plugin/${plugin.id}/bundle`,
-            ).as("pluginBundleReplaceInvalid");
-            cy.findByRole("button", { name: /Replace$/ }).click();
-
-            cy.wait("@pluginBundleReplaceInvalid")
-              .its("response.statusCode")
-              .should("eq", 400);
-
-            cy.findByTestId("custom-viz-settings-form").within(() => {
-              cy.findByText(/does not match the plugin's identifier/).should(
-                "be.visible",
-              );
-            });
-
-            cy.location("pathname").should(
-              "eq",
-              `/admin/settings/custom-visualizations/edit/${plugin.id}`,
-            );
-          },
-        );
-      });
-    });
-
-    describe("disabling a plugin", () => {
-      beforeEach(() => {
-        H.activateToken("bleeding-edge");
-      });
-
-      it("disabled plugin should fall back to default display and hide from chart type selector", () => {
-        H.resetSnowplow();
-        H.enableTracking();
-        H.addCustomVizPlugin(H.CUSTOM_VIZ_FIXTURE_TGZ).then(() => {
-          // Single-value question (Count of Orders) — demo-viz requires
-          // exactly one row with one numeric column.
-          H.createQuestion(
-            {
-              name: "Custom Viz Disable Test",
-              query: {
-                "source-table": SAMPLE_DB_TABLES.STATIC_ORDERS_ID,
-                aggregation: [["count"]],
-              },
-              display: H.CUSTOM_VIZ_DISPLAY,
-            },
-            { wrapId: true, idAlias: "disableCardId", visitQuestion: true },
+          cy.findByRole("link", { name: /Manage visualizations/ }).should(
+            "have.attr",
+            "data-active",
+            "true",
           );
-          H.main()
-            .findByText("Custom viz rendered successfully")
-            .should("be.visible");
 
-          H.getProfileLink().click();
-          H.popover().findByText(adminAppLinkText).click();
+          cy.log(
+            'The 2nd fixture has manifest.name = "demo-viz-2" — BE rejects because it does not match the existing identifier',
+          );
+          H.dropCustomVizBundle(H.CUSTOM_VIZ_FIXTURE_TGZ_2);
 
-          cy.findByTestId("admin-layout-sidebar")
-            .findByText("Custom visualizations")
-            .click();
+          cy.intercept(
+            "PUT",
+            `/api/ee/custom-viz-plugin/${plugin.id}/bundle`,
+          ).as("pluginBundleReplace");
+          cy.findByRole("button", { name: /Replace$/ }).click();
 
-          cy.findByTestId("admin-layout-sidebar")
-            .findByText("Manage visualizations")
-            .should("be.visible")
-            .click();
+          cy.wait("@pluginBundleReplace")
+            .its("response.statusCode")
+            .should("eq", 400);
 
-          // Actions menu is only visible on row hover
-          H.main().findByText("demo-viz").realHover();
-          cy.findByRole("button", { name: "Plugin actions" }).click();
-          H.popover().findByText("Disable").click();
-          H.expectUnstructuredSnowplowEvent({
-            event: "custom_viz_plugin_toggled",
-            event_detail: "disabled",
+          cy.findByTestId("custom-viz-settings-form").within(() => {
+            cy.findByText(/does not match the plugin's identifier/).should(
+              "be.visible",
+            );
           });
 
-          // Menu should now show "Enable" instead of "Disable"
-          H.main().findByText("demo-viz").realHover();
-          cy.findByRole("button", { name: "Plugin actions" }).click();
-          H.popover().findByText("Enable").should("be.visible");
-
-          H.getProfileLink().click();
-          H.popover().findByText(mainAppLinkText).click();
-
-          cy.get("main").within(() => {
-            cy.contains("Custom Viz Disable Test").click();
-          });
-          // Reload the question — plugin is disabled, should fall back
-
-          cy.log("make sure viz is table - fallback");
-          cy.findByTestId("table-root").should("be.visible");
-
-          // Custom viz section should not appear in chart type selector
-          cy.findByTestId("viz-type-button").click();
-          cy.findByTestId("Table-button").should("be.visible");
-          cy.findByText("Custom visualizations").should("not.exist");
-          H.expectNoBadSnowplowEvents();
-
-          cy.log("make sure fallback is used after reload");
-          cy.reload();
-          cy.findByTestId("table-root").should("be.visible");
-          cy.findByTestId("viz-type-button").click();
-          cy.findByTestId("Table-button").should("be.visible");
-          cy.findByText("Custom visualizations").should("not.exist");
-        });
-      });
-    });
-
-    describe("deleting a plugin", () => {
-      beforeEach(() => {
-        H.activateToken("bleeding-edge");
-      });
-
-      it("question should fall back when plugin is deleted", () => {
-        H.resetSnowplow();
-        H.enableTracking();
-        H.addCustomVizPlugin(H.CUSTOM_VIZ_FIXTURE_TGZ).then(() => {
-          H.createQuestion(
-            {
-              name: "Custom Viz Delete Test",
-              query: {
-                "source-table": SAMPLE_DB_TABLES.STATIC_ORDERS_ID,
-                aggregation: [["count"]],
-              },
-              display: H.CUSTOM_VIZ_DISPLAY,
-            },
-            { wrapId: true, idAlias: "deleteCardId" },
+          cy.location("pathname").should(
+            "eq",
+            `/admin/settings/custom-visualizations/edit/${plugin.id}`,
           );
 
           H.visitCustomVizSettings();
 
-          // Delete the plugin (actions menu is only visible on row hover)
+          cy.log(
+            "Replace bundle is reachable only via the row's Plugin actions menu — clicking the row itself does not navigate",
+          );
+          H.main().findByText("demo-viz").click();
+          cy.location("pathname").should(
+            "eq",
+            "/admin/settings/custom-visualizations",
+          );
+          cy.findByRole("heading", {
+            name: /Replace bundle for/,
+          }).should("not.exist");
+
+          // Actions menu is only visible on row hover
           H.main().findByText("demo-viz").realHover();
           cy.findByRole("button", { name: "Plugin actions" }).click();
-          H.popover().findByText("Remove").click();
+          H.popover().findByText("Replace bundle").click();
 
-          H.modal().within(() => {
-            cy.findByText("Remove this visualization?").should("be.visible");
-            cy.findByRole("button", { name: "Remove" }).click();
-          });
+          cy.findByRole("heading", {
+            name: "Replace bundle for demo-viz",
+          }).should("be.visible");
 
-          H.main()
-            .findByText("You don't have any custom visualizations.")
-            .should("be.visible");
+          H.dropCustomVizBundle(H.CUSTOM_VIZ_FIXTURE_TGZ);
+          cy.findByRole("button", { name: /Replace$/ }).click();
+
+          cy.wait("@pluginBundleReplace")
+            .its("response.statusCode")
+            .should("eq", 200);
+
+          cy.log("Should redirect back to the list page");
+          cy.location("pathname").should(
+            "eq",
+            "/admin/settings/custom-visualizations",
+          );
+          H.main().findByText("demo-viz").should("be.visible");
           H.expectUnstructuredSnowplowEvent({
-            event: "custom_viz_plugin_deleted",
+            event: "custom_viz_plugin_updated",
+            result: "success",
           });
-
-          // Visit the question — should fall back to table
-          H.visitQuestion("@deleteCardId");
-          cy.findByTestId("table-root").should("be.visible");
-
-          // Custom viz section should not appear in chart type selector
-          cy.findByTestId("viz-type-button").click();
-          cy.findByTestId("Table-button").should("be.visible");
-          cy.findByText("Custom visualizations").should("not.exist");
           H.expectNoBadSnowplowEvents();
+        },
+      );
+    });
+
+    it("question should fall back when its plugin is disabled, and when it is removed", () => {
+      H.resetSnowplow();
+      H.enableTracking();
+      H.addCustomVizPlugin(H.CUSTOM_VIZ_FIXTURE_TGZ).then(() => {
+        // Single-value question (Count of Orders) — demo-viz requires
+        // exactly one row with one numeric column.
+        H.createQuestion(
+          {
+            name: "Custom Viz Disable Test",
+            query: {
+              "source-table": SAMPLE_DB_TABLES.STATIC_ORDERS_ID,
+              aggregation: [["count"]],
+            },
+            display: H.CUSTOM_VIZ_DISPLAY,
+          },
+          { wrapId: true, idAlias: "disableCardId", visitQuestion: true },
+        );
+        H.main()
+          .findByText("Custom viz rendered successfully")
+          .should("be.visible");
+
+        H.getProfileLink().click();
+        H.popover().findByText(adminAppLinkText).click();
+
+        cy.findByTestId("admin-layout-sidebar")
+          .findByText("Custom visualizations")
+          .click();
+
+        cy.findByTestId("admin-layout-sidebar")
+          .findByText("Manage visualizations")
+          .should("be.visible")
+          .click();
+
+        // Actions menu is only visible on row hover
+        H.main().findByText("demo-viz").realHover();
+        cy.findByRole("button", { name: "Plugin actions" }).click();
+        H.popover().findByText("Disable").click();
+        H.expectUnstructuredSnowplowEvent({
+          event: "custom_viz_plugin_toggled",
+          event_detail: "disabled",
         });
+
+        // Menu should now show "Enable" instead of "Disable"
+        H.main().findByText("demo-viz").realHover();
+        cy.findByRole("button", { name: "Plugin actions" }).click();
+        H.popover().findByText("Enable").should("be.visible");
+
+        H.getProfileLink().click();
+        H.popover().findByText(mainAppLinkText).click();
+
+        cy.get("main").within(() => {
+          cy.contains("Custom Viz Disable Test").click();
+        });
+
+        cy.log("make sure viz is table - fallback");
+        cy.findByTestId("table-root").should("be.visible");
+
+        // Custom viz section should not appear in chart type selector
+        cy.findByTestId("viz-type-button").click();
+        cy.findByTestId("Table-button").should("be.visible");
+        cy.findByText("Custom visualizations").should("not.exist");
+
+        cy.log("make sure fallback is used after reload");
+        cy.reload();
+        cy.findByTestId("table-root").should("be.visible");
+        cy.findByTestId("viz-type-button").click();
+        cy.findByTestId("Table-button").should("be.visible");
+        cy.findByText("Custom visualizations").should("not.exist");
+
+        cy.log("Enable the plugin again, then remove it");
+        H.visitCustomVizSettings();
+        H.main().findByText("demo-viz").realHover();
+        cy.findByRole("button", { name: "Plugin actions" }).click();
+        H.popover().findByText("Enable").click();
+        H.expectUnstructuredSnowplowEvent({
+          event: "custom_viz_plugin_toggled",
+          event_detail: "enabled",
+        });
+
+        H.main().findByText("demo-viz").realHover();
+        cy.findByRole("button", { name: "Plugin actions" }).click();
+        H.popover().findByText("Remove").click();
+
+        H.modal().within(() => {
+          cy.findByText("Remove this visualization?").should("be.visible");
+          cy.findByRole("button", { name: "Remove" }).click();
+        });
+
+        H.main()
+          .findByText("You don't have any custom visualizations.")
+          .should("be.visible");
+        H.expectUnstructuredSnowplowEvent({
+          event: "custom_viz_plugin_deleted",
+        });
+
+        // Visit the question — should fall back to table
+        H.visitQuestion("@disableCardId");
+        cy.findByTestId("table-root").should("be.visible");
+
+        // Custom viz section should not appear in chart type selector
+        cy.findByTestId("viz-type-button").click();
+        cy.findByTestId("Table-button").should("be.visible");
+        cy.findByText("Custom visualizations").should("not.exist");
+        H.expectNoBadSnowplowEvents();
       });
     });
   });
@@ -563,7 +507,7 @@ describe("admin > custom visualizations", () => {
       cy.findByTestId("viz-type-button").click();
     }
 
-    it("renders the selected custom viz for the question", () => {
+    it("renders the selected custom viz and persists its settings, pinned and across reloads", () => {
       H.resetSnowplow();
       H.enableTracking();
       H.visitQuestion("@questionId");
@@ -601,18 +545,58 @@ describe("admin > custom visualizations", () => {
 
       H.expectUnstructuredSnowplowEvent({ event: "custom_viz_selected" });
       H.expectNoBadSnowplowEvents();
-    });
 
-    it("persists the selected custom viz and its settings across reloads", () => {
-      H.visitQuestion("@questionId");
-      switchToDemoViz();
+      cy.log("onHover renders a tooltip");
+      cy.findByTestId("demo-viz-hover-target").realHover();
+      H.tooltip().should("contain.text", AGGREGATED_VALUE_FORMATTED);
+      H.queryBuilderHeader().realHover();
+      H.tooltip().should("not.exist");
+
+      cy.log(
+        "The plugin gets its own array-valued settings, including edits made in the session",
+      );
+      cy.findByTestId("demo-viz-columns").should("have.text", "Columns: count");
 
       cy.findByTestId("viz-settings-button").click();
+      cy.findByTestId("chartsettings-sidebar")
+        .findByRole("button", { name: "Add column from plugin" })
+        .click();
+      cy.findByTestId("demo-viz-columns").should(
+        "have.text",
+        "Columns: count, extra",
+      );
+      cy.findByTestId("chartsettings-sidebar")
+        .findByRole("button", { name: "Add column from plugin" })
+        .should("be.visible");
+
+      cy.log("Plugin writes to Metabase settings stay inside its namespace");
+      cy.findByTestId("chartsettings-sidebar")
+        .findByRole("button", { name: "Rename question from plugin" })
+        .click();
+      H.main().findByText("Threshold: 7").should("be.visible");
+
       cy.findByTestId("chartsettings-sidebar")
         .findByPlaceholderText("Set threshold")
         .clear()
         .type("42")
         .blur();
+      H.main().findByText("Threshold: 42").should("be.visible");
+
+      cy.log(
+        "The column formatting popover opens from a field setting (metabase#78039)",
+      );
+      cy.findByTestId("chartsettings-sidebar")
+        .findByTestId("settings-count")
+        .click();
+
+      cy.findByTestId("chart-settings-widget-popover-content").within(() => {
+        cy.findByText("Add a prefix").should("be.visible");
+        cy.findByPlaceholderText("$").type("foo").blur();
+      });
+
+      H.main()
+        .findByTestId("demo-viz-formatted-value")
+        .should("contain", "foo");
 
       H.saveSavedQuestion();
 
@@ -623,7 +607,18 @@ describe("admin > custom visualizations", () => {
             `custom:${H.CUSTOM_VIZ_IDENTIFIER}:threshold`,
             42,
           );
+          expect(body.visualization_settings).to.have.property(
+            `custom:${H.CUSTOM_VIZ_IDENTIFIER}:card.title`,
+            "Plugin title",
+          );
+          expect(body.visualization_settings).to.have.deep.property(
+            `custom:${H.CUSTOM_VIZ_IDENTIFIER}:columns`,
+            ["count", "extra"],
+          );
           expect(body.visualization_settings).not.to.have.property("threshold");
+          expect(body.visualization_settings).not.to.have.property(
+            "card.title",
+          );
         });
       });
 
@@ -635,6 +630,40 @@ describe("admin > custom visualizations", () => {
         .findByText("Custom viz rendered successfully")
         .should("be.visible");
       H.main().findByText("Threshold: 42").should("be.visible");
+
+      // Default user locale is "en"
+      cy.findByTestId("demo-viz-locale").should("have.text", "Locale: en");
+
+      cy.log("A pinned custom-viz question renders in the collection view");
+      cy.get("@questionId").then((id) => {
+        cy.request("PUT", `/api/card/${id}`, { collection_position: 1 });
+      });
+
+      // Navigate to the collection via the question header's collection badge
+      cy.findByRole("link", { name: /Our analytics/ }).click();
+
+      H.getPinnedSection().within(() => {
+        cy.findByText("Custom Viz Question Test").should("be.visible");
+        cy.findByText("A question").should("be.visible");
+      });
+
+      cy.log(
+        "The plugin gets the user's locale and updates when the user changes it",
+      );
+      H.getPinnedSection().findByText("Custom Viz Question Test").click();
+      cy.findByTestId("demo-viz-locale").should("have.text", "Locale: en");
+
+      // Change the current user's locale to German. The plugin factory runs
+      // again on the next full page load with the new locale value.
+      cy.request("GET", "/api/user/current").then(({ body: user }) => {
+        cy.request("PUT", `/api/user/${user.id}`, { locale: "de" });
+      });
+
+      H.interceptPluginBundle();
+      cy.reload();
+      cy.wait("@pluginBundle");
+
+      cy.findByTestId("demo-viz-locale").should("have.text", "Locale: de");
     });
 
     it("reads and migrates plugin settings saved before namespacing", () => {
@@ -673,64 +702,6 @@ describe("admin > custom visualizations", () => {
       });
     });
 
-    it("keeps plugin writes to Metabase settings inside the plugin's namespace", () => {
-      H.visitQuestion("@questionId");
-      switchToDemoViz();
-
-      cy.findByTestId("viz-settings-button").click();
-      cy.findByTestId("chartsettings-sidebar")
-        .findByRole("button", { name: "Rename question from plugin" })
-        .click();
-      H.main().findByText("Threshold: 7").should("be.visible");
-      H.saveSavedQuestion();
-
-      cy.get("@questionId").then((id) => {
-        cy.request("GET", `/api/card/${id}`).then(({ body }) => {
-          expect(body.visualization_settings).to.have.property(
-            `custom:${H.CUSTOM_VIZ_IDENTIFIER}:threshold`,
-            7,
-          );
-          expect(body.visualization_settings).to.have.property(
-            `custom:${H.CUSTOM_VIZ_IDENTIFIER}:card.title`,
-            "Plugin title",
-          );
-          expect(body.visualization_settings).not.to.have.property(
-            "card.title",
-          );
-        });
-      });
-    });
-
-    it("hands the plugin its own array-valued settings, including edits made in the session", () => {
-      H.visitQuestion("@questionId");
-      switchToDemoViz();
-
-      cy.log("the default the plugin computes is an array");
-      cy.findByTestId("demo-viz-columns").should("have.text", "Columns: count");
-
-      cy.findByTestId("viz-settings-button").click();
-      cy.findByTestId("chartsettings-sidebar")
-        .findByRole("button", { name: "Add column from plugin" })
-        .click();
-      cy.findByTestId("demo-viz-columns").should(
-        "have.text",
-        "Columns: count, extra",
-      );
-      cy.findByTestId("chartsettings-sidebar")
-        .findByRole("button", { name: "Add column from plugin" })
-        .should("be.visible");
-      H.saveSavedQuestion();
-
-      cy.get("@questionId").then((id) => {
-        cy.request("GET", `/api/card/${id}`).then(({ body }) => {
-          expect(body.visualization_settings).to.have.deep.property(
-            `custom:${H.CUSTOM_VIZ_IDENTIFIER}:columns`,
-            ["count", "extra"],
-          );
-        });
-      });
-    });
-
     it("keeps an unsaved question's custom viz after a browser reload (metabase#76065)", () => {
       H.visitQuestionAdhoc({
         dataset_query: {
@@ -765,25 +736,6 @@ describe("admin > custom visualizations", () => {
       cy.findByTestId("scalar-value").should("not.exist");
     });
 
-    it("opens the column formatting popover from a field setting (metabase#78039)", () => {
-      H.visitQuestion("@questionId");
-      switchToDemoViz();
-
-      cy.findByTestId("viz-settings-button").click();
-      cy.findByTestId("chartsettings-sidebar")
-        .findByTestId("settings-count")
-        .click();
-
-      cy.findByTestId("chart-settings-widget-popover-content").within(() => {
-        cy.findByText("Add a prefix").should("be.visible");
-        cy.findByPlaceholderText("$").type("foo").blur();
-      });
-
-      H.main()
-        .findByTestId("demo-viz-formatted-value")
-        .should("contain", "foo");
-    });
-
     describe("errors", () => {
       it("renders errors thrown by the plugin component", () => {
         // Multi-column question — checkRenderable throws
@@ -802,30 +754,6 @@ describe("admin > custom visualizations", () => {
 
         H.main()
           .findByText(/Query results should only have 1 column/)
-          .should("be.visible");
-      });
-
-      it("shows an error state when the plugin bundle fails to load", () => {
-        cy.intercept("GET", "/api/ee/custom-viz-plugin/*/bundle*", {
-          statusCode: 500,
-          body: "boom",
-        }).as("failedBundle");
-
-        H.createQuestion(
-          {
-            name: "Custom Viz — Failing Bundle",
-            query: {
-              "source-table": SAMPLE_DB_TABLES.STATIC_ORDERS_ID,
-              aggregation: [["count"]],
-            },
-            display: H.CUSTOM_VIZ_DISPLAY,
-          },
-          { visitQuestion: true },
-        );
-        cy.wait("@failedBundle");
-
-        H.undoToastList()
-          .findByText(/"demo-viz" visualization is currently unavailable/)
           .should("be.visible");
       });
 
@@ -890,7 +818,7 @@ describe("admin > custom visualizations", () => {
           .should("be.visible");
 
         H.undoToastList()
-          .findByText(/visualization is currently unavailable/i)
+          .findByText(/"demo-viz" visualization is currently unavailable/)
           .should("be.visible");
 
         cy.intercept(bundleMatcher, (req) => req.continue()).as(
@@ -905,7 +833,7 @@ describe("admin > custom visualizations", () => {
       });
     });
 
-    it("falls back to the default viz on a public question (metabase#GDGT-2234)", () => {
+    it("falls back to the default viz on a public and an embedded question (metabase#GDGT-2234)", () => {
       H.updateSetting("enable-public-sharing", true);
 
       H.createQuestion(
@@ -922,14 +850,14 @@ describe("admin > custom visualizations", () => {
 
       cy.get<CardId>("@publicQuestionId").then(H.visitPublicQuestion);
 
-      cy.findByTestId("table-root").should("be.visible");
-    });
+      cy.findByTestId("embed-frame").within(() => {
+        cy.findByTestId("table-root").should("be.visible");
+        cy.findByText("Custom viz rendered successfully").should("not.exist");
+      });
 
-    it("falls back to the default viz on an embedded question", () => {
-      cy.get<CardId>("@questionId").then((questionId) => {
+      cy.get<CardId>("@publicQuestionId").then((questionId) => {
         cy.request("PUT", `/api/card/${questionId}`, {
           enable_embedding: true,
-          display: H.CUSTOM_VIZ_DISPLAY,
         });
 
         H.visitEmbeddedPage({
@@ -938,7 +866,10 @@ describe("admin > custom visualizations", () => {
         });
       });
 
-      cy.findByTestId("table-root").should("be.visible");
+      cy.findByTestId("embed-frame").within(() => {
+        cy.findByTestId("table-root").should("be.visible");
+        cy.findByText("Custom viz rendered successfully").should("not.exist");
+      });
     });
 
     it("calls onClick when the viz fires a click", () => {
@@ -998,54 +929,6 @@ describe("admin > custom visualizations", () => {
         .findByText("Custom viz rendered successfully")
         .should("not.exist");
     });
-
-    it("calls onHover and renders a tooltip", () => {
-      H.visitQuestion("@questionId");
-      switchToDemoViz();
-
-      cy.findByTestId("demo-viz-hover-target").realHover();
-
-      H.tooltip().should("contain.text", AGGREGATED_VALUE_FORMATTED);
-    });
-
-    it("renders a pinned custom-viz question in the collection view", () => {
-      H.visitQuestion("@questionId");
-      switchToDemoViz();
-      H.saveSavedQuestion();
-
-      cy.get("@questionId").then((id) => {
-        cy.request("PUT", `/api/card/${id}`, { collection_position: 1 });
-      });
-
-      // Navigate to the collection via the question header's collection badge
-      cy.findByRole("link", { name: /Our analytics/ }).click();
-
-      H.getPinnedSection().within(() => {
-        cy.findByText("Custom Viz Question Test").should("be.visible");
-        cy.findByText("A question").should("be.visible");
-      });
-    });
-
-    it("passes the user's locale to the plugin and updates when the user changes it", () => {
-      H.visitQuestion("@questionId");
-      switchToDemoViz();
-      H.saveSavedQuestion();
-
-      // Default user locale is "en"
-      cy.findByTestId("demo-viz-locale").should("have.text", "Locale: en");
-
-      // Change the current user's locale to German. The plugin factory runs
-      // again on the next full page load with the new locale value.
-      cy.request("GET", "/api/user/current").then(({ body: user }) => {
-        cy.request("PUT", `/api/user/${user.id}`, { locale: "de" });
-      });
-
-      H.interceptPluginBundle();
-      cy.reload();
-      cy.wait("@pluginBundle");
-
-      cy.findByTestId("demo-viz-locale").should("have.text", "Locale: de");
-    });
   });
 
   describe("using a plugin — dashboard", () => {
@@ -1073,33 +956,21 @@ describe("admin > custom visualizations", () => {
       });
     }
 
-    it("renders a custom viz question on a dashboard", () => {
-      createCustomVizDashboard().then(({ body: dashcard }) => {
-        H.visitDashboard(dashcard.dashboard_id);
-      });
-
-      H.getDashboardCard()
-        .findByText("Custom viz rendered successfully")
-        .should("be.visible");
-      H.getDashboardCard()
-        .findByText(`Value: ${AGGREGATED_VALUE}`)
-        .should("be.visible");
-    });
-
-    it("falls back to the default viz on a public dashboard (metabase#GDGT-2234)", () => {
+    it("falls back to the default viz on a public and an embedded dashboard (metabase#GDGT-2234)", () => {
       H.updateSetting("enable-public-sharing", true);
 
       createCustomVizDashboard().then(({ body: dashcard }) => {
-        H.visitPublicDashboard(Number(checkNotNull(dashcard.dashboard_id)));
+        const dashboardId = Number(checkNotNull(dashcard.dashboard_id));
+        cy.wrap(dashboardId).as("dashboardId");
+        H.visitPublicDashboard(dashboardId);
       });
 
       H.getDashboardCard().findByTestId("table-root").should("be.visible");
-    });
+      H.getDashboardCard()
+        .findByText("Custom viz rendered successfully")
+        .should("not.exist");
 
-    it("falls back to the default viz on an embedded dashboard", () => {
-      createCustomVizDashboard().then(({ body: dashcard }) => {
-        const dashboardId = Number(checkNotNull(dashcard.dashboard_id));
-
+      cy.get<DashboardId>("@dashboardId").then((dashboardId) => {
         cy.request("PUT", `/api/dashboard/${dashboardId}`, {
           enable_embedding: true,
         });
@@ -1111,9 +982,12 @@ describe("admin > custom visualizations", () => {
       });
 
       H.getDashboardCard().findByTestId("table-root").should("be.visible");
+      H.getDashboardCard()
+        .findByText("Custom viz rendered successfully")
+        .should("not.exist");
     });
 
-    it("exports the dashboard as a PDF", () => {
+    it("renders a custom viz question on a dashboard, shows a tooltip, exports a PDF and drills through on click", () => {
       cy.deleteDownloadsFolder();
 
       createCustomVizDashboard({ name: "custom viz pdf dash" }).then(
@@ -1121,35 +995,28 @@ describe("admin > custom visualizations", () => {
           H.visitDashboard(dashcard.dashboard_id);
         },
       );
+
       H.getDashboardCard()
         .findByText("Custom viz rendered successfully")
         .should("be.visible");
+      H.getDashboardCard()
+        .findByText(`Value: ${AGGREGATED_VALUE}`)
+        .should("be.visible");
 
+      cy.log("Tooltip on hover");
+      H.getDashboardCard().findByTestId("demo-viz-hover-target").realHover();
+      H.tooltip().should("contain.text", AGGREGATED_VALUE_FORMATTED);
+      cy.findByTestId("dashboard-header").realHover();
+      H.tooltip().should("not.exist");
+
+      cy.log("Export as PDF");
       H.openSharingMenu("Export as PDF");
       cy.findByTestId("status-root-container")
         .should("contain", "Downloading")
         .and("contain", "Dashboard for custom viz pdf dash");
       cy.verifyDownload("custom viz pdf dash.pdf", { contains: true });
-    });
 
-    it("shows a tooltip on hover over the custom viz in a dashcard", () => {
-      createCustomVizDashboard().then(({ body: dashcard }) => {
-        H.visitDashboard(dashcard.dashboard_id);
-      });
-
-      H.getDashboardCard().findByTestId("demo-viz-hover-target").realHover();
-
-      H.tooltip().should("contain.text", AGGREGATED_VALUE_FORMATTED);
-    });
-
-    it("drills through on click from a dashcard", () => {
-      createCustomVizDashboard().then(({ body: dashcard }) => {
-        H.visitDashboard(dashcard.dashboard_id);
-      });
-      H.getDashboardCard()
-        .findByText("Custom viz rendered successfully")
-        .should("be.visible");
-
+      cy.log("Drill through on click");
       drillThroughDemoVizClick();
 
       H.queryBuilderHeader().findByText("Orders").should("be.visible");
@@ -1159,161 +1026,148 @@ describe("admin > custom visualizations", () => {
       H.queryBuilderFiltersPanel().should("not.exist");
     });
 
-    describe("click behavior: custom destinations", () => {
-      it("navigates to another dashboard", () => {
-        H.createDashboard(
-          { name: "Custom Viz Target Dashboard" },
-          { wrapId: true, idAlias: "targetDashboardId" },
-        );
+    it("follows click behavior custom destinations: URL, crossfilter, saved question and dashboard", () => {
+      const parameter: Parameter = {
+        id: "12345678",
+        name: "Count",
+        slug: "count",
+        type: "number/=",
+      };
 
-        cy.get<DashboardId>("@targetDashboardId").then((targetDashboardId) => {
-          createCustomVizDashboard().then(({ body: dashcard }) => {
-            H.addOrUpdateDashboardCard({
+      H.createDashboard(
+        { name: "Custom Viz Target Dashboard" },
+        { wrapId: true, idAlias: "targetDashboardId" },
+      );
+      H.createQuestion(
+        {
+          name: "Custom Viz Target Question",
+          query: {
+            "source-table": SAMPLE_DB_TABLES.STATIC_ORDERS_ID,
+            limit: 5,
+          },
+        },
+        { wrapId: true, idAlias: "targetQuestionId" },
+      );
+
+      cy.get<DashboardId>("@targetDashboardId").then((targetDashboardId) => {
+        cy.get<CardId>("@targetQuestionId").then((targetQuestionId) => {
+          H.createQuestionAndDashboard({
+            questionDetails: customVizQuestionDetails,
+            dashboardDetails: {
+              name: "Custom Viz Click Behavior Dashboard",
+              parameters: [parameter],
+            },
+          }).then(({ body: dashcard }) => {
+            const card_id = checkNotNull(dashcard.card_id);
+            H.updateDashboardCards({
               dashboard_id: dashcard.dashboard_id,
-              card_id: checkNotNull(dashcard.card_id),
-              card: {
-                id: dashcard.id,
-                visualization_settings: {
-                  click_behavior: {
-                    parameterMapping: {},
-                    targetId: targetDashboardId,
-                    linkType: "dashboard",
-                    type: "link",
+              cards: [
+                {
+                  card_id,
+                  row: 0,
+                  col: 0,
+                  visualization_settings: {
+                    click_behavior: {
+                      linkType: "url",
+                      linkTemplate: "https://metabase.test/custom-viz",
+                      type: "link",
+                    },
                   },
                 },
-              },
+                {
+                  card_id,
+                  row: 0,
+                  col: 12,
+                  visualization_settings: {
+                    click_behavior: {
+                      type: "crossfilter",
+                      parameterMapping: {
+                        [parameter.id]: {
+                          id: parameter.id,
+                          source: {
+                            id: "count",
+                            name: "Count",
+                            type: "column",
+                          },
+                          target: { id: parameter.id, type: "parameter" },
+                        },
+                      },
+                    },
+                  },
+                },
+                {
+                  card_id,
+                  row: 8,
+                  col: 0,
+                  visualization_settings: {
+                    click_behavior: {
+                      parameterMapping: {},
+                      targetId: targetQuestionId,
+                      linkType: "question",
+                      type: "link",
+                    },
+                  },
+                },
+                {
+                  card_id,
+                  row: 8,
+                  col: 12,
+                  visualization_settings: {
+                    click_behavior: {
+                      parameterMapping: {},
+                      targetId: targetDashboardId,
+                      linkType: "dashboard",
+                      type: "link",
+                    },
+                  },
+                },
+              ],
             });
             H.visitDashboard(dashcard.dashboard_id);
           });
 
-          H.getDashboardCard().findByTestId("demo-viz-click-target").click();
+          cy.log("Open a URL");
+          const anchorClick = cy.stub();
+          H.onNextAnchorClick((anchor: HTMLAnchorElement) =>
+            anchorClick(anchor.href),
+          );
+          H.getDashboardCard(0).findByTestId("demo-viz-click-target").click();
+          cy.wrap(anchorClick).should(
+            "have.been.calledOnceWith",
+            "https://metabase.test/custom-viz",
+          );
 
+          cy.log("Update a dashboard filter");
+          H.getDashboardCard(1)
+            .findByText(/Value: \d+/)
+            .should("be.visible");
+          H.getDashboardCard(1).findByTestId("demo-viz-click-target").click();
+          // The crossfilter behavior sets the dashboard parameter to the value
+          // of the clicked column.
+          cy.location("search").should(
+            "include",
+            `${parameter.slug}=${AGGREGATED_VALUE}`,
+          );
+
+          cy.log("Navigate to a saved question");
+          H.getDashboardCard(2).findByTestId("demo-viz-click-target").click();
+          cy.location("pathname").should(
+            "match",
+            new RegExp(`^/question/${targetQuestionId}(?:-|$)`),
+          );
+
+          cy.go("back");
+
+          cy.log("Navigate to another dashboard");
+          H.getDashboardCard(3)
+            .findByText("Custom viz rendered successfully")
+            .should("be.visible");
+          H.getDashboardCard(3).findByTestId("demo-viz-click-target").click();
           cy.location("pathname").should(
             "match",
             new RegExp(`^/dashboard/${targetDashboardId}(?:-|$)`),
           );
         });
-      });
-
-      it("navigates to a saved question", () => {
-        H.createQuestion(
-          {
-            name: "Custom Viz Target Question",
-            query: {
-              "source-table": SAMPLE_DB_TABLES.STATIC_ORDERS_ID,
-              limit: 5,
-            },
-          },
-          { wrapId: true, idAlias: "targetQuestionId" },
-        );
-
-        cy.get<CardId>("@targetQuestionId").then((targetQuestionId) => {
-          createCustomVizDashboard().then(({ body: dashcard }) => {
-            H.addOrUpdateDashboardCard({
-              dashboard_id: dashcard.dashboard_id,
-              card_id: checkNotNull(dashcard.card_id),
-              card: {
-                id: dashcard.id,
-                visualization_settings: {
-                  click_behavior: {
-                    parameterMapping: {},
-                    targetId: targetQuestionId,
-                    linkType: "question",
-                    type: "link",
-                  },
-                },
-              },
-            });
-            H.visitDashboard(dashcard.dashboard_id);
-          });
-
-          H.getDashboardCard().findByTestId("demo-viz-click-target").click();
-
-          cy.location("pathname").should(
-            "match",
-            new RegExp(`^/question/${targetQuestionId}(?:-|$)`),
-          );
-        });
-      });
-
-      it("opens a URL", () => {
-        createCustomVizDashboard().then(({ body: dashcard }) => {
-          H.addOrUpdateDashboardCard({
-            dashboard_id: dashcard.dashboard_id,
-            card_id: checkNotNull(dashcard.card_id),
-            card: {
-              id: dashcard.id,
-              visualization_settings: {
-                click_behavior: {
-                  linkType: "url",
-                  linkTemplate: "https://metabase.test/custom-viz",
-                  type: "link",
-                },
-              },
-            },
-          });
-          H.visitDashboard(dashcard.dashboard_id);
-        });
-
-        const anchorClick = cy.stub();
-        H.onNextAnchorClick((anchor: HTMLAnchorElement) =>
-          anchorClick(anchor.href),
-        );
-        H.getDashboardCard().findByTestId("demo-viz-click-target").click();
-        cy.wrap(anchorClick).should(
-          "have.been.calledOnceWith",
-          "https://metabase.test/custom-viz",
-        );
-      });
-
-      it("updates a dashboard filter", () => {
-        const parameter: Parameter = {
-          id: "12345678",
-          name: "Count",
-          slug: "count",
-          type: "number/=",
-        };
-
-        H.createQuestionAndDashboard({
-          questionDetails: customVizQuestionDetails,
-          dashboardDetails: {
-            name: "Custom Viz Crossfilter Dashboard",
-            parameters: [parameter],
-          },
-        }).then(({ body: dashcard }) => {
-          H.addOrUpdateDashboardCard({
-            dashboard_id: dashcard.dashboard_id,
-            card_id: checkNotNull(dashcard.card_id),
-            card: {
-              id: dashcard.id,
-              visualization_settings: {
-                click_behavior: {
-                  type: "crossfilter",
-                  parameterMapping: {
-                    [parameter.id]: {
-                      id: parameter.id,
-                      source: { id: "count", name: "Count", type: "column" },
-                      target: { id: parameter.id, type: "parameter" },
-                    },
-                  },
-                },
-              },
-            },
-          });
-          H.visitDashboard(dashcard.dashboard_id);
-        });
-
-        H.getDashboardCard()
-          .findByText(/Value: \d+/)
-          .should("be.visible");
-        H.getDashboardCard().findByTestId("demo-viz-click-target").click();
-
-        // The crossfilter behavior sets the dashboard parameter to the value of
-        // the clicked column.
-        cy.location("search").should(
-          "include",
-          `${parameter.slug}=${AGGREGATED_VALUE}`,
-        );
       });
     });
   });
@@ -1338,11 +1192,6 @@ describe("admin > custom visualizations", () => {
         },
         { wrapId: true, idAlias: "questionId" },
       );
-
-      // Query the card once so it appears in the /chart command's recent list.
-      cy.get<CardId>("@questionId").then((cardId) => {
-        cy.request("POST", `/api/card/${cardId}/query`);
-      });
     });
 
     describe("regular documents", () => {
@@ -1357,21 +1206,13 @@ describe("admin > custom visualizations", () => {
         });
       });
 
-      it("renders the custom viz when the document is opened", () => {
-        H.interceptPluginBundle();
-        H.visitDocument("@documentId");
-        cy.wait("@pluginBundle");
+      it("falls back to the default visualization when the plugin bundle fails to load, then renders the custom viz when the document is opened again", () => {
+        const bundleMatcher = {
+          method: "GET",
+          pathname: "/api/ee/custom-viz-plugin/*/bundle",
+        };
 
-        H.getDocumentCard(DOC_QUESTION_NAME).within(() => {
-          cy.findByText("Custom viz rendered successfully").should(
-            "be.visible",
-          );
-          cy.findByText(/Value: \d+/).should("be.visible");
-        });
-      });
-
-      it("falls back to the default visualization when the plugin bundle fails to load", () => {
-        cy.intercept("GET", "/api/ee/custom-viz-plugin/*/bundle*", {
+        cy.intercept(bundleMatcher, {
           statusCode: 500,
           body: "boom",
         }).as("failedBundle");
@@ -1383,11 +1224,29 @@ describe("admin > custom visualizations", () => {
           cy.findByTestId("table-root").should("be.visible");
           cy.findByText("Custom viz rendered successfully").should("not.exist");
         });
+
+        cy.intercept(bundleMatcher, (req) => req.continue()).as(
+          "bundleRestored",
+        );
+        cy.reload();
+        cy.wait("@bundleRestored");
+
+        H.getDocumentCard(DOC_QUESTION_NAME).within(() => {
+          cy.findByText("Custom viz rendered successfully").should(
+            "be.visible",
+          );
+          cy.findByText(/Value: \d+/).should("be.visible");
+        });
       });
     });
 
     describe("inserting via / command", () => {
       beforeEach(() => {
+        // Query the card once so it appears in the /chart command's recent list.
+        cy.get<CardId>("@questionId").then((cardId) => {
+          cy.request("POST", `/api/card/${cardId}/query`);
+        });
+
         H.createDocument({
           name: "Empty Doc",
           document: {
@@ -1513,18 +1372,6 @@ describe("admin > custom visualizations", () => {
       });
     });
 
-    it("renders the custom-viz icon in the entity picker data-source modal", () => {
-      H.startNewQuestion();
-      H.miniPickerBrowseAll().click();
-
-      H.entityPickerModal().within(() => {
-        H.entityPickerModalItem(0, "Our analytics").click();
-        H.entityPickerModalItem(1, ICON_QUESTION_NAME)
-          .find(PLUGIN_ICON_SELECTOR)
-          .should("exist");
-      });
-    });
-
     it("renders the custom-viz icon across app surfaces when navigating through the UI", () => {
       H.interceptPluginBundle();
 
@@ -1584,6 +1431,18 @@ describe("admin > custom visualizations", () => {
         .findByRole("link", { name: new RegExp(ICON_QUESTION_NAME) })
         .find(PLUGIN_ICON_SELECTOR)
         .should("exist");
+
+      cy.log("Entity picker data-source modal, reached via New → Question");
+      H.newButton("Question").click();
+      H.miniPickerBrowseAll().click();
+      H.entityPickerModal().within(() => {
+        H.entityPickerModalItem(0, "Our analytics").click();
+        H.entityPickerModalItem(1, ICON_QUESTION_NAME)
+          .find(PLUGIN_ICON_SELECTOR)
+          .should("exist");
+      });
+      cy.realPress("Escape");
+      H.entityPickerModal().should("not.exist");
 
       cy.log("Navigate → dashboard via bookmark link in the nav sidebar");
       H.openNavigationSidebar();
@@ -2353,25 +2212,91 @@ describe("sandbox", () => {
   });
 
   // innerHTML/outerHTML/insertAdjacentHTML go through DOMPurify rather than
-  // being blocked outright, so this case doesn't fit the "expect a thrown
-  // error and a fallback viz" shape of SANDBOX_CASES. Instead we inject an
-  // <img onerror> — which the browser would execute in the host realm if it
-  // survived assignment — and confirm DOMPurify stripped it by checking the
-  // onerror's side effect (a fetch to the canary URL) never happens.
-  it("sanitizes innerHTML through DOMPurify before it reaches the DOM", () => {
+  // being blocked outright, so these cases don't fit the "expect a thrown
+  // error" shape of SANDBOX_CASES. Instead we inject an <img onerror> — which
+  // the browser would execute in the host realm if it survived assignment —
+  // and confirm DOMPurify stripped it by checking the onerror's side effect
+  // (a fetch to the canary URL) never happens.
+  //
+  // Host-app globals: direct access is closed by near-membrane-dom's default
+  // behavior: it remaps only the own keys of a fresh sandbox iframe's window
+  // from host to plugin.
+  //
+  // Each payload runs in its own function scope, logs distinct messages and
+  // touches a fresh decoy, so they share one page load.
+  it("sanitizes HTML, hides host globals and returns decoys for out-of-scope DOM access", () => {
+    const hostSelector = "#root";
+    const preamble = `
+      (function() {
+        var d = document.createElement('div');
+        d.innerHTML = '<img src="x" onerror="fetch(\\'/api/canary-should-be-blocked-by-sandbox\\')">';
+        document.body.appendChild(d);
+      })();
+      (function() {
+        var host = document.createElement('div');
+        var shadow = host.attachShadow({ mode: 'open' });
+        shadow.innerHTML = '<img src="x" onerror="fetch(\\'/api/canary-should-be-blocked-by-sandbox\\')">';
+        document.body.appendChild(host);
+      })();
+      (function() {
+        var hostEl = document.querySelector('${hostSelector}');
+        if (hostEl) {
+          const elementId = hostEl.getAttribute("id");
+          hostEl.setAttribute('data-pwned-by-plugin', 'true');
+          console.log('plugin read element id', elementId);
+          console.log('plugin saw decoy', hostEl.getAttribute('data-plugin-sandbox-decoy'));
+        } else {
+          console.log('plugin-saw-decoy', false);
+        }
+      })();
+      setTimeout(function() {
+        console.log("plugin sees MetabaseBootstrap:", typeof window.MetabaseBootstrap);
+        try {
+          console.log(
+            "plugin sees parent.MetabaseBootstrap:",
+            typeof (window.parent && window.parent.MetabaseBootstrap)
+          );
+        } catch (e) {
+          console.log("plugin sees parent.MetabaseBootstrap:", "throws");
+        }
+
+        try {
+          console.log(
+            "plugin sees defaultView.MetabaseBootstrap:",
+            typeof (document.defaultView && document.defaultView.MetabaseBootstrap)
+          );
+        } catch (e) {
+          console.log("plugin sees defaultView.MetabaseBootstrap:", "throws");
+        }
+        console.log("plugin sees MetabaseUserLocalization:", typeof window.MetabaseUserLocalization);
+        console.log("plugin sees MetabaseSiteLocalization:", typeof window.MetabaseSiteLocalization);
+        console.log("plugin sees SECRET:", typeof window.SECRET);
+      }, 500);
+    `;
+    // Runs after the bundle so the plugin container exists.
+    const epilogue = `
+      setTimeout(function() {
+        var container = document.querySelector('[data-plugin-sandbox]');
+        if (!container) {
+          console.log('plugin parent test:', 'no container');
+          return;
+        }
+        const { parentElement, parentNode} = container;
+        console.log('plugin parentElement decoy:', parentElement && parentElement.getAttribute('data-plugin-sandbox-decoy'));
+        console.log('plugin parentElement id:', parentElement && parentElement.getAttribute('id'));
+        console.log('plugin parentNode decoy:', parentNode && parentNode.getAttribute && parentNode.getAttribute('data-plugin-sandbox-decoy'));
+        if (parentElement) {
+          parentElement.setAttribute('data-pwned-by-plugin', 'true');
+        }
+      }, 1000);
+    `;
+
     cy.intercept("GET", "/api/canary-should-be-blocked-by-sandbox").as(
       "canary",
     );
-
-    const payload = `
-      var d = document.createElement('div');
-      d.innerHTML = '<img src="x" onerror="fetch(\\'/api/canary-should-be-blocked-by-sandbox\\')">';
-      document.body.appendChild(d);
-    `;
-
     cy.intercept("GET", "/api/ee/custom-viz-plugin/*/bundle*", (req) => {
       req.continue((res) => {
-        res.body = `${payload}\n${String(res.body)};\n`;
+        res.body = `${preamble}\n${String(res.body)};\n${epilogue}`;
         res.send();
       });
     }).as("injectedBundle");
@@ -2380,6 +2305,8 @@ describe("sandbox", () => {
       onBeforeLoad(win) {
         cy.spy(win.console, "log").as("consoleLog");
         cy.spy(win.console, "error").as("consoleError");
+        // @ts-expect-error - test window property
+        win.SECRET = "abracadabra";
       },
     });
     cy.wait("@injectedBundle");
@@ -2388,48 +2315,88 @@ describe("sandbox", () => {
     cy.findByRole("heading", {
       name: "Custom viz rendered successfully",
     }).should("be.visible");
-    cy.get("@canary.all").should("have.length", 0);
+
+    cy.log("DOMPurify strips the onerror handler");
     cy.get("@consoleError").should(
       "have.been.calledWithMatch",
       /\[plugin \d+\] DOMPurify stripped content from innerHTML/,
     );
-  });
-
-  it("sanitizes ShadowRoot.innerHTML through DOMPurify before it reaches the DOM", () => {
-    cy.intercept("GET", "/api/canary-should-be-blocked-by-sandbox").as(
-      "canary",
-    );
-
-    const payload = `
-      var host = document.createElement('div');
-      var shadow = host.attachShadow({ mode: 'open' });
-      shadow.innerHTML = '<img src="x" onerror="fetch(\\'/api/canary-should-be-blocked-by-sandbox\\')">';
-      document.body.appendChild(host);
-    `;
-
-    cy.intercept("GET", "/api/ee/custom-viz-plugin/*/bundle*", (req) => {
-      req.continue((res) => {
-        res.body = `${payload}\n${String(res.body)};\n`;
-        res.send();
-      });
-    }).as("injectedBundle");
-
-    H.visitQuestion("@sandboxCardId", {
-      onBeforeLoad(win) {
-        cy.spy(win.console, "log").as("consoleLog");
-        cy.spy(win.console, "error").as("consoleError");
-      },
-    });
-    cy.wait("@injectedBundle");
-
-    cy.findByRole("heading", {
-      name: "Custom viz rendered successfully",
-    }).should("be.visible");
-    cy.get("@canary.all").should("have.length", 0);
     cy.get("@consoleError").should(
       "have.been.calledWithMatch",
       /\[plugin \d+\] DOMPurify stripped content from ShadowRoot\.innerHTML/,
     );
+    cy.get("@canary.all").should("have.length", 0);
+
+    cy.log("The host realm has these globals, the plugin does not");
+    cy.window().its("SECRET").should("eq", "abracadabra");
+    cy.window().its("MetabaseBootstrap").should("exist");
+    cy.get("@consoleLog").should(
+      "have.been.calledWith",
+      "plugin sees SECRET:",
+      "undefined",
+    );
+    cy.get("@consoleLog").should(
+      "have.been.calledWith",
+      "plugin sees MetabaseBootstrap:",
+      "undefined",
+    );
+    cy.get("@consoleLog").should(
+      "have.been.calledWith",
+      "plugin sees parent.MetabaseBootstrap:",
+      "undefined",
+    );
+    cy.get("@consoleLog").should(
+      "have.been.calledWith",
+      "plugin sees defaultView.MetabaseBootstrap:",
+      "undefined",
+    );
+    cy.get("@consoleLog").should(
+      "have.been.calledWith",
+      "plugin sees MetabaseUserLocalization:",
+      "undefined",
+    );
+    cy.get("@consoleLog").should(
+      "have.been.calledWith",
+      "plugin sees MetabaseSiteLocalization:",
+      "undefined",
+    );
+
+    cy.log(
+      "The plugin reached for #root but received a decoy with data-plugin-sandbox-decoy=true",
+    );
+    cy.get("@consoleLog").should(
+      "have.been.calledWith",
+      "plugin saw decoy",
+      "true",
+    );
+    cy.get("@consoleLog").should(
+      "have.been.calledWith",
+      "plugin read element id",
+      "sandbox-decoy",
+    );
+    cy.get(hostSelector).should("not.have.attr", "data-pwned-by-plugin");
+
+    cy.log(
+      "The plugin walked up to its container's parentElement/parentNode and received a decoy",
+    );
+    cy.get("@consoleLog").should(
+      "have.been.calledWith",
+      "plugin parentElement decoy:",
+      "true",
+    );
+    cy.get("@consoleLog").should(
+      "have.been.calledWith",
+      "plugin parentElement id:",
+      "sandbox-decoy",
+    );
+    cy.get("@consoleLog").should(
+      "have.been.calledWith",
+      "plugin parentNode decoy:",
+      "true",
+    );
+    cy.get("[data-plugin-sandbox]")
+      .parent()
+      .should("not.have.attr", "data-pwned-by-plugin");
   });
 
   // `Document` is itself a Node, so it's a valid root for TreeWalker /
@@ -2437,7 +2404,7 @@ describe("sandbox", () => {
   // an Element-only decoy, the plugin could pass `document` as the root
   // and walk the entire host DOM, surfacing real host Text nodes that
   // weren't decoyed. Locking this down requires the Node-level decoy.
-  it("decoys non-Element nodes reached via TreeWalker rooted at document", () => {
+  it("decoys non-Element nodes reached via TreeWalker rooted at document, and observes a decoy with MutationObserver on out-of-scope nodes", () => {
     const HOST_MARKER_TEXT = "treewalker-host-canary-do-not-leak";
 
     const payload = `
@@ -2458,6 +2425,27 @@ describe("sandbox", () => {
         console.log('plugin treewalker(document) saw host marker:', sawMarker);
         console.log('plugin treewalker(document) saw non-empty nodes:', nonEmptyCount);
       }, 1500);
+      (function() {
+        var seenMutations = 0;
+        var observer = new MutationObserver(function(records) {
+          seenMutations += records.length;
+        });
+        observer.observe(document.body, {
+          childList: true,
+          subtree: true,
+          attributes: true,
+        });
+        var ownMutations = 0;
+        var ownNode = document.createElement('div');
+        new MutationObserver(function(records) {
+          ownMutations += records.length;
+        }).observe(ownNode, { attributes: true });
+        ownNode.setAttribute('data-own-mutation', 'true');
+        setTimeout(function() {
+          console.log('plugin observed own mutations:', ownMutations);
+          console.log('plugin observed mutations:', seenMutations);
+        }, 1500);
+      })();
     `;
 
     cy.intercept("GET", "/api/ee/custom-viz-plugin/*/bundle*", (req) => {
@@ -2497,240 +2485,6 @@ describe("sandbox", () => {
       "plugin treewalker(document) saw non-empty nodes:",
       27,
     );
-  });
-
-  // Direct access is closed by near-membrane-dom's default behavior: it
-  // remaps only the own keys of a fresh sandbox iframe's window from host to plugin.
-  it("does not expose host-app globals to the plugin", () => {
-    const payload = `
-      setTimeout(function() {
-        console.log("plugin sees MetabaseBootstrap:", typeof window.MetabaseBootstrap);
-        try {
-          console.log(
-            "plugin sees parent.MetabaseBootstrap:",
-            typeof (window.parent && window.parent.MetabaseBootstrap)
-          );
-        } catch (e) {
-          console.log("plugin sees parent.MetabaseBootstrap:", "throws");
-        }
-
-        try {
-          console.log(
-            "plugin sees defaultView.MetabaseBootstrap:",
-            typeof (document.defaultView && document.defaultView.MetabaseBootstrap)
-          );
-        } catch (e) {
-          console.log("plugin sees defaultView.MetabaseBootstrap:", "throws");
-        }
-        console.log("plugin sees MetabaseUserLocalization:", typeof window.MetabaseUserLocalization);
-        console.log("plugin sees MetabaseSiteLocalization:", typeof window.MetabaseSiteLocalization);
-        console.log("plugin sees SECRET:", typeof window.SECRET);
-      }, 500);
-    `;
-
-    cy.intercept("GET", "/api/ee/custom-viz-plugin/*/bundle*", (req) => {
-      req.continue((res) => {
-        res.body = `${payload}\n${String(res.body)};\n`;
-        res.send();
-      });
-    }).as("injectedBundle");
-
-    H.visitQuestion("@sandboxCardId", {
-      onBeforeLoad(win) {
-        cy.spy(win.console, "log").as("consoleLog");
-        // @ts-expect-error - test window property
-        win.SECRET = "abracadabra";
-      },
-    });
-    cy.wait("@injectedBundle");
-
-    cy.findByRole("heading", {
-      name: "Custom viz rendered successfully",
-    }).should("be.visible");
-
-    cy.log("The host realm has these globals");
-    cy.window().its("SECRET").should("eq", "abracadabra");
-    cy.window().its("MetabaseBootstrap").should("exist");
-
-    cy.get("@consoleLog").should(
-      "have.been.calledWith",
-      "plugin sees SECRET:",
-      "undefined",
-    );
-
-    cy.get("@consoleLog").should(
-      "have.been.calledWith",
-      "plugin sees MetabaseBootstrap:",
-      "undefined",
-    );
-    cy.get("@consoleLog").should(
-      "have.been.calledWith",
-      "plugin sees parent.MetabaseBootstrap:",
-      "undefined",
-    );
-    cy.get("@consoleLog").should(
-      "have.been.calledWith",
-      "plugin sees defaultView.MetabaseBootstrap:",
-      "undefined",
-    );
-    cy.get("@consoleLog").should(
-      "have.been.calledWith",
-      "plugin sees MetabaseUserLocalization:",
-      "undefined",
-    );
-    cy.get("@consoleLog").should(
-      "have.been.calledWith",
-      "plugin sees MetabaseSiteLocalization:",
-      "undefined",
-    );
-  });
-
-  it("isolates DOM access to the plugin subtree (out-of-scope reads and writes hit a decoy)", () => {
-    const hostSelector = "#root";
-    const payload = `
-      var hostEl = document.querySelector('${hostSelector}');
-      if (hostEl) {
-        const elementId = hostEl.getAttribute("id");
-        hostEl.setAttribute('data-pwned-by-plugin', 'true');
-        console.log('plugin read element id', elementId);
-        console.log('plugin saw decoy', hostEl.getAttribute('data-plugin-sandbox-decoy'));
-      } else {
-        console.log('plugin-saw-decoy', false);
-      }
-    `;
-
-    cy.intercept("GET", "/api/ee/custom-viz-plugin/*/bundle*", (req) => {
-      req.continue((res) => {
-        res.body = `${payload}\n${String(res.body)};\n`;
-        res.send();
-      });
-    }).as("injectedBundle");
-
-    H.visitQuestion("@sandboxCardId", {
-      onBeforeLoad(win) {
-        cy.spy(win.console, "log").as("consoleLog");
-      },
-    });
-    cy.wait("@injectedBundle");
-
-    cy.findByRole("heading", {
-      name: "Custom viz rendered successfully",
-    }).should("be.visible");
-
-    // The plugin reached for visualization-root but received a decoy with
-    // data-plugin-sandbox-decoy="true" instead of the real element.
-    cy.get("@consoleLog").should(
-      "have.been.calledWith",
-      "plugin saw decoy",
-      "true",
-    );
-    cy.get("@consoleLog").should(
-      "have.been.calledWith",
-      "plugin read element id",
-      "sandbox-decoy",
-    );
-
-    // The real host element was untouched.
-    cy.get(hostSelector).should("not.have.attr", "data-pwned-by-plugin");
-  });
-
-  it("returns a decoy when the plugin walks up to its container's parentElement/parentNode", () => {
-    const payload = `
-      setTimeout(function() {
-        var container = document.querySelector('[data-plugin-sandbox]');
-        if (!container) {
-          console.log('plugin parent test:', 'no container');
-          return;
-        }
-        const { parentElement, parentNode} = container;
-        console.log('plugin parentElement decoy:', parentElement && parentElement.getAttribute('data-plugin-sandbox-decoy'));
-        console.log('plugin parentElement id:', parentElement && parentElement.getAttribute('id'));
-        console.log('plugin parentNode decoy:', parentNode && parentNode.getAttribute && parentNode.getAttribute('data-plugin-sandbox-decoy'));
-        if (parentElement) {
-          parentElement.setAttribute('data-pwned-by-plugin', 'true');
-        }
-      }, 1000);
-    `;
-
-    cy.intercept("GET", "/api/ee/custom-viz-plugin/*/bundle*", (req) => {
-      req.continue((res) => {
-        res.body = `${String(res.body)};\n${payload}`;
-        res.send();
-      });
-    }).as("injectedBundle");
-
-    H.visitQuestion("@sandboxCardId", {
-      onBeforeLoad(win) {
-        cy.spy(win.console, "log").as("consoleLog");
-      },
-    });
-    cy.wait("@injectedBundle");
-
-    cy.findByRole("heading", {
-      name: "Custom viz rendered successfully",
-    }).should("be.visible");
-
-    cy.get("@consoleLog").should(
-      "have.been.calledWith",
-      "plugin parentElement decoy:",
-      "true",
-    );
-    cy.get("@consoleLog").should(
-      "have.been.calledWith",
-      "plugin parentElement id:",
-      "sandbox-decoy",
-    );
-    cy.get("@consoleLog").should(
-      "have.been.calledWith",
-      "plugin parentNode decoy:",
-      "true",
-    );
-
-    cy.get("[data-plugin-sandbox]")
-      .parent()
-      .should("not.have.attr", "data-pwned-by-plugin");
-  });
-
-  it("MutationObserver on out-of-scope nodes observes a decoy and never fires for host mutations", () => {
-    const payload = `
-      var seenMutations = 0;
-      var observer = new MutationObserver(function(records) {
-        seenMutations += records.length;
-      });
-      observer.observe(document.body, {
-        childList: true,
-        subtree: true,
-        attributes: true,
-      });
-      var ownMutations = 0;
-      var ownNode = document.createElement('div');
-      new MutationObserver(function(records) {
-        ownMutations += records.length;
-      }).observe(ownNode, { attributes: true });
-      ownNode.setAttribute('data-own-mutation', 'true');
-      setTimeout(function() {
-        console.log('plugin observed own mutations:', ownMutations);
-        console.log('plugin observed mutations:', seenMutations);
-      }, 1500);
-    `;
-
-    cy.intercept("GET", "/api/ee/custom-viz-plugin/*/bundle*", (req) => {
-      req.continue((res) => {
-        res.body = `${payload}\n${String(res.body)};\n`;
-        res.send();
-      });
-    }).as("injectedBundle");
-
-    H.visitQuestion("@sandboxCardId", {
-      onBeforeLoad(win) {
-        cy.spy(win.console, "log").as("consoleLog");
-      },
-    });
-    cy.wait("@injectedBundle");
-
-    cy.findByRole("heading", {
-      name: "Custom viz rendered successfully",
-    }).should("be.visible");
 
     // Mutate the real host DOM. If the plugin held a real reference to
     // document.body, these would fire its observer. The membrane swapped
@@ -2757,8 +2511,9 @@ describe("sandbox", () => {
     );
   });
 
-  it("blocks forbidden apis in widget settings", () => {
+  it("blocks forbidden apis in widget settings and sandboxes React component setting widgets", () => {
     H.addCustomVizPlugin(H.CUSTOM_VIZ_FIXTURE_TGZ_3_SECURITY);
+    H.addCustomVizPlugin(H.CUSTOM_VIZ_FIXTURE_TGZ_4_SECURITY_COMPONENT);
 
     H.createQuestion(
       {
@@ -2793,31 +2548,11 @@ describe("sandbox", () => {
         Cypress.sinon.match(/blocked API call: window\.fetch/),
       ),
     );
-  });
 
-  it("sandboxes React component setting widgets", () => {
-    H.addCustomVizPlugin(H.CUSTOM_VIZ_FIXTURE_TGZ_4_SECURITY_COMPONENT);
-
-    H.createQuestion(
-      {
-        name: "Custom Viz Component Widget Security Test",
-        query: {
-          "source-table": SAMPLE_DB_TABLES.STATIC_ORDERS_ID,
-          aggregation: [["count"]],
-        },
-        display: "table",
-      },
-      { wrapId: true, idAlias: "questionId" },
+    cy.log(
+      "Switch to the component widget plugin; the custom viz group is already expanded",
     );
-
-    H.visitQuestion("@questionId", {
-      onBeforeLoad(win) {
-        cy.spy(win.console, "error").as("consoleError");
-      },
-    });
-
     cy.findByTestId("viz-type-button").click();
-    cy.findByTestId("custom-viz-plugins-toggle").click();
     cy.findByTestId(
       `${H.CUSTOM_VIZ_IDENTIFIER_4_SECURITY_COMPONENT}-button`,
     ).click();
