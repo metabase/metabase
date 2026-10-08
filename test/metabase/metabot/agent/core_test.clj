@@ -1090,6 +1090,11 @@
                        :data       (ex-data credit-error)
                        :error-code "provider_error"}}]
              (mt/as-admin (error-parts "metabase/anthropic/claude-sonnet-4-6" throw-credit)))))
+    (testing "everyone but an admin gets a generic message rather than the provider's own text"
+      (is (=? [{:error {:error-code "provider_error"
+                        :message    "The AI provider could not complete the request. Please try again."}}]
+              (mt/with-current-user (mt/user->id :rasta)
+                (error-parts "metabase/anthropic/claude-sonnet-4-6" throw-credit)))))
     (testing "an outage says to try again later on either connection, whether the request failed or the stream did"
       (doseq [claude-fn [(fn [_] (throw (api-error 529 overloaded)))
                          (fn [_] (eduction (claude/claude->aisdk-chunks-xf)
@@ -1108,6 +1113,32 @@
           (finally
             (llm.health/record-success! "metabase")
             (llm.health/record-success! "anthropic")))))))
+
+(deftest streamed-provider-error-is-generic-for-non-admins-test
+  (let [first-error (fn []
+                      (mt/with-temporary-setting-values [llm-providers        llm.tu/default-connections
+                                                         llm-metabot-provider "anthropic/claude-sonnet-4-6"]
+                        (mt/with-dynamic-fn-redefs [claude/claude
+                                                    (fn [_]
+                                                      (mut/mock-llm-response
+                                                       [{:type :error :errorText "Model claude-x is not available to org-123"}]))]
+                          (mt/with-log-level [metabase.metabot.self :fatal]
+                            (try
+                              (some #(when (= :error (:type %)) %)
+                                    (into [] (agent/run-agent-loop {:messages   [{:role :user :content "Hi"}]
+                                                                    :state      {}
+                                                                    :profile-id :embedding_next
+                                                                    :context    {}})))
+                              (finally
+                                (llm.health/record-success! "anthropic")))))))]
+    (testing "an admin sees what the provider said"
+      (is (=? {:error {:error-code "provider_error" :message "Model claude-x is not available to org-123"}}
+              (mt/as-admin (first-error)))))
+    (testing "everyone else gets a generic message that names neither the provider nor the model"
+      (is (=? {:error {:error-code "provider_error"
+                       :message    "The AI provider could not complete the request. Please try again."}}
+              (mt/with-current-user (mt/user->id :rasta)
+                (first-error)))))))
 
 ;;; ===================== Prometheus Metrics Tests =====================
 
