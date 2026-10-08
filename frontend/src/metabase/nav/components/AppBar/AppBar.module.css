@@ -12,3 +12,70 @@
     display: none;
   }
 }
+
+/* Border and fade states for the bars; classes, so the transitions and visibility timing stay together */
+.borderBottom {
+  border-bottom: 1px solid transparent;
+}
+
+.borderBottomVisible {
+  border-bottom-color: var(--mb-color-border-neutral);
+}
+
+.borderBottomAnimated {
+  transition: border-bottom-color 200ms ease;
+}
+
+.fade {
+  transition: opacity 0.5s;
+}
+
+.fadeOut {
+  visibility: hidden;
+  transition:
+    opacity 0.5s,
+    visibility 0s;
+}
+
+.logoFade {
+  transition: opacity 0.3s linear 0.2s;
+}
+
+.logoFadeOut {
+  visibility: hidden;
+  transition: none;
+}
+
+.translateCenter {
+  transform: translate(-50%, -50%);
+}
+
+/* Element-qualified so the disabled logo keeps full opacity over Link's own disabled style, whatever the load order */
+a.logoLink {
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.375rem;
+  height: 3.25rem;
+  min-width: 2.25rem;
+  max-width: 14rem;
+  line-height: 0;
+  opacity: 1;
+}
+
+.logoLinkSpaced {
+  margin-inline-end: 2rem;
+}
+
+.logoLinkSpacedGitSync {
+  margin-inline-end: 1rem;
+}
+
+.toggleIconDimmed {
+  color: var(--mb-color-text-secondary);
+
+  &:hover {
+    color: var(--mb-color-core-brand);
+  }
+}
