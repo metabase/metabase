@@ -128,6 +128,10 @@
                 "wrote. To get values, build the question from tables with construct_notebook_query instead.")
            {:agent-error? true}))
 
+;; TODO (Chris 2026-10-08) -- the query builder sends the open query without the filter values the user has set, so
+;; a question with a filter widget, or one opened from a dashboard, runs here unfiltered and can show different rows
+;; from the ones on screen. Parameters are kept for clients that do put them on the query. See BOT-2318.
+
 (defn- serialized-with-parameters
   "`query` serialized, keeping the `:parameters` of the query and of each of its stages.
    Serializing drops them as runtime-only, but the QP applies them as filters, so without them the query would read
