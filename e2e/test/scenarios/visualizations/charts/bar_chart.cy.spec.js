@@ -1279,10 +1279,6 @@ describe("scenarios > visualizations > bar chart", () => {
           "select -3 o, 'F2021' k, 1 v\nunion all select -2, 'V2021', 2\nunion all select -1, 'S2022', 3\nunion all select 0, 'F2022', 4",
         "template-tags": {},
       },
-      visualization_settings: {
-        "table.pivot_column": "O",
-        "table.cell_column": "V",
-      },
     };
 
     H.createNativeQuestion(questionDetails).then(({ body: { id } }) => {

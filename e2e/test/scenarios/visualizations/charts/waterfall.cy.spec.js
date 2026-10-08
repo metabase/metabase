@@ -410,9 +410,6 @@ describe("scenarios > visualizations > waterfall", () => {
 
   describe("scenarios > visualizations > waterfall settings", () => {
     beforeEach(() => {
-      H.restore();
-      cy.signInAsNormalUser();
-
       H.startNewNativeQuestion();
       H.NativeEditor.type("select 'A' as X, -4.56 as Y");
       cy.findByTestId("native-query-editor-container").icon("play").click();
