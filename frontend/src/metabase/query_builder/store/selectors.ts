@@ -1194,6 +1194,13 @@ export const getSubmittableQuestion = (
     );
   }
 
+  if (
+    submittableQuestion.type() === "question" &&
+    getLastRunCard(state) == null
+  ) {
+    submittableQuestion = submittableQuestion.setDefaultDisplay();
+  }
+
   const cleanQuery = Lib.dropEmptyStages(submittableQuestion.query());
   submittableQuestion = submittableQuestion
     .setQuery(cleanQuery)

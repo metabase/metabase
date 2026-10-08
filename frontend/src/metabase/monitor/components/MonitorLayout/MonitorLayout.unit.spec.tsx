@@ -153,6 +153,7 @@ describe("MonitorLayout", () => {
       ["Application logs", Urls.monitorLogs()],
       ["Model persistence log", Urls.monitorModelPersistenceLog()],
       ["Session management", Urls.monitorSessions()],
+      ["API key usage", Urls.monitorApiKeyUsage()],
     ];
 
     expectedTabs.forEach(([name, href]) => {
@@ -200,6 +201,11 @@ describe("MonitorLayout", () => {
       label: "Session management",
       route: Urls.monitorSessions(),
       section: "session-management",
+    },
+    {
+      label: "API key usage",
+      route: Urls.monitorApiKeyUsage(),
+      section: "api-key-usage",
     },
   ] as const;
 
@@ -326,7 +332,7 @@ describe("MonitorLayout", () => {
     });
   });
 
-  it("hides Dependency diagnostics for a monitoring-only user, and hides Alerts management (admin-only)", async () => {
+  it("hides Dependency diagnostics for a monitoring-only user, and hides Alerts management and API key usage (admin-only)", async () => {
     setup({
       user: createMockUser({
         is_superuser: false,
@@ -352,6 +358,10 @@ describe("MonitorLayout", () => {
     });
     expect(
       screen.queryByRole("link", { name: "Alerts management" }),
+    ).not.toBeInTheDocument();
+    // the page loads GET /api/api-key, which is superuser-only
+    expect(
+      screen.queryByRole("link", { name: "API key usage" }),
     ).not.toBeInTheDocument();
   });
 

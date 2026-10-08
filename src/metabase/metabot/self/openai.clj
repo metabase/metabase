@@ -16,10 +16,15 @@
   #{:text :function_call :reasoning})
 
 (def ^:private stop-reasons
-  "Responses API `incomplete_details.reason` → AI SDK v5 `FinishReason`. Only an incomplete response carries a reason,
-  so there is nothing here for a normal or tool-call finish."
+  "Responses API stop reason → AI SDK v5 `FinishReason`.
+
+  An incomplete response carries its `incomplete_details.reason`. A completed response has no reason, only its
+  `status`, so the adapter reports that status, `\"completed\"`. Every step then carries a reason, so a normal step
+  replaces an earlier step's `content-filter`, as it does for the other adapters.
+  https://platform.openai.com/docs/api-reference/responses/object"
   {"max_output_tokens" "length"
-   "content_filter"    "content-filter"})
+   "content_filter"    "content-filter"
+   "completed"         "stop"})
 
 (defn- openai-usage->aisdk-usage
   "Convert an OpenAI Responses API `usage` block into the AISDK `:usage` shape.
@@ -168,7 +173,9 @@
              ;; An incomplete response (e.g. truncated at max_output_tokens or stopped by a content filter)
              ;; still has valid partial output, so we record its usage rather than treating it as an error.
              (contains? #{"response.completed" "response.incomplete"} t)
-             (rf (let [raw (get-in response [:incomplete_details :reason])]
+             (rf (let [raw (if (= t "response.completed")
+                             "completed"
+                             (get-in response [:incomplete_details :reason]))]
                    (cond-> {:type  :usage
                             :usage (openai-usage->aisdk-usage (:usage response))
                             ;; non-standard extension, not in AISDK5
