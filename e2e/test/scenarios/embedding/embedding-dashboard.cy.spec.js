@@ -188,12 +188,9 @@ describe("scenarios > embedding > dashboard parameters", () => {
       cy.findByTestId("scalar-value").invoke("text").should("eq", "2,500");
 
       H.filterWidget().should("not.exist");
+    });
 
-      cy.log(
-        "should (dis)allow setting parameters as required for a published embedding",
-      );
-      cy.signInAsAdmin();
-
+    it("should (dis)allow setting parameters as required for a published embedding", () => {
       H.visitDashboard("@dashboardId");
 
       cy.get("@dashboardId").then((dashboardId) => {
@@ -201,7 +198,6 @@ describe("scenarios > embedding > dashboard parameters", () => {
           resource: "dashboard",
           resourceId: dashboardId,
           activeTab: "parameters",
-          unpublishBeforeOpen: false,
         });
       });
 
